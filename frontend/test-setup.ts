@@ -57,6 +57,7 @@ const appConfig = {
     register: "/register",
     confirmEmailAfterRegister: "/confirm-email",
     sendValidationEmail: "/send-validation-email",
+    resendRegistrationEmail: "/resend-registration-email",
     forgotPassword: "/forgot-password",
     errorPage: "/error",
     logout: "/logout",

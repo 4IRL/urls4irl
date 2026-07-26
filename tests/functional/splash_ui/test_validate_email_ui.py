@@ -94,7 +94,8 @@ def test_email_validation_rate_limits(page: Page):
     Tests that the email validation service appropriately rate limits a user
 
     GIVEN a freshly registered but unvalidated email user
-    WHEN user clicks the validation email button twice in a row
+    WHEN the auto-opened validation modal sends, then the user clicks resend
+        within the rate-limit window
     THEN ensure a rate limiting message appears to the user
     """
     register_user_ui(
@@ -106,18 +107,38 @@ def test_email_validation_rate_limits(page: Page):
 
     wait_then_click_element(page=page, css_selector=SPL.REGISTER_BUTTON_SUBMIT)
 
+    # Register now opens the opaque confirmation modal and does NOT log the user
+    # in, so it no longer auto-opens the EmailValidationModal (nor sends against
+    # the per-account attempt guard — branch 4 sends server-side without
+    # incrementing attempts). Reach the modal the way a real unvalidated user
+    # does: reload to a fresh anonymous splash, log in (which authenticates
+    # despite the 401), then revisit the splash — the modal auto-opens and
+    # auto-sends the first email (attempt 1).
+    page.goto(page.url.split("?")[0])
+    login_user_ui(
+        page=page,
+        username=UTS.TEST_USERNAME_1,
+        password=UTS.TEST_PASSWORD_1,
+    )
+    wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
+    login_alert = wait_then_get_element(page=page, css_selector=SPL.LOGIN_MODAL_ALERT)
+    expect(login_alert).to_be_visible()
+
+    page.goto(page.url.split("?")[0])
+    wait_for_modal_ready(page=page, modal_selector=SPL.EMAIL_VALIDATION_MODAL)
+
     modal_title = wait_then_get_element(
         page=page, css_selector=SPL.HEADER_VALIDATE_EMAIL
     )
     assert modal_title is not None
 
-    # 'Email sent!' is shown when the modal loads
+    # 'Email sent!' is shown when the modal auto-opens and sends the first email
     alert_modal_banner = wait_then_get_element(
         page=page, css_selector=SPL.EMAIL_VALIDATION_MODAL_ALERT
     )
     expect(alert_modal_banner).to_have_text(EMAILS.EMAIL_SENT)
 
-    # Clicking within 60 seconds will rate limit
+    # Clicking within 60 seconds will rate limit (attempt 2)
     wait_then_click_element(page=page, css_selector=SPL.EMAIL_VALIDATION_BUTTON_SUBMIT)
     alert_modal_banner = wait_then_get_element(
         page=page, css_selector=SPL.EMAIL_VALIDATION_MODAL_ALERT

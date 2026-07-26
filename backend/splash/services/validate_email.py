@@ -21,6 +21,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.constants import EMAIL_CONSTANTS
 from backend.utils.mailjet_utils import handle_mailjet_failure
 from backend.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
+from backend.utils.strings.user_strs import MEMBER_SUCCESS
 
 
 def send_validation_email_to_user() -> WerkzeugResponse | FlaskResponse:
@@ -55,21 +56,122 @@ def send_validation_email_to_user() -> WerkzeugResponse | FlaskResponse:
     if not has_more_attempts:
         return build_response_for_email_attempts_rate_limited(current_email_validation)
 
-    email_sender = safe_get_email_sender(current_app)
-    if not email_sender.is_production() and not email_sender.is_testing():
-        _log_email_send_if_in_development(current_email_validation)
-
-    url_for_confirmation = url_for(
-        ROUTES.SPLASH.VALIDATE_EMAIL,
-        token=current_email_validation.validation_token,
-        _external=True,
-    )
-
-    email_send_result = email_sender.send_account_email_confirmation(
-        current_user.email, current_user.username, url_for_confirmation
+    email_send_result = _send_account_confirmation_email(
+        current_user, current_email_validation
     )
 
     return handle_email_sending_result(email_send_result)
+
+
+def _send_account_confirmation_email(
+    user: Users, email_validation: Email_Validations
+) -> requests.Response:
+    """Send the account-confirmation email for a given user, session-independently.
+
+    Extracted from `send_validation_email_to_user()` so both the session-scoped
+    resend endpoint and the anonymous register/resend paths can send the same
+    email without depending on `current_user`. The caller owns the
+    attempt-count/rate-limit guarding; this only builds the link and sends.
+
+    Args:
+        user (Users): The account the confirmation email is for
+        email_validation (Email_Validations): That account's Email_Validations row
+
+    Returns:
+        (requests.Response): The raw Mailjet response
+    """
+    email_sender = safe_get_email_sender(current_app)
+    if not email_sender.is_production() and not email_sender.is_testing():
+        _log_email_send_if_in_development(email_validation)
+
+    url_for_confirmation = url_for(
+        ROUTES.SPLASH.VALIDATE_EMAIL,
+        token=email_validation.validation_token,
+        _external=True,
+    )
+
+    return email_sender.send_account_email_confirmation(
+        user.email, user.username, url_for_confirmation
+    )
+
+
+def _guard_and_send_confirmation_email(
+    user: Users, email_validation: Email_Validations, log_context: str
+) -> None:
+    """Gate the confirmation-email send behind the per-account attempt guard,
+    then send and log-only on a Mailjet server failure (>= 500).
+
+    Single source of truth for the rate-limited confirmation-email send used by
+    register branch 3 (email taken, unvalidated) and the resend endpoint. A
+    skipped (rate-limited) send is deliberately indistinguishable from a
+    completed one — every caller returns the same uniform opaque success — and a
+    >= 500 Mailjet failure is logged rather than surfaced so the taken-vs-new
+    enumeration signal never re-leaks.
+
+    Args:
+        user (Users): The account the confirmation email is for
+        email_validation (Email_Validations): That account's Email_Validations row
+        log_context (str): Phrase identifying the caller in the >= 500 error log
+    """
+    if email_validation.has_too_many_email_attempts():
+        return
+
+    has_more_attempts = email_validation.increment_attempt()
+    db.session.commit()
+
+    if not has_more_attempts:
+        return
+
+    _send_confirmation_email_and_log(user, email_validation, log_context)
+
+
+def _send_confirmation_email_and_log(
+    user: Users, email_validation: Email_Validations, log_context: str
+) -> None:
+    """Send the confirmation email and, on a Mailjet server failure (>= 500),
+    log only — never surface a distinguishing error response (that would re-leak
+    the taken-vs-new signal). Mirrors `/forgot-password`'s logging pattern.
+
+    Args:
+        user (Users): The account the confirmation email is for
+        email_validation (Email_Validations): That account's Email_Validations row
+        log_context (str): Phrase identifying the caller in the >= 500 error log
+    """
+    email_send_result = _send_account_confirmation_email(user, email_validation)
+    if email_send_result.status_code >= 500:
+        error_log(f"(4) Email failed to send: {log_context} for User={user.id}")
+
+
+def send_resend_registration_email(email: str) -> FlaskResponse:
+    """Resend the account-confirmation email for a pending registration, opaquely.
+
+    Modeled on `send_forgot_password_email_to_user()`: every path — unknown
+    email, already-validated account, pending account, or a rate-limited
+    pending account — returns one identical opaque success so a caller cannot
+    learn whether the email is registered or its validation state.
+
+    Args:
+        email (str): Email address from the resend request
+
+    Returns:
+        (FlaskResponse): JSON and HTTP status code (always the opaque success)
+    """
+    user: Users | None = Users.query.filter(Users.email == email.lower()).first()
+
+    if user is None or user.email_validated or user.email_confirm is None:
+        return _build_opaque_resend_success()
+
+    email_validation: Email_Validations = user.email_confirm
+    _guard_and_send_confirmation_email(
+        user, email_validation, "registration confirmation resend"
+    )
+
+    return _build_opaque_resend_success()
+
+
+def _build_opaque_resend_success() -> FlaskResponse:
+    """The single, uniform opaque success returned on every resend outcome."""
+    return APIResponse(message=MEMBER_SUCCESS.CONFIRM_EMAIL_SENT).to_response()
 
 
 def build_response_for_max_email_attempts_sent() -> FlaskResponse:

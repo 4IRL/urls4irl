@@ -9,9 +9,7 @@ import {
   showSplashModalAlertBanner,
   resetModalFormState,
   handleImproperFormErrors,
-  handleUserHasAccountNotEmailValidated,
   switchModal,
-  emailValidationModalOpener,
 } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 import { debug } from "../lib/debug.js";
@@ -19,7 +17,7 @@ import { debug } from "../lib/debug.js";
 const log = debug("splash:register");
 
 type RegisterRequest = Schema<"RegisterRequest">;
-type RegisterSuccess = SuccessResponse<"registerUser", 201>;
+type RegisterSuccess = SuccessResponse<"registerUser", 200>;
 type RegisterError = Schema<"ErrorResponse_RegisterErrorCodes">;
 
 /**
@@ -78,24 +76,44 @@ function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
     contentType: "application/json",
   });
 
-  registerRequest.done((response, textStatus, xhr) =>
-    handleRegisterSuccess(response, textStatus, xhr, $modal),
+  registerRequest.done((response, _textStatus, xhr) =>
+    handleRegisterSuccess({ response, xhr, $modal, email }),
   );
   registerRequest.fail((xhr, textStatus, error) =>
     handleRegisterFailure(xhr, textStatus, error, $modal),
   );
 }
 
-function handleRegisterSuccess(
-  _: RegisterSuccess,
-  __: string,
-  xhr: JQuery.jqXHR,
-  $modal: JQuery,
-): void {
-  if (xhr.status === 201) {
-    log("register success, opening EmailValidationModal");
-    emailValidationModalOpener($modal);
+function handleRegisterSuccess({
+  response,
+  xhr,
+  $modal,
+  email,
+}: {
+  response: RegisterSuccess;
+  xhr: JQuery.jqXHR;
+  $modal: JQuery;
+  email: string;
+}): void {
+  if (xhr.status !== 200) {
+    return;
   }
+  log("register acknowledged, opening confirmation modal");
+
+  const $confirmationModal: JQuery = $("#RegisterConfirmationModal");
+  // Stash the submitted email + the uniform confirmation message so the
+  // confirmation modal's Resend handler can re-POST and re-announce them.
+  $confirmationModal
+    .data("registerEmail", email)
+    .data("confirmMessage", response.message);
+
+  // DD-23: announce on shown.bs.modal (AFTER the modal is visible) so the live
+  // role="alert" region is rendered before its text mutates and AT announces it.
+  $confirmationModal.one("shown.bs.modal", () =>
+    showSplashModalAlertBanner($confirmationModal, response.message, "success"),
+  );
+
+  switchModal($modal, "#RegisterConfirmationModal");
 }
 
 function handleRegisterFailure(
@@ -136,12 +154,6 @@ function handleRegisterFailure(
       case 400: {
         handleImproperFormErrors($modal, errorJson);
         $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
-        break;
-      }
-      case 401: {
-        // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated($modal, errorJson.message);
-        $modal.find("input").attr("disabled", "disabled");
         break;
       }
     }

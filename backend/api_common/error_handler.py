@@ -58,6 +58,13 @@ def handle_404_response(_: NotFound):
 
 
 def handle_429_response_default_ratelimit(_):
+    # Only /api/v1 (bearer-token) clients get a JSON 429. Web AJAX requests
+    # deliberately receive the HTML 429 page: the global `$.ajaxPrefilter` in
+    # `frontend/lib/csrf.ts` detects a text/html 429 and performs a full-page
+    # replacement (`showNewPageOnAJAXHTMLResponse`), which every splash/home/utub
+    # form's `.fail()` handler and the `*_rate_limits` UI tests rely on. Returning
+    # JSON here (as a 404-style dual-check would) leaves the page unreplaced and
+    # the rate-limit UX silently broken. Unlike 404, 429 has no JSON web consumer.
     if _is_api_v1_request():
         return build_message_error_response(
             message=STD_JSON_RESPONSE.TOO_MANY_REQUESTS, status_code=429

@@ -5543,7 +5543,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "Register",
             "content": {
               "application/json": {
@@ -5563,8 +5563,8 @@
               }
             }
           },
-          "401": {
-            "description": "Unauthorized",
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -5637,6 +5637,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "x-error-codes": {
@@ -5700,6 +5710,64 @@
         }
       }
     },
+    "/resend-registration-email": {
+      "post": {
+        "operationId": "resendRegistrationEmail",
+        "tags": ["auth"],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Resend the account-confirmation email for a pending registration (opaque)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendRegistrationEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status and message response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_RegisterErrorCodes"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "RegisterErrorCodes": {
+            "$ref": "#/components/schemas/RegisterErrorCodes"
+          }
+        }
+      }
+    },
     "/forgot-password": {
       "post": {
         "operationId": "forgotPassword",
@@ -5736,6 +5804,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse_ForgotPasswordErrorCodes"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -9674,11 +9752,8 @@
       },
       "RegisterErrorCodes": {
         "type": "integer",
-        "enum": [1, 2],
-        "x-enum-varnames": [
-          "ACCOUNT_NOT_EMAIL_VALIDATED",
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [2],
+        "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for RegisterErrorCodes"
       },
       "LoginRequest": {
@@ -9748,6 +9823,18 @@
           }
         },
         "required": ["status", "message"],
+        "type": "object"
+      },
+      "ResendRegistrationEmailRequest": {
+        "properties": {
+          "email": {
+            "description": "Email address of the pending registration to resend confirmation for",
+            "examples": ["user@example.com"],
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": ["email"],
         "type": "object"
       },
       "ForgotPasswordRequest": {

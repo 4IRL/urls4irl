@@ -1,9 +1,12 @@
+from unittest.mock import MagicMock
+
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
 from backend import db
 from backend.api_v1.constants import ApiAuthErrorCodes
+from backend.api_v1.services import auth
 from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
@@ -80,9 +83,17 @@ def test_login_issues_token_pair(
     assert me_response.get_json()[MODELS.ID] == 1
 
 
-def test_login_unknown_user_is_400_field_error(
+def test_login_unknown_user_is_400_generic_credentials_error(
     app: Flask, api_client: FlaskClient, register_first_user
 ):
+    """
+    GIVEN an unknown (never-registered) username
+    WHEN POST /api/v1/auth/login is attempted against it
+    THEN the generic anti-enumeration credential contract is returned (HTTP
+        400, form-level INVALID_CREDENTIALS message, no field-scoped errors
+        key) so an unknown username cannot be distinguished from a wrong
+        password; mirrors the web login service.
+    """
     response = api_client.post(
         _login_url(app),
         json={MODELS.USERNAME: "notARealUser", "password": "whatever123"},
@@ -91,17 +102,68 @@ def test_login_unknown_user_is_400_field_error(
     assert response.status_code == 400
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_LOGIN
+    assert response_json[STD_JSON.MESSAGE] == USER_FAILURE.INVALID_CREDENTIALS
     assert response_json[STD_JSON.ERROR_CODE] == ApiAuthErrorCodes.INVALID_FORM_INPUT
-    assert response_json[STD_JSON.ERRORS][MODELS.USERNAME] == [
-        USER_FAILURE.USER_NOT_EXIST
-    ]
+    assert STD_JSON.ERRORS not in response_json
 
     with app.app_context():
         assert ApiRefreshTokens.query.count() == 0
 
 
-def test_login_wrong_password_is_400_field_error(
+def test_login_unknown_user_spends_dummy_hash(
+    app: Flask, api_client: FlaskClient, register_first_user, monkeypatch
+):
+    """
+    Security regression (DD-5c): GIVEN an unknown (never-registered) username
+    WHEN POST /api/v1/auth/login is attempted against it
+    THEN the mobile auth service spends the dummy bcrypt hash —
+        check_password_hash is called with (DUMMY_HASH, submitted_password) — so
+        the no-user path is indistinguishable from a wrong-password attempt by
+        wall-clock latency, not only by response bytes. Deterministic
+        (spy-based), not timing-based; mirrors the web login analogue.
+    """
+    unknown_password = "whatever123"
+    hash_spy = MagicMock(return_value=False)
+    monkeypatch.setattr(auth, "check_password_hash", hash_spy)
+
+    response = api_client.post(
+        _login_url(app),
+        json={MODELS.USERNAME: "notARealUser", "password": unknown_password},
+    )
+
+    assert response.status_code == 400
+    hash_spy.assert_called_once_with(auth.DUMMY_HASH, unknown_password)
+
+
+def test_login_unknown_user_response_identical_to_wrong_password(
+    app: Flask, api_client: FlaskClient, register_first_user
+):
+    """
+    GIVEN a registered password user and an unknown (never-registered) username
+    WHEN each POSTs /api/v1/auth/login with a wrong password
+    THEN both responses are byte-identical (same HTTP status, same JSON body) so
+        an attacker cannot distinguish an unknown username from a wrong password
+        from the login response — the established anti-fingerprint contract,
+        mirroring the web analogue.
+    """
+    wrong_password_response = api_client.post(
+        _login_url(app),
+        json={
+            MODELS.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
+            "password": "definitelyWrongPassword1",
+        },
+    )
+
+    unknown_user_response = api_client.post(
+        _login_url(app),
+        json={MODELS.USERNAME: "notARealUser", "password": "whatever123"},
+    )
+
+    assert unknown_user_response.status_code == wrong_password_response.status_code
+    assert unknown_user_response.get_data() == wrong_password_response.get_data()
+
+
+def test_login_wrong_password_is_400_generic_credentials_error(
     app: Flask, api_client: FlaskClient, register_first_user
 ):
     response = api_client.post(
@@ -114,20 +176,23 @@ def test_login_wrong_password_is_400_field_error(
 
     assert response.status_code == 400
     response_json = response.get_json()
-    assert response_json[STD_JSON.ERRORS]["password"] == [USER_FAILURE.INVALID_PASSWORD]
+    assert response_json[STD_JSON.MESSAGE] == USER_FAILURE.INVALID_CREDENTIALS
+    assert STD_JSON.ERRORS not in response_json
 
     with app.app_context():
         assert ApiRefreshTokens.query.count() == 0
 
 
 def test_login_oauth_only_account_matches_wrong_password_response(
-    app: Flask, api_client: FlaskClient
+    app: Flask, api_client: FlaskClient, register_first_user
 ):
     """
     GIVEN an OAuth-only account (password is NULL)
     WHEN a password login is attempted against it
-    THEN the response is byte-identical to the wrong-password branch so the
-        account type cannot be fingerprinted
+    THEN the response is the generic anti-enumeration credential contract (HTTP
+        400, form-level INVALID_CREDENTIALS message, no field-scoped errors key),
+        byte-identical to the wrong-password branch so the account type cannot be
+        fingerprinted
     """
     with app.app_context():
         oauth_only_user = Users(
@@ -137,6 +202,14 @@ def test_login_oauth_only_account_matches_wrong_password_response(
         db.session.add(oauth_only_user)
         db.session.commit()
 
+    wrong_password_response = api_client.post(
+        _login_url(app),
+        json={
+            MODELS.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
+            "password": "definitelyWrongPassword1",
+        },
+    )
+
     response = api_client.post(
         _login_url(app),
         json={MODELS.USERNAME: "oauthOnlyUser", "password": "somePassword123"},
@@ -144,7 +217,11 @@ def test_login_oauth_only_account_matches_wrong_password_response(
 
     assert response.status_code == 400
     response_json = response.get_json()
-    assert response_json[STD_JSON.ERRORS]["password"] == [USER_FAILURE.INVALID_PASSWORD]
+    assert response_json[STD_JSON.MESSAGE] == USER_FAILURE.INVALID_CREDENTIALS
+    assert STD_JSON.ERRORS not in response_json
+
+    assert response.status_code == wrong_password_response.status_code
+    assert response.get_data() == wrong_password_response.get_data()
 
 
 def test_login_unvalidated_email_still_issues_tokens(

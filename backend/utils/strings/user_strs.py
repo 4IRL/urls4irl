@@ -18,6 +18,9 @@ MEMBER_ADDED = "Member added."
 MEMBER_ID_ADDED = "userID"
 MEMBER_ID_REMOVED = MEMBER_ID_ADDED
 USER_REGISTERED = "User registered."
+CONFIRM_EMAIL_SENT = (
+    "Almost there — check your email for a link to confirm your account."
+)
 MEMBER = "member"
 MEMBER_DELETE_WARNING = (
     "This member will no longer have access to the URLs in this UTub."
@@ -34,6 +37,7 @@ class MEMBER_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     MEMBER_ID_REMOVED = MEMBER_ID_REMOVED
     MEMBER_ID_ADDED = MEMBER_ID_ADDED
     USER_REGISTERED = USER_REGISTERED
+    CONFIRM_EMAIL_SENT = CONFIRM_EMAIL_SENT
     MEMBER = MEMBER
 
 
@@ -50,6 +54,7 @@ EMAIL_TAKEN = "That email address is already in use."
 USERNAME_TAKEN = "That username is already taken. Please choose another."
 USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
 INVALID_PASSWORD = "Invalid password. If you signed up using a third-party provider, this account may not have a password — use one of the sign-in options below."
+INVALID_CREDENTIALS = "Invalid username or password."
 ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = "An account already exists with that information but the email has not been validated."
 INVALID_EMAIL = "Email is not valid."
 ACCOUNT_SUSPENDED = "This account has been suspended."
@@ -63,6 +68,7 @@ class USER_FAILURE(FAILURE_GENERAL):
     USER_NOT_EXIST = USER_NOT_EXIST
     ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
     INVALID_PASSWORD = INVALID_PASSWORD
+    INVALID_CREDENTIALS = INVALID_CREDENTIALS
     INVALID_EMAIL = INVALID_EMAIL
     ACCOUNT_SUSPENDED = ACCOUNT_SUSPENDED
 

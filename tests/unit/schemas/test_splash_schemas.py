@@ -188,6 +188,32 @@ class TestForgotPasswordRequest:
         assert any(err["loc"][0] == "email" for err in errors)
 
 
+class TestResendRegistrationEmailRequest:
+    def test_valid_email(self):
+        from backend.schemas.requests.splash import ResendRegistrationEmailRequest
+
+        req = ResendRegistrationEmailRequest.model_validate(
+            {"email": "user@example.com"}
+        )
+        assert req.email == "user@example.com"
+
+    def test_invalid_email_raises(self):
+        from backend.schemas.requests.splash import ResendRegistrationEmailRequest
+
+        with pytest.raises(ValidationError) as exc_info:
+            ResendRegistrationEmailRequest.model_validate({"email": "Cat"})
+        errors = exc_info.value.errors()
+        assert any(err["loc"][0] == "email" for err in errors)
+
+    def test_missing_email_raises(self):
+        from backend.schemas.requests.splash import ResendRegistrationEmailRequest
+
+        with pytest.raises(ValidationError) as exc_info:
+            ResendRegistrationEmailRequest.model_validate({})
+        errors = exc_info.value.errors()
+        assert any(err["loc"][0] == "email" for err in errors)
+
+
 class TestResetPasswordRequest:
     def test_valid_reset(self):
         from backend.schemas.requests.splash import ResetPasswordRequest

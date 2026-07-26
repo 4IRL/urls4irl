@@ -23,10 +23,7 @@ from backend.metrics.events import EventName
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.schemas.api_v1 import ApiTokenPairResponseSchema, ApiUserProfileSchema
-from backend.schemas.errors import (
-    build_field_error_response,
-    build_message_error_response,
-)
+from backend.schemas.errors import build_message_error_response
 from backend.splash.constants import (
     LOGIN_FAILURE_REASON_BAD_PASSWORD,
     LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED,
@@ -97,10 +94,15 @@ def login_user_for_api(*, username: str, password: str) -> FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_UNKNOWN_USER},
         )
-        return build_field_error_response(
-            message=USER_FAILURE.UNABLE_TO_LOGIN,
-            errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
+        # Byte- and latency-identical to the wrong-password branch so an
+        # unknown username cannot be fingerprinted; mirrors the web login
+        # service. The dummy-hash spend keeps this path's wall-clock time
+        # equal to a real password check.
+        check_password_hash(DUMMY_HASH, password)
+        return build_message_error_response(
+            message=USER_FAILURE.INVALID_CREDENTIALS,
             error_code=ApiAuthErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
         )
 
     if user.password is None:
@@ -113,10 +115,10 @@ def login_user_for_api(*, username: str, password: str) -> FlaskResponse:
         # password-less (OAuth-only) accounts cannot be fingerprinted;
         # mirrors the web login service.
         check_password_hash(DUMMY_HASH, password)
-        return build_field_error_response(
-            message=USER_FAILURE.UNABLE_TO_LOGIN,
-            errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
+        return build_message_error_response(
+            message=USER_FAILURE.INVALID_CREDENTIALS,
             error_code=ApiAuthErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
         )
 
     if not user.is_password_correct(password):
@@ -125,10 +127,10 @@ def login_user_for_api(*, username: str, password: str) -> FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
         )
-        return build_field_error_response(
-            message=USER_FAILURE.UNABLE_TO_LOGIN,
-            errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
+        return build_message_error_response(
+            message=USER_FAILURE.INVALID_CREDENTIALS,
             error_code=ApiAuthErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
         )
 
     if user.is_suspended:

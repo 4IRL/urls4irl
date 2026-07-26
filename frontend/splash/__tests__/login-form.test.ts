@@ -197,7 +197,9 @@ describe("login-form double-submit guard", () => {
     expect($modal.find("#submit").attr("aria-busy")).toBe("true");
   });
 
-  it("re-enables #submit on a 400 errorCode=2 failure", () => {
+  it("shows the generic credential banner and re-enables #submit on a 400 errorCode=2 failure", async () => {
+    const { showSplashModalAlertBanner, handleImproperFormErrors } =
+      await import("../init.js");
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
@@ -211,8 +213,7 @@ describe("login-form double-submit guard", () => {
         status: 400,
         responseJSON: {
           errorCode: 2,
-          message: "Invalid",
-          errors: { password: ["Invalid"] },
+          message: "Invalid username or password.",
         },
         getResponseHeader: vi.fn(),
       },
@@ -220,8 +221,52 @@ describe("login-form double-submit guard", () => {
       "Bad Request",
     );
 
-    // handleImproperFormErrors is mocked (no-op DOM) in this test file;
-    // only the removeAttr calls are under test here.
+    // The credential-failure path now surfaces one generic form-level banner
+    // (anti-enumeration) and must NOT route through the field-error helper.
+    expect(showSplashModalAlertBanner).toHaveBeenCalledWith(
+      $modal,
+      "Invalid username or password.",
+      "danger",
+    );
+    expect(handleImproperFormErrors).not.toHaveBeenCalled();
+    expect($modal.find("#submit").attr("disabled")).toBeUndefined();
+    expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
+  });
+
+  it("routes to field errors (not the generic banner) on a 400 errorCode=2 schema-validation failure", async () => {
+    const { showSplashModalAlertBanner, handleImproperFormErrors } =
+      await import("../init.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
+
+    const errorJson = {
+      errorCode: 2,
+      message: "Please correct the errors below.",
+      errors: {
+        username: ["This field is required."],
+        password: ["This field is required."],
+      },
+    };
+    mockDeferred.reject(
+      {
+        status: 400,
+        responseJSON: errorJson,
+        getResponseHeader: vi.fn(),
+      },
+      "error",
+      "Bad Request",
+    );
+
+    // Empty/malformed-field submissions carry a populated `errors` dict and
+    // zero enumeration risk, so field-level guidance is restored and the
+    // generic banner is NOT used.
+    expect(handleImproperFormErrors).toHaveBeenCalledWith($modal, errorJson);
+    expect(showSplashModalAlertBanner).not.toHaveBeenCalled();
     expect($modal.find("#submit").attr("disabled")).toBeUndefined();
     expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
   });

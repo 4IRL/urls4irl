@@ -18,6 +18,7 @@ class SPLASH_ROUTES:
     LOGIN = _SPLASH + "login"
     CONFIRM_EMAIL = _SPLASH + "confirm_email_after_register"
     SEND_VALIDATION_EMAIL = _SPLASH + "send_validation_email"
+    RESEND_REGISTRATION_EMAIL = _SPLASH + "resend_registration_email"
     VALIDATE_EMAIL = _SPLASH + "validate_email"
     FORGOT_PASSWORD_PAGE = _SPLASH + "forgot_password"
     CONFIRM_PASSWORD_RESET = _SPLASH + "confirm_password_reset"
@@ -227,6 +228,7 @@ def generate_routes_js() -> dict[str, str]:
         "register": url_for(SPLASH_ROUTES.REGISTER),
         "confirmEmailAfterRegister": url_for(SPLASH_ROUTES.CONFIRM_EMAIL),
         "sendValidationEmail": url_for(SPLASH_ROUTES.SEND_VALIDATION_EMAIL),
+        "resendRegistrationEmail": url_for(SPLASH_ROUTES.RESEND_REGISTRATION_EMAIL),
         "forgotPassword": url_for(SPLASH_ROUTES.FORGOT_PASSWORD_PAGE),
         "oauthGoogleLogin": url_for(OAUTH_ROUTES.GOOGLE_LOGIN),
         "oauthGithubLogin": url_for(OAUTH_ROUTES.GITHUB_LOGIN),

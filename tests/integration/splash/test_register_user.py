@@ -1,21 +1,25 @@
 from copy import deepcopy
+from unittest.mock import MagicMock
 
 from flask import Flask, request, url_for
 from flask_login import current_user
 import pytest
-from werkzeug.security import check_password_hash
+from requests import Response
 
 from backend import db
+from backend.extensions.email_sender.email_sender import EmailSender
 from backend.metrics.events import EventName
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.schemas.users import RegisterResponseSchema
 from backend.splash.constants import RegisterErrorCodes
 from backend.utils.all_routes import ROUTES
+from backend.utils.constants import EMAIL_CONSTANTS
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
-from backend.utils.strings.user_strs import USER_FAILURE
+from backend.utils.strings.user_strs import MEMBER_SUCCESS, USER_FAILURE
 from tests.integration.splash.conftest import register_json
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
@@ -28,6 +32,34 @@ from tests.models_for_test import valid_user_1, valid_user_2, valid_user_3
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.splash
+
+
+def _ok_email_response() -> Response:
+    """A minimal 200 Mailjet response for patching the email sender in tests."""
+    response = Response()
+    response.status_code = 200
+    return response
+
+
+def _patch_email_confirmation_spy(monkeypatch) -> MagicMock:
+    """Patch EmailSender.send_account_email_confirmation with a 200-returning spy."""
+    send_spy = MagicMock(return_value=_ok_email_response())
+    monkeypatch.setattr(EmailSender, "send_account_email_confirmation", send_spy)
+    return send_spy
+
+
+def _server_error_email_response() -> Response:
+    """A Mailjet response simulating a server-side (>= 500) send failure."""
+    response = Response()
+    response.status_code = 502
+    return response
+
+
+def _patch_email_confirmation_server_error(monkeypatch) -> MagicMock:
+    """Patch EmailSender.send_account_email_confirmation with a 502-returning spy."""
+    send_spy = MagicMock(return_value=_server_error_email_response())
+    monkeypatch.setattr(EmailSender, "send_account_email_confirmation", send_spy)
+    return send_spy
 
 
 def test_register_new_user(app, load_register_page):
@@ -55,14 +87,14 @@ def test_register_new_user(app, load_register_page):
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Correctly responds with JSON 201
-    assert response.status_code == 201
+    # Register now returns the uniform opaque success (200) and does NOT log
+    # the user in — validation completes via the emailed link.
+    assert response.status_code == 200
     assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
 
-    # Test if user logged in
-    assert current_user.username == new_user[REGISTER_FORM.USERNAME]
-    assert current_user.password != new_user[REGISTER_FORM.PASSWORD]
-    assert current_user.email == new_user[REGISTER_FORM.EMAIL].lower()
+    # No session is established on register
+    assert current_user.is_authenticated is False
 
     # Ensure user exists in database
     with app.app_context():
@@ -70,20 +102,13 @@ def test_register_new_user(app, load_register_page):
             Users.username == new_user[REGISTER_FORM.USERNAME]
         ).first()
 
-    # Ensure user model after loading from database is logged in
-    assert new_db_user.is_authenticated is True
-    assert new_db_user.is_active is True
+    # The DB row exists but is unvalidated (login now happens on email-link click)
+    assert new_db_user.email_validated is False
 
     # Test if user db data is same as input when registering
     assert new_db_user.username == new_user[REGISTER_FORM.USERNAME]
     assert new_db_user.password != new_user[REGISTER_FORM.PASSWORD]
     assert new_db_user.email == new_user[REGISTER_FORM.EMAIL].lower()
-
-    # Test if user db data is same as current user variable
-    assert new_db_user.username == current_user.username
-    assert new_db_user.password == current_user.password
-    assert new_db_user.email == current_user.email.lower()
-    assert new_db_user.id == int(current_user.get_id())
 
 
 def test_register_new_user_records_metric(
@@ -107,8 +132,32 @@ def test_register_new_user_records_metric(
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    assert response.status_code == 201
+    assert response.status_code == 200
     assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 1
+
+
+def test_register_new_user_sends_confirmation_email(
+    app, load_register_page, monkeypatch
+):
+    """
+    GIVEN a brand-new registration (branch 4)
+    WHEN the user POSTs to "/register"
+    THEN the confirmation email is sent server-side exactly once to the new
+        user's own email address.
+    """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    client, csrf_token_string = load_register_page
+    new_user = deepcopy(valid_user_1)
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 200
+    send_spy.assert_called_once()
+    assert send_spy.call_args.args[0] == new_user[REGISTER_FORM.EMAIL].lower()
 
 
 def _create_user(
@@ -137,14 +186,16 @@ def _create_user(
 
 
 def test_register_rejected_email_taken(
-    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page, monkeypatch
 ):
     """
     GIVEN a validated user whose email is already taken (username is free)
     WHEN a new user POSTs to "/register" with that email and a fresh username
-    THEN the request returns HTTP 400 AND exactly one REGISTER_REJECTED counter
-        key is written with reason="email_taken".
+    THEN the request returns the uniform opaque success (200) AND exactly one
+        REGISTER_REJECTED counter key is written with reason="email_taken", and
+        the response body is byte-identical to a brand-new registration's.
     """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
     _create_user(
         app,
         username=valid_user_2[REGISTER_FORM.USERNAME],
@@ -165,11 +216,24 @@ def test_register_rejected_email_taken(
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 200
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
     assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 1
     counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
     assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "email_taken"
     assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 0
+    # Branch 2 (email taken, validated) sends no email.
+    send_spy.assert_not_called()
+
+    # Byte-identical parity: a brand-new registration returns the same body.
+    brand_new_user = deepcopy(valid_user_3)
+    brand_new_response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(brand_new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+    assert brand_new_response.status_code == 200
+    assert brand_new_response.get_data() == response.get_data()
 
 
 def test_register_rejected_username_taken(
@@ -259,14 +323,16 @@ def test_register_rejected_email_and_username_both_taken_records_two_events(
 
 
 def test_register_rejected_unvalidated_email(
-    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page, monkeypatch
 ):
     """
     GIVEN an unvalidated-email user whose email is taken (username is free)
     WHEN a new user POSTs to "/register" with that email and a fresh username
-    THEN the request returns HTTP 401 AND exactly one REGISTER_REJECTED counter
-        key is written with reason="unvalidated_email".
+    THEN the request returns the uniform opaque success (200), resends the
+        confirmation email to the pending account, AND records exactly one
+        REGISTER_REJECTED counter key with reason="unvalidated_email".
     """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
     _create_user(
         app,
         username=valid_user_2[REGISTER_FORM.USERNAME],
@@ -287,15 +353,145 @@ def test_register_rejected_unvalidated_email(
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 200
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
     assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 1
     counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
     assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "unvalidated_email"
     assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 0
+    # Branch 3 resends the confirmation email to the real pending owner.
+    send_spy.assert_called_once()
+
+
+def test_register_rejected_unvalidated_email_guard_tripped_sends_nothing(
+    app, load_register_page, monkeypatch
+):
+    """
+    GIVEN a pending (unvalidated) user whose per-account email guard is tripped
+    WHEN a new user re-registers with that email and a fresh username
+    THEN NO email is sent, yet the response is still the identical uniform
+        opaque success — a rate-limited pending email cannot become an
+        unbounded email-send oracle nor be distinguished from a completed send.
+    """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    _create_user(
+        app,
+        username=valid_user_2[REGISTER_FORM.USERNAME],
+        email=valid_user_1[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=False,
+    )
+
+    # Pre-trip the pending account's per-account guard.
+    with app.app_context():
+        pending_user: Users = Users.query.filter(
+            Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
+        ).first()
+        pending_user.email_confirm.attempts = (
+            EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
+        )
+        pending_user.email_confirm.last_attempt = utc_now()
+        db.session.commit()
+
+    client, csrf_token_string = load_register_page
+
+    new_user = deepcopy(valid_user_1)
+    new_user[REGISTER_FORM.USERNAME] = valid_user_3[REGISTER_FORM.USERNAME]
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 200
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
+    send_spy.assert_not_called()
+
+
+def test_register_new_user_mailjet_server_error_stays_opaque(
+    app, load_register_page, monkeypatch, caplog
+):
+    """
+    Security regression (DD-5a): GIVEN a brand-new registration (branch 4) whose
+        Mailjet send fails with a server error (>= 500)
+    WHEN the user POSTs to "/register"
+    THEN the route STILL returns the identical opaque success (200) with the
+        uniform CONFIRM_EMAIL_SENT message — a Mailjet outage must never become a
+        distinguishing enumeration signal — and the >= 500 failure is logged
+        (not surfaced).
+    """
+    from tests.utils_for_test import is_string_in_logs
+
+    send_spy = _patch_email_confirmation_server_error(monkeypatch)
+    client, csrf_token_string = load_register_page
+    new_user = deepcopy(valid_user_1)
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 200
+    assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
+    send_spy.assert_called_once()
+
+    with app.app_context():
+        user: Users = Users.query.filter(
+            Users.username == new_user[REGISTER_FORM.USERNAME]
+        ).first()
+        assert is_string_in_logs(
+            f"(4) Email failed to send: registration confirmation for "
+            f"User={user.id}",
+            caplog.records,
+        )
+
+
+def test_register_admin_erased_pending_email_stays_opaque(
+    app, load_register_page, monkeypatch
+):
+    """
+    Security regression (DD-5b): GIVEN a user with email_validated=False but NO
+        Email_Validations row (email_confirm is None) — the state the admin
+        account-erasure path leaves behind
+    WHEN a new user POSTs to "/register" with that email and a fresh username
+    THEN branch 3's email_confirm-None guard keeps the response the uniform
+        opaque success (200), NOT a 500 AttributeError leak, and no confirmation
+        email is sent.
+    """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    with app.app_context():
+        erased_user = Users(
+            username=valid_user_2[REGISTER_FORM.USERNAME],
+            email=valid_user_1[REGISTER_FORM.EMAIL].lower(),
+            plaintext_password=valid_user_1[REGISTER_FORM.PASSWORD],
+        )
+        # email_validated stays False and no Email_Validations row is attached,
+        # so email_confirm remains None (the admin-erasure remnant state).
+        erased_user.email_validated = False
+        db.session.add(erased_user)
+        db.session.commit()
+
+    client, csrf_token_string = load_register_page
+
+    new_user = deepcopy(valid_user_1)
+    new_user[REGISTER_FORM.USERNAME] = valid_user_3[REGISTER_FORM.USERNAME]
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 200
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
+    send_spy.assert_not_called()
 
 
 def test_register_rejected_unvalidated_email_with_taken_username_records_only_username_taken(
-    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page, monkeypatch
 ):
     """
     GIVEN a validated user with a taken username AND an unvalidated user whose
@@ -304,8 +500,10 @@ def test_register_rejected_unvalidated_email_with_taken_username_records_only_us
         taken (unvalidated) email
     THEN the request returns HTTP 400 AND exactly one REGISTER_REJECTED counter
         key is written with reason="username_taken" — the unvalidated_email path
-        is suppressed because the `if errors:` guard returns before the 401 branch.
+        is suppressed because branch 1 (username taken) short-circuits before the
+        opaque-success email branch is reached.
     """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
     _create_user(
         app,
         username=valid_user_1[REGISTER_FORM.USERNAME],
@@ -336,6 +534,9 @@ def test_register_rejected_unvalidated_email_with_taken_username_records_only_us
     assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 1
     counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
     assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "username_taken"
+    # Branch 1 (username taken) short-circuits before the opaque-success email
+    # branch is reached, so no confirmation email is ever sent.
+    send_spy.assert_not_called()
 
 
 def test_register_duplicate_user(app, load_register_page, register_first_user):
@@ -398,10 +599,6 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
         USER_FAILURE.USERNAME_TAKEN
         in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
     )
-    assert (
-        USER_FAILURE.EMAIL_TAKEN
-        in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
-    )
 
 
 def test_register_existing_username_with_trailing_leading_whitespace(
@@ -460,10 +657,6 @@ def test_register_existing_username_with_trailing_leading_whitespace(
     assert (
         USER_FAILURE.USERNAME_TAKEN
         in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
-    )
-    assert (
-        USER_FAILURE.EMAIL_TAKEN
-        in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
     )
 
 
@@ -534,10 +727,6 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
             USER_FAILURE.USERNAME_TAKEN
             in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
         )
-        assert (
-            USER_FAILURE.EMAIL_TAKEN
-            in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
-        )
 
 
 def test_register_modal_is_shown(app_with_server_name, client):
@@ -579,11 +768,12 @@ def test_register_modal_is_shown(app_with_server_name, client):
         assert request.path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
 
 
-def test_register_modal_logs_user_in(app_with_server_name, client):
+def test_register_modal_does_not_log_user_in(app_with_server_name, client):
     """
     GIVEN a non-logged in user visiting the splash page ("/")
     WHEN the user makes a GET request to "/register", and then a POST request with the applicable form info
-    THEN verify that the backends responds with JSON 201, and logs the user in via session
+    THEN verify that the backend responds with the opaque success (200) and does
+        NOT establish a session — validation now completes via the emailed link.
     """
     with client:
         with app_with_server_name.app_context():
@@ -598,14 +788,10 @@ def test_register_modal_logs_user_in(app_with_server_name, client):
             headers={"X-CSRFToken": csrf_token},
         )
 
-        assert response.status_code == 201
+        assert response.status_code == 200
         assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
-        assert current_user.username == new_user[REGISTER_FORM.USERNAME]
-        assert check_password_hash(
-            current_user.password, new_user[REGISTER_FORM.PASSWORD]
-        )
-        assert current_user.email == new_user[REGISTER_FORM.EMAIL].lower()
+        assert current_user.is_authenticated is False
 
 
 def test_register_user_missing_csrf(app, load_register_page):
@@ -674,12 +860,10 @@ def test_register_new_user_log(app, load_register_page, caplog):
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Correctly responds with JSON 201
-    assert response.status_code == 201
+    # Correctly responds with the opaque success (200)
+    assert response.status_code == 200
     assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
-    # Test if user logged in
-    assert current_user.username == new_user[REGISTER_FORM.USERNAME]
     with app.app_context():
         user: Users = Users.query.filter(
             Users.username == new_user[REGISTER_FORM.USERNAME]
@@ -691,17 +875,16 @@ def test_register_new_user_log(app, load_register_page, caplog):
 
 
 def test_register_unvalidated_email_with_valid_username(
-    register_first_user_without_email_validation, load_register_page
+    register_first_user_without_email_validation, load_register_page, monkeypatch
 ):
     """
     GIVEN a registered user without a validated email
     WHEN a new session tries to register with the same email but a different, valid-format username
-    THEN ensure a 401 response with error_code=1 is returned (not a 400 schema error)
-
-    This verifies that the service layer's email-not-validated short-circuit
-    is reached when the email belongs to an unvalidated account and the username
-    is valid format but not yet taken.
+    THEN ensure the uniform opaque success (200) is returned and the
+        confirmation email is resent to the pending account (the former 401
+        email-not-validated short-circuit is now an opaque resend).
     """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
     registered_user, _ = register_first_user_without_email_validation
     client, csrf_token_string = load_register_page
 
@@ -717,24 +900,18 @@ def test_register_unvalidated_email_with_valid_username(
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 200
     response_json = response.json
-    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
-    )
-    assert (
-        int(response_json[STD_JSON.ERROR_CODE])
-        == RegisterErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
-    )
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
+    send_spy.assert_called_once()
 
 
 def test_register_response_conforms_to_schema(app, load_register_page):
     """
     GIVEN a new, unregistered user
     WHEN they register successfully via POST to "/register"
-    THEN ensure the 201 JSON response conforms to RegisterResponseSchema
+    THEN ensure the 200 JSON response conforms to RegisterResponseSchema
     """
     client, csrf_token_string = load_register_page
 
@@ -746,7 +923,7 @@ def test_register_response_conforms_to_schema(app, load_register_page):
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    assert response.status_code == 201
+    assert response.status_code == 200
     response_json = response.json
 
     assert_response_conforms_to_schema(

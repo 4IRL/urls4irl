@@ -8,8 +8,8 @@ import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
   resetModalFormState,
-  handleImproperFormErrors,
   handleUserHasAccountNotEmailValidated,
+  handleImproperFormErrors,
   switchModal,
 } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
@@ -151,7 +151,16 @@ function handleLoginFailure(
         break;
       }
       case 2: {
-        handleImproperFormErrors($modal, errorJson);
+        // errorCode 2 covers two shapes: a Pydantic schema-validation failure
+        // (empty/malformed fields) carries a populated `errors` dict and has
+        // zero enumeration risk — surface the field-level guidance. The opaque
+        // credential-failure path carries no `errors` key — keep it generic so
+        // account existence never leaks.
+        if ("errors" in errorJson && errorJson.errors) {
+          handleImproperFormErrors($modal, errorJson);
+        } else {
+          showSplashModalAlertBanner($modal, errorJson.message, "danger");
+        }
         $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
         break;
       }

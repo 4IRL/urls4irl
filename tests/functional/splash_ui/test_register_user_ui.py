@@ -2,11 +2,6 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from backend.api_common.request_errors import INVALID_EMAIL_STR, min_length_message
-from backend.utils.strings.email_validation_strs import (
-    EMAILS,
-    VALIDATE_MY_EMAIL,
-    VALIDATE_YOUR_EMAIL,
-)
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.user_strs import USER_FAILURE
@@ -21,7 +16,6 @@ from tests.functional.playwright_utils import (
     invalidate_csrf_token_in_form,
     wait_for_modal_hidden,
     wait_for_modal_ready,
-    wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -138,13 +132,23 @@ def test_dismiss_register_modal_x(page: Page):
     wait_until_hidden(page=page, css_selector=SPL.REGISTER_MODAL)
 
 
+def _assert_confirmation_modal_shown(page: Page) -> None:
+    """Assert the post-register confirmation modal is visible with its opaque
+    success banner (`CONFIRM_EMAIL_SENT`)."""
+    banner = wait_then_get_element(
+        page=page, css_selector=SPL.REGISTER_CONFIRMATION_MODAL_ALERT
+    )
+    expect(banner).to_be_visible()
+    expect(banner).to_have_text(UTS.REGISTER_CONFIRM_EMAIL_SENT)
+
+
 def test_register_new_user_btn(page: Page):
     """
     Tests a user's ability to register as a new user.
 
     GIVEN a fresh load of the U4I Splash page
     WHEN initiates registration modal and inputs desired login information
-    THEN U4I responds with a success modal prompting user to 'Validate Your Email!'
+    THEN U4I opens the opaque confirmation modal with a "check your email" banner
     """
     register_user_ui(
         page=page,
@@ -154,10 +158,7 @@ def test_register_new_user_btn(page: Page):
     )
     wait_then_click_element(page=page, css_selector=SPL.REGISTER_BUTTON_SUBMIT)
 
-    modal_title = wait_then_get_element(
-        page=page, css_selector=SPL.HEADER_VALIDATE_EMAIL
-    )
-    expect(modal_title).to_have_text(VALIDATE_YOUR_EMAIL)
+    _assert_confirmation_modal_shown(page)
 
 
 def test_register_new_user_key(page: Page):
@@ -166,7 +167,7 @@ def test_register_new_user_key(page: Page):
 
     GIVEN a fresh load of the U4I Splash page
     WHEN initiates registration modal and inputs desired login information
-    THEN U4I responds with a success modal prompting user to 'Validate Your Email!'
+    THEN U4I opens the opaque confirmation modal with a "check your email" banner
     """
     register_user_ui(
         page=page,
@@ -176,10 +177,7 @@ def test_register_new_user_key(page: Page):
     )
     page.keyboard.press("Enter")
 
-    modal_title = wait_then_get_element(
-        page=page, css_selector=SPL.HEADER_VALIDATE_EMAIL
-    )
-    expect(modal_title).to_have_text(VALIDATE_YOUR_EMAIL)
+    _assert_confirmation_modal_shown(page)
 
 
 def test_register_user_rate_limits(page: Page):
@@ -247,11 +245,11 @@ def test_register_sanitized_username(page: Page, create_test_users):
 
 def test_register_existing_email(page: Page, create_test_users):
     """
-    Tests the site error response to a user's attempt to register with an email that is already registered in the database.
+    Tests that registering with an already-registered email is now opaque.
 
     GIVEN a fresh load of the U4I Splash page, and pre-registered user
-    WHEN user attempts to register an existing email
-    THEN U4I responds with a failure on register form
+    WHEN user attempts to register an existing (validated) email
+    THEN U4I returns the opaque success → confirmation modal (no email field error)
     """
     register_user_ui(
         page=page,
@@ -261,19 +259,17 @@ def test_register_existing_email(page: Page, create_test_users):
     )
     wait_then_click_element(page=page, css_selector=SPL.REGISTER_BUTTON_SUBMIT)
 
-    invalid_feedback = wait_then_get_element(
-        page=page, css_selector=SPL.REGISTER_INVALID_FEEDBACK
-    )
-    expect(invalid_feedback).to_have_text(USER_FAILURE.EMAIL_TAKEN)
+    _assert_confirmation_modal_shown(page)
 
 
 def test_register_existing_username_and_email(page: Page, create_test_users):
     """
-    Tests the site error response to a user's attempt to register with a username and email that is already registered in the database.
+    Tests the site error response when both username and email are taken.
 
     GIVEN a fresh load of the U4I Splash page, and pre-registered user
     WHEN user attempts to register an existing username and email
-    THEN U4I responds with a failure on register form
+    THEN only the username field error surfaces (branch 1 short-circuits; the
+        email axis stays opaque) — exactly one feedback message
     """
     register_user_ui(
         page=page,
@@ -286,21 +282,21 @@ def test_register_existing_username_and_email(page: Page, create_test_users):
     invalid_feedback_messages = wait_then_get_elements(
         page=page, css_selector=SPL.REGISTER_INVALID_FEEDBACK
     )
-    assert len(invalid_feedback_messages) == 2
+    assert len(invalid_feedback_messages) == 1
     texts = [msg.inner_text() for msg in invalid_feedback_messages]
     assert any(USER_FAILURE.USERNAME_TAKEN == text for text in texts)
-    assert any(USER_FAILURE.EMAIL_TAKEN == text for text in texts)
 
 
 def test_register_user_unconfirmed_email_shows_alert(
     page: Page, create_user_unconfirmed_email
 ):
     """
-    Tests the site error response to a user submitting a register form with unconfirmed email.
+    Tests that registering with an already-pending (unvalidated) email is opaque.
 
     GIVEN a fresh load of the U4I Splash page
-    WHEN user attempts to register with unconfirmed email address
-    THEN U4I responds with a failure message and prompts user to confirm email
+    WHEN user attempts to register with an unconfirmed (pending) email address
+    THEN U4I returns the same opaque success → confirmation modal (no distinct
+        "email not validated" alert)
     """
     register_user_ui(
         page=page,
@@ -310,27 +306,18 @@ def test_register_user_unconfirmed_email_shows_alert(
     )
     wait_then_click_element(page=page, css_selector=SPL.REGISTER_BUTTON_SUBMIT)
 
-    unconfirmed_email_feedback = wait_then_get_element(
-        page=page, css_selector=SPL.REGISTER_MODAL_ALERT
-    )
-    expect(unconfirmed_email_feedback).to_be_visible()
-    expect(unconfirmed_email_feedback.locator("div").first).to_have_text(
-        USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
-    )
-    expect(unconfirmed_email_feedback.locator("button").first).to_have_text(
-        VALIDATE_MY_EMAIL
-    )
+    _assert_confirmation_modal_shown(page)
 
 
-def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
-    page: Page, create_user_unconfirmed_email
-):
+def test_register_confirmation_modal_and_resend(page: Page):
     """
-    Tests the site error response to a user submitting a register form with unconfirmed email, and then clicking on the "Validate My Email" button.
+    Tests the post-register confirmation modal happy path: banner, resend, and
+    back-to-login.
 
     GIVEN a fresh load of the U4I Splash page
-    WHEN user attempts to register with unconfirmed email address, and then clicks on the "Validate My Email" button
-    THEN U4I responds with the Validate My Email modal, alert shows with "Email Sent!"
+    WHEN a brand-new user registers, clicks Resend, then clicks Back to login
+    THEN the confirmation banner shows, re-shows after resend settles, and the
+        Login modal reopens
     """
     register_user_ui(
         page=page,
@@ -340,19 +327,26 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
     )
     wait_then_click_element(page=page, css_selector=SPL.REGISTER_BUTTON_SUBMIT)
 
-    unconfirmed_email_feedback = wait_then_get_element(
-        page=page, css_selector=SPL.REGISTER_MODAL_ALERT
+    banner = wait_then_get_element(
+        page=page, css_selector=SPL.REGISTER_CONFIRMATION_MODAL_ALERT
     )
-    expect(unconfirmed_email_feedback).to_be_visible()
+    expect(banner).to_be_visible()
+    expect(banner).to_have_text(UTS.REGISTER_CONFIRM_EMAIL_SENT)
 
-    validate_email_btn = unconfirmed_email_feedback.locator("button").first
-    wait_for_web_element_and_click(locator=validate_email_btn)
-    wait_until_visible_css_selector(page=page, css_selector=SPL.HEADER_VALIDATE_EMAIL)
-
-    email_sent = wait_then_get_element(
-        page=page, css_selector=SPL.EMAIL_VALIDATION_MODAL_ALERT
+    # Resend re-shows the same opaque banner on settle (DD-20/DD-24/DD-25)
+    wait_then_click_element(page=page, css_selector=SPL.RESEND_REGISTRATION_EMAIL_LINK)
+    expect(banner).to_have_text(UTS.REGISTER_CONFIRM_EMAIL_SENT)
+    # Settle re-enables the link (proving the settle handler cleared the busy state)
+    resend_link = wait_then_get_element(
+        page=page, css_selector=SPL.RESEND_REGISTRATION_EMAIL_LINK
     )
-    expect(email_sent).to_have_text(EMAILS.EMAIL_SENT)
+    expect(resend_link).not_to_have_attribute("aria-busy", "true")
+
+    # Back to login reopens the Login modal
+    wait_then_click_element(page=page, css_selector=SPL.BACK_TO_LOGIN_FROM_CONFIRMATION)
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+    login_modal = wait_then_get_element(page=page, css_selector=SPL.LOGIN_MODAL)
+    expect(login_modal).to_be_visible()
 
 
 def test_register_failed_password_equality(page: Page):

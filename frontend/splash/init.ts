@@ -7,6 +7,7 @@ import { UI_EVENTS } from "../types/metrics-events.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";
+import { initRegisterConfirmationModal } from "./register-confirmation-form.js";
 import { initForgotPasswordForm } from "./forgot-password-form.js";
 import {
   initEmailValidationForm,
@@ -49,6 +50,7 @@ export function initSplash(): void {
   clearOpenFormOnAuthModalHide($("#RegisterModal"));
   initLoginForm($("#LoginModal"));
   initRegisterForm($("#RegisterModal"));
+  initRegisterConfirmationModal($("#RegisterConfirmationModal"));
   initForgotPasswordForm($("#ForgotPasswordModal"));
 
   // Auto-show email validation modal for authenticated-but-not-validated users
