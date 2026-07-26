@@ -31,6 +31,19 @@ def _patch_email_confirmation_spy(monkeypatch) -> MagicMock:
     return send_spy
 
 
+def _server_error_email_response() -> Response:
+    """A Mailjet response simulating a server-side (>= 500) send failure."""
+    response = Response()
+    response.status_code = 502
+    return response
+
+
+def _patch_email_confirmation_server_error(monkeypatch) -> MagicMock:
+    send_spy = MagicMock(return_value=_server_error_email_response())
+    monkeypatch.setattr(EmailSender, "send_account_email_confirmation", send_spy)
+    return send_spy
+
+
 def _create_user(
     app: Flask, username: str, email: str, password: str, *, validated: bool
 ) -> None:
@@ -157,6 +170,47 @@ def test_resend_responses_are_byte_identical(app, load_register_page, monkeypatc
 
     assert pending_response.get_data() == validated_response.get_data()
     assert pending_response.get_data() == unknown_response.get_data()
+
+
+def test_resend_mailjet_server_error_stays_opaque(
+    app, load_register_page, monkeypatch, caplog
+):
+    """
+    Security regression (DD-5a): GIVEN a pending (unvalidated) user whose Mailjet
+        send fails with a server error (>= 500)
+    WHEN POST /resend-registration-email with their email
+    THEN the route STILL returns the identical opaque success (200) with the
+        uniform CONFIRM_EMAIL_SENT message — a Mailjet outage must never leak the
+        account's existence/state — and the >= 500 failure is logged.
+    """
+    from tests.utils_for_test import is_string_in_logs
+
+    send_spy = _patch_email_confirmation_server_error(monkeypatch)
+    _create_user(
+        app,
+        username=valid_user_1[REGISTER_FORM.USERNAME],
+        email=valid_user_1[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=False,
+    )
+    client, csrf_token = load_register_page
+
+    response = _post_resend(client, csrf_token, valid_user_1[REGISTER_FORM.EMAIL])
+
+    assert response.status_code == 200
+    assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
+    send_spy.assert_called_once()
+
+    with app.app_context():
+        pending_user: Users = Users.query.filter(
+            Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
+        ).first()
+        assert is_string_in_logs(
+            f"(4) Email failed to send: registration confirmation resend for "
+            f"User={pending_user.id}",
+            caplog.records,
+        )
 
 
 def test_resend_guard_tripped_sends_nothing(app, load_register_page, monkeypatch):

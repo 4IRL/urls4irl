@@ -1,9 +1,12 @@
+from unittest.mock import MagicMock
+
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
 from backend import db
 from backend.api_v1.constants import ApiAuthErrorCodes
+from backend.api_v1.services import auth
 from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
@@ -105,6 +108,31 @@ def test_login_unknown_user_is_400_generic_credentials_error(
 
     with app.app_context():
         assert ApiRefreshTokens.query.count() == 0
+
+
+def test_login_unknown_user_spends_dummy_hash(
+    app: Flask, api_client: FlaskClient, register_first_user, monkeypatch
+):
+    """
+    Security regression (DD-5c): GIVEN an unknown (never-registered) username
+    WHEN POST /api/v1/auth/login is attempted against it
+    THEN the mobile auth service spends the dummy bcrypt hash —
+        check_password_hash is called with (DUMMY_HASH, submitted_password) — so
+        the no-user path is indistinguishable from a wrong-password attempt by
+        wall-clock latency, not only by response bytes. Deterministic
+        (spy-based), not timing-based; mirrors the web login analogue.
+    """
+    unknown_password = "whatever123"
+    hash_spy = MagicMock(return_value=False)
+    monkeypatch.setattr(auth, "check_password_hash", hash_spy)
+
+    response = api_client.post(
+        _login_url(app),
+        json={MODELS.USERNAME: "notARealUser", "password": unknown_password},
+    )
+
+    assert response.status_code == 400
+    hash_spy.assert_called_once_with(auth.DUMMY_HASH, unknown_password)
 
 
 def test_login_unknown_user_response_identical_to_wrong_password(

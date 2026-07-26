@@ -1,4 +1,6 @@
 from copy import deepcopy
+from unittest.mock import MagicMock
+
 from flask import Flask, request, url_for
 from flask_login import current_user
 from werkzeug.security import check_password_hash
@@ -6,6 +8,7 @@ import pytest
 
 from backend import db
 from backend.metrics.events import EventName
+from backend.splash.services import user_login
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
@@ -383,6 +386,36 @@ def test_login_oauth_only_unverified_returns_invalid_password_not_unvalidated(
     assert (
         int(response_data[STD_JSON.ERROR_CODE])
         != LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
+    )
+
+
+def test_login_unknown_user_spends_dummy_hash(load_login_page, monkeypatch):
+    """
+    Security regression (DD-5c): GIVEN an unknown (never-registered) username
+    WHEN "/login" is POST'd against it
+    THEN the service spends the dummy bcrypt hash — check_password_hash is called
+        with (DUMMY_HASH, submitted_password) — so the no-user path is
+        indistinguishable from a wrong-password attempt by wall-clock latency,
+        not only by response bytes. Deterministic (spy-based), not timing-based.
+    """
+    hash_spy = MagicMock(return_value=False)
+    monkeypatch.setattr(user_login, "check_password_hash", hash_spy)
+
+    client, csrf_token_str = load_login_page
+    invalid_user = deepcopy(invalid_user_1)
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: invalid_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: invalid_user[LOGIN_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert response.status_code == 400
+    hash_spy.assert_called_once_with(
+        user_login.DUMMY_HASH, invalid_user[LOGIN_FORM.PASSWORD]
     )
 
 

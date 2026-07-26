@@ -48,6 +48,20 @@ def _patch_email_confirmation_spy(monkeypatch) -> MagicMock:
     return send_spy
 
 
+def _server_error_email_response() -> Response:
+    """A Mailjet response simulating a server-side (>= 500) send failure."""
+    response = Response()
+    response.status_code = 502
+    return response
+
+
+def _patch_email_confirmation_server_error(monkeypatch) -> MagicMock:
+    """Patch EmailSender.send_account_email_confirmation with a 502-returning spy."""
+    send_spy = MagicMock(return_value=_server_error_email_response())
+    monkeypatch.setattr(EmailSender, "send_account_email_confirmation", send_spy)
+    return send_spy
+
+
 def test_register_new_user(app, load_register_page):
     """
     GIVEN a new, unregistered user to the page
@@ -377,6 +391,87 @@ def test_register_rejected_unvalidated_email_guard_tripped_sends_nothing(
             EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
         )
         pending_user.email_confirm.last_attempt = utc_now()
+        db.session.commit()
+
+    client, csrf_token_string = load_register_page
+
+    new_user = deepcopy(valid_user_1)
+    new_user[REGISTER_FORM.USERNAME] = valid_user_3[REGISTER_FORM.USERNAME]
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 200
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
+    send_spy.assert_not_called()
+
+
+def test_register_new_user_mailjet_server_error_stays_opaque(
+    app, load_register_page, monkeypatch, caplog
+):
+    """
+    Security regression (DD-5a): GIVEN a brand-new registration (branch 4) whose
+        Mailjet send fails with a server error (>= 500)
+    WHEN the user POSTs to "/register"
+    THEN the route STILL returns the identical opaque success (200) with the
+        uniform CONFIRM_EMAIL_SENT message — a Mailjet outage must never become a
+        distinguishing enumeration signal — and the >= 500 failure is logged
+        (not surfaced).
+    """
+    from tests.utils_for_test import is_string_in_logs
+
+    send_spy = _patch_email_confirmation_server_error(monkeypatch)
+    client, csrf_token_string = load_register_page
+    new_user = deepcopy(valid_user_1)
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 200
+    assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response.json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
+    send_spy.assert_called_once()
+
+    with app.app_context():
+        user: Users = Users.query.filter(
+            Users.username == new_user[REGISTER_FORM.USERNAME]
+        ).first()
+        assert is_string_in_logs(
+            f"(4) Email failed to send: registration confirmation for "
+            f"User={user.id}",
+            caplog.records,
+        )
+
+
+def test_register_admin_erased_pending_email_stays_opaque(
+    app, load_register_page, monkeypatch
+):
+    """
+    Security regression (DD-5b): GIVEN a user with email_validated=False but NO
+        Email_Validations row (email_confirm is None) — the state the admin
+        account-erasure path leaves behind
+    WHEN a new user POSTs to "/register" with that email and a fresh username
+    THEN branch 3's email_confirm-None guard keeps the response the uniform
+        opaque success (200), NOT a 500 AttributeError leak, and no confirmation
+        email is sent.
+    """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    with app.app_context():
+        erased_user = Users(
+            username=valid_user_2[REGISTER_FORM.USERNAME],
+            email=valid_user_1[REGISTER_FORM.EMAIL].lower(),
+            plaintext_password=valid_user_1[REGISTER_FORM.PASSWORD],
+        )
+        # email_validated stays False and no Email_Validations row is attached,
+        # so email_confirm remains None (the admin-erasure remnant state).
+        erased_user.email_validated = False
+        db.session.add(erased_user)
         db.session.commit()
 
     client, csrf_token_string = load_register_page
