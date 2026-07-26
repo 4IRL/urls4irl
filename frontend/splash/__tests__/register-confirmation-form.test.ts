@@ -128,4 +128,24 @@ describe("register-confirmation-form", () => {
       "success",
     );
   });
+
+  it("clears a lingering disabled/busy resend state on show.bs.modal reopen", () => {
+    const $modal = $("#RegisterConfirmationModal");
+    initRegisterConfirmationModal($modal);
+
+    // Simulate a stuck busy state left over from a prior resend that never
+    // settled (e.g. the modal was dismissed mid-request), independent of the
+    // settle-based reset path.
+    const $link = $modal.find("#ResendRegistrationEmail");
+    $link
+      .addClass("disabled")
+      .attr("aria-disabled", "true")
+      .attr("aria-busy", "true");
+
+    $modal.trigger("show.bs.modal");
+
+    expect($link.hasClass("disabled")).toBe(false);
+    expect($link.attr("aria-disabled")).toBeUndefined();
+    expect($link.attr("aria-busy")).toBeUndefined();
+  });
 });
