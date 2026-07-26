@@ -324,7 +324,7 @@ ALL_API_ROUTES = [
         RegisterResponseSchema,
         [OPEN_API.AUTH],
         "Register a new user account",
-        {201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
+        {200: RegisterResponseSchema, 400: ErrorResponse, 429: ErrorResponse},
     ),
     (
         "splash.login",
@@ -332,7 +332,12 @@ ALL_API_ROUTES = [
         LoginRedirectResponseSchema,
         [OPEN_API.AUTH],
         "Log in to an existing account",
-        {200: LoginRedirectResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
+        {
+            200: LoginRedirectResponseSchema,
+            400: ErrorResponse,
+            401: ErrorResponse,
+            429: ErrorResponse,
+        },
     ),
     (
         "splash.send_validation_email",
@@ -353,7 +358,7 @@ ALL_API_ROUTES = [
         ForgotPasswordResponseSchema,
         [OPEN_API.AUTH],
         "Send a password reset email",
-        {200: ForgotPasswordResponseSchema, 400: ErrorResponse},
+        {200: ForgotPasswordResponseSchema, 400: ErrorResponse, 429: ErrorResponse},
     ),
     (
         "splash.reset_password",

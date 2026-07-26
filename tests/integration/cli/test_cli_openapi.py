@@ -538,18 +538,18 @@ def test_success_envelope_schema_exists_in_components(runner, tmp_path):
 def test_schemas_with_existing_status_not_double_wrapped(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec
-    WHEN we inspect a StatusMessageResponseSchema subclass (RegisterResponseSchema at 201)
+    WHEN we inspect a StatusMessageResponseSchema subclass (RegisterResponseSchema at 200)
          and an ErrorResponse at 400
     THEN they use a direct $ref, NOT allOf (no double-wrapping)
     """
     spec = _generate_spec(runner, tmp_path)
 
-    # RegisterResponseSchema at 201 on POST /register
+    # RegisterResponseSchema at 200 on POST /register
     register_responses = spec["paths"]["/register"]["post"]["responses"]
     assert (
-        "201" in register_responses
-    ), "POST /register missing 201 response — key guard failed"
-    register_201_schema = register_responses["201"]["content"]["application/json"][
+        "200" in register_responses
+    ), "POST /register missing 200 response — key guard failed"
+    register_201_schema = register_responses["200"]["content"]["application/json"][
         "schema"
     ]
     assert "$ref" in register_201_schema, (
@@ -890,16 +890,16 @@ def test_error_response_status_is_literal_failure(runner, tmp_path):
 def test_register_response_status_has_literal_enum(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec
-    WHEN we inspect POST /register's 201 response schema (RegisterResponseSchema)
+    WHEN we inspect POST /register's 200 response schema (RegisterResponseSchema)
     THEN the status property has enum: ["Success", "Failure", "No change"],
         matching the Literal annotation inherited from StatusMessageResponseSchema
     """
     spec = _generate_spec(runner, tmp_path)
 
     register_responses = spec["paths"]["/register"]["post"]["responses"]
-    assert "201" in register_responses, "POST /register missing 201 response"
+    assert "200" in register_responses, "POST /register missing 200 response"
 
-    register_201_schema = register_responses["201"]["content"]["application/json"][
+    register_201_schema = register_responses["200"]["content"]["application/json"][
         "schema"
     ]
     assert "$ref" in register_201_schema, (

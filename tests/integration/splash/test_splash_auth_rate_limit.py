@@ -8,7 +8,7 @@ from werkzeug.test import TestResponse
 from backend import limiter
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from tests.models_for_test import valid_user_1
@@ -44,11 +44,19 @@ def _disable_limiter() -> None:
 
 
 def _assert_rate_limited(rate_limited_response: TestResponse) -> None:
+    """Web AJAX 429s render the HTML 429 page (never JSON).
+
+    Only /api/v1 bearer-token clients receive a JSON 429 body. Web splash
+    forms POST via jQuery `$.ajax`; the global `$.ajaxPrefilter` in
+    `frontend/lib/csrf.ts` detects the text/html 429 and performs a full-page
+    replacement (`showNewPageOnAJAXHTMLResponse`) — the same contract every
+    `*_rate_limits` UI test relies on. See
+    `handle_429_response_default_ratelimit` (`backend/api_common/error_handler.py`)
+    and the sibling `test_rate_limited_web_request_still_returns_html_429`.
+    """
     assert rate_limited_response.status_code == 429
-    assert rate_limited_response.is_json
-    rate_limited_json = rate_limited_response.get_json()
-    assert rate_limited_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert rate_limited_json[STD_JSON.MESSAGE] == STD_JSON.TOO_MANY_REQUESTS
+    assert not rate_limited_response.is_json
+    assert IDENTIFIERS.HTML_429 in rate_limited_response.get_data(as_text=True)
 
 
 def _register_body(user_data: dict) -> dict:
@@ -61,13 +69,13 @@ def _register_body(user_data: dict) -> dict:
     }
 
 
-def test_login_rate_limit_returns_json_429(
+def test_login_rate_limit_returns_html_429(
     app: Flask, load_login_page: Tuple[FlaskClient, str]
 ):
     """
     GIVEN the 10/minute per-IP limit on POST /login
     WHEN an 11th login attempt arrives within the window
-    THEN a 429 is returned as the JSON ErrorResponse envelope (never HTML).
+    THEN a 429 is returned as the HTML 429 page (web AJAX; only /api/v1 gets JSON).
     """
     client, csrf_token = load_login_page
     login_url = url_for(ROUTES.SPLASH.LOGIN)
@@ -87,7 +95,7 @@ def test_login_rate_limit_returns_json_429(
         _disable_limiter()
 
 
-def test_register_rate_limit_returns_json_429(
+def test_register_rate_limit_returns_html_429(
     app: Flask,
     register_first_user: Tuple[dict, Users],
     load_register_page: Tuple[FlaskClient, str],
@@ -95,7 +103,7 @@ def test_register_rate_limit_returns_json_429(
     """
     GIVEN the 10/minute per-IP limit on POST /register
     WHEN an 11th register attempt arrives within the window
-    THEN a 429 is returned as the JSON ErrorResponse envelope (never HTML).
+    THEN a 429 is returned as the HTML 429 page (web AJAX; only /api/v1 gets JSON).
 
     Uses the already-registered valid_user_1 so every attempt is a
     username-taken 400 (branch 1) — no email is sent and no user is created,
@@ -120,13 +128,13 @@ def test_register_rate_limit_returns_json_429(
         _disable_limiter()
 
 
-def test_forgot_password_rate_limit_returns_json_429(
+def test_forgot_password_rate_limit_returns_html_429(
     app: Flask, load_login_page: Tuple[FlaskClient, str]
 ):
     """
     GIVEN the 10/minute per-IP limit on POST /forgot-password
     WHEN an 11th forgot-password attempt arrives within the window
-    THEN a 429 is returned as the JSON ErrorResponse envelope (never HTML).
+    THEN a 429 is returned as the HTML 429 page (web AJAX; only /api/v1 gets JSON).
 
     An unknown email yields the uniform opaque 200 on every prior attempt with
     no email sent.
@@ -154,13 +162,13 @@ def test_forgot_password_rate_limit_returns_json_429(
         _disable_limiter()
 
 
-def test_resend_registration_email_rate_limit_returns_json_429(
+def test_resend_registration_email_rate_limit_returns_html_429(
     app: Flask, load_register_page: Tuple[FlaskClient, str]
 ):
     """
     GIVEN the 10/minute per-IP limit on POST /resend-registration-email
     WHEN an 11th resend attempt arrives within the window
-    THEN a 429 is returned as the JSON ErrorResponse envelope (never HTML).
+    THEN a 429 is returned as the HTML 429 page (web AJAX; only /api/v1 gets JSON).
 
     An unknown email yields the uniform opaque 200 on every prior attempt with
     no email sent.
