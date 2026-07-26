@@ -396,7 +396,7 @@ def test_register_rejected_unvalidated_email_guard_tripped_sends_nothing(
 
 
 def test_register_rejected_unvalidated_email_with_taken_username_records_only_username_taken(
-    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page, monkeypatch
 ):
     """
     GIVEN a validated user with a taken username AND an unvalidated user whose
@@ -408,6 +408,7 @@ def test_register_rejected_unvalidated_email_with_taken_username_records_only_us
         is suppressed because branch 1 (username taken) short-circuits before the
         opaque-success email branch is reached.
     """
+    send_spy = _patch_email_confirmation_spy(monkeypatch)
     _create_user(
         app,
         username=valid_user_1[REGISTER_FORM.USERNAME],
@@ -438,6 +439,9 @@ def test_register_rejected_unvalidated_email_with_taken_username_records_only_us
     assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 1
     counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
     assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "username_taken"
+    # Branch 1 (username taken) short-circuits before the opaque-success email
+    # branch is reached, so no confirmation email is ever sent.
+    send_spy.assert_not_called()
 
 
 def test_register_duplicate_user(app, load_register_page, register_first_user):
