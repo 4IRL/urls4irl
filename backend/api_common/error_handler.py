@@ -58,7 +58,10 @@ def handle_404_response(_: NotFound):
 
 
 def handle_429_response_default_ratelimit(_):
-    if _is_api_v1_request():
+    if _is_api_v1_request() or (
+        request.headers.get(URL_VALIDATION.X_REQUESTED_WITH)
+        == URL_VALIDATION.XMLHTTPREQUEST
+    ):
         return build_message_error_response(
             message=STD_JSON_RESPONSE.TOO_MANY_REQUESTS, status_code=429
         )

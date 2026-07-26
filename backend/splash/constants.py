@@ -1,5 +1,11 @@
 from enum import IntEnum
 
+# Per-IP rate limit for the web splash auth routes (login, register,
+# forgot-password, resend-registration-email). A splash-local constant mirroring
+# api_v1/constants.py's API_AUTH_RATE_LIMIT — avoids cross-blueprint import
+# coupling; value intentionally identical to keep web and mobile symmetric.
+SPLASH_AUTH_RATE_LIMIT = "10/minute"
+
 LOGIN_FAILURE_REASON_UNKNOWN_USER = "unknown_user"
 LOGIN_FAILURE_REASON_BAD_PASSWORD = "bad_password"
 LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED = "email_unverified"

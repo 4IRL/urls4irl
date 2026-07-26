@@ -9,7 +9,7 @@ from flask import (
 from flask_login import current_user, login_user
 from werkzeug import Response as WerkzeugResponse
 
-from backend import csrf, db
+from backend import csrf, db, limiter
 from backend.api_common.auth_decorators import (
     email_validation_required,
     no_authenticated_users_allowed,
@@ -46,6 +46,7 @@ from backend.schemas.users import (
     ResetPasswordResponseSchema,
 )
 from backend.splash.constants import (
+    SPLASH_AUTH_RATE_LIMIT,
     ForgotPasswordErrorCodes,
     LoginErrorCodes,
     OAuthLinkErrorCodes,
@@ -127,8 +128,13 @@ def splash_page() -> WerkzeugResponse | str:
     ajax_required=False,
     tags=[OPEN_API.AUTH],
     description="Register a new user account",
-    status_codes={200: RegisterResponseSchema, 400: ErrorResponse},
+    status_codes={
+        200: RegisterResponseSchema,
+        400: ErrorResponse,
+        429: ErrorResponse,
+    },
 )
+@limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=["POST"])
 def register_user(register_request: RegisterRequest) -> FlaskResponse:
     """Handles registration form submission."""
     return register_new_user(
@@ -152,8 +158,10 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
         200: LoginRedirectResponseSchema,
         400: ErrorResponse,
         401: ErrorResponse,
+        429: ErrorResponse,
     },
 )
+@limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=["POST"])
 def login(login_request: LoginRequest) -> FlaskResponse:
     """Handles login form submission."""
     return login_user_to_u4i(login_request.username, login_request.password)
@@ -197,8 +205,13 @@ def send_validation_email() -> WerkzeugResponse | FlaskResponse:
     ajax_required=False,
     tags=[OPEN_API.AUTH],
     description="Resend the account-confirmation email for a pending registration (opaque)",
-    status_codes={200: StatusMessageResponseSchema, 400: ErrorResponse},
+    status_codes={
+        200: StatusMessageResponseSchema,
+        400: ErrorResponse,
+        429: ErrorResponse,
+    },
 )
+@limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=["POST"])
 def resend_registration_email(
     resend_registration_email_request: ResendRegistrationEmailRequest,
 ) -> FlaskResponse:
@@ -249,8 +262,13 @@ def validate_email(token: str) -> WerkzeugResponse:
     ajax_required=False,
     tags=[OPEN_API.AUTH],
     description="Send a password reset email",
-    status_codes={200: ForgotPasswordResponseSchema, 400: ErrorResponse},
+    status_codes={
+        200: ForgotPasswordResponseSchema,
+        400: ErrorResponse,
+        429: ErrorResponse,
+    },
 )
+@limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=["POST"])
 def forgot_password(forgot_password_request: ForgotPasswordRequest) -> FlaskResponse:
     return send_forgot_password_email_to_user(forgot_password_request.email)
 

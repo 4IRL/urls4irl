@@ -6332,6 +6332,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse_RegisterErrorCodes"];
         };
       };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
     };
   };
   login: {
@@ -6368,6 +6377,15 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
         headers: {
           [name: string]: unknown;
         };
@@ -6455,6 +6473,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse_RegisterErrorCodes"];
         };
       };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
     };
   };
   forgotPassword: {
@@ -6486,6 +6513,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_ForgotPasswordErrorCodes"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };
