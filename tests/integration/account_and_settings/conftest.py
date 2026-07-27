@@ -7,9 +7,11 @@ from flask.testing import FlaskClient
 from backend import db
 from backend.models.urls import Urls
 from backend.models.users import Users
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from tests.conftest import AjaxFlaskLoginClient
 from tests.utils_for_test import seed_distinct_stats_for_user_one
 
@@ -62,6 +64,11 @@ def login_first_user_with_distinct_stats(
       - 1 ``Utub_Urls`` ``user_id=2``
       - 1 ``Utub_Url_Tags`` ``user_id=None`` (legacy NULL attribution)
 
+    Plus one ``CO_CREATOR`` membership on a UTub owned by user 2: the "member
+    of" filter excludes only ``Member_Role.CREATOR``, so a ``CO_CREATOR``
+    membership must still count — this row locks in that behavior and bumps
+    "member of" from 3 to **4**.
+
     Logs user 1 in and yields the authenticated client.
     """
     app.test_client_class = AjaxFlaskLoginClient
@@ -105,6 +112,32 @@ def login_first_user_with_distinct_stats(
                 utub_url_id=user_one_utub_urls[0].id,
                 utub_tag_id=user_one_tags[0].id,
                 user_id=None,
+            )
+        )
+
+        # CO_CREATOR membership on a UTub owned by user 2. The "member of"
+        # filter excludes only Member_Role.CREATOR, so this co-ownership must
+        # still count toward user 1's "member of" — bumping it from 3 to 4 and
+        # locking in that the CREATOR-only exclusion is intentional.
+        co_created_utub = Utubs(
+            name="User2 co-created UTub",
+            utub_creator=2,
+            utub_description="",
+        )
+        db.session.add(co_created_utub)
+        db.session.flush()
+        db.session.add(
+            Utub_Members(
+                utub_id=co_created_utub.id,
+                user_id=2,
+                member_role=Member_Role.CREATOR,
+            )
+        )
+        db.session.add(
+            Utub_Members(
+                utub_id=co_created_utub.id,
+                user_id=1,
+                member_role=Member_Role.CO_CREATOR,
             )
         )
 

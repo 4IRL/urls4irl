@@ -131,10 +131,14 @@ def test_settings_stats_zero_state_renders_zero_counts(
 def test_settings_stats_populated_renders_distinct_counts(
     login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
 ) -> None:
-    """With mutually-distinct seeded counts (2/3/5/7/11) plus noise rows owned
+    """With mutually-distinct seeded counts (2/4/5/7/11) plus noise rows owned
     by another user / NULL, each stat card renders its own value within its own
     slice — so a swapped/mislabeled card fails — and the noise rows leave user
-    1's counts unchanged (proving the per-user filter and NULL exclusion)."""
+    1's counts unchanged (proving the per-user filter and NULL exclusion).
+
+    ``member-of`` is 4, not 3: the fixture seeds 3 UTubs where user 1 is a plain
+    MEMBER plus 1 where user 1 is a CO_CREATOR, and the "member of" filter
+    excludes only ``Member_Role.CREATOR`` — so co-ownership counts."""
     logged_in_client, _, _ = login_first_user_with_distinct_stats
 
     resp = logged_in_client.get(url_for(ROUTES.USERS.SETTINGS))
@@ -144,9 +148,11 @@ def test_settings_stats_populated_renders_distinct_counts(
     # Distinct values catch a swapped card; tags_created==7, tags_applied==11,
     # urls_added==5 double as the noise-exclusion assertions (a user-2 tag, a
     # user-2 URL, and a NULL-attributed applied-tag row were also seeded).
+    # member-of==4 confirms a CO_CREATOR membership counts (only CREATOR is
+    # excluded by the filter).
     expected_card_values = {
         "utubs-created": b">2</dd>",
-        "member-of": b">3</dd>",
+        "member-of": b">4</dd>",
         "urls-added": b">5</dd>",
         "tags-created": b">7</dd>",
         "tags-applied": b">11</dd>",
