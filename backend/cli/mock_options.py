@@ -297,6 +297,7 @@ def _add_tracking_seed_urls(db: SQLAlchemy):
                 new_utub_url_tag.utub_id = first_utub.id
                 new_utub_url_tag.utub_url_id = utub_url.id
                 new_utub_url_tag.utub_tag_id = seed_tag.id
+                new_utub_url_tag.user_id = creator_user_id
                 db.session.add(new_utub_url_tag)
 
     db.session.commit()
