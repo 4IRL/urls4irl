@@ -1,10 +1,145 @@
 import re
 from logging import LogRecord
+from typing import NamedTuple
 
 import sqlalchemy
 
+from backend import db
 from backend.config import ConfigTest
+from backend.models.urls import Urls
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
+
+
+class DistinctStatsSeed(NamedTuple):
+    """Objects created by ``seed_distinct_stats_for_user_one`` that callers
+    layer additional rows onto (e.g. noise rows) before committing."""
+
+    home_utub: Utubs
+    user_one_utub_urls: list[Utub_Urls]
+    user_one_tags: list[Utub_Tags]
+
+
+def seed_distinct_stats_for_user_one(
+    label_prefix: str = "user1",
+) -> DistinctStatsSeed:
+    """Seed mutually-distinct per-user activity counts for user 1 so each
+    Stats card renders a unique value (2/3/5/7/11) and a swapped card is
+    caught. Assumes an ACTIVE app context and that users 1-3 already exist;
+    does NOT commit — the caller commits after layering any extra rows.
+
+      - **2** ``Utubs`` created by user 1 (each with a CREATOR membership row)
+      - **3** ``Utubs`` created by others (2 by user 2, 1 by user 3); user 1
+        is a MEMBER — keeps "member of" disjoint from "created"
+      - **5** ``Utub_Urls`` added by user 1 (each backed by a unique ``Urls`` row)
+      - **7** ``Utub_Tags`` created by user 1
+      - **11** ``Utub_Url_Tags`` applied by user 1 (distinct url/tag pairs)
+
+    ``label_prefix`` distinguishes the generated ``normalized_url`` and
+    ``tag_string`` values so separate call sites keep their existing distinct
+    seed data.
+
+    Returns the created ``home_utub``/urls/tags so callers can attach further
+    rows (e.g. per-user-filter noise rows) that reference them.
+    """
+    # 2 UTubs created by user 1, each with its own CREATOR membership row.
+    user_one_utubs: list[Utubs] = []
+    for utub_index in range(2):
+        created_utub = Utubs(
+            name=f"User1 UTub {utub_index}",
+            utub_creator=1,
+            utub_description="",
+        )
+        db.session.add(created_utub)
+        db.session.flush()
+        db.session.add(
+            Utub_Members(
+                utub_id=created_utub.id,
+                user_id=1,
+                member_role=Member_Role.CREATOR,
+            )
+        )
+        user_one_utubs.append(created_utub)
+
+    # 3 UTubs created by others (2 by user 2, 1 by user 3); user 1 is MEMBER.
+    for creator_id in (2, 2, 3):
+        others_utub = Utubs(
+            name=f"User{creator_id} UTub",
+            utub_creator=creator_id,
+            utub_description="",
+        )
+        db.session.add(others_utub)
+        db.session.flush()
+        db.session.add(
+            Utub_Members(
+                utub_id=others_utub.id,
+                user_id=creator_id,
+                member_role=Member_Role.CREATOR,
+            )
+        )
+        db.session.add(
+            Utub_Members(
+                utub_id=others_utub.id,
+                user_id=1,
+                member_role=Member_Role.MEMBER,
+            )
+        )
+
+    # Everything below hangs off user 1's first created UTub.
+    home_utub = user_one_utubs[0]
+
+    # 5 Utub_Urls added by user 1, each backed by a unique Urls row.
+    user_one_utub_urls: list[Utub_Urls] = []
+    for url_index in range(5):
+        backing_url = Urls(
+            normalized_url=f"https://{label_prefix}-url-{url_index}.example.com",
+            current_user_id=1,
+        )
+        db.session.add(backing_url)
+        db.session.flush()
+        utub_url = Utub_Urls()
+        utub_url.utub_id = home_utub.id
+        utub_url.url_id = backing_url.id
+        utub_url.user_id = 1
+        utub_url.url_title = f"User1 URL {url_index}"
+        db.session.add(utub_url)
+        db.session.flush()
+        user_one_utub_urls.append(utub_url)
+
+    # 7 Utub_Tags created by user 1.
+    user_one_tags: list[Utub_Tags] = []
+    for tag_index in range(7):
+        created_tag = Utub_Tags(
+            utub_id=home_utub.id,
+            tag_string=f"{label_prefix}-tag-{tag_index}",
+            created_by=1,
+        )
+        db.session.add(created_tag)
+        db.session.flush()
+        user_one_tags.append(created_tag)
+
+    # 11 Utub_Url_Tags applied by user 1 (distinct url/tag pairs).
+    applied_pairs = [
+        (url_index, tag_index) for url_index in range(5) for tag_index in range(7)
+    ][:11]
+    for url_index, tag_index in applied_pairs:
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=home_utub.id,
+                utub_url_id=user_one_utub_urls[url_index].id,
+                utub_tag_id=user_one_tags[tag_index].id,
+                user_id=1,
+            )
+        )
+
+    return DistinctStatsSeed(
+        home_utub=home_utub,
+        user_one_utub_urls=user_one_utub_urls,
+        user_one_tags=user_one_tags,
+    )
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:

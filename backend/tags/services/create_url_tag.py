@@ -411,7 +411,10 @@ def _add_url_tag(utub_url: Utub_Urls, utub_tag: Utub_Tags) -> Utub_Url_Tags:
         (Utub_Url_Tags): The newly created URL Tag
     """
     utub_url_tag = Utub_Url_Tags(
-        utub_id=utub_url.utub_id, utub_url_id=utub_url.id, utub_tag_id=utub_tag.id
+        utub_id=utub_url.utub_id,
+        utub_url_id=utub_url.id,
+        utub_tag_id=utub_tag.id,
+        user_id=current_user.id,
     )
 
     db.session.add(utub_url_tag)

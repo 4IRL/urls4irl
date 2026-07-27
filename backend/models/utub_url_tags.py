@@ -39,6 +39,9 @@ class Utub_Url_Tags(db.Model):
         nullable=False,
         name="utubTagID",
     )
+    user_id: int | None = Column(
+        Integer, ForeignKey("Users.id"), nullable=True, name="userID"
+    )
     added_at: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="addedAt"
     )

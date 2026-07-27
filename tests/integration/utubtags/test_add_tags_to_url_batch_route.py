@@ -106,6 +106,40 @@ def test_batch_add_two_fresh_tags_succeeds(
     assert is_string_in_logs("AppliedCount=2", caplog.records)
 
 
+def test_batch_add_tags_records_acting_user_attribution(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a creator of a UTub with a URL that has no tags
+    WHEN they POST two fresh tag strings to the batch endpoint
+    THEN every resulting Utub_Url_Tags association row records the acting user's id
+        in its user_id attribution column (used by the Settings "Tags applied" count).
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        acting_user_id = current_user.id
+        utub_id, utub_url_id = _get_creator_utub_and_url()
+
+    response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.BATCH_ADD_URL_TAGS, utub_id=utub_id, utub_url_id=utub_url_id
+        ),
+        json={TAG_STRINGS_FIELD: [FRESH_TAG_ALPHA, FRESH_TAG_BETA]},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        new_url_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id,
+            Utub_Url_Tags.utub_url_id == utub_url_id,
+        ).all()
+        assert len(new_url_tags) == 2
+        assert all(url_tag.user_id == acting_user_id for url_tag in new_url_tags)
+
+
 def test_create_and_add_tag_to_url_in_locked_utub_is_rejected(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ):

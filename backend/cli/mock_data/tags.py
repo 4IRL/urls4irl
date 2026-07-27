@@ -63,6 +63,7 @@ def generate_mock_tags(db: SQLAlchemy):
                 utub_url_tag.utub_tag_id = current_tag.id
                 utub_url_tag.utub_id = utub.id
                 utub_url_tag.utub_url_id = url.id
+                utub_url_tag.user_id = url.user_id
 
                 db.session.add(utub_url_tag)
                 print(

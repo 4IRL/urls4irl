@@ -6,6 +6,7 @@ import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
 
+from backend import db
 from backend.config import ConfigTestUI
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import SettingsPageLocators as SPL
@@ -20,10 +21,23 @@ from tests.functional.settings_ui.playwright_utils import (
     login_user_and_open_home,
     login_user_and_open_settings,
 )
+from tests.utils_for_test import seed_distinct_stats_for_user_one
 
 pytestmark = pytest.mark.settings_ui
 
 DEFAULT_USER_ID: int = 1
+
+
+def _seed_distinct_stats_for_user_one(app: Flask) -> None:
+    """Seed mutually-distinct per-user activity counts for user 1 so each
+    Stats card renders a unique value (2/3/5/7/11) and a swapped card is
+    caught. Users 1-5 already exist (seeded by the `seeded_users` autouse
+    fixture via `flask addmock users`). Delegates the shared 2/3/5/7/11 seed
+    block to `seed_distinct_stats_for_user_one`, using a UI-specific label
+    prefix to keep this test's URL/tag strings distinct from other callers'."""
+    with app.app_context():
+        seed_distinct_stats_for_user_one(label_prefix="user1-ui")
+        db.session.commit()
 
 
 def test_account_tab_is_default(
@@ -204,3 +218,37 @@ def test_arrow_key_navigates_tabs(
     expect(page.locator(SPL.TAB_STATS_BUTTON)).to_have_attribute(
         "aria-selected", "true"
     )
+
+
+def test_stats_panel_renders_seeded_counts(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user with mutually-distinct seeded activity counts
+        (2 UTubs created / member of 3 / 5 URLs / 7 tags created / 11 applied)
+    WHEN the user opens `/settings` and clicks the Stats tab
+    THEN each stat card renders its own seeded value — so a swapped or
+        mislabeled card is caught by the per-card assertions.
+    """
+    _seed_distinct_stats_for_user_one(provide_app)
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.TAB_STATS_BUTTON)
+    expect(page.locator(SPL.PANEL_STATS)).to_be_visible()
+
+    expect(page.locator(SPL.STAT_UTUBS_CREATED)).to_have_text("2")
+    expect(page.locator(SPL.STAT_MEMBER_OF)).to_have_text("3")
+    expect(page.locator(SPL.STAT_URLS_ADDED)).to_have_text("5")
+    expect(page.locator(SPL.STAT_TAGS_CREATED)).to_have_text("7")
+    expect(page.locator(SPL.STAT_TAGS_APPLIED)).to_have_text("11")

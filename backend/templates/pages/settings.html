@@ -67,7 +67,37 @@
     </section>
     <section role="tabpanel" id="SettingsPanelStats" aria-labelledby="SettingsTabStats" tabindex="0" hidden>
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_STATS }}</h2>
-        <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
+        <h3 class="SettingsStatsSectionTitle">{{ CONSTANTS.STRINGS.SETTINGS_STATS_SECTION_TITLE }}</h3>
+        <p class="SettingsSectionHint">{{ CONSTANTS.STRINGS.SETTINGS_STATS_SECTION_HINT }}</p>
+        <dl class="SettingsStatsGrid">
+            <div class="SettingsStatCard" data-stat="utubs-created">
+                <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_STATS_UTUBS_CREATED }}</dt>
+                <dd class="SettingsStatValue">{{ stats_utubs_created }}</dd>
+            </div>
+            <div class="SettingsStatCard" data-stat="member-of">
+                <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_STATS_MEMBER_OF }}</dt>
+                <dd class="SettingsStatValue">{{ stats_member_of }}</dd>
+                <dd class="SettingsStatSub">{{ CONSTANTS.STRINGS.SETTINGS_STATS_MEMBER_OF_SUB }}</dd>
+            </div>
+            <div class="SettingsStatCard" data-stat="urls-added">
+                <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_STATS_URLS_ADDED }}</dt>
+                <dd class="SettingsStatValue">{{ stats_urls_added }}</dd>
+            </div>
+            <div class="SettingsStatCard" data-stat="tags-created">
+                <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_STATS_TAGS_CREATED }}</dt>
+                <dd class="SettingsStatValue">{{ stats_tags_created }}</dd>
+            </div>
+            <div class="SettingsStatCard" data-stat="tags-applied">
+                <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_STATS_TAGS_APPLIED }}</dt>
+                <dd class="SettingsStatValue">{{ stats_tags_applied }}</dd>
+                <dd class="SettingsStatSub">{{ CONSTANTS.STRINGS.SETTINGS_STATS_TAGS_APPLIED_SUB }}</dd>
+            </div>
+            <div class="SettingsStatCard" data-stat="member-since">
+                <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_STATS_MEMBER_SINCE }}</dt>
+                <dd class="SettingsStatValue">{{ stats_member_since_relative }}</dd>
+                <dd class="SettingsStatSub"><time datetime="{{ stats_member_since_iso }}">{{ stats_member_since_exact }}</time></dd>
+            </div>
+        </dl>
     </section>
     <section role="tabpanel" id="SettingsPanelPrivacyData" aria-labelledby="SettingsTabPrivacyData" tabindex="0" hidden>
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_PRIVACY_DATA }}</h2>

@@ -147,6 +147,53 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         ] == count_tag_instances_in_utub(utub_id_user_is_creator_of, new_tag_id)
 
 
+def test_add_tag_to_url_records_acting_user_attribution(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub with one URL and no existing tags
+    WHEN the user applies a fresh tag to the URL
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags"
+    THEN the resulting Utub_Url_Tags association row records the acting user's id
+        in its user_id attribution column (used by the Settings "Tags applied" count).
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    tag_to_add = all_tag_strings[0]
+
+    with app.app_context():
+        acting_user_id = current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_to_add_tag_to = url_utub_association.id
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_to_add_tag_to,
+        ),
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_tag_response.status_code == 200
+
+    with app.app_context():
+        new_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+        ).first()
+        assert new_url_tag is not None
+        assert new_url_tag.user_id == acting_user_id
+
+
 def test_add_existing_tag_to_url_in_locked_utub_is_rejected(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ):
