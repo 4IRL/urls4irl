@@ -40,7 +40,19 @@ const SETTINGS_HTML = `
       <button type="button" id="SettingsTabUiSettings"  role="tab" aria-selected="false" aria-controls="SettingsPanelUiSettings"  data-tab="ui_settings"  tabindex="-1">Display</button>
     </div>
     <section role="tabpanel" id="SettingsPanelAccount"     aria-labelledby="SettingsTabAccount"     tabindex="0"><h2>Account</h2><p class="SettingsEmptyState">Coming soon</p></section>
-    <section role="tabpanel" id="SettingsPanelStats"       aria-labelledby="SettingsTabStats"       tabindex="0" hidden><h2>Stats</h2><p class="SettingsEmptyState">Coming soon</p></section>
+    <section role="tabpanel" id="SettingsPanelStats"       aria-labelledby="SettingsTabStats"       tabindex="0" hidden>
+      <h2>Stats</h2>
+      <h3 class="SettingsStatsSectionTitle">Your activity</h3>
+      <p class="SettingsSectionHint">A snapshot of what you've built on urls4i.rl.</p>
+      <dl class="SettingsStatsGrid">
+        <div class="SettingsStatCard" data-stat="utubs-created"><dt class="SettingsStatLabel">UTubs created</dt><dd class="SettingsStatValue">0</dd></div>
+        <div class="SettingsStatCard" data-stat="member-of"><dt class="SettingsStatLabel">Member of</dt><dd class="SettingsStatValue">0</dd><dd class="SettingsStatSub">others' UTubs</dd></div>
+        <div class="SettingsStatCard" data-stat="urls-added"><dt class="SettingsStatLabel">URLs added</dt><dd class="SettingsStatValue">0</dd></div>
+        <div class="SettingsStatCard" data-stat="tags-created"><dt class="SettingsStatLabel">Tags created</dt><dd class="SettingsStatValue">0</dd></div>
+        <div class="SettingsStatCard" data-stat="tags-applied"><dt class="SettingsStatLabel">Tags applied</dt><dd class="SettingsStatValue">0</dd><dd class="SettingsStatSub">tracked recently</dd></div>
+        <div class="SettingsStatCard" data-stat="member-since"><dt class="SettingsStatLabel">Member since</dt><dd class="SettingsStatValue">Joined today</dd><dd class="SettingsStatSub"><time datetime="2025-04-15">April 15, 2025</time></dd></div>
+      </dl>
+    </section>
     <section role="tabpanel" id="SettingsPanelPrivacyData" aria-labelledby="SettingsTabPrivacyData" tabindex="0" hidden><h2>Privacy &amp; Data</h2><p class="SettingsEmptyState">Coming soon</p></section>
     <section role="tabpanel" id="SettingsPanelUiSettings"  aria-labelledby="SettingsTabUiSettings"  tabindex="0" hidden><h2>Display</h2><p class="SettingsEmptyState">Coming soon</p></section>
   </main>

@@ -237,3 +237,65 @@
 #SettingsLinkStatusBanner {
     margin-bottom: 16px;
 }
+
+/* ---- Stats (Stats tab) -------------------------------------------------- */
+
+.SettingsStatsSectionTitle {
+    color: #fff;
+    font-size: 1.1rem;
+    margin: 1.25rem 0 0;
+    font-weight: 700;
+}
+
+.SettingsStatsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    margin: 0;
+}
+
+.SettingsStatCard {
+    background: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-md);
+    padding: var(--space-4) 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.SettingsStatLabel {
+    color: var(--cardURLTextColor);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    margin: 0;
+}
+
+.SettingsStatValue {
+    color: var(--UTubDescriptionColor);
+    font-size: 1.6rem;
+    font-weight: 300;
+    margin-top: 4px;
+    margin-bottom: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.SettingsStatSub {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+@media (max-width: 992px) {
+    .SettingsStatsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .SettingsStatsGrid {
+        grid-template-columns: 1fr;
+    }
+}

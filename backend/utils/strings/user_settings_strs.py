@@ -27,3 +27,18 @@ class USER_SETTINGS_STRINGS:
     DISCONNECT_BUTTON_TEXT = "Disconnect"
     CONNECT_CONTINUE_BUTTON_TEXT = "Continue"
     CONNECT_CANCEL_BUTTON_TEXT = "Cancel"
+
+    # Stats section (Stats tab). Jinja-rendered only; the six card labels are
+    # re-exported via ui_testing_strs for Python UI assertions — no JS string
+    # bridge (the panel is fully server-rendered, no TypeScript reads them).
+    STATS_SECTION_TITLE = "Your activity"
+    STATS_SECTION_HINT = "A snapshot of what you've built on urls4i.rl."
+    STATS_UTUBS_CREATED = "UTubs created"
+    STATS_MEMBER_OF = "Member of"
+    STATS_MEMBER_OF_SUB = "others' UTubs"
+    STATS_URLS_ADDED = "URLs added"
+    STATS_TAGS_CREATED = "Tags created"
+    STATS_TAGS_APPLIED = "Tags applied"
+    STATS_TAGS_APPLIED_SUB = "tracked recently"
+    STATS_MEMBER_SINCE = "Member since"
+    STATS_JOINED_TODAY = "Joined today"

@@ -796,6 +796,24 @@ class SettingsPageLocators(GenericPageLocator):
     PANEL_PRIVACY_DATA = "#SettingsPanelPrivacyData"
     PANEL_UI_SETTINGS = "#SettingsPanelUiSettings"
 
+    # Stats panel cards (Stats tab). Each value locator targets the
+    # `data-stat="…"` card's `.SettingsStatValue`, mirroring the template's
+    # six-card grid in backend/templates/pages/settings.html.
+    STAT_UTUBS_CREATED = (
+        '#SettingsPanelStats [data-stat="utubs-created"] .SettingsStatValue'
+    )
+    STAT_MEMBER_OF = '#SettingsPanelStats [data-stat="member-of"] .SettingsStatValue'
+    STAT_URLS_ADDED = '#SettingsPanelStats [data-stat="urls-added"] .SettingsStatValue'
+    STAT_TAGS_CREATED = (
+        '#SettingsPanelStats [data-stat="tags-created"] .SettingsStatValue'
+    )
+    STAT_TAGS_APPLIED = (
+        '#SettingsPanelStats [data-stat="tags-applied"] .SettingsStatValue'
+    )
+    STAT_MEMBER_SINCE = (
+        '#SettingsPanelStats [data-stat="member-since"] .SettingsStatValue'
+    )
+
     # Cross-page locator: #userSettingsLink is rendered in the navbar on
     # /home (hidden on /settings). Placed here because
     # test_settings_nav_link_present_on_home lives in the settings_ui suite.

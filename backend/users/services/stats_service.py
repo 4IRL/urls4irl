@@ -11,6 +11,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.utils.constants import STRINGS
 from backend.utils.datetime_utils import utc_now
 
 
@@ -22,8 +23,8 @@ def _humanize_account_age(created_at: datetime) -> str:
     rather than a fixed day count. Picks the largest non-zero unit in
     years → months → days order and pluralizes on ``n != 1``. Returns the
     literal ``"Joined today"`` when the account was created earlier the same
-    calendar day (all three units zero); this placeholder is replaced with the
-    string-bridge constant in Step 3.
+    calendar day (all three units zero); this string is sourced from the
+    backend-constant string bridge.
     """
     age = relativedelta(utc_now(), created_at)
     if age.years:
@@ -33,7 +34,7 @@ def _humanize_account_age(created_at: datetime) -> str:
     elif age.days:
         unit_value, unit_label = age.days, "day"
     else:
-        return "Joined today"
+        return STRINGS.SETTINGS_STATS_JOINED_TODAY
     plural_suffix = "" if unit_value == 1 else "s"
     return f"{unit_value} {unit_label}{plural_suffix}"
 
