@@ -43,7 +43,7 @@ const SETTINGS_HTML = `
     <section role="tabpanel" id="SettingsPanelStats"       aria-labelledby="SettingsTabStats"       tabindex="0" hidden>
       <h2>Stats</h2>
       <h3 class="SettingsStatsSectionTitle">Your activity</h3>
-      <p class="SettingsSectionHint">A snapshot of what you've built on urls4i.rl.</p>
+      <p class="SettingsSectionHint">A snapshot of what you've built on URLS4IRL.</p>
       <dl class="SettingsStatsGrid">
         <div class="SettingsStatCard" data-stat="utubs-created"><dt class="SettingsStatLabel">UTubs created</dt><dd class="SettingsStatValue">0</dd></div>
         <div class="SettingsStatCard" data-stat="member-of"><dt class="SettingsStatLabel">Member of</dt><dd class="SettingsStatValue">0</dd><dd class="SettingsStatSub">others' UTubs</dd></div>

@@ -32,7 +32,7 @@ class USER_SETTINGS_STRINGS:
     # re-exported via ui_testing_strs for Python UI assertions — no JS string
     # bridge (the panel is fully server-rendered, no TypeScript reads them).
     STATS_SECTION_TITLE = "Your activity"
-    STATS_SECTION_HINT = "A snapshot of what you've built on urls4i.rl."
+    STATS_SECTION_HINT = "A snapshot of what you've built on URLS4IRL."
     STATS_UTUBS_CREATED = "UTubs created"
     STATS_MEMBER_OF = "Member of"
     STATS_MEMBER_OF_SUB = "others' UTubs"
