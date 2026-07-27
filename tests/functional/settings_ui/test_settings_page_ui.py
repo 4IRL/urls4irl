@@ -8,12 +8,6 @@ from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.config import ConfigTestUI
-from backend.models.urls import Urls
-from backend.models.utub_members import Member_Role, Utub_Members
-from backend.models.utub_tags import Utub_Tags
-from backend.models.utub_url_tags import Utub_Url_Tags
-from backend.models.utub_urls import Utub_Urls
-from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import SettingsPageLocators as SPL
 from tests.functional.playwright_utils import (
@@ -27,6 +21,7 @@ from tests.functional.settings_ui.playwright_utils import (
     login_user_and_open_home,
     login_user_and_open_settings,
 )
+from tests.utils_for_test import seed_distinct_stats_for_user_one
 
 pytestmark = pytest.mark.settings_ui
 
@@ -37,97 +32,11 @@ def _seed_distinct_stats_for_user_one(app: Flask) -> None:
     """Seed mutually-distinct per-user activity counts for user 1 so each
     Stats card renders a unique value (2/3/5/7/11) and a swapped card is
     caught. Users 1-5 already exist (seeded by the `seeded_users` autouse
-    fixture via `flask addmock users`)."""
+    fixture via `flask addmock users`). Delegates the shared 2/3/5/7/11 seed
+    block to `seed_distinct_stats_for_user_one`, using a UI-specific label
+    prefix to keep this test's URL/tag strings distinct from other callers'."""
     with app.app_context():
-        # 2 UTubs created by user 1 (each with a CREATOR membership row).
-        user_one_utubs: list[Utubs] = []
-        for utub_index in range(2):
-            created_utub = Utubs(
-                name=f"User1 UTub {utub_index}",
-                utub_creator=DEFAULT_USER_ID,
-                utub_description="",
-            )
-            db.session.add(created_utub)
-            db.session.flush()
-            db.session.add(
-                Utub_Members(
-                    utub_id=created_utub.id,
-                    user_id=DEFAULT_USER_ID,
-                    member_role=Member_Role.CREATOR,
-                )
-            )
-            user_one_utubs.append(created_utub)
-
-        # 3 UTubs created by others (2 by user 2, 1 by user 3); user 1 is MEMBER.
-        for creator_id in (2, 2, 3):
-            others_utub = Utubs(
-                name=f"User{creator_id} UTub",
-                utub_creator=creator_id,
-                utub_description="",
-            )
-            db.session.add(others_utub)
-            db.session.flush()
-            db.session.add(
-                Utub_Members(
-                    utub_id=others_utub.id,
-                    user_id=creator_id,
-                    member_role=Member_Role.CREATOR,
-                )
-            )
-            db.session.add(
-                Utub_Members(
-                    utub_id=others_utub.id,
-                    user_id=DEFAULT_USER_ID,
-                    member_role=Member_Role.MEMBER,
-                )
-            )
-
-        home_utub = user_one_utubs[0]
-
-        # 5 Utub_Urls added by user 1, each backed by a unique Urls row.
-        user_one_utub_urls: list[Utub_Urls] = []
-        for url_index in range(5):
-            backing_url = Urls(
-                normalized_url=f"https://user1-ui-url-{url_index}.example.com",
-                current_user_id=DEFAULT_USER_ID,
-            )
-            db.session.add(backing_url)
-            db.session.flush()
-            utub_url = Utub_Urls()
-            utub_url.utub_id = home_utub.id
-            utub_url.url_id = backing_url.id
-            utub_url.user_id = DEFAULT_USER_ID
-            utub_url.url_title = f"User1 URL {url_index}"
-            db.session.add(utub_url)
-            db.session.flush()
-            user_one_utub_urls.append(utub_url)
-
-        # 7 Utub_Tags created by user 1.
-        user_one_tags: list[Utub_Tags] = []
-        for tag_index in range(7):
-            created_tag = Utub_Tags(
-                utub_id=home_utub.id,
-                tag_string=f"user1-ui-tag-{tag_index}",
-                created_by=DEFAULT_USER_ID,
-            )
-            db.session.add(created_tag)
-            db.session.flush()
-            user_one_tags.append(created_tag)
-
-        # 11 Utub_Url_Tags applied by user 1 (distinct url/tag pairs).
-        applied_pairs = [
-            (url_index, tag_index) for url_index in range(5) for tag_index in range(7)
-        ][:11]
-        for url_index, tag_index in applied_pairs:
-            db.session.add(
-                Utub_Url_Tags(
-                    utub_id=home_utub.id,
-                    utub_url_id=user_one_utub_urls[url_index].id,
-                    utub_tag_id=user_one_tags[tag_index].id,
-                    user_id=DEFAULT_USER_ID,
-                )
-            )
-
+        seed_distinct_stats_for_user_one(label_prefix="user1-ui")
         db.session.commit()
 
 
