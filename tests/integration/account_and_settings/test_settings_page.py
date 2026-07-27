@@ -118,8 +118,9 @@ def test_settings_stats_zero_state_renders_zero_counts(
     with app.app_context():
         seeded_user: Users = Users.query.get(1)
         expected_exact = (
-            seeded_user.created_at.strftime("%B %d, %Y").replace(" 0", " ").encode()
-        )
+            f"{seeded_user.created_at:%B} {seeded_user.created_at.day}, "
+            f"{seeded_user.created_at:%Y}"
+        ).encode()
         expected_iso = seeded_user.created_at.date().isoformat().encode()
 
     member_since_slice = _slice_stat_card(resp.data, "member-since")

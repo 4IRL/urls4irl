@@ -67,7 +67,8 @@ def build_user_stats_context() -> dict[str, Any]:
         "stats_tags_applied": stats_tags_applied,
         "stats_member_since_relative": _humanize_account_age(current_user.created_at),
         "stats_member_since_iso": current_user.created_at.date().isoformat(),
-        "stats_member_since_exact": current_user.created_at.strftime(
-            "%B %d, %Y"
-        ).replace(" 0", " "),
+        "stats_member_since_exact": (
+            f"{current_user.created_at:%B} {current_user.created_at.day}, "
+            f"{current_user.created_at:%Y}"
+        ),
     }
