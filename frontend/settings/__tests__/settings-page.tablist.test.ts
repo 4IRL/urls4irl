@@ -49,7 +49,7 @@ const SETTINGS_HTML = `
         <div class="SettingsStatCard" data-stat="member-of"><dt class="SettingsStatLabel">Member of</dt><dd class="SettingsStatValue">0</dd><dd class="SettingsStatSub">others' UTubs</dd></div>
         <div class="SettingsStatCard" data-stat="urls-added"><dt class="SettingsStatLabel">URLs added</dt><dd class="SettingsStatValue">0</dd></div>
         <div class="SettingsStatCard" data-stat="tags-created"><dt class="SettingsStatLabel">Tags created</dt><dd class="SettingsStatValue">0</dd></div>
-        <div class="SettingsStatCard" data-stat="tags-applied"><dt class="SettingsStatLabel">Tags applied</dt><dd class="SettingsStatValue">0</dd><dd class="SettingsStatSub">tracked recently</dd></div>
+        <div class="SettingsStatCard" data-stat="tags-applied"><dt class="SettingsStatLabel">Tags applied</dt><dd class="SettingsStatValue">0</dd><dd class="SettingsStatSub">all-time</dd></div>
         <div class="SettingsStatCard" data-stat="member-since"><dt class="SettingsStatLabel">Member since</dt><dd class="SettingsStatValue">Joined today</dd><dd class="SettingsStatSub"><time datetime="2025-04-15">April 15, 2025</time></dd></div>
       </dl>
     </section>

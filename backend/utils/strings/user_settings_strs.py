@@ -39,6 +39,6 @@ class USER_SETTINGS_STRINGS:
     STATS_URLS_ADDED = "URLs added"
     STATS_TAGS_CREATED = "Tags created"
     STATS_TAGS_APPLIED = "Tags applied"
-    STATS_TAGS_APPLIED_SUB = "tracked recently"
+    STATS_TAGS_APPLIED_SUB = "all-time"
     STATS_MEMBER_SINCE = "Member since"
     STATS_JOINED_TODAY = "Joined today"
