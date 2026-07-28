@@ -796,6 +796,22 @@ class SettingsPageLocators(GenericPageLocator):
     PANEL_PRIVACY_DATA = "#SettingsPanelPrivacyData"
     PANEL_UI_SETTINGS = "#SettingsPanelUiSettings"
 
+    # Account-info panel cards (Account tab). Each value locator targets the
+    # `data-account-info="…"` card's `.SettingsStatValue`, mirroring the
+    # four-card grid in backend/templates/pages/settings.html.
+    ACCOUNT_INFO_USERNAME_VALUE = (
+        '#SettingsPanelAccount [data-account-info="username"] .SettingsStatValue'
+    )
+    ACCOUNT_INFO_EMAIL_VALUE = (
+        '#SettingsPanelAccount [data-account-info="email"] .SettingsStatValue'
+    )
+    ACCOUNT_INFO_MEMBER_SINCE = (
+        '#SettingsPanelAccount [data-account-info="member-since"] .SettingsStatValue'
+    )
+    ACCOUNT_INFO_EMAIL_STATUS = (
+        '#SettingsPanelAccount [data-account-info="email-verified"] .SettingsStatValue'
+    )
+
     # Stats panel cards (Stats tab). Each value locator targets the
     # `data-stat="…"` card's `.SettingsStatValue`, mirroring the template's
     # six-card grid in backend/templates/pages/settings.html.

@@ -27,6 +27,7 @@ from backend.splash.services.oauth.linking_service import (
     initiate_settings_link,
     unlink_provider,
 )
+from backend.users.services.account_service import build_account_info_context
 from backend.users.services.stats_service import build_user_stats_context
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import provide_config_for_constants
@@ -150,6 +151,7 @@ def settings() -> str:
         is_settings=True,
         **build_connected_accounts_context(),
         **build_user_stats_context(),
+        **build_account_info_context(),
     )
 
 

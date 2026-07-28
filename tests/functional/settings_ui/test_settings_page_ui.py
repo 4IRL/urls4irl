@@ -220,6 +220,39 @@ def test_arrow_key_navigates_tabs(
     )
 
 
+def test_account_info_renders_on_default_tab(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in, email-validated user
+    WHEN the user opens `/settings` (Account tab is default)
+    THEN the read-only account-info block renders the user's username and email
+        values and the verified email indicator, without switching tabs.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    expect(page.locator(SPL.PANEL_ACCOUNT)).to_be_visible()
+    expect(page.locator(SPL.ACCOUNT_INFO_USERNAME_VALUE)).to_have_text(
+        UI_TEST_STRINGS.TEST_USERNAME_1
+    )
+    expect(page.locator(SPL.ACCOUNT_INFO_EMAIL_VALUE)).to_have_text(
+        UI_TEST_STRINGS.TEST_PASSWORD_1
+    )
+    expect(page.locator(SPL.ACCOUNT_INFO_EMAIL_STATUS)).to_contain_text(
+        UI_TEST_STRINGS.SETTINGS_ACCOUNT_EMAIL_VERIFIED
+    )
+
+
 def test_stats_panel_renders_seeded_counts(
     page: Page,
     provide_app: Flask,

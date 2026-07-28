@@ -238,6 +238,44 @@
     margin-bottom: 16px;
 }
 
+/* ---- Account information (Account tab) ---------------------------------- */
+
+.SettingsAccountInfoTitle {
+    color: #fff;
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* Dedicated 2x2 read-only info grid — reuses the .SettingsStatCard/Label/Value
+   card idiom but is NOT the three-across .SettingsStatsGrid. Scoped under the
+   Account panel so it never collides with the Stats panel grid. */
+#SettingsPanelAccount .SettingsAccountInfoGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+    margin: 0 0 var(--space-6);
+}
+
+.SettingsAccountVerified {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--deckSelectionGreen);
+    font-weight: 700;
+}
+
+.SettingsAccountUnverified {
+    color: var(--cardURLTextColor);
+    font-weight: 700;
+}
+
+@media (max-width: 575.98px) {
+    #SettingsPanelAccount .SettingsAccountInfoGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ---- Stats (Stats tab) -------------------------------------------------- */
 
 .SettingsStatsSectionTitle {

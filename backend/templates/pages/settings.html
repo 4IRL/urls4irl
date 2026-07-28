@@ -14,6 +14,34 @@
 
     <section role="tabpanel" id="SettingsPanelAccount" aria-labelledby="SettingsTabAccount" tabindex="0">
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_ACCOUNT }}</h2>
+        <div class="SettingsAccountInfo">
+            <h3 class="SettingsAccountInfoTitle">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_INFO_TITLE }}</h3>
+            <p class="SettingsSectionHint">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_INFO_HINT }}</p>
+            <dl class="SettingsAccountInfoGrid">
+                <div class="SettingsStatCard" data-account-info="username">
+                    <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_USERNAME_LABEL }}</dt>
+                    <dd class="SettingsStatValue">{{ account_username }}</dd>
+                </div>
+                <div class="SettingsStatCard" data-account-info="email">
+                    <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_EMAIL_LABEL }}</dt>
+                    <dd class="SettingsStatValue">{{ account_email }}</dd>
+                </div>
+                <div class="SettingsStatCard" data-account-info="member-since">
+                    <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_MEMBER_SINCE_LABEL }}</dt>
+                    <dd class="SettingsStatValue"><time datetime="{{ stats_member_since_iso }}">{{ stats_member_since_exact }}</time></dd>
+                </div>
+                <div class="SettingsStatCard" data-account-info="email-verified">
+                    <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_EMAIL_STATUS_LABEL }}</dt>
+                    <dd class="SettingsStatValue">
+                        {% if account_email_validated %}
+                        <span class="SettingsAccountVerified"><span class="SettingsAccountVerifiedGlyph" aria-hidden="true">✓</span> {{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_EMAIL_VERIFIED }}</span>
+                        {% else %}
+                        <span class="SettingsAccountUnverified">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_EMAIL_UNVERIFIED }}</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </div>
         {% if connected_account_rows %}
         <div id="SettingsConnectedAccounts" data-has-password="{{ 'true' if connected_accounts_has_password else 'false' }}">
             <h3 class="ConnectedAccountsTitle">{{ CONSTANTS.STRINGS.SETTINGS_CONNECTED_ACCOUNTS_TITLE }}</h3>
