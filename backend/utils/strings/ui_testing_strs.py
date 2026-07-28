@@ -45,6 +45,8 @@ from backend.utils.strings.user_strs import (
     CONFIRM_EMAIL_SENT,
     COOKIE_BANNER_SEEN,
     MEMBER_SEARCH_NO_RESULTS,
+    USERNAME_CHANGE_NO_CHANGE,
+    USERNAME_CHANGE_SUCCESS,
 )
 from backend.utils.strings.utub_strs import UTUB_SEARCH_NO_RESULTS
 
@@ -54,6 +56,7 @@ class UI_TEST_STRINGS:
     DOCKER_BASE_URL = "http://web:"
 
     TEST_USERNAME_1 = USERNAME_BASE + "1"
+    TEST_USERNAME_2 = USERNAME_BASE + "2"
     # Using password as email
     TEST_PASSWORD_1 = TEST_USERNAME_1 + EMAIL_SUFFIX
 
@@ -425,6 +428,18 @@ class UI_TEST_STRINGS:
     )
     SETTINGS_ACCOUNT_EMAIL_VERIFIED = USER_SETTINGS_STRINGS.ACCOUNT_EMAIL_VERIFIED
     SETTINGS_ACCOUNT_EMAIL_UNVERIFIED = USER_SETTINGS_STRINGS.ACCOUNT_EMAIL_UNVERIFIED
+
+    # Change-username form (Account tab) — static labels re-exported so the UI
+    # tests assert against the same backend source the template renders.
+    SETTINGS_CHANGE_USERNAME_TITLE = USER_SETTINGS_STRINGS.CHANGE_USERNAME_TITLE
+    SETTINGS_CHANGE_USERNAME_HINT = USER_SETTINGS_STRINGS.CHANGE_USERNAME_HINT
+    SETTINGS_CHANGE_USERNAME_LABEL = USER_SETTINGS_STRINGS.CHANGE_USERNAME_LABEL
+    SETTINGS_CHANGE_USERNAME_BUTTON = USER_SETTINGS_STRINGS.CHANGE_USERNAME_BUTTON
+
+    # Change-username 200 banner copy (server-sourced envelope text) — asserted
+    # by the integration tests (DD-17) against the backend source constants.
+    SETTINGS_USERNAME_CHANGE_SUCCESS = USERNAME_CHANGE_SUCCESS
+    SETTINGS_USERNAME_CHANGE_NO_CHANGE = USERNAME_CHANGE_NO_CHANGE
 
     # Stats section (Stats tab) — the six card labels the stats tests assert
     # against, re-exported from the backend source the template renders.

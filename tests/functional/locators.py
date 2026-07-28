@@ -812,6 +812,14 @@ class SettingsPageLocators(GenericPageLocator):
         '#SettingsPanelAccount [data-account-info="email-verified"] .SettingsStatValue'
     )
 
+    # Change-username form (Account tab). Mirrors the ids rendered in
+    # backend/templates/pages/settings.html and the data-* contract in
+    # frontend/settings/change-username.ts.
+    CHANGE_USERNAME_INPUT = "#SettingsNewUsername"
+    CHANGE_USERNAME_BTN = "#SettingsChangeUsernameBtn"
+    USERNAME_STATUS = "#SettingsUsernameStatus"
+    USERNAME_INVALID_FEEDBACK = "#SettingsNewUsername ~ .invalid-feedback"
+
     # Stats panel cards (Stats tab). Each value locator targets the
     # `data-stat="…"` card's `.SettingsStatValue`, mirroring the template's
     # six-card grid in backend/templates/pages/settings.html.

@@ -9,6 +9,7 @@ import { initCookieBanner } from "./lib/cookie-banner.js";
 import { initNavbarBackdrop, initNavbarRouting } from "./lib/navbar-shared.js";
 import { initSettingsPage } from "./settings/settings-page.js";
 import { initConnectedAccounts } from "./settings/connected-accounts.js";
+import { initChangeUsername } from "./settings/change-username.js";
 
 registerJQueryPlugins();
 setupCSRF();
@@ -19,4 +20,5 @@ $(document).ready(() => {
   initNavbarBackdrop();
   initSettingsPage();
   initConnectedAccounts();
+  initChangeUsername();
 });

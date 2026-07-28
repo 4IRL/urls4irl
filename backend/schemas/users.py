@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 from pydantic import Field
 
 from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS as M
 from backend.utils.strings.utub_strs import UTUB_ID
 from backend.utils.strings.user_strs import MEMBER, REDIRECT_URL
@@ -82,6 +83,30 @@ class MemberModifiedResponseSchema(BaseSchema):
     member: UserSchema = Field(
         alias=MEMBER,
         description="User object for the member added or removed",
+    )
+
+
+class ChangeUsernameResponseSchema(BaseSchema):
+    """Response for the authenticated change-username endpoint.
+
+    One shape for every 200 response — the success branch and the no-op branch
+    both populate all three fields, differing only in ``status``/``message``
+    (DD-12: the banner text is server-sourced off ``message``). Carries the
+    echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so
+    the client can refresh the on-page displays without a reload (DD-15).
+    """
+
+    username: str = Field(
+        alias=M.USERNAME,
+        description="The account's username after the change (echoed back)",
+    )
+    status: Literal["Success", "No change"] = Field(
+        alias=STD_JSON.STATUS,
+        description="Response status: Success or No change",
+    )
+    message: str = Field(
+        alias=STD_JSON.MESSAGE,
+        description="Human-readable, server-sourced banner text",
     )
 
 

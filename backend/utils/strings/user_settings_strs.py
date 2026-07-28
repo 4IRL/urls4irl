@@ -43,6 +43,14 @@ class USER_SETTINGS_STRINGS:
     ACCOUNT_EMAIL_VERIFIED = "Verified"
     ACCOUNT_EMAIL_UNVERIFIED = "Not verified"
 
+    # Change-username form (Account tab). Static Jinja labels re-exported via
+    # ui_testing_strs for Python UI assertions — no JS string bridge (the
+    # success/error banner text is server-sourced off the response envelope).
+    CHANGE_USERNAME_TITLE = "Change username"
+    CHANGE_USERNAME_HINT = "Choose a new username. It must be unique."
+    CHANGE_USERNAME_LABEL = "New username"
+    CHANGE_USERNAME_BUTTON = "Save username"
+
     # Stats section (Stats tab). Jinja-rendered only; the six card labels are
     # re-exported via ui_testing_strs for Python UI assertions — no JS string
     # bridge (the panel is fully server-rendered, no TypeScript reads them).

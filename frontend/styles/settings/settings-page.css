@@ -276,6 +276,63 @@
     }
 }
 
+/* ---- Account forms (change username / change password) ------------------ */
+
+.SettingsChangeUsername,
+.SettingsChangePassword {
+    margin-bottom: var(--space-6);
+}
+
+.SettingsChangeUsernameTitle,
+.SettingsChangePasswordTitle {
+    color: #fff;
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+#SettingsPanelAccount .form-group {
+    margin-bottom: var(--space-3);
+    max-width: 360px;
+}
+
+#SettingsPanelAccount .form-group label {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+    margin: 0 0 4px;
+}
+
+#SettingsPanelAccount .form-control {
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    color: #fff;
+    min-height: 2.75rem;
+}
+
+#SettingsPanelAccount .form-control:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 1px;
+}
+
+#SettingsPanelAccount .btn {
+    min-height: 2.75rem;
+}
+
+#SettingsPanelAccount .btn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media (max-width: 575.98px) {
+    #SettingsPanelAccount .form-group {
+        max-width: 100%;
+    }
+
+    #SettingsPanelAccount .btn {
+        width: 100%;
+    }
+}
+
 /* ---- Stats (Stats tab) -------------------------------------------------- */
 
 .SettingsStatsSectionTitle {

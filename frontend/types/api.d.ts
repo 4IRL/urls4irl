@@ -1234,6 +1234,23 @@ export interface paths {
     patch: operations["updateUrlTitle"];
     trace?: never;
   };
+  "/users/{user_id}/username": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description Change the authenticated user's username. Requires no password re-authentication (Decision #1), so OAuth-only accounts can rename. Rate-limited to a few changes per rolling 24h per user via a Redis-only counter; the cap returns HTTP 429. */
+    put: operations["changeUsername"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -2615,6 +2632,41 @@ export interface components {
       /** @description Service health status */
       status: string;
     };
+    ChangeUsernameRequest: {
+      /**
+       * @description The new username for the authenticated account
+       * @example john_doe
+       */
+      username: string;
+    };
+    /**
+     * @description Response for the authenticated change-username endpoint.
+     *
+     *     One shape for every 200 response — the success branch and the no-op branch
+     *     both populate all three fields, differing only in ``status``/``message``
+     *     (DD-12: the banner text is server-sourced off ``message``). Carries the
+     *     echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so
+     *     the client can refresh the on-page displays without a reload (DD-15).
+     */
+    ChangeUsernameResponseSchema: {
+      /** @description The account's username after the change (echoed back) */
+      username: string;
+      /**
+       * @description Response status: Success or No change
+       * @enum {string}
+       */
+      status: "Success" | "No change";
+      /** @description Human-readable, server-sourced banner text */
+      message: string;
+    };
+    ErrorResponse_ChangeUsernameErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["ChangeUsernameErrorCodes"];
+    };
+    /**
+     * @description Error codes for ChangeUsernameErrorCodes
+     * @enum {integer}
+     */
+    ChangeUsernameErrorCodes: 1 | 2 | 3;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -7042,6 +7094,67 @@ export interface operations {
       };
       /** @description Not found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  changeUsername: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ChangeUsernameRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the authenticated change-username endpoint.
+       *
+       *         One shape for every 200 response — the success branch and the no-op branch
+       *         both populate all three fields, differing only in ``status``/``message``
+       *         (DD-12: the banner text is server-sourced off ``message``). Carries the
+       *         echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so
+       *         the client can refresh the on-page displays without a reload (DD-15).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeUsernameResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ChangeUsernameErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
         headers: {
           [name: string]: unknown;
         };

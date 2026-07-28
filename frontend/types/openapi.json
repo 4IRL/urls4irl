@@ -6614,6 +6614,85 @@
         }
       }
     },
+    "/users/{user_id}/username": {
+      "put": {
+        "operationId": "changeUsername",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Change the authenticated user's username. Requires no password re-authentication (Decision #1), so OAuth-only accounts can rename. Rate-limited to a few changes per rolling 24h per user via a Redis-only counter; the cap returns HTTP 429.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeUsernameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the authenticated change-username endpoint.\n\n    One shape for every 200 response \u2014 the success branch and the no-op branch\n    both populate all three fields, differing only in ``status``/``message``\n    (DD-12: the banner text is server-sourced off ``message``). Carries the\n    echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so\n    the client can refresh the on-page displays without a reload (DD-15).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeUsernameResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ChangeUsernameErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ChangeUsernameErrorCodes": {
+            "$ref": "#/components/schemas/ChangeUsernameErrorCodes"
+          }
+        }
+      }
+    },
     "/users/{user_id}/oauth/link/{provider}": {
       "post": {
         "operationId": "linkOauthProvider",
@@ -9997,6 +10076,64 @@
         },
         "required": ["status"],
         "type": "object"
+      },
+      "ChangeUsernameRequest": {
+        "properties": {
+          "username": {
+            "description": "The new username for the authenticated account",
+            "examples": ["john_doe"],
+            "maxLength": 20,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": ["username"],
+        "type": "object"
+      },
+      "ChangeUsernameResponseSchema": {
+        "description": "Response for the authenticated change-username endpoint.\n\nOne shape for every 200 response \u2014 the success branch and the no-op branch\nboth populate all three fields, differing only in ``status``/``message``\n(DD-12: the banner text is server-sourced off ``message``). Carries the\nechoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so\nthe client can refresh the on-page displays without a reload (DD-15).",
+        "properties": {
+          "username": {
+            "description": "The account's username after the change (echoed back)",
+            "type": "string"
+          },
+          "status": {
+            "description": "Response status: Success or No change",
+            "enum": ["Success", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable, server-sourced banner text",
+            "type": "string"
+          }
+        },
+        "required": ["username", "status", "message"],
+        "type": "object"
+      },
+      "ErrorResponse_ChangeUsernameErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ChangeUsernameErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ChangeUsernameErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "USERNAME_TAKEN",
+          "RATE_LIMITED"
+        ],
+        "description": "Error codes for ChangeUsernameErrorCodes"
       },
       "ProviderLinkRequest": {
         "properties": {

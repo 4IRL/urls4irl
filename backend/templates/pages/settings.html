@@ -42,6 +42,16 @@
                 </div>
             </dl>
         </div>
+        <div class="SettingsChangeUsername">
+            <h3 class="SettingsChangeUsernameTitle">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_USERNAME_TITLE }}</h3>
+            <p class="SettingsSectionHint">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_USERNAME_HINT }}</p>
+            <div id="SettingsUsernameStatus" class="alert d-none" role="alert" aria-live="polite"></div>
+            <div class="form-group">
+                <label for="SettingsNewUsername">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_USERNAME_LABEL }}</label>
+                <input id="SettingsNewUsername" class="form-control" type="text" autocomplete="username" minlength="{{ CONSTANTS.USERS.MIN_USERNAME_LENGTH }}" maxlength="{{ CONSTANTS.USERS.MAX_USERNAME_LENGTH }}" value="{{ account_username }}">
+            </div>
+            <button type="button" class="btn btn-success" id="SettingsChangeUsernameBtn" data-action-url="{{ url_for('users.change_username', user_id=current_user.id) }}">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_USERNAME_BUTTON }}</button>
+        </div>
         {% if connected_account_rows %}
         <div id="SettingsConnectedAccounts" data-has-password="{{ 'true' if connected_accounts_has_password else 'false' }}">
             <h3 class="ConnectedAccountsTitle">{{ CONSTANTS.STRINGS.SETTINGS_CONNECTED_ACCOUNTS_TITLE }}</h3>

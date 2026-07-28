@@ -22,6 +22,10 @@ CONFIRM_EMAIL_SENT = (
     "Almost there — check your email for a link to confirm your account."
 )
 MEMBER = "member"
+# Change-username 200 banner copy (server-sourced envelope text — DD-12; no JS
+# bridge, surfaced dynamically off xhr.responseJSON.message).
+USERNAME_CHANGE_SUCCESS = "Your username has been updated."
+USERNAME_CHANGE_NO_CHANGE = "No change — that's already your username."
 MEMBER_DELETE_WARNING = (
     "This member will no longer have access to the URLs in this UTub."
 )
@@ -58,6 +62,9 @@ INVALID_CREDENTIALS = "Invalid username or password."
 ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = "An account already exists with that information but the email has not been validated."
 INVALID_EMAIL = "Email is not valid."
 ACCOUNT_SUSPENDED = "This account has been suspended."
+USERNAME_CHANGE_RATE_LIMITED = (
+    "You've changed your username too many times today. Try again later."
+)
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -71,6 +78,7 @@ class USER_FAILURE(FAILURE_GENERAL):
     INVALID_CREDENTIALS = INVALID_CREDENTIALS
     INVALID_EMAIL = INVALID_EMAIL
     ACCOUNT_SUSPENDED = ACCOUNT_SUSPENDED
+    USERNAME_CHANGE_RATE_LIMITED = USERNAME_CHANGE_RATE_LIMITED
 
 
 class MEMBER_FAILURE(FAILURE_GENERAL):

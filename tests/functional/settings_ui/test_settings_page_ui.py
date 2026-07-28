@@ -9,6 +9,7 @@ from playwright.sync_api import Page, expect
 from backend import db
 from backend.config import ConfigTestUI
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from backend.utils.strings.user_strs import USER_FAILURE
 from tests.functional.locators import SettingsPageLocators as SPL
 from tests.functional.playwright_utils import (
     click_on_navbar,
@@ -285,3 +286,70 @@ def test_stats_panel_renders_seeded_counts(
     expect(page.locator(SPL.STAT_URLS_ADDED)).to_have_text("5")
     expect(page.locator(SPL.STAT_TAGS_CREATED)).to_have_text("7")
     expect(page.locator(SPL.STAT_TAGS_APPLIED)).to_have_text("11")
+
+
+def test_change_username_happy_path_updates_in_place(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user on the settings Account tab
+    WHEN they enter a new, unique username and click Save
+    THEN the success banner is shown and BOTH the input and the read-only
+        account-info username card update in place (no page reload).
+    """
+    new_username = "renamed_ui_user"
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    page.fill(SPL.CHANGE_USERNAME_INPUT, new_username)
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_USERNAME_BTN)
+
+    status = page.locator(SPL.USERNAME_STATUS)
+    expect(status).to_be_visible()
+    expect(status).to_have_text(UI_TEST_STRINGS.SETTINGS_USERNAME_CHANGE_SUCCESS)
+
+    # Update-in-place (DD-15): both displays reflect the new username.
+    expect(page.locator(SPL.CHANGE_USERNAME_INPUT)).to_have_value(new_username)
+    expect(page.locator(SPL.ACCOUNT_INFO_USERNAME_VALUE)).to_have_text(new_username)
+
+
+def test_change_username_duplicate_name_shows_field_error(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user on the settings Account tab
+    WHEN they try to rename to a username already taken by another account
+    THEN a field-level error is shown on the input and the read-only
+        account-info username card is unchanged.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    page.fill(SPL.CHANGE_USERNAME_INPUT, UI_TEST_STRINGS.TEST_USERNAME_2)
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_USERNAME_BTN)
+
+    feedback = page.locator(SPL.USERNAME_INVALID_FEEDBACK)
+    expect(feedback).to_have_text(USER_FAILURE.USERNAME_TAKEN)
+    # The read-only card still shows the original username.
+    expect(page.locator(SPL.ACCOUNT_INFO_USERNAME_VALUE)).to_have_text(
+        UI_TEST_STRINGS.TEST_USERNAME_1
+    )
