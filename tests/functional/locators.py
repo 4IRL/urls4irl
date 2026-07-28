@@ -815,6 +815,12 @@ class SettingsPageLocators(GenericPageLocator):
     # Change-username form (Account tab). Mirrors the ids rendered in
     # backend/templates/pages/settings.html and the data-* contract in
     # frontend/settings/change-username.ts.
+    # The form now lives inside a collapsible <details> that defaults to closed;
+    # click the summary to reveal the input/button before interacting.
+    CHANGE_USERNAME_SUMMARY = (
+        "#SettingsPanelAccount .SettingsChangeUsername .SettingsDisclosureSummary"
+    )
+    CHANGE_USERNAME_DETAILS = "#SettingsPanelAccount .SettingsChangeUsername"
     CHANGE_USERNAME_INPUT = "#SettingsNewUsername"
     CHANGE_USERNAME_BTN = "#SettingsChangeUsernameBtn"
     USERNAME_STATUS = "#SettingsUsernameStatus"
@@ -826,6 +832,12 @@ class SettingsPageLocators(GenericPageLocator):
     # section wrapper is always present; the OAuth-only note replaces the form
     # for password-less accounts.
     CHANGE_PASSWORD_SECTION = "#SettingsPanelAccount .SettingsChangePassword"
+    # For password accounts the section is a collapsible <details> defaulting to
+    # closed; click the summary to reveal the fields. (OAuth-only accounts render
+    # a plain note in its place — no summary.)
+    CHANGE_PASSWORD_SUMMARY = (
+        "#SettingsPanelAccount .SettingsChangePassword .SettingsDisclosureSummary"
+    )
     CHANGE_PASSWORD_CURRENT_INPUT = "#SettingsCurrentPassword"
     CHANGE_PASSWORD_NEW_INPUT = "#SettingsNewPassword"
     CHANGE_PASSWORD_CONFIRM_INPUT = "#SettingsConfirmNewPassword"

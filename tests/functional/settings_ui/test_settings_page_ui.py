@@ -324,7 +324,8 @@ def test_change_username_happy_path_updates_in_place(
 ):
     """
     GIVEN a logged-in user on the settings Account tab
-    WHEN they enter a new, unique username and click Save
+    WHEN they open the (collapsed-by-default) form, enter a new, unique username
+        and click Save
     THEN the success banner is shown and BOTH the input and the read-only
         account-info username card update in place (no page reload).
     """
@@ -339,6 +340,8 @@ def test_change_username_happy_path_updates_in_place(
         config=provide_config,
     )
 
+    # The change-username form defaults to collapsed; open the disclosure first.
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_USERNAME_SUMMARY)
     page.fill(SPL.CHANGE_USERNAME_INPUT, new_username)
     wait_then_click_element(page=page, css_selector=SPL.CHANGE_USERNAME_BTN)
 
@@ -372,6 +375,8 @@ def test_change_username_duplicate_name_shows_field_error(
         config=provide_config,
     )
 
+    # The change-username form defaults to collapsed; open the disclosure first.
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_USERNAME_SUMMARY)
     page.fill(SPL.CHANGE_USERNAME_INPUT, UI_TEST_STRINGS.TEST_USERNAME_2)
     wait_then_click_element(page=page, css_selector=SPL.CHANGE_USERNAME_BTN)
 
@@ -391,8 +396,8 @@ def test_change_password_happy_path_shows_success_banner(
 ):
     """
     GIVEN a logged-in local-password user on the settings Account tab
-    WHEN they enter the correct current password and a valid new password
-        (twice) and click Save
+    WHEN they open the (collapsed-by-default) form, enter the correct current
+        password and a valid new password (twice) and click Save
     THEN the success banner is shown.
     """
     new_password = "BrandNewPassword5678"
@@ -406,6 +411,8 @@ def test_change_password_happy_path_shows_success_banner(
         config=provide_config,
     )
 
+    # The change-password form defaults to collapsed; open the disclosure first.
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_PASSWORD_SUMMARY)
     page.fill(SPL.CHANGE_PASSWORD_CURRENT_INPUT, UI_TEST_STRINGS.TEST_PASSWORD_1)
     page.fill(SPL.CHANGE_PASSWORD_NEW_INPUT, new_password)
     page.fill(SPL.CHANGE_PASSWORD_CONFIRM_INPUT, new_password)
@@ -445,3 +452,37 @@ def test_change_password_form_absent_for_oauth_only_user(
     expect(page.locator(SPL.CHANGE_PASSWORD_BTN)).to_have_count(0)
     # The explanatory note renders in their place.
     expect(page.locator(SPL.CHANGE_PASSWORD_OAUTH_NOTE)).to_be_visible()
+
+
+def test_account_forms_default_collapsed(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in local-password user on the settings Account tab
+    WHEN the page renders
+    THEN the change-username and change-password forms are collapsed by default
+        (their inputs are hidden) and become visible only after their disclosure
+        summary is clicked.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    # Rendered in the DOM but hidden while the <details> is closed.
+    expect(page.locator(SPL.CHANGE_USERNAME_INPUT)).to_be_hidden()
+    expect(page.locator(SPL.CHANGE_PASSWORD_CURRENT_INPUT)).to_be_hidden()
+
+    # Opening each disclosure reveals its fields.
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_USERNAME_SUMMARY)
+    expect(page.locator(SPL.CHANGE_USERNAME_INPUT)).to_be_visible()
+
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_PASSWORD_SUMMARY)
+    expect(page.locator(SPL.CHANGE_PASSWORD_CURRENT_INPUT)).to_be_visible()

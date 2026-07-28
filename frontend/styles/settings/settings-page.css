@@ -291,6 +291,55 @@
     font-weight: 700;
 }
 
+/* Collapsible account forms: username/password default to closed so they don't
+   eat vertical space. Native <details>/<summary> — accessible + zero JS. */
+#SettingsPanelAccount details.SettingsDisclosure {
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    background: var(--cardBackgroundColor);
+}
+
+#SettingsPanelAccount .SettingsDisclosureSummary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    cursor: pointer;
+    padding: var(--space-3) var(--space-4);
+    list-style: none;
+    user-select: none;
+}
+
+/* Hide the default disclosure triangle in WebKit/Blink (Firefox uses list-style). */
+#SettingsPanelAccount .SettingsDisclosureSummary::-webkit-details-marker {
+    display: none;
+}
+
+/* Custom chevron: points down when closed, rotates up when open. */
+#SettingsPanelAccount .SettingsDisclosureSummary::after {
+    content: "";
+    flex: 0 0 auto;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-right: 2px solid var(--cardURLTextColor);
+    border-bottom: 2px solid var(--cardURLTextColor);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+}
+
+#SettingsPanelAccount details.SettingsDisclosure[open] .SettingsDisclosureSummary::after {
+    transform: rotate(-135deg);
+}
+
+#SettingsPanelAccount .SettingsDisclosureSummary:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+#SettingsPanelAccount .SettingsDisclosureBody {
+    padding: 0 var(--space-4) var(--space-4);
+}
+
 /* OAuth-only accounts see this note in place of the password form (mirrors the
    .ConnectedAccountLastMethodNote muted-italic treatment). */
 .SettingsChangePasswordOAuthNote {
