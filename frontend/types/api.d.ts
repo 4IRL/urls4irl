@@ -1251,6 +1251,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/{user_id}/password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts. */
+    put: operations["changePassword"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -2667,6 +2684,38 @@ export interface components {
      * @enum {integer}
      */
     ChangeUsernameErrorCodes: 1 | 2 | 3;
+    ChangePasswordRequest: {
+      /** @description Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy */
+      currentPassword: string;
+      /** @description New password for the account */
+      newPassword: string;
+      /** @description New password confirmation, must match new password */
+      confirmNewPassword: string;
+    };
+    /**
+     * @description Response for the authenticated change-password endpoint.
+     *
+     *     No data to return beyond status/message, so it reuses the
+     *     ``StatusMessageResponseSchema`` shape (matching the
+     *     ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).
+     */
+    ChangePasswordResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
+    };
+    ErrorResponse_ChangePasswordErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["ChangePasswordErrorCodes"];
+    };
+    /**
+     * @description Error codes for ChangePasswordErrorCodes
+     * @enum {integer}
+     */
+    ChangePasswordErrorCodes: 1 | 2 | 3;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -7155,6 +7204,56 @@ export interface operations {
       };
       /** @description Too many requests */
       429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  changePassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ChangePasswordRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the authenticated change-password endpoint.
+       *
+       *         No data to return beyond status/message, so it reuses the
+       *         ``StatusMessageResponseSchema`` shape (matching the
+       *         ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangePasswordResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ChangePasswordErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown;
         };

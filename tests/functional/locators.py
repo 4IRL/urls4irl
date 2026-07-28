@@ -820,6 +820,19 @@ class SettingsPageLocators(GenericPageLocator):
     USERNAME_STATUS = "#SettingsUsernameStatus"
     USERNAME_INVALID_FEEDBACK = "#SettingsNewUsername ~ .invalid-feedback"
 
+    # Change-password form (Account tab). Mirrors the ids rendered (gated by
+    # `connected_accounts_has_password`) in backend/templates/pages/settings.html
+    # and the data-* contract in frontend/settings/change-password.ts. The
+    # section wrapper is always present; the OAuth-only note replaces the form
+    # for password-less accounts.
+    CHANGE_PASSWORD_SECTION = "#SettingsPanelAccount .SettingsChangePassword"
+    CHANGE_PASSWORD_CURRENT_INPUT = "#SettingsCurrentPassword"
+    CHANGE_PASSWORD_NEW_INPUT = "#SettingsNewPassword"
+    CHANGE_PASSWORD_CONFIRM_INPUT = "#SettingsConfirmNewPassword"
+    CHANGE_PASSWORD_BTN = "#SettingsChangePasswordBtn"
+    PASSWORD_STATUS = "#SettingsPasswordStatus"
+    CHANGE_PASSWORD_OAUTH_NOTE = ".SettingsChangePasswordOAuthNote"
+
     # Stats panel cards (Stats tab). Each value locator targets the
     # `data-stat="…"` card's `.SettingsStatValue`, mirroring the template's
     # six-card grid in backend/templates/pages/settings.html.

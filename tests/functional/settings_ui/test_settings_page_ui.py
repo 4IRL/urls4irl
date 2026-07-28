@@ -8,6 +8,8 @@ from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.config import ConfigTestUI
+from backend.models.user_oauth_identities import UserOAuthIdentity
+from backend.models.users import Users
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from backend.utils.strings.user_strs import USER_FAILURE
 from tests.functional.locators import SettingsPageLocators as SPL
@@ -27,6 +29,32 @@ from tests.utils_for_test import seed_distinct_stats_for_user_one
 pytestmark = pytest.mark.settings_ui
 
 DEFAULT_USER_ID: int = 1
+
+_OAUTH_ONLY_USERNAME = "settingspwoauthonlyui"
+_OAUTH_ONLY_EMAIL = "settingspwoauthonlyui@example.com"
+_OAUTH_ONLY_GOOGLE_SUBJECT = "fake-google-subject-settings-pw-oauth-only"
+
+
+def _seed_oauth_only_user(app: Flask) -> int:
+    """Create and commit a password-less user with one linked google identity,
+    returning its id — a local helper scoped to this module (independent of the
+    similarly-named helpers in other test modules). Used to prove the
+    change-password form is not rendered for OAuth-only accounts."""
+    with app.app_context():
+        user = Users(
+            username=_OAUTH_ONLY_USERNAME,
+            email=_OAUTH_ONLY_EMAIL,
+            plaintext_password=None,
+        )
+        user.oauth_identities.append(
+            UserOAuthIdentity(
+                provider="google", provider_subject=_OAUTH_ONLY_GOOGLE_SUBJECT
+            )
+        )
+        user.email_validated = True
+        db.session.add(user)
+        db.session.commit()
+        return user.id
 
 
 def _seed_distinct_stats_for_user_one(app: Flask) -> None:
@@ -353,3 +381,67 @@ def test_change_username_duplicate_name_shows_field_error(
     expect(page.locator(SPL.ACCOUNT_INFO_USERNAME_VALUE)).to_have_text(
         UI_TEST_STRINGS.TEST_USERNAME_1
     )
+
+
+def test_change_password_happy_path_shows_success_banner(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in local-password user on the settings Account tab
+    WHEN they enter the correct current password and a valid new password
+        (twice) and click Save
+    THEN the success banner is shown.
+    """
+    new_password = "BrandNewPassword5678"
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    page.fill(SPL.CHANGE_PASSWORD_CURRENT_INPUT, UI_TEST_STRINGS.TEST_PASSWORD_1)
+    page.fill(SPL.CHANGE_PASSWORD_NEW_INPUT, new_password)
+    page.fill(SPL.CHANGE_PASSWORD_CONFIRM_INPUT, new_password)
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_PASSWORD_BTN)
+
+    status = page.locator(SPL.PASSWORD_STATUS)
+    expect(status).to_be_visible()
+    expect(status).to_have_text(UI_TEST_STRINGS.SETTINGS_PASSWORD_CHANGE_SUCCESS)
+
+
+def test_change_password_form_absent_for_oauth_only_user(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in OAuth-only (password-less) user on the settings Account tab
+    WHEN the page renders
+    THEN the change-password form controls are NOT rendered, and the OAuth-only
+        explanatory note is shown in their place.
+    """
+    oauth_only_user_id = _seed_oauth_only_user(provide_app)
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=oauth_only_user_id,
+        config=provide_config,
+    )
+
+    expect(page.locator(SPL.PANEL_ACCOUNT)).to_be_visible()
+    # The form controls are gated out entirely for OAuth-only accounts.
+    expect(page.locator(SPL.CHANGE_PASSWORD_CURRENT_INPUT)).to_have_count(0)
+    expect(page.locator(SPL.CHANGE_PASSWORD_BTN)).to_have_count(0)
+    # The explanatory note renders in their place.
+    expect(page.locator(SPL.CHANGE_PASSWORD_OAUTH_NOTE)).to_be_visible()

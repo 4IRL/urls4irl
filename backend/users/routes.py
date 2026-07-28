@@ -19,8 +19,13 @@ from backend.app_logger import warning_log
 from backend.models.users import Users
 from backend.schemas.base import StatusMessageResponseSchema
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.users import ChangeUsernameRequest, ProviderLinkRequest
+from backend.schemas.requests.users import (
+    ChangePasswordRequest,
+    ChangeUsernameRequest,
+    ProviderLinkRequest,
+)
 from backend.schemas.users import (
+    ChangePasswordResponseSchema,
     ChangeUsernameResponseSchema,
     LoginRedirectResponseSchema,
 )
@@ -30,8 +35,9 @@ from backend.splash.services.oauth.linking_service import (
     initiate_settings_link,
     unlink_provider,
 )
-from backend.users.constants import ChangeUsernameErrorCodes
+from backend.users.constants import ChangePasswordErrorCodes, ChangeUsernameErrorCodes
 from backend.users.services.account_service import (
+    apply_password_change,
     apply_username_change,
     build_account_info_context,
 )
@@ -185,6 +191,33 @@ def change_username(
     self-ownership/uniqueness/rate-limit policy is enforced in the service)."""
     return apply_username_change(
         user_id=user_id, new_username=change_username_request.username
+    )
+
+
+@users.route("/users/<int:user_id>/password", methods=["PUT"])
+@email_validation_required
+@api_route(
+    request_schema=ChangePasswordRequest,
+    response_schema=ChangePasswordResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=ChangePasswordErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts.",
+    status_codes={
+        200: ChangePasswordResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+    },
+)
+def change_password(
+    user_id: int, change_password_request: ChangePasswordRequest
+) -> FlaskResponse:
+    """Applies the authenticated change-password flow (self-service only; the
+    self-ownership / OAuth-only / re-auth policy is enforced in the service)."""
+    return apply_password_change(
+        user_id=user_id,
+        current_password=change_password_request.password,
+        new_password=change_password_request.new_password,
     )
 
 

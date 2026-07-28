@@ -9,17 +9,26 @@ from sqlalchemy.exc import IntegrityError
 
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
 )
-from backend.schemas.users import ChangeUsernameResponseSchema
-from backend.users.constants import ChangeUsernameErrorCodes
+from backend.schemas.users import (
+    ChangePasswordResponseSchema,
+    ChangeUsernameResponseSchema,
+)
+from backend.splash.constants import LOGIN_FAILURE_REASON_BAD_PASSWORD
+from backend.users.constants import ChangePasswordErrorCodes, ChangeUsernameErrorCodes
 from backend.utils.constants import USER_CONSTANTS
+from backend.utils.datetime_utils import utc_now
+from backend.utils.session_utils import restamp_current_session
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.user_strs import (
+    PASSWORD_CHANGE_SUCCESS,
     USER_FAILURE,
     USERNAME_CHANGE_NO_CHANGE,
     USERNAME_CHANGE_SUCCESS,
@@ -165,5 +174,70 @@ def apply_username_change(*, user_id: int, new_username: str) -> FlaskResponse:
             username=current_user.username,
             status=STD_JSON.SUCCESS,
             message=USERNAME_CHANGE_SUCCESS,
+        ),
+    ).to_response()
+
+
+def apply_password_change(
+    *, user_id: int, current_password: str, new_password: str
+) -> FlaskResponse:
+    """Change the authenticated user's password after current-password re-auth,
+    then invalidate every OTHER session (Decision #2).
+
+    Named ``apply_password_change`` to avoid a bare-name collision with the
+    ``change_password`` route/view function on the ``users`` blueprint.
+
+    Guard order: self-ownership (403) → OAuth-only (400, defense-in-depth) →
+    re-auth (400 on wrong current password, recording the existing
+    ``LOGIN_FAILURE`` metric) → success: change password, bump
+    ``sessions_invalidated_at`` and re-stamp the acting session so it survives,
+    then commit.
+    """
+    # (1) Self-ownership: the URL user_id must be the acting user.
+    if user_id != current_user.id:
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=ChangePasswordErrorCodes.INVALID_FORM_INPUT,
+            status_code=403,
+        )
+
+    # (2) OAuth-only guard (defense-in-depth): the template hides the form for
+    # password-less accounts. Predicate replicated locally per DD-19 (no import
+    # from backend.splash.* for this check).
+    if current_user.password is None:
+        return build_message_error_response(
+            message=USER_FAILURE.PASSWORD_CHANGE_OAUTH_ONLY,
+            error_code=ChangePasswordErrorCodes.OAUTH_ONLY_NO_PASSWORD,
+            status_code=400,
+        )
+
+    # (3) Re-auth: verify the supplied current password (mirrors
+    # initiate_settings_link). On failure, record the existing LOGIN_FAILURE
+    # metric and surface a dedicated field error on `currentPassword`.
+    if not current_user.is_password_correct(current_password):
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
+        )
+        return build_field_error_response(
+            message=USER_FAILURE.CURRENT_PASSWORD_INCORRECT,
+            errors={"currentPassword": [USER_FAILURE.CURRENT_PASSWORD_INCORRECT]},
+            error_code=ChangePasswordErrorCodes.INVALID_PASSWORD,
+            status_code=400,
+        )
+
+    # (4) Success: change the password, invalidate every OTHER session by
+    # bumping sessions_invalidated_at, then re-stamp the acting session so the
+    # current device survives its own invalidation bump.
+    current_user.change_password(new_password)
+    current_user.sessions_invalidated_at = utc_now()
+    restamp_current_session()
+    db.session.commit()
+
+    return APIResponse(
+        status_code=200,
+        data=ChangePasswordResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=PASSWORD_CHANGE_SUCCESS,
         ),
     ).to_response()

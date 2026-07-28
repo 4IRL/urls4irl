@@ -45,6 +45,7 @@ from backend.utils.strings.user_strs import (
     CONFIRM_EMAIL_SENT,
     COOKIE_BANNER_SEEN,
     MEMBER_SEARCH_NO_RESULTS,
+    PASSWORD_CHANGE_SUCCESS,
     USERNAME_CHANGE_NO_CHANGE,
     USERNAME_CHANGE_SUCCESS,
 )
@@ -440,6 +441,17 @@ class UI_TEST_STRINGS:
     # by the integration tests (DD-17) against the backend source constants.
     SETTINGS_USERNAME_CHANGE_SUCCESS = USERNAME_CHANGE_SUCCESS
     SETTINGS_USERNAME_CHANGE_NO_CHANGE = USERNAME_CHANGE_NO_CHANGE
+
+    # Change-password form (Account tab) — static labels re-exported so the UI
+    # tests assert against the same backend source the template renders.
+    SETTINGS_CHANGE_PASSWORD_TITLE = USER_SETTINGS_STRINGS.CHANGE_PASSWORD_TITLE
+    SETTINGS_CHANGE_PASSWORD_BUTTON = USER_SETTINGS_STRINGS.CHANGE_PASSWORD_BUTTON
+    SETTINGS_CHANGE_PASSWORD_OAUTH_ONLY_NOTE = (
+        USER_SETTINGS_STRINGS.CHANGE_PASSWORD_OAUTH_ONLY_NOTE
+    )
+    # Change-password 200 banner copy (server-sourced envelope text) — asserted
+    # by the UI happy-path test against the backend source constant.
+    SETTINGS_PASSWORD_CHANGE_SUCCESS = PASSWORD_CHANGE_SUCCESS
 
     # Stats section (Stats tab) — the six card labels the stats tests assert
     # against, re-exported from the backend source the template renders.

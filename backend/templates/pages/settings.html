@@ -52,6 +52,28 @@
             </div>
             <button type="button" class="btn btn-success" id="SettingsChangeUsernameBtn" data-action-url="{{ url_for('users.change_username', user_id=current_user.id) }}">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_USERNAME_BUTTON }}</button>
         </div>
+        <div class="SettingsChangePassword">
+            <h3 class="SettingsChangePasswordTitle">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_PASSWORD_TITLE }}</h3>
+            {% if connected_accounts_has_password %}
+            <p class="SettingsSectionHint">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_PASSWORD_HINT }}</p>
+            <div id="SettingsPasswordStatus" class="alert d-none" role="alert" aria-live="polite"></div>
+            <div class="form-group">
+                <label for="SettingsCurrentPassword">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_PASSWORD_CURRENT_LABEL }}</label>
+                <input id="SettingsCurrentPassword" class="form-control" type="password" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label for="SettingsNewPassword">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_PASSWORD_NEW_LABEL }}</label>
+                <input id="SettingsNewPassword" class="form-control" type="password" autocomplete="new-password" minlength="{{ CONSTANTS.USERS.MIN_PASSWORD_LENGTH }}" maxlength="{{ CONSTANTS.USERS.MAX_PASSWORD_INPUT_LENGTH }}">
+            </div>
+            <div class="form-group">
+                <label for="SettingsConfirmNewPassword">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_PASSWORD_CONFIRM_LABEL }}</label>
+                <input id="SettingsConfirmNewPassword" class="form-control" type="password" autocomplete="new-password">
+            </div>
+            <button type="button" class="btn btn-success" id="SettingsChangePasswordBtn" data-action-url="{{ url_for('users.change_password', user_id=current_user.id) }}">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_PASSWORD_BUTTON }}</button>
+            {% else %}
+            <p class="SettingsChangePasswordOAuthNote">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_PASSWORD_OAUTH_ONLY_NOTE }}</p>
+            {% endif %}
+        </div>
         {% if connected_account_rows %}
         <div id="SettingsConnectedAccounts" data-has-password="{{ 'true' if connected_accounts_has_password else 'false' }}">
             <h3 class="ConnectedAccountsTitle">{{ CONSTANTS.STRINGS.SETTINGS_CONNECTED_ACCOUNTS_TITLE }}</h3>

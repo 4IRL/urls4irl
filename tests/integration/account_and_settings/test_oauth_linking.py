@@ -20,7 +20,7 @@ convention as ``tests/integration/splash/test_oauth_google.py``.
 
 from __future__ import annotations
 
-from typing import Generator, Tuple
+from typing import Tuple
 from unittest import mock
 
 from flask import Flask, redirect, url_for
@@ -46,14 +46,16 @@ from backend.utils.strings.oauth_strs import (
     UNLINK_LAST_METHOD_MESSAGE,
 )
 from backend.utils.strings.user_strs import REDIRECT_URL
-from tests.conftest import AjaxFlaskLoginClient
+from tests.integration.account_and_settings.conftest import (
+    _OAUTH_ONLY_EMAIL,
+    _OAUTH_ONLY_GOOGLE_SUBJECT,
+)
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
     parse_dims,
 )
 from tests.models_for_test import valid_user_1
-from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.account_and_support
 
@@ -76,10 +78,6 @@ _FAKE_STATE = "fake-state-value"
 _FAKE_GITHUB_TOKEN = {"access_token": "fake-github-access-token"}
 _MOCK_GOOGLE_CONSENT_URL = "https://accounts.google.com/o/oauth2/mock-consent"
 _MOCK_GITHUB_CONSENT_URL = "https://github.com/login/oauth/mock-consent"
-
-_OAUTH_ONLY_USERNAME = "settingslinkoauthonly"
-_OAUTH_ONLY_EMAIL = "settingslinkoauthonly@example.com"
-_OAUTH_ONLY_GOOGLE_SUBJECT = "sub_settings_link_oauth_only_google"
 
 _OTHER_TAKEN_USERNAME = "settingslinkothertaken"
 _OTHER_TAKEN_EMAIL = "settingslinkothertaken@example.com"
@@ -125,46 +123,6 @@ def _github_get_side_effect(*, github_id: int, login: str, email: str):
         raise AssertionError(f"Unexpected GitHub resource path: {resource_path!r}")
 
     return _side_effect
-
-
-def _seed_oauth_only_user(
-    app: Flask, *, username: str, email: str, provider: str, subject: str
-) -> None:
-    with app.app_context():
-        user = Users(username=username, email=email, plaintext_password=None)
-        user.oauth_identities.append(
-            UserOAuthIdentity(provider=provider, provider_subject=subject)
-        )
-        user.email_validated = True
-        db.session.add(user)
-        db.session.commit()
-
-
-@pytest.fixture
-def oauth_only_google_user_logged_in(
-    app: Flask,
-) -> Generator[Tuple[FlaskClient, str, Users, Flask], None, None]:
-    """Seeds an email-validated, password-less user with a linked google
-    identity, then logs them in via Flask-Login's test-client shortcut
-    (mirrors ``tests/conftest.py:login_first_user_with_register``) — how the
-    session was originally established is orthogonal to the settings-link
-    endpoints under test here."""
-    _seed_oauth_only_user(
-        app,
-        username=_OAUTH_ONLY_USERNAME,
-        email=_OAUTH_ONLY_EMAIL,
-        provider="google",
-        subject=_OAUTH_ONLY_GOOGLE_SUBJECT,
-    )
-
-    app.test_client_class = AjaxFlaskLoginClient
-    with app.app_context():
-        user_to_login: Users = Users.query.filter_by(email=_OAUTH_ONLY_EMAIL).first()
-
-    with app.test_client(user=user_to_login) as logged_in_client:
-        logged_in_response = logged_in_client.get("/home")
-        csrf_token_string = get_csrf_token(logged_in_response.get_data(), meta_tag=True)
-        yield logged_in_client, csrf_token_string, user_to_login, app
 
 
 # --- a-f: POST /users/<id>/oauth/link/<provider> validation branches -------

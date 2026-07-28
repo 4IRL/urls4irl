@@ -110,6 +110,17 @@ class ChangeUsernameResponseSchema(BaseSchema):
     )
 
 
+class ChangePasswordResponseSchema(StatusMessageResponseSchema):
+    """Response for the authenticated change-password endpoint.
+
+    No data to return beyond status/message, so it reuses the
+    ``StatusMessageResponseSchema`` shape (matching the
+    ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).
+    """
+
+    pass
+
+
 class RegisterResponseSchema(StatusMessageResponseSchema):
     pass
 

@@ -6693,6 +6693,75 @@
         }
       }
     },
+    "/users/{user_id}/password": {
+      "put": {
+        "operationId": "changePassword",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the authenticated change-password endpoint.\n\n    No data to return beyond status/message, so it reuses the\n    ``StatusMessageResponseSchema`` shape (matching the\n    ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePasswordResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ChangePasswordErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ChangePasswordErrorCodes": {
+            "$ref": "#/components/schemas/ChangePasswordErrorCodes"
+          }
+        }
+      }
+    },
     "/users/{user_id}/oauth/link/{provider}": {
       "post": {
         "operationId": "linkOauthProvider",
@@ -10134,6 +10203,69 @@
           "RATE_LIMITED"
         ],
         "description": "Error codes for ChangeUsernameErrorCodes"
+      },
+      "ChangePasswordRequest": {
+        "properties": {
+          "currentPassword": {
+            "description": "Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy",
+            "minLength": 1,
+            "type": "string"
+          },
+          "newPassword": {
+            "description": "New password for the account",
+            "maxLength": 64,
+            "minLength": 12,
+            "type": "string"
+          },
+          "confirmNewPassword": {
+            "description": "New password confirmation, must match new password",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["currentPassword", "newPassword", "confirmNewPassword"],
+        "type": "object"
+      },
+      "ChangePasswordResponseSchema": {
+        "description": "Response for the authenticated change-password endpoint.\n\nNo data to return beyond status/message, so it reuses the\n``StatusMessageResponseSchema`` shape (matching the\n``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).",
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": ["Success", "Failure", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": ["status", "message"],
+        "type": "object"
+      },
+      "ErrorResponse_ChangePasswordErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ChangePasswordErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ChangePasswordErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "INVALID_PASSWORD",
+          "OAUTH_ONLY_NO_PASSWORD"
+        ],
+        "description": "Error codes for ChangePasswordErrorCodes"
       },
       "ProviderLinkRequest": {
         "properties": {
