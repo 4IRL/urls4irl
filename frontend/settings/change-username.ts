@@ -10,10 +10,10 @@
  *   #SettingsChangeUsernameBtn[data-action-url]   PUT target for the rename
  *
  * On a 200 the endpoint echoes the (possibly unchanged) username back; the
- * handler updates BOTH the input value AND the read-only account-info username
- * card in place (DD-15 — no page reload) and renders the server-sourced banner
- * text (DD-12) into the form's own status region for both the success and
- * no-op branches.
+ * handler updates the input value, the read-only account-info username card,
+ * AND the navbar "Logged in as" label(s) in place (DD-15 — no page reload) and
+ * renders the server-sourced banner text (DD-12) into the form's own status
+ * region for both the success and no-op branches.
  */
 
 import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
@@ -29,6 +29,10 @@ const BUTTON_ID = "SettingsChangeUsernameBtn";
 const STATUS_ID = "SettingsUsernameStatus";
 const ACCOUNT_USERNAME_VALUE_SELECTOR =
   '[data-account-info="username"] .SettingsStatValue';
+// The navbar "Logged in as <username>" label(s) — the dropdown header and the
+// desktop inline copy both wrap the username in this span so it refreshes in
+// place too (otherwise the navbar shows the stale pre-rename username).
+const NAV_USERNAME_SELECTOR = ".navLoggedInAsUsername";
 
 const CLICK_NAMESPACE = "click.changeUsername";
 const KEYUP_NAMESPACE = "keyup.changeUsername";
@@ -84,11 +88,13 @@ function submitUsernameChange(buttonEl: HTMLButtonElement): void {
     setInFlight(buttonEl, false);
     if (xhr.status !== 200) return;
 
-    // Update-in-place (DD-15): refresh both on-page displays from the single
-    // echoed username so they never drift without a reload.
+    // Update-in-place (DD-15): refresh every on-page display from the single
+    // echoed username so they never drift without a reload — the form input,
+    // the read-only account-info card, and the navbar "Logged in as" label(s).
     const echoedUsername = response.username;
     $(`#${INPUT_ID}`).val(echoedUsername);
     $(ACCOUNT_USERNAME_VALUE_SELECTOR).text(echoedUsername);
+    $(NAV_USERNAME_SELECTOR).text(echoedUsername);
 
     // Server-sourced banner text (DD-12) for both success and no-op branches.
     showStatus({ message: response.message, type: "success" });

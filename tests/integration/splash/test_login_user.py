@@ -634,7 +634,13 @@ def test_already_logged_in_user_to_home_page(login_first_user_with_register):
     assert current_user.email == logged_in_user.email.lower()
     assert int(current_user.get_id()) == logged_in_user.id
 
-    assert bytes(f"Logged in as {current_user.username}", "utf-8") in response.data
+    assert (
+        bytes(
+            f'Logged in as <span class="navLoggedInAsUsername">{current_user.username}</span>',
+            "utf-8",
+        )
+        in response.data
+    )
 
 
 def test_user_can_logout_after_login(login_first_user_with_register):

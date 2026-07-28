@@ -30,6 +30,8 @@ const RATE_LIMIT_MESSAGE =
 
 function formHtml(currentUsername: string): string {
   return `
+    <b id="loggedInAsHeader">Logged in as <span class="navLoggedInAsUsername">${currentUsername}</span></b>
+    <b>Logged in as <span class="navLoggedInAsUsername">${currentUsername}</span></b>
     <section id="SettingsPanelAccount">
       <div class="SettingsStatCard" data-account-info="username">
         <dd class="SettingsStatValue">${currentUsername}</dd>
@@ -102,11 +104,17 @@ describe("change-username", () => {
     expect(vi.mocked(ajaxCall)).toHaveBeenCalledWith("put", CHANGE_URL, {
       username: NEW_USERNAME,
     });
-    // Both on-page displays refresh from the echoed username.
+    // Every on-page display refreshes from the echoed username — the input, the
+    // account-info card, and both navbar "Logged in as" labels.
     expect($("#SettingsNewUsername").val()).toBe(NEW_USERNAME);
     expect($('[data-account-info="username"] .SettingsStatValue').text()).toBe(
       NEW_USERNAME,
     );
+    const navLabels = $(".navLoggedInAsUsername");
+    expect(navLabels.length).toBe(2);
+    navLabels.each(function () {
+      expect($(this).text()).toBe(NEW_USERNAME);
+    });
     // Server-sourced banner text rendered.
     const status = $("#SettingsUsernameStatus");
     expect(status.hasClass("d-none")).toBe(false);

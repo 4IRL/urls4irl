@@ -326,8 +326,9 @@ def test_change_username_happy_path_updates_in_place(
     GIVEN a logged-in user on the settings Account tab
     WHEN they open the (collapsed-by-default) form, enter a new, unique username
         and click Save
-    THEN the success banner is shown and BOTH the input and the read-only
-        account-info username card update in place (no page reload).
+    THEN the success banner is shown and the input, the read-only account-info
+        username card, AND the navbar "Logged in as" label all update in place
+        (no page reload).
     """
     new_username = "renamed_ui_user"
 
@@ -349,9 +350,11 @@ def test_change_username_happy_path_updates_in_place(
     expect(status).to_be_visible()
     expect(status).to_have_text(UI_TEST_STRINGS.SETTINGS_USERNAME_CHANGE_SUCCESS)
 
-    # Update-in-place (DD-15): both displays reflect the new username.
+    # Update-in-place (DD-15): every display reflects the new username, including
+    # the navbar "Logged in as" label.
     expect(page.locator(SPL.CHANGE_USERNAME_INPUT)).to_have_value(new_username)
     expect(page.locator(SPL.ACCOUNT_INFO_USERNAME_VALUE)).to_have_text(new_username)
+    expect(page.locator(SPL.NAV_LOGGED_IN_AS_USERNAME)).to_have_text(new_username)
 
 
 def test_change_username_duplicate_name_shows_field_error(

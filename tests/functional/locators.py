@@ -825,6 +825,9 @@ class SettingsPageLocators(GenericPageLocator):
     CHANGE_USERNAME_BTN = "#SettingsChangeUsernameBtn"
     USERNAME_STATUS = "#SettingsUsernameStatus"
     USERNAME_INVALID_FEEDBACK = "#SettingsNewUsername ~ .invalid-feedback"
+    # Navbar "Logged in as <username>" label; a successful rename refreshes it in
+    # place (desktop-inline copy, visible above 992px).
+    NAV_LOGGED_IN_AS_USERNAME = "#userLoggedInDesktop .navLoggedInAsUsername"
 
     # Change-password form (Account tab). Mirrors the ids rendered (gated by
     # `connected_accounts_has_password`) in backend/templates/pages/settings.html
