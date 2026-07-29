@@ -13,7 +13,6 @@ from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.playwright_utils import (
     Decks,
     click_on_navbar,
-    wait_then_click_element,
     wait_until_visible_css_selector,
 )
 
@@ -206,14 +205,28 @@ def assert_visited_403_on_invalid_csrf_and_reload(*, page: Page) -> None:
     expect(error_page_subheader).to_have_text(IDENTIFIERS.HTML_403)
 
     # The refresh button's click listener is attached by error.ts inside
-    # $(document).ready(...), which only runs once that module script has
-    # executed. The button is DOM-visible before then, so waiting on
-    # visibility alone lets the click land before the listener is bound,
-    # silently no-op-ing. Module scripts block "load", so this wait
-    # guarantees the listener is attached before the click is issued.
+    # $(document).ready(...). Waiting for "load" is NOT sufficient to guarantee
+    # the listener is bound: when the document is already complete, jQuery runs
+    # its ready callback asynchronously (a tick after "load"), so a single click
+    # can still land before the handler binds and silently no-op — leaving the
+    # page stuck on the 403 screen (a load-dependent flake seen under CI). Real
+    # users never click that fast; harden the test by retrying the click until
+    # the error screen is actually left, re-clicking only while still on it.
     page.wait_for_load_state("load")
     wait_until_visible_css_selector(page=page, css_selector=SPL.ERROR_PAGE_REFRESH_BTN)
-    wait_then_click_element(page=page, css_selector=SPL.ERROR_PAGE_REFRESH_BTN)
+    refresh_button = page.locator(SPL.ERROR_PAGE_REFRESH_BTN).first
+
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        if not error_page_subheader.is_visible():
+            return
+        refresh_button.click()
+        try:
+            expect(error_page_subheader).to_be_hidden(timeout=2_000)
+            return
+        except AssertionError:
+            if attempt == max_attempts - 1:
+                raise
 
 
 def assert_element_in_focus(*, page: Page, locator: Locator) -> None:
