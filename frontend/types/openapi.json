@@ -6614,6 +6614,164 @@
         }
       }
     },
+    "/users/{user_id}/username": {
+      "put": {
+        "operationId": "changeUsername",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Change the authenticated user's username. Requires no password re-authentication (Decision #1), so OAuth-only accounts can rename. Rate-limited to a few changes per rolling 24h per user via a Redis-only counter; the cap returns HTTP 429.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeUsernameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the authenticated change-username endpoint.\n\n    One shape for every 200 response \u2014 the success branch and the no-op branch\n    both populate all three fields, differing only in ``status``/``message``\n    (DD-12: the banner text is server-sourced off ``message``). Carries the\n    echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so\n    the client can refresh the on-page displays without a reload (DD-15).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeUsernameResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ChangeUsernameErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ChangeUsernameErrorCodes": {
+            "$ref": "#/components/schemas/ChangeUsernameErrorCodes"
+          }
+        }
+      }
+    },
+    "/users/{user_id}/password": {
+      "put": {
+        "operationId": "changePassword",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts. A per-user brute-force lockout shared with the settings OAuth-link gate returns 429 after too many wrong-password attempts (DD-1).",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the authenticated change-password endpoint.\n\n    No data to return beyond status/message, so it reuses the\n    ``StatusMessageResponseSchema`` shape (matching the\n    ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePasswordResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ChangePasswordErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ChangePasswordErrorCodes": {
+            "$ref": "#/components/schemas/ChangePasswordErrorCodes"
+          }
+        }
+      }
+    },
     "/users/{user_id}/oauth/link/{provider}": {
       "post": {
         "operationId": "linkOauthProvider",
@@ -6624,7 +6782,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance.",
+        "description": "Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts (DD-1).",
         "parameters": [
           {
             "name": "user_id",
@@ -6692,6 +6850,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -9923,7 +10091,7 @@
       },
       "OAuthLinkErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
         "x-enum-varnames": [
           "INVALID_FORM_INPUT",
           "PROVIDER_NOT_CONFIGURED",
@@ -9931,7 +10099,8 @@
           "INVALID_PASSWORD",
           "NOT_LINKED",
           "LAST_METHOD",
-          "INTENT_INVALID"
+          "INTENT_INVALID",
+          "TOO_MANY_ATTEMPTS"
         ],
         "description": "Error codes for OAuthLinkErrorCodes"
       },
@@ -9997,6 +10166,128 @@
         },
         "required": ["status"],
         "type": "object"
+      },
+      "ChangeUsernameRequest": {
+        "properties": {
+          "username": {
+            "description": "The new username for the authenticated account",
+            "examples": ["john_doe"],
+            "maxLength": 20,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": ["username"],
+        "type": "object"
+      },
+      "ChangeUsernameResponseSchema": {
+        "description": "Response for the authenticated change-username endpoint.\n\nOne shape for every 200 response \u2014 the success branch and the no-op branch\nboth populate all three fields, differing only in ``status``/``message``\n(DD-12: the banner text is server-sourced off ``message``). Carries the\nechoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so\nthe client can refresh the on-page displays without a reload (DD-15).",
+        "properties": {
+          "username": {
+            "description": "The account's username after the change (echoed back)",
+            "type": "string"
+          },
+          "status": {
+            "description": "Response status: Success or No change",
+            "enum": ["Success", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable, server-sourced banner text",
+            "type": "string"
+          }
+        },
+        "required": ["username", "status", "message"],
+        "type": "object"
+      },
+      "ErrorResponse_ChangeUsernameErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ChangeUsernameErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ChangeUsernameErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "USERNAME_TAKEN",
+          "RATE_LIMITED"
+        ],
+        "description": "Error codes for ChangeUsernameErrorCodes"
+      },
+      "ChangePasswordRequest": {
+        "properties": {
+          "currentPassword": {
+            "description": "Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy",
+            "minLength": 1,
+            "type": "string"
+          },
+          "newPassword": {
+            "description": "New password for the account",
+            "maxLength": 64,
+            "minLength": 12,
+            "type": "string"
+          },
+          "confirmNewPassword": {
+            "description": "New password confirmation, must match new password",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["currentPassword", "newPassword", "confirmNewPassword"],
+        "type": "object"
+      },
+      "ChangePasswordResponseSchema": {
+        "description": "Response for the authenticated change-password endpoint.\n\nNo data to return beyond status/message, so it reuses the\n``StatusMessageResponseSchema`` shape (matching the\n``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).",
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": ["Success", "Failure", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": ["status", "message"],
+        "type": "object"
+      },
+      "ErrorResponse_ChangePasswordErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ChangePasswordErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ChangePasswordErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "INVALID_PASSWORD",
+          "OAUTH_ONLY_NO_PASSWORD",
+          "TOO_MANY_ATTEMPTS"
+        ],
+        "description": "Error codes for ChangePasswordErrorCodes"
       },
       "ProviderLinkRequest": {
         "properties": {

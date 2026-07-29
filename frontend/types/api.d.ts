@@ -1234,6 +1234,40 @@ export interface paths {
     patch: operations["updateUrlTitle"];
     trace?: never;
   };
+  "/users/{user_id}/username": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description Change the authenticated user's username. Requires no password re-authentication (Decision #1), so OAuth-only accounts can rename. Rate-limited to a few changes per rolling 24h per user via a Redis-only counter; the cap returns HTTP 429. */
+    put: operations["changeUsername"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/users/{user_id}/password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts. A per-user brute-force lockout shared with the settings OAuth-link gate returns 429 after too many wrong-password attempts (DD-1). */
+    put: operations["changePassword"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -1243,7 +1277,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. */
+    /** @description Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts (DD-1). */
     post: operations["linkOauthProvider"];
     /** @description Disconnect an OAuth provider from the authenticated user's account. Blocked when it is the account's last remaining sign-in method (no password and a single linked identity). */
     delete: operations["unlinkOauthProvider"];
@@ -2587,7 +2621,7 @@ export interface components {
      * @description Error codes for OAuthLinkErrorCodes
      * @enum {integer}
      */
-    OAuthLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+    OAuthLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
     ResetPasswordRequest: {
       /** @description New password for the account */
       newPassword: string;
@@ -2615,6 +2649,73 @@ export interface components {
       /** @description Service health status */
       status: string;
     };
+    ChangeUsernameRequest: {
+      /**
+       * @description The new username for the authenticated account
+       * @example john_doe
+       */
+      username: string;
+    };
+    /**
+     * @description Response for the authenticated change-username endpoint.
+     *
+     *     One shape for every 200 response — the success branch and the no-op branch
+     *     both populate all three fields, differing only in ``status``/``message``
+     *     (DD-12: the banner text is server-sourced off ``message``). Carries the
+     *     echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so
+     *     the client can refresh the on-page displays without a reload (DD-15).
+     */
+    ChangeUsernameResponseSchema: {
+      /** @description The account's username after the change (echoed back) */
+      username: string;
+      /**
+       * @description Response status: Success or No change
+       * @enum {string}
+       */
+      status: "Success" | "No change";
+      /** @description Human-readable, server-sourced banner text */
+      message: string;
+    };
+    ErrorResponse_ChangeUsernameErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["ChangeUsernameErrorCodes"];
+    };
+    /**
+     * @description Error codes for ChangeUsernameErrorCodes
+     * @enum {integer}
+     */
+    ChangeUsernameErrorCodes: 1 | 2 | 3;
+    ChangePasswordRequest: {
+      /** @description Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy */
+      currentPassword: string;
+      /** @description New password for the account */
+      newPassword: string;
+      /** @description New password confirmation, must match new password */
+      confirmNewPassword: string;
+    };
+    /**
+     * @description Response for the authenticated change-password endpoint.
+     *
+     *     No data to return beyond status/message, so it reuses the
+     *     ``StatusMessageResponseSchema`` shape (matching the
+     *     ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).
+     */
+    ChangePasswordResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
+    };
+    ErrorResponse_ChangePasswordErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["ChangePasswordErrorCodes"];
+    };
+    /**
+     * @description Error codes for ChangePasswordErrorCodes
+     * @enum {integer}
+     */
+    ChangePasswordErrorCodes: 1 | 2 | 3 | 4;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -7051,6 +7152,126 @@ export interface operations {
       };
     };
   };
+  changeUsername: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ChangeUsernameRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the authenticated change-username endpoint.
+       *
+       *         One shape for every 200 response — the success branch and the no-op branch
+       *         both populate all three fields, differing only in ``status``/``message``
+       *         (DD-12: the banner text is server-sourced off ``message``). Carries the
+       *         echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so
+       *         the client can refresh the on-page displays without a reload (DD-15).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeUsernameResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ChangeUsernameErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  changePassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ChangePasswordRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the authenticated change-password endpoint.
+       *
+       *         No data to return beyond status/message, so it reuses the
+       *         ``StatusMessageResponseSchema`` shape (matching the
+       *         ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangePasswordResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ChangePasswordErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   linkOauthProvider: {
     parameters: {
       query?: never;
@@ -7097,6 +7318,15 @@ export interface operations {
       };
       /** @description Not found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
         headers: {
           [name: string]: unknown;
         };

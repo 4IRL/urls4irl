@@ -45,6 +45,10 @@ from backend.utils.strings.user_strs import (
     CONFIRM_EMAIL_SENT,
     COOKIE_BANNER_SEEN,
     MEMBER_SEARCH_NO_RESULTS,
+    PASSWORD_CHANGE_SUCCESS,
+    TOO_MANY_PASSWORD_ATTEMPTS,
+    USERNAME_CHANGE_NO_CHANGE,
+    USERNAME_CHANGE_SUCCESS,
 )
 from backend.utils.strings.utub_strs import UTUB_SEARCH_NO_RESULTS
 
@@ -54,6 +58,7 @@ class UI_TEST_STRINGS:
     DOCKER_BASE_URL = "http://web:"
 
     TEST_USERNAME_1 = USERNAME_BASE + "1"
+    TEST_USERNAME_2 = USERNAME_BASE + "2"
     # Using password as email
     TEST_PASSWORD_1 = TEST_USERNAME_1 + EMAIL_SUFFIX
 
@@ -409,6 +414,48 @@ class UI_TEST_STRINGS:
     )
     SETTINGS_CONNECT_BUTTON_TEXT = USER_SETTINGS_STRINGS.CONNECT_BUTTON_TEXT
     SETTINGS_DISCONNECT_BUTTON_TEXT = USER_SETTINGS_STRINGS.DISCONNECT_BUTTON_TEXT
+
+    # Account information section (Account tab) — read-only card labels the
+    # account-info tests assert against, re-exported from the backend source
+    # the template renders.
+    SETTINGS_ACCOUNT_INFO_TITLE = USER_SETTINGS_STRINGS.ACCOUNT_INFO_TITLE
+    SETTINGS_ACCOUNT_INFO_HINT = USER_SETTINGS_STRINGS.ACCOUNT_INFO_HINT
+    SETTINGS_ACCOUNT_USERNAME_LABEL = USER_SETTINGS_STRINGS.ACCOUNT_USERNAME_LABEL
+    SETTINGS_ACCOUNT_EMAIL_LABEL = USER_SETTINGS_STRINGS.ACCOUNT_EMAIL_LABEL
+    SETTINGS_ACCOUNT_MEMBER_SINCE_LABEL = (
+        USER_SETTINGS_STRINGS.ACCOUNT_MEMBER_SINCE_LABEL
+    )
+    SETTINGS_ACCOUNT_EMAIL_STATUS_LABEL = (
+        USER_SETTINGS_STRINGS.ACCOUNT_EMAIL_STATUS_LABEL
+    )
+    SETTINGS_ACCOUNT_EMAIL_VERIFIED = USER_SETTINGS_STRINGS.ACCOUNT_EMAIL_VERIFIED
+    SETTINGS_ACCOUNT_EMAIL_UNVERIFIED = USER_SETTINGS_STRINGS.ACCOUNT_EMAIL_UNVERIFIED
+
+    # Change-username form (Account tab) — static labels re-exported so the UI
+    # tests assert against the same backend source the template renders.
+    SETTINGS_CHANGE_USERNAME_TITLE = USER_SETTINGS_STRINGS.CHANGE_USERNAME_TITLE
+    SETTINGS_CHANGE_USERNAME_HINT = USER_SETTINGS_STRINGS.CHANGE_USERNAME_HINT
+    SETTINGS_CHANGE_USERNAME_LABEL = USER_SETTINGS_STRINGS.CHANGE_USERNAME_LABEL
+    SETTINGS_CHANGE_USERNAME_BUTTON = USER_SETTINGS_STRINGS.CHANGE_USERNAME_BUTTON
+
+    # Change-username 200 banner copy (server-sourced envelope text) — asserted
+    # by the integration tests (DD-17) against the backend source constants.
+    SETTINGS_USERNAME_CHANGE_SUCCESS = USERNAME_CHANGE_SUCCESS
+    SETTINGS_USERNAME_CHANGE_NO_CHANGE = USERNAME_CHANGE_NO_CHANGE
+
+    # Change-password form (Account tab) — static labels re-exported so the UI
+    # tests assert against the same backend source the template renders.
+    SETTINGS_CHANGE_PASSWORD_TITLE = USER_SETTINGS_STRINGS.CHANGE_PASSWORD_TITLE
+    SETTINGS_CHANGE_PASSWORD_BUTTON = USER_SETTINGS_STRINGS.CHANGE_PASSWORD_BUTTON
+    SETTINGS_CHANGE_PASSWORD_OAUTH_ONLY_NOTE = (
+        USER_SETTINGS_STRINGS.CHANGE_PASSWORD_OAUTH_ONLY_NOTE
+    )
+    # Change-password 200 banner copy (server-sourced envelope text) — asserted
+    # by the UI happy-path test against the backend source constant.
+    SETTINGS_PASSWORD_CHANGE_SUCCESS = PASSWORD_CHANGE_SUCCESS
+    # Shared re-auth brute-force lockout copy (DD-1) — the 429 banner text both
+    # re-auth gates surface, re-exported so tests assert the backend source.
+    SETTINGS_TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
 
     # Stats section (Stats tab) — the six card labels the stats tests assert
     # against, re-exported from the backend source the template renders.

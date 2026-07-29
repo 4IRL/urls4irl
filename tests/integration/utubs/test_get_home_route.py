@@ -82,7 +82,7 @@ def test_get_home_page(
     response = client.get(url_to_get)
     assert response.status_code == 200
     assert (
-        f'<b id="loggedInAsHeader">Logged in as {logged_in_username}</b>'.encode()
+        f'<b id="loggedInAsHeader">Logged in as <span class="navLoggedInAsUsername">{logged_in_username}</span></b>'.encode()
         in response.data
     )
 

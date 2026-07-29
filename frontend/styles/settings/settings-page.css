@@ -238,6 +238,175 @@
     margin-bottom: 16px;
 }
 
+/* ---- Account information (Account tab) ---------------------------------- */
+
+.SettingsAccountInfoTitle {
+    color: #fff;
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* Dedicated 2x2 read-only info grid — reuses the .SettingsStatCard/Label/Value
+   card idiom but is NOT the three-across .SettingsStatsGrid. Scoped under the
+   Account panel so it never collides with the Stats panel grid. */
+#SettingsPanelAccount .SettingsAccountInfoGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+    margin: 0 0 var(--space-6);
+}
+
+/* Long usernames/emails must never overflow the card. First shrink the value
+   responsively down to a still-readable floor (clamp), then let it wrap so an
+   extra-long email breaks onto another line instead of spilling out. Scoped to
+   the account-info cards so the numeric Stats panel keeps its fixed size +
+   tabular-nums alignment. min-width:0 lets the value shrink inside the grid
+   track (grid/flex children default to min-width:auto). */
+#SettingsPanelAccount .SettingsAccountInfoGrid .SettingsStatCard {
+    min-width: 0;
+}
+
+#SettingsPanelAccount .SettingsAccountInfoGrid .SettingsStatValue {
+    font-size: clamp(1.1rem, 4.5vw, 1.6rem);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.SettingsAccountVerified {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--deckSelectionGreen);
+    font-weight: 700;
+}
+
+.SettingsAccountUnverified {
+    color: var(--cardURLTextColor);
+    font-weight: 700;
+}
+
+@media (max-width: 575.98px) {
+    #SettingsPanelAccount .SettingsAccountInfoGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---- Account forms (change username / change password) ------------------ */
+
+.SettingsChangeUsername,
+.SettingsChangePassword {
+    margin-bottom: var(--space-6);
+}
+
+.SettingsChangeUsernameTitle,
+.SettingsChangePasswordTitle {
+    color: #fff;
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* Collapsible account forms: username/password default to closed so they don't
+   eat vertical space. Native <details>/<summary> — accessible + zero JS. */
+#SettingsPanelAccount details.SettingsDisclosure {
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    background: var(--cardBackgroundColor);
+}
+
+#SettingsPanelAccount .SettingsDisclosureSummary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    cursor: pointer;
+    padding: var(--space-3) var(--space-4);
+    list-style: none;
+    user-select: none;
+}
+
+/* Hide the default disclosure triangle in WebKit/Blink (Firefox uses list-style). */
+#SettingsPanelAccount .SettingsDisclosureSummary::-webkit-details-marker {
+    display: none;
+}
+
+/* Custom chevron: points down when closed, rotates up when open. */
+#SettingsPanelAccount .SettingsDisclosureSummary::after {
+    content: "";
+    flex: 0 0 auto;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-right: 2px solid var(--cardURLTextColor);
+    border-bottom: 2px solid var(--cardURLTextColor);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+}
+
+#SettingsPanelAccount details.SettingsDisclosure[open] .SettingsDisclosureSummary::after {
+    transform: rotate(-135deg);
+}
+
+#SettingsPanelAccount .SettingsDisclosureSummary:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+#SettingsPanelAccount .SettingsDisclosureBody {
+    padding: 0 var(--space-4) var(--space-4);
+}
+
+/* OAuth-only accounts see this note in place of the password form (mirrors the
+   .ConnectedAccountLastMethodNote muted-italic treatment). */
+.SettingsChangePasswordOAuthNote {
+    color: var(--cardURLTextColor);
+    font-size: 0.9rem;
+    font-style: italic;
+    margin: 4px 0 0;
+}
+
+#SettingsPanelAccount .form-group {
+    margin-bottom: var(--space-3);
+    max-width: 360px;
+}
+
+#SettingsPanelAccount .form-group label {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+    margin: 0 0 4px;
+}
+
+#SettingsPanelAccount .form-control {
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    color: #fff;
+    min-height: 2.75rem;
+}
+
+#SettingsPanelAccount .form-control:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 1px;
+}
+
+#SettingsPanelAccount .btn {
+    min-height: 2.75rem;
+}
+
+#SettingsPanelAccount .btn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media (max-width: 575.98px) {
+    #SettingsPanelAccount .form-group {
+        max-width: 100%;
+    }
+
+    #SettingsPanelAccount .btn {
+        width: 100%;
+    }
+}
+
 /* ---- Stats (Stats tab) -------------------------------------------------- */
 
 .SettingsStatsSectionTitle {

@@ -19,13 +19,27 @@ from backend.app_logger import warning_log
 from backend.models.users import Users
 from backend.schemas.base import StatusMessageResponseSchema
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.users import ProviderLinkRequest
-from backend.schemas.users import LoginRedirectResponseSchema
+from backend.schemas.requests.users import (
+    ChangePasswordRequest,
+    ChangeUsernameRequest,
+    ProviderLinkRequest,
+)
+from backend.schemas.users import (
+    ChangePasswordResponseSchema,
+    ChangeUsernameResponseSchema,
+    LoginRedirectResponseSchema,
+)
 from backend.splash.constants import OAuthLinkErrorCodes
 from backend.splash.services.oauth.linking_service import (
     build_connected_accounts_context,
     initiate_settings_link,
     unlink_provider,
+)
+from backend.users.constants import ChangePasswordErrorCodes, ChangeUsernameErrorCodes
+from backend.users.services.account_service import (
+    apply_password_change,
+    apply_username_change,
+    build_account_info_context,
 )
 from backend.users.services.stats_service import build_user_stats_context
 from backend.utils.all_routes import ROUTES
@@ -34,7 +48,7 @@ from backend.utils.strings.api_auth_strs import API_AUTH
 from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.oauth_strs import LINK_INVALID_PASSWORD_MESSAGE
 from backend.utils.strings.openapi_strs import OPEN_API
-from backend.utils.strings.user_strs import SESSION_ISSUED_AT_KEY
+from backend.utils.strings.user_strs import SESSION_ISSUED_AT_KEY, USER_FAILURE
 
 users = Blueprint("users", __name__)
 
@@ -150,6 +164,61 @@ def settings() -> str:
         is_settings=True,
         **build_connected_accounts_context(),
         **build_user_stats_context(),
+        **build_account_info_context(),
+    )
+
+
+@users.route("/users/<int:user_id>/username", methods=["PUT"])
+@email_validation_required
+@api_route(
+    request_schema=ChangeUsernameRequest,
+    response_schema=ChangeUsernameResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=ChangeUsernameErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Change the authenticated user's username. Requires no password re-authentication (Decision #1), so OAuth-only accounts can rename. Rate-limited to a few changes per rolling 24h per user via a Redis-only counter; the cap returns HTTP 429.",
+    status_codes={
+        200: ChangeUsernameResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        429: ErrorResponse,
+    },
+)
+def change_username(
+    user_id: int, change_username_request: ChangeUsernameRequest
+) -> FlaskResponse:
+    """Applies the authenticated change-username flow (self-service only; the
+    self-ownership/uniqueness/rate-limit policy is enforced in the service)."""
+    return apply_username_change(
+        user_id=user_id, new_username=change_username_request.username
+    )
+
+
+@users.route("/users/<int:user_id>/password", methods=["PUT"])
+@email_validation_required
+@api_route(
+    request_schema=ChangePasswordRequest,
+    response_schema=ChangePasswordResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=ChangePasswordErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts. A per-user brute-force lockout shared with the settings OAuth-link gate returns 429 after too many wrong-password attempts (DD-1).",
+    status_codes={
+        200: ChangePasswordResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        429: ErrorResponse,
+    },
+)
+def change_password(
+    user_id: int, change_password_request: ChangePasswordRequest
+) -> FlaskResponse:
+    """Applies the authenticated change-password flow (self-service only; the
+    self-ownership / OAuth-only / re-auth policy is enforced in the service)."""
+    return apply_password_change(
+        user_id=user_id,
+        current_password=change_password_request.password,
+        new_password=change_password_request.new_password,
     )
 
 
@@ -161,12 +230,13 @@ def settings() -> str:
     error_message=LINK_INVALID_PASSWORD_MESSAGE,
     error_code=OAuthLinkErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.AUTH],
-    description="Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance.",
+    description="Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts (DD-1).",
     status_codes={
         200: LoginRedirectResponseSchema,
         400: ErrorResponse,
         403: ErrorResponse,
         404: ErrorResponse,
+        429: ErrorResponse,
     },
 )
 def link_oauth_provider(

@@ -5,9 +5,12 @@ import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
+from backend import db
+from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.conftest import AjaxFlaskLoginClient
 
 pytestmark = pytest.mark.account_and_support
 
@@ -36,6 +39,119 @@ def _slice_stat_card(resp_data: bytes, stat_name: str) -> bytes:
         else resp_data.index(_NEXT_PANEL_MARKER, card_start)
     )
     return resp_data[card_start:card_end]
+
+
+# The account-info grid is the first <dl> in document order (the Account panel
+# precedes the Stats panel), so its closing tag bounds the final
+# ("email-verified") account-info card's slice.
+_ACCOUNT_INFO_GRID_END = b"</dl>"
+
+
+def _slice_account_info_card(resp_data: bytes, info_name: str) -> bytes:
+    """Return the byte slice spanning a single account-info card, from its
+    ``data-account-info="…"`` attribute up to the next card's
+    ``data-account-info`` (or, for the last card, the account-info grid's
+    closing ``</dl>``).
+
+    Mirrors ``_slice_stat_card`` so a value rendered in the *wrong* card fails
+    the assertion, unlike a bare ``in resp.data`` check.
+    """
+    card_start = resp_data.index(f'data-account-info="{info_name}"'.encode())
+    next_card = resp_data.find(b'data-account-info="', card_start + 1)
+    card_end = (
+        next_card
+        if next_card != -1
+        else resp_data.index(_ACCOUNT_INFO_GRID_END, card_start)
+    )
+    return resp_data[card_start:card_end]
+
+
+def test_settings_account_info_renders_user_details(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The Account panel's read-only account-info block renders the user's
+    username, email, exact member-since date, and a verified email indicator,
+    each within its own card slice so a value in the wrong card fails."""
+    logged_in_client, _, _, app = login_first_user_with_register
+
+    resp = logged_in_client.get(url_for(ROUTES.USERS.SETTINGS))
+
+    assert resp.status_code == 200
+
+    # Section heading + all four card labels render.
+    for label in (
+        UI_TEST_STRINGS.SETTINGS_ACCOUNT_INFO_TITLE,
+        UI_TEST_STRINGS.SETTINGS_ACCOUNT_USERNAME_LABEL,
+        UI_TEST_STRINGS.SETTINGS_ACCOUNT_EMAIL_LABEL,
+        UI_TEST_STRINGS.SETTINGS_ACCOUNT_MEMBER_SINCE_LABEL,
+        UI_TEST_STRINGS.SETTINGS_ACCOUNT_EMAIL_STATUS_LABEL,
+    ):
+        assert label.encode() in resp.data
+
+    with app.app_context():
+        seeded_user: Users = Users.query.get(1)
+        expected_username = seeded_user.username.encode()
+        expected_email = seeded_user.email.encode()
+        expected_iso = seeded_user.created_at.date().isoformat().encode()
+        expected_exact = (
+            f"{seeded_user.created_at:%B} {seeded_user.created_at.day}, "
+            f"{seeded_user.created_at:%Y}"
+        ).encode()
+
+    assert expected_username in _slice_account_info_card(resp.data, "username")
+    assert expected_email in _slice_account_info_card(resp.data, "email")
+
+    member_since_slice = _slice_account_info_card(resp.data, "member-since")
+    assert expected_iso in member_since_slice
+    assert expected_exact in member_since_slice
+
+    # The email-status card shows the verified indicator (the settings page is
+    # gated by email_validation_required, so a reaching user is always verified).
+    verified_slice = _slice_account_info_card(resp.data, "email-verified")
+    assert UI_TEST_STRINGS.SETTINGS_ACCOUNT_EMAIL_VERIFIED.encode() in verified_slice
+
+
+def test_settings_account_info_renders_username_for_oauth_only_user(
+    app: Flask,
+) -> None:
+    """A password-less (OAuth-only) user still sees the account-info block with
+    their username rendered — the block always renders regardless of whether the
+    account has a password."""
+    app.test_client_class = AjaxFlaskLoginClient
+
+    oauth_only_username = "settingsinfooauthonly"
+    oauth_only_email = "settingsinfooauthonly@example.com"
+
+    with app.app_context():
+        oauth_user = Users(
+            username=oauth_only_username,
+            email=oauth_only_email,
+            plaintext_password=None,
+        )
+        oauth_user.oauth_identities.append(
+            UserOAuthIdentity(
+                provider="google",
+                provider_subject="sub_settings_info_oauth_only",
+            )
+        )
+        oauth_user.email_validated = True
+        db.session.add(oauth_user)
+        db.session.commit()
+
+    with app.app_context():
+        user_to_login: Users = Users.query.filter_by(email=oauth_only_email).first()
+
+    with app.test_client(user=user_to_login) as logged_in_client:
+        # Warm up the FlaskLoginClient login on /home first (matches every
+        # login_* fixture); the first request establishes the session before
+        # the settings page is fetched.
+        logged_in_client.get("/home")
+        resp = logged_in_client.get(_SETTINGS_PATH)
+
+    assert resp.status_code == 200
+    assert oauth_only_username.encode() in _slice_account_info_card(
+        resp.data, "username"
+    )
 
 
 def test_settings_page_renders_for_authenticated_user(

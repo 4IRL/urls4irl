@@ -5,5 +5,5 @@
    in logged_in_as.html takes over. `ms-auto` pushes it (and the trailing
    hamburger) to the right edge of the bar. #}
 <div class="nav-bar-inner-item home navbar-username-desktop ms-auto" id="userLoggedInDesktop">
-    <b>Logged in as {{ current_user.username }}</b>
+    <b>Logged in as <span class="navLoggedInAsUsername">{{ current_user.username }}</span></b>
 </div>

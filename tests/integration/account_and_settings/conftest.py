@@ -6,6 +6,7 @@ from flask.testing import FlaskClient
 
 from backend import db
 from backend.models.urls import Urls
+from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -13,7 +14,54 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from tests.conftest import AjaxFlaskLoginClient
-from tests.utils_for_test import seed_distinct_stats_for_user_one
+from tests.utils_for_test import get_csrf_token, seed_distinct_stats_for_user_one
+
+# Shared across account_and_settings tests (settings-link OAuth-only proof path
+# and the change-password OAuth-only guard). Moved here from test_oauth_linking.py
+# (Decision #7 / DD-11) so test_change_password.py can consume the fixture too.
+_OAUTH_ONLY_USERNAME = "settingslinkoauthonly"
+_OAUTH_ONLY_EMAIL = "settingslinkoauthonly@example.com"
+_OAUTH_ONLY_GOOGLE_SUBJECT = "sub_settings_link_oauth_only_google"
+
+
+def _seed_oauth_only_user(
+    app: Flask, *, username: str, email: str, provider: str, subject: str
+) -> None:
+    with app.app_context():
+        user = Users(username=username, email=email, plaintext_password=None)
+        user.oauth_identities.append(
+            UserOAuthIdentity(provider=provider, provider_subject=subject)
+        )
+        user.email_validated = True
+        db.session.add(user)
+        db.session.commit()
+
+
+@pytest.fixture
+def oauth_only_google_user_logged_in(
+    app: Flask,
+) -> Generator[Tuple[FlaskClient, str, Users, Flask], None, None]:
+    """Seeds an email-validated, password-less user with a linked google
+    identity, then logs them in via Flask-Login's test-client shortcut
+    (mirrors ``tests/conftest.py:login_first_user_with_register``) — how the
+    session was originally established is orthogonal to the endpoints under
+    test."""
+    _seed_oauth_only_user(
+        app,
+        username=_OAUTH_ONLY_USERNAME,
+        email=_OAUTH_ONLY_EMAIL,
+        provider="google",
+        subject=_OAUTH_ONLY_GOOGLE_SUBJECT,
+    )
+
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        user_to_login: Users = Users.query.filter_by(email=_OAUTH_ONLY_EMAIL).first()
+
+    with app.test_client(user=user_to_login) as logged_in_client:
+        logged_in_response = logged_in_client.get("/home")
+        csrf_token_string = get_csrf_token(logged_in_response.get_data(), meta_tag=True)
+        yield logged_in_client, csrf_token_string, user_to_login, app
 
 
 @pytest.fixture

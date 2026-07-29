@@ -320,6 +320,16 @@ def build_app(
     if worker_redis_uri and worker_redis_uri != "memory://":
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
+        # Isolate the shared ENFORCEMENT Redis per xdist worker too — not just
+        # the session store. `REDIS_URI` backs the fail-open per-user counters
+        # (`username-change:{id}`, `reauth-fail:{id}` — account_service and
+        # reauth_throttle). Every worker's first user is id=1, so leaving
+        # REDIS_URI on the shared base DB let concurrent workers stomp each
+        # other's `reauth-fail:1` counter (a lockout test's counter cleared or
+        # inflated by another worker → spurious 200/429). Pointing it at the
+        # worker DB (same namespace-isolated DB as SESSION_REDIS) removes the
+        # cross-worker collision.
+        config.REDIS_URI = worker_redis_uri
 
     app_for_test = create_app(config)  # type: ignore
     if app_for_test is None:

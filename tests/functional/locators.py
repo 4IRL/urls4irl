@@ -796,6 +796,58 @@ class SettingsPageLocators(GenericPageLocator):
     PANEL_PRIVACY_DATA = "#SettingsPanelPrivacyData"
     PANEL_UI_SETTINGS = "#SettingsPanelUiSettings"
 
+    # Account-info panel cards (Account tab). Each value locator targets the
+    # `data-account-info="…"` card's `.SettingsStatValue`, mirroring the
+    # four-card grid in backend/templates/pages/settings.html.
+    ACCOUNT_INFO_USERNAME_VALUE = (
+        '#SettingsPanelAccount [data-account-info="username"] .SettingsStatValue'
+    )
+    ACCOUNT_INFO_EMAIL_VALUE = (
+        '#SettingsPanelAccount [data-account-info="email"] .SettingsStatValue'
+    )
+    ACCOUNT_INFO_MEMBER_SINCE = (
+        '#SettingsPanelAccount [data-account-info="member-since"] .SettingsStatValue'
+    )
+    ACCOUNT_INFO_EMAIL_STATUS = (
+        '#SettingsPanelAccount [data-account-info="email-verified"] .SettingsStatValue'
+    )
+
+    # Change-username form (Account tab). Mirrors the ids rendered in
+    # backend/templates/pages/settings.html and the data-* contract in
+    # frontend/settings/change-username.ts.
+    # The form now lives inside a collapsible <details> that defaults to closed;
+    # click the summary to reveal the input/button before interacting.
+    CHANGE_USERNAME_SUMMARY = (
+        "#SettingsPanelAccount .SettingsChangeUsername .SettingsDisclosureSummary"
+    )
+    CHANGE_USERNAME_DETAILS = "#SettingsPanelAccount .SettingsChangeUsername"
+    CHANGE_USERNAME_INPUT = "#SettingsNewUsername"
+    CHANGE_USERNAME_BTN = "#SettingsChangeUsernameBtn"
+    USERNAME_STATUS = "#SettingsUsernameStatus"
+    USERNAME_INVALID_FEEDBACK = "#SettingsNewUsername ~ .invalid-feedback"
+    # Navbar "Logged in as <username>" label; a successful rename refreshes it in
+    # place (desktop-inline copy, visible above 992px).
+    NAV_LOGGED_IN_AS_USERNAME = "#userLoggedInDesktop .navLoggedInAsUsername"
+
+    # Change-password form (Account tab). Mirrors the ids rendered (gated by
+    # `connected_accounts_has_password`) in backend/templates/pages/settings.html
+    # and the data-* contract in frontend/settings/change-password.ts. The
+    # section wrapper is always present; the OAuth-only note replaces the form
+    # for password-less accounts.
+    CHANGE_PASSWORD_SECTION = "#SettingsPanelAccount .SettingsChangePassword"
+    # For password accounts the section is a collapsible <details> defaulting to
+    # closed; click the summary to reveal the fields. (OAuth-only accounts render
+    # a plain note in its place — no summary.)
+    CHANGE_PASSWORD_SUMMARY = (
+        "#SettingsPanelAccount .SettingsChangePassword .SettingsDisclosureSummary"
+    )
+    CHANGE_PASSWORD_CURRENT_INPUT = "#SettingsCurrentPassword"
+    CHANGE_PASSWORD_NEW_INPUT = "#SettingsNewPassword"
+    CHANGE_PASSWORD_CONFIRM_INPUT = "#SettingsConfirmNewPassword"
+    CHANGE_PASSWORD_BTN = "#SettingsChangePasswordBtn"
+    PASSWORD_STATUS = "#SettingsPasswordStatus"
+    CHANGE_PASSWORD_OAUTH_NOTE = ".SettingsChangePasswordOAuthNote"
+
     # Stats panel cards (Stats tab). Each value locator targets the
     # `data-stat="…"` card's `.SettingsStatValue`, mirroring the template's
     # six-card grid in backend/templates/pages/settings.html.

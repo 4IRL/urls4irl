@@ -53,6 +53,9 @@ class OAuthLinkErrorCodes(IntEnum):
     # return JSON), so it surfaces as a settings-page redirect
     # (link_error=subject_taken) rather than through this enum.
     INTENT_INVALID = 7
+    # Per-user re-auth brute-force lockout (shared with the change-password
+    # gate); surfaced as HTTP 429 (DD-1).
+    TOO_MANY_ATTEMPTS = 8
 
 
 class RegisterErrorCodes(IntEnum):

@@ -65,6 +65,8 @@ class USER_ROUTES:
     PRIVACY = _USERS + "privacy_policy"
     TERMS = _USERS + "terms_and_conditions"
     SETTINGS = _USERS + "settings"
+    CHANGE_USERNAME = _USERS + "change_username"
+    CHANGE_PASSWORD = _USERS + "change_password"
     OAUTH_LINK = _USERS + "link_oauth_provider"
     OAUTH_UNLINK = _USERS + "unlink_oauth_provider"
 

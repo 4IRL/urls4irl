@@ -37,13 +37,12 @@ from backend.cli.openapi import register_openapi_cli
 from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
 from backend.models.users import User_Role, Users
-from backend.utils.datetime_utils import utc_now
 from backend.utils.oauth_config import (
     should_register_github_oauth,
     should_register_google_oauth,
 )
+from backend.utils.session_utils import restamp_current_session
 from backend.utils.strings.config_strs import CONFIG_ENVS
-from backend.utils.strings.user_strs import SESSION_ISSUED_AT_KEY
 
 
 class ViteManifestEntry(TypedDict):
@@ -360,7 +359,9 @@ def create_app(
         # Stamped on EVERY login (password, OAuth, registration, email
         # validation) so the user_loader can reject sessions issued before
         # Users.sessionsInvalidatedAt — the admin web-session kill switch.
-        session[SESSION_ISSUED_AT_KEY] = utc_now().timestamp()
+        # Delegates to the shared helper so the session-issued-at write has a
+        # single source of truth across the login signal and change-password.
+        restamp_current_session()
 
     add_security_headers(app)
     init_metrics_middleware(app)

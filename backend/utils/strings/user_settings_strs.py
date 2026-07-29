@@ -28,6 +28,46 @@ class USER_SETTINGS_STRINGS:
     CONNECT_CONTINUE_BUTTON_TEXT = "Continue"
     CONNECT_CANCEL_BUTTON_TEXT = "Cancel"
 
+    # Account information section (Account tab). Read-only card labels for the
+    # username / email / member-since / email-verified block. Jinja-rendered
+    # only; re-exported via ui_testing_strs for Python UI assertions — no JS
+    # string bridge (no TypeScript reads them).
+    ACCOUNT_INFO_TITLE = "Account information"
+    ACCOUNT_INFO_HINT = (
+        "Your account details. Email and join date can't be changed here."
+    )
+    ACCOUNT_USERNAME_LABEL = "Username"
+    ACCOUNT_EMAIL_LABEL = "Email"
+    ACCOUNT_MEMBER_SINCE_LABEL = "Member since"
+    ACCOUNT_EMAIL_STATUS_LABEL = "Email status"
+    ACCOUNT_EMAIL_VERIFIED = "Verified"
+    ACCOUNT_EMAIL_UNVERIFIED = "Not verified"
+
+    # Change-username form (Account tab). Static Jinja labels re-exported via
+    # ui_testing_strs for Python UI assertions — no JS string bridge (the
+    # success/error banner text is server-sourced off the response envelope).
+    CHANGE_USERNAME_TITLE = "Change username"
+    CHANGE_USERNAME_HINT = "Choose a new username. It must be unique."
+    CHANGE_USERNAME_LABEL = "New username"
+    CHANGE_USERNAME_BUTTON = "Save username"
+
+    # Change-password form (Account tab). Static Jinja labels re-exported via
+    # ui_testing_strs for Python UI assertions — no JS string bridge (the
+    # success/error banner text is server-sourced off the response envelope).
+    # The section is gated for OAuth-only accounts; the note replaces the form.
+    CHANGE_PASSWORD_TITLE = "Change password"
+    CHANGE_PASSWORD_HINT = (
+        "Choose a new password. This signs you out of all other devices."
+    )
+    CHANGE_PASSWORD_CURRENT_LABEL = "Current password"
+    CHANGE_PASSWORD_NEW_LABEL = "New password"
+    CHANGE_PASSWORD_CONFIRM_LABEL = "Confirm new password"
+    CHANGE_PASSWORD_BUTTON = "Save password"
+    CHANGE_PASSWORD_OAUTH_ONLY_NOTE = (
+        "Password change isn't available for accounts that sign in with Google "
+        "or GitHub."
+    )
+
     # Stats section (Stats tab). Jinja-rendered only; the six card labels are
     # re-exported via ui_testing_strs for Python UI assertions — no JS string
     # bridge (the panel is fully server-rendered, no TypeScript reads them).
