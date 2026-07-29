@@ -14,9 +14,10 @@ _CURRENT_USER_TARGET = "backend.users.services.account_service.current_user"
 
 
 def _fake_user(*, has_password: bool) -> SimpleNamespace:
-    """A minimal current_user stand-in exposing exactly the attributes
+    """A minimal current_user stand-in exposing the identity attributes
     build_account_info_context reads. ``password`` is a truthy hash string for a
-    local-password account and ``None`` for an OAuth-only account."""
+    local-password account and ``None`` for an OAuth-only account, keeping the two
+    scenarios distinct even though the context no longer surfaces that flag."""
     return SimpleNamespace(
         username="fakeuser1234",
         email="fakeuser1234@example.com",
@@ -29,8 +30,8 @@ def test_build_account_info_context_local_password_user() -> None:
     """
     GIVEN an authenticated local-password user
     WHEN build_account_info_context builds the account-info context
-    THEN it returns the expected flat dict with account_has_password True and no
-        member-since keys (those are reused from build_user_stats_context)
+    THEN it returns the expected flat dict with no member-since keys (those are
+        reused from build_user_stats_context)
     """
     with patch(_CURRENT_USER_TARGET, _fake_user(has_password=True)):
         context = build_account_info_context()
@@ -39,7 +40,6 @@ def test_build_account_info_context_local_password_user() -> None:
         "account_username": "fakeuser1234",
         "account_email": "fakeuser1234@example.com",
         "account_email_validated": True,
-        "account_has_password": True,
     }
 
 
@@ -47,12 +47,11 @@ def test_build_account_info_context_oauth_only_user() -> None:
     """
     GIVEN an authenticated password-less (OAuth-only) user
     WHEN build_account_info_context builds the account-info context
-    THEN account_has_password is False while the identity fields still render
+    THEN the identity fields still render
     """
     with patch(_CURRENT_USER_TARGET, _fake_user(has_password=False)):
         context = build_account_info_context()
 
-    assert context["account_has_password"] is False
     assert context["account_username"] == "fakeuser1234"
     assert context["account_email"] == "fakeuser1234@example.com"
     assert context["account_email_validated"] is True

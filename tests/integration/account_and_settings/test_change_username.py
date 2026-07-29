@@ -9,8 +9,8 @@ from redis import Redis
 
 from backend import db
 from backend.models.users import Users
-from backend.users.constants import ChangeUsernameErrorCodes
 from backend.schemas.users import ChangeUsernameResponseSchema
+from backend.users.constants import ChangeUsernameErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.html_identifiers import IDENTIFIERS

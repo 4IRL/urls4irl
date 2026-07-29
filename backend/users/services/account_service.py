@@ -53,7 +53,6 @@ def build_account_info_context() -> dict[str, Any]:
         "account_username": current_user.username,
         "account_email": current_user.email,
         "account_email_validated": current_user.email_validated,
-        "account_has_password": current_user.password is not None,
     }
 
 
