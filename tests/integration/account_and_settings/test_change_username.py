@@ -6,6 +6,7 @@ import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from redis import Redis
+from sqlalchemy.exc import IntegrityError
 
 from backend import db
 from backend.models.users import Users
@@ -348,3 +349,67 @@ def test_change_username_fails_open_when_redis_errors(
     assert response.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
     with app.app_context():
         assert Users.query.get(user_id).username == _NEW_USERNAME
+
+
+# --------------------------------------------------------------------------- #
+# OAuth-only rename (Decision #1) + IntegrityError race-guard (DD-2 / DD-3).
+# --------------------------------------------------------------------------- #
+
+
+def test_change_username_succeeds_for_oauth_only_user(
+    oauth_only_google_user_logged_in: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Decision #1: change-username requires no password re-auth *specifically*
+    so OAuth-only (password-less) accounts can rename. A PUT from a password-less
+    Google-linked user returns 200 and the new username is actually persisted
+    (verified in a fresh app_context)."""
+    client, csrf_token, user, app = oauth_only_google_user_logged_in
+    user_id = user.id
+
+    response = client.put(
+        url_for(ROUTES.USERS.CHANGE_USERNAME, user_id=user_id),
+        json={"username": _NEW_USERNAME},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
+
+    with app.app_context():
+        refreshed: Users = Users.query.get(user_id)
+        assert refreshed.username == _NEW_USERNAME
+
+
+def test_change_username_integrity_error_race_returns_400_not_500(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The UNIQUE-constraint race guard: if another request claims the same
+    username between the pre-commit uniqueness check and this commit, the commit
+    raises ``IntegrityError``. The service must roll back and surface a clean 400
+    ``USERNAME_TAKEN`` field error — never a 500.
+
+    Mirrors the Redis fail-open test's ``mock.patch`` style, patching
+    ``db.session.commit`` (the setup/teardown commits run outside the patch)."""
+    client, csrf_token, user, _ = login_first_user_with_register
+    user_id = user.id
+
+    integrity_error = IntegrityError(
+        "UPDATE users SET username=...",
+        {},
+        Exception("duplicate key value violates unique constraint"),
+    )
+
+    with mock.patch(
+        "backend.users.services.account_service.db.session.commit",
+        side_effect=integrity_error,
+    ):
+        response = client.put(
+            url_for(ROUTES.USERS.CHANGE_USERNAME, user_id=user_id),
+            json={"username": _NEW_USERNAME},
+            headers={"X-CSRFToken": csrf_token},
+        )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.ERROR_CODE] == ChangeUsernameErrorCodes.USERNAME_TAKEN
+    assert USER_FAILURE.USERNAME_TAKEN in response_json[STD_JSON.ERRORS]["username"]
