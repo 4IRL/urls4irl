@@ -1,15 +1,19 @@
-from typing import Tuple
+from typing import Generator, Tuple
+from unittest import mock
 from urllib.parse import urlsplit
 
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from redis import Redis
 
 from backend.models.users import Users
 from backend.schemas.users import ChangePasswordResponseSchema
 from backend.users.constants import ChangePasswordErrorCodes
 from backend.utils.all_routes import ROUTES
+from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings import model_strs
+from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
@@ -24,6 +28,35 @@ _SPLASH_PATH = "/"
 _CURRENT_PASSWORD = valid_user_1[model_strs.PASSWORD]
 _NEW_PASSWORD = "NewFakePassword5678"
 _WRONG_PASSWORD = "TotallyWrongPassword!23"
+
+
+@pytest.fixture(autouse=True)
+def _reset_reauth_failure_counter(app: Flask) -> Generator[None, None, None]:
+    """Clear the worker-scoped ``reauth-fail:*`` Redis counter before and after
+    every test in this module.
+
+    The per-user re-auth lockout counter (shared with the settings OAuth-link
+    gate, DD-1) survives DB teardown — only Postgres is cleared between tests,
+    not the worker's Redis DB — so without this a wrong-password test would leave
+    the counter elevated and 429 a later, unrelated test on the same xdist
+    worker. Mirrors ``_reset_username_change_counter`` in test_change_username.py.
+    """
+
+    def _clear() -> None:
+        redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI)
+        if not redis_uri or redis_uri == "memory://":
+            return
+        client = Redis.from_url(redis_uri)
+        try:
+            keys = client.keys("reauth-fail:*")
+            if keys:
+                client.delete(*keys)
+        finally:
+            client.close()
+
+    _clear()
+    yield
+    _clear()
 
 
 def _change_password_payload(
@@ -234,3 +267,113 @@ def test_change_password_unvalidated_user_redirects(
     )
 
     assert response.status_code == 302
+
+
+# --------------------------------------------------------------------------- #
+# Brute-force re-auth lockout (DD-1) — real Redis via provide_redis.
+# --------------------------------------------------------------------------- #
+
+
+def test_change_password_locks_out_after_max_reauth_failures(
+    provide_redis: Redis | None,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """``MAX_REAUTH_FAILURES`` wrong-password attempts each return 400; a further
+    attempt returns 429 with the TOO_MANY_ATTEMPTS code and the shared lockout
+    message — even when the (correct) current password is supplied."""
+    if provide_redis is None:
+        pytest.skip("Requires a real Redis instance (Docker stack)")
+
+    client, csrf_token, user, _ = login_first_user_with_register
+    user_id = user.id
+
+    for _ in range(USER_CONSTANTS.MAX_REAUTH_FAILURES):
+        response = client.put(
+            url_for(ROUTES.USERS.CHANGE_PASSWORD, user_id=user_id),
+            json=_change_password_payload(current_password=_WRONG_PASSWORD),
+            headers={"X-CSRFToken": csrf_token},
+        )
+        assert response.status_code == 400
+
+    # A further attempt is locked out (429), regardless of the password supplied.
+    blocked = client.put(
+        url_for(ROUTES.USERS.CHANGE_PASSWORD, user_id=user_id),
+        json=_change_password_payload(),
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert blocked.status_code == 429
+    blocked_json = blocked.get_json()
+    assert (
+        blocked_json[STD_JSON.ERROR_CODE] == ChangePasswordErrorCodes.TOO_MANY_ATTEMPTS
+    )
+    assert blocked_json[STD_JSON.MESSAGE] == USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS
+
+
+def test_change_password_success_clears_reauth_counter(
+    provide_redis: Redis | None,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """A successful change clears the per-user counter (a subsequent wrong
+    attempt starts fresh at 1, not at the pre-success total)."""
+    if provide_redis is None:
+        pytest.skip("Requires a real Redis instance (Docker stack)")
+
+    client, csrf_token, user, _ = login_first_user_with_register
+    user_id = user.id
+    failure_key = f"reauth-fail:{user_id}"
+
+    # A couple of wrong attempts (below the cap) accrue failures.
+    for _ in range(3):
+        client.put(
+            url_for(ROUTES.USERS.CHANGE_PASSWORD, user_id=user_id),
+            json=_change_password_payload(current_password=_WRONG_PASSWORD),
+            headers={"X-CSRFToken": csrf_token},
+        )
+    assert provide_redis.get(failure_key) == b"3"
+
+    # A successful change clears the counter.
+    success = client.put(
+        url_for(ROUTES.USERS.CHANGE_PASSWORD, user_id=user_id),
+        json=_change_password_payload(),
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert success.status_code == 200
+    assert provide_redis.get(failure_key) is None
+
+    # The next wrong attempt (old password is now wrong) starts fresh at 1.
+    fresh_fail = client.put(
+        url_for(ROUTES.USERS.CHANGE_PASSWORD, user_id=user_id),
+        json=_change_password_payload(current_password=_CURRENT_PASSWORD),
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert fresh_fail.status_code == 400
+    assert provide_redis.get(failure_key) == b"1"
+
+
+def test_change_password_fails_open_when_reauth_redis_errors(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """When the re-auth throttle Redis client raises, the change still processes
+    (200) — the lockout is defense-in-depth, not the sole gate (fail-open)."""
+    client, csrf_token, user, app = login_first_user_with_register
+    user_id = user.id
+
+    raising_client = mock.MagicMock()
+    raising_client.get.side_effect = Exception("redis down")
+    raising_client.incr.side_effect = Exception("redis down")
+    raising_client.delete.side_effect = Exception("redis down")
+
+    with mock.patch(
+        "backend.utils.reauth_throttle._build_reauth_redis",
+        return_value=raising_client,
+    ):
+        response = client.put(
+            url_for(ROUTES.USERS.CHANGE_PASSWORD, user_id=user_id),
+            json=_change_password_payload(),
+            headers={"X-CSRFToken": csrf_token},
+        )
+
+    assert response.status_code == 200
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    with app.app_context():
+        assert Users.query.get(user_id).is_password_correct(_NEW_PASSWORD)

@@ -28,3 +28,4 @@ class ChangePasswordErrorCodes(IntEnum):
     INVALID_FORM_INPUT = 1
     INVALID_PASSWORD = 2
     OAUTH_ONLY_NO_PASSWORD = 3
+    TOO_MANY_ATTEMPTS = 4

@@ -28,6 +28,8 @@ const SUCCESS_MESSAGE =
   "Your password has been updated. You've been signed out of all other devices.";
 const CURRENT_INCORRECT_MESSAGE = "Current password is incorrect.";
 const MISMATCH_MESSAGE = "Passwords are not identical.";
+const LOCKOUT_MESSAGE =
+  "Too many incorrect password attempts. Please try again later.";
 
 function formHtml(): string {
   return `
@@ -201,6 +203,35 @@ describe("change-password", () => {
 
     const status = $("#SettingsPasswordStatus");
     expect(status.hasClass("d-none")).toBe(true);
+    expect($("#SettingsCurrentPassword").hasClass("is-invalid")).toBe(false);
+  });
+
+  it("renders the service-issued JSON-429 lockout message in the status region", () => {
+    document.body.innerHTML = formHtml();
+    // A service-issued JSON 429 (the DD-1 brute-force lockout) leaves
+    // is429Handled false — only the global CSRF prefilter's coarse
+    // UI_RATE_LIMIT_HIT sets it true — so the generic non-field message path
+    // surfaces the lockout copy in the status region.
+    vi.mocked(is429Handled).mockReturnValue(false);
+    const failedXhr = createMockXhr({
+      status: 429,
+      responseJSON: {
+        status: "Failure",
+        message: LOCKOUT_MESSAGE,
+        errorCode: 4,
+      },
+    });
+    vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));
+    initChangePassword();
+
+    fillFields(CURRENT_PASSWORD, NEW_PASSWORD, NEW_PASSWORD);
+    $("#SettingsChangePasswordBtn").trigger("click");
+
+    const status = $("#SettingsPasswordStatus");
+    expect(status.hasClass("d-none")).toBe(false);
+    expect(status.hasClass("alert-danger")).toBe(true);
+    expect(status.text()).toBe(LOCKOUT_MESSAGE);
+    // No field-error was mis-rendered (the 429 carries no `errors` dict).
     expect($("#SettingsCurrentPassword").hasClass("is-invalid")).toBe(false);
   });
 

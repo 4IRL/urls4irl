@@ -164,6 +164,12 @@ class USER_CONSTANTS:
     # counter (see settings-account-basics plan, Decision #4) — no DB migration.
     MAX_USERNAME_CHANGES_PER_DAY = 3
     USERNAME_CHANGE_WINDOW_SECONDS = 86_400
+    # Per-user brute-force lockout shared by BOTH re-auth gates (change-password
+    # and the settings OAuth-link password re-auth) via a fail-open Redis counter
+    # (see backend/utils/reauth_throttle.py, DD-1). 10 failures per rolling 15
+    # minutes per user; the counter is keyed `reauth-fail:{user_id}` for both.
+    MAX_REAUTH_FAILURES = 10
+    REAUTH_LOCKOUT_WINDOW_SECONDS = 900
 
 
 class UTUB_CONSTANTS:

@@ -202,11 +202,12 @@ def change_username(
     error_message=USER_FAILURE.INVALID_INPUT,
     error_code=ChangePasswordErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.AUTH],
-    description="Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts.",
+    description="Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts. A per-user brute-force lockout shared with the settings OAuth-link gate returns 429 after too many wrong-password attempts (DD-1).",
     status_codes={
         200: ChangePasswordResponseSchema,
         400: ErrorResponse,
         403: ErrorResponse,
+        429: ErrorResponse,
     },
 )
 def change_password(
@@ -229,12 +230,13 @@ def change_password(
     error_message=LINK_INVALID_PASSWORD_MESSAGE,
     error_code=OAuthLinkErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.AUTH],
-    description="Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance.",
+    description="Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts (DD-1).",
     status_codes={
         200: LoginRedirectResponseSchema,
         400: ErrorResponse,
         403: ErrorResponse,
         404: ErrorResponse,
+        429: ErrorResponse,
     },
 )
 def link_oauth_provider(

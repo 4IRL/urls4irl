@@ -6703,7 +6703,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts.",
+        "description": "Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts. A per-user brute-force lockout shared with the settings OAuth-link gate returns 429 after too many wrong-password attempts (DD-1).",
         "parameters": [
           {
             "name": "user_id",
@@ -6753,6 +6753,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "x-error-codes": {
@@ -6772,7 +6782,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance.",
+        "description": "Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts (DD-1).",
         "parameters": [
           {
             "name": "user_id",
@@ -6840,6 +6850,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -10071,7 +10091,7 @@
       },
       "OAuthLinkErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
         "x-enum-varnames": [
           "INVALID_FORM_INPUT",
           "PROVIDER_NOT_CONFIGURED",
@@ -10079,7 +10099,8 @@
           "INVALID_PASSWORD",
           "NOT_LINKED",
           "LAST_METHOD",
-          "INTENT_INVALID"
+          "INTENT_INVALID",
+          "TOO_MANY_ATTEMPTS"
         ],
         "description": "Error codes for OAuthLinkErrorCodes"
       },
@@ -10259,11 +10280,12 @@
       },
       "ChangePasswordErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3],
+        "enum": [1, 2, 3, 4],
         "x-enum-varnames": [
           "INVALID_FORM_INPUT",
           "INVALID_PASSWORD",
-          "OAUTH_ONLY_NO_PASSWORD"
+          "OAUTH_ONLY_NO_PASSWORD",
+          "TOO_MANY_ATTEMPTS"
         ],
         "description": "Error codes for ChangePasswordErrorCodes"
       },

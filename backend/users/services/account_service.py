@@ -24,6 +24,11 @@ from backend.splash.constants import LOGIN_FAILURE_REASON_BAD_PASSWORD
 from backend.users.constants import ChangePasswordErrorCodes, ChangeUsernameErrorCodes
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
+from backend.utils.reauth_throttle import (
+    clear_reauth_failures,
+    is_reauth_locked_out,
+    record_reauth_failure,
+)
 from backend.utils.session_utils import restamp_current_session
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -187,10 +192,11 @@ def apply_password_change(
     ``change_password`` route/view function on the ``users`` blueprint.
 
     Guard order: self-ownership (403) → OAuth-only (400, defense-in-depth) →
-    re-auth (400 on wrong current password, recording the existing
-    ``LOGIN_FAILURE`` metric) → success: change password, bump
-    ``sessions_invalidated_at`` and re-stamp the acting session so it survives,
-    then commit.
+    brute-force lockout (429, shared per-user re-auth counter, DD-1) → re-auth
+    (400 on wrong current password, recording the existing ``LOGIN_FAILURE``
+    metric and a re-auth failure) → success: clear the failure counter, change
+    password, bump ``sessions_invalidated_at`` and re-stamp the acting session
+    so it survives, then commit.
     """
     # (1) Self-ownership: the URL user_id must be the acting user.
     if user_id != current_user.id:
@@ -210,10 +216,22 @@ def apply_password_change(
             status_code=400,
         )
 
-    # (3) Re-auth: verify the supplied current password (mirrors
-    # initiate_settings_link). On failure, record the existing LOGIN_FAILURE
-    # metric and surface a dedicated field error on `currentPassword`.
+    # (3) Brute-force lockout (DD-1): a per-user Redis counter shared with the
+    # settings OAuth-link re-auth gate. Fail-open; checked before the password
+    # compare so a locked-out session cannot keep guessing.
+    if is_reauth_locked_out(user_id):
+        return build_message_error_response(
+            message=USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS,
+            error_code=ChangePasswordErrorCodes.TOO_MANY_ATTEMPTS,
+            status_code=429,
+        )
+
+    # (4) Re-auth: verify the supplied current password (mirrors
+    # initiate_settings_link). On failure, record a re-auth failure toward the
+    # lockout + the existing LOGIN_FAILURE metric, then surface a dedicated field
+    # error on `currentPassword`.
     if not current_user.is_password_correct(current_password):
+        record_reauth_failure(user_id)
         record_event(
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
@@ -225,9 +243,11 @@ def apply_password_change(
             status_code=400,
         )
 
-    # (4) Success: change the password, invalidate every OTHER session by
-    # bumping sessions_invalidated_at, then re-stamp the acting session so the
-    # current device survives its own invalidation bump.
+    # (5) Success: clear the failure counter, then change the password,
+    # invalidate every OTHER session by bumping sessions_invalidated_at, then
+    # re-stamp the acting session so the current device survives its own
+    # invalidation bump.
+    clear_reauth_failures(user_id)
     current_user.change_password(new_password)
     current_user.sessions_invalidated_at = utc_now()
     restamp_current_session()

@@ -1259,7 +1259,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** @description Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts. */
+    /** @description Change the authenticated user's password. Requires the current password for re-authentication (Decision #9), and invalidates every OTHER session on success while the acting session survives (Decision #2). Not available for OAuth-only (password-less) accounts. A per-user brute-force lockout shared with the settings OAuth-link gate returns 429 after too many wrong-password attempts (DD-1). */
     put: operations["changePassword"];
     post?: never;
     delete?: never;
@@ -1277,7 +1277,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. */
+    /** @description Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts (DD-1). */
     post: operations["linkOauthProvider"];
     /** @description Disconnect an OAuth provider from the authenticated user's account. Blocked when it is the account's last remaining sign-in method (no password and a single linked identity). */
     delete: operations["unlinkOauthProvider"];
@@ -2621,7 +2621,7 @@ export interface components {
      * @description Error codes for OAuthLinkErrorCodes
      * @enum {integer}
      */
-    OAuthLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+    OAuthLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
     ResetPasswordRequest: {
       /** @description New password for the account */
       newPassword: string;
@@ -2715,7 +2715,7 @@ export interface components {
      * @description Error codes for ChangePasswordErrorCodes
      * @enum {integer}
      */
-    ChangePasswordErrorCodes: 1 | 2 | 3;
+    ChangePasswordErrorCodes: 1 | 2 | 3 | 4;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -7261,6 +7261,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse"];
         };
       };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
     };
   };
   linkOauthProvider: {
@@ -7309,6 +7318,15 @@ export interface operations {
       };
       /** @description Not found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
         headers: {
           [name: string]: unknown;
         };

@@ -81,6 +81,13 @@ PASSWORD_CHANGE_OAUTH_ONLY = (
     "Password change isn't available for accounts that sign in with Google or "
     "GitHub."
 )
+# Shared brute-force lockout copy (DD-1) returned with HTTP 429 by BOTH re-auth
+# gates — change-password and the settings OAuth-link password re-auth — once a
+# per-user failure counter trips. Reused for both (the settings-link copy does
+# not need to differ from the change-password copy).
+TOO_MANY_PASSWORD_ATTEMPTS = (
+    "Too many incorrect password attempts. Please try again later."
+)
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -97,6 +104,7 @@ class USER_FAILURE(FAILURE_GENERAL):
     USERNAME_CHANGE_RATE_LIMITED = USERNAME_CHANGE_RATE_LIMITED
     CURRENT_PASSWORD_INCORRECT = CURRENT_PASSWORD_INCORRECT
     PASSWORD_CHANGE_OAUTH_ONLY = PASSWORD_CHANGE_OAUTH_ONLY
+    TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
 
 
 class MEMBER_FAILURE(FAILURE_GENERAL):

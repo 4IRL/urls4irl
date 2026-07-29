@@ -36,6 +36,11 @@ from backend.splash.services.oauth.constants import (
 )
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.datetime_utils import utc_now
+from backend.utils.reauth_throttle import (
+    clear_reauth_failures,
+    is_reauth_locked_out,
+    record_reauth_failure,
+)
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     CONFIRM_LINK_CONTINUE_WITH_TEXT,
@@ -308,7 +313,17 @@ def initiate_settings_link(
                 errors={"password": [LINK_PASSWORD_REQUIRED_MESSAGE]},
                 error_code=OAuthLinkErrorCodes.INVALID_FORM_INPUT,
             )
+        # Brute-force lockout (DD-1): a per-user Redis counter shared with the
+        # change-password re-auth gate. Fail-open; checked before the password
+        # compare so a locked-out session cannot keep guessing.
+        if is_reauth_locked_out(user_id):
+            return build_message_error_response(
+                message=USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS,
+                error_code=OAuthLinkErrorCodes.TOO_MANY_ATTEMPTS,
+                status_code=429,
+            )
         if not current_user.is_password_correct(password):
+            record_reauth_failure(user_id)
             record_event(
                 EventName.LOGIN_FAILURE,
                 dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
@@ -318,6 +333,7 @@ def initiate_settings_link(
                 errors={"password": [LINK_INVALID_PASSWORD_MESSAGE]},
                 error_code=OAuthLinkErrorCodes.INVALID_PASSWORD,
             )
+        clear_reauth_failures(user_id)
         _stash_link_intent(
             action=LINK_INTENT_ACTION_LINK, target_provider=target_provider
         )

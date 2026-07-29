@@ -20,12 +20,13 @@ convention as ``tests/integration/splash/test_oauth_google.py``.
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Generator, Tuple
 from unittest import mock
 
 from flask import Flask, redirect, url_for
 from flask.testing import FlaskClient
 import pytest
+from redis import Redis
 
 from backend import db
 from backend.metrics.events import EventName
@@ -37,15 +38,18 @@ from backend.splash.services.oauth.constants import (
     LINK_INTENT_ACTION_PROOF,
     OAUTH_LINK_INTENT_SESSION_KEY,
 )
+from backend.users.constants import ChangePasswordErrorCodes
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
+from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings import model_strs
+from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     LINK_INVALID_PASSWORD_MESSAGE,
     LINK_PASSWORD_REQUIRED_MESSAGE,
     UNLINK_LAST_METHOD_MESSAGE,
 )
-from backend.utils.strings.user_strs import REDIRECT_URL
+from backend.utils.strings.user_strs import REDIRECT_URL, USER_FAILURE
 from tests.integration.account_and_settings.conftest import (
     _OAUTH_ONLY_EMAIL,
     _OAUTH_ONLY_GOOGLE_SUBJECT,
@@ -58,6 +62,39 @@ from tests.integration.system.metrics_helpers import (
 from tests.models_for_test import valid_user_1
 
 pytestmark = pytest.mark.account_and_support
+
+_WRONG_PASSWORD = "TotallyWrongPassword!23"
+
+
+@pytest.fixture(autouse=True)
+def _reset_reauth_failure_counter(app: Flask) -> Generator[None, None, None]:
+    """Clear the worker-scoped ``reauth-fail:*`` Redis counter before and after
+    every test in this module.
+
+    The per-user re-auth lockout counter (shared with the change-password gate,
+    DD-1) survives DB teardown — only Postgres is cleared between tests, not the
+    worker's Redis DB — so without this a wrong-password test would leave the
+    counter elevated and 429 a later, unrelated link/password test on the same
+    xdist worker. Mirrors ``_reset_username_change_counter`` in
+    test_change_username.py.
+    """
+
+    def _clear() -> None:
+        redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI)
+        if not redis_uri or redis_uri == "memory://":
+            return
+        client = Redis.from_url(redis_uri)
+        try:
+            keys = client.keys("reauth-fail:*")
+            if keys:
+                client.delete(*keys)
+        finally:
+            client.close()
+
+    _clear()
+    yield
+    _clear()
+
 
 _GOOGLE_AUTHORIZE_ACCESS_TOKEN_TARGET = (
     "backend.splash.services.oauth.google_service.oauth.google.authorize_access_token"
@@ -911,3 +948,142 @@ def test_unlink_password_user_single_oauth_identity_succeeds(
     )
 
     assert response.status_code == 200
+
+
+# --- q-t: shared re-auth brute-force lockout (DD-1) --------------------------
+
+
+def test_link_password_user_locks_out_after_max_reauth_failures(
+    provide_redis: Redis | None,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN an authenticated password account
+    WHEN ``MAX_REAUTH_FAILURES`` link attempts are made with the WRONG password
+    THEN each returns 400, and a further attempt (even with the CORRECT
+        password) returns 429 with OAuthLinkErrorCodes.TOO_MANY_ATTEMPTS and the
+        shared lockout message
+    """
+    if provide_redis is None:
+        pytest.skip("Requires a real Redis instance (Docker stack)")
+
+    client, csrf_token, user, _ = login_first_user_with_register
+
+    for _ in range(USER_CONSTANTS.MAX_REAUTH_FAILURES):
+        response = client.post(
+            url_for(ROUTES.USERS.OAUTH_LINK, user_id=user.id, provider="github"),
+            json={"password": _WRONG_PASSWORD},
+            headers={"X-CSRFToken": csrf_token},
+        )
+        assert response.status_code == 400
+
+    blocked = client.post(
+        url_for(ROUTES.USERS.OAUTH_LINK, user_id=user.id, provider="github"),
+        json={"password": valid_user_1[model_strs.PASSWORD]},
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert blocked.status_code == 429
+    assert blocked.json[STD_JSON.ERROR_CODE] == OAuthLinkErrorCodes.TOO_MANY_ATTEMPTS
+    assert blocked.json[STD_JSON.MESSAGE] == USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS
+
+
+def test_link_password_user_success_clears_reauth_counter(
+    provide_redis: Redis | None,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN some accrued wrong-password failures (below the cap)
+    WHEN a link attempt with the CORRECT password succeeds (200)
+    THEN the shared ``reauth-fail:{user_id}`` counter is cleared
+    """
+    if provide_redis is None:
+        pytest.skip("Requires a real Redis instance (Docker stack)")
+
+    client, csrf_token, user, _ = login_first_user_with_register
+    failure_key = f"reauth-fail:{user.id}"
+
+    for _ in range(3):
+        client.post(
+            url_for(ROUTES.USERS.OAUTH_LINK, user_id=user.id, provider="github"),
+            json={"password": _WRONG_PASSWORD},
+            headers={"X-CSRFToken": csrf_token},
+        )
+    assert provide_redis.get(failure_key) == b"3"
+
+    success = client.post(
+        url_for(ROUTES.USERS.OAUTH_LINK, user_id=user.id, provider="github"),
+        json={"password": valid_user_1[model_strs.PASSWORD]},
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert success.status_code == 200
+    assert provide_redis.get(failure_key) is None
+
+
+def test_link_password_user_fails_open_when_reauth_redis_errors(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN the re-auth throttle Redis client raises on every call
+    WHEN a link attempt is made with the CORRECT password
+    THEN the link still proceeds (200 with the provider redirect URL) — the
+        lockout is defense-in-depth, not the sole gate (fail-open)
+    """
+    client, csrf_token, user, _ = login_first_user_with_register
+
+    raising_client = mock.MagicMock()
+    raising_client.get.side_effect = Exception("redis down")
+    raising_client.incr.side_effect = Exception("redis down")
+    raising_client.delete.side_effect = Exception("redis down")
+
+    with mock.patch(
+        "backend.utils.reauth_throttle._build_reauth_redis",
+        return_value=raising_client,
+    ):
+        response = client.post(
+            url_for(ROUTES.USERS.OAUTH_LINK, user_id=user.id, provider="github"),
+            json={"password": valid_user_1[model_strs.PASSWORD]},
+            headers={"X-CSRFToken": csrf_token},
+        )
+
+    assert response.status_code == 200
+    assert response.json[REDIRECT_URL] == url_for(OAUTH_ROUTES.LINK, provider="github")
+
+
+def test_reauth_lockout_shared_across_link_and_change_password_gates(
+    provide_redis: Redis | None,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN ``MAX_REAUTH_FAILURES`` wrong-password attempts on the SETTINGS-LINK
+        gate
+    WHEN the same user then attempts a change-password re-auth
+    THEN it is locked out (429 TOO_MANY_ATTEMPTS) — proving both gates share the
+        one ``reauth-fail:{user_id}`` counter (DD-1)
+    """
+    if provide_redis is None:
+        pytest.skip("Requires a real Redis instance (Docker stack)")
+
+    client, csrf_token, user, _ = login_first_user_with_register
+
+    for _ in range(USER_CONSTANTS.MAX_REAUTH_FAILURES):
+        response = client.post(
+            url_for(ROUTES.USERS.OAUTH_LINK, user_id=user.id, provider="github"),
+            json={"password": _WRONG_PASSWORD},
+            headers={"X-CSRFToken": csrf_token},
+        )
+        assert response.status_code == 400
+
+    # The change-password gate reads the same shared counter → locked out.
+    blocked = client.put(
+        url_for(ROUTES.USERS.CHANGE_PASSWORD, user_id=user.id),
+        json={
+            "currentPassword": valid_user_1[model_strs.PASSWORD],
+            "newPassword": "NewFakePassword5678",
+            "confirmNewPassword": "NewFakePassword5678",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert blocked.status_code == 429
+    assert (
+        blocked.json[STD_JSON.ERROR_CODE] == ChangePasswordErrorCodes.TOO_MANY_ATTEMPTS
+    )

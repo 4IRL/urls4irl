@@ -46,6 +46,7 @@ from backend.utils.strings.user_strs import (
     COOKIE_BANNER_SEEN,
     MEMBER_SEARCH_NO_RESULTS,
     PASSWORD_CHANGE_SUCCESS,
+    TOO_MANY_PASSWORD_ATTEMPTS,
     USERNAME_CHANGE_NO_CHANGE,
     USERNAME_CHANGE_SUCCESS,
 )
@@ -452,6 +453,9 @@ class UI_TEST_STRINGS:
     # Change-password 200 banner copy (server-sourced envelope text) — asserted
     # by the UI happy-path test against the backend source constant.
     SETTINGS_PASSWORD_CHANGE_SUCCESS = PASSWORD_CHANGE_SUCCESS
+    # Shared re-auth brute-force lockout copy (DD-1) — the 429 banner text both
+    # re-auth gates surface, re-exported so tests assert the backend source.
+    SETTINGS_TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
 
     # Stats section (Stats tab) — the six card labels the stats tests assert
     # against, re-exported from the backend source the template renders.
