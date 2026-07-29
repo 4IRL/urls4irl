@@ -257,6 +257,22 @@
     margin: 0 0 var(--space-6);
 }
 
+/* Long usernames/emails must never overflow the card. First shrink the value
+   responsively down to a still-readable floor (clamp), then let it wrap so an
+   extra-long email breaks onto another line instead of spilling out. Scoped to
+   the account-info cards so the numeric Stats panel keeps its fixed size +
+   tabular-nums alignment. min-width:0 lets the value shrink inside the grid
+   track (grid/flex children default to min-width:auto). */
+#SettingsPanelAccount .SettingsAccountInfoGrid .SettingsStatCard {
+    min-width: 0;
+}
+
+#SettingsPanelAccount .SettingsAccountInfoGrid .SettingsStatValue {
+    font-size: clamp(1.1rem, 4.5vw, 1.6rem);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .SettingsAccountVerified {
     display: inline-flex;
     align-items: center;
