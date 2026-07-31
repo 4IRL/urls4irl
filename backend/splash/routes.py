@@ -53,6 +53,11 @@ from backend.splash.constants import (
     ResetPasswordErrorCodes,
     SPLASH_AUTH_RATE_LIMIT,
 )
+from backend.splash.services.change_email import (
+    EMAIL_CHANGE_STATUS_QUERY_PARAM,
+    build_email_change_banner,
+    confirm_email_change_for_user,
+)
 from backend.splash.services.forgot_password import (
     send_forgot_password_email_to_user,
 )
@@ -107,14 +112,34 @@ def error_page():
 @splash.route("/", methods=["GET"])
 def splash_page() -> WerkzeugResponse | str:
     """Splash page for an unlogged in user."""
+    # DD-9: an already-logged-in browser is redirected to HOME before any banner
+    # renders here, so forward the confirm-outcome code so HOME can surface it.
+    email_change_status = request.args.get(EMAIL_CHANGE_STATUS_QUERY_PARAM, "")
     if current_user.is_authenticated and current_user.email_validated:
         safe_add_log(f"User={current_user} already logged in")
-        return redirect(url_for(ROUTES.UTUBS.HOME))
+        return redirect(
+            url_for(
+                ROUTES.UTUBS.HOME,
+                **(
+                    {EMAIL_CHANGE_STATUS_QUERY_PARAM: email_change_status}
+                    if email_change_status
+                    else {}
+                ),
+            )
+        )
     show_email_validation = (
         current_user.is_authenticated and not current_user.email_validated
     )
+    # DD-1/DD-15: this call site is reached only when the requester is NOT both
+    # authenticated and email-validated, so the splash-path banner keeps the
+    # "log in as usual" clause (authenticated=False).
+    email_change_banner = build_email_change_banner(
+        email_change_status, authenticated=False
+    )
     return render_template(
-        "pages/splash.html", show_email_validation=show_email_validation
+        "pages/splash.html",
+        show_email_validation=show_email_validation,
+        email_change_banner=email_change_banner,
     )
 
 
@@ -250,6 +275,15 @@ def validate_email_expired():
 @splash.route("/validate/<string:token>", methods=["GET"])
 def validate_email(token: str) -> WerkzeugResponse:
     return validate_email_for_user(token)
+
+
+@splash.route("/confirm-email-change/<string:token>", methods=["GET"])
+def confirm_email_change(token: str) -> WerkzeugResponse:
+    """Anonymous confirm step of the Settings change-email flow: swaps the
+    pending email into the live email column, then redirects to splash with a
+    single outcome code. No decorators — the link is opened from the new inbox,
+    possibly on another device, and never auto-logs the user in."""
+    return confirm_email_change_for_user(token)
 
 
 @splash.route("/forgot-password", methods=["POST"])

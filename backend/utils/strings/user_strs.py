@@ -31,6 +31,21 @@ USERNAME_CHANGE_NO_CHANGE = "No change — that's already your username."
 PASSWORD_CHANGE_SUCCESS = (
     "Your password has been updated. You've been signed out of all other devices."
 )
+# Change-email confirm-outcome banner copy (server-sourced; no JS bridge —
+# rendered into pages/splash.html and pages/home.html by build_email_change_banner
+# off the confirm route's redirect query param, and asserted by the Python UI/
+# integration tests). DD-12: login is username-only, so the success copy must not
+# tell the user to "log in with your new email" — the login credential never
+# changes. DD-15: the HOME (already-logged-in) render path drops the login clause
+# entirely, since telling a logged-in viewer to "log in as usual" contradicts the
+# page they are already on.
+EMAIL_CHANGE_SUCCESS = (
+    "Your email address has been updated. Your username hasn't changed — "
+    "log in as usual to continue."
+)
+EMAIL_CHANGE_SUCCESS_AUTHENTICATED = "Your email address has been updated."
+EMAIL_CHANGE_CONFIRM_INVALID = "That confirmation link is invalid or has expired."
+EMAIL_CHANGE_CONFIRM_TAKEN = "That email address is no longer available."
 MEMBER_DELETE_WARNING = (
     "This member will no longer have access to the URLs in this UTub."
 )

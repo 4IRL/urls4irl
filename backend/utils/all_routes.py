@@ -20,6 +20,7 @@ class SPLASH_ROUTES:
     SEND_VALIDATION_EMAIL = _SPLASH + "send_validation_email"
     RESEND_REGISTRATION_EMAIL = _SPLASH + "resend_registration_email"
     VALIDATE_EMAIL = _SPLASH + "validate_email"
+    CONFIRM_EMAIL_CHANGE = _SPLASH + "confirm_email_change"
     FORGOT_PASSWORD_PAGE = _SPLASH + "forgot_password"
     CONFIRM_PASSWORD_RESET = _SPLASH + "confirm_password_reset"
     RESET_PASSWORD = _SPLASH + "reset_password_page"

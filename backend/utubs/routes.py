@@ -29,6 +29,10 @@ from backend.schemas.utubs import (
     UtubDetailSchema,
     UtubNameUpdatedResponseSchema,
 )
+from backend.splash.services.change_email import (
+    EMAIL_CHANGE_STATUS_QUERY_PARAM,
+    build_email_change_banner,
+)
 from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID_QUERY_PARAM
 from backend.utubs.constants import UTubErrorCodes
@@ -79,8 +83,15 @@ def home() -> str | WerkzeugResponse:
     Returns:
         - All UTubIDs and names
     """
+    # DD-9: this view is @email_validation_required-gated, so the viewer is
+    # always authenticated + validated here — the login-clause-free success copy
+    # is always correct (authenticated=True). Absent/unrecognized code → None.
+    email_change_banner = build_email_change_banner(
+        request.args.get(EMAIL_CHANGE_STATUS_QUERY_PARAM, ""), authenticated=True
+    )
+
     if not request.args:
-        return render_home_page()
+        return render_home_page(email_change_banner=email_change_banner)
 
     if not validate_home_query_params():
         abort(404)
@@ -92,7 +103,7 @@ def home() -> str | WerkzeugResponse:
         # graceful-degradation mobile URL such as `/home?panel=urls`. Render the
         # home page; the client resolves the no-UTub state per the mobile
         # panel-persistence feature rather than the server erroring.
-        return render_home_page()
+        return render_home_page(email_change_banner=email_change_banner)
 
     valid_member = validate_user_is_member_of_utub_on_home_page_with_query_param(
         utub_id
@@ -101,7 +112,7 @@ def home() -> str | WerkzeugResponse:
     if not valid_member:
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
-    return render_home_page()
+    return render_home_page(email_change_banner=email_change_banner)
 
 
 @utubs.route("/utubs", methods=["POST"])

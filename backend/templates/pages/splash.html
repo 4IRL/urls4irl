@@ -4,6 +4,11 @@
 <!-- SPLASH PAGE INTRO -->
 {% if not current_user.is_authenticated or not current_user.email_validated %}
 <main id="SplashMain" class="splash-page-main">
+    {% if email_change_banner %}
+    <div id="EmailChangeStatusBanner"
+        class="alert {{ 'alert-success' if email_change_banner.kind == 'success' else 'alert-danger' }}"
+        role="alert">{{ email_change_banner.message }}</div>
+    {% endif %}
     <section id="splashHero" aria-labelledby="splash-major-text">
         <h1 id="splash-major-text" class="splash-hero-title">Welcome to URLS4IRL</h1>
         <p id="splash-mini-text" class="splash-hero-tagline">{{ CONSTANTS.STRINGS.SPLASH_TAGLINE }}</p>

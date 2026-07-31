@@ -103,6 +103,21 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Template**   | Redirect (no template)                                                 |
 | **Tests**      | `tests/integration/splash/test_email_validation.py` (marker: `splash`) |
 
+### GET /confirm-email-change/\<token\>
+
+Anonymous confirm step of the Settings "change email" flow (Phase 3): swaps the pending email into the live `Users.email` column, then redirects to the splash page carrying one closed-set outcome code (`email_change_status`). No decorators (the link is opened from the new inbox, possibly on another device); never auto-logs the user in. On a bad/expired token it redirects with `invalid_or_expired` — it must NOT reuse the registration consume path's user-deleting `_handle_invalid_verification_token`.
+
+| Layer          | Location                                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/splash/routes.py:confirm_email_change`                                                                                                                                                                                  |
+| **Decorators** | None (anonymous-reachable GET; no `api_route` — a plain HTML-navigation redirect like `GET /validate/<token>` above)                                                                                                              |
+| **Service**    | `backend/splash/services/change_email.py:confirm_email_change_for_user` — DD-2 `NotFound` guard, DD-5 stale-token guard (local re-decode of `EMAILS.CHANGE_EMAIL_TARGET`), TOCTOU uniqueness re-check, DD-4 `IntegrityError` race guard, DD-3 `sessions_invalidated_at` bump on success |
+| **Schema**     | None (path token only)                                                                                                                                                                                                           |
+| **Template**   | Redirect (no template); the outcome banner is rendered by `splash_page()` → `pages/splash.html` and, for an already-logged-in browser (DD-9), by `home()` → `pages/home.html`, both via `change_email.py:build_email_change_banner` |
+| **CSRF**       | n/a (GET)                                                                                                                                                                                                                        |
+| **Metrics**    | `API_HIT` only (no DOMAIN event in v1; mirrors change-username's Decision #3)                                                                                                                                                    |
+| **Tests**      | `tests/integration/splash/test_confirm_email_change.py` (marker: `splash`)                                                                                                                                                       |
+
 ### POST /forgot-password
 
 | Layer          | Location                                                                                                                                                                                                                                                                                 |

@@ -1,5 +1,10 @@
 {% extends "pages/layout.html" %}
 {% block mainbody %}
+{% if email_change_banner %}
+<div id="EmailChangeStatusBanner"
+    class="alert {{ 'alert-success' if email_change_banner.kind == 'success' else 'alert-danger' }}"
+    role="alert">{{ email_change_banner.message }}</div>
+{% endif %}
 <main id="mainPanel" class="mx-0 bt-4 pt-0">
     <!-- Left Panel -->
     <div id="leftPanel" class="panel">
