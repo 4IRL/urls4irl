@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
 from backend.schemas.requests._sanitize import SanitizedStr
 from backend.schemas.requests.splash import _UsernameStripMixin
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
+from backend.utils.strings.splash_form_strs import EMAILS_NOT_IDENTICAL
 
 
 class ChangeUsernameRequest(_UsernameStripMixin):
@@ -51,6 +52,42 @@ class ChangePasswordRequest(BaseModel):
             return value
         if value != info.data.get("new_password"):
             raise ValueError(RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL)
+        return value
+
+
+class ChangeEmailRequest(BaseModel):
+    # Aliases are mandatory (no populate_by_name), so the JS client sends
+    # newEmail / confirmEmail / currentPassword. Mirrors ChangePasswordRequest.
+    new_email: EmailStr = Field(
+        alias="newEmail",
+        description="The new email address to stage for confirmation",
+    )
+    confirm_email: str = Field(
+        min_length=USER_CONSTANTS.MIN_EMAIL_LENGTH,
+        alias="confirmEmail",
+        description="New-email confirmation, must match new_email (DD-8)",
+    )
+    password: str = Field(
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
+        alias="currentPassword",
+        description=(
+            "Current account password, re-authenticated before the change. "
+            "Length is validated against the stored hash in the service (min 1, "
+            "like LoginRequest), not against the new-password policy"
+        ),
+    )
+
+    @field_validator("confirm_email", mode="after")
+    @classmethod
+    def emails_must_match(cls, value: str, info: ValidationInfo) -> str:
+        # Plain-str confirm field (not EmailStr): format is already enforced on
+        # new_email; this only equality-checks. Mirrors RegisterRequest exactly.
+        # `new_email not in info.data` short-circuits when new_email's own
+        # validation failed first, so the mismatch error never masks it.
+        if "new_email" not in info.data:
+            return value
+        if value != info.data.get("new_email"):
+            raise ValueError(EMAILS_NOT_IDENTICAL)
         return value
 
 

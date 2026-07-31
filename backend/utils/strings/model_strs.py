@@ -5,6 +5,7 @@ CREATED_BY = "createdByUserID"
 CREATED_AT = "createdAt"
 DESCRIPTION = "description"
 EMAIL = "email"
+PENDING_EMAIL = "pendingEmail"
 EMAIL_VALIDATED = "emailValidated"
 ID = "id"
 IS_CREATOR = "isCreator"
@@ -40,6 +41,7 @@ MATCHED_FIELDS = "matchedFields"
 class MODELS:
     ID = ID
     EMAIL = EMAIL
+    PENDING_EMAIL = PENDING_EMAIL
     EMAIL_VALIDATED = EMAIL_VALIDATED
     NAME = NAME
     URL_ID = URL_ID

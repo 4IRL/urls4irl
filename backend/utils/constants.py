@@ -164,6 +164,11 @@ class USER_CONSTANTS:
     # counter (see settings-account-basics plan, Decision #4) — no DB migration.
     MAX_USERNAME_CHANGES_PER_DAY = 3
     USERNAME_CHANGE_WINDOW_SECONDS = 86_400
+    # Email changes are capped per rolling 24h per user via a Redis-only counter
+    # (mirrors the username-change pair) — prevents email-bombing an arbitrary
+    # target address with confirmation links.
+    MAX_EMAIL_CHANGES_PER_DAY = 3
+    EMAIL_CHANGE_WINDOW_SECONDS = 86_400
     # Per-user brute-force lockout shared by BOTH re-auth gates (change-password
     # and the settings OAuth-link password re-auth) via a fail-open Redis counter
     # (see backend/utils/reauth_throttle.py, DD-1). 10 failures per rolling 15

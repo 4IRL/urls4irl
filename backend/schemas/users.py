@@ -121,6 +121,24 @@ class ChangePasswordResponseSchema(StatusMessageResponseSchema):
     pass
 
 
+class ChangeEmailResponseSchema(StatusMessageResponseSchema):
+    """Response for the authenticated change-email START endpoint
+    (``PUT /users/<id>/email``).
+
+    Carries ``status``/``message`` (DD-12 banner text is server-sourced off
+    ``message``) plus the just-staged ``pending_email`` (DD-6) so the client can
+    patch the account-info card in place without a reload. ``pending_email`` is
+    optional/``None``-defaulted because the no-op guard (guard 5) also builds
+    this schema and nothing is staged in that branch.
+    """
+
+    pending_email: str | None = Field(
+        default=None,
+        alias=M.PENDING_EMAIL,
+        description="The staged (not-yet-confirmed) new email, echoed back (DD-6)",
+    )
+
+
 class RegisterResponseSchema(StatusMessageResponseSchema):
     pass
 

@@ -46,6 +46,13 @@ EMAIL_CHANGE_SUCCESS = (
 EMAIL_CHANGE_SUCCESS_AUTHENTICATED = "Your email address has been updated."
 EMAIL_CHANGE_CONFIRM_INVALID = "That confirmation link is invalid or has expired."
 EMAIL_CHANGE_CONFIRM_TAKEN = "That email address is no longer available."
+# Change-email START endpoint (PUT /users/<id>/email) banner copy (server-sourced
+# envelope text — surfaced dynamically off xhr.responseJSON.message; no JS bridge).
+EMAIL_CHANGE_CONFIRMATION_SENT = (
+    "We've sent a confirmation link to your new email address. Click it to "
+    "finish changing your email."
+)
+EMAIL_CHANGE_NO_CHANGE = "That's already your email address."
 MEMBER_DELETE_WARNING = (
     "This member will no longer have access to the URLs in this UTub."
 )
@@ -85,6 +92,12 @@ ACCOUNT_SUSPENDED = "This account has been suspended."
 USERNAME_CHANGE_RATE_LIMITED = (
     "You've changed your username too many times today. Try again later."
 )
+# Per-day email-change send cap copy (429). Distinct from the re-auth
+# brute-force lockout copy (TOO_MANY_PASSWORD_ATTEMPTS): hitting the daily cap is
+# not a wrong-password event. Mirrors USERNAME_CHANGE_RATE_LIMITED.
+EMAIL_CHANGE_RATE_LIMITED = (
+    "You've requested too many email changes today. Try again later."
+)
 # Dedicated change-password re-auth failure copy (Decision #9). NOT a reuse of
 # INVALID_PASSWORD, whose text carries an OAuth-signup clause that does not
 # apply to this authenticated re-auth check (the OAuth-only case is handled by
@@ -95,6 +108,12 @@ CURRENT_PASSWORD_INCORRECT = "Current password is incorrect."
 PASSWORD_CHANGE_OAUTH_ONLY = (
     "Password change isn't available for accounts that sign in with Google or "
     "GitHub."
+)
+# OAuth-only guard copy for the change-email START endpoint (defense-in-depth:
+# the template hides the form for password-less accounts). A dedicated sibling
+# of PASSWORD_CHANGE_OAUTH_ONLY so the copy names the email flow specifically.
+EMAIL_CHANGE_OAUTH_ONLY = (
+    "Email change isn't available for accounts that sign in with Google or " "GitHub."
 )
 # Shared brute-force lockout copy (DD-1) returned with HTTP 429 by BOTH re-auth
 # gates — change-password and the settings OAuth-link password re-auth — once a
@@ -117,8 +136,10 @@ class USER_FAILURE(FAILURE_GENERAL):
     INVALID_EMAIL = INVALID_EMAIL
     ACCOUNT_SUSPENDED = ACCOUNT_SUSPENDED
     USERNAME_CHANGE_RATE_LIMITED = USERNAME_CHANGE_RATE_LIMITED
+    EMAIL_CHANGE_RATE_LIMITED = EMAIL_CHANGE_RATE_LIMITED
     CURRENT_PASSWORD_INCORRECT = CURRENT_PASSWORD_INCORRECT
     PASSWORD_CHANGE_OAUTH_ONLY = PASSWORD_CHANGE_OAUTH_ONLY
+    EMAIL_CHANGE_OAUTH_ONLY = EMAIL_CHANGE_OAUTH_ONLY
     TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
 
 

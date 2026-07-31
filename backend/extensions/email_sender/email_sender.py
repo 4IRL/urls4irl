@@ -65,6 +65,36 @@ class EmailSender:
 
         return self._send_or_fail(message)
 
+    def send_email_change_confirmation(
+        self, to_email: str, to_name: str, confirmation_url: str
+    ) -> Response:
+        """Send the Settings "change email" confirmation link to the user's NEW
+        address (Phase 3). Mirrors ``send_account_email_confirmation`` but carries
+        a change-appropriate subject; the body reuses the generic confirm-link
+        templates (they only render the confirmation URL)."""
+        message = {
+            EMAILS.MESSAGES: [
+                self._message_builder(
+                    to_email=to_email,
+                    to_name=to_name,
+                    subject=EMAILS.CHANGE_EMAIL_SUBJECT,
+                    textpart=render_template(
+                        "email_templates/email_validation_email.txt",
+                        email_confirmation_url=confirmation_url,
+                    ),
+                    htmlpart=render_template(
+                        "email_templates/email_validation_email.html",
+                        email_confirmation_url=confirmation_url,
+                    ),
+                )
+            ]
+        }
+
+        if self._testing:
+            message[EMAILS.SANDBOXMODE] = True
+
+        return self._send_or_fail(message)
+
     def send_password_reset_email(
         self, to_email: str, to_name: str, reset_url: str
     ) -> Response:

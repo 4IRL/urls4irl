@@ -68,6 +68,7 @@ class USER_ROUTES:
     SETTINGS = _USERS + "settings"
     CHANGE_USERNAME = _USERS + "change_username"
     CHANGE_PASSWORD = _USERS + "change_password"
+    CHANGE_EMAIL = _USERS + "change_email"
     OAUTH_LINK = _USERS + "link_oauth_provider"
     OAUTH_UNLINK = _USERS + "unlink_oauth_provider"
 
