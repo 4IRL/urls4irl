@@ -289,11 +289,13 @@ def apply_email_change(
     DD-19: builds the confirm URL by route NAME via ``url_for`` and sends via the
     neutral ``email_sender`` extension — no ``backend.splash.*`` service import.
 
-    Guard order (so a rejected/no-op attempt never burns a rate-limit slot nor
-    sends an email): self-ownership (403) → OAuth-only (400) → re-auth lockout
-    (429) → re-auth (400) → no-op (200) → uniqueness (400) → rate-limit precheck
-    fail-open (429) → stage + commit → send (rollback the staging on send
-    failure) → INCR (EXPIRE only on the first) → success (200).
+    Guard order: self-ownership (403) → OAuth-only (400) → re-auth lockout (429)
+    → re-auth (400) → no-op (200) → rate-limit precheck fail-open (429, a capped
+    user is rejected before any probe) → uniqueness (400; a taken-email
+    rejection burns one daily slot via the shared local INCR helper so
+    email-enumeration probing is bounded to MAX_EMAIL_CHANGES_PER_DAY, DD-1) →
+    stage + commit → send (rollback the staging on send failure) →
+    INCR-on-success (EXPIRE only on the first) → success (200).
     """
     # (1) Self-ownership: the URL user_id must be the acting user.
     if user_id != current_user.id:
@@ -351,25 +353,34 @@ def apply_email_change(
             ),
         ).to_response()
 
-    # (6) Uniqueness (excluding the current user, so the no-op above cannot
-    # false-positive here). The live email is what enforces uniqueness — a
-    # different user's pending_email does not reserve the address.
-    existing_user: Users | None = Users.query.filter(
-        Users.email == new_email.lower(), Users.id != current_user.id
-    ).first()
-    if existing_user is not None:
-        return build_field_error_response(
-            message=USER_FAILURE.EMAIL_TAKEN,
-            errors={"newEmail": [USER_FAILURE.EMAIL_TAKEN]},
-            error_code=ChangeEmailErrorCodes.EMAIL_TAKEN,
-            status_code=400,
-        )
-
     rate_limit_key = f"email-change:{user_id}"
     redis_client = _build_rate_limit_redis()
 
-    # (7) Rate-limit pre-check (fail-open): read the counter before staging so a
-    # capped attempt is rejected without a DB write, an email send, or an INCR.
+    def increment_rate_limit_counter() -> None:
+        """Increment the per-user daily email-change counter (fail-open).
+
+        EXPIRE is set only on the first INCR → a fixed 24h window anchored at the
+        first change/probe. Kept a LOCAL closure (DD-4: no cross-function
+        extraction); shared by the taken-email rejection below and the
+        success path so a Redis error can never block the caller's response.
+        """
+        if redis_client is None:
+            return
+        try:
+            new_count = redis_client.incr(rate_limit_key)
+            if new_count == 1:
+                redis_client.expire(
+                    rate_limit_key, USER_CONSTANTS.EMAIL_CHANGE_WINDOW_SECONDS
+                )
+        except Exception as redis_error:
+            current_app.logger.exception(
+                "email-change rate-limit increment failed (failing open): "
+                f"{redis_error}"
+            )
+
+    # (6) Rate-limit pre-check (fail-open): read the counter BEFORE the
+    # uniqueness probe so a capped user is rejected 429 without a DB write, an
+    # email send, an INCR, or leaking whether the probed address is taken (DD-1).
     if redis_client is not None:
         try:
             current_count = int(redis_client.get(rate_limit_key) or 0)
@@ -384,6 +395,24 @@ def apply_email_change(
                 "email-change rate-limit precheck failed (failing open): "
                 f"{redis_error}"
             )
+
+    # (7) Uniqueness (excluding the current user, so the no-op above cannot
+    # false-positive here). The live email is what enforces uniqueness — a
+    # different user's pending_email does not reserve the address. A taken-email
+    # rejection increments the daily counter (fail-open) BEFORE returning, so
+    # every enumeration probe burns one slot and probing is bounded to
+    # MAX_EMAIL_CHANGES_PER_DAY (DD-1).
+    existing_user: Users | None = Users.query.filter(
+        Users.email == new_email.lower(), Users.id != current_user.id
+    ).first()
+    if existing_user is not None:
+        increment_rate_limit_counter()
+        return build_field_error_response(
+            message=USER_FAILURE.EMAIL_TAKEN,
+            errors={"newEmail": [USER_FAILURE.EMAIL_TAKEN]},
+            error_code=ChangeEmailErrorCodes.EMAIL_TAKEN,
+            status_code=400,
+        )
 
     # (8) Clear the re-auth failure counter, stage the pending email, and commit.
     # Staging happens strictly BEFORE minting the token below (DD-5), so
@@ -413,20 +442,9 @@ def apply_email_change(
         )
 
     # (10) Only after a committed staging + successful send, increment the
-    # counter (fail-open). EXPIRE is set only on the first INCR → fixed 24h
-    # window anchored at the first change.
-    if redis_client is not None:
-        try:
-            new_count = redis_client.incr(rate_limit_key)
-            if new_count == 1:
-                redis_client.expire(
-                    rate_limit_key, USER_CONSTANTS.EMAIL_CHANGE_WINDOW_SECONDS
-                )
-        except Exception as redis_error:
-            current_app.logger.exception(
-                "email-change rate-limit increment failed (failing open): "
-                f"{redis_error}"
-            )
+    # counter (fail-open, EXPIRE only on the first INCR → fixed 24h window
+    # anchored at the first change). DD-3 read-then-late-increment unchanged.
+    increment_rate_limit_counter()
 
     # (11) Success — echo the staged pending_email so the client patches the
     # account-info card in place (DD-6).

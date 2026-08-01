@@ -525,6 +525,65 @@ def test_change_email_per_day_rate_limit_cap(
 
 
 @mock.patch(_SEND_TARGET)
+def test_change_email_taken_probes_bounded_by_per_day_cap(
+    mock_send: mock.MagicMock,
+    provide_redis: Redis | None,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Email-enumeration is bounded to the daily cap (DD-1): each of
+    ``MAX_EMAIL_CHANGES_PER_DAY`` taken-email probes returns 400 EMAIL_TAKEN and
+    burns one slot, so the next attempt — taken or not — returns 429
+    RATE_LIMITED. No confirmation email is ever sent for a taken probe."""
+    if provide_redis is None:
+        pytest.skip("Requires a real Redis instance (Docker stack)")
+
+    client, csrf_token, user, app = login_first_user_with_register
+    user_id = user.id
+    taken_email = _seed_second_user(app)
+    rate_limit_key = f"email-change:{user_id}"
+
+    for _ in range(USER_CONSTANTS.MAX_EMAIL_CHANGES_PER_DAY):
+        probe = client.put(
+            url_for(ROUTES.USERS.CHANGE_EMAIL, user_id=user_id),
+            json=_change_email_payload(new_email=taken_email),
+            headers={"X-CSRFToken": csrf_token},
+        )
+        assert probe.status_code == 400
+        assert (
+            probe.get_json()[STD_JSON.ERROR_CODE] == ChangeEmailErrorCodes.EMAIL_TAKEN
+        )
+
+    # The cap is now reached from taken probes alone; the next attempt is
+    # rejected at the precheck before any uniqueness probe or send.
+    blocked = client.put(
+        url_for(ROUTES.USERS.CHANGE_EMAIL, user_id=user_id),
+        json=_change_email_payload(new_email=taken_email),
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert blocked.status_code == 429
+    assert blocked.get_json()[STD_JSON.ERROR_CODE] == ChangeEmailErrorCodes.RATE_LIMITED
+
+    # A fresh (untaken) address is likewise blocked — proving the bound is the
+    # daily cap, not an artifact of the address being taken.
+    blocked_fresh = client.put(
+        url_for(ROUTES.USERS.CHANGE_EMAIL, user_id=user_id),
+        json=_change_email_payload(new_email="never_probed@example.com"),
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert blocked_fresh.status_code == 429
+    assert (
+        blocked_fresh.get_json()[STD_JSON.ERROR_CODE]
+        == ChangeEmailErrorCodes.RATE_LIMITED
+    )
+
+    assert (
+        provide_redis.get(rate_limit_key)
+        == str(USER_CONSTANTS.MAX_EMAIL_CHANGES_PER_DAY).encode()
+    )
+    mock_send.assert_not_called()
+
+
+@mock.patch(_SEND_TARGET)
 def test_change_email_fails_open_when_rate_limit_redis_errors(
     mock_send: mock.MagicMock,
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
@@ -553,3 +612,36 @@ def test_change_email_fails_open_when_rate_limit_redis_errors(
     assert response.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
     with app.app_context():
         assert Users.query.get(user_id).pending_email == _NEW_EMAIL
+
+
+@mock.patch(_SEND_TARGET)
+def test_change_email_taken_branch_fails_open_when_rate_limit_redis_errors(
+    mock_send: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The taken-email slot-burn INCR (DD-1) is fail-open: when the rate-limit
+    Redis client raises, a taken-email probe still returns its 400 EMAIL_TAKEN
+    field error (not a 500) — a Redis outage must never block the response."""
+    client, csrf_token, user, app = login_first_user_with_register
+    user_id = user.id
+    taken_email = _seed_second_user(app)
+
+    raising_client = mock.MagicMock()
+    raising_client.get.side_effect = Exception("redis down")
+    raising_client.incr.side_effect = Exception("redis down")
+
+    with mock.patch(
+        "backend.users.services.account_service._build_rate_limit_redis",
+        return_value=raising_client,
+    ):
+        response = client.put(
+            url_for(ROUTES.USERS.CHANGE_EMAIL, user_id=user_id),
+            json=_change_email_payload(new_email=taken_email),
+            headers={"X-CSRFToken": csrf_token},
+        )
+
+    assert response.status_code == 400
+    assert response.get_json()[STD_JSON.ERROR_CODE] == ChangeEmailErrorCodes.EMAIL_TAKEN
+    with app.app_context():
+        assert Users.query.get(user_id).pending_email is None
+    mock_send.assert_not_called()
