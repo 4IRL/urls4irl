@@ -365,19 +365,20 @@ def test_build_email_change_banner_none_for_unknown_code() -> None:
 
 
 @pytest.mark.parametrize(
-    "status_code, expected_message",
+    "status_code, expected_message, expected_kind",
     [
-        (EMAIL_CHANGE_STATUS_SUCCESS, EMAIL_CHANGE_SUCCESS),
-        (EMAIL_CHANGE_STATUS_ALREADY_CONFIRMED, EMAIL_CHANGE_SUCCESS),
-        (EMAIL_CHANGE_STATUS_INVALID, EMAIL_CHANGE_CONFIRM_INVALID),
-        (EMAIL_CHANGE_STATUS_TAKEN, EMAIL_CHANGE_CONFIRM_TAKEN),
+        (EMAIL_CHANGE_STATUS_SUCCESS, EMAIL_CHANGE_SUCCESS, "success"),
+        (EMAIL_CHANGE_STATUS_ALREADY_CONFIRMED, EMAIL_CHANGE_SUCCESS, "success"),
+        (EMAIL_CHANGE_STATUS_INVALID, EMAIL_CHANGE_CONFIRM_INVALID, "error"),
+        (EMAIL_CHANGE_STATUS_TAKEN, EMAIL_CHANGE_CONFIRM_TAKEN, "error"),
     ],
 )
 def test_splash_renders_banner_for_status(
-    app: Flask, status_code, expected_message
+    app: Flask, status_code, expected_message, expected_kind
 ) -> None:
     """DD-9 anonymous path: GET /?email_change_status=<code> renders the banner
-    on splash with the login-clause success copy."""
+    on splash with the login-clause success copy and the kind-appropriate
+    ``alert-*`` class (guards against an inverted template ternary)."""
     response = app.test_client().get(
         f"/?{EMAIL_CHANGE_STATUS_QUERY_PARAM}={status_code}"
     )
@@ -385,25 +386,33 @@ def test_splash_renders_banner_for_status(
     assert response.status_code == 200
     assert b"EmailChangeStatusBanner" in response.data
     assert str(escape(expected_message)).encode() in response.data
+    expected_class = b"alert-success" if expected_kind == "success" else b"alert-danger"
+    assert expected_class in response.data
 
 
 @pytest.mark.parametrize(
-    "status_code, expected_message",
+    "status_code, expected_message, expected_kind",
     [
-        (EMAIL_CHANGE_STATUS_SUCCESS, EMAIL_CHANGE_SUCCESS_AUTHENTICATED),
-        (EMAIL_CHANGE_STATUS_ALREADY_CONFIRMED, EMAIL_CHANGE_SUCCESS_AUTHENTICATED),
-        (EMAIL_CHANGE_STATUS_INVALID, EMAIL_CHANGE_CONFIRM_INVALID),
-        (EMAIL_CHANGE_STATUS_TAKEN, EMAIL_CHANGE_CONFIRM_TAKEN),
+        (EMAIL_CHANGE_STATUS_SUCCESS, EMAIL_CHANGE_SUCCESS_AUTHENTICATED, "success"),
+        (
+            EMAIL_CHANGE_STATUS_ALREADY_CONFIRMED,
+            EMAIL_CHANGE_SUCCESS_AUTHENTICATED,
+            "success",
+        ),
+        (EMAIL_CHANGE_STATUS_INVALID, EMAIL_CHANGE_CONFIRM_INVALID, "error"),
+        (EMAIL_CHANGE_STATUS_TAKEN, EMAIL_CHANGE_CONFIRM_TAKEN, "error"),
     ],
 )
 def test_home_renders_banner_for_status(
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
     status_code,
     expected_message,
+    expected_kind,
 ) -> None:
     """DD-9 authenticated path: GET /home?email_change_status=<code> is neither
     404'd by validate_home_query_params() nor dropped — it renders the banner on
-    HOME with the login-clause-free success copy."""
+    HOME with the login-clause-free success copy and the kind-appropriate
+    ``alert-*`` class (guards against an inverted template ternary)."""
     client, _, _, app = login_first_user_with_register
     with app.test_request_context():
         home_url = url_for(
@@ -415,3 +424,5 @@ def test_home_renders_banner_for_status(
     assert response.status_code == 200
     assert b"EmailChangeStatusBanner" in response.data
     assert str(escape(expected_message)).encode() in response.data
+    expected_class = b"alert-success" if expected_kind == "success" else b"alert-danger"
+    assert expected_class in response.data
