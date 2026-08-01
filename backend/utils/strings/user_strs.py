@@ -121,7 +121,7 @@ PASSWORD_CHANGE_OAUTH_ONLY = (
 # the template hides the form for password-less accounts). A dedicated sibling
 # of PASSWORD_CHANGE_OAUTH_ONLY so the copy names the email flow specifically.
 EMAIL_CHANGE_OAUTH_ONLY = (
-    "Email change isn't available for accounts that sign in with Google or " "GitHub."
+    "Email change isn't available for accounts that sign in with Google or GitHub."
 )
 # Shared brute-force lockout copy (DD-1) returned with HTTP 429 by BOTH re-auth
 # gates — change-password and the settings OAuth-link password re-auth — once a
