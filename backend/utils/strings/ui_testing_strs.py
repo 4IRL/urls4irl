@@ -28,6 +28,7 @@ from backend.utils.strings.splash_form_strs import (
     GITHUB_OAUTH_REGISTER_BUTTON_TEXT,
     GOOGLE_OAUTH_LOGIN_BUTTON_TEXT,
     GOOGLE_OAUTH_REGISTER_BUTTON_TEXT,
+    REGISTRATION_EMAIL_RESENT,
 )
 from backend.utils.strings.tag_strs import (
     TAG_DECK_NO_TAGS as _TAG_DECK_NO_TAGS,
@@ -139,6 +140,8 @@ class UI_TEST_STRINGS:
     EMAIL_EQUALITY_FAILED = "Emails do not match."
     # Post-register confirmation banner — locked to the backend source constant.
     REGISTER_CONFIRM_EMAIL_SENT = CONFIRM_EMAIL_SENT
+    # Distinct "resent" banner shown after clicking Resend — locked to source.
+    REGISTER_EMAIL_RESENT = REGISTRATION_EMAIL_RESENT
 
     # UTubs
     TEST_UTUB_NAME_1 = MOCK_UTUB_NAME_BASE + "1"

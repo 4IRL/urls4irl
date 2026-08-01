@@ -11,9 +11,12 @@ const log = debug("splash:register");
  *
  * Wires the "Back to login" button and the opaque "Resend" link. The resend
  * link POSTs the submitted email (stashed by handleRegisterSuccess) to the
- * dedicated unauthenticated /resend-registration-email endpoint, which always
- * returns an identical opaque success — so the banner is re-shown regardless of
- * outcome. Must be called once from initSplash().
+ * dedicated unauthenticated /resend-registration-email endpoint. On click the
+ * link shows an in-flight "Sending…" state; on settle it restores and shows a
+ * DISTINCT "resent" success banner so the state change is perceptible. The
+ * endpoint stays enumeration-neutral (200 for existent AND non-existent
+ * emails), so a distinct error banner appears only on a genuine transport/HTTP
+ * error — never on account existence. Must be called once from initSplash().
  */
 export function initRegisterConfirmationModal($modal: JQuery): void {
   $modal
@@ -32,9 +35,21 @@ export function initRegisterConfirmationModal($modal: JQuery): void {
   log("initRegisterConfirmationModal bound");
 }
 
+// Stash the link's original text once (before the first in-flight mutation) so
+// resetResendLink can restore it regardless of what Jinja rendered.
+function stashOriginalLinkText($link: JQuery): void {
+  if ($link.data("originalText") === undefined) {
+    $link.data("originalText", $link.text());
+  }
+}
+
 function resetResendLink($modal: JQuery): void {
-  $modal
-    .find("#ResendRegistrationEmail")
+  const $link: JQuery = $modal.find("#ResendRegistrationEmail");
+  const originalText: unknown = $link.data("originalText");
+  if (originalText !== undefined) {
+    $link.text(String(originalText));
+  }
+  $link
     .removeClass("disabled")
     .removeAttr("aria-disabled")
     .removeAttr("aria-busy");
@@ -49,13 +64,14 @@ function handleResendRegistrationEmail(
   event.preventDefault();
 
   const $link: JQuery = $modal.find("#ResendRegistrationEmail");
+  stashOriginalLinkText($link);
   $link
     .addClass("disabled")
     .attr("aria-disabled", "true")
-    .attr("aria-busy", "true");
+    .attr("aria-busy", "true")
+    .text(APP_CONFIG.strings.REGISTRATION_EMAIL_RESEND_SENDING);
 
   const email: string = String($modal.data("registerEmail") ?? "");
-  const confirmMessage: string = String($modal.data("confirmMessage") ?? "");
 
   log("resend registration email", { emailLength: email.length });
 
@@ -70,10 +86,16 @@ function handleResendRegistrationEmail(
     timeout: 10000,
   });
 
-  resendRequest.done((response: { message: string }) => {
+  resendRequest.done(() => {
     resetResendLink($modal);
-    // Opaque endpoint always returns 200 with the uniform confirmation message.
-    showSplashModalAlertBanner($modal, response.message, "success");
+    // Distinct "resent" copy (differs from the open-modal confirmation text) so
+    // the success is perceptible. The endpoint is opaque, so this same neutral
+    // message is shown for existent and non-existent emails alike.
+    showSplashModalAlertBanner(
+      $modal,
+      APP_CONFIG.strings.REGISTRATION_EMAIL_RESENT,
+      "success",
+    );
   });
 
   resendRequest.fail((xhr: JQuery.jqXHR) => {
@@ -85,18 +107,23 @@ function handleResendRegistrationEmail(
     resetResendLink($modal);
 
     if (xhr.status === 0) {
-      // Genuine network/timeout blip: no HTTP response was received. Re-show
-      // the same opaque confirmation text stashed at open-time (no new bridged
-      // string) so the enumeration-neutral UX is preserved.
-      showSplashModalAlertBanner($modal, confirmMessage, "success");
+      // Genuine network/timeout blip: no HTTP response was received. Show the
+      // same distinct "resent" success copy so the UX stays uniform and
+      // enumeration-neutral (never reveals send outcome).
+      showSplashModalAlertBanner(
+        $modal,
+        APP_CONFIG.strings.REGISTRATION_EMAIL_RESENT,
+        "success",
+      );
       return;
     }
 
-    // A real HTTP error reached us (e.g. 400 stale CSRF, 500). Surface an error
-    // state instead of masquerading the failure as success.
+    // A real HTTP error reached us (e.g. 400 stale CSRF, 500) — a genuine
+    // transport/server failure, independent of account existence. Surface an
+    // error state instead of masquerading the failure as success.
     showSplashModalAlertBanner(
       $modal,
-      "Unable to process request...",
+      APP_CONFIG.strings.REGISTRATION_EMAIL_RESEND_ERROR,
       "danger",
     );
   });

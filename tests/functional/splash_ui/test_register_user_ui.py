@@ -333,10 +333,13 @@ def test_register_confirmation_modal_and_resend(page: Page):
     expect(banner).to_be_visible()
     expect(banner).to_have_text(UTS.REGISTER_CONFIRM_EMAIL_SENT)
 
-    # Resend re-shows the same opaque banner on settle (DD-20/DD-24/DD-25)
+    # Resend shows a DISTINCT "resent" success banner on settle (differs from
+    # the open-modal confirmation copy) so the state change is perceptible,
+    # while staying enumeration-neutral.
     wait_then_click_element(page=page, css_selector=SPL.RESEND_REGISTRATION_EMAIL_LINK)
-    expect(banner).to_have_text(UTS.REGISTER_CONFIRM_EMAIL_SENT)
-    # Settle re-enables the link (proving the settle handler cleared the busy state)
+    expect(banner).to_have_text(UTS.REGISTER_EMAIL_RESENT)
+    # Settle re-enables the link (proving the settle handler cleared the busy
+    # state) and restores its original label (no lingering "Sending…").
     resend_link = wait_then_get_element(
         page=page, css_selector=SPL.RESEND_REGISTRATION_EMAIL_LINK
     )

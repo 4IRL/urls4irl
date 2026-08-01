@@ -168,6 +168,10 @@ const appConfig = {
     CROSS_SEARCH_SUBMIT_LABEL: "Search across your UTubs",
     CROSS_SEARCH_REFRESH_LABEL: "Refresh these search results",
     VALIDATE_MY_EMAIL: "Validate My Email",
+    REGISTRATION_EMAIL_RESEND_SENDING: "Sending…",
+    REGISTRATION_EMAIL_RESENT: "Confirmation email resent — check your inbox.",
+    REGISTRATION_EMAIL_RESEND_ERROR:
+      "Something went wrong resending your email. Please try again.",
     UTUB_IS_LOCKED: "This UTub is locked and cannot be modified.",
     UTUB_SEARCH_NO_RESULTS: "No UTubs found",
     UTUB_SEARCH_PLACEHOLDER: "Filter UTubs",
