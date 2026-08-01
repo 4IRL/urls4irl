@@ -17,6 +17,7 @@ from flask.testing import FlaskClient
 from markupsafe import escape
 import pytest
 from sqlalchemy.exc import IntegrityError
+from werkzeug.test import TestResponse
 
 from backend import db
 from backend.models.users import Users
@@ -51,7 +52,7 @@ def _login_payload() -> dict[str, str]:
     }
 
 
-def _status_from_redirect(response) -> str | None:
+def _status_from_redirect(response: TestResponse) -> str | None:
     """Extract the confirm-outcome code from a 302 redirect's Location header."""
     location = response.headers.get("Location", "")
     query_params = parse_qs(urlparse(location).query)
