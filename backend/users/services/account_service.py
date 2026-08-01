@@ -68,6 +68,10 @@ def build_account_info_context() -> dict[str, Any]:
         "account_username": current_user.username,
         "account_email": current_user.email,
         "account_email_validated": current_user.email_validated,
+        # None when no change is in flight; the staged (lowercased) address
+        # otherwise. Gates both the account-info pending indicator and the
+        # in-form change-email warning (DD-16/DD-18) at initial page load.
+        "account_pending_email": current_user.pending_email,
     }
 
 

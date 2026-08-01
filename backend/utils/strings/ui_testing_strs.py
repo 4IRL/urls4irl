@@ -457,6 +457,31 @@ class UI_TEST_STRINGS:
     # re-auth gates surface, re-exported so tests assert the backend source.
     SETTINGS_TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
 
+    # Change-email form (Account tab) — static labels + the in-form pending
+    # warning (DD-16) + the Jinja-only pending-indicator note (DD-18),
+    # re-exported so the UI tests assert against the same backend source the
+    # template renders. The JS-bridged ACCOUNT_PENDING_EMAIL_NOTE is NOT
+    # re-exported here (its consumer is TypeScript via APP_CONFIG.strings).
+    SETTINGS_CHANGE_EMAIL_TITLE = USER_SETTINGS_STRINGS.CHANGE_EMAIL_TITLE
+    SETTINGS_CHANGE_EMAIL_HINT = USER_SETTINGS_STRINGS.CHANGE_EMAIL_HINT
+    SETTINGS_CHANGE_EMAIL_NEW_LABEL = USER_SETTINGS_STRINGS.CHANGE_EMAIL_NEW_LABEL
+    SETTINGS_CHANGE_EMAIL_CONFIRM_LABEL = (
+        USER_SETTINGS_STRINGS.CHANGE_EMAIL_CONFIRM_LABEL
+    )
+    SETTINGS_CHANGE_EMAIL_PASSWORD_LABEL = (
+        USER_SETTINGS_STRINGS.CHANGE_EMAIL_PASSWORD_LABEL
+    )
+    SETTINGS_CHANGE_EMAIL_BUTTON = USER_SETTINGS_STRINGS.CHANGE_EMAIL_BUTTON
+    SETTINGS_CHANGE_EMAIL_OAUTH_ONLY_NOTE = (
+        USER_SETTINGS_STRINGS.CHANGE_EMAIL_OAUTH_ONLY_NOTE
+    )
+    SETTINGS_CHANGE_EMAIL_PENDING_WARNING = (
+        USER_SETTINGS_STRINGS.CHANGE_EMAIL_PENDING_WARNING
+    )
+    SETTINGS_ACCOUNT_PENDING_EMAIL_INITIAL_NOTE = (
+        USER_SETTINGS_STRINGS.ACCOUNT_PENDING_EMAIL_INITIAL_NOTE
+    )
+
     # Stats section (Stats tab) — the six card labels the stats tests assert
     # against, re-exported from the backend source the template renders.
     SETTINGS_STATS_UTUBS_CREATED = USER_SETTINGS_STRINGS.STATS_UTUBS_CREATED

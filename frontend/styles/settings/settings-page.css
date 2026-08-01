@@ -356,13 +356,22 @@
     padding: 0 var(--space-4) var(--space-4);
 }
 
-/* OAuth-only accounts see this note in place of the password form (mirrors the
-   .ConnectedAccountLastMethodNote muted-italic treatment). */
-.SettingsChangePasswordOAuthNote {
+/* OAuth-only accounts see this note in place of the password/email form
+   (mirrors the .ConnectedAccountLastMethodNote muted-italic treatment). */
+.SettingsChangePasswordOAuthNote,
+.SettingsChangeEmailOAuthNote {
     color: var(--cardURLTextColor);
     font-size: 0.9rem;
     font-style: italic;
     margin: 4px 0 0;
+}
+
+/* Pending email-change indicator in the Account-info email card (DD-6/DD-18).
+   A status note, not an explanatory aside — no italics. */
+.SettingsAccountPendingEmailNote {
+    color: var(--cardURLTextColor);
+    font-size: 0.78rem;
+    margin-top: 4px;
 }
 
 #SettingsPanelAccount .form-group {

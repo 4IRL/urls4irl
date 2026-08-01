@@ -33,15 +33,30 @@ class USER_SETTINGS_STRINGS:
     # only; re-exported via ui_testing_strs for Python UI assertions — no JS
     # string bridge (no TypeScript reads them).
     ACCOUNT_INFO_TITLE = "Account information"
-    ACCOUNT_INFO_HINT = (
-        "Your account details. Email and join date can't be changed here."
-    )
+    ACCOUNT_INFO_HINT = "Your account details. Join date can't be changed here."
     ACCOUNT_USERNAME_LABEL = "Username"
     ACCOUNT_EMAIL_LABEL = "Email"
     ACCOUNT_MEMBER_SINCE_LABEL = "Member since"
     ACCOUNT_EMAIL_STATUS_LABEL = "Email status"
     ACCOUNT_EMAIL_VERIFIED = "Verified"
     ACCOUNT_EMAIL_UNVERIFIED = "Not verified"
+
+    # Pending email-change indicator (Account-info email card). Two distinct
+    # constants render the IDENTICAL sentence from two different templating
+    # layers (DD-18): ACCOUNT_PENDING_EMAIL_INITIAL_NOTE is Jinja-only (rendered
+    # server-side at initial page load, re-exported via ui_testing_strs for the
+    # Python UI test — no JS bridge), while ACCOUNT_PENDING_EMAIL_NOTE goes
+    # through the full 5-file JS bridge (DD-6: production TypeScript reads it via
+    # APP_CONFIG.strings after a successful ajax submit to patch the card in
+    # place). Kept as two names to avoid a duplicate-attribute collision on the
+    # shared STRINGS class. If either wording changes, edit BOTH in the same
+    # commit — they must stay verbatim-in-sync.
+    ACCOUNT_PENDING_EMAIL_INITIAL_NOTE = (
+        "Pending change to {email} — check that inbox for the confirmation link."
+    )
+    ACCOUNT_PENDING_EMAIL_NOTE = (
+        "Pending change to {email} — check that inbox for the confirmation link."
+    )
 
     # Change-username form (Account tab). Static Jinja labels re-exported via
     # ui_testing_strs for Python UI assertions — no JS string bridge (the
@@ -66,6 +81,31 @@ class USER_SETTINGS_STRINGS:
     CHANGE_PASSWORD_OAUTH_ONLY_NOTE = (
         "Password change isn't available for accounts that sign in with Google "
         "or GitHub."
+    )
+
+    # Change-email form (Account tab). Static Jinja labels re-exported via
+    # ui_testing_strs for Python UI assertions — no JS string bridge (the
+    # success/error banner text is server-sourced off the response envelope; the
+    # separately-bridged ACCOUNT_PENDING_EMAIL_NOTE handles the in-place card
+    # patch). The section is gated for OAuth-only accounts; the note replaces the
+    # form (DD-7). The in-form pending warning (DD-16) is Jinja-only, gated on
+    # the same account_pending_email context key as the account-info indicator.
+    CHANGE_EMAIL_TITLE = "Change email"
+    CHANGE_EMAIL_HINT = (
+        "Enter a new email. We'll send a confirmation link there; your current "
+        "email stays active until you confirm."
+    )
+    CHANGE_EMAIL_NEW_LABEL = "New email"
+    CHANGE_EMAIL_CONFIRM_LABEL = "Confirm new email"
+    CHANGE_EMAIL_PASSWORD_LABEL = "Current password"
+    CHANGE_EMAIL_BUTTON = "Send confirmation"
+    CHANGE_EMAIL_OAUTH_ONLY_NOTE = (
+        "Set an account password first to change your email — email changes "
+        "require confirming your current password."
+    )
+    CHANGE_EMAIL_PENDING_WARNING = (
+        "You already have a pending email change in progress. Submitting a new "
+        "address replaces it and invalidates the earlier confirmation link."
     )
 
     # Stats section (Stats tab). Jinja-rendered only; the six card labels are
