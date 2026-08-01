@@ -118,6 +118,7 @@ const appConfig = {
   strings: {
     UTUB_QUERY_PARAM: "UTubID",
     MOBILE_PANEL_QUERY_PARAM: "panel",
+    EMAIL_CHANGE_STATUS_QUERY_PARAM: "email_change_status",
     MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
     MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
     MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",

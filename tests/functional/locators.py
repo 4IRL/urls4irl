@@ -38,6 +38,13 @@ class HomePageLocators(GenericPageLocator):
     EDITABLE_CLASS = "editable"
     TOOLTIP_SUFFIX = "-tooltip"
 
+    # Change-email confirm-outcome banner (Phase 3, DD-9/DD-14). Net-new here:
+    # HomePageLocators carried no banner locator before. Same CSS id as the
+    # SplashPageLocators one, since home.html's banner markup is an identical
+    # copy of splash.html's — rendered on /home for an already-logged-in browser
+    # when splash_page() forwards the `email_change_status` param.
+    EMAIL_CHANGE_STATUS_BANNER = "#EmailChangeStatusBanner"
+
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"
@@ -351,6 +358,12 @@ class SplashPageLocators(GenericPageLocator):
     REGISTER_CONFIRMATION_MODAL = "#RegisterConfirmationModal"
     FORGOT_PASSWORD_MODAL = "#ForgotPasswordModal"
     EMAIL_VALIDATION_MODAL = "#EmailValidationModal"
+
+    # Change-email confirm-outcome banner (Phase 3, DD-11). Rendered near the
+    # hero on splash.html when the `email_change_status` query param maps to a
+    # banner. Mirrors the settings LINK_STATUS_BANNER id-selector pattern; the
+    # identical id is also added to HomePageLocators for the DD-9 HOME render.
+    EMAIL_CHANGE_STATUS_BANNER = "#EmailChangeStatusBanner"
 
     # Keep SPLASH_MODAL for reset password and expired email validation flows.
     # These flows use a single generic #SplashModal shell that is populated with
@@ -847,6 +860,37 @@ class SettingsPageLocators(GenericPageLocator):
     CHANGE_PASSWORD_BTN = "#SettingsChangePasswordBtn"
     PASSWORD_STATUS = "#SettingsPasswordStatus"
     CHANGE_PASSWORD_OAUTH_NOTE = ".SettingsChangePasswordOAuthNote"
+
+    # Change-email form (Account tab, Phase 3). Mirrors the ids rendered (gated
+    # by `connected_accounts_has_password`) in backend/templates/pages/settings.html
+    # and the data-* contract in frontend/settings/change-email.ts. For password
+    # accounts it is a collapsible <details> defaulting to closed; OAuth-only
+    # accounts render a plain <div> note (SettingsChangeEmailOAuthNote) with no
+    # <details>/<summary> (DD-7). CHANGE_EMAIL_DETAILS is scoped to the <details>
+    # element so it counts 0 for the OAuth-only plain-div fallback.
+    CHANGE_EMAIL_DETAILS = "#SettingsPanelAccount details.SettingsChangeEmail"
+    CHANGE_EMAIL_SUMMARY = (
+        "#SettingsPanelAccount .SettingsChangeEmail .SettingsDisclosureSummary"
+    )
+    CHANGE_EMAIL_NEW_INPUT = "#SettingsNewEmail"
+    CHANGE_EMAIL_CONFIRM_INPUT = "#SettingsConfirmNewEmail"
+    CHANGE_EMAIL_CURRENT_PASSWORD_INPUT = "#SettingsChangeEmailCurrentPassword"
+    CHANGE_EMAIL_BTN = "#SettingsChangeEmailBtn"
+    EMAIL_STATUS = "#SettingsEmailStatus"
+    # Field-error feedback nodes injected by change-email.ts's showFieldError()
+    # as a sibling of the offending input (mirrors USERNAME_INVALID_FEEDBACK).
+    EMAIL_INVALID_FEEDBACK = "#SettingsNewEmail ~ .invalid-feedback"
+    CHANGE_EMAIL_CONFIRM_INVALID_FEEDBACK = (
+        "#SettingsConfirmNewEmail ~ .invalid-feedback"
+    )
+    CHANGE_EMAIL_OAUTH_NOTE = ".SettingsChangeEmailOAuthNote"
+    # In-form pending-change warning (DD-16) + account-info pending note (DD-6),
+    # both server-rendered only when `account_pending_email` is set.
+    CHANGE_EMAIL_PENDING_WARNING = ".SettingsChangeEmailPendingWarning"
+    ACCOUNT_PENDING_EMAIL_NOTE = (
+        '#SettingsPanelAccount [data-account-info="email"] '
+        ".SettingsAccountPendingEmailNote"
+    )
 
     # Stats panel cards (Stats tab). Each value locator targets the
     # `data-stat="…"` card's `.SettingsStatValue`, mirroring the template's

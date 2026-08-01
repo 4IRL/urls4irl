@@ -46,6 +46,14 @@ EMAIL_CHANGE_SUCCESS = (
 EMAIL_CHANGE_SUCCESS_AUTHENTICATED = "Your email address has been updated."
 EMAIL_CHANGE_CONFIRM_INVALID = "That confirmation link is invalid or has expired."
 EMAIL_CHANGE_CONFIRM_TAKEN = "That email address is no longer available."
+# The single confirm-outcome query param key the confirm route redirects back
+# with (DD-1). A shared wire constant: the backend reads it (splash_page / home /
+# RECOGNIZED_HOME_QUERY_PARAMS) AND the frontend must recognize it so the /home
+# pageshow guard does not treat the forwarded param as malformed (DD-9). Sourced
+# here (a leaf strings module) so it can be JS-bridged via generate_strings_js()
+# without a splash-service import cycle; re-exported from change_email.py, which
+# owns the closed set of outcome *codes* that ride this param.
+EMAIL_CHANGE_STATUS_QUERY_PARAM = "email_change_status"
 # Change-email START endpoint (PUT /users/<id>/email) banner copy (server-sourced
 # envelope text — surfaced dynamically off xhr.responseJSON.message; no JS bridge).
 EMAIL_CHANGE_CONFIRMATION_SENT = (

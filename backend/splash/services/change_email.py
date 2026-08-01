@@ -31,16 +31,18 @@ from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.user_strs import (
     EMAIL_CHANGE_CONFIRM_INVALID,
     EMAIL_CHANGE_CONFIRM_TAKEN,
+    EMAIL_CHANGE_STATUS_QUERY_PARAM,
     EMAIL_CHANGE_SUCCESS,
     EMAIL_CHANGE_SUCCESS_AUTHENTICATED,
 )
 
-# Single query param the confirm route redirects back with, carrying exactly one
-# of the closed-set outcome codes below. Read by splash_page() / home() and
-# mapped to banner content by build_email_change_banner(). Mirrors the settings
-# OAuth-link flow's SETTINGS_LINKED_QUERY_PARAM / SETTINGS_LINK_ERROR_QUERY_PARAM
-# contract, retargeted at splash instead of settings (DD-1).
-EMAIL_CHANGE_STATUS_QUERY_PARAM = "email_change_status"
+# The confirm route redirects back carrying EMAIL_CHANGE_STATUS_QUERY_PARAM (the
+# param key, defined in user_strs.py so it can be JS-bridged; re-exported here so
+# existing `from ...change_email import EMAIL_CHANGE_STATUS_QUERY_PARAM` imports
+# still resolve) set to exactly one of the closed-set outcome codes below. Read by
+# splash_page() / home() and mapped to banner content by build_email_change_banner().
+# Mirrors the settings OAuth-link flow's SETTINGS_LINKED_QUERY_PARAM /
+# SETTINGS_LINK_ERROR_QUERY_PARAM contract, retargeted at splash (DD-1).
 EMAIL_CHANGE_STATUS_SUCCESS = "success"
 EMAIL_CHANGE_STATUS_INVALID = "invalid_or_expired"
 EMAIL_CHANGE_STATUS_TAKEN = "taken"
