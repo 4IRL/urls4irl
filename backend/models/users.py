@@ -83,6 +83,18 @@ class Users(db.Model, UserMixin):
         default=None,
         name="sessionsInvalidatedAt",
     )
+    # Set (alongside is_suspended=True) when a user self-deactivates their
+    # account via Settings — a reversible pause. A subsequent successful login
+    # auto-lifts the deactivation (clears both this and is_suspended). An admin
+    # suspension leaves this NULL (and clears any prior value), so a hard admin
+    # lock is never bypassed by reactivate-on-login. None means the account was
+    # never self-deactivated (or has since been reactivated / admin-locked).
+    self_deactivated_at: datetime | None = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        name="selfDeactivatedAt",
+    )
     utubs_is_member_of: list[Utub_Members] = db.relationship(
         "Utub_Members", back_populates="to_user"
     )

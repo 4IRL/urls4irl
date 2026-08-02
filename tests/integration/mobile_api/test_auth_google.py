@@ -9,6 +9,7 @@ from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.api_auth_strs import API_AUTH_FAILURE
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
@@ -101,6 +102,80 @@ def test_google_auth_existing_identity_reuses_account(
         assert UserOAuthIdentity.query.count() == 1
         # Two logins = two independent device families
         assert ApiRefreshTokens.query.count() == 2
+
+
+def _set_account_state(
+    app: Flask, *, email: str, is_suspended: bool, self_deactivated: bool
+) -> None:
+    with app.app_context():
+        target_user: Users = Users.query.filter(Users.email == email).first()
+        target_user.is_suspended = is_suspended
+        target_user.self_deactivated_at = utc_now() if self_deactivated else None
+        db.session.commit()
+
+
+def test_google_auth_reactivates_self_deactivated_account(
+    app: Flask, api_client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    GIVEN an existing google-linked account in the reversible self-deactivated
+        state
+    WHEN POST /api/v1/auth/google verifies its subject
+    THEN the account is reactivated (both flags cleared) and a token pair is
+        issued — the bearer Google path mirrors web reactivate-on-login.
+    """
+    monkeypatch.setattr(_VERIFY_FN_PATH, lambda *, id_token: _verified_claims())
+    first_response = api_client.post(
+        _google_url(app), json={_ID_TOKEN_KEY: _FAKE_ID_TOKEN}
+    )
+    assert first_response.status_code == 200
+    _set_account_state(
+        app, email=_GOOGLE_EMAIL, is_suspended=True, self_deactivated=True
+    )
+
+    response = api_client.post(_google_url(app), json={_ID_TOKEN_KEY: _FAKE_ID_TOKEN})
+
+    assert response.status_code == 200
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    with app.app_context():
+        reactivated_user: Users = Users.query.filter(
+            Users.email == _GOOGLE_EMAIL
+        ).first()
+        assert reactivated_user.is_suspended is False
+        assert reactivated_user.self_deactivated_at is None
+
+
+def test_google_auth_admin_suspended_account_not_reactivated(
+    app: Flask, api_client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    GIVEN an existing google-linked account that is ADMIN-suspended
+        (self_deactivated_at IS NULL — a hard lock, not a self-pause)
+    WHEN POST /api/v1/auth/google verifies its subject
+    THEN it is still refused (403) and the flag stays NULL — reactivate-on-login
+        never lifts an admin lock.
+    """
+    monkeypatch.setattr(_VERIFY_FN_PATH, lambda *, id_token: _verified_claims())
+    first_response = api_client.post(
+        _google_url(app), json={_ID_TOKEN_KEY: _FAKE_ID_TOKEN}
+    )
+    assert first_response.status_code == 200
+    _set_account_state(
+        app, email=_GOOGLE_EMAIL, is_suspended=True, self_deactivated=False
+    )
+
+    response = api_client.post(_google_url(app), json={_ID_TOKEN_KEY: _FAKE_ID_TOKEN})
+
+    assert response.status_code == 403
+    assert (
+        response.get_json()[STD_JSON.ERROR_CODE] == ApiAuthErrorCodes.ACCOUNT_SUSPENDED
+    )
+    with app.app_context():
+        still_locked_user: Users = Users.query.filter(
+            Users.email == _GOOGLE_EMAIL
+        ).first()
+        assert still_locked_user.is_suspended is True
+        assert still_locked_user.self_deactivated_at is None
 
 
 def test_google_auth_unverifiable_token_is_401(

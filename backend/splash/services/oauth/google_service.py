@@ -40,6 +40,7 @@ from backend.splash.services.oauth.linking_service import (
 )
 from backend.splash.services.user_login import verify_and_provide_next_page
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
+from backend.utils.reactivation import maybe_reactivate_self_deactivated
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE,
@@ -210,7 +211,13 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         )
         return redirect(url_for(OAUTH_ROUTES.CONFIRM_LINK_PAGE))
 
-    if resolved_user.is_suspended:
+    # Auto-lift a reversible self-deactivation now that the provider subject
+    # has been verified; a hard admin suspension (self_deactivated_at IS NULL)
+    # still renders the reject banner below.
+    if (
+        not maybe_reactivate_self_deactivated(resolved_user)
+        and resolved_user.is_suspended
+    ):
         # Suspended accounts never reach an authenticated session; mirrors
         # the password-login gate. Rendered through the shared OAuth reject
         # banner so the splash page shows the suspension message.

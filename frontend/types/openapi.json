@@ -4433,6 +4433,7 @@
               "enum": [
                 "api_hit",
                 "api_metrics_ingest_batch",
+                "account_reactivated",
                 "cross_utub_search_performed",
                 "email_verified",
                 "login_failure",
@@ -4766,6 +4767,7 @@
               "enum": [
                 "api_hit",
                 "api_metrics_ingest_batch",
+                "account_reactivated",
                 "cross_utub_search_performed",
                 "email_verified",
                 "login_failure",

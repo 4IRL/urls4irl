@@ -10,6 +10,7 @@ from backend.api_v1.services import auth
 from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
@@ -81,6 +82,61 @@ def test_login_issues_token_pair(
     )
     assert me_response.status_code == 200
     assert me_response.get_json()[MODELS.ID] == 1
+
+
+def _self_deactivate_first_user(app: Flask) -> None:
+    """Put user id 1 into the reversible self-deactivated state (suspended with
+    a self_deactivated_at stamp) for the reactivate-on-login scenarios."""
+    with app.app_context():
+        target_user: Users = Users.query.get(1)
+        target_user.is_suspended = True
+        target_user.self_deactivated_at = utc_now()
+        db.session.commit()
+
+
+def test_login_reactivates_self_deactivated_account_and_issues_tokens(
+    app: Flask, api_client: FlaskClient, register_first_user
+):
+    """
+    GIVEN a registered user in the reversible self-deactivated state
+    WHEN POST /api/v1/auth/login is called with valid credentials
+    THEN the account is reactivated (both flags cleared) and a 200 token-pair
+        response is issued — the bearer password path mirrors web reactivate.
+    """
+    _self_deactivate_first_user(app)
+
+    response = api_client.post(_login_url(app), json=_valid_login_body())
+
+    assert response.status_code == 200
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
+
+    with app.app_context():
+        reactivated_user: Users = Users.query.get(1)
+        assert reactivated_user.is_suspended is False
+        assert reactivated_user.self_deactivated_at is None
+
+
+def test_login_wrong_password_on_self_deactivated_account_does_not_reactivate(
+    app: Flask, api_client: FlaskClient, register_first_user
+):
+    """
+    GIVEN a self-deactivated account
+    WHEN POST /api/v1/auth/login is called with the WRONG password
+    THEN it is rejected (400) and neither flag is cleared — reactivation never
+        runs on a failed credential check.
+    """
+    _self_deactivate_first_user(app)
+
+    wrong_password_body = dict(_valid_login_body())
+    wrong_password_body["password"] = "not-the-real-password"
+    response = api_client.post(_login_url(app), json=wrong_password_body)
+
+    assert response.status_code == 400
+
+    with app.app_context():
+        untouched_user: Users = Users.query.get(1)
+        assert untouched_user.is_suspended is True
+        assert untouched_user.self_deactivated_at is not None
 
 
 def test_login_unknown_user_is_400_generic_credentials_error(

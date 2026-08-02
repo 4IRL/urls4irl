@@ -45,6 +45,7 @@ from backend.splash.constants import (
 from backend.splash.services.oauth.constants import OAUTH_PENDING_LINK_SESSION_KEY
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings import model_strs
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
@@ -53,6 +54,7 @@ from backend.utils.strings.oauth_strs import (
     GITHUB_INVALID_CALLBACK_QUERY_MESSAGE as _GITHUB_INVALID_CALLBACK_QUERY_MESSAGE,
     GITHUB_UNVERIFIED_EMAIL_MESSAGE as _GITHUB_UNVERIFIED_EMAIL_MESSAGE,
 )
+from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from tests.conftest import TEST_GITHUB_OAUTH_CLIENT_ID, TEST_GITHUB_OAUTH_CLIENT_SECRET
 from tests.integration.system.metrics_helpers import (
@@ -364,6 +366,99 @@ def test_github_callback_returning_user_logs_in_without_new_rows(
     with app.app_context():
         assert Users.query.count() == 1
         assert UserOAuthIdentity.query.count() == 1
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+@mock.patch(_GITHUB_GET_TARGET)
+def test_github_callback_reactivates_self_deactivated_user(
+    mock_github_get: mock.MagicMock,
+    mock_authorize_access_token: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+):
+    """
+    GIVEN a github-linked user in the reversible self-deactivated state
+    WHEN the callback resolves that identity (provider-subject proof succeeds)
+    THEN the account is reactivated (both flags cleared), the user is logged in
+        and redirected home — mirroring the web-login reactivate path for the
+        GitHub callback entry point.
+    """
+    mock_authorize_access_token.return_value = _FAKE_TOKEN
+    mock_github_get.side_effect = _default_github_get_side_effect(
+        github_id=_EXISTING_GITHUB_ID, login=_EXISTING_LOGIN, email=_EXISTING_EMAIL
+    )
+    _seed_existing_oauth_user(
+        app,
+        subject=_EXISTING_SUBJECT,
+        email=_EXISTING_EMAIL,
+        username=_EXISTING_USERNAME,
+    )
+    with app.app_context():
+        target_user: Users = Users.query.filter_by(email=_EXISTING_EMAIL).first()
+        target_user.is_suspended = True
+        target_user.self_deactivated_at = utc_now()
+        db.session.commit()
+        target_user_id = target_user.id
+    client, _ = load_login_page
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert response.history[0].location == url_for(ROUTES.UTUBS.HOME)
+    assert current_user.is_authenticated
+
+    with app.app_context():
+        reactivated_user: Users = Users.query.get(target_user_id)
+        assert reactivated_user.is_suspended is False
+        assert reactivated_user.self_deactivated_at is None
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+@mock.patch(_GITHUB_GET_TARGET)
+def test_github_callback_admin_suspended_user_not_reactivated(
+    mock_github_get: mock.MagicMock,
+    mock_authorize_access_token: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+):
+    """
+    GIVEN a github-linked user that is ADMIN-suspended (is_suspended=True,
+        self_deactivated_at IS NULL — a hard lock, not a self-pause)
+    WHEN the callback resolves that identity
+    THEN the suspension reject banner renders, the user is not logged in, and
+        the flag stays NULL — reactivate-on-login never lifts an admin lock.
+    """
+    mock_authorize_access_token.return_value = _FAKE_TOKEN
+    mock_github_get.side_effect = _default_github_get_side_effect(
+        github_id=_EXISTING_GITHUB_ID, login=_EXISTING_LOGIN, email=_EXISTING_EMAIL
+    )
+    _seed_existing_oauth_user(
+        app,
+        subject=_EXISTING_SUBJECT,
+        email=_EXISTING_EMAIL,
+        username=_EXISTING_USERNAME,
+    )
+    with app.app_context():
+        target_user: Users = Users.query.filter_by(email=_EXISTING_EMAIL).first()
+        target_user.is_suspended = True  # admin-style: self_deactivated_at stays NULL
+        db.session.commit()
+        target_user_id = target_user.id
+    client, _ = load_login_page
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert USER_FAILURE.ACCOUNT_SUSPENDED.encode() in response.data
+    assert not current_user.is_authenticated
+
+    with app.app_context():
+        still_locked_user: Users = Users.query.get(target_user_id)
+        assert still_locked_user.is_suspended is True
+        assert still_locked_user.self_deactivated_at is None
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)

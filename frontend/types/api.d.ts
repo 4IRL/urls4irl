@@ -5798,6 +5798,7 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "account_reactivated"
           | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
@@ -6015,6 +6016,7 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "account_reactivated"
           | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"

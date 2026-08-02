@@ -425,6 +425,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # Domain events carry only device_type; auto-injected by MetricsWriter.record() from request context.
     # `LOGIN_FAILURE` (`reason`) and `LOGIN_SUCCESS` (`method`) are the domain
     # events with a closed-set extra dim.
+    EventName.ACCOUNT_REACTIVATED: _DimDeviceOnly,
     EventName.CROSS_UTUB_SEARCH_PERFORMED: _DimCrossUtubSearchPerformed,
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
