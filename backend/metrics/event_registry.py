@@ -631,6 +631,31 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="429 rate limit response shown to user",
         category=EventCategory.UI,
     ),
+    # UI — Account (settings danger zone)
+    EventName.UI_ACCOUNT_DEACTIVATE_OPEN: EventRegistryEntry(
+        description="Account deactivate-confirm modal opened",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_DEACTIVATE_CONFIRM: EventRegistryEntry(
+        description="Account deactivate confirmed",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_DEACTIVATE_CANCEL: EventRegistryEntry(
+        description="Account deactivate-confirm modal dismissed",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_DELETE_OPEN: EventRegistryEntry(
+        description="Account delete-confirm modal opened",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_DELETE_CONFIRM: EventRegistryEntry(
+        description="Account delete confirmed",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_DELETE_CANCEL: EventRegistryEntry(
+        description="Account delete-confirm modal dismissed",
+        category=EventCategory.UI,
+    ),
 }
 
 

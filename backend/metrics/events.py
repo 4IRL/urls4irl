@@ -139,6 +139,13 @@ class EventName(StrEnum):
     UI_CONTACT_SUBMIT = "ui_contact_submit"
     UI_ERROR_PAGE_REFRESH = "ui_error_page_refresh"
     UI_RATE_LIMIT_HIT = "ui_rate_limit_hit"
+    # — Account (settings danger zone)
+    UI_ACCOUNT_DEACTIVATE_OPEN = "ui_account_deactivate_open"
+    UI_ACCOUNT_DEACTIVATE_CONFIRM = "ui_account_deactivate_confirm"
+    UI_ACCOUNT_DEACTIVATE_CANCEL = "ui_account_deactivate_cancel"
+    UI_ACCOUNT_DELETE_OPEN = "ui_account_delete_open"
+    UI_ACCOUNT_DELETE_CONFIRM = "ui_account_delete_confirm"
+    UI_ACCOUNT_DELETE_CANCEL = "ui_account_delete_cancel"
 
 
 # EVENT_CATEGORY and EVENT_DESCRIPTIONS are derived from the single source of

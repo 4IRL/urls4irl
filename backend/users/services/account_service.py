@@ -27,6 +27,7 @@ from backend.schemas.users import (
     ChangeUsernameResponseSchema,
 )
 from backend.splash.constants import LOGIN_FAILURE_REASON_BAD_PASSWORD
+from backend.splash.services.forgot_password import provider_display_name
 from backend.splash.services.oauth.constants import (
     Provider,
     REMOVAL_INTENT_ACTION_DEACTIVATE,
@@ -101,6 +102,16 @@ def build_account_info_context() -> dict[str, Any]:
         else:
             utubs_deleting_solo += 1
 
+    # Danger-zone OAuth-only re-auth (Step 6 modal): the display name of the
+    # linked provider the removal round-trip re-consents through, so the
+    # "Re-authenticate with <provider>" button reads correctly. None for
+    # password accounts (they re-auth inline, no OAuth round-trip).
+    removal_proof_provider_display: str | None = None
+    if current_user.password is None:
+        proof_provider = _select_proof_provider()
+        if proof_provider is not None:
+            removal_proof_provider_display = provider_display_name(proof_provider.value)
+
     return {
         "account_username": current_user.username,
         "account_email": current_user.email,
@@ -113,6 +124,8 @@ def build_account_info_context() -> dict[str, Any]:
         "account_utubs_transferring": utubs_transferring,
         # Created solo UTubs — permanently deleted on account delete.
         "account_utubs_deleting_solo": utubs_deleting_solo,
+        # Provider display name for the OAuth-only removal re-auth button.
+        "account_removal_proof_provider_display": removal_proof_provider_display,
     }
 
 

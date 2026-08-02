@@ -122,3 +122,76 @@ class USER_SETTINGS_STRINGS:
     STATS_TAGS_APPLIED_SUB = "all-time"
     STATS_MEMBER_SINCE = "Member since"
     STATS_JOINED_TODAY = "Joined today"
+
+    # Danger zone + account-removal modals (Account tab, Phase 4). Static Jinja
+    # labels re-exported via ui_testing_strs for Python UI assertions — no JS
+    # string bridge (the success/error banner text is server-sourced off the
+    # response envelope; the typed-username gate reads the username from the DOM,
+    # not APP_CONFIG). Copy grounded in the danger-zone mockups.
+    DANGER_ZONE_TITLE = "Danger zone"
+    DANGER_ZONE_HINT = (
+        "These actions affect your whole account. Deactivating is reversible; "
+        "deleting is not."
+    )
+    DANGER_ZONE_DEACTIVATE_CARD_TITLE = "Deactivate account"
+    DANGER_ZONE_DEACTIVATE_CARD_BODY = (
+        "Pause your account and hide it. Your UTubs, memberships, and data are "
+        "kept — log back in anytime to restore it."
+    )
+    DANGER_ZONE_DEACTIVATE_CARD_BUTTON = "Deactivate…"
+    DANGER_ZONE_DELETE_CARD_TITLE = "Delete account"
+    DANGER_ZONE_DELETE_CARD_BODY = (
+        "Permanently erase your account and personal data. This cannot be undone."
+    )
+    DANGER_ZONE_DELETE_CARD_BUTTON = "Delete…"
+
+    # Shared modal chrome
+    MODAL_CANCEL_BUTTON = "Cancel"
+    MODAL_CLOSE_ARIA_LABEL = "Close"
+    REMOVAL_REAUTH_SECTION_LABEL = "Re-authenticate to confirm it's you"
+    REMOVAL_REAUTH_PROVIDER_BUTTON = "Re-authenticate with {provider}"
+    REMOVAL_REAUTH_REDIRECT_HINT = "You'll return here to finish after signing in."
+    REMOVAL_PASSWORD_PLACEHOLDER = "Current password"
+
+    # Deactivate modal
+    DEACTIVATE_MODAL_TITLE = "Deactivate your account?"
+    DEACTIVATE_MODAL_WARNING_LEAD = "This is reversible."
+    DEACTIVATE_MODAL_WARNING_BODY = (
+        "Your account is paused and hidden. Nothing is deleted — your UTubs, "
+        "memberships, and contributions stay exactly as they are."
+    )
+    DEACTIVATE_MODAL_NOTICE_SIGNED_OUT = (
+        "You'll be signed out on all devices right away."
+    )
+    DEACTIVATE_MODAL_NOTICE_REACTIVATE = (
+        "To come back, just log in again — your account reactivates automatically."
+    )
+    DEACTIVATE_MODAL_PASSWORD_LABEL = "Confirm your password"
+    DEACTIVATE_MODAL_PASSWORD_HINT = "to continue"
+    DEACTIVATE_MODAL_CONFIRM_BUTTON = "Deactivate account"
+
+    # Delete modal
+    DELETE_MODAL_TITLE = "Delete your account permanently?"
+    DELETE_MODAL_WARNING_LEAD = "This can't be undone."
+    DELETE_MODAL_WARNING_BODY = (
+        "Your account and personal data are erased from URLS4IRL."
+    )
+    DELETE_MODAL_NOTICE_TRANSFER = (
+        "{count} UTub(s) you co-own will transfer to another member."
+    )
+    DELETE_MODAL_NOTICE_SOLO = (
+        "{count} solo UTub(s) (only you) will be permanently deleted."
+    )
+    DELETE_MODAL_NOTICE_ATTRIBUTION = (
+        "URLs and tags you added stay in shared UTubs, attributed to a "
+        "“deleted user”."
+    )
+    DELETE_MODAL_NOTICE_RETENTION = (
+        "Backups and audit logs retain some data for up to ~90 days, then "
+        "auto-purge."
+    )
+    DELETE_MODAL_CONFIRM_USERNAME_PREFIX = "Type your username"
+    DELETE_MODAL_CONFIRM_USERNAME_SUFFIX = "to confirm"
+    DELETE_MODAL_CONFIRM_USERNAME_PLACEHOLDER = "Your username"
+    DELETE_MODAL_PASSWORD_LABEL = "Confirm your password"
+    DELETE_MODAL_CONFIRM_BUTTON = "Delete my account"
