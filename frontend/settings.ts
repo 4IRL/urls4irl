@@ -11,6 +11,7 @@ import { initSettingsPage } from "./settings/settings-page.js";
 import { initConnectedAccounts } from "./settings/connected-accounts.js";
 import { initChangeUsername } from "./settings/change-username.js";
 import { initChangePassword } from "./settings/change-password.js";
+import { initChangeEmail } from "./settings/change-email.js";
 
 registerJQueryPlugins();
 setupCSRF();
@@ -23,4 +24,5 @@ $(document).ready(() => {
   initConnectedAccounts();
   initChangeUsername();
   initChangePassword();
+  initChangeEmail();
 });

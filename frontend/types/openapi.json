@@ -6772,6 +6772,85 @@
         }
       }
     },
+    "/users/{user_id}/email": {
+      "put": {
+        "operationId": "changeEmail",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Start a change of the authenticated user's email (re-verification round-trip). Requires the current password for re-authentication and a matching confirm-email field. Stages the new address in pendingEmail and mails a confirmation link there; the live email is swapped only when that link is opened (GET /confirm-email-change/<token>). Not available for OAuth-only (password-less) accounts. Per-day send cap and a shared per-user brute-force lockout both return HTTP 429.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the authenticated change-email START endpoint\n    (``PUT /users/<id>/email``).\n\n    Carries ``status``/``message`` (DD-12 banner text is server-sourced off\n    ``message``) plus the just-staged ``pending_email`` (DD-6) so the client can\n    patch the account-info card in place without a reload. ``pending_email`` is\n    optional/``None``-defaulted because the no-op guard (guard 5) also builds\n    this schema and nothing is staged in that branch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeEmailResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ChangeEmailErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ChangeEmailErrorCodes": {
+            "$ref": "#/components/schemas/ChangeEmailErrorCodes"
+          }
+        }
+      }
+    },
     "/users/{user_id}/oauth/link/{provider}": {
       "post": {
         "operationId": "linkOauthProvider",
@@ -10288,6 +10367,84 @@
           "TOO_MANY_ATTEMPTS"
         ],
         "description": "Error codes for ChangePasswordErrorCodes"
+      },
+      "ChangeEmailRequest": {
+        "properties": {
+          "newEmail": {
+            "description": "The new email address to stage for confirmation",
+            "format": "email",
+            "type": "string"
+          },
+          "confirmEmail": {
+            "description": "New-email confirmation, must match new_email (DD-8)",
+            "minLength": 1,
+            "type": "string"
+          },
+          "currentPassword": {
+            "description": "Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["newEmail", "confirmEmail", "currentPassword"],
+        "type": "object"
+      },
+      "ChangeEmailResponseSchema": {
+        "description": "Response for the authenticated change-email START endpoint\n(``PUT /users/<id>/email``).\n\nCarries ``status``/``message`` (DD-12 banner text is server-sourced off\n``message``) plus the just-staged ``pending_email`` (DD-6) so the client can\npatch the account-info card in place without a reload. ``pending_email`` is\noptional/``None``-defaulted because the no-op guard (guard 5) also builds\nthis schema and nothing is staged in that branch.",
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": ["Success", "Failure", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          },
+          "pendingEmail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The staged (not-yet-confirmed) new email, echoed back (DD-6)"
+          }
+        },
+        "required": ["status", "message"],
+        "type": "object"
+      },
+      "ErrorResponse_ChangeEmailErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ChangeEmailErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ChangeEmailErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4, 5, 6, 7],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "EMAIL_TAKEN",
+          "INVALID_PASSWORD",
+          "OAUTH_ONLY_NO_PASSWORD",
+          "TOO_MANY_ATTEMPTS",
+          "RATE_LIMITED",
+          "EMAIL_SEND_FAILURE"
+        ],
+        "description": "Error codes for ChangeEmailErrorCodes"
       },
       "ProviderLinkRequest": {
         "properties": {

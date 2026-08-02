@@ -168,6 +168,12 @@ form {
     color: var(--blueLinkOnHover) !important;
 }
 
+.splash-page-links.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: default;
+}
+
 /** Modals **/
 
 .modal-footer {

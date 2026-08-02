@@ -20,11 +20,13 @@ from backend.models.users import Users
 from backend.schemas.base import StatusMessageResponseSchema
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.users import (
+    ChangeEmailRequest,
     ChangePasswordRequest,
     ChangeUsernameRequest,
     ProviderLinkRequest,
 )
 from backend.schemas.users import (
+    ChangeEmailResponseSchema,
     ChangePasswordResponseSchema,
     ChangeUsernameResponseSchema,
     LoginRedirectResponseSchema,
@@ -35,8 +37,13 @@ from backend.splash.services.oauth.linking_service import (
     initiate_settings_link,
     unlink_provider,
 )
-from backend.users.constants import ChangePasswordErrorCodes, ChangeUsernameErrorCodes
+from backend.users.constants import (
+    ChangeEmailErrorCodes,
+    ChangePasswordErrorCodes,
+    ChangeUsernameErrorCodes,
+)
 from backend.users.services.account_service import (
+    apply_email_change,
     apply_password_change,
     apply_username_change,
     build_account_info_context,
@@ -219,6 +226,35 @@ def change_password(
         user_id=user_id,
         current_password=change_password_request.password,
         new_password=change_password_request.new_password,
+    )
+
+
+@users.route("/users/<int:user_id>/email", methods=["PUT"])
+@email_validation_required
+@api_route(
+    request_schema=ChangeEmailRequest,
+    response_schema=ChangeEmailResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=ChangeEmailErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Start a change of the authenticated user's email (re-verification round-trip). Requires the current password for re-authentication and a matching confirm-email field. Stages the new address in pendingEmail and mails a confirmation link there; the live email is swapped only when that link is opened (GET /confirm-email-change/<token>). Not available for OAuth-only (password-less) accounts. Per-day send cap and a shared per-user brute-force lockout both return HTTP 429.",
+    status_codes={
+        200: ChangeEmailResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        429: ErrorResponse,
+    },
+)
+def change_email(
+    user_id: int, change_email_request: ChangeEmailRequest
+) -> FlaskResponse:
+    """Applies the authenticated change-email START flow (self-service only; the
+    self-ownership / OAuth-only / re-auth / uniqueness / rate-limit policy is
+    enforced in the service). The confirm step is the anonymous splash route."""
+    return apply_email_change(
+        user_id=user_id,
+        new_email=change_email_request.new_email,
+        current_password=change_email_request.password,
     )
 
 

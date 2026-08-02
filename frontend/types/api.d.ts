@@ -1268,6 +1268,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/{user_id}/email": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description Start a change of the authenticated user's email (re-verification round-trip). Requires the current password for re-authentication and a matching confirm-email field. Stages the new address in pendingEmail and mails a confirmation link there; the live email is swapped only when that link is opened (GET /confirm-email-change/<token>). Not available for OAuth-only (password-less) accounts. Per-day send cap and a shared per-user brute-force lockout both return HTTP 429. */
+    put: operations["changeEmail"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -2716,6 +2733,49 @@ export interface components {
      * @enum {integer}
      */
     ChangePasswordErrorCodes: 1 | 2 | 3 | 4;
+    ChangeEmailRequest: {
+      /**
+       * Format: email
+       * @description The new email address to stage for confirmation
+       */
+      newEmail: string;
+      /** @description New-email confirmation, must match new_email (DD-8) */
+      confirmEmail: string;
+      /** @description Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy */
+      currentPassword: string;
+    };
+    /**
+     * @description Response for the authenticated change-email START endpoint
+     *     (``PUT /users/<id>/email``).
+     *
+     *     Carries ``status``/``message`` (DD-12 banner text is server-sourced off
+     *     ``message``) plus the just-staged ``pending_email`` (DD-6) so the client can
+     *     patch the account-info card in place without a reload. ``pending_email`` is
+     *     optional/``None``-defaulted because the no-op guard (guard 5) also builds
+     *     this schema and nothing is staged in that branch.
+     */
+    ChangeEmailResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
+      /**
+       * @description The staged (not-yet-confirmed) new email, echoed back (DD-6)
+       * @default null
+       */
+      pendingEmail: string | null;
+    };
+    ErrorResponse_ChangeEmailErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["ChangeEmailErrorCodes"];
+    };
+    /**
+     * @description Error codes for ChangeEmailErrorCodes
+     * @enum {integer}
+     */
+    ChangeEmailErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -7250,6 +7310,68 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_ChangePasswordErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  changeEmail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ChangeEmailRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the authenticated change-email START endpoint
+       *         (``PUT /users/<id>/email``).
+       *
+       *         Carries ``status``/``message`` (DD-12 banner text is server-sourced off
+       *         ``message``) plus the just-staged ``pending_email`` (DD-6) so the client can
+       *         patch the account-info card in place without a reload. ``pending_email`` is
+       *         optional/``None``-defaulted because the no-op guard (guard 5) also builds
+       *         this schema and nothing is staged in that branch.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeEmailResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ChangeEmailErrorCodes"];
         };
       };
       /** @description Forbidden */

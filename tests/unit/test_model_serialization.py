@@ -153,9 +153,13 @@ def test_url_serialization_with_tags(
     )
 
     # UTub - URL associations
+    # Order every query by id so the utub<->url<->tag zip pairing is deterministic:
+    # under the full parallel suite the DB can return rows in non-id order, which
+    # would misalign the pairing and make the expected tag list mismatch the
+    # serializer output (a parallel-suite row-ordering flake).
     with app.app_context():
         all_utubs = Utubs.query.order_by(Utubs.id).all()
-        all_urls = Urls.query.all()
+        all_urls = Urls.query.order_by(Urls.id).all()
 
         for utub, url in zip(all_utubs, all_urls):
             new_utub_url = Utub_Urls()
@@ -172,7 +176,7 @@ def test_url_serialization_with_tags(
     # UTub-URL-Tag associations
     with app.app_context():
         all_utubs = Utubs.query.order_by(Utubs.id).all()
-        all_urls = Utub_Urls.query.all()
+        all_urls = Utub_Urls.query.order_by(Utub_Urls.id).all()
 
         for utub, url in zip(all_utubs, all_urls):
             for tag in Utub_Tags.query.filter(Utub_Tags.utub_id == utub.id).all():
@@ -187,7 +191,7 @@ def test_url_serialization_with_tags(
 
     with app.app_context():
         all_utubs = Utubs.query.order_by(Utubs.id).all()
-        all_urls = Urls.query.all()
+        all_urls = Urls.query.order_by(Urls.id).all()
 
         for utub, url, verified_url in zip(all_utubs, all_urls, verified_urls):
             url_with_tags: Utub_Urls = Utub_Urls.query.filter(

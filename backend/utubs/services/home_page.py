@@ -6,6 +6,7 @@ from backend.app_logger import warning_log
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.users import UtubSummaryListSchema
+from backend.splash.services.change_email import EMAIL_CHANGE_STATUS_QUERY_PARAM
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import (
@@ -13,15 +14,19 @@ from backend.utils.strings.utub_strs import (
     UTUB_ID_QUERY_PARAM,
 )
 
-# The only query params the /home route recognizes: the UTub to preselect and
-# the mobile panel to restore (added for the mobile back/forward panel feature).
-# Any other param — or a repeated recognized one — is rejected as malformed.
+# The only query params the /home route recognizes: the UTub to preselect, the
+# mobile panel to restore (mobile back/forward panel feature), and the
+# change-email confirm-outcome code forwarded here by splash_page() for an
+# already-logged-in browser (DD-9). Any other param — or a repeated recognized
+# one — is rejected as malformed. Without EMAIL_CHANGE_STATUS_QUERY_PARAM here,
+# validate_home_query_params() would abort(404) the very redirect meant to carry
+# the banner.
 RECOGNIZED_HOME_QUERY_PARAMS = frozenset(
-    {UTUB_ID_QUERY_PARAM, MOBILE_PANEL_QUERY_PARAM}
+    {UTUB_ID_QUERY_PARAM, MOBILE_PANEL_QUERY_PARAM, EMAIL_CHANGE_STATUS_QUERY_PARAM}
 )
 
 
-def render_home_page() -> str:
+def render_home_page(email_change_banner: dict[str, str] | None = None) -> str:
     utubs_for_this_user = UtubSummaryListSchema.from_user(current_user).model_dump(
         by_alias=True
     )[MODELS.UTUBS]
@@ -30,6 +35,7 @@ def render_home_page() -> str:
         "pages/home.html",
         utubs_for_this_user=utubs_for_this_user,
         is_prod_or_testing=current_app.config.get(CONFIG_ENVS.TESTING_OR_PROD, True),
+        email_change_banner=email_change_banner,
     )
 
 

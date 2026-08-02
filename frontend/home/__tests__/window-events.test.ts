@@ -41,6 +41,7 @@ vi.mock("../../lib/config.js", () => ({
     strings: {
       UTUB_QUERY_PARAM: "UTubID",
       MOBILE_PANEL_QUERY_PARAM: "panel",
+      EMAIL_CHANGE_STATUS_QUERY_PARAM: "email_change_status",
       MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
       MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
       MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
@@ -800,6 +801,54 @@ describe("window-events", () => {
       const event = new Event("pageshow") as PageTransitionEvent;
       pageshowHandler!(event);
 
+      expect(assignMock).toHaveBeenCalledWith("/error");
+    });
+
+    it("does not redirect to error page when only email_change_status is present (DD-9 authenticated confirm-forward), degrading to the no-UTub state", () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", {
+        value: { search: "?email_change_status=success", assign: assignMock },
+        writable: true,
+        configurable: true,
+      });
+
+      const event = new Event("pageshow") as PageTransitionEvent;
+      pageshowHandler!(event);
+
+      // The server-render-only banner param must not be treated as malformed.
+      expect(assignMock).not.toHaveBeenCalledWith("/error");
+      // No UTubID present → graceful no-UTub landing (DD-24).
+      expect(mockSetUIWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetMemberDeckWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetTagDeckSubheaderWhenNoUTubSelected).toHaveBeenCalled();
+    });
+
+    it("still redirects to error page when email_change_status is combined with a genuinely-unrecognized param", () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", {
+        value: {
+          search: "?email_change_status=success&evil=1",
+          assign: assignMock,
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      const event = new Event("pageshow") as PageTransitionEvent;
+      pageshowHandler!(event);
+
+      // Recognizing email_change_status must not open a hole: an extra
+      // unrecognized param still trips the malformed-params rejection.
       expect(assignMock).toHaveBeenCalledWith("/error");
     });
 

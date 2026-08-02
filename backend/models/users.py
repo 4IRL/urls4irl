@@ -48,6 +48,16 @@ class Users(db.Model, UserMixin):
     email: str = Column(
         String(USER_CONSTANTS.MAX_EMAIL_LENGTH), unique=True, nullable=False
     )
+    # Not-yet-confirmed new email for the Settings "change email" flow. The user
+    # stays logged in on their existing (still-verified) ``email`` until they
+    # click the confirmation link, at which point ``finalize_email_change``
+    # swaps this into ``email``. None means no email change is in flight.
+    pending_email: str | None = Column(
+        String(USER_CONSTANTS.MAX_EMAIL_LENGTH),
+        nullable=True,
+        default=None,
+        name="pendingEmail",
+    )
     password: str | None = Column(
         String(USER_CONSTANTS.MAX_PASSWORD_LENGTH), nullable=True
     )
@@ -134,6 +144,24 @@ class Users(db.Model, UserMixin):
     def validate_email(self):
         self.email_validated = True
 
+    def stage_email_change(self, new_email: str) -> None:
+        """Stash a not-yet-confirmed new email (lowercased on store).
+
+        Assumes the caller has already format-validated and uniqueness-checked
+        ``new_email``. The live ``email`` is untouched until confirmation.
+        """
+        self.pending_email = new_email.lower()
+
+    def finalize_email_change(self) -> None:
+        """Swap the confirmed pending email into the live ``email`` column.
+
+        Only called inside the confirm route's ``IntegrityError`` guard, after
+        a final uniqueness re-check. Clears ``pending_email`` so a replayed
+        token finds nothing pending and no-ops.
+        """
+        self.email = self.pending_email
+        self.pending_email = None
+
     def __repr__(self):
         return f"User: {self.username}"
 
@@ -143,6 +171,19 @@ class Users(db.Model, UserMixin):
         return jwt.encode(
             payload={
                 EMAILS.VALIDATE_EMAIL: self.username,
+                EMAILS.EXPIRATION: datetime.timestamp(utc_now()) + expires_in,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithm=EMAILS.ALGORITHM,
+        )
+
+    def get_email_change_token(
+        self, expires_in=EMAIL_CONSTANTS.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS
+    ) -> str:
+        return jwt.encode(
+            payload={
+                EMAILS.CHANGE_EMAIL: self.username,
+                EMAILS.CHANGE_EMAIL_TARGET: self.pending_email,
                 EMAILS.EXPIRATION: datetime.timestamp(utc_now()) + expires_in,
             },
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],

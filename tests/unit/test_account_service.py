@@ -13,25 +13,30 @@ pytestmark = pytest.mark.unit
 _CURRENT_USER_TARGET = "backend.users.services.account_service.current_user"
 
 
-def _fake_user(*, has_password: bool) -> SimpleNamespace:
+def _fake_user(
+    *, has_password: bool, pending_email: str | None = None
+) -> SimpleNamespace:
     """A minimal current_user stand-in exposing the identity attributes
     build_account_info_context reads. ``password`` is a truthy hash string for a
     local-password account and ``None`` for an OAuth-only account, keeping the two
-    scenarios distinct even though the context no longer surfaces that flag."""
+    scenarios distinct even though the context no longer surfaces that flag.
+    ``pending_email`` mirrors the staged-change column (None when no change is in
+    flight)."""
     return SimpleNamespace(
         username="fakeuser1234",
         email="fakeuser1234@example.com",
         email_validated=True,
         password="hashed-password-value" if has_password else None,
+        pending_email=pending_email,
     )
 
 
 def test_build_account_info_context_local_password_user() -> None:
     """
-    GIVEN an authenticated local-password user
+    GIVEN an authenticated local-password user with no pending email change
     WHEN build_account_info_context builds the account-info context
     THEN it returns the expected flat dict with no member-since keys (those are
-        reused from build_user_stats_context)
+        reused from build_user_stats_context) and a None pending-email
     """
     with patch(_CURRENT_USER_TARGET, _fake_user(has_password=True)):
         context = build_account_info_context()
@@ -40,6 +45,7 @@ def test_build_account_info_context_local_password_user() -> None:
         "account_username": "fakeuser1234",
         "account_email": "fakeuser1234@example.com",
         "account_email_validated": True,
+        "account_pending_email": None,
     }
 
 
@@ -55,3 +61,20 @@ def test_build_account_info_context_oauth_only_user() -> None:
     assert context["account_username"] == "fakeuser1234"
     assert context["account_email"] == "fakeuser1234@example.com"
     assert context["account_email_validated"] is True
+    assert context["account_pending_email"] is None
+
+
+def test_build_account_info_context_surfaces_pending_email() -> None:
+    """
+    GIVEN an authenticated user with a staged pending email change
+    WHEN build_account_info_context builds the account-info context
+    THEN account_pending_email echoes the staged (lowercased) address so the
+        template can render the pending-change indicator (DD-18)
+    """
+    with patch(
+        _CURRENT_USER_TARGET,
+        _fake_user(has_password=True, pending_email="new@example.com"),
+    ):
+        context = build_account_info_context()
+
+    assert context["account_pending_email"] == "new@example.com"

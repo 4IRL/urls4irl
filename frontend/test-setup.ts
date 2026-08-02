@@ -118,6 +118,7 @@ const appConfig = {
   strings: {
     UTUB_QUERY_PARAM: "UTubID",
     MOBILE_PANEL_QUERY_PARAM: "panel",
+    EMAIL_CHANGE_STATUS_QUERY_PARAM: "email_change_status",
     MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
     MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
     MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
@@ -167,6 +168,10 @@ const appConfig = {
     CROSS_SEARCH_SUBMIT_LABEL: "Search across your UTubs",
     CROSS_SEARCH_REFRESH_LABEL: "Refresh these search results",
     VALIDATE_MY_EMAIL: "Validate My Email",
+    REGISTRATION_EMAIL_RESEND_SENDING: "Sending…",
+    REGISTRATION_EMAIL_RESENT: "Confirmation email resent — check your inbox.",
+    REGISTRATION_EMAIL_RESEND_ERROR:
+      "Something went wrong resending your email. Please try again.",
     UTUB_IS_LOCKED: "This UTub is locked and cannot be modified.",
     UTUB_SEARCH_NO_RESULTS: "No UTubs found",
     UTUB_SEARCH_PLACEHOLDER: "Filter UTubs",
@@ -279,6 +284,8 @@ const appConfig = {
       "Summary percentiles for this window are approximate (daily rollup); the per-day trend below is exact.",
     METRICS_LATENCY_DAILY_RESOLUTION_NOTE:
       "Showing daily trend for this long window; hourly detail is only available within the last 35 days.",
+    SETTINGS_ACCOUNT_PENDING_EMAIL_NOTE:
+      "Pending change to {email} — check that inbox for the confirmation link.",
   },
 };
 

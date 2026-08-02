@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from flask import current_app
+from flask import current_app, url_for
 from flask_login import current_user
 from redis import Redis
 from sqlalchemy.exc import IntegrityError
 
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.extensions.extension_utils import safe_get_email_sender
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.models.users import Users
@@ -17,13 +18,20 @@ from backend.schemas.errors import (
     build_message_error_response,
 )
 from backend.schemas.users import (
+    ChangeEmailResponseSchema,
     ChangePasswordResponseSchema,
     ChangeUsernameResponseSchema,
 )
 from backend.splash.constants import LOGIN_FAILURE_REASON_BAD_PASSWORD
-from backend.users.constants import ChangePasswordErrorCodes, ChangeUsernameErrorCodes
+from backend.users.constants import (
+    ChangeEmailErrorCodes,
+    ChangePasswordErrorCodes,
+    ChangeUsernameErrorCodes,
+)
+from backend.utils.all_routes import ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
+from backend.utils.mailjet_utils import handle_mailjet_failure
 from backend.utils.reauth_throttle import (
     clear_reauth_failures,
     is_reauth_locked_out,
@@ -33,6 +41,8 @@ from backend.utils.session_utils import restamp_current_session
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.user_strs import (
+    EMAIL_CHANGE_CONFIRMATION_SENT,
+    EMAIL_CHANGE_NO_CHANGE,
     PASSWORD_CHANGE_SUCCESS,
     USER_FAILURE,
     USERNAME_CHANGE_NO_CHANGE,
@@ -58,6 +68,10 @@ def build_account_info_context() -> dict[str, Any]:
         "account_username": current_user.username,
         "account_email": current_user.email,
         "account_email_validated": current_user.email_validated,
+        # None when no change is in flight; the staged (lowercased) address
+        # otherwise. Gates both the account-info pending indicator and the
+        # in-form change-email warning (DD-16/DD-18) at initial page load.
+        "account_pending_email": current_user.pending_email,
     }
 
 
@@ -258,5 +272,187 @@ def apply_password_change(
         data=ChangePasswordResponseSchema(
             status=STD_JSON.SUCCESS,
             message=PASSWORD_CHANGE_SUCCESS,
+        ),
+    ).to_response()
+
+
+def apply_email_change(
+    *, user_id: int, new_email: str, current_password: str
+) -> FlaskResponse:
+    """Stage a not-yet-confirmed new email after current-password re-auth, then
+    mail a confirmation link to the NEW address. The live ``email`` is untouched
+    until the user clicks that link (the anonymous confirm route swaps it).
+
+    Named ``apply_email_change`` to avoid a bare-name collision with the
+    ``change_email`` route/view function on the ``users`` blueprint.
+
+    DD-19: builds the confirm URL by route NAME via ``url_for`` and sends via the
+    neutral ``email_sender`` extension — no ``backend.splash.*`` service import.
+
+    Guard order: self-ownership (403) → OAuth-only (400) → re-auth lockout (429)
+    → re-auth (400) → no-op (200) → rate-limit precheck fail-open (429, a capped
+    user is rejected before any probe) → uniqueness (400; a taken-email
+    rejection burns one daily slot via the shared local INCR helper so
+    email-enumeration probing is bounded to MAX_EMAIL_CHANGES_PER_DAY, DD-1) →
+    stage + commit → send (rollback the staging on send failure) →
+    INCR-on-success (EXPIRE only on the first) → success (200).
+    """
+    # (1) Self-ownership: the URL user_id must be the acting user.
+    if user_id != current_user.id:
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=ChangeEmailErrorCodes.INVALID_FORM_INPUT,
+            status_code=403,
+        )
+
+    # (2) OAuth-only guard (defense-in-depth): the template hides the form for
+    # password-less accounts. Predicate replicated locally per DD-19.
+    if current_user.password is None:
+        return build_message_error_response(
+            message=USER_FAILURE.EMAIL_CHANGE_OAUTH_ONLY,
+            error_code=ChangeEmailErrorCodes.OAUTH_ONLY_NO_PASSWORD,
+            status_code=400,
+        )
+
+    # (3) Brute-force lockout: the per-user Redis counter shared with the
+    # change-password / settings OAuth-link re-auth gates. Fail-open; checked
+    # before the password compare so a locked-out session cannot keep guessing.
+    if is_reauth_locked_out(user_id):
+        return build_message_error_response(
+            message=USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS,
+            error_code=ChangeEmailErrorCodes.TOO_MANY_ATTEMPTS,
+            status_code=429,
+        )
+
+    # (4) Re-auth: verify the supplied current password. On failure, record a
+    # re-auth failure toward the lockout + the existing LOGIN_FAILURE metric,
+    # then surface a dedicated field error on ``currentPassword``.
+    if not current_user.is_password_correct(current_password):
+        record_reauth_failure(user_id)
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
+        )
+        return build_field_error_response(
+            message=USER_FAILURE.CURRENT_PASSWORD_INCORRECT,
+            errors={"currentPassword": [USER_FAILURE.CURRENT_PASSWORD_INCORRECT]},
+            error_code=ChangeEmailErrorCodes.INVALID_PASSWORD,
+            status_code=400,
+        )
+
+    # (5) No-op short-circuit: resubmitting the current email never sends an
+    # email nor touches Redis. ``pending_email`` echoes whatever is currently
+    # staged (None if nothing is in flight); guard 5 does not clear or touch it.
+    if new_email.lower() == current_user.email:
+        return APIResponse(
+            status_code=200,
+            data=ChangeEmailResponseSchema(
+                status=STD_JSON.NO_CHANGE,
+                message=EMAIL_CHANGE_NO_CHANGE,
+                pending_email=current_user.pending_email,
+            ),
+        ).to_response()
+
+    rate_limit_key = f"email-change:{user_id}"
+    redis_client = _build_rate_limit_redis()
+
+    def increment_rate_limit_counter() -> None:
+        """Increment the per-user daily email-change counter (fail-open).
+
+        EXPIRE is set only on the first INCR → a fixed 24h window anchored at the
+        first change/probe. Kept a LOCAL closure (DD-4: no cross-function
+        extraction); shared by the taken-email rejection below and the
+        success path so a Redis error can never block the caller's response.
+        """
+        if redis_client is None:
+            return
+        try:
+            new_count = redis_client.incr(rate_limit_key)
+            if new_count == 1:
+                redis_client.expire(
+                    rate_limit_key, USER_CONSTANTS.EMAIL_CHANGE_WINDOW_SECONDS
+                )
+        except Exception as redis_error:
+            current_app.logger.exception(
+                "email-change rate-limit increment failed (failing open): "
+                f"{redis_error}"
+            )
+
+    # (6) Rate-limit pre-check (fail-open): read the counter BEFORE the
+    # uniqueness probe so a capped user is rejected 429 without a DB write, an
+    # email send, an INCR, or leaking whether the probed address is taken (DD-1).
+    if redis_client is not None:
+        try:
+            current_count = int(redis_client.get(rate_limit_key) or 0)
+            if current_count >= USER_CONSTANTS.MAX_EMAIL_CHANGES_PER_DAY:
+                return build_message_error_response(
+                    message=USER_FAILURE.EMAIL_CHANGE_RATE_LIMITED,
+                    error_code=ChangeEmailErrorCodes.RATE_LIMITED,
+                    status_code=429,
+                )
+        except Exception as redis_error:
+            current_app.logger.exception(
+                "email-change rate-limit precheck failed (failing open): "
+                f"{redis_error}"
+            )
+
+    # (7) Uniqueness (excluding the current user, so the no-op above cannot
+    # false-positive here). The live email is what enforces uniqueness — a
+    # different user's pending_email does not reserve the address. A taken-email
+    # rejection increments the daily counter (fail-open) BEFORE returning, so
+    # every enumeration probe burns one slot and probing is bounded to
+    # MAX_EMAIL_CHANGES_PER_DAY (DD-1).
+    existing_user: Users | None = Users.query.filter(
+        Users.email == new_email.lower(), Users.id != current_user.id
+    ).first()
+    if existing_user is not None:
+        increment_rate_limit_counter()
+        return build_field_error_response(
+            message=USER_FAILURE.EMAIL_TAKEN,
+            errors={"newEmail": [USER_FAILURE.EMAIL_TAKEN]},
+            error_code=ChangeEmailErrorCodes.EMAIL_TAKEN,
+            status_code=400,
+        )
+
+    # (8) Clear the re-auth failure counter, stage the pending email, and commit.
+    # Staging happens strictly BEFORE minting the token below (DD-5), so
+    # get_email_change_token()'s self.pending_email read is always the just-staged
+    # value.
+    clear_reauth_failures(user_id)
+    current_user.stage_email_change(new_email)
+    db.session.commit()
+
+    # (9) Send the confirmation link to the NEW address, building the confirm URL
+    # by route NAME only (DD-19). On a send failure, roll back the staging so
+    # nothing is left half-staged.
+    confirmation_url = url_for(
+        ROUTES.SPLASH.CONFIRM_EMAIL_CHANGE,
+        token=current_user.get_email_change_token(),
+        _external=True,
+    )
+    email_sender = safe_get_email_sender(current_app)
+    email_result = email_sender.send_email_change_confirmation(
+        new_email.lower(), current_user.username, confirmation_url
+    )
+    if email_result.status_code >= 500:
+        current_user.pending_email = None
+        db.session.commit()
+        return handle_mailjet_failure(
+            email_result, error_code=ChangeEmailErrorCodes.EMAIL_SEND_FAILURE
+        )
+
+    # (10) Only after a committed staging + successful send, increment the
+    # counter (fail-open, EXPIRE only on the first INCR → fixed 24h window
+    # anchored at the first change). DD-3 read-then-late-increment unchanged.
+    increment_rate_limit_counter()
+
+    # (11) Success — echo the staged pending_email so the client patches the
+    # account-info card in place (DD-6).
+    return APIResponse(
+        status_code=200,
+        data=ChangeEmailResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=EMAIL_CHANGE_CONFIRMATION_SENT,
+            pending_email=current_user.pending_email,
         ),
     ).to_response()

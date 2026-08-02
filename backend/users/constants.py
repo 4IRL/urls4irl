@@ -29,3 +29,24 @@ class ChangePasswordErrorCodes(IntEnum):
     INVALID_PASSWORD = 2
     OAUTH_ONLY_NO_PASSWORD = 3
     TOO_MANY_ATTEMPTS = 4
+
+
+class ChangeEmailErrorCodes(IntEnum):
+    """Application error codes for the authenticated change-email START endpoint
+    (``PUT /users/<id>/email``).
+
+    Same home as ``ChangeUsernameErrorCodes``/``ChangePasswordErrorCodes`` (the
+    users domain, not ``backend/splash/constants.py``) and the same
+    explicit-sequential-value convention. ``INVALID_FORM_INPUT`` also carries the
+    DD-8 confirm-email mismatch (surfaced by the schema validator as a
+    ``confirmEmail`` field error), mirroring how ``RegisterRequest`` rides its
+    own route's ``INVALID_FORM_INPUT`` for the same mismatch.
+    """
+
+    INVALID_FORM_INPUT = 1
+    EMAIL_TAKEN = 2
+    INVALID_PASSWORD = 3
+    OAUTH_ONLY_NO_PASSWORD = 4
+    TOO_MANY_ATTEMPTS = 5
+    RATE_LIMITED = 6
+    EMAIL_SEND_FAILURE = 7

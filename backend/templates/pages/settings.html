@@ -25,6 +25,9 @@
                 <div class="SettingsStatCard" data-account-info="email">
                     <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_EMAIL_LABEL }}</dt>
                     <dd class="SettingsStatValue">{{ account_email }}</dd>
+                    {% if account_pending_email %}
+                    <p class="SettingsAccountPendingEmailNote" aria-live="polite">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_PENDING_EMAIL_INITIAL_NOTE.format(email=account_pending_email) }}</p>
+                    {% endif %}
                 </div>
                 <div class="SettingsStatCard" data-account-info="member-since">
                     <dt class="SettingsStatLabel">{{ CONSTANTS.STRINGS.SETTINGS_ACCOUNT_MEMBER_SINCE_LABEL }}</dt>
@@ -56,6 +59,38 @@
                 <button type="button" class="btn btn-success" id="SettingsChangeUsernameBtn" data-action-url="{{ url_for('users.change_username', user_id=current_user.id) }}">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_USERNAME_BUTTON }}</button>
             </div>
         </details>
+        {% if connected_accounts_has_password %}
+        <details class="SettingsChangeEmail SettingsDisclosure">
+            <summary class="SettingsDisclosureSummary">
+                <h3 class="SettingsChangeEmailTitle">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_TITLE }}</h3>
+            </summary>
+            <div class="SettingsDisclosureBody">
+                <p class="SettingsSectionHint">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_HINT }}</p>
+                {% if account_pending_email %}
+                <p class="SettingsSectionHint SettingsChangeEmailPendingWarning">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_PENDING_WARNING }}</p>
+                {% endif %}
+                <div id="SettingsEmailStatus" class="alert d-none" role="alert" aria-live="polite"></div>
+                <div class="form-group">
+                    <label for="SettingsNewEmail">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_NEW_LABEL }}</label>
+                    <input id="SettingsNewEmail" class="form-control" type="email" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="SettingsConfirmNewEmail">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_CONFIRM_LABEL }}</label>
+                    <input id="SettingsConfirmNewEmail" class="form-control" type="email" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="SettingsChangeEmailCurrentPassword">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_PASSWORD_LABEL }}</label>
+                    <input id="SettingsChangeEmailCurrentPassword" class="form-control" type="password" autocomplete="current-password">
+                </div>
+                <button type="button" class="btn btn-success" id="SettingsChangeEmailBtn" data-action-url="{{ url_for('users.change_email', user_id=current_user.id) }}">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_BUTTON }}</button>
+            </div>
+        </details>
+        {% else %}
+        <div class="SettingsChangeEmail">
+            <h3 class="SettingsChangeEmailTitle">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_TITLE }}</h3>
+            <p class="SettingsChangeEmailOAuthNote">{{ CONSTANTS.STRINGS.SETTINGS_CHANGE_EMAIL_OAUTH_ONLY_NOTE }}</p>
+        </div>
+        {% endif %}
         {% if connected_accounts_has_password %}
         <details class="SettingsChangePassword SettingsDisclosure">
             <summary class="SettingsDisclosureSummary">

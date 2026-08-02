@@ -20,6 +20,14 @@ GOOGLE_OAUTH_REGISTER_BUTTON_TEXT = "Sign up with Google"
 GITHUB_OAUTH_LOGIN_BUTTON_TEXT = "Sign in with GitHub"
 GITHUB_OAUTH_REGISTER_BUTTON_TEXT = "Sign up with GitHub"
 
+# Register-confirmation "Resend" link feedback (read by production TS via
+# APP_CONFIG.strings — see register-confirmation-form.ts).
+REGISTRATION_EMAIL_RESEND_SENDING = "Sending…"
+REGISTRATION_EMAIL_RESENT = "Confirmation email resent — check your inbox."
+REGISTRATION_EMAIL_RESEND_ERROR = (
+    "Something went wrong resending your email. Please try again."
+)
+
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):
     USERNAME = USERNAME

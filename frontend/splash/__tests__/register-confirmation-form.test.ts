@@ -24,7 +24,7 @@ const $ = window.jQuery;
 const CONFIRMATION_MODAL_HTML = `
   <div class="modal fade" id="RegisterConfirmationModal">
     <div id="SplashModalAlertBanner" class="alert" role="alert"></div>
-    <a id="ResendRegistrationEmail" href="#" class="splash-page-links"></a>
+    <a id="ResendRegistrationEmail" href="#" class="splash-page-links">Resend</a>
     <button id="BackToLoginFromConfirmation"></button>
   </div>
 `;
@@ -69,7 +69,7 @@ describe("register-confirmation-form", () => {
     );
   });
 
-  it("shows the loading state on click and clears it on settle", () => {
+  it("shows the in-flight 'Sending…' state on click and restores it on settle", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
@@ -83,50 +83,58 @@ describe("register-confirmation-form", () => {
     expect($link.hasClass("disabled")).toBe(true);
     expect($link.attr("aria-busy")).toBe("true");
     expect($link.attr("aria-disabled")).toBe("true");
+    expect($link.text()).toBe("Sending…");
 
     mockDeferred.resolve({ status: "Success", message: "Almost there" });
 
     expect($link.hasClass("disabled")).toBe(false);
     expect($link.attr("aria-busy")).toBeUndefined();
     expect($link.attr("aria-disabled")).toBeUndefined();
+    expect($link.text()).toBe("Resend");
   });
 
-  it("re-shows the success banner from the response on done", () => {
+  it("shows the distinct 'resent' success banner and restores the link on done", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $modal = $("#RegisterConfirmationModal");
     $modal.data("registerEmail", "user@test.com");
     initRegisterConfirmationModal($modal);
-    $modal.find("#ResendRegistrationEmail").trigger("click");
+    const $link = $modal.find("#ResendRegistrationEmail");
+    $link.trigger("click");
 
     mockDeferred.resolve({ status: "Success", message: "Almost there" });
 
+    // Distinct copy — differs from the open-modal confirmation text — so the
+    // state change is perceptible.
     expect(showSplashModalAlertBanner).toHaveBeenCalledWith(
       $modal,
-      "Almost there",
+      "Confirmation email resent — check your inbox.",
       "success",
     );
+    expect($link.text()).toBe("Resend");
   });
 
-  it("re-shows the stashed confirmation text on a network/timeout failure (status 0)", () => {
+  it("shows the 'resent' success banner on a network/timeout failure (status 0)", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $modal = $("#RegisterConfirmationModal");
-    $modal
-      .data("registerEmail", "user@test.com")
-      .data("confirmMessage", "Check your email");
+    $modal.data("registerEmail", "user@test.com");
     initRegisterConfirmationModal($modal);
-    $modal.find("#ResendRegistrationEmail").trigger("click");
+    const $link = $modal.find("#ResendRegistrationEmail");
+    $link.trigger("click");
 
     mockDeferred.reject({ status: 0 }, "error", "Network");
 
+    // Enumeration-neutral: a transport blip reuses the same distinct success
+    // copy, never revealing send outcome.
     expect(showSplashModalAlertBanner).toHaveBeenCalledWith(
       $modal,
-      "Check your email",
+      "Confirmation email resent — check your inbox.",
       "success",
     );
+    expect($link.text()).toBe("Resend");
   });
 
   it("bails without touching the banner when the 429 handler already fired", () => {
@@ -152,18 +160,18 @@ describe("register-confirmation-form", () => {
     expect(showSplashModalAlertBanner).not.toHaveBeenCalled();
     // Link is left in its in-flight state — resetResendLink is not reached.
     expect($link.hasClass("disabled")).toBe(true);
+    expect($link.text()).toBe("Sending…");
   });
 
-  it("surfaces an error banner (not success) on a generic HTTP failure", () => {
+  it("surfaces the distinct error banner (not success) and restores the link on a generic HTTP failure", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $modal = $("#RegisterConfirmationModal");
-    $modal
-      .data("registerEmail", "user@test.com")
-      .data("confirmMessage", "Check your email");
+    $modal.data("registerEmail", "user@test.com");
     initRegisterConfirmationModal($modal);
-    $modal.find("#ResendRegistrationEmail").trigger("click");
+    const $link = $modal.find("#ResendRegistrationEmail");
+    $link.trigger("click");
 
     // A real HTTP error (e.g. 500, or 400 stale CSRF) must NOT be rendered as
     // a success banner.
@@ -171,9 +179,10 @@ describe("register-confirmation-form", () => {
 
     expect(showSplashModalAlertBanner).toHaveBeenCalledWith(
       $modal,
-      "Unable to process request...",
+      "Something went wrong resending your email. Please try again.",
       "danger",
     );
+    expect($link.text()).toBe("Resend");
   });
 
   it("clears a lingering disabled/busy resend state on show.bs.modal reopen", () => {

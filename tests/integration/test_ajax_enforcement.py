@@ -197,17 +197,30 @@ def test_ajax_required_routes_reject_non_ajax(
     client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub: Utubs = Utubs.query.first()
-        # AJAX enforcement is the outermost gate and must be exercised on an
-        # unlocked UTub: a locked UTub's write guard returns 403 before the
-        # non-AJAX 302 would fire, which is a valid response but not what this
-        # test asserts. Pin the precondition so the assertion is deterministic.
+        # Pin the UTub deterministically: Utubs.query.first() has no ORDER BY,
+        # so under the full parallel suite (advanced id sequences, shifting
+        # physical row order) it can return a different UTub run-to-run.
+        utub: Utubs = Utubs.query.order_by(Utubs.id).first()
+        # AJAX enforcement is NOT the outermost gate for delete_utub_url_tag:
+        # @utub_membership_with_valid_url_tag wraps @api_route, so its
+        # Utub_Url_Tags (utub_id, utub_url_id, utub_tag_id) first_or_404() fires
+        # BEFORE the non-AJAX 302. The url and tag must therefore be a real
+        # association triple — derive both from one Utub_Url_Tags row rather than
+        # selecting the URL and the tag with independent unordered .first()
+        # queries (which can pick a tag attached to a different URL and 404).
         if utub.is_locked:
+            # AJAX enforcement must be exercised on an unlocked UTub: a locked
+            # UTub's write guard returns 403 before the non-AJAX 302 would fire,
+            # which is a valid response but not what this test asserts.
             utub.is_locked = False
             db.session.commit()
-        utub_url: Utub_Urls = Utub_Urls.query.filter_by(utub_id=utub.id).first()
-        utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.filter_by(
-            utub_id=utub.id
+        utub_url_tag: Utub_Url_Tags = (
+            Utub_Url_Tags.query.filter_by(utub_id=utub.id)
+            .order_by(Utub_Url_Tags.id)
+            .first()
+        )
+        utub_url: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub.id, id=utub_url_tag.utub_url_id
         ).first()
         member: Utub_Members = Utub_Members.query.filter_by(utub_id=utub.id).first()
 

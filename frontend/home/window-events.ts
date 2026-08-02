@@ -393,11 +393,21 @@ function handlePageShow(): void {
 
   const utubId = searchParams.get(APP_CONFIG.strings.UTUB_QUERY_PARAM);
   const panel = searchParams.get(APP_CONFIG.strings.MOBILE_PANEL_QUERY_PARAM);
+  // `email_change_status` is a server-render-only banner signal (DD-9): home()
+  // consumed it into the server-rendered HTML before this handler runs, so the
+  // client does nothing with it — but it must be counted as recognized, else the
+  // authenticated confirm-forward (splash -> /home?email_change_status=success)
+  // would be bounced to the error page as a "malformed" nav param.
+  const hasEmailChangeStatus = searchParams.has(
+    APP_CONFIG.strings.EMAIL_CHANGE_STATUS_QUERY_PARAM,
+  );
   // Reject only when a genuinely-unrecognized param is present. A UTubID-absent
   // request (only `panel` supplied) is no longer treated as malformed here — it
   // falls through (DD-24); Step 5 owns the graceful no-UTub degradation.
   const recognizedParamCount =
-    (utubId !== null ? 1 : 0) + (panel !== null ? 1 : 0);
+    (utubId !== null ? 1 : 0) +
+    (panel !== null ? 1 : 0) +
+    (hasEmailChangeStatus ? 1 : 0);
   if (searchParams.size > recognizedParamCount) {
     log(
       "pageshow: rejecting malformed query params, redirecting to error page",

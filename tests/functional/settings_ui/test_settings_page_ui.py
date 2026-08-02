@@ -10,8 +10,9 @@ from backend import db
 from backend.config import ConfigTestUI
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.utils.strings.splash_form_strs import EMAILS_NOT_IDENTICAL
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from backend.utils.strings.user_strs import USER_FAILURE
+from backend.utils.strings.user_strs import EMAIL_CHANGE_CONFIRMATION_SENT, USER_FAILURE
 from tests.functional.locators import SettingsPageLocators as SPL
 from tests.functional.playwright_utils import (
     click_on_navbar,
@@ -482,6 +483,7 @@ def test_account_forms_default_collapsed(
     # Rendered in the DOM but hidden while the <details> is closed.
     expect(page.locator(SPL.CHANGE_USERNAME_INPUT)).to_be_hidden()
     expect(page.locator(SPL.CHANGE_PASSWORD_CURRENT_INPUT)).to_be_hidden()
+    expect(page.locator(SPL.CHANGE_EMAIL_NEW_INPUT)).to_be_hidden()
 
     # Opening each disclosure reveals its fields.
     wait_then_click_element(page=page, css_selector=SPL.CHANGE_USERNAME_SUMMARY)
@@ -489,3 +491,284 @@ def test_account_forms_default_collapsed(
 
     wait_then_click_element(page=page, css_selector=SPL.CHANGE_PASSWORD_SUMMARY)
     expect(page.locator(SPL.CHANGE_PASSWORD_CURRENT_INPUT)).to_be_visible()
+
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_SUMMARY)
+    expect(page.locator(SPL.CHANGE_EMAIL_NEW_INPUT)).to_be_visible()
+
+
+_TAKEN_TARGET_USERNAME = "changeemailtakentarget"
+_TAKEN_TARGET_EMAIL = "already.taken.ui@example.com"
+
+
+def _seed_user_with_email(app: Flask, *, username: str, email: str) -> None:
+    """Create a committed password user owning ``email`` — used as the
+    already-taken target for the change-email uniqueness field-error test."""
+    with app.app_context():
+        user = Users(username=username, email=email, plaintext_password="Sup3rSecret!1")
+        user.email_validated = True
+        db.session.add(user)
+        db.session.commit()
+
+
+def _seed_pending_email(app: Flask, *, user_id: int, pending_email: str) -> None:
+    """Stage a not-yet-confirmed pending email on ``user_id`` so the settings
+    page's server-rendered pending-change notices (DD-6 / DD-16) render. Uses the
+    model's ``stage_email_change`` helper (same path the START endpoint uses), not
+    a raw column write, for parity with how pending state is really produced."""
+    with app.app_context():
+        user = Users.query.get(user_id)
+        user.stage_email_change(pending_email)
+        db.session.commit()
+
+
+def test_change_email_happy_path_shows_confirmation_banner(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in local-password user on the settings Account tab
+    WHEN they open the (collapsed-by-default) change-email form, enter a new,
+        unused email (twice) plus their correct current password and click Save
+    THEN the "confirmation sent" banner is shown AND the read-only account-info
+        email card is UNCHANGED — the live email is not swapped until the user
+        opens the confirmation link (Approach B: stay on the page).
+    """
+    new_email = "brand.new.ui.email@example.com"
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_SUMMARY)
+    page.fill(SPL.CHANGE_EMAIL_NEW_INPUT, new_email)
+    page.fill(SPL.CHANGE_EMAIL_CONFIRM_INPUT, new_email)
+    page.fill(SPL.CHANGE_EMAIL_CURRENT_PASSWORD_INPUT, UI_TEST_STRINGS.TEST_PASSWORD_1)
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_BTN)
+
+    status = page.locator(SPL.EMAIL_STATUS)
+    expect(status).to_be_visible()
+    expect(status).to_have_text(EMAIL_CHANGE_CONFIRMATION_SENT)
+
+    # Live email card stays on the current (unswapped) address.
+    expect(page.locator(SPL.ACCOUNT_INFO_EMAIL_VALUE)).to_have_text(
+        UI_TEST_STRINGS.TEST_PASSWORD_1
+    )
+
+
+def test_change_email_taken_email_shows_field_error(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user and a second account already owning an email
+    WHEN the user tries to change to that already-taken email
+    THEN a field-level error is shown on the new-email input and the live
+        account-info email card is unchanged.
+    """
+    _seed_user_with_email(
+        provide_app, username=_TAKEN_TARGET_USERNAME, email=_TAKEN_TARGET_EMAIL
+    )
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_SUMMARY)
+    page.fill(SPL.CHANGE_EMAIL_NEW_INPUT, _TAKEN_TARGET_EMAIL)
+    page.fill(SPL.CHANGE_EMAIL_CONFIRM_INPUT, _TAKEN_TARGET_EMAIL)
+    page.fill(SPL.CHANGE_EMAIL_CURRENT_PASSWORD_INPUT, UI_TEST_STRINGS.TEST_PASSWORD_1)
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_BTN)
+
+    feedback = page.locator(SPL.EMAIL_INVALID_FEEDBACK)
+    expect(feedback).to_have_text(USER_FAILURE.EMAIL_TAKEN)
+    expect(page.locator(SPL.ACCOUNT_INFO_EMAIL_VALUE)).to_have_text(
+        UI_TEST_STRINGS.TEST_PASSWORD_1
+    )
+
+
+def test_change_email_invalid_email_shows_field_error(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user on the settings Account tab
+    WHEN they submit a malformed new email (the button is type=button, so the
+        request reaches the server and its EmailStr validation rejects it)
+    THEN a field-level error is shown on the new-email input and no success
+        banner appears.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_SUMMARY)
+    page.fill(SPL.CHANGE_EMAIL_NEW_INPUT, "not-a-valid-email")
+    page.fill(SPL.CHANGE_EMAIL_CONFIRM_INPUT, "not-a-valid-email")
+    page.fill(SPL.CHANGE_EMAIL_CURRENT_PASSWORD_INPUT, UI_TEST_STRINGS.TEST_PASSWORD_1)
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_BTN)
+
+    expect(page.locator(SPL.EMAIL_INVALID_FEEDBACK)).to_be_visible()
+    expect(page.locator(SPL.EMAIL_STATUS)).not_to_have_class(
+        re.compile(r"alert-success")
+    )
+
+
+def test_change_email_confirm_mismatch_shows_field_error(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user on the settings Account tab (DD-8)
+    WHEN they enter a new email but a DIFFERENT confirm email
+    THEN a field-level "emails do not match" error is shown on the confirm
+        input, no success banner appears, and the live email card is unchanged.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_SUMMARY)
+    page.fill(SPL.CHANGE_EMAIL_NEW_INPUT, "typed.one.ui@example.com")
+    page.fill(SPL.CHANGE_EMAIL_CONFIRM_INPUT, "typed.two.ui@example.com")
+    page.fill(SPL.CHANGE_EMAIL_CURRENT_PASSWORD_INPUT, UI_TEST_STRINGS.TEST_PASSWORD_1)
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_BTN)
+
+    feedback = page.locator(SPL.CHANGE_EMAIL_CONFIRM_INVALID_FEEDBACK)
+    expect(feedback).to_have_text(EMAILS_NOT_IDENTICAL)
+    expect(page.locator(SPL.EMAIL_STATUS)).not_to_have_class(
+        re.compile(r"alert-success")
+    )
+    expect(page.locator(SPL.ACCOUNT_INFO_EMAIL_VALUE)).to_have_text(
+        UI_TEST_STRINGS.TEST_PASSWORD_1
+    )
+
+
+def test_change_email_form_absent_for_oauth_only_user(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in OAuth-only (password-less) user on the settings Account tab
+    WHEN the page renders (DD-7)
+    THEN the change-email form controls are NOT rendered, the OAuth-only note is
+        shown as a PLAIN paragraph (no collapsible <details>/<summary>), matching
+        the change-password OAuth-only fallback shape.
+    """
+    oauth_only_user_id = _seed_oauth_only_user(provide_app)
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=oauth_only_user_id,
+        config=provide_config,
+    )
+
+    expect(page.locator(SPL.PANEL_ACCOUNT)).to_be_visible()
+    # Form controls gated out entirely for OAuth-only accounts.
+    expect(page.locator(SPL.CHANGE_EMAIL_NEW_INPUT)).to_have_count(0)
+    expect(page.locator(SPL.CHANGE_EMAIL_BTN)).to_have_count(0)
+    # DD-7: the OAuth-only note is a plain <div>, never a <details>/<summary>.
+    expect(page.locator(SPL.CHANGE_EMAIL_DETAILS)).to_have_count(0)
+    expect(page.locator(SPL.CHANGE_EMAIL_SUMMARY)).to_have_count(0)
+    expect(page.locator(SPL.CHANGE_EMAIL_OAUTH_NOTE)).to_be_visible()
+
+
+def test_change_email_pending_warning_visible_when_pending(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user who already has a pending email change staged
+        (DD-16 in-form warning + DD-6 account-info pending note)
+    WHEN they view the Account tab and open the change-email disclosure
+    THEN the account-info pending note renders the staged address (DD-6) and the
+        in-form pending-change warning is visible with the DD-16 copy.
+    """
+    pending_email = "pending.ui@example.com"
+    _seed_pending_email(
+        provide_app, user_id=DEFAULT_USER_ID, pending_email=pending_email
+    )
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    # DD-6: the account-info card's pending note is server-rendered (outside the
+    # disclosure) with the staged address.
+    account_note = page.locator(SPL.ACCOUNT_PENDING_EMAIL_NOTE)
+    expect(account_note).to_be_visible()
+    expect(account_note).to_have_text(
+        UI_TEST_STRINGS.SETTINGS_ACCOUNT_PENDING_EMAIL_INITIAL_NOTE.format(
+            email=pending_email
+        )
+    )
+
+    # DD-16: the in-form warning renders inside the change-email disclosure.
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_SUMMARY)
+    warning = page.locator(SPL.CHANGE_EMAIL_PENDING_WARNING)
+    expect(warning).to_be_visible()
+    expect(warning).to_have_text(UI_TEST_STRINGS.SETTINGS_CHANGE_EMAIL_PENDING_WARNING)
+
+
+def test_change_email_pending_warning_absent_when_no_pending(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user with NO pending email change (DD-16)
+    WHEN they open the change-email disclosure
+    THEN the in-form pending-change warning is not rendered at all (the
+        `{% if account_pending_email %}` gate omits it from the DOM).
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_SUMMARY)
+    expect(page.locator(SPL.CHANGE_EMAIL_PENDING_WARNING)).to_have_count(0)

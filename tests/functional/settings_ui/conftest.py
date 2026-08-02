@@ -19,14 +19,19 @@ from redis import Redis
 
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
-# Rate-limit / lockout counters written by the change-username and
-# change-password services (`account_service.apply_username_change`,
-# `reauth_throttle.record_reauth_failure`). Both are per-user Redis keys on
-# the shared ENFORCEMENT Redis (`CONFIG_ENVS.REDIS_URI`, DB 0 in the local
-# `web` container) — NOT the per-worker session Redis DB the UI tests
+# Rate-limit / lockout counters written by the change-username, change-password,
+# and change-email services (`account_service.apply_username_change` /
+# `apply_email_change`, `reauth_throttle.record_reauth_failure`). All are per-user
+# Redis keys on the shared ENFORCEMENT Redis (`CONFIG_ENVS.REDIS_URI`, DB 0 in the
+# local `web` container) — NOT the per-worker session Redis DB the UI tests
 # otherwise isolate. See `_reset_rate_limit_state` for why they must be
-# cleared between UI tests.
-_RATE_LIMIT_KEY_PATTERNS: tuple[str, ...] = ("username-change:*", "reauth-fail:*")
+# cleared between UI tests. `email-change:*` is the per-day send cap the
+# change-email happy-path test would otherwise trip after 3 runs.
+_RATE_LIMIT_KEY_PATTERNS: tuple[str, ...] = (
+    "username-change:*",
+    "reauth-fail:*",
+    "email-change:*",
+)
 _MEMORY_URI: str = "memory://"
 
 
@@ -69,8 +74,10 @@ def seeded_users(
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limit_state(provide_app: Flask) -> None:
-    """Clear the change-username / re-auth rate-limit counters on the shared
-    enforcement Redis before every settings UI test.
+    """Clear the change-username / change-email / re-auth rate-limit counters on
+    the shared enforcement Redis before every settings UI test (the change-email
+    per-day send cap, ``email-change:*``, would otherwise trip the happy-path
+    test after 3 runs — same class of leak as the change-username counter below).
 
     Why this is needed — the shared-live-Redis constraint:
 
