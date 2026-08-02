@@ -39,21 +39,17 @@ class DeactivateAccountErrorCodes(IntEnum):
     ``backend/splash/constants.py``) and the same explicit-sequential-value
     convention (member 1 is always ``INVALID_FORM_INPUT``).
 
-    ``OAUTH_ONLY_NOT_YET_AVAILABLE`` (DD-3) is the Step-3 interim-stub code for
-    the not-yet-implemented OAuth-only removal path — a real, defined, tested
-    501 response so the password-path endpoints ship independently ahead of the
-    OAuth-proof round-trip. Step 5 retires this member once the OAuth-only
-    branch stops using the stub response (DD-16). Its value ``4`` for
-    ``SOLE_ADMIN_FORBIDDEN`` deliberately matches ``DeleteAccountErrorCodes``'s
-    so the shared ``reject_self_sole_admin`` guard's response is correct for
-    either caller without a per-endpoint enum import (DD-21).
+    ``SOLE_ADMIN_FORBIDDEN``'s value ``4`` deliberately matches
+    ``DeleteAccountErrorCodes``'s so the shared ``reject_self_sole_admin`` guard's
+    response is correct for either caller without a per-endpoint enum import
+    (DD-21). The OAuth-only removal path returns a 200 OAuth-proof redirect
+    (DD-6), not an error, so it has no error-code member here.
     """
 
     INVALID_FORM_INPUT = 1
     INVALID_PASSWORD = 2
     TOO_MANY_ATTEMPTS = 3
     SOLE_ADMIN_FORBIDDEN = 4
-    OAUTH_ONLY_NOT_YET_AVAILABLE = 5
 
 
 class DeleteAccountErrorCodes(IntEnum):
@@ -69,11 +65,8 @@ class DeleteAccountErrorCodes(IntEnum):
     ``DeactivateAccountErrorCodes``'s so the shared ``reject_self_sole_admin``
     guard's response is correct for either caller without a per-endpoint enum
     import (DD-21). ``CONFIRMATION_MISMATCH`` (DD-C) backs the typed-username
-    confirmation re-check. ``OAUTH_ONLY_NOT_YET_AVAILABLE`` (DD-3) is the
-    interim-stub code for the not-yet-implemented OAuth-only removal path — a
-    real, defined, tested 501 response so the password-path endpoints ship ahead
-    of the OAuth-proof round-trip; Step 5 retires this member once the OAuth-only
-    branch stops using the stub response (DD-16).
+    confirmation re-check. The OAuth-only removal path returns a 200 OAuth-proof
+    redirect (DD-6), not an error, so it has no error-code member here.
     """
 
     INVALID_FORM_INPUT = 1
@@ -81,7 +74,6 @@ class DeleteAccountErrorCodes(IntEnum):
     TOO_MANY_ATTEMPTS = 3
     SOLE_ADMIN_FORBIDDEN = 4
     CONFIRMATION_MISMATCH = 5
-    OAUTH_ONLY_NOT_YET_AVAILABLE = 6
 
 
 class ChangeEmailErrorCodes(IntEnum):

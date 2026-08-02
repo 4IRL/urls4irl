@@ -6867,7 +6867,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Reversibly self-deactivate the authenticated account (a voluntary pause \u2014 the account is locked and data retained; logging back in reactivates it). Password accounts re-authenticate with their current password; the acting session and all refresh tokens are invalidated and the session is logged out, returning the splash redirect URL. OAuth-only (password-less) accounts currently receive an interim 501 (the OAuth-proof round-trip lands in a later change). The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
+        "description": "Reversibly self-deactivate the authenticated account (a voluntary pause \u2014 the account is locked and data retained; logging back in reactivates it). Password accounts re-authenticate with their current password; the acting session and all refresh tokens are invalidated and the session is logged out, returning the splash redirect URL. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider \u2014 the 200 response returns the provider redirect URL, and the authenticated callback completes the deactivation. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
         "parameters": [
           {
             "name": "user_id",
@@ -6927,16 +6927,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
           }
         },
         "x-error-codes": {
@@ -6956,7 +6946,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts currently receive an interim 501 (the OAuth-proof round-trip lands in a later change). The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
+        "description": "Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider \u2014 the 200 response returns the provider redirect URL, and the authenticated callback completes the erasure. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
         "parameters": [
           {
             "name": "user_id",
@@ -7009,16 +6999,6 @@
           },
           "429": {
             "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10684,13 +10664,12 @@
       },
       "DeactivateAccountErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5],
+        "enum": [1, 2, 3, 4],
         "x-enum-varnames": [
           "INVALID_FORM_INPUT",
           "INVALID_PASSWORD",
           "TOO_MANY_ATTEMPTS",
-          "SOLE_ADMIN_FORBIDDEN",
-          "OAUTH_ONLY_NOT_YET_AVAILABLE"
+          "SOLE_ADMIN_FORBIDDEN"
         ],
         "description": "Error codes for DeactivateAccountErrorCodes"
       },
@@ -10734,14 +10713,13 @@
       },
       "DeleteAccountErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6],
+        "enum": [1, 2, 3, 4, 5],
         "x-enum-varnames": [
           "INVALID_FORM_INPUT",
           "INVALID_PASSWORD",
           "TOO_MANY_ATTEMPTS",
           "SOLE_ADMIN_FORBIDDEN",
-          "CONFIRMATION_MISMATCH",
-          "OAUTH_ONLY_NOT_YET_AVAILABLE"
+          "CONFIRMATION_MISMATCH"
         ],
         "description": "Error codes for DeleteAccountErrorCodes"
       },

@@ -6,8 +6,9 @@ Mirrors ``test_change_password.py``'s fixture/CSRF conventions (the
 autouse ``reauth-fail:*`` Redis reset), but asserts the *inverse* session
 outcome: deactivate must log the acting session out (``perform_self_deactivation``
 skips ``restamp_current_session``), so a follow-up gated GET redirects instead of
-surviving. Also covers the sole-admin 403 guard, the DD-3 OAuth-only 501 stub
-(with no state mutation), and the end-to-end reactivate-on-login round-trip.
+surviving. Also covers the sole-admin 403 guard and the end-to-end
+reactivate-on-login round-trip. The OAuth-only round-trip is covered separately
+in ``test_account_removal_oauth_proof.py``.
 """
 
 from __future__ import annotations
@@ -259,47 +260,6 @@ def test_deactivate_sole_admin_returns_403(
         refreshed: Users = Users.query.get(user_id)
         assert refreshed.is_suspended is False
         assert refreshed.self_deactivated_at is None
-
-
-def test_deactivate_oauth_only_returns_501_stub_no_mutation(
-    oauth_only_google_user_logged_in: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
-    """An OAuth-only (password-less) account gets the DD-3 interim 501 stub with
-    the OAUTH_ONLY_NOT_YET_AVAILABLE code, and NOTHING is mutated (the account
-    stays active and the session stays authenticated)."""
-    client, csrf_token, user, app = oauth_only_google_user_logged_in
-    user_id = user.id
-    refresh_token_id = _seed_refresh_token(app, user_id)
-
-    response = client.put(
-        url_for(ROUTES.USERS.DEACTIVATE_ACCOUNT, user_id=user_id),
-        json=_deactivate_payload(current_password=None),
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    assert response.status_code == 501
-    response_json = response.get_json()
-    assert (
-        response_json[STD_JSON.ERROR_CODE]
-        == DeactivateAccountErrorCodes.OAUTH_ONLY_NOT_YET_AVAILABLE
-    )
-    assert (
-        response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE
-    )
-
-    with app.app_context():
-        refreshed: Users = Users.query.get(user_id)
-        assert refreshed.is_suspended is False
-        assert refreshed.self_deactivated_at is None
-        # A seeded refresh token proves the 501 branch revokes nothing.
-        untouched_token: ApiRefreshTokens = ApiRefreshTokens.query.get(refresh_token_id)
-        assert untouched_token.revoked_at is None
-
-    # Session survives — the account was never deactivated.
-    _clear_flask_login_request_cache()
-    settings_response = client.get(url_for(ROUTES.USERS.SETTINGS))
-    assert settings_response.status_code == 200
 
 
 def test_deactivate_then_login_reactivates_end_to_end(

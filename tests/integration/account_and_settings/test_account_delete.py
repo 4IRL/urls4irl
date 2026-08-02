@@ -8,8 +8,9 @@ account is tombstoned in place via the shared ``erase_user_core`` and the acting
 session is logged out. Replicates the admin erase membership matrix for the self
 path (solo-deleted, ownership-transferred, non-creator-removed), asserts the new
 self-actor audit trail (DD-4) and the ``ACCOUNT_DELETED`` metric, verifies the
-transfer-count context (DD-5), the typed-username confirmation re-check (DD-C),
-and the DD-3 OAuth-only 501 stub (with no state mutation).
+transfer-count context (DD-5) and the typed-username confirmation re-check (DD-C).
+The OAuth-only round-trip is covered separately in
+``test_account_removal_oauth_proof.py``.
 """
 
 from __future__ import annotations
@@ -548,59 +549,6 @@ def test_delete_locks_out_after_max_reauth_failures(
         blocked.get_json()[STD_JSON.ERROR_CODE]
         == DeleteAccountErrorCodes.TOO_MANY_ATTEMPTS
     )
-
-
-# --------------------------------------------------------------------------- #
-# OAuth-only 501 stub (DD-13) — no state mutation.
-# --------------------------------------------------------------------------- #
-
-
-def test_delete_oauth_only_returns_501_stub_no_mutation(
-    oauth_only_google_user_logged_in: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
-    """An OAuth-only (password-less) account gets the DD-3 interim 501 stub with
-    the OAUTH_ONLY_NOT_YET_AVAILABLE code, and NOTHING is mutated (the row is not
-    tombstoned, no tokens revoked, no audit row, session still authenticated)."""
-    client, csrf_token, user, app = oauth_only_google_user_logged_in
-    user_id = user.id
-    original_username = user.username
-    refresh_token_id = _seed_refresh_token(app, user_id)
-
-    response = client.delete(
-        url_for(ROUTES.USERS.DELETE_ACCOUNT, user_id=user_id),
-        json=_delete_payload(current_password=None, confirm_username=original_username),
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    assert response.status_code == 501
-    response_json = response.get_json()
-    assert (
-        response_json[STD_JSON.ERROR_CODE]
-        == DeleteAccountErrorCodes.OAUTH_ONLY_NOT_YET_AVAILABLE
-    )
-    assert (
-        response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE
-    )
-
-    with app.app_context():
-        untouched: Users = Users.query.get(user_id)
-        assert not is_tombstoned(user=untouched)
-        assert untouched.username == original_username
-        assert untouched.email_validated is True
-        untouched_token: ApiRefreshTokens = ApiRefreshTokens.query.get(refresh_token_id)
-        assert untouched_token.revoked_at is None
-        assert (
-            AuditLog.query.filter_by(
-                action=ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE
-            ).first()
-            is None
-        )
-
-    # Session survives — the account was never deleted.
-    _clear_flask_login_request_cache()
-    settings_response = client.get(url_for(ROUTES.USERS.SETTINGS))
-    assert settings_response.status_code == 200
 
 
 # --------------------------------------------------------------------------- #

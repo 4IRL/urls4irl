@@ -9,16 +9,30 @@ from enum import StrEnum
 # target).
 OAUTH_NEXT_SESSION_KEY = "oauth_next_target"
 
-# Settings-initiated account linking: an authenticated user's pending link
-# intent, stashed by `POST /users/<id>/oauth/link/<provider>` after
-# proof-of-ownership (password re-auth for password accounts; an OAuth
-# round-trip to an already-linked provider for password-less accounts) and
-# consumed by the shared `/oauth/<provider>/callback`. Shape:
-# {"action": "link"|"proof", "target_provider": str, "proof_provider": str?,
-#  "user_id": int, "issued_at": float}
+# Settings-initiated account linking AND account removal: an authenticated
+# user's pending intent, stashed after proof-of-ownership (password re-auth for
+# password accounts; an OAuth round-trip to an already-linked provider for
+# password-less accounts) and consumed by the shared
+# `/oauth/<provider>/callback`. The same session key carries two intent
+# families:
+#   - link  (`POST /users/<id>/oauth/link/<provider>`) — actions "link"/"proof".
+#   - removal (`PUT /users/<id>/deactivate`, `DELETE /users/<id>`) — actions
+#     "deactivate"/"delete", stashed by the OAuth-only branch of the removal
+#     endpoints (`backend/users/services/removal_oauth.py:_stash_removal_intent`).
+# Shape:
+# {"action": "link"|"proof"|"deactivate"|"delete", "target_provider": str?,
+#  "proof_provider": str?, "user_id": int, "issued_at": float}
+# A "deactivate"/"delete" action omits `target_provider` entirely — a removal
+# has no link target, only a `proof_provider` — while "link" omits
+# `proof_provider`.
 OAUTH_LINK_INTENT_SESSION_KEY = "oauth_link_intent"
 LINK_INTENT_ACTION_LINK = "link"
 LINK_INTENT_ACTION_PROOF = "proof"
+# Removal-intent actions (DD-6): the OAuth-only self-service account-removal
+# round-trip reuses the link-intent session key with its own action values and
+# dict shape (`proof_provider` only, no `target_provider`).
+REMOVAL_INTENT_ACTION_DEACTIVATE = "deactivate"
+REMOVAL_INTENT_ACTION_DELETE = "delete"
 
 # Collision confirm-link: the pending provider identity stashed when an OAuth
 # sign-in resolves to an email already owned by an unlinked local account.

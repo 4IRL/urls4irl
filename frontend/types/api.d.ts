@@ -1293,7 +1293,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** @description Reversibly self-deactivate the authenticated account (a voluntary pause — the account is locked and data retained; logging back in reactivates it). Password accounts re-authenticate with their current password; the acting session and all refresh tokens are invalidated and the session is logged out, returning the splash redirect URL. OAuth-only (password-less) accounts currently receive an interim 501 (the OAuth-proof round-trip lands in a later change). The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts. */
+    /** @description Reversibly self-deactivate the authenticated account (a voluntary pause — the account is locked and data retained; logging back in reactivates it). Password accounts re-authenticate with their current password; the acting session and all refresh tokens are invalidated and the session is logged out, returning the splash redirect URL. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider — the 200 response returns the provider redirect URL, and the authenticated callback completes the deactivation. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts. */
     put: operations["deactivateAccount"];
     post?: never;
     delete?: never;
@@ -1312,7 +1312,7 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** @description Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts currently receive an interim 501 (the OAuth-proof round-trip lands in a later change). The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts. */
+    /** @description Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider — the 200 response returns the provider redirect URL, and the authenticated callback completes the erasure. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts. */
     delete: operations["deleteAccount"];
     options?: never;
     head?: never;
@@ -2846,7 +2846,7 @@ export interface components {
      * @description Error codes for DeactivateAccountErrorCodes
      * @enum {integer}
      */
-    DeactivateAccountErrorCodes: 1 | 2 | 3 | 4 | 5;
+    DeactivateAccountErrorCodes: 1 | 2 | 3 | 4;
     DeleteAccountRequest: {
       /**
        * @description Current account password, re-authenticated before the irreversible account deletion. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -2863,7 +2863,7 @@ export interface components {
      * @description Error codes for DeleteAccountErrorCodes
      * @enum {integer}
      */
-    DeleteAccountErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
+    DeleteAccountErrorCodes: 1 | 2 | 3 | 4 | 5;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -7549,15 +7549,6 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse"];
         };
       };
-      /** @description Error */
-      501: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
     };
   };
   deleteAccount: {
@@ -7614,15 +7605,6 @@ export interface operations {
       };
       /** @description Too many requests */
       429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-      /** @description Error */
-      501: {
         headers: {
           [name: string]: unknown;
         };

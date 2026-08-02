@@ -156,13 +156,13 @@ SOLE_ADMIN_CANNOT_LEAVE = (
     "You're the only active admin. Assign another admin before removing your "
     "account."
 )
-# Interim-stub copy (DD-3) returned with HTTP 501 by the deactivate + delete
-# endpoints' OAuth-only branch until Step 5 wires the OAuth-proof round-trip.
-# Shared by both removal flows; retired with the stub in Step 5 (DD-16).
-OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE = (
-    "Account removal for accounts that sign in with Google or GitHub isn't "
-    "available yet. Please check back soon."
-)
+# OAuth-proof round-trip 200 banner copy (DD-6) returned by the deactivate +
+# delete endpoints' OAuth-only branch: a password-less account re-consents
+# through an already-linked provider before the removal completes. Server-sourced
+# envelope text (no JS bridge); shared by both removal flows so
+# ``AccountRemovalResponseSchema`` stays the single response type for the whole
+# deactivate/delete family.
+OAUTH_PROOF_REDIRECT_PENDING = "Re-authenticate with your linked provider to continue."
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -183,7 +183,6 @@ class USER_FAILURE(FAILURE_GENERAL):
     EMAIL_CHANGE_OAUTH_ONLY = EMAIL_CHANGE_OAUTH_ONLY
     TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
     SOLE_ADMIN_CANNOT_LEAVE = SOLE_ADMIN_CANNOT_LEAVE
-    OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE = OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE
     DELETE_CONFIRMATION_MISMATCH = DELETE_CONFIRMATION_MISMATCH
 
 

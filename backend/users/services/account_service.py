@@ -8,7 +8,7 @@ from flask_login import current_user, logout_user
 from redis import Redis
 from sqlalchemy.exc import IntegrityError
 
-from backend import db
+from backend import db, oauth
 from backend.admin.account_data_service import erase_user_core
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.extensions import audit
@@ -27,6 +27,11 @@ from backend.schemas.users import (
     ChangeUsernameResponseSchema,
 )
 from backend.splash.constants import LOGIN_FAILURE_REASON_BAD_PASSWORD
+from backend.splash.services.oauth.constants import (
+    Provider,
+    REMOVAL_INTENT_ACTION_DEACTIVATE,
+    REMOVAL_INTENT_ACTION_DELETE,
+)
 from backend.users.constants import (
     ChangeEmailErrorCodes,
     ChangePasswordErrorCodes,
@@ -34,8 +39,11 @@ from backend.users.constants import (
     DeactivateAccountErrorCodes,
     DeleteAccountErrorCodes,
 )
-from backend.users.services.removal_oauth import perform_self_deactivation
-from backend.utils.all_routes import ROUTES
+from backend.users.services.removal_oauth import (
+    _stash_removal_intent,
+    perform_self_deactivation,
+)
+from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
 from backend.utils.mailjet_utils import handle_mailjet_failure
@@ -54,6 +62,7 @@ from backend.utils.strings.user_strs import (
     ACCOUNT_DELETED_SUCCESS,
     EMAIL_CHANGE_CONFIRMATION_SENT,
     EMAIL_CHANGE_NO_CHANGE,
+    OAUTH_PROOF_REDIRECT_PENDING,
     PASSWORD_CHANGE_SUCCESS,
     USER_FAILURE,
     USERNAME_CHANGE_NO_CHANGE,
@@ -529,6 +538,64 @@ def reject_self_sole_admin(user: Users) -> FlaskResponse | None:
     )
 
 
+def _select_proof_provider() -> Provider | None:
+    """Pick an already-linked provider to serve as the OAuth-proof round-trip
+    target for a password-less account's removal re-auth (DD-6).
+
+    Returns the first linked identity that parses to a supported ``Provider``
+    **and** is registered (configured) in this deployment — mirroring the
+    proof-provider selection in ``initiate_settings_link`` /
+    ``build_connected_accounts_context`` so this redirect targets the same
+    provider the settings page shows and never dead-ends at an unconfigured
+    provider dance. Returns ``None`` only when no linked identity is usable
+    (unreachable in practice — a password-less account always keeps at least one
+    linked, valid identity, since the unlink guard forbids dropping the last
+    sign-in method).
+    """
+    for identity in current_user.oauth_identities:
+        try:
+            candidate_provider = Provider(identity.provider)
+        except ValueError:
+            continue
+        if hasattr(oauth, candidate_provider.value):
+            return candidate_provider
+    return None
+
+
+def _initiate_oauth_proof_removal(*, action: str) -> FlaskResponse:
+    """Stash a removal intent for the authenticated password-less account and
+    return the 200 redirect that starts the OAuth-proof round-trip (DD-6).
+
+    Shared by the deactivate + delete OAuth-only branches so both stash the same
+    intent shape and return the same ``AccountRemovalResponseSchema`` redirect
+    into ``GET /oauth/<provider>/link``; the authenticated callback executes the
+    stashed removal.
+    """
+    proof_provider = _select_proof_provider()
+    if proof_provider is None:
+        # Unreachable for a real password-less account; refuse rather than
+        # redirect into a dead provider dance.
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=DeactivateAccountErrorCodes.INVALID_FORM_INPUT,
+            status_code=403,
+        )
+
+    _stash_removal_intent(
+        action=action,
+        user_id=current_user.id,
+        proof_provider=proof_provider,
+    )
+    return APIResponse(
+        status_code=200,
+        data=AccountRemovalResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=OAUTH_PROOF_REDIRECT_PENDING,
+            redirect_url=url_for(OAUTH_ROUTES.LINK, provider=proof_provider.value),
+        ),
+    ).to_response()
+
+
 def apply_account_deactivation(
     *, user_id: int, current_password: str | None
 ) -> FlaskResponse:
@@ -542,8 +609,9 @@ def apply_account_deactivation(
 
     Guard order (documented numbered comments): self-ownership (403) →
     sole-admin (403, shared ``reject_self_sole_admin`` helper, DD-21) → OAuth-only
-    interim 501 stub (DD-3; Step 5 replaces only this branch's body with the
-    real OAuth-proof initiator) → re-auth lockout (429) → current-password
+    branch (200 redirect into the OAuth-proof round-trip, DD-6 — a password-less
+    account re-consents through an already-linked provider and the callback
+    executes the stashed deactivation) → re-auth lockout (429) → current-password
     re-auth (400 field error, records the existing ``LOGIN_FAILURE`` metric + a
     re-auth failure) → success: clear the failure counter, perform the mutation,
     record ``ACCOUNT_DEACTIVATED``, commit, log out, and return the splash
@@ -563,15 +631,14 @@ def apply_account_deactivation(
     if sole_admin_error is not None:
         return sole_admin_error
 
-    # (3) OAuth-only branch — explicit interim 501 stub (DD-3). A password-less
-    # account cannot re-auth inline; Step 5 replaces this branch's body with the
-    # OAuth-proof initiator (same guard position), retiring the enum member.
+    # (3) OAuth-only branch (DD-6): a password-less account cannot re-auth
+    # inline, so it re-proves identity via an OAuth round-trip through an
+    # already-linked provider. Stash the removal intent and 200-redirect the
+    # client into GET /oauth/<provider>/link; the authenticated callback executes
+    # the stashed deactivation. (The initiator only ever stashes when
+    # ``password is None`` — a password account can never take this branch.)
     if current_user.password is None:
-        return build_message_error_response(
-            message=USER_FAILURE.OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE,
-            error_code=DeactivateAccountErrorCodes.OAUTH_ONLY_NOT_YET_AVAILABLE,
-            status_code=501,
-        )
+        return _initiate_oauth_proof_removal(action=REMOVAL_INTENT_ACTION_DEACTIVATE)
 
     # (4) Brute-force lockout: the shared per-user Redis counter. Fail-open;
     # checked before the password compare so a locked-out session cannot keep
@@ -642,12 +709,13 @@ def apply_account_deletion(
     Guard order (documented numbered comments): self-ownership (403) → sole-admin
     (403, shared ``reject_self_sole_admin`` helper, DD-21) → typed-username
     confirmation re-check (400 field error, DD-C — defense-in-depth against a
-    client-gated-only submit) → OAuth-only interim 501 stub (DD-3; Step 5 replaces
-    only this branch's body with the real OAuth-proof initiator) → re-auth lockout
-    (429) → current-password re-auth (400 field error, records the existing
-    ``LOGIN_FAILURE`` metric + a re-auth failure) → success: clear the failure
-    counter, erase, record the self-actor audit row + ``ACCOUNT_DELETED`` metric,
-    commit, log out, and return the splash redirect target.
+    client-gated-only submit) → OAuth-only branch (200 redirect into the
+    OAuth-proof round-trip, DD-6 — a password-less account re-consents through an
+    already-linked provider and the callback executes the stashed erasure) →
+    re-auth lockout (429) → current-password re-auth (400 field error, records the
+    existing ``LOGIN_FAILURE`` metric + a re-auth failure) → success: clear the
+    failure counter, erase, record the self-actor audit row + ``ACCOUNT_DELETED``
+    metric, commit, log out, and return the splash redirect target.
     """
     # (1) Self-ownership: the URL user_id must be the acting user.
     if user_id != current_user.id:
@@ -674,15 +742,14 @@ def apply_account_deletion(
             status_code=400,
         )
 
-    # (4) OAuth-only branch — explicit interim 501 stub (DD-3). A password-less
-    # account cannot re-auth inline; Step 5 replaces this branch's body with the
-    # OAuth-proof initiator (same guard position), retiring the enum member.
+    # (4) OAuth-only branch (DD-6): a password-less account cannot re-auth
+    # inline, so it re-proves identity via an OAuth round-trip through an
+    # already-linked provider. Stash the removal intent and 200-redirect the
+    # client into GET /oauth/<provider>/link; the authenticated callback executes
+    # the stashed erasure. The typed-username confirmation (guard 3) is already
+    # re-checked above, so the OAuth-proof path is gated by it too.
     if current_user.password is None:
-        return build_message_error_response(
-            message=USER_FAILURE.OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE,
-            error_code=DeleteAccountErrorCodes.OAUTH_ONLY_NOT_YET_AVAILABLE,
-            status_code=501,
-        )
+        return _initiate_oauth_proof_removal(action=REMOVAL_INTENT_ACTION_DELETE)
 
     # (5) Brute-force lockout: the shared per-user Redis counter. Fail-open;
     # checked before the password compare so a locked-out session cannot keep
