@@ -4434,6 +4434,7 @@
                 "api_hit",
                 "api_metrics_ingest_batch",
                 "account_deactivated",
+                "account_deleted",
                 "account_reactivated",
                 "cross_utub_search_performed",
                 "email_verified",
@@ -4769,6 +4770,7 @@
                 "api_hit",
                 "api_metrics_ingest_batch",
                 "account_deactivated",
+                "account_deleted",
                 "account_reactivated",
                 "cross_utub_search_performed",
                 "email_verified",
@@ -6940,6 +6942,95 @@
         "x-error-codes": {
           "DeactivateAccountErrorCodes": {
             "$ref": "#/components/schemas/DeactivateAccountErrorCodes"
+          }
+        }
+      }
+    },
+    "/users/{user_id}": {
+      "delete": {
+        "operationId": "deleteAccount",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts currently receive an interim 501 (the OAuth-proof round-trip lands in a later change). The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the self-service account-removal endpoints\n    (``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by both the deactivate and delete flows (and, in Step 5, the\n    OAuth-proof round-trip initiator, which returns the provider-redirect URL in\n    the same field).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRemovalResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_DeleteAccountErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "DeleteAccountErrorCodes": {
+            "$ref": "#/components/schemas/DeleteAccountErrorCodes"
           }
         }
       }
@@ -10602,6 +10693,57 @@
           "OAUTH_ONLY_NOT_YET_AVAILABLE"
         ],
         "description": "Error codes for DeactivateAccountErrorCodes"
+      },
+      "DeleteAccountRequest": {
+        "properties": {
+          "currentPassword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Current account password, re-authenticated before the irreversible account deletion. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead"
+          },
+          "confirmUsername": {
+            "description": "The account's exact username, typed by the user to confirm the irreversible deletion (DD-C). Re-checked against current_user in the service",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["confirmUsername"],
+        "type": "object"
+      },
+      "ErrorResponse_DeleteAccountErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/DeleteAccountErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "DeleteAccountErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4, 5, 6],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "INVALID_PASSWORD",
+          "TOO_MANY_ATTEMPTS",
+          "SOLE_ADMIN_FORBIDDEN",
+          "CONFIRMATION_MISMATCH",
+          "OAUTH_ONLY_NOT_YET_AVAILABLE"
+        ],
+        "description": "Error codes for DeleteAccountErrorCodes"
       },
       "ProviderLinkRequest": {
         "properties": {

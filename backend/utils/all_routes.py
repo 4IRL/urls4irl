@@ -70,6 +70,7 @@ class USER_ROUTES:
     CHANGE_PASSWORD = _USERS + "change_password"
     CHANGE_EMAIL = _USERS + "change_email"
     DEACTIVATE_ACCOUNT = _USERS + "deactivate_account"
+    DELETE_ACCOUNT = _USERS + "delete_account"
     OAUTH_LINK = _USERS + "link_oauth_provider"
     OAUTH_UNLINK = _USERS + "unlink_oauth_provider"
 

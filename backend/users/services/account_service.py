@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
 
 from flask import current_app, session, url_for
@@ -8,7 +9,9 @@ from redis import Redis
 from sqlalchemy.exc import IntegrityError
 
 from backend import db
+from backend.admin.account_data_service import erase_user_core
 from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.extensions import audit
 from backend.extensions.extension_utils import safe_get_email_sender
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
@@ -29,6 +32,7 @@ from backend.users.constants import (
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
     DeactivateAccountErrorCodes,
+    DeleteAccountErrorCodes,
 )
 from backend.users.services.removal_oauth import perform_self_deactivation
 from backend.utils.all_routes import ROUTES
@@ -45,7 +49,9 @@ from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.user_strs import (
+    ACCOUNT_AUDIT_ACTIONS,
     ACCOUNT_DEACTIVATED_SUCCESS,
+    ACCOUNT_DELETED_SUCCESS,
     EMAIL_CHANGE_CONFIRMATION_SENT,
     EMAIL_CHANGE_NO_CHANGE,
     PASSWORD_CHANGE_SUCCESS,
@@ -69,6 +75,23 @@ def build_account_info_context() -> dict[str, Any]:
     ``stats_member_since_iso`` / ``stats_member_since_exact`` values the
     account-info block reuses (no duplicate date formatting).
     """
+    # Sole-creator delete-modal context (DD-5): split the UTubs this user created
+    # into those that will TRANSFER ownership on erasure (≥1 other member) versus
+    # those that will be DELETED outright (solo). Deliberately NOT
+    # ``stats_utubs_created`` — that count over-counts for the transfer notice
+    # because it includes the solo UTubs, which are deleted rather than handed
+    # off. Mirrors ``erase_user_core``'s per-UTub membership resolution.
+    utubs_transferring: int = 0
+    utubs_deleting_solo: int = 0
+    for membership in current_user.utubs_is_member_of:
+        containing_utub = membership.to_utub
+        if containing_utub.utub_creator != current_user.id:
+            continue
+        if len(containing_utub.members) > 1:
+            utubs_transferring += 1
+        else:
+            utubs_deleting_solo += 1
+
     return {
         "account_username": current_user.username,
         "account_email": current_user.email,
@@ -77,6 +100,10 @@ def build_account_info_context() -> dict[str, Any]:
         # otherwise. Gates both the account-info pending indicator and the
         # in-form change-email warning (DD-16/DD-18) at initial page load.
         "account_pending_email": current_user.pending_email,
+        # Created UTubs with ≥1 other member — ownership transfers on delete.
+        "account_utubs_transferring": utubs_transferring,
+        # Created solo UTubs — permanently deleted on account delete.
+        "account_utubs_deleting_solo": utubs_deleting_solo,
     }
 
 
@@ -593,6 +620,129 @@ def apply_account_deactivation(
         data=AccountRemovalResponseSchema(
             status=STD_JSON.SUCCESS,
             message=ACCOUNT_DEACTIVATED_SUCCESS,
+            redirect_url=url_for(ROUTES.SPLASH.SPLASH_PAGE),
+        ),
+    ).to_response()
+
+
+def apply_account_deletion(
+    *, user_id: int, current_password: str | None, confirm_username: str
+) -> FlaskResponse:
+    """Irreversibly delete (GDPR-erase) the authenticated password account, then
+    log the acting session out.
+
+    Adapts the tested admin erasure core (``erase_user_core``): the ``Users`` row
+    is tombstoned in place (nine non-nullable FKs forbid a hard delete), PII child
+    rows are dropped, UTub memberships are resolved (solo→delete, created-with-
+    others→ownership transfer, non-creator→remove), and every session/refresh
+    token is revoked. A **new self-actor GDPR-erasure audit trail** (DD-4) is
+    recorded under the users-domain ``ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE``
+    action, distinguishing a self-delete from an admin-initiated erase.
+
+    Guard order (documented numbered comments): self-ownership (403) → sole-admin
+    (403, shared ``reject_self_sole_admin`` helper, DD-21) → typed-username
+    confirmation re-check (400 field error, DD-C — defense-in-depth against a
+    client-gated-only submit) → OAuth-only interim 501 stub (DD-3; Step 5 replaces
+    only this branch's body with the real OAuth-proof initiator) → re-auth lockout
+    (429) → current-password re-auth (400 field error, records the existing
+    ``LOGIN_FAILURE`` metric + a re-auth failure) → success: clear the failure
+    counter, erase, record the self-actor audit row + ``ACCOUNT_DELETED`` metric,
+    commit, log out, and return the splash redirect target.
+    """
+    # (1) Self-ownership: the URL user_id must be the acting user.
+    if user_id != current_user.id:
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=DeleteAccountErrorCodes.INVALID_FORM_INPUT,
+            status_code=403,
+        )
+
+    # (2) Sole-admin guard (DD-21): the last active admin cannot remove their own
+    # account — it would leave the portal with zero admins.
+    sole_admin_error = reject_self_sole_admin(current_user)
+    if sole_admin_error is not None:
+        return sole_admin_error
+
+    # (3) Typed-username confirmation re-check (DD-C): the modal client-gates its
+    # submit on an exact-username match, but re-verify server-side as
+    # defense-in-depth so a crafted request can never skip the confirmation.
+    if confirm_username.strip() != current_user.username:
+        return build_field_error_response(
+            message=USER_FAILURE.DELETE_CONFIRMATION_MISMATCH,
+            errors={"confirmUsername": [USER_FAILURE.DELETE_CONFIRMATION_MISMATCH]},
+            error_code=DeleteAccountErrorCodes.CONFIRMATION_MISMATCH,
+            status_code=400,
+        )
+
+    # (4) OAuth-only branch — explicit interim 501 stub (DD-3). A password-less
+    # account cannot re-auth inline; Step 5 replaces this branch's body with the
+    # OAuth-proof initiator (same guard position), retiring the enum member.
+    if current_user.password is None:
+        return build_message_error_response(
+            message=USER_FAILURE.OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE,
+            error_code=DeleteAccountErrorCodes.OAUTH_ONLY_NOT_YET_AVAILABLE,
+            status_code=501,
+        )
+
+    # (5) Brute-force lockout: the shared per-user Redis counter. Fail-open;
+    # checked before the password compare so a locked-out session cannot keep
+    # guessing.
+    if is_reauth_locked_out(user_id):
+        return build_message_error_response(
+            message=USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS,
+            error_code=DeleteAccountErrorCodes.TOO_MANY_ATTEMPTS,
+            status_code=429,
+        )
+
+    # (6) Re-auth: verify the supplied current password. A missing/empty
+    # ``currentPassword`` on a password account (the schema makes the field
+    # optional so OAuth-only accounts can omit it) is treated as a failed re-auth
+    # — short-circuited before ``is_password_correct`` so it never receives
+    # ``None``. On any failure, record a re-auth failure toward the lockout + the
+    # existing LOGIN_FAILURE metric, then surface a ``currentPassword`` field
+    # error.
+    if not current_password or not current_user.is_password_correct(current_password):
+        record_reauth_failure(user_id)
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
+        )
+        return build_field_error_response(
+            message=USER_FAILURE.CURRENT_PASSWORD_INCORRECT,
+            errors={"currentPassword": [USER_FAILURE.CURRENT_PASSWORD_INCORRECT]},
+            error_code=DeleteAccountErrorCodes.INVALID_PASSWORD,
+            status_code=400,
+        )
+
+    # (7) Success: clear the failure counter, then erase. Capture the PK as an int
+    # BEFORE the erase so the post-commit audit/response never dereferences a
+    # detached/expired ORM instance (ObjectDeletedError).
+    clear_reauth_failures(user_id)
+    erased_user_id: int = current_user.id
+    counts = erase_user_core(target_user=current_user)
+
+    # New self-actor GDPR-erasure audit trail (DD-4): unlike the admin path there
+    # is no separate ``reason`` to merge in, so the metadata is ``asdict(counts)``
+    # verbatim. ``audit.record`` flushes into the caller's transaction; the commit
+    # below lands the erasure and the audit row atomically.
+    audit.record(
+        actor_id=erased_user_id,
+        action=ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE,
+        target_type="User",
+        target_id=str(erased_user_id),
+        metadata=asdict(counts),
+    )
+    record_event(EventName.ACCOUNT_DELETED)
+    db.session.commit()
+    logout_user()
+    if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
+        session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
+
+    return APIResponse(
+        status_code=200,
+        data=AccountRemovalResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=ACCOUNT_DELETED_SUCCESS,
             redirect_url=url_for(ROUTES.SPLASH.SPLASH_PAGE),
         ),
     ).to_response()

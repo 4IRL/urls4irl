@@ -67,6 +67,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         ),
         category=EventCategory.DOMAIN,
     ),
+    EventName.ACCOUNT_DELETED: EventRegistryEntry(
+        description=(
+            "Account irreversibly self-deleted via Settings (GDPR erasure — "
+            "Users row tombstoned, PII child rows dropped, acting session "
+            "logged out)"
+        ),
+        category=EventCategory.DOMAIN,
+    ),
     EventName.ACCOUNT_REACTIVATED: EventRegistryEntry(
         description=(
             "Self-deactivated account auto-reactivated on a subsequent "

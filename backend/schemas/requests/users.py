@@ -109,6 +109,35 @@ class DeactivateAccountRequest(BaseModel):
     )
 
 
+class DeleteAccountRequest(BaseModel):
+    # Aliases are mandatory (no populate_by_name), so the JS client sends
+    # currentPassword / confirmUsername. ``password`` is optional (OAuth-only
+    # accounts omit it and re-prove identity via an OAuth round-trip in Step 5),
+    # mirroring DeactivateAccountRequest. ``confirm_username`` is the typed
+    # confirmation phrase (DD-C); a cross-field validator cannot see
+    # ``current_user``, so the exact-username match is re-checked in the service,
+    # not here — the schema only enforces that the field is present/non-empty.
+    password: str | None = Field(
+        default=None,
+        alias="currentPassword",
+        description=(
+            "Current account password, re-authenticated before the irreversible "
+            "account deletion. Required for accounts that have a password; "
+            "password-less (OAuth-only) accounts omit it and prove ownership "
+            "via an OAuth round-trip to an already-linked provider instead"
+        ),
+    )
+    confirm_username: str = Field(
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
+        alias="confirmUsername",
+        description=(
+            "The account's exact username, typed by the user to confirm the "
+            "irreversible deletion (DD-C). Re-checked against current_user in "
+            "the service"
+        ),
+    )
+
+
 class ProviderLinkRequest(BaseModel):
     password: str | None = Field(
         default=None,

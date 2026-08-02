@@ -1302,6 +1302,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/{user_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts currently receive an interim 501 (the OAuth-proof round-trip lands in a later change). The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts. */
+    delete: operations["deleteAccount"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -2830,6 +2847,23 @@ export interface components {
      * @enum {integer}
      */
     DeactivateAccountErrorCodes: 1 | 2 | 3 | 4 | 5;
+    DeleteAccountRequest: {
+      /**
+       * @description Current account password, re-authenticated before the irreversible account deletion. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
+       * @default null
+       */
+      currentPassword: string | null;
+      /** @description The account's exact username, typed by the user to confirm the irreversible deletion (DD-C). Re-checked against current_user in the service */
+      confirmUsername: string;
+    };
+    ErrorResponse_DeleteAccountErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["DeleteAccountErrorCodes"];
+    };
+    /**
+     * @description Error codes for DeleteAccountErrorCodes
+     * @enum {integer}
+     */
+    DeleteAccountErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -5853,6 +5887,7 @@ export interface operations {
           | "api_hit"
           | "api_metrics_ingest_batch"
           | "account_deactivated"
+          | "account_deleted"
           | "account_reactivated"
           | "cross_utub_search_performed"
           | "email_verified"
@@ -6072,6 +6107,7 @@ export interface operations {
           | "api_hit"
           | "api_metrics_ingest_batch"
           | "account_deactivated"
+          | "account_deleted"
           | "account_reactivated"
           | "cross_utub_search_performed"
           | "email_verified"
@@ -7493,6 +7529,78 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_DeactivateAccountErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Error */
+      501: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  deleteAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["DeleteAccountRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the self-service account-removal endpoints
+       *         (``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).
+       *
+       *         Carries ``status``/``message`` (banner text is server-sourced off
+       *         ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+       *         so the client navigates to splash after the acting session is logged out.
+       *         Shared by both the deactivate and delete flows (and, in Step 5, the
+       *         OAuth-proof round-trip initiator, which returns the provider-redirect URL in
+       *         the same field).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccountRemovalResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_DeleteAccountErrorCodes"];
         };
       };
       /** @description Forbidden */

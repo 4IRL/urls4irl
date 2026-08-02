@@ -67,6 +67,18 @@ EMAIL_CHANGE_NO_CHANGE = "That's already your email address."
 ACCOUNT_DEACTIVATED_SUCCESS = (
     "Your account has been deactivated. Log back in anytime to reactivate it."
 )
+# Delete-account 200 banner copy (server-sourced envelope text — surfaced
+# dynamically off xhr.responseJSON.message; no JS bridge). The irreversible
+# erasure success message shown before navigating to splash post-logout.
+ACCOUNT_DELETED_SUCCESS = (
+    "Your account has been permanently deleted. We're sorry to see you go."
+)
+# Typed-username confirmation mismatch copy (400 field error on ``confirmUsername``,
+# DD-C) — the server re-check of the typed phrase, defense-in-depth against a
+# client-gated-only submit.
+DELETE_CONFIRMATION_MISMATCH = (
+    "The username you typed doesn't match. Type your exact username to confirm."
+)
 MEMBER_DELETE_WARNING = (
     "This member will no longer have access to the URLs in this UTub."
 )
@@ -172,6 +184,21 @@ class USER_FAILURE(FAILURE_GENERAL):
     TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
     SOLE_ADMIN_CANNOT_LEAVE = SOLE_ADMIN_CANNOT_LEAVE
     OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE = OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE
+    DELETE_CONFIRMATION_MISMATCH = DELETE_CONFIRMATION_MISMATCH
+
+
+class ACCOUNT_AUDIT_ACTIONS:
+    """Users-domain audit action constants for self-service account actions.
+
+    The users-domain equivalent of ``ADMIN_AUDIT_ACTIONS`` (kept as its own
+    constant rather than imported from ``admin_portal_strs.py``, per the Step-2
+    import-direction rule — the users domain does not import admin-module
+    strings), so the ``AuditLogs`` trail distinguishes an admin-initiated erase
+    (``ADMIN_AUDIT_ACTIONS.USER_ERASE``) from a self-service account deletion
+    (``SELF_ACCOUNT_ERASE``, DD-4).
+    """
+
+    SELF_ACCOUNT_ERASE: str = "user.account.self_erase"
 
 
 class MEMBER_FAILURE(FAILURE_GENERAL):

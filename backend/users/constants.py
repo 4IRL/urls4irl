@@ -56,6 +56,34 @@ class DeactivateAccountErrorCodes(IntEnum):
     OAUTH_ONLY_NOT_YET_AVAILABLE = 5
 
 
+class DeleteAccountErrorCodes(IntEnum):
+    """Application error codes for the authenticated delete-account endpoint
+    (``DELETE /users/<id>``).
+
+    Same home as the sibling ``Change*ErrorCodes``/``DeactivateAccountErrorCodes``
+    (the users domain, not ``backend/splash/constants.py``) and the same
+    explicit-sequential-value convention (member 1 is always
+    ``INVALID_FORM_INPUT``).
+
+    ``SOLE_ADMIN_FORBIDDEN``'s value ``4`` deliberately matches
+    ``DeactivateAccountErrorCodes``'s so the shared ``reject_self_sole_admin``
+    guard's response is correct for either caller without a per-endpoint enum
+    import (DD-21). ``CONFIRMATION_MISMATCH`` (DD-C) backs the typed-username
+    confirmation re-check. ``OAUTH_ONLY_NOT_YET_AVAILABLE`` (DD-3) is the
+    interim-stub code for the not-yet-implemented OAuth-only removal path — a
+    real, defined, tested 501 response so the password-path endpoints ship ahead
+    of the OAuth-proof round-trip; Step 5 retires this member once the OAuth-only
+    branch stops using the stub response (DD-16).
+    """
+
+    INVALID_FORM_INPUT = 1
+    INVALID_PASSWORD = 2
+    TOO_MANY_ATTEMPTS = 3
+    SOLE_ADMIN_FORBIDDEN = 4
+    CONFIRMATION_MISMATCH = 5
+    OAUTH_ONLY_NOT_YET_AVAILABLE = 6
+
+
 class ChangeEmailErrorCodes(IntEnum):
     """Application error codes for the authenticated change-email START endpoint
     (``PUT /users/<id>/email``).

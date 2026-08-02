@@ -24,6 +24,7 @@ from backend.schemas.requests.users import (
     ChangePasswordRequest,
     ChangeUsernameRequest,
     DeactivateAccountRequest,
+    DeleteAccountRequest,
     ProviderLinkRequest,
 )
 from backend.schemas.users import (
@@ -44,9 +45,11 @@ from backend.users.constants import (
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
     DeactivateAccountErrorCodes,
+    DeleteAccountErrorCodes,
 )
 from backend.users.services.account_service import (
     apply_account_deactivation,
+    apply_account_deletion,
     apply_email_change,
     apply_password_change,
     apply_username_change,
@@ -288,6 +291,36 @@ def deactivate_account(
     return apply_account_deactivation(
         user_id=user_id,
         current_password=deactivate_account_request.password,
+    )
+
+
+@users.route("/users/<int:user_id>", methods=["DELETE"])
+@email_validation_required
+@api_route(
+    request_schema=DeleteAccountRequest,
+    response_schema=AccountRemovalResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=DeleteAccountErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts currently receive an interim 501 (the OAuth-proof round-trip lands in a later change). The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
+    status_codes={
+        200: AccountRemovalResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        429: ErrorResponse,
+        501: ErrorResponse,
+    },
+)
+def delete_account(
+    user_id: int, delete_account_request: DeleteAccountRequest
+) -> FlaskResponse:
+    """Applies the irreversible self-delete flow (self-service only; the
+    self-ownership / sole-admin / typed-confirmation / OAuth-only / re-auth policy
+    is enforced in the service)."""
+    return apply_account_deletion(
+        user_id=user_id,
+        current_password=delete_account_request.password,
+        confirm_username=delete_account_request.confirm_username,
     )
 
 

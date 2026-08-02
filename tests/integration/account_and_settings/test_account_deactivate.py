@@ -22,6 +22,7 @@ from redis import Redis
 
 from backend import db
 from backend.api_v1.services.tokens import issue_refresh_token
+from backend.metrics.events import EventName
 from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.users import User_Role, Users
 from backend.schemas.users import AccountRemovalResponseSchema
@@ -37,6 +38,8 @@ from backend.utils.strings.user_strs import (
     REDIRECT_URL,
     USER_FAILURE,
 )
+from tests.conftest import AjaxFlaskLoginClient
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
@@ -433,3 +436,42 @@ def test_deactivate_fails_open_when_reauth_redis_errors(
     assert response.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
     with app.app_context():
         assert Users.query.get(user_id).is_suspended is True
+
+
+# --------------------------------------------------------------------------- #
+# ACCOUNT_DEACTIVATED domain metric.
+# --------------------------------------------------------------------------- #
+
+
+def test_deactivate_records_account_deactivated_metric(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    register_first_user,
+) -> None:
+    """A successful self-deactivation writes exactly one ACCOUNT_DEACTIVATED
+    counter key to the metrics Redis DB (the per-flow emit coverage that lets
+    ACCOUNT_DEACTIVATED sit in DOMAIN_EVENTS_TESTED_ELSEWHERE)."""
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+
+    app = metrics_enabled_app
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        user_id: int = Users.query.get(1).id
+
+    assert count_counter_keys(provide_metrics_redis, EventName.ACCOUNT_DEACTIVATED) == 0
+
+    with app.app_context():
+        user_to_login: Users = Users.query.get(user_id)
+
+    with app.test_client(user=user_to_login) as logged_in_client:
+        home_response = logged_in_client.get("/home")
+        csrf_token = get_csrf_token(home_response.get_data(), meta_tag=True)
+        response = logged_in_client.put(
+            url_for(ROUTES.USERS.DEACTIVATE_ACCOUNT, user_id=user_id),
+            json=_deactivate_payload(),
+            headers={"X-CSRFToken": csrf_token},
+        )
+        assert response.status_code == 200
+
+    assert count_counter_keys(provide_metrics_redis, EventName.ACCOUNT_DEACTIVATED) == 1
