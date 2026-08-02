@@ -20,13 +20,17 @@ from redis import Redis
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 # Rate-limit / lockout counters written by the change-username, change-password,
-# and change-email services (`account_service.apply_username_change` /
-# `apply_email_change`, `reauth_throttle.record_reauth_failure`). All are per-user
-# Redis keys on the shared ENFORCEMENT Redis (`CONFIG_ENVS.REDIS_URI`, DB 0 in the
-# local `web` container) — NOT the per-worker session Redis DB the UI tests
-# otherwise isolate. See `_reset_rate_limit_state` for why they must be
-# cleared between UI tests. `email-change:*` is the per-day send cap the
-# change-email happy-path test would otherwise trip after 3 runs.
+# change-email, and account deactivate/delete services
+# (`account_service.apply_username_change` / `apply_email_change` /
+# `apply_account_deactivation` / `apply_account_deletion`,
+# `reauth_throttle.record_reauth_failure`). All are per-user Redis keys on the
+# shared ENFORCEMENT Redis (`CONFIG_ENVS.REDIS_URI`, DB 0 in the local `web`
+# container) — NOT the per-worker session Redis DB the UI tests otherwise
+# isolate. See `_reset_rate_limit_state` for why they must be cleared between UI
+# tests. `email-change:*` is the per-day send cap the change-email happy-path
+# test would otherwise trip after 3 runs. The account deactivate/delete
+# re-auth path reuses the same `reauth-fail:*` prefix as change-password (via
+# `record_reauth_failure`), so no new prefix is needed for the danger-zone tests.
 _RATE_LIMIT_KEY_PATTERNS: tuple[str, ...] = (
     "username-change:*",
     "reauth-fail:*",
