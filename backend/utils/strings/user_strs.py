@@ -61,6 +61,12 @@ EMAIL_CHANGE_CONFIRMATION_SENT = (
     "finish changing your email."
 )
 EMAIL_CHANGE_NO_CHANGE = "That's already your email address."
+# Deactivate-account 200 banner copy (server-sourced envelope text — surfaced
+# dynamically off xhr.responseJSON.message; no JS bridge). The reversible-pause
+# success message the client shows before navigating to splash post-logout.
+ACCOUNT_DEACTIVATED_SUCCESS = (
+    "Your account has been deactivated. Log back in anytime to reactivate it."
+)
 MEMBER_DELETE_WARNING = (
     "This member will no longer have access to the URLs in this UTub."
 )
@@ -130,6 +136,21 @@ EMAIL_CHANGE_OAUTH_ONLY = (
 TOO_MANY_PASSWORD_ATTEMPTS = (
     "Too many incorrect password attempts. Please try again later."
 )
+# Sole-admin guard copy (403) shared by the deactivate + delete endpoints
+# (DD-21): the last active admin cannot remove their own account, since doing so
+# would leave the portal with zero admins. Mirrors the admin portal's
+# last-admin-forbidden invariant but self-scoped.
+SOLE_ADMIN_CANNOT_LEAVE = (
+    "You're the only active admin. Assign another admin before removing your "
+    "account."
+)
+# Interim-stub copy (DD-3) returned with HTTP 501 by the deactivate + delete
+# endpoints' OAuth-only branch until Step 5 wires the OAuth-proof round-trip.
+# Shared by both removal flows; retired with the stub in Step 5 (DD-16).
+OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE = (
+    "Account removal for accounts that sign in with Google or GitHub isn't "
+    "available yet. Please check back soon."
+)
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -149,6 +170,8 @@ class USER_FAILURE(FAILURE_GENERAL):
     PASSWORD_CHANGE_OAUTH_ONLY = PASSWORD_CHANGE_OAUTH_ONLY
     EMAIL_CHANGE_OAUTH_ONLY = EMAIL_CHANGE_OAUTH_ONLY
     TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
+    SOLE_ADMIN_CANNOT_LEAVE = SOLE_ADMIN_CANNOT_LEAVE
+    OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE = OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE
 
 
 class MEMBER_FAILURE(FAILURE_GENERAL):

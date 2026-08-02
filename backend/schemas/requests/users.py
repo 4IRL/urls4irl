@@ -91,6 +91,24 @@ class ChangeEmailRequest(BaseModel):
         return value
 
 
+class DeactivateAccountRequest(BaseModel):
+    # Aliases are mandatory (no populate_by_name), so the JS client sends
+    # currentPassword. Optional: OAuth-only (password-less) accounts omit it and
+    # re-prove identity via an OAuth round-trip (Step 5) instead — mirrors
+    # ProviderLinkRequest.password, but keeps the ``currentPassword`` alias for
+    # consistency with the other re-auth forms.
+    password: str | None = Field(
+        default=None,
+        alias="currentPassword",
+        description=(
+            "Current account password, re-authenticated before the reversible "
+            "self-deactivation. Required for accounts that have a password; "
+            "password-less (OAuth-only) accounts omit it and prove ownership "
+            "via an OAuth round-trip to an already-linked provider instead"
+        ),
+    )
+
+
 class ProviderLinkRequest(BaseModel):
     password: str | None = Field(
         default=None,

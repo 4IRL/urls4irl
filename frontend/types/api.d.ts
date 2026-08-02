@@ -1285,6 +1285,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/{user_id}/deactivate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description Reversibly self-deactivate the authenticated account (a voluntary pause — the account is locked and data retained; logging back in reactivates it). Password accounts re-authenticate with their current password; the acting session and all refresh tokens are invalidated and the session is logged out, returning the splash redirect URL. OAuth-only (password-less) accounts currently receive an interim 501 (the OAuth-proof round-trip lands in a later change). The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts. */
+    put: operations["deactivateAccount"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -2776,6 +2793,43 @@ export interface components {
      * @enum {integer}
      */
     ChangeEmailErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+    DeactivateAccountRequest: {
+      /**
+       * @description Current account password, re-authenticated before the reversible self-deactivation. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
+       * @default null
+       */
+      currentPassword: string | null;
+    };
+    /**
+     * @description Response for the self-service account-removal endpoints
+     *     (``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).
+     *
+     *     Carries ``status``/``message`` (banner text is server-sourced off
+     *     ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+     *     so the client navigates to splash after the acting session is logged out.
+     *     Shared by both the deactivate and delete flows (and, in Step 5, the
+     *     OAuth-proof round-trip initiator, which returns the provider-redirect URL in
+     *     the same field).
+     */
+    AccountRemovalResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
+      /** @description URL to navigate to after the acting session is logged out */
+      redirectUrl: string;
+    };
+    ErrorResponse_DeactivateAccountErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["DeactivateAccountErrorCodes"];
+    };
+    /**
+     * @description Error codes for DeactivateAccountErrorCodes
+     * @enum {integer}
+     */
+    DeactivateAccountErrorCodes: 1 | 2 | 3 | 4 | 5;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -5798,6 +5852,7 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "account_deactivated"
           | "account_reactivated"
           | "cross_utub_search_performed"
           | "email_verified"
@@ -6016,6 +6071,7 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "account_deactivated"
           | "account_reactivated"
           | "cross_utub_search_performed"
           | "email_verified"
@@ -7387,6 +7443,78 @@ export interface operations {
       };
       /** @description Too many requests */
       429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  deactivateAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["DeactivateAccountRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the self-service account-removal endpoints
+       *         (``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).
+       *
+       *         Carries ``status``/``message`` (banner text is server-sourced off
+       *         ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+       *         so the client navigates to splash after the acting session is logged out.
+       *         Shared by both the deactivate and delete flows (and, in Step 5, the
+       *         OAuth-proof round-trip initiator, which returns the provider-redirect URL in
+       *         the same field).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccountRemovalResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_DeactivateAccountErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Error */
+      501: {
         headers: {
           [name: string]: unknown;
         };

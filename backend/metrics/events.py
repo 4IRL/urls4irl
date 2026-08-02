@@ -30,6 +30,7 @@ class EventName(StrEnum):
     API_METRICS_INGEST_BATCH = "api_metrics_ingest_batch"
 
     # Domain — explicit record_event() calls in service layer
+    ACCOUNT_DEACTIVATED = "account_deactivated"
     ACCOUNT_REACTIVATED = "account_reactivated"
     CROSS_UTUB_SEARCH_PERFORMED = "cross_utub_search_performed"
     EMAIL_VERIFIED = "email_verified"

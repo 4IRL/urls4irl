@@ -60,6 +60,13 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     # -----------------------------------------------------------------------
     # Domain — explicit record_event() calls in service layer
     # -----------------------------------------------------------------------
+    EventName.ACCOUNT_DEACTIVATED: EventRegistryEntry(
+        description=(
+            "Account reversibly self-deactivated via Settings (is_suspended + "
+            "self_deactivated_at set; acting session logged out)"
+        ),
+        category=EventCategory.DOMAIN,
+    ),
     EventName.ACCOUNT_REACTIVATED: EventRegistryEntry(
         description=(
             "Self-deactivated account auto-reactivated on a subsequent "

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from flask import current_app, url_for
-from flask_login import current_user
+from flask import current_app, session, url_for
+from flask_login import current_user, logout_user
 from redis import Redis
 from sqlalchemy.exc import IntegrityError
 
@@ -12,12 +12,13 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.extensions.extension_utils import safe_get_email_sender
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
-from backend.models.users import Users
+from backend.models.users import User_Role, Users
 from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
 )
 from backend.schemas.users import (
+    AccountRemovalResponseSchema,
     ChangeEmailResponseSchema,
     ChangePasswordResponseSchema,
     ChangeUsernameResponseSchema,
@@ -27,7 +28,9 @@ from backend.users.constants import (
     ChangeEmailErrorCodes,
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
+    DeactivateAccountErrorCodes,
 )
+from backend.users.services.removal_oauth import perform_self_deactivation
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
@@ -39,8 +42,10 @@ from backend.utils.reauth_throttle import (
 )
 from backend.utils.session_utils import restamp_current_session
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.user_strs import (
+    ACCOUNT_DEACTIVATED_SUCCESS,
     EMAIL_CHANGE_CONFIRMATION_SENT,
     EMAIL_CHANGE_NO_CHANGE,
     PASSWORD_CHANGE_SUCCESS,
@@ -454,5 +459,140 @@ def apply_email_change(
             status=STD_JSON.SUCCESS,
             message=EMAIL_CHANGE_CONFIRMATION_SENT,
             pending_email=current_user.pending_email,
+        ),
+    ).to_response()
+
+
+def reject_self_sole_admin(user: Users) -> FlaskResponse | None:
+    """Return a 403 error response when ``user`` is the last active admin,
+    otherwise ``None`` (the removal may proceed).
+
+    Shared by the deactivate + delete endpoints' services and (Step 5) the
+    OAuth-proof callback re-run, so all three enforce the identical invariant
+    from one implementation instead of three inline copies (DD-21). Mirrors the
+    query in ``backend/admin/guards.py:reject_leaving_zero_active_admins`` but is
+    self-scoped (checks ``user`` itself, not a separate actor) and deliberately
+    does NOT import from ``backend.admin.guards`` — the users domain does not
+    import admin-module internals (the Step-2 import-direction rule); it
+    reimplements the query rather than delegating.
+
+    Returns ``None`` when ``user`` is not an admin (the guard does not apply).
+    Otherwise counts the OTHER active (unsuspended) admins; if none remain,
+    removing this account would leave the portal with zero admins, so it returns
+    a 403 with the literal error code ``4`` — which is
+    ``SOLE_ADMIN_FORBIDDEN`` on BOTH ``DeactivateAccountErrorCodes`` and
+    ``DeleteAccountErrorCodes`` by design, so this one shared response is correct
+    for either caller without a per-endpoint enum import.
+    """
+    if user.role != User_Role.ADMIN:
+        return None
+
+    other_active_admin_count: int = Users.query.filter(
+        Users.role == User_Role.ADMIN,
+        Users.is_suspended == False,  # noqa: E712 — SQLAlchemy column comparison
+        Users.id != user.id,
+    ).count()
+    if other_active_admin_count > 0:
+        return None
+
+    return build_message_error_response(
+        message=USER_FAILURE.SOLE_ADMIN_CANNOT_LEAVE,
+        error_code=4,
+        status_code=403,
+    )
+
+
+def apply_account_deactivation(
+    *, user_id: int, current_password: str | None
+) -> FlaskResponse:
+    """Reversibly self-deactivate the authenticated password account, then log
+    the acting session out.
+
+    A voluntary pause: sets ``is_suspended`` + a fresh ``self_deactivated_at``
+    stamp (so reactivate-on-login can distinguish it from an admin lock),
+    invalidates every session and refresh token, then logs the acting session
+    out too. The user reactivates simply by logging back in.
+
+    Guard order (documented numbered comments): self-ownership (403) →
+    sole-admin (403, shared ``reject_self_sole_admin`` helper, DD-21) → OAuth-only
+    interim 501 stub (DD-3; Step 5 replaces only this branch's body with the
+    real OAuth-proof initiator) → re-auth lockout (429) → current-password
+    re-auth (400 field error, records the existing ``LOGIN_FAILURE`` metric + a
+    re-auth failure) → success: clear the failure counter, perform the mutation,
+    record ``ACCOUNT_DEACTIVATED``, commit, log out, and return the splash
+    redirect target.
+    """
+    # (1) Self-ownership: the URL user_id must be the acting user.
+    if user_id != current_user.id:
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=DeactivateAccountErrorCodes.INVALID_FORM_INPUT,
+            status_code=403,
+        )
+
+    # (2) Sole-admin guard (DD-21): the last active admin cannot remove their own
+    # account — it would leave the portal with zero admins.
+    sole_admin_error = reject_self_sole_admin(current_user)
+    if sole_admin_error is not None:
+        return sole_admin_error
+
+    # (3) OAuth-only branch — explicit interim 501 stub (DD-3). A password-less
+    # account cannot re-auth inline; Step 5 replaces this branch's body with the
+    # OAuth-proof initiator (same guard position), retiring the enum member.
+    if current_user.password is None:
+        return build_message_error_response(
+            message=USER_FAILURE.OAUTH_ONLY_REMOVAL_NOT_YET_AVAILABLE,
+            error_code=DeactivateAccountErrorCodes.OAUTH_ONLY_NOT_YET_AVAILABLE,
+            status_code=501,
+        )
+
+    # (4) Brute-force lockout: the shared per-user Redis counter. Fail-open;
+    # checked before the password compare so a locked-out session cannot keep
+    # guessing.
+    if is_reauth_locked_out(user_id):
+        return build_message_error_response(
+            message=USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS,
+            error_code=DeactivateAccountErrorCodes.TOO_MANY_ATTEMPTS,
+            status_code=429,
+        )
+
+    # (5) Re-auth: verify the supplied current password. A missing/empty
+    # ``currentPassword`` on a password account (the schema makes the field
+    # optional so OAuth-only accounts can omit it) is treated as a failed
+    # re-auth — short-circuited before ``is_password_correct`` so it never
+    # receives ``None`` (mirrors ``initiate_settings_link``'s ``if not password``
+    # guard). On any failure, record a re-auth failure toward the lockout + the
+    # existing LOGIN_FAILURE metric, then surface a dedicated field error on
+    # ``currentPassword``.
+    if not current_password or not current_user.is_password_correct(current_password):
+        record_reauth_failure(user_id)
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
+        )
+        return build_field_error_response(
+            message=USER_FAILURE.CURRENT_PASSWORD_INCORRECT,
+            errors={"currentPassword": [USER_FAILURE.CURRENT_PASSWORD_INCORRECT]},
+            error_code=DeactivateAccountErrorCodes.INVALID_PASSWORD,
+            status_code=400,
+        )
+
+    # (6) Success: clear the failure counter, apply the reversible-pause mutation
+    # (the guard-free core kills the acting session + all tokens), record the
+    # domain metric, commit, then log the acting session out too.
+    clear_reauth_failures(user_id)
+    perform_self_deactivation(user=current_user)
+    record_event(EventName.ACCOUNT_DEACTIVATED)
+    db.session.commit()
+    logout_user()
+    if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
+        session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
+
+    return APIResponse(
+        status_code=200,
+        data=AccountRemovalResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=ACCOUNT_DEACTIVATED_SUCCESS,
+            redirect_url=url_for(ROUTES.SPLASH.SPLASH_PAGE),
         ),
     ).to_response()
