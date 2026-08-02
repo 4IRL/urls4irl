@@ -1,16 +1,22 @@
 from typing import Generator, Tuple
 from unittest import mock
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlparse, urlsplit
 
 import pytest
-from flask import Flask, url_for
+from flask import Flask, g, url_for
 from flask.testing import FlaskClient
 from redis import Redis
 from requests import Response
+from werkzeug.test import TestResponse
 
 from backend import db
 from backend.models.users import Users
 from backend.schemas.users import ChangeEmailResponseSchema
+from backend.splash.services.change_email import (
+    EMAIL_CHANGE_STATUS_QUERY_PARAM,
+    EMAIL_CHANGE_STATUS_SUCCESS,
+    EMAIL_CHANGE_STATUS_TAKEN,
+)
 from backend.users.constants import ChangeEmailErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import USER_CONSTANTS
@@ -24,6 +30,7 @@ from backend.utils.strings.user_strs import (
     EMAIL_CHANGE_RATE_LIMITED,
     USER_FAILURE,
 )
+from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.utils import assert_response_conforms_to_schema
 from tests.models_for_test import valid_user_1, valid_user_2
 from tests.utils_for_test import get_csrf_token
@@ -113,6 +120,43 @@ def _seed_second_user(app: Flask) -> str:
             db.session.add(second_user)
             db.session.commit()
     return valid_user_2["email"].lower()
+
+
+def _clear_shared_request_caches() -> None:
+    """Drop the per-request caches that leak across sequential test clients.
+
+    The integration harness keeps ONE app context alive for the whole test, so
+    request-scoped values stashed on ``g`` persist across sequential test-client
+    requests and identities. Two must be cleared before each new client:
+
+    * ``g._login_user`` — Flask-Login's per-request user cache (mirrors the
+      helper in ``tests/integration/splash/test_confirm_email_change.py``);
+      otherwise the next request reuses the earlier user instead of reloading
+      from its own session cookie.
+    * ``g.csrf_token`` — Flask-WTF's per-request CSRF-token cache. If left set,
+      ``generate_csrf()`` short-circuits and returns the FIRST client's token
+      without seeding a matching token into the NEXT client's session, so that
+      client's mutating request 403s with "CSRF session token is missing".
+    """
+    for cached_attr in ("_login_user", "csrf_token"):
+        if hasattr(g, cached_attr):
+            delattr(g, cached_attr)
+
+
+def _confirm_url(app: Flask, token: str) -> str:
+    """Build the anonymous confirm-email-change URL by route NAME (mirrors the
+    helper in ``tests/integration/splash/test_confirm_email_change.py``)."""
+    with app.test_request_context():
+        return url_for(ROUTES.SPLASH.CONFIRM_EMAIL_CHANGE, token=token)
+
+
+def _status_from_redirect(response: TestResponse) -> str | None:
+    """Extract the confirm-outcome code from a 302 redirect's Location header
+    (mirrors the helper in ``test_confirm_email_change.py``)."""
+    location = response.headers.get("Location", "")
+    query_params = parse_qs(urlparse(location).query)
+    values = query_params.get(EMAIL_CHANGE_STATUS_QUERY_PARAM)
+    return values[0] if values else None
 
 
 @mock.patch(_SEND_TARGET)
@@ -645,3 +689,98 @@ def test_change_email_taken_branch_fails_open_when_rate_limit_redis_errors(
     with app.app_context():
         assert Users.query.get(user_id).pending_email is None
     mock_send.assert_not_called()
+
+
+@mock.patch(_SEND_TARGET)
+def test_change_email_cross_user_pending_collision_does_not_reserve_address(
+    mock_send: mock.MagicMock,
+    register_multiple_users: Tuple[dict[str, str | None]],
+    app: Flask,
+) -> None:
+    """Guard-6: a different user's ``pending_email`` does NOT reserve an address.
+
+    The uniqueness check queries only the live ``Users.email`` column, so two
+    distinct users may each stage the SAME not-yet-confirmed new email. Whoever
+    confirms FIRST wins the live swap; the second confirm then trips the
+    confirm-time TOCTOU uniqueness re-check and redirects with
+    ``EMAIL_CHANGE_STATUS_TAKEN`` (the address is now the first user's live
+    email). Proves the staged-but-unconfirmed collision is legal end to end and
+    that only a committed live email reserves the address.
+
+    Staging the same address on two DIFFERENT users hits two separate per-user
+    ``email-change:<id>`` counters (one INCR each), so neither trips
+    ``MAX_EMAIL_CHANGES_PER_DAY``.
+    """
+    mock_send.return_value = _build_mock_email_response(200)
+    shared_target = "shared_target@example.com"
+    user_a_id = 1
+    user_b_id = 2
+    user_b_password = valid_user_2[model_strs.PASSWORD]
+
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        user_a: Users = Users.query.get(user_a_id)
+        user_b: Users = Users.query.get(user_b_id)
+        user_b_original_email = user_b.email
+
+    # (1) User A stages the shared target as pending → 200 success. Each user is
+    # driven in its own fully-closed ``test_client`` block so their preserved
+    # request contexts never overlap. The harness keeps ONE app context alive
+    # for the whole test, so Flask-Login's ``g._login_user`` cache would carry
+    # one identity into the next block — clear it before each login so every
+    # ``/home`` request reloads the user from its own auto-login session.
+    _clear_shared_request_caches()
+    with app.test_client(user=user_a) as client_a:
+        csrf_a = get_csrf_token(client_a.get("/home").get_data(), meta_tag=True)
+        stage_a = client_a.put(
+            url_for(ROUTES.USERS.CHANGE_EMAIL, user_id=user_a_id),
+            json=_change_email_payload(new_email=shared_target),
+            headers={"X-CSRFToken": csrf_a},
+        )
+
+    # (2) User B stages the SAME target as pending → also 200, proving a
+    # staged-but-unconfirmed address reserves nothing for another account.
+    _clear_shared_request_caches()
+    with app.test_client(user=user_b) as client_b:
+        csrf_b = get_csrf_token(client_b.get("/home").get_data(), meta_tag=True)
+        stage_b = client_b.put(
+            url_for(ROUTES.USERS.CHANGE_EMAIL, user_id=user_b_id),
+            json=_change_email_payload(
+                new_email=shared_target, current_password=user_b_password
+            ),
+            headers={"X-CSRFToken": csrf_b},
+        )
+
+    assert stage_a.status_code == 200
+    assert stage_a.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert stage_b.status_code == 200
+    assert stage_b.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
+
+    with app.app_context():
+        assert Users.query.get(user_a_id).pending_email == shared_target
+        assert Users.query.get(user_b_id).pending_email == shared_target
+        token_a = Users.query.get(user_a_id).get_email_change_token()
+        token_b = Users.query.get(user_b_id).get_email_change_token()
+
+    # (3) A confirms FIRST → the live email swap succeeds. Clear the cached
+    # login so the anonymous confirm client is not seen as user B.
+    _clear_shared_request_caches()
+    confirm_a = app.test_client().get(_confirm_url(app, token_a))
+    assert confirm_a.status_code == 302
+    assert _status_from_redirect(confirm_a) == EMAIL_CHANGE_STATUS_SUCCESS
+    with app.app_context():
+        refreshed_a: Users = Users.query.get(user_a_id)
+        assert refreshed_a.email == shared_target
+        assert refreshed_a.pending_email is None
+
+    # (4) B confirms SECOND → the address is now A's live email, so the
+    # confirm-time TOCTOU uniqueness re-check redirects TAKEN and leaves B's
+    # live email untouched (pending cleared, single-use enforced).
+    _clear_shared_request_caches()
+    confirm_b = app.test_client().get(_confirm_url(app, token_b))
+    assert confirm_b.status_code == 302
+    assert _status_from_redirect(confirm_b) == EMAIL_CHANGE_STATUS_TAKEN
+    with app.app_context():
+        refreshed_b: Users = Users.query.get(user_b_id)
+        assert refreshed_b.email == user_b_original_email
+        assert refreshed_b.pending_email is None
