@@ -11,7 +11,10 @@ from flask import (
 from flask_login import current_user, logout_user
 
 from backend import login_manager
-from backend.api_common.auth_decorators import email_validation_required
+from backend.api_common.auth_decorators import (
+    email_validation_required,
+    session_required,
+)
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.api_v1.services.tokens import decode_access_token
@@ -44,10 +47,12 @@ from backend.users.constants import (
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
     DeleteAccountErrorCodes,
+    LogoutEverywhereErrorCodes,
 )
 from backend.users.services.account_service import (
     apply_account_deletion,
     apply_email_change,
+    apply_logout_everywhere,
     apply_password_change,
     apply_username_change,
     build_account_info_context,
@@ -289,6 +294,25 @@ def delete_account(
         current_password=delete_account_request.password,
         confirm_username=delete_account_request.confirm_username,
     )
+
+
+@users.route("/users/<int:user_id>/logout-everywhere", methods=["POST"])
+@session_required
+@api_route(
+    response_schema=AccountRemovalResponseSchema,
+    error_code=LogoutEverywhereErrorCodes.NOT_AUTHORIZED,
+    tags=[OPEN_API.AUTH],
+    description="Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication — logging back in restores access. Uses session auth only (no validated-email requirement), so a user with an unvalidated email can still sign out everywhere. Takes no request body.",
+    status_codes={
+        200: AccountRemovalResponseSchema,
+        403: ErrorResponse,
+    },
+)
+def logout_everywhere(user_id: int) -> FlaskResponse:
+    """Signs the authenticated user out on all devices (self-service only; the
+    self-ownership policy is enforced in the service). No request body, no
+    re-auth (D-1); the acting session dies too (D-4)."""
+    return apply_logout_everywhere(user_id=user_id)
 
 
 @users.route("/users/<int:user_id>/oauth/link/<string:provider>", methods=["POST"])

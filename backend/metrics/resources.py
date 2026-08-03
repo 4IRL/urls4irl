@@ -56,6 +56,7 @@ class Resource(StrEnum):
 EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     # Domain
     EventName.ACCOUNT_DELETED: Resource.AUTH,
+    EventName.ACCOUNT_SESSIONS_REVOKED: Resource.AUTH,
     EventName.CROSS_UTUB_SEARCH_PERFORMED: Resource.SEARCH,
     EventName.UTUB_CREATED: Resource.UTUB,
     EventName.UTUB_DELETED: Resource.UTUB,

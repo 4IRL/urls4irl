@@ -70,3 +70,17 @@ class ChangeEmailErrorCodes(IntEnum):
     TOO_MANY_ATTEMPTS = 5
     RATE_LIMITED = 6
     EMAIL_SEND_FAILURE = 7
+
+
+class LogoutEverywhereErrorCodes(IntEnum):
+    """Application error code for the authenticated "log out everywhere" endpoint
+    (``POST /users/<id>/logout-everywhere``).
+
+    Same home as the sibling ``Change*ErrorCodes``/``DeleteAccountErrorCodes``
+    (the users domain, not ``backend/splash/constants.py``) and the same
+    explicit-sequential-value convention (member 1 is the sole failure mode).
+    The endpoint is non-destructive and takes no request body, so its only
+    failure mode is the self-ownership guard.
+    """
+
+    NOT_AUTHORIZED = 1

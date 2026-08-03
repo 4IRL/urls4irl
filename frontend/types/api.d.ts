@@ -1302,6 +1302,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/{user_id}/logout-everywhere": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication — logging back in restores access. Uses session auth only (no validated-email requirement), so a user with an unvalidated email can still sign out everywhere. Takes no request body. */
+    post: operations["logoutEverywhere"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -2809,15 +2826,16 @@ export interface components {
       confirmUsername: string;
     };
     /**
-     * @description Response for the self-service account-removal endpoints
-     *     (``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).
+     * @description Response for the self-service account-removal / session-revocation
+     *     endpoints (``DELETE /users/<id>`` and
+     *     ``POST /users/<id>/logout-everywhere``).
      *
      *     Carries ``status``/``message`` (banner text is server-sourced off
      *     ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
      *     so the client navigates to splash after the acting session is logged out.
-     *     Shared by both the deactivate and delete flows (and, in Step 5, the
-     *     OAuth-proof round-trip initiator, which returns the provider-redirect URL in
-     *     the same field).
+     *     Shared by the delete and logout-everywhere flows (and the OAuth-proof
+     *     round-trip initiator, which returns the provider-redirect URL in the same
+     *     field).
      */
     AccountRemovalResponseSchema: {
       /**
@@ -2838,6 +2856,11 @@ export interface components {
      * @enum {integer}
      */
     DeleteAccountErrorCodes: 1 | 2 | 3 | 4 | 5;
+    /**
+     * @description Error codes for LogoutEverywhereErrorCodes
+     * @enum {integer}
+     */
+    LogoutEverywhereErrorCodes: 1;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -5861,6 +5884,7 @@ export interface operations {
           | "api_hit"
           | "api_metrics_ingest_batch"
           | "account_deleted"
+          | "account_sessions_revoked"
           | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
@@ -6085,6 +6109,7 @@ export interface operations {
           | "api_hit"
           | "api_metrics_ingest_batch"
           | "account_deleted"
+          | "account_sessions_revoked"
           | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
@@ -7486,15 +7511,16 @@ export interface operations {
     };
     responses: {
       /**
-       * @description Response for the self-service account-removal endpoints
-       *         (``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).
+       * @description Response for the self-service account-removal / session-revocation
+       *         endpoints (``DELETE /users/<id>`` and
+       *         ``POST /users/<id>/logout-everywhere``).
        *
        *         Carries ``status``/``message`` (banner text is server-sourced off
        *         ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
        *         so the client navigates to splash after the acting session is logged out.
-       *         Shared by both the deactivate and delete flows (and, in Step 5, the
-       *         OAuth-proof round-trip initiator, which returns the provider-redirect URL in
-       *         the same field).
+       *         Shared by the delete and logout-everywhere flows (and the OAuth-proof
+       *         round-trip initiator, which returns the provider-redirect URL in the same
+       *         field).
        */
       200: {
         headers: {
@@ -7524,6 +7550,48 @@ export interface operations {
       };
       /** @description Too many requests */
       429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  logoutEverywhere: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Response for the self-service account-removal / session-revocation
+       *         endpoints (``DELETE /users/<id>`` and
+       *         ``POST /users/<id>/logout-everywhere``).
+       *
+       *         Carries ``status``/``message`` (banner text is server-sourced off
+       *         ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+       *         so the client navigates to splash after the acting session is logged out.
+       *         Shared by the delete and logout-everywhere flows (and the OAuth-proof
+       *         round-trip initiator, which returns the provider-redirect URL in the same
+       *         field).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccountRemovalResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown;
         };

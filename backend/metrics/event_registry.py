@@ -68,6 +68,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         ),
         category=EventCategory.DOMAIN,
     ),
+    EventName.ACCOUNT_SESSIONS_REVOKED: EventRegistryEntry(
+        description=(
+            'Account "logged out everywhere" via Settings (non-destructive '
+            "session revocation — sessions_invalidated_at bumped, refresh "
+            "tokens revoked, acting session logged out too)"
+        ),
+        category=EventCategory.DOMAIN,
+    ),
     EventName.CROSS_UTUB_SEARCH_PERFORMED: EventRegistryEntry(
         description="Cross-UTub search executed across the user's member UTubs",
         category=EventCategory.DOMAIN,

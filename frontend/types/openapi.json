@@ -4434,6 +4434,7 @@
                 "api_hit",
                 "api_metrics_ingest_batch",
                 "account_deleted",
+                "account_sessions_revoked",
                 "cross_utub_search_performed",
                 "email_verified",
                 "login_failure",
@@ -4774,6 +4775,7 @@
                 "api_hit",
                 "api_metrics_ingest_batch",
                 "account_deleted",
+                "account_sessions_revoked",
                 "cross_utub_search_performed",
                 "email_verified",
                 "login_failure",
@@ -6897,7 +6899,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the self-service account-removal endpoints\n    (``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by both the deactivate and delete flows (and, in Step 5, the\n    OAuth-proof round-trip initiator, which returns the provider-redirect URL in\n    the same field).",
+            "description": "Response for the self-service account-removal / session-revocation\n    endpoints (``DELETE /users/<id>`` and\n    ``POST /users/<id>/logout-everywhere``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by the delete and logout-everywhere flows (and the OAuth-proof\n    round-trip initiator, which returns the provider-redirect URL in the same\n    field).",
             "content": {
               "application/json": {
                 "schema": {
@@ -6940,6 +6942,56 @@
         "x-error-codes": {
           "DeleteAccountErrorCodes": {
             "$ref": "#/components/schemas/DeleteAccountErrorCodes"
+          }
+        }
+      }
+    },
+    "/users/{user_id}/logout-everywhere": {
+      "post": {
+        "operationId": "logoutEverywhere",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication \u2014 logging back in restores access. Uses session auth only (no validated-email requirement), so a user with an unvalidated email can still sign out everywhere. Takes no request body.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for the self-service account-removal / session-revocation\n    endpoints (``DELETE /users/<id>`` and\n    ``POST /users/<id>/logout-everywhere``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by the delete and logout-everywhere flows (and the OAuth-proof\n    round-trip initiator, which returns the provider-redirect URL in the same\n    field).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRemovalResponseSchema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "LogoutEverywhereErrorCodes": {
+            "$ref": "#/components/schemas/LogoutEverywhereErrorCodes"
           }
         }
       }
@@ -10569,7 +10621,7 @@
         "type": "object"
       },
       "AccountRemovalResponseSchema": {
-        "description": "Response for the self-service account-removal endpoints\n(``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by both the deactivate and delete flows (and, in Step 5, the\nOAuth-proof round-trip initiator, which returns the provider-redirect URL in\nthe same field).",
+        "description": "Response for the self-service account-removal / session-revocation\nendpoints (``DELETE /users/<id>`` and\n``POST /users/<id>/logout-everywhere``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by the delete and logout-everywhere flows (and the OAuth-proof\nround-trip initiator, which returns the provider-redirect URL in the same\nfield).",
         "properties": {
           "status": {
             "description": "Response status: Success, Failure, or No change",
@@ -10614,6 +10666,12 @@
           "CONFIRMATION_MISMATCH"
         ],
         "description": "Error codes for DeleteAccountErrorCodes"
+      },
+      "LogoutEverywhereErrorCodes": {
+        "type": "integer",
+        "enum": [1],
+        "x-enum-varnames": ["NOT_AUTHORIZED"],
+        "description": "Error codes for LogoutEverywhereErrorCodes"
       },
       "ProviderLinkRequest": {
         "properties": {

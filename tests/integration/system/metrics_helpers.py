@@ -29,6 +29,7 @@ STRIPPED_DIM_KEY = "stripped"
 DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
     {
         EventName.ACCOUNT_DELETED,
+        EventName.ACCOUNT_SESSIONS_REVOKED,
         EventName.CROSS_UTUB_SEARCH_PERFORMED,
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
@@ -76,7 +77,12 @@ tests/integration/splash/test_oauth_confirm_link.py. ACCOUNT_DELETED fires only
 from the authenticated self-service account-removal Settings flow (a
 current-password re-auth, then a GDPR erasure), which the shared success-path
 seed does not drive; its per-flow emit test lives under
-tests/integration/account_and_settings/test_account_delete.py. Each excluded
+tests/integration/account_and_settings/test_account_delete.py.
+ACCOUNT_SESSIONS_REVOKED fires only from the authenticated self-service
+"log out everywhere" Settings flow (a session revocation that bumps
+sessions_invalidated_at and revokes refresh tokens), which the shared
+success-path seed does not drive; its per-flow emit test lives under
+tests/integration/account_and_settings/test_logout_everywhere.py. Each excluded
 event has its own per-route emit test under tests/integration/<feature>/ and
 flushes through the same pipeline, so the end-to-end invariant is still covered.
 """

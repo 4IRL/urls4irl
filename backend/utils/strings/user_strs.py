@@ -67,6 +67,13 @@ EMAIL_CHANGE_NO_CHANGE = "That's already your email address."
 ACCOUNT_DELETED_SUCCESS = (
     "Your account has been permanently deleted. We're sorry to see you go."
 )
+# Log-out-everywhere 200 banner copy (server-sourced envelope text — surfaced
+# dynamically off xhr.responseJSON.message; no JS bridge). Non-destructive
+# session revocation: the acting session dies too (D-4), so the client navigates
+# to splash after showing this message.
+LOGOUT_EVERYWHERE_SUCCESS = (
+    "You've been signed out on all devices. Log back in to continue."
+)
 # Typed-username confirmation mismatch copy (400 field error on ``confirmUsername``,
 # DD-C) — the server re-check of the typed phrase, defense-in-depth against a
 # client-gated-only submit.

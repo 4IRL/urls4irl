@@ -6,6 +6,7 @@ from backend.api_common.auth_decorators import (
     SESSION_AUTH_DECORATORS,
     email_validation_required,
     no_authenticated_users_allowed,
+    session_required,
     url_adder_or_creator_required,
     utub_creator_required,
     utub_membership_required,
@@ -37,6 +38,11 @@ class TestAuthDecoratorStashAttribute:
         wrapped = email_validation_required(_dummy_fn)
         assert hasattr(wrapped, AUTH_DECORATOR_ATTR)
         assert wrapped._auth_decorator == "email_validation_required"
+
+    def test_session_required_stashes_name(self):
+        wrapped = session_required(_dummy_fn)
+        assert hasattr(wrapped, AUTH_DECORATOR_ATTR)
+        assert wrapped._auth_decorator == "session_required"
 
     def test_utub_membership_required_stashes_name(self):
         wrapped = utub_membership_required(_dummy_fn)
@@ -102,6 +108,7 @@ class TestSessionAuthDecoratorRegistry:
     def test_registry_contains_all_session_auth_decorators(self):
         expected = {
             email_validation_required.__name__,
+            session_required.__name__,
             utub_membership_required.__name__,
             utub_creator_required.__name__,
             utub_membership_with_valid_url_in_utub_required.__name__,
@@ -112,4 +119,4 @@ class TestSessionAuthDecoratorRegistry:
         assert SESSION_AUTH_DECORATORS == expected
 
     def test_registry_size(self):
-        assert len(SESSION_AUTH_DECORATORS) == 7
+        assert len(SESSION_AUTH_DECORATORS) == 8

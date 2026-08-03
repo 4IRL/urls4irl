@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from backend import db, oauth
 from backend.admin.account_data_service import erase_user_core
 from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.api_v1.services.tokens import mark_all_refresh_tokens_revoked_for_user
 from backend.extensions import audit
 from backend.extensions.extension_utils import safe_get_email_sender
 from backend.extensions.metrics.writer import record_event
@@ -37,6 +38,7 @@ from backend.users.constants import (
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
     DeleteAccountErrorCodes,
+    LogoutEverywhereErrorCodes,
 )
 from backend.users.services.removal_oauth import _stash_removal_intent
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
@@ -57,6 +59,7 @@ from backend.utils.strings.user_strs import (
     ACCOUNT_DELETED_SUCCESS,
     EMAIL_CHANGE_CONFIRMATION_SENT,
     EMAIL_CHANGE_NO_CHANGE,
+    LOGOUT_EVERYWHERE_SUCCESS,
     OAUTH_PROOF_REDIRECT_PENDING,
     PASSWORD_CHANGE_SUCCESS,
     USER_FAILURE,
@@ -721,6 +724,58 @@ def apply_account_deletion(
         data=AccountRemovalResponseSchema(
             status=STD_JSON.SUCCESS,
             message=ACCOUNT_DELETED_SUCCESS,
+            redirect_url=url_for(ROUTES.SPLASH.SPLASH_PAGE),
+        ),
+    ).to_response()
+
+
+def apply_logout_everywhere(*, user_id: int) -> FlaskResponse:
+    """Sign the authenticated user out on every device (non-destructive, D-1).
+
+    Unlike change-password (which bumps ``sessions_invalidated_at`` then
+    ``restamp_current_session()`` so the acting session survives), this flow
+    OMITS the restamp (D-4): the current session dies along with the rest, so the
+    user is redirected to splash — matching the literal meaning of "everywhere".
+    No re-auth: logging out is reversible (just log back in), so there is no
+    password / OAuth-proof gate.
+
+    Guard order: self-ownership (403) → bump ``sessions_invalidated_at`` (no
+    restamp) → revoke every refresh token → record the
+    ``ACCOUNT_SESSIONS_REVOKED`` metric → commit → log the acting session out and
+    clear the email-validated session key (mirrors ``users.logout``) → 200 with
+    the splash ``redirectUrl``.
+    """
+    # (1) Self-ownership: the URL user_id must be the acting user.
+    if user_id != current_user.id:
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=LogoutEverywhereErrorCodes.NOT_AUTHORIZED,
+            status_code=403,
+        )
+
+    # (2) Invalidate every session — including the acting one (D-4): bump the
+    # kill-switch stamp WITHOUT re-stamping the current session, so the
+    # user_loader rejects this session too on its next request.
+    current_user.sessions_invalidated_at = utc_now()
+
+    # (3) Revoke every unrevoked refresh token (the mobile/bearer surface).
+    mark_all_refresh_tokens_revoked_for_user(user_id=current_user.id)
+
+    # (4) Record the domain metric, then commit the stamp + token revocations.
+    record_event(EventName.ACCOUNT_SESSIONS_REVOKED)
+    db.session.commit()
+
+    # (5) Log the acting session out and clear the email-validated session key
+    # (mirrors users.logout).
+    logout_user()
+    if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
+        session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
+
+    return APIResponse(
+        status_code=200,
+        data=AccountRemovalResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=LOGOUT_EVERYWHERE_SUCCESS,
             redirect_url=url_for(ROUTES.SPLASH.SPLASH_PAGE),
         ),
     ).to_response()
