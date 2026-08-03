@@ -4433,7 +4433,6 @@
               "enum": [
                 "api_hit",
                 "api_metrics_ingest_batch",
-                "account_deactivated",
                 "account_deleted",
                 "cross_utub_search_performed",
                 "email_verified",
@@ -4774,7 +4773,6 @@
               "enum": [
                 "api_hit",
                 "api_metrics_ingest_batch",
-                "account_deactivated",
                 "account_deleted",
                 "cross_utub_search_performed",
                 "email_verified",
@@ -6863,85 +6861,6 @@
         "x-error-codes": {
           "ChangeEmailErrorCodes": {
             "$ref": "#/components/schemas/ChangeEmailErrorCodes"
-          }
-        }
-      }
-    },
-    "/users/{user_id}/deactivate": {
-      "put": {
-        "operationId": "deactivateAccount",
-        "tags": ["auth"],
-        "security": [
-          {
-            "sessionAuth": [],
-            "csrfToken": []
-          }
-        ],
-        "description": "Reversibly self-deactivate the authenticated account (a voluntary pause \u2014 the account is locked and data retained; logging back in reactivates it). Password accounts re-authenticate with their current password; the acting session and all refresh tokens are invalidated and the session is logged out, returning the splash redirect URL. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider \u2014 the 200 response returns the provider redirect URL, and the authenticated callback completes the deactivation. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeactivateAccountRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Response for the self-service account-removal endpoints\n    (``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by both the deactivate and delete flows (and, in Step 5, the\n    OAuth-proof round-trip initiator, which returns the provider-redirect URL in\n    the same field).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccountRemovalResponseSchema"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse_DeactivateAccountErrorCodes"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-error-codes": {
-          "DeactivateAccountErrorCodes": {
-            "$ref": "#/components/schemas/DeactivateAccountErrorCodes"
           }
         }
       }
@@ -10626,69 +10545,6 @@
         ],
         "description": "Error codes for ChangeEmailErrorCodes"
       },
-      "DeactivateAccountRequest": {
-        "properties": {
-          "currentPassword": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Current account password, re-authenticated before the reversible self-deactivation. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead"
-          }
-        },
-        "type": "object"
-      },
-      "AccountRemovalResponseSchema": {
-        "description": "Response for the self-service account-removal endpoints\n(``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by both the deactivate and delete flows (and, in Step 5, the\nOAuth-proof round-trip initiator, which returns the provider-redirect URL in\nthe same field).",
-        "properties": {
-          "status": {
-            "description": "Response status: Success, Failure, or No change",
-            "enum": ["Success", "Failure", "No change"],
-            "type": "string"
-          },
-          "message": {
-            "description": "Human-readable response message",
-            "type": "string"
-          },
-          "redirectUrl": {
-            "description": "URL to navigate to after the acting session is logged out",
-            "type": "string"
-          }
-        },
-        "required": ["status", "message", "redirectUrl"],
-        "type": "object"
-      },
-      "ErrorResponse_DeactivateAccountErrorCodes": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ErrorResponse"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "errorCode": {
-                "$ref": "#/components/schemas/DeactivateAccountErrorCodes"
-              }
-            }
-          }
-        ]
-      },
-      "DeactivateAccountErrorCodes": {
-        "type": "integer",
-        "enum": [1, 2, 3, 4],
-        "x-enum-varnames": [
-          "INVALID_FORM_INPUT",
-          "INVALID_PASSWORD",
-          "TOO_MANY_ATTEMPTS",
-          "SOLE_ADMIN_FORBIDDEN"
-        ],
-        "description": "Error codes for DeactivateAccountErrorCodes"
-      },
       "DeleteAccountRequest": {
         "properties": {
           "currentPassword": {
@@ -10710,6 +10566,26 @@
           }
         },
         "required": ["confirmUsername"],
+        "type": "object"
+      },
+      "AccountRemovalResponseSchema": {
+        "description": "Response for the self-service account-removal endpoints\n(``PUT /users/<id>/deactivate`` and ``DELETE /users/<id>``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by both the deactivate and delete flows (and, in Step 5, the\nOAuth-proof round-trip initiator, which returns the provider-redirect URL in\nthe same field).",
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": ["Success", "Failure", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          },
+          "redirectUrl": {
+            "description": "URL to navigate to after the acting session is logged out",
+            "type": "string"
+          }
+        },
+        "required": ["status", "message", "redirectUrl"],
         "type": "object"
       },
       "ErrorResponse_DeleteAccountErrorCodes": {

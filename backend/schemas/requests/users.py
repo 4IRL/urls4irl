@@ -91,29 +91,11 @@ class ChangeEmailRequest(BaseModel):
         return value
 
 
-class DeactivateAccountRequest(BaseModel):
-    # Aliases are mandatory (no populate_by_name), so the JS client sends
-    # currentPassword. Optional: OAuth-only (password-less) accounts omit it and
-    # re-prove identity via an OAuth round-trip (Step 5) instead — mirrors
-    # ProviderLinkRequest.password, but keeps the ``currentPassword`` alias for
-    # consistency with the other re-auth forms.
-    password: str | None = Field(
-        default=None,
-        alias="currentPassword",
-        description=(
-            "Current account password, re-authenticated before the reversible "
-            "self-deactivation. Required for accounts that have a password; "
-            "password-less (OAuth-only) accounts omit it and prove ownership "
-            "via an OAuth round-trip to an already-linked provider instead"
-        ),
-    )
-
-
 class DeleteAccountRequest(BaseModel):
     # Aliases are mandatory (no populate_by_name), so the JS client sends
     # currentPassword / confirmUsername. ``password`` is optional (OAuth-only
-    # accounts omit it and re-prove identity via an OAuth round-trip in Step 5),
-    # mirroring DeactivateAccountRequest. ``confirm_username`` is the typed
+    # accounts omit it and re-prove identity via an OAuth round-trip in Step 5).
+    # ``confirm_username`` is the typed
     # confirmation phrase (DD-C); a cross-field validator cannot see
     # ``current_user``, so the exact-username match is re-checked in the service,
     # not here — the schema only enforces that the field is present/non-empty.

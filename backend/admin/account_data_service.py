@@ -97,8 +97,8 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
     **no** guards (self-action, last-admin, idempotency), records **no** audit
     row, and does **not** commit: the caller owns all three.
 
-    Shared by the admin path (``erase_user``) and the self-service
-    deactivate/delete flows so all callers exercise one tested implementation.
+    Shared by the admin path (``erase_user``) and the self-service delete flow
+    so all callers exercise one tested implementation.
 
     UTub membership lifecycle, per-UTub:
 

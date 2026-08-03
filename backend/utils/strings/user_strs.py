@@ -61,12 +61,6 @@ EMAIL_CHANGE_CONFIRMATION_SENT = (
     "finish changing your email."
 )
 EMAIL_CHANGE_NO_CHANGE = "That's already your email address."
-# Deactivate-account 200 banner copy (server-sourced envelope text — surfaced
-# dynamically off xhr.responseJSON.message; no JS bridge). The reversible-pause
-# success message the client shows before navigating to splash post-logout.
-ACCOUNT_DEACTIVATED_SUCCESS = (
-    "Your account has been deactivated. Log back in anytime to reactivate it."
-)
 # Delete-account 200 banner copy (server-sourced envelope text — surfaced
 # dynamically off xhr.responseJSON.message; no JS bridge). The irreversible
 # erasure success message shown before navigating to splash post-logout.
@@ -148,20 +142,19 @@ EMAIL_CHANGE_OAUTH_ONLY = (
 TOO_MANY_PASSWORD_ATTEMPTS = (
     "Too many incorrect password attempts. Please try again later."
 )
-# Sole-admin guard copy (403) shared by the deactivate + delete endpoints
-# (DD-21): the last active admin cannot remove their own account, since doing so
-# would leave the portal with zero admins. Mirrors the admin portal's
-# last-admin-forbidden invariant but self-scoped.
+# Sole-admin guard copy (403) used by the delete endpoint (DD-21): the last
+# active admin cannot remove their own account, since doing so would leave the
+# portal with zero admins. Mirrors the admin portal's last-admin-forbidden
+# invariant but self-scoped.
 SOLE_ADMIN_CANNOT_LEAVE = (
     "You're the only active admin. Assign another admin before removing your "
     "account."
 )
-# OAuth-proof round-trip 200 banner copy (DD-6) returned by the deactivate +
-# delete endpoints' OAuth-only branch: a password-less account re-consents
-# through an already-linked provider before the removal completes. Server-sourced
-# envelope text (no JS bridge); shared by both removal flows so
-# ``AccountRemovalResponseSchema`` stays the single response type for the whole
-# deactivate/delete family.
+# OAuth-proof round-trip 200 banner copy (DD-6) returned by the delete
+# endpoint's OAuth-only branch: a password-less account re-consents through an
+# already-linked provider before the removal completes. Server-sourced envelope
+# text (no JS bridge); pairs with ``AccountRemovalResponseSchema`` as the
+# response type for the removal flow.
 OAUTH_PROOF_REDIRECT_PENDING = "Re-authenticate with your linked provider to continue."
 
 

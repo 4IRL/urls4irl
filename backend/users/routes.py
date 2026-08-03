@@ -23,7 +23,6 @@ from backend.schemas.requests.users import (
     ChangeEmailRequest,
     ChangePasswordRequest,
     ChangeUsernameRequest,
-    DeactivateAccountRequest,
     DeleteAccountRequest,
     ProviderLinkRequest,
 )
@@ -44,11 +43,9 @@ from backend.users.constants import (
     ChangeEmailErrorCodes,
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
-    DeactivateAccountErrorCodes,
     DeleteAccountErrorCodes,
 )
 from backend.users.services.account_service import (
-    apply_account_deactivation,
     apply_account_deletion,
     apply_email_change,
     apply_password_change,
@@ -262,34 +259,6 @@ def change_email(
         user_id=user_id,
         new_email=change_email_request.new_email,
         current_password=change_email_request.password,
-    )
-
-
-@users.route("/users/<int:user_id>/deactivate", methods=["PUT"])
-@email_validation_required
-@api_route(
-    request_schema=DeactivateAccountRequest,
-    response_schema=AccountRemovalResponseSchema,
-    error_message=USER_FAILURE.INVALID_INPUT,
-    error_code=DeactivateAccountErrorCodes.INVALID_FORM_INPUT,
-    tags=[OPEN_API.AUTH],
-    description="Reversibly self-deactivate the authenticated account (a voluntary pause — the account is locked and data retained; logging back in reactivates it). Password accounts re-authenticate with their current password; the acting session and all refresh tokens are invalidated and the session is logged out, returning the splash redirect URL. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider — the 200 response returns the provider redirect URL, and the authenticated callback completes the deactivation. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
-    status_codes={
-        200: AccountRemovalResponseSchema,
-        400: ErrorResponse,
-        403: ErrorResponse,
-        429: ErrorResponse,
-    },
-)
-def deactivate_account(
-    user_id: int, deactivate_account_request: DeactivateAccountRequest
-) -> FlaskResponse:
-    """Applies the reversible self-deactivation flow (self-service only; the
-    self-ownership / sole-admin / OAuth-only / re-auth policy is enforced in the
-    service)."""
-    return apply_account_deactivation(
-        user_id=user_id,
-        current_password=deactivate_account_request.password,
     )
 
 

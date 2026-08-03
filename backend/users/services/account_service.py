@@ -30,20 +30,15 @@ from backend.splash.constants import LOGIN_FAILURE_REASON_BAD_PASSWORD
 from backend.splash.services.forgot_password import provider_display_name
 from backend.splash.services.oauth.constants import (
     Provider,
-    REMOVAL_INTENT_ACTION_DEACTIVATE,
     REMOVAL_INTENT_ACTION_DELETE,
 )
 from backend.users.constants import (
     ChangeEmailErrorCodes,
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
-    DeactivateAccountErrorCodes,
     DeleteAccountErrorCodes,
 )
-from backend.users.services.removal_oauth import (
-    _stash_removal_intent,
-    perform_self_deactivation,
-)
+from backend.users.services.removal_oauth import _stash_removal_intent
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
@@ -59,7 +54,6 @@ from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.user_strs import (
     ACCOUNT_AUDIT_ACTIONS,
-    ACCOUNT_DEACTIVATED_SUCCESS,
     ACCOUNT_DELETED_SUCCESS,
     EMAIL_CHANGE_CONFIRMATION_SENT,
     EMAIL_CHANGE_NO_CHANGE,
@@ -516,10 +510,10 @@ def reject_self_sole_admin(user: Users) -> FlaskResponse | None:
     """Return a 403 error response when ``user`` is the last active admin,
     otherwise ``None`` (the removal may proceed).
 
-    Shared by the deactivate + delete endpoints' services and (Step 5) the
-    OAuth-proof callback re-run, so all three enforce the identical invariant
-    from one implementation instead of three inline copies (DD-21). Mirrors the
-    query in ``backend/admin/guards.py:reject_leaving_zero_active_admins`` but is
+    Shared by the delete endpoint's service and the OAuth-proof callback re-run,
+    so both enforce the identical invariant from one implementation instead of
+    inline copies (DD-21). Mirrors the query in
+    ``backend/admin/guards.py:reject_leaving_zero_active_admins`` but is
     self-scoped (checks ``user`` itself, not a separate actor) and deliberately
     does NOT import from ``backend.admin.guards`` — the users domain does not
     import admin-module internals (the Step-2 import-direction rule); it
@@ -529,9 +523,8 @@ def reject_self_sole_admin(user: Users) -> FlaskResponse | None:
     Otherwise counts the OTHER active (unsuspended) admins; if none remain,
     removing this account would leave the portal with zero admins, so it returns
     a 403 with the literal error code ``4`` — which is
-    ``SOLE_ADMIN_FORBIDDEN`` on BOTH ``DeactivateAccountErrorCodes`` and
-    ``DeleteAccountErrorCodes`` by design, so this one shared response is correct
-    for either caller without a per-endpoint enum import.
+    ``SOLE_ADMIN_FORBIDDEN`` on ``DeleteAccountErrorCodes``, so this shared
+    response is correct without a per-endpoint enum import.
     """
     if user.role != User_Role.ADMIN:
         return None
@@ -579,10 +572,11 @@ def _initiate_oauth_proof_removal(*, action: str) -> FlaskResponse:
     """Stash a removal intent for the authenticated password-less account and
     return the 200 redirect that starts the OAuth-proof round-trip (DD-6).
 
-    Shared by the deactivate + delete OAuth-only branches so both stash the same
-    intent shape and return the same ``AccountRemovalResponseSchema`` redirect
-    into ``GET /oauth/<provider>/link``; the authenticated callback executes the
-    stashed removal.
+    Used by the delete OAuth-only branch to stash the intent shape and return an
+    ``AccountRemovalResponseSchema`` redirect into ``GET /oauth/<provider>/link``;
+    the authenticated callback executes the stashed removal. Kept as a helper (a
+    single caller today) so the OAuth-proof initiation stays separable from the
+    delete guard flow.
     """
     proof_provider = _select_proof_provider()
     if proof_provider is None:
@@ -590,7 +584,7 @@ def _initiate_oauth_proof_removal(*, action: str) -> FlaskResponse:
         # redirect into a dead provider dance.
         return build_message_error_response(
             message=USER_FAILURE.NOT_AUTHORIZED,
-            error_code=DeactivateAccountErrorCodes.INVALID_FORM_INPUT,
+            error_code=DeleteAccountErrorCodes.INVALID_FORM_INPUT,
             status_code=403,
         )
 
@@ -605,102 +599,6 @@ def _initiate_oauth_proof_removal(*, action: str) -> FlaskResponse:
             status=STD_JSON.SUCCESS,
             message=OAUTH_PROOF_REDIRECT_PENDING,
             redirect_url=url_for(OAUTH_ROUTES.LINK, provider=proof_provider.value),
-        ),
-    ).to_response()
-
-
-def apply_account_deactivation(
-    *, user_id: int, current_password: str | None
-) -> FlaskResponse:
-    """Reversibly self-deactivate the authenticated password account, then log
-    the acting session out.
-
-    A voluntary pause: sets ``is_suspended`` + a fresh ``self_deactivated_at``
-    stamp (so reactivate-on-login can distinguish it from an admin lock),
-    invalidates every session and refresh token, then logs the acting session
-    out too. The user reactivates simply by logging back in.
-
-    Guard order (documented numbered comments): self-ownership (403) →
-    sole-admin (403, shared ``reject_self_sole_admin`` helper, DD-21) → OAuth-only
-    branch (200 redirect into the OAuth-proof round-trip, DD-6 — a password-less
-    account re-consents through an already-linked provider and the callback
-    executes the stashed deactivation) → re-auth lockout (429) → current-password
-    re-auth (400 field error, records the existing ``LOGIN_FAILURE`` metric + a
-    re-auth failure) → success: clear the failure counter, perform the mutation,
-    record ``ACCOUNT_DEACTIVATED``, commit, log out, and return the splash
-    redirect target.
-    """
-    # (1) Self-ownership: the URL user_id must be the acting user.
-    if user_id != current_user.id:
-        return build_message_error_response(
-            message=USER_FAILURE.NOT_AUTHORIZED,
-            error_code=DeactivateAccountErrorCodes.INVALID_FORM_INPUT,
-            status_code=403,
-        )
-
-    # (2) Sole-admin guard (DD-21): the last active admin cannot remove their own
-    # account — it would leave the portal with zero admins.
-    sole_admin_error = reject_self_sole_admin(current_user)
-    if sole_admin_error is not None:
-        return sole_admin_error
-
-    # (3) OAuth-only branch (DD-6): a password-less account cannot re-auth
-    # inline, so it re-proves identity via an OAuth round-trip through an
-    # already-linked provider. Stash the removal intent and 200-redirect the
-    # client into GET /oauth/<provider>/link; the authenticated callback executes
-    # the stashed deactivation. (The initiator only ever stashes when
-    # ``password is None`` — a password account can never take this branch.)
-    if current_user.password is None:
-        return _initiate_oauth_proof_removal(action=REMOVAL_INTENT_ACTION_DEACTIVATE)
-
-    # (4) Brute-force lockout: the shared per-user Redis counter. Fail-open;
-    # checked before the password compare so a locked-out session cannot keep
-    # guessing.
-    if is_reauth_locked_out(user_id):
-        return build_message_error_response(
-            message=USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS,
-            error_code=DeactivateAccountErrorCodes.TOO_MANY_ATTEMPTS,
-            status_code=429,
-        )
-
-    # (5) Re-auth: verify the supplied current password. A missing/empty
-    # ``currentPassword`` on a password account (the schema makes the field
-    # optional so OAuth-only accounts can omit it) is treated as a failed
-    # re-auth — short-circuited before ``is_password_correct`` so it never
-    # receives ``None`` (mirrors ``initiate_settings_link``'s ``if not password``
-    # guard). On any failure, record a re-auth failure toward the lockout + the
-    # existing LOGIN_FAILURE metric, then surface a dedicated field error on
-    # ``currentPassword``.
-    if not current_password or not current_user.is_password_correct(current_password):
-        record_reauth_failure(user_id)
-        record_event(
-            EventName.LOGIN_FAILURE,
-            dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
-        )
-        return build_field_error_response(
-            message=USER_FAILURE.CURRENT_PASSWORD_INCORRECT,
-            errors={"currentPassword": [USER_FAILURE.CURRENT_PASSWORD_INCORRECT]},
-            error_code=DeactivateAccountErrorCodes.INVALID_PASSWORD,
-            status_code=400,
-        )
-
-    # (6) Success: clear the failure counter, apply the reversible-pause mutation
-    # (the guard-free core kills the acting session + all tokens), record the
-    # domain metric, commit, then log the acting session out too.
-    clear_reauth_failures(user_id)
-    perform_self_deactivation(user=current_user)
-    record_event(EventName.ACCOUNT_DEACTIVATED)
-    db.session.commit()
-    logout_user()
-    if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
-        session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
-
-    return APIResponse(
-        status_code=200,
-        data=AccountRemovalResponseSchema(
-            status=STD_JSON.SUCCESS,
-            message=ACCOUNT_DEACTIVATED_SUCCESS,
-            redirect_url=url_for(ROUTES.SPLASH.SPLASH_PAGE),
         ),
     ).to_response()
 

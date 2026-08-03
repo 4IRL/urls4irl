@@ -28,7 +28,6 @@ STRIPPED_DIM_KEY = "stripped"
 
 DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
     {
-        EventName.ACCOUNT_DEACTIVATED,
         EventName.ACCOUNT_DELETED,
         EventName.CROSS_UTUB_SEARCH_PERFORMED,
         EventName.URL_ACCESSED,
@@ -73,14 +72,13 @@ service flows (settings-initiated link requiring a password re-auth or an OAuth
 provider round-trip, and the collision confirm-link path), which the shared
 success-path seed cannot drive; their per-flow emit tests live under
 tests/integration/account_and_settings/test_oauth_linking.py and
-tests/integration/splash/test_oauth_confirm_link.py. ACCOUNT_DEACTIVATED and
-ACCOUNT_DELETED fire only from the authenticated self-service account-removal
-Settings flows (a current-password re-auth, then a reversible pause or a GDPR
-erasure), which the shared success-path seed does not drive; their per-flow emit
-tests live under tests/integration/account_and_settings/test_account_deactivate.py
-and test_account_delete.py. Each excluded event
-has its own per-route emit test under tests/integration/<feature>/ and flushes
-through the same pipeline, so the end-to-end invariant is still covered.
+tests/integration/splash/test_oauth_confirm_link.py. ACCOUNT_DELETED fires only
+from the authenticated self-service account-removal Settings flow (a
+current-password re-auth, then a GDPR erasure), which the shared success-path
+seed does not drive; its per-flow emit test lives under
+tests/integration/account_and_settings/test_account_delete.py. Each excluded
+event has its own per-route emit test under tests/integration/<feature>/ and
+flushes through the same pipeline, so the end-to-end invariant is still covered.
 """
 
 

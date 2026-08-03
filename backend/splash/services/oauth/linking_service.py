@@ -33,7 +33,6 @@ from backend.splash.services.oauth.constants import (
     OAUTH_LINK_MAX_AGE_SECONDS,
     OAUTH_PENDING_LINK_SESSION_KEY,
     Provider,
-    REMOVAL_INTENT_ACTION_DEACTIVATE,
     REMOVAL_INTENT_ACTION_DELETE,
 )
 from backend.users.services.account_service import reject_self_sole_admin
@@ -396,20 +395,15 @@ def initiate_link_oauth_redirect(provider_key: str) -> WerkzeugResponse:
         return redirect(url_for(ROUTES.USERS.SETTINGS))
 
     intent_action = intent.get("action")
-    # A "proof" link intent and both removal intents ("deactivate"/"delete")
-    # carry their expected provider in ``proof_provider``; a plain "link" intent
-    # carries it in ``target_provider``. Without the removal actions here, a
-    # removal intent would fall into the ``target_provider`` branch (which
-    # removals never set) and bounce the user back to Settings before the
-    # OAuth-proof round-trip could start (DD-6).
+    # A "proof" link intent and the "delete" removal intent carry their expected
+    # provider in ``proof_provider``; a plain "link" intent carries it in
+    # ``target_provider``. Without the removal action here, a removal intent
+    # would fall into the ``target_provider`` branch (which removals never set)
+    # and bounce the user back to Settings before the OAuth-proof round-trip
+    # could start (DD-6).
     expected_provider_value = (
         intent.get("proof_provider")
-        if intent_action
-        in (
-            LINK_INTENT_ACTION_PROOF,
-            REMOVAL_INTENT_ACTION_DEACTIVATE,
-            REMOVAL_INTENT_ACTION_DELETE,
-        )
+        if intent_action in (LINK_INTENT_ACTION_PROOF, REMOVAL_INTENT_ACTION_DELETE)
         else intent.get("target_provider")
     )
     if expected_provider_value != provider.value:
@@ -432,7 +426,7 @@ def handle_authenticated_oauth_callback(
     matched a provider identity already on the account, then forwards to the
     target provider's dance), completes the link (inserts the identity row), or —
     for a removal intent (DD-6) — re-checks the sole-admin guard and executes the
-    stashed deactivation/erasure, then commits, logs out, and redirects to splash.
+    stashed erasure, then commits, logs out, and redirects to splash.
     """
     intent = pop_valid_link_intent_for_current_user()
     if intent is None:
@@ -486,8 +480,7 @@ def handle_authenticated_oauth_callback(
         )
 
     if (
-        intent_action
-        in (REMOVAL_INTENT_ACTION_DEACTIVATE, REMOVAL_INTENT_ACTION_DELETE)
+        intent_action == REMOVAL_INTENT_ACTION_DELETE
         and intent.get("proof_provider") == provider.value
     ):
         # Sole-admin re-check at execution time (DD-17): account state may have
@@ -500,8 +493,8 @@ def handle_authenticated_oauth_callback(
             return sole_admin_error
 
         # Execute the stashed removal (DD-20): the neutral dispatcher re-verifies
-        # the returned subject matches a linked identity, then deactivates or
-        # erases without committing. This module owns the commit/logout/redirect.
+        # the returned subject matches a linked identity, then erases without
+        # committing. This module owns the commit/logout/redirect.
         mutation_succeeded = execute_removal_intent(
             intent=intent, provider=provider, subject=subject
         )

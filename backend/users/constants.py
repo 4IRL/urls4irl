@@ -31,42 +31,17 @@ class ChangePasswordErrorCodes(IntEnum):
     TOO_MANY_ATTEMPTS = 4
 
 
-class DeactivateAccountErrorCodes(IntEnum):
-    """Application error codes for the authenticated deactivate-account endpoint
-    (``PUT /users/<id>/deactivate``).
+class DeleteAccountErrorCodes(IntEnum):
+    """Application error codes for the authenticated delete-account endpoint
+    (``DELETE /users/<id>``).
 
     Same home as the sibling ``Change*ErrorCodes`` (the users domain, not
     ``backend/splash/constants.py``) and the same explicit-sequential-value
     convention (member 1 is always ``INVALID_FORM_INPUT``).
 
-    ``SOLE_ADMIN_FORBIDDEN``'s value ``4`` deliberately matches
-    ``DeleteAccountErrorCodes``'s so the shared ``reject_self_sole_admin`` guard's
-    response is correct for either caller without a per-endpoint enum import
-    (DD-21). The OAuth-only removal path returns a 200 OAuth-proof redirect
+    ``CONFIRMATION_MISMATCH`` (DD-C) backs the typed-username confirmation
+    re-check. The OAuth-only removal path returns a 200 OAuth-proof redirect
     (DD-6), not an error, so it has no error-code member here.
-    """
-
-    INVALID_FORM_INPUT = 1
-    INVALID_PASSWORD = 2
-    TOO_MANY_ATTEMPTS = 3
-    SOLE_ADMIN_FORBIDDEN = 4
-
-
-class DeleteAccountErrorCodes(IntEnum):
-    """Application error codes for the authenticated delete-account endpoint
-    (``DELETE /users/<id>``).
-
-    Same home as the sibling ``Change*ErrorCodes``/``DeactivateAccountErrorCodes``
-    (the users domain, not ``backend/splash/constants.py``) and the same
-    explicit-sequential-value convention (member 1 is always
-    ``INVALID_FORM_INPUT``).
-
-    ``SOLE_ADMIN_FORBIDDEN``'s value ``4`` deliberately matches
-    ``DeactivateAccountErrorCodes``'s so the shared ``reject_self_sole_admin``
-    guard's response is correct for either caller without a per-endpoint enum
-    import (DD-21). ``CONFIRMATION_MISMATCH`` (DD-C) backs the typed-username
-    confirmation re-check. The OAuth-only removal path returns a 200 OAuth-proof
-    redirect (DD-6), not an error, so it has no error-code member here.
     """
 
     INVALID_FORM_INPUT = 1

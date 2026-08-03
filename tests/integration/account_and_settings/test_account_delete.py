@@ -1,11 +1,10 @@
 """Integration tests for the irreversible self-delete endpoint
 (``DELETE /users/<id>``).
 
-Mirrors ``test_account_deactivate.py``'s fixture/CSRF conventions (the
-``login_first_user_with_register`` fixture, the meta-tag CSRF scrape, and the
-autouse ``reauth-fail:*`` Redis reset) but exercises the GDPR-erasure path: the
-account is tombstoned in place via the shared ``erase_user_core`` and the acting
-session is logged out. Replicates the admin erase membership matrix for the self
+Uses the ``login_first_user_with_register`` fixture, the meta-tag CSRF scrape,
+and the autouse ``reauth-fail:*`` Redis reset, and exercises the GDPR-erasure
+path: the account is tombstoned in place via the shared ``erase_user_core`` and
+the acting session is logged out. Replicates the admin erase membership matrix for the self
 path (solo-deleted, ownership-transferred, non-creator-removed), asserts the new
 self-actor audit trail (DD-4) and the ``ACCOUNT_DELETED`` metric, verifies the
 transfer-count context (DD-5) and the typed-username confirmation re-check (DD-C).
@@ -67,10 +66,9 @@ _USERNAME = valid_user_1[LOGIN_FORM.USERNAME]
 @pytest.fixture(autouse=True)
 def _reset_reauth_failure_counter(app: Flask) -> Generator[None, None, None]:
     """Clear the worker-scoped ``reauth-fail:*`` Redis counter before and after
-    every test in this module (copied from ``test_account_deactivate.py`` — the
-    per-user re-auth lockout counter survives DB teardown, so without this a
-    wrong-password test would 429 a later unrelated test on the same xdist
-    worker)."""
+    every test in this module (the per-user re-auth lockout counter survives DB
+    teardown, so without this a wrong-password test would 429 a later unrelated
+    test on the same xdist worker)."""
 
     def _clear() -> None:
         redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI)
@@ -99,7 +97,7 @@ def _delete_payload(
 
 def _clear_flask_login_request_cache() -> None:
     """Drop Flask-Login's per-request user cache (``g._login_user``) so the next
-    request consults the user_loader again (mirrors ``test_account_deactivate``)."""
+    request consults the user_loader again."""
     if hasattr(g, "_login_user"):
         delattr(g, "_login_user")
 

@@ -1,15 +1,14 @@
-"""Integration tests for the guard-free self-service account-removal cores.
+"""Integration tests for the guard-free self-service account-removal core.
 
-Exercises the two shared state-mutation cores extracted in the account-removal
-build — both carry no HTTP/guard/audit/commit concerns, so these tests call them
+Exercises the shared state-mutation core extracted in the account-removal build
+— it carries no HTTP/guard/audit/commit concerns, so these tests call it
 directly inside an app context and own the commit themselves:
 
     backend.admin.account_data_service.erase_user_core
-    backend.users.services.removal_oauth.perform_self_deactivation
 
 The erasure membership matrix mirrors
 ``tests/integration/admin/test_admin_account_data_actions.py`` so both the admin
-caller and the self-service callers are proven against the same core behavior.
+caller and the self-service caller are proven against the same core behavior.
 """
 
 from __future__ import annotations
@@ -34,7 +33,6 @@ from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
-from backend.users.services.removal_oauth import perform_self_deactivation
 
 pytestmark = pytest.mark.account_and_support
 
@@ -306,36 +304,3 @@ def test_erase_core_tombstones_identity_and_nulls_pending_email(app: Flask) -> N
         assert refreshed.email_validated is False
         assert refreshed.pending_email is None
         assert refreshed.sessions_invalidated_at is not None
-
-
-# ---------------------------------------------------------------------------
-# perform_self_deactivation
-# ---------------------------------------------------------------------------
-
-
-def test_perform_self_deactivation_sets_flags_and_revokes_tokens(app: Flask) -> None:
-    """The reversible-pause mutation sets both self-deactivation flags, stamps
-    the session-invalidation marker, and revokes every refresh token."""
-    target = _seed_user(app, username="core_deact", email="core_deact@test.com")
-    target_id: int = target.id
-    refresh_token = _seed_refresh_token(app, target)
-    refresh_token_id: int = refresh_token.id
-
-    with app.app_context():
-        target_refreshed: Users = Users.query.get(target_id)
-        assert target_refreshed.is_suspended is False
-        assert target_refreshed.self_deactivated_at is None
-        perform_self_deactivation(user=target_refreshed)
-        db.session.commit()
-
-    with app.app_context():
-        refreshed: Users = Users.query.get(target_id)
-        assert refreshed.is_suspended is True
-        assert refreshed.self_deactivated_at is not None
-        assert refreshed.sessions_invalidated_at is not None
-        # Not tombstoned — a deactivation is a reversible pause, not an erasure.
-        assert not is_tombstoned(user=refreshed)
-        assert refreshed.password is not None
-
-        revoked_token: ApiRefreshTokens = ApiRefreshTokens.query.get(refresh_token_id)
-        assert revoked_token.revoked_at is not None
