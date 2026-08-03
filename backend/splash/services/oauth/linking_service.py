@@ -40,7 +40,6 @@ from backend.users.services.account_service import reject_self_sole_admin
 from backend.users.services.removal_oauth import execute_removal_intent
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.datetime_utils import utc_now
-from backend.utils.reactivation import maybe_reactivate_self_deactivated
 from backend.utils.reauth_throttle import (
     clear_reauth_failures,
     is_reauth_locked_out,
@@ -730,9 +729,7 @@ def confirm_link_with_password(password: str) -> FlaskResponse:
             error_code=OAuthLinkErrorCodes.INVALID_PASSWORD,
         )
 
-    # Auto-lift a reversible self-deactivation now that the password check has
-    # passed; a hard admin suspension (self_deactivated_at IS NULL) still 403s.
-    if not maybe_reactivate_self_deactivated(email_owner) and email_owner.is_suspended:
+    if email_owner.is_suspended:
         record_event(
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_SUSPENDED},

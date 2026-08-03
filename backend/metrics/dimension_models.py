@@ -427,7 +427,6 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # events with a closed-set extra dim.
     EventName.ACCOUNT_DEACTIVATED: _DimDeviceOnly,
     EventName.ACCOUNT_DELETED: _DimDeviceOnly,
-    EventName.ACCOUNT_REACTIVATED: _DimDeviceOnly,
     EventName.CROSS_UTUB_SEARCH_PERFORMED: _DimCrossUtubSearchPerformed,
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,

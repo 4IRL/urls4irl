@@ -32,7 +32,6 @@ class EventName(StrEnum):
     # Domain — explicit record_event() calls in service layer
     ACCOUNT_DEACTIVATED = "account_deactivated"
     ACCOUNT_DELETED = "account_deleted"
-    ACCOUNT_REACTIVATED = "account_reactivated"
     CROSS_UTUB_SEARCH_PERFORMED = "cross_utub_search_performed"
     EMAIL_VERIFIED = "email_verified"
     LOGIN_FAILURE = "login_failure"

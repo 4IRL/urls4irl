@@ -30,7 +30,6 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
     {
         EventName.ACCOUNT_DEACTIVATED,
         EventName.ACCOUNT_DELETED,
-        EventName.ACCOUNT_REACTIVATED,
         EventName.CROSS_UTUB_SEARCH_PERFORMED,
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
@@ -79,9 +78,7 @@ ACCOUNT_DELETED fire only from the authenticated self-service account-removal
 Settings flows (a current-password re-auth, then a reversible pause or a GDPR
 erasure), which the shared success-path seed does not drive; their per-flow emit
 tests live under tests/integration/account_and_settings/test_account_deactivate.py
-and test_account_delete.py. ACCOUNT_REACTIVATED fires only when a self-deactivated
-account logs back in, which the shared seed does not exercise; its per-flow emit
-test lives under tests/integration/splash/test_login_user.py. Each excluded event
+and test_account_delete.py. Each excluded event
 has its own per-route emit test under tests/integration/<feature>/ and flushes
 through the same pipeline, so the end-to-end invariant is still covered.
 """

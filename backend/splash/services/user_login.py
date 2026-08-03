@@ -19,7 +19,6 @@ from backend.splash.constants import (
     LoginErrorCodes,
 )
 from backend.utils.all_routes import ROUTES
-from backend.utils.reactivation import maybe_reactivate_self_deactivated
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
@@ -77,11 +76,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             status_code=400,
         )
 
-    # A reversible self-deactivation is auto-lifted here now that the password
-    # check has passed (strictly after successful verification, never on a
-    # failed attempt); a hard admin suspension (self_deactivated_at IS NULL) is
-    # not lifted and still 403s below.
-    if not maybe_reactivate_self_deactivated(user) and user.is_suspended:
+    if user.is_suspended:
         # Blocked BEFORE login_user(): a suspended user never reaches an
         # authenticated session. Only a correct password reaches this branch,
         # so suspension status is never leaked to a guessing attacker.

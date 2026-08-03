@@ -75,13 +75,6 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         ),
         category=EventCategory.DOMAIN,
     ),
-    EventName.ACCOUNT_REACTIVATED: EventRegistryEntry(
-        description=(
-            "Self-deactivated account auto-reactivated on a subsequent "
-            "successful login (is_suspended + self_deactivated_at cleared)"
-        ),
-        category=EventCategory.DOMAIN,
-    ),
     EventName.CROSS_UTUB_SEARCH_PERFORMED: EventRegistryEntry(
         description="Cross-UTub search executed across the user's member UTubs",
         category=EventCategory.DOMAIN,

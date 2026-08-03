@@ -48,7 +48,6 @@ from backend.splash.services.validate_email import (
     handle_email_sending_result,
 )
 from backend.utils.all_routes import ROUTES
-from backend.utils.reactivation import maybe_reactivate_self_deactivated
 from backend.utils.strings.api_auth_strs import API_AUTH_FAILURE, API_AUTH_SUCCESS
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.oauth_strs import (
@@ -134,9 +133,7 @@ def login_user_for_api(*, username: str, password: str) -> FlaskResponse:
             status_code=400,
         )
 
-    # Auto-lift a reversible self-deactivation now that the password check has
-    # passed; a hard admin suspension (self_deactivated_at IS NULL) still 403s.
-    if not maybe_reactivate_self_deactivated(user) and user.is_suspended:
+    if user.is_suspended:
         # Suspended accounts never receive tokens; mirrors the web login gate.
         warning_log(f"Suspended User={user.id} attempted /api/v1 login")
         record_event(
@@ -316,13 +313,7 @@ def google_auth_for_api(*, id_token: str) -> FlaskResponse:
             status_code=409,
         )
 
-    # Auto-lift a reversible self-deactivation now that the Google subject has
-    # been verified; a hard admin suspension (self_deactivated_at IS NULL) still
-    # 403s.
-    if (
-        not maybe_reactivate_self_deactivated(resolved_user)
-        and resolved_user.is_suspended
-    ):
+    if resolved_user.is_suspended:
         warning_log(
             f"Suspended User={resolved_user.id} attempted /api/v1 Google sign-in"
         )

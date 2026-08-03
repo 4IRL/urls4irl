@@ -71,20 +71,13 @@ def suspend_user(*, actor_id: int, target_user_id: int, reason: str) -> FlaskRes
     if last_admin_error is not None:
         return last_admin_error
 
-    # A self-deactivated target is already ``is_suspended=True`` but carries a
-    # non-NULL ``self_deactivated_at``. Do NOT short-circuit as a no-op for
-    # that case: fall through into the mutation block so the admin action
-    # converts the reversible self-pause into a true admin lock (clearing
-    # ``self_deactivated_at``), which is what makes the reactivate-on-login
-    # gate (self_deactivated_at IS NULL) correctly refuse a later reactivation.
-    if target_user.is_suspended and target_user.self_deactivated_at is None:
+    if target_user.is_suspended:
         return AdminActionResponseSchema(
             status=STD_JSON.SUCCESS,
             message=ADMIN_ACTION_STRINGS.ACCOUNT_SUSPEND_NOOP,
         ).to_response()
 
     target_user.is_suspended = True
-    target_user.self_deactivated_at = None
     target_user.sessions_invalidated_at = utc_now()
     revoked_count: int = mark_all_refresh_tokens_revoked_for_user(
         user_id=target_user_id

@@ -41,7 +41,6 @@ from backend.splash.services.oauth.constants import (
     OAUTH_PENDING_LINK_SESSION_KEY,
 )
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
-from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     CONFIRM_LINK_EXPIRED_MESSAGE,
@@ -460,103 +459,6 @@ def test_confirm_link_suspended_owner_blocked(
             ).first()
             is None
         )
-
-
-def _self_deactivate_user_by_email(app: Flask, email: str) -> None:
-    """Put the account owning ``email`` into the reversible self-deactivated
-    state (suspended with a self_deactivated_at stamp)."""
-    with app.app_context():
-        target_user: Users = Users.query.filter(Users.email == email.lower()).first()
-        target_user.is_suspended = True
-        target_user.self_deactivated_at = utc_now()
-        db.session.commit()
-
-
-@mock.patch(_GOOGLE_AUTHORIZE_ACCESS_TOKEN_TARGET)
-def test_confirm_link_reactivates_self_deactivated_owner(
-    mock_authorize_access_token: mock.MagicMock, app: Flask, load_login_page
-):
-    """
-    GIVEN a self-deactivated password owner (reversible pause) whose email
-        collides with a new google identity
-    WHEN POST /oauth/link/confirm is submitted with the CORRECT password
-    THEN the owner is reactivated (both flags cleared), the link completes
-        (200 + identity row created), and the user is logged in — mirroring
-        the web/bearer reactivate-on-login paths for the confirm-link entry.
-    """
-    _seed_password_user(
-        app,
-        username=_PASSWORD_OWNER_USERNAME,
-        email=_PASSWORD_OWNER_EMAIL,
-        password=_PASSWORD_OWNER_PASSWORD,
-    )
-    _self_deactivate_user_by_email(app, _PASSWORD_OWNER_EMAIL)
-    mock_authorize_access_token.return_value = _build_mocked_google_token(
-        subject=_NEW_GOOGLE_SUBJECT, email=_PASSWORD_OWNER_EMAIL
-    )
-    client, csrf_token = load_login_page
-    client.get(_google_callback_url(code=_FAKE_CODE, state=_FAKE_STATE))
-
-    response = client.post(
-        url_for(OAUTH_ROUTES.CONFIRM_LINK),
-        json={"password": _PASSWORD_OWNER_PASSWORD},
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    assert response.status_code == 200
-    assert current_user.is_authenticated
-
-    with app.app_context():
-        reactivated_user: Users = Users.query.filter(
-            Users.email == _PASSWORD_OWNER_EMAIL.lower()
-        ).first()
-        assert reactivated_user.is_suspended is False
-        assert reactivated_user.self_deactivated_at is None
-        assert (
-            UserOAuthIdentity.query.filter_by(
-                provider="google", provider_subject=_NEW_GOOGLE_SUBJECT
-            ).first()
-            is not None
-        )
-
-
-@mock.patch(_GOOGLE_AUTHORIZE_ACCESS_TOKEN_TARGET)
-def test_confirm_link_wrong_password_does_not_reactivate_self_deactivated_owner(
-    mock_authorize_access_token: mock.MagicMock, app: Flask, load_login_page
-):
-    """
-    GIVEN a self-deactivated password owner
-    WHEN POST /oauth/link/confirm is submitted with the WRONG password
-    THEN it is rejected and neither flag is cleared — reactivation never runs
-        on a failed credential check.
-    """
-    _seed_password_user(
-        app,
-        username=_PASSWORD_OWNER_USERNAME,
-        email=_PASSWORD_OWNER_EMAIL,
-        password=_PASSWORD_OWNER_PASSWORD,
-    )
-    _self_deactivate_user_by_email(app, _PASSWORD_OWNER_EMAIL)
-    mock_authorize_access_token.return_value = _build_mocked_google_token(
-        subject=_NEW_GOOGLE_SUBJECT, email=_PASSWORD_OWNER_EMAIL
-    )
-    client, csrf_token = load_login_page
-    client.get(_google_callback_url(code=_FAKE_CODE, state=_FAKE_STATE))
-
-    response = client.post(
-        url_for(OAUTH_ROUTES.CONFIRM_LINK),
-        json={"password": "not-the-real-password"},
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    assert response.status_code == 400
-
-    with app.app_context():
-        untouched_user: Users = Users.query.filter(
-            Users.email == _PASSWORD_OWNER_EMAIL.lower()
-        ).first()
-        assert untouched_user.is_suspended is True
-        assert untouched_user.self_deactivated_at is not None
 
 
 @mock.patch(_GOOGLE_AUTHORIZE_ACCESS_TOKEN_TARGET)

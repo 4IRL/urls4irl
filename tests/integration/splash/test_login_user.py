@@ -15,7 +15,6 @@ from backend.models.utub_members import Utub_Members
 from backend.splash.constants import LoginErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import USER_CONSTANTS
-from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import LOGIN_FORM
@@ -123,42 +122,6 @@ def test_login_success_records_metric(
 
     assert response.status_code == 200
     assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_SUCCESS) == 1
-
-
-def test_self_deactivated_reactivation_records_metric(
-    metrics_enabled_app, provide_metrics_redis, register_first_user, load_login_page
-):
-    """
-    GIVEN a registered, validated user in the reversible self-deactivated state
-        with metrics enabled
-    WHEN they POST to "/login" with correct credentials (auto-reactivating)
-    THEN the login succeeds AND exactly one ACCOUNT_REACTIVATED counter key is
-        written to the metrics Redis DB.
-    """
-    client, csrf_token_str = load_login_page
-    new_user = deepcopy(valid_user_1)
-
-    with metrics_enabled_app.app_context():
-        target_user: Users = Users.query.filter(
-            Users.username == new_user[LOGIN_FORM.USERNAME]
-        ).first()
-        target_user.is_suspended = True
-        target_user.self_deactivated_at = utc_now()
-        db.session.commit()
-
-    assert count_counter_keys(provide_metrics_redis, EventName.ACCOUNT_REACTIVATED) == 0
-
-    response = client.post(
-        url_for(ROUTES.SPLASH.LOGIN),
-        json={
-            LOGIN_FORM.USERNAME: new_user[LOGIN_FORM.USERNAME],
-            LOGIN_FORM.PASSWORD: new_user[LOGIN_FORM.PASSWORD],
-        },
-        headers={"X-CSRFToken": csrf_token_str},
-    )
-
-    assert response.status_code == 200
-    assert count_counter_keys(provide_metrics_redis, EventName.ACCOUNT_REACTIVATED) == 1
 
 
 def test_login_failure_unknown_user_records_metric_with_reason(
