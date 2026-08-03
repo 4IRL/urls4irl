@@ -27,31 +27,33 @@ vi.mock("../../lib/metrics-client.js", () => ({
 
 const $ = window.jQuery;
 
-const DEACTIVATE_URL = "/users/1/deactivate";
+const LOGOUT_EVERYWHERE_URL = "/users/1/logout-everywhere";
 const DELETE_URL = "/users/1";
 const REDIRECT_URL = "/splash";
-const OAUTH_REDIRECT_URL = "/oauth/google/link";
 const USERNAME = "river_stone";
 const PASSWORD = "FakePassword1234";
 const INCORRECT_MESSAGE = "Current password is incorrect.";
-const LOCKOUT_MESSAGE =
-  "Too many incorrect password attempts. Please try again later.";
+const SERVICE_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
-// Password-account fixture: both modals render a password input + a confirm
-// submit button (the delete submit starts disabled, per the template).
+// Password-account fixture: the delete modal renders a password input + a confirm
+// submit button (starting disabled, per the template); the logout-everywhere
+// modal has neither. Both are wrapped in the always-present #SettingsPanelAccount
+// container the init guard keys off.
 function passwordHtml(): string {
   return `
+    <section id="SettingsPanelAccount">
     <div class="SettingsStatCard" data-account-info="username">
       <dd class="SettingsStatValue">${USERNAME}</dd>
     </div>
+    <div id="SettingsLogoutEverywhere">
+      <button id="SettingsLogoutEverywhereBtn"></button>
+    </div>
     <div class="SettingsDangerZone">
-      <button id="SettingsDeactivateBtn"></button>
       <button id="SettingsDeleteBtn"></button>
     </div>
-    <div class="modal fade" id="SettingsDeactivateModal" data-action-url="${DEACTIVATE_URL}">
-      <div id="SettingsDeactivateError" class="alert d-none"></div>
-      <input id="SettingsDeactivateCurrentPassword" type="password" />
-      <button id="SettingsDeactivateSubmitBtn"></button>
+    <div class="modal fade" id="SettingsLogoutEverywhereModal" data-action-url="${LOGOUT_EVERYWHERE_URL}">
+      <div id="SettingsLogoutEverywhereError" class="alert d-none"></div>
+      <button id="SettingsLogoutEverywhereSubmitBtn"></button>
     </div>
     <div class="modal fade" id="SettingsDeleteModal" data-action-url="${DELETE_URL}">
       <div id="SettingsDeleteError" class="alert d-none"></div>
@@ -59,30 +61,35 @@ function passwordHtml(): string {
       <input id="SettingsDeleteCurrentPassword" type="password" />
       <button id="SettingsDeleteSubmitBtn" disabled></button>
     </div>
+    </section>
   `;
 }
 
-// OAuth-only fixture: no password input / no submit button; a re-authenticate
-// button instead. The delete re-auth button starts disabled (typed-username
-// gate, DD-8); the deactivate re-auth button is ungated.
+// OAuth-only fixture: the delete modal has no password input / no submit button;
+// a re-authenticate button instead (starting disabled, typed-username gate DD-8).
+// Logout-everywhere is identical regardless of sign-in method (no re-auth, D-1).
 function oauthHtml(): string {
   return `
+    <section id="SettingsPanelAccount">
     <div class="SettingsStatCard" data-account-info="username">
       <dd class="SettingsStatValue">${USERNAME}</dd>
     </div>
+    <div id="SettingsLogoutEverywhere">
+      <button id="SettingsLogoutEverywhereBtn"></button>
+    </div>
     <div class="SettingsDangerZone">
-      <button id="SettingsDeactivateBtn"></button>
       <button id="SettingsDeleteBtn"></button>
     </div>
-    <div class="modal fade" id="SettingsDeactivateModal" data-action-url="${DEACTIVATE_URL}">
-      <div id="SettingsDeactivateError" class="alert d-none"></div>
-      <button id="SettingsDeactivateReauthBtn"></button>
+    <div class="modal fade" id="SettingsLogoutEverywhereModal" data-action-url="${LOGOUT_EVERYWHERE_URL}">
+      <div id="SettingsLogoutEverywhereError" class="alert d-none"></div>
+      <button id="SettingsLogoutEverywhereSubmitBtn"></button>
     </div>
     <div class="modal fade" id="SettingsDeleteModal" data-action-url="${DELETE_URL}">
       <div id="SettingsDeleteError" class="alert d-none"></div>
       <input id="SettingsDeleteConfirmUsername" type="text" />
       <button id="SettingsDeleteReauthBtn" disabled></button>
     </div>
+    </section>
   `;
 }
 
@@ -124,39 +131,11 @@ describe("account-removal", () => {
     vi.restoreAllMocks();
   });
 
-  it("is a no-op when the danger-zone trigger is absent", () => {
+  it("is a no-op when the account panel is absent", () => {
     document.body.innerHTML = "<div id='Unrelated'></div>";
     initAccountRemoval();
     $("body").trigger("click");
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
-  });
-
-  it("deactivate: PUTs the password payload and navigates to the redirect", () => {
-    document.body.innerHTML = passwordHtml();
-    const assignSpy = vi
-      .spyOn(window.location, "assign")
-      .mockImplementation(() => {});
-    const successXhr = createMockXhr({
-      status: 200,
-      responseJSON: {
-        status: "Success",
-        message: "Deactivated.",
-        redirectUrl: REDIRECT_URL,
-      },
-    });
-    vi.mocked(ajaxCall).mockReturnValue(mockDone(successXhr));
-    initAccountRemoval();
-
-    $("#SettingsDeactivateBtn").trigger("click");
-    $("#SettingsDeactivateCurrentPassword").val(PASSWORD);
-    $("#SettingsDeactivateSubmitBtn").trigger("click");
-
-    expect(vi.mocked(ajaxCall)).toHaveBeenCalledWith("put", DEACTIVATE_URL, {
-      currentPassword: PASSWORD,
-    });
-    expect(assignSpy).toHaveBeenCalledWith(REDIRECT_URL);
-    expect($("#SettingsDeactivateCurrentPassword").val()).toBe("");
-    assignSpy.mockRestore();
   });
 
   it("delete: submits typed-username + password and navigates on success", () => {
@@ -233,45 +212,8 @@ describe("account-removal", () => {
     expect(input.siblings(".invalid-feedback").text()).toBe(INCORRECT_MESSAGE);
   });
 
-  it("deactivate: does nothing further when the failure is an already-handled 429", () => {
+  it("logout-everywhere: POSTs an empty body and navigates to the redirect", () => {
     document.body.innerHTML = passwordHtml();
-    vi.mocked(is429Handled).mockReturnValue(true);
-    const failedXhr = createMockXhr({ status: 429 });
-    vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));
-    initAccountRemoval();
-
-    $("#SettingsDeactivateBtn").trigger("click");
-    $("#SettingsDeactivateCurrentPassword").val(PASSWORD);
-    $("#SettingsDeactivateSubmitBtn").trigger("click");
-
-    expect($("#SettingsDeactivateError").hasClass("d-none")).toBe(true);
-  });
-
-  it("deactivate: surfaces a service JSON-429 lockout message in the in-modal banner", () => {
-    document.body.innerHTML = passwordHtml();
-    vi.mocked(is429Handled).mockReturnValue(false);
-    const failedXhr = createMockXhr({
-      status: 429,
-      responseJSON: {
-        status: "Failure",
-        message: LOCKOUT_MESSAGE,
-        errorCode: 3,
-      },
-    });
-    vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));
-    initAccountRemoval();
-
-    $("#SettingsDeactivateBtn").trigger("click");
-    $("#SettingsDeactivateCurrentPassword").val(PASSWORD);
-    $("#SettingsDeactivateSubmitBtn").trigger("click");
-
-    const error = $("#SettingsDeactivateError");
-    expect(error.hasClass("d-none")).toBe(false);
-    expect(error.text()).toBe(LOCKOUT_MESSAGE);
-  });
-
-  it("OAuth-only deactivate: re-auth button submits a null password and navigates", () => {
-    document.body.innerHTML = oauthHtml();
     const assignSpy = vi
       .spyOn(window.location, "assign")
       .mockImplementation(() => {});
@@ -279,21 +221,58 @@ describe("account-removal", () => {
       status: 200,
       responseJSON: {
         status: "Success",
-        message: "Redirecting.",
-        redirectUrl: OAUTH_REDIRECT_URL,
+        message: "Signed out everywhere.",
+        redirectUrl: REDIRECT_URL,
       },
     });
     vi.mocked(ajaxCall).mockReturnValue(mockDone(successXhr));
     initAccountRemoval();
 
-    $("#SettingsDeactivateBtn").trigger("click");
-    $("#SettingsDeactivateReauthBtn").trigger("click");
+    $("#SettingsLogoutEverywhereBtn").trigger("click");
+    $("#SettingsLogoutEverywhereSubmitBtn").trigger("click");
 
-    expect(vi.mocked(ajaxCall)).toHaveBeenCalledWith("put", DEACTIVATE_URL, {
-      currentPassword: null,
-    });
-    expect(assignSpy).toHaveBeenCalledWith(OAUTH_REDIRECT_URL);
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalledWith(
+      "post",
+      LOGOUT_EVERYWHERE_URL,
+      {},
+    );
+    expect(assignSpy).toHaveBeenCalledWith(REDIRECT_URL);
     assignSpy.mockRestore();
+  });
+
+  it("logout-everywhere: does nothing further when the failure is an already-handled 429", () => {
+    document.body.innerHTML = passwordHtml();
+    vi.mocked(is429Handled).mockReturnValue(true);
+    const failedXhr = createMockXhr({ status: 429 });
+    vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));
+    initAccountRemoval();
+
+    $("#SettingsLogoutEverywhereBtn").trigger("click");
+    $("#SettingsLogoutEverywhereSubmitBtn").trigger("click");
+
+    expect($("#SettingsLogoutEverywhereError").hasClass("d-none")).toBe(true);
+  });
+
+  it("logout-everywhere: surfaces a service-error message in the in-modal banner", () => {
+    document.body.innerHTML = passwordHtml();
+    vi.mocked(is429Handled).mockReturnValue(false);
+    const failedXhr = createMockXhr({
+      status: 500,
+      responseJSON: {
+        status: "Failure",
+        message: SERVICE_ERROR_MESSAGE,
+        errorCode: 1,
+      },
+    });
+    vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));
+    initAccountRemoval();
+
+    $("#SettingsLogoutEverywhereBtn").trigger("click");
+    $("#SettingsLogoutEverywhereSubmitBtn").trigger("click");
+
+    const error = $("#SettingsLogoutEverywhereError");
+    expect(error.hasClass("d-none")).toBe(false);
+    expect(error.text()).toBe(SERVICE_ERROR_MESSAGE);
   });
 
   it("OAuth-only delete: the re-auth button is gated by the typed-username match (DD-8)", () => {
@@ -309,14 +288,9 @@ describe("account-removal", () => {
     expect($("#SettingsDeleteReauthBtn").is("[disabled]")).toBe(false);
   });
 
-  it("clears the password field on dismiss for BOTH modals (DD-7, deactivate not exempt)", () => {
+  it("clears the delete modal fields on dismiss (DD-7)", () => {
     document.body.innerHTML = passwordHtml();
     initAccountRemoval();
-
-    $("#SettingsDeactivateBtn").trigger("click");
-    $("#SettingsDeactivateCurrentPassword").val(PASSWORD);
-    $("#SettingsDeactivateModal").trigger("hidden.bs.modal");
-    expect($("#SettingsDeactivateCurrentPassword").val()).toBe("");
 
     $("#SettingsDeleteBtn").trigger("click");
     $("#SettingsDeleteConfirmUsername").val(USERNAME);
@@ -364,10 +338,16 @@ describe("account-removal", () => {
     vi.mocked(ajaxCall).mockReturnValue(createMockJqXHRChainable());
     initAccountRemoval();
 
-    $("#SettingsDeactivateBtn").trigger("click");
-    $("#SettingsDeactivateCurrentPassword").val(PASSWORD);
-    $("#SettingsDeactivateSubmitBtn").trigger("click");
-    $("#SettingsDeactivateCurrentPassword").trigger(
+    // Delete keeps real text inputs, so its Enter-keyup route genuinely
+    // re-enters submitRemoval() and exercises the shared reentrancy guard —
+    // unlike logout-everywhere, whose field-less modal never binds keyup.
+    $("#SettingsDeleteBtn").trigger("click");
+    $("#SettingsDeleteConfirmUsername").val(USERNAME);
+    $("#SettingsDeleteCurrentPassword").val(PASSWORD);
+    keyup("SettingsDeleteConfirmUsername");
+    keyup("SettingsDeleteCurrentPassword");
+    $("#SettingsDeleteSubmitBtn").trigger("click");
+    $("#SettingsDeleteCurrentPassword").trigger(
       $.Event("keyup", { key: "Enter" }),
     );
 
@@ -378,10 +358,10 @@ describe("account-removal", () => {
     document.body.innerHTML = passwordHtml();
     initAccountRemoval();
 
-    $("#SettingsDeactivateBtn").trigger("click");
+    $("#SettingsLogoutEverywhereBtn").trigger("click");
 
     expect(vi.mocked(emit)).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_ACCOUNT_DEACTIVATE_OPEN,
+      event: UI_EVENTS.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN,
     });
   });
 

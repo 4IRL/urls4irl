@@ -161,10 +161,10 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_CONTACT_SUBMIT: Resource.CONTACT,
     EventName.UI_ERROR_PAGE_REFRESH: Resource.ERROR,
     EventName.UI_RATE_LIMIT_HIT: Resource.ERROR,
-    # UI — Account (settings danger zone)
-    EventName.UI_ACCOUNT_DEACTIVATE_OPEN: Resource.AUTH,
-    EventName.UI_ACCOUNT_DEACTIVATE_CONFIRM: Resource.AUTH,
-    EventName.UI_ACCOUNT_DEACTIVATE_CANCEL: Resource.AUTH,
+    # UI — Account (settings account tab)
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN: Resource.AUTH,
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CONFIRM: Resource.AUTH,
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CANCEL: Resource.AUTH,
     EventName.UI_ACCOUNT_DELETE_OPEN: Resource.AUTH,
     EventName.UI_ACCOUNT_DELETE_CONFIRM: Resource.AUTH,
     EventName.UI_ACCOUNT_DELETE_CANCEL: Resource.AUTH,

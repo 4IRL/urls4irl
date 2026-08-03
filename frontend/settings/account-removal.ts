@@ -1,26 +1,29 @@
 /**
- * Account-removal controller for the settings page (Account tab, danger zone).
+ * Account-security controller for the settings page (Account tab).
  *
- * Drives the two bespoke dark modals (`#SettingsDeactivateModal`,
- * `#SettingsDeleteModal`) rendered by Jinja in `pages/settings.html`. Like
- * `change-email.ts` / `change-password.ts`, it binds delegated handlers on
+ * Drives two bespoke dark modals rendered by Jinja in `pages/settings.html`:
+ * the danger-zone account DELETE (`#SettingsDeleteModal`) and the
+ * non-destructive "Log out everywhere" flow (`#SettingsLogoutEverywhereModal`).
+ * Like `change-email.ts` / `change-password.ts`, it binds delegated handlers on
  * `document` keyed by ids + a small `data-*` contract read off each modal
- * (`data-action-url` = the PUT/DELETE target). The whole danger zone is absent
- * from the DOM only in tests; for a real signed-in user it always renders, so
- * `initAccountRemoval()` no-ops when the trigger is missing.
+ * (`data-action-url` = the request target). The Account panel is absent from
+ * the DOM only in tests; for a real signed-in user it always renders, so
+ * `initAccountRemoval()` no-ops when the `#SettingsPanelAccount` container is
+ * missing.
  *
- * Re-auth branches on which controls the template rendered (server-gated by
- * `connected_accounts_has_password`): password accounts get a password input +
+ * Delete's re-auth branches on which controls the template rendered (server-gated
+ * by `connected_accounts_has_password`): password accounts get a password input +
  * a confirm button; OAuth-only accounts get a "Re-authenticate with <provider>"
- * button that starts the OAuth-proof round-trip. Both paths hit the SAME
+ * button that starts the OAuth-proof round-trip. Both paths hit the SAME delete
  * endpoint — password path sends `{ currentPassword }`, OAuth path sends
- * `{ currentPassword: null }` — and on a 200 navigate to `response.redirectUrl`
- * (splash after logout, or the provider redirect for the OAuth round-trip).
+ * `{ currentPassword: null }` — and on a 200 navigate to `response.redirectUrl`.
  *
  * Delete requires a typed-username confirmation (DD-C): one shared gate keyed
  * off the typed-username input disables BOTH the password-path submit AND the
- * OAuth-only re-auth button until the typed name exactly matches (DD-8). The
- * deactivate modal has no typed confirmation, so its controls are ungated.
+ * OAuth-only re-auth button until the typed name exactly matches (DD-8). Log out
+ * everywhere is reversible and non-destructive, so it has no password field, no
+ * re-auth branch, and no typed confirmation (D-1) — its Confirm button POSTs an
+ * empty body and, on 200, navigates to the splash redirect.
  */
 
 import type { Schema } from "../types/api-helpers.d.ts";
@@ -48,37 +51,38 @@ const GENERIC_ERROR_MESSAGE = "Unable to process request.";
 const FIELD_CURRENT_PASSWORD = "currentPassword";
 const FIELD_CONFIRM_USERNAME = "confirmUsername";
 
-// Per-modal wiring. `method` is the HTTP verb; `requiresTypedUsername` marks the
-// delete modal, whose submit + re-auth button are gated by the typed-username
-// match (DD-8). `hiddenEventName` is the namespaced `hidden.bs.modal` name bound
-// once via offAndOnExact (DD-7).
+// Per-modal wiring. `method` is the HTTP verb. A non-null `confirmUsernameId`
+// marks the delete modal, whose submit + re-auth button are gated by the
+// typed-username match (DD-8); `passwordId`/`reauthBtnId` are null for the
+// field-less logout-everywhere modal (D-1). `hiddenEventName` is the namespaced
+// `hidden.bs.modal` name bound once via offAndOnExact (DD-7).
 interface ModalConfig {
   modalId: string;
   triggerId: string;
   submitBtnId: string;
-  reauthBtnId: string;
-  passwordId: string;
+  reauthBtnId: string | null;
+  passwordId: string | null;
   confirmUsernameId: string | null;
   errorId: string;
-  method: "put" | "delete";
+  method: "put" | "delete" | "post";
   hiddenEventName: string;
   events: { open: UIEventName; confirm: UIEventName; cancel: UIEventName };
 }
 
-const DEACTIVATE_CONFIG: ModalConfig = {
-  modalId: "SettingsDeactivateModal",
-  triggerId: "SettingsDeactivateBtn",
-  submitBtnId: "SettingsDeactivateSubmitBtn",
-  reauthBtnId: "SettingsDeactivateReauthBtn",
-  passwordId: "SettingsDeactivateCurrentPassword",
+const LOGOUT_EVERYWHERE_CONFIG: ModalConfig = {
+  modalId: "SettingsLogoutEverywhereModal",
+  triggerId: "SettingsLogoutEverywhereBtn",
+  submitBtnId: "SettingsLogoutEverywhereSubmitBtn",
+  reauthBtnId: null,
+  passwordId: null,
   confirmUsernameId: null,
-  errorId: "SettingsDeactivateError",
-  method: "put",
-  hiddenEventName: "hidden.bs.modal.accountDeactivate",
+  errorId: "SettingsLogoutEverywhereError",
+  method: "post",
+  hiddenEventName: "hidden.bs.modal.logoutEverywhere",
   events: {
-    open: UI_EVENTS.UI_ACCOUNT_DEACTIVATE_OPEN,
-    confirm: UI_EVENTS.UI_ACCOUNT_DEACTIVATE_CONFIRM,
-    cancel: UI_EVENTS.UI_ACCOUNT_DEACTIVATE_CANCEL,
+    open: UI_EVENTS.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN,
+    confirm: UI_EVENTS.UI_ACCOUNT_LOGOUT_EVERYWHERE_CONFIRM,
+    cancel: UI_EVENTS.UI_ACCOUNT_LOGOUT_EVERYWHERE_CANCEL,
   },
 };
 
@@ -99,7 +103,7 @@ const DELETE_CONFIG: ModalConfig = {
   },
 };
 
-const ALL_CONFIGS = [DEACTIVATE_CONFIG, DELETE_CONFIG];
+const ALL_CONFIGS = [LOGOUT_EVERYWHERE_CONFIG, DELETE_CONFIG];
 
 // Per-open state: the trigger element to restore focus to on close, and whether
 // this open cycle reached a confirm (so `hidden.bs.modal` knows to emit CANCEL
@@ -108,7 +112,10 @@ const _triggerByModal = new Map<string, HTMLElement>();
 const _confirmedByModal = new Map<string, boolean>();
 
 export function initAccountRemoval(): void {
-  if (document.getElementById(DEACTIVATE_CONFIG.triggerId) === null) return;
+  // Key the no-op guard off the always-rendered Account panel container, not any
+  // single trigger id — the danger-zone/security cards it holds vary, but the
+  // panel is present whenever the settings Account tab renders.
+  if (document.getElementById("SettingsPanelAccount") === null) return;
 
   for (const config of ALL_CONFIGS) {
     bindModal(config);
@@ -149,18 +156,21 @@ function bindModal(config: ModalConfig): void {
       },
     );
 
-  // OAuth-only re-authenticate button (absent on password renders). Sends a
-  // null password so the service takes the OAuth-proof branch.
-  $(document)
-    .off(CLICK_NAMESPACE, `#${config.reauthBtnId}`)
-    .on(
-      CLICK_NAMESPACE,
-      `#${config.reauthBtnId}`,
-      function (event: JQuery.ClickEvent) {
-        event.preventDefault();
-        submitRemoval(config, event.currentTarget as HTMLButtonElement, true);
-      },
-    );
+  // OAuth-only re-authenticate button (absent on password renders, and absent
+  // entirely for logout-everywhere, which has no re-auth branch). Sends a null
+  // password so the service takes the OAuth-proof branch.
+  if (config.reauthBtnId) {
+    $(document)
+      .off(CLICK_NAMESPACE, `#${config.reauthBtnId}`)
+      .on(
+        CLICK_NAMESPACE,
+        `#${config.reauthBtnId}`,
+        function (event: JQuery.ClickEvent) {
+          event.preventDefault();
+          submitRemoval(config, event.currentTarget as HTMLButtonElement, true);
+        },
+      );
+  }
 
   // Enter-to-submit + live gate recompute on the modal's TEXT inputs only
   // (DD-9). Native `<button>`s already fire click on Enter, so the re-auth
@@ -177,7 +187,7 @@ function bindModal(config: ModalConfig): void {
         textInputSelector,
         function (event: JQuery.KeyUpEvent) {
           // Recompute the typed-username gate synchronously on every keystroke
-          // (delete only; deactivate has no gate).
+          // (delete only; logout-everywhere is field-less and has no gate).
           refreshGate(config);
           if (event.key !== "Enter") return;
           submitFromEnter(config);
@@ -187,7 +197,8 @@ function bindModal(config: ModalConfig): void {
 
   // DD-7 field-clear-on-dismiss: one handler per modal, firing for every
   // dismissal path (Cancel/Escape/backdrop). Both modals get it — the
-  // deactivate modal is NOT exempt just because it has a single field.
+  // field-less logout-everywhere modal is not exempt (its handler still emits
+  // the CANCEL metric and returns focus to the trigger on dismissal).
   $(`#${config.modalId}`)
     .off(config.hiddenEventName)
     .offAndOnExact(config.hiddenEventName, function () {
@@ -198,7 +209,8 @@ function bindModal(config: ModalConfig): void {
 // The modal's text-input ids (never the native re-auth buttons): the password
 // input plus, for delete, the typed-username input.
 function textInputIds(config: ModalConfig): string[] {
-  const ids = [config.passwordId];
+  const ids: string[] = [];
+  if (config.passwordId) ids.push(config.passwordId);
   if (config.confirmUsernameId) ids.push(config.confirmUsernameId);
   return ids;
 }
@@ -220,6 +232,7 @@ function submitFromEnter(config: ModalConfig): void {
     submitRemoval(config, submitBtn as HTMLButtonElement, false);
     return;
   }
+  if (!config.reauthBtnId) return;
   const reauthBtn = document.getElementById(config.reauthBtnId);
   if (reauthBtn) submitRemoval(config, reauthBtn as HTMLButtonElement, true);
 }
@@ -236,11 +249,15 @@ function submitRemoval(
   const actionUrl = $(`#${config.modalId}`).attr("data-action-url");
   if (!actionUrl) return;
 
-  const currentPassword = isOauthReauth
-    ? null
-    : String($(`#${config.passwordId}`).val() ?? "");
-
-  const payload: Record<string, string | null> = { currentPassword };
+  // Logout-everywhere has no password field (D-1), so its payload stays `{}` —
+  // `ajaxCall`'s isJsonBody check then sends no body / no Content-Type at all
+  // (harmless, since the route's `request_schema=None` never parses one).
+  const payload: Record<string, string | null> = {};
+  if (config.passwordId) {
+    payload.currentPassword = isOauthReauth
+      ? null
+      : String($(`#${config.passwordId}`).val() ?? "");
+  }
   if (config.confirmUsernameId) {
     payload.confirmUsername = String(
       $(`#${config.confirmUsernameId}`).val() ?? "",
@@ -265,7 +282,7 @@ function submitRemoval(
       return;
     }
     // Never leave the secret in the DOM before navigating away.
-    $(`#${config.passwordId}`).val("");
+    if (config.passwordId) $(`#${config.passwordId}`).val("");
     // Splash after logout, or the provider redirect for the OAuth round-trip.
     window.location.assign(response.redirectUrl);
   });
@@ -310,7 +327,11 @@ function renderFieldErrors(
 // Recompute the delete modal's gate (DD-8): the submit is enabled only when the
 // typed username matches AND (for password accounts) the password is non-empty;
 // the OAuth re-auth button is enabled once the typed username matches. The
-// deactivate modal has no typed-username field, so its controls stay ungated.
+// logout-everywhere modal has no typed-username field, so its controls stay
+// ungated. A control that is currently in flight (`aria-busy`) is NEVER
+// re-enabled here — otherwise a keystroke during an in-flight request (including
+// the Enter that fired it) would strip the setInFlight `disabled` guard and let
+// `submitRemoval` fire a duplicate request.
 function refreshGate(config: ModalConfig): void {
   if (!config.confirmUsernameId) return;
 
@@ -326,8 +347,23 @@ function refreshGate(config: ModalConfig): void {
   const passwordNonEmpty =
     String($(`#${config.passwordId}`).val() ?? "").length > 0;
 
-  setDisabled(config.submitBtnId, !(usernameMatches && passwordNonEmpty));
-  setDisabled(config.reauthBtnId, !usernameMatches);
+  const submitInFlight = isInFlight(config.submitBtnId);
+  setDisabled(
+    config.submitBtnId,
+    submitInFlight || !(usernameMatches && passwordNonEmpty),
+  );
+  if (config.reauthBtnId) {
+    const reauthInFlight = isInFlight(config.reauthBtnId);
+    setDisabled(config.reauthBtnId, reauthInFlight || !usernameMatches);
+  }
+}
+
+// A control is "in flight" while setInFlight has marked it aria-busy; the gate
+// must not re-enable it until the request settles.
+function isInFlight(elementId: string): boolean {
+  return (
+    document.getElementById(elementId)?.getAttribute("aria-busy") === "true"
+  );
 }
 
 function onModalHidden(config: ModalConfig): void {
@@ -343,7 +379,7 @@ function onModalHidden(config: ModalConfig): void {
 }
 
 function clearFields(config: ModalConfig): void {
-  $(`#${config.passwordId}`).val("");
+  if (config.passwordId) $(`#${config.passwordId}`).val("");
   if (config.confirmUsernameId) $(`#${config.confirmUsernameId}`).val("");
   // Re-close the gate now that the fields are empty.
   refreshGate(config);
@@ -359,8 +395,8 @@ function setInFlight(
     return;
   }
   $(buttonEl).removeAttr("aria-busy");
-  // Re-enable per the gate (delete) or unconditionally (deactivate) so a failed
-  // attempt leaves the modal usable for a retry.
+  // Re-enable per the gate (delete) or unconditionally (logout-everywhere) so a
+  // failed attempt leaves the modal usable for a retry.
   if (config.confirmUsernameId) {
     refreshGate(config);
   } else {

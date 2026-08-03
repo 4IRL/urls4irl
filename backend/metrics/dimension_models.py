@@ -531,10 +531,10 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_CONTACT_SUBMIT: _DimDeviceOnly,
     EventName.UI_ERROR_PAGE_REFRESH: _DimDeviceOnly,
     EventName.UI_RATE_LIMIT_HIT: _DimDeviceOnly,
-    # UI — Account (settings danger zone)
-    EventName.UI_ACCOUNT_DEACTIVATE_OPEN: _DimDeviceOnly,
-    EventName.UI_ACCOUNT_DEACTIVATE_CONFIRM: _DimDeviceOnly,
-    EventName.UI_ACCOUNT_DEACTIVATE_CANCEL: _DimDeviceOnly,
+    # UI — Account (settings account tab)
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN: _DimDeviceOnly,
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CONFIRM: _DimDeviceOnly,
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CANCEL: _DimDeviceOnly,
     EventName.UI_ACCOUNT_DELETE_OPEN: _DimDeviceOnly,
     EventName.UI_ACCOUNT_DELETE_CONFIRM: _DimDeviceOnly,
     EventName.UI_ACCOUNT_DELETE_CANCEL: _DimDeviceOnly,

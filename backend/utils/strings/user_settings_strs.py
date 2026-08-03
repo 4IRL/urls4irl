@@ -28,6 +28,24 @@ class USER_SETTINGS_STRINGS:
     CONNECT_CONTINUE_BUTTON_TEXT = "Continue"
     CONNECT_CANCEL_BUTTON_TEXT = "Cancel"
 
+    # Log out everywhere (Account tab, security area — NON-destructive, so it sits
+    # outside the danger zone). Reuses the .SettingsRemovalModal dark-modal chrome
+    # for its confirm dialog. Jinja-rendered only; heading/button/modal title are
+    # re-exported via ui_testing_strs for Python UI assertions — no JS string
+    # bridge (the confirm dialog carries no dynamic copy).
+    LOGOUT_EVERYWHERE_TITLE = "Log out everywhere"
+    LOGOUT_EVERYWHERE_HINT = (
+        "Signs you out on every device. You'll need to log back in."
+    )
+    LOGOUT_EVERYWHERE_BUTTON = "Log out everywhere…"
+    LOGOUT_EVERYWHERE_MODAL_TITLE = "Log out on all devices?"
+    LOGOUT_EVERYWHERE_MODAL_WARNING_LEAD = "This is reversible."
+    LOGOUT_EVERYWHERE_MODAL_WARNING_BODY = (
+        "Every signed-in device — including this one — is signed out immediately. "
+        "Nothing is deleted; just log back in to return."
+    )
+    LOGOUT_EVERYWHERE_MODAL_CONFIRM_BUTTON = "Log out everywhere"
+
     # Account information section (Account tab). Read-only card labels for the
     # username / email / member-since / email-verified block. Jinja-rendered
     # only; re-exported via ui_testing_strs for Python UI assertions — no JS
@@ -130,15 +148,9 @@ class USER_SETTINGS_STRINGS:
     # not APP_CONFIG). Copy grounded in the danger-zone mockups.
     DANGER_ZONE_TITLE = "Danger zone"
     DANGER_ZONE_HINT = (
-        "These actions affect your whole account. Deactivating is reversible; "
-        "deleting is not."
+        "This action affects your whole account. Deleting is permanent and "
+        "cannot be undone."
     )
-    DANGER_ZONE_DEACTIVATE_CARD_TITLE = "Deactivate account"
-    DANGER_ZONE_DEACTIVATE_CARD_BODY = (
-        "Pause your account and hide it. Your UTubs, memberships, and data are "
-        "kept — log back in anytime to restore it."
-    )
-    DANGER_ZONE_DEACTIVATE_CARD_BUTTON = "Deactivate…"
     DANGER_ZONE_DELETE_CARD_TITLE = "Delete account"
     DANGER_ZONE_DELETE_CARD_BODY = (
         "Permanently erase your account and personal data. This cannot be undone."
@@ -152,23 +164,6 @@ class USER_SETTINGS_STRINGS:
     REMOVAL_REAUTH_PROVIDER_BUTTON = "Re-authenticate with {provider}"
     REMOVAL_REAUTH_REDIRECT_HINT = "You'll return here to finish after signing in."
     REMOVAL_PASSWORD_PLACEHOLDER = "Current password"
-
-    # Deactivate modal
-    DEACTIVATE_MODAL_TITLE = "Deactivate your account?"
-    DEACTIVATE_MODAL_WARNING_LEAD = "This is reversible."
-    DEACTIVATE_MODAL_WARNING_BODY = (
-        "Your account is paused and hidden. Nothing is deleted — your UTubs, "
-        "memberships, and contributions stay exactly as they are."
-    )
-    DEACTIVATE_MODAL_NOTICE_SIGNED_OUT = (
-        "You'll be signed out on all devices right away."
-    )
-    DEACTIVATE_MODAL_NOTICE_REACTIVATE = (
-        "To come back, just log in again — your account reactivates automatically."
-    )
-    DEACTIVATE_MODAL_PASSWORD_LABEL = "Confirm your password"
-    DEACTIVATE_MODAL_PASSWORD_HINT = "to continue"
-    DEACTIVATE_MODAL_CONFIRM_BUTTON = "Deactivate account"
 
     # Delete modal
     DELETE_MODAL_TITLE = "Delete your account permanently?"

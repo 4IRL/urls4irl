@@ -279,9 +279,9 @@ export type UIEventDimensions = {
   ui_contact_submit: DimDeviceOnly;
   ui_error_page_refresh: DimDeviceOnly;
   ui_rate_limit_hit: DimDeviceOnly;
-  ui_account_deactivate_open: DimDeviceOnly;
-  ui_account_deactivate_confirm: DimDeviceOnly;
-  ui_account_deactivate_cancel: DimDeviceOnly;
+  ui_account_logout_everywhere_open: DimDeviceOnly;
+  ui_account_logout_everywhere_confirm: DimDeviceOnly;
+  ui_account_logout_everywhere_cancel: DimDeviceOnly;
   ui_account_delete_open: DimDeviceOnly;
   ui_account_delete_confirm: DimDeviceOnly;
   ui_account_delete_cancel: DimDeviceOnly;

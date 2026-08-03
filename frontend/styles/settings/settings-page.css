@@ -566,6 +566,19 @@
     border-color: var(--removeIconColorHover);
 }
 
+/* The non-destructive "Log out everywhere" confirm uses .btn-success; theme it to
+   the dark modal palette rather than Bootstrap's default un-themed green. */
+.SettingsRemovalModal .btn-success {
+    background: var(--splashGreen);
+    color: #fff;
+    border: 1px solid var(--splashGreen);
+}
+
+.SettingsRemovalModal .btn-success:hover {
+    background: var(--darkSplashGreen);
+    border-color: var(--darkSplashGreen);
+}
+
 .SettingsDangerZone .btn,
 .SettingsRemovalModal .btn,
 .SettingsRemovalModal .btn-close,
@@ -745,7 +758,8 @@
 }
 
 .SettingsRemovalModal .btn-danger[disabled],
-.SettingsRemovalModal .btn-warning[disabled] {
+.SettingsRemovalModal .btn-warning[disabled],
+.SettingsRemovalModal .btn-success[disabled] {
     opacity: 0.45;
     cursor: not-allowed;
 }

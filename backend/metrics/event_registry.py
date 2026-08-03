@@ -625,17 +625,17 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="429 rate limit response shown to user",
         category=EventCategory.UI,
     ),
-    # UI — Account (settings danger zone)
-    EventName.UI_ACCOUNT_DEACTIVATE_OPEN: EventRegistryEntry(
-        description="Account deactivate-confirm modal opened",
+    # UI — Account (settings account tab)
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN: EventRegistryEntry(
+        description="Log-out-everywhere confirm modal opened",
         category=EventCategory.UI,
     ),
-    EventName.UI_ACCOUNT_DEACTIVATE_CONFIRM: EventRegistryEntry(
-        description="Account deactivate confirmed",
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CONFIRM: EventRegistryEntry(
+        description="Log-out-everywhere confirmed",
         category=EventCategory.UI,
     ),
-    EventName.UI_ACCOUNT_DEACTIVATE_CANCEL: EventRegistryEntry(
-        description="Account deactivate-confirm modal dismissed",
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CANCEL: EventRegistryEntry(
+        description="Log-out-everywhere confirm modal dismissed",
         category=EventCategory.UI,
     ),
     EventName.UI_ACCOUNT_DELETE_OPEN: EventRegistryEntry(
