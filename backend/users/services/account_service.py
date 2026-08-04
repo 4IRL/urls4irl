@@ -525,9 +525,8 @@ def reject_self_sole_admin(user: Users) -> FlaskResponse | None:
     Returns ``None`` when ``user`` is not an admin (the guard does not apply).
     Otherwise counts the OTHER active (unsuspended) admins; if none remain,
     removing this account would leave the portal with zero admins, so it returns
-    a 403 with the literal error code ``4`` — which is
-    ``SOLE_ADMIN_FORBIDDEN`` on ``DeleteAccountErrorCodes``, so this shared
-    response is correct without a per-endpoint enum import.
+    a 403 with ``DeleteAccountErrorCodes.SOLE_ADMIN_FORBIDDEN`` — the enum is
+    already imported here, so the shared response uses it directly.
     """
     if user.role != User_Role.ADMIN:
         return None
@@ -542,7 +541,7 @@ def reject_self_sole_admin(user: Users) -> FlaskResponse | None:
 
     return build_message_error_response(
         message=USER_FAILURE.SOLE_ADMIN_CANNOT_LEAVE,
-        error_code=4,
+        error_code=DeleteAccountErrorCodes.SOLE_ADMIN_FORBIDDEN,
         status_code=403,
     )
 
