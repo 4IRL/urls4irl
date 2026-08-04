@@ -33,11 +33,11 @@ pytestmark = pytest.mark.settings_ui
 DEFAULT_USER_ID: int = 1
 
 # `flask addmock users` promotes user 1 (`u4i_test1`) to the sole ADMIN role, so
-# a self deactivate/delete by user 1 is blocked by the sole-admin guard
+# a self delete by user 1 is blocked by the sole-admin guard
 # (`reject_self_sole_admin`, guard step 2 — ahead of the password check). The
-# actual-submit removal tests therefore act as a NON-admin user (user 2), whose
-# seeded password follows the seeder's `plaintext_password = email = username +
-# EMAIL_SUFFIX` convention.
+# actual-submit delete/logout-everywhere tests therefore act as a NON-admin user
+# (user 2), whose seeded password follows the seeder's `plaintext_password =
+# email = username + EMAIL_SUFFIX` convention.
 _NON_ADMIN_USER_ID: int = 2
 _NON_ADMIN_PASSWORD: str = UI_TEST_STRINGS.TEST_USERNAME_2 + EMAIL_SUFFIX
 
@@ -785,20 +785,21 @@ def test_change_email_pending_warning_absent_when_no_pending(
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 — Account danger zone: self-service deactivate + delete (Step 7).
+# Account tab — self-service session-revocation ("Log out everywhere") + the
+# irreversible Delete flow.
 #
-# End-to-end UI coverage of both destructive flows against the built app. The
-# happy paths assert the post-logout redirect to the splash page (`/`); the
-# sad/gate paths assert the in-modal behavior (field error without closing,
-# typed-username gate, OAuth-only re-auth control, focus return, field-clear on
-# dismiss). These exercise the real Bootstrap `hidden.bs.modal` lifecycle end to
-# end — something the `_resetAccountRemovalForTests()`-mocked Vitest suite (Step
-# 6), running against a synthetic HTML fixture, cannot catch.
+# End-to-end UI coverage against the built app. The happy paths assert the
+# post-logout redirect to the splash page (`/`); the gate paths assert the
+# in-modal behavior (typed-username gate, focus return, field-clear on dismiss).
+# These exercise the real Bootstrap `hidden.bs.modal` lifecycle end to end —
+# something the `_resetAccountRemovalForTests()`-mocked Vitest suite, running
+# against a synthetic HTML fixture, cannot catch.
 # ---------------------------------------------------------------------------
 
 # The client navigates to the splash page (`/`, ROUTES.SPLASH.SPLASH_PAGE) after
-# a successful removal logs the acting session out. Matches `scheme://host:port/`
-# exactly — the settings URL (`.../settings`, no trailing slash) never matches.
+# a successful logout-everywhere/delete logs the acting session out. Matches
+# `scheme://host:port/` exactly — the settings URL (`.../settings`, no trailing
+# slash) never matches.
 _SPLASH_ROOT_URL = re.compile(r"://[^/]+/$")
 
 
@@ -809,16 +810,16 @@ def _current_username(page: Page) -> str:
     return page.locator(SPL.ACCOUNT_INFO_USERNAME_VALUE).inner_text().strip()
 
 
-def test_deactivate_happy_path_redirects_to_splash(
+def test_logout_everywhere_happy_path_redirects_to_splash(
     page: Page,
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
 ):
     """
-    GIVEN a logged-in local-password user on the settings Account tab
-    WHEN they open the Deactivate modal, enter their correct current password,
-        and click Deactivate
+    GIVEN a logged-in user on the settings Account tab
+    WHEN they open the "Log out everywhere" modal and click Confirm (no typed
+        username or password fields — the flow is non-destructive, D-1)
     THEN the acting session is logged out and the browser navigates to the
         splash page.
     """
@@ -831,10 +832,9 @@ def test_deactivate_happy_path_redirects_to_splash(
         config=provide_config,
     )
 
-    wait_then_click_element(page=page, css_selector=SPL.DEACTIVATE_TRIGGER)
-    expect(page.locator(SPL.DEACTIVATE_MODAL)).to_be_visible()
-    page.fill(SPL.DEACTIVATE_CURRENT_PASSWORD_INPUT, _NON_ADMIN_PASSWORD)
-    wait_then_click_element(page=page, css_selector=SPL.DEACTIVATE_SUBMIT_BTN)
+    wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_TRIGGER)
+    expect(page.locator(SPL.LOGOUT_EVERYWHERE_MODAL)).to_be_visible()
+    wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_SUBMIT_BTN)
 
     expect(page).to_have_url(_SPLASH_ROOT_URL)
 
@@ -878,43 +878,6 @@ def test_delete_happy_path_redirects_to_splash(
     submit.click()
 
     expect(page).to_have_url(_SPLASH_ROOT_URL)
-
-
-def test_deactivate_wrong_password_shows_in_modal_error_without_closing(
-    page: Page,
-    provide_app: Flask,
-    provide_port: int,
-    provide_config: ConfigTestUI,
-):
-    """
-    GIVEN a logged-in local-password user with the Deactivate modal open
-    WHEN they submit an incorrect current password
-    THEN the modal stays open, the password input is flagged invalid, and the
-        "current password is incorrect" field error is shown in place.
-    """
-    login_user_and_open_settings(
-        app=provide_app,
-        context=page.context,
-        page=page,
-        port=provide_port,
-        user_id=_NON_ADMIN_USER_ID,
-        config=provide_config,
-    )
-
-    wait_then_click_element(page=page, css_selector=SPL.DEACTIVATE_TRIGGER)
-    expect(page.locator(SPL.DEACTIVATE_MODAL)).to_be_visible()
-    page.fill(SPL.DEACTIVATE_CURRENT_PASSWORD_INPUT, "definitely-the-wrong-password")
-    wait_then_click_element(page=page, css_selector=SPL.DEACTIVATE_SUBMIT_BTN)
-
-    # The modal remains open (no navigation) and the field error renders in place.
-    expect(page.locator(SPL.DEACTIVATE_MODAL)).to_be_visible()
-    expect(page).to_have_url(re.compile(r"/settings$"))
-    invalid_feedback = page.locator(SPL.DEACTIVATE_PASSWORD_INVALID_FEEDBACK)
-    expect(invalid_feedback).to_be_visible()
-    expect(invalid_feedback).to_have_text(USER_FAILURE.CURRENT_PASSWORD_INCORRECT)
-    expect(page.locator(SPL.DEACTIVATE_CURRENT_PASSWORD_INPUT)).to_have_class(
-        re.compile(r"\bis-invalid\b")
-    )
 
 
 def test_delete_typed_confirmation_gates_submit(
@@ -962,49 +925,37 @@ def test_delete_typed_confirmation_gates_submit(
     expect(submit).to_be_enabled()
 
 
-def test_deactivate_oauth_only_shows_reauthenticate_control(
-    page: Page,
-    provide_app: Flask,
-    provide_port: int,
-    provide_config: ConfigTestUI,
-):
-    """
-    GIVEN a logged-in OAuth-only (password-less) user
-    WHEN they open the Deactivate modal
-    THEN the "re-authenticate with <provider>" control is shown in place of the
-        password input + password-path submit (server-gated by
-        `connected_accounts_has_password`).
-    """
-    oauth_only_user_id = _seed_oauth_only_user(provide_app)
-
-    login_user_and_open_settings(
-        app=provide_app,
-        context=page.context,
-        page=page,
-        port=provide_port,
-        user_id=oauth_only_user_id,
-        config=provide_config,
-    )
-
-    wait_then_click_element(page=page, css_selector=SPL.DEACTIVATE_TRIGGER)
-    expect(page.locator(SPL.DEACTIVATE_MODAL)).to_be_visible()
-
-    # The OAuth-only re-auth control replaces the password field + submit button.
-    expect(page.locator(SPL.DEACTIVATE_REAUTH_BTN)).to_be_visible()
-    expect(page.locator(SPL.DEACTIVATE_CURRENT_PASSWORD_INPUT)).to_have_count(0)
-    expect(page.locator(SPL.DEACTIVATE_SUBMIT_BTN)).to_have_count(0)
-
-
+@pytest.mark.parametrize(
+    "trigger_selector, modal_selector, cancel_selector",
+    [
+        pytest.param(
+            SPL.DELETE_TRIGGER,
+            SPL.DELETE_MODAL,
+            SPL.DELETE_CANCEL_BTN,
+            id="delete-modal",
+        ),
+        pytest.param(
+            SPL.LOGOUT_EVERYWHERE_TRIGGER,
+            SPL.LOGOUT_EVERYWHERE_MODAL,
+            SPL.LOGOUT_EVERYWHERE_CANCEL_BTN,
+            id="logout-everywhere-modal",
+        ),
+    ],
+)
 def test_removal_modal_focus_returns_to_trigger_on_cancel(
     page: Page,
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
+    trigger_selector: str,
+    modal_selector: str,
+    cancel_selector: str,
 ):
     """
-    GIVEN a logged-in local-password user who opened the Deactivate modal
+    GIVEN a logged-in user who opened one of the settings modals (Delete or
+        Log out everywhere)
     WHEN they dismiss it with the Cancel button
-    THEN keyboard focus returns to the danger-zone trigger that opened it.
+    THEN keyboard focus returns to the trigger that opened it.
     """
     login_user_and_open_settings(
         app=provide_app,
@@ -1015,24 +966,17 @@ def test_removal_modal_focus_returns_to_trigger_on_cancel(
         config=provide_config,
     )
 
-    wait_then_click_element(page=page, css_selector=SPL.DEACTIVATE_TRIGGER)
-    expect(page.locator(SPL.DEACTIVATE_MODAL)).to_be_visible()
-    wait_then_click_element(page=page, css_selector=SPL.DEACTIVATE_CANCEL_BTN)
-    expect(page.locator(SPL.DEACTIVATE_MODAL)).to_be_hidden()
+    wait_then_click_element(page=page, css_selector=trigger_selector)
+    expect(page.locator(modal_selector)).to_be_visible()
+    wait_then_click_element(page=page, css_selector=cancel_selector)
+    expect(page.locator(modal_selector)).to_be_hidden()
 
-    wait_until_in_focus(page=page, css_selector=SPL.DEACTIVATE_TRIGGER)
+    wait_until_in_focus(page=page, css_selector=trigger_selector)
 
 
 @pytest.mark.parametrize(
     "trigger_selector, modal_selector, cancel_selector, field_selectors",
     [
-        pytest.param(
-            SPL.DEACTIVATE_TRIGGER,
-            SPL.DEACTIVATE_MODAL,
-            SPL.DEACTIVATE_CANCEL_BTN,
-            (SPL.DEACTIVATE_CURRENT_PASSWORD_INPUT,),
-            id="deactivate-modal-one-field",
-        ),
         pytest.param(
             SPL.DELETE_TRIGGER,
             SPL.DELETE_MODAL,
@@ -1053,10 +997,9 @@ def test_removal_modal_clears_fields_on_dismiss(
     field_selectors: tuple[str, ...],
 ):
     """
-    GIVEN a logged-in local-password user (DD-19, parametrized over BOTH removal
-        modals per DD-24 so the deactivate modal is not exempt just because it
-        has one field instead of two)
-    WHEN they type into every field of a modal, dismiss it, then reopen it
+    GIVEN a logged-in local-password user with the Delete modal (the only
+        removal modal carrying input fields — Log out everywhere has none)
+    WHEN they type into every field of the modal, dismiss it, then reopen it
     THEN every one of that modal's fields renders empty (DD-7 field-clear on the
         real `hidden.bs.modal` lifecycle — Cancel/Escape/backdrop all fire it).
     """

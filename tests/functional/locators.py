@@ -935,30 +935,27 @@ class SettingsPageLocators(GenericPageLocator):
     ROW_PASSWORD_CONTINUE_BTN = ".ConnectedAccountPasswordContinueBtn"
     ROW_PASSWORD_CANCEL_BTN = ".ConnectedAccountPasswordCancelBtn"
 
-    # Account danger zone (Account tab, Phase 4) — self-service deactivate/delete.
-    # Mirrors the ids rendered in the `.SettingsDangerZone` block of
-    # backend/templates/pages/settings.html plus the two bespoke dark modals in
-    # its `{% block modal_extender %}`, and the data-* contract documented in
-    # frontend/settings/account-removal.ts. The re-auth password inputs base on
-    # CHANGE_EMAIL_CURRENT_PASSWORD_INPUT's naming convention; the re-auth buttons
-    # (`#Settings{Deactivate,Delete}ReauthBtn`) render only for OAuth-only accounts
-    # (server-gated by `connected_accounts_has_password`), where the password
-    # inputs + password-path submit buttons are absent.
+    # Account danger zone (Account tab, Phase 4) — self-service delete — plus the
+    # non-destructive "Log out everywhere" security control that lives in the
+    # account panel's security area (near `#SettingsConnectedAccounts`), NOT in the
+    # Danger Zone. Mirrors the ids rendered in the `.SettingsDangerZone` block and
+    # the `#SettingsLogoutEverywhere` block of backend/templates/pages/settings.html
+    # plus the bespoke dark modals in its `{% block modal_extender %}`, and the
+    # data-* contract documented in frontend/settings/account-removal.ts. The delete
+    # re-auth password input bases on CHANGE_EMAIL_CURRENT_PASSWORD_INPUT's naming
+    # convention; the re-auth button (`#SettingsDeleteReauthBtn`) renders only for
+    # OAuth-only accounts (server-gated by `connected_accounts_has_password`), where
+    # the password input + password-path submit button are absent.
     DANGER_ZONE = "#SettingsPanelAccount .SettingsDangerZone"
-    DEACTIVATE_TRIGGER = "#SettingsDeactivateBtn"
     DELETE_TRIGGER = "#SettingsDeleteBtn"
 
-    # Deactivate modal (reversible pause).
-    DEACTIVATE_MODAL = "#SettingsDeactivateModal"
-    DEACTIVATE_CURRENT_PASSWORD_INPUT = "#SettingsDeactivateCurrentPassword"
-    DEACTIVATE_REAUTH_BTN = "#SettingsDeactivateReauthBtn"
-    DEACTIVATE_SUBMIT_BTN = "#SettingsDeactivateSubmitBtn"
-    DEACTIVATE_ERROR = "#SettingsDeactivateError"
-    DEACTIVATE_CANCEL_BTN = "#SettingsDeactivateModal .modal-footer .btn-secondary"
-    # Field-error feedback node injected by account-removal.ts's showFieldError()
-    # as a sibling of the password input (mirrors EMAIL_INVALID_FEEDBACK).
-    DEACTIVATE_PASSWORD_INVALID_FEEDBACK = (
-        "#SettingsDeactivateCurrentPassword ~ .invalid-feedback"
+    # Log out everywhere control + confirm modal (non-destructive, no re-auth: D-1).
+    LOGOUT_EVERYWHERE_TRIGGER = "#SettingsLogoutEverywhereBtn"
+    LOGOUT_EVERYWHERE_MODAL = "#SettingsLogoutEverywhereModal"
+    LOGOUT_EVERYWHERE_SUBMIT_BTN = "#SettingsLogoutEverywhereSubmitBtn"
+    LOGOUT_EVERYWHERE_ERROR = "#SettingsLogoutEverywhereError"
+    LOGOUT_EVERYWHERE_CANCEL_BTN = (
+        "#SettingsLogoutEverywhereModal .modal-footer .btn-secondary"
     )
 
     # Delete modal (irreversible erasure) — adds typed-username confirmation.
