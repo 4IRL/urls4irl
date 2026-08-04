@@ -482,14 +482,9 @@
 
 /* ---- Log out everywhere (Account tab) ----------------------------------- */
 
-/* Section heading matches the sibling section headings (change-*, danger-zone,
-   stats) so the security-area title is visually consistent. */
-.SettingsLogoutEverywhereTitle {
-    color: #fff;
-    font-size: 1.1rem;
-    margin: 0;
-    font-weight: 700;
-}
+/* The card title now sits inside the card as an <h4>, styled by the shared
+   .SettingsRemovalCardText h4 rule (mirroring the danger-zone Delete card), so
+   no dedicated outer-title rule is needed here. */
 
 /* Section spacing so the security-area card isn't cramped against the
    connected-accounts card above it (mirrors .SettingsDangerZone's margin-top). */

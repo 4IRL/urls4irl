@@ -37,7 +37,7 @@ class USER_SETTINGS_STRINGS:
     LOGOUT_EVERYWHERE_HINT = (
         "Signs you out on every device. You'll need to log back in."
     )
-    LOGOUT_EVERYWHERE_BUTTON = "Log out everywhere…"
+    LOGOUT_EVERYWHERE_BUTTON = "Log out…"
     LOGOUT_EVERYWHERE_MODAL_TITLE = "Log out on all devices?"
     LOGOUT_EVERYWHERE_MODAL_WARNING_LEAD = "This is reversible."
     LOGOUT_EVERYWHERE_MODAL_WARNING_BODY = (
