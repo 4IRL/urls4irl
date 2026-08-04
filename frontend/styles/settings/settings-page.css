@@ -486,26 +486,32 @@
    .SettingsRemovalCardText h4 rule (mirroring the danger-zone Delete card), so
    no dedicated outer-title rule is needed here. */
 
-/* Amber caution ZONE mirroring the red .SettingsDangerZone directly below it, so
-   the two read as a caution/danger pair: same box geometry, but bordered with the
-   caution-amber token (--utubLockedIconColor) instead of destructive red. The
-   inner .SettingsRemovalCard keeps its own neutral border + <h4> title (the same
-   zone+card double-frame the Danger zone already uses). No ⚠ glyph and no
-   zone-level heading — this is caution, not danger, and the title lives in the
-   card. margin-top keeps it from cramping against the connected-accounts card. */
+/* Amber caution box bordered with the caution-amber token (--utubLockedIconColor)
+   instead of the destructive red used by the .SettingsDangerZone below it, so the
+   two read as a caution/danger pair. Unlike the Danger zone (which has a heading +
+   hint filling the gap between its zone border and inner card), this control has no
+   zone heading, so it holds its content (title + description + button) DIRECTLY —
+   a single amber border, no nested bordered card. It therefore also carries the
+   flex row layout the old inner .SettingsRemovalCard provided (text left, button
+   right on desktop). No ⚠ glyph and no zone-level heading — this is caution, not
+   danger. margin-top keeps it from cramping against the connected-accounts card. */
 #SettingsLogoutEverywhere {
     border: 1px solid var(--utubLockedIconColor);
     border-radius: var(--radius-md);
     padding: var(--space-4);
     background: var(--panelBackgroundColor);
     margin-top: var(--space-6);
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: space-between;
 }
 
-/* The trigger now sits inside a filled .SettingsRemovalCard, so it must read as a
-   real, enabled action alongside its filled siblings (the green Connect buttons
-   and the red Delete button) rather than a transparent ghost. Give it a solid
-   neutral fill distinct from the card background, legible light text, a hover
-   lift toward the green accent, plus the settings interactive-element touch
+/* The trigger sits directly inside the amber #SettingsLogoutEverywhere box, so it
+   must read as a real, enabled action alongside its filled siblings (the green
+   Connect buttons and the red Delete button) rather than a transparent ghost. Give
+   it a solid neutral fill distinct from the box background, legible light text, a
+   hover lift toward the green accent, plus the settings interactive-element touch
    target and focus-visible outline conventions. Tokens only. */
 #SettingsLogoutEverywhereBtn {
     background: var(--panelBackgroundColor);
@@ -815,14 +821,18 @@
     border: 1px solid var(--borderColor);
 }
 
-/* Mobile: danger-zone triggers and modal footer buttons go full-width/stacked. */
+/* Mobile: danger-zone triggers and modal footer buttons go full-width/stacked. The
+   amber "Log out everywhere" box stacks the same way as its .SettingsRemovalCard
+   siblings, with its button going full-width. */
 @media (max-width: 575.98px) {
-    .SettingsRemovalCard {
+    .SettingsRemovalCard,
+    #SettingsLogoutEverywhere {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .SettingsDangerZone .btn {
+    .SettingsDangerZone .btn,
+    #SettingsLogoutEverywhereBtn {
         width: 100%;
     }
 
