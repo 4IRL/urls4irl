@@ -26,7 +26,7 @@ from flask.testing import FlaskClient
 from backend import db
 from backend.admin.account_data_service import is_tombstoned
 from backend.models.audit_log import AuditLog
-from backend.models.users import Users
+from backend.models.users import User_Role, Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.splash.services.oauth.constants import (
@@ -37,6 +37,7 @@ from backend.splash.services.oauth.linking_service import (
     LINK_ERROR_PROOF_MISMATCH,
     SETTINGS_LINK_ERROR_QUERY_PARAM,
 )
+from backend.users.constants import DeleteAccountErrorCodes
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings import model_strs
@@ -46,6 +47,7 @@ from backend.utils.strings.user_strs import (
     ACCOUNT_AUDIT_ACTIONS,
     OAUTH_PROOF_REDIRECT_PENDING,
     REDIRECT_URL,
+    USER_FAILURE,
 )
 from tests.integration.account_and_settings.conftest import (
     _OAUTH_ONLY_EMAIL,
@@ -123,6 +125,35 @@ def _seed_shared_utub(app: Flask, *, creator_id: int, other_id: int, name: str) 
         )
         db.session.commit()
         return new_utub.id
+
+
+def _seed_active_admin(app: Flask, *, username: str, email: str) -> int:
+    """Create a second ACTIVE (unsuspended) admin; return its id.
+
+    Its presence lets the sole-admin guard PASS at delete-initiation time so the
+    removal intent is stashed — the DD-1b mid-flight race then suspends it before
+    the proof callback, tripping the callback-time re-check."""
+    with app.app_context():
+        admin = Users(username=username, email=email, plaintext_password="AdminPass1!")
+        admin.email_validated = True
+        admin.role = User_Role.ADMIN
+        db.session.add(admin)
+        db.session.commit()
+        return admin.id
+
+
+def _promote_to_admin(app: Flask, user_id: int) -> None:
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+        user.role = User_Role.ADMIN
+        db.session.commit()
+
+
+def _suspend_user(app: Flask, user_id: int) -> None:
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+        user.is_suspended = True
+        db.session.commit()
 
 
 def _initiate_oauth_delete(
@@ -313,6 +344,69 @@ def test_oauth_only_delete_callback_subject_mismatch_no_removal(
     )
 
     with app.app_context():
+        assert not is_tombstoned(user=Users.query.get(user_id))
+        assert (
+            AuditLog.query.filter_by(
+                action=ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE
+            ).first()
+            is None
+        )
+
+
+def test_oauth_only_delete_callback_mid_flight_sole_admin_race_blocks_erasure(
+    oauth_only_google_user_logged_in: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """DD-1b (DD-17): the sole-admin invariant is re-checked at OAuth-callback
+    EXECUTION time, not only at initiation. The user is an admin with a co-admin
+    active, so the initial guard (``apply_account_deletion`` step 2) PASSES and
+    the removal intent is stashed — the initiation returns 200. A co-admin is
+    then suspended mid-round-trip, making the user the sole ACTIVE admin. When
+    the proof callback fires, ``reject_self_sole_admin`` re-runs and returns 403
+    ``SOLE_ADMIN_CANNOT_LEAVE``, so NO erasure occurs.
+
+    This exercises the callback-time re-check SPECIFICALLY — distinct from
+    ``test_account_delete.test_delete_sole_admin_returns_403``, which rejects at
+    initiation. Here the initiation must (and does) succeed first (asserted via
+    the 200), and only the mid-flight state change trips the guard on the
+    callback leg. Suspending (not deleting) the co-admin also confirms the
+    guard's ``is_suspended == False`` active-admin filter is what matters."""
+    client, csrf_token, user, app = oauth_only_google_user_logged_in
+    user_id = user.id
+    username = user.username
+
+    # The user is an admin, but a co-admin is ACTIVE — so the sole-admin guard
+    # PASSES at initiation and the removal intent is stashed.
+    _promote_to_admin(app, user_id)
+    co_admin_id = _seed_active_admin(
+        app, username="oauthcoadmin", email="oauthcoadmin@test.com"
+    )
+
+    assert (
+        _initiate_oauth_delete(client, csrf_token, user_id, username).status_code == 200
+    )
+
+    # Mid-round-trip: suspend the co-admin, leaving the user the sole ACTIVE
+    # admin. Only the callback's re-check (not the initial guard) can catch this.
+    _suspend_user(app, co_admin_id)
+
+    callback_response = _drive_google_proof_callback(
+        client, subject=_OAUTH_ONLY_GOOGLE_SUBJECT, email=_OAUTH_ONLY_EMAIL
+    )
+
+    # The shared reject_self_sole_admin 403 is returned verbatim as the callback
+    # result (a JSON error response, NOT a redirect) — identical in shape to the
+    # initiation-time guard (test_account_delete.test_delete_sole_admin_returns_403).
+    assert callback_response.status_code == 403
+    response_json = callback_response.get_json()
+    assert (
+        response_json[STD_JSON.ERROR_CODE]
+        == DeleteAccountErrorCodes.SOLE_ADMIN_FORBIDDEN
+    )
+    assert response_json[STD_JSON.MESSAGE] == USER_FAILURE.SOLE_ADMIN_CANNOT_LEAVE
+
+    with app.app_context():
+        # No erasure: the account is untombstoned and no self-erase audit row
+        # was written — the callback blocked before execute_removal_intent.
         assert not is_tombstoned(user=Users.query.get(user_id))
         assert (
             AuditLog.query.filter_by(
