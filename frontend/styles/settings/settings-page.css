@@ -486,9 +486,18 @@
    .SettingsRemovalCardText h4 rule (mirroring the danger-zone Delete card), so
    no dedicated outer-title rule is needed here. */
 
-/* Section spacing so the security-area card isn't cramped against the
-   connected-accounts card above it (mirrors .SettingsDangerZone's margin-top). */
+/* Amber caution ZONE mirroring the red .SettingsDangerZone directly below it, so
+   the two read as a caution/danger pair: same box geometry, but bordered with the
+   caution-amber token (--utubLockedIconColor) instead of destructive red. The
+   inner .SettingsRemovalCard keeps its own neutral border + <h4> title (the same
+   zone+card double-frame the Danger zone already uses). No ⚠ glyph and no
+   zone-level heading — this is caution, not danger, and the title lives in the
+   card. margin-top keeps it from cramping against the connected-accounts card. */
 #SettingsLogoutEverywhere {
+    border: 1px solid var(--utubLockedIconColor);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    background: var(--panelBackgroundColor);
     margin-top: var(--space-6);
 }
 
