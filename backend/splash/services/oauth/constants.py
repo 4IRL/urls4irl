@@ -18,7 +18,7 @@ OAUTH_NEXT_SESSION_KEY = "oauth_next_target"
 #   - link  (`POST /users/<id>/oauth/link/<provider>`) — actions "link"/"proof".
 #   - removal (`DELETE /users/<id>`) — action "delete", stashed by the OAuth-only
 #     branch of the removal endpoint
-#     (`backend/users/services/removal_oauth.py:_stash_removal_intent`).
+#     (`backend/users/services/removal_oauth.py:stash_removal_intent`).
 # Shape:
 # {"action": "link"|"proof"|"delete", "target_provider": str?,
 #  "proof_provider": str?, "user_id": int, "issued_at": float}

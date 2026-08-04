@@ -34,7 +34,7 @@ from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.user_strs import ACCOUNT_AUDIT_ACTIONS
 
 
-def _stash_removal_intent(
+def stash_removal_intent(
     *, action: str, user_id: int, proof_provider: Provider
 ) -> None:
     """Stash a pending OAuth-proof account-removal intent in the session.

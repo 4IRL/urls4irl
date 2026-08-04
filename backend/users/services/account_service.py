@@ -40,7 +40,7 @@ from backend.users.constants import (
     DeleteAccountErrorCodes,
     LogoutEverywhereErrorCodes,
 )
-from backend.users.services.removal_oauth import _stash_removal_intent
+from backend.users.services.removal_oauth import stash_removal_intent
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
@@ -590,7 +590,7 @@ def _initiate_oauth_proof_removal(*, action: str) -> FlaskResponse:
             status_code=403,
         )
 
-    _stash_removal_intent(
+    stash_removal_intent(
         action=action,
         user_id=current_user.id,
         proof_provider=proof_provider,
