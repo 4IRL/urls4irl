@@ -288,6 +288,41 @@ describe("account-removal", () => {
     expect($("#SettingsDeleteReauthBtn").is("[disabled]")).toBe(false);
   });
 
+  it("OAuth-only delete: re-auth submits a null password + typed username and navigates on success", () => {
+    document.body.innerHTML = oauthHtml();
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    const successXhr = createMockXhr({
+      status: 200,
+      responseJSON: {
+        status: "Success",
+        message: "Re-authenticating.",
+        redirectUrl: REDIRECT_URL,
+      },
+    });
+    vi.mocked(ajaxCall).mockReturnValue(mockDone(successXhr));
+    initAccountRemoval();
+
+    $("#SettingsDeleteBtn").trigger("click");
+    // Satisfy the shared typed-username gate (DD-8) so the re-auth button enables.
+    $("#SettingsDeleteConfirmUsername").val(USERNAME);
+    keyup("SettingsDeleteConfirmUsername");
+
+    // Gate satisfied — the OAuth-only re-auth button is now enabled.
+    expect($("#SettingsDeleteReauthBtn").is("[disabled]")).toBe(false);
+    $("#SettingsDeleteReauthBtn").trigger("click");
+
+    // OAuth-proof path sends a null password so the service takes the OAuth branch,
+    // still carrying the typed-username confirmation (DD-C).
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalledWith("delete", DELETE_URL, {
+      currentPassword: null,
+      confirmUsername: USERNAME,
+    });
+    expect(assignSpy).toHaveBeenCalledWith(REDIRECT_URL);
+    assignSpy.mockRestore();
+  });
+
   it("clears the delete modal fields on dismiss (DD-7)", () => {
     document.body.innerHTML = passwordHtml();
     initAccountRemoval();
