@@ -12,14 +12,14 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content SettingsRemovalModalContent">
             <div class="modal-header">
-                <h4 class="modal-title SettingsRemovalModalTitle" id="SettingsLogoutEverywhereModalTitle">
-                    {{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_MODAL_TITLE }}
+                <h4 class="modal-title SettingsRemovalModalTitle SettingsRemovalModalTitleWarn" id="SettingsLogoutEverywhereModalTitle">
+                    <span class="SettingsRemovalGlyph" aria-hidden="true">⚠</span> {{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_MODAL_TITLE }}
                 </h4>
                 <button type="button" class="btn-close SettingsRemovalClose" data-bs-dismiss="modal" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_MODAL_CLOSE_ARIA_LABEL }}">×</button>
             </div>
             <div class="modal-body" id="SettingsLogoutEverywhereModalBody">
                 <div id="SettingsLogoutEverywhereError" class="alert alert-danger d-none" role="alert" aria-live="polite"></div>
-                <div class="SettingsRemovalWarnBox">
+                <div class="SettingsRemovalWarnBox SettingsRemovalWarnBoxAmber">
                     <strong>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_MODAL_WARNING_LEAD }}</strong>
                     {{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_MODAL_WARNING_BODY }}
                 </div>
