@@ -480,6 +480,39 @@
     }
 }
 
+/* ---- Log out everywhere (Account tab) ----------------------------------- */
+
+/* Section heading matches the sibling section headings (change-*, danger-zone,
+   stats) so the security-area title is visually consistent. */
+.SettingsLogoutEverywhereTitle {
+    color: #fff;
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* The trigger sits outside .SettingsDangerZone / .SettingsRemovalModal, so it
+   misses their themed overrides and would otherwise render as Bootstrap's
+   light-default .btn-secondary. Theme it to the neutral-secondary convention
+   (transparent bg, muted card text, token border) used by
+   .SettingsRemovalModal .btn-secondary, plus the settings interactive-element
+   touch target and focus-visible outline conventions. */
+#SettingsLogoutEverywhereBtn {
+    background: transparent;
+    color: var(--cardURLTextColor);
+    border: 1px solid var(--borderColor);
+    min-height: 2.75rem;
+}
+
+#SettingsLogoutEverywhereBtn:hover {
+    background: var(--panelBackgroundColor);
+}
+
+#SettingsLogoutEverywhereBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
 /* ---- Danger zone (Account tab, Phase 4) --------------------------------- */
 
 /* Colors reference the dark-theme tokens only (no literals): destructive red is
