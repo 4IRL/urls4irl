@@ -8,8 +8,8 @@ account-removal entry point shares — the password-path endpoints
 It lives here — importing nothing from ``account_service`` or
 ``linking_service`` — to keep the import graph acyclic: those two modules would
 otherwise have to import from each other. Both may import one-way from this
-module; this module never imports back (mirrors ``backend/utils/reactivation.py``'s
-placement rationale from the storage-foundation step).
+module; this module never imports back, which is why the shared core mutations
+live in this dependency-free neutral module rather than in either caller.
 """
 
 from __future__ import annotations
