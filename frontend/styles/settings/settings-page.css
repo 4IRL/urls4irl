@@ -491,21 +491,29 @@
     font-weight: 700;
 }
 
-/* The trigger sits outside .SettingsDangerZone / .SettingsRemovalModal, so it
-   misses their themed overrides and would otherwise render as Bootstrap's
-   light-default .btn-secondary. Theme it to the neutral-secondary convention
-   (transparent bg, muted card text, token border) used by
-   .SettingsRemovalModal .btn-secondary, plus the settings interactive-element
-   touch target and focus-visible outline conventions. */
+/* Section spacing so the security-area card isn't cramped against the
+   connected-accounts card above it (mirrors .SettingsDangerZone's margin-top). */
+#SettingsLogoutEverywhere {
+    margin-top: var(--space-6);
+}
+
+/* The trigger now sits inside a filled .SettingsRemovalCard, so it must read as a
+   real, enabled action alongside its filled siblings (the green Connect buttons
+   and the red Delete button) rather than a transparent ghost. Give it a solid
+   neutral fill distinct from the card background, legible light text, a hover
+   lift toward the green accent, plus the settings interactive-element touch
+   target and focus-visible outline conventions. Tokens only. */
 #SettingsLogoutEverywhereBtn {
-    background: transparent;
-    color: var(--cardURLTextColor);
+    background: var(--panelBackgroundColor);
+    color: #fff;
     border: 1px solid var(--borderColor);
     min-height: 2.75rem;
+    white-space: nowrap;
 }
 
 #SettingsLogoutEverywhereBtn:hover {
-    background: var(--panelBackgroundColor);
+    background: var(--borderColor);
+    border-color: var(--deckSelectionGreen);
 }
 
 #SettingsLogoutEverywhereBtn:focus-visible {
