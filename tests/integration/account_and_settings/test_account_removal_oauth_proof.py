@@ -33,6 +33,10 @@ from backend.splash.services.oauth.constants import (
     OAUTH_LINK_INTENT_SESSION_KEY,
     REMOVAL_INTENT_ACTION_DELETE,
 )
+from backend.splash.services.oauth.linking_service import (
+    LINK_ERROR_PROOF_MISMATCH,
+    SETTINGS_LINK_ERROR_QUERY_PARAM,
+)
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings import model_strs
@@ -54,6 +58,11 @@ pytestmark = pytest.mark.account_and_support
 _FAKE_CODE = "fake-authorization-code"
 _FAKE_STATE = "fake-state-value"
 _MOCK_GOOGLE_CONSENT_URL = "https://accounts.google.com/o/oauth2/mock-consent"
+
+# A google subject the proof callback can return that matches NO
+# ``UserOAuthIdentity`` linked to the account under test — used to exercise
+# ``execute_removal_intent``'s subject re-verification guard (DD-1a).
+_NON_MATCHING_GOOGLE_SUBJECT = "sub_does_not_match_any_linked_identity"
 
 _LINKING_GOOGLE_AUTHORIZE_REDIRECT_TARGET = (
     "backend.splash.services.oauth.linking_service.oauth.google.authorize_redirect"
@@ -269,6 +278,48 @@ def test_oauth_only_delete_callback_expired_intent_no_removal(
     assert callback_response.status_code == 302
     with app.app_context():
         assert not is_tombstoned(user=Users.query.get(user_id))
+
+
+def test_oauth_only_delete_callback_subject_mismatch_no_removal(
+    oauth_only_google_user_logged_in: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """DD-1a: the proof callback returns a google subject that matches NO
+    ``UserOAuthIdentity`` linked to the user. ``execute_removal_intent``'s
+    subject re-verification fails, so the callback performs NO erasure and
+    redirects to Settings with the ``proof_mismatch`` error code — the account
+    stays untombstoned and no self-erase audit row is written.
+
+    This is the security-critical negative of
+    ``test_oauth_only_delete_callback_erases_membership_matrix``: everything up
+    to the final subject check passes (valid intent, provider match, sole-admin
+    guard clear), so the account would be irreversibly erased if the guard were
+    absent."""
+    client, csrf_token, user, app = oauth_only_google_user_logged_in
+    user_id = user.id
+    username = user.username
+
+    assert (
+        _initiate_oauth_delete(client, csrf_token, user_id, username).status_code == 200
+    )
+
+    callback_response = _drive_google_proof_callback(
+        client, subject=_NON_MATCHING_GOOGLE_SUBJECT, email=_OAUTH_ONLY_EMAIL
+    )
+
+    assert callback_response.status_code == 302
+    assert callback_response.location == url_for(
+        ROUTES.USERS.SETTINGS,
+        **{SETTINGS_LINK_ERROR_QUERY_PARAM: LINK_ERROR_PROOF_MISMATCH},
+    )
+
+    with app.app_context():
+        assert not is_tombstoned(user=Users.query.get(user_id))
+        assert (
+            AuditLog.query.filter_by(
+                action=ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE
+            ).first()
+            is None
+        )
 
 
 # --------------------------------------------------------------------------- #
