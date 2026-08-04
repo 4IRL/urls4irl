@@ -339,7 +339,7 @@ describe("account-removal", () => {
     initAccountRemoval();
 
     // Delete keeps real text inputs, so its Enter-keyup route genuinely
-    // re-enters submitRemoval() and exercises the shared reentrancy guard —
+    // re-enters submitDelete() and exercises the shared reentrancy guard —
     // unlike logout-everywhere, whose field-less modal never binds keyup.
     $("#SettingsDeleteBtn").trigger("click");
     $("#SettingsDeleteConfirmUsername").val(USERNAME);
