@@ -253,7 +253,7 @@ function submitDelete({
 // rendered per account, and `setDisabled` no-ops on the absent one. A control
 // currently in flight (`aria-busy`) is NEVER re-enabled here — otherwise a
 // keystroke during an in-flight request (including the Enter that fired it)
-// would strip the setInFlight `disabled` guard and let a duplicate submit fire.
+// would strip the markInFlight `disabled` guard and let a duplicate submit fire.
 function refreshDeleteGate(): void {
   const typedUsername = String(
     $(`#${DELETE_CONFIRM_USERNAME_ID}`).val() ?? "",
