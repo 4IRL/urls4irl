@@ -157,6 +157,58 @@ def test_logout_everywhere_self_ownership_mismatch_returns_403(
 
 
 # --------------------------------------------------------------------------- #
+# @session_required vs @email_validation_required differentiator: an
+# authenticated-but-unvalidated user must still succeed (200), NOT be bounced by
+# the email-validation gate the way every sibling settings mutation is. The
+# analog test on a gated route (test_change_password.py's
+# ``test_change_password_unvalidated_user_redirects``) asserts 302 to splash;
+# here the same setup must yield a normal 200 success.
+# --------------------------------------------------------------------------- #
+
+
+def test_logout_everywhere_succeeds_for_email_unvalidated_user(
+    login_unvalidated_user: Tuple[FlaskClient, Users, Flask],
+) -> None:
+    """A user with ``email_validated=False`` can still log out everywhere: the
+    route is gated by ``@session_required`` (session only), not
+    ``@email_validation_required``. Under the email-validation gate this exact
+    request would 302-redirect to splash; under session auth it returns 200 and
+    runs the full non-destructive flow (``sessions_invalidated_at`` bumped)."""
+    client, user, app = login_unvalidated_user
+    user_id = user.id
+
+    # Precondition: the account is genuinely unvalidated, so the 200 below is a
+    # real differentiator (not a validated user slipping through).
+    with app.app_context():
+        before: Users = Users.query.get(user_id)
+        assert before.email_validated is False
+        assert before.sessions_invalidated_at is None
+
+    # CSRF token off the splash page — the unvalidated session is still
+    # authenticated (mirrors test_change_password_unvalidated_user_redirects).
+    splash_response = client.get("/")
+    csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)
+
+    response = client.post(
+        url_for(ROUTES.USERS.LOGOUT_EVERYWHERE, user_id=user_id),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    # Session auth ONLY: unvalidated email is fine, so this is a 200 success
+    # (an @email_validation_required route would have 302-redirected instead).
+    # Body shape/schema conformance is owned by the happy-path test; here we
+    # assert only what proves the gate differentiator plus that the flow ran.
+    assert response.status_code == 200
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.SUCCESS
+
+    # The non-destructive flow actually ran for the unvalidated user.
+    with app.app_context():
+        refreshed: Users = Users.query.get(user_id)
+        assert refreshed.sessions_invalidated_at is not None
+        assert refreshed.email_validated is False
+
+
+# --------------------------------------------------------------------------- #
 # ACCOUNT_SESSIONS_REVOKED domain metric (dedicated per-flow emit test — the
 # DOMAIN_EVENTS_TESTED_ELSEWHERE exclusion in metrics_helpers.py promises this).
 # --------------------------------------------------------------------------- #
