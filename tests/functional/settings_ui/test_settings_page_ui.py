@@ -817,7 +817,7 @@ def test_logout_everywhere_happy_path_redirects_to_splash(
     provide_config: ConfigTestUI,
 ):
     """
-    GIVEN a logged-in user on the settings Account tab
+    GIVEN a logged-in user who switches to the settings Privacy & Data tab
     WHEN they open the "Log out everywhere" modal and click Confirm (no typed
         username or password fields — the flow is non-destructive, D-1)
     THEN the acting session is logged out and the browser navigates to the
@@ -831,6 +831,11 @@ def test_logout_everywhere_happy_path_redirects_to_splash(
         user_id=_NON_ADMIN_USER_ID,
         config=provide_config,
     )
+
+    # The logout-everywhere control now lives in the Privacy & Data panel, not the
+    # default-visible Account panel, so switch tabs before opening the modal.
+    wait_then_click_element(page=page, css_selector=SPL.TAB_PRIVACY_DATA_BUTTON)
+    expect(page.locator(SPL.PANEL_PRIVACY_DATA)).to_be_visible()
 
     wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_TRIGGER)
     expect(page.locator(SPL.LOGOUT_EVERYWHERE_MODAL)).to_be_visible()
@@ -934,12 +939,6 @@ def test_delete_typed_confirmation_gates_submit(
             SPL.DELETE_CANCEL_BTN,
             id="delete-modal",
         ),
-        pytest.param(
-            SPL.LOGOUT_EVERYWHERE_TRIGGER,
-            SPL.LOGOUT_EVERYWHERE_MODAL,
-            SPL.LOGOUT_EVERYWHERE_CANCEL_BTN,
-            id="logout-everywhere-modal",
-        ),
     ],
 )
 def test_removal_modal_focus_returns_to_trigger_on_cancel(
@@ -952,8 +951,7 @@ def test_removal_modal_focus_returns_to_trigger_on_cancel(
     cancel_selector: str,
 ):
     """
-    GIVEN a logged-in user who opened one of the settings modals (Delete or
-        Log out everywhere)
+    GIVEN a logged-in user who opened the Delete modal in the Account tab
     WHEN they dismiss it with the Cancel button
     THEN keyboard focus returns to the trigger that opened it.
     """
@@ -972,6 +970,40 @@ def test_removal_modal_focus_returns_to_trigger_on_cancel(
     expect(page.locator(modal_selector)).to_be_hidden()
 
     wait_until_in_focus(page=page, css_selector=trigger_selector)
+
+
+def test_logout_everywhere_modal_focus_returns_to_trigger_on_cancel(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user who switched to the Privacy & Data tab and opened the
+        Log out everywhere modal
+    WHEN they dismiss it with the Cancel button
+    THEN keyboard focus returns to the trigger that opened it.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    # The logout-everywhere control now lives in the Privacy & Data panel, so
+    # switch tabs before opening its modal.
+    wait_then_click_element(page=page, css_selector=SPL.TAB_PRIVACY_DATA_BUTTON)
+    expect(page.locator(SPL.PANEL_PRIVACY_DATA)).to_be_visible()
+
+    wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_TRIGGER)
+    expect(page.locator(SPL.LOGOUT_EVERYWHERE_MODAL)).to_be_visible()
+    wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_CANCEL_BTN)
+    expect(page.locator(SPL.LOGOUT_EVERYWHERE_MODAL)).to_be_hidden()
+
+    wait_until_in_focus(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_TRIGGER)
 
 
 @pytest.mark.parametrize(

@@ -27,33 +27,25 @@ vi.mock("../../lib/metrics-client.js", () => ({
 
 const $ = window.jQuery;
 
-const LOGOUT_EVERYWHERE_URL = "/users/1/logout-everywhere";
 const DELETE_URL = "/users/1";
 const REDIRECT_URL = "/splash";
 const USERNAME = "river_stone";
 const PASSWORD = "FakePassword1234";
 const INCORRECT_MESSAGE = "Current password is incorrect.";
-const SERVICE_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
 // Password-account fixture: the delete modal renders a password input + a confirm
-// submit button (starting disabled, per the template); the logout-everywhere
-// modal has neither. Both are wrapped in the always-present #SettingsPanelAccount
-// container the init guard keys off.
+// submit button (starting disabled, per the template), wrapped in the
+// always-present #SettingsPanelAccount container the init guard keys off. The
+// logout-everywhere card/modal moved to the Privacy & Data panel (Phase 5), so it
+// is no longer part of this controller's Account-tab fixture.
 function passwordHtml(): string {
   return `
     <section id="SettingsPanelAccount">
     <div class="SettingsStatCard" data-account-info="username">
       <dd class="SettingsStatValue">${USERNAME}</dd>
     </div>
-    <div id="SettingsLogoutEverywhere">
-      <button id="SettingsLogoutEverywhereBtn"></button>
-    </div>
     <div class="SettingsDangerZone">
       <button id="SettingsDeleteBtn"></button>
-    </div>
-    <div class="modal fade" id="SettingsLogoutEverywhereModal" data-action-url="${LOGOUT_EVERYWHERE_URL}">
-      <div id="SettingsLogoutEverywhereError" class="alert d-none"></div>
-      <button id="SettingsLogoutEverywhereSubmitBtn"></button>
     </div>
     <div class="modal fade" id="SettingsDeleteModal" data-action-url="${DELETE_URL}">
       <div id="SettingsDeleteError" class="alert d-none"></div>
@@ -67,22 +59,14 @@ function passwordHtml(): string {
 
 // OAuth-only fixture: the delete modal has no password input / no submit button;
 // a re-authenticate button instead (starting disabled, typed-username gate DD-8).
-// Logout-everywhere is identical regardless of sign-in method (no re-auth, D-1).
 function oauthHtml(): string {
   return `
     <section id="SettingsPanelAccount">
     <div class="SettingsStatCard" data-account-info="username">
       <dd class="SettingsStatValue">${USERNAME}</dd>
     </div>
-    <div id="SettingsLogoutEverywhere">
-      <button id="SettingsLogoutEverywhereBtn"></button>
-    </div>
     <div class="SettingsDangerZone">
       <button id="SettingsDeleteBtn"></button>
-    </div>
-    <div class="modal fade" id="SettingsLogoutEverywhereModal" data-action-url="${LOGOUT_EVERYWHERE_URL}">
-      <div id="SettingsLogoutEverywhereError" class="alert d-none"></div>
-      <button id="SettingsLogoutEverywhereSubmitBtn"></button>
     </div>
     <div class="modal fade" id="SettingsDeleteModal" data-action-url="${DELETE_URL}">
       <div id="SettingsDeleteError" class="alert d-none"></div>
@@ -212,69 +196,6 @@ describe("account-removal", () => {
     expect(input.siblings(".invalid-feedback").text()).toBe(INCORRECT_MESSAGE);
   });
 
-  it("logout-everywhere: POSTs an empty body and navigates to the redirect", () => {
-    document.body.innerHTML = passwordHtml();
-    const assignSpy = vi
-      .spyOn(window.location, "assign")
-      .mockImplementation(() => {});
-    const successXhr = createMockXhr({
-      status: 200,
-      responseJSON: {
-        status: "Success",
-        message: "Signed out everywhere.",
-        redirectUrl: REDIRECT_URL,
-      },
-    });
-    vi.mocked(ajaxCall).mockReturnValue(mockDone(successXhr));
-    initAccountRemoval();
-
-    $("#SettingsLogoutEverywhereBtn").trigger("click");
-    $("#SettingsLogoutEverywhereSubmitBtn").trigger("click");
-
-    expect(vi.mocked(ajaxCall)).toHaveBeenCalledWith(
-      "post",
-      LOGOUT_EVERYWHERE_URL,
-      {},
-    );
-    expect(assignSpy).toHaveBeenCalledWith(REDIRECT_URL);
-    assignSpy.mockRestore();
-  });
-
-  it("logout-everywhere: does nothing further when the failure is an already-handled 429", () => {
-    document.body.innerHTML = passwordHtml();
-    vi.mocked(is429Handled).mockReturnValue(true);
-    const failedXhr = createMockXhr({ status: 429 });
-    vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));
-    initAccountRemoval();
-
-    $("#SettingsLogoutEverywhereBtn").trigger("click");
-    $("#SettingsLogoutEverywhereSubmitBtn").trigger("click");
-
-    expect($("#SettingsLogoutEverywhereError").hasClass("d-none")).toBe(true);
-  });
-
-  it("logout-everywhere: surfaces a service-error message in the in-modal banner", () => {
-    document.body.innerHTML = passwordHtml();
-    vi.mocked(is429Handled).mockReturnValue(false);
-    const failedXhr = createMockXhr({
-      status: 500,
-      responseJSON: {
-        status: "Failure",
-        message: SERVICE_ERROR_MESSAGE,
-        errorCode: 1,
-      },
-    });
-    vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));
-    initAccountRemoval();
-
-    $("#SettingsLogoutEverywhereBtn").trigger("click");
-    $("#SettingsLogoutEverywhereSubmitBtn").trigger("click");
-
-    const error = $("#SettingsLogoutEverywhereError");
-    expect(error.hasClass("d-none")).toBe(false);
-    expect(error.text()).toBe(SERVICE_ERROR_MESSAGE);
-  });
-
   it("OAuth-only delete: the re-auth button is gated by the typed-username match (DD-8)", () => {
     document.body.innerHTML = oauthHtml();
     initAccountRemoval();
@@ -389,14 +310,14 @@ describe("account-removal", () => {
     expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
   });
 
-  it("emits the OPEN metric when a modal opens", () => {
+  it("emits the OPEN metric when the delete modal opens", () => {
     document.body.innerHTML = passwordHtml();
     initAccountRemoval();
 
-    $("#SettingsLogoutEverywhereBtn").trigger("click");
+    $("#SettingsDeleteBtn").trigger("click");
 
     expect(vi.mocked(emit)).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN,
+      event: UI_EVENTS.UI_ACCOUNT_DELETE_OPEN,
     });
   });
 

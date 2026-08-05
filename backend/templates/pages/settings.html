@@ -256,13 +256,6 @@
         {% else %}
         <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
         {% endif %}
-        <div id="SettingsLogoutEverywhere">
-            <div class="SettingsRemovalCardText">
-                <h4>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_TITLE }}</h4>
-                <p>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_HINT }}</p>
-            </div>
-            <button type="button" class="btn" id="SettingsLogoutEverywhereBtn">{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_BUTTON }}</button>
-        </div>
         <div class="SettingsDangerZone">
             <h3 class="SettingsDangerZoneHeading"><span class="SettingsDangerZoneGlyph" aria-hidden="true">⚠</span> {{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_TITLE }}</h3>
             <p class="SettingsDangerZoneHint">{{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_HINT }}</p>
@@ -311,7 +304,13 @@
     </section>
     <section role="tabpanel" id="SettingsPanelPrivacyData" aria-labelledby="SettingsTabPrivacyData" tabindex="0" hidden>
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_PRIVACY_DATA }}</h2>
-        <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
+        <div id="SettingsLogoutEverywhere">
+            <div class="SettingsRemovalCardText">
+                <h4>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_TITLE }}</h4>
+                <p>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_HINT }}</p>
+            </div>
+            <button type="button" class="btn" id="SettingsLogoutEverywhereBtn">{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_BUTTON }}</button>
+        </div>
     </section>
     <section role="tabpanel" id="SettingsPanelUiSettings" aria-labelledby="SettingsTabUiSettings" tabindex="0" hidden>
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_UI_SETTINGS }}</h2>

@@ -13,6 +13,7 @@ import { initChangeUsername } from "./settings/change-username.js";
 import { initChangePassword } from "./settings/change-password.js";
 import { initChangeEmail } from "./settings/change-email.js";
 import { initAccountRemoval } from "./settings/account-removal.js";
+import { initLogoutEverywhere } from "./settings/logout-everywhere.js";
 
 registerJQueryPlugins();
 setupCSRF();
@@ -27,4 +28,5 @@ $(document).ready(() => {
   initChangePassword();
   initChangeEmail();
   initAccountRemoval();
+  initLogoutEverywhere();
 });
