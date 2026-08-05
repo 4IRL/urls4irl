@@ -20,14 +20,51 @@ from datetime import datetime
 from typing import Tuple
 
 import pytest
-from flask import Flask
+from flask import Flask, url_for
 from flask.testing import FlaskClient
+from redis import Redis
+from werkzeug.test import TestResponse
 
+from backend import limiter
+from backend.metrics.events import EventName
 from backend.models.users import Users
+from backend.schemas.exports import UserDataExportResponseSchema
+from backend.users.constants import DataExportErrorCodes
 from backend.users.services.data_export_service import build_user_data_export_core
+from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from tests.conftest import AjaxFlaskLoginClient
+from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.integration.utils import assert_response_conforms_to_schema
 
 pytestmark = pytest.mark.account_and_support
+
+_DATA_EXPORT_RATE_LIMIT_PER_MINUTE = 5
+
+
+def _enable_limiter(app: Flask) -> None:
+    """Re-arm flask-limiter for this test (globally disabled under TESTING).
+
+    Mirrors the established pattern in
+    tests/integration/splash/test_splash_auth_rate_limit.py.
+    """
+    original_first_request = app._got_first_request
+    app._got_first_request = False
+    app.config["RATELIMIT_ENABLED"] = True
+    limiter.enabled = True
+    limiter.init_app(app)
+    app._got_first_request = original_first_request
+
+
+def _disable_limiter() -> None:
+    if limiter._storage is not None:
+        limiter._storage.reset()
+    limiter._storage = None
+    limiter._limiter = None
+    limiter.enabled = False
+    limiter.initialized = False
 
 
 def test_data_export_core_serializes_all_memberships(
@@ -89,3 +126,136 @@ def test_data_export_core_serializes_all_memberships(
     assert "password" not in serialized
     assert "sessionsInvalidatedAt" not in serialized
     assert "pendingEmail" not in serialized
+
+
+# --------------------------------------------------------------------------- #
+# HTTP endpoint — GET /users/<id>/data-export
+# --------------------------------------------------------------------------- #
+
+
+def test_data_export_endpoint_returns_full_export(
+    login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
+) -> None:
+    """A GET on the export route returns 200 with the standard envelope, the
+    export nested under ``export``, populated ``utubs``, and the acting user's
+    own account block.
+
+    The X-Requested-With header is auto-injected by ``AjaxFlaskLoginClient`` for
+    every request, satisfying ``@api_route(ajax_required=True)``.
+    """
+    logged_in_client, seeded_user, _app = login_first_user_with_distinct_stats
+
+    response = logged_in_client.get(
+        url_for(ROUTES.USERS.DATA_EXPORT, user_id=seeded_user.id)
+    )
+
+    assert response.status_code == 200
+    assert response.content_type == "application/json"
+    response_json = response.get_json()
+    assert_response_conforms_to_schema(
+        response_json,
+        UserDataExportResponseSchema,
+        expected_keys={STD_JSON.STATUS, STD_JSON.MESSAGE, "export"},
+    )
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    export = response_json["export"]
+    # 2 created + 4 member-of = 6 total UTubs for user 1's distinct-stats seed.
+    assert len(export["utubs"]) == 6
+    assert export["account"]["username"] == seeded_user.username
+
+
+def test_data_export_endpoint_unauthenticated_redirects(app: Flask) -> None:
+    """An unauthenticated client hitting the export route is bounced by the
+    ``@session_required`` gate (302 to splash), never reaching the handler."""
+    app.test_client_class = AjaxFlaskLoginClient
+    anonymous_client = app.test_client()
+    with app.test_request_context():
+        export_url = url_for(ROUTES.USERS.DATA_EXPORT, user_id=1)
+
+    response = anonymous_client.get(export_url)
+
+    assert response.status_code == 302
+
+
+def test_data_export_endpoint_self_ownership_mismatch_returns_403(
+    login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
+) -> None:
+    """A GET whose URL user_id is not the acting user is rejected 403 with the
+    NOT_AUTHORIZED error code (mirrors the logout-everywhere self-ownership
+    guard)."""
+    logged_in_client, seeded_user, _app = login_first_user_with_distinct_stats
+
+    response = logged_in_client.get(
+        url_for(ROUTES.USERS.DATA_EXPORT, user_id=seeded_user.id + 999)
+    )
+
+    assert response.status_code == 403
+    assert (
+        response.get_json()[STD_JSON.ERROR_CODE] == DataExportErrorCodes.NOT_AUTHORIZED
+    )
+
+
+def test_data_export_endpoint_rate_limited_returns_html_429(
+    login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
+) -> None:
+    """DD-12: the dedicated ``DATA_EXPORT_RATE_LIMIT`` (5/minute) trips on the
+    6th GET within the window.
+
+    The users blueprint has no ``/api/v1`` prefix, so a rate-limited web-AJAX
+    request renders the HTML 429 page (never JSON), exactly like the splash
+    routes. The limiter is globally disabled under TESTING, so it is re-armed
+    for this test only and torn down in ``finally`` so the re-armed limiter
+    never leaks into later tests.
+    """
+    logged_in_client, seeded_user, app = login_first_user_with_distinct_stats
+    export_url = url_for(ROUTES.USERS.DATA_EXPORT, user_id=seeded_user.id)
+
+    _enable_limiter(app)
+    try:
+        for _attempt_number in range(_DATA_EXPORT_RATE_LIMIT_PER_MINUTE):
+            allowed_response = logged_in_client.get(export_url)
+            assert allowed_response.status_code == 200
+
+        rate_limited_response: TestResponse = logged_in_client.get(export_url)
+        assert rate_limited_response.status_code == 429
+        assert not rate_limited_response.is_json
+        assert IDENTIFIERS.HTML_429 in rate_limited_response.get_data(as_text=True)
+    finally:
+        _disable_limiter()
+
+
+# --------------------------------------------------------------------------- #
+# DATA_EXPORTED domain metric (dedicated per-flow emit test — the
+# DOMAIN_EVENTS_TESTED_ELSEWHERE exclusion in metrics_helpers.py promises this).
+# --------------------------------------------------------------------------- #
+
+
+def test_data_export_records_data_exported_metric(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    register_first_user,
+) -> None:
+    """A successful data export writes exactly one DATA_EXPORTED counter key to
+    the metrics Redis DB."""
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+
+    app = metrics_enabled_app
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        target: Users = Users.query.get(1)
+        user_id = target.id
+
+    assert count_counter_keys(provide_metrics_redis, EventName.DATA_EXPORTED) == 0
+
+    with app.app_context():
+        user_to_login: Users = Users.query.get(user_id)
+
+    with app.test_request_context():
+        export_url = url_for(ROUTES.USERS.DATA_EXPORT, user_id=user_id)
+
+    with app.test_client(user=user_to_login) as logged_in_client:
+        response = logged_in_client.get(export_url)
+        assert response.status_code == 200
+
+    assert count_counter_keys(provide_metrics_redis, EventName.DATA_EXPORTED) == 1

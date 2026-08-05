@@ -428,6 +428,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.ACCOUNT_DELETED: _DimDeviceOnly,
     EventName.ACCOUNT_SESSIONS_REVOKED: _DimDeviceOnly,
     EventName.CROSS_UTUB_SEARCH_PERFORMED: _DimCrossUtubSearchPerformed,
+    EventName.DATA_EXPORTED: _DimDeviceOnly,
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
     EventName.LOGIN_SUCCESS: _DimLoginSuccess,

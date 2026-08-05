@@ -10,18 +10,21 @@ from flask import (
 )
 from flask_login import current_user, logout_user
 
-from backend import login_manager
+from backend import limiter, login_manager
 from backend.api_common.auth_decorators import (
     email_validation_required,
     session_required,
 )
 from backend.api_common.parse_request import api_route
-from backend.api_common.responses import FlaskResponse
+from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.api_v1.services.tokens import decode_access_token
 from backend.app_logger import warning_log
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.schemas.base import StatusMessageResponseSchema
-from backend.schemas.errors import ErrorResponse
+from backend.schemas.errors import ErrorResponse, build_message_error_response
+from backend.schemas.exports import UserDataExportResponseSchema
 from backend.schemas.requests.users import (
     ChangeEmailRequest,
     ChangePasswordRequest,
@@ -43,9 +46,11 @@ from backend.splash.services.oauth.linking_service import (
     unlink_provider,
 )
 from backend.users.constants import (
+    DATA_EXPORT_RATE_LIMIT,
     ChangeEmailErrorCodes,
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
+    DataExportErrorCodes,
     DeleteAccountErrorCodes,
     LogoutEverywhereErrorCodes,
 )
@@ -57,14 +62,21 @@ from backend.users.services.account_service import (
     apply_username_change,
     build_account_info_context,
 )
+from backend.users.services.data_export_service import build_user_data_export_core
 from backend.users.services.stats_service import build_user_stats_context
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import provide_config_for_constants
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.api_auth_strs import API_AUTH
 from backend.utils.strings.email_validation_strs import EMAILS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import LINK_INVALID_PASSWORD_MESSAGE
 from backend.utils.strings.openapi_strs import OPEN_API
-from backend.utils.strings.user_strs import SESSION_ISSUED_AT_KEY, USER_FAILURE
+from backend.utils.strings.user_strs import (
+    DATA_EXPORT_SUCCESS,
+    SESSION_ISSUED_AT_KEY,
+    USER_FAILURE,
+)
 
 users = Blueprint("users", __name__)
 
@@ -313,6 +325,44 @@ def logout_everywhere(user_id: int) -> FlaskResponse:
     self-ownership policy is enforced in the service). No request body, no
     re-auth (D-1); the acting session dies too (D-4)."""
     return apply_logout_everywhere(user_id=user_id)
+
+
+@users.route("/users/<int:user_id>/data-export", methods=["GET"])
+@session_required
+@api_route(
+    response_schema=UserDataExportResponseSchema,
+    tags=[OPEN_API.AUTH],
+    description="Export the authenticated user's own data (non-mutating read). Serializes every UTub the user belongs to — created and joined — with its URLs, applied tags, tag vocabulary, and members, plus the user's own account identity fields (never a password, session, or pending-email field). Returns the export nested under an `export` key so the client can save a clean JSON file. Gated by session auth only (no validated-email requirement), and self-scoped: a mismatched path user_id is rejected 403. Rate-limited to 5/minute, 15/hour per IP (the app's most expensive read), returning HTTP 429 when the cap is hit.",
+    status_codes={
+        200: UserDataExportResponseSchema,
+        403: ErrorResponse,
+        429: ErrorResponse,
+    },
+)
+@limiter.limit(DATA_EXPORT_RATE_LIMIT, methods=["GET"])
+def data_export(user_id: int) -> FlaskResponse:
+    """Serialize and return the authenticated user's own data export
+    (self-service only). The self-ownership guard rejects a mismatched path
+    user_id with 403; on success the guard-free core walks every UTub the user
+    belongs to and the ``DATA_EXPORTED`` domain metric is recorded before the
+    envelope is returned."""
+    if user_id != current_user.id:
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=DataExportErrorCodes.NOT_AUTHORIZED,
+            status_code=403,
+        )
+
+    payload = build_user_data_export_core(user=current_user, generated_at=utc_now())
+    record_event(EventName.DATA_EXPORTED)
+    return APIResponse(
+        status_code=200,
+        data=UserDataExportResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=DATA_EXPORT_SUCCESS,
+            export=payload,
+        ),
+    ).to_response()
 
 
 @users.route("/users/<int:user_id>/oauth/link/<string:provider>", methods=["POST"])

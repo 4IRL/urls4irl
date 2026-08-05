@@ -13,7 +13,6 @@ from backend.schemas.exports import (
     ExportUtubSchema,
     UserDataExportSchema,
 )
-from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 
 
@@ -90,10 +89,3 @@ def build_user_data_export_core(
         account=account,
         utubs=utubs,
     )
-
-
-def build_user_data_export(*, user: Users) -> UserDataExportSchema:
-    """Thin wrapper over :func:`build_user_data_export_core` that stamps the
-    export with the current time. HTTP callers use this; deterministic tests
-    call the core directly."""
-    return build_user_data_export_core(user=user, generated_at=utc_now())

@@ -84,6 +84,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
             "field_order": SEARCH_FIELD_ORDER_VALUES,
         },
     ),
+    EventName.DATA_EXPORTED: EventRegistryEntry(
+        description=(
+            "User data exported via the Privacy & Data settings tab "
+            "(non-mutating read — every UTub the user belongs to serialized "
+            "to a downloadable JSON file)"
+        ),
+        category=EventCategory.DOMAIN,
+    ),
     EventName.UTUB_CREATED: EventRegistryEntry(
         description="New UTub created",
         category=EventCategory.DOMAIN,

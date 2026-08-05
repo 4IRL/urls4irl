@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import Field, field_serializer
 
-from backend.schemas.base import BaseSchema
+from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 
 
 class ExportAccountSchema(BaseSchema):
@@ -130,5 +130,19 @@ class UserDataExportSchema(BaseSchema):
         return value.isoformat()
 
 
+class UserDataExportResponseSchema(StatusMessageResponseSchema):
+    """Response envelope for ``GET /users/<id>/data-export``.
+
+    Nests the full export under a single ``export`` key (on top of the standard
+    ``status``/``message`` envelope fields) so the client can blob ``response.export``
+    cleanly for the downloaded file without the envelope metadata leaking into it.
+    """
+
+    export: UserDataExportSchema = Field(
+        description="The full user-data export payload"
+    )
+
+
 ExportUtubSchema.model_rebuild()
 UserDataExportSchema.model_rebuild()
+UserDataExportResponseSchema.model_rebuild()
