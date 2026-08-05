@@ -1285,6 +1285,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/{user_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider — the 200 response returns the provider redirect URL, and the authenticated callback completes the erasure. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts. */
+    delete: operations["deleteAccount"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/users/{user_id}/logout-everywhere": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication — logging back in restores access. Uses session auth only (no validated-email requirement), so a user with an unvalidated email can still sign out everywhere. Takes no request body. */
+    post: operations["logoutEverywhere"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -2048,7 +2082,13 @@ export interface components {
         | "ui_email_validation_submit"
         | "ui_contact_submit"
         | "ui_error_page_refresh"
-        | "ui_rate_limit_hit";
+        | "ui_rate_limit_hit"
+        | "ui_account_logout_everywhere_open"
+        | "ui_account_logout_everywhere_confirm"
+        | "ui_account_logout_everywhere_cancel"
+        | "ui_account_delete_open"
+        | "ui_account_delete_confirm"
+        | "ui_account_delete_cancel";
       /** @description Per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model. Auto-injected with `device_type` by the metrics-client for all UI events, so the dict is always non-empty when sent from the browser. */
       dimensions: {
         [key: string]: string | number | boolean;
@@ -2776,6 +2816,51 @@ export interface components {
      * @enum {integer}
      */
     ChangeEmailErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+    DeleteAccountRequest: {
+      /**
+       * @description Current account password, re-authenticated before the irreversible account deletion. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
+       * @default null
+       */
+      currentPassword: string | null;
+      /** @description The account's exact username, typed by the user to confirm the irreversible deletion (DD-C). Re-checked against current_user in the service */
+      confirmUsername: string;
+    };
+    /**
+     * @description Response for the self-service account-removal / session-revocation
+     *     endpoints (``DELETE /users/<id>`` and
+     *     ``POST /users/<id>/logout-everywhere``).
+     *
+     *     Carries ``status``/``message`` (banner text is server-sourced off
+     *     ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+     *     so the client navigates to splash after the acting session is logged out.
+     *     Shared by the delete and logout-everywhere flows (and the OAuth-proof
+     *     round-trip initiator, which returns the provider-redirect URL in the same
+     *     field).
+     */
+    AccountRemovalResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
+      /** @description URL to navigate to after the acting session is logged out */
+      redirectUrl: string;
+    };
+    ErrorResponse_DeleteAccountErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["DeleteAccountErrorCodes"];
+    };
+    /**
+     * @description Error codes for DeleteAccountErrorCodes
+     * @enum {integer}
+     */
+    DeleteAccountErrorCodes: 1 | 2 | 3 | 4 | 5;
+    /**
+     * @description Error codes for LogoutEverywhereErrorCodes
+     * @enum {integer}
+     */
+    LogoutEverywhereErrorCodes: 1;
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -5798,6 +5883,8 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "account_deleted"
+          | "account_sessions_revoked"
           | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
@@ -5892,7 +5979,13 @@ export interface operations {
           | "ui_email_validation_submit"
           | "ui_contact_submit"
           | "ui_error_page_refresh"
-          | "ui_rate_limit_hit";
+          | "ui_rate_limit_hit"
+          | "ui_account_logout_everywhere_open"
+          | "ui_account_logout_everywhere_confirm"
+          | "ui_account_logout_everywhere_cancel"
+          | "ui_account_delete_open"
+          | "ui_account_delete_confirm"
+          | "ui_account_delete_cancel";
         /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
         window?: string;
         /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
@@ -6015,6 +6108,8 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "account_deleted"
+          | "account_sessions_revoked"
           | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
@@ -6109,7 +6204,13 @@ export interface operations {
           | "ui_email_validation_submit"
           | "ui_contact_submit"
           | "ui_error_page_refresh"
-          | "ui_rate_limit_hit";
+          | "ui_rate_limit_hit"
+          | "ui_account_logout_everywhere_open"
+          | "ui_account_logout_everywhere_confirm"
+          | "ui_account_logout_everywhere_cancel"
+          | "ui_account_delete_open"
+          | "ui_account_delete_confirm"
+          | "ui_account_delete_cancel";
         /** @description List of dimension field names to group the timeseries by. Each entry must be a field of `DIMENSION_MODELS[event_name]` (validated at the route layer); shape is bounded at the schema layer to 1-3 non-empty entries ≤64 chars each. */
         group_by: string[];
         /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
@@ -7385,6 +7486,112 @@ export interface operations {
       };
       /** @description Too many requests */
       429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  deleteAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["DeleteAccountRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the self-service account-removal / session-revocation
+       *         endpoints (``DELETE /users/<id>`` and
+       *         ``POST /users/<id>/logout-everywhere``).
+       *
+       *         Carries ``status``/``message`` (banner text is server-sourced off
+       *         ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+       *         so the client navigates to splash after the acting session is logged out.
+       *         Shared by the delete and logout-everywhere flows (and the OAuth-proof
+       *         round-trip initiator, which returns the provider-redirect URL in the same
+       *         field).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccountRemovalResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_DeleteAccountErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  logoutEverywhere: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Response for the self-service account-removal / session-revocation
+       *         endpoints (``DELETE /users/<id>`` and
+       *         ``POST /users/<id>/logout-everywhere``).
+       *
+       *         Carries ``status``/``message`` (banner text is server-sourced off
+       *         ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+       *         so the client navigates to splash after the acting session is logged out.
+       *         Shared by the delete and logout-everywhere flows (and the OAuth-proof
+       *         round-trip initiator, which returns the provider-redirect URL in the same
+       *         field).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccountRemovalResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown;
         };

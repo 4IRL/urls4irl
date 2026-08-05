@@ -4433,6 +4433,8 @@
               "enum": [
                 "api_hit",
                 "api_metrics_ingest_batch",
+                "account_deleted",
+                "account_sessions_revoked",
                 "cross_utub_search_performed",
                 "email_verified",
                 "login_failure",
@@ -4527,7 +4529,13 @@
                 "ui_email_validation_submit",
                 "ui_contact_submit",
                 "ui_error_page_refresh",
-                "ui_rate_limit_hit"
+                "ui_rate_limit_hit",
+                "ui_account_logout_everywhere_open",
+                "ui_account_logout_everywhere_confirm",
+                "ui_account_logout_everywhere_cancel",
+                "ui_account_delete_open",
+                "ui_account_delete_confirm",
+                "ui_account_delete_cancel"
               ],
               "type": "string"
             },
@@ -4766,6 +4774,8 @@
               "enum": [
                 "api_hit",
                 "api_metrics_ingest_batch",
+                "account_deleted",
+                "account_sessions_revoked",
                 "cross_utub_search_performed",
                 "email_verified",
                 "login_failure",
@@ -4860,7 +4870,13 @@
                 "ui_email_validation_submit",
                 "ui_contact_submit",
                 "ui_error_page_refresh",
-                "ui_rate_limit_hit"
+                "ui_rate_limit_hit",
+                "ui_account_logout_everywhere_open",
+                "ui_account_logout_everywhere_confirm",
+                "ui_account_logout_everywhere_cancel",
+                "ui_account_delete_open",
+                "ui_account_delete_confirm",
+                "ui_account_delete_cancel"
               ],
               "type": "string"
             },
@@ -6847,6 +6863,135 @@
         "x-error-codes": {
           "ChangeEmailErrorCodes": {
             "$ref": "#/components/schemas/ChangeEmailErrorCodes"
+          }
+        }
+      }
+    },
+    "/users/{user_id}": {
+      "delete": {
+        "operationId": "deleteAccount",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider \u2014 the 200 response returns the provider redirect URL, and the authenticated callback completes the erasure. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the self-service account-removal / session-revocation\n    endpoints (``DELETE /users/<id>`` and\n    ``POST /users/<id>/logout-everywhere``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by the delete and logout-everywhere flows (and the OAuth-proof\n    round-trip initiator, which returns the provider-redirect URL in the same\n    field).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRemovalResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_DeleteAccountErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "DeleteAccountErrorCodes": {
+            "$ref": "#/components/schemas/DeleteAccountErrorCodes"
+          }
+        }
+      }
+    },
+    "/users/{user_id}/logout-everywhere": {
+      "post": {
+        "operationId": "logoutEverywhere",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication \u2014 logging back in restores access. Uses session auth only (no validated-email requirement), so a user with an unvalidated email can still sign out everywhere. Takes no request body.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for the self-service account-removal / session-revocation\n    endpoints (``DELETE /users/<id>`` and\n    ``POST /users/<id>/logout-everywhere``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by the delete and logout-everywhere flows (and the OAuth-proof\n    round-trip initiator, which returns the provider-redirect URL in the same\n    field).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRemovalResponseSchema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "LogoutEverywhereErrorCodes": {
+            "$ref": "#/components/schemas/LogoutEverywhereErrorCodes"
           }
         }
       }
@@ -9070,7 +9215,13 @@
               "ui_email_validation_submit",
               "ui_contact_submit",
               "ui_error_page_refresh",
-              "ui_rate_limit_hit"
+              "ui_rate_limit_hit",
+              "ui_account_logout_everywhere_open",
+              "ui_account_logout_everywhere_confirm",
+              "ui_account_logout_everywhere_cancel",
+              "ui_account_delete_open",
+              "ui_account_delete_confirm",
+              "ui_account_delete_cancel"
             ],
             "type": "string"
           },
@@ -10445,6 +10596,82 @@
           "EMAIL_SEND_FAILURE"
         ],
         "description": "Error codes for ChangeEmailErrorCodes"
+      },
+      "DeleteAccountRequest": {
+        "properties": {
+          "currentPassword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Current account password, re-authenticated before the irreversible account deletion. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead"
+          },
+          "confirmUsername": {
+            "description": "The account's exact username, typed by the user to confirm the irreversible deletion (DD-C). Re-checked against current_user in the service",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["confirmUsername"],
+        "type": "object"
+      },
+      "AccountRemovalResponseSchema": {
+        "description": "Response for the self-service account-removal / session-revocation\nendpoints (``DELETE /users/<id>`` and\n``POST /users/<id>/logout-everywhere``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by the delete and logout-everywhere flows (and the OAuth-proof\nround-trip initiator, which returns the provider-redirect URL in the same\nfield).",
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": ["Success", "Failure", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          },
+          "redirectUrl": {
+            "description": "URL to navigate to after the acting session is logged out",
+            "type": "string"
+          }
+        },
+        "required": ["status", "message", "redirectUrl"],
+        "type": "object"
+      },
+      "ErrorResponse_DeleteAccountErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/DeleteAccountErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "DeleteAccountErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4, 5],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "INVALID_PASSWORD",
+          "TOO_MANY_ATTEMPTS",
+          "SOLE_ADMIN_FORBIDDEN",
+          "CONFIRMATION_MISMATCH"
+        ],
+        "description": "Error codes for DeleteAccountErrorCodes"
+      },
+      "LogoutEverywhereErrorCodes": {
+        "type": "integer",
+        "enum": [1],
+        "x-enum-varnames": ["NOT_AUTHORIZED"],
+        "description": "Error codes for LogoutEverywhereErrorCodes"
       },
       "ProviderLinkRequest": {
         "properties": {

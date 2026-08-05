@@ -28,6 +28,24 @@ class USER_SETTINGS_STRINGS:
     CONNECT_CONTINUE_BUTTON_TEXT = "Continue"
     CONNECT_CANCEL_BUTTON_TEXT = "Cancel"
 
+    # Log out everywhere (Account tab, security area — NON-destructive, so it sits
+    # outside the danger zone). Reuses the .SettingsRemovalModal dark-modal chrome
+    # for its confirm dialog. Jinja-rendered only; heading/button/modal title are
+    # re-exported via ui_testing_strs for Python UI assertions — no JS string
+    # bridge (the confirm dialog carries no dynamic copy).
+    LOGOUT_EVERYWHERE_TITLE = "Log out everywhere"
+    LOGOUT_EVERYWHERE_HINT = (
+        "Signs you out on every device. You'll need to log back in."
+    )
+    LOGOUT_EVERYWHERE_BUTTON = "Log out…"
+    LOGOUT_EVERYWHERE_MODAL_TITLE = "Log out on all devices?"
+    LOGOUT_EVERYWHERE_MODAL_WARNING_LEAD = "This is reversible."
+    LOGOUT_EVERYWHERE_MODAL_WARNING_BODY = (
+        "Every signed-in device — including this one — is signed out immediately. "
+        "Nothing is deleted; just log back in to return."
+    )
+    LOGOUT_EVERYWHERE_MODAL_CONFIRM_BUTTON = "Log out everywhere"
+
     # Account information section (Account tab). Read-only card labels for the
     # username / email / member-since / email-verified block. Jinja-rendered
     # only; re-exported via ui_testing_strs for Python UI assertions — no JS
@@ -122,3 +140,53 @@ class USER_SETTINGS_STRINGS:
     STATS_TAGS_APPLIED_SUB = "all-time"
     STATS_MEMBER_SINCE = "Member since"
     STATS_JOINED_TODAY = "Joined today"
+
+    # Danger zone + account-removal modals (Account tab, Phase 4). Static Jinja
+    # labels re-exported via ui_testing_strs for Python UI assertions — no JS
+    # string bridge (the success/error banner text is server-sourced off the
+    # response envelope; the typed-username gate reads the username from the DOM,
+    # not APP_CONFIG). Copy grounded in the danger-zone mockups.
+    DANGER_ZONE_TITLE = "Danger zone"
+    DANGER_ZONE_HINT = (
+        "This action affects your whole account. Deleting is permanent and "
+        "cannot be undone."
+    )
+    DANGER_ZONE_DELETE_CARD_TITLE = "Delete account"
+    DANGER_ZONE_DELETE_CARD_BODY = (
+        "Permanently erase your account and personal data. This cannot be undone."
+    )
+    DANGER_ZONE_DELETE_CARD_BUTTON = "Delete…"
+
+    # Shared modal chrome
+    MODAL_CANCEL_BUTTON = "Cancel"
+    MODAL_CLOSE_ARIA_LABEL = "Close"
+    REMOVAL_REAUTH_SECTION_LABEL = "Re-authenticate to confirm it's you"
+    REMOVAL_REAUTH_PROVIDER_BUTTON = "Re-authenticate with {provider}"
+    REMOVAL_REAUTH_REDIRECT_HINT = "You'll return here to finish after signing in."
+    REMOVAL_PASSWORD_PLACEHOLDER = "Current password"
+
+    # Delete modal
+    DELETE_MODAL_TITLE = "Delete your account permanently?"
+    DELETE_MODAL_WARNING_LEAD = "This can't be undone."
+    DELETE_MODAL_WARNING_BODY = (
+        "Your account and personal data are erased from URLS4IRL."
+    )
+    DELETE_MODAL_NOTICE_TRANSFER = (
+        "{count} UTub(s) you co-own will transfer to another member."
+    )
+    DELETE_MODAL_NOTICE_SOLO = (
+        "{count} solo UTub(s) (only you) will be permanently deleted."
+    )
+    DELETE_MODAL_NOTICE_ATTRIBUTION = (
+        "URLs and tags you added stay in shared UTubs, attributed to a "
+        "“deleted user”."
+    )
+    DELETE_MODAL_NOTICE_RETENTION = (
+        "Backups and audit logs retain some data for up to ~90 days, then "
+        "auto-purge."
+    )
+    DELETE_MODAL_CONFIRM_USERNAME_PREFIX = "Type your username"
+    DELETE_MODAL_CONFIRM_USERNAME_SUFFIX = "to confirm"
+    DELETE_MODAL_CONFIRM_USERNAME_PLACEHOLDER = "Your username"
+    DELETE_MODAL_PASSWORD_LABEL = "Confirm your password"
+    DELETE_MODAL_CONFIRM_BUTTON = "Delete my account"

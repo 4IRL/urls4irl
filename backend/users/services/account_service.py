@@ -1,34 +1,47 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
 
-from flask import current_app, url_for
-from flask_login import current_user
+from flask import current_app, session, url_for
+from flask_login import current_user, logout_user
 from redis import Redis
 from sqlalchemy.exc import IntegrityError
 
-from backend import db
+from backend import db, oauth
+from backend.admin.account_data_service import erase_user_core
 from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.api_v1.services.tokens import mark_all_refresh_tokens_revoked_for_user
+from backend.extensions import audit
 from backend.extensions.extension_utils import safe_get_email_sender
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
-from backend.models.users import Users
+from backend.models.users import User_Role, Users
 from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
 )
 from backend.schemas.users import (
+    AccountRemovalResponseSchema,
     ChangeEmailResponseSchema,
     ChangePasswordResponseSchema,
     ChangeUsernameResponseSchema,
 )
 from backend.splash.constants import LOGIN_FAILURE_REASON_BAD_PASSWORD
+from backend.splash.services.forgot_password import provider_display_name
+from backend.splash.services.oauth.constants import (
+    Provider,
+    REMOVAL_INTENT_ACTION_DELETE,
+)
 from backend.users.constants import (
     ChangeEmailErrorCodes,
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
+    DeleteAccountErrorCodes,
+    LogoutEverywhereErrorCodes,
 )
-from backend.utils.all_routes import ROUTES
+from backend.users.services.removal_oauth import stash_removal_intent
+from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
 from backend.utils.mailjet_utils import handle_mailjet_failure
@@ -39,10 +52,15 @@ from backend.utils.reauth_throttle import (
 )
 from backend.utils.session_utils import restamp_current_session
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.user_strs import (
+    ACCOUNT_AUDIT_ACTIONS,
+    ACCOUNT_DELETED_SUCCESS,
     EMAIL_CHANGE_CONFIRMATION_SENT,
     EMAIL_CHANGE_NO_CHANGE,
+    LOGOUT_EVERYWHERE_SUCCESS,
+    OAUTH_PROOF_REDIRECT_PENDING,
     PASSWORD_CHANGE_SUCCESS,
     USER_FAILURE,
     USERNAME_CHANGE_NO_CHANGE,
@@ -64,6 +82,33 @@ def build_account_info_context() -> dict[str, Any]:
     ``stats_member_since_iso`` / ``stats_member_since_exact`` values the
     account-info block reuses (no duplicate date formatting).
     """
+    # Sole-creator delete-modal context (DD-5): split the UTubs this user created
+    # into those that will TRANSFER ownership on erasure (≥1 other member) versus
+    # those that will be DELETED outright (solo). Deliberately NOT
+    # ``stats_utubs_created`` — that count over-counts for the transfer notice
+    # because it includes the solo UTubs, which are deleted rather than handed
+    # off. Mirrors ``erase_user_core``'s per-UTub membership resolution.
+    utubs_transferring: int = 0
+    utubs_deleting_solo: int = 0
+    for membership in current_user.utubs_is_member_of:
+        containing_utub = membership.to_utub
+        if containing_utub.utub_creator != current_user.id:
+            continue
+        if len(containing_utub.members) > 1:
+            utubs_transferring += 1
+        else:
+            utubs_deleting_solo += 1
+
+    # Danger-zone OAuth-only re-auth (Step 6 modal): the display name of the
+    # linked provider the removal round-trip re-consents through, so the
+    # "Re-authenticate with <provider>" button reads correctly. None for
+    # password accounts (they re-auth inline, no OAuth round-trip).
+    removal_proof_provider_display: str | None = None
+    if current_user.password is None:
+        proof_provider = _select_proof_provider()
+        if proof_provider is not None:
+            removal_proof_provider_display = provider_display_name(proof_provider.value)
+
     return {
         "account_username": current_user.username,
         "account_email": current_user.email,
@@ -72,6 +117,12 @@ def build_account_info_context() -> dict[str, Any]:
         # otherwise. Gates both the account-info pending indicator and the
         # in-form change-email warning (DD-16/DD-18) at initial page load.
         "account_pending_email": current_user.pending_email,
+        # Created UTubs with ≥1 other member — ownership transfers on delete.
+        "account_utubs_transferring": utubs_transferring,
+        # Created solo UTubs — permanently deleted on account delete.
+        "account_utubs_deleting_solo": utubs_deleting_solo,
+        # Provider display name for the OAuth-only removal re-auth button.
+        "account_removal_proof_provider_display": removal_proof_provider_display,
     }
 
 
@@ -454,5 +505,276 @@ def apply_email_change(
             status=STD_JSON.SUCCESS,
             message=EMAIL_CHANGE_CONFIRMATION_SENT,
             pending_email=current_user.pending_email,
+        ),
+    ).to_response()
+
+
+def reject_self_sole_admin(user: Users) -> FlaskResponse | None:
+    """Return a 403 error response when ``user`` is the last active admin,
+    otherwise ``None`` (the removal may proceed).
+
+    Shared by the delete endpoint's service and the OAuth-proof callback re-run,
+    so both enforce the identical invariant from one implementation instead of
+    inline copies (DD-21). Mirrors the query in
+    ``backend/admin/guards.py:reject_leaving_zero_active_admins`` but is
+    self-scoped (checks ``user`` itself, not a separate actor) and deliberately
+    does NOT import from ``backend.admin.guards`` — the users domain does not
+    import admin-module internals (the Step-2 import-direction rule); it
+    reimplements the query rather than delegating.
+
+    Returns ``None`` when ``user`` is not an admin (the guard does not apply).
+    Otherwise counts the OTHER active (unsuspended) admins; if none remain,
+    removing this account would leave the portal with zero admins, so it returns
+    a 403 with ``DeleteAccountErrorCodes.SOLE_ADMIN_FORBIDDEN`` — the enum is
+    already imported here, so the shared response uses it directly.
+    """
+    if user.role != User_Role.ADMIN:
+        return None
+
+    other_active_admin_count: int = Users.query.filter(
+        Users.role == User_Role.ADMIN,
+        Users.is_suspended == False,  # noqa: E712 — SQLAlchemy column comparison
+        Users.id != user.id,
+    ).count()
+    if other_active_admin_count > 0:
+        return None
+
+    return build_message_error_response(
+        message=USER_FAILURE.SOLE_ADMIN_CANNOT_LEAVE,
+        error_code=DeleteAccountErrorCodes.SOLE_ADMIN_FORBIDDEN,
+        status_code=403,
+    )
+
+
+def _select_proof_provider() -> Provider | None:
+    """Pick an already-linked provider to serve as the OAuth-proof round-trip
+    target for a password-less account's removal re-auth (DD-6).
+
+    Returns the first linked identity that parses to a supported ``Provider``
+    **and** is registered (configured) in this deployment — mirroring the
+    proof-provider selection in ``initiate_settings_link`` /
+    ``build_connected_accounts_context`` so this redirect targets the same
+    provider the settings page shows and never dead-ends at an unconfigured
+    provider dance. Returns ``None`` only when no linked identity is usable
+    (unreachable in practice — a password-less account always keeps at least one
+    linked, valid identity, since the unlink guard forbids dropping the last
+    sign-in method).
+    """
+    for identity in current_user.oauth_identities:
+        try:
+            candidate_provider = Provider(identity.provider)
+        except ValueError:
+            continue
+        if hasattr(oauth, candidate_provider.value):
+            return candidate_provider
+    return None
+
+
+def _initiate_oauth_proof_removal(*, action: str) -> FlaskResponse:
+    """Stash a removal intent for the authenticated password-less account and
+    return the 200 redirect that starts the OAuth-proof round-trip (DD-6).
+
+    Used by the delete OAuth-only branch to stash the intent shape and return an
+    ``AccountRemovalResponseSchema`` redirect into ``GET /oauth/<provider>/link``;
+    the authenticated callback executes the stashed removal. Kept as a helper (a
+    single caller today) so the OAuth-proof initiation stays separable from the
+    delete guard flow.
+    """
+    proof_provider = _select_proof_provider()
+    if proof_provider is None:
+        # Unreachable for a real password-less account; refuse rather than
+        # redirect into a dead provider dance.
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=DeleteAccountErrorCodes.INVALID_FORM_INPUT,
+            status_code=403,
+        )
+
+    stash_removal_intent(
+        action=action,
+        user_id=current_user.id,
+        proof_provider=proof_provider,
+    )
+    return APIResponse(
+        status_code=200,
+        data=AccountRemovalResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=OAUTH_PROOF_REDIRECT_PENDING,
+            redirect_url=url_for(OAUTH_ROUTES.LINK, provider=proof_provider.value),
+        ),
+    ).to_response()
+
+
+def apply_account_deletion(
+    *, user_id: int, current_password: str | None, confirm_username: str
+) -> FlaskResponse:
+    """Irreversibly delete (GDPR-erase) the authenticated password account, then
+    log the acting session out.
+
+    Adapts the tested admin erasure core (``erase_user_core``): the ``Users`` row
+    is tombstoned in place (nine non-nullable FKs forbid a hard delete), PII child
+    rows are dropped, UTub memberships are resolved (solo→delete, created-with-
+    others→ownership transfer, non-creator→remove), and every session/refresh
+    token is revoked. A **new self-actor GDPR-erasure audit trail** (DD-4) is
+    recorded under the users-domain ``ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE``
+    action, distinguishing a self-delete from an admin-initiated erase.
+
+    Guard order (documented numbered comments): self-ownership (403) → sole-admin
+    (403, shared ``reject_self_sole_admin`` helper, DD-21) → typed-username
+    confirmation re-check (400 field error, DD-C — defense-in-depth against a
+    client-gated-only submit) → OAuth-only branch (200 redirect into the
+    OAuth-proof round-trip, DD-6 — a password-less account re-consents through an
+    already-linked provider and the callback executes the stashed erasure) →
+    re-auth lockout (429) → current-password re-auth (400 field error, records the
+    existing ``LOGIN_FAILURE`` metric + a re-auth failure) → success: clear the
+    failure counter, erase, record the self-actor audit row + ``ACCOUNT_DELETED``
+    metric, commit, log out, and return the splash redirect target.
+    """
+    # (1) Self-ownership: the URL user_id must be the acting user.
+    if user_id != current_user.id:
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=DeleteAccountErrorCodes.INVALID_FORM_INPUT,
+            status_code=403,
+        )
+
+    # (2) Sole-admin guard (DD-21): the last active admin cannot remove their own
+    # account — it would leave the portal with zero admins.
+    sole_admin_error = reject_self_sole_admin(current_user)
+    if sole_admin_error is not None:
+        return sole_admin_error
+
+    # (3) Typed-username confirmation re-check (DD-C): the modal client-gates its
+    # submit on an exact-username match, but re-verify server-side as
+    # defense-in-depth so a crafted request can never skip the confirmation.
+    if confirm_username.strip() != current_user.username:
+        return build_field_error_response(
+            message=USER_FAILURE.DELETE_CONFIRMATION_MISMATCH,
+            errors={"confirmUsername": [USER_FAILURE.DELETE_CONFIRMATION_MISMATCH]},
+            error_code=DeleteAccountErrorCodes.CONFIRMATION_MISMATCH,
+            status_code=400,
+        )
+
+    # (4) OAuth-only branch (DD-6): a password-less account cannot re-auth
+    # inline, so it re-proves identity via an OAuth round-trip through an
+    # already-linked provider. Stash the removal intent and 200-redirect the
+    # client into GET /oauth/<provider>/link; the authenticated callback executes
+    # the stashed erasure. The typed-username confirmation (guard 3) is already
+    # re-checked above, so the OAuth-proof path is gated by it too.
+    if current_user.password is None:
+        return _initiate_oauth_proof_removal(action=REMOVAL_INTENT_ACTION_DELETE)
+
+    # (5) Brute-force lockout: the shared per-user Redis counter. Fail-open;
+    # checked before the password compare so a locked-out session cannot keep
+    # guessing.
+    if is_reauth_locked_out(user_id):
+        return build_message_error_response(
+            message=USER_FAILURE.TOO_MANY_PASSWORD_ATTEMPTS,
+            error_code=DeleteAccountErrorCodes.TOO_MANY_ATTEMPTS,
+            status_code=429,
+        )
+
+    # (6) Re-auth: verify the supplied current password. A missing/empty
+    # ``currentPassword`` on a password account (the schema makes the field
+    # optional so OAuth-only accounts can omit it) is treated as a failed re-auth
+    # — short-circuited before ``is_password_correct`` so it never receives
+    # ``None``. On any failure, record a re-auth failure toward the lockout + the
+    # existing LOGIN_FAILURE metric, then surface a ``currentPassword`` field
+    # error.
+    if not current_password or not current_user.is_password_correct(current_password):
+        record_reauth_failure(user_id)
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
+        )
+        return build_field_error_response(
+            message=USER_FAILURE.CURRENT_PASSWORD_INCORRECT,
+            errors={"currentPassword": [USER_FAILURE.CURRENT_PASSWORD_INCORRECT]},
+            error_code=DeleteAccountErrorCodes.INVALID_PASSWORD,
+            status_code=400,
+        )
+
+    # (7) Success: clear the failure counter, then erase. Capture the PK as an int
+    # BEFORE the erase so the post-commit audit/response never dereferences a
+    # detached/expired ORM instance (ObjectDeletedError).
+    clear_reauth_failures(user_id)
+    erased_user_id: int = current_user.id
+    counts = erase_user_core(target_user=current_user)
+
+    # New self-actor GDPR-erasure audit trail (DD-4): unlike the admin path there
+    # is no separate ``reason`` to merge in, so the metadata is ``asdict(counts)``
+    # verbatim. ``audit.record`` flushes into the caller's transaction; the commit
+    # below lands the erasure and the audit row atomically.
+    audit.record(
+        actor_id=erased_user_id,
+        action=ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE,
+        target_type="User",
+        target_id=str(erased_user_id),
+        metadata=asdict(counts),
+    )
+    record_event(EventName.ACCOUNT_DELETED)
+    db.session.commit()
+    logout_user()
+    if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
+        session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
+
+    return APIResponse(
+        status_code=200,
+        data=AccountRemovalResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=ACCOUNT_DELETED_SUCCESS,
+            redirect_url=url_for(ROUTES.SPLASH.SPLASH_PAGE),
+        ),
+    ).to_response()
+
+
+def apply_logout_everywhere(*, user_id: int) -> FlaskResponse:
+    """Sign the authenticated user out on every device (non-destructive, D-1).
+
+    Unlike change-password (which bumps ``sessions_invalidated_at`` then
+    ``restamp_current_session()`` so the acting session survives), this flow
+    OMITS the restamp (D-4): the current session dies along with the rest, so the
+    user is redirected to splash — matching the literal meaning of "everywhere".
+    No re-auth: logging out is reversible (just log back in), so there is no
+    password / OAuth-proof gate.
+
+    Guard order: self-ownership (403) → bump ``sessions_invalidated_at`` (no
+    restamp) → revoke every refresh token → record the
+    ``ACCOUNT_SESSIONS_REVOKED`` metric → commit → log the acting session out and
+    clear the email-validated session key (mirrors ``users.logout``) → 200 with
+    the splash ``redirectUrl``.
+    """
+    # (1) Self-ownership: the URL user_id must be the acting user.
+    if user_id != current_user.id:
+        return build_message_error_response(
+            message=USER_FAILURE.NOT_AUTHORIZED,
+            error_code=LogoutEverywhereErrorCodes.NOT_AUTHORIZED,
+            status_code=403,
+        )
+
+    # (2) Invalidate every session — including the acting one (D-4): bump the
+    # kill-switch stamp WITHOUT re-stamping the current session, so the
+    # user_loader rejects this session too on its next request.
+    current_user.sessions_invalidated_at = utc_now()
+
+    # (3) Revoke every unrevoked refresh token (the mobile/bearer surface).
+    mark_all_refresh_tokens_revoked_for_user(user_id=current_user.id)
+
+    # (4) Record the domain metric, then commit the stamp + token revocations.
+    record_event(EventName.ACCOUNT_SESSIONS_REVOKED)
+    db.session.commit()
+
+    # (5) Log the acting session out and clear the email-validated session key
+    # (mirrors users.logout).
+    logout_user()
+    if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
+        session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
+
+    return APIResponse(
+        status_code=200,
+        data=AccountRemovalResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=LOGOUT_EVERYWHERE_SUCCESS,
+            redirect_url=url_for(ROUTES.SPLASH.SPLASH_PAGE),
         ),
     ).to_response()

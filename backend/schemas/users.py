@@ -139,6 +139,25 @@ class ChangeEmailResponseSchema(StatusMessageResponseSchema):
     )
 
 
+class AccountRemovalResponseSchema(StatusMessageResponseSchema):
+    """Response for the self-service account-removal / session-revocation
+    endpoints (``DELETE /users/<id>`` and
+    ``POST /users/<id>/logout-everywhere``).
+
+    Carries ``status``/``message`` (banner text is server-sourced off
+    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+    so the client navigates to splash after the acting session is logged out.
+    Shared by the delete and logout-everywhere flows (and the OAuth-proof
+    round-trip initiator, which returns the provider-redirect URL in the same
+    field).
+    """
+
+    redirect_url: str = Field(
+        alias=REDIRECT_URL,
+        description="URL to navigate to after the acting session is logged out",
+    )
+
+
 class RegisterResponseSchema(StatusMessageResponseSchema):
     pass
 

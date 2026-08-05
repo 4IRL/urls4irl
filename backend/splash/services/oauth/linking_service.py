@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from flask import redirect, render_template, request, session, url_for
-from flask_login import current_user, login_user
+from flask_login import current_user, login_user, logout_user
 from sqlalchemy.exc import IntegrityError
 from werkzeug import Response as WerkzeugResponse
 
@@ -33,7 +33,10 @@ from backend.splash.services.oauth.constants import (
     OAUTH_LINK_MAX_AGE_SECONDS,
     OAUTH_PENDING_LINK_SESSION_KEY,
     Provider,
+    REMOVAL_INTENT_ACTION_DELETE,
 )
+from backend.users.services.account_service import reject_self_sole_admin
+from backend.users.services.removal_oauth import execute_removal_intent
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.reauth_throttle import (
@@ -41,6 +44,7 @@ from backend.utils.reauth_throttle import (
     is_reauth_locked_out,
     record_reauth_failure,
 )
+from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     CONFIRM_LINK_CONTINUE_WITH_TEXT,
@@ -391,9 +395,15 @@ def initiate_link_oauth_redirect(provider_key: str) -> WerkzeugResponse:
         return redirect(url_for(ROUTES.USERS.SETTINGS))
 
     intent_action = intent.get("action")
+    # A "proof" link intent and the "delete" removal intent carry their expected
+    # provider in ``proof_provider``; a plain "link" intent carries it in
+    # ``target_provider``. Without the removal action here, a removal intent
+    # would fall into the ``target_provider`` branch (which removals never set)
+    # and bounce the user back to Settings before the OAuth-proof round-trip
+    # could start (DD-6).
     expected_provider_value = (
         intent.get("proof_provider")
-        if intent_action == LINK_INTENT_ACTION_PROOF
+        if intent_action in (LINK_INTENT_ACTION_PROOF, REMOVAL_INTENT_ACTION_DELETE)
         else intent.get("target_provider")
     )
     if expected_provider_value != provider.value:
@@ -407,14 +417,16 @@ def initiate_link_oauth_redirect(provider_key: str) -> WerkzeugResponse:
 
 def handle_authenticated_oauth_callback(
     *, provider: Provider, subject: str, email: str
-) -> WerkzeugResponse:
+) -> WerkzeugResponse | FlaskResponse:
     """Resolves a provider callback that arrived on an authenticated session.
 
-    Only reachable through the settings-link flow: without a valid stashed
-    intent this mirrors the old `@no_authenticated_users_allowed` behavior
-    (bounce home). With one, it either verifies proof (the sign-in matched a
-    provider identity already on the account, then forwards to the target
-    provider's dance) or completes the link (inserts the identity row).
+    Only reachable through the settings-link or account-removal flows: without a
+    valid stashed intent this mirrors the old `@no_authenticated_users_allowed`
+    behavior (bounce home). With one, it either verifies proof (the sign-in
+    matched a provider identity already on the account, then forwards to the
+    target provider's dance), completes the link (inserts the identity row), or —
+    for a removal intent (DD-6) — re-checks the sole-admin guard and executes the
+    stashed erasure, then commits, logs out, and redirects to splash.
     """
     intent = pop_valid_link_intent_for_current_user()
     if intent is None:
@@ -466,6 +478,38 @@ def handle_authenticated_oauth_callback(
                 **{SETTINGS_LINKED_QUERY_PARAM: provider.value},
             )
         )
+
+    if (
+        intent_action == REMOVAL_INTENT_ACTION_DELETE
+        and intent.get("proof_provider") == provider.value
+    ):
+        # Sole-admin re-check at execution time (DD-17): account state may have
+        # changed during the OAuth round-trip (e.g. another admin was demoted or
+        # suspended mid-flight), so re-run the shared guard now rather than
+        # trusting the state at initiation. Its 403 FlaskResponse is returned as
+        # the navigation result if the removal would leave zero active admins.
+        sole_admin_error = reject_self_sole_admin(current_user)
+        if sole_admin_error is not None:
+            return sole_admin_error
+
+        # Execute the stashed removal (DD-20): the neutral dispatcher re-verifies
+        # the returned subject matches a linked identity, then erases without
+        # committing. This module owns the commit/logout/redirect.
+        mutation_succeeded = execute_removal_intent(
+            intent=intent, provider=provider, subject=subject
+        )
+        if not mutation_succeeded:
+            return redirect(
+                url_for(
+                    ROUTES.USERS.SETTINGS,
+                    **{SETTINGS_LINK_ERROR_QUERY_PARAM: LINK_ERROR_PROOF_MISMATCH},
+                )
+            )
+        db.session.commit()
+        logout_user()
+        if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
+            session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
+        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
     return redirect(url_for(ROUTES.UTUBS.HOME))
 

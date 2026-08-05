@@ -21,13 +21,18 @@ def _fake_user(
     local-password account and ``None`` for an OAuth-only account, keeping the two
     scenarios distinct even though the context no longer surfaces that flag.
     ``pending_email`` mirrors the staged-change column (None when no change is in
-    flight)."""
+    flight). ``utubs_is_member_of`` and ``oauth_identities`` are empty so the
+    sole-creator transfer/solo counts resolve to 0 and the OAuth-only proof
+    provider resolves to None — the membership matrix and proof-provider
+    selection are exercised by the integration suites, not this unit test."""
     return SimpleNamespace(
         username="fakeuser1234",
         email="fakeuser1234@example.com",
         email_validated=True,
         password="hashed-password-value" if has_password else None,
         pending_email=pending_email,
+        utubs_is_member_of=[],
+        oauth_identities=[],
     )
 
 
@@ -46,6 +51,9 @@ def test_build_account_info_context_local_password_user() -> None:
         "account_email": "fakeuser1234@example.com",
         "account_email_validated": True,
         "account_pending_email": None,
+        "account_utubs_transferring": 0,
+        "account_utubs_deleting_solo": 0,
+        "account_removal_proof_provider_display": None,
     }
 
 

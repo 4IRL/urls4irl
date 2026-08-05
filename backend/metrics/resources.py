@@ -55,6 +55,8 @@ class Resource(StrEnum):
 
 EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     # Domain
+    EventName.ACCOUNT_DELETED: Resource.AUTH,
+    EventName.ACCOUNT_SESSIONS_REVOKED: Resource.AUTH,
     EventName.CROSS_UTUB_SEARCH_PERFORMED: Resource.SEARCH,
     EventName.UTUB_CREATED: Resource.UTUB,
     EventName.UTUB_DELETED: Resource.UTUB,
@@ -159,6 +161,13 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_CONTACT_SUBMIT: Resource.CONTACT,
     EventName.UI_ERROR_PAGE_REFRESH: Resource.ERROR,
     EventName.UI_RATE_LIMIT_HIT: Resource.ERROR,
+    # UI — Account (settings account tab)
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN: Resource.AUTH,
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CONFIRM: Resource.AUTH,
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CANCEL: Resource.AUTH,
+    EventName.UI_ACCOUNT_DELETE_OPEN: Resource.AUTH,
+    EventName.UI_ACCOUNT_DELETE_CONFIRM: Resource.AUTH,
+    EventName.UI_ACCOUNT_DELETE_CANCEL: Resource.AUTH,
 }
 
 

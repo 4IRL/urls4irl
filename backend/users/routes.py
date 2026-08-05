@@ -11,7 +11,10 @@ from flask import (
 from flask_login import current_user, logout_user
 
 from backend import login_manager
-from backend.api_common.auth_decorators import email_validation_required
+from backend.api_common.auth_decorators import (
+    email_validation_required,
+    session_required,
+)
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.api_v1.services.tokens import decode_access_token
@@ -23,9 +26,11 @@ from backend.schemas.requests.users import (
     ChangeEmailRequest,
     ChangePasswordRequest,
     ChangeUsernameRequest,
+    DeleteAccountRequest,
     ProviderLinkRequest,
 )
 from backend.schemas.users import (
+    AccountRemovalResponseSchema,
     ChangeEmailResponseSchema,
     ChangePasswordResponseSchema,
     ChangeUsernameResponseSchema,
@@ -41,9 +46,13 @@ from backend.users.constants import (
     ChangeEmailErrorCodes,
     ChangePasswordErrorCodes,
     ChangeUsernameErrorCodes,
+    DeleteAccountErrorCodes,
+    LogoutEverywhereErrorCodes,
 )
 from backend.users.services.account_service import (
+    apply_account_deletion,
     apply_email_change,
+    apply_logout_everywhere,
     apply_password_change,
     apply_username_change,
     build_account_info_context,
@@ -256,6 +265,54 @@ def change_email(
         new_email=change_email_request.new_email,
         current_password=change_email_request.password,
     )
+
+
+@users.route("/users/<int:user_id>", methods=["DELETE"])
+@email_validation_required
+@api_route(
+    request_schema=DeleteAccountRequest,
+    response_schema=AccountRemovalResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=DeleteAccountErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Irreversibly delete (GDPR-erase) the authenticated account. Requires a typed-username confirmation matching the account username, plus the current password for re-authentication (password accounts). The Users row is tombstoned in place, PII child rows dropped, UTub memberships resolved (solo UTubs deleted, created-with-others transferred, non-creator memberships removed), and every session/refresh token revoked; the session is logged out and the splash redirect URL returned. OAuth-only (password-less) accounts re-prove identity via an OAuth-proof round-trip through an already-linked provider — the 200 response returns the provider redirect URL, and the authenticated callback completes the erasure. The last active admin is blocked (403). A per-user brute-force lockout shared with the change-password gate returns 429 after too many wrong-password attempts.",
+    status_codes={
+        200: AccountRemovalResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        429: ErrorResponse,
+    },
+)
+def delete_account(
+    user_id: int, delete_account_request: DeleteAccountRequest
+) -> FlaskResponse:
+    """Applies the irreversible self-delete flow (self-service only; the
+    self-ownership / sole-admin / typed-confirmation / OAuth-only / re-auth policy
+    is enforced in the service)."""
+    return apply_account_deletion(
+        user_id=user_id,
+        current_password=delete_account_request.password,
+        confirm_username=delete_account_request.confirm_username,
+    )
+
+
+@users.route("/users/<int:user_id>/logout-everywhere", methods=["POST"])
+@session_required
+@api_route(
+    response_schema=AccountRemovalResponseSchema,
+    error_code=LogoutEverywhereErrorCodes.NOT_AUTHORIZED,
+    tags=[OPEN_API.AUTH],
+    description="Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication — logging back in restores access. Uses session auth only (no validated-email requirement), so a user with an unvalidated email can still sign out everywhere. Takes no request body.",
+    status_codes={
+        200: AccountRemovalResponseSchema,
+        403: ErrorResponse,
+    },
+)
+def logout_everywhere(user_id: int) -> FlaskResponse:
+    """Signs the authenticated user out on all devices (self-service only; the
+    self-ownership policy is enforced in the service). No request body, no
+    re-auth (D-1); the acting session dies too (D-4)."""
+    return apply_logout_everywhere(user_id=user_id)
 
 
 @users.route("/users/<int:user_id>/oauth/link/<string:provider>", methods=["POST"])

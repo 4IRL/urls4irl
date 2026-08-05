@@ -38,7 +38,7 @@ export const RESOURCES_BY_CATEGORY = {
     "contact",
     "other",
   ] as const,
-  domain: ["search", "utub", "url", "tag", "member", "auth"] as const,
+  domain: ["auth", "search", "utub", "url", "tag", "member"] as const,
   ui: [
     "utub",
     "url",

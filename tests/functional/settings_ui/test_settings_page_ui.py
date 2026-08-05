@@ -7,6 +7,7 @@ from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend import db
+from backend.cli.mock_constants import EMAIL_SUFFIX
 from backend.config import ConfigTestUI
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
@@ -30,6 +31,15 @@ from tests.utils_for_test import seed_distinct_stats_for_user_one
 pytestmark = pytest.mark.settings_ui
 
 DEFAULT_USER_ID: int = 1
+
+# `flask addmock users` promotes user 1 (`u4i_test1`) to the sole ADMIN role, so
+# a self delete by user 1 is blocked by the sole-admin guard
+# (`reject_self_sole_admin`, guard step 2 — ahead of the password check). The
+# actual-submit delete/logout-everywhere tests therefore act as a NON-admin user
+# (user 2), whose seeded password follows the seeder's `plaintext_password =
+# email = username + EMAIL_SUFFIX` convention.
+_NON_ADMIN_USER_ID: int = 2
+_NON_ADMIN_PASSWORD: str = UI_TEST_STRINGS.TEST_USERNAME_2 + EMAIL_SUFFIX
 
 _OAUTH_ONLY_USERNAME = "settingspwoauthonlyui"
 _OAUTH_ONLY_EMAIL = "settingspwoauthonlyui@example.com"
@@ -772,3 +782,246 @@ def test_change_email_pending_warning_absent_when_no_pending(
 
     wait_then_click_element(page=page, css_selector=SPL.CHANGE_EMAIL_SUMMARY)
     expect(page.locator(SPL.CHANGE_EMAIL_PENDING_WARNING)).to_have_count(0)
+
+
+# ---------------------------------------------------------------------------
+# Account tab — self-service session-revocation ("Log out everywhere") + the
+# irreversible Delete flow.
+#
+# End-to-end UI coverage against the built app. The happy paths assert the
+# post-logout redirect to the splash page (`/`); the gate paths assert the
+# in-modal behavior (typed-username gate, focus return, field-clear on dismiss).
+# These exercise the real Bootstrap `hidden.bs.modal` lifecycle end to end —
+# something the `_resetAccountRemovalForTests()`-mocked Vitest suite, running
+# against a synthetic HTML fixture, cannot catch.
+# ---------------------------------------------------------------------------
+
+# The client navigates to the splash page (`/`, ROUTES.SPLASH.SPLASH_PAGE) after
+# a successful logout-everywhere/delete logs the acting session out. Matches
+# `scheme://host:port/` exactly — the settings URL (`.../settings`, no trailing
+# slash) never matches.
+_SPLASH_ROOT_URL = re.compile(r"://[^/]+/$")
+
+
+def _current_username(page: Page) -> str:
+    """Read the logged-in user's username from the account-info card — the exact
+    text the delete modal's typed-confirmation gate compares against (a DOM read,
+    mirroring account-removal.ts's `USERNAME_VALUE_SELECTOR`)."""
+    return page.locator(SPL.ACCOUNT_INFO_USERNAME_VALUE).inner_text().strip()
+
+
+def test_logout_everywhere_happy_path_redirects_to_splash(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user on the settings Account tab
+    WHEN they open the "Log out everywhere" modal and click Confirm (no typed
+        username or password fields — the flow is non-destructive, D-1)
+    THEN the acting session is logged out and the browser navigates to the
+        splash page.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=_NON_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_TRIGGER)
+    expect(page.locator(SPL.LOGOUT_EVERYWHERE_MODAL)).to_be_visible()
+    wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_SUBMIT_BTN)
+
+    expect(page).to_have_url(_SPLASH_ROOT_URL)
+
+
+def test_delete_happy_path_redirects_to_splash(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in local-password user on the settings Account tab
+    WHEN they open the Delete modal, type their exact username, enter their
+        correct current password, and click Delete
+    THEN the account is erased, the acting session is logged out, and the
+        browser navigates to the splash page.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=_NON_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.DELETE_TRIGGER)
+    expect(page.locator(SPL.DELETE_MODAL)).to_be_visible()
+
+    username = _current_username(page)
+    # press_sequentially fires the keyup the DD-8 gate listens on (fill() does
+    # not), so the disabled submit re-enables once username matches AND password
+    # is non-empty.
+    page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT).press_sequentially(username)
+    page.locator(SPL.DELETE_CURRENT_PASSWORD_INPUT).press_sequentially(
+        _NON_ADMIN_PASSWORD
+    )
+
+    submit = page.locator(SPL.DELETE_SUBMIT_BTN)
+    expect(submit).to_be_enabled()
+    submit.click()
+
+    expect(page).to_have_url(_SPLASH_ROOT_URL)
+
+
+def test_delete_typed_confirmation_gates_submit(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in local-password user with the Delete modal open
+    WHEN the typed username does not exactly match their own (or the password is
+        empty)
+    THEN the Delete submit button stays disabled, becoming enabled only once the
+        exact username is typed AND a password is present (DD-C / DD-8).
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=SPL.DELETE_TRIGGER)
+    expect(page.locator(SPL.DELETE_MODAL)).to_be_visible()
+
+    submit = page.locator(SPL.DELETE_SUBMIT_BTN)
+    # Disabled on open (no confirmation typed yet).
+    expect(submit).to_be_disabled()
+
+    # A wrong username keeps it disabled even with a password present.
+    username = _current_username(page)
+    page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT).press_sequentially(
+        username + "-nope"
+    )
+    page.locator(SPL.DELETE_CURRENT_PASSWORD_INPUT).press_sequentially(
+        UI_TEST_STRINGS.TEST_PASSWORD_1
+    )
+    expect(submit).to_be_disabled()
+
+    # Correcting the username to the exact match enables the submit.
+    page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT).fill("")
+    page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT).press_sequentially(username)
+    expect(submit).to_be_enabled()
+
+
+@pytest.mark.parametrize(
+    "trigger_selector, modal_selector, cancel_selector",
+    [
+        pytest.param(
+            SPL.DELETE_TRIGGER,
+            SPL.DELETE_MODAL,
+            SPL.DELETE_CANCEL_BTN,
+            id="delete-modal",
+        ),
+        pytest.param(
+            SPL.LOGOUT_EVERYWHERE_TRIGGER,
+            SPL.LOGOUT_EVERYWHERE_MODAL,
+            SPL.LOGOUT_EVERYWHERE_CANCEL_BTN,
+            id="logout-everywhere-modal",
+        ),
+    ],
+)
+def test_removal_modal_focus_returns_to_trigger_on_cancel(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    trigger_selector: str,
+    modal_selector: str,
+    cancel_selector: str,
+):
+    """
+    GIVEN a logged-in user who opened one of the settings modals (Delete or
+        Log out everywhere)
+    WHEN they dismiss it with the Cancel button
+    THEN keyboard focus returns to the trigger that opened it.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=trigger_selector)
+    expect(page.locator(modal_selector)).to_be_visible()
+    wait_then_click_element(page=page, css_selector=cancel_selector)
+    expect(page.locator(modal_selector)).to_be_hidden()
+
+    wait_until_in_focus(page=page, css_selector=trigger_selector)
+
+
+@pytest.mark.parametrize(
+    "trigger_selector, modal_selector, cancel_selector, field_selectors",
+    [
+        pytest.param(
+            SPL.DELETE_TRIGGER,
+            SPL.DELETE_MODAL,
+            SPL.DELETE_CANCEL_BTN,
+            (SPL.DELETE_CONFIRM_USERNAME_INPUT, SPL.DELETE_CURRENT_PASSWORD_INPUT),
+            id="delete-modal-two-fields",
+        ),
+    ],
+)
+def test_removal_modal_clears_fields_on_dismiss(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    trigger_selector: str,
+    modal_selector: str,
+    cancel_selector: str,
+    field_selectors: tuple[str, ...],
+):
+    """
+    GIVEN a logged-in local-password user with the Delete modal (the only
+        removal modal carrying input fields — Log out everywhere has none)
+    WHEN they type into every field of the modal, dismiss it, then reopen it
+    THEN every one of that modal's fields renders empty (DD-7 field-clear on the
+        real `hidden.bs.modal` lifecycle — Cancel/Escape/backdrop all fire it).
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(page=page, css_selector=trigger_selector)
+    expect(page.locator(modal_selector)).to_be_visible()
+    for field_selector in field_selectors:
+        page.fill(field_selector, "scratch-value-to-be-cleared")
+
+    wait_then_click_element(page=page, css_selector=cancel_selector)
+    expect(page.locator(modal_selector)).to_be_hidden()
+
+    # Reopen and confirm every field was cleared by the dismissal.
+    wait_then_click_element(page=page, css_selector=trigger_selector)
+    expect(page.locator(modal_selector)).to_be_visible()
+    for field_selector in field_selectors:
+        expect(page.locator(field_selector)).to_have_value("")

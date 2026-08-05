@@ -58,6 +58,26 @@ def email_validation_required(func: Callable) -> Callable:
     return decorated_view
 
 
+def session_required(func: Callable) -> Callable:
+    """Gate a view on an authenticated session ONLY — no email-validation check.
+
+    Flask-Login's ``login_required`` with nothing layered on top, so a validated
+    email is not required (unlike ``email_validation_required``). Used by the
+    "log out everywhere" endpoint: signing out of every device must not itself
+    require a validated email. Stashes ``_auth_decorator`` like every sibling in
+    this file so the OpenAPI generator (``backend/cli/openapi.py``) records the
+    session-auth requirement via ``SESSION_AUTH_DECORATORS``.
+    """
+
+    @wraps(func)
+    @login_required
+    def decorated_view(*args, **kwargs) -> Callable:
+        return func(*args, **kwargs)
+
+    decorated_view._auth_decorator = session_required.__name__
+    return decorated_view
+
+
 def utub_membership_required(func: Callable) -> Callable:
     @wraps(func)
     @email_validation_required
@@ -207,6 +227,7 @@ def utub_membership_with_valid_url_tag(func: Callable) -> Callable:
 SESSION_AUTH_DECORATORS: frozenset[str] = frozenset(
     {
         email_validation_required.__name__,
+        session_required.__name__,
         url_adder_or_creator_required.__name__,
         utub_creator_required.__name__,
         utub_membership_required.__name__,

@@ -30,6 +30,8 @@ class EventName(StrEnum):
     API_METRICS_INGEST_BATCH = "api_metrics_ingest_batch"
 
     # Domain — explicit record_event() calls in service layer
+    ACCOUNT_DELETED = "account_deleted"
+    ACCOUNT_SESSIONS_REVOKED = "account_sessions_revoked"
     CROSS_UTUB_SEARCH_PERFORMED = "cross_utub_search_performed"
     EMAIL_VERIFIED = "email_verified"
     LOGIN_FAILURE = "login_failure"
@@ -136,6 +138,13 @@ class EventName(StrEnum):
     UI_CONTACT_SUBMIT = "ui_contact_submit"
     UI_ERROR_PAGE_REFRESH = "ui_error_page_refresh"
     UI_RATE_LIMIT_HIT = "ui_rate_limit_hit"
+    # — Account (settings account tab)
+    UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN = "ui_account_logout_everywhere_open"
+    UI_ACCOUNT_LOGOUT_EVERYWHERE_CONFIRM = "ui_account_logout_everywhere_confirm"
+    UI_ACCOUNT_LOGOUT_EVERYWHERE_CANCEL = "ui_account_logout_everywhere_cancel"
+    UI_ACCOUNT_DELETE_OPEN = "ui_account_delete_open"
+    UI_ACCOUNT_DELETE_CONFIRM = "ui_account_delete_confirm"
+    UI_ACCOUNT_DELETE_CANCEL = "ui_account_delete_cancel"
 
 
 # EVENT_CATEGORY and EVENT_DESCRIPTIONS are derived from the single source of

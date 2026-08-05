@@ -479,3 +479,374 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ---- Log out everywhere (Account tab) ----------------------------------- */
+
+/* The card title now sits inside the card as an <h4>, styled by the shared
+   .SettingsRemovalCardText h4 rule (mirroring the danger-zone Delete card), so
+   no dedicated outer-title rule is needed here. */
+
+/* Amber caution box bordered with the caution-amber token (--utubLockedIconColor)
+   instead of the destructive red used by the .SettingsDangerZone below it, so the
+   two read as a caution/danger pair. Unlike the Danger zone (which has a heading +
+   hint filling the gap between its zone border and inner card), this control has no
+   zone heading, so it holds its content (title + description + button) DIRECTLY —
+   a single amber border, no nested bordered card. It therefore also carries the
+   flex row layout the old inner .SettingsRemovalCard provided (text left, button
+   right on desktop). No ⚠ glyph and no zone-level heading — this is caution, not
+   danger. margin-top keeps it from cramping against the connected-accounts card. */
+#SettingsLogoutEverywhere {
+    border: 1px solid var(--utubLockedIconColor);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    background: var(--panelBackgroundColor);
+    margin-top: var(--space-6);
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* The trigger sits directly inside the amber #SettingsLogoutEverywhere box, so it
+   must read as a real, enabled action alongside its filled siblings (the green
+   Connect buttons and the red Delete button) rather than a transparent ghost. Give
+   it a solid neutral fill distinct from the box background, legible light text, a
+   hover lift toward the green accent, plus the settings interactive-element touch
+   target and focus-visible outline conventions. Tokens only. */
+#SettingsLogoutEverywhereBtn {
+    background: var(--panelBackgroundColor);
+    color: #fff;
+    border: 1px solid var(--borderColor);
+    min-height: 2.75rem;
+    white-space: nowrap;
+}
+
+#SettingsLogoutEverywhereBtn:hover {
+    background: var(--borderColor);
+    border-color: var(--deckSelectionGreen);
+}
+
+#SettingsLogoutEverywhereBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* ---- Danger zone (Account tab, Phase 4) --------------------------------- */
+
+/* Colors reference the dark-theme tokens only (no literals): destructive red is
+   --removeIconColor / --removeIconColorHover, the brightest destructive accent
+   is --deleteURLColor, and caution amber is --utubLockedIconColor. */
+
+.SettingsDangerZone {
+    border: 1px solid var(--removeIconColorHover);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    background: var(--panelBackgroundColor);
+    margin-top: var(--space-6);
+}
+
+.SettingsDangerZoneHeading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.25rem;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.SettingsDangerZoneGlyph {
+    color: var(--utubLockedIconColor);
+}
+
+.SettingsDangerZoneHint {
+    color: var(--cardURLTextColor);
+    font-size: 0.9rem;
+    margin: 0 0 var(--space-4);
+}
+
+.SettingsRemovalCard {
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+}
+
+.SettingsRemovalCard:last-child {
+    margin-bottom: 0;
+}
+
+.SettingsRemovalCardText h4 {
+    margin: 0 0 0.2rem;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.SettingsRemovalCardText p {
+    margin: 0;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+    max-width: 44ch;
+}
+
+/* The warning (amber) trigger is outline-style; the delete (red) trigger is
+   solid. Bootstrap's own .btn-warning/.btn-danger are overridden here so the
+   danger-zone buttons match the dark panel rather than the light defaults. */
+.SettingsDangerZone .btn-warning,
+.SettingsRemovalModal .btn-warning {
+    background: transparent;
+    color: var(--utubLockedIconColor);
+    border: 1px solid var(--utubLockedIconColor);
+}
+
+.SettingsDangerZone .btn-danger,
+.SettingsRemovalModal .btn-danger {
+    background: var(--removeIconColor);
+    color: #fff;
+    border: 1px solid var(--removeIconColor);
+}
+
+.SettingsDangerZone .btn-danger:hover,
+.SettingsRemovalModal .btn-danger:hover {
+    background: var(--removeIconColorHover);
+    border-color: var(--removeIconColorHover);
+}
+
+/* The non-destructive "Log out everywhere" confirm uses .btn-success; theme it to
+   the dark modal palette rather than Bootstrap's default un-themed green. */
+.SettingsRemovalModal .btn-success {
+    background: var(--splashGreen);
+    color: #fff;
+    border: 1px solid var(--splashGreen);
+}
+
+.SettingsRemovalModal .btn-success:hover {
+    background: var(--darkSplashGreen);
+    border-color: var(--darkSplashGreen);
+}
+
+.SettingsDangerZone .btn,
+.SettingsRemovalModal .btn,
+.SettingsRemovalModal .btn-close,
+.SettingsRemovalModal .form-control,
+.SettingsRemovalOauthBtn {
+    min-height: 2.75rem;
+}
+
+.SettingsDangerZone .btn {
+    white-space: nowrap;
+}
+
+.SettingsDangerZone .btn:focus-visible,
+.SettingsRemovalModal .btn:focus-visible,
+.SettingsRemovalModal .btn-close:focus-visible,
+.SettingsRemovalModal .form-control:focus-visible,
+.SettingsRemovalOauthBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* ---- Account-removal dark modals (Phase 4) ------------------------------ */
+
+.SettingsRemovalModalContent {
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.SettingsRemovalModal .modal-header {
+    border-bottom: 1px solid var(--borderColor);
+    align-items: center;
+}
+
+.SettingsRemovalModalTitle {
+    margin: 0;
+    font-size: 1.15rem;
+    color: #fff;
+    font-weight: 800;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.SettingsRemovalModalTitleDanger .SettingsRemovalGlyph {
+    color: var(--deleteURLColor);
+}
+
+.SettingsRemovalModalTitleWarn .SettingsRemovalGlyph {
+    color: var(--utubLockedIconColor);
+}
+
+.SettingsRemovalModal .btn-close {
+    background: none;
+    border: 0;
+    color: var(--cardURLTextColor);
+    font-size: 1.4rem;
+    line-height: 1;
+    min-width: 2.75rem;
+    opacity: 1;
+}
+
+.SettingsRemovalModal .modal-body {
+    color: var(--cardURLTextColor);
+    font-size: 0.92rem;
+}
+
+.SettingsRemovalWarnBox {
+    border-left: 3px solid var(--deleteURLColor);
+    background: var(--panelBackgroundColor);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    margin: 0 0 var(--space-4);
+}
+
+.SettingsRemovalWarnBoxAmber {
+    border-left-color: var(--utubLockedIconColor);
+}
+
+.SettingsRemovalWarnBox strong {
+    color: #fff;
+}
+
+.SettingsRemovalNoticeList {
+    margin: 0.25rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.SettingsRemovalNoticeList li {
+    margin: 0.15rem 0;
+}
+
+.SettingsRemovalField {
+    margin: 0 0 var(--space-4);
+}
+
+.SettingsRemovalField:last-child {
+    margin-bottom: 0;
+}
+
+.SettingsRemovalField label {
+    display: block;
+    font-size: 0.85rem;
+    color: #fff;
+    margin: 0 0 0.3rem;
+    font-weight: 700;
+}
+
+.SettingsRemovalFieldHint {
+    font-weight: 400;
+    color: var(--cardURLTextColor);
+    font-size: 0.8rem;
+}
+
+.SettingsRemovalModal .form-control {
+    width: 100%;
+    background: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    color: #fff;
+}
+
+.SettingsRemovalModal .form-control.is-invalid {
+    border-color: var(--deleteURLColor);
+}
+
+.SettingsRemovalModal .invalid-feedback {
+    color: var(--deleteURLColor);
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+}
+
+.SettingsRemovalCode {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+    color: var(--deckSelectionGreen);
+}
+
+.SettingsRemovalOauthBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--panelBackgroundColor);
+    color: #fff;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.SettingsRemovalOauthBtn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.SettingsRemovalReauthLabel {
+    display: block;
+}
+
+.SettingsRemovalRedirectHint {
+    color: var(--cardURLTextColor);
+    font-size: 0.8rem;
+    margin: 0.4rem 0 0;
+}
+
+.SettingsRemovalModal .modal-footer {
+    border-top: 1px solid var(--borderColor);
+    gap: var(--space-3);
+}
+
+.SettingsRemovalModal .btn-danger[disabled],
+.SettingsRemovalModal .btn-warning[disabled],
+.SettingsRemovalModal .btn-success[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.SettingsRemovalModal .btn-secondary {
+    background: transparent;
+    color: var(--cardURLTextColor);
+    border: 1px solid var(--borderColor);
+}
+
+/* Mobile: danger-zone triggers and modal footer buttons go full-width/stacked. The
+   amber "Log out everywhere" box stacks the same way as its .SettingsRemovalCard
+   siblings, with its button going full-width. */
+@media (max-width: 575.98px) {
+    .SettingsRemovalCard,
+    #SettingsLogoutEverywhere {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .SettingsDangerZone .btn,
+    #SettingsLogoutEverywhereBtn {
+        width: 100%;
+    }
+
+    .SettingsRemovalModal .modal-footer {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .SettingsRemovalModal .modal-footer .btn {
+        width: 100%;
+    }
+
+    .SettingsRemovalOauthBtn {
+        width: 100%;
+        justify-content: center;
+    }
+}

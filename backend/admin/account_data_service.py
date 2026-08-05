@@ -11,6 +11,8 @@ Each function:
 
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass
+
 from flask import current_app, url_for
 
 from backend import db
@@ -67,6 +69,116 @@ def is_tombstoned(*, user: Users) -> bool:
     return user.username == build_tombstone_username(user_id=user.id)
 
 
+@dataclass(frozen=True)
+class ErasureCounts:
+    """Structured tally of what an erasure touched, returned by ``erase_user_core``.
+
+    Both callers turn this into audit metadata via ``dataclasses.asdict`` — the
+    admin path (``erase_user``) merges its caller-supplied ``reason`` back in;
+    the self-service path records it verbatim. ``contact_entries_deleted`` was
+    already recorded in the admin audit metadata but never returned from the
+    erasure logic itself; carrying it (and ``api_tokens_revoked``) here makes it
+    available to the self-service caller too.
+    """
+
+    utubs_deleted: int
+    ownerships_transferred: int
+    memberships_removed: int
+    contact_entries_deleted: int
+    api_tokens_revoked: int
+
+
+def erase_user_core(*, target_user: Users) -> ErasureCounts:
+    """Guard-free, audit-free, commit-free erasure of ``target_user``.
+
+    Performs every mutation the erasure entails — UTub-membership resolution,
+    PII child-row deletion, in-place ``Users``-row anonymization, session/token
+    revocation — and returns a structured tally of what it touched. Carries
+    **no** guards (self-action, last-admin, idempotency), records **no** audit
+    row, and does **not** commit: the caller owns all three.
+
+    Shared by the admin path (``erase_user``) and the self-service delete flow
+    so all callers exercise one tested implementation.
+
+    UTub membership lifecycle, per-UTub:
+
+    - **solo UTub** (erased user is the only member): the UTub is hard-deleted
+      via ORM cascade.
+    - **created UTub with other members**: ownership transfers to the
+      deterministic remaining member, then the erased user's membership row is
+      removed.
+    - **non-creator membership**: the membership row is removed; contributed
+      URLs/tags stay under the tombstone identity.
+    """
+    target_user_id: int = target_user.id
+
+    utubs_deleted_count: int = 0
+    ownerships_transferred_count: int = 0
+    memberships_removed_count: int = 0
+
+    # Snapshot: deleting UTubs/memberships mutates the relationship in-place.
+    memberships: list[Utub_Members] = list(target_user.utubs_is_member_of)
+    for membership in memberships:
+        containing_utub: Utubs = membership.to_utub
+        other_members: list[Utub_Members] = [
+            utub_member
+            for utub_member in containing_utub.members
+            if utub_member.user_id != target_user_id
+        ]
+
+        if not other_members:
+            # Solo UTub: unshared after erasure — delete it entirely (the
+            # membership row goes with it via ORM cascade).
+            db.session.delete(containing_utub)
+            utubs_deleted_count += 1
+            continue
+
+        if containing_utub.utub_creator == target_user_id:
+            new_owner_membership: Utub_Members = select_ownership_transfer_target(
+                other_members=other_members
+            )
+            containing_utub.utub_creator = new_owner_membership.user_id
+            new_owner_membership.member_role = Member_Role.CREATOR
+            ownerships_transferred_count += 1
+
+        db.session.delete(membership)
+        containing_utub.set_last_updated()
+        memberships_removed_count += 1
+
+    # PII-bearing child rows.
+    if target_user.email_confirm is not None:
+        db.session.delete(target_user.email_confirm)
+    if target_user.forgot_password is not None:
+        db.session.delete(target_user.forgot_password)
+    for oauth_identity in list(target_user.oauth_identities):
+        db.session.delete(oauth_identity)
+    contact_entries_deleted_count: int = ContactFormEntries.query.filter(
+        ContactFormEntries.user_id == target_user_id
+    ).delete(synchronize_session=False)
+
+    # Anonymize the Users row itself.
+    target_user.username = build_tombstone_username(user_id=target_user_id)
+    target_user.email = build_tombstone_email(user_id=target_user_id)
+    target_user.password = None
+    target_user.email_validated = False
+    # A pending email-change address is PII too — scrub it alongside the rest.
+    target_user.pending_email = None
+
+    # Kill all sessions: web via the invalidation stamp, API via bulk revoke.
+    target_user.sessions_invalidated_at = utc_now()
+    api_tokens_revoked_count: int = mark_all_refresh_tokens_revoked_for_user(
+        user_id=target_user_id
+    )
+
+    return ErasureCounts(
+        utubs_deleted=utubs_deleted_count,
+        ownerships_transferred=ownerships_transferred_count,
+        memberships_removed=memberships_removed_count,
+        contact_entries_deleted=contact_entries_deleted_count,
+        api_tokens_revoked=api_tokens_revoked_count,
+    )
+
+
 def erase_user(*, actor_id: int, target_user_id: int, reason: str) -> FlaskResponse:
     """Erase a user account: anonymize-in-place, scrub PII, resolve memberships.
 
@@ -75,7 +187,8 @@ def erase_user(*, actor_id: int, target_user_id: int, reason: str) -> FlaskRespo
     scrubbed from the live database immediately:
 
     - username -> ``deleted-user-<id>``, email -> tombstone address,
-      password -> ``None``, ``email_validated`` -> ``False``
+      password -> ``None``, ``email_validated`` -> ``False``,
+      ``pending_email`` -> ``None``
     - OAuth-identity, email-validation, and forgot-password child rows deleted
     - the user's ``ContactFormEntries`` rows deleted (bodies may hold PII)
     - web sessions invalidated + all API refresh tokens revoked
@@ -134,75 +247,20 @@ def erase_user(*, actor_id: int, target_user_id: int, reason: str) -> FlaskRespo
             message=ADMIN_ACTION_STRINGS.ACCOUNT_ERASE_NOOP,
         ).to_response()
 
-    utubs_deleted_count: int = 0
-    ownerships_transferred_count: int = 0
-    memberships_removed_count: int = 0
+    counts: ErasureCounts = erase_user_core(target_user=target_user)
 
-    # Snapshot: deleting UTubs/memberships mutates the relationship in-place.
-    memberships: list[Utub_Members] = list(target_user.utubs_is_member_of)
-    for membership in memberships:
-        containing_utub: Utubs = membership.to_utub
-        other_members: list[Utub_Members] = [
-            utub_member
-            for utub_member in containing_utub.members
-            if utub_member.user_id != target_user_id
-        ]
-
-        if not other_members:
-            # Solo UTub: unshared after erasure — delete it entirely (the
-            # membership row goes with it via ORM cascade).
-            db.session.delete(containing_utub)
-            utubs_deleted_count += 1
-            continue
-
-        if containing_utub.utub_creator == target_user_id:
-            new_owner_membership: Utub_Members = select_ownership_transfer_target(
-                other_members=other_members
-            )
-            containing_utub.utub_creator = new_owner_membership.user_id
-            new_owner_membership.member_role = Member_Role.CREATOR
-            ownerships_transferred_count += 1
-
-        db.session.delete(membership)
-        containing_utub.set_last_updated()
-        memberships_removed_count += 1
-
-    # PII-bearing child rows.
-    if target_user.email_confirm is not None:
-        db.session.delete(target_user.email_confirm)
-    if target_user.forgot_password is not None:
-        db.session.delete(target_user.forgot_password)
-    for oauth_identity in list(target_user.oauth_identities):
-        db.session.delete(oauth_identity)
-    contact_entries_deleted_count: int = ContactFormEntries.query.filter(
-        ContactFormEntries.user_id == target_user_id
-    ).delete(synchronize_session=False)
-
-    # Anonymize the Users row itself.
-    target_user.username = build_tombstone_username(user_id=target_user_id)
-    target_user.email = build_tombstone_email(user_id=target_user_id)
-    target_user.password = None
-    target_user.email_validated = False
-
-    # Kill all sessions: web via the invalidation stamp, API via bulk revoke.
-    target_user.sessions_invalidated_at = utc_now()
-    api_tokens_revoked_count: int = mark_all_refresh_tokens_revoked_for_user(
-        user_id=target_user_id
-    )
+    # ErasureCounts carries no ``reason`` (a caller-supplied param, not part of
+    # the core's return); merge it back in so the admin audit metadata keeps its
+    # existing shape — both ``reason`` and every count present.
+    metadata: dict[str, object] = asdict(counts)
+    metadata["reason"] = reason
 
     audit.record(
         actor_id=actor_id,
         action=ADMIN_AUDIT_ACTIONS.USER_ERASE,
         target_type="User",
         target_id=str(target_user_id),
-        metadata={
-            "reason": reason,
-            "utubs_deleted": utubs_deleted_count,
-            "ownerships_transferred": ownerships_transferred_count,
-            "memberships_removed": memberships_removed_count,
-            "contact_entries_deleted": contact_entries_deleted_count,
-            "api_tokens_revoked": api_tokens_revoked_count,
-        },
+        metadata=metadata,
     )
     db.session.commit()
     return AdminActionResponseSchema(

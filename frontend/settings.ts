@@ -12,6 +12,7 @@ import { initConnectedAccounts } from "./settings/connected-accounts.js";
 import { initChangeUsername } from "./settings/change-username.js";
 import { initChangePassword } from "./settings/change-password.js";
 import { initChangeEmail } from "./settings/change-email.js";
+import { initAccountRemoval } from "./settings/account-removal.js";
 
 registerJQueryPlugins();
 setupCSRF();
@@ -25,4 +26,5 @@ $(document).ready(() => {
   initChangeUsername();
   initChangePassword();
   initChangeEmail();
+  initAccountRemoval();
 });

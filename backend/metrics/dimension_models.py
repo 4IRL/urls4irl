@@ -425,6 +425,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # Domain events carry only device_type; auto-injected by MetricsWriter.record() from request context.
     # `LOGIN_FAILURE` (`reason`) and `LOGIN_SUCCESS` (`method`) are the domain
     # events with a closed-set extra dim.
+    EventName.ACCOUNT_DELETED: _DimDeviceOnly,
+    EventName.ACCOUNT_SESSIONS_REVOKED: _DimDeviceOnly,
     EventName.CROSS_UTUB_SEARCH_PERFORMED: _DimCrossUtubSearchPerformed,
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
@@ -529,6 +531,13 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_CONTACT_SUBMIT: _DimDeviceOnly,
     EventName.UI_ERROR_PAGE_REFRESH: _DimDeviceOnly,
     EventName.UI_RATE_LIMIT_HIT: _DimDeviceOnly,
+    # UI — Account (settings account tab)
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN: _DimDeviceOnly,
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CONFIRM: _DimDeviceOnly,
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CANCEL: _DimDeviceOnly,
+    EventName.UI_ACCOUNT_DELETE_OPEN: _DimDeviceOnly,
+    EventName.UI_ACCOUNT_DELETE_CONFIRM: _DimDeviceOnly,
+    EventName.UI_ACCOUNT_DELETE_CANCEL: _DimDeviceOnly,
 }
 
 

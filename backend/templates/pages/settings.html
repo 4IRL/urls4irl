@@ -1,5 +1,91 @@
 {% extends "pages/layout.html" %}
-{% block modal_extender %}{% endblock %}
+{% block modal_extender %}
+{# Bespoke dark-themed confirm modals: the danger-zone account DELETE (re-auth
+   gated) and the non-destructive "Log out everywhere" flow. aria-labelledby points
+   at each modal's REAL title id (not the phantom homeModalBase "FormModal" id). The
+   delete re-auth block branches on connected_accounts_has_password: password input
+   for password accounts, an OAuth re-authenticate button for OAuth-only accounts.
+   Log-out-everywhere is reversible, so it has no password / re-auth gate (D-1). #}
+<div class="modal fade SettingsRemovalModal" id="SettingsLogoutEverywhereModal" tabindex="-1" role="dialog"
+    aria-labelledby="SettingsLogoutEverywhereModalTitle" aria-describedby="SettingsLogoutEverywhereModalBody" aria-hidden="true"
+    data-action-url="{{ url_for('users.logout_everywhere', user_id=current_user.id) }}">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content SettingsRemovalModalContent">
+            <div class="modal-header">
+                <h4 class="modal-title SettingsRemovalModalTitle SettingsRemovalModalTitleWarn" id="SettingsLogoutEverywhereModalTitle">
+                    <span class="SettingsRemovalGlyph" aria-hidden="true">⚠</span> {{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_MODAL_TITLE }}
+                </h4>
+                <button type="button" class="btn-close SettingsRemovalClose" data-bs-dismiss="modal" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_MODAL_CLOSE_ARIA_LABEL }}">×</button>
+            </div>
+            <div class="modal-body" id="SettingsLogoutEverywhereModalBody">
+                <div id="SettingsLogoutEverywhereError" class="alert alert-danger d-none" role="alert" aria-live="polite"></div>
+                <div class="SettingsRemovalWarnBox SettingsRemovalWarnBoxAmber">
+                    <strong>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_MODAL_WARNING_LEAD }}</strong>
+                    {{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_MODAL_WARNING_BODY }}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ CONSTANTS.STRINGS.SETTINGS_MODAL_CANCEL_BUTTON }}</button>
+                <button type="button" class="btn btn-success" id="SettingsLogoutEverywhereSubmitBtn">{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_MODAL_CONFIRM_BUTTON }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade SettingsRemovalModal" id="SettingsDeleteModal" tabindex="-1" role="dialog"
+    aria-labelledby="SettingsDeleteModalTitle" aria-describedby="SettingsDeleteModalBody" aria-hidden="true"
+    data-action-url="{{ url_for('users.delete_account', user_id=current_user.id) }}">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content SettingsRemovalModalContent">
+            <div class="modal-header">
+                <h4 class="modal-title SettingsRemovalModalTitle SettingsRemovalModalTitleDanger" id="SettingsDeleteModalTitle">
+                    <span class="SettingsRemovalGlyph" aria-hidden="true">⚠</span> {{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_TITLE }}
+                </h4>
+                <button type="button" class="btn-close SettingsRemovalClose" data-bs-dismiss="modal" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_MODAL_CLOSE_ARIA_LABEL }}">×</button>
+            </div>
+            <div class="modal-body" id="SettingsDeleteModalBody">
+                <div id="SettingsDeleteError" class="alert alert-danger d-none" role="alert" aria-live="polite"></div>
+                <div class="SettingsRemovalWarnBox">
+                    <strong>{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_WARNING_LEAD }}</strong>
+                    {{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_WARNING_BODY }}
+                    <ul class="SettingsRemovalNoticeList">
+                        {% if account_utubs_transferring > 0 %}
+                        <li>{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_NOTICE_TRANSFER.format(count=account_utubs_transferring) }}</li>
+                        {% endif %}
+                        {% if account_utubs_deleting_solo > 0 %}
+                        <li>{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_NOTICE_SOLO.format(count=account_utubs_deleting_solo) }}</li>
+                        {% endif %}
+                        <li>{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_NOTICE_ATTRIBUTION }}</li>
+                        <li>{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_NOTICE_RETENTION }}</li>
+                    </ul>
+                </div>
+                <div class="SettingsRemovalField">
+                    <label for="SettingsDeleteConfirmUsername">{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_CONFIRM_USERNAME_PREFIX }} <span class="SettingsRemovalCode">{{ account_username }}</span> {{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_CONFIRM_USERNAME_SUFFIX }}</label>
+                    <input class="form-control" id="SettingsDeleteConfirmUsername" type="text" autocomplete="off" placeholder="{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_CONFIRM_USERNAME_PLACEHOLDER }}">
+                </div>
+                {% if connected_accounts_has_password %}
+                <div class="SettingsRemovalField">
+                    <label for="SettingsDeleteCurrentPassword">{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_PASSWORD_LABEL }}</label>
+                    <input class="form-control" id="SettingsDeleteCurrentPassword" type="password" autocomplete="current-password" placeholder="{{ CONSTANTS.STRINGS.SETTINGS_REMOVAL_PASSWORD_PLACEHOLDER }}">
+                </div>
+                {% else %}
+                <div class="SettingsRemovalField">
+                    <label class="SettingsRemovalReauthLabel">{{ CONSTANTS.STRINGS.SETTINGS_REMOVAL_REAUTH_SECTION_LABEL }}</label>
+                    <button type="button" class="btn SettingsRemovalOauthBtn" id="SettingsDeleteReauthBtn" disabled>{{ CONSTANTS.STRINGS.SETTINGS_REMOVAL_REAUTH_PROVIDER_BUTTON.format(provider=account_removal_proof_provider_display) }}</button>
+                    <p class="SettingsRemovalRedirectHint">{{ CONSTANTS.STRINGS.SETTINGS_REMOVAL_REAUTH_REDIRECT_HINT }}</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ CONSTANTS.STRINGS.SETTINGS_MODAL_CANCEL_BUTTON }}</button>
+                {% if connected_accounts_has_password %}
+                <button type="button" class="btn btn-danger" id="SettingsDeleteSubmitBtn" disabled>{{ CONSTANTS.STRINGS.SETTINGS_DELETE_MODAL_CONFIRM_BUTTON }}</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 {% block mainbody %}
 <main id="SettingsPage">
     <div class="SettingsContent">
@@ -170,6 +256,24 @@
         {% else %}
         <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
         {% endif %}
+        <div id="SettingsLogoutEverywhere">
+            <div class="SettingsRemovalCardText">
+                <h4>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_TITLE }}</h4>
+                <p>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_HINT }}</p>
+            </div>
+            <button type="button" class="btn" id="SettingsLogoutEverywhereBtn">{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_BUTTON }}</button>
+        </div>
+        <div class="SettingsDangerZone">
+            <h3 class="SettingsDangerZoneHeading"><span class="SettingsDangerZoneGlyph" aria-hidden="true">⚠</span> {{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_TITLE }}</h3>
+            <p class="SettingsDangerZoneHint">{{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_HINT }}</p>
+            <div class="SettingsRemovalCard">
+                <div class="SettingsRemovalCardText">
+                    <h4>{{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_DELETE_CARD_TITLE }}</h4>
+                    <p>{{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_DELETE_CARD_BODY }}</p>
+                </div>
+                <button type="button" class="btn btn-danger" id="SettingsDeleteBtn">{{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_DELETE_CARD_BUTTON }}</button>
+            </div>
+        </div>
     </section>
     <section role="tabpanel" id="SettingsPanelStats" aria-labelledby="SettingsTabStats" tabindex="0" hidden>
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_STATS }}</h2>

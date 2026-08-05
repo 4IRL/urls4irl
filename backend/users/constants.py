@@ -31,6 +31,26 @@ class ChangePasswordErrorCodes(IntEnum):
     TOO_MANY_ATTEMPTS = 4
 
 
+class DeleteAccountErrorCodes(IntEnum):
+    """Application error codes for the authenticated delete-account endpoint
+    (``DELETE /users/<id>``).
+
+    Same home as the sibling ``Change*ErrorCodes`` (the users domain, not
+    ``backend/splash/constants.py``) and the same explicit-sequential-value
+    convention (member 1 is always ``INVALID_FORM_INPUT``).
+
+    ``CONFIRMATION_MISMATCH`` (DD-C) backs the typed-username confirmation
+    re-check. The OAuth-only removal path returns a 200 OAuth-proof redirect
+    (DD-6), not an error, so it has no error-code member here.
+    """
+
+    INVALID_FORM_INPUT = 1
+    INVALID_PASSWORD = 2
+    TOO_MANY_ATTEMPTS = 3
+    SOLE_ADMIN_FORBIDDEN = 4
+    CONFIRMATION_MISMATCH = 5
+
+
 class ChangeEmailErrorCodes(IntEnum):
     """Application error codes for the authenticated change-email START endpoint
     (``PUT /users/<id>/email``).
@@ -50,3 +70,17 @@ class ChangeEmailErrorCodes(IntEnum):
     TOO_MANY_ATTEMPTS = 5
     RATE_LIMITED = 6
     EMAIL_SEND_FAILURE = 7
+
+
+class LogoutEverywhereErrorCodes(IntEnum):
+    """Application error code for the authenticated "log out everywhere" endpoint
+    (``POST /users/<id>/logout-everywhere``).
+
+    Same home as the sibling ``Change*ErrorCodes``/``DeleteAccountErrorCodes``
+    (the users domain, not ``backend/splash/constants.py``) and the same
+    explicit-sequential-value convention (member 1 is the sole failure mode).
+    The endpoint is non-destructive and takes no request body, so its only
+    failure mode is the self-ownership guard.
+    """
+
+    NOT_AUTHORIZED = 1

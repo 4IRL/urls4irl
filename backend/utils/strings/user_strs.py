@@ -61,6 +61,25 @@ EMAIL_CHANGE_CONFIRMATION_SENT = (
     "finish changing your email."
 )
 EMAIL_CHANGE_NO_CHANGE = "That's already your email address."
+# Delete-account 200 banner copy (server-sourced envelope text — surfaced
+# dynamically off xhr.responseJSON.message; no JS bridge). The irreversible
+# erasure success message shown before navigating to splash post-logout.
+ACCOUNT_DELETED_SUCCESS = (
+    "Your account has been permanently deleted. We're sorry to see you go."
+)
+# Log-out-everywhere 200 banner copy (server-sourced envelope text — surfaced
+# dynamically off xhr.responseJSON.message; no JS bridge). Non-destructive
+# session revocation: the acting session dies too (D-4), so the client navigates
+# to splash after showing this message.
+LOGOUT_EVERYWHERE_SUCCESS = (
+    "You've been signed out on all devices. Log back in to continue."
+)
+# Typed-username confirmation mismatch copy (400 field error on ``confirmUsername``,
+# DD-C) — the server re-check of the typed phrase, defense-in-depth against a
+# client-gated-only submit.
+DELETE_CONFIRMATION_MISMATCH = (
+    "The username you typed doesn't match. Type your exact username to confirm."
+)
 MEMBER_DELETE_WARNING = (
     "This member will no longer have access to the URLs in this UTub."
 )
@@ -130,6 +149,20 @@ EMAIL_CHANGE_OAUTH_ONLY = (
 TOO_MANY_PASSWORD_ATTEMPTS = (
     "Too many incorrect password attempts. Please try again later."
 )
+# Sole-admin guard copy (403) used by the delete endpoint (DD-21): the last
+# active admin cannot remove their own account, since doing so would leave the
+# portal with zero admins. Mirrors the admin portal's last-admin-forbidden
+# invariant but self-scoped.
+SOLE_ADMIN_CANNOT_LEAVE = (
+    "You're the only active admin. Assign another admin before removing your "
+    "account."
+)
+# OAuth-proof round-trip 200 banner copy (DD-6) returned by the delete
+# endpoint's OAuth-only branch: a password-less account re-consents through an
+# already-linked provider before the removal completes. Server-sourced envelope
+# text (no JS bridge); pairs with ``AccountRemovalResponseSchema`` as the
+# response type for the removal flow.
+OAUTH_PROOF_REDIRECT_PENDING = "Re-authenticate with your linked provider to continue."
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -149,6 +182,22 @@ class USER_FAILURE(FAILURE_GENERAL):
     PASSWORD_CHANGE_OAUTH_ONLY = PASSWORD_CHANGE_OAUTH_ONLY
     EMAIL_CHANGE_OAUTH_ONLY = EMAIL_CHANGE_OAUTH_ONLY
     TOO_MANY_PASSWORD_ATTEMPTS = TOO_MANY_PASSWORD_ATTEMPTS
+    SOLE_ADMIN_CANNOT_LEAVE = SOLE_ADMIN_CANNOT_LEAVE
+    DELETE_CONFIRMATION_MISMATCH = DELETE_CONFIRMATION_MISMATCH
+
+
+class ACCOUNT_AUDIT_ACTIONS:
+    """Users-domain audit action constants for self-service account actions.
+
+    The users-domain equivalent of ``ADMIN_AUDIT_ACTIONS`` (kept as its own
+    constant rather than imported from ``admin_portal_strs.py``, per the Step-2
+    import-direction rule — the users domain does not import admin-module
+    strings), so the ``AuditLogs`` trail distinguishes an admin-initiated erase
+    (``ADMIN_AUDIT_ACTIONS.USER_ERASE``) from a self-service account deletion
+    (``SELF_ACCOUNT_ERASE``, DD-4).
+    """
+
+    SELF_ACCOUNT_ERASE: str = "user.account.self_erase"
 
 
 class MEMBER_FAILURE(FAILURE_GENERAL):

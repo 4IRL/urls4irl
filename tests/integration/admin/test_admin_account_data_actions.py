@@ -282,6 +282,11 @@ def test_admin_erase_user_solo_utub_deleted(
     assert audit_row.log_metadata.get("utubs_deleted") == 1
     assert audit_row.log_metadata.get("ownerships_transferred") == 0
     assert audit_row.log_metadata.get("memberships_removed") == 0
+    # DD-23: guard the two ErasureCounts fields the refactor added to the
+    # returned tally (contact_entries_deleted was already in the metadata; now
+    # both come from ErasureCounts) so a dropped field fails this regression run.
+    assert audit_row.log_metadata.get("contact_entries_deleted") == 1
+    assert audit_row.log_metadata.get("api_tokens_revoked") == 1
 
 
 # ---------------------------------------------------------------------------

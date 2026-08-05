@@ -60,6 +60,22 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     # -----------------------------------------------------------------------
     # Domain — explicit record_event() calls in service layer
     # -----------------------------------------------------------------------
+    EventName.ACCOUNT_DELETED: EventRegistryEntry(
+        description=(
+            "Account irreversibly self-deleted via Settings (GDPR erasure — "
+            "Users row tombstoned, PII child rows dropped, acting session "
+            "logged out)"
+        ),
+        category=EventCategory.DOMAIN,
+    ),
+    EventName.ACCOUNT_SESSIONS_REVOKED: EventRegistryEntry(
+        description=(
+            'Account "logged out everywhere" via Settings (non-destructive '
+            "session revocation — sessions_invalidated_at bumped, refresh "
+            "tokens revoked, acting session logged out too)"
+        ),
+        category=EventCategory.DOMAIN,
+    ),
     EventName.CROSS_UTUB_SEARCH_PERFORMED: EventRegistryEntry(
         description="Cross-UTub search executed across the user's member UTubs",
         category=EventCategory.DOMAIN,
@@ -607,6 +623,31 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     ),
     EventName.UI_RATE_LIMIT_HIT: EventRegistryEntry(
         description="429 rate limit response shown to user",
+        category=EventCategory.UI,
+    ),
+    # UI — Account (settings account tab)
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_OPEN: EventRegistryEntry(
+        description="Log-out-everywhere confirm modal opened",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CONFIRM: EventRegistryEntry(
+        description="Log-out-everywhere confirmed",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_LOGOUT_EVERYWHERE_CANCEL: EventRegistryEntry(
+        description="Log-out-everywhere confirm modal dismissed",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_DELETE_OPEN: EventRegistryEntry(
+        description="Account delete-confirm modal opened",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_DELETE_CONFIRM: EventRegistryEntry(
+        description="Account delete confirmed",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_ACCOUNT_DELETE_CANCEL: EventRegistryEntry(
+        description="Account delete-confirm modal dismissed",
         category=EventCategory.UI,
     ),
 }
