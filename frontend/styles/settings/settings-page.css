@@ -531,6 +531,51 @@
     outline-offset: 2px;
 }
 
+/* ---- Privacy & Data — Export card (Phase 5) ----------------------------- */
+
+/* The Export card reuses .SettingsRemovalCard for its bordered text-left /
+   button-right flex row (and the mobile column-stack rule further below). Export
+   is a non-destructive read, so its trigger is the affirmative green .btn-success
+   — never amber/red danger chrome — themed here to the dark panel's --splashGreen
+   rather than Bootstrap's un-themed default, mirroring the modal's .btn-success.
+   It also carries the settings interactive-element touch target and focus-visible
+   outline conventions (matching #SettingsLogoutEverywhereBtn above). Tokens only. */
+#SettingsExportDataBtn {
+    background: var(--splashGreen);
+    color: #fff;
+    border: 1px solid var(--splashGreen);
+    min-height: 2.75rem;
+    white-space: nowrap;
+}
+
+#SettingsExportDataBtn:hover {
+    background: var(--darkSplashGreen);
+    border-color: var(--darkSplashGreen);
+}
+
+#SettingsExportDataBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* Divider + "Sessions" zone label separating the Export card from the relocated
+   "Log out everywhere" card, matching the panel mockup. Scoped to the Privacy &
+   Data panel so the generic classnames never leak into other pages. Tokens only. */
+#SettingsPanelPrivacyData .divider {
+    height: 1px;
+    background: var(--borderColor);
+    margin: var(--space-6) 0 var(--space-4);
+    border: 0;
+}
+
+#SettingsPanelPrivacyData .zoneLabel {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cardURLTextColor);
+    margin: 0 0 var(--space-3);
+}
+
 /* ---- Danger zone (Account tab, Phase 4) --------------------------------- */
 
 /* Colors reference the dark-theme tokens only (no literals): destructive red is
@@ -832,7 +877,8 @@
     }
 
     .SettingsDangerZone .btn,
-    #SettingsLogoutEverywhereBtn {
+    #SettingsLogoutEverywhereBtn,
+    #SettingsExportDataBtn {
         width: 100%;
     }
 
