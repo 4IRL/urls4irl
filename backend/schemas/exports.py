@@ -1,0 +1,134 @@
+from __future__ import annotations
+
+from datetime import datetime
+
+from pydantic import Field, field_serializer
+
+from backend.schemas.base import BaseSchema
+
+
+class ExportAccountSchema(BaseSchema):
+    """The acting user's own account fields — identity only, no secrets."""
+
+    id: int = Field(description="The user's account ID")
+    username: str = Field(description="The user's username")
+    email: str = Field(description="The user's email address")
+    member_since: datetime = Field(
+        alias="memberSince",
+        description="Account creation timestamp (ISO 8601)",
+    )
+
+    @field_serializer("member_since")
+    def serialize_member_since(self, value: datetime) -> str:
+        return value.isoformat()
+
+
+class ExportMemberSchema(BaseSchema):
+    """A member of a UTub the acting user belongs to."""
+
+    user_id: int = Field(alias="userId", description="The member's user ID")
+    username: str = Field(description="The member's username")
+    role: str = Field(description="The member's role within the UTub")
+
+
+class ExportTagSchema(BaseSchema):
+    """A tag in a UTub's tag vocabulary."""
+
+    id: int = Field(description="The tag's ID within the UTub")
+    tag_string: str = Field(alias="tagString", description="The tag text")
+    created_by_user_id: int = Field(
+        alias="createdByUserId",
+        description="User ID of the tag's creator",
+    )
+    created_at: datetime = Field(
+        alias="createdAt",
+        description="Tag creation timestamp (ISO 8601)",
+    )
+
+    @field_serializer("created_at")
+    def serialize_created_at(self, value: datetime) -> str:
+        return value.isoformat()
+
+
+class ExportUrlSchema(BaseSchema):
+    """A URL within a UTub, with its applied tag strings."""
+
+    id: int = Field(description="The URL's ID within the UTub")
+    url: str = Field(description="The URL string")
+    title: str | None = Field(description="Display title for the URL, or null")
+    added_at: datetime = Field(
+        alias="addedAt",
+        description="Timestamp the URL was added to the UTub (ISO 8601)",
+    )
+    added_by_user_id: int = Field(
+        alias="addedByUserId",
+        description="User ID of the member who added the URL",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Tag strings applied to this URL within the UTub",
+    )
+
+    @field_serializer("added_at")
+    def serialize_added_at(self, value: datetime) -> str:
+        return value.isoformat()
+
+
+class ExportUtubSchema(BaseSchema):
+    """A UTub the acting user belongs to (created or joined), fully expanded."""
+
+    id: int = Field(description="The UTub's ID")
+    name: str = Field(description="The UTub's name")
+    description: str | None = Field(description="The UTub's description, or null")
+    role: str = Field(description="The acting user's role within this UTub")
+    is_locked: bool = Field(
+        alias="isLocked",
+        description="Whether the UTub is locked (frozen to all user mutations)",
+    )
+    created_at: datetime = Field(
+        alias="createdAt",
+        description="UTub creation timestamp (ISO 8601)",
+    )
+    urls: list[ExportUrlSchema] = Field(
+        default_factory=list,
+        description="URLs in the UTub, each with applied tags",
+    )
+    tags: list[ExportTagSchema] = Field(
+        default_factory=list,
+        description="The UTub's tag vocabulary",
+    )
+    members: list[ExportMemberSchema] = Field(
+        default_factory=list,
+        description="Members of the UTub",
+    )
+
+    @field_serializer("created_at")
+    def serialize_created_at(self, value: datetime) -> str:
+        return value.isoformat()
+
+
+class UserDataExportSchema(BaseSchema):
+    """Full user-data export: the account block plus every UTub the user is a
+    member of (created + joined), each expanded with its URLs, tags, and
+    members. Purpose-built so the export shape is decoupled from the live-API
+    response schemas and never carries viewer-relative or secret fields."""
+
+    exported_at: datetime = Field(
+        alias="exportedAt",
+        description="Timestamp the export was generated (ISO 8601)",
+    )
+    account: ExportAccountSchema = Field(
+        description="The acting user's own account fields"
+    )
+    utubs: list[ExportUtubSchema] = Field(
+        default_factory=list,
+        description="Every UTub the user belongs to, created or joined",
+    )
+
+    @field_serializer("exported_at")
+    def serialize_exported_at(self, value: datetime) -> str:
+        return value.isoformat()
+
+
+ExportUtubSchema.model_rebuild()
+UserDataExportSchema.model_rebuild()
