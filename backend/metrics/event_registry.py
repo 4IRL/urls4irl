@@ -658,6 +658,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Account delete-confirm modal dismissed",
         category=EventCategory.UI,
     ),
+    EventName.UI_DATA_EXPORT_TRIGGERED: EventRegistryEntry(
+        description="Data export triggered from the Privacy & Data panel",
+        category=EventCategory.UI,
+    ),
 }
 
 

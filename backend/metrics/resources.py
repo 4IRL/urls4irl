@@ -169,6 +169,8 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_ACCOUNT_DELETE_OPEN: Resource.AUTH,
     EventName.UI_ACCOUNT_DELETE_CONFIRM: Resource.AUTH,
     EventName.UI_ACCOUNT_DELETE_CANCEL: Resource.AUTH,
+    # UI — Privacy & Data (settings tab)
+    EventName.UI_DATA_EXPORT_TRIGGERED: Resource.AUTH,
 }
 
 

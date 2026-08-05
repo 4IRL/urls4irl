@@ -31,6 +31,7 @@
 
 import { $ } from "../lib/globals.js";
 import { ajaxCall } from "../lib/ajax.js";
+import { APP_CONFIG } from "../lib/config.js";
 import { emit as recordUIEvent } from "../lib/metrics-client.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import type { RemovalErrorResponse } from "./removal-shared.js";
@@ -38,10 +39,14 @@ import {
   _confirmedByModal,
   _triggerByModal,
   clearBanner,
+  clearControllerInFlight,
   emitCancelAndRestoreFocus,
+  isAnyOtherControllerInFlight,
   isInFlight,
   markInFlight,
+  registerControllerInFlight,
   setDisabled,
+  showBanner,
   showFieldError,
   wireRemovalRequest,
 } from "./removal-shared.js";
@@ -199,6 +204,17 @@ function submitDelete({
   // satisfied) never submits.
   if (buttonEl.disabled) return;
 
+  // Cross-panel destructive-action guard (DD-9): never let delete's
+  // `window.location.assign` navigation abort an in-flight export fetch. If the
+  // data-export controller is mid-request, surface the notice and no-op.
+  if (isAnyOtherControllerInFlight("accountDelete")) {
+    showBanner({
+      errorId: DELETE_ERROR_ID,
+      message: APP_CONFIG.strings.SETTINGS_DELETE_BLOCKED_BY_EXPORT,
+    });
+    return;
+  }
+
   const actionUrl = $(`#${DELETE_MODAL_ID}`).attr("data-action-url");
   if (!actionUrl) return;
 
@@ -212,6 +228,9 @@ function submitDelete({
   };
 
   clearDeleteError();
+  // Register in the cross-controller in-flight registry (DD-9) so a concurrent
+  // export click no-ops while delete is running.
+  registerControllerInFlight("accountDelete");
   markInFlight(buttonEl);
   _confirmedByModal.set(DELETE_MODAL_ID, true);
   recordUIEvent({ event: UI_EVENTS.UI_ACCOUNT_DELETE_CONFIRM });
@@ -223,7 +242,12 @@ function submitDelete({
     buttonEl,
     // Re-enable per the typed-username gate so a failed attempt leaves the modal
     // usable for a retry (never re-enabling a control that is still in flight).
-    reenable: refreshDeleteGate,
+    // Clear the in-flight registration too (DD-9): a successful delete navigates
+    // away, so only the failure path needs to release the registry entry.
+    reenable: () => {
+      clearControllerInFlight("accountDelete");
+      refreshDeleteGate();
+    },
     // Never leave the secret in the DOM before navigating away.
     beforeNavigate: () => {
       $(`#${DELETE_PASSWORD_ID}`).val("");

@@ -34,6 +34,31 @@ const GENERIC_ERROR_MESSAGE = "Unable to process request.";
 export const _triggerByModal = new Map<string, HTMLElement>();
 export const _confirmedByModal = new Map<string, boolean>();
 
+// Cross-controller in-flight registry (DD-9). A minimal module-level set of the
+// controller ids currently running a request, so one destructive controller can
+// refuse to fire while another controller is mid-flight. Only the account-delete
+// (`"accountDelete"`) and data-export (`"dataExport"`) controllers participate:
+// delete's `window.location.assign` navigation would silently abort an in-flight
+// export fetch, so each guards the other before starting.
+const _controllersInFlight = new Set<string>();
+
+export function registerControllerInFlight(id: string): void {
+  _controllersInFlight.add(id);
+}
+
+export function clearControllerInFlight(id: string): void {
+  _controllersInFlight.delete(id);
+}
+
+// True when any controller OTHER than `excluding` is in flight (the caller's own
+// id is ignored so a controller never blocks itself).
+export function isAnyOtherControllerInFlight(excluding: string): boolean {
+  for (const controllerId of _controllersInFlight) {
+    if (controllerId !== excluding) return true;
+  }
+  return false;
+}
+
 export interface RemovalRequestBinding {
   request: JQuery.jqXHR;
   modalId: string;

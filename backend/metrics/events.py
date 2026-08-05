@@ -146,6 +146,8 @@ class EventName(StrEnum):
     UI_ACCOUNT_DELETE_OPEN = "ui_account_delete_open"
     UI_ACCOUNT_DELETE_CONFIRM = "ui_account_delete_confirm"
     UI_ACCOUNT_DELETE_CANCEL = "ui_account_delete_cancel"
+    # — Privacy & Data (settings tab)
+    UI_DATA_EXPORT_TRIGGERED = "ui_data_export_triggered"
 
 
 # EVENT_CATEGORY and EVENT_DESCRIPTIONS are derived from the single source of

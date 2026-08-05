@@ -285,4 +285,5 @@ export type UIEventDimensions = {
   ui_account_delete_open: DimDeviceOnly;
   ui_account_delete_confirm: DimDeviceOnly;
   ui_account_delete_cancel: DimDeviceOnly;
+  ui_data_export_triggered: DimDeviceOnly;
 };

@@ -539,6 +539,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_ACCOUNT_DELETE_OPEN: _DimDeviceOnly,
     EventName.UI_ACCOUNT_DELETE_CONFIRM: _DimDeviceOnly,
     EventName.UI_ACCOUNT_DELETE_CANCEL: _DimDeviceOnly,
+    # UI — Privacy & Data (settings tab)
+    EventName.UI_DATA_EXPORT_TRIGGERED: _DimDeviceOnly,
 }
 
 

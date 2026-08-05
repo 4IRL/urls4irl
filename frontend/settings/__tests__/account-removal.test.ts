@@ -9,6 +9,10 @@ import {
   initAccountRemoval,
   _resetAccountRemovalForTests,
 } from "../account-removal.js";
+import {
+  clearControllerInFlight,
+  registerControllerInFlight,
+} from "../removal-shared.js";
 
 vi.mock("../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -113,6 +117,11 @@ describe("account-removal", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Clear the module-level cross-controller registry (DD-9) so state from a
+    // successful delete (which navigates away without clearing) or a DD-9 test
+    // never leaks into the next test.
+    clearControllerInFlight("dataExport");
+    clearControllerInFlight("accountDelete");
   });
 
   it("is a no-op when the account panel is absent", () => {
@@ -308,6 +317,55 @@ describe("account-removal", () => {
     );
 
     expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete: no-ops and shows the in-progress-export notice when an export is in flight (DD-9)", () => {
+    document.body.innerHTML = passwordHtml();
+    // The data-export controller registers itself before delete is attempted.
+    registerControllerInFlight("dataExport");
+    initAccountRemoval();
+
+    $("#SettingsDeleteBtn").trigger("click");
+    $("#SettingsDeleteConfirmUsername").val(USERNAME);
+    $("#SettingsDeleteCurrentPassword").val(PASSWORD);
+    keyup("SettingsDeleteConfirmUsername");
+    keyup("SettingsDeleteCurrentPassword");
+    // Gate satisfied — the submit is enabled — but the cross-panel guard blocks it.
+    $("#SettingsDeleteSubmitBtn").trigger("click");
+
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+    const error = $("#SettingsDeleteError");
+    expect(error.hasClass("d-none")).toBe(false);
+    expect(error.text()).toBe(
+      "Wait for your data export to finish before deleting your account.",
+    );
+  });
+
+  it("delete: proceeds normally when no other controller is in flight (DD-9 negative)", () => {
+    document.body.innerHTML = passwordHtml();
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    const successXhr = createMockXhr({
+      status: 200,
+      responseJSON: {
+        status: "Success",
+        message: "Deleted.",
+        redirectUrl: REDIRECT_URL,
+      },
+    });
+    vi.mocked(ajaxCall).mockReturnValue(mockDone(successXhr));
+    initAccountRemoval();
+
+    $("#SettingsDeleteBtn").trigger("click");
+    $("#SettingsDeleteConfirmUsername").val(USERNAME);
+    $("#SettingsDeleteCurrentPassword").val(PASSWORD);
+    keyup("SettingsDeleteConfirmUsername");
+    keyup("SettingsDeleteCurrentPassword");
+    $("#SettingsDeleteSubmitBtn").trigger("click");
+
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalled();
+    assignSpy.mockRestore();
   });
 
   it("emits the OPEN metric when the delete modal opens", () => {

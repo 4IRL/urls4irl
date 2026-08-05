@@ -4536,7 +4536,8 @@
                 "ui_account_logout_everywhere_cancel",
                 "ui_account_delete_open",
                 "ui_account_delete_confirm",
-                "ui_account_delete_cancel"
+                "ui_account_delete_cancel",
+                "ui_data_export_triggered"
               ],
               "type": "string"
             },
@@ -4878,7 +4879,8 @@
                 "ui_account_logout_everywhere_cancel",
                 "ui_account_delete_open",
                 "ui_account_delete_confirm",
-                "ui_account_delete_cancel"
+                "ui_account_delete_cancel",
+                "ui_data_export_triggered"
               ],
               "type": "string"
             },
@@ -9277,7 +9279,8 @@
               "ui_account_logout_everywhere_cancel",
               "ui_account_delete_open",
               "ui_account_delete_confirm",
-              "ui_account_delete_cancel"
+              "ui_account_delete_cancel",
+              "ui_data_export_triggered"
             ],
             "type": "string"
           },
