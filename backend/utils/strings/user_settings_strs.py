@@ -59,7 +59,7 @@ class USER_SETTINGS_STRINGS:
     EXPORT_CARD_HINT = (
         "Download a JSON file of your UTubs, URLs, tags, and account details."
     )
-    EXPORT_BUTTON = "Export…"
+    EXPORT_BUTTON = "Export"
     EXPORT_SESSIONS_ZONE_LABEL = "Sessions"
     EXPORT_PREPARING = "Preparing your export…"
     EXPORT_STARTED = "Your download is starting."
