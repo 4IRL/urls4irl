@@ -62,8 +62,8 @@ const SETTINGS_HTML = `
         <button type="button" class="btn btn-success" id="SettingsExportDataBtn" data-export-url="/users/1/data-export">Export my data</button>
       </div>
       <div id="SettingsExportStatus" class="alert d-none" role="alert" aria-live="polite"></div>
-      <hr class="divider">
-      <p class="zoneLabel">Sessions</p>
+      <hr class="SettingsExportDivider">
+      <p class="SettingsExportSessionsZoneLabel">Sessions</p>
       <div id="SettingsLogoutEverywhere">
         <div class="SettingsRemovalCardText"><h4>Log out everywhere</h4><p>End every other active session on your account.</p></div>
         <button type="button" class="btn" id="SettingsLogoutEverywhereBtn">Log out everywhere</button>

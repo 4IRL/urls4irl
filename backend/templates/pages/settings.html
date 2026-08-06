@@ -322,8 +322,8 @@
             <button type="button" class="btn btn-success" id="SettingsExportDataBtn" data-export-url="{{ url_for('users.data_export', user_id=current_user.id) }}">{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_BUTTON }}</button>
         </div>
         <div id="SettingsExportStatus" class="alert d-none" role="alert" aria-live="polite"></div>
-        <hr class="divider">
-        <p class="zoneLabel">{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_SESSIONS_ZONE_LABEL }}</p>
+        <hr class="SettingsExportDivider">
+        <p class="SettingsExportSessionsZoneLabel">{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_SESSIONS_ZONE_LABEL }}</p>
         <div id="SettingsLogoutEverywhere">
             <div class="SettingsRemovalCardText">
                 <h4>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_TITLE }}</h4>

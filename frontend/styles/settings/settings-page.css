@@ -559,16 +559,16 @@
 }
 
 /* Divider + "Sessions" zone label separating the Export card from the relocated
-   "Log out everywhere" card, matching the panel mockup. Scoped to the Privacy &
-   Data panel so the generic classnames never leak into other pages. Tokens only. */
-#SettingsPanelPrivacyData .divider {
+   "Log out everywhere" card, matching the panel mockup. Prefixed classnames are
+   collision-safe on their own, so no ID scoping is needed. Tokens only. */
+.SettingsExportDivider {
     height: 1px;
     background: var(--borderColor);
     margin: var(--space-6) 0 var(--space-4);
     border: 0;
 }
 
-#SettingsPanelPrivacyData .zoneLabel {
+.SettingsExportSessionsZoneLabel {
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
