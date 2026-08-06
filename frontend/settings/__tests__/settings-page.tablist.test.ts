@@ -53,7 +53,22 @@ const SETTINGS_HTML = `
         <div class="SettingsStatCard" data-stat="member-since"><dt class="SettingsStatLabel">Member since</dt><dd class="SettingsStatValue">Joined today</dd><dd class="SettingsStatSub"><time datetime="2025-04-15">April 15, 2025</time></dd></div>
       </dl>
     </section>
-    <section role="tabpanel" id="SettingsPanelPrivacyData" aria-labelledby="SettingsTabPrivacyData" tabindex="0" hidden><h2>Privacy &amp; Data</h2><p class="SettingsEmptyState">Coming soon</p></section>
+    <section role="tabpanel" id="SettingsPanelPrivacyData" aria-labelledby="SettingsTabPrivacyData" tabindex="0" hidden>
+      <h2>Privacy &amp; Data</h2>
+      <h3 class="SettingsStatsSectionTitle">Your data</h3>
+      <p class="SettingsSectionHint">Download everything you've built on URLS4IRL.</p>
+      <div class="SettingsRemovalCard" id="SettingsExportData">
+        <div class="SettingsRemovalCardText"><h4>Export my data</h4><p>Download a JSON copy of your account, UTubs, URLs, and tags.</p></div>
+        <button type="button" class="btn btn-success" id="SettingsExportDataBtn" data-export-url="/users/1/data-export">Export my data</button>
+      </div>
+      <div id="SettingsExportStatus" class="alert d-none" role="alert" aria-live="polite"></div>
+      <hr class="divider">
+      <p class="zoneLabel">Sessions</p>
+      <div id="SettingsLogoutEverywhere">
+        <div class="SettingsRemovalCardText"><h4>Log out everywhere</h4><p>End every other active session on your account.</p></div>
+        <button type="button" class="btn" id="SettingsLogoutEverywhereBtn">Log out everywhere</button>
+      </div>
+    </section>
     <section role="tabpanel" id="SettingsPanelUiSettings"  aria-labelledby="SettingsTabUiSettings"  tabindex="0" hidden><h2>Display</h2><p class="SettingsEmptyState">Coming soon</p></section>
   </main>
 `;

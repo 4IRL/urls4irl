@@ -949,6 +949,13 @@ class SettingsPageLocators(GenericPageLocator):
     DANGER_ZONE = "#SettingsPanelAccount .SettingsDangerZone"
     DELETE_TRIGGER = "#SettingsDeleteBtn"
 
+    # Export-my-data control (Privacy & Data tab). Non-destructive read: the
+    # button triggers a fetch→Blob JSON download and the status region is an
+    # aria-live alert. Mirrors the ids in the `#SettingsExportData` card of
+    # backend/templates/pages/settings.html.
+    EXPORT_DATA_BTN = "#SettingsExportDataBtn"
+    EXPORT_STATUS = "#SettingsExportStatus"
+
     # Log out everywhere control + confirm modal (non-destructive, no re-auth: D-1).
     LOGOUT_EVERYWHERE_TRIGGER = "#SettingsLogoutEverywhereBtn"
     LOGOUT_EVERYWHERE_MODAL = "#SettingsLogoutEverywhereModal"

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
+import tempfile
+from pathlib import Path
 
 import pytest
 from flask import Flask
@@ -842,6 +845,63 @@ def test_logout_everywhere_happy_path_redirects_to_splash(
     wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_SUBMIT_BTN)
 
     expect(page).to_have_url(_SPLASH_ROOT_URL)
+
+
+def test_export_data_downloads_json_file(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user with seeded UTubs/URLs/tags who switches to the
+        settings Privacy & Data tab
+    WHEN they click the "Export my data" button
+    THEN the browser downloads a JSON file named `urls4irl-export-<date>.json`
+        whose body parses as JSON containing a populated `utubs` array.
+
+    First Playwright download assertion in the repo — the controller builds the
+    file client-side via fetch→Blob→anchor-click (no server `Content-Disposition`
+    attachment), which Playwright captures as a download the same as any other.
+    Export is guard-free, so the ADMIN default user (user 1, the one
+    `seed_distinct_stats_for_user_one` seeds) is fine here.
+    """
+    _seed_distinct_stats_for_user_one(provide_app)
+
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+
+    # The export control lives in the Privacy & Data panel, not the
+    # default-visible Account panel, so switch tabs before triggering it.
+    wait_then_click_element(page=page, css_selector=SPL.TAB_PRIVACY_DATA_BUTTON)
+    expect(page.locator(SPL.PANEL_PRIVACY_DATA)).to_be_visible()
+
+    with page.expect_download() as download_info:
+        wait_then_click_element(page=page, css_selector=SPL.EXPORT_DATA_BTN)
+
+    download = download_info.value
+    assert download.suggested_filename.startswith("urls4irl-export-")
+    assert download.suggested_filename.endswith(".json")
+
+    # The downloaded body is the export payload — parses as JSON with a
+    # populated `utubs` array (the seed gives user 1 several UTubs). Use
+    # `save_as()` rather than `download.path()`: the built stack runs the
+    # browser over `browser_type.connect()`, where the downloaded file lives on
+    # the browser host and `path()` raises — `save_as()` copies it locally in
+    # both local and remote/connect modes.
+    with tempfile.TemporaryDirectory() as temp_dir:
+        local_export_path = Path(temp_dir) / download.suggested_filename
+        download.save_as(local_export_path)
+        with open(local_export_path, encoding="utf-8") as exported_file:
+            payload = json.load(exported_file)
+    assert isinstance(payload["utubs"], list)
+    assert len(payload["utubs"]) > 0
 
 
 def test_delete_happy_path_redirects_to_splash(
