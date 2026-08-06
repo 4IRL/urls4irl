@@ -61,6 +61,15 @@ function okResponse(exportData: unknown): FetchLike {
   };
 }
 
+function okResponseWithoutExportKey(): FetchLike {
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: () => "application/json" },
+    json: async () => ({}),
+  };
+}
+
 function notOkResponse(status: number): FetchLike {
   return {
     ok: false,
@@ -147,6 +156,27 @@ describe("data-export", () => {
       message: "Couldn't export your data. Please try again.",
     });
     expect($("#SettingsExportDataBtn").attr("aria-disabled")).toBeUndefined();
+  });
+
+  it("sad path: a 200 whose body lacks an export key shows the error banner and clears aria markers (DD-1)", async () => {
+    document.body.innerHTML = privacyDataHtml();
+    globalThis.fetch = vi.fn().mockResolvedValue(okResponseWithoutExportKey());
+    initDataExport();
+
+    $("#SettingsExportDataBtn").trigger("click");
+    await flush();
+
+    // The defensive `if (json?.export === undefined)` guard must route a
+    // 200-but-empty body through failExport() rather than downloading a file
+    // that stringifies to the literal "undefined".
+    const status = $("#SettingsExportStatus");
+    expect(status.hasClass("alert-danger")).toBe(true);
+    expect(status.text()).toBe("Couldn't export your data. Please try again.");
+    expect(vi.mocked(emitAppEvent)).toHaveBeenCalledWith(STATUS_CHANGED_EVENT, {
+      message: "Couldn't export your data. Please try again.",
+    });
+    expect($("#SettingsExportDataBtn").attr("aria-disabled")).toBeUndefined();
+    expect($("#SettingsExportDataBtn").attr("aria-busy")).toBeUndefined();
   });
 
   it("429 text/html: replaces the page and emits the rate-limit metric (DD-5)", async () => {
