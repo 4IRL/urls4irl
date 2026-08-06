@@ -130,7 +130,6 @@ def test_drop_db_with_migrations(runner):
     with app.app_context():
         alembic_config = Config("./migrations/alembic.ini")
         alembic_config.set_main_option("script_location", "migrations/")
-        alembic_config.attributes["connection"] = db.engine.connect()
 
         command.upgrade(alembic_config, "head")
 
