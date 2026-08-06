@@ -22,6 +22,7 @@ from typing import Tuple
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from limits import RateLimitItemPerHour, RateLimitItemPerMinute, parse_many
 from redis import Redis
 from werkzeug.test import TestResponse
 
@@ -29,7 +30,7 @@ from backend import limiter
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.schemas.exports import UserDataExportResponseSchema
-from backend.users.constants import DataExportErrorCodes
+from backend.users.constants import DATA_EXPORT_RATE_LIMIT, DataExportErrorCodes
 from backend.users.services.data_export_service import build_user_data_export_core
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
@@ -42,6 +43,7 @@ from tests.integration.utils import assert_response_conforms_to_schema
 pytestmark = pytest.mark.account_and_support
 
 _DATA_EXPORT_RATE_LIMIT_PER_MINUTE = 5
+_DATA_EXPORT_RATE_LIMIT_PER_HOUR = 15
 
 
 def _enable_limiter(app: Flask) -> None:
@@ -222,6 +224,42 @@ def test_data_export_endpoint_rate_limited_returns_html_429(
         assert IDENTIFIERS.HTML_429 in rate_limited_response.get_data(as_text=True)
     finally:
         _disable_limiter()
+
+
+def test_data_export_rate_limit_registers_15_per_hour_window() -> None:
+    """DD-2: ``DATA_EXPORT_RATE_LIMIT`` is a dual-window limit, but the burst
+    test above only exercises the 5/minute clause. Independently guard the
+    15/hour clause so a typo like ``"15 per day"`` can't slip through unnoticed.
+
+    Driving real requests to the hourly boundary is infeasible: the 5/minute
+    clause trips on the 6th request, so the 16th request needed to breach the
+    hourly window is unreachable within a single minute without faking time
+    (which would destabilize the parallel suite). Instead, parse the constant
+    with the exact public parser flask-limiter feeds it into
+    (``limits.parse_many``) and assert it yields a genuine 15-per-hour window.
+    This is a semantic check, not a substring match: ``"15 per day"`` parses to
+    a ``RateLimitItemPerDay`` (failing the hourly assertion) and a malformed
+    clause raises in ``parse_many``. The decorator's enforcement of this exact
+    constant on the route is already proven by
+    ``test_data_export_endpoint_rate_limited_returns_html_429`` above.
+    """
+    parsed_windows = list(parse_many(DATA_EXPORT_RATE_LIMIT))
+
+    hourly_windows = [
+        window for window in parsed_windows if isinstance(window, RateLimitItemPerHour)
+    ]
+    assert len(hourly_windows) == 1
+    assert hourly_windows[0].amount == _DATA_EXPORT_RATE_LIMIT_PER_HOUR
+
+    # The 5/minute clause the burst test exercises remains the other window,
+    # confirming the constant is a two-window limit (not the hourly clause alone).
+    minute_windows = [
+        window
+        for window in parsed_windows
+        if isinstance(window, RateLimitItemPerMinute)
+    ]
+    assert len(minute_windows) == 1
+    assert minute_windows[0].amount == _DATA_EXPORT_RATE_LIMIT_PER_MINUTE
 
 
 # --------------------------------------------------------------------------- #
