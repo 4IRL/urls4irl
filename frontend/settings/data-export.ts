@@ -112,7 +112,19 @@ async function handleExportClick(buttonEl: HTMLButtonElement): Promise<void> {
       recordUIEvent({ event: UI_EVENTS.UI_RATE_LIMIT_HIT });
       const contentType = res.headers.get("Content-Type");
       if (contentType?.includes("text/html")) {
-        showNewPageOnAJAXHTMLResponse(await res.text());
+        // Read the body first, THEN release in-flight state immediately before
+        // the page swap (mirrors removal-shared.ts's unconditional
+        // settleAfterAttempt): because showNewPageOnAJAXHTMLResponse only
+        // rewrites the document (no real navigation), skipping the settle would
+        // leave `exportInFlight` true and the "dataExport" registration
+        // poisoning the cross-controller registry. Settling after the await
+        // (not before it) avoids re-opening the reentrancy guard for the
+        // microtask window while the body is still streaming in.
+        // settleExport (not failExport): the page is being overwritten, so
+        // there is no point rendering an error banner onto it.
+        const rateLimitPageHtml = await res.text();
+        settleExport();
+        showNewPageOnAJAXHTMLResponse(rateLimitPageHtml);
         return;
       }
     }

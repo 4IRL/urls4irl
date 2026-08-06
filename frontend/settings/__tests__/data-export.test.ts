@@ -5,6 +5,7 @@ import { UI_EVENTS } from "../../types/metrics-events.js";
 import { initDataExport, _resetDataExportForTests } from "../data-export.js";
 import {
   clearControllerInFlight,
+  isAnyOtherControllerInFlight,
   registerControllerInFlight,
 } from "../removal-shared.js";
 
@@ -87,8 +88,8 @@ function flush(): Promise<void> {
 describe("data-export", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.URL.createObjectURL = vi.fn(() => "blob:mock");
-    global.URL.revokeObjectURL = vi.fn();
+    globalThis.URL.createObjectURL = vi.fn(() => "blob:mock");
+    globalThis.URL.revokeObjectURL = vi.fn();
     _resetDataExportForTests();
   });
 
@@ -102,15 +103,15 @@ describe("data-export", () => {
 
   it("is a no-op when the Privacy & Data panel is absent", () => {
     document.body.innerHTML = "<div id='Unrelated'></div>";
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
     initDataExport();
     $("body").trigger("click");
-    expect(vi.mocked(global.fetch)).not.toHaveBeenCalled();
+    expect(vi.mocked(globalThis.fetch)).not.toHaveBeenCalled();
   });
 
   it("happy path: downloads the export blob and announces started", async () => {
     document.body.innerHTML = privacyDataHtml();
-    global.fetch = vi.fn().mockResolvedValue(okResponse({ utubs: [] }));
+    globalThis.fetch = vi.fn().mockResolvedValue(okResponse({ utubs: [] }));
     const clickSpy = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => {});
@@ -119,7 +120,7 @@ describe("data-export", () => {
     $("#SettingsExportDataBtn").trigger("click");
     await flush();
 
-    expect(global.URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
     const status = $("#SettingsExportStatus");
     expect(status.hasClass("alert-success")).toBe(true);
@@ -133,7 +134,7 @@ describe("data-export", () => {
 
   it("sad path: a non-ok response shows the error banner and clears aria-disabled", async () => {
     document.body.innerHTML = privacyDataHtml();
-    global.fetch = vi.fn().mockResolvedValue(notOkResponse(500));
+    globalThis.fetch = vi.fn().mockResolvedValue(notOkResponse(500));
     initDataExport();
 
     $("#SettingsExportDataBtn").trigger("click");
@@ -150,7 +151,7 @@ describe("data-export", () => {
 
   it("429 text/html: replaces the page and emits the rate-limit metric (DD-5)", async () => {
     document.body.innerHTML = privacyDataHtml();
-    global.fetch = vi.fn().mockResolvedValue(html429Response());
+    globalThis.fetch = vi.fn().mockResolvedValue(html429Response());
     initDataExport();
 
     $("#SettingsExportDataBtn").trigger("click");
@@ -162,11 +163,19 @@ describe("data-export", () => {
     expect(vi.mocked(recordUIEvent)).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_RATE_LIMIT_HIT,
     });
+    // The in-flight state must be released before the page is replaced:
+    // showNewPageOnAJAXHTMLResponse only rewrites the document (no real
+    // navigation), so a missing settleExport() here would leave the aria
+    // markers set and — worse — permanently poison the cross-controller
+    // registry, blocking account deletion for the rest of the session.
+    expect($("#SettingsExportDataBtn").attr("aria-disabled")).toBeUndefined();
+    expect($("#SettingsExportDataBtn").attr("aria-busy")).toBeUndefined();
+    expect(isAnyOtherControllerInFlight("accountDelete")).toBe(false);
   });
 
   it("network reject: the rejected fetch is caught and shows the error banner (DD-7)", async () => {
     document.body.innerHTML = privacyDataHtml();
-    global.fetch = vi.fn().mockRejectedValue(new Error("network down"));
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("network down"));
     initDataExport();
 
     $("#SettingsExportDataBtn").trigger("click");
@@ -180,7 +189,7 @@ describe("data-export", () => {
 
   it("cross-panel guard: no-ops and shows the blocked notice when account-delete is in flight (DD-21)", async () => {
     document.body.innerHTML = privacyDataHtml();
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
     // Account-delete is mid-request; the symmetric DD-21 guard must block export.
     registerControllerInFlight("accountDelete");
     initDataExport();
@@ -188,7 +197,7 @@ describe("data-export", () => {
     $("#SettingsExportDataBtn").trigger("click");
     await flush();
 
-    expect(vi.mocked(global.fetch)).not.toHaveBeenCalled();
+    expect(vi.mocked(globalThis.fetch)).not.toHaveBeenCalled();
     const status = $("#SettingsExportStatus");
     expect(status.hasClass("alert-danger")).toBe(true);
     expect(status.text()).toBe(
@@ -200,7 +209,7 @@ describe("data-export", () => {
     document.body.innerHTML = privacyDataHtml();
     // Pending (never-resolving) fetch: the trigger metric must fire immediately,
     // before the request settles.
-    global.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
+    globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
     initDataExport();
 
     $("#SettingsExportDataBtn").trigger("click");
