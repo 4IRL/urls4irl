@@ -154,7 +154,7 @@ export function markInFlight(buttonEl: HTMLButtonElement): void {
   $(buttonEl).attr("disabled", "disabled").attr("aria-busy", "true");
 }
 
-export function clearInFlight(buttonEl: HTMLButtonElement): void {
+function clearInFlight(buttonEl: HTMLButtonElement): void {
   $(buttonEl).removeAttr("aria-busy");
 }
 
