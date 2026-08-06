@@ -84,8 +84,7 @@ def test_data_export_core_serializes_all_memberships(
             user=acting_user, generated_at=generated_at
         )
 
-    # ---- Account block ----
-    assert export.account.id == 1
+    # ---- Account block (no internal user ID — minimized) ----
     assert export.account.username == seeded_user.username
     assert export.account.email == seeded_user.email
     assert isinstance(export.account.member_since, datetime)
@@ -116,8 +115,20 @@ def test_data_export_core_serializes_all_memberships(
     assert tagged_urls, "expected at least one URL with applied tags"
     # Tag vocabulary present (>= the 7 user-1 tags seeded).
     assert len(home_export.tags) >= 7
-    # Members present.
-    assert any(member.user_id == 1 for member in home_export.members)
+    # Members present, attributed by username only (no internal user ID).
+    assert any(
+        member.username == seeded_user.username for member in home_export.members
+    )
+    # Attribution on URLs/tags is by username string, never an internal ID.
+    assert all(
+        isinstance(url.added_by, str) and url.added_by for url in home_export.urls
+    )
+    assert all(
+        isinstance(tag.created_by, str) and tag.created_by for tag in home_export.tags
+    )
+    # The acting user added at least one of their own home-UTub URLs, so their
+    # username surfaces as an attribution — proving usernames (not IDs) are used.
+    assert any(url.added_by == seeded_user.username for url in home_export.urls)
 
     # ---- The CO_CREATOR membership surfaces as lowercase "cocreator" ----
     cocreator_utubs = [utub for utub in export.utubs if utub.role == "cocreator"]
@@ -128,6 +139,20 @@ def test_data_export_core_serializes_all_memberships(
     assert "password" not in serialized
     assert "sessionsInvalidatedAt" not in serialized
     assert "pendingEmail" not in serialized
+
+    # ---- No internal database IDs anywhere (data-minimization) ----
+    serialized_payload = export.model_dump(by_alias=True, mode="json")
+    assert "id" not in serialized_payload["account"]
+    for utub_payload in serialized_payload["utubs"]:
+        assert "id" not in utub_payload
+        for member_payload in utub_payload["members"]:
+            assert "userId" not in member_payload
+        for url_payload in utub_payload["urls"]:
+            assert "id" not in url_payload
+            assert "addedByUserId" not in url_payload
+        for tag_payload in utub_payload["tags"]:
+            assert "id" not in tag_payload
+            assert "createdByUserId" not in tag_payload
 
 
 # --------------------------------------------------------------------------- #

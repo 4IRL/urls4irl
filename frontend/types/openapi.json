@@ -10733,12 +10733,8 @@
         "description": "Error codes for LogoutEverywhereErrorCodes"
       },
       "ExportAccountSchema": {
-        "description": "The acting user's own account fields \u2014 identity only, no secrets.",
+        "description": "The acting user's own account fields \u2014 identity only, no secrets and no\ninternal database IDs (data-minimization: the export is human-readable, not\na re-import anchor).",
         "properties": {
-          "id": {
-            "description": "The user's account ID",
-            "type": "integer"
-          },
           "username": {
             "description": "The user's username",
             "type": "string"
@@ -10753,16 +10749,12 @@
             "type": "string"
           }
         },
-        "required": ["id", "username", "email", "memberSince"],
+        "required": ["username", "email", "memberSince"],
         "type": "object"
       },
       "ExportMemberSchema": {
-        "description": "A member of a UTub the acting user belongs to.",
+        "description": "A member of a UTub the acting user belongs to. Identified by username\nonly \u2014 no internal user ID (third-party data-minimization).",
         "properties": {
-          "userId": {
-            "description": "The member's user ID",
-            "type": "integer"
-          },
           "username": {
             "description": "The member's username",
             "type": "string"
@@ -10772,23 +10764,19 @@
             "type": "string"
           }
         },
-        "required": ["userId", "username", "role"],
+        "required": ["username", "role"],
         "type": "object"
       },
       "ExportTagSchema": {
-        "description": "A tag in a UTub's tag vocabulary.",
+        "description": "A tag in a UTub's tag vocabulary. No internal IDs; the creator is\nattributed by username.",
         "properties": {
-          "id": {
-            "description": "The tag's ID within the UTub",
-            "type": "integer"
-          },
           "tagString": {
             "description": "The tag text",
             "type": "string"
           },
-          "createdByUserId": {
-            "description": "User ID of the tag's creator",
-            "type": "integer"
+          "createdBy": {
+            "description": "Username of the tag's creator",
+            "type": "string"
           },
           "createdAt": {
             "description": "Tag creation timestamp (ISO 8601)",
@@ -10796,16 +10784,12 @@
             "type": "string"
           }
         },
-        "required": ["id", "tagString", "createdByUserId", "createdAt"],
+        "required": ["tagString", "createdBy", "createdAt"],
         "type": "object"
       },
       "ExportUrlSchema": {
-        "description": "A URL within a UTub, with its applied tag strings.",
+        "description": "A URL within a UTub, with its applied tag strings. No internal IDs; the\nadder is attributed by username.",
         "properties": {
-          "id": {
-            "description": "The URL's ID within the UTub",
-            "type": "integer"
-          },
           "url": {
             "description": "The URL string",
             "type": "string"
@@ -10826,9 +10810,9 @@
             "format": "date-time",
             "type": "string"
           },
-          "addedByUserId": {
-            "description": "User ID of the member who added the URL",
-            "type": "integer"
+          "addedBy": {
+            "description": "Username of the member who added the URL",
+            "type": "string"
           },
           "tags": {
             "description": "Tag strings applied to this URL within the UTub",
@@ -10838,16 +10822,12 @@
             "type": "array"
           }
         },
-        "required": ["id", "url", "title", "addedAt", "addedByUserId"],
+        "required": ["url", "title", "addedAt", "addedBy"],
         "type": "object"
       },
       "ExportUtubSchema": {
-        "description": "A UTub the acting user belongs to (created or joined), fully expanded.",
+        "description": "A UTub the acting user belongs to (created or joined), fully expanded.\nNo internal database ID (data-minimization).",
         "properties": {
-          "id": {
-            "description": "The UTub's ID",
-            "type": "integer"
-          },
           "name": {
             "description": "The UTub's name",
             "type": "string"
@@ -10898,14 +10878,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "description",
-          "role",
-          "isLocked",
-          "createdAt"
-        ],
+        "required": ["name", "description", "role", "isLocked", "createdAt"],
         "type": "object"
       },
       "UserDataExportSchema": {

@@ -2879,10 +2879,12 @@ export interface components {
      * @enum {integer}
      */
     LogoutEverywhereErrorCodes: 1;
-    /** @description The acting user's own account fields — identity only, no secrets. */
+    /**
+     * @description The acting user's own account fields — identity only, no secrets and no
+     *     internal database IDs (data-minimization: the export is human-readable, not
+     *     a re-import anchor).
+     */
     ExportAccountSchema: {
-      /** @description The user's account ID */
-      id: number;
       /** @description The user's username */
       username: string;
       /** @description The user's email address */
@@ -2893,33 +2895,36 @@ export interface components {
        */
       memberSince: string;
     };
-    /** @description A member of a UTub the acting user belongs to. */
+    /**
+     * @description A member of a UTub the acting user belongs to. Identified by username
+     *     only — no internal user ID (third-party data-minimization).
+     */
     ExportMemberSchema: {
-      /** @description The member's user ID */
-      userId: number;
       /** @description The member's username */
       username: string;
       /** @description The member's role within the UTub */
       role: string;
     };
-    /** @description A tag in a UTub's tag vocabulary. */
+    /**
+     * @description A tag in a UTub's tag vocabulary. No internal IDs; the creator is
+     *     attributed by username.
+     */
     ExportTagSchema: {
-      /** @description The tag's ID within the UTub */
-      id: number;
       /** @description The tag text */
       tagString: string;
-      /** @description User ID of the tag's creator */
-      createdByUserId: number;
+      /** @description Username of the tag's creator */
+      createdBy: string;
       /**
        * Format: date-time
        * @description Tag creation timestamp (ISO 8601)
        */
       createdAt: string;
     };
-    /** @description A URL within a UTub, with its applied tag strings. */
+    /**
+     * @description A URL within a UTub, with its applied tag strings. No internal IDs; the
+     *     adder is attributed by username.
+     */
     ExportUrlSchema: {
-      /** @description The URL's ID within the UTub */
-      id: number;
       /** @description The URL string */
       url: string;
       /** @description Display title for the URL, or null */
@@ -2929,15 +2934,16 @@ export interface components {
        * @description Timestamp the URL was added to the UTub (ISO 8601)
        */
       addedAt: string;
-      /** @description User ID of the member who added the URL */
-      addedByUserId: number;
+      /** @description Username of the member who added the URL */
+      addedBy: string;
       /** @description Tag strings applied to this URL within the UTub */
       tags?: string[];
     };
-    /** @description A UTub the acting user belongs to (created or joined), fully expanded. */
+    /**
+     * @description A UTub the acting user belongs to (created or joined), fully expanded.
+     *     No internal database ID (data-minimization).
+     */
     ExportUtubSchema: {
-      /** @description The UTub's ID */
-      id: number;
       /** @description The UTub's name */
       name: string;
       /** @description The UTub's description, or null */

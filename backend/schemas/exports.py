@@ -8,9 +8,10 @@ from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 
 
 class ExportAccountSchema(BaseSchema):
-    """The acting user's own account fields — identity only, no secrets."""
+    """The acting user's own account fields — identity only, no secrets and no
+    internal database IDs (data-minimization: the export is human-readable, not
+    a re-import anchor)."""
 
-    id: int = Field(description="The user's account ID")
     username: str = Field(description="The user's username")
     email: str = Field(description="The user's email address")
     member_since: datetime = Field(
@@ -24,21 +25,21 @@ class ExportAccountSchema(BaseSchema):
 
 
 class ExportMemberSchema(BaseSchema):
-    """A member of a UTub the acting user belongs to."""
+    """A member of a UTub the acting user belongs to. Identified by username
+    only — no internal user ID (third-party data-minimization)."""
 
-    user_id: int = Field(alias="userId", description="The member's user ID")
     username: str = Field(description="The member's username")
     role: str = Field(description="The member's role within the UTub")
 
 
 class ExportTagSchema(BaseSchema):
-    """A tag in a UTub's tag vocabulary."""
+    """A tag in a UTub's tag vocabulary. No internal IDs; the creator is
+    attributed by username."""
 
-    id: int = Field(description="The tag's ID within the UTub")
     tag_string: str = Field(alias="tagString", description="The tag text")
-    created_by_user_id: int = Field(
-        alias="createdByUserId",
-        description="User ID of the tag's creator",
+    created_by: str = Field(
+        alias="createdBy",
+        description="Username of the tag's creator",
     )
     created_at: datetime = Field(
         alias="createdAt",
@@ -51,18 +52,18 @@ class ExportTagSchema(BaseSchema):
 
 
 class ExportUrlSchema(BaseSchema):
-    """A URL within a UTub, with its applied tag strings."""
+    """A URL within a UTub, with its applied tag strings. No internal IDs; the
+    adder is attributed by username."""
 
-    id: int = Field(description="The URL's ID within the UTub")
     url: str = Field(description="The URL string")
     title: str | None = Field(description="Display title for the URL, or null")
     added_at: datetime = Field(
         alias="addedAt",
         description="Timestamp the URL was added to the UTub (ISO 8601)",
     )
-    added_by_user_id: int = Field(
-        alias="addedByUserId",
-        description="User ID of the member who added the URL",
+    added_by: str = Field(
+        alias="addedBy",
+        description="Username of the member who added the URL",
     )
     tags: list[str] = Field(
         default_factory=list,
@@ -75,9 +76,9 @@ class ExportUrlSchema(BaseSchema):
 
 
 class ExportUtubSchema(BaseSchema):
-    """A UTub the acting user belongs to (created or joined), fully expanded."""
+    """A UTub the acting user belongs to (created or joined), fully expanded.
+    No internal database ID (data-minimization)."""
 
-    id: int = Field(description="The UTub's ID")
     name: str = Field(description="The UTub's name")
     description: str | None = Field(description="The UTub's description, or null")
     role: str = Field(description="The acting user's role within this UTub")
