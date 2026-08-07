@@ -53,6 +53,7 @@ describe("updateUTubOnFindingStaleData", () => {
         utubUrlTagIDs: [100],
         urlTitle: "Example",
         canDelete: true,
+        addedAt: "2024-01-01T00:00:00+00:00",
       },
     ];
     const mockTags = [{ id: 100, tagString: "tag-a", tagApplied: 1 }];

@@ -4,6 +4,8 @@ import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
+import { getState } from "../../../store/app-store.js";
+import type { DateFormatValue } from "../../../types/preferences.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import {
   selectURLCard,
@@ -109,6 +111,44 @@ export function updateURLAfterFindingStaleData(
   }
 }
 
+// Formats an ISO-8601 timestamp string into the user's stored DateFormat
+// preference. Uses UTC calendar components so the rendered date is deterministic
+// regardless of the viewer's local timezone (added_at is stored as UTC).
+//   iso → YYYY-MM-DD | us → MM/DD/YYYY | eu → DD/MM/YYYY
+export function formatDateByPreference(
+  isoDate: string,
+  dateFormat: DateFormatValue,
+): string {
+  const date = new Date(isoDate);
+  const year = `${date.getUTCFullYear()}`;
+  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getUTCDate()}`.padStart(2, "0");
+  switch (dateFormat) {
+    case "us":
+      return `${month}/${day}/${year}`;
+    case "eu":
+      return `${day}/${month}/${year}`;
+    case "iso":
+    default:
+      return `${year}-${month}-${day}`;
+  }
+}
+
+// Secondary/metadata date-added badge shown between the title row and the
+// URL-string row on each card. A <time> element carries the machine-readable ISO
+// value in `datetime` and an unambiguous accessible name in `aria-label`; the
+// visible text is the terse date formatted per the stored DateFormat preference.
+function createURLDateAddedBadge(addedAt: string): JQuery<HTMLElement> {
+  const formattedDate = formatDateByPreference(
+    addedAt,
+    getState().preferences.dateFormat,
+  );
+  return $(document.createElement("time"))
+    .addClass("urlDateAddedBadge")
+    .attr({ datetime: addedAt, "aria-label": `Added ${formattedDate}` })
+    .text(formattedDate);
+}
+
 // Create a URL block to add to current UTub/URLDeck
 export function createURLBlock(
   url: UtubUrlItem,
@@ -139,6 +179,7 @@ export function createURLBlock(
   urlTitleGoToURLWrap.append(createGoToURLIcon(url.urlString));
 
   urlRowContent.append(urlTitleGoToURLWrap);
+  urlRowContent.append(createURLDateAddedBadge(url.addedAt));
   urlCard.attr({
     utubUrlID: url.utubUrlID,
     urlSelected: false,

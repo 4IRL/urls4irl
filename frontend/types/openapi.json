@@ -8575,9 +8575,14 @@
               "type": "integer"
             },
             "type": "array"
+          },
+          "addedAt": {
+            "description": "Timestamp the URL was added to the UTub",
+            "format": "date-time",
+            "type": "string"
           }
         },
-        "required": ["utubUrlID", "urlString", "urlTitle"],
+        "required": ["utubUrlID", "urlString", "urlTitle", "addedAt"],
         "type": "object"
       },
       "UrlCreatedResponseSchema": {
@@ -9041,6 +9046,11 @@
           "canDelete": {
             "description": "Whether the current user can delete this URL",
             "type": "boolean"
+          },
+          "addedAt": {
+            "description": "Timestamp the URL was added to the UTub",
+            "format": "date-time",
+            "type": "string"
           }
         },
         "required": [
@@ -9048,7 +9058,8 @@
           "urlString",
           "utubUrlTagIDs",
           "urlTitle",
-          "canDelete"
+          "canDelete",
+          "addedAt"
         ],
         "type": "object"
       },

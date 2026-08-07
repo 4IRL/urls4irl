@@ -1,4 +1,4 @@
-import { createURLBlock } from "../cards.js";
+import { createURLBlock, formatDateByPreference } from "../cards.js";
 import { createURLTitle, createURLTitleAndUpdateBlock } from "../url-title.js";
 import {
   createURLString,
@@ -64,6 +64,7 @@ const baseURL = {
   urlString: "https://example.com",
   utubUrlTagIDs: [],
   canDelete: false,
+  addedAt: "2024-03-09T12:00:00+00:00",
 };
 
 describe("createURLBlock", () => {
@@ -187,4 +188,39 @@ describe("createURLBlock", () => {
       );
     });
   });
+
+  describe("date-added badge", () => {
+    it("renders a <time>.urlDateAddedBadge with datetime, aria-label, and formatted text", () => {
+      const el = createURLBlock(
+        { ...baseURL, addedAt: "2024-03-09T12:00:00+00:00" },
+        [],
+        10,
+      );
+      const badge = el.find(".urlDateAddedBadge");
+      expect(badge.length).toBe(1);
+      expect(badge.prop("tagName")).toBe("TIME");
+      expect(badge.attr("datetime")).toBe("2024-03-09T12:00:00+00:00");
+      // Default preference is ISO (YYYY-MM-DD).
+      expect(badge.text()).toBe("2024-03-09");
+      expect(badge.attr("aria-label")).toBe("Added 2024-03-09");
+    });
+  });
+});
+
+describe("formatDateByPreference", () => {
+  const FIXTURE_ISO = "2024-03-09T12:00:00+00:00";
+  const expectedByFormat = {
+    iso: "2024-03-09",
+    us: "03/09/2024",
+    eu: "09/03/2024",
+  } as const;
+
+  it.each(["iso", "us", "eu"] as const)(
+    "formats a fixed ISO date for '%s'",
+    (dateFormat) => {
+      expect(formatDateByPreference(FIXTURE_ISO, dateFormat)).toBe(
+        expectedByFormat[dateFormat],
+      );
+    },
+  );
 });

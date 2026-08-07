@@ -4,7 +4,11 @@ import "./styles/base.css";
 import "./styles/home/index.css";
 import "./lib/security-check.js";
 import { $ } from "./lib/globals.js";
-import { loadInitialUtubState } from "./lib/initial-state.js";
+import {
+  loadInitialPreferencesState,
+  loadInitialUtubState,
+} from "./lib/initial-state.js";
+import { getState } from "./store/app-store.js";
 import { registerJQueryPlugins } from "./lib/jquery-plugins.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
@@ -26,9 +30,12 @@ import { initURLDeck } from "./home/urls/deck.js";
 import { initSwipe } from "./home/urls/cards/swipe.js";
 import { initURLDeckHeaderFit } from "./home/utubs/header-fit.js";
 import { initTagSheet } from "./home/tags/sheet.js";
+import {
+  applyDefaultDensity,
+  applyDefaultViewMode,
+} from "./home/urls/cards/filtering.js";
 import "./home/members/deck.js";
 import "./home/tags/deck.js";
-import "./home/urls/cards/filtering.js";
 
 // Register jQuery plugins and setup CSRF before DOM ready
 registerJQueryPlugins();
@@ -37,6 +44,9 @@ setupCSRF();
 // Initialize on DOM ready
 $(document).ready(() => {
   loadInitialUtubState();
+  loadInitialPreferencesState();
+  applyDefaultViewMode(getState().preferences.defaultView);
+  applyDefaultDensity(getState().preferences.density);
 
   initBtnsForms();
   initVisibilityHandlers();

@@ -94,6 +94,7 @@ describe("event-bus", () => {
           urlString: "https://example.com",
           utubUrlTagIDs: [],
           urlTitle: "Example",
+          addedAt: "2024-01-01T00:00:00+00:00",
           canDelete: true,
         },
       ],

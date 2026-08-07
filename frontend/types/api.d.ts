@@ -1772,6 +1772,11 @@ export interface components {
       urlTitle: string;
       /** @description Tag IDs applied to the URL on creation */
       utubUrlTagIDs?: number[];
+      /**
+       * Format: date-time
+       * @description Timestamp the URL was added to the UTub
+       */
+      addedAt: string;
     };
     UrlCreatedResponseSchema: {
       /** @description ID of the UTub the URL was added to */
@@ -1949,6 +1954,11 @@ export interface components {
       urlTitle: string;
       /** @description Whether the current user can delete this URL */
       canDelete: boolean;
+      /**
+       * Format: date-time
+       * @description Timestamp the URL was added to the UTub
+       */
+      addedAt: string;
     };
     /** @description Full UTub detail with members, URLs, and tags */
     UtubDetailSchema: {

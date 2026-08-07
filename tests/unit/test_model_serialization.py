@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 
 from flask import Flask
 import pytest
@@ -117,9 +118,15 @@ def test_url_serialization_without_tags():
         new_utub_url.standalone_url = new_url
         new_utub_url.id = v_url[MODEL_STRS.UTUB_URL_ID]
         new_utub_url.url_title = ""
+        # added_at is DB-generated (default=utc_now) on real rows; set it
+        # explicitly on this transient object so the now-required schema field
+        # has a value, and mirror it into the expected dict below.
+        new_utub_url.added_at = datetime(2024, 3, 9, 12, 0, tzinfo=timezone.utc)
 
-        # Test a URL without any tags
-        valid_url_for_json = json.dumps(v_url)
+        # Test a URL without any tags. addedAt is appended last, matching the
+        # schema's field order (after canDelete).
+        expected_url = {**v_url, "addedAt": new_utub_url.added_at.isoformat()}
+        valid_url_for_json = json.dumps(expected_url)
 
         assert (
             json.dumps(
@@ -201,8 +208,14 @@ def test_url_serialization_with_tags(
                 tag.id
                 for tag in Utub_Tags.query.filter(Utub_Tags.utub_id == utub.id).all()
             ]
+            # addedAt is a DB-generated timestamp; mirror the serialized value
+            # into the expected dict (appended last, matching schema field order).
+            expected_url = {
+                **verified_url,
+                "addedAt": url_with_tags.added_at.isoformat(),
+            }
 
-            assert json.dumps(verified_url) == json.dumps(
+            assert json.dumps(expected_url) == json.dumps(
                 UtubUrlSchema.from_orm_url(url_with_tags, 1, 1).model_dump(
                     by_alias=True
                 )
@@ -533,6 +546,13 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
                     utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
                 )
 
+            # addedAt is a DB-generated timestamp; mirror the serialized value
+            # into the expected dict per URL (appended last, matching schema order).
+            for idx in range(len(test_utub[MODEL_STRS.URLS])):
+                test_utub[MODEL_STRS.URLS][idx]["addedAt"] = utub_in_data_serialized[
+                    MODEL_STRS.URLS
+                ][idx]["addedAt"]
+
             # Match creator elements
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
@@ -650,6 +670,13 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                 test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE] = (
                     utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
                 )
+
+            # addedAt is a DB-generated timestamp; mirror the serialized value
+            # into the expected dict per URL (appended last, matching schema order).
+            for idx in range(len(test_utub[MODEL_STRS.URLS])):
+                test_utub[MODEL_STRS.URLS][idx]["addedAt"] = utub_in_data_serialized[
+                    MODEL_STRS.URLS
+                ][idx]["addedAt"]
 
             # Set deletion for UTub based on equality
             utub_in_data_serialized[MODEL_STRS.IS_CREATOR] = (

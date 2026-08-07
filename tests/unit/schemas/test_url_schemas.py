@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 from pydantic import ValidationError
 
@@ -17,6 +19,7 @@ class _MockUtubUrl:
     id = 10
     url_title = "Example Site"
     user_id = 2
+    added_at = datetime(2024, 3, 9, 12, 0, tzinfo=timezone.utc)
     standalone_url = _MockUrl()
     associated_tag_ids = [3, 5]
     associated_tags = [
@@ -37,6 +40,8 @@ def test_utub_url_schema_dump():
     assert dumped[M.URL_TAG_IDS] == [3, 5]
     assert dumped[M.URL_TITLE] == "Example Site"
     assert dumped[M.CAN_DELETE] is True
+    # added_at is serialized to an ISO-8601 string via field_serializer.
+    assert dumped["addedAt"] == "2024-03-09T12:00:00+00:00"
 
 
 def test_utub_url_schema_can_delete_false():

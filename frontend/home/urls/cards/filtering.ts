@@ -9,6 +9,12 @@ import {
   sortTagsByCount,
 } from "../../../logic/tag-filtering.js";
 import { getNumOfVisibleURLs } from "../utils.js";
+import type {
+  DensityValue,
+  SortOrderValue,
+  ViewModeValue,
+} from "../../../types/preferences.js";
+import type { UtubUrlItem } from "../../../types/url.js";
 import { debug } from "../../../lib/debug.js";
 
 const log = debug("urls:cards");
@@ -187,6 +193,58 @@ export function updateTagFilteringOnURLOrURLTagDeletion(): void {
   } else {
     reapplyAlternatingURLCardBackgroundAfterFilter();
   }
+}
+
+// Pure sort of a URL list by the stored default-sort preference. Returns a NEW
+// array (no in-place mutation) and has zero DOM/store side effects. DD-36: the
+// deck's full-load ordering is server-authoritative — this helper's ONLY
+// production caller is the create-time re-sort in createURLSuccess(), where a
+// freshly-created card must land in its sorted position before the next
+// server-driven load supersedes it.
+export function applyDefaultUrlSort(
+  urls: UtubUrlItem[],
+  sortOrder: SortOrderValue,
+): UtubUrlItem[] {
+  const sorted = [...urls];
+  switch (sortOrder) {
+    case "oldest":
+      sorted.sort(
+        (first, second) =>
+          new Date(first.addedAt).getTime() -
+          new Date(second.addedAt).getTime(),
+      );
+      break;
+    case "title_az":
+      sorted.sort((first, second) =>
+        first.urlTitle
+          .toLowerCase()
+          .localeCompare(second.urlTitle.toLowerCase()),
+      );
+      break;
+    case "newest":
+    default:
+      sorted.sort(
+        (first, second) =>
+          new Date(second.addedAt).getTime() -
+          new Date(first.addedAt).getTime(),
+      );
+  }
+  return sorted;
+}
+
+// Cosmetic-only presentation toggle (border/shadow/layout, never row spacing —
+// row spacing stays under applyDefaultDensity's touch-target-guarded control).
+// Sets document.body.dataset.view from the stored ViewMode on initial render.
+export function applyDefaultViewMode(viewMode: ViewModeValue): void {
+  document.body.dataset.view = viewMode;
+}
+
+// Sets document.body.dataset.density from the stored Density on initial render.
+// The compact reduction of row min-height/padding is scoped in CSS to
+// (any-pointer: fine) devices only, so touch devices never drop below the 44px
+// WCAG 2.5.5 touch-target floor regardless of this preference.
+export function applyDefaultDensity(density: DensityValue): void {
+  document.body.dataset.density = density;
 }
 
 on(AppEvents.TAG_DELETED, () => updateURLsAndTagSubheaderWhenTagSelected());

@@ -16,6 +16,7 @@ _URL = {
     M.URL_TAG_IDS: [10],
     M.URL_TITLE: "Example",
     M.CAN_DELETE: True,
+    "addedAt": "2024-03-09T12:00:00+00:00",
 }
 _UTUB_DICT = {
     M.ID: 42,
