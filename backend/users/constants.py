@@ -96,6 +96,23 @@ class LogoutEverywhereErrorCodes(IntEnum):
     NOT_AUTHORIZED = 1
 
 
+class PreferencesErrorCodes(IntEnum):
+    """Application error code for the authenticated update-preferences endpoint
+    (``PUT /users/<id>/preferences``).
+
+    Same home as the sibling ``Change*ErrorCodes``/``DeleteAccountErrorCodes``/
+    ``LogoutEverywhereErrorCodes`` (the users domain, not
+    ``backend/splash/constants.py``) and the same explicit-sequential-value
+    convention (member 1 is always ``INVALID_FORM_INPUT``). One shared code
+    backs every failure mode: Pydantic enum-membership validation rejects an
+    out-of-set value as a 400 field error before the service runs, and the
+    self-ownership guard reuses the same code for its 403 (mirroring
+    ``change_username``'s single-code convention).
+    """
+
+    INVALID_FORM_INPUT = 1
+
+
 class DataExportErrorCodes(IntEnum):
     """Application error code for the authenticated data-export endpoint
     (``GET /users/<id>/data-export``).

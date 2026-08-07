@@ -24,6 +24,29 @@ class ExportAccountSchema(BaseSchema):
         return value.isoformat()
 
 
+class ExportPreferencesSchema(BaseSchema):
+    """The acting user's stored display/view preferences. Every value is already
+    an enum ``.value`` string, so all fields are plain ``str`` (mirroring
+    ``ExportAccountSchema``'s field-per-attribute style). When the user has no
+    ``UserPreferences`` row (pre-existing user), each field carries its enum
+    default."""
+
+    theme: str = Field(description="The app-wide color theme (light/dark/system)")
+    default_view: str = Field(
+        alias="defaultView",
+        description="The default UTub URL view mode (list/compact/cards)",
+    )
+    default_sort: str = Field(
+        alias="defaultSort",
+        description="The default URL sort order (newest/oldest/title_az)",
+    )
+    density: str = Field(description="The layout density (comfortable/compact)")
+    date_format: str = Field(
+        alias="dateFormat",
+        description="The date display format (iso/us/eu)",
+    )
+
+
 class ExportMemberSchema(BaseSchema):
     """A member of a UTub the acting user belongs to. Identified by username
     only — no internal user ID (third-party data-minimization)."""
@@ -120,6 +143,9 @@ class UserDataExportSchema(BaseSchema):
     )
     account: ExportAccountSchema = Field(
         description="The acting user's own account fields"
+    )
+    preferences: ExportPreferencesSchema = Field(
+        description="The user's stored display/view preferences"
     )
     utubs: list[ExportUtubSchema] = Field(
         default_factory=list,

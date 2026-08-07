@@ -367,9 +367,9 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             utub: Utubs = utub
 
             # Match creator elements
-            utub_in_data_serialized = UtubDetailSchema.from_utub(utub, 1).model_dump(
-                by_alias=True
-            )
+            utub_in_data_serialized = UtubDetailSchema.from_utub(
+                utub, 1, utub.utub_urls
+            ).model_dump(by_alias=True)
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
             ]
@@ -436,9 +436,9 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.isoformat()
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = UtubDetailSchema.from_utub(utub, 1).model_dump(
-                by_alias=True
-            )
+            utub_in_data_serialized = UtubDetailSchema.from_utub(
+                utub, 1, utub.utub_urls
+            ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
@@ -513,9 +513,9 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.isoformat()
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = UtubDetailSchema.from_utub(utub, 1).model_dump(
-                by_alias=True
-            )
+            utub_in_data_serialized = UtubDetailSchema.from_utub(
+                utub, 1, utub.utub_urls
+            ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
@@ -615,9 +615,9 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.isoformat()
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = UtubDetailSchema.from_utub(utub, 1).model_dump(
-                by_alias=True
-            )
+            utub_in_data_serialized = UtubDetailSchema.from_utub(
+                utub, 1, utub.utub_urls
+            ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],

@@ -1251,6 +1251,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/{user_id}/preferences": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description Update the authenticated user's display/view preferences (theme, default UTub view, default sort, density, date format). Instant-apply (no save button); the 1:1 UserPreferences row is created on first save. Enum-membership validation rejects an out-of-set value as a 400 field error. Metrics: API_HIT only (no DOMAIN event). */
+    put: operations["updatePreferences"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/password": {
     parameters: {
       query?: never;
@@ -2759,6 +2776,66 @@ export interface components {
      * @enum {integer}
      */
     ChangeUsernameErrorCodes: 1 | 2 | 3;
+    /** @enum {string} */
+    DateFormat: "iso" | "us" | "eu";
+    /** @enum {string} */
+    Density: "comfortable" | "compact";
+    /** @enum {string} */
+    SortOrder: "newest" | "oldest" | "title_az";
+    /** @enum {string} */
+    Theme: "light" | "dark" | "system";
+    /** @enum {string} */
+    ViewMode: "list" | "compact" | "cards";
+    UpdatePreferencesRequest: {
+      /** @description The app-wide color theme: light, dark, or system */
+      theme: components["schemas"]["Theme"];
+      /** @description The default UTub URL view mode: list, compact, or cards */
+      defaultView: components["schemas"]["ViewMode"];
+      /** @description The default URL sort order: newest, oldest, or title_az */
+      defaultSort: components["schemas"]["SortOrder"];
+      /** @description The layout density: comfortable or compact */
+      density: components["schemas"]["Density"];
+      /** @description The date display format: iso, us, or eu */
+      dateFormat: components["schemas"]["DateFormat"];
+    };
+    /**
+     * @description Response for the authenticated update-preferences endpoint
+     *     (``PUT /users/<id>/preferences``).
+     *
+     *     One shape for every 200 response — the success branch and the no-op branch
+     *     both echo all five persisted preference values (each an enum ``.value``
+     *     string), differing only in ``status``/``message`` (the banner text is
+     *     server-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).
+     *     Echoing the stored values lets the client refresh its in-memory state
+     *     without a reload.
+     */
+    UpdatePreferencesResponseSchema: {
+      /** @description The account's theme after the change (echoed back) */
+      theme: string;
+      /** @description The account's default view mode after the change */
+      defaultView: string;
+      /** @description The account's default sort order after the change */
+      defaultSort: string;
+      /** @description The account's layout density after the change */
+      density: string;
+      /** @description The account's date format after the change */
+      dateFormat: string;
+      /**
+       * @description Response status: Success or No change
+       * @enum {string}
+       */
+      status: "Success" | "No change";
+      /** @description Human-readable, server-sourced banner text */
+      message: string;
+    };
+    ErrorResponse_PreferencesErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["PreferencesErrorCodes"];
+    };
+    /**
+     * @description Error codes for PreferencesErrorCodes
+     * @enum {integer}
+     */
+    PreferencesErrorCodes: 1;
     ChangePasswordRequest: {
       /** @description Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy */
       currentPassword: string;
@@ -2906,6 +2983,25 @@ export interface components {
       role: string;
     };
     /**
+     * @description The acting user's stored display/view preferences. Every value is already
+     *     an enum ``.value`` string, so all fields are plain ``str`` (mirroring
+     *     ``ExportAccountSchema``'s field-per-attribute style). When the user has no
+     *     ``UserPreferences`` row (pre-existing user), each field carries its enum
+     *     default.
+     */
+    ExportPreferencesSchema: {
+      /** @description The app-wide color theme (light/dark/system) */
+      theme: string;
+      /** @description The default UTub URL view mode (list/compact/cards) */
+      defaultView: string;
+      /** @description The default URL sort order (newest/oldest/title_az) */
+      defaultSort: string;
+      /** @description The layout density (comfortable/compact) */
+      density: string;
+      /** @description The date display format (iso/us/eu) */
+      dateFormat: string;
+    };
+    /**
      * @description A tag in a UTub's tag vocabulary. No internal IDs; the creator is
      *     attributed by username.
      */
@@ -2978,6 +3074,8 @@ export interface components {
       exportedAt: string;
       /** @description The acting user's own account fields */
       account: components["schemas"]["ExportAccountSchema"];
+      /** @description The user's stored display/view preferences */
+      preferences: components["schemas"]["ExportPreferencesSchema"];
       /** @description Every UTub the user belongs to, created or joined */
       utubs?: components["schemas"]["ExportUtubSchema"][];
     };
@@ -7507,6 +7605,60 @@ export interface operations {
       };
       /** @description Too many requests */
       429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updatePreferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdatePreferencesRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the authenticated update-preferences endpoint
+       *         (``PUT /users/<id>/preferences``).
+       *
+       *         One shape for every 200 response — the success branch and the no-op branch
+       *         both echo all five persisted preference values (each an enum ``.value``
+       *         string), differing only in ``status``/``message`` (the banner text is
+       *         server-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).
+       *         Echoing the stored values lets the client refresh its in-memory state
+       *         without a reload.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UpdatePreferencesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_PreferencesErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown;
         };

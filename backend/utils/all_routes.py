@@ -72,6 +72,7 @@ class USER_ROUTES:
     DELETE_ACCOUNT = _USERS + "delete_account"
     LOGOUT_EVERYWHERE = _USERS + "logout_everywhere"
     DATA_EXPORT = _USERS + "data_export"
+    UPDATE_PREFERENCES = _USERS + "update_preferences"
     OAUTH_LINK = _USERS + "link_oauth_provider"
     OAUTH_UNLINK = _USERS + "unlink_oauth_provider"
 

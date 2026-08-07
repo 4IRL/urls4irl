@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
+from backend.models.user_preferences import (
+    DateFormat,
+    Density,
+    SortOrder,
+    Theme,
+    ViewMode,
+)
 from backend.schemas.requests._sanitize import SanitizedStr
 from backend.schemas.requests.splash import _UsernameStripMixin
 from backend.utils.constants import USER_CONSTANTS
@@ -117,6 +124,34 @@ class DeleteAccountRequest(BaseModel):
             "irreversible deletion (DD-C). Re-checked against current_user in "
             "the service"
         ),
+    )
+
+
+class UpdatePreferencesRequest(BaseModel):
+    # Every field is typed as its Python enum, so Pydantic validates
+    # enum-membership before the service runs — an out-of-set value yields a 400
+    # field error, never a bad DB write. Aliases are mandatory (no
+    # populate_by_name), so the JS client sends the camelCase wire keys
+    # (theme / defaultView / defaultSort / density / dateFormat).
+    theme: Theme = Field(
+        alias="theme",
+        description="The app-wide color theme: light, dark, or system",
+    )
+    default_view: ViewMode = Field(
+        alias="defaultView",
+        description="The default UTub URL view mode: list, compact, or cards",
+    )
+    default_sort: SortOrder = Field(
+        alias="defaultSort",
+        description="The default URL sort order: newest, oldest, or title_az",
+    )
+    density: Density = Field(
+        alias="density",
+        description="The layout density: comfortable or compact",
+    )
+    date_format: DateFormat = Field(
+        alias="dateFormat",
+        description="The date display format: iso, us, or eu",
     )
 
 

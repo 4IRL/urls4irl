@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import Tuple
 
 from flask import Flask, url_for
@@ -7,6 +8,7 @@ import pytest
 
 from backend import db
 from backend.metrics.events import EventName
+from backend.models.user_preferences import SortOrder, User_Preferences
 from backend.models.utub_tags import Utub_Tags
 from backend.models.urls import Urls
 from backend.models.users import Users
@@ -256,6 +258,118 @@ def test_get_valid_utub_with_members_urls_no_tags(
         assert (
             utub_user_member_of.last_updated - initial_last_updated
         ).total_seconds() > 0
+
+
+def _assign_distinct_sort_values(utub: Utubs) -> None:
+    """Give each of the UTub's URL rows a distinct ``added_at`` and ``url_title``
+    so the three sort orders (NEWEST/OLDEST/TITLE_AZ) each produce a distinct,
+    deterministic permutation — not relying on the fixture's near-simultaneous
+    default timestamps."""
+    base_time = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    # Insertion order 0,1,2; NEWEST → 0,2,1; OLDEST → 1,2,0; TITLE_AZ → 1,2,0→ a,B,C.
+    per_url = [
+        (base_time + timedelta(days=2), "Charlie"),
+        (base_time + timedelta(days=0), "alpha"),
+        (base_time + timedelta(days=1), "Bravo"),
+    ]
+    utub_urls = list(utub.utub_urls)
+    assert len(utub_urls) == len(per_url)
+    for utub_url, (added_at, url_title) in zip(utub_urls, per_url):
+        utub_url.added_at = added_at
+        utub_url.url_title = url_title
+    db.session.commit()
+
+
+@pytest.mark.parametrize(
+    "sort_order",
+    [SortOrder.NEWEST, SortOrder.OLDEST, SortOrder.TITLE_AZ],
+    ids=["newest", "oldest", "title_az"],
+)
+def test_get_utub_urls_ordered_by_default_sort_preference(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+    sort_order: SortOrder,
+):
+    """DD-36: the returned URL list is ordered server-side by the viewing user's
+    saved ``default_sort`` preference — NEWEST/OLDEST by ``added_at``, TITLE_AZ by
+    case-insensitive ``url_title``."""
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        utub_id = utub.id
+        _assign_distinct_sort_values(utub)
+
+        db.session.add(
+            User_Preferences(user_id=current_user.id, default_sort=sort_order)
+        )
+        db.session.commit()
+
+        refreshed_utub: Utubs = Utubs.query.get(utub_id)
+        if sort_order == SortOrder.NEWEST:
+            expected = sorted(
+                refreshed_utub.utub_urls,
+                key=lambda utub_url: utub_url.added_at,
+                reverse=True,
+            )
+        elif sort_order == SortOrder.OLDEST:
+            expected = sorted(
+                refreshed_utub.utub_urls, key=lambda utub_url: utub_url.added_at
+            )
+        else:
+            expected = sorted(
+                refreshed_utub.utub_urls,
+                key=lambda utub_url: utub_url.url_title.lower(),
+            )
+        expected_ids = [utub_url.id for utub_url in expected]
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json is not None
+    actual_ids = [url[MODELS.UTUB_URL_ID] for url in response_json[MODELS.URLS]]
+    assert actual_ids == expected_ids
+
+
+def test_get_utub_urls_defaults_to_newest_without_preferences_row(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """DD-36: with no ``UserPreferences`` row (pre-existing user), the URL list
+    defaults to NEWEST (``added_at`` descending), mirroring the None-row
+    defaulting used throughout the preferences feature."""
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        utub_id = utub.id
+        _assign_distinct_sort_values(utub)
+        assert current_user.preferences is None
+
+        refreshed_utub: Utubs = Utubs.query.get(utub_id)
+        expected_ids = [
+            utub_url.id
+            for utub_url in sorted(
+                refreshed_utub.utub_urls,
+                key=lambda utub_url: utub_url.added_at,
+                reverse=True,
+            )
+        ]
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json is not None
+    actual_ids = [url[MODELS.UTUB_URL_ID] for url in response_json[MODELS.URLS]]
+    assert actual_ids == expected_ids
 
 
 def test_get_valid_utub_with_members_urls_tags(

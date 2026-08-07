@@ -26,8 +26,16 @@ from limits import RateLimitItemPerHour, RateLimitItemPerMinute, parse_many
 from redis import Redis
 from werkzeug.test import TestResponse
 
-from backend import limiter
+from backend import db, limiter
 from backend.metrics.events import EventName
+from backend.models.user_preferences import (
+    DateFormat,
+    Density,
+    SortOrder,
+    Theme,
+    User_Preferences,
+    ViewMode,
+)
 from backend.models.users import Users
 from backend.schemas.exports import UserDataExportResponseSchema
 from backend.users.constants import DATA_EXPORT_RATE_LIMIT, DataExportErrorCodes
@@ -153,6 +161,56 @@ def test_data_export_core_serializes_all_memberships(
         for tag_payload in utub_payload["tags"]:
             assert "id" not in tag_payload
             assert "createdByUserId" not in tag_payload
+
+
+def test_data_export_core_includes_stored_preferences(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The export's ``preferences`` block reflects the user's stored theme /
+    view / sort / density / date-format (each an enum ``.value`` string)."""
+    _client, _csrf, user, app = login_first_user_with_register
+
+    with app.app_context():
+        acting_user: Users = Users.query.get(user.id)
+        db.session.add(
+            User_Preferences(
+                user_id=acting_user.id,
+                theme=Theme.LIGHT,
+                default_view=ViewMode.CARDS,
+                default_sort=SortOrder.OLDEST,
+                density=Density.COMPACT,
+                date_format=DateFormat.EU,
+            )
+        )
+        db.session.commit()
+        export = build_user_data_export_core(
+            user=Users.query.get(user.id), generated_at=utc_now()
+        )
+
+    assert export.preferences.theme == Theme.LIGHT.value
+    assert export.preferences.default_view == ViewMode.CARDS.value
+    assert export.preferences.default_sort == SortOrder.OLDEST.value
+    assert export.preferences.density == Density.COMPACT.value
+    assert export.preferences.date_format == DateFormat.EU.value
+
+
+def test_data_export_core_defaults_preferences_when_no_row(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """When the user has no UserPreferences row, the export's ``preferences``
+    block carries every enum default (system/list/newest/comfortable/iso)."""
+    _client, _csrf, user, app = login_first_user_with_register
+
+    with app.app_context():
+        acting_user: Users = Users.query.get(user.id)
+        assert acting_user.preferences is None
+        export = build_user_data_export_core(user=acting_user, generated_at=utc_now())
+
+    assert export.preferences.theme == Theme.SYSTEM.value
+    assert export.preferences.default_view == ViewMode.LIST.value
+    assert export.preferences.default_sort == SortOrder.NEWEST.value
+    assert export.preferences.density == Density.COMFORTABLE.value
+    assert export.preferences.date_format == DateFormat.ISO.value
 
 
 # --------------------------------------------------------------------------- #
