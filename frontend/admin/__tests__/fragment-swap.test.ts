@@ -8,11 +8,7 @@ import {
   createMockXhr,
 } from "../../__tests__/helpers/mock-jquery.js";
 import { ajaxCallFragment, is429Handled } from "../../lib/ajax.js";
-import {
-  bindPaginationLinks,
-  fetchAndSwap,
-  makeDebouncer,
-} from "../fragment-swap.js";
+import { bindPaginationLinks, fetchAndSwap } from "../fragment-swap.js";
 
 vi.mock("../../lib/ajax.js", () => ({
   ajaxCallFragment: vi.fn(),
@@ -104,58 +100,6 @@ describe("fetchAndSwap", () => {
     capturedFail?.(createMockXhr() as JQuery.jqXHR);
 
     expect(target.innerHTML).toBe(INITIAL_HTML);
-  });
-});
-
-describe("makeDebouncer", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("delays execution by the specified delay", () => {
-    const fn = vi.fn();
-    const debounced = makeDebouncer(fn, 500);
-
-    debounced();
-
-    expect(fn).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(499);
-    expect(fn).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(1);
-    expect(fn).toHaveBeenCalledTimes(1);
-  });
-
-  it("resets the timer on repeated calls so fn fires only once after the last call", () => {
-    const fn = vi.fn();
-    const debounced = makeDebouncer(fn, 500);
-
-    debounced();
-    vi.advanceTimersByTime(400);
-    debounced();
-    vi.advanceTimersByTime(400);
-    expect(fn).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(100);
-    expect(fn).toHaveBeenCalledTimes(1);
-  });
-
-  it("fires again on subsequent calls after the first debounce window elapses", () => {
-    const fn = vi.fn();
-    const debounced = makeDebouncer(fn, 500);
-
-    debounced();
-    vi.advanceTimersByTime(500);
-    expect(fn).toHaveBeenCalledTimes(1);
-
-    debounced();
-    vi.advanceTimersByTime(500);
-    expect(fn).toHaveBeenCalledTimes(2);
   });
 });
 

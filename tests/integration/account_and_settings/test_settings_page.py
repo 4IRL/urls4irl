@@ -7,6 +7,7 @@ from flask.testing import FlaskClient
 
 from backend import db
 from backend.models.user_oauth_identities import UserOAuthIdentity
+from backend.models.user_preferences import Theme, User_Preferences
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
@@ -349,3 +350,62 @@ def test_settings_nav_link_hidden_on_settings_page(
 
     assert resp.status_code == 200
     assert b'id="userSettingsLink"' not in resp.data
+
+
+# The Display panel is the last settings section; its opening tag bounds the
+# slice so a radio/selected-state rendered in the wrong panel fails the check.
+_UI_SETTINGS_PANEL_MARKER = b'id="SettingsPanelUiSettings"'
+
+
+def _slice_ui_settings_panel(resp_data: bytes) -> bytes:
+    """Return the byte slice spanning the Display tabpanel, from its id attribute
+    up to the panel's closing ``</section>``."""
+    start = resp_data.index(_UI_SETTINGS_PANEL_MARKER)
+    end = resp_data.index(b"</section>", start)
+    return resp_data[start:end]
+
+
+def test_settings_display_panel_defaults_to_system_theme_when_no_row(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The Display panel renders its intro + theme control, and a user with no
+    ``UserPreferences`` row has the System theme radio pre-selected (defaulting
+    logic surfaced in the rendered ``aria-checked`` state)."""
+    logged_in_client, _, _, _ = login_first_user_with_register
+
+    resp = logged_in_client.get(url_for(ROUTES.USERS.SETTINGS))
+
+    assert resp.status_code == 200
+    for label in (
+        UI_TEST_STRINGS.SETTINGS_UI_SETTINGS_SECTION_INTRO,
+        UI_TEST_STRINGS.SETTINGS_UI_SETTINGS_THEME_LABEL,
+    ):
+        assert label.encode() in resp.data
+
+    panel = _slice_ui_settings_panel(resp.data)
+    assert b'data-action-url="/users/1/preferences"' in panel
+    assert b'data-theme-value="system" aria-checked="true"' in panel
+    assert b'data-theme-value="light" aria-checked="false"' in panel
+    assert b'data-theme-value="dark" aria-checked="false"' in panel
+
+
+def test_settings_display_panel_reflects_persisted_theme(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """A stored ``UserPreferences.theme`` is reflected as the selected theme
+    radio's ``aria-checked="true"`` on the rendered Display panel."""
+    logged_in_client, _, _, app = login_first_user_with_register
+
+    with app.app_context():
+        seeded_user: Users = Users.query.get(1)
+        preferences = User_Preferences(user_id=seeded_user.id, theme=Theme.DARK)
+        db.session.add(preferences)
+        db.session.commit()
+
+    resp = logged_in_client.get(url_for(ROUTES.USERS.SETTINGS))
+
+    assert resp.status_code == 200
+    panel = _slice_ui_settings_panel(resp.data)
+    assert b'data-theme-value="dark" aria-checked="true"' in panel
+    assert b'data-theme-value="system" aria-checked="false"' in panel
+    assert b'data-theme-value="light" aria-checked="false"' in panel

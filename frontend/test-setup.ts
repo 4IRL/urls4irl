@@ -293,6 +293,7 @@ const appConfig = {
       "Wait for your data export to finish before deleting your account.",
     SETTINGS_EXPORT_BLOCKED_BY_DELETE:
       "Finish or cancel the account deletion in progress before exporting.",
+    SETTINGS_PREFERENCES_SAVED: "Preferences saved",
   },
 };
 

@@ -166,6 +166,47 @@ class USER_SETTINGS_STRINGS:
     STATS_MEMBER_SINCE = "Member since"
     STATS_JOINED_TODAY = "Joined today"
 
+    # Display tab (Phase 6). The panel intro + every pref-row label/description +
+    # the theme radio labels + the select option labels are Jinja-rendered; the
+    # section intro + theme labels are re-exported via ui_testing_strs for Python
+    # UI assertions. Only PREFERENCES_SAVED (the instant-apply success toast) is
+    # written into the DOM by display-preferences.ts, so it alone goes through the
+    # full 5-file JS bridge (STRINGS + generate_strings_js + test-setup.ts mock).
+    UI_SETTINGS_SECTION_INTRO = (
+        "Choose how URLS4IRL looks and how your collections are shown. Changes "
+        "save instantly and apply everywhere."
+    )
+    UI_SETTINGS_THEME_LABEL = "Theme"
+    UI_SETTINGS_THEME_DESC = (
+        "Light, dark, or match your device. Applied before the page paints — no "
+        "flash."
+    )
+    UI_SETTINGS_THEME_LIGHT = "Light"
+    UI_SETTINGS_THEME_DARK = "Dark"
+    UI_SETTINGS_THEME_SYSTEM = "System"
+    UI_SETTINGS_VIEW_LABEL = "Default UTub view"
+    UI_SETTINGS_VIEW_DESC = "How the URL deck lays out when you open a collection."
+    UI_SETTINGS_VIEW_OPTION_LIST = "List"
+    # "View: Compact" / "Density: Compact" disambiguate the two prefs that both
+    # carry the literal value "compact" (DD-25).
+    UI_SETTINGS_VIEW_OPTION_COMPACT = "View: Compact"
+    UI_SETTINGS_VIEW_OPTION_CARDS = "Cards"
+    UI_SETTINGS_SORT_LABEL = "Default sort"
+    UI_SETTINGS_SORT_DESC = "Ordering applied to URLs on load."
+    UI_SETTINGS_SORT_OPTION_NEWEST = "Date added (newest)"
+    UI_SETTINGS_SORT_OPTION_OLDEST = "Date added (oldest)"
+    UI_SETTINGS_SORT_OPTION_TITLE_AZ = "Title A–Z"
+    UI_SETTINGS_DENSITY_LABEL = "Density"
+    UI_SETTINGS_DENSITY_DESC = "Row spacing across decks and lists."
+    UI_SETTINGS_DENSITY_OPTION_COMFORTABLE = "Comfortable"
+    UI_SETTINGS_DENSITY_OPTION_COMPACT = "Density: Compact"
+    UI_SETTINGS_DATE_FORMAT_LABEL = "Date format"
+    UI_SETTINGS_DATE_FORMAT_DESC = "How dates on your saved URLs are shown."
+    UI_SETTINGS_DATE_FORMAT_OPTION_ISO = "ISO (YYYY-MM-DD)"
+    UI_SETTINGS_DATE_FORMAT_OPTION_US = "US (MM/DD/YYYY)"
+    UI_SETTINGS_DATE_FORMAT_OPTION_EU = "EU (DD/MM/YYYY)"
+    PREFERENCES_SAVED = "Preferences saved"
+
     # Danger zone + account-removal modals (Account tab, Phase 4). Static Jinja
     # labels re-exported via ui_testing_strs for Python UI assertions — no JS
     # string bridge (the success/error banner text is server-sourced off the

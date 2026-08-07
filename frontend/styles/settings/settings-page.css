@@ -901,3 +901,97 @@
         justify-content: center;
     }
 }
+
+/* ============================ DISPLAY TAB (Phase 6) ============================
+   The instant-apply preferences panel: a theme segmented control (role=radiogroup)
+   + four view-pref selects. Tokens only, so it flips with the app-wide theme.
+   Every interactive control carries the 2.75rem (44px WCAG 2.5.5) touch target and
+   the shared green :focus-visible outline convention used across this file. */
+.SettingsPrefRow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.05rem 0;
+    border-top: 1px solid var(--borderColor);
+}
+
+.SettingsPrefRow:first-of-type {
+    border-top: 0;
+}
+
+.SettingsPrefLabel {
+    max-width: 340px;
+}
+
+.SettingsPrefLabelTitle {
+    color: var(--textPrimary);
+    font-weight: 700;
+    font-size: 0.98rem;
+}
+
+.SettingsPrefLabelDesc {
+    color: var(--cardURLTextColor);
+    font-size: 0.82rem;
+    margin-top: 0.15rem;
+}
+
+.SettingsThemeSeg {
+    display: inline-flex;
+    padding: 4px;
+    background: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-pill);
+}
+
+.SettingsThemeOption {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.75rem;
+    padding: 0 0.95rem;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--cardURLTextColor);
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.SettingsThemeOption[aria-checked="true"] {
+    background: var(--deckHeaderGreen);
+    color: #06210f;
+}
+
+.SettingsThemeOption:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+#SettingsPanelUiSettings .form-control {
+    min-width: 190px;
+    min-height: 2.75rem;
+    background: var(--cardBackgroundColor);
+    color: var(--textPrimary);
+    border: 1px solid var(--borderColor);
+}
+
+#SettingsPanelUiSettings .form-control:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 1px;
+}
+
+@media (max-width: 575.98px) {
+    .SettingsPrefRow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #SettingsPanelUiSettings .form-control,
+    .SettingsThemeSeg {
+        width: 100%;
+    }
+}

@@ -9,9 +9,6 @@
  *   fetchAndSwap({ url, targetEl, timeout? })
  *     GETs url and sets targetEl.innerHTML to the returned HTML string.
  *
- *   makeDebouncer(fn, delayMs)
- *     Returns a debounced wrapper of fn that delays execution by delayMs.
- *
  *   bindPaginationLinks({ containerEl, targetEl })
  *     Attaches a delegated click handler inside containerEl that intercepts
  *     clicks on [data-fragment-href] anchors and calls fetchAndSwap.
@@ -44,18 +41,6 @@ export function fetchAndSwap({
     .fail((xhr: JQuery.jqXHR) => {
       if (is429Handled(xhr)) return;
     });
-}
-
-/**
- * Returns a debounced wrapper of `fn`.  Repeated calls within `delayMs`
- * milliseconds reset the timer; `fn` fires only after the last call.
- */
-export function makeDebouncer(fn: () => void, delayMs: number): () => void {
-  let timer: ReturnType<typeof window.setTimeout> | undefined;
-  return (): void => {
-    window.clearTimeout(timer);
-    timer = window.setTimeout(fn, delayMs);
-  };
 }
 
 /**
