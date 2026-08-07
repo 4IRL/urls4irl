@@ -9,3 +9,4 @@ from backend.models.anonymous_metrics import Anonymous_Metrics  # noqa: F401
 from backend.models.api_refresh_tokens import ApiRefreshTokens  # noqa: F401
 from backend.models.audit_log import AuditLog  # noqa: F401
 from backend.models.event_registry import Event_Registry  # noqa: F401
+from backend.models.user_preferences import User_Preferences  # noqa: F401

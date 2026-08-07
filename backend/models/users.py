@@ -21,6 +21,7 @@ from backend import db
 from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.user_oauth_identities import UserOAuthIdentity
+from backend.models.user_preferences import User_Preferences
 from backend.models.utub_members import Utub_Members
 from backend.utils.constants import EMAIL_CONSTANTS, USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
@@ -100,6 +101,17 @@ class Users(db.Model, UserMixin):
     # a future hot path can opt in per-query via selectinload(...).
     oauth_identities: list[UserOAuthIdentity] = db.relationship(
         "UserOAuthIdentity",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+    # Default lazy="select" (not eager): the migration-roundtrip tests run
+    # Users queries against a schema revision *before* the UserPreferences table
+    # exists; an eager join would break them. Preferences are loaded on access,
+    # which is all any preference read path needs.
+    preferences: User_Preferences = db.relationship(
+        "User_Preferences",
+        uselist=False,
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",

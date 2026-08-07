@@ -9,6 +9,7 @@ UTUB_URLS = "UtubUrls"
 UTUB_URL_TAGS = "UtubUrlTags"
 CONTACT_FORM_ENTRIES = "ContactFormEntries"
 USER_OAUTH_IDENTITIES = "UserOAuthIdentities"
+USER_PREFERENCES = "UserPreferences"
 API_REFRESH_TOKENS = "ApiRefreshTokens"
 EVENT_REGISTRY = "EventRegistry"
 ANONYMOUS_METRICS = "AnonymousMetrics"
@@ -30,6 +31,7 @@ class TABLE_NAMES:
     ALEMBIC_VERSION = ALEMBIC_VERSION
     CONTACT_FORM_ENTRIES = CONTACT_FORM_ENTRIES
     USER_OAUTH_IDENTITIES = USER_OAUTH_IDENTITIES
+    USER_PREFERENCES = USER_PREFERENCES
     API_REFRESH_TOKENS = API_REFRESH_TOKENS
     EVENT_REGISTRY = EVENT_REGISTRY
     ANONYMOUS_METRICS = ANONYMOUS_METRICS
@@ -50,6 +52,8 @@ class TABLE_NAMES:
         FORGOT_PASSWORDS,
         CONTACT_FORM_ENTRIES,
         USER_OAUTH_IDENTITIES,
+        # UserPreferences references Users (userID FK) and must drop before it.
+        USER_PREFERENCES,
         API_REFRESH_TOKENS,
         # AuditLogs references Users (actorId FK) and must drop before it.
         AUDIT_LOGS,
