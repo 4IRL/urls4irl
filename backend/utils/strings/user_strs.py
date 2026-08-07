@@ -74,6 +74,13 @@ ACCOUNT_DELETED_SUCCESS = (
 LOGOUT_EVERYWHERE_SUCCESS = (
     "You've been signed out on all devices. Log back in to continue."
 )
+# Data-export 200 envelope banner copy (server-sourced envelope text — surfaced
+# off xhr.responseJSON.message; no JS bridge, mirroring the bare
+# LOGOUT_EVERYWHERE_SUCCESS constant form rather than a USER_SUCCESS class
+# member, since this file has no such class). The frontend export controller
+# writes its own in-panel status copy (SETTINGS_EXPORT_*, Step 4); this is the
+# response envelope's message field.
+DATA_EXPORT_SUCCESS = "Your data export is ready."
 # Typed-username confirmation mismatch copy (400 field error on ``confirmUsername``,
 # DD-C) — the server re-check of the typed phrase, defense-in-depth against a
 # client-gated-only submit.

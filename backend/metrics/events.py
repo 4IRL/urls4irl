@@ -33,6 +33,7 @@ class EventName(StrEnum):
     ACCOUNT_DELETED = "account_deleted"
     ACCOUNT_SESSIONS_REVOKED = "account_sessions_revoked"
     CROSS_UTUB_SEARCH_PERFORMED = "cross_utub_search_performed"
+    DATA_EXPORTED = "data_exported"
     EMAIL_VERIFIED = "email_verified"
     LOGIN_FAILURE = "login_failure"
     LOGIN_SUCCESS = "login_success"
@@ -145,6 +146,8 @@ class EventName(StrEnum):
     UI_ACCOUNT_DELETE_OPEN = "ui_account_delete_open"
     UI_ACCOUNT_DELETE_CONFIRM = "ui_account_delete_confirm"
     UI_ACCOUNT_DELETE_CANCEL = "ui_account_delete_cancel"
+    # — Privacy & Data (settings tab)
+    UI_DATA_EXPORT_TRIGGERED = "ui_data_export_triggered"
 
 
 # EVENT_CATEGORY and EVENT_DESCRIPTIONS are derived from the single source of

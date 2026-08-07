@@ -98,6 +98,14 @@
         <button type="button" role="tab" id="SettingsTabUiSettings"  aria-controls="SettingsPanelUiSettings"  data-tab="ui_settings"  aria-selected="false" tabindex="-1">{{ CONSTANTS.STRINGS.SETTINGS_TAB_UI_SETTINGS }}</button>
     </div>
 
+    {# Always-mounted, tab-independent aria-live region (DD-6): the panel-scoped
+       #SettingsExportStatus region is removed from the a11y tree while its panel
+       is `hidden`, so a screen-reader user who starts an export then switches
+       tabs would miss the announcement. This sibling of the tabpanels survives a
+       tab switch; settings.ts's DD-16-gated listener writes into it only when the
+       Privacy & Data panel is not the visible one. #}
+    <div id="SettingsGlobalStatusToast" class="visually-hidden" role="status" aria-live="polite"></div>
+
     <section role="tabpanel" id="SettingsPanelAccount" aria-labelledby="SettingsTabAccount" tabindex="0">
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_ACCOUNT }}</h2>
         <div class="SettingsAccountInfo">
@@ -256,13 +264,6 @@
         {% else %}
         <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
         {% endif %}
-        <div id="SettingsLogoutEverywhere">
-            <div class="SettingsRemovalCardText">
-                <h4>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_TITLE }}</h4>
-                <p>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_HINT }}</p>
-            </div>
-            <button type="button" class="btn" id="SettingsLogoutEverywhereBtn">{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_BUTTON }}</button>
-        </div>
         <div class="SettingsDangerZone">
             <h3 class="SettingsDangerZoneHeading"><span class="SettingsDangerZoneGlyph" aria-hidden="true">⚠</span> {{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_TITLE }}</h3>
             <p class="SettingsDangerZoneHint">{{ CONSTANTS.STRINGS.SETTINGS_DANGER_ZONE_HINT }}</p>
@@ -311,7 +312,25 @@
     </section>
     <section role="tabpanel" id="SettingsPanelPrivacyData" aria-labelledby="SettingsTabPrivacyData" tabindex="0" hidden>
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_PRIVACY_DATA }}</h2>
-        <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
+        <h3 class="SettingsStatsSectionTitle">{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_SECTION_TITLE }}</h3>
+        <p class="SettingsSectionHint">{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_SECTION_HINT }}</p>
+        <div class="SettingsRemovalCard" id="SettingsExportData">
+            <div class="SettingsRemovalCardText">
+                <h4>{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_CARD_TITLE }}</h4>
+                <p>{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_CARD_HINT }}</p>
+            </div>
+            <button type="button" class="btn btn-success" id="SettingsExportDataBtn" data-export-url="{{ url_for('users.data_export', user_id=current_user.id) }}">{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_BUTTON }}</button>
+        </div>
+        <div id="SettingsExportStatus" class="alert d-none" role="alert" aria-live="polite"></div>
+        <hr class="SettingsExportDivider">
+        <p class="SettingsExportSessionsZoneLabel">{{ CONSTANTS.STRINGS.SETTINGS_EXPORT_SESSIONS_ZONE_LABEL }}</p>
+        <div id="SettingsLogoutEverywhere">
+            <div class="SettingsRemovalCardText">
+                <h4>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_TITLE }}</h4>
+                <p>{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_HINT }}</p>
+            </div>
+            <button type="button" class="btn" id="SettingsLogoutEverywhereBtn">{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_BUTTON }}</button>
+        </div>
     </section>
     <section role="tabpanel" id="SettingsPanelUiSettings" aria-labelledby="SettingsTabUiSettings" tabindex="0" hidden>
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_UI_SETTINGS }}</h2>

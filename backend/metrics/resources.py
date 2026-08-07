@@ -58,6 +58,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.ACCOUNT_DELETED: Resource.AUTH,
     EventName.ACCOUNT_SESSIONS_REVOKED: Resource.AUTH,
     EventName.CROSS_UTUB_SEARCH_PERFORMED: Resource.SEARCH,
+    EventName.DATA_EXPORTED: Resource.AUTH,
     EventName.UTUB_CREATED: Resource.UTUB,
     EventName.UTUB_DELETED: Resource.UTUB,
     EventName.UTUB_OPENED: Resource.UTUB,
@@ -168,6 +169,8 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_ACCOUNT_DELETE_OPEN: Resource.AUTH,
     EventName.UI_ACCOUNT_DELETE_CONFIRM: Resource.AUTH,
     EventName.UI_ACCOUNT_DELETE_CANCEL: Resource.AUTH,
+    # UI — Privacy & Data (settings tab)
+    EventName.UI_DATA_EXPORT_TRIGGERED: Resource.AUTH,
 }
 
 

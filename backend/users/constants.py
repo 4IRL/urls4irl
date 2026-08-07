@@ -1,5 +1,15 @@
 from enum import IntEnum
 
+# Per-IP rate limit for the authenticated data-export endpoint
+# (``GET /users/<id>/data-export``). Export is the app's most expensive read —
+# it traverses every UTub the user belongs to → URLs → tags → members and
+# serializes the whole graph to JSON — so it carries its own dedicated limit
+# rather than inheriting only the global default (20/second, 100/minute). Uses
+# the multi-window comma-separated ``N per unit`` syntax (mirroring the
+# contact-form limit) so a short burst and a sustained hourly abuse are both
+# capped. The first bare module-level constant in this file.
+DATA_EXPORT_RATE_LIMIT = "5 per minute, 15 per hour"
+
 
 class ChangeUsernameErrorCodes(IntEnum):
     """Application error codes for the authenticated change-username endpoint.
@@ -80,6 +90,21 @@ class LogoutEverywhereErrorCodes(IntEnum):
     (the users domain, not ``backend/splash/constants.py``) and the same
     explicit-sequential-value convention (member 1 is the sole failure mode).
     The endpoint is non-destructive and takes no request body, so its only
+    failure mode is the self-ownership guard.
+    """
+
+    NOT_AUTHORIZED = 1
+
+
+class DataExportErrorCodes(IntEnum):
+    """Application error code for the authenticated data-export endpoint
+    (``GET /users/<id>/data-export``).
+
+    Same home as the sibling ``Change*ErrorCodes``/``DeleteAccountErrorCodes``/
+    ``LogoutEverywhereErrorCodes`` (the users domain, not
+    ``backend/splash/constants.py``) and the same explicit-sequential-value
+    convention (member 1 is the sole failure mode). The endpoint is a
+    non-mutating read that takes no request body, so its only application-level
     failure mode is the self-ownership guard.
     """
 

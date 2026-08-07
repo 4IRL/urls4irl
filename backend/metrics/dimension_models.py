@@ -428,6 +428,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.ACCOUNT_DELETED: _DimDeviceOnly,
     EventName.ACCOUNT_SESSIONS_REVOKED: _DimDeviceOnly,
     EventName.CROSS_UTUB_SEARCH_PERFORMED: _DimCrossUtubSearchPerformed,
+    EventName.DATA_EXPORTED: _DimDeviceOnly,
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
     EventName.LOGIN_SUCCESS: _DimLoginSuccess,
@@ -538,6 +539,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_ACCOUNT_DELETE_OPEN: _DimDeviceOnly,
     EventName.UI_ACCOUNT_DELETE_CONFIRM: _DimDeviceOnly,
     EventName.UI_ACCOUNT_DELETE_CANCEL: _DimDeviceOnly,
+    # UI — Privacy & Data (settings tab)
+    EventName.UI_DATA_EXPORT_TRIGGERED: _DimDeviceOnly,
 }
 
 

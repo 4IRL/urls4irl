@@ -1319,6 +1319,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/{user_id}/data-export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Export the authenticated user's own data (non-mutating read). Serializes every UTub the user belongs to — created and joined — with its URLs, applied tags, tag vocabulary, and members, plus the user's own account identity fields (never a password, session, or pending-email field). Returns the export nested under an `export` key so the client can save a clean JSON file. Gated by session auth only (no validated-email requirement), and self-scoped: a mismatched path user_id is rejected 403. Rate-limited to 5/minute, 15/hour per IP (the app's most expensive read), returning HTTP 429 when the cap is hit. */
+    get: operations["dataExport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/oauth/link/{provider}": {
     parameters: {
       query?: never;
@@ -2088,7 +2105,8 @@ export interface components {
         | "ui_account_logout_everywhere_cancel"
         | "ui_account_delete_open"
         | "ui_account_delete_confirm"
-        | "ui_account_delete_cancel";
+        | "ui_account_delete_cancel"
+        | "ui_data_export_triggered";
       /** @description Per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model. Auto-injected with `device_type` by the metrics-client for all UI events, so the dict is always non-empty when sent from the browser. */
       dimensions: {
         [key: string]: string | number | boolean;
@@ -2861,6 +2879,126 @@ export interface components {
      * @enum {integer}
      */
     LogoutEverywhereErrorCodes: 1;
+    /**
+     * @description The acting user's own account fields — identity only, no secrets and no
+     *     internal database IDs (data-minimization: the export is human-readable, not
+     *     a re-import anchor).
+     */
+    ExportAccountSchema: {
+      /** @description The user's username */
+      username: string;
+      /** @description The user's email address */
+      email: string;
+      /**
+       * Format: date-time
+       * @description Account creation timestamp (ISO 8601)
+       */
+      memberSince: string;
+    };
+    /**
+     * @description A member of a UTub the acting user belongs to. Identified by username
+     *     only — no internal user ID (third-party data-minimization).
+     */
+    ExportMemberSchema: {
+      /** @description The member's username */
+      username: string;
+      /** @description The member's role within the UTub */
+      role: string;
+    };
+    /**
+     * @description A tag in a UTub's tag vocabulary. No internal IDs; the creator is
+     *     attributed by username.
+     */
+    ExportTagSchema: {
+      /** @description The tag text */
+      tagString: string;
+      /** @description Username of the tag's creator */
+      createdBy: string;
+      /**
+       * Format: date-time
+       * @description Tag creation timestamp (ISO 8601)
+       */
+      createdAt: string;
+    };
+    /**
+     * @description A URL within a UTub, with its applied tag strings. No internal IDs; the
+     *     adder is attributed by username.
+     */
+    ExportUrlSchema: {
+      /** @description The URL string */
+      url: string;
+      /** @description Display title for the URL, or null */
+      title: string | null;
+      /**
+       * Format: date-time
+       * @description Timestamp the URL was added to the UTub (ISO 8601)
+       */
+      addedAt: string;
+      /** @description Username of the member who added the URL */
+      addedBy: string;
+      /** @description Tag strings applied to this URL within the UTub */
+      tags?: string[];
+    };
+    /**
+     * @description A UTub the acting user belongs to (created or joined), fully expanded.
+     *     No internal database ID (data-minimization).
+     */
+    ExportUtubSchema: {
+      /** @description The UTub's name */
+      name: string;
+      /** @description The UTub's description, or null */
+      description: string | null;
+      /** @description The acting user's role within this UTub */
+      role: string;
+      /** @description Whether the UTub is locked (frozen to all user mutations) */
+      isLocked: boolean;
+      /**
+       * Format: date-time
+       * @description UTub creation timestamp (ISO 8601)
+       */
+      createdAt: string;
+      /** @description URLs in the UTub, each with applied tags */
+      urls?: components["schemas"]["ExportUrlSchema"][];
+      /** @description The UTub's tag vocabulary */
+      tags?: components["schemas"]["ExportTagSchema"][];
+      /** @description Members of the UTub */
+      members?: components["schemas"]["ExportMemberSchema"][];
+    };
+    /**
+     * @description Full user-data export: the account block plus every UTub the user is a
+     *     member of (created + joined), each expanded with its URLs, tags, and
+     *     members. Purpose-built so the export shape is decoupled from the live-API
+     *     response schemas and never carries viewer-relative or secret fields.
+     */
+    UserDataExportSchema: {
+      /**
+       * Format: date-time
+       * @description Timestamp the export was generated (ISO 8601)
+       */
+      exportedAt: string;
+      /** @description The acting user's own account fields */
+      account: components["schemas"]["ExportAccountSchema"];
+      /** @description Every UTub the user belongs to, created or joined */
+      utubs?: components["schemas"]["ExportUtubSchema"][];
+    };
+    /**
+     * @description Response envelope for ``GET /users/<id>/data-export``.
+     *
+     *     Nests the full export under a single ``export`` key (on top of the standard
+     *     ``status``/``message`` envelope fields) so the client can blob ``response.export``
+     *     cleanly for the downloaded file without the envelope metadata leaking into it.
+     */
+    UserDataExportResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
+      /** @description The full user-data export payload */
+      export: components["schemas"]["UserDataExportSchema"];
+    };
     ProviderLinkRequest: {
       /**
        * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
@@ -5886,6 +6024,7 @@ export interface operations {
           | "account_deleted"
           | "account_sessions_revoked"
           | "cross_utub_search_performed"
+          | "data_exported"
           | "email_verified"
           | "login_failure"
           | "login_success"
@@ -5985,7 +6124,8 @@ export interface operations {
           | "ui_account_logout_everywhere_cancel"
           | "ui_account_delete_open"
           | "ui_account_delete_confirm"
-          | "ui_account_delete_cancel";
+          | "ui_account_delete_cancel"
+          | "ui_data_export_triggered";
         /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
         window?: string;
         /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
@@ -6111,6 +6251,7 @@ export interface operations {
           | "account_deleted"
           | "account_sessions_revoked"
           | "cross_utub_search_performed"
+          | "data_exported"
           | "email_verified"
           | "login_failure"
           | "login_success"
@@ -6210,7 +6351,8 @@ export interface operations {
           | "ui_account_logout_everywhere_cancel"
           | "ui_account_delete_open"
           | "ui_account_delete_confirm"
-          | "ui_account_delete_cancel";
+          | "ui_account_delete_cancel"
+          | "ui_data_export_triggered";
         /** @description List of dimension field names to group the timeseries by. Each entry must be a field of `DIMENSION_MODELS[event_name]` (validated at the route layer); shape is bounded at the schema layer to 1-3 non-empty entries ≤64 chars each. */
         group_by: string[];
         /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
@@ -7592,6 +7734,52 @@ export interface operations {
       };
       /** @description Forbidden */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  dataExport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Response envelope for ``GET /users/<id>/data-export``.
+       *
+       *         Nests the full export under a single ``export`` key (on top of the standard
+       *         ``status``/``message`` envelope fields) so the client can blob ``response.export``
+       *         cleanly for the downloaded file without the envelope metadata leaking into it.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserDataExportResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
         headers: {
           [name: string]: unknown;
         };

@@ -286,6 +286,13 @@ const appConfig = {
       "Showing daily trend for this long window; hourly detail is only available within the last 35 days.",
     SETTINGS_ACCOUNT_PENDING_EMAIL_NOTE:
       "Pending change to {email} — check that inbox for the confirmation link.",
+    SETTINGS_EXPORT_PREPARING: "Preparing your export…",
+    SETTINGS_EXPORT_STARTED: "Your download is starting.",
+    SETTINGS_EXPORT_ERROR: "Couldn't export your data. Please try again.",
+    SETTINGS_DELETE_BLOCKED_BY_EXPORT:
+      "Wait for your data export to finish before deleting your account.",
+    SETTINGS_EXPORT_BLOCKED_BY_DELETE:
+      "Finish or cancel the account deletion in progress before exporting.",
   },
 };
 

@@ -30,7 +30,6 @@ _SEED_COUNT = 7
 def _build_alembic_config() -> Config:
     alembic_config = Config("./migrations/alembic.ini")
     alembic_config.set_main_option("script_location", "migrations/")
-    alembic_config.attributes["connection"] = db.engine.connect()
     return alembic_config
 
 

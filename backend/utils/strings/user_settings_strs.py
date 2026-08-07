@@ -46,6 +46,31 @@ class USER_SETTINGS_STRINGS:
     )
     LOGOUT_EVERYWHERE_MODAL_CONFIRM_BUTTON = "Log out everywhere"
 
+    # Privacy & Data tab — Export my data (Phase 5). The section title/hint, the
+    # export card title/hint, the button label, and the "Sessions" zone label are
+    # Jinja-rendered; the button label + section title/hint are re-exported via
+    # ui_testing_strs for Python UI assertions. The status/error copy below
+    # (PREPARING/STARTED/ERROR + the two cross-panel guard notices) is written into
+    # the DOM by data-export.ts / account-removal.ts, so it goes through the full
+    # 5-file JS bridge (STRINGS + generate_strings_js + test-setup.ts mock).
+    EXPORT_SECTION_TITLE = "Your data"
+    EXPORT_SECTION_HINT = "Download everything URLS4IRL stores about you."
+    EXPORT_CARD_TITLE = "Export my data"
+    EXPORT_CARD_HINT = (
+        "Download a JSON file of your UTubs, URLs, tags, and account details."
+    )
+    EXPORT_BUTTON = "Export"
+    EXPORT_SESSIONS_ZONE_LABEL = "Sessions"
+    EXPORT_PREPARING = "Preparing your export…"
+    EXPORT_STARTED = "Your download is starting."
+    EXPORT_ERROR = "Couldn't export your data. Please try again."
+    DELETE_BLOCKED_BY_EXPORT = (
+        "Wait for your data export to finish before deleting your account."
+    )
+    EXPORT_BLOCKED_BY_DELETE = (
+        "Finish or cancel the account deletion in progress before exporting."
+    )
+
     # Account information section (Account tab). Read-only card labels for the
     # username / email / member-since / email-verified block. Jinja-rendered
     # only; re-exported via ui_testing_strs for Python UI assertions — no JS

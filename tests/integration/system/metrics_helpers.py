@@ -31,6 +31,7 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.ACCOUNT_DELETED,
         EventName.ACCOUNT_SESSIONS_REVOKED,
         EventName.CROSS_UTUB_SEARCH_PERFORMED,
+        EventName.DATA_EXPORTED,
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
         EventName.URL_REMOVED_FROM_UTUB,
@@ -82,7 +83,12 @@ ACCOUNT_SESSIONS_REVOKED fires only from the authenticated self-service
 "log out everywhere" Settings flow (a session revocation that bumps
 sessions_invalidated_at and revokes refresh tokens), which the shared
 success-path seed does not drive; its per-flow emit test lives under
-tests/integration/account_and_settings/test_logout_everywhere.py. Each excluded
+tests/integration/account_and_settings/test_logout_everywhere.py. DATA_EXPORTED
+fires only from the authenticated self-service data-export Settings flow (a
+non-mutating read that serializes every UTub the user belongs to to a
+downloadable JSON file), which the shared success-path seed does not drive; its
+per-flow emit test lives under
+tests/integration/account_and_settings/test_data_export.py. Each excluded
 event has its own per-route emit test under tests/integration/<feature>/ and
 flushes through the same pipeline, so the end-to-end invariant is still covered.
 """

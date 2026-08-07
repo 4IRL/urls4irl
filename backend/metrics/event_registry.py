@@ -84,6 +84,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
             "field_order": SEARCH_FIELD_ORDER_VALUES,
         },
     ),
+    EventName.DATA_EXPORTED: EventRegistryEntry(
+        description=(
+            "User data exported via the Privacy & Data settings tab "
+            "(non-mutating read — every UTub the user belongs to serialized "
+            "to a downloadable JSON file)"
+        ),
+        category=EventCategory.DOMAIN,
+    ),
     EventName.UTUB_CREATED: EventRegistryEntry(
         description="New UTub created",
         category=EventCategory.DOMAIN,
@@ -648,6 +656,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     ),
     EventName.UI_ACCOUNT_DELETE_CANCEL: EventRegistryEntry(
         description="Account delete-confirm modal dismissed",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_DATA_EXPORT_TRIGGERED: EventRegistryEntry(
+        description="Data export triggered from the Privacy & Data panel",
         category=EventCategory.UI,
     ),
 }

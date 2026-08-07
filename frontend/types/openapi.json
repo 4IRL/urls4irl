@@ -4436,6 +4436,7 @@
                 "account_deleted",
                 "account_sessions_revoked",
                 "cross_utub_search_performed",
+                "data_exported",
                 "email_verified",
                 "login_failure",
                 "login_success",
@@ -4535,7 +4536,8 @@
                 "ui_account_logout_everywhere_cancel",
                 "ui_account_delete_open",
                 "ui_account_delete_confirm",
-                "ui_account_delete_cancel"
+                "ui_account_delete_cancel",
+                "ui_data_export_triggered"
               ],
               "type": "string"
             },
@@ -4777,6 +4779,7 @@
                 "account_deleted",
                 "account_sessions_revoked",
                 "cross_utub_search_performed",
+                "data_exported",
                 "email_verified",
                 "login_failure",
                 "login_success",
@@ -4876,7 +4879,8 @@
                 "ui_account_logout_everywhere_cancel",
                 "ui_account_delete_open",
                 "ui_account_delete_confirm",
-                "ui_account_delete_cancel"
+                "ui_account_delete_cancel",
+                "ui_data_export_triggered"
               ],
               "type": "string"
             },
@@ -6992,6 +6996,60 @@
         "x-error-codes": {
           "LogoutEverywhereErrorCodes": {
             "$ref": "#/components/schemas/LogoutEverywhereErrorCodes"
+          }
+        }
+      }
+    },
+    "/users/{user_id}/data-export": {
+      "get": {
+        "operationId": "dataExport",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "Export the authenticated user's own data (non-mutating read). Serializes every UTub the user belongs to \u2014 created and joined \u2014 with its URLs, applied tags, tag vocabulary, and members, plus the user's own account identity fields (never a password, session, or pending-email field). Returns the export nested under an `export` key so the client can save a clean JSON file. Gated by session auth only (no validated-email requirement), and self-scoped: a mismatched path user_id is rejected 403. Rate-limited to 5/minute, 15/hour per IP (the app's most expensive read), returning HTTP 429 when the cap is hit.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response envelope for ``GET /users/<id>/data-export``.\n\n    Nests the full export under a single ``export`` key (on top of the standard\n    ``status``/``message`` envelope fields) so the client can blob ``response.export``\n    cleanly for the downloaded file without the envelope metadata leaking into it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDataExportResponseSchema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -9221,7 +9279,8 @@
               "ui_account_logout_everywhere_cancel",
               "ui_account_delete_open",
               "ui_account_delete_confirm",
-              "ui_account_delete_cancel"
+              "ui_account_delete_cancel",
+              "ui_data_export_triggered"
             ],
             "type": "string"
           },
@@ -10672,6 +10731,198 @@
         "enum": [1],
         "x-enum-varnames": ["NOT_AUTHORIZED"],
         "description": "Error codes for LogoutEverywhereErrorCodes"
+      },
+      "ExportAccountSchema": {
+        "description": "The acting user's own account fields \u2014 identity only, no secrets and no\ninternal database IDs (data-minimization: the export is human-readable, not\na re-import anchor).",
+        "properties": {
+          "username": {
+            "description": "The user's username",
+            "type": "string"
+          },
+          "email": {
+            "description": "The user's email address",
+            "type": "string"
+          },
+          "memberSince": {
+            "description": "Account creation timestamp (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": ["username", "email", "memberSince"],
+        "type": "object"
+      },
+      "ExportMemberSchema": {
+        "description": "A member of a UTub the acting user belongs to. Identified by username\nonly \u2014 no internal user ID (third-party data-minimization).",
+        "properties": {
+          "username": {
+            "description": "The member's username",
+            "type": "string"
+          },
+          "role": {
+            "description": "The member's role within the UTub",
+            "type": "string"
+          }
+        },
+        "required": ["username", "role"],
+        "type": "object"
+      },
+      "ExportTagSchema": {
+        "description": "A tag in a UTub's tag vocabulary. No internal IDs; the creator is\nattributed by username.",
+        "properties": {
+          "tagString": {
+            "description": "The tag text",
+            "type": "string"
+          },
+          "createdBy": {
+            "description": "Username of the tag's creator",
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "Tag creation timestamp (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": ["tagString", "createdBy", "createdAt"],
+        "type": "object"
+      },
+      "ExportUrlSchema": {
+        "description": "A URL within a UTub, with its applied tag strings. No internal IDs; the\nadder is attributed by username.",
+        "properties": {
+          "url": {
+            "description": "The URL string",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Display title for the URL, or null"
+          },
+          "addedAt": {
+            "description": "Timestamp the URL was added to the UTub (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "addedBy": {
+            "description": "Username of the member who added the URL",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Tag strings applied to this URL within the UTub",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["url", "title", "addedAt", "addedBy"],
+        "type": "object"
+      },
+      "ExportUtubSchema": {
+        "description": "A UTub the acting user belongs to (created or joined), fully expanded.\nNo internal database ID (data-minimization).",
+        "properties": {
+          "name": {
+            "description": "The UTub's name",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The UTub's description, or null"
+          },
+          "role": {
+            "description": "The acting user's role within this UTub",
+            "type": "string"
+          },
+          "isLocked": {
+            "description": "Whether the UTub is locked (frozen to all user mutations)",
+            "type": "boolean"
+          },
+          "createdAt": {
+            "description": "UTub creation timestamp (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "urls": {
+            "description": "URLs in the UTub, each with applied tags",
+            "items": {
+              "$ref": "#/components/schemas/ExportUrlSchema"
+            },
+            "type": "array"
+          },
+          "tags": {
+            "description": "The UTub's tag vocabulary",
+            "items": {
+              "$ref": "#/components/schemas/ExportTagSchema"
+            },
+            "type": "array"
+          },
+          "members": {
+            "description": "Members of the UTub",
+            "items": {
+              "$ref": "#/components/schemas/ExportMemberSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["name", "description", "role", "isLocked", "createdAt"],
+        "type": "object"
+      },
+      "UserDataExportSchema": {
+        "description": "Full user-data export: the account block plus every UTub the user is a\nmember of (created + joined), each expanded with its URLs, tags, and\nmembers. Purpose-built so the export shape is decoupled from the live-API\nresponse schemas and never carries viewer-relative or secret fields.",
+        "properties": {
+          "exportedAt": {
+            "description": "Timestamp the export was generated (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "account": {
+            "$ref": "#/components/schemas/ExportAccountSchema",
+            "description": "The acting user's own account fields"
+          },
+          "utubs": {
+            "description": "Every UTub the user belongs to, created or joined",
+            "items": {
+              "$ref": "#/components/schemas/ExportUtubSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["exportedAt", "account"],
+        "type": "object"
+      },
+      "UserDataExportResponseSchema": {
+        "description": "Response envelope for ``GET /users/<id>/data-export``.\n\nNests the full export under a single ``export`` key (on top of the standard\n``status``/``message`` envelope fields) so the client can blob ``response.export``\ncleanly for the downloaded file without the envelope metadata leaking into it.",
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": ["Success", "Failure", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          },
+          "export": {
+            "$ref": "#/components/schemas/UserDataExportSchema",
+            "description": "The full user-data export payload"
+          }
+        },
+        "required": ["status", "message", "export"],
+        "type": "object"
       },
       "ProviderLinkRequest": {
         "properties": {
