@@ -12,11 +12,11 @@
 
 @media not all and (any-pointer: coarse) {
     #listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
-        background-color: rgba(61, 71, 71, 1.0);
+        background-color: var(--oddUrlCardsBackgroundColor);
     }
 
     #listURLs .urlRow.odd[filterable="true"]:not([urlSelected="true"]):hover {
-        background-color: rgba(51, 61, 61, 1.0);
+        background-color: var(--evenUrlCardsBackgroundColor);
     }
 }
 
@@ -258,7 +258,7 @@ a.urlString {
 }
 
 .urlTitleBtnUpdate:focus-visible {
-    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: -2px;
     border-radius: 2px;
 }
@@ -685,7 +685,7 @@ a.urlString {
 }
 
 #noURLsSubheader {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--cardURLTextColor);
     text-align: center;
     margin: 0;
     padding: 0 1rem 0.25rem;
@@ -695,7 +695,7 @@ a.urlString {
 }
 
 #URLSearchNoResults {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--cardURLTextColor);
     text-align: center;
     flex: 1;
     display: flex;
@@ -709,7 +709,7 @@ a.urlString {
 }
 
 #URLTagFilterNoResults {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--cardURLTextColor);
     text-align: center;
     flex: 1;
     display: flex;

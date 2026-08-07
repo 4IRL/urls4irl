@@ -122,13 +122,23 @@ form {
     background: radial-gradient(55% 55% at 50% 28%, rgba(var(--color-brand-green-rgb), 0.20), transparent 72%);
     pointer-events: none;
 }
-/* Gradient wordmark on the hero title. */
+/* Gradient wordmark on the hero title. The default (dark) gradient runs
+   white -> brand green; on a light background that white end is invisible, so
+   the light theme swaps it for a dark -> green gradient (see the mock). Because
+   the `background` shorthand resets background-clip, both variants must restate
+   the clip declarations. */
 .splash-hero-title {
     background: linear-gradient(120deg, #ffffff 0%, #ffffff 45%, var(--splashGreen) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
+}
+
+:root[data-theme="light"] .splash-hero-title {
+    background: linear-gradient(120deg, #1f2424 0%, #1f2424 40%, var(--darkSplashLabelGreen) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
 }
 
 /* Register CTA emphasis — soft pulsing brand glow draws the eye to the primary action. */

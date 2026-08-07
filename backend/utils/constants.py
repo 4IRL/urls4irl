@@ -1007,8 +1007,17 @@ def provide_config_for_constants() -> dict:
     debug_enabled = current_app.config["DEBUG"] or (
         current_user.is_authenticated and current_user.is_admin()
     )
+    # Resolved theme for the app-wide pre-paint <html data-theme> stamp
+    # (layout.html). Rendered into <head> — NOT the <body> CONFIG JSON blob —
+    # so it lands before styles paint and avoids a light/dark flash. Defaults
+    # to "system" for anonymous users or users with no UserPreferences row
+    # (mirrors preferences_service's None-row defaulting).
+    user_theme = "system"
+    if current_user.is_authenticated and current_user.preferences is not None:
+        user_theme = current_user.preferences.theme.value
     return dict(
         CONSTANTS=CONSTANTS(),
+        user_theme=user_theme,
         CONFIG=dict(
             routes=routes,
             constants=generate_constants_js(),

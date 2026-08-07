@@ -1,6 +1,16 @@
 /** Colors and themes **/
 
-:root {
+/*
+ * Theme layer. The default (dark) values live under both bare :root and
+ * :root[data-theme="dark"] so a page with no data-theme still renders dark.
+ * :root[data-theme="light"] below overrides ONLY the semantic surface/text
+ * tokens with the light palette (see the display-preferences mock). The
+ * prefers-color-scheme media block maps the "system" choice onto the OS
+ * setting. Scale tokens (type/space/radius/shadow scales, brand green, danger,
+ * caution) stay shared in the second :root block further down.
+ */
+:root,
+:root[data-theme="dark"] {
     --splashGreen: rgba(36, 167, 69, 1.0);
     --darkSplashGreen: rgba(36, 167, 69, 0.75);
     --splashLabelGreen: rgba(46, 204, 113, 1.0);
@@ -62,6 +72,14 @@
     --tagBadgeDeleteBtnColorHover: var(--removeIconColorHover);
 
     --contentTopBorder: rgba(126, 130, 130, 0.25);
+
+    /* Primary body/heading text. Replaces the hardcoded #fff literals that
+       Settings/base CSS used before the light theme existed — a token remap
+       alone would leave those white and illegible in light mode. */
+    --textPrimary: #ffffff;
+    /* Global link color (base.css `a`). Aqua reads on the dark surfaces; the
+       light override below swaps it for an accessible on-white blue. */
+    --linkColor: aqua;
 
     --cardURLTextColor: rgba(140, 155, 157, 1.0);
     --selectedUrlBorder: rgba(13, 255, 0, 1.0);
@@ -128,6 +146,72 @@
     --pipelineHealthBeaconDesktop: var(--editURLColor);
     /* beacon · mobile — violet (rgba(179,102,255) ≈ 5.5:1) */
     --pipelineHealthBeaconMobile: var(--copyURLColor);
+}
+
+/*
+ * Light theme — overrides ONLY the semantic surface/text/shadow tokens. Values
+ * trace to the display-preferences mock (the visual oracle). The navbar band
+ * stays dark in light mode for brand continuity (Design Decision 4), so navbar
+ * tokens are intentionally NOT overridden here. Brand green / danger / caution
+ * / scale tokens remain shared from the dark block above.
+ */
+:root[data-theme="light"] {
+    --defaultPageBackgroundColor: #f4f6f6;
+    --pageBackgroundColor: rgba(255, 255, 255, 0.92);
+    --panelBackgroundColor: #ffffff;
+    --cardBackgroundColor: #ffffff;
+    --cardBackgroundColorHover: rgba(0, 0, 0, 0.04);
+    --oddUrlCardsBackgroundColor: #f4f6f6;
+    --evenUrlCardsBackgroundColor: #ffffff;
+    --selectedUTubColorBackground: #e6efe9;
+    --borderColor: #d5dbdb;
+    --contentTopBorder: rgba(0, 0, 0, 0.10);
+
+    --textPrimary: #1f2424;
+    /* UTub description text was the literal `white` token — override so it is
+       legible on the light panel/card surfaces. */
+    --UTubDescriptionColor: #1f2424;
+    /* Accessible link blue on white (~4.6:1) in place of aqua. */
+    --linkColor: #0b6bcb;
+    --cardURLTextColor: #5c6b6d;
+    /* Accent/focus green darkened for contrast on white surfaces. */
+    --deckSelectionGreen: #1e8549;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+/*
+ * "System" theme choice: honor the OS color scheme. When the user picks
+ * "system", <html> is stamped data-theme="system" and the head pre-paint script
+ * resolves it to light/dark on documentElement before styles apply — but this
+ * media block is the CSS-only fallback that also applies the light palette when
+ * the OS prefers light and (for any reason) the value is still "system".
+ */
+@media (prefers-color-scheme: light) {
+    :root[data-theme="system"] {
+        --defaultPageBackgroundColor: #f4f6f6;
+        --pageBackgroundColor: rgba(255, 255, 255, 0.92);
+        --panelBackgroundColor: #ffffff;
+        --cardBackgroundColor: #ffffff;
+        --cardBackgroundColorHover: rgba(0, 0, 0, 0.04);
+        --oddUrlCardsBackgroundColor: #f4f6f6;
+        --evenUrlCardsBackgroundColor: #ffffff;
+        --selectedUTubColorBackground: #e6efe9;
+        --borderColor: #d5dbdb;
+        --contentTopBorder: rgba(0, 0, 0, 0.10);
+
+        --textPrimary: #1f2424;
+        --UTubDescriptionColor: #1f2424;
+        --linkColor: #0b6bcb;
+        --cardURLTextColor: #5c6b6d;
+        --deckSelectionGreen: #1e8549;
+
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+    }
 }
 
 /** Type, weight, spacing, radius, and shadow scales **/

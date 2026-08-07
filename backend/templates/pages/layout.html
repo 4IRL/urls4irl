@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 
-<html>
+<!-- data-theme drives the tokens.css theme layer; server-stamped before first
+     paint (zero-flash). data-theme-pref preserves the raw stored choice
+     ("system"/"light"/"dark") so the settings control reflects the real
+     preference even after the head script resolves "system" to light/dark. -->
+<html lang="en" data-theme="{{ user_theme }}" data-theme-pref="{{ user_theme }}">
 
 <head>
     {% include 'components/head/head.html' %}
