@@ -41,8 +41,22 @@ pytestmark = [pytest.mark.urls_ui, pytest.mark.mobile_ui]
 USER_ID_FOR_TEST = 1
 SWIPE_COMMITTED_CLASS = "swipe-committed"
 SWIPE_DRAGGING_CLASS = "swipe-dragging"
-# --borderColor (frontend/styles/tokens.css), as a browser-normalized rgb() string.
-NEUTRAL_ROW_BORDER_COLOR = "rgb(52, 60, 61)"
+# Reads the active theme's --borderColor (frontend/styles/tokens.css) and returns
+# it as a browser-normalized rgb() string. The value is theme-dependent (dark
+# #343c3d vs light #d5dbdb), and the default "system" theme resolves to light or
+# dark from the browser's prefers-color-scheme — so a hardcoded rgb() would be
+# wrong under the other theme. Resolving the token at runtime keeps the neutral-
+# border assertion below theme-agnostic while still failing loudly if the focus-
+# ring green ever leaks through (green never equals --borderColor in either theme).
+_RESOLVE_NEUTRAL_ROW_BORDER_COLOR_JS = """() => {
+    const probe = document.createElement('span');
+    probe.style.color = getComputedStyle(document.documentElement)
+        .getPropertyValue('--borderColor');
+    document.body.appendChild(probe);
+    const normalized = getComputedStyle(probe).color;
+    probe.remove();
+    return normalized;
+}"""
 
 
 def test_url_swipe_commit_opens_confirm_modal(
@@ -171,11 +185,12 @@ def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
     assert SWIPE_DRAGGING_CLASS not in row_class
     assert init_num_url_rows == get_num_url_rows(page=page)
 
+    neutral_row_border_color = page.evaluate(_RESOLVE_NEUTRAL_ROW_BORDER_COLOR_JS)
     wait_until_css_property(
         page=page,
         css_selector=row_selector,
         css_property="border-bottom-color",
-        expected_value=NEUTRAL_ROW_BORDER_COLOR,
+        expected_value=neutral_row_border_color,
     )
 
 
