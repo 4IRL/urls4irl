@@ -15,6 +15,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
 from backend import db, migrate
+from tests.integration.cli.utils import assert_row_counts_match_ignoring_new_tables
 
 pytestmark = pytest.mark.cli
 
@@ -110,15 +111,9 @@ def test_add_utub_is_locked_migration_upgrade_and_downgrade(runner):
         with db.engine.connect() as connection:
             assert _ISLOCKED_COLUMN not in _get_utubs_column_names(connection)
             row_counts_after_downgrade = _capture_row_counts(connection)
-        # Tables created by migrations NEWER than this test's downgrade target
-        # (e.g. UserPreferences at head) are legitimately dropped by downgrading
-        # to the target and are not part of this migration's data-loss contract,
-        # so compare row counts only across tables present in both snapshots.
-        assert {
-            table_name: row_count
-            for table_name, row_count in row_counts_before_roundtrip.items()
-            if table_name in row_counts_after_downgrade
-        } == row_counts_after_downgrade
+        assert_row_counts_match_ignoring_new_tables(
+            row_counts_before_roundtrip, row_counts_after_downgrade
+        )
 
         command.upgrade(_build_alembic_config(), "head")
 
