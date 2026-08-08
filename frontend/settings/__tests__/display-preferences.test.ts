@@ -56,7 +56,7 @@ function panelHtml(checkedTheme: "light" | "dark" | "system"): string {
         <option value="compact">View: Compact</option>
         <option value="cards">Cards</option>
       </select>
-      <select class="form-control" id="SettingsDefaultSortSelect" aria-label="Default sort">
+      <select class="form-control" id="SettingsDefaultSortSelect" aria-label="Default URL sort">
         <option value="newest" selected>Date added (newest)</option>
         <option value="oldest">Date added (oldest)</option>
         <option value="title_az">Title A–Z</option>

@@ -970,12 +970,50 @@
     outline-offset: 2px;
 }
 
-#SettingsPanelUiSettings .form-control {
+/* Wraps each pref <select> so it can carry a visible dropdown affordance —
+   native select arrows are inconsistent and near-invisible on these surfaces,
+   which made the controls read as static fields. */
+.SettingsSelectWrap {
+    position: relative;
+    display: inline-block;
     min-width: 190px;
+}
+
+/* Down-chevron CTA drawn in --textPrimary so it flips with the theme and stays
+   legible on both light and dark surfaces. pointer-events:none lets the click
+   fall through to the <select> underneath. */
+.SettingsSelectWrap::after {
+    content: "";
+    position: absolute;
+    right: 0.95rem;
+    top: 50%;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid var(--textPrimary);
+    border-bottom: 2px solid var(--textPrimary);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+}
+
+#SettingsPanelUiSettings .form-control {
+    width: 100%;
+    min-width: 0;
     min-height: 2.75rem;
+    /* Room for the caret so long option text never runs under it. */
+    padding-right: 2.4rem;
     background: var(--cardBackgroundColor);
     color: var(--textPrimary);
     border: 1px solid var(--borderColor);
+    /* Drop the native arrow in favor of the themed chevron above; also signals
+       the control is interactive. */
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+/* Interactive feedback so the control clearly responds to the pointer. */
+#SettingsPanelUiSettings .form-control:hover {
+    border-color: var(--deckSelectionGreen);
 }
 
 #SettingsPanelUiSettings .form-control:focus-visible {
@@ -989,7 +1027,7 @@
         align-items: stretch;
     }
 
-    #SettingsPanelUiSettings .form-control,
+    .SettingsSelectWrap,
     .SettingsThemeSeg {
         width: 100%;
     }

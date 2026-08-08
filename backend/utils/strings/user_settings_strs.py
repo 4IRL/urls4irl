@@ -177,10 +177,7 @@ class USER_SETTINGS_STRINGS:
         "save instantly and apply everywhere."
     )
     UI_SETTINGS_THEME_LABEL = "Theme"
-    UI_SETTINGS_THEME_DESC = (
-        "Light, dark, or match your device. Applied before the page paints — no "
-        "flash."
-    )
+    UI_SETTINGS_THEME_DESC = "Light, dark, or match your device."
     UI_SETTINGS_THEME_LIGHT = "Light"
     UI_SETTINGS_THEME_DARK = "Dark"
     UI_SETTINGS_THEME_SYSTEM = "System"
@@ -191,7 +188,7 @@ class USER_SETTINGS_STRINGS:
     # carry the literal value "compact" (DD-25).
     UI_SETTINGS_VIEW_OPTION_COMPACT = "View: Compact"
     UI_SETTINGS_VIEW_OPTION_CARDS = "Cards"
-    UI_SETTINGS_SORT_LABEL = "Default sort"
+    UI_SETTINGS_SORT_LABEL = "Default URL sort"
     UI_SETTINGS_SORT_DESC = "Ordering applied to URLs on load."
     UI_SETTINGS_SORT_OPTION_NEWEST = "Date added (newest)"
     UI_SETTINGS_SORT_OPTION_OLDEST = "Date added (oldest)"

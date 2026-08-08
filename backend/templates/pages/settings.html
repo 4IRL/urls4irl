@@ -355,11 +355,13 @@
                 <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_LABEL }}</div>
                 <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_DESC }}</div>
             </div>
-            <select class="form-control SettingsPrefSelect" id="SettingsDefaultViewSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_LABEL }}">
-                <option value="list"    {{ 'selected' if display_default_view == 'list'    else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_LIST }}</option>
-                <option value="compact" {{ 'selected' if display_default_view == 'compact' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_COMPACT }}</option>
-                <option value="cards"   {{ 'selected' if display_default_view == 'cards'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_CARDS }}</option>
-            </select>
+            <div class="SettingsSelectWrap">
+                <select class="form-control SettingsPrefSelect" id="SettingsDefaultViewSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_LABEL }}">
+                    <option value="list"    {{ 'selected' if display_default_view == 'list'    else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_LIST }}</option>
+                    <option value="compact" {{ 'selected' if display_default_view == 'compact' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_COMPACT }}</option>
+                    <option value="cards"   {{ 'selected' if display_default_view == 'cards'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_CARDS }}</option>
+                </select>
+            </div>
         </div>
 
         <div class="SettingsPrefRow">
@@ -367,11 +369,13 @@
                 <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_LABEL }}</div>
                 <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_DESC }}</div>
             </div>
-            <select class="form-control SettingsPrefSelect" id="SettingsDefaultSortSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_LABEL }}">
-                <option value="newest"   {{ 'selected' if display_default_sort == 'newest'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_NEWEST }}</option>
-                <option value="oldest"   {{ 'selected' if display_default_sort == 'oldest'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_OLDEST }}</option>
-                <option value="title_az" {{ 'selected' if display_default_sort == 'title_az' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_TITLE_AZ }}</option>
-            </select>
+            <div class="SettingsSelectWrap">
+                <select class="form-control SettingsPrefSelect" id="SettingsDefaultSortSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_LABEL }}">
+                    <option value="newest"   {{ 'selected' if display_default_sort == 'newest'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_NEWEST }}</option>
+                    <option value="oldest"   {{ 'selected' if display_default_sort == 'oldest'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_OLDEST }}</option>
+                    <option value="title_az" {{ 'selected' if display_default_sort == 'title_az' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_TITLE_AZ }}</option>
+                </select>
+            </div>
         </div>
 
         <div class="SettingsPrefRow">
@@ -379,10 +383,12 @@
                 <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_LABEL }}</div>
                 <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_DESC }}</div>
             </div>
-            <select class="form-control SettingsPrefSelect" id="SettingsDensitySelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_LABEL }}">
-                <option value="comfortable" {{ 'selected' if display_density == 'comfortable' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_OPTION_COMFORTABLE }}</option>
-                <option value="compact"     {{ 'selected' if display_density == 'compact'     else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_OPTION_COMPACT }}</option>
-            </select>
+            <div class="SettingsSelectWrap">
+                <select class="form-control SettingsPrefSelect" id="SettingsDensitySelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_LABEL }}">
+                    <option value="comfortable" {{ 'selected' if display_density == 'comfortable' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_OPTION_COMFORTABLE }}</option>
+                    <option value="compact"     {{ 'selected' if display_density == 'compact'     else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_OPTION_COMPACT }}</option>
+                </select>
+            </div>
         </div>
 
         <div class="SettingsPrefRow">
@@ -390,11 +396,13 @@
                 <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_LABEL }}</div>
                 <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_DESC }}</div>
             </div>
-            <select class="form-control SettingsPrefSelect" id="SettingsDateFormatSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_LABEL }}">
-                <option value="iso" {{ 'selected' if display_date_format == 'iso' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_ISO }}</option>
-                <option value="us"  {{ 'selected' if display_date_format == 'us'  else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_US }}</option>
-                <option value="eu"  {{ 'selected' if display_date_format == 'eu'  else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_EU }}</option>
-            </select>
+            <div class="SettingsSelectWrap">
+                <select class="form-control SettingsPrefSelect" id="SettingsDateFormatSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_LABEL }}">
+                    <option value="iso" {{ 'selected' if display_date_format == 'iso' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_ISO }}</option>
+                    <option value="us"  {{ 'selected' if display_date_format == 'us'  else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_US }}</option>
+                    <option value="eu"  {{ 'selected' if display_date_format == 'eu'  else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_EU }}</option>
+                </select>
+            </div>
         </div>
     </section>
     </div>
