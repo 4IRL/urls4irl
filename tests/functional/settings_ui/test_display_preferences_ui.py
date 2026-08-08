@@ -227,6 +227,37 @@ def test_density_preference_applies_to_home_body_on_reload(
     expect(page.locator("body")).to_have_attribute("data-density", "compact")
 
 
+def test_default_view_preference_applies_to_home_body_on_reload(
+    page: Page,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in user on the settings page Display tab
+    WHEN the user sets Default view to "Cards" and then opens /home
+    THEN the home <body> carries data-view="cards" on load — proving the stored
+        view-mode preference round-trips through the DB into the home runtime.
+    """
+    login_user_and_open_settings(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_USER_ID,
+        config=provide_config,
+    )
+    origin = current_base_url(page=page)
+
+    _open_display_tab(page)
+
+    page.locator(SPL.DEFAULT_VIEW_SELECT).select_option("cards")
+    expect(page.locator(SPL.GLOBAL_STATUS_TOAST)).to_have_text(_PREFERENCES_SAVED)
+
+    page.goto(f"{origin}/home")
+    expect(page.locator("body")).to_have_attribute("data-view", "cards")
+
+
 def test_splash_hero_title_visible_in_forced_light_mode(
     page: Page,
     provide_app: Flask,
