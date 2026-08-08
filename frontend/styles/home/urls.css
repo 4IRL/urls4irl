@@ -888,9 +888,12 @@ a.urlString {
 }
 
 /* Attribution badge: hidden by default (every collapsed card, both platforms),
-   revealed only when the card is expanded — on desktop AND mobile — as a
-   full-width row below the buttons, mirroring how .urlTags / .urlOptions reveal
-   on selection. Being expanded-only, it costs no height on collapsed cards. */
+   revealed only when the card is expanded — on desktop AND mobile — as a row
+   below the buttons, mirroring how .urlTags / .urlOptions reveal on selection.
+   Being expanded-only, it costs no height on collapsed cards. On desktop it is
+   right-aligned so it lands in the card's lower-right corner — the same right
+   edge the collapsed inline date sits at, so the text doesn't jump sides when a
+   card is expanded. (Mobile overrides this back to left below.) */
 .urlDateAddedBadgeStacked {
     display: none;
 }
@@ -898,16 +901,22 @@ a.urlString {
 .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
     display: block;
     margin-top: var(--space-1);
+    text-align: right;
 }
 
 /* Mobile: never show the inline date badge — collapsed mobile cards show no
    date at all, and the expanded state is covered by the attribution row above.
-   This is the first viewport-width breakpoint in this file (its others are
-   pointer-based); mirrors the Bootstrap-aligned 767.98px cutoff used in
-   base.css / privacy-terms.css. */
+   Left-align that attribution so it reads as a caption under the left-aligned
+   buttons rather than floating at the right. This is the first viewport-width
+   breakpoint in this file (its others are pointer-based); mirrors the
+   Bootstrap-aligned 767.98px cutoff used in base.css / privacy-terms.css. */
 @media (max-width: 767.98px) {
     .urlDateAddedBadgeInline {
         display: none;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
+        text-align: left;
     }
 }
 
