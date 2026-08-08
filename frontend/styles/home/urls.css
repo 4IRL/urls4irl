@@ -864,22 +864,41 @@ a.urlString {
 }
 
 .urlDateAddedBadge {
-    margin-left: auto;
-    flex-shrink: 0;
     color: var(--cardURLTextColor);
     font-size: 0.8em;
     white-space: nowrap;
 }
 
-/* Space-reclaiming mobile override — hide the badge on narrow viewports. The
-   date remains available in the account data export and the desktop/tablet
-   card, so no data is lost, only its narrow-viewport presentation. This is the
-   first viewport-width breakpoint in this file (its other breakpoints are
-   pointer-based); mirrors the Bootstrap-aligned 767.98px cutoff used in
-   base.css / privacy-terms.css. */
+/* Desktop/tablet: inline on the URL-string row, pinned to the card's
+   lower-right (the URL-string block flex-grows/truncates beside it). */
+.urlDateAddedBadgeInline {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Mobile-only stacked badge: rendered on its own row below the buttons row,
+   and only while the card is expanded (selected). Hidden by default — which
+   covers every desktop/tablet card AND every collapsed mobile card; only the
+   mobile + selected rule below reveals it. */
+.urlDateAddedBadgeStacked {
+    display: none;
+}
+
+/* Mobile breakpoint — the inline badge is dropped, and the stacked badge is
+   shown below the buttons row ONLY for the expanded (selected) card, mirroring
+   how .urlTags / .urlOptions reveal on selection. A collapsed mobile card shows
+   no date. No data is lost; the date remains in the account export and the
+   desktop card. This is the first viewport-width breakpoint in this file (its
+   other breakpoints are pointer-based); mirrors the Bootstrap-aligned 767.98px
+   cutoff used in base.css / privacy-terms.css. */
 @media (max-width: 767.98px) {
-    .urlDateAddedBadge {
+    .urlDateAddedBadgeInline {
         display: none;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
+        display: block;
+        margin-top: var(--space-1);
     }
 }
 

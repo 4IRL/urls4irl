@@ -190,36 +190,58 @@ describe("createURLBlock", () => {
   });
 
   describe("date-added badge", () => {
-    it("renders a <time>.urlDateAddedBadge with datetime, aria-label, and formatted text", () => {
+    it("renders an inline <time>.urlDateAddedBadge with datetime, aria-label, and Added-prefixed text", () => {
       const el = createURLBlock(
         { ...baseURL, addedAt: "2024-03-09T12:00:00+00:00" },
         [],
         10,
       );
-      const badge = el.find(".urlDateAddedBadge");
+      const badge = el.find(".urlDateAddedBadgeInline");
       expect(badge.length).toBe(1);
+      expect(badge.hasClass("urlDateAddedBadge")).toBe(true);
       expect(badge.prop("tagName")).toBe("TIME");
       expect(badge.attr("datetime")).toBe("2024-03-09T12:00:00+00:00");
-      // Default preference is ISO (YYYY-MM-DD).
-      expect(badge.text()).toBe("2024-03-09");
+      // Visible text is Added-prefixed; default preference is ISO (YYYY-MM-DD).
+      expect(badge.text()).toBe("Added: 2024-03-09");
       expect(badge.attr("aria-label")).toBe("Added 2024-03-09");
     });
 
-    it("places the badge inline on the URL-string row, right-most after the URL string", () => {
+    it("places the inline badge on the URL-string row, right-most after the URL string", () => {
       const el = createURLBlock(baseURL, [], 10);
       const stringRow = el.find(".urlStringRow");
       expect(stringRow.length).toBe(1);
       // The row lives inside .urlRowContent (above the swipe-reveal layer).
       expect(stringRow.closest(".urlRowContent").length).toBe(1);
-      // Badge is a direct child of the URL-string row...
-      const badge = stringRow.children(".urlDateAddedBadge");
+      // Inline badge is a direct child of the URL-string row...
+      const badge = stringRow.children(".urlDateAddedBadgeInline");
       expect(badge.length).toBe(1);
       // ...and is the right-most (last) element on that row...
-      expect(stringRow.children().last().hasClass("urlDateAddedBadge")).toBe(
-        true,
-      );
+      expect(
+        stringRow.children().last().hasClass("urlDateAddedBadgeInline"),
+      ).toBe(true);
       // ...sitting after the URL-string block (the <a>.urlString).
       expect(stringRow.children().first().hasClass("urlString")).toBe(true);
+    });
+
+    it("renders a mobile stacked badge as the last row of the card, below the buttons row", () => {
+      const el = createURLBlock(
+        { ...baseURL, addedAt: "2024-03-09T12:00:00+00:00" },
+        [],
+        10,
+      );
+      const rowContent = el.find(".urlRowContent");
+      const stacked = rowContent.children(".urlDateAddedBadgeStacked");
+      expect(stacked.length).toBe(1);
+      expect(stacked.hasClass("urlDateAddedBadge")).toBe(true);
+      expect(stacked.prop("tagName")).toBe("TIME");
+      expect(stacked.attr("datetime")).toBe("2024-03-09T12:00:00+00:00");
+      expect(stacked.text()).toBe("Added: 2024-03-09");
+      // It is the last child of .urlRowContent (after the tags/options row)...
+      expect(
+        rowContent.children().last().hasClass("urlDateAddedBadgeStacked"),
+      ).toBe(true);
+      // ...specifically following the buttons row (.tagsAndButtonsWrap).
+      expect(stacked.prev().hasClass("tagsAndButtonsWrap")).toBe(true);
     });
   });
 });

@@ -134,20 +134,27 @@ export function formatDateByPreference(
   }
 }
 
-// Secondary/metadata date-added badge shown inline on the URL-string row,
-// pinned to the card's lower-right (see .urlStringRow / .urlDateAddedBadge in
-// urls.css). A <time> element carries the machine-readable ISO value in
-// `datetime` and an unambiguous accessible name in `aria-label`; the visible
-// text is the terse date formatted per the stored DateFormat preference.
-function createURLDateAddedBadge(addedAt: string): JQuery<HTMLElement> {
+// Secondary/metadata date-added badge for a URL card. Two placements share this
+// builder and are swapped by viewport (see .urlDateAddedBadge* in urls.css):
+//   - "urlDateAddedBadgeInline"  — desktop/tablet: inline on the URL-string row,
+//     pinned to the card's lower-right; hidden below the mobile breakpoint.
+//   - "urlDateAddedBadgeStacked" — mobile: a full-width row below the buttons
+//     row; hidden at/above the breakpoint.
+// A <time> element carries the machine-readable ISO value in `datetime` and an
+// unambiguous accessible name in `aria-label`; the visible text is prefixed
+// "Added:" and formatted per the stored DateFormat preference.
+function createURLDateAddedBadge(
+  addedAt: string,
+  placementClass: string,
+): JQuery<HTMLElement> {
   const formattedDate = formatDateByPreference(
     addedAt,
     getState().preferences.dateFormat,
   );
   return $(document.createElement("time"))
-    .addClass("urlDateAddedBadge")
+    .addClass(`urlDateAddedBadge ${placementClass}`)
     .attr({ datetime: addedAt, "aria-label": `Added ${formattedDate}` })
-    .text(formattedDate);
+    .text(`Added: ${formattedDate}`);
 }
 
 // Create a URL block to add to current UTub/URLDeck
@@ -205,11 +212,20 @@ export function createURLBlock(
     urlStringRow.append(createURLString(url.urlString));
   }
 
-  urlStringRow.append(createURLDateAddedBadge(url.addedAt));
+  urlStringRow.append(
+    createURLDateAddedBadge(url.addedAt, "urlDateAddedBadgeInline"),
+  );
   urlRowContent.append(urlStringRow);
 
   urlRowContent.append(
     createTagsAndOptionsForUrlBlock(url, dictTags, urlCard, utubID),
+  );
+
+  // Mobile-only placement of the date-added badge: a full-width row below the
+  // buttons row (the inline badge above is hidden on narrow viewports). Last
+  // child of .urlRowContent so it sits under the tags/options block.
+  urlRowContent.append(
+    createURLDateAddedBadge(url.addedAt, "urlDateAddedBadgeStacked"),
   );
 
   if (url.canDelete) {
