@@ -161,22 +161,26 @@ def test_visit_contact_page_return_splash(page: Page, splash_btn_css_selector: s
     assert_visible_css_selector(page=page, css_selector=SPL.WELCOME_TEXT)
 
 
-def test_privacy_btn_color_passes_wcag_at_380px(page: Page):
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_privacy_btn_color_passes_wcag_at_380px(page: Page, scheme: str):
     """
     GIVEN a fresh load of the U4I Splash page at a 380px-wide viewport
-    WHEN the footer renders
+    WHEN the footer renders under EITHER the light or the dark color scheme
     THEN ensure the #PrivacyBtn link color keeps WCAG AA contrast against the
         always-dark footer band
 
     The footer band is dark in every theme (Bootstrap `bg-dark`, Design
-    Decision 4), so the dark palette is the one it is designed against. An
+    Decision 4), so its link color (--footerURLColor) is theme-INDEPENDENT and
+    must clear WCAG AA against the dark band regardless of the page theme. An
     anonymous visitor's <html> is stamped data-theme="system", which the
-    pre-paint resolver maps to the OS color scheme; forcing dark here makes the
-    resolved --footerURLColor deterministic under Playwright's default (light)
-    color scheme. The assertion computes the live contrast ratio rather than a
-    hardcoded color so it stays meaningful if the footer token is retuned.
+    pre-paint resolver maps to the OS color scheme; emulating both light and
+    dark here exercises both resolutions of that "system" choice. Light mode is
+    the regression guard: before the token was made theme-independent it
+    resolved to the light-theme --cardURLTextColor (#5c6b6d ≈ 2.8:1), failing
+    AA. The assertion computes the live contrast ratio rather than a hardcoded
+    color so it stays meaningful if the footer token is retuned.
     """
-    page.emulate_media(color_scheme="dark")
+    page.emulate_media(color_scheme=scheme)
     page.set_viewport_size(
         {"width": NARROW_VIEWPORT_WIDTH_PX, "height": NARROW_VIEWPORT_HEIGHT_PX}
     )

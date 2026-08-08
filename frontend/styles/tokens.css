@@ -85,7 +85,13 @@
     --selectedUrlBorder: rgba(13, 255, 0, 1.0);
     --focusedUrlBorder: rgba(13, 255, 0, 0.75);
 
-    --footerURLColor: var(--cardURLTextColor);
+    /* Theme-INDEPENDENT. The footer band is always dark (Bootstrap `.bg-dark`
+       ≈ #212529, Design Decision 4) regardless of page theme, so its link color
+       must not follow the page theme. This fixed light grey yields ≈5.4:1 on the
+       dark band — comfortably above the WCAG AA 4.5:1 minimum — in light, dark,
+       and system-resolved themes alike. No :root[data-theme=...] / prefers-color-
+       scheme block overrides it, keeping it genuinely theme-independent. */
+    --footerURLColor: rgba(140, 155, 157, 1.0);
 
     --oddUrlCardsBackgroundColor: rgba(61, 71, 71, 1.0);
     --evenUrlCardsBackgroundColor: rgba(51, 61, 61, 1.0);
