@@ -915,6 +915,28 @@ class SettingsPageLocators(GenericPageLocator):
     # test_settings_nav_link_present_on_home lives in the settings_ui suite.
     SETTINGS_NAV_LINK = "#userSettingsLink"
 
+    # Display tab (Phase 6). The theme segmented control + four view-pref
+    # <select>s server-rendered in the `#SettingsPanelUiSettings` tabpanel of
+    # backend/templates/pages/settings.html, plus the data-* contract read by
+    # frontend/settings/display-preferences.ts. The panel/tab locators
+    # (TAB_UI_SETTINGS_BUTTON / PANEL_UI_SETTINGS) already exist above.
+    THEME_CONTROL = "#SettingsThemeControl"
+    THEME_RADIO_LIGHT = f'{THEME_CONTROL} [role="radio"][data-theme-value="light"]'
+    THEME_RADIO_DARK = f'{THEME_CONTROL} [role="radio"][data-theme-value="dark"]'
+    THEME_RADIO_SYSTEM = f'{THEME_CONTROL} [role="radio"][data-theme-value="system"]'
+    DEFAULT_VIEW_SELECT = "#SettingsDefaultViewSelect"
+    DEFAULT_SORT_SELECT = "#SettingsDefaultSortSelect"
+    DENSITY_SELECT = "#SettingsDensitySelect"
+    DATE_FORMAT_SELECT = "#SettingsDateFormatSelect"
+    # Success toast (write target for the instant-apply "Preferences saved"
+    # message) and the panel-local error region.
+    GLOBAL_STATUS_TOAST = "#SettingsGlobalStatusToast"
+    UI_SETTINGS_STATUS = "#SettingsUiSettingsStatus"
+    # The <html> root carrying the app-wide, server-stamped theme
+    # (data-theme="{{ user_theme }}") — the pre-paint delivery this suite
+    # asserts round-trips through the DB.
+    HTML_ROOT = "html"
+
     # Connected Accounts section (Account tab). Mirrors
     # backend/templates/pages/settings.html:18-59 and the data-* contract
     # documented in frontend/settings/connected-accounts.ts.
