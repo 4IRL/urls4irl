@@ -160,63 +160,98 @@
  * stays dark in light mode for brand continuity (Design Decision 4), so navbar
  * tokens are intentionally NOT overridden here. Brand green / danger / caution
  * / scale tokens remain shared from the dark block above.
+ *
+ * The light palette VALUES live once as the private --light-* source tokens
+ * below (the single source of truth for every light literal), then get mapped
+ * onto the public semantic tokens from BOTH light-theme paths: the explicit
+ * :root[data-theme="light"] selector (always) and the no-JS
+ * @media (prefers-color-scheme: light) fallback for data-theme="system" (only
+ * when the OS prefers light). Because both paths reference the same source, a
+ * palette tweak is a single edit and the two paths can never drift. (DD-2)
  */
-:root[data-theme="light"] {
-    --defaultPageBackgroundColor: #f4f6f6;
-    --pageBackgroundColor: rgba(255, 255, 255, 0.92);
-    --panelBackgroundColor: #ffffff;
-    --cardBackgroundColor: #ffffff;
-    --cardBackgroundColorHover: rgba(0, 0, 0, 0.04);
-    --oddUrlCardsBackgroundColor: #f4f6f6;
-    --evenUrlCardsBackgroundColor: #ffffff;
-    --selectedUTubColorBackground: #e6efe9;
-    --borderColor: #d5dbdb;
-    --contentTopBorder: rgba(0, 0, 0, 0.10);
+:root {
+    --light-defaultPageBackgroundColor: #f4f6f6;
+    --light-pageBackgroundColor: rgba(255, 255, 255, 0.92);
+    --light-panelBackgroundColor: #ffffff;
+    --light-cardBackgroundColor: #ffffff;
+    --light-cardBackgroundColorHover: rgba(0, 0, 0, 0.04);
+    --light-oddUrlCardsBackgroundColor: #f4f6f6;
+    --light-evenUrlCardsBackgroundColor: #ffffff;
+    --light-selectedUTubColorBackground: #e6efe9;
+    --light-borderColor: #d5dbdb;
+    --light-contentTopBorder: rgba(0, 0, 0, 0.10);
 
-    --textPrimary: #1f2424;
+    --light-textPrimary: #1f2424;
     /* UTub description text was the literal `white` token — override so it is
        legible on the light panel/card surfaces. */
-    --UTubDescriptionColor: #1f2424;
+    --light-UTubDescriptionColor: #1f2424;
     /* Accessible link blue on white (~4.6:1) in place of aqua. */
-    --linkColor: #0b6bcb;
-    --cardURLTextColor: #5c6b6d;
+    --light-linkColor: #0b6bcb;
+    --light-cardURLTextColor: #5c6b6d;
     /* Accent/focus green darkened for contrast on white surfaces. */
-    --deckSelectionGreen: #1e8549;
+    --light-deckSelectionGreen: #1e8549;
 
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
-    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+    --light-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --light-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --light-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+/* Explicit light choice — always maps the shared --light-* sources onto the
+   public tokens, regardless of the OS color scheme. */
+:root[data-theme="light"] {
+    --defaultPageBackgroundColor: var(--light-defaultPageBackgroundColor);
+    --pageBackgroundColor: var(--light-pageBackgroundColor);
+    --panelBackgroundColor: var(--light-panelBackgroundColor);
+    --cardBackgroundColor: var(--light-cardBackgroundColor);
+    --cardBackgroundColorHover: var(--light-cardBackgroundColorHover);
+    --oddUrlCardsBackgroundColor: var(--light-oddUrlCardsBackgroundColor);
+    --evenUrlCardsBackgroundColor: var(--light-evenUrlCardsBackgroundColor);
+    --selectedUTubColorBackground: var(--light-selectedUTubColorBackground);
+    --borderColor: var(--light-borderColor);
+    --contentTopBorder: var(--light-contentTopBorder);
+
+    --textPrimary: var(--light-textPrimary);
+    --UTubDescriptionColor: var(--light-UTubDescriptionColor);
+    --linkColor: var(--light-linkColor);
+    --cardURLTextColor: var(--light-cardURLTextColor);
+    --deckSelectionGreen: var(--light-deckSelectionGreen);
+
+    --shadow-sm: var(--light-shadow-sm);
+    --shadow-md: var(--light-shadow-md);
+    --shadow-lg: var(--light-shadow-lg);
 }
 
 /*
  * "System" theme choice: honor the OS color scheme. When the user picks
  * "system", <html> is stamped data-theme="system" and the head pre-paint script
  * resolves it to light/dark on documentElement before styles apply — but this
- * media block is the CSS-only fallback that also applies the light palette when
- * the OS prefers light and (for any reason) the value is still "system".
+ * media block is the CSS-only (no-JS) fallback that also applies the light
+ * palette when the OS prefers light and (for any reason) the value is still
+ * "system". It maps the SAME --light-* sources as the explicit-light selector
+ * above, so the two light paths stay byte-for-byte identical by construction.
  */
 @media (prefers-color-scheme: light) {
     :root[data-theme="system"] {
-        --defaultPageBackgroundColor: #f4f6f6;
-        --pageBackgroundColor: rgba(255, 255, 255, 0.92);
-        --panelBackgroundColor: #ffffff;
-        --cardBackgroundColor: #ffffff;
-        --cardBackgroundColorHover: rgba(0, 0, 0, 0.04);
-        --oddUrlCardsBackgroundColor: #f4f6f6;
-        --evenUrlCardsBackgroundColor: #ffffff;
-        --selectedUTubColorBackground: #e6efe9;
-        --borderColor: #d5dbdb;
-        --contentTopBorder: rgba(0, 0, 0, 0.10);
+        --defaultPageBackgroundColor: var(--light-defaultPageBackgroundColor);
+        --pageBackgroundColor: var(--light-pageBackgroundColor);
+        --panelBackgroundColor: var(--light-panelBackgroundColor);
+        --cardBackgroundColor: var(--light-cardBackgroundColor);
+        --cardBackgroundColorHover: var(--light-cardBackgroundColorHover);
+        --oddUrlCardsBackgroundColor: var(--light-oddUrlCardsBackgroundColor);
+        --evenUrlCardsBackgroundColor: var(--light-evenUrlCardsBackgroundColor);
+        --selectedUTubColorBackground: var(--light-selectedUTubColorBackground);
+        --borderColor: var(--light-borderColor);
+        --contentTopBorder: var(--light-contentTopBorder);
 
-        --textPrimary: #1f2424;
-        --UTubDescriptionColor: #1f2424;
-        --linkColor: #0b6bcb;
-        --cardURLTextColor: #5c6b6d;
-        --deckSelectionGreen: #1e8549;
+        --textPrimary: var(--light-textPrimary);
+        --UTubDescriptionColor: var(--light-UTubDescriptionColor);
+        --linkColor: var(--light-linkColor);
+        --cardURLTextColor: var(--light-cardURLTextColor);
+        --deckSelectionGreen: var(--light-deckSelectionGreen);
 
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
-        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+        --shadow-sm: var(--light-shadow-sm);
+        --shadow-md: var(--light-shadow-md);
+        --shadow-lg: var(--light-shadow-lg);
     }
 }
 
