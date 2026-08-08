@@ -3,9 +3,8 @@
  * Intentionally isolated from the admin metrics dashboard: this is a self-
  * contained copy of the tablist treatment scoped under the distinct
  * `#SettingsTablist` / `#SettingsPage` id namespace, so the two pages cannot
- * collide. Colors reference the dark-theme custom properties from tokens.css —
- * never hardcode color literals here. A future refactor can extract a shared
- * tablist stylesheet (out of scope for this anchor PR).
+ * collide. A future refactor can extract a shared tablist stylesheet (out of
+ * scope for this anchor PR).
  *
  * Colors reference the theme custom properties from tokens.css (which now carry
  * light + dark variants) — never hardcode color literals here. Primary text uses
