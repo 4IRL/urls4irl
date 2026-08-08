@@ -3,6 +3,7 @@ from flask_login import current_user
 
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType
+from backend.models.user_preferences import resolve_preferences
 from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.utils.all_routes import generate_admin_routes_js, generate_routes_js
@@ -1067,12 +1068,13 @@ def provide_config_for_constants() -> dict:
     )
     # Resolved theme for the app-wide pre-paint <html data-theme> stamp
     # (layout.html). Rendered into <head> — NOT the <body> CONFIG JSON blob —
-    # so it lands before styles paint and avoids a light/dark flash. Defaults
-    # to "system" for anonymous users or users with no UserPreferences row
-    # (mirrors preferences_service's None-row defaulting).
-    user_theme = "system"
-    if current_user.is_authenticated and current_user.preferences is not None:
-        user_theme = current_user.preferences.theme.value
+    # so it lands before styles paint and avoids a light/dark flash. Anonymous
+    # users (and authenticated users with no UserPreferences row) resolve to the
+    # shared ``Theme.SYSTEM`` ("system") default via ``resolve_preferences``.
+    preferences_row = (
+        current_user.preferences if current_user.is_authenticated else None
+    )
+    user_theme = resolve_preferences(preferences_row).theme.value
     return dict(
         CONSTANTS=CONSTANTS(),
         user_theme=user_theme,

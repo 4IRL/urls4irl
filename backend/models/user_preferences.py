@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -142,3 +143,49 @@ class User_Preferences(db.Model):
     )
 
     user: Users = db.relationship("Users", back_populates="preferences")
+
+
+@dataclass(frozen=True)
+class ResolvedPreferences:
+    """The five display/view preference values resolved to concrete enum
+    members, with the missing-row (pre-existing user) defaults already applied.
+
+    Every consumer of a user's preferences reads through
+    ``resolve_preferences()`` so the per-field enum defaults (theme ``SYSTEM``,
+    view ``LIST``, sort ``NEWEST``, density ``COMFORTABLE``, date format ``ISO``)
+    live in exactly one place. Fields hold enum members (not their ``.value``
+    strings) so callers can compare enums directly or read ``.value`` as needed.
+    """
+
+    theme: Theme
+    default_view: ViewMode
+    default_sort: SortOrder
+    density: Density
+    date_format: DateFormat
+
+
+def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
+    """Resolve a (possibly missing) ``UserPreferences`` row to its five concrete
+    preference values, applying each field's enum default when ``row`` is
+    ``None`` (a pre-existing user who has never saved a preference).
+
+    This is the single source of truth for the missing-row defaults; the model's
+    per-column ``default=`` values above define the same defaults for freshly
+    persisted rows, and this resolver mirrors them for the not-yet-persisted
+    case.
+    """
+    if row is None:
+        return ResolvedPreferences(
+            theme=Theme.SYSTEM,
+            default_view=ViewMode.LIST,
+            default_sort=SortOrder.NEWEST,
+            density=Density.COMFORTABLE,
+            date_format=DateFormat.ISO,
+        )
+    return ResolvedPreferences(
+        theme=row.theme,
+        default_view=row.default_view,
+        default_sort=row.default_sort,
+        density=row.density,
+        date_format=row.date_format,
+    )

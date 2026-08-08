@@ -9,6 +9,7 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.models.user_preferences import (
     DateFormat,
     Density,
+    resolve_preferences,
     SortOrder,
     Theme,
     User_Preferences,
@@ -37,22 +38,13 @@ def build_display_preferences_context() -> dict[str, Any]:
     to its enum default when the ``UserPreferences`` row is absent (pre-existing
     users), so the missing-row state is always well-defined.
     """
-    preferences: User_Preferences | None = current_user.preferences
-    theme = preferences.theme if preferences is not None else Theme.SYSTEM
-    default_view = (
-        preferences.default_view if preferences is not None else ViewMode.LIST
-    )
-    default_sort = (
-        preferences.default_sort if preferences is not None else SortOrder.NEWEST
-    )
-    density = preferences.density if preferences is not None else Density.COMFORTABLE
-    date_format = preferences.date_format if preferences is not None else DateFormat.ISO
+    resolved = resolve_preferences(current_user.preferences)
     return {
-        "display_theme": theme.value,
-        "display_default_view": default_view.value,
-        "display_default_sort": default_sort.value,
-        "display_density": density.value,
-        "display_date_format": date_format.value,
+        "display_theme": resolved.theme.value,
+        "display_default_view": resolved.default_view.value,
+        "display_default_sort": resolved.default_sort.value,
+        "display_density": resolved.density.value,
+        "display_date_format": resolved.date_format.value,
     }
 
 
@@ -88,26 +80,14 @@ def apply_preferences_change(
     # and short-circuit when every field matches — no row is created and nothing
     # is added to the session on this path.
     preferences: User_Preferences | None = current_user.preferences
-    existing_theme = preferences.theme if preferences is not None else Theme.SYSTEM
-    existing_default_view = (
-        preferences.default_view if preferences is not None else ViewMode.LIST
-    )
-    existing_default_sort = (
-        preferences.default_sort if preferences is not None else SortOrder.NEWEST
-    )
-    existing_density = (
-        preferences.density if preferences is not None else Density.COMFORTABLE
-    )
-    existing_date_format = (
-        preferences.date_format if preferences is not None else DateFormat.ISO
-    )
+    existing = resolve_preferences(preferences)
 
     if (
-        existing_theme == theme
-        and existing_default_view == default_view
-        and existing_default_sort == default_sort
-        and existing_density == density
-        and existing_date_format == date_format
+        existing.theme == theme
+        and existing.default_view == default_view
+        and existing.default_sort == default_sort
+        and existing.density == density
+        and existing.date_format == date_format
     ):
         return APIResponse(
             status_code=200,

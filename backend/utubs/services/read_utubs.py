@@ -4,7 +4,7 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
-from backend.models.user_preferences import SortOrder
+from backend.models.user_preferences import resolve_preferences, SortOrder
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.users import UtubSummaryListSchema
@@ -18,11 +18,7 @@ def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
     # already loaded into memory, so the in-memory list is sorted rather than
     # issuing a second parallel query. Both GET /utubs/<id> and its api_v1 mirror
     # share this service, so ordering here covers both surfaces.
-    default_sort = (
-        current_user.preferences.default_sort
-        if current_user.preferences is not None
-        else SortOrder.NEWEST
-    )
+    default_sort = resolve_preferences(current_user.preferences).default_sort
     if default_sort == SortOrder.TITLE_AZ:
         # ``url_title`` is DB-nullable (Python default ``""`` only), so coalesce
         # to ``""`` before ``.lower()`` — a NULL title can never raise here.
