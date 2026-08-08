@@ -843,16 +843,32 @@ a.urlString {
 
 /* ============================================================================
    Date-added badge (view preference: date_format)
-   Secondary/metadata date rendered between the title row and the URL-string
-   row. Reuses --cardURLTextColor so it reads as metadata like .urlString.
-   Lives inside .urlRowContent (z-index:1, opaque), so it always renders above
-   the absolutely-positioned .urlRowSwipeReveal — no stacking work needed.
+   Secondary/metadata date rendered INLINE on the URL-string row, pinned to the
+   card's lower-right. .urlStringRow is the flex row holding the URL-string
+   block + the badge; the URL-string block flex-grows and truncates while the
+   badge sits far-right (margin-left:auto). Reuses --cardURLTextColor so it
+   reads as metadata like .urlString. Lives inside .urlRowContent (z-index:1,
+   opaque), so it always renders above the absolutely-positioned
+   .urlRowSwipeReveal — no stacking work needed.
    ============================================================================ */
+.urlStringRow {
+    gap: var(--space-2);
+}
+
+/* Let the URL-string block (a plain <a>.urlString, or the editable
+   .ninetyfive-width wrap) consume the row's width and truncate, leaving the
+   badge pinned right. min-width:0 is required for flexbox ellipsis to engage. */
+.urlStringRow > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .urlDateAddedBadge {
-    display: block;
+    margin-left: auto;
+    flex-shrink: 0;
     color: var(--cardURLTextColor);
     font-size: 0.8em;
-    margin-top: var(--space-1);
+    white-space: nowrap;
 }
 
 /* Space-reclaiming mobile override — hide the badge on narrow viewports. The

@@ -134,10 +134,11 @@ export function formatDateByPreference(
   }
 }
 
-// Secondary/metadata date-added badge shown between the title row and the
-// URL-string row on each card. A <time> element carries the machine-readable ISO
-// value in `datetime` and an unambiguous accessible name in `aria-label`; the
-// visible text is the terse date formatted per the stored DateFormat preference.
+// Secondary/metadata date-added badge shown inline on the URL-string row,
+// pinned to the card's lower-right (see .urlStringRow / .urlDateAddedBadge in
+// urls.css). A <time> element carries the machine-readable ISO value in
+// `datetime` and an unambiguous accessible name in `aria-label`; the visible
+// text is the terse date formatted per the stored DateFormat preference.
 function createURLDateAddedBadge(addedAt: string): JQuery<HTMLElement> {
   const formattedDate = formatDateByPreference(
     addedAt,
@@ -179,7 +180,6 @@ export function createURLBlock(
   urlTitleGoToURLWrap.append(createGoToURLIcon(url.urlString));
 
   urlRowContent.append(urlTitleGoToURLWrap);
-  urlRowContent.append(createURLDateAddedBadge(url.addedAt));
   urlCard.attr({
     utubUrlID: url.utubUrlID,
     urlSelected: false,
@@ -187,14 +187,26 @@ export function createURLBlock(
     "data-utub-url-tag-ids": url.utubUrlTagIDs.join(","),
   });
 
+  // URL-string row: the URL string block flex-grows and truncates while the
+  // date-added badge is pinned to the far right (margin-left:auto in urls.css),
+  // so the date reads as the URL's metadata at the card's lower-right, inline
+  // with the URL string. Kept inside .urlRowContent (position:relative,
+  // z-index:1) so it renders above the absolutely-positioned .urlRowSwipeReveal.
+  const urlStringRow = $(document.createElement("div")).addClass(
+    "urlStringRow flex-row full-width align-center",
+  );
+
   // Append update URL form if user can edit the URL
   if (url.canDelete) {
-    urlRowContent.append(
+    urlStringRow.append(
       createURLStringAndUpdateBlock(url.urlString, urlCard, utubID),
     );
   } else {
-    urlRowContent.append(createURLString(url.urlString));
+    urlStringRow.append(createURLString(url.urlString));
   }
+
+  urlStringRow.append(createURLDateAddedBadge(url.addedAt));
+  urlRowContent.append(urlStringRow);
 
   urlRowContent.append(
     createTagsAndOptionsForUrlBlock(url, dictTags, urlCard, utubID),

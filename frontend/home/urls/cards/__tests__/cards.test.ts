@@ -204,6 +204,23 @@ describe("createURLBlock", () => {
       expect(badge.text()).toBe("2024-03-09");
       expect(badge.attr("aria-label")).toBe("Added 2024-03-09");
     });
+
+    it("places the badge inline on the URL-string row, right-most after the URL string", () => {
+      const el = createURLBlock(baseURL, [], 10);
+      const stringRow = el.find(".urlStringRow");
+      expect(stringRow.length).toBe(1);
+      // The row lives inside .urlRowContent (above the swipe-reveal layer).
+      expect(stringRow.closest(".urlRowContent").length).toBe(1);
+      // Badge is a direct child of the URL-string row...
+      const badge = stringRow.children(".urlDateAddedBadge");
+      expect(badge.length).toBe(1);
+      // ...and is the right-most (last) element on that row...
+      expect(stringRow.children().last().hasClass("urlDateAddedBadge")).toBe(
+        true,
+      );
+      // ...sitting after the URL-string block (the <a>.urlString).
+      expect(stringRow.children().first().hasClass("urlString")).toBe(true);
+    });
   });
 });
 
