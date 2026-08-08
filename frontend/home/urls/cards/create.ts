@@ -269,6 +269,10 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
     // addedAt (never a client-side Date.now()), so the create-time re-sort
     // below places a freshly-created card correctly on the very insert.
     addedAt: url.addedAt,
+    // Server-returned adder id (the current user for a create) — drives the
+    // "Added by <username> · <date>" attribution badge, resolved to a name
+    // from the UTub member list at render time.
+    addedByUserID: response.addedByUserID,
   };
 
   // Capture visible-URL count BEFORE DOM insertion (drives alternating stripes).

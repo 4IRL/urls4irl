@@ -17,6 +17,7 @@ _URL = {
     M.URL_TITLE: "Example",
     M.CAN_DELETE: True,
     "addedAt": "2024-03-09T12:00:00+00:00",
+    M.ADDED_BY: 1,
 }
 _UTUB_DICT = {
     M.ID: 42,
@@ -61,6 +62,7 @@ def test_utub_detail_schema_nested_urls():
     assert url[M.URL_STRING] == "https://example.com"
     assert url[M.URL_TAG_IDS] == [10]
     assert url[M.CAN_DELETE] is True
+    assert url[M.ADDED_BY] == 1
 
 
 def test_utub_detail_schema_nested_tags():

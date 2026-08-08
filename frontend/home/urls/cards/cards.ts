@@ -134,27 +134,58 @@ export function formatDateByPreference(
   }
 }
 
+// Resolve the display username of the member who added a URL from the current
+// UTub's member list in the store. Returns null if that user is no longer a
+// member (e.g. removed after adding the URL) so the badge can fall back to a
+// date-only label rather than showing a dangling id.
+function resolveAdderUsername(addedByUserID: number): string | null {
+  const adder = getState().members.find(
+    (member) => member.id === addedByUserID,
+  );
+  return adder ? adder.username : null;
+}
+
 // Secondary/metadata date-added badge for a URL card. Two placements share this
-// builder and are swapped by viewport (see .urlDateAddedBadge* in urls.css):
-//   - "urlDateAddedBadgeInline"  — desktop/tablet: inline on the URL-string row,
-//     pinned to the card's lower-right; hidden below the mobile breakpoint.
-//   - "urlDateAddedBadgeStacked" — mobile: a full-width row below the buttons
-//     row; hidden at/above the breakpoint.
+// builder and are swapped by viewport + selection state (see .urlDateAddedBadge*
+// in urls.css):
+//   - "urlDateAddedBadgeInline"  — desktop only, COLLAPSED cards: a terse
+//     date-only badge inline at the URL-string row's lower-right, so it costs no
+//     card height and leaves long URLs their room (withAdder = false).
+//   - "urlDateAddedBadgeStacked" — EXPANDED cards on both desktop and mobile:
+//     a full-width row below the buttons row carrying the full attribution
+//     (withAdder = true).
 // A <time> element carries the machine-readable ISO value in `datetime` and an
-// unambiguous accessible name in `aria-label`; the visible text is prefixed
-// "Added:" and formatted per the stored DateFormat preference.
-function createURLDateAddedBadge(
-  addedAt: string,
-  placementClass: string,
-): JQuery<HTMLElement> {
+// unambiguous accessible name in `aria-label`. With `withAdder`, the visible
+// text attributes the URL to the member who added it — "Added by <username> ·
+// <date>" — falling back to a date-only "Added: <date>" when the adder is no
+// longer a member; without it, the badge is always the date-only form. The date
+// is formatted per the stored DateFormat preference.
+function createURLDateAddedBadge({
+  addedAt,
+  addedByUserID,
+  placementClass,
+  withAdder,
+}: {
+  addedAt: string;
+  addedByUserID: number;
+  placementClass: string;
+  withAdder: boolean;
+}): JQuery<HTMLElement> {
   const formattedDate = formatDateByPreference(
     addedAt,
     getState().preferences.dateFormat,
   );
+  const adderUsername = withAdder ? resolveAdderUsername(addedByUserID) : null;
+  const visibleText = adderUsername
+    ? `Added by ${adderUsername} · ${formattedDate}`
+    : `Added: ${formattedDate}`;
+  const accessibleLabel = adderUsername
+    ? `Added by ${adderUsername} on ${formattedDate}`
+    : `Added ${formattedDate}`;
   return $(document.createElement("time"))
     .addClass(`urlDateAddedBadge ${placementClass}`)
-    .attr({ datetime: addedAt, "aria-label": `Added ${formattedDate}` })
-    .text(`Added: ${formattedDate}`);
+    .attr({ datetime: addedAt, "aria-label": accessibleLabel })
+    .text(visibleText);
 }
 
 // Create a URL block to add to current UTub/URLDeck
@@ -213,7 +244,12 @@ export function createURLBlock(
   }
 
   urlStringRow.append(
-    createURLDateAddedBadge(url.addedAt, "urlDateAddedBadgeInline"),
+    createURLDateAddedBadge({
+      addedAt: url.addedAt,
+      addedByUserID: url.addedByUserID,
+      placementClass: "urlDateAddedBadgeInline",
+      withAdder: false,
+    }),
   );
   urlRowContent.append(urlStringRow);
 
@@ -221,11 +257,17 @@ export function createURLBlock(
     createTagsAndOptionsForUrlBlock(url, dictTags, urlCard, utubID),
   );
 
-  // Mobile-only placement of the date-added badge: a full-width row below the
-  // buttons row (the inline badge above is hidden on narrow viewports). Last
-  // child of .urlRowContent so it sits under the tags/options block.
+  // Expanded-only attribution row: a full-width "Added by <user> · <date>" line
+  // below the buttons row, shown when the card is selected on BOTH desktop and
+  // mobile (see urls.css). Last child of .urlRowContent so it sits under the
+  // tags/options block; collapsed cards never show it, so it adds no height.
   urlRowContent.append(
-    createURLDateAddedBadge(url.addedAt, "urlDateAddedBadgeStacked"),
+    createURLDateAddedBadge({
+      addedAt: url.addedAt,
+      addedByUserID: url.addedByUserID,
+      placementClass: "urlDateAddedBadgeStacked",
+      withAdder: true,
+    }),
   );
 
   if (url.canDelete) {

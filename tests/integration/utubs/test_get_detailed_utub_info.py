@@ -251,6 +251,7 @@ def test_get_valid_utub_with_members_urls_no_tags(
             MODELS.URL_TAG_IDS: [],
             MODELS.URL_TITLE: url.url_title,
             "addedAt": url.added_at.isoformat(),
+            MODELS.ADDED_BY: url.user_id,
         }
         assert url_dict in response_json[MODELS.URLS]
 
@@ -449,6 +450,7 @@ def test_get_valid_utub_with_members_urls_tags(
             MODELS.URL_TAG_IDS: sorted([tag.id for tag in all_tags]),
             MODELS.URL_TITLE: f"This is {url_string}",
             "addedAt": url.added_at.isoformat(),
+            MODELS.ADDED_BY: url.user_id,
         }
         assert url_dict in response_json[MODELS.URLS]
 

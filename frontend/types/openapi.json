@@ -9051,6 +9051,10 @@
             "description": "Timestamp the URL was added to the UTub",
             "format": "date-time",
             "type": "string"
+          },
+          "addedByUserID": {
+            "description": "User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list)",
+            "type": "integer"
           }
         },
         "required": [
@@ -9059,7 +9063,8 @@
           "utubUrlTagIDs",
           "urlTitle",
           "canDelete",
-          "addedAt"
+          "addedAt",
+          "addedByUserID"
         ],
         "type": "object"
       },

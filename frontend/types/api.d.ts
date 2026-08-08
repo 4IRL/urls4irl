@@ -1959,6 +1959,8 @@ export interface components {
        * @description Timestamp the URL was added to the UTub
        */
       addedAt: string;
+      /** @description User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list) */
+      addedByUserID: number;
     };
     /** @description Full UTub detail with members, URLs, and tags */
     UtubDetailSchema: {

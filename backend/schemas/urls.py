@@ -31,6 +31,11 @@ class UtubUrlSchema(BaseSchema):
     added_at: datetime = Field(
         alias="addedAt", description="Timestamp the URL was added to the UTub"
     )
+    added_by_user_id: int = Field(
+        alias=ADDED_BY,
+        description="User ID of the member who added this URL to the UTub "
+        "(resolved to a username on the frontend via the UTub member list)",
+    )
 
     @classmethod
     def from_orm_url(
@@ -44,6 +49,7 @@ class UtubUrlSchema(BaseSchema):
             can_delete=current_user_id == utub_url.user_id
             or current_user_id == utub_creator,
             added_at=utub_url.added_at,
+            added_by_user_id=utub_url.user_id,
         )
 
     @field_serializer("added_at")

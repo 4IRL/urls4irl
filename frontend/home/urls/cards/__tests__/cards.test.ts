@@ -1,4 +1,5 @@
 import { createURLBlock, formatDateByPreference } from "../cards.js";
+import { setState } from "../../../../store/app-store.js";
 import { createURLTitle, createURLTitleAndUpdateBlock } from "../url-title.js";
 import {
   createURLString,
@@ -65,6 +66,7 @@ const baseURL = {
   utubUrlTagIDs: [],
   canDelete: false,
   addedAt: "2024-03-09T12:00:00+00:00",
+  addedByUserID: 7,
 };
 
 describe("createURLBlock", () => {
@@ -189,10 +191,18 @@ describe("createURLBlock", () => {
     });
   });
 
-  describe("date-added badge", () => {
-    it("renders an inline <time>.urlDateAddedBadge with datetime, aria-label, and Added-prefixed text", () => {
+  describe("date-added / attribution badges", () => {
+    // The attribution badge resolves the adder's username from the current
+    // UTub's member list in the store; reset it after each case so state
+    // doesn't leak between tests.
+    afterEach(() => setState({ members: [] }));
+
+    it("renders a terse date-only inline badge (no adder), independent of the member list", () => {
+      // Even with the adder present as a member, the inline badge stays
+      // date-only — the attribution lives on the expanded stacked badge.
+      setState({ members: [{ id: 7, username: "alice" }] });
       const el = createURLBlock(
-        { ...baseURL, addedAt: "2024-03-09T12:00:00+00:00" },
+        { ...baseURL, addedByUserID: 7, addedAt: "2024-03-09T12:00:00+00:00" },
         [],
         10,
       );
@@ -201,12 +211,12 @@ describe("createURLBlock", () => {
       expect(badge.hasClass("urlDateAddedBadge")).toBe(true);
       expect(badge.prop("tagName")).toBe("TIME");
       expect(badge.attr("datetime")).toBe("2024-03-09T12:00:00+00:00");
-      // Visible text is Added-prefixed; default preference is ISO (YYYY-MM-DD).
+      // Default date preference is ISO (YYYY-MM-DD).
       expect(badge.text()).toBe("Added: 2024-03-09");
       expect(badge.attr("aria-label")).toBe("Added 2024-03-09");
     });
 
-    it("places the inline badge on the URL-string row, right-most after the URL string", () => {
+    it("places the inline date badge on the URL-string row, right-most after the URL string", () => {
       const el = createURLBlock(baseURL, [], 10);
       const stringRow = el.find(".urlStringRow");
       expect(stringRow.length).toBe(1);
@@ -223,9 +233,10 @@ describe("createURLBlock", () => {
       expect(stringRow.children().first().hasClass("urlString")).toBe(true);
     });
 
-    it("renders a mobile stacked badge as the last row of the card, below the buttons row", () => {
+    it("renders the expanded stacked badge attributing the adder: 'Added by <user> · <date>', last row after the buttons", () => {
+      setState({ members: [{ id: 7, username: "alice" }] });
       const el = createURLBlock(
-        { ...baseURL, addedAt: "2024-03-09T12:00:00+00:00" },
+        { ...baseURL, addedByUserID: 7, addedAt: "2024-03-09T12:00:00+00:00" },
         [],
         10,
       );
@@ -235,13 +246,32 @@ describe("createURLBlock", () => {
       expect(stacked.hasClass("urlDateAddedBadge")).toBe(true);
       expect(stacked.prop("tagName")).toBe("TIME");
       expect(stacked.attr("datetime")).toBe("2024-03-09T12:00:00+00:00");
-      expect(stacked.text()).toBe("Added: 2024-03-09");
+      expect(stacked.text()).toBe("Added by alice · 2024-03-09");
+      expect(stacked.attr("aria-label")).toBe("Added by alice on 2024-03-09");
       // It is the last child of .urlRowContent (after the tags/options row)...
       expect(
         rowContent.children().last().hasClass("urlDateAddedBadgeStacked"),
       ).toBe(true);
       // ...specifically following the buttons row (.tagsAndButtonsWrap).
       expect(stacked.prev().hasClass("tagsAndButtonsWrap")).toBe(true);
+    });
+
+    it("stacked badge falls back to a date-only label when the adder is no longer a member", () => {
+      setState({ members: [] });
+      const el = createURLBlock(
+        {
+          ...baseURL,
+          addedByUserID: 999,
+          addedAt: "2024-03-09T12:00:00+00:00",
+        },
+        [],
+        10,
+      );
+      const stacked = el
+        .find(".urlRowContent")
+        .children(".urlDateAddedBadgeStacked");
+      expect(stacked.text()).toBe("Added: 2024-03-09");
+      expect(stacked.attr("aria-label")).toBe("Added 2024-03-09");
     });
   });
 });

@@ -842,14 +842,19 @@ a.urlString {
 }
 
 /* ============================================================================
-   Date-added badge (view preference: date_format)
-   Secondary/metadata date rendered INLINE on the URL-string row, pinned to the
-   card's lower-right. .urlStringRow is the flex row holding the URL-string
-   block + the badge; the URL-string block flex-grows and truncates while the
-   badge sits far-right (margin-left:auto). Reuses --cardURLTextColor so it
-   reads as metadata like .urlString. Lives inside .urlRowContent (z-index:1,
-   opaque), so it always renders above the absolutely-positioned
-   .urlRowSwipeReveal — no stacking work needed.
+   Date-added / attribution badges (view preference: date_format)
+   Two badges, swapped by viewport + selection so collapsed cards never grow:
+     • .urlDateAddedBadgeInline  — desktop, COLLAPSED only: a terse date-only
+       badge inline at the URL-string row's lower-right. It shares the row with
+       the URL string (which flex-grows and truncates), so it adds no height;
+       kept short so long URLs keep their room.
+     • .urlDateAddedBadgeStacked — EXPANDED only, desktop AND mobile: a
+       full-width "Added by <user> · <date>" attribution row below the buttons,
+       revealed on selection just like .urlTags / .urlOptions.
+   Collapsed mobile cards show no date at all. Both live inside .urlRowContent
+   (z-index:1, opaque), so they render above the absolutely-positioned
+   .urlRowSwipeReveal — no stacking work needed. Reuse --cardURLTextColor so
+   they read as metadata like .urlString.
    ============================================================================ */
 .urlStringRow {
     gap: var(--space-2);
@@ -869,36 +874,40 @@ a.urlString {
     white-space: nowrap;
 }
 
-/* Desktop/tablet: inline on the URL-string row, pinned to the card's
+/* Desktop, collapsed: inline date-only badge pinned to the URL-string row's
    lower-right (the URL-string block flex-grows/truncates beside it). */
 .urlDateAddedBadgeInline {
     margin-left: auto;
     flex-shrink: 0;
 }
 
-/* Mobile-only stacked badge: rendered on its own row below the buttons row,
-   and only while the card is expanded (selected). Hidden by default — which
-   covers every desktop/tablet card AND every collapsed mobile card; only the
-   mobile + selected rule below reveals it. */
+/* Once the card is expanded, the inline date gives way to the full attribution
+   row below the buttons — so the date is never shown twice on desktop. */
+.urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeInline {
+    display: none;
+}
+
+/* Attribution badge: hidden by default (every collapsed card, both platforms),
+   revealed only when the card is expanded — on desktop AND mobile — as a
+   full-width row below the buttons, mirroring how .urlTags / .urlOptions reveal
+   on selection. Being expanded-only, it costs no height on collapsed cards. */
 .urlDateAddedBadgeStacked {
     display: none;
 }
 
-/* Mobile breakpoint — the inline badge is dropped, and the stacked badge is
-   shown below the buttons row ONLY for the expanded (selected) card, mirroring
-   how .urlTags / .urlOptions reveal on selection. A collapsed mobile card shows
-   no date. No data is lost; the date remains in the account export and the
-   desktop card. This is the first viewport-width breakpoint in this file (its
-   other breakpoints are pointer-based); mirrors the Bootstrap-aligned 767.98px
-   cutoff used in base.css / privacy-terms.css. */
+.urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
+    display: block;
+    margin-top: var(--space-1);
+}
+
+/* Mobile: never show the inline date badge — collapsed mobile cards show no
+   date at all, and the expanded state is covered by the attribution row above.
+   This is the first viewport-width breakpoint in this file (its others are
+   pointer-based); mirrors the Bootstrap-aligned 767.98px cutoff used in
+   base.css / privacy-terms.css. */
 @media (max-width: 767.98px) {
     .urlDateAddedBadgeInline {
         display: none;
-    }
-
-    .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
-        display: block;
-        margin-top: var(--space-1);
     }
 }
 
