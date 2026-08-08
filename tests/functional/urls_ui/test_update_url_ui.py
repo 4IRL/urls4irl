@@ -805,7 +805,10 @@ def test_update_url_string_empty_field(
 
     invalid_url_string_error = wait_then_get_element(
         page=page,
-        css_selector=HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX,
+        css_selector=(
+            f"{HPL.ROW_SELECTED_URL} "
+            f"{HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
+        ),
     )
     assert invalid_url_string_error.inner_text() == FIELD_REQUIRED_STR
 
@@ -836,7 +839,10 @@ def test_update_url_title_empty_field(page: Page, create_test_urls, provide_app:
 
     invalid_url_title_error = wait_then_get_element(
         page=page,
-        css_selector=HPL.INPUT_URL_TITLE_UPDATE + HPL.INVALID_FIELD_SUFFIX,
+        css_selector=(
+            f"{HPL.ROW_SELECTED_URL} "
+            f"{HPL.INPUT_URL_TITLE_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
+        ),
     )
     assert invalid_url_title_error.inner_text() == FIELD_REQUIRED_STR
 
