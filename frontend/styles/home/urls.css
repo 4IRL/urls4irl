@@ -888,35 +888,44 @@ a.urlString {
 }
 
 /* Attribution badge: hidden by default (every collapsed card, both platforms),
-   revealed only when the card is expanded — on desktop AND mobile — as a row
-   below the buttons, mirroring how .urlTags / .urlOptions reveal on selection.
-   Being expanded-only, it costs no height on collapsed cards. On desktop it is
-   right-aligned so it lands in the card's lower-right corner — the same right
-   edge the collapsed inline date sits at, so the text doesn't jump sides when a
-   card is expanded. (Mobile overrides this back to left below.) */
+   revealed only when the card is expanded — on desktop AND mobile — mirroring
+   how .urlTags / .urlOptions reveal on selection. Being expanded-only, it costs
+   no height on collapsed cards. */
 .urlDateAddedBadgeStacked {
     display: none;
 }
 
+/* Desktop expanded: pin the attribution to the card's lower-right corner,
+   absolutely positioned inside .urlRowContent (position:relative) so it lifts
+   out of flow into the buttons' band — its bottom lines up with the buttons'
+   bottom and it adds NO extra row/height below them. The offsets match
+   .urlRowContent's selected padding (right 15px, bottom 20px) so the text's
+   right edge lines up with the collapsed inline date and its bottom with the
+   button row. Mobile overrides this back to an in-flow left-aligned row. */
 .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
     display: block;
-    margin-top: var(--space-1);
+    position: absolute;
+    right: 15px;
+    bottom: 20px;
     text-align: right;
 }
 
 /* Mobile: never show the inline date badge — collapsed mobile cards show no
-   date at all, and the expanded state is covered by the attribution row above.
-   Left-align that attribution so it reads as a caption under the left-aligned
-   buttons rather than floating at the right. This is the first viewport-width
-   breakpoint in this file (its others are pointer-based); mirrors the
-   Bootstrap-aligned 767.98px cutoff used in base.css / privacy-terms.css. */
+   date at all, and the expanded state is covered by the attribution row below
+   the buttons. Drop the desktop absolute-corner positioning and let it flow as
+   a left-aligned caption under the left-aligned buttons. This is the first
+   viewport-width breakpoint in this file (its others are pointer-based);
+   mirrors the Bootstrap-aligned 767.98px cutoff used in base.css /
+   privacy-terms.css. */
 @media (max-width: 767.98px) {
     .urlDateAddedBadgeInline {
         display: none;
     }
 
     .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
+        position: static;
         text-align: left;
+        margin-top: var(--space-1);
     }
 }
 
