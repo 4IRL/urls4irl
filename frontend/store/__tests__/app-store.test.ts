@@ -22,6 +22,8 @@ describe("getState", () => {
     expect(state.utubOwnerID).toBeNull();
     expect(state.selectedURLCardID).toBeNull();
     expect(state.selectedTagIDs).toEqual([]);
+    expect(state.multiSelectMode).toBe(false);
+    expect(state.selectedURLCardIDs).toEqual([]);
     expect(state.urls).toEqual([]);
     expect(state.tags).toEqual([]);
     expect(state.members).toEqual([]);
@@ -98,6 +100,8 @@ describe("resetStore", () => {
       activeUTubName: "Test",
       isCurrentUserOwner: true,
       selectedTagIDs: [1, 2],
+      multiSelectMode: true,
+      selectedURLCardIDs: [1, 2],
       urls: [
         {
           utubUrlID: 1,
@@ -116,6 +120,8 @@ describe("resetStore", () => {
     expect(state.activeUTubName).toBeNull();
     expect(state.isCurrentUserOwner).toBe(false);
     expect(state.selectedTagIDs).toEqual([]);
+    expect(state.multiSelectMode).toBe(false);
+    expect(state.selectedURLCardIDs).toEqual([]);
     expect(state.urls).toEqual([]);
   });
 });
