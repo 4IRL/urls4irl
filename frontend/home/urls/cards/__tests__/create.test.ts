@@ -317,6 +317,14 @@ describe("createURL - client-side validation", () => {
       expect(renderArgs.utubUrlTagIDs).toEqual([5, 6]);
       expect(renderArgs.utubID).toBe(1);
 
+      // The server's TOP-LEVEL addedByUserID must reach the constructed URL
+      // object handed to createURLBlock (it drives the "Added by <user>"
+      // attribution badge). Guards against a regression that reads the
+      // nonexistent response.URL.addedByUserID instead of response.addedByUserID.
+      expect(vi.mocked(createURLBlock).mock.calls[0][0]).toEqual(
+        expect.objectContaining({ addedByUserID: response.addedByUserID }),
+      );
+
       expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledTimes(
         1,
       );

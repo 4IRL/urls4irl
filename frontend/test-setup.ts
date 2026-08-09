@@ -153,6 +153,10 @@ const appConfig = {
     URL_SEARCH_NO_RESULTS: "No URLs found",
     UTUB_NO_URLS: "No URLs yet",
     ADD_URL_BUTTON: "Add URL",
+    URL_ADDED_BY: "Added by",
+    URL_ADDED_ON: "on",
+    URL_DATE_ADDED_LABEL: "Added:",
+    URL_DATE_ADDED_ARIA: "Added",
     CROSS_SEARCH_NO_RESULTS: "No results found across your UTubs",
     CROSS_SEARCH_SHORT_QUERY:
       "Type a search and press Enter or the search button",

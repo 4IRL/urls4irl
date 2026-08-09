@@ -35,6 +35,19 @@ URL_SEARCH_NO_RESULTS = "No URLs found"
 UTUB_NO_URLS = "No URLs yet"
 ADD_URL_BUTTON = "Add URL"
 
+# Static label words for the URL card's date-added attribution badge
+# (frontend/home/urls/cards/cards.ts `createURLDateAddedBadge`). The dynamic
+# username/date are composed in TS; these supply the fixed connective words so
+# the rendered strings live in the backend source of truth. Rendered forms:
+#   visible w/ adder : "Added by <user> · <date>"   (URL_ADDED_BY + " · ")
+#   visible date-only: "Added: <date>"              (URL_DATE_ADDED_LABEL)
+#   aria    w/ adder : "Added by <user> on <date>"  (URL_ADDED_BY + URL_ADDED_ON)
+#   aria    date-only: "Added <date>"               (URL_DATE_ADDED_ARIA)
+URL_ADDED_BY = "Added by"
+URL_ADDED_ON = "on"
+URL_DATE_ADDED_LABEL = "Added:"
+URL_DATE_ADDED_ARIA = "Added"
+
 
 class URL_GENERAL:
     URL = URL

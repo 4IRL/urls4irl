@@ -1,4 +1,5 @@
 import { createURLBlock, formatDateByPreference } from "../cards.js";
+import { APP_CONFIG } from "../../../../lib/config.js";
 import { setState } from "../../../../store/app-store.js";
 import { createURLTitle, createURLTitleAndUpdateBlock } from "../url-title.js";
 import {
@@ -211,9 +212,15 @@ describe("createURLBlock", () => {
       expect(badge.hasClass("urlDateAddedBadge")).toBe(true);
       expect(badge.prop("tagName")).toBe("TIME");
       expect(badge.attr("datetime")).toBe("2024-03-09T12:00:00+00:00");
-      // Default date preference is ISO (YYYY-MM-DD).
-      expect(badge.text()).toBe("Added: 2024-03-09");
-      expect(badge.attr("aria-label")).toBe("Added 2024-03-09");
+      // Default date preference is ISO (YYYY-MM-DD). Label words come from the
+      // backend strings bridge (mocked in test-setup.ts); only the date/username
+      // are composed in TS.
+      expect(badge.text()).toBe(
+        `${APP_CONFIG.strings.URL_DATE_ADDED_LABEL} 2024-03-09`,
+      );
+      expect(badge.attr("aria-label")).toBe(
+        `${APP_CONFIG.strings.URL_DATE_ADDED_ARIA} 2024-03-09`,
+      );
     });
 
     it("places the inline date badge on the URL-string row, right-most after the URL string", () => {
@@ -246,8 +253,12 @@ describe("createURLBlock", () => {
       expect(stacked.hasClass("urlDateAddedBadge")).toBe(true);
       expect(stacked.prop("tagName")).toBe("TIME");
       expect(stacked.attr("datetime")).toBe("2024-03-09T12:00:00+00:00");
-      expect(stacked.text()).toBe("Added by alice · 2024-03-09");
-      expect(stacked.attr("aria-label")).toBe("Added by alice on 2024-03-09");
+      expect(stacked.text()).toBe(
+        `${APP_CONFIG.strings.URL_ADDED_BY} alice · 2024-03-09`,
+      );
+      expect(stacked.attr("aria-label")).toBe(
+        `${APP_CONFIG.strings.URL_ADDED_BY} alice ${APP_CONFIG.strings.URL_ADDED_ON} 2024-03-09`,
+      );
       // It is the last child of .urlRowContent (after the tags/options row)...
       expect(
         rowContent.children().last().hasClass("urlDateAddedBadgeStacked"),
@@ -270,8 +281,12 @@ describe("createURLBlock", () => {
       const stacked = el
         .find(".urlRowContent")
         .children(".urlDateAddedBadgeStacked");
-      expect(stacked.text()).toBe("Added: 2024-03-09");
-      expect(stacked.attr("aria-label")).toBe("Added 2024-03-09");
+      expect(stacked.text()).toBe(
+        `${APP_CONFIG.strings.URL_DATE_ADDED_LABEL} 2024-03-09`,
+      );
+      expect(stacked.attr("aria-label")).toBe(
+        `${APP_CONFIG.strings.URL_DATE_ADDED_ARIA} 2024-03-09`,
+      );
     });
   });
 });

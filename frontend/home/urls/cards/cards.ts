@@ -1,4 +1,5 @@
 import { $ } from "../../../lib/globals.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm } from "../../../lib/modal-tracking.js";
@@ -176,12 +177,21 @@ function createURLDateAddedBadge({
     getState().preferences.dateFormat,
   );
   const adderUsername = withAdder ? resolveAdderUsername(addedByUserID) : null;
+  // Static label words come from the backend strings bridge; the dynamic
+  // username/date (and the "·" separator punctuation) are composed here so the
+  // exact rendered output is preserved: "Added by <user> · <date>" /
+  // "Added: <date>" (visible), "Added by <user> on <date>" / "Added <date>"
+  // (aria).
+  const addedBy = APP_CONFIG.strings.URL_ADDED_BY;
+  const addedOn = APP_CONFIG.strings.URL_ADDED_ON;
+  const addedLabel = APP_CONFIG.strings.URL_DATE_ADDED_LABEL;
+  const addedAriaPrefix = APP_CONFIG.strings.URL_DATE_ADDED_ARIA;
   const visibleText = adderUsername
-    ? `Added by ${adderUsername} · ${formattedDate}`
-    : `Added: ${formattedDate}`;
+    ? `${addedBy} ${adderUsername} · ${formattedDate}`
+    : `${addedLabel} ${formattedDate}`;
   const accessibleLabel = adderUsername
-    ? `Added by ${adderUsername} on ${formattedDate}`
-    : `Added ${formattedDate}`;
+    ? `${addedBy} ${adderUsername} ${addedOn} ${formattedDate}`
+    : `${addedAriaPrefix} ${formattedDate}`;
   return $(document.createElement("time"))
     .addClass(`urlDateAddedBadge ${placementClass}`)
     .attr({ datetime: addedAt, "aria-label": accessibleLabel })
