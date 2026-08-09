@@ -193,6 +193,10 @@
        readable slate on white (~7.8:1). The visible row separators come from a
        different token, so this only affects the item text, not the borders. */
     --light-grayBadgeSelection: #445055;
+    /* Role marker icons (UTub creator diamond / shared-UTub group icon) use
+       --memberRoleIconColor; the dark-theme mint (#9aeaae) is nearly invisible
+       on white (~1.4:1). Use the accessible dark accent green (~4.8:1). */
+    --light-memberRoleIconColor: #1e8549;
     /* Accent/focus green darkened for contrast on white surfaces. */
     --light-deckSelectionGreen: #1e8549;
 
@@ -220,6 +224,7 @@
     --linkColor: var(--light-linkColor);
     --cardURLTextColor: var(--light-cardURLTextColor);
     --grayBadgeSelection: var(--light-grayBadgeSelection);
+    --memberRoleIconColor: var(--light-memberRoleIconColor);
     --deckSelectionGreen: var(--light-deckSelectionGreen);
 
     --shadow-sm: var(--light-shadow-sm);
@@ -254,6 +259,7 @@
         --linkColor: var(--light-linkColor);
         --cardURLTextColor: var(--light-cardURLTextColor);
         --grayBadgeSelection: var(--light-grayBadgeSelection);
+        --memberRoleIconColor: var(--light-memberRoleIconColor);
         --deckSelectionGreen: var(--light-deckSelectionGreen);
 
         --shadow-sm: var(--light-shadow-sm);
