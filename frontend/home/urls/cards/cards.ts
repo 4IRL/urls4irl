@@ -1,9 +1,12 @@
 import { $ } from "../../../lib/globals.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
+import { getState } from "../../../store/app-store.js";
+import type { DateFormatValue } from "../../../types/preferences.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import {
   selectURLCard,
@@ -109,6 +112,92 @@ export function updateURLAfterFindingStaleData(
   }
 }
 
+// Formats an ISO-8601 timestamp string into the user's stored DateFormat
+// preference. Uses UTC calendar components so the rendered date is deterministic
+// regardless of the viewer's local timezone (added_at is stored as UTC).
+//   iso → YYYY-MM-DD | us → MM/DD/YYYY | eu → DD/MM/YYYY
+export function formatDateByPreference(
+  isoDate: string,
+  dateFormat: DateFormatValue,
+): string {
+  const date = new Date(isoDate);
+  const year = `${date.getUTCFullYear()}`;
+  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getUTCDate()}`.padStart(2, "0");
+  switch (dateFormat) {
+    case "us":
+      return `${month}/${day}/${year}`;
+    case "eu":
+      return `${day}/${month}/${year}`;
+    case "iso":
+    default:
+      return `${year}-${month}-${day}`;
+  }
+}
+
+// Resolve the display username of the member who added a URL from the current
+// UTub's member list in the store. Returns null if that user is no longer a
+// member (e.g. removed after adding the URL) so the badge can fall back to a
+// date-only label rather than showing a dangling id.
+function resolveAdderUsername(addedByUserID: number): string | null {
+  const adder = getState().members.find(
+    (member) => member.id === addedByUserID,
+  );
+  return adder ? adder.username : null;
+}
+
+// Secondary/metadata date-added badge for a URL card. Two placements share this
+// builder and are swapped by viewport + selection state (see .urlDateAddedBadge*
+// in urls.css):
+//   - "urlDateAddedBadgeInline"  — desktop only, COLLAPSED cards: a terse
+//     date-only badge inline at the URL-string row's lower-right, so it costs no
+//     card height and leaves long URLs their room (withAdder = false).
+//   - "urlDateAddedBadgeStacked" — EXPANDED cards on both desktop and mobile:
+//     a full-width row below the buttons row carrying the full attribution
+//     (withAdder = true).
+// A <time> element carries the machine-readable ISO value in `datetime` and an
+// unambiguous accessible name in `aria-label`. With `withAdder`, the visible
+// text attributes the URL to the member who added it — "Added by <username> ·
+// <date>" — falling back to a date-only "Added: <date>" when the adder is no
+// longer a member; without it, the badge is always the date-only form. The date
+// is formatted per the stored DateFormat preference.
+function createURLDateAddedBadge({
+  addedAt,
+  addedByUserID,
+  placementClass,
+  withAdder,
+}: {
+  addedAt: string;
+  addedByUserID: number;
+  placementClass: string;
+  withAdder: boolean;
+}): JQuery<HTMLElement> {
+  const formattedDate = formatDateByPreference(
+    addedAt,
+    getState().preferences.dateFormat,
+  );
+  const adderUsername = withAdder ? resolveAdderUsername(addedByUserID) : null;
+  // Static label words come from the backend strings bridge; the dynamic
+  // username/date (and the "·" separator punctuation) are composed here so the
+  // exact rendered output is preserved: "Added by <user> · <date>" /
+  // "Added: <date>" (visible), "Added by <user> on <date>" / "Added <date>"
+  // (aria).
+  const addedBy = APP_CONFIG.strings.URL_ADDED_BY;
+  const addedOn = APP_CONFIG.strings.URL_ADDED_ON;
+  const addedLabel = APP_CONFIG.strings.URL_DATE_ADDED_LABEL;
+  const addedAriaPrefix = APP_CONFIG.strings.URL_DATE_ADDED_ARIA;
+  const visibleText = adderUsername
+    ? `${addedBy} ${adderUsername} · ${formattedDate}`
+    : `${addedLabel} ${formattedDate}`;
+  const accessibleLabel = adderUsername
+    ? `${addedBy} ${adderUsername} ${addedOn} ${formattedDate}`
+    : `${addedAriaPrefix} ${formattedDate}`;
+  return $(document.createElement("time"))
+    .addClass(`urlDateAddedBadge ${placementClass}`)
+    .attr({ datetime: addedAt, "aria-label": accessibleLabel })
+    .text(visibleText);
+}
+
 // Create a URL block to add to current UTub/URLDeck
 export function createURLBlock(
   url: UtubUrlItem,
@@ -146,17 +235,49 @@ export function createURLBlock(
     "data-utub-url-tag-ids": url.utubUrlTagIDs.join(","),
   });
 
+  // URL-string row: the URL string block flex-grows and truncates while the
+  // date-added badge is pinned to the far right (margin-left:auto in urls.css),
+  // so the date reads as the URL's metadata at the card's lower-right, inline
+  // with the URL string. Kept inside .urlRowContent (position:relative,
+  // z-index:1) so it renders above the absolutely-positioned .urlRowSwipeReveal.
+  const urlStringRow = $(document.createElement("div")).addClass(
+    "urlStringRow flex-row full-width align-center",
+  );
+
   // Append update URL form if user can edit the URL
   if (url.canDelete) {
-    urlRowContent.append(
+    urlStringRow.append(
       createURLStringAndUpdateBlock(url.urlString, urlCard, utubID),
     );
   } else {
-    urlRowContent.append(createURLString(url.urlString));
+    urlStringRow.append(createURLString(url.urlString));
   }
+
+  urlStringRow.append(
+    createURLDateAddedBadge({
+      addedAt: url.addedAt,
+      addedByUserID: url.addedByUserID,
+      placementClass: "urlDateAddedBadgeInline",
+      withAdder: false,
+    }),
+  );
+  urlRowContent.append(urlStringRow);
 
   urlRowContent.append(
     createTagsAndOptionsForUrlBlock(url, dictTags, urlCard, utubID),
+  );
+
+  // Expanded-only attribution row: a full-width "Added by <user> · <date>" line
+  // below the buttons row, shown when the card is selected on BOTH desktop and
+  // mobile (see urls.css). Last child of .urlRowContent so it sits under the
+  // tags/options block; collapsed cards never show it, so it adds no height.
+  urlRowContent.append(
+    createURLDateAddedBadge({
+      addedAt: url.addedAt,
+      addedByUserID: url.addedByUserID,
+      placementClass: "urlDateAddedBadgeStacked",
+      withAdder: true,
+    }),
   );
 
   if (url.canDelete) {

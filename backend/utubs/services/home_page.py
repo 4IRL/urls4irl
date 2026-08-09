@@ -26,7 +26,10 @@ RECOGNIZED_HOME_QUERY_PARAMS = frozenset(
 )
 
 
-def render_home_page(email_change_banner: dict[str, str] | None = None) -> str:
+def render_home_page(
+    email_change_banner: dict[str, str] | None = None,
+    preferences_context: dict[str, str] | None = None,
+) -> str:
     utubs_for_this_user = UtubSummaryListSchema.from_user(current_user).model_dump(
         by_alias=True
     )[MODELS.UTUBS]
@@ -36,6 +39,7 @@ def render_home_page(email_change_banner: dict[str, str] | None = None) -> str:
         utubs_for_this_user=utubs_for_this_user,
         is_prod_or_testing=current_app.config.get(CONFIG_ENVS.TESTING_OR_PROD, True),
         email_change_banner=email_change_banner,
+        preferences_context=preferences_context,
     )
 
 

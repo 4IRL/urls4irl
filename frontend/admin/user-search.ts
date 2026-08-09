@@ -13,11 +13,8 @@
  */
 
 import { $ } from "../lib/globals.js";
-import {
-  bindPaginationLinks,
-  fetchAndSwap,
-  makeDebouncer,
-} from "./fragment-swap.js";
+import { makeDebouncer } from "../lib/debounce.js";
+import { bindPaginationLinks, fetchAndSwap } from "./fragment-swap.js";
 
 const SEARCH_INPUT_ID = "AdminUserSearchInput";
 const SEARCH_RESULTS_ID = "AdminUserSearchResults";

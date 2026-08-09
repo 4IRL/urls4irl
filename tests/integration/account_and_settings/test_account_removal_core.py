@@ -30,6 +30,7 @@ from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.user_oauth_identities import UserOAuthIdentity
+from backend.models.user_preferences import User_Preferences
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
@@ -259,6 +260,9 @@ def test_erase_core_child_rows_deleted_and_tokens_revoked(app: Flask) -> None:
         target_refreshed.oauth_identities.append(
             UserOAuthIdentity(provider="google", provider_subject="core-child-sub")
         )
+        # Display-preferences child row: in-place tombstoning fires no DB cascade,
+        # so erase_user_core must delete this explicitly (Design Decision 6).
+        target_refreshed.preferences = User_Preferences(user_id=target_id)
         db.session.commit()
 
     with app.app_context():
@@ -273,6 +277,7 @@ def test_erase_core_child_rows_deleted_and_tokens_revoked(app: Flask) -> None:
         assert Email_Validations.query.filter_by(user_id=target_id).first() is None
         assert Forgot_Passwords.query.filter_by(user_id=target_id).first() is None
         assert UserOAuthIdentity.query.filter_by(user_id=target_id).first() is None
+        assert User_Preferences.query.filter_by(user_id=target_id).first() is None
         assert ContactFormEntries.query.filter_by(id=contact_entry_id).first() is None
         revoked_token: ApiRefreshTokens = ApiRefreshTokens.query.get(refresh_token_id)
         assert revoked_token.revoked_at is not None

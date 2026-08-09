@@ -12,11 +12,11 @@
 
 @media not all and (any-pointer: coarse) {
     #listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
-        background-color: rgba(61, 71, 71, 1.0);
+        background-color: var(--oddUrlCardsBackgroundColor);
     }
 
     #listURLs .urlRow.odd[filterable="true"]:not([urlSelected="true"]):hover {
-        background-color: rgba(51, 61, 61, 1.0);
+        background-color: var(--evenUrlCardsBackgroundColor);
     }
 }
 
@@ -258,7 +258,7 @@ a.urlString {
 }
 
 .urlTitleBtnUpdate:focus-visible {
-    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: -2px;
     border-radius: 2px;
 }
@@ -685,7 +685,7 @@ a.urlString {
 }
 
 #noURLsSubheader {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--cardURLTextColor);
     text-align: center;
     margin: 0;
     padding: 0 1rem 0.25rem;
@@ -695,7 +695,7 @@ a.urlString {
 }
 
 #URLSearchNoResults {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--cardURLTextColor);
     text-align: center;
     flex: 1;
     display: flex;
@@ -709,7 +709,7 @@ a.urlString {
 }
 
 #URLTagFilterNoResults {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--cardURLTextColor);
     text-align: center;
     flex: 1;
     display: flex;
@@ -838,5 +838,154 @@ a.urlString {
 @media (prefers-reduced-motion: reduce) {
     .urlRowContent {
         transition: none;
+    }
+}
+
+/* ============================================================================
+   Date-added / attribution badges (view preference: date_format)
+   Two badges, swapped by viewport + selection so collapsed cards never grow:
+     • .urlDateAddedBadgeInline  — desktop, COLLAPSED only: a terse date-only
+       badge inline at the URL-string row's lower-right. It shares the row with
+       the URL string (which flex-grows and truncates), so it adds no height;
+       kept short so long URLs keep their room.
+     • .urlDateAddedBadgeStacked — EXPANDED only, desktop AND mobile: a
+       full-width "Added by <user> · <date>" attribution row below the buttons,
+       revealed on selection just like .urlTags / .urlOptions.
+   Collapsed mobile cards show no date at all. Both live inside .urlRowContent
+   (z-index:1, opaque), so they render above the absolutely-positioned
+   .urlRowSwipeReveal — no stacking work needed. Reuse --cardURLTextColor so
+   they read as metadata like .urlString.
+   ============================================================================ */
+.urlStringRow {
+    gap: var(--space-2);
+}
+
+/* Let the URL-string block (a plain <a>.urlString, or the editable
+   .ninetyfive-width wrap) consume the row's width and truncate, leaving the
+   badge pinned right. min-width:0 is required for flexbox ellipsis to engage. */
+.urlStringRow > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.urlDateAddedBadge {
+    color: var(--cardURLTextColor);
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+/* Desktop, collapsed: inline date-only badge pinned to the URL-string row's
+   lower-right (the URL-string block flex-grows/truncates beside it). */
+.urlDateAddedBadgeInline {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Once the card is expanded, the inline date gives way to the full attribution
+   row below the buttons — so the date is never shown twice on desktop. */
+.urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeInline {
+    display: none;
+}
+
+/* Attribution badge: hidden by default (every collapsed card, both platforms),
+   revealed only when the card is expanded — on desktop AND mobile — mirroring
+   how .urlTags / .urlOptions reveal on selection. Being expanded-only, it costs
+   no height on collapsed cards. */
+.urlDateAddedBadgeStacked {
+    display: none;
+}
+
+/* Desktop expanded: pin the attribution to the card's lower-right corner,
+   absolutely positioned inside .urlRowContent (position:relative) so it lifts
+   out of flow into the buttons' band — its bottom lines up with the buttons'
+   bottom and it adds NO extra row/height below them. The offsets match
+   .urlRowContent's selected padding (right 15px, bottom 20px) so the text's
+   right edge lines up with the collapsed inline date and its bottom with the
+   button row. Mobile overrides this back to an in-flow left-aligned row. */
+.urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
+    display: block;
+    position: absolute;
+    right: 15px;
+    bottom: 20px;
+    text-align: right;
+}
+
+/* Mobile: never show the inline date badge — collapsed mobile cards show no
+   date at all, and the expanded state is covered by the attribution row below
+   the buttons. Drop the desktop absolute-corner positioning and let it flow as
+   a left-aligned caption under the left-aligned buttons. This is the first
+   viewport-width breakpoint in this file (its others are pointer-based);
+   mirrors the Bootstrap-aligned 767.98px cutoff used in base.css /
+   privacy-terms.css. */
+@media (max-width: 767.98px) {
+    .urlDateAddedBadgeInline {
+        display: none;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
+        position: static;
+        text-align: left;
+        margin-top: var(--space-1);
+    }
+}
+
+/* ============================================================================
+   View mode (view preference: default_view) — purely cosmetic presentation.
+   Toggled via document.body.dataset.view. Border/shadow/layout ONLY; row
+   spacing/padding/min-height stay under Density's control (below). "list" is
+   the untouched baseline (no rule needed).
+   ============================================================================ */
+[data-view="compact"] .urlRow {
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+}
+
+[data-view="cards"] #listURLs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--space-3);
+}
+
+[data-view="cards"] .urlRow {
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================================
+   Density (view preference: density) — compact reduces row padding. Scoped to
+   fine-pointer (mouse/trackpad) devices ONLY so coarse-pointer (touch) devices
+   keep today's comfortable sizing and never drop below the 44px WCAG 2.5.5
+   touch-target floor. This is the sole row-spacing reduction in the feature.
+   ============================================================================ */
+@media (any-pointer: fine) {
+    [data-density="compact"] .urlRowContent {
+        padding-top: 2px;
+        padding-bottom: 2px;
+    }
+}
+
+/* ============================================================================
+   Create-time highlight flash — a transient background pulse on a freshly
+   created URL card (distinct from the persistent urlSelected styling), removed
+   by create.ts via setTimeout after ~1.5s.
+   ============================================================================ */
+.url-card-created-highlight {
+    animation: urlCardCreatedFlash 1.5s ease-out;
+}
+
+@keyframes urlCardCreatedFlash {
+    0% {
+        background-color: var(--deckSelectionGreen);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .url-card-created-highlight {
+        animation: none;
     }
 }

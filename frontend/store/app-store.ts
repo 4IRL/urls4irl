@@ -1,6 +1,21 @@
 import type { MemberItem } from "../types/member.js";
+import type {
+  DateFormatValue,
+  DensityValue,
+  SortOrderValue,
+  ThemeValue,
+  ViewModeValue,
+} from "../types/preferences.js";
 import type { UtubTag, UtubUrlItem } from "../types/url.js";
 import type { UtubSummaryItem } from "../types/utub.js";
+
+export interface UserPreferences {
+  theme: ThemeValue;
+  defaultView: ViewModeValue;
+  defaultSort: SortOrderValue;
+  density: DensityValue;
+  dateFormat: DateFormatValue;
+}
 
 export interface AppState {
   utubs: UtubSummaryItem[]; // narrowed in Phase 6
@@ -16,6 +31,7 @@ export interface AppState {
   urls: UtubUrlItem[]; // narrowed in Phase 7
   tags: UtubTag[]; // narrowed in Phase 9
   members: MemberItem[]; // narrowed in Phase 8
+  preferences: UserPreferences;
 }
 
 function createInitialState(): AppState {
@@ -33,6 +49,13 @@ function createInitialState(): AppState {
     urls: [],
     tags: [],
     members: [],
+    preferences: {
+      theme: "system",
+      defaultView: "list",
+      defaultSort: "newest",
+      density: "comfortable",
+      dateFormat: "iso",
+    },
   };
 }
 

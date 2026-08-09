@@ -55,7 +55,7 @@ p {
 }
 
 a {
-    color: aqua
+    color: var(--linkColor)
 }
 
 /* Navbar */
@@ -722,7 +722,7 @@ a {
         font-size: 0.85rem;
     }
     footer a {
-        color: var(--UTubDescriptionColor);
+        color: var(--footerURLColor);
     }
 }
 

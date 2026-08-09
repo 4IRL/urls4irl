@@ -64,6 +64,8 @@ describe("store as data source", () => {
           urlTitle: "A",
           utubUrlTagIDs: [10, 20],
           canDelete: true,
+          addedAt: "2024-01-01T00:00:00+00:00",
+          addedByUserID: 1,
         },
         {
           utubUrlID: 2,
@@ -71,6 +73,8 @@ describe("store as data source", () => {
           urlTitle: "B",
           utubUrlTagIDs: [],
           canDelete: false,
+          addedAt: "2024-01-02T00:00:00+00:00",
+          addedByUserID: 1,
         },
       ],
     });
@@ -101,6 +105,8 @@ describe("resetStore", () => {
           utubUrlTagIDs: [],
           urlTitle: "Example",
           canDelete: false,
+          addedAt: "2024-01-01T00:00:00+00:00",
+          addedByUserID: 1,
         },
       ],
     });

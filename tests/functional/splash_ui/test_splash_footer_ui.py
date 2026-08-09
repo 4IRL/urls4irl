@@ -25,7 +25,37 @@ EXPECTED_TEXTAREA_MIN_HEIGHT_PX = "320px"
 
 NARROW_VIEWPORT_WIDTH_PX = 380
 NARROW_VIEWPORT_HEIGHT_PX = 812
-EXPECTED_PRIVACY_BTN_COLOR_AT_380PX = "rgb(255, 255, 255)"
+# WCAG 2.1 AA minimum contrast ratio for normal-size text (SC 1.4.3).
+WCAG_AA_NORMAL_TEXT_MIN_CONTRAST = 4.5
+
+# Computes the WCAG 2.1 relative-luminance contrast ratio between the footer
+# Privacy link's resolved text color and the footer band's actual background.
+# The footer band is always dark (Bootstrap `bg-dark`, Design Decision 4)
+# regardless of the page theme, so both colors are read from the live DOM and
+# the ratio is asserted rather than pinning one theme's --footerURLColor literal.
+_FOOTER_PRIVACY_LINK_CONTRAST_JS = """() => {
+    const parseRgb = (value) => value.match(/[\\d.]+/g).slice(0, 3).map(Number);
+    const relativeLuminance = ([red, green, blue]) => {
+        const linear = [red, green, blue].map((channel) => {
+            const srgb = channel / 255;
+            return srgb <= 0.03928
+                ? srgb / 12.92
+                : Math.pow((srgb + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+    };
+    const privacyLink = document.getElementById('PrivacyBtn');
+    const footerBand = privacyLink.closest('footer');
+    const linkLuminance = relativeLuminance(
+        parseRgb(getComputedStyle(privacyLink).color)
+    );
+    const bandLuminance = relativeLuminance(
+        parseRgb(getComputedStyle(footerBand).backgroundColor)
+    );
+    const lighter = Math.max(linkLuminance, bandLuminance);
+    const darker = Math.min(linkLuminance, bandLuminance);
+    return (lighter + 0.05) / (darker + 0.05);
+}"""
 
 
 def test_privacy_policy(page: Page):
@@ -131,22 +161,33 @@ def test_visit_contact_page_return_splash(page: Page, splash_btn_css_selector: s
     assert_visible_css_selector(page=page, css_selector=SPL.WELCOME_TEXT)
 
 
-def test_privacy_btn_color_passes_wcag_at_380px(page: Page):
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_privacy_btn_color_passes_wcag_at_380px(page: Page, scheme: str):
     """
     GIVEN a fresh load of the U4I Splash page at a 380px-wide viewport
-    WHEN the footer renders
-    THEN ensure the #PrivacyBtn link color is white (--UTubDescriptionColor),
-        confirming the narrow-viewport contrast rule lands and was not overridden
+    WHEN the footer renders under EITHER the light or the dark color scheme
+    THEN ensure the #PrivacyBtn link color keeps WCAG AA contrast against the
+        always-dark footer band
+
+    The footer band is dark in every theme (Bootstrap `bg-dark`, Design
+    Decision 4), so its link color (--footerURLColor) is theme-INDEPENDENT and
+    must clear WCAG AA against the dark band regardless of the page theme. An
+    anonymous visitor's <html> is stamped data-theme="system", which the
+    pre-paint resolver maps to the OS color scheme; emulating both light and
+    dark here exercises both resolutions of that "system" choice. Light mode is
+    the regression guard: before the token was made theme-independent it
+    resolved to the light-theme --cardURLTextColor (#5c6b6d ≈ 2.8:1), failing
+    AA. The assertion computes the live contrast ratio rather than a hardcoded
+    color so it stays meaningful if the footer token is retuned.
     """
+    page.emulate_media(color_scheme=scheme)
     page.set_viewport_size(
         {"width": NARROW_VIEWPORT_WIDTH_PX, "height": NARROW_VIEWPORT_HEIGHT_PX}
     )
     page.reload()
     scroll_footer_link_into_view(page=page, css_selector=HPL.PRIVACY_BTN)
-    privacy_btn_color = page.evaluate(
-        "() => getComputedStyle(document.getElementById('PrivacyBtn')).color"
-    )
-    assert privacy_btn_color == EXPECTED_PRIVACY_BTN_COLOR_AT_380PX
+    contrast_ratio = page.evaluate(_FOOTER_PRIVACY_LINK_CONTRAST_JS)
+    assert contrast_ratio >= WCAG_AA_NORMAL_TEXT_MIN_CONTRAST
 
 
 def test_contact_textarea_min_height(page: Page):

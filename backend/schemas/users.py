@@ -110,6 +110,48 @@ class ChangeUsernameResponseSchema(BaseSchema):
     )
 
 
+class UpdatePreferencesResponseSchema(BaseSchema):
+    """Response for the authenticated update-preferences endpoint
+    (``PUT /users/<id>/preferences``).
+
+    One shape for every 200 response — the success branch and the no-op branch
+    both echo all five persisted preference values (each an enum ``.value``
+    string), differing only in ``status``/``message`` (the banner text is
+    server-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).
+    Echoing the stored values lets the client refresh its in-memory state
+    without a reload.
+    """
+
+    theme: str = Field(
+        alias=M.THEME,
+        description="The account's theme after the change (echoed back)",
+    )
+    default_view: str = Field(
+        alias=M.DEFAULT_VIEW,
+        description="The account's default view mode after the change",
+    )
+    default_sort: str = Field(
+        alias=M.DEFAULT_SORT,
+        description="The account's default sort order after the change",
+    )
+    density: str = Field(
+        alias=M.DENSITY,
+        description="The account's layout density after the change",
+    )
+    date_format: str = Field(
+        alias=M.DATE_FORMAT,
+        description="The account's date format after the change",
+    )
+    status: Literal["Success", "No change"] = Field(
+        alias=STD_JSON.STATUS,
+        description="Response status: Success or No change",
+    )
+    message: str = Field(
+        alias=STD_JSON.MESSAGE,
+        description="Human-readable, server-sourced banner text",
+    )
+
+
 class ChangePasswordResponseSchema(StatusMessageResponseSchema):
     """Response for the authenticated change-password endpoint.
 

@@ -6713,6 +6713,75 @@
         }
       }
     },
+    "/users/{user_id}/preferences": {
+      "put": {
+        "operationId": "updatePreferences",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Update the authenticated user's display/view preferences (theme, default UTub view, default sort, density, date format). Instant-apply (no save button); the 1:1 UserPreferences row is created on first save. Enum-membership validation rejects an out-of-set value as a 400 field error. Metrics: API_HIT only (no DOMAIN event).",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the authenticated update-preferences endpoint\n    (``PUT /users/<id>/preferences``).\n\n    One shape for every 200 response \u2014 the success branch and the no-op branch\n    both echo all five persisted preference values (each an enum ``.value``\n    string), differing only in ``status``/``message`` (the banner text is\n    server-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).\n    Echoing the stored values lets the client refresh its in-memory state\n    without a reload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatePreferencesResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_PreferencesErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "PreferencesErrorCodes": {
+            "$ref": "#/components/schemas/PreferencesErrorCodes"
+          }
+        }
+      }
+    },
     "/users/{user_id}/password": {
       "put": {
         "operationId": "changePassword",
@@ -8506,9 +8575,14 @@
               "type": "integer"
             },
             "type": "array"
+          },
+          "addedAt": {
+            "description": "Timestamp the URL was added to the UTub",
+            "format": "date-time",
+            "type": "string"
           }
         },
-        "required": ["utubUrlID", "urlString", "urlTitle"],
+        "required": ["utubUrlID", "urlString", "urlTitle", "addedAt"],
         "type": "object"
       },
       "UrlCreatedResponseSchema": {
@@ -8972,6 +9046,15 @@
           "canDelete": {
             "description": "Whether the current user can delete this URL",
             "type": "boolean"
+          },
+          "addedAt": {
+            "description": "Timestamp the URL was added to the UTub",
+            "format": "date-time",
+            "type": "string"
+          },
+          "addedByUserID": {
+            "description": "User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list)",
+            "type": "integer"
           }
         },
         "required": [
@@ -8979,7 +9062,9 @@
           "urlString",
           "utubUrlTagIDs",
           "urlTitle",
-          "canDelete"
+          "canDelete",
+          "addedAt",
+          "addedByUserID"
         ],
         "type": "object"
       },
@@ -10514,6 +10599,123 @@
         ],
         "description": "Error codes for ChangeUsernameErrorCodes"
       },
+      "DateFormat": {
+        "enum": ["iso", "us", "eu"],
+        "type": "string"
+      },
+      "Density": {
+        "enum": ["comfortable", "compact"],
+        "type": "string"
+      },
+      "SortOrder": {
+        "enum": ["newest", "oldest", "title_az"],
+        "type": "string"
+      },
+      "Theme": {
+        "enum": ["light", "dark", "system"],
+        "type": "string"
+      },
+      "ViewMode": {
+        "enum": ["list", "compact", "cards"],
+        "type": "string"
+      },
+      "UpdatePreferencesRequest": {
+        "properties": {
+          "theme": {
+            "$ref": "#/components/schemas/Theme",
+            "description": "The app-wide color theme: light, dark, or system"
+          },
+          "defaultView": {
+            "$ref": "#/components/schemas/ViewMode",
+            "description": "The default UTub URL view mode: list, compact, or cards"
+          },
+          "defaultSort": {
+            "$ref": "#/components/schemas/SortOrder",
+            "description": "The default URL sort order: newest, oldest, or title_az"
+          },
+          "density": {
+            "$ref": "#/components/schemas/Density",
+            "description": "The layout density: comfortable or compact"
+          },
+          "dateFormat": {
+            "$ref": "#/components/schemas/DateFormat",
+            "description": "The date display format: iso, us, or eu"
+          }
+        },
+        "required": [
+          "theme",
+          "defaultView",
+          "defaultSort",
+          "density",
+          "dateFormat"
+        ],
+        "type": "object"
+      },
+      "UpdatePreferencesResponseSchema": {
+        "description": "Response for the authenticated update-preferences endpoint\n(``PUT /users/<id>/preferences``).\n\nOne shape for every 200 response \u2014 the success branch and the no-op branch\nboth echo all five persisted preference values (each an enum ``.value``\nstring), differing only in ``status``/``message`` (the banner text is\nserver-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).\nEchoing the stored values lets the client refresh its in-memory state\nwithout a reload.",
+        "properties": {
+          "theme": {
+            "description": "The account's theme after the change (echoed back)",
+            "type": "string"
+          },
+          "defaultView": {
+            "description": "The account's default view mode after the change",
+            "type": "string"
+          },
+          "defaultSort": {
+            "description": "The account's default sort order after the change",
+            "type": "string"
+          },
+          "density": {
+            "description": "The account's layout density after the change",
+            "type": "string"
+          },
+          "dateFormat": {
+            "description": "The account's date format after the change",
+            "type": "string"
+          },
+          "status": {
+            "description": "Response status: Success or No change",
+            "enum": ["Success", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable, server-sourced banner text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme",
+          "defaultView",
+          "defaultSort",
+          "density",
+          "dateFormat",
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_PreferencesErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/PreferencesErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "PreferencesErrorCodes": {
+        "type": "integer",
+        "enum": [1],
+        "x-enum-varnames": ["INVALID_FORM_INPUT"],
+        "description": "Error codes for PreferencesErrorCodes"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "currentPassword": {
@@ -10767,6 +10969,39 @@
         "required": ["username", "role"],
         "type": "object"
       },
+      "ExportPreferencesSchema": {
+        "description": "The acting user's stored display/view preferences. Every value is already\nan enum ``.value`` string, so all fields are plain ``str`` (mirroring\n``ExportAccountSchema``'s field-per-attribute style). When the user has no\n``UserPreferences`` row (pre-existing user), each field carries its enum\ndefault.",
+        "properties": {
+          "theme": {
+            "description": "The app-wide color theme (light/dark/system)",
+            "type": "string"
+          },
+          "defaultView": {
+            "description": "The default UTub URL view mode (list/compact/cards)",
+            "type": "string"
+          },
+          "defaultSort": {
+            "description": "The default URL sort order (newest/oldest/title_az)",
+            "type": "string"
+          },
+          "density": {
+            "description": "The layout density (comfortable/compact)",
+            "type": "string"
+          },
+          "dateFormat": {
+            "description": "The date display format (iso/us/eu)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme",
+          "defaultView",
+          "defaultSort",
+          "density",
+          "dateFormat"
+        ],
+        "type": "object"
+      },
       "ExportTagSchema": {
         "description": "A tag in a UTub's tag vocabulary. No internal IDs; the creator is\nattributed by username.",
         "properties": {
@@ -10893,6 +11128,10 @@
             "$ref": "#/components/schemas/ExportAccountSchema",
             "description": "The acting user's own account fields"
           },
+          "preferences": {
+            "$ref": "#/components/schemas/ExportPreferencesSchema",
+            "description": "The user's stored display/view preferences"
+          },
           "utubs": {
             "description": "Every UTub the user belongs to, created or joined",
             "items": {
@@ -10901,7 +11140,7 @@
             "type": "array"
           }
         },
-        "required": ["exportedAt", "account"],
+        "required": ["exportedAt", "account", "preferences"],
         "type": "object"
       },
       "UserDataExportResponseSchema": {

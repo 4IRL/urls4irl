@@ -33,6 +33,9 @@ from backend.splash.services.change_email import (
     EMAIL_CHANGE_STATUS_QUERY_PARAM,
     build_email_change_banner,
 )
+from backend.users.services.preferences_service import (
+    build_display_preferences_context,
+)
 from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID_QUERY_PARAM
 from backend.utubs.constants import UTubErrorCodes
@@ -89,9 +92,13 @@ def home() -> str | WerkzeugResponse:
     email_change_banner = build_email_change_banner(
         request.args.get(EMAIL_CHANGE_STATUS_QUERY_PARAM, ""), authenticated=True
     )
+    preferences_context = build_display_preferences_context()
 
     if not request.args:
-        return render_home_page(email_change_banner=email_change_banner)
+        return render_home_page(
+            email_change_banner=email_change_banner,
+            preferences_context=preferences_context,
+        )
 
     if not validate_home_query_params():
         abort(404)
@@ -103,7 +110,10 @@ def home() -> str | WerkzeugResponse:
         # graceful-degradation mobile URL such as `/home?panel=urls`. Render the
         # home page; the client resolves the no-UTub state per the mobile
         # panel-persistence feature rather than the server erroring.
-        return render_home_page(email_change_banner=email_change_banner)
+        return render_home_page(
+            email_change_banner=email_change_banner,
+            preferences_context=preferences_context,
+        )
 
     valid_member = validate_user_is_member_of_utub_on_home_page_with_query_param(
         utub_id
@@ -112,7 +122,10 @@ def home() -> str | WerkzeugResponse:
     if not valid_member:
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
-    return render_home_page(email_change_banner=email_change_banner)
+    return render_home_page(
+        email_change_banner=email_change_banner,
+        preferences_context=preferences_context,
+    )
 
 
 @utubs.route("/utubs", methods=["POST"])

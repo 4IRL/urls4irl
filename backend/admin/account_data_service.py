@@ -150,6 +150,8 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
         db.session.delete(target_user.email_confirm)
     if target_user.forgot_password is not None:
         db.session.delete(target_user.forgot_password)
+    if target_user.preferences is not None:
+        db.session.delete(target_user.preferences)
     for oauth_identity in list(target_user.oauth_identities):
         db.session.delete(oauth_identity)
     contact_entries_deleted_count: int = ContactFormEntries.query.filter(
@@ -189,7 +191,8 @@ def erase_user(*, actor_id: int, target_user_id: int, reason: str) -> FlaskRespo
     - username -> ``deleted-user-<id>``, email -> tombstone address,
       password -> ``None``, ``email_validated`` -> ``False``,
       ``pending_email`` -> ``None``
-    - OAuth-identity, email-validation, and forgot-password child rows deleted
+    - OAuth-identity, email-validation, forgot-password, and display-preferences
+      child rows deleted
     - the user's ``ContactFormEntries`` rows deleted (bodies may hold PII)
     - web sessions invalidated + all API refresh tokens revoked
 

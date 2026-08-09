@@ -1,4 +1,18 @@
 {% include 'components/head/meta.html' %}
+{# Pre-paint theme resolver: <html> is server-stamped data-theme="{{ user_theme }}".
+   For the "system" choice the OS preference is only knowable client-side, so
+   resolve it to light/dark here — BEFORE bundles.html/css.html load — to avoid a
+   flash. data-theme-pref retains the raw "system" value for the settings control.
+   Nonce is required under the strict CSP (populated app-wide, incl. anonymous
+   pages, via the nonce_processor in backend/__init__.py). #}
+<script nonce="{{ nonce }}">
+  (function () {
+    var root = document.documentElement;
+    if (root.dataset.theme === 'system') {
+      root.dataset.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+  })();
+</script>
 {% include 'components/head/bundles.html' %}
 {% include 'components/head/css.html' %}
 {% include 'components/head/favicon.html' %}

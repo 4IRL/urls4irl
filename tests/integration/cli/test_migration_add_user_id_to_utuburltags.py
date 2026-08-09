@@ -19,6 +19,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
 from backend import db, migrate
+from tests.integration.cli.utils import assert_row_counts_match_ignoring_new_tables
 
 pytestmark = pytest.mark.cli
 
@@ -133,7 +134,9 @@ def test_add_user_id_to_utuburltags_migration_upgrade_and_downgrade(runner):
             assert _USER_ID_COLUMN not in _get_utub_url_tags_column_names(connection)
             assert not _has_user_id_foreign_key(connection)
             row_counts_after_downgrade = _capture_row_counts(connection)
-        assert row_counts_after_downgrade == row_counts_before_roundtrip
+        assert_row_counts_match_ignoring_new_tables(
+            row_counts_before_roundtrip, row_counts_after_downgrade
+        )
 
         command.upgrade(_build_alembic_config(), "head")
 

@@ -332,9 +332,78 @@
             <button type="button" class="btn" id="SettingsLogoutEverywhereBtn">{{ CONSTANTS.STRINGS.SETTINGS_LOGOUT_EVERYWHERE_BUTTON }}</button>
         </div>
     </section>
-    <section role="tabpanel" id="SettingsPanelUiSettings" aria-labelledby="SettingsTabUiSettings" tabindex="0" hidden>
+    <section role="tabpanel" id="SettingsPanelUiSettings" aria-labelledby="SettingsTabUiSettings" tabindex="0" hidden
+        data-action-url="{{ url_for('users.update_preferences', user_id=current_user.id) }}">
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_UI_SETTINGS }}</h2>
-        <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
+        <p class="SettingsSectionHint">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SECTION_INTRO }}</p>
+        <div id="SettingsUiSettingsStatus" class="alert d-none" role="alert" aria-live="polite"></div>
+
+        <div class="SettingsPrefRow">
+            <div class="SettingsPrefLabel">
+                <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_THEME_LABEL }}</div>
+                <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_THEME_DESC }}</div>
+            </div>
+            <div class="SettingsThemeSeg" id="SettingsThemeControl" role="radiogroup" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_THEME_LABEL }}">
+                <button type="button" role="radio" class="SettingsThemeOption" data-theme-value="light" aria-checked="{{ 'true' if display_theme == 'light' else 'false' }}" tabindex="{{ '0' if display_theme == 'light' else '-1' }}">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_THEME_LIGHT }}</button>
+                <button type="button" role="radio" class="SettingsThemeOption" data-theme-value="dark" aria-checked="{{ 'true' if display_theme == 'dark' else 'false' }}" tabindex="{{ '0' if display_theme == 'dark' else '-1' }}">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_THEME_DARK }}</button>
+                <button type="button" role="radio" class="SettingsThemeOption" data-theme-value="system" aria-checked="{{ 'true' if display_theme == 'system' else 'false' }}" tabindex="{{ '0' if display_theme == 'system' else '-1' }}">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_THEME_SYSTEM }}</button>
+            </div>
+        </div>
+
+        <div class="SettingsPrefRow">
+            <div class="SettingsPrefLabel">
+                <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_LABEL }}</div>
+                <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_DESC }}</div>
+            </div>
+            <div class="SettingsSelectWrap">
+                <select class="form-control SettingsPrefSelect" id="SettingsDefaultViewSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_LABEL }}">
+                    <option value="list"    {{ 'selected' if display_default_view == 'list'    else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_LIST }}</option>
+                    <option value="compact" {{ 'selected' if display_default_view == 'compact' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_COMPACT }}</option>
+                    <option value="cards"   {{ 'selected' if display_default_view == 'cards'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_CARDS }}</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="SettingsPrefRow">
+            <div class="SettingsPrefLabel">
+                <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_LABEL }}</div>
+                <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_DESC }}</div>
+            </div>
+            <div class="SettingsSelectWrap">
+                <select class="form-control SettingsPrefSelect" id="SettingsDefaultSortSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_LABEL }}">
+                    <option value="newest"   {{ 'selected' if display_default_sort == 'newest'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_NEWEST }}</option>
+                    <option value="oldest"   {{ 'selected' if display_default_sort == 'oldest'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_OLDEST }}</option>
+                    <option value="title_az" {{ 'selected' if display_default_sort == 'title_az' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_SORT_OPTION_TITLE_AZ }}</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="SettingsPrefRow">
+            <div class="SettingsPrefLabel">
+                <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_LABEL }}</div>
+                <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_DESC }}</div>
+            </div>
+            <div class="SettingsSelectWrap">
+                <select class="form-control SettingsPrefSelect" id="SettingsDensitySelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_LABEL }}">
+                    <option value="comfortable" {{ 'selected' if display_density == 'comfortable' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_OPTION_COMFORTABLE }}</option>
+                    <option value="compact"     {{ 'selected' if display_density == 'compact'     else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DENSITY_OPTION_COMPACT }}</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="SettingsPrefRow">
+            <div class="SettingsPrefLabel">
+                <div class="SettingsPrefLabelTitle">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_LABEL }}</div>
+                <div class="SettingsPrefLabelDesc">{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_DESC }}</div>
+            </div>
+            <div class="SettingsSelectWrap">
+                <select class="form-control SettingsPrefSelect" id="SettingsDateFormatSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_LABEL }}">
+                    <option value="iso" {{ 'selected' if display_date_format == 'iso' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_ISO }}</option>
+                    <option value="us"  {{ 'selected' if display_date_format == 'us'  else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_US }}</option>
+                    <option value="eu"  {{ 'selected' if display_date_format == 'eu'  else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_DATE_FORMAT_OPTION_EU }}</option>
+                </select>
+            </div>
+        </div>
     </section>
     </div>
 

@@ -523,6 +523,7 @@ def _associate_url_with_utub(
                 url_string=url_string,
                 url_title=url_title,
                 utub_url_tag_ids=url_utub_user_add.associated_tag_ids,
+                added_at=url_utub_user_add.added_at,
             ),
             applied_tags=applied_tags,
         ),

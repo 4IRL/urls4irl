@@ -31,6 +31,10 @@ FIELD_SAVED_LABEL_UTUB_NAME = "UTub name"
 FIELD_SAVED_LABEL_UTUB_DESCRIPTION = "UTub description"
 FIELD_SAVED_LABEL_URL_TITLE = "URL title"
 FIELD_SAVED_LABEL_URL = "URL"
+# Polite aria-live announcement written to #fieldSavedAnnouncement when a
+# newly-created URL card is re-sorted away from its top-of-list insertion point
+# (create-time default-sort visual exception) so assistive tech states the add.
+URL_ADDED_ANNOUNCEMENT = "URL added"
 
 
 class UTUB_GENERAL:

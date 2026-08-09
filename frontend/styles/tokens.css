@@ -1,6 +1,16 @@
 /** Colors and themes **/
 
-:root {
+/*
+ * Theme layer. The default (dark) values live under both bare :root and
+ * :root[data-theme="dark"] so a page with no data-theme still renders dark.
+ * :root[data-theme="light"] below overrides ONLY the semantic surface/text
+ * tokens with the light palette (see the display-preferences mock). The
+ * prefers-color-scheme media block maps the "system" choice onto the OS
+ * setting. Scale tokens (type/space/radius/shadow scales, brand green, danger,
+ * caution) stay shared in the second :root block further down.
+ */
+:root,
+:root[data-theme="dark"] {
     --splashGreen: rgba(36, 167, 69, 1.0);
     --darkSplashGreen: rgba(36, 167, 69, 0.75);
     --splashLabelGreen: rgba(46, 204, 113, 1.0);
@@ -63,11 +73,25 @@
 
     --contentTopBorder: rgba(126, 130, 130, 0.25);
 
+    /* Primary body/heading text. Replaces the hardcoded #fff literals that
+       Settings/base CSS used before the light theme existed — a token remap
+       alone would leave those white and illegible in light mode. */
+    --textPrimary: #ffffff;
+    /* Global link color (base.css `a`). Aqua reads on the dark surfaces; the
+       light override below swaps it for an accessible on-white blue. */
+    --linkColor: aqua;
+
     --cardURLTextColor: rgba(140, 155, 157, 1.0);
     --selectedUrlBorder: rgba(13, 255, 0, 1.0);
     --focusedUrlBorder: rgba(13, 255, 0, 0.75);
 
-    --footerURLColor: var(--cardURLTextColor);
+    /* Theme-INDEPENDENT. The footer band is always dark (Bootstrap `.bg-dark`
+       ≈ #212529, Design Decision 4) regardless of page theme, so its link color
+       must not follow the page theme. This fixed light grey yields ≈5.4:1 on the
+       dark band — comfortably above the WCAG AA 4.5:1 minimum — in light, dark,
+       and system-resolved themes alike. No :root[data-theme=...] / prefers-color-
+       scheme block overrides it, keeping it genuinely theme-independent. */
+    --footerURLColor: rgba(140, 155, 157, 1.0);
 
     --oddUrlCardsBackgroundColor: rgba(61, 71, 71, 1.0);
     --evenUrlCardsBackgroundColor: rgba(51, 61, 61, 1.0);
@@ -128,6 +152,120 @@
     --pipelineHealthBeaconDesktop: var(--editURLColor);
     /* beacon · mobile — violet (rgba(179,102,255) ≈ 5.5:1) */
     --pipelineHealthBeaconMobile: var(--copyURLColor);
+}
+
+/*
+ * Light theme — overrides ONLY the semantic surface/text/shadow tokens. Values
+ * trace to the display-preferences mock (the visual oracle). The navbar band
+ * stays dark in light mode for brand continuity (Design Decision 4), so navbar
+ * tokens are intentionally NOT overridden here. Brand green / danger / caution
+ * / scale tokens remain shared from the dark block above.
+ *
+ * The light palette VALUES live once as the private --light-* source tokens
+ * below (the single source of truth for every light literal), then get mapped
+ * onto the public semantic tokens from BOTH light-theme paths: the explicit
+ * :root[data-theme="light"] selector (always) and the no-JS
+ * @media (prefers-color-scheme: light) fallback for data-theme="system" (only
+ * when the OS prefers light). Because both paths reference the same source, a
+ * palette tweak is a single edit and the two paths can never drift. (DD-2)
+ */
+:root {
+    --light-defaultPageBackgroundColor: #f4f6f6;
+    --light-pageBackgroundColor: rgba(255, 255, 255, 0.92);
+    --light-panelBackgroundColor: #ffffff;
+    --light-cardBackgroundColor: #ffffff;
+    --light-cardBackgroundColorHover: rgba(0, 0, 0, 0.04);
+    --light-oddUrlCardsBackgroundColor: #f4f6f6;
+    --light-evenUrlCardsBackgroundColor: #ffffff;
+    --light-selectedUTubColorBackground: #e6efe9;
+    --light-borderColor: #d5dbdb;
+    --light-contentTopBorder: rgba(0, 0, 0, 0.10);
+
+    --light-textPrimary: #1f2424;
+    /* UTub description text was the literal `white` token — override so it is
+       legible on the light panel/card surfaces. */
+    --light-UTubDescriptionColor: #1f2424;
+    /* Accessible link blue on white (~4.6:1) in place of aqua. */
+    --light-linkColor: #0b6bcb;
+    --light-cardURLTextColor: #5c6b6d;
+    /* Deck item names (UTubs/members/tags) use --grayBadgeSelection for their
+       text; the dark-theme #aaa is far too dim on white (~2.3:1). Darken to a
+       readable slate on white (~7.8:1). The visible row separators come from a
+       different token, so this only affects the item text, not the borders. */
+    --light-grayBadgeSelection: #445055;
+    /* Role marker icons (UTub creator diamond / shared-UTub group icon) use
+       --memberRoleIconColor; the dark-theme mint (#9aeaae) is nearly invisible
+       on white (~1.4:1). Use the accessible dark accent green (~4.8:1). */
+    --light-memberRoleIconColor: #1e8549;
+    /* Accent/focus green darkened for contrast on white surfaces. */
+    --light-deckSelectionGreen: #1e8549;
+
+    --light-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --light-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --light-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+/* Explicit light choice — always maps the shared --light-* sources onto the
+   public tokens, regardless of the OS color scheme. */
+:root[data-theme="light"] {
+    --defaultPageBackgroundColor: var(--light-defaultPageBackgroundColor);
+    --pageBackgroundColor: var(--light-pageBackgroundColor);
+    --panelBackgroundColor: var(--light-panelBackgroundColor);
+    --cardBackgroundColor: var(--light-cardBackgroundColor);
+    --cardBackgroundColorHover: var(--light-cardBackgroundColorHover);
+    --oddUrlCardsBackgroundColor: var(--light-oddUrlCardsBackgroundColor);
+    --evenUrlCardsBackgroundColor: var(--light-evenUrlCardsBackgroundColor);
+    --selectedUTubColorBackground: var(--light-selectedUTubColorBackground);
+    --borderColor: var(--light-borderColor);
+    --contentTopBorder: var(--light-contentTopBorder);
+
+    --textPrimary: var(--light-textPrimary);
+    --UTubDescriptionColor: var(--light-UTubDescriptionColor);
+    --linkColor: var(--light-linkColor);
+    --cardURLTextColor: var(--light-cardURLTextColor);
+    --grayBadgeSelection: var(--light-grayBadgeSelection);
+    --memberRoleIconColor: var(--light-memberRoleIconColor);
+    --deckSelectionGreen: var(--light-deckSelectionGreen);
+
+    --shadow-sm: var(--light-shadow-sm);
+    --shadow-md: var(--light-shadow-md);
+    --shadow-lg: var(--light-shadow-lg);
+}
+
+/*
+ * "System" theme choice: honor the OS color scheme. When the user picks
+ * "system", <html> is stamped data-theme="system" and the head pre-paint script
+ * resolves it to light/dark on documentElement before styles apply — but this
+ * media block is the CSS-only (no-JS) fallback that also applies the light
+ * palette when the OS prefers light and (for any reason) the value is still
+ * "system". It maps the SAME --light-* sources as the explicit-light selector
+ * above, so the two light paths stay byte-for-byte identical by construction.
+ */
+@media (prefers-color-scheme: light) {
+    :root[data-theme="system"] {
+        --defaultPageBackgroundColor: var(--light-defaultPageBackgroundColor);
+        --pageBackgroundColor: var(--light-pageBackgroundColor);
+        --panelBackgroundColor: var(--light-panelBackgroundColor);
+        --cardBackgroundColor: var(--light-cardBackgroundColor);
+        --cardBackgroundColorHover: var(--light-cardBackgroundColorHover);
+        --oddUrlCardsBackgroundColor: var(--light-oddUrlCardsBackgroundColor);
+        --evenUrlCardsBackgroundColor: var(--light-evenUrlCardsBackgroundColor);
+        --selectedUTubColorBackground: var(--light-selectedUTubColorBackground);
+        --borderColor: var(--light-borderColor);
+        --contentTopBorder: var(--light-contentTopBorder);
+
+        --textPrimary: var(--light-textPrimary);
+        --UTubDescriptionColor: var(--light-UTubDescriptionColor);
+        --linkColor: var(--light-linkColor);
+        --cardURLTextColor: var(--light-cardURLTextColor);
+        --grayBadgeSelection: var(--light-grayBadgeSelection);
+        --memberRoleIconColor: var(--light-memberRoleIconColor);
+        --deckSelectionGreen: var(--light-deckSelectionGreen);
+
+        --shadow-sm: var(--light-shadow-sm);
+        --shadow-md: var(--light-shadow-md);
+        --shadow-lg: var(--light-shadow-lg);
+    }
 }
 
 /** Type, weight, spacing, radius, and shadow scales **/

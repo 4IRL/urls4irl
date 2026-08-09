@@ -19,7 +19,11 @@ import {
 import { selectURLCard } from "./selection.js";
 import { triggerURLSwipeNudgeIfEligible } from "./swipe.js";
 import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
-import { updateURLsAndTagSubheaderWhenTagSelected } from "./filtering.js";
+import {
+  applyDefaultUrlSort,
+  reapplyAlternatingURLCardBackgroundAfterFilter,
+  updateURLsAndTagSubheaderWhenTagSelected,
+} from "./filtering.js";
 import {
   ComboboxMode,
   createTagComboboxBlock,
@@ -261,6 +265,14 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
     urlTitle: url.urlTitle,
     utubUrlTagIDs,
     canDelete: true,
+    // Server-returned timestamp is the sole source of truth for the card's
+    // addedAt (never a client-side Date.now()), so the create-time re-sort
+    // below places a freshly-created card correctly on the very insert.
+    addedAt: url.addedAt,
+    // Server-returned adder id (the current user for a create) — drives the
+    // "Added by <username> · <date>" attribution badge, resolved to a name
+    // from the UTub member list at render time.
+    addedByUserID: response.addedByUserID,
   };
 
   // Capture visible-URL count BEFORE DOM insertion (drives alternating stripes).
@@ -278,7 +290,6 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
   ).addClass("even");
 
   newUrlCard.insertAfter($("#createURLWrap"));
-  triggerURLSwipeNudgeIfEligible({ urlRow: newUrlCard });
 
   if (currentNumOfURLs !== 0) {
     updateColorOfFollowingURLCardsAfterURLCreated();
@@ -302,8 +313,69 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
     selectURLCard(newUrlCard);
   }
 
+  reorderNewURLCardBySortPreference(newUrl, newUrlCard);
+
   closeURLSearchAndEraseInput();
   showURLSearchIcon();
+}
+
+// DD-36's sanctioned client-side visual exception: the ONLY place the client
+// re-sorts URLs. The deck is server-ordered on every full load; here we merely
+// keep the just-created card from visually contradicting the active sort for the
+// brief pre-refetch window. Detaches/re-appends the URL cards into #listURLs in
+// the stored sort order (the detach/re-append idiom sortTagFiltersInPlace uses),
+// then — only when the reorder actually relocated the new card away from its
+// top-of-list insertion point — scrolls it into view and announces the add.
+function reorderNewURLCardBySortPreference(
+  newUrl: UtubUrlItem,
+  newUrlCard: JQuery,
+): void {
+  const HIGHLIGHT_CLASS = "url-card-created-highlight";
+  const HIGHLIGHT_DURATION_MS = 1500;
+
+  const storedSortOrder = getState().preferences.defaultSort;
+  const sortedURLIDs = applyDefaultUrlSort(
+    getState().urls,
+    storedSortOrder,
+  ).map((sortedURL) => sortedURL.utubUrlID);
+  const listURLs = $("#listURLs");
+  sortedURLIDs.forEach((sortedURLID) => {
+    listURLs.append($(`.urlRow[utuburlid=${sortedURLID}]`).detach());
+  });
+  // The detach/re-append changes DOM order, so the alternating even/odd stripe
+  // classes (assigned by the pre-reorder order) are now stale — recompute them
+  // against the new order so striping stays consistent in the pre-refetch window.
+  reapplyAlternatingURLCardBackgroundAfterFilter();
+
+  // Transient background flash on the freshly-created card (distinct from the
+  // persistent urlSelected styling), removed after ~1.5s — mirrors
+  // showURLDeckBannerError()'s setTimeout-driven class removal.
+  newUrlCard.addClass(HIGHLIGHT_CLASS);
+  setTimeout(() => {
+    newUrlCard.removeClass(HIGHLIGHT_CLASS);
+  }, HIGHLIGHT_DURATION_MS);
+
+  // The reorder relocated the new card iff it is no longer the first sorted URL.
+  // A no-op top insert (e.g. the default newest sort) needs neither a scroll nor
+  // an announcement — the card lands visibly at the top of the deck and is
+  // auto-selected; the polite announcement is reserved for the relocate case,
+  // where the card can move off-screen and most needs the SR cue.
+  const reorderMovedNewCard = sortedURLIDs[0] !== newUrl.utubUrlID;
+  if (reorderMovedNewCard) {
+    newUrlCard[0].scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "center",
+    });
+    $("#fieldSavedAnnouncement").text(
+      APP_CONFIG.strings.URL_ADDED_ANNOUNCEMENT,
+    );
+  }
+
+  // Swipe-nudge fires LAST so its viewport-visibility check reads the card's
+  // final sorted/scrolled position rather than its transient top-of-list insert.
+  triggerURLSwipeNudgeIfEligible({ urlRow: newUrlCard });
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL

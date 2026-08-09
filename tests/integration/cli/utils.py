@@ -19,6 +19,29 @@ from backend.models.utubs import Utubs
 TRACKING_SEED_URL_STRINGS: frozenset[str] = MOCK_TRACKING_SEED_URL_STRINGS
 
 
+def assert_row_counts_match_ignoring_new_tables(
+    row_counts_before: dict[str, int], row_counts_after: dict[str, int]
+) -> None:
+    """Assert seeded row counts survive a migration down/up roundtrip.
+
+    Tables created by migrations NEWER than a test's downgrade target
+    (e.g. UserPreferences at head) are legitimately dropped by downgrading
+    to the target and are not part of that migration's data-loss contract,
+    so only tables present in both snapshots are compared.
+
+    Args:
+        row_counts_before: Per-table row counts captured before the roundtrip
+            (at head, after seeding).
+        row_counts_after: Per-table row counts captured after downgrading to
+            the target revision.
+    """
+    assert {
+        table_name: row_count
+        for table_name, row_count in row_counts_before.items()
+        if table_name in row_counts_after
+    } == row_counts_after
+
+
 def verify_users_added():
     """Verifies all unique mock users are in the database with emails validated"""
     for i in range(TEST_USER_COUNT):

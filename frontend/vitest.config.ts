@@ -18,6 +18,7 @@ export default defineConfig({
         "lib/**/*.ts",
         "store/**/*.ts",
         "logic/**/*.ts",
+        "settings/**/*.ts",
       ],
       exclude: ["**/*.test.ts", "test-setup.ts", "vitest.config.ts"],
     },

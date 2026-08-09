@@ -1,9 +1,20 @@
+import json
+import re
 from typing import Tuple
 
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
+from backend import db
+from backend.models.user_preferences import (
+    DateFormat,
+    Density,
+    SortOrder,
+    Theme,
+    User_Preferences,
+    ViewMode,
+)
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.utils.all_routes import ROUTES
@@ -14,6 +25,13 @@ from backend.utils.strings.utub_strs import (
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
+
+# Extracts the JSON payload rendered into the home page's #user-preferences-data
+# script tag, mirroring the #app-config extraction in test_admin_routes_gating.py.
+_USER_PREFERENCES_PATTERN = re.compile(
+    rb'<script id="user-preferences-data" type="application/json">\s*(\{.*?\})\s*</script>',
+    re.DOTALL,
+)
 
 
 def test_get_invalid_utub_on_home_page(
@@ -85,6 +103,70 @@ def test_get_home_page(
         f'<b id="loggedInAsHeader">Logged in as <span class="navLoggedInAsUsername">{logged_in_username}</span></b>'.encode()
         in response.data
     )
+
+
+def test_home_page_preferences_context_reflects_stored_row(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged-in user WITH a stored UserPreferences row
+    WHEN they request /home
+    THEN the rendered #user-preferences-data script tag's payload reflects each
+        stored preference's `.value` string (build_display_preferences_context
+        has-a-row path, end-to-end through the rendered HTML).
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        db.session.add(
+            User_Preferences(
+                user_id=user.id,
+                theme=Theme.DARK,
+                default_view=ViewMode.CARDS,
+                default_sort=SortOrder.TITLE_AZ,
+                density=Density.COMPACT,
+                date_format=DateFormat.EU,
+            )
+        )
+        db.session.commit()
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    match = _USER_PREFERENCES_PATTERN.search(response.data)
+    assert match is not None
+    payload = json.loads(match.group(1))
+    assert payload["display_theme"] == Theme.DARK.value
+    assert payload["display_default_view"] == ViewMode.CARDS.value
+    assert payload["display_default_sort"] == SortOrder.TITLE_AZ.value
+    assert payload["display_density"] == Density.COMPACT.value
+    assert payload["display_date_format"] == DateFormat.EU.value
+
+
+def test_home_page_preferences_context_defaults_when_no_row(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged-in user with NO stored UserPreferences row
+    WHEN they request /home
+    THEN the rendered #user-preferences-data payload equals each preference
+        enum's default (build_display_preferences_context None-row path,
+        exercised end-to-end through the rendered HTML).
+    """
+    client, _, _, _ = login_first_user_without_register
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    match = _USER_PREFERENCES_PATTERN.search(response.data)
+    assert match is not None
+    payload = json.loads(match.group(1))
+    assert payload["display_theme"] == Theme.SYSTEM.value
+    assert payload["display_default_view"] == ViewMode.LIST.value
+    assert payload["display_default_sort"] == SortOrder.NEWEST.value
+    assert payload["display_density"] == Density.COMFORTABLE.value
+    assert payload["display_date_format"] == DateFormat.ISO.value
 
 
 def test_get_home_page_when_not_in_utub(

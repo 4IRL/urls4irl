@@ -5,6 +5,7 @@ import { showURLSearchIcon } from "../../search.js";
 import { STAGED_GET_KEY } from "../../tags/combobox.js";
 import { renderAppliedTagsForUrl } from "../../tags/tag-render.js";
 import { getNumOfURLs } from "../../utils.js";
+import { getState } from "../../../../store/app-store.js";
 import { createURLBlock } from "../cards.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
@@ -13,6 +14,7 @@ import {
   createURLShowInput,
   resetCreateURLFailErrors,
 } from "../create.js";
+import { applyDefaultUrlSort } from "../filtering.js";
 import { triggerURLSwipeNudgeIfEligible } from "../swipe.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
@@ -64,7 +66,16 @@ vi.mock("../utils.js", () => ({
 }));
 
 vi.mock("../../../../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ urls: [] })),
+  getState: vi.fn(() => ({
+    urls: [],
+    preferences: {
+      theme: "system",
+      defaultView: "list",
+      defaultSort: "newest",
+      density: "comfortable",
+      dateFormat: "iso",
+    },
+  })),
   setState: vi.fn(),
 }));
 
@@ -83,6 +94,8 @@ vi.mock("../../tags/tag-render.js", () => ({
 
 vi.mock("../filtering.js", () => ({
   updateURLsAndTagSubheaderWhenTagSelected: vi.fn(),
+  applyDefaultUrlSort: vi.fn((urls: unknown[]) => urls),
+  reapplyAlternatingURLCardBackgroundAfterFilter: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -304,6 +317,14 @@ describe("createURL - client-side validation", () => {
       expect(renderArgs.utubUrlTagIDs).toEqual([5, 6]);
       expect(renderArgs.utubID).toBe(1);
 
+      // The server's TOP-LEVEL addedByUserID must reach the constructed URL
+      // object handed to createURLBlock (it drives the "Added by <user>"
+      // attribution badge). Guards against a regression that reads the
+      // nonexistent response.URL.addedByUserID instead of response.addedByUserID.
+      expect(vi.mocked(createURLBlock).mock.calls[0][0]).toEqual(
+        expect.objectContaining({ addedByUserID: response.addedByUserID }),
+      );
+
       expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledTimes(
         1,
       );
@@ -311,6 +332,106 @@ describe("createURL - client-side validation", () => {
         .value as JQuery;
       expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledWith({
         urlRow: createdRow,
+      });
+    });
+  });
+
+  describe("createURLSuccess - create-time re-sort, scroll, and highlight", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `
+        <div id="listURLs">
+          <div id="createURLWrap"></div>
+          <div class="urlRow" utuburlid="10"></div>
+          <div class="urlRow" utuburlid="11"></div>
+        </div>
+        <input id="urlStringCreate" />
+        <input id="urlTitleCreate" />
+        <button id="urlBtnCreate"></button>
+        <div id="urlCreateDualLoadingRing"></div>
+        <span id="fieldSavedAnnouncement"></span>
+      `;
+      vi.mocked(getState).mockReturnValue({
+        urls: [{ utubUrlID: 10 }, { utubUrlID: 11 }, { utubUrlID: 42 }],
+        preferences: {
+          theme: "system",
+          defaultView: "list",
+          defaultSort: "oldest",
+          density: "comfortable",
+          dateFormat: "iso",
+        },
+      } as unknown as ReturnType<typeof getState>);
+      // A non-append order that places the new card (42) last, forcing a move
+      // away from its top-of-list insertion point.
+      vi.mocked(applyDefaultUrlSort).mockReturnValue([
+        { utubUrlID: 10 },
+        { utubUrlID: 11 },
+        { utubUrlID: 42 },
+      ] as unknown as ReturnType<typeof applyDefaultUrlSort>);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("re-sorts the new card to its sorted DOM position, scrolls it into view, and flashes a transient highlight", () => {
+      const newCard = $('<div class="urlRow" utuburlid="42"></div>');
+      const scrollSpy = vi.fn();
+      (newCard[0] as HTMLElement).scrollIntoView = scrollSpy;
+      vi.mocked(createURLBlock).mockReturnValue(newCard);
+
+      $("#urlStringCreate").val("https://example.com");
+      $("#urlTitleCreate").val("Example");
+
+      const response = {
+        utubID: 1,
+        addedByUserID: 1,
+        URL: {
+          utubUrlID: 42,
+          urlString: "https://example.com",
+          urlTitle: "Example",
+          utubUrlTagIDs: [],
+          addedAt: "2024-03-09T12:00:00+00:00",
+        },
+        appliedTags: [],
+      };
+      const xhr = { status: 200 } as JQuery.jqXHR;
+      const chainable = createMockJqXHRChainable({
+        done: (callback: unknown) =>
+          (callback as (r: unknown, t: unknown, x: unknown) => void)(
+            response,
+            "success",
+            xhr,
+          ),
+      });
+      vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+      createURL($("#urlTitleCreate"), $("#urlStringCreate"), 1);
+
+      // (1) The new card lands at its sorted DOM position (last), via the
+      // detach/re-append reorder into #listURLs.
+      const orderedIDs = $("#listURLs .urlRow")
+        .toArray()
+        .map((el) => el.getAttribute("utuburlid"));
+      expect(orderedIDs).toEqual(["10", "11", "42"]);
+
+      // (2) The moved card is scrolled into view, centered.
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ block: "center" }),
+      );
+
+      // Aria-live announcement fires on a non-no-op reorder.
+      expect($("#fieldSavedAnnouncement").text()).toBe("URL added");
+
+      // (3) Highlight class added synchronously, removed only after ~1.5s.
+      expect(newCard.hasClass("url-card-created-highlight")).toBe(true);
+      vi.advanceTimersByTime(1500);
+      expect(newCard.hasClass("url-card-created-highlight")).toBe(false);
+
+      // Swipe-nudge fires last, against the final position.
+      expect(triggerURLSwipeNudgeIfEligible).toHaveBeenCalledWith({
+        urlRow: newCard,
       });
     });
   });

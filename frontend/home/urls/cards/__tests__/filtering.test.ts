@@ -1,6 +1,12 @@
-import { updateURLsAndTagSubheaderWhenTagSelected } from "../filtering.js";
+import {
+  applyDefaultDensity,
+  applyDefaultUrlSort,
+  applyDefaultViewMode,
+  updateURLsAndTagSubheaderWhenTagSelected,
+} from "../filtering.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
+import type { UtubUrlItem } from "../../../../types/url.js";
 
 vi.mock("../../../../logic/tag-filtering.js", () => ({
   computeURLVisibility: vi.fn(() => []),
@@ -207,4 +213,52 @@ describe("Tag Filter Empty State", () => {
     expect($("#URLTagFilterNoResults").hasClass("hidden")).toBe(true);
     expect($("#URLTagFilterAnnouncement").text()).toBe("");
   });
+});
+
+describe("applyDefaultUrlSort", () => {
+  // Distinct addedAt + urlTitle values so each enum branch produces a unique
+  // ordering (newest ≠ oldest ≠ title_az).
+  const urls = [
+    { utubUrlID: 1, urlTitle: "Zebra", addedAt: "2024-01-02T00:00:00+00:00" },
+    { utubUrlID: 2, urlTitle: "apple", addedAt: "2024-01-03T00:00:00+00:00" },
+    { utubUrlID: 3, urlTitle: "Mango", addedAt: "2024-01-01T00:00:00+00:00" },
+  ] as unknown as UtubUrlItem[];
+
+  const expectedOrderBySort = {
+    newest: [2, 1, 3], // addedAt desc
+    oldest: [3, 1, 2], // addedAt asc
+    title_az: [2, 3, 1], // apple, Mango, Zebra (case-insensitive)
+  } as const;
+
+  it.each(["newest", "oldest", "title_az"] as const)(
+    "orders URLs correctly for '%s'",
+    (sortOrder) => {
+      const sorted = applyDefaultUrlSort(urls, sortOrder);
+      expect(sorted.map((url) => url.utubUrlID)).toEqual(
+        expectedOrderBySort[sortOrder],
+      );
+      // Purity: the input array is not mutated.
+      expect(urls.map((url) => url.utubUrlID)).toEqual([1, 2, 3]);
+    },
+  );
+});
+
+describe("applyDefaultViewMode", () => {
+  it.each(["list", "compact", "cards"] as const)(
+    "sets document.body.dataset.view to '%s'",
+    (viewMode) => {
+      applyDefaultViewMode(viewMode);
+      expect(document.body.dataset.view).toBe(viewMode);
+    },
+  );
+});
+
+describe("applyDefaultDensity", () => {
+  it.each(["comfortable", "compact"] as const)(
+    "sets document.body.dataset.density to '%s'",
+    (density) => {
+      applyDefaultDensity(density);
+      expect(document.body.dataset.density).toBe(density);
+    },
+  );
 });

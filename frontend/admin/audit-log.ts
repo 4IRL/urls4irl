@@ -14,11 +14,8 @@
  */
 
 import { $ } from "../lib/globals.js";
-import {
-  bindPaginationLinks,
-  fetchAndSwap,
-  makeDebouncer,
-} from "./fragment-swap.js";
+import { makeDebouncer } from "../lib/debounce.js";
+import { bindPaginationLinks, fetchAndSwap } from "./fragment-swap.js";
 
 const FILTERS_FORM_ID = "AdminAuditLogFilters";
 const RESULTS_ID = "AdminAuditLogResults";

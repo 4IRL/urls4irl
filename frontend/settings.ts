@@ -16,6 +16,7 @@ import { initChangeEmail } from "./settings/change-email.js";
 import { initAccountRemoval } from "./settings/account-removal.js";
 import { initLogoutEverywhere } from "./settings/logout-everywhere.js";
 import { initDataExport } from "./settings/data-export.js";
+import { initDisplayPreferences } from "./settings/display-preferences.js";
 
 registerJQueryPlugins();
 setupCSRF();
@@ -32,6 +33,7 @@ $(document).ready(() => {
   initAccountRemoval();
   initLogoutEverywhere();
   initDataExport();
+  initDisplayPreferences();
 
   // Cross-tab export-status toast (DD-6). A single global subscription mirrors
   // the export controller's in-panel status updates into the always-mounted

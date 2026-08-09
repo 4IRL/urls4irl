@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from backend.models.user_preferences import resolve_preferences
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.schemas.exports import (
     ExportAccountSchema,
     ExportMemberSchema,
+    ExportPreferencesSchema,
     ExportTagSchema,
     ExportUrlSchema,
     ExportUtubSchema,
@@ -120,6 +122,18 @@ def build_user_data_export_core(
         email=user.email,
         member_since=user.created_at,
     )
+    # Build the preferences section the same way ``account`` is built, resolving
+    # each field to its enum default when the user has no ``UserPreferences`` row
+    # (pre-existing user) via the shared ``resolve_preferences`` helper, the
+    # single source of truth for the None-row defaults.
+    resolved_preferences = resolve_preferences(user.preferences)
+    preferences = ExportPreferencesSchema(
+        theme=resolved_preferences.theme.value,
+        default_view=resolved_preferences.default_view.value,
+        default_sort=resolved_preferences.default_sort.value,
+        density=resolved_preferences.density.value,
+        date_format=resolved_preferences.date_format.value,
+    )
     memberships = user.utubs_is_member_of
     username_by_id = _resolve_contributor_usernames(memberships)
     utubs = [
@@ -129,5 +143,6 @@ def build_user_data_export_core(
     return UserDataExportSchema(
         exported_at=generated_at,
         account=account,
+        preferences=preferences,
         utubs=utubs,
     )

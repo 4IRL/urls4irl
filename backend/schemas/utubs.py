@@ -13,6 +13,7 @@ from backend.utils.strings.model_strs import MODELS as M, UTUB_DESCRIPTION
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME, UTUB_CREATOR_ID
 
 if TYPE_CHECKING:
+    from backend.models.utub_urls import Utub_Urls
     from backend.models.utubs import Utubs
 
 
@@ -69,10 +70,19 @@ class UtubDetailSchema(BaseSchema):
         return value.isoformat()
 
     @classmethod
-    def from_utub(cls, utub: Utubs, current_user_id: int) -> UtubDetailSchema:
+    def from_utub(
+        cls,
+        utub: Utubs,
+        current_user_id: int,
+        ordered_utub_urls: list[Utub_Urls],
+    ) -> UtubDetailSchema:
+        # ``ordered_utub_urls`` is the UTub's URL rows pre-ordered by the viewing
+        # user's ``default_sort`` preference (server-authoritative, resolved by
+        # ``get_single_utub_for_user``) — the serialized ``urls`` list is emitted
+        # in exactly this order.
         urls = [
             UtubUrlSchema.from_orm_url(u, current_user_id, utub.utub_creator)
-            for u in utub.utub_urls
+            for u in ordered_utub_urls
         ]
         tags = [UtubTagSchema(id=t.id, tag_string=t.tag_string) for t in utub.utub_tags]
         # Replicate the tag_applied count loop from Utubs.serialized()

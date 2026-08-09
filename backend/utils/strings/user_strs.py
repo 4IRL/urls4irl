@@ -26,6 +26,11 @@ MEMBER = "member"
 # bridge, surfaced dynamically off xhr.responseJSON.message).
 USERNAME_CHANGE_SUCCESS = "Your username has been updated."
 USERNAME_CHANGE_NO_CHANGE = "No change — that's already your username."
+# Update-preferences 200 banner copy (server-sourced envelope text — surfaced
+# dynamically off xhr.responseJSON.message; no JS bridge). Mirrors the
+# change-username success/no-op pair.
+PREFERENCES_CHANGE_SUCCESS = "Your display preferences have been saved."
+PREFERENCES_CHANGE_NO_CHANGE = "No change — those are already your preferences."
 # Change-password 200 banner copy (server-sourced envelope text — surfaced
 # dynamically off xhr.responseJSON.message; no JS bridge).
 PASSWORD_CHANGE_SUCCESS = (

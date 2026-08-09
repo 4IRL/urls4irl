@@ -153,6 +153,10 @@ const appConfig = {
     URL_SEARCH_NO_RESULTS: "No URLs found",
     UTUB_NO_URLS: "No URLs yet",
     ADD_URL_BUTTON: "Add URL",
+    URL_ADDED_BY: "Added by",
+    URL_ADDED_ON: "on",
+    URL_DATE_ADDED_LABEL: "Added:",
+    URL_DATE_ADDED_ARIA: "Added",
     CROSS_SEARCH_NO_RESULTS: "No results found across your UTubs",
     CROSS_SEARCH_SHORT_QUERY:
       "Type a search and press Enter or the search button",
@@ -185,6 +189,7 @@ const appConfig = {
     FIELD_SAVED_LABEL_UTUB_DESCRIPTION: "UTub description",
     FIELD_SAVED_LABEL_URL_TITLE: "URL title",
     FIELD_SAVED_LABEL_URL: "URL",
+    URL_ADDED_ANNOUNCEMENT: "URL added",
     // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py.
     // Only keys read by production TS are mirrored here. Jinja-only labels are inline in templates;
     // Python-test-only keys live in ui_testing_strs.py. Vitest runs in Node with no Flask app context,
@@ -293,6 +298,7 @@ const appConfig = {
       "Wait for your data export to finish before deleting your account.",
     SETTINGS_EXPORT_BLOCKED_BY_DELETE:
       "Finish or cancel the account deletion in progress before exporting.",
+    SETTINGS_PREFERENCES_SAVED: "Preferences saved",
   },
 };
 

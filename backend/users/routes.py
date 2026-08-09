@@ -31,6 +31,7 @@ from backend.schemas.requests.users import (
     ChangeUsernameRequest,
     DeleteAccountRequest,
     ProviderLinkRequest,
+    UpdatePreferencesRequest,
 )
 from backend.schemas.users import (
     AccountRemovalResponseSchema,
@@ -38,6 +39,7 @@ from backend.schemas.users import (
     ChangePasswordResponseSchema,
     ChangeUsernameResponseSchema,
     LoginRedirectResponseSchema,
+    UpdatePreferencesResponseSchema,
 )
 from backend.splash.constants import OAuthLinkErrorCodes
 from backend.splash.services.oauth.linking_service import (
@@ -53,6 +55,7 @@ from backend.users.constants import (
     DataExportErrorCodes,
     DeleteAccountErrorCodes,
     LogoutEverywhereErrorCodes,
+    PreferencesErrorCodes,
 )
 from backend.users.services.account_service import (
     apply_account_deletion,
@@ -63,6 +66,10 @@ from backend.users.services.account_service import (
     build_account_info_context,
 )
 from backend.users.services.data_export_service import build_user_data_export_core
+from backend.users.services.preferences_service import (
+    apply_preferences_change,
+    build_display_preferences_context,
+)
 from backend.users.services.stats_service import build_user_stats_context
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import provide_config_for_constants
@@ -193,6 +200,7 @@ def settings() -> str:
         **build_connected_accounts_context(),
         **build_user_stats_context(),
         **build_account_info_context(),
+        **build_display_preferences_context(),
     )
 
 
@@ -219,6 +227,36 @@ def change_username(
     self-ownership/uniqueness/rate-limit policy is enforced in the service)."""
     return apply_username_change(
         user_id=user_id, new_username=change_username_request.username
+    )
+
+
+@users.route("/users/<int:user_id>/preferences", methods=["PUT"])
+@email_validation_required
+@api_route(
+    request_schema=UpdatePreferencesRequest,
+    response_schema=UpdatePreferencesResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=PreferencesErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Update the authenticated user's display/view preferences (theme, default UTub view, default sort, density, date format). Instant-apply (no save button); the 1:1 UserPreferences row is created on first save. Enum-membership validation rejects an out-of-set value as a 400 field error. Metrics: API_HIT only (no DOMAIN event).",
+    status_codes={
+        200: UpdatePreferencesResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+    },
+)
+def update_preferences(
+    user_id: int, update_preferences_request: UpdatePreferencesRequest
+) -> FlaskResponse:
+    """Applies the authenticated update-preferences flow (self-service only; the
+    self-ownership guard and no-op short-circuit are enforced in the service)."""
+    return apply_preferences_change(
+        user_id=user_id,
+        theme=update_preferences_request.theme,
+        default_view=update_preferences_request.default_view,
+        default_sort=update_preferences_request.default_sort,
+        density=update_preferences_request.density,
+        date_format=update_preferences_request.date_format,
     )
 
 

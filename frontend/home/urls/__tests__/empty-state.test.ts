@@ -134,6 +134,8 @@ describe("UTub empty state", () => {
         urlTitle: "Example",
         utubUrlTagIDs: [],
         canDelete: true,
+        addedAt: "2024-01-01T00:00:00+00:00",
+        addedByUserID: 1,
       },
     ];
 
