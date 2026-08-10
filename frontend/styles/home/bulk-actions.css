@@ -14,12 +14,12 @@
 .urlSelectCheckboxWrap {
   display: none;
   flex: 0 0 auto;
+  align-self: center;
   align-items: center;
   justify-content: center;
   width: 46px;
   min-width: 46px;
   cursor: pointer;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -28,9 +28,15 @@
 }
 
 /* Row becomes a horizontal flex container in mode so the checkbox sits to the
-   left of the content instead of stacking above it (.urlRow is flex-column). */
+   left of the content instead of stacking above it. The row carries Bootstrap's
+   `.flex-column` utility, which ships `flex-direction: column !important`
+   (navbar-shared*.css, bootstrap 5.2.3) — an !important declaration beats any
+   non-important one regardless of specificity, so this must also be !important
+   to flip the row to a horizontal layout (same Bootstrap-!important collision
+   documented in urls.css). Without it the row stays a column and the checkbox
+   stacks above the content (top-aligned) instead of centering beside it. */
 #URLDeck.multiSelectActive .urlRow {
-  flex-direction: row;
+  flex-direction: row !important;
   align-items: stretch;
 }
 
@@ -41,9 +47,9 @@
 
 .urlSelectCheckbox {
   box-sizing: border-box;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   border: 2px solid var(--grayBadgeSelection);
   background: transparent;
   display: inline-flex;
