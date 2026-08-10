@@ -28,6 +28,11 @@ import {
 import { resetNewURLForm } from "./cards/create.js";
 import { triggerURLSwipeNudgeIfEligible } from "./cards/swipe.js";
 import {
+  pruneRemovedFromSelection,
+  reapplyMultiSelectMark,
+} from "./bulk-actions/bulk-selection.js";
+import { exitMultiSelectMode } from "./bulk-actions/bulk-mode.js";
+import {
   showURLSearchIcon,
   hideURLSearchIcon,
   disableURLSearch,
@@ -53,6 +58,7 @@ export function resetURLDeck(): void {
   // AFTER the reset (no UTub is selected here), otherwise it would surface again.
   resetUTubEditPanelState();
   $("#urlBtnCreate").hideClass();
+  $("#urlBtnMultiSelect").hideClass();
   disableURLSearch();
 }
 
@@ -63,6 +69,7 @@ export function resetURLDeckOnDeleteUTub(): void {
   // updateUTubNameHideInput(), so hide the create button after it runs.
   resetUTubEditPanelState();
   $("#urlBtnCreate").hideClass();
+  $("#urlBtnMultiSelect").hideClass();
   disableURLSearch();
 }
 
@@ -93,14 +100,33 @@ export function updateURLDeck(
     newItems: updatedUTubUrls,
     getID: (url) => url.utubUrlID,
     removeElement: (urlID) => {
+      // Reconcile the multi-select store synchronously — before the fade —
+      // so the bulk-bar count/store update immediately rather than waiting on
+      // the fade animation.
+      pruneRemovedFromSelection([urlID]);
       const urlToRemove = $(".urlRow[utuburlid=" + urlID + "]");
       urlToRemove.fadeOut("fast", function () {
         urlToRemove.remove();
+        // A remote/collaborative stale-data diff can empty the UTub while the
+        // user has multi-select mode active — fall back to the empty state,
+        // hide the (now pointless) toggle, and exit mode.
+        if ($(".urlRow").length === 0) {
+          showURLsEmptyState();
+          $("#urlBtnMultiSelect").hideClass();
+          if (getState().multiSelectMode) exitMultiSelectMode();
+        }
       });
     },
     addElement: (url) => {
       const urlBlock = createURLBlock(url, updatedUTubTags, utubID);
       $("#listURLs").append(urlBlock);
+      // Deck-diff reconcile lives in the URL adapter (never the generic engine):
+      // re-mark a re-added card from the store so a live multi-selection
+      // survives the diff, symmetric with removeElement's prune above.
+      // createURLBlock also re-marks internally, so this is an idempotent
+      // belt-and-suspenders re-mark that keeps the reconcile contract explicit
+      // at the adapter boundary.
+      reapplyMultiSelectMark(urlBlock);
       triggerURLSwipeNudgeIfEligible({ urlRow: urlBlock });
     },
     updateElement: (urlID, url) => {
@@ -152,8 +178,12 @@ export function setURLDeckOnUTubSelected(
     }
 
     hideURLsEmptyState();
+    // A UTub with URLs can be multi-selected — reveal the mode toggle.
+    $("#urlBtnMultiSelect").showClassNormal();
   } else {
     showURLsEmptyState();
+    // Nothing to select in an empty UTub — keep the toggle hidden.
+    $("#urlBtnMultiSelect").hideClass();
   }
 
   $("#urlBtnCreate").showClassNormal();
@@ -177,6 +207,9 @@ export function setURLDeckWhenNoUTubSelected(): void {
   $("#URLDeckHeader").text("URLs");
   $(".updateUTubBtn").hideClass();
   $("#urlBtnCreate").hideClass();
+  // Covers both the initial page load (before any UTub is selected) and the
+  // post-delete/leave paths, which all route through here.
+  $("#urlBtnMultiSelect").hideClass();
   // No UTub open -> hide the LHS minify toggle (initial load, leave, delete).
   $("#lhsToggleHeader").hideClass();
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();

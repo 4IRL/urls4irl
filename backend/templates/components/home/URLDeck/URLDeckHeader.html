@@ -66,9 +66,10 @@
 		<button id="utubEditPanelClose" class="cancelButton hidden" type="button" aria-label="Close edit panel">Close</button>
 		{# Multi-select mode toggle. Enters a capability-aware bulk-selection mode
 		   (checkboxes + bulk-action bar). aria-pressed reflects the active state,
-		   synced in bulk-actions/index.ts. Default .hidden handling added in a
-		   later step (hidden until a UTub with URLs is selected). #}
-		<button id="urlBtnMultiSelect" class="hdrBtn multi" aria-pressed="false"
+		   synced in bulk-actions/index.ts. Hidden by default (initial page load,
+		   before any UTub is selected); deck.ts reveals it only for a UTub that
+		   has URLs, mirroring #urlBtnCreate's `hidden` default. #}
+		<button id="urlBtnMultiSelect" class="hdrBtn multi hidden" aria-pressed="false"
 			aria-label="Toggle multi-select mode" tabindex="0">
 			<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor"
 				class="bi bi-check2-square" viewBox="0 0 16 16">

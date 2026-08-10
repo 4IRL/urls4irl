@@ -49,11 +49,21 @@ export function enterMultiSelectMode(): void {
  * deck, conditionally restore the cross-UTub-search trigger, and announce.
  */
 export function exitMultiSelectMode(): void {
-  // No-op when mode is not active. This keeps exit idempotent so an unpaired
-  // exit (e.g. a UTub switch/delete while mode was already off) can never
-  // restore #toCrossUtubSearch from a stale crossSearchWasVisible captured by
-  // an earlier enter, nor emit a spurious mode-changed / clear the selection.
-  if (!isMultiSelectActive()) return;
+  // No-op only on a genuinely-inactive (unpaired) exit — keeping exit
+  // idempotent so it can never restore #toCrossUtubSearch from a stale
+  // crossSearchWasVisible captured by an earlier enter, nor emit a spurious
+  // mode-changed / clear the selection. But the deck's multiSelectActive class
+  // is the authoritative "visually in mode" signal: a caller (UTub
+  // switch/delete via buildSelectedUTub / deleteUTubSuccess) may pre-clear the
+  // store flag in its own setState BEFORE the UTUB_SELECTED/UTUB_DELETED emit
+  // reaches this subscriber, and the DOM still needs teardown in that case, so
+  // proceed whenever either signal says we are (or look) in mode.
+  if (
+    !isMultiSelectActive() &&
+    !$("#URLDeck").hasClass(MULTI_SELECT_ACTIVE_CLASS)
+  ) {
+    return;
+  }
   log("exit multi-select mode");
 
   clearURLSelection();

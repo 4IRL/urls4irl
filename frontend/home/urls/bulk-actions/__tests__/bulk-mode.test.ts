@@ -68,6 +68,23 @@ describe("bulk-mode", () => {
     });
   });
 
+  it("still tears down the deck DOM when the store flag was pre-cleared before exit", () => {
+    // A UTub switch/delete pre-clears multiSelectMode in its own setState
+    // BEFORE the UTUB_SELECTED/UTUB_DELETED emit reaches this exit subscriber.
+    // The deck must still be torn down (class removed, cross-search restored)
+    // — the multiSelectActive class is the authoritative in-mode signal.
+    enterMultiSelectMode();
+    expect($("#URLDeck").hasClass("multiSelectActive")).toBe(true);
+    expect($("#toCrossUtubSearch").hasClass("hidden")).toBe(true);
+
+    setState({ multiSelectMode: false }); // simulate the pre-clear
+
+    exitMultiSelectMode();
+
+    expect($("#URLDeck").hasClass("multiSelectActive")).toBe(false);
+    expect($("#toCrossUtubSearch").hasClass("hidden")).toBe(false);
+  });
+
   describe("isMultiSelectActive", () => {
     it("reflects the store's multiSelectMode flag", () => {
       expect(isMultiSelectActive()).toBe(false);

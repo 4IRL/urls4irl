@@ -14,9 +14,24 @@ import {
 } from "../deck.js";
 import { reapplyURLSearchFilter } from "../search.js";
 import { updateUTubNameHideInput } from "../update-name.js";
+import { showURLsEmptyState } from "../empty-state.js";
+import { exitMultiSelectMode } from "../bulk-actions/bulk-mode.js";
+import {
+  pruneRemovedFromSelection,
+  reapplyMultiSelectMark,
+} from "../bulk-actions/bulk-selection.js";
 
 vi.mock("../../../logic/apply-deck-diff.js", () => ({
   applyDeckDiff: vi.fn(),
+}));
+
+vi.mock("../bulk-actions/bulk-selection.js", () => ({
+  pruneRemovedFromSelection: vi.fn(),
+  reapplyMultiSelectMark: vi.fn(),
+}));
+
+vi.mock("../bulk-actions/bulk-mode.js", () => ({
+  exitMultiSelectMode: vi.fn(),
 }));
 
 vi.mock("../../utubs/header-fit.js", () => ({
@@ -163,6 +178,107 @@ describe("updateURLDeck", () => {
     expect(document.querySelector('.urlRow[utuburlid="1"]')).toBeNull();
   });
 
+  it("prunes the removed id from the multi-select selection synchronously in removeElement", () => {
+    document.body.innerHTML = `
+      <div id="SearchURLWrap"></div>
+      <div id="listURLs">
+        <div class="urlRow" utuburlid="3"></div>
+      </div>
+    `;
+    // Fire the post-fade callback synchronously so no jQuery animation timer
+    // dangles past the test (mirrors the sibling removeElement test).
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+
+    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.removeElement(3);
+
+    expect(vi.mocked(pruneRemovedFromSelection)).toHaveBeenCalledWith([3]);
+  });
+
+  it("re-marks a re-added card from the store in addElement", () => {
+    document.body.innerHTML = `
+      <div id="SearchURLWrap"></div>
+      <div id="listURLs"></div>
+    `;
+    const newURLBlock = $('<div class="urlRow" utuburlid="1"></div>');
+    vi.mocked(createURLBlock).mockReturnValueOnce(newURLBlock);
+
+    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.addElement(SAMPLE_URL_1);
+
+    expect(vi.mocked(reapplyMultiSelectMark)).toHaveBeenCalledWith(newURLBlock);
+  });
+
+  it("on removeElement emptying the deck with mode active, shows empty state, hides the toggle, and exits mode", () => {
+    document.body.innerHTML = `
+      <div id="SearchURLWrap"></div>
+      <div id="listURLs"><div class="urlRow" utuburlid="3"></div></div>
+      <button id="urlBtnMultiSelect" class="visible"></button>
+    `;
+    vi.mocked(getState).mockReturnValue({
+      urls: [SAMPLE_URL_1],
+      multiSelectMode: true,
+    } as unknown as ReturnType<typeof getState>);
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+
+    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.removeElement(3);
+
+    expect(vi.mocked(showURLsEmptyState)).toHaveBeenCalledTimes(1);
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+    expect(vi.mocked(exitMultiSelectMode)).toHaveBeenCalledTimes(1);
+  });
+
+  it("on removeElement leaving rows behind, does not show empty state or exit mode", () => {
+    document.body.innerHTML = `
+      <div id="SearchURLWrap"></div>
+      <div id="listURLs">
+        <div class="urlRow" utuburlid="3"></div>
+        <div class="urlRow" utuburlid="4"></div>
+      </div>
+    `;
+    vi.mocked(getState).mockReturnValue({
+      urls: [SAMPLE_URL_1],
+      multiSelectMode: true,
+    } as unknown as ReturnType<typeof getState>);
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+
+    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.removeElement(3);
+
+    expect(vi.mocked(showURLsEmptyState)).not.toHaveBeenCalled();
+    expect(vi.mocked(exitMultiSelectMode)).not.toHaveBeenCalled();
+  });
+
   it("delegates addElement to createURLBlock/append into URL deck", () => {
     document.body.innerHTML = `
       <div id="SearchURLWrap"></div>
@@ -272,6 +388,50 @@ describe("setURLDeckOnUTubSelected", () => {
     expect(
       vi.mocked(triggerURLSwipeNudgeIfEligible).mock.calls[1][0].urlRow,
     ).toBe(createdRows[1]);
+  });
+});
+
+describe("#urlBtnMultiSelect visibility (empty-state toggle)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = `
+      <div id="lhsToggleHeader"></div>
+      <div id="listURLs"></div>
+      <button id="urlBtnCreate" class="hidden"></button>
+      <button id="urlBtnMultiSelect" class="hdrBtn multi hidden"></button>
+    `;
+    vi.mocked(getState).mockReturnValue({
+      urls: [],
+    } as unknown as ReturnType<typeof getState>);
+  });
+
+  it("reveals the toggle for a UTub that has URLs", () => {
+    setURLDeckOnUTubSelected(42, "Test UTub", [SAMPLE_URL_1], SAMPLE_TAGS);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(false);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(true);
+  });
+
+  it("keeps the toggle hidden for an empty UTub", () => {
+    setURLDeckOnUTubSelected(42, "Empty UTub", [], SAMPLE_TAGS);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+  });
+
+  it("hides the toggle on resetURLDeck", () => {
+    $("#urlBtnMultiSelect").showClassNormal();
+
+    resetURLDeck();
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+  });
+
+  it("hides the toggle on resetURLDeckOnDeleteUTub", () => {
+    $("#urlBtnMultiSelect").showClassNormal();
+
+    resetURLDeckOnDeleteUTub();
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
   });
 });
 

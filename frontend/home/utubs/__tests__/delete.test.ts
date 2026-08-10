@@ -123,6 +123,13 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
     expect(vi.mocked(resetUTubDeckIfNoUTubs)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(hideInputsAndUpdateUTubDeck)).not.toHaveBeenCalled();
     expect(setState).toHaveBeenCalled();
+    // The delete clears the multi-select fields defense-in-depth.
+    expect(setState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        multiSelectMode: false,
+        selectedURLCardIDs: [],
+      }),
+    );
   });
 
   it("calls hideInputsAndUpdateUTubDeck and skips resetUTubDeckIfNoUTubs when UTubs remain", () => {
@@ -135,6 +142,13 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
     expect(
       vi.mocked(applyAlternatingUTubSelectorBackground),
     ).toHaveBeenCalled();
+    // The delete clears the multi-select fields defense-in-depth in both branches.
+    expect(setState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        multiSelectMode: false,
+        selectedURLCardIDs: [],
+      }),
+    );
   });
 
   it("closes an open tag sheet (default reconciliation) before the history push (DD-11)", () => {
