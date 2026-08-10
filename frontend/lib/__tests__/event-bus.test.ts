@@ -107,6 +107,24 @@ describe("event-bus", () => {
     expect(handler).toHaveBeenCalledWith(payload);
   });
 
+  it("URL_MULTISELECT_CHANGED handler receives the selected-ids payload", () => {
+    const handler =
+      vi.fn<(payload: AppEventMap["url:multiselect-changed"]) => void>();
+    track(AppEvents.URL_MULTISELECT_CHANGED, handler);
+    emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1, 2] });
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith({ selectedURLCardIDs: [1, 2] });
+  });
+
+  it("URL_MULTISELECT_MODE_CHANGED handler receives the active payload", () => {
+    const handler =
+      vi.fn<(payload: AppEventMap["url:multiselect-mode-changed"]) => void>();
+    track(AppEvents.URL_MULTISELECT_MODE_CHANGED, handler);
+    emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith({ active: true });
+  });
+
   it("handlers for different events do not interfere", () => {
     const h1 = vi.fn<(payload: AppEventMap["utub:selected"]) => void>();
     const h2 = vi.fn<(payload: AppEventMap["utub:deleted"]) => void>();
