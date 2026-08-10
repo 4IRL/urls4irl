@@ -308,7 +308,15 @@ def test_only_one_url_selected_after_form_open_and_close(
         page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
 
-    # Only URL A should be selected
+    # Only URL A should be selected. This is the single-select invariant: the
+    # `urlselected="true"` model, distinct from multi-select's `.multiSelected`
+    # marker. Scope the assertion to single-select mode explicitly so a future
+    # regression where multi-select bleeds into this flow is caught rather than
+    # silently satisfying the count-1 check on the wrong selection model.
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_have_attribute(
+        "aria-pressed", "false"
+    )
+    expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(0)
     expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(1)
     selected_rows = page.locator(HPL.ROW_SELECTED_URL).all()
     assert selected_rows[0].get_attribute("utuburlid") == str(url_utub_ids[0])

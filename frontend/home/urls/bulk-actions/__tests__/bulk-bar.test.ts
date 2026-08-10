@@ -25,8 +25,13 @@ const $ = window.jQuery;
 
 // The bar partial's spans/buttons plus a small URL list. Rows 1-3 are visible;
 // individual tests mark a row searchable="false" to exercise the hidden-count.
+// Includes an empty #URLContentSearch because bulk-bar.ts transitively imports
+// search.ts, whose module-level URL_TAG_FILTER_APPLIED subscriber
+// (reapplyURLSearchFilter) reads that input; with an empty value it returns
+// early (term too short), so it stays inert during these bar tests.
 const HTML = `
   <div id="URLDeck" tabindex="-1">
+    <input id="URLContentSearch" value="" />
     <button id="urlBtnMultiSelect" aria-pressed="false"></button>
     <div id="bulkActionBar" class="hidden">
       <span id="bulkSelectCount">0</span>
@@ -120,6 +125,55 @@ describe("bulk-bar", () => {
       expect($("#bulkSelectHiddenHint").text()).toBe("");
       expect($("#URLBulkSelectionAnnouncement").text()).toBe(
         APP_CONFIG.strings.URL_BULK_SELECTED_COUNT.replace("{n}", "2"),
+      );
+    });
+  });
+
+  describe("visible-set change repaint (filter / search)", () => {
+    it("recomputes the hidden hint on URL_TAG_FILTER_APPLIED without a selection change", () => {
+      // Seed a 3-row selection with nothing hidden yet.
+      setState({ selectedURLCardIDs: [1, 2, 3] });
+      emit(AppEvents.URL_MULTISELECT_CHANGED, {
+        selectedURLCardIDs: [1, 2, 3],
+      });
+      expect($("#bulkSelectHiddenHint").hasClass("hidden")).toBe(true);
+
+      // A tag filter now hides row 3; the selection is unchanged (hidden rows
+      // stay selected), so only URL_TAG_FILTER_APPLIED fires.
+      $(".urlRow[utuburlid=3]").attr("filterable", "false");
+      emit(AppEvents.URL_TAG_FILTER_APPLIED);
+
+      const hiddenClause = APP_CONFIG.strings.URL_BULK_N_HIDDEN.replace(
+        "{n}",
+        "1",
+      );
+      expect($("#bulkSelectCount").text()).toBe("3");
+      expect($("#bulkSelectHiddenHint").hasClass("hidden")).toBe(false);
+      expect($("#bulkSelectHiddenHint").text()).toBe(hiddenClause);
+      expect($("#URLBulkSelectionAnnouncement").text()).toBe(
+        `${APP_CONFIG.strings.URL_BULK_SELECTED_COUNT.replace(
+          "{n}",
+          "3",
+        )}, ${hiddenClause}`,
+      );
+    });
+
+    it("clears the hidden hint on URL_SEARCH_VISIBILITY_CHANGED when the row becomes visible again", () => {
+      setState({ selectedURLCardIDs: [1, 2, 3] });
+      $(".urlRow[utuburlid=3]").attr("searchable", "false");
+      emit(AppEvents.URL_MULTISELECT_CHANGED, {
+        selectedURLCardIDs: [1, 2, 3],
+      });
+      expect($("#bulkSelectHiddenHint").hasClass("hidden")).toBe(false);
+
+      // Clearing the search reveals row 3; no selection change fires, only the
+      // search-visibility event.
+      $(".urlRow[utuburlid=3]").attr("searchable", "true");
+      emit(AppEvents.URL_SEARCH_VISIBILITY_CHANGED);
+
+      expect($("#bulkSelectHiddenHint").hasClass("hidden")).toBe(true);
+      expect($("#URLBulkSelectionAnnouncement").text()).toBe(
+        APP_CONFIG.strings.URL_BULK_SELECTED_COUNT.replace("{n}", "3"),
       );
     });
   });

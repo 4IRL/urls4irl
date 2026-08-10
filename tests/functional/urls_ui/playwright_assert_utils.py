@@ -1,3 +1,5 @@
+import re
+
 from playwright.sync_api import Locator, Page, expect
 
 from tests.functional.locators import HomePageLocators as HPL
@@ -96,3 +98,21 @@ def assert_keyed_url_is_selected(*, page: Page, url_row: Locator) -> None:
     access_url_btn = url_row.locator(HPL.BUTTON_URL_ACCESS)
     expect(access_url_btn).to_be_visible()
     expect(access_url_btn).to_be_enabled()
+
+
+def assert_urls_are_multi_selected(*, page: Page, utub_url_ids: list[int]) -> None:
+    """
+    Verifies multi-select marking on each of the given URL rows: the row carries
+    the `.multiSelected` class and its `.urlSelectCheckbox` reports
+    `aria-checked="true"`.
+
+    This is distinct from `assert_keyed_url_is_selected`, which checks the
+    single-select expand-state (Access-button visibility); multi-select marks a
+    row without expanding it, so it needs its own assertion helper.
+    """
+    for utub_url_id in utub_url_ids:
+        row_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+        url_row = page.locator(row_selector).first
+        expect(url_row).to_have_class(re.compile(r"(^|\s)multiSelected(\s|$)"))
+        checkbox = url_row.locator(HPL.URL_SELECT_CHECKBOX).first
+        expect(checkbox).to_have_attribute("aria-checked", "true")

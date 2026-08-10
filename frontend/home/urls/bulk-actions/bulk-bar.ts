@@ -196,4 +196,17 @@ export function initBulkBar(): void {
     log("bulk-bar mode changed", { active });
     toggleBar(active);
   });
+  // The visible URL set — not the selection — changes when a tag filter or the
+  // in-UTub search is applied/cleared. Selections deliberately survive that
+  // (hidden rows stay selected), so no URL_MULTISELECT_CHANGED fires; repaint
+  // the bar directly so the "N hidden by filter" hint + announcement stay
+  // accurate against the new visible set.
+  on(AppEvents.URL_TAG_FILTER_APPLIED, () => {
+    log("bulk-bar tag filter applied");
+    updateBar(getState().selectedURLCardIDs);
+  });
+  on(AppEvents.URL_SEARCH_VISIBILITY_CHANGED, () => {
+    log("bulk-bar url search visibility changed");
+    updateBar(getState().selectedURLCardIDs);
+  });
 }

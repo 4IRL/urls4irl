@@ -216,6 +216,19 @@ class HomePageLocators(GenericPageLocator):
 
     BUTTON_CORNER_URL_CREATE = "#urlBtnCreate"
     BUTTON_DECK_URL_CREATE = "#urlBtnDeckCreate"
+
+    # URL multi-select (bulk-action) mode
+    BUTTON_MULTI_SELECT_TOGGLE = "#urlBtnMultiSelect"
+    ROW_MULTI_SELECTED = ".urlRow.multiSelected"
+    URL_SELECT_CHECKBOX = ".urlSelectCheckbox"
+    BULK_ACTION_BAR = "#bulkActionBar"
+    BULK_SELECT_COUNT = "#bulkSelectCount"
+    BULK_SELECT_HIDDEN_HINT = "#bulkSelectHiddenHint"
+    BULK_SELECT_ALL = "#bulkSelectAll"
+    BULK_SELECT_CLEAR = "#bulkSelectClear"
+    BULK_SELECT_EXIT = "#bulkSelectExit"
+    BULK_SELECTION_ANNOUNCEMENT = "#URLBulkSelectionAnnouncement"
+
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
