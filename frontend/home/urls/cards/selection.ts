@@ -14,6 +14,7 @@ import { setFocusEventListenersOnURLCard } from "./cards.js";
 import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
 import { isCoarsePointer } from "../../mobile.js";
 import { _consumeSwipeClickSuppression } from "./swipe.js";
+import { toggleURLCardSelection } from "../bulk-actions/bulk-selection.js";
 import { debug } from "../../../lib/debug.js";
 
 const log = debug("urls:cards");
@@ -169,6 +170,16 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
       }
 
       if (!$(event.target).closest(".urlRow").length) return;
+
+      // In multi-select mode a row tap toggles selection membership instead of
+      // expanding the card. Branch before the urlSelected="true" early-return so
+      // an already-expanded row can still be toggled off, and without calling
+      // selectURLCard/deselectAllURLs. Reads the flag via the store (no import
+      // of bulk-mode.ts) to keep the leaf-module boundary.
+      if (getState().multiSelectMode) {
+        toggleURLCardSelection(parseInt(urlCard.attr("utuburlid")!, 10));
+        return;
+      }
 
       if ($(event.target).closest(".urlRow").attr("urlSelected") === "true")
         return;

@@ -134,6 +134,9 @@ function _beginDrag({
   // A locked UTub is frozen to every mutation; swipe-to-delete is one, so the
   // gesture never begins (the visible delete controls are disabled too).
   if (getState().isCurrentUTubLocked) return;
+  // In multi-select mode a tap must reliably reach the checkbox/row toggle, so
+  // the swipe-to-delete gesture (a single-select affordance) never begins.
+  if (getState().multiSelectMode) return;
   // Mouse users keep tap-to-select/click-delete; touch/pen primary drags proceed.
   if (!isMobile() || event.pointerType === "mouse") return;
 

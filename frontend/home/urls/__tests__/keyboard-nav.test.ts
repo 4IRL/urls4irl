@@ -1,6 +1,6 @@
 import { bindSwitchURLKeyboardEventListeners } from "../utils.js";
 import { getSelectedURLCard, selectURLCard } from "../cards/selection.js";
-import { resetStore } from "../../../store/app-store.js";
+import { resetStore, setState } from "../../../store/app-store.js";
 import { KEYS } from "../../../lib/constants.js";
 
 vi.mock("../cards/update-title.js", () => ({
@@ -166,6 +166,21 @@ describe("Keyboard Navigation (arrow keys)", () => {
       pressArrowKey(KEYS.ARROW_DOWN);
 
       expect(getSelectedURLCard()).toBeNull();
+    });
+  });
+
+  describe("no-op in multi-select mode", () => {
+    it("leaves the selected card unchanged on Arrow Down/Up while multiSelectMode is active", () => {
+      selectURLCard($(".urlRow[utuburlid=2]"));
+      expect(getSelectedCardId()).toBe(2);
+
+      setState({ multiSelectMode: true });
+
+      pressArrowKey(KEYS.ARROW_DOWN);
+      expect(getSelectedCardId()).toBe(2);
+
+      pressArrowKey(KEYS.ARROW_UP);
+      expect(getSelectedCardId()).toBe(2);
     });
   });
 });

@@ -199,6 +199,20 @@ describe("swipe gesture", () => {
     expect(row.hasClass("swipe-committed")).toBe(false);
   });
 
+  it("does not begin a swipe in multi-select mode: a past-threshold drag never opens the delete modal and adds no drag classes", () => {
+    setState({ multiSelectMode: true });
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+    dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+
+    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(row.hasClass("swipe-dragging")).toBe(false);
+    expect(row.hasClass("swipe-committed")).toBe(false);
+  });
+
   it("does not run the swipe onboarding nudge on a locked UTub", () => {
     setState({ isCurrentUTubLocked: true });
     const row = mountURLRow();

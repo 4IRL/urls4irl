@@ -8,6 +8,7 @@ import { VISIBLE_URL_SELECTOR } from "../utils.js";
 const log = debug("urls:cards");
 
 const MULTI_SELECTED_CLASS = "multiSelected";
+const CHECKBOX_SELECTOR = ".urlSelectCheckbox";
 
 /** Resolve a URL card by its utuburlid. */
 function urlCardById(id: number): JQuery {
@@ -27,11 +28,18 @@ function markCard({
   urlCard: JQuery;
   isSelected: boolean;
 }): void {
+  const ariaChecked = isSelected ? "true" : "false";
   if (isSelected) {
-    urlCard.addClass(MULTI_SELECTED_CLASS).attr("aria-checked", "true");
+    urlCard.addClass(MULTI_SELECTED_CLASS);
   } else {
-    urlCard.removeClass(MULTI_SELECTED_CLASS).attr("aria-checked", "false");
+    urlCard.removeClass(MULTI_SELECTED_CLASS);
   }
+  // aria-checked lives on both the row (the whole-card marker, source for the
+  // JS/Playwright assertions) and the .urlSelectCheckbox span, which is the
+  // element that actually carries role="checkbox" and is what assistive tech
+  // announces — so its checked state must track selection, not stay static.
+  urlCard.attr("aria-checked", ariaChecked);
+  urlCard.find(CHECKBOX_SELECTOR).attr("aria-checked", ariaChecked);
 }
 
 /**
@@ -64,9 +72,9 @@ export function toggleURLCardSelection(id: number): void {
 /** Empty the selection and strip every multi-select mark from the deck. */
 export function clearURLSelection(): void {
   log("clear URL selection");
-  $(`.urlRow.${MULTI_SELECTED_CLASS}`)
-    .removeClass(MULTI_SELECTED_CLASS)
-    .attr("aria-checked", "false");
+  const marked = $(`.urlRow.${MULTI_SELECTED_CLASS}`);
+  marked.removeClass(MULTI_SELECTED_CLASS).attr("aria-checked", "false");
+  marked.find(CHECKBOX_SELECTOR).attr("aria-checked", "false");
   commitSelection([]);
 }
 

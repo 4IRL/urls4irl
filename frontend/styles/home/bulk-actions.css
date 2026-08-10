@@ -1,0 +1,107 @@
+/*
+ * Multi-select (bulk-actions) styling: the per-card checkbox affordance, the
+ * checked-card marker, and mode-driven gating of single-select-only header
+ * controls. The bulk-action bar's own layout lands in a later step; this file
+ * owns the checkbox + card-marker contract that ships with the card markup.
+ *
+ * The checked marker deliberately uses --deckSelectionGreen (teal) and is kept
+ * DISTINCT from [urlSelected="true"]'s bright --selectedUrlBorder (expand/active
+ * state) so the two selection models never read as the same thing.
+ */
+
+/* The checkbox is a leading flex control; reveal it only in multi-select mode
+   so a normal card is visually unchanged when the mode is off. */
+.urlSelectCheckboxWrap {
+  display: none;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  min-width: 46px;
+  cursor: pointer;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#URLDeck.multiSelectActive .urlSelectCheckboxWrap {
+  display: flex;
+}
+
+/* Row becomes a horizontal flex container in mode so the checkbox sits to the
+   left of the content instead of stacking above it (.urlRow is flex-column). */
+#URLDeck.multiSelectActive .urlRow {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+#URLDeck.multiSelectActive .urlRow > .urlRowContent {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.urlSelectCheckbox {
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--grayBadgeSelection);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #06231a;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.urlSelectCheckbox:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/* Checked card marker — teal, distinct from the bright expand border. */
+.urlRow.multiSelected {
+  border-color: var(--deckSelectionGreen);
+  background: rgba(96, 218, 170, 0.1);
+}
+
+.urlRow.multiSelected .urlSelectCheckbox {
+  background: var(--deckSelectionGreen);
+  border-color: var(--deckSelectionGreen);
+}
+
+.urlRow.multiSelected .urlSelectCheckbox::after {
+  content: "✓";
+}
+
+/* Coarse-pointer: no sticky hover, no tap-highlight flash on the checkbox. */
+@media (any-pointer: coarse) {
+  .urlSelectCheckboxWrap,
+  .urlSelectCheckbox {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urlSelectCheckbox {
+    transition: none;
+  }
+}
+
+/*
+ * #urlBtnCreate (URLDeckHeader.html) is a descendant of #URLDeck, so unlike
+ * #toCrossUtubSearch (disabled via JS since it lives in the navbar outside
+ * #URLDeck), it is gated with pure CSS on the same deck-level class the
+ * checkboxes/toggle key off. The !important guards against the element's own
+ * .hidden/.visible class churn from hideClass()/showClassNormal() (deck.ts,
+ * cards/create.ts) accidentally re-revealing it while multi-select is active —
+ * its auto-select-on-create call site (createURLSuccess) is an unguarded
+ * selectURLCard() path that this hides the only affordance for.
+ */
+#URLDeck.multiSelectActive #urlBtnCreate {
+  display: none !important;
+}
