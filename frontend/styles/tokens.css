@@ -22,6 +22,10 @@
 
     /*1d2124*/
     --navbarTextHover: rgba(29, 33, 36, 1.0);
+    /* Navbar resting text/icons. Defined only here (dark base) and deliberately
+       NOT overridden for light mode, so it stays light on the always-dark navbar
+       — same pattern as --navbarBackground / --navbarTextHover. */
+    --navbarText: rgba(170, 170, 170, 1.0);
     /* #212529 */
     --navbarBackground: rgba(33, 37, 41, 1.0);
     /* #4d5053 */
