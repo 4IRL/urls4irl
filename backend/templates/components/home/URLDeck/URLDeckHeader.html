@@ -64,6 +64,18 @@
 		   the .cancelButton class so the label renders red; aria-label retained for
 		   a fuller description. Styling (touch height, text padding) in utubs.css. #}
 		<button id="utubEditPanelClose" class="cancelButton hidden" type="button" aria-label="Close edit panel">Close</button>
+		{# Multi-select mode toggle. Enters a capability-aware bulk-selection mode
+		   (checkboxes + bulk-action bar). aria-pressed reflects the active state,
+		   synced in bulk-actions/index.ts. Default .hidden handling added in a
+		   later step (hidden until a UTub with URLs is selected). #}
+		<button id="urlBtnMultiSelect" class="hdrBtn multi" aria-pressed="false"
+			aria-label="Toggle multi-select mode" tabindex="0">
+			<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor"
+				class="bi bi-check2-square" viewBox="0 0 16 16">
+				<path d="M2.5 3A1.5 1.5 0 0 0 1 4.5v7A1.5 1.5 0 0 0 2.5 13h7a1.5 1.5 0 0 0 1.5-1.5V8a.5.5 0 0 0-1 0v3.5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1z"/>
+				<path d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293 5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0z"/>
+			</svg>
+		</button>
 		<button id="urlBtnCreate" class="green-clickable hidden" tabindex="0">
 			<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
 				class="bi bi-plus-square-fill" viewBox="0 0 16 16">
