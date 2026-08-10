@@ -4,6 +4,7 @@ import { debug } from "../../../lib/debug.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { isCrossUtubSearchActive } from "../../search/cross-utub-search.js";
 import { isTagSheetOpen } from "../../tags/sheet.js";
+import { initBulkBar } from "./bulk-bar.js";
 import {
   enterMultiSelectMode,
   exitMultiSelectMode,
@@ -43,6 +44,8 @@ function isTextInputFocused(): boolean {
  * event-bus subscriptions. Called once from main.ts's ready block.
  */
 export function initBulkActions(): void {
+  initBulkBar();
+
   $(MULTI_SELECT_TOGGLE_SELECTOR).offAndOnExact(TOGGLE_CLICK_NAMESPACE, () => {
     if (isMultiSelectActive()) {
       exitMultiSelectMode();

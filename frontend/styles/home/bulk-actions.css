@@ -63,8 +63,14 @@
   outline-offset: 2px;
 }
 
-/* Checked card marker — teal, distinct from the bright expand border. */
-.urlRow.multiSelected {
+/* Checked card marker — teal, distinct from the bright expand border. Scoped
+   under #URLDeck.multiSelectActive so its background (1 id + 3 classes) ties and
+   then wins on source order against `#listURLs .urlRow.even[filterable="true"]`
+   (urls.css, also 1 id + 3 specificity) — without the id scope the bare
+   `.urlRow.multiSelected` lost to that rule and selected EVEN rows kept their
+   plain background instead of the teal highlight (odd rows have no id-scoped
+   base background, so they highlighted correctly). */
+#URLDeck.multiSelectActive .urlRow.multiSelected {
   border-color: var(--deckSelectionGreen);
   background: rgba(96, 218, 170, 0.1);
 }
@@ -104,4 +110,181 @@
  */
 #URLDeck.multiSelectActive #urlBtnCreate {
   display: none !important;
+}
+
+/*
+ * Swipe-to-delete is a no-op in multi-select mode (cards/swipe.ts's _beginDrag
+ * early-returns when multiSelectMode), so its absolutely-positioned red reveal
+ * background has no purpose here. In mode the row switches to flex-direction:row
+ * with the leading checkbox, which shifts .urlRowContent off the row's left edge
+ * and lets the full-width reveal peek out behind it. Hide it outright so the red
+ * bar never shows while the swipe affordance is disabled.
+ */
+#URLDeck.multiSelectActive .urlRowSwipeReveal {
+  display: none;
+}
+
+/* Multi-select header toggle: filled green when the mode is active. */
+#urlBtnMultiSelect[aria-pressed="true"] {
+  background: var(--splashGreen);
+  color: #fff;
+}
+
+#urlBtnMultiSelect:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/*
+ * ---- Bulk-action bar ----
+ * Desktop: an inline bar directly below the deck header. bulk-bar.ts toggles the
+ * `hidden` class on mode enter/exit (global `.hidden { display:none !important }`
+ * wins over the `display:flex` below while present).
+ */
+#bulkActionBar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 15px;
+  background: var(--panelBackgroundColor);
+  border-top: 1px solid var(--contentTopBorder);
+}
+
+/* The mobile grabber lip is desktop-invisible. */
+.bulkBarGrabber {
+  display: none;
+}
+
+.bulkBarRow {
+  gap: 12px;
+}
+
+#bulkSelectCount.countPill {
+  background: var(--tagCountBackgroundSelectedColor);
+  color: #06231a;
+  font-weight: 800;
+  font-size: 0.85rem;
+  border-radius: 5rem;
+  padding: 2px 12px;
+}
+
+.bulkLabel {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+#bulkSelectHiddenHint.hiddenHint {
+  font-size: 0.8rem;
+  color: var(--grayBadgeSelection);
+}
+
+.bulkSpacer {
+  flex: 1 1 auto;
+}
+
+/* Registry region — empty in Phase 1; Phases 2/3 render action buttons here. */
+.bulkActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Theme-aware: --textPrimary / --borderColor / --cardBackgroundColorHover all
+   flip between light and dark, so the buttons stay legible in both (the mock's
+   hardcoded white-on-transparent would vanish on the light theme's panel). */
+.barBtn {
+  height: 2.25rem;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--borderColor);
+  cursor: pointer;
+  background: transparent;
+  color: var(--textPrimary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.barBtn:hover {
+  background: var(--cardBackgroundColorHover);
+}
+
+.barBtn:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/* Clear reflects its disabled state via aria-disabled (not the native disabled
+   attribute) so it stays focusable as the mode-enter focus target. */
+.barBtn.clear[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/*
+ * Mobile (<=991.98px): the bar becomes a bottom-docked drawer (tag-sheet
+ * pattern) inside #mainPanel.
+ *
+ * DD-11 z-index resolution: the collapsed tag-sheet viewport sits at z-index 30
+ * and is raised to 1040 (its backdrop 1039) only while the sheet is open or
+ * dragging. The bulk-bar drawer lands at 1035 — above normal deck content and
+ * the collapsed tag-sheet peek, but BELOW an open tag sheet (1040) and its
+ * backdrop (1039). So when both are active at once, the open tag sheet overlays
+ * (and its backdrop dims) the bulk bar — the same topmost-overlay-wins ordering
+ * the Escape-key guard enforces (tag sheet wins over multi-select). Verified
+ * against the built app at 390px.
+ */
+@media (max-width: 991.98px) {
+  #bulkActionBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1035;
+    border-top: 2px solid var(--contentTopBorder);
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: var(--shadow-lg);
+    padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  .bulkBarGrabber {
+    display: block;
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: #5a6565;
+    margin: 4px auto 12px;
+  }
+
+  /* 44px coarse-pointer touch targets for the bar controls. */
+  .barBtn {
+    height: 2.75rem;
+    padding: 0 16px;
+    font-size: 0.9rem;
+  }
+
+  /* Keep the last URL card clear of the docked bar. The tag-sheet peek padding
+     already reserves --tag-sheet-peek on the deck content (tag-sheet.css); add
+     the bar's height on top while multi-select mode is active. This rule
+     (1 id + 3 classes) outranks tag-sheet.css's `#URLDeck .flex-column.content`
+     (1 id + 2 classes) so it wins when the deck is in mode. */
+  #URLDeck.multiSelectActive .flex-column.content {
+    padding-bottom: calc(var(--tag-sheet-peek) + 88px);
+  }
+}
+
+/* Coarse-pointer: no sticky :hover repaint lingering after a tap. */
+@media (any-pointer: coarse) {
+  .barBtn {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .barBtn:hover {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barBtn {
+    transition: none;
+  }
 }

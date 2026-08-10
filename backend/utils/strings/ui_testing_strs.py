@@ -37,6 +37,10 @@ from backend.utils.strings.tag_strs import (
 )
 from backend.utils.strings.url_strs import (
     ADD_URL_BUTTON,
+    URL_BULK_N_HIDDEN,
+    URL_BULK_NONE_SELECTED,
+    URL_BULK_SELECTED_COUNT,
+    URL_BULK_SELECTED_COUNT_ONE,
     URL_IN_UTUB_TRACKING_PARAMS_STRIPPED,
     URL_SEARCH_NO_RESULTS,
     UTUB_NO_URLS,
@@ -245,6 +249,12 @@ class UI_TEST_STRINGS:
     TAG_SEARCH_NO_TAGS = _TAG_SEARCH_NO_RESULTS  # intentional: attribute name follows TAG_FILTER_NO_URLS convention (describes test condition — "no tags found" — not the backend constant name TAG_SEARCH_NO_RESULTS)
     TAG_DECK_NO_TAGS = _TAG_DECK_NO_TAGS
     URL_SEARCH_NO_URLS = URL_SEARCH_NO_RESULTS
+    # Multi-select bulk-action bar SR announcement templates — locked to the
+    # backend source so Step 9 Playwright tests assert real generated copy.
+    URL_BULK_SELECTED_COUNT = URL_BULK_SELECTED_COUNT
+    URL_BULK_SELECTED_COUNT_ONE = URL_BULK_SELECTED_COUNT_ONE
+    URL_BULK_NONE_SELECTED = URL_BULK_NONE_SELECTED
+    URL_BULK_N_HIDDEN = URL_BULK_N_HIDDEN
     UTUB_SEARCH_NO_UTUBS = UTUB_SEARCH_NO_RESULTS
     MEMBER_SEARCH_NO_MEMBERS = MEMBER_SEARCH_NO_RESULTS
     UTUB_NO_URLS = UTUB_NO_URLS

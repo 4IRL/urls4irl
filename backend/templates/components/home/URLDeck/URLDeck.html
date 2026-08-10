@@ -1,4 +1,4 @@
-<div id="URLDeck" class="deck h-100 flex-column align-stretch">
+<div id="URLDeck" class="deck h-100 flex-column align-stretch" tabindex="-1">
 	<div class="flex-column" id="URLDeckHeaderWrap">
 		<!-- Header -->
 		{% include 'components/home/URLDeck/URLDeckHeader.html' %}
@@ -6,6 +6,9 @@
 		<!-- Subheader -->
 		{% include 'components/home/URLDeck/URLDeckSubheader.html' %}
 	</div>
+
+	<!-- Multi-select bulk-action bar (hidden until multi-select mode is entered) -->
+	{% include 'components/home/URLDeck/BulkActionBar.html' %}
 
 	<!-- URLs -->
 	<div class="flex-column content">

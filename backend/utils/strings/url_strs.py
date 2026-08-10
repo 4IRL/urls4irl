@@ -35,6 +35,15 @@ URL_SEARCH_NO_RESULTS = "No URLs found"
 UTUB_NO_URLS = "No URLs yet"
 ADD_URL_BUTTON = "Add URL"
 
+# Multi-select bulk-action bar screen-reader announcements. TS composes the live
+# announcement in bulk-actions/bulk-bar.ts from these templates ({n} is replaced
+# with the selected / hidden count); the singular form mirrors the
+# TAGS_MATCH_COUNT / TAGS_MATCH_COUNT_ONE plural-vs-one pattern.
+URL_BULK_SELECTED_COUNT = "{n} URLs selected"
+URL_BULK_SELECTED_COUNT_ONE = "1 URL selected"
+URL_BULK_NONE_SELECTED = "No URLs selected"
+URL_BULK_N_HIDDEN = "{n} hidden by filter"
+
 # Static label words for the URL card's date-added attribution badge
 # (frontend/home/urls/cards/cards.ts `createURLDateAddedBadge`). The dynamic
 # username/date are composed in TS; these supply the fixed connective words so
