@@ -14,7 +14,8 @@ export function getNumOfVisibleURLs(): number {
   return $(".urlRow[filterable=true]").length;
 }
 
-const VISIBLE_URL_SELECTOR = ".urlRow[filterable=true]:not([searchable=false])";
+export const VISIBLE_URL_SELECTOR =
+  ".urlRow[filterable=true]:not([searchable=false])";
 
 export function bindSwitchURLKeyboardEventListeners(): void {
   $(document).offAndOn(
