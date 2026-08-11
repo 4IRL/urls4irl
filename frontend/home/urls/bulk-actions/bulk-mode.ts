@@ -11,7 +11,6 @@ const MULTI_SELECT_ACTIVE_CLASS = "multiSelectActive";
 const HIDDEN_CLASS = "hidden";
 const CROSS_SEARCH_TRIGGER_SELECTOR = "#toCrossUtubSearch";
 const EDIT_PANEL_TOGGLE_SELECTOR = "#utubEditPanelToggle";
-const BULK_SELECT_CRUMB_SELECTOR = "#bulkSelectCrumb";
 // The common ancestor of both #URLDeck and #tagDeckSheet (siblings under it).
 // Marking it in-mode lets tag-sheet.css slide the collapsed tag-sheet peek fully
 // off-screen while selecting (killing the DD-11 double drawer) WITHOUT hiding the
@@ -61,11 +60,6 @@ export function enterMultiSelectMode(): void {
     HIDDEN_CLASS,
   );
   $(EDIT_PANEL_TOGGLE_SELECTOR).addClass(HIDDEN_CLASS);
-
-  // Fill the selection-context breadcrumb with the active UTub name (same store
-  // field setUTubNameAndDescription writes). The context region is revealed by
-  // the .multiSelectActive CSS gate below.
-  $(BULK_SELECT_CRUMB_SELECTOR).text(getState().activeUTubName ?? "");
 
   setState({ multiSelectMode: true });
   $("#URLDeck").addClass(MULTI_SELECT_ACTIVE_CLASS);

@@ -144,6 +144,23 @@
   display: none;
 }
 
+/*
+ * Neutral, theme-aware icon color for the header icon-buttons. Their SVGs use
+ * fill="currentColor", so with no explicit color they inherited down to
+ * `a { color: var(--linkColor) }` (base.css) and rendered BLUE in light mode.
+ * Match the funnel (#URLSearchFilterIcon > svg), which resolves to
+ * `var(--grayBadgeSelection)` (buttons.css) — a token that flips between light
+ * (#445055) and dark (gray), NOT --linkColor. Driving it via `color` (not a
+ * direct svg fill) keeps currentColor working AND lets the higher-specificity
+ * aria-pressed / aria-expanded rules below still win (they set color:#fff on
+ * their green fill).
+ */
+#urlBtnMultiSelect,
+#bulkTagFilterIcon,
+#bulkSelectExit {
+  color: var(--grayBadgeSelection);
+}
+
 /* Multi-select header toggle: filled green when the mode is active. */
 #urlBtnMultiSelect[aria-pressed="true"] {
   background: var(--splashGreen);
@@ -158,7 +175,7 @@
 /*
  * ---- Selection-mode context (header) ----
  * In mode the header's title/description zone becomes the selection context
- * (UTub-name breadcrumb + count + "N hidden by filter"). Revealed only under
+ * (count + "N hidden by filter"). Revealed only under
  * #URLDeck.multiSelectActive — the same deck-level gating idiom #urlBtnCreate
  * uses, inverted here to reveal-in-mode. The count pill / hidden-hint reuse the
  * existing #bulkSelectCount.countPill / #bulkSelectHiddenHint.hiddenHint rules
@@ -172,18 +189,6 @@
 
 #URLDeck.multiSelectActive #bulkSelectContext {
   display: flex;
-}
-
-/* Breadcrumb = the active UTub name (JS-filled on enter). Muted, truncates so a
-   long name never crowds the count out of the row. Uses an existing token. */
-.bulkCrumb {
-  color: var(--grayBadgeSelection);
-  font-weight: 600;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 45%;
 }
 
 /* In mode, the context replaces the normal name/description affordances: hide

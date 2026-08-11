@@ -228,7 +228,6 @@ class HomePageLocators(GenericPageLocator):
     # .button-container for #bulkSelectExit), so bulk-bar.ts's global $(id)
     # lookups keep driving them.
     BULK_SELECT_CONTEXT = "#bulkSelectContext"
-    BULK_SELECT_CRUMB = "#bulkSelectCrumb"
     BULK_SELECT_COUNT = "#bulkSelectCount"
     BULK_SELECT_HIDDEN_HINT = "#bulkSelectHiddenHint"
     BULK_SELECT_ALL = "#bulkSelectAll"

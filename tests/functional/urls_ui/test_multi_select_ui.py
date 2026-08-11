@@ -342,10 +342,10 @@ def test_header_hosts_selection_context_desktop_hides_tag_icon(
     """
     GIVEN a UTub with URLs on desktop
     WHEN the user enters multi-select mode
-    THEN the relocated selection context (#bulkSelectContext with #bulkSelectCount
-        and the crumb) plus the header Exit ✕ render in the HEADER (not the bottom
-        bar), the mobile-only #bulkTagFilterIcon stays hidden on desktop, and the
-        header ✕ leaves mode.
+    THEN the relocated selection context (#bulkSelectContext with #bulkSelectCount)
+        plus the header Exit ✕ render in the HEADER (not the bottom bar), the
+        mobile-only #bulkTagFilterIcon stays hidden on desktop, and the header ✕
+        leaves mode.
     """
     app = provide_app
     login_user_and_select_utub_by_name(
@@ -357,12 +357,11 @@ def test_header_hosts_selection_context_desktop_hides_tag_icon(
 
     _enter_multi_select_mode(page=page)
 
-    # The context + its count/crumb + the header Exit are visible; the
+    # The context + its count + the header Exit are visible; the
     # #bulkTagFilterIcon is the mobile-only affordance and stays hidden on desktop.
     context = page.locator(HPL.BULK_SELECT_CONTEXT)
     expect(context).to_be_visible()
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_be_visible()
-    expect(context.locator(HPL.BULK_SELECT_CRUMB)).to_have_text(UTS.TEST_UTUB_NAME_1)
     expect(page.locator(HPL.BULK_SELECT_EXIT)).to_be_visible()
     expect(page.locator(HPL.BULK_TAG_FILTER_ICON)).to_be_hidden()
 

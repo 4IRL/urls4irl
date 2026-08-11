@@ -17,14 +17,12 @@ const $ = window.jQuery;
 // it too, so tag-sheet.css can slide the collapsed tag-sheet peek off-screen
 // (DD-11) without hiding the sheet outright. #URLDeck receives the same deck-level
 // mode class; #toCrossUtubSearch (the navbar cross-search trigger) is disabled
-// while mode is active. #bulkSelectCrumb is filled with the active UTub name on
-// enter, and #utubEditPanelToggle (the mobile edit affordance) hides on enter /
-// restores-if-was-visible on exit. A couple of selected rows let us prove exit
-// strips the marks via the real clearURLSelection().
+// while mode is active. #utubEditPanelToggle (the mobile edit affordance) hides
+// on enter / restores-if-was-visible on exit. A couple of selected rows let us
+// prove exit strips the marks via the real clearURLSelection().
 const DECK_HTML = `
   <main id="mainPanel">
     <div id="URLDeck">
-      <span id="bulkSelectCrumb"></span>
       <button id="utubEditPanelToggle" type="button"></button>
       <div class="urlRow multiSelected" utuburlid="1" aria-checked="true"></div>
       <div class="urlRow multiSelected" utuburlid="2" aria-checked="true"></div>
@@ -99,15 +97,7 @@ describe("bulk-mode", () => {
     expect($("#toCrossUtubSearch").hasClass("hidden")).toBe(false);
   });
 
-  describe("breadcrumb + edit-panel toggle hide/restore", () => {
-    it("fills #bulkSelectCrumb with the active UTub name on enter", () => {
-      setState({ activeUTubName: "MockUTub_1" });
-
-      enterMultiSelectMode();
-
-      expect($("#bulkSelectCrumb").text()).toBe("MockUTub_1");
-    });
-
+  describe("edit-panel toggle hide/restore", () => {
     it("hides #utubEditPanelToggle on enter", () => {
       expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(false);
 

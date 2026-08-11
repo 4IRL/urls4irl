@@ -2,12 +2,11 @@
 
 	{# Selection-mode context region. Hidden by default; revealed only under
 	   #URLDeck.multiSelectActive (bulk-actions.css), where it replaces the
-	   normal UTub name/description zone. #bulkSelectCrumb is JS-filled with the
-	   active UTub name on mode enter (bulk-mode.ts); the count / hidden-hint are
-	   TS-composed by bulk-bar.ts against the SAME preserved ids they had in the
-	   bottom bar (global $(id) lookups, so relocation needs no bulk-bar change). #}
+	   normal UTub name/description zone. It reads just "N selected" — the count /
+	   hidden-hint are TS-composed by bulk-bar.ts against the SAME preserved ids
+	   they had in the bottom bar (global $(id) lookups, so relocation needs no
+	   bulk-bar change). #}
 	<div id="bulkSelectContext" class="bulkSelectContext flex-row align-center" role="region" aria-label="Selection">
-		<span id="bulkSelectCrumb" class="bulkCrumb"></span>
 		<span id="bulkSelectCount" class="countPill">0</span>
 		<span class="bulkLabel">selected</span>
 		<span id="bulkSelectHiddenHint" class="hiddenHint hidden" aria-hidden="true"></span>
