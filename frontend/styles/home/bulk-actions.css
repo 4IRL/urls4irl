@@ -193,9 +193,39 @@
    inline-edit open handlers are ALSO gated on !isMultiSelectActive() in JS
    (update-name/description/utub-panel) — belt-and-suspenders, since the editors
    open on a wrap click, not the pencil. */
-#URLDeck.multiSelectActive #UTubNameOuterUpdateWrap,
-#URLDeck.multiSelectActive #UTubDescriptionSubheaderWrap {
+#URLDeck.multiSelectActive #UTubNameOuterUpdateWrap {
   display: none;
+}
+
+/* The description subheader also hides in mode — hiding the title (name wrap
+   above) but leaving the "Made by …" description line reads as inconsistent, and
+   the header's selection context already carries the UTub identity. This one
+   needs !important (unlike the name wrap): selectors.ts/update-description.ts add
+   `.visible-flex` to #UTubDescriptionSubheaderWrap for a UTub WITH a description,
+   and `.visible-flex { display:flex !important }` (layout.css) beats a plain
+   display:none. #URLDeckNoDescription is the empty-state "No description"
+   placeholder — hidden for the same reason. Both are SIBLINGS of the aria-live
+   announcer spans (#URLBulkSelectionAnnouncement, #URLSearchAnnouncement,
+   #URLTagFilterAnnouncement, #fieldSavedAnnouncement) and of #SearchURLWrap in
+   URLDeckSubheader.html — NOT ancestors — so this keeps the live regions and the
+   on-demand search box fully intact. */
+#URLDeck.multiSelectActive #UTubDescriptionSubheaderWrap,
+#URLDeck.multiSelectActive #URLDeckNoDescription {
+  display: none !important;
+}
+
+/* With the description hidden and the search box CLOSED, the subheader band would
+   otherwise keep its 2.25rem `.dynamic-subheader` min-height as an empty gap.
+   Collapse it — but ONLY while search is closed: opening the funnel adds
+   `.url-search-open` to this wrap (search.ts) to reveal #SearchURLWrap, and the
+   `:not(.url-search-open)` guard yields so the search box still gets its band.
+   (padding-block is a no-op today — the wrap carries only padding-inline — but
+   set defensively in case vertical padding is ever added.) */
+#URLDeck.multiSelectActive
+  #UTubDescriptionSubheaderOuterWrap:not(.url-search-open) {
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 #URLDeck.multiSelectActive .edit-pencil-icon {
