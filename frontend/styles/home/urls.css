@@ -969,10 +969,10 @@ a.urlString {
 /* ============================================================================
    Create-time highlight flash — a transient background pulse on a freshly
    created URL card (distinct from the persistent urlSelected styling), removed
-   by create.ts via setTimeout after ~1.5s.
+   by create.ts via setTimeout after ~0.7s.
    ============================================================================ */
 .url-card-created-highlight {
-    animation: urlCardCreatedFlash 1.5s ease-out;
+    animation: urlCardCreatedFlash 0.7s ease-out;
 }
 
 /* Fades from the green highlight to the row's OWN resting background. The 100%
@@ -985,7 +985,7 @@ a.urlString {
    momentarily reads as a delete/danger state. */
 @keyframes urlCardCreatedFlash {
     0% {
-        background-color: var(--deckSelectionGreen);
+        background-color: var(--urlCreateFlashBg);
     }
 }
 
