@@ -70,6 +70,18 @@ describe("bulk-selection", () => {
       unsubscribe();
     });
 
+    it("keeps the row's single-select urlSelected attribute false (the two selection models never collide)", () => {
+      // A multi-selected row is a selection target, not an expanded single-select
+      // card: it must never gain urlSelected="true". Keeping this invariant is
+      // what lets the `#URLDeck.multiSelectActive .goToUrlIcon` suppression rule
+      // (bulk-actions.css) rely on the row staying urlSelected="false" — the
+      // go-to icon is a single-select-only affordance.
+      toggleURLCardSelection(2);
+
+      expect(rowById(2).hasClass("multiSelected")).toBe(true);
+      expect(rowById(2).attr("urlSelected")).toBe("false");
+    });
+
     it("never mutates selectedURLCardIDs in place (setState receives a fresh array)", () => {
       const before = getState().selectedURLCardIDs;
 

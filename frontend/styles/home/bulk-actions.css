@@ -90,6 +90,27 @@
   content: "✓";
 }
 
+/*
+ * The per-row "go-to URL" icon (.goToUrlIcon, the green ↗ box) is a single-
+ * select affordance — an expanded/focused row opens its URL in a new tab. In
+ * multi-select mode a row is a selection TARGET, not an interactive URL, so the
+ * icon must never show. It leaks in via the `.visible-on-focus` class
+ * (layout.css: `visibility: visible !important`) that setFocusEventListenersOnURLCard
+ * (cards/cards.ts) adds on row focus: its focusout handler only strips the class
+ * when the icon button ITSELF blurs, and the multi-select tap handler
+ * (cards/selection.ts) early-returns through toggleURLCardSelection WITHOUT ever
+ * running the single-select deselect path (selection.ts removeClass) that would
+ * otherwise remove it — so every tapped row keeps `.visible-on-focus` and its
+ * icon stays visible. Suppress it outright while in mode. The `!important` is
+ * required to beat `.visible-on-focus`'s own `!important`; the id-scoped
+ * `#URLDeck.multiSelectActive` (1 id + 2 classes) also outranks the
+ * `[urlSelected="true"]` / :focus / :hover reveal rules in urls.css, covering a
+ * card that was already expanded when the mode was entered.
+ */
+#URLDeck.multiSelectActive .goToUrlIcon {
+  visibility: hidden !important;
+}
+
 /* Coarse-pointer: no sticky hover, no tap-highlight flash on the checkbox. */
 @media (any-pointer: coarse) {
   .urlSelectCheckboxWrap,
