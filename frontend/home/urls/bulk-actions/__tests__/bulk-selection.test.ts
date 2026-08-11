@@ -108,6 +108,30 @@ describe("bulk-selection", () => {
       expect(rowById(1).attr("aria-checked")).toBe("false");
       expect(rowById(3).attr("aria-checked")).toBe("false");
     });
+
+    it("strips the stray .visible-on-focus go-to-icon reveal from every row (Clear/Exit cleanup)", () => {
+      // Tapping a row in multi-select focuses it, so cards.ts adds
+      // `.visible-on-focus` to its .goToUrlIcon. Since exiting mode does not
+      // re-render the deck, clearURLSelection (called on both Clear and Exit)
+      // must strip that class — otherwise `.visible-on-focus`'s
+      // `visibility: visible !important` shows a stray icon once the in-mode
+      // `#URLDeck.multiSelectActive` suppression is gone. Cover both a still-
+      // selected row and a tapped-then-deselected (no longer .multiSelected) one.
+      toggleURLCardSelection(1);
+      toggleURLCardSelection(2);
+      rowById(1).find(".goToUrlIcon").addClass("visible-on-focus"); // still selected
+      rowById(2).find(".goToUrlIcon").addClass("visible-on-focus");
+      toggleURLCardSelection(2); // deselect: keeps the stray class, loses .multiSelected
+
+      clearURLSelection();
+
+      expect(rowById(1).find(".goToUrlIcon").hasClass("visible-on-focus")).toBe(
+        false,
+      );
+      expect(rowById(2).find(".goToUrlIcon").hasClass("visible-on-focus")).toBe(
+        false,
+      );
+    });
   });
 
   describe("selectAllVisibleURLCards", () => {

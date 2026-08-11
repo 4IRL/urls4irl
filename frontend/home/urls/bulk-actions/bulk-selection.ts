@@ -9,6 +9,8 @@ const log = debug("urls:cards");
 
 const MULTI_SELECTED_CLASS = "multiSelected";
 const CHECKBOX_SELECTOR = ".urlSelectCheckbox";
+const GO_TO_ICON_SELECTOR = ".goToUrlIcon";
+const VISIBLE_ON_FOCUS_CLASS = "visible-on-focus";
 
 /** Resolve a URL card by its utuburlid. */
 function urlCardById(id: number): JQuery {
@@ -75,6 +77,18 @@ export function clearURLSelection(): void {
   const marked = $(`.urlRow.${MULTI_SELECTED_CLASS}`);
   marked.removeClass(MULTI_SELECTED_CLASS).attr("aria-checked", "false");
   marked.find(CHECKBOX_SELECTOR).attr("aria-checked", "false");
+  // Strip the stray single-select go-to-icon reveal from every row. Tapping a
+  // row in multi-select focuses it, and setFocusEventListenersOnURLCard
+  // (cards/cards.ts) adds `.visible-on-focus` to its .goToUrlIcon; the focusout
+  // handler only removes it when the icon button ITSELF blurs, and the
+  // multi-select tap path never runs the single-select deselect cleanup
+  // (selection.ts) that would otherwise strip it. Because exiting mode does not
+  // re-render the deck, those rows keep the class — and once the in-mode
+  // `#URLDeck.multiSelectActive .goToUrlIcon` suppression is gone,
+  // `.visible-on-focus`'s `visibility: visible !important` (layout.css) would
+  // show a stray go-to icon on unfocused rows. This runs on both Clear and Exit
+  // (exitMultiSelectMode calls clearURLSelection).
+  $(`.urlRow ${GO_TO_ICON_SELECTOR}`).removeClass(VISIBLE_ON_FOCUS_CLASS);
   commitSelection([]);
 }
 
