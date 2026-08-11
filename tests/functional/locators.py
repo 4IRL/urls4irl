@@ -222,11 +222,21 @@ class HomePageLocators(GenericPageLocator):
     ROW_MULTI_SELECTED = ".urlRow.multiSelected"
     URL_SELECT_CHECKBOX = ".urlSelectCheckbox"
     BULK_ACTION_BAR = "#bulkActionBar"
+    # Selection-context region relocated into the URL-deck header (selection-mode
+    # IA restructure). The count/hidden-hint/Exit ids are UNCHANGED — only their
+    # DOM home moved from the bottom bar into #bulkSelectContext (and the header
+    # .button-container for #bulkSelectExit), so bulk-bar.ts's global $(id)
+    # lookups keep driving them.
+    BULK_SELECT_CONTEXT = "#bulkSelectContext"
+    BULK_SELECT_CRUMB = "#bulkSelectCrumb"
     BULK_SELECT_COUNT = "#bulkSelectCount"
     BULK_SELECT_HIDDEN_HINT = "#bulkSelectHiddenHint"
     BULK_SELECT_ALL = "#bulkSelectAll"
     BULK_SELECT_CLEAR = "#bulkSelectClear"
     BULK_SELECT_EXIT = "#bulkSelectExit"
+    # Mobile-only on-demand tag-filter glyph (bi-tag) in the header; opens the
+    # existing tag-sheet in selection mode. Hidden on desktop (min-width:992px).
+    BULK_TAG_FILTER_ICON = "#bulkTagFilterIcon"
     BULK_SELECTION_ANNOUNCEMENT = "#URLBulkSelectionAnnouncement"
 
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"

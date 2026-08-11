@@ -21,6 +21,11 @@ from tests.functional.tags_ui.playwright_utils import get_utub_tag_filter_select
 from tests.functional.urls_ui.playwright_assert_utils import (
     assert_urls_are_multi_selected,
 )
+from tests.functional.urls_ui.playwright_utils import (
+    focus_url_search_input,
+    wait_for_url_search_filter_applied,
+)
+from tests.functional.utubs_ui.playwright_utils import open_update_utub_name_input
 
 pytestmark = pytest.mark.urls_ui
 
@@ -86,18 +91,23 @@ def test_toggle_enters_and_exits_multi_select_mode(
 
     _enter_multi_select_mode(page=page)
 
-    # Mode on: checkboxes revealed, DD-20 entry points disabled.
+    # Mode on: checkboxes revealed, DD-20 entry points disabled. The toggle
+    # itself is hidden in mode (the header Exit ✕ is the way out now), so no
+    # solid green pressed-state block sits beside the icon-only controls.
     expect(page.locator(HPL.URL_SELECT_CHECKBOX).first).to_be_visible()
     expect(page.locator(HPL.BUTTON_CORNER_URL_CREATE)).to_be_hidden()
     expect(page.locator(HPL.CROSS_SEARCH_TRIGGER)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_hidden()
 
-    # Exit via the header toggle.
-    page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE).click()
+    # Exit via the header Exit ✕ (the toggle is hidden in mode).
+    wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_EXIT)
     expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_have_attribute(
         "aria-pressed", "false"
     )
     expect(page.locator(HPL.BULK_ACTION_BAR)).to_be_hidden()
     expect(page.locator(HPL.URL_SELECT_CHECKBOX).first).to_be_hidden()
+    # The toggle reappears (unpressed) on exit.
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_visible()
     expect(page.locator(HPL.BUTTON_CORNER_URL_CREATE)).to_be_visible()
     expect(page.locator(HPL.CROSS_SEARCH_TRIGGER)).to_be_visible()
 
@@ -324,3 +334,148 @@ def test_switching_utub_clears_selection_and_hides_bar(
         "aria-pressed", "false"
     )
     expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(0)
+
+
+def test_header_hosts_selection_context_desktop_hides_tag_icon(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub with URLs on desktop
+    WHEN the user enters multi-select mode
+    THEN the relocated selection context (#bulkSelectContext with #bulkSelectCount
+        and the crumb) plus the header Exit ✕ render in the HEADER (not the bottom
+        bar), the mobile-only #bulkTagFilterIcon stays hidden on desktop, and the
+        header ✕ leaves mode.
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    # Mode off: the selection context is hidden.
+    expect(page.locator(HPL.BULK_SELECT_CONTEXT)).to_be_hidden()
+
+    _enter_multi_select_mode(page=page)
+
+    # The context + its count/crumb + the header Exit are visible; the
+    # #bulkTagFilterIcon is the mobile-only affordance and stays hidden on desktop.
+    context = page.locator(HPL.BULK_SELECT_CONTEXT)
+    expect(context).to_be_visible()
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_be_visible()
+    expect(context.locator(HPL.BULK_SELECT_CRUMB)).to_have_text(UTS.TEST_UTUB_NAME_1)
+    expect(page.locator(HPL.BULK_SELECT_EXIT)).to_be_visible()
+    expect(page.locator(HPL.BULK_TAG_FILTER_ICON)).to_be_hidden()
+
+    # The count/Exit are NOT in the bottom bar anymore (only actions live there).
+    bar = page.locator(HPL.BULK_ACTION_BAR)
+    expect(bar.locator(HPL.BULK_SELECT_COUNT)).to_have_count(0)
+    expect(bar.locator(HPL.BULK_SELECT_EXIT)).to_have_count(0)
+
+    # The header ✕ leaves mode.
+    wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_EXIT)
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_have_attribute(
+        "aria-pressed", "false"
+    )
+    expect(page.locator(HPL.BULK_ACTION_BAR)).to_be_hidden()
+    expect(context).to_be_hidden()
+
+
+def test_utub_name_edit_blocked_in_mode_and_restored_after_exit(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN an owned UTub whose name is normally inline-editable
+    WHEN the user enters multi-select mode
+    THEN the UTub name zone is replaced by the selection context and its editor
+        cannot be opened (name wrap hidden, edit input never shown); AND after
+        Exit the name zone returns and clicking it opens the editor again.
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    # Baseline: the name wrap is present and the editor opens on a wrap click.
+    expect(page.locator(HPL.WRAP_UTUB_NAME_UPDATE)).to_be_visible()
+
+    _enter_multi_select_mode(page=page)
+
+    # In mode the name zone is hidden (selection context takes over) and the
+    # editor is unreachable — the input stays hidden.
+    expect(page.locator(HPL.WRAP_UTUB_NAME_UPDATE)).to_be_hidden()
+    expect(page.locator(HPL.HEADER_URL_DECK)).to_be_hidden()
+    expect(page.locator(HPL.INPUT_UTUB_NAME_UPDATE)).to_be_hidden()
+    expect(page.locator(HPL.BULK_SELECT_CONTEXT)).to_be_visible()
+
+    # Exit restores the name zone; clicking it opens the editor again.
+    wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_EXIT)
+    expect(page.locator(HPL.WRAP_UTUB_NAME_UPDATE)).to_be_visible()
+    open_update_utub_name_input(page=page)
+    expect(page.locator(HPL.INPUT_UTUB_NAME_UPDATE)).to_be_visible()
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE)
+    expect(page.locator(HPL.INPUT_UTUB_NAME_UPDATE)).to_be_hidden()
+
+
+def test_text_filter_narrows_rows_with_selection_surviving(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN every visible row selected in multi-select mode
+    WHEN the funnel text-filter narrows the deck to a single URL
+    THEN the hidden (still-selected) rows keep their marks, the count is
+        unchanged, and the hidden hint surfaces the newly-hidden selection count
+        — mirroring test_selection_survives_tag_filter for the text filter.
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    # Collect (id, url_string) for every URL so a full-url-string search term
+    # deterministically matches exactly one row (mock strings are distinct).
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub.id)
+            .order_by(Utub_Urls.id)
+            .all()
+        )
+        assert len(utub_urls) >= 2
+        total_urls = len(utub_urls)
+        search_term = utub_urls[0].standalone_url.url_string
+        matching = [
+            utub_url
+            for utub_url in utub_urls
+            if search_term.lower() in (utub_url.url_title or "").lower()
+            or search_term.lower() in utub_url.standalone_url.url_string.lower()
+        ]
+        expected_visible = len(matching)
+    # The full URL string is unique to its own row.
+    assert expected_visible == 1
+    expected_hidden = total_urls - expected_visible
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    _enter_multi_select_mode(page=page)
+    wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_ALL)
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text(str(total_urls))
+
+    # Apply the funnel text filter (always-visible input on desktop).
+    focus_url_search_input(page=page)
+    page.locator(HPL.URL_SEARCH_INPUT).fill(search_term)
+    wait_for_url_search_filter_applied(page=page)
+
+    # Only the matching row stays visible; the rest are search-hidden but still
+    # selected. The text filter toggles `searchable` (not `filterable`), so count
+    # the rows bulk-bar treats as visible: filterable AND not search-hidden.
+    search_visible = f"{HPL.ROWS_URLS}[filterable='true'][searchable='true']"
+    expect(page.locator(search_visible)).to_have_count(expected_visible)
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text(str(total_urls))
+    expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(total_urls)
+    hidden_hint = page.locator(HPL.BULK_SELECT_HIDDEN_HINT)
+    expect(hidden_hint).to_be_visible()
+    expect(hidden_hint).to_have_text(
+        UTS.URL_BULK_N_HIDDEN.replace("{n}", str(expected_hidden))
+    )
+    expect(page.locator(HPL.BULK_SELECTION_ANNOUNCEMENT)).to_have_text(
+        _expected_announcement(selected_count=total_urls, hidden_count=expected_hidden)
+    )

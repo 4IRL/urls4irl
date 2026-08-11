@@ -119,6 +119,20 @@
 }
 
 /*
+ * The multi-select toggle is the affordance to ENTER selection mode; once in
+ * mode the header Exit ✕ (#bulkSelectExit) is the way out, so the toggle is
+ * redundant AND its aria-pressed="true" green fill (rule below) reads as an odd
+ * solid block beside the clean icon-only funnel/Exit controls. Hide it in mode,
+ * mirroring #urlBtnCreate above; it reappears (unpressed) on exit. The
+ * aria-pressed sync in index.ts stays — harmless on a hidden element. Uses the
+ * same deck-level .multiSelectActive gate + !important as #urlBtnCreate to beat
+ * that element's own hidden/visible class churn (deck.ts empty-state toggling).
+ */
+#URLDeck.multiSelectActive #urlBtnMultiSelect {
+  display: none !important;
+}
+
+/*
  * Swipe-to-delete is a no-op in multi-select mode (cards/swipe.ts's _beginDrag
  * early-returns when multiSelectMode), so its absolutely-positioned red reveal
  * background has no purpose here. In mode the row switches to flex-direction:row
