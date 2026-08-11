@@ -32,6 +32,10 @@
 		<span id="URLSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
 	</div>
 	<span id="URLTagFilterAnnouncement" aria-live="polite" class="visually-hidden"></span>
+	<!-- Single selection-mode live region (relocated here from BulkActionBar.html
+	     when the selection context moved into the header). bulk-bar.ts writes the
+	     "N selected, N hidden by filter" announcement to it via its preserved id. -->
+	<span id="URLBulkSelectionAnnouncement" class="visually-hidden" aria-live="polite"></span>
 	<!-- Shared polite announcer for the mobile per-field "Saved ✓" acknowledgment
 	     (UTub header name/description + URL card title/string fields). -->
 	<span id="fieldSavedAnnouncement" aria-live="polite" class="visually-hidden"></span>

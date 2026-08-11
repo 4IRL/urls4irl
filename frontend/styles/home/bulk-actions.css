@@ -142,6 +142,95 @@
 }
 
 /*
+ * ---- Selection-mode context (header) ----
+ * In mode the header's title/description zone becomes the selection context
+ * (UTub-name breadcrumb + count + "N hidden by filter"). Revealed only under
+ * #URLDeck.multiSelectActive — the same deck-level gating idiom #urlBtnCreate
+ * uses, inverted here to reveal-in-mode. The count pill / hidden-hint reuse the
+ * existing #bulkSelectCount.countPill / #bulkSelectHiddenHint.hiddenHint rules
+ * below (id/class based, so they style identically wherever the ids render).
+ */
+#bulkSelectContext {
+  display: none;
+  gap: 8px;
+  min-width: 0;
+}
+
+#URLDeck.multiSelectActive #bulkSelectContext {
+  display: flex;
+}
+
+/* Breadcrumb = the active UTub name (JS-filled on enter). Muted, truncates so a
+   long name never crowds the count out of the row. Uses an existing token. */
+.bulkCrumb {
+  color: var(--grayBadgeSelection);
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+
+/* In mode, the context replaces the normal name/description affordances: hide
+   the UTub name wrap + the description subheader text, and BOTH edit pencils.
+   The !important on the pencils mirrors the #urlBtnCreate precedent (guards
+   against the pencils' own hidden/visible class churn re-revealing them). The
+   inline-edit open handlers are ALSO gated on !isMultiSelectActive() in JS
+   (update-name/description/utub-panel) — belt-and-suspenders, since the editors
+   open on a wrap click, not the pencil. */
+#URLDeck.multiSelectActive #UTubNameOuterUpdateWrap,
+#URLDeck.multiSelectActive #UTubDescriptionSubheaderWrap {
+  display: none;
+}
+
+#URLDeck.multiSelectActive .edit-pencil-icon {
+  display: none !important;
+}
+
+/*
+ * Header Exit + tag-filter controls live in .button-container. buttons.css sets
+ * `.button-container button { display:inline-flex }` (a 0,1,1 rule), but the id
+ * base-hide below (1,0,0) outranks it, so both stay hidden until the higher-
+ * specificity mode rule reveals them.
+ */
+#bulkSelectExit,
+#bulkTagFilterIcon {
+  display: none;
+}
+
+#URLDeck.multiSelectActive #bulkSelectExit {
+  display: inline-flex;
+}
+
+/* The tag-filter icon is a mobile-only affordance (the tag-sheet it opens is
+   mobile-only). Revealed in mode; always hidden on desktop, mirroring
+   #URLSearchFilterIcon's desktop hide in utubs.css. The !important beats the
+   in-mode reveal above so desktop stays icon-free (tag filtering there is the
+   persistent LHS #TagDeck). */
+#URLDeck.multiSelectActive #bulkTagFilterIcon {
+  display: inline-flex;
+}
+
+@media (min-width: 992px) {
+  #bulkTagFilterIcon {
+    display: none !important;
+  }
+}
+
+#bulkSelectExit:focus-visible,
+#bulkTagFilterIcon:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/* Pressed indicator while the tag sheet is open (aria-expanded synced in JS). */
+#bulkTagFilterIcon[aria-expanded="true"] {
+  background: var(--splashGreen);
+  color: #fff;
+}
+
+/*
  * ---- Bulk-action bar ----
  * Desktop: an inline bar directly below the deck header. bulk-bar.ts toggles the
  * `hidden` class on mode enter/exit (global `.hidden { display:none !important }`
@@ -227,17 +316,19 @@
 }
 
 /*
- * Mobile (<=991.98px): the bar becomes a bottom-docked drawer (tag-sheet
+ * Mobile (<=991.98px): the bar is a single bottom-docked drawer (tag-sheet
  * pattern) inside #mainPanel.
  *
- * DD-11 z-index resolution: the collapsed tag-sheet viewport sits at z-index 30
- * and is raised to 1040 (its backdrop 1039) only while the sheet is open or
- * dragging. The bulk-bar drawer lands at 1035 — above normal deck content and
- * the collapsed tag-sheet peek, but BELOW an open tag sheet (1040) and its
- * backdrop (1039). So when both are active at once, the open tag sheet overlays
- * (and its backdrop dims) the bulk bar — the same topmost-overlay-wins ordering
- * the Escape-key guard enforces (tag sheet wins over multi-select). Verified
- * against the built app at 390px.
+ * DD-11 double-drawer dissolution: the tag-sheet PEEK is suppressed while
+ * multi-select mode is active via a CSS transform keyed off
+ * #mainPanel.multiSelectActive (tag-sheet.css slides the collapsed sheet fully
+ * off-screen; bulk-mode.ts toggles that class), so the bar no longer stacks
+ * against a second permanent bottom drawer — it is the only docked surface in
+ * mode. Suppressing via transform rather than `.hidden` keeps the sheet
+ * openable: tag filtering opens it on-demand from the header tag icon, and while
+ * that sheet is open the z-index ladder still holds (peek 30 · bulk bar 1035 ·
+ * backdrop 1039 · open sheet 1040), so the open sheet overlays and dims the bar
+ * — the same topmost-overlay-wins ordering the Escape guard enforces.
  */
 @media (max-width: 991.98px) {
   #bulkActionBar {
@@ -268,19 +359,21 @@
     font-size: 0.9rem;
   }
 
-  /* Keep the last URL card clear of the docked bar. The tag-sheet peek padding
-     already reserves --tag-sheet-peek on the deck content (tag-sheet.css); add
-     the bar's height on top while multi-select mode is active. This rule
+  /* Keep the last URL card clear of the docked bar. Recomputed for the bar's own
+     height only: the tag-sheet peek is suppressed in mode (Step 6), so its
+     --tag-sheet-peek reservation is no longer needed here. This rule
      (1 id + 3 classes) outranks tag-sheet.css's `#URLDeck .flex-column.content`
      (1 id + 2 classes) so it wins when the deck is in mode. */
   #URLDeck.multiSelectActive .flex-column.content {
-    padding-bottom: calc(var(--tag-sheet-peek) + 88px);
+    padding-bottom: 88px;
   }
 }
 
 /* Coarse-pointer: no sticky :hover repaint lingering after a tap. */
 @media (any-pointer: coarse) {
-  .barBtn {
+  .barBtn,
+  #bulkSelectExit,
+  #bulkTagFilterIcon {
     -webkit-tap-highlight-color: transparent;
   }
 

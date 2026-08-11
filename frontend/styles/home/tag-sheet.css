@@ -173,6 +173,21 @@
         transition: none;        /* sheet tracks the finger 1:1 during drag */
     }
 
+    /* Multi-select mode — suppress ONLY the collapsed peek so it stops stacking
+       against the docked bulk-action bar (DD-11 double drawer). Slides the whole
+       sheet fully off-screen (translateY(100%), past the peek's
+       100%-minus-peek rest) and makes it inert, but ONLY while collapsed:
+       `:not(.tag-sheet-open)` means an on-demand open (#bulkTagFilterIcon adding
+       .tag-sheet-open) still wins via the 1-2-0 open rule and slides up normally.
+       Suppressing the peek this way — rather than toggling `.hidden`
+       (display:none !important) on the sheet — is what keeps the sheet openable
+       mid-selection. Specificity 2-3-0 outranks the 1-1-0 base rest rule.
+       #mainPanel gets .multiSelectActive in bulk-mode.ts's enter/exit. */
+    #mainPanel.multiSelectActive #tagDeckSheet.tag-deck-sheet:not(.tag-sheet-open) {
+        transform: translateY(100%);
+        pointer-events: none;
+    }
+
     /* Change the header cursor to grabbing during an active drag, matching the
        pane-resizer .is-resizing pattern. */
     #tagDeckSheet.tag-sheet-dragging .tag-sheet-handle {

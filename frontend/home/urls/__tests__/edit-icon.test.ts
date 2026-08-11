@@ -10,6 +10,7 @@ import { getState } from "../../../store/app-store.js";
 import { deselectAllURLs } from "../cards/selection.js";
 import { temporarilyHideSearchForEdit } from "../search.js";
 import { isCoarsePointer } from "../../mobile.js";
+import { isMultiSelectActive } from "../bulk-actions/bulk-mode.js";
 import {
   openUTubEditPanel,
   closeUTubEditPanel,
@@ -83,6 +84,10 @@ vi.mock("../cards/selection.js", () => ({
 
 vi.mock("../../mobile.js", () => ({
   isCoarsePointer: vi.fn(() => false),
+}));
+
+vi.mock("../bulk-actions/bulk-mode.js", () => ({
+  isMultiSelectActive: vi.fn(() => false),
 }));
 
 vi.mock("../../visibility.js", () => ({
@@ -210,6 +215,9 @@ describe("Edit pencil icon", () => {
     // assertions are unchanged; the mobile describe blocks below flip this to
     // true in their own beforeEach.
     vi.mocked(isCoarsePointer).mockReturnValue(false);
+    // Default OUT of multi-select mode so every existing open-path assertion is
+    // unchanged; the selection-mode-gating block below flips this to true.
+    vi.mocked(isMultiSelectActive).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -905,6 +913,40 @@ describe("Edit pencil icon", () => {
         expect(deselectAllURLs).not.toHaveBeenCalled();
         expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
       });
+    });
+  });
+
+  describe("blocked while multi-select mode is active (desktop wrap-click gate)", () => {
+    // The name/description editors open on a WRAP click (not the pencil), so
+    // CSS-hiding the pencil in mode is not enough — openNameEdit /
+    // openDescriptionEdit early-return on isMultiSelectActive() so the editor
+    // can never open over the selection context (and never leaves the
+    // multi-select set stranded under a single-select deselectAllURLs()).
+    beforeEach(() => {
+      vi.mocked(isMultiSelectActive).mockReturnValue(true);
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+    });
+
+    it("does NOT open the name editor on a wrap click", () => {
+      $("#UTubNameUpdateWrap").trigger("click");
+
+      expect(deselectAllURLs).not.toHaveBeenCalled();
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+    });
+
+    it("does NOT open the name editor on a title click", () => {
+      $("#URLDeckHeader").trigger("click");
+
+      expect(deselectAllURLs).not.toHaveBeenCalled();
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+    });
+
+    it("does NOT open the description editor on a wrap click", () => {
+      $("#UTubDescriptionSubheaderWrap").trigger("click");
+
+      expect(deselectAllURLs).not.toHaveBeenCalled();
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
     });
   });
 });

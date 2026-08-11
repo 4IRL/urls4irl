@@ -1,12 +1,15 @@
 <!--
-	Multi-select bulk-action bar. Desktop: an inline bar below the deck header.
-	Mobile (<=991.98px): a bottom-docked drawer (tag-sheet pattern). Starts
-	`.hidden`; bulk-actions/bulk-bar.ts reveals it on mode-enter and repaints the
-	count / hidden-hint / SR announcement on every selection change.
+	Multi-select bulk-action bar — the ACTION host only. The selection *context*
+	(UTub breadcrumb + count + "N hidden by filter" + Exit ✕) and the single
+	#URLBulkSelectionAnnouncement live region now live in the URL-deck header /
+	subheader (URLDeckHeader.html / URLDeckSubheader.html); this bar keeps just
+	the action registry region and Select All / Clear.
 
-	Static words ("selected", "Select All", "Clear", "Exit") are Jinja literals;
-	the count number, the hidden-by-filter hint, and the SR announcement are all
-	TS-composed (the announcement from the URL_BULK_* string bridge).
+	Starts `.hidden`; bulk-actions/bulk-bar.ts reveals it on mode-enter and paints
+	the count / hidden-hint / SR announcement (all in the header now) on every
+	selection change via the preserved global ids.
+
+	Static words ("Select All", "Clear") are Jinja literals.
 
 	#bulkActionButtons is the capability-aware action-registry region — empty in
 	Phase 1; bulk-tag (Phase 2) and bulk-copy (Phase 3) render buttons into it.
@@ -14,14 +17,9 @@
 <div id="bulkActionBar" class="bulkBar hidden" role="region" aria-label="Bulk actions">
 	<div class="bulkBarGrabber" aria-hidden="true"></div>
 	<div class="bulkBarRow flex-row align-center">
-		<span id="bulkSelectCount" class="countPill">0</span>
-		<span class="bulkLabel">selected</span>
-		<span id="bulkSelectHiddenHint" class="hiddenHint hidden" aria-hidden="true"></span>
-		<span class="bulkSpacer"></span>
 		<div id="bulkActionButtons" class="bulkActions"></div>
+		<span class="bulkSpacer"></span>
 		<button id="bulkSelectAll" class="barBtn" type="button">Select All</button>
 		<button id="bulkSelectClear" class="barBtn clear" type="button" aria-disabled="true">Clear</button>
-		<button id="bulkSelectExit" class="barBtn" type="button">Exit</button>
 	</div>
-	<span id="URLBulkSelectionAnnouncement" class="visually-hidden" aria-live="polite"></span>
 </div>

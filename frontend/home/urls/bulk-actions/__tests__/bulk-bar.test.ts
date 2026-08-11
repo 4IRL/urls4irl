@@ -208,11 +208,13 @@ describe("bulk-bar", () => {
   });
 
   describe("mode-changed show/hide + focus", () => {
-    it("shows the bar and moves focus to Clear on mode enter", () => {
+    it("shows the bar and moves focus to the header Exit control on mode enter", () => {
       emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
 
       expect($("#bulkActionBar").hasClass("hidden")).toBe(false);
-      expect(document.activeElement).toBe($("#bulkSelectClear")[0]);
+      // Exit (now the header's primary in-mode control) is the initial focus
+      // target, not Clear.
+      expect(document.activeElement).toBe($("#bulkSelectExit")[0]);
     });
 
     it("hides the bar and returns focus to the toggle on mode exit", () => {

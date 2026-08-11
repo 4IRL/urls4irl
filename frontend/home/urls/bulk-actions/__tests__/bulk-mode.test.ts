@@ -13,15 +13,24 @@ vi.mock("../../cards/selection.js", () => ({
 
 const $ = window.jQuery;
 
-// #URLDeck receives the deck-level mode class; #toCrossUtubSearch (the navbar
-// cross-search trigger) is disabled while mode is active. A couple of selected
-// rows let us prove exit strips the marks via the real clearURLSelection().
+// #mainPanel wraps the deck: enter/exit toggle the .multiSelectActive class on
+// it too, so tag-sheet.css can slide the collapsed tag-sheet peek off-screen
+// (DD-11) without hiding the sheet outright. #URLDeck receives the same deck-level
+// mode class; #toCrossUtubSearch (the navbar cross-search trigger) is disabled
+// while mode is active. #bulkSelectCrumb is filled with the active UTub name on
+// enter, and #utubEditPanelToggle (the mobile edit affordance) hides on enter /
+// restores-if-was-visible on exit. A couple of selected rows let us prove exit
+// strips the marks via the real clearURLSelection().
 const DECK_HTML = `
-  <div id="URLDeck">
-    <div class="urlRow multiSelected" utuburlid="1" aria-checked="true"></div>
-    <div class="urlRow multiSelected" utuburlid="2" aria-checked="true"></div>
-  </div>
-  <button id="toCrossUtubSearch" class="navbar-cross-search"></button>
+  <main id="mainPanel">
+    <div id="URLDeck">
+      <span id="bulkSelectCrumb"></span>
+      <button id="utubEditPanelToggle" type="button"></button>
+      <div class="urlRow multiSelected" utuburlid="1" aria-checked="true"></div>
+      <div class="urlRow multiSelected" utuburlid="2" aria-checked="true"></div>
+    </div>
+    <button id="toCrossUtubSearch" class="navbar-cross-search"></button>
+  </main>
 `;
 
 describe("bulk-mode", () => {
@@ -40,6 +49,9 @@ describe("bulk-mode", () => {
 
       expect(getState().multiSelectMode).toBe(true);
       expect($("#URLDeck").hasClass("multiSelectActive")).toBe(true);
+      // The shared ancestor is marked too, so tag-sheet.css can suppress the
+      // collapsed peek (transform) without hiding the openable sheet.
+      expect($("#mainPanel").hasClass("multiSelectActive")).toBe(true);
       expect(vi.mocked(deselectAllURLs)).toHaveBeenCalledTimes(1);
       expect(handler).toHaveBeenCalledWith({ active: true });
 
@@ -59,6 +71,8 @@ describe("bulk-mode", () => {
 
       expect(getState().multiSelectMode).toBe(false);
       expect($("#URLDeck").hasClass("multiSelectActive")).toBe(false);
+      // The ancestor mode class is dropped too, restoring the collapsed peek.
+      expect($("#mainPanel").hasClass("multiSelectActive")).toBe(false);
       // clearURLSelection() ran: selection emptied and every mark stripped.
       expect(getState().selectedURLCardIDs).toEqual([]);
       expect($(".urlRow.multiSelected").length).toBe(0);
@@ -83,6 +97,45 @@ describe("bulk-mode", () => {
 
     expect($("#URLDeck").hasClass("multiSelectActive")).toBe(false);
     expect($("#toCrossUtubSearch").hasClass("hidden")).toBe(false);
+  });
+
+  describe("breadcrumb + edit-panel toggle hide/restore", () => {
+    it("fills #bulkSelectCrumb with the active UTub name on enter", () => {
+      setState({ activeUTubName: "MockUTub_1" });
+
+      enterMultiSelectMode();
+
+      expect($("#bulkSelectCrumb").text()).toBe("MockUTub_1");
+    });
+
+    it("hides #utubEditPanelToggle on enter", () => {
+      expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(false);
+
+      enterMultiSelectMode();
+
+      expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+    });
+
+    it("restores #utubEditPanelToggle on exit when it was visible before entry", () => {
+      enterMultiSelectMode();
+      expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+
+      exitMultiSelectMode();
+
+      expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(false);
+    });
+
+    it("does NOT restore #utubEditPanelToggle on exit when it was hidden before entry", () => {
+      // A non-owner / locked UTub / desktop leaves the toggle hidden pre-entry —
+      // exit must not clobber that (visibility-checked, mirroring
+      // #toCrossUtubSearch).
+      $("#utubEditPanelToggle").addClass("hidden");
+
+      enterMultiSelectMode();
+      exitMultiSelectMode();
+
+      expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+    });
   });
 
   describe("isMultiSelectActive", () => {

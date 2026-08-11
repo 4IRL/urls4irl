@@ -4,7 +4,11 @@ import {
   exitMultiSelectMode,
   isMultiSelectActive,
 } from "../bulk-mode.js";
-import { isTagSheetOpen } from "../../../tags/sheet.js";
+import {
+  isTagSheetOpen,
+  openTagSheetFromUserAction,
+} from "../../../tags/sheet.js";
+import { isMobile } from "../../../mobile.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 
 vi.mock("../bulk-mode.js", () => ({
@@ -15,12 +19,18 @@ vi.mock("../bulk-mode.js", () => ({
 
 vi.mock("../../../tags/sheet.js", () => ({
   isTagSheetOpen: vi.fn(() => false),
+  openTagSheetFromUserAction: vi.fn(),
+}));
+
+vi.mock("../../../mobile.js", () => ({
+  isMobile: vi.fn(() => true),
 }));
 
 const $ = window.jQuery;
 
 const HTML = `
   <button id="urlBtnMultiSelect" aria-pressed="false"></button>
+  <button id="bulkTagFilterIcon" aria-expanded="false"></button>
   <input id="textField" type="text" />
 `;
 
@@ -124,6 +134,53 @@ describe("bulk-actions index — aria-pressed follows mode-changed events", () =
 
     emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: false });
     expect($("#urlBtnMultiSelect").attr("aria-pressed")).toBe("false");
+  });
+});
+
+describe("bulk-actions index — header tag-filter icon", () => {
+  beforeEach(() => {
+    document.body.innerHTML = HTML;
+    vi.mocked(openTagSheetFromUserAction).mockClear();
+    vi.mocked(isTagSheetOpen).mockReturnValue(false);
+    vi.mocked(isMobile).mockReturnValue(true);
+    initBulkActions();
+  });
+
+  it("opens the tag sheet on click while mobile", () => {
+    $("#bulkTagFilterIcon").trigger("click");
+
+    expect(vi.mocked(openTagSheetFromUserAction)).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT open the tag sheet on click on desktop (no-op)", () => {
+    vi.mocked(isMobile).mockReturnValue(false);
+
+    $("#bulkTagFilterIcon").trigger("click");
+
+    expect(vi.mocked(openTagSheetFromUserAction)).not.toHaveBeenCalled();
+  });
+
+  it("reflects the sheet's open state in aria-expanded after a click opens it", () => {
+    // The click opens the sheet; the icon reads back isTagSheetOpen() to sync
+    // aria-expanded (the sheet exposes no open/close AppEvent).
+    vi.mocked(isTagSheetOpen).mockReturnValue(true);
+
+    $("#bulkTagFilterIcon").trigger("click");
+
+    expect($("#bulkTagFilterIcon").attr("aria-expanded")).toBe("true");
+  });
+
+  it("resets aria-expanded to false when focus returns to the icon on sheet close", () => {
+    vi.mocked(isTagSheetOpen).mockReturnValue(true);
+    $("#bulkTagFilterIcon").trigger("click");
+    expect($("#bulkTagFilterIcon").attr("aria-expanded")).toBe("true");
+
+    // Sheet closed → focus returns to the icon (its _opener); the focus handler
+    // re-reads isTagSheetOpen() (now false).
+    vi.mocked(isTagSheetOpen).mockReturnValue(false);
+    $("#bulkTagFilterIcon").trigger("focus");
+
+    expect($("#bulkTagFilterIcon").attr("aria-expanded")).toBe("false");
   });
 });
 

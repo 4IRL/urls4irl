@@ -152,9 +152,10 @@ function toggleBar(active: boolean): void {
   if (active) {
     bar.removeClass(HIDDEN_CLASS);
     updateBar(getState().selectedURLCardIDs);
-    // Clear is the intentional initial focus target (not #bulkSelectAll, which
-    // precedes it in DOM order); #bulkActionButtons is empty in Phase 1.
-    $(CLEAR_SELECTOR)[0]?.focus();
+    // Exit (the header's primary in-mode control) is the intentional initial
+    // focus target now that the context/Exit live in the header; the bottom bar
+    // hosts only the (empty in Phase 1) action registry + Select All / Clear.
+    $(EXIT_SELECTOR)[0]?.focus();
     return;
   }
   bar.addClass(HIDDEN_CLASS);

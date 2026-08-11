@@ -25,6 +25,7 @@ import {
 import { showFieldSavedTick } from "./field-saved-tick.js";
 import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
+import { isMultiSelectActive } from "./bulk-actions/bulk-mode.js";
 import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
@@ -96,6 +97,12 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   namePencilIcon.removeClass("hidden");
 
   function openNameEdit(trigger: "pencil_icon" | "keyboard"): void {
+    // The wrap/title click that opens this is unreachable via the (CSS-hidden)
+    // pencil in multi-select mode, but the handler is bound to the whole wrap —
+    // so gate the open itself. Its deselectAllURLs() only clears the
+    // single-select field; opening here would strand the multi-select set under
+    // the editor.
+    if (isMultiSelectActive()) return;
     emit({ event: UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, trigger });
     setOpenForm(HOME_FORM.UTUB_NAME_EDIT);
     deselectAllURLs();
