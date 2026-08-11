@@ -22,7 +22,11 @@
     outline: none;
     transition: 0.3s ease;
     background: var(--pageBackgroundColor);
-    color: whitesmoke;
+    /* Theme-aware so typed text is legible in BOTH themes: #1f2424 (dark ink) on
+       the near-white light-mode input surface, near-white on the dark surface.
+       Was a hardcoded `whitesmoke`, which vanished on the light theme's near-white
+       --pageBackgroundColor once the app stopped being dark-only. */
+    color: var(--textPrimary);
 }
 
 .search-input.text-input[type="text"],
