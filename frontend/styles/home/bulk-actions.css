@@ -173,15 +173,22 @@
  * `var(--grayBadgeSelection)` (buttons.css) — a token that flips between light
  * (#445055) and dark (gray), NOT --linkColor. The tag-filter + Exit controls are
  * neutral utility controls that only ever show in selection mode, so they stay
- * gray like the funnel. #urlBtnMultiSelect groups with these too — it is the
- * ENTER-selection tool affordance (a checklist glyph), a utility/tool icon that
- * must read as DISTINCT from the green + create button beside it, so it takes
- * the same neutral gray rather than the green .green-clickable treatment.
+ * gray like the funnel.
  */
 #bulkTagFilterIcon,
-#bulkSelectExit,
-#urlBtnMultiSelect {
+#bulkSelectExit {
   color: var(--grayBadgeSelection);
+}
+
+/*
+ * The multi-select ENTER toggle takes the selection accent (--deckSelectionGreen)
+ * rather than the neutral gray above — the same teal used by the selected-card
+ * ring and the "N selected" count pill — so the checklist glyph reads as the
+ * gateway into selection mode and stays visually tied to that accent, distinct
+ * from the neutral funnel/Exit utility icons.
+ */
+#urlBtnMultiSelect {
+  color: var(--deckSelectionGreen);
 }
 
 /*
