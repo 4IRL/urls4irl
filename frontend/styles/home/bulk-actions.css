@@ -166,23 +166,46 @@
 }
 
 /*
- * Neutral, theme-aware icon color for the header icon-buttons. Their SVGs use
- * fill="currentColor", so with no explicit color they inherited down to
+ * Neutral, theme-aware icon color for the selection-mode utility icons. Their
+ * SVGs use fill="currentColor", so with no explicit color they inherited down to
  * `a { color: var(--linkColor) }` (base.css) and rendered BLUE in light mode.
  * Match the funnel (#URLSearchFilterIcon > svg), which resolves to
  * `var(--grayBadgeSelection)` (buttons.css) — a token that flips between light
- * (#445055) and dark (gray), NOT --linkColor. Driving it via `color` (not a
- * direct svg fill) keeps currentColor working AND lets the higher-specificity
- * aria-pressed / aria-expanded rules below still win (they set color:#fff on
- * their green fill).
+ * (#445055) and dark (gray), NOT --linkColor. These two (tag-filter + Exit) are
+ * neutral utility controls that only ever show in selection mode, so they stay
+ * gray like the funnel. #urlBtnMultiSelect is handled below — it reads as a peer
+ * of the green + create button and is colored to match it.
  */
-#urlBtnMultiSelect,
 #bulkTagFilterIcon,
 #bulkSelectExit {
   color: var(--grayBadgeSelection);
 }
 
-/* Multi-select header toggle: filled green when the mode is active. */
+/*
+ * The multi-select toggle sits directly beside the + create button
+ * (#urlBtnCreate, .green-clickable) in the normal-mode header, so it gets the
+ * SAME green icon treatment for the two to read as a matching pair: a filled
+ * green glyph (color, NOT a background block — like .green-clickable), darkening
+ * on hover on fine pointers only. Driven via `color` so the fill="currentColor"
+ * SVG picks it up, mirroring .green-clickable in buttons.css.
+ */
+#urlBtnMultiSelect {
+  color: var(--splashGreen);
+}
+
+@media not all and (any-pointer: coarse) {
+  #urlBtnMultiSelect:hover {
+    cursor: pointer;
+    color: var(--darkSplashGreen);
+  }
+}
+
+/*
+ * Legacy pressed-state fill. The toggle is display:none in selection mode
+ * (aria-pressed="true" only occurs in mode — rule above), so this never renders;
+ * it is kept inert only to document that the pressed state was intentionally a
+ * fill, and does NOT show a background in normal mode (aria-pressed="false").
+ */
 #urlBtnMultiSelect[aria-pressed="true"] {
   background: var(--splashGreen);
   color: #fff;
