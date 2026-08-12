@@ -76,9 +76,20 @@
    `.urlRow.multiSelected` lost to that rule and selected EVEN rows kept their
    plain background instead of the teal highlight (odd rows have no id-scoped
    base background, so they highlighted correctly). */
+/*
+ * Selected-row fill is OPAQUE (--urlMultiSelectedBg), never a semi-transparent
+ * teal. .urlRow carries `transition: background-color 0.15s ease` (urls.css) and
+ * .urlRowContent inherits this background while sitting over the always-present
+ * red .urlRowSwipeReveal delete panel. On exitMultiSelectMode() the deck's
+ * .multiSelectActive is dropped (un-hiding that red panel, rule below) at the
+ * same time .multiSelected is removed — with a translucent tint the row's
+ * background-color transition would fade the teal out over the now-visible red,
+ * flashing RED (delete/danger) for ~150ms. An opaque token can never bleed. This
+ * mirrors the --urlCreateFlashBg opaque fix for the same red-reveal mechanism.
+ */
 #URLDeck.multiSelectActive .urlRow.multiSelected {
   border-color: var(--deckSelectionGreen);
-  background: rgba(96, 218, 170, 0.1);
+  background: var(--urlMultiSelectedBg);
 }
 
 .urlRow.multiSelected .urlSelectCheckbox {

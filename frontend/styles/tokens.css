@@ -46,6 +46,13 @@
        card surface (never semi-transparent: .urlRowContent inherits this and sits
        over the red swipe-reveal delete panel). */
     --urlCreateFlashBg: rgb(48, 82, 68);
+    /* Multi-select selected-row background — opaque, gentle teal lift of the dark
+       card surfaces (even rgb(51,61,61) / odd rgb(61,71,71)). MUST stay opaque for
+       the same reason as --urlCreateFlashBg: .urlRow (and the inheriting
+       .urlRowContent) sits over the always-present red .urlRowSwipeReveal delete
+       panel, which un-hides on exitMultiSelectMode; a translucent tint would let
+       the red bleed through as the row's background-color transition fades out. */
+    --urlMultiSelectedBg: rgb(56, 80, 74);
     --offWhiteSplashBackgroundBanner: rgba(248, 248, 248, 0.74);
     --blueLinkOnHover: rgba(5, 34, 77, 1.0);
     --darkGrayTextColor: rgba(51, 51, 51, 1.0);
@@ -210,6 +217,9 @@
     /* Create-time flash pulse start color — opaque pale mint tint on white
        (never semi-transparent; see dark-mode note above). */
     --light-urlCreateFlashBg: #dcefe4;
+    /* Multi-select selected-row background — opaque pale teal tint on white
+       (never semi-transparent; see dark-mode note above). */
+    --light-urlMultiSelectedBg: #dcefe4;
 
     --light-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --light-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
@@ -238,6 +248,7 @@
     --memberRoleIconColor: var(--light-memberRoleIconColor);
     --deckSelectionGreen: var(--light-deckSelectionGreen);
     --urlCreateFlashBg: var(--light-urlCreateFlashBg);
+    --urlMultiSelectedBg: var(--light-urlMultiSelectedBg);
 
     --shadow-sm: var(--light-shadow-sm);
     --shadow-md: var(--light-shadow-md);
@@ -274,6 +285,7 @@
         --memberRoleIconColor: var(--light-memberRoleIconColor);
         --deckSelectionGreen: var(--light-deckSelectionGreen);
         --urlCreateFlashBg: var(--light-urlCreateFlashBg);
+        --urlMultiSelectedBg: var(--light-urlMultiSelectedBg);
 
         --shadow-sm: var(--light-shadow-sm);
         --shadow-md: var(--light-shadow-md);
