@@ -315,6 +315,29 @@
 }
 
 /*
+ * ---- Filter-only tag sheet in multi-select mode ----
+ * When the tag sheet is opened during selection mode (via #bulkTagFilterIcon), it
+ * is FILTER-ONLY: the tag-management controls are suppressed, leaving just the
+ * filter funnel (#tagNameFilterBtn), the clear-filter control (#unselectAllTagFilters
+ * / #utubTagBtnUpdateAllClose), and the tappable tag rows (.tagFilter).
+ *
+ * #mainPanel gets .multiSelectActive in bulk-mode.ts's enter/exit, and the mobile
+ * tag sheet (#tagDeckSheet → relocated #TagDeck) lives inside #mainPanel, so these
+ * descendant selectors only bite in selection mode. Opened normally (navbar Tags,
+ * no mode) #mainPanel lacks the class and the full toolbar shows.
+ *
+ * Hidden: create (#utubTagBtnCreate), edit-tags (#utubTagBtnUpdateAllOpen), and the
+ * per-tag delete buttons (.utubTagBtnDelete) — the delete is display:none'd so it
+ * stays gone in both its enabled and disabled/pink states. !important beats the
+ * deck's showClassNormal() reveals in tags/deck.ts + update-all.ts.
+ */
+#mainPanel.multiSelectActive #utubTagBtnCreate,
+#mainPanel.multiSelectActive #utubTagBtnUpdateAllOpen,
+#mainPanel.multiSelectActive .utubTagBtnDelete {
+  display: none !important;
+}
+
+/*
  * ---- Bulk-action bar ----
  * Desktop: an inline bar directly below the deck header. bulk-bar.ts toggles the
  * `hidden` class on mode enter/exit (global `.hidden { display:none !important }`
