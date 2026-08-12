@@ -12,6 +12,16 @@
 		<span id="bulkSelectHiddenHint" class="hiddenHint hidden" aria-hidden="true"></span>
 	</div>
 
+	{# Multi-select bulk-action bar (Select All / Clear + the empty Phase-1 action
+	   registry region). Lives INSIDE the header context row now: on desktop it is an
+	   inline group sitting immediately after "N selected" (bulk-actions.css
+	   min-width:992px), replacing its former full-width row. On mobile the same
+	   element is styled position:fixed as the bottom-docked drawer, so it escapes
+	   the header flow and docks at the viewport bottom (bulk-actions.css
+	   max-width:991.98px). All ids are unchanged, so bulk-bar.ts's global $(id)
+	   show/hide + binding keeps driving it regardless of this DOM home. #}
+	{% include 'components/home/URLDeck/BulkActionBar.html' %}
+
 	<div class="flex-row align-center" id="UTubNameOuterUpdateWrap">
 		<!-- Header -->
 		<div class="flex-row align-center" id="UTubNameUpdateWrap">

@@ -237,6 +237,21 @@
   display: flex;
 }
 
+/*
+ * In mode the header row hosts, left→right: the count context (#bulkSelectContext),
+ * the inline Select All / Clear bar (#bulkActionBar — desktop only; on mobile it is
+ * a fixed bottom drawer and so contributes nothing to this row's flow), and the
+ * .button-container utility icons. The row carries `.jc-sb` (space-between); with
+ * three in-flow items on desktop that would strand the bar in the middle. An auto
+ * left-margin on the icon cluster instead absorbs the free space, packing
+ * count+bar together at the start and pinning the icons to the right edge. Harmless
+ * on mobile (2 in-flow items → identical to space-between). Scoped to mode so
+ * normal-mode layout (name left, icons right via .jc-sb) is untouched.
+ */
+#URLDeck.multiSelectActive .titleElement > .button-container {
+  margin-left: auto;
+}
+
 /* In mode, the context replaces the normal name/description affordances: hide
    the UTub name wrap + the description subheader text, and BOTH edit pencils.
    The !important on the pencils mirrors the #urlBtnCreate precedent (guards
@@ -350,17 +365,32 @@
 
 /*
  * ---- Bulk-action bar ----
- * Desktop: an inline bar directly below the deck header. bulk-bar.ts toggles the
- * `hidden` class on mode enter/exit (global `.hidden { display:none !important }`
- * wins over the `display:flex` below while present).
+ * Desktop: an inline control group living IN the deck header's context row,
+ * immediately to the right of the "N selected" count — it no longer occupies a
+ * full-width row of its own. bulk-bar.ts toggles the `hidden` class on mode
+ * enter/exit (global `.hidden { display:none !important }` wins over the
+ * `display:flex` here while present). The base rule is intentionally minimal so
+ * the desktop-inline (min-width:992px) and mobile-drawer (max-width:991.98px)
+ * blocks below each own their own layout — flex-direction/background/padding are
+ * set per-breakpoint rather than shared, so neither fights the other.
  */
 #bulkActionBar {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 15px;
-  background: var(--panelBackgroundColor);
-  border-top: 1px solid var(--contentTopBorder);
+}
+
+@media (min-width: 992px) {
+  /* Inline row in the header, a small gap after the count context. */
+  #bulkActionBar {
+    align-items: center;
+    margin-left: 12px;
+  }
+
+  /* The spacer only exists to push the actions to the far edge of the
+     full-width mobile drawer; inline in the header it would inject dead space
+     between the count and the buttons, so drop it. */
+  #bulkActionBar .bulkSpacer {
+    display: none;
+  }
 }
 
 /* The mobile grabber lip is desktop-invisible. */
@@ -455,6 +485,12 @@
     right: 0;
     bottom: 0;
     z-index: 1035;
+    /* Drawer-stacked layout: grabber lip above the action row. These three now
+       live here (not the shared base rule) because desktop-inline wants a
+       centered row with no chrome; the base is minimal to keep them apart. */
+    flex-direction: column;
+    gap: 6px;
+    background: var(--panelBackgroundColor);
     border-top: 2px solid var(--contentTopBorder);
     border-radius: 1.25rem 1.25rem 0 0;
     box-shadow: var(--shadow-lg);
