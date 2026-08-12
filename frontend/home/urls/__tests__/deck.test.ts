@@ -178,13 +178,19 @@ describe("updateURLDeck", () => {
     expect(document.querySelector('.urlRow[utuburlid="1"]')).toBeNull();
   });
 
-  it("prunes the removed id from the multi-select selection synchronously in removeElement", () => {
+  it("prunes the removed id from the multi-select selection synchronously in removeElement when in mode", () => {
     document.body.innerHTML = `
       <div id="SearchURLWrap"></div>
       <div id="listURLs">
         <div class="urlRow" utuburlid="3"></div>
       </div>
     `;
+    // The prune (and its setState/URL_MULTISELECT_CHANGED emit) is gated on
+    // multiSelectMode, so the store must report the mode active for it to fire.
+    vi.mocked(getState).mockReturnValue({
+      urls: [SAMPLE_URL_1],
+      multiSelectMode: true,
+    } as unknown as ReturnType<typeof getState>);
     // Fire the post-fade callback synchronously so no jQuery animation timer
     // dangles past the test (mirrors the sibling removeElement test).
     ($.fn as unknown as Record<string, unknown>).fadeOut = function (
@@ -202,6 +208,32 @@ describe("updateURLDeck", () => {
     config.removeElement(3);
 
     expect(vi.mocked(pruneRemovedFromSelection)).toHaveBeenCalledWith([3]);
+  });
+
+  it("does NOT prune the removed id when multi-select mode is inactive", () => {
+    document.body.innerHTML = `
+      <div id="SearchURLWrap"></div>
+      <div id="listURLs">
+        <div class="urlRow" utuburlid="3"></div>
+      </div>
+    `;
+    // Default beforeEach store has multiSelectMode undefined (mode off), so the
+    // single-URL removal must not emit a selection prune app-wide.
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+
+    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.removeElement(3);
+
+    expect(vi.mocked(pruneRemovedFromSelection)).not.toHaveBeenCalled();
   });
 
   it("re-marks a re-added card from the store in addElement", () => {

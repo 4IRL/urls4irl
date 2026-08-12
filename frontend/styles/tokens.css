@@ -218,7 +218,11 @@
        (never semi-transparent; see dark-mode note above). */
     --light-urlCreateFlashBg: #dcefe4;
     /* Multi-select selected-row background — opaque pale teal tint on white
-       (never semi-transparent; see dark-mode note above). */
+       (never semi-transparent; see dark-mode note above). Intentionally shares
+       the same #dcefe4 literal as --light-urlCreateFlashBg in light mode (the
+       two converge on white); they DIVERGE in dark mode (rgb(48,82,68) vs
+       rgb(56,80,74)) so they remain distinct tokens rather than one aliasing
+       the other. */
     --light-urlMultiSelectedBg: #dcefe4;
 
     --light-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);

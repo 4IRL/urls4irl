@@ -102,8 +102,9 @@ export function updateURLDeck(
     removeElement: (urlID) => {
       // Reconcile the multi-select store synchronously — before the fade —
       // so the bulk-bar count/store update immediately rather than waiting on
-      // the fade animation.
-      pruneRemovedFromSelection([urlID]);
+      // the fade animation. Gate on multiSelectMode so a single-URL removal in
+      // normal mode never emits setState/URL_MULTISELECT_CHANGED app-wide.
+      if (getState().multiSelectMode) pruneRemovedFromSelection([urlID]);
       const urlToRemove = $(".urlRow[utuburlid=" + urlID + "]");
       urlToRemove.fadeOut("fast", function () {
         urlToRemove.remove();

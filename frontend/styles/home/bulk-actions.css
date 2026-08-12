@@ -122,20 +122,6 @@
   visibility: hidden !important;
 }
 
-/* Coarse-pointer: no sticky hover, no tap-highlight flash on the checkbox. */
-@media (any-pointer: coarse) {
-  .urlSelectCheckboxWrap,
-  .urlSelectCheckbox {
-    -webkit-tap-highlight-color: transparent;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .urlSelectCheckbox {
-    transition: none;
-  }
-}
-
 /*
  * #urlBtnCreate (URLDeckHeader.html) is a descendant of #URLDeck, so unlike
  * #toCrossUtubSearch (disabled via JS since it lives in the navbar outside
@@ -203,16 +189,12 @@
 }
 
 /*
- * Legacy pressed-state fill. The toggle is display:none in selection mode
- * (aria-pressed="true" only occurs in mode — rule above), so this never renders;
- * it is kept inert only to document that the pressed state was intentionally a
- * fill, and does NOT show a background in normal mode (aria-pressed="false").
+ * Legacy pressed-state fill (removed). The toggle is display:none in selection
+ * mode (aria-pressed="true" only occurs in mode), so an aria-pressed="true" fill
+ * rule could never render — it is intentionally omitted. The pressed state was
+ * once a green fill; in normal mode (aria-pressed="false") the toggle shows no
+ * background at all.
  */
-#urlBtnMultiSelect[aria-pressed="true"] {
-  background: var(--splashGreen);
-  color: #fff;
-}
-
 #urlBtnMultiSelect:focus-visible {
   outline: 2px solid var(--deckSelectionGreen);
   outline-offset: 2px;
@@ -541,8 +523,11 @@
   }
 }
 
-/* Coarse-pointer: no sticky :hover repaint lingering after a tap. */
+/* Coarse-pointer: no tap-highlight flash on the checkbox / bar controls, and no
+   sticky :hover repaint lingering after a tap. */
 @media (any-pointer: coarse) {
+  .urlSelectCheckboxWrap,
+  .urlSelectCheckbox,
   .barBtn,
   #bulkSelectExit,
   #bulkTagFilterIcon {
@@ -555,6 +540,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .urlSelectCheckbox,
   .barBtn {
     transition: none;
   }
