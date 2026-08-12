@@ -20,9 +20,11 @@ class EmailSender:
         self._base = EMAILS.BASE_API_URL
         self._testing = False
         self._in_production = False
+        self._mock_send = False
 
     def init_app(self, app):
         self._testing = app.testing
+        self._mock_send = app.config.get(CONFIG_ENVS.MOCK_EMAIL_SEND, False)
         app.extensions[EMAILS.EMAIL] = self
         self._sender = app.config[CONFIG_ENVS.BASE_EMAIL]
 
@@ -168,6 +170,13 @@ class EmailSender:
         }
 
     def _send_or_fail(self, message: dict[str, list[dict]]) -> Response:
+        # Functional-test / CI environments (MOCK_EMAIL_SEND=True) never touch
+        # the real Mailjet API — return a deterministic mock 200 success so email
+        # flows don't depend on a non-deterministic external network call. The
+        # real send path below stays intact for production (flag defaults off).
+        if self._mock_send:
+            return self._mock_success_response_builder()
+
         request_id = safe_get_request_id()
         try:
             return self._mailjet_client.send.create(data=message)
@@ -184,6 +193,22 @@ class EmailSender:
             # TODO: Include the error output for logging but just return error here
             error_log(f"[{request_id}] Error with Mailjet service: {e}")
             return self._mock_response_builder(500)
+
+    @staticmethod
+    def _mock_success_response_builder() -> Response:
+        """A deterministic 200 stand-in for a Mailjet send, used when
+        ``MOCK_EMAIL_SEND`` is enabled (functional-test / CI app). Callers key
+        off ``status_code == 200`` for success and never parse the body on a
+        200, so an empty ``Messages`` envelope is sufficient — it only needs to
+        be valid JSON for ``Response.json()``."""
+        mock_response = Response()
+        mock_response.status_code = 200
+        mock_response.encoding = "utf-8"
+        json_include = {EMAILS.MESSAGES: []}
+        mock_response._content = bytes(
+            dumps(json_include, allow_nan=False), encoding="utf-8"
+        )
+        return mock_response
 
     @staticmethod
     def _mock_response_builder(status_code: int = 500) -> Response:

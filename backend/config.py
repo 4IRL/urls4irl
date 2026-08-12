@@ -31,6 +31,12 @@ VITE_URL = environ.get(ENV.VITE_URL, default="https://localhost:5173")
 VITE_INTERNAL_HOST = environ.get(ENV.VITE_INTERNAL_HOST, default="")
 ENABLE_SSL = environ.get(ENV.ENABLE_SSL, default="false").lower() == "true"
 
+# When true, `EmailSender._send_or_fail` short-circuits to a mock 200 success
+# WITHOUT calling the real Mailjet HTTP API. Defaults off so production always
+# performs a genuine send; forced on in `ConfigTestUI` so the functional-test /
+# CI app never depends on a non-deterministic external Mailjet call.
+MOCK_EMAIL_SEND = environ.get(ENV.MOCK_EMAIL_SEND, default="false").lower() == "true"
+
 # Anonymous metrics flags. Phase 1 of the anonymous-metrics initiative reserves
 # the env names and surfaces them on Flask config; nothing writes metrics yet.
 METRICS_ENABLED = environ.get(ENV.METRICS_ENABLED, default="false").lower() == "true"
@@ -179,6 +185,7 @@ class Config:
     VITE_URL = VITE_URL
     VITE_INTERNAL_HOST = VITE_INTERNAL_HOST
     ENABLE_SSL = ENABLE_SSL
+    MOCK_EMAIL_SEND = MOCK_EMAIL_SEND
     METRICS_ENABLED = METRICS_ENABLED
     METRICS_FLUSH_INTERVAL_SECONDS = METRICS_FLUSH_INTERVAL_SECONDS
     METRICS_BUCKET_SECONDS = METRICS_BUCKET_SECONDS
@@ -273,6 +280,14 @@ class ConfigTest(Config):
 class ConfigTestUI(ConfigTest):
     UI_TESTING = True
     SESSION_COOKIE_SECURE = False
+    # The functional-test app is a live Flask server (started by
+    # `tests/functional/ui_test_setup.run_app`) whose email routes execute the
+    # real `EmailSender` send path — unlike integration tests, which mock the
+    # `send_*` methods. Force the send to short-circuit to a deterministic mock
+    # 200 so change-email / reset-password / validate-email UI flows never depend
+    # on a live Mailjet call (non-deterministic in CI: missing/invalid creds,
+    # egress limits, or rate-limiting under xdist load).
+    MOCK_EMAIL_SEND = True
     # See TEST_*_OAUTH_CLIENT_ID/TEST_*_OAUTH_CLIENT_SECRET above.
     GOOGLE_OAUTH_CLIENT_ID = TEST_GOOGLE_OAUTH_CLIENT_ID
     GOOGLE_OAUTH_CLIENT_SECRET = TEST_GOOGLE_OAUTH_CLIENT_SECRET
