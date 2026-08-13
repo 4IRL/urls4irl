@@ -165,6 +165,12 @@ function deleteUTubSuccess(utubID: number): void {
       members: [],
       selectedTagIDs: [],
       selectedURLCardID: null,
+      // Defense-in-depth: the UTUB_DELETED subscriber in bulk-actions/index.ts
+      // already exits multi-select mode; clear the store here too so a future
+      // call site mutating activeUTubID/urls off this path can't strand a
+      // stale selection.
+      multiSelectMode: false,
+      selectedURLCardIDs: [],
     });
 
     // Reset all panels

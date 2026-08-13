@@ -969,18 +969,23 @@ a.urlString {
 /* ============================================================================
    Create-time highlight flash — a transient background pulse on a freshly
    created URL card (distinct from the persistent urlSelected styling), removed
-   by create.ts via setTimeout after ~1.5s.
+   by create.ts via setTimeout after ~0.7s.
    ============================================================================ */
 .url-card-created-highlight {
-    animation: urlCardCreatedFlash 1.5s ease-out;
+    animation: urlCardCreatedFlash 0.7s ease-out;
 }
 
+/* Fades from the green highlight to the row's OWN resting background. The 100%
+   frame is intentionally implicit (no `to`), so the animation interpolates green
+   -> the element's underlying computed background (var(--cardBackgroundColor) on
+   even rows, var(--defaultPageBackgroundColor) on odd rows — both opaque). It
+   must NOT end on `transparent`: .urlRowContent uses `background-color: inherit`
+   and sits above the always-present red .urlRowSwipeReveal delete panel, so a
+   transparent row background lets that red bleed through and the "new URL" card
+   momentarily reads as a delete/danger state. */
 @keyframes urlCardCreatedFlash {
     0% {
-        background-color: var(--deckSelectionGreen);
-    }
-    100% {
-        background-color: transparent;
+        background-color: var(--urlCreateFlashBg);
     }
 }
 

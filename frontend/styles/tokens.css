@@ -22,6 +22,10 @@
 
     /*1d2124*/
     --navbarTextHover: rgba(29, 33, 36, 1.0);
+    /* Navbar resting text/icons. Defined only here (dark base) and deliberately
+       NOT overridden for light mode, so it stays light on the always-dark navbar
+       — same pattern as --navbarBackground / --navbarTextHover. */
+    --navbarText: rgba(170, 170, 170, 1.0);
     /* #212529 */
     --navbarBackground: rgba(33, 37, 41, 1.0);
     /* #4d5053 */
@@ -38,6 +42,17 @@
     --deckHeaderGreen: rgba(36, 167, 69, 1.0);
     --deckSelectionGreen: rgba(96, 218, 170, 1.0);
     --deckSelectionGreenHover: rgba(67, 152, 118, 1.0);
+    /* Create-time flash pulse start color — opaque, gentle green lift of the dark
+       card surface (never semi-transparent: .urlRowContent inherits this and sits
+       over the red swipe-reveal delete panel). */
+    --urlCreateFlashBg: rgb(48, 82, 68);
+    /* Multi-select selected-row background — opaque, gentle teal lift of the dark
+       card surfaces (even rgb(51,61,61) / odd rgb(61,71,71)). MUST stay opaque for
+       the same reason as --urlCreateFlashBg: .urlRow (and the inheriting
+       .urlRowContent) sits over the always-present red .urlRowSwipeReveal delete
+       panel, which un-hides on exitMultiSelectMode; a translucent tint would let
+       the red bleed through as the row's background-color transition fades out. */
+    --urlMultiSelectedBg: rgb(56, 80, 74);
     --offWhiteSplashBackgroundBanner: rgba(248, 248, 248, 0.74);
     --blueLinkOnHover: rgba(5, 34, 77, 1.0);
     --darkGrayTextColor: rgba(51, 51, 51, 1.0);
@@ -199,6 +214,16 @@
     --light-memberRoleIconColor: #1e8549;
     /* Accent/focus green darkened for contrast on white surfaces. */
     --light-deckSelectionGreen: #1e8549;
+    /* Create-time flash pulse start color — opaque pale mint tint on white
+       (never semi-transparent; see dark-mode note above). */
+    --light-urlCreateFlashBg: #dcefe4;
+    /* Multi-select selected-row background — opaque pale teal tint on white
+       (never semi-transparent; see dark-mode note above). Intentionally shares
+       the same #dcefe4 literal as --light-urlCreateFlashBg in light mode (the
+       two converge on white); they DIVERGE in dark mode (rgb(48,82,68) vs
+       rgb(56,80,74)) so they remain distinct tokens rather than one aliasing
+       the other. */
+    --light-urlMultiSelectedBg: #dcefe4;
 
     --light-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --light-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
@@ -226,6 +251,8 @@
     --grayBadgeSelection: var(--light-grayBadgeSelection);
     --memberRoleIconColor: var(--light-memberRoleIconColor);
     --deckSelectionGreen: var(--light-deckSelectionGreen);
+    --urlCreateFlashBg: var(--light-urlCreateFlashBg);
+    --urlMultiSelectedBg: var(--light-urlMultiSelectedBg);
 
     --shadow-sm: var(--light-shadow-sm);
     --shadow-md: var(--light-shadow-md);
@@ -261,6 +288,8 @@
         --grayBadgeSelection: var(--light-grayBadgeSelection);
         --memberRoleIconColor: var(--light-memberRoleIconColor);
         --deckSelectionGreen: var(--light-deckSelectionGreen);
+        --urlCreateFlashBg: var(--light-urlCreateFlashBg);
+        --urlMultiSelectedBg: var(--light-urlMultiSelectedBg);
 
         --shadow-sm: var(--light-shadow-sm);
         --shadow-md: var(--light-shadow-md);

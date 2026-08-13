@@ -169,7 +169,7 @@ a {
     gap: 10px;
     height: 100%;
     width: 100%;
-    color: var(--grayBadgeSelection);
+    color: var(--navbarText);
     transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -188,7 +188,7 @@ a {
 .nav-bar-inner-item#userLoggedIn:hover {
     cursor: inherit;
     background-color: inherit;
-    color: var(--grayBadgeSelection);
+    color: var(--navbarText);
 }
 
 .nav-bar-inner-item a,
@@ -226,7 +226,7 @@ a {
 #userLoggedInDesktop:hover {
     cursor: inherit;
     background-color: inherit;
-    color: var(--grayBadgeSelection);
+    color: var(--navbarText);
 }
 
 #adminMetricsLink,
@@ -606,7 +606,7 @@ a {
 #NavbarDropdownsHome button {
     background-color: inherit;
     justify-content: flex-start;
-    color: var(--grayBadgeSelection);
+    color: var(--navbarText);
     height: 3.75rem;
     display: flex;
     flex-direction: row;

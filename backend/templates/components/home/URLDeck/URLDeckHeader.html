@@ -1,5 +1,27 @@
 <div class="titleElement flex-row align-center pad-in-15p jc-sb">
 
+	{# Selection-mode context region. Hidden by default; revealed only under
+	   #URLDeck.multiSelectActive (bulk-actions.css), where it replaces the
+	   normal UTub name/description zone. It reads just "N selected" — the count /
+	   hidden-hint are TS-composed by bulk-bar.ts against the SAME preserved ids
+	   they had in the bottom bar (global $(id) lookups, so relocation needs no
+	   bulk-bar change). #}
+	<div id="bulkSelectContext" class="bulkSelectContext flex-row align-center" role="region" aria-label="Selection">
+		<span id="bulkSelectCount" class="countPill">0</span>
+		<span class="bulkLabel">selected</span>
+		<span id="bulkSelectHiddenHint" class="hiddenHint hidden" aria-hidden="true"></span>
+	</div>
+
+	{# Multi-select bulk-action bar (Select All / Clear + the empty Phase-1 action
+	   registry region). Lives INSIDE the header context row now: on desktop it is an
+	   inline group sitting immediately after "N selected" (bulk-actions.css
+	   min-width:992px), replacing its former full-width row. On mobile the same
+	   element is styled position:fixed as the bottom-docked drawer, so it escapes
+	   the header flow and docks at the viewport bottom (bulk-actions.css
+	   max-width:991.98px). All ids are unchanged, so bulk-bar.ts's global $(id)
+	   show/hide + binding keeps driving it regardless of this DOM home. #}
+	{% include 'components/home/URLDeck/BulkActionBar.html' %}
+
 	<div class="flex-row align-center" id="UTubNameOuterUpdateWrap">
 		<!-- Header -->
 		<div class="flex-row align-center" id="UTubNameUpdateWrap">
@@ -64,6 +86,39 @@
 		   the .cancelButton class so the label renders red; aria-label retained for
 		   a fuller description. Styling (touch height, text padding) in utubs.css. #}
 		<button id="utubEditPanelClose" class="cancelButton hidden" type="button" aria-label="Close edit panel">Close</button>
+		{# Multi-select mode toggle. Enters a capability-aware bulk-selection mode
+		   (checkboxes + bulk-action bar). aria-pressed reflects the active state,
+		   synced in bulk-actions/index.ts. Hidden by default (initial page load,
+		   before any UTub is selected); deck.ts reveals it only for a UTub that
+		   has URLs, mirroring #urlBtnCreate's `hidden` default. #}
+		<button id="urlBtnMultiSelect" class="hdrBtn multi hidden" aria-pressed="false"
+			aria-label="Toggle multi-select mode" tabindex="0">
+			<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
+				class="bi bi-ui-checks" viewBox="0 0 16 16">
+				<path d="M7 2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5zM2 1a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm0 8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2zm.854-3.646a.5.5 0 0 1-.708 0l-1-1a.5.5 0 1 1 .708-.708l.646.647 1.646-1.647a.5.5 0 1 1 .708.708zm0 8a.5.5 0 0 1-.708 0l-1-1a.5.5 0 0 1 .708-.708l.646.647 1.646-1.647a.5.5 0 0 1 .708.708zM7 10.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5zm0-5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 8a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+			</svg>
+		</button>
+		{# Mobile-only on-demand tag filter. A distinct bi-tag glyph (NOT the
+		   bi-funnel #URLSearchFilterIcon text filter); opens the existing
+		   tag-sheet via bulk-actions/index.ts. Hidden on desktop (min-width:992px
+		   rule, mirroring #URLSearchFilterIcon) and revealed only in mode
+		   (bulk-actions.css). aria-expanded tracks the sheet's open state. #}
+		<button id="bulkTagFilterIcon" class="hdrBtn bulkTagFilter" type="button"
+			aria-label="Filter by tag" aria-expanded="false" tabindex="0">
+			<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor"
+				class="bi bi-tag" viewBox="0 0 16 16">
+				<path d="M6 4.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
+				<path d="M2 1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 1 6.586V2a1 1 0 0 1 1-1m0 1v4.586l7 7L13.586 9l-7-7z"/>
+			</svg>
+		</button>
+		{# Header Exit control — the in-mode representation of #urlBtnMultiSelect.
+		   Keeps the id string #bulkSelectExit so bulk-bar.ts's existing binding
+		   resolves after the move out of BulkActionBar.html. #}
+		<button id="bulkSelectExit" class="hdrBtn bulkExit" type="button" aria-label="Exit selection" tabindex="0">
+			<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="24" width="24" viewBox="0 0 16 16">
+				<path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+			</svg>
+		</button>
 		<button id="urlBtnCreate" class="green-clickable hidden" tabindex="0">
 			<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
 				class="bi bi-plus-square-fill" viewBox="0 0 16 16">

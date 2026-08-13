@@ -975,6 +975,39 @@ describe("Tag Sheet Controller", () => {
 
       expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(true);
     });
+
+    it("keeps the sheet openable (NOT .hidden) while multi-select mode is active", async () => {
+      // Regression guard for the DD-11 fix: the collapsed peek is suppressed by a
+      // CSS transform keyed off #mainPanel.multiSelectActive (tag-sheet.css), NOT
+      // by toggling `.hidden` here. If refreshTagSheetAvailability ever re-adds a
+      // `!multiSelectMode` guard, `.hidden` (display:none !important) would fight
+      // the on-demand open path (#bulkTagFilterIcon → only adds .tag-sheet-open)
+      // and the sheet would never slide up. Assert it stays un-hidden in mode.
+      await setIsMobile(true);
+      seedActiveUtubSelector();
+      await setCrossSearchActive(false);
+      const { getState } = await import("../../../store/app-store.js");
+      (getState as ReturnType<typeof vi.fn>).mockReturnValue({
+        activeUTubID: 5,
+        multiSelectMode: true,
+      });
+
+      refreshTagSheetAvailability();
+
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(false);
+
+      // And opening it on demand slides it up (adds .tag-sheet-open) without any
+      // `.hidden` re-appearing to block the transform.
+      openTagSheetFromUserAction();
+      expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(true);
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(false);
+
+      // Restore the default store shape (mockReturnValue persists past
+      // clearAllMocks); later tests only read activeUTubID.
+      (getState as ReturnType<typeof vi.fn>).mockReturnValue({
+        activeUTubID: 5,
+      });
+    });
   });
 
   describe("empty-state message", () => {

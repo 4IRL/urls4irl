@@ -127,6 +127,14 @@ function _updateEmptyState(): void {
  * UTub is selected + the URL deck is showing + cross-search is not open;
  * otherwise it is fully hidden via `.hidden`. Exported so mobile-state
  * subscribers can re-sync it after a deck transition.
+ *
+ * Deliberately NOT gated on multi-select mode: the sheet must stay openable
+ * on demand (via the header #bulkTagFilterIcon) while selecting. The collapsed
+ * peek is instead suppressed purely in CSS — `#mainPanel.multiSelectActive
+ * #tagDeckSheet:not(.tag-sheet-open)` slides it fully off-screen (tag-sheet.css,
+ * DD-11 double drawer) — so `.tag-sheet-open` still slides it up unimpeded. If
+ * `.hidden` were toggled here the on-demand open path (which only adds
+ * `.tag-sheet-open`) would fight a `display:none !important` and never render.
  */
 export function refreshTagSheetAvailability(): void {
   const utubSelected = $(".UTubSelector.active").length > 0;

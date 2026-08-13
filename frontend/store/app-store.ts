@@ -28,6 +28,8 @@ export interface AppState {
   utubOwnerID: number | null;
   selectedURLCardID: number | null;
   selectedTagIDs: number[];
+  multiSelectMode: boolean;
+  selectedURLCardIDs: number[];
   urls: UtubUrlItem[]; // narrowed in Phase 7
   tags: UtubTag[]; // narrowed in Phase 9
   members: MemberItem[]; // narrowed in Phase 8
@@ -46,6 +48,8 @@ function createInitialState(): AppState {
     utubOwnerID: null,
     selectedURLCardID: null,
     selectedTagIDs: [],
+    multiSelectMode: false,
+    selectedURLCardIDs: [],
     urls: [],
     tags: [],
     members: [],

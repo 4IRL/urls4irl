@@ -98,6 +98,12 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
     members: selectedUTub.members,
     selectedTagIDs: [],
     selectedURLCardID: null,
+    // Defense-in-depth: the UTUB_SELECTED subscriber in bulk-actions/index.ts
+    // already exits multi-select mode, but clear the store here too so any
+    // future call site that swaps activeUTubID/urls without routing through
+    // that subscription can never leave a stale cross-UTub selection.
+    multiSelectMode: false,
+    selectedURLCardIDs: [],
   });
 
   // A locked UTub is frozen to every user mutation. Reflect that in the UI:

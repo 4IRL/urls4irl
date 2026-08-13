@@ -424,9 +424,9 @@ describe("createURL - client-side validation", () => {
       // Aria-live announcement fires on a non-no-op reorder.
       expect($("#fieldSavedAnnouncement").text()).toBe("URL added");
 
-      // (3) Highlight class added synchronously, removed only after ~1.5s.
+      // (3) Highlight class added synchronously, removed only after ~0.7s.
       expect(newCard.hasClass("url-card-created-highlight")).toBe(true);
-      vi.advanceTimersByTime(1500);
+      vi.advanceTimersByTime(700);
       expect(newCard.hasClass("url-card-created-highlight")).toBe(false);
 
       // Swipe-nudge fires last, against the final position.

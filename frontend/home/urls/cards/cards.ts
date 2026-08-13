@@ -24,6 +24,10 @@ import { createURLOptionsButtons } from "./options/btns.js";
 import { createDeleteURLIcon } from "./options/delete-btn.js";
 import { bindURLRowSwipeGesture } from "./swipe.js";
 import {
+  reapplyMultiSelectMark,
+  toggleURLCardSelection,
+} from "../bulk-actions/bulk-selection.js";
+import {
   createURL,
   createURLHideInput,
   bindCreateURLFocusEventListeners,
@@ -280,6 +284,11 @@ export function createURLBlock(
     }),
   );
 
+  // Multi-select checkbox affordance, rendered on every card but hidden by CSS
+  // unless the deck is in multi-select mode (#URLDeck.multiSelectActive). Sits
+  // before .urlRowContent so it reads as the row's leading control.
+  urlCard.append(createURLSelectCheckbox(url));
+
   if (url.canDelete) {
     urlCard.append(createURLRowSwipeReveal());
   }
@@ -296,7 +305,53 @@ export function createURLBlock(
     });
   }
 
+  // Re-derive the multi-select mark from the store so a rebuilt/re-added card in
+  // a live selection survives the deck-diff and stays visibly checked.
+  reapplyMultiSelectMark(urlCard);
+
   return urlCard;
+}
+
+// Per-card multi-select checkbox: a .urlSelectCheckboxWrap <label> wrapping a
+// role="checkbox" span whose aria-checked mirrors selection. The store
+// (selectedURLCardIDs) is the source of truth and the .urlRow.multiSelected mark
+// is re-derived from it; this control just toggles membership. stopPropagation
+// keeps its tap/keypress from also reaching the row's click.urlSelected handler.
+function createURLSelectCheckbox(url: UtubUrlItem): JQuery<HTMLElement> {
+  const checkboxWrap = $(document.createElement("label")).addClass(
+    "urlSelectCheckboxWrap",
+  );
+  const checkbox = $(document.createElement("span"))
+    .addClass("urlSelectCheckbox")
+    .attr({
+      role: "checkbox",
+      "aria-checked": "false",
+      tabindex: 0,
+      // Fall back to the URL string so an untitled URL's checkbox still has an
+      // accessible name (both values are data, not display strings).
+      "aria-label": url.urlTitle || url.urlString,
+    });
+
+  checkbox.on(
+    "click.multiSelectCheckbox",
+    function (event: JQuery.TriggeredEvent) {
+      event.stopPropagation();
+      toggleURLCardSelection(url.utubUrlID);
+    },
+  );
+  checkbox.on(
+    "keydown.multiSelectCheckbox",
+    function (event: JQuery.TriggeredEvent) {
+      if (event.key === KEYS.ENTER || event.key === KEYS.SPACE) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleURLCardSelection(url.utubUrlID);
+      }
+    },
+  );
+
+  checkboxWrap.append(checkbox);
+  return checkboxWrap;
 }
 
 // Absolutely-positioned red delete affordance revealed behind .urlRowContent
@@ -327,6 +382,12 @@ export function setFocusEventListenersOnURLCard(urlCard: JQuery): void {
       "keyup.focusURLCard" + utubUrlID,
       function (event: JQuery.TriggeredEvent) {
         if (event.key === KEYS.ENTER) {
+          // In multi-select mode, Enter toggles the card's membership instead of
+          // expanding it (single-select). Branch before the metric/select path.
+          if (getState().multiSelectMode) {
+            toggleURLCardSelection(parseInt(urlCard.attr("utuburlid")!, 10));
+            return;
+          }
           emit({
             event: UI_EVENTS.UI_URL_CARD_CLICK,
             search_active: isURLSearchActive()

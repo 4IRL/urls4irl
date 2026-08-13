@@ -1,5 +1,6 @@
 import { $ } from "../../lib/globals.js";
 import { KEYS } from "../../lib/constants.js";
+import { getState } from "../../store/app-store.js";
 import { getSelectedURLCard, selectURLCard } from "./cards/selection.js";
 // Circular-import check: cross-utub-search.ts imports from urls/cards/selection.js and utubs/selectors.js — neither re-exports from urls/utils.ts, so no cycle. If a future change adds a urls/utils.ts import in cross-utub-search.ts, audit for cycles first.
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
@@ -14,13 +15,16 @@ export function getNumOfVisibleURLs(): number {
   return $(".urlRow[filterable=true]").length;
 }
 
-const VISIBLE_URL_SELECTOR = ".urlRow[filterable=true]:not([searchable=false])";
+export const VISIBLE_URL_SELECTOR =
+  ".urlRow[filterable=true]:not([searchable=false])";
 
 export function bindSwitchURLKeyboardEventListeners(): void {
   $(document).offAndOn(
     "keyup.switchurls",
     function (event: JQuery.TriggeredEvent) {
       if (isCrossUtubSearchActive()) return;
+      // No single-select arrow navigation while multi-select mode is active.
+      if (getState().multiSelectMode) return;
 
       const prev = event.key === KEYS.ARROW_UP;
       const next = event.key === KEYS.ARROW_DOWN;

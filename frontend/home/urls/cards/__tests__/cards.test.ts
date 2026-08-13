@@ -8,11 +8,27 @@ import {
 } from "../url-string.js";
 import { setURLCardSelectionEventListener } from "../selection.js";
 import { createGoToURLIcon } from "../corner-access.js";
+import { toggleURLCardSelection } from "../../bulk-actions/bulk-selection.js";
+
+const $ = window.jQuery;
 
 vi.mock("../selection.js", () => ({
   selectURLCard: vi.fn(),
   setURLCardSelectionEventListener: vi.fn(),
 }));
+// Partial mock: keep the real reapplyMultiSelectMark (exercised by the re-mark
+// -on-build test via a real store round-trip) but spy on toggleURLCardSelection
+// so the checkbox click/keydown handlers can be asserted against.
+vi.mock("../../bulk-actions/bulk-selection.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../bulk-actions/bulk-selection.js")
+    >();
+  return {
+    ...actual,
+    toggleURLCardSelection: vi.fn(),
+  };
+});
 vi.mock("../corner-access.js", () => ({
   createGoToURLIcon: vi.fn(() =>
     window.jQuery('<button class="goToUrlIcon self-start"></button>'),
@@ -189,6 +205,58 @@ describe("createURLBlock", () => {
       expect(vi.mocked(createGoToURLIcon)).toHaveBeenCalledWith(
         "https://example.com",
       );
+    });
+
+    it("clicking the .urlSelectCheckbox toggles selection and stops propagation to the row", () => {
+      const el = createURLBlock({ ...baseURL, utubUrlID: 5 }, [], 10);
+      const clickEvent = $.Event("click");
+      const stopPropagationSpy = vi.spyOn(clickEvent, "stopPropagation");
+
+      el.find(".urlSelectCheckbox").trigger(clickEvent);
+
+      expect(vi.mocked(toggleURLCardSelection)).toHaveBeenCalledWith(5);
+      expect(stopPropagationSpy).toHaveBeenCalled();
+    });
+
+    it("pressing Enter or Space on the focused .urlSelectCheckbox toggles selection", () => {
+      const el = createURLBlock({ ...baseURL, utubUrlID: 5 }, [], 10);
+      const checkbox = el.find(".urlSelectCheckbox");
+
+      checkbox.trigger($.Event("keydown", { key: "Enter" }));
+      checkbox.trigger($.Event("keydown", { key: " " }));
+
+      expect(vi.mocked(toggleURLCardSelection)).toHaveBeenCalledWith(5);
+      expect(vi.mocked(toggleURLCardSelection)).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("multi-select checkbox markup + re-mark on build", () => {
+    afterEach(() => setState({ selectedURLCardIDs: [] }));
+
+    it("renders a role=checkbox .urlSelectCheckbox (aria-checked=false) inside .urlSelectCheckboxWrap", () => {
+      const el = createURLBlock(baseURL, [], 10);
+      const wrap = el.children(".urlSelectCheckboxWrap");
+      expect(wrap.length).toBe(1);
+      const checkbox = wrap.children(".urlSelectCheckbox");
+      expect(checkbox.length).toBe(1);
+      expect(checkbox.attr("role")).toBe("checkbox");
+      expect(checkbox.attr("aria-checked")).toBe("false");
+    });
+
+    it("re-marks the card from the store on build when its id is already selected", () => {
+      setState({ selectedURLCardIDs: [99] });
+      const el = createURLBlock({ ...baseURL, utubUrlID: 99 }, [], 10);
+      expect(el.hasClass("multiSelected")).toBe(true);
+      expect(el.attr("aria-checked")).toBe("true");
+      // The role="checkbox" span (what assistive tech announces) must also flip.
+      expect(el.find(".urlSelectCheckbox").attr("aria-checked")).toBe("true");
+    });
+
+    it("does not mark the card on build when its id is not in the store selection", () => {
+      setState({ selectedURLCardIDs: [12345] });
+      const el = createURLBlock({ ...baseURL, utubUrlID: 99 }, [], 10);
+      expect(el.hasClass("multiSelected")).toBe(false);
+      expect(el.find(".urlSelectCheckbox").attr("aria-checked")).toBe("false");
     });
   });
 

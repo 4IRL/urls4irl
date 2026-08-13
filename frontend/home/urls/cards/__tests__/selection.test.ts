@@ -4,14 +4,16 @@ import {
   deselectAllURLs,
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
+  setURLCardSelectionEventListener,
 } from "../selection.js";
 import { enableTabbingOnURLCardElements } from "../utils.js";
 import { resetURLEditPanelState } from "../update-url-panel.js";
 import { hideAndResetUpdateURLTitleForm } from "../update-title.js";
 import { hideAndResetUpdateURLStringForm } from "../update-string.js";
-import { resetStore, setState } from "../../../../store/app-store.js";
+import { getState, resetStore, setState } from "../../../../store/app-store.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { isCoarsePointer } from "../../../mobile.js";
+import { toggleURLCardSelection } from "../../bulk-actions/bulk-selection.js";
 
 vi.mock("../update-title.js", () => ({
   hideAndResetUpdateURLTitleForm: vi.fn(),
@@ -42,6 +44,9 @@ vi.mock("../../../mobile.js", () => ({
 // #URLContentSearch input) whenever a test emits URL_TAG_FILTER_APPLIED.
 vi.mock("../delete.js", () => ({
   deleteURLShowModal: vi.fn(),
+}));
+vi.mock("../../bulk-actions/bulk-selection.js", () => ({
+  toggleURLCardSelection: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -402,6 +407,31 @@ describe("URL Card Selection", () => {
       emit(AppEvents.URL_TAG_FILTER_APPLIED);
 
       expect(urlCard.attr("urlSelected")).toBe("false");
+    });
+  });
+
+  describe("multi-select mode tap branch", () => {
+    beforeEach(() => {
+      setState({ multiSelectMode: true });
+    });
+
+    it("a row tap in multi-select mode toggles selection and does not expand the card", () => {
+      setURLCardSelectionEventListener(urlCard);
+
+      urlCard.trigger("click");
+
+      expect(vi.mocked(toggleURLCardSelection)).toHaveBeenCalledWith(42);
+      expect(urlCard.attr("urlSelected")).toBe("false");
+      expect(getState().selectedURLCardID).toBeNull();
+    });
+
+    it("toggles off even when the row is already urlSelected=true (branch precedes the early-return)", () => {
+      urlCard.attr("urlSelected", "true");
+      setURLCardSelectionEventListener(urlCard);
+
+      urlCard.trigger("click");
+
+      expect(vi.mocked(toggleURLCardSelection)).toHaveBeenCalledWith(42);
     });
   });
 

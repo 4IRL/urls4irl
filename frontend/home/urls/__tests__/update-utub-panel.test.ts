@@ -21,6 +21,7 @@ import { getOpenForm } from "../../../lib/modal-tracking.js";
 import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { deselectAllURLs } from "../cards/selection.js";
 import { isCoarsePointer } from "../../mobile.js";
+import { isMultiSelectActive } from "../bulk-actions/bulk-mode.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 
 // This suite exercises the real UTub-panel orchestrator together with the real
@@ -88,6 +89,10 @@ vi.mock("../../btns-forms.js", () => ({
 
 vi.mock("../cards/selection.js", () => ({
   deselectAllURLs: vi.fn(),
+}));
+
+vi.mock("../bulk-actions/bulk-mode.js", () => ({
+  isMultiSelectActive: vi.fn(() => false),
 }));
 
 vi.mock("../../visibility.js", () => ({
@@ -189,6 +194,10 @@ describe("UTub edit panel orchestrator", () => {
       isCurrentUserOwner: true,
     } as ReturnType<typeof getState>);
     vi.mocked(isCoarsePointer).mockReturnValue(true);
+    // clearAllMocks() only clears call history, not the vi.fn implementation, so
+    // reset the multi-select gate to inactive each test (the no-op-in-mode test
+    // flips it to true and would otherwise leak).
+    vi.mocked(isMultiSelectActive).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -257,6 +266,21 @@ describe("UTub edit panel orchestrator", () => {
 
       expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
       expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+    });
+
+    it("is a no-op while multi-select mode is active (never opens over the selection context)", () => {
+      // The mobile panel opens on a #utubEditPanelToggle tap; gate it on
+      // isMultiSelectActive() so the editors can't take over the header while a
+      // bulk selection is live (openUTubEditPanel's deselectAllURLs only clears
+      // the single-select field, so the multi-select set would strand otherwise).
+      vi.mocked(isMultiSelectActive).mockReturnValue(true);
+
+      openUTubEditPanel(UTUB_ID);
+
+      expect(deselectAllURLs).not.toHaveBeenCalled();
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(true);
     });
   });
 

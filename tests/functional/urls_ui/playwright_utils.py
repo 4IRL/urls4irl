@@ -713,3 +713,23 @@ def wait_until_url_card_swipe_reset(*, page: Page, timeout: int = 10) -> None:
         arg=HPL.ROWS_URLS,
         timeout=timeout * 1000,
     )
+
+
+def enter_multi_select_mode(*, page: Page) -> None:
+    """Click/tap the header toggle and settle into multi-select mode (bulk bar
+    visible, aria-pressed reflecting the pressed state). Shared by the desktop
+    and mobile multi-select suites."""
+    toggle = page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)
+    expect(toggle).to_be_visible()
+    toggle.click()
+    expect(toggle).to_have_attribute("aria-pressed", "true")
+    expect(page.locator(HPL.BULK_ACTION_BAR)).to_be_visible()
+
+
+def tap_url_checkbox(*, page: Page, utub_url_id: int) -> None:
+    """Tap a row's 44px multi-select checkbox — the canonical mode affordance —
+    to toggle that row's selection. Shared by the desktop and mobile suites."""
+    checkbox_selector = (
+        f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}'] {HPL.URL_SELECT_CHECKBOX}"
+    )
+    page.locator(checkbox_selector).first.click()

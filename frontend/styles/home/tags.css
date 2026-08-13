@@ -272,7 +272,11 @@
     background: transparent;
     border: none;
     outline: none;
-    color: whitesmoke;
+    /* Theme-aware: the input is transparent over the combobox's
+       --pageBackgroundColor surface, which is near-white in light mode. A
+       hardcoded `whitesmoke` made typed tag text invisible there; --textPrimary
+       is dark ink in light mode and near-white in dark mode. */
+    color: var(--textPrimary);
     /* 16px prevents iOS Safari from zooming when the input gains focus. */
     font-size: 16px;
     padding: 4px 2px;

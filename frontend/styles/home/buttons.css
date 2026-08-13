@@ -36,7 +36,10 @@
     height: 100%;
     margin-bottom: 0;
     padding-bottom: 0;
-    margin-right: 4px;
+    /* Inter-button spacing now comes from the URL header cluster's flex `gap`
+       (see #URLDeckHeaderWrap .button-container below); a per-icon margin-right
+       here would double onto that gap (funnel sat 4px further from its neighbor
+       than the rest), so it is intentionally omitted. */
 }
 
 #URLSearchFilterIcon>svg,
@@ -58,6 +61,21 @@
 .button-container {
     justify-content: flex-end;
     flex-shrink: 0;
+}
+
+/* The URL deck header's action cluster (sidebar toggle, URL-filter funnel,
+   multi-select toggle, create — and in selection mode the funnel, tag-filter,
+   and exit icons) previously had NO inter-button spacing: unlike every left-deck
+   header its .button-container never carried the `gap-2p` utility, and its
+   buttons carry no per-item `ms-1` margin, so the icons rendered flush (0px gap)
+   while the UTub/Member/Tag clusters showed a comfortable ~6px. Give this cluster
+   the same even ~6px gap (the left decks' effective 2px container gap + 4px
+   per-button margin). Scoped to the URL header wrap so the shared
+   .button-container elsewhere (tag sheet, left-deck headers) is untouched and can
+   never be over-spaced. Applies on desktop and mobile (the cluster shows in both,
+   in normal and selection mode), so all three contexts get uniform spacing. */
+#URLDeckHeaderWrap .button-container {
+    gap: 6px;
 }
 
 /* Center the SVG icon within every header action button on all pointers.

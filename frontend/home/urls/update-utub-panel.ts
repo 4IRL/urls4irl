@@ -16,6 +16,7 @@ import {
 } from "./update-description.js";
 import { clearFieldSavedTick } from "./field-saved-tick.js";
 import { deselectAllURLs } from "./cards/selection.js";
+import { isMultiSelectActive } from "./bulk-actions/bulk-mode.js";
 
 /**
  * Mobile-only orchestrator for the consolidated UTub edit panel. Opens/closes
@@ -69,6 +70,11 @@ export function setupUTubEditPanelToggle(utubID: number): void {
 
 // Opens both the UTub name and description forms together (mobile only).
 export function openUTubEditPanel(utubID: number): void {
+  // Gate the consolidated mobile editor on multi-select mode: its toggle is
+  // CSS-hidden in mode, but block the open too so the editors can never take
+  // over the selection-context header (deselectAllURLs() below only clears the
+  // single-select field, so the multi-select set would strand otherwise).
+  if (isMultiSelectActive()) return;
   deselectAllURLs();
 
   // Call the internal Show functions directly, bypassing the pencil-click

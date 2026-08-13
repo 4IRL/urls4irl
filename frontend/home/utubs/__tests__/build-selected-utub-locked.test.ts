@@ -1,7 +1,7 @@
 import type { UtubDetail } from "../../../types/utub.js";
 
 import { buildSelectedUTub } from "../selectors.js";
-import { getState, resetStore } from "../../../store/app-store.js";
+import { getState, resetStore, setState } from "../../../store/app-store.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -99,6 +99,23 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
     expect(document.body.classList.contains("utub-locked")).toBe(false);
     expect($("#URLDeckLockIcon").hasClass("hidden")).toBe(true);
     expect(getState().isCurrentUTubLocked).toBe(false);
+  });
+
+  describe("multi-select store clear (UTub switch, defense-in-depth)", () => {
+    it("resets multiSelectMode to false and clears selectedURLCardIDs on build", () => {
+      // Production behavior lives at utubs/selectors.ts buildSelectedUTub's
+      // setState — a defense-in-depth backstop to the UTUB_SELECTED event
+      // subscriber (emit is mocked in this suite, so only the setState clear
+      // runs here). Seed a live selection first so the assertion actually
+      // proves the clear rather than re-confirming resetStore()'s defaults.
+      setState({ multiSelectMode: true, selectedURLCardIDs: [1, 2] });
+      expect(getState().multiSelectMode).toBe(true);
+
+      buildSelectedUTub(makeUtubDetail({ id: 55 }));
+
+      expect(getState().multiSelectMode).toBe(false);
+      expect(getState().selectedURLCardIDs).toEqual([]);
+    });
   });
 
   describe("mobile landing-panel history", () => {

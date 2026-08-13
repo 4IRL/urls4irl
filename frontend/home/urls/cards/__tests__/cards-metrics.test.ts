@@ -3,7 +3,10 @@ import {
   newURLInputAddEventListeners,
   setFocusEventListenersOnURLCard,
 } from "../cards.js";
+import { selectURLCard } from "../selection.js";
 import { createURL, createURLHideInput } from "../create.js";
+import { resetStore, setState } from "../../../../store/app-store.js";
+import { toggleURLCardSelection } from "../../bulk-actions/bulk-selection.js";
 import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
@@ -28,6 +31,11 @@ vi.mock("../selection.js", () => ({
   setURLCardSelectionEventListener: vi.fn(),
 }));
 
+vi.mock("../../bulk-actions/bulk-selection.js", () => ({
+  toggleURLCardSelection: vi.fn(),
+  reapplyMultiSelectMark: vi.fn(),
+}));
+
 vi.mock("../create.js", () => ({
   createURL: vi.fn(),
   createURLHideInput: vi.fn(),
@@ -40,6 +48,7 @@ const $ = window.jQuery;
 
 describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
   beforeEach(() => {
+    resetStore();
     document.body.innerHTML = `
       <div class="urlRow" utuburlid="7" urlSelected="false" tabindex="0"></div>
     `;
@@ -48,6 +57,20 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
 
   afterEach(() => {
     $(document).off("keyup.focusURLCard7");
+  });
+
+  it("in multi-select mode, Enter toggles selection instead of selecting/expanding the card", () => {
+    setState({ multiSelectMode: true });
+
+    const urlCard = $(".urlRow");
+    setFocusEventListenersOnURLCard(urlCard);
+    urlCard.trigger("focus.focusURLCard7");
+
+    const enterEvent = $.Event("keyup.focusURLCard7", { key: "Enter" });
+    $(document).trigger(enterEvent);
+
+    expect(vi.mocked(toggleURLCardSelection)).toHaveBeenCalledWith(7);
+    expect(vi.mocked(selectURLCard)).not.toHaveBeenCalled();
   });
 
   it("emits ui_url_card_click on Enter key when card is focused", async () => {

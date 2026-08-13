@@ -331,7 +331,7 @@ function reorderNewURLCardBySortPreference(
   newUrlCard: JQuery,
 ): void {
   const HIGHLIGHT_CLASS = "url-card-created-highlight";
-  const HIGHLIGHT_DURATION_MS = 1500;
+  const HIGHLIGHT_DURATION_MS = 700;
 
   const storedSortOrder = getState().preferences.defaultSort;
   const sortedURLIDs = applyDefaultUrlSort(
@@ -348,7 +348,7 @@ function reorderNewURLCardBySortPreference(
   reapplyAlternatingURLCardBackgroundAfterFilter();
 
   // Transient background flash on the freshly-created card (distinct from the
-  // persistent urlSelected styling), removed after ~1.5s — mirrors
+  // persistent urlSelected styling), removed after ~0.7s — mirrors
   // showURLDeckBannerError()'s setTimeout-driven class removal.
   newUrlCard.addClass(HIGHLIGHT_CLASS);
   setTimeout(() => {

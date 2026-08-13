@@ -1,0 +1,547 @@
+/*
+ * Multi-select (bulk-actions) styling: the per-card checkbox affordance, the
+ * checked-card marker, and mode-driven gating of single-select-only header
+ * controls. The bulk-action bar's own layout lands in a later step; this file
+ * owns the checkbox + card-marker contract that ships with the card markup.
+ *
+ * The checked marker deliberately uses --deckSelectionGreen (teal) and is kept
+ * DISTINCT from [urlSelected="true"]'s bright --selectedUrlBorder (expand/active
+ * state) so the two selection models never read as the same thing.
+ */
+
+/* The checkbox is a leading flex control; reveal it only in multi-select mode
+   so a normal card is visually unchanged when the mode is off. */
+.urlSelectCheckboxWrap {
+  display: none;
+  flex: 0 0 auto;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  min-width: 46px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#URLDeck.multiSelectActive .urlSelectCheckboxWrap {
+  display: flex;
+}
+
+/* Row becomes a horizontal flex container in mode so the checkbox sits to the
+   left of the content instead of stacking above it. The row carries Bootstrap's
+   `.flex-column` utility, which ships `flex-direction: column !important`
+   (navbar-shared*.css, bootstrap 5.2.3) — an !important declaration beats any
+   non-important one regardless of specificity, so this must also be !important
+   to flip the row to a horizontal layout (same Bootstrap-!important collision
+   documented in urls.css). Without it the row stays a column and the checkbox
+   stacks above the content (top-aligned) instead of centering beside it. */
+#URLDeck.multiSelectActive .urlRow {
+  flex-direction: row !important;
+  align-items: stretch;
+}
+
+#URLDeck.multiSelectActive .urlRow > .urlRowContent {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.urlSelectCheckbox {
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--grayBadgeSelection);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #06231a;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.urlSelectCheckbox:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/* Checked card marker — teal, distinct from the bright expand border. Scoped
+   under #URLDeck.multiSelectActive so its background (1 id + 3 classes) ties and
+   then wins on source order against `#listURLs .urlRow.even[filterable="true"]`
+   (urls.css, also 1 id + 3 specificity) — without the id scope the bare
+   `.urlRow.multiSelected` lost to that rule and selected EVEN rows kept their
+   plain background instead of the teal highlight (odd rows have no id-scoped
+   base background, so they highlighted correctly). */
+/*
+ * Selected-row fill is OPAQUE (--urlMultiSelectedBg), never a semi-transparent
+ * teal. .urlRow carries `transition: background-color 0.15s ease` (urls.css) and
+ * .urlRowContent inherits this background while sitting over the always-present
+ * red .urlRowSwipeReveal delete panel. On exitMultiSelectMode() the deck's
+ * .multiSelectActive is dropped (un-hiding that red panel, rule below) at the
+ * same time .multiSelected is removed — with a translucent tint the row's
+ * background-color transition would fade the teal out over the now-visible red,
+ * flashing RED (delete/danger) for ~150ms. An opaque token can never bleed. This
+ * mirrors the --urlCreateFlashBg opaque fix for the same red-reveal mechanism.
+ */
+#URLDeck.multiSelectActive .urlRow.multiSelected {
+  border-color: var(--deckSelectionGreen);
+  background: var(--urlMultiSelectedBg);
+}
+
+.urlRow.multiSelected .urlSelectCheckbox {
+  background: var(--deckSelectionGreen);
+  border-color: var(--deckSelectionGreen);
+}
+
+.urlRow.multiSelected .urlSelectCheckbox::after {
+  content: "✓";
+}
+
+/*
+ * The per-row "go-to URL" icon (.goToUrlIcon, the green ↗ box) is a single-
+ * select affordance — an expanded/focused row opens its URL in a new tab. In
+ * multi-select mode a row is a selection TARGET, not an interactive URL, so the
+ * icon must never show. It leaks in via the `.visible-on-focus` class
+ * (layout.css: `visibility: visible !important`) that setFocusEventListenersOnURLCard
+ * (cards/cards.ts) adds on row focus: its focusout handler only strips the class
+ * when the icon button ITSELF blurs, and the multi-select tap handler
+ * (cards/selection.ts) early-returns through toggleURLCardSelection WITHOUT ever
+ * running the single-select deselect path (selection.ts removeClass) that would
+ * otherwise remove it — so every tapped row keeps `.visible-on-focus` and its
+ * icon stays visible. Suppress it outright while in mode. The `!important` is
+ * required to beat `.visible-on-focus`'s own `!important`; the id-scoped
+ * `#URLDeck.multiSelectActive` (1 id + 2 classes) also outranks the
+ * `[urlSelected="true"]` / :focus / :hover reveal rules in urls.css, covering a
+ * card that was already expanded when the mode was entered.
+ */
+#URLDeck.multiSelectActive .goToUrlIcon {
+  visibility: hidden !important;
+}
+
+/*
+ * #urlBtnCreate (URLDeckHeader.html) is a descendant of #URLDeck, so unlike
+ * #toCrossUtubSearch (disabled via JS since it lives in the navbar outside
+ * #URLDeck), it is gated with pure CSS on the same deck-level class the
+ * checkboxes/toggle key off. The !important guards against the element's own
+ * .hidden/.visible class churn from hideClass()/showClassNormal() (deck.ts,
+ * cards/create.ts) accidentally re-revealing it while multi-select is active —
+ * its auto-select-on-create call site (createURLSuccess) is an unguarded
+ * selectURLCard() path that this hides the only affordance for.
+ */
+#URLDeck.multiSelectActive #urlBtnCreate {
+  display: none !important;
+}
+
+/*
+ * The multi-select toggle is the affordance to ENTER selection mode; once in
+ * mode the header Exit ✕ (#bulkSelectExit) is the way out, so the toggle is
+ * redundant AND its aria-pressed="true" green fill (rule below) reads as an odd
+ * solid block beside the clean icon-only funnel/Exit controls. Hide it in mode,
+ * mirroring #urlBtnCreate above; it reappears (unpressed) on exit. The
+ * aria-pressed sync in index.ts stays — harmless on a hidden element. Uses the
+ * same deck-level .multiSelectActive gate + !important as #urlBtnCreate to beat
+ * that element's own hidden/visible class churn (deck.ts empty-state toggling).
+ */
+#URLDeck.multiSelectActive #urlBtnMultiSelect {
+  display: none !important;
+}
+
+/*
+ * Swipe-to-delete is a no-op in multi-select mode (cards/swipe.ts's _beginDrag
+ * early-returns when multiSelectMode), so its absolutely-positioned red reveal
+ * background has no purpose here. In mode the row switches to flex-direction:row
+ * with the leading checkbox, which shifts .urlRowContent off the row's left edge
+ * and lets the full-width reveal peek out behind it. Hide it outright so the red
+ * bar never shows while the swipe affordance is disabled.
+ */
+#URLDeck.multiSelectActive .urlRowSwipeReveal {
+  display: none;
+}
+
+/*
+ * Neutral, theme-aware icon color for the selection-mode utility icons. Their
+ * SVGs use fill="currentColor", so with no explicit color they inherited down to
+ * `a { color: var(--linkColor) }` (base.css) and rendered BLUE in light mode.
+ * Match the funnel (#URLSearchFilterIcon > svg), which resolves to
+ * `var(--grayBadgeSelection)` (buttons.css) — a token that flips between light
+ * (#445055) and dark (gray), NOT --linkColor. The tag-filter + Exit controls are
+ * neutral utility controls that only ever show in selection mode, so they stay
+ * gray like the funnel.
+ */
+#bulkTagFilterIcon,
+#bulkSelectExit {
+  color: var(--grayBadgeSelection);
+}
+
+/*
+ * The multi-select ENTER toggle takes the selection accent (--deckSelectionGreen)
+ * rather than the neutral gray above — the same teal used by the selected-card
+ * ring and the "N selected" count pill — so the checklist glyph reads as the
+ * gateway into selection mode and stays visually tied to that accent, distinct
+ * from the neutral funnel/Exit utility icons.
+ */
+#urlBtnMultiSelect {
+  color: var(--deckSelectionGreen);
+}
+
+/*
+ * Legacy pressed-state fill (removed). The toggle is display:none in selection
+ * mode (aria-pressed="true" only occurs in mode), so an aria-pressed="true" fill
+ * rule could never render — it is intentionally omitted. The pressed state was
+ * once a green fill; in normal mode (aria-pressed="false") the toggle shows no
+ * background at all.
+ */
+#urlBtnMultiSelect:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/*
+ * ---- Selection-mode context (header) ----
+ * In mode the header's title/description zone becomes the selection context
+ * (count + "N hidden by filter"). Revealed only under
+ * #URLDeck.multiSelectActive — the same deck-level gating idiom #urlBtnCreate
+ * uses, inverted here to reveal-in-mode. The count pill / hidden-hint reuse the
+ * existing #bulkSelectCount.countPill / #bulkSelectHiddenHint.hiddenHint rules
+ * below (id/class based, so they style identically wherever the ids render).
+ */
+#bulkSelectContext {
+  display: none;
+  gap: 8px;
+  min-width: 0;
+}
+
+#URLDeck.multiSelectActive #bulkSelectContext {
+  display: flex;
+}
+
+/*
+ * In mode the header row hosts, left→right: the count context (#bulkSelectContext),
+ * the inline Select All / Clear bar (#bulkActionBar — desktop only; on mobile it is
+ * a fixed bottom drawer and so contributes nothing to this row's flow), and the
+ * .button-container utility icons. The row carries `.jc-sb` (space-between); with
+ * three in-flow items on desktop that would strand the bar in the middle. An auto
+ * left-margin on the icon cluster instead absorbs the free space, packing
+ * count+bar together at the start and pinning the icons to the right edge. Harmless
+ * on mobile (2 in-flow items → identical to space-between). Scoped to mode so
+ * normal-mode layout (name left, icons right via .jc-sb) is untouched.
+ */
+#URLDeck.multiSelectActive .titleElement > .button-container {
+  margin-left: auto;
+}
+
+/* In mode, the context replaces the normal name/description affordances: hide
+   the UTub name wrap + the description subheader text, and BOTH edit pencils.
+   The !important on the pencils mirrors the #urlBtnCreate precedent (guards
+   against the pencils' own hidden/visible class churn re-revealing them). The
+   inline-edit open handlers are ALSO gated on !isMultiSelectActive() in JS
+   (update-name/description/utub-panel) — belt-and-suspenders, since the editors
+   open on a wrap click, not the pencil. */
+#URLDeck.multiSelectActive #UTubNameOuterUpdateWrap {
+  display: none;
+}
+
+/* The description subheader also hides in mode — hiding the title (name wrap
+   above) but leaving the "Made by …" description line reads as inconsistent, and
+   the header's selection context already carries the UTub identity. This one
+   needs !important (unlike the name wrap): selectors.ts/update-description.ts add
+   `.visible-flex` to #UTubDescriptionSubheaderWrap for a UTub WITH a description,
+   and `.visible-flex { display:flex !important }` (layout.css) beats a plain
+   display:none. #URLDeckNoDescription is the empty-state "No description"
+   placeholder — hidden for the same reason. Both are SIBLINGS of the aria-live
+   announcer spans (#URLBulkSelectionAnnouncement, #URLSearchAnnouncement,
+   #URLTagFilterAnnouncement, #fieldSavedAnnouncement) and of #SearchURLWrap in
+   URLDeckSubheader.html — NOT ancestors — so this keeps the live regions and the
+   on-demand search box fully intact. */
+#URLDeck.multiSelectActive #UTubDescriptionSubheaderWrap,
+#URLDeck.multiSelectActive #URLDeckNoDescription {
+  display: none !important;
+}
+
+/* With the description hidden and the search box CLOSED, the subheader band would
+   otherwise keep its 2.25rem `.dynamic-subheader` min-height as an empty gap.
+   Collapse it — but ONLY while search is closed: opening the funnel adds
+   `.url-search-open` to this wrap (search.ts) to reveal #SearchURLWrap, and the
+   `:not(.url-search-open)` guard yields so the search box still gets its band.
+   (padding-block is a no-op today — the wrap carries only padding-inline — but
+   set defensively in case vertical padding is ever added.) */
+#URLDeck.multiSelectActive
+  #UTubDescriptionSubheaderOuterWrap:not(.url-search-open) {
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+#URLDeck.multiSelectActive .edit-pencil-icon {
+  display: none !important;
+}
+
+/*
+ * Header Exit + tag-filter controls live in .button-container. buttons.css sets
+ * `.button-container button { display:inline-flex }` (a 0,1,1 rule), but the id
+ * base-hide below (1,0,0) outranks it, so both stay hidden until the higher-
+ * specificity mode rule reveals them.
+ */
+#bulkSelectExit,
+#bulkTagFilterIcon {
+  display: none;
+}
+
+#URLDeck.multiSelectActive #bulkSelectExit {
+  display: inline-flex;
+}
+
+/* The tag-filter icon is a mobile-only affordance (the tag-sheet it opens is
+   mobile-only). Revealed in mode; always hidden on desktop, mirroring
+   #URLSearchFilterIcon's desktop hide in utubs.css. The !important beats the
+   in-mode reveal above so desktop stays icon-free (tag filtering there is the
+   persistent LHS #TagDeck). */
+#URLDeck.multiSelectActive #bulkTagFilterIcon {
+  display: inline-flex;
+}
+
+@media (min-width: 992px) {
+  #bulkTagFilterIcon {
+    display: none !important;
+  }
+}
+
+#bulkSelectExit:focus-visible,
+#bulkTagFilterIcon:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/* Pressed indicator while the tag sheet is open (aria-expanded synced in JS). */
+#bulkTagFilterIcon[aria-expanded="true"] {
+  background: var(--splashGreen);
+  color: #fff;
+}
+
+/*
+ * ---- Filter-only tag sheet in multi-select mode ----
+ * When the tag sheet is opened during selection mode (via #bulkTagFilterIcon), it
+ * is FILTER-ONLY: the tag-management controls are suppressed, leaving just the
+ * filter funnel (#tagNameFilterBtn), the clear-filter control (#unselectAllTagFilters
+ * / #utubTagBtnUpdateAllClose), and the tappable tag rows (.tagFilter).
+ *
+ * #mainPanel gets .multiSelectActive in bulk-mode.ts's enter/exit, and the mobile
+ * tag sheet (#tagDeckSheet → relocated #TagDeck) lives inside #mainPanel, so these
+ * descendant selectors only bite in selection mode. Opened normally (navbar Tags,
+ * no mode) #mainPanel lacks the class and the full toolbar shows.
+ *
+ * Hidden: create (#utubTagBtnCreate), edit-tags (#utubTagBtnUpdateAllOpen), and the
+ * per-tag delete buttons (.utubTagBtnDelete) — the delete is display:none'd so it
+ * stays gone in both its enabled and disabled/pink states. !important beats the
+ * deck's showClassNormal() reveals in tags/deck.ts + update-all.ts.
+ */
+#mainPanel.multiSelectActive #utubTagBtnCreate,
+#mainPanel.multiSelectActive #utubTagBtnUpdateAllOpen,
+#mainPanel.multiSelectActive .utubTagBtnDelete {
+  display: none !important;
+}
+
+/*
+ * ---- Bulk-action bar ----
+ * Desktop: an inline control group living IN the deck header's context row,
+ * immediately to the right of the "N selected" count — it no longer occupies a
+ * full-width row of its own. bulk-bar.ts toggles the `hidden` class on mode
+ * enter/exit (global `.hidden { display:none !important }` wins over the
+ * `display:flex` here while present). The base rule is intentionally minimal so
+ * the desktop-inline (min-width:992px) and mobile-drawer (max-width:991.98px)
+ * blocks below each own their own layout — flex-direction/background/padding are
+ * set per-breakpoint rather than shared, so neither fights the other.
+ */
+#bulkActionBar {
+  display: flex;
+}
+
+@media (min-width: 992px) {
+  /* Inline row in the header, a small gap after the count context. */
+  #bulkActionBar {
+    align-items: center;
+    margin-left: 12px;
+  }
+
+  /* The spacer only exists to push the actions to the far edge of the
+     full-width mobile drawer; inline in the header it would inject dead space
+     between the count and the buttons, so drop it. */
+  #bulkActionBar .bulkSpacer {
+    display: none;
+  }
+}
+
+/* The mobile grabber lip is desktop-invisible. */
+.bulkBarGrabber {
+  display: none;
+}
+
+.bulkBarRow {
+  gap: 12px;
+}
+
+#bulkSelectCount.countPill {
+  background: var(--tagCountBackgroundSelectedColor);
+  color: #06231a;
+  font-weight: 800;
+  font-size: 0.85rem;
+  border-radius: 5rem;
+  padding: 2px 12px;
+}
+
+.bulkLabel {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+#bulkSelectHiddenHint.hiddenHint {
+  font-size: 0.8rem;
+  color: var(--grayBadgeSelection);
+}
+
+.bulkSpacer {
+  flex: 1 1 auto;
+}
+
+/* Registry region — empty in Phase 1; Phases 2/3 render action buttons here. */
+.bulkActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Theme-aware: --textPrimary / --borderColor / --cardBackgroundColorHover all
+   flip between light and dark, so the buttons stay legible in both (the mock's
+   hardcoded white-on-transparent would vanish on the light theme's panel). */
+.barBtn {
+  height: 2.25rem;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--borderColor);
+  cursor: pointer;
+  background: transparent;
+  color: var(--textPrimary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.barBtn:hover {
+  background: var(--cardBackgroundColorHover);
+}
+
+.barBtn:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/* Clear reflects its disabled state via aria-disabled (not the native disabled
+   attribute) so it stays focusable as the mode-enter focus target. */
+.barBtn.clear[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/*
+ * Mobile (<=991.98px): the bar is a single bottom-docked drawer (tag-sheet
+ * pattern) inside #mainPanel.
+ *
+ * DD-11 double-drawer dissolution: the tag-sheet PEEK is suppressed while
+ * multi-select mode is active via a CSS transform keyed off
+ * #mainPanel.multiSelectActive (tag-sheet.css slides the collapsed sheet fully
+ * off-screen; bulk-mode.ts toggles that class), so the bar no longer stacks
+ * against a second permanent bottom drawer — it is the only docked surface in
+ * mode. Suppressing via transform rather than `.hidden` keeps the sheet
+ * openable: tag filtering opens it on-demand from the header tag icon, and while
+ * that sheet is open the z-index ladder still holds (peek 30 · bulk bar 1035 ·
+ * backdrop 1039 · open sheet 1040), so the open sheet overlays and dims the bar
+ * — the same topmost-overlay-wins ordering the Escape guard enforces.
+ */
+@media (max-width: 991.98px) {
+  #bulkActionBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1035;
+    /* Drawer-stacked layout: grabber lip above the action row. These three now
+       live here (not the shared base rule) because desktop-inline wants a
+       centered row with no chrome; the base is minimal to keep them apart. */
+    flex-direction: column;
+    gap: 6px;
+    background: var(--panelBackgroundColor);
+    border-top: 2px solid var(--contentTopBorder);
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: var(--shadow-lg);
+    padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  /*
+   * DD-11 topmost-overlay: while the on-demand tag sheet is OPEN, hide the docked
+   * bulk-action bar entirely. The bar is `position: fixed; bottom: 0` (z 1035) and
+   * extends to the true viewport bottom, but the open sheet lives inside
+   * #tagSheetViewport (overflow:hidden, clipped to #mainPanel's footer-top edge),
+   * so the sheet's panel can't paint over the bar's lowest band — the Select All /
+   * Clear row peeks out below the sheet's clipped bottom edge (and the on-demand
+   * open path doesn't fade the backdrop in, so nothing else covers it). The bar is
+   * marked inert while the sheet is the topmost overlay, so it's unusable anyway;
+   * hide it so it never shows through. #mainPanel is the common ancestor of both
+   * #tagDeckSheet and #bulkActionBar (URLDeck → #centerPanel), and .tag-sheet-open
+   * lands only on #tagDeckSheet, so :has() bites exactly while the sheet is open
+   * and releases the moment it closes — the bar reappears with no JS involvement.
+   */
+  #mainPanel:has(#tagDeckSheet.tag-sheet-open) #bulkActionBar {
+    display: none !important;
+  }
+
+  .bulkBarGrabber {
+    display: block;
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: #5a6565;
+    margin: 4px auto 12px;
+  }
+
+  /* 44px coarse-pointer touch targets for the bar controls. */
+  .barBtn {
+    height: 2.75rem;
+    padding: 0 16px;
+    font-size: 0.9rem;
+  }
+
+  /* Keep the last URL card clear of the docked bar. Recomputed for the bar's own
+     height only: the tag-sheet peek is suppressed in mode (Step 6), so its
+     --tag-sheet-peek reservation is no longer needed here. This rule
+     (1 id + 3 classes) outranks tag-sheet.css's `#URLDeck .flex-column.content`
+     (1 id + 2 classes) so it wins when the deck is in mode. */
+  #URLDeck.multiSelectActive .flex-column.content {
+    padding-bottom: 88px;
+  }
+}
+
+/* Coarse-pointer: no tap-highlight flash on the checkbox / bar controls, and no
+   sticky :hover repaint lingering after a tap. */
+@media (any-pointer: coarse) {
+  .urlSelectCheckboxWrap,
+  .urlSelectCheckbox,
+  .barBtn,
+  #bulkSelectExit,
+  #bulkTagFilterIcon {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .barBtn:hover {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urlSelectCheckbox,
+  .barBtn {
+    transition: none;
+  }
+}

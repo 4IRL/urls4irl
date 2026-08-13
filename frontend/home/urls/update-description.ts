@@ -15,6 +15,7 @@ import { updateUTubNameHideInput } from "./update-name.js";
 import { showFieldSavedTick } from "./field-saved-tick.js";
 import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
+import { isMultiSelectActive } from "./bulk-actions/bulk-mode.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 import {
   FORM_CANCEL_TRIGGER,
@@ -76,6 +77,10 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
     descPencilIcon.removeClass("hidden");
 
     function openDescriptionEdit(trigger: "pencil_icon" | "keyboard"): void {
+      // Bound to the whole subheader wrap, so hiding the pencil in multi-select
+      // mode is not enough — gate the open itself. Its deselectAllURLs() only
+      // clears the single-select field, leaving the multi-select set stranded.
+      if (isMultiSelectActive()) return;
       emit({ event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, trigger });
       setOpenForm(HOME_FORM.UTUB_DESC_EDIT);
       deselectAllURLs();

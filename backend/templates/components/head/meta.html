@@ -3,17 +3,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="description" content="{{ CONSTANTS.STRINGS.SPLASH_META_DESCRIPTION }}">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-{# Theme-aware mobile browser chrome. Values match --defaultPageBackgroundColor
-   per theme (tokens.css). An explicit light/dark preference emits one static
-   meta; "system" defers to the OS via media-scoped metas. #}
-{% if user_theme == "light" %}
-<meta name="theme-color" content="#f4f6f6">
-{% elif user_theme == "dark" %}
-<meta name="theme-color" content="#262b2b">
-{% else %}
-<meta name="theme-color" content="#f4f6f6" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#262b2b" media="(prefers-color-scheme: dark)">
-{% endif %}
+{# Mobile browser chrome. Constant across all themes because the painted safe-area
+   strips are always --navbarBackground (#212529) — body background bleeds under the
+   viewport-fit=cover insets and is never overridden for light mode. A single static
+   value keeps the browser chrome matching that strip in every theme. #}
+<meta name="theme-color" content="#212529">
 {% block scripts_for_login %}
 {% if current_user.is_authenticated and current_user.email_validated %}
 <meta http-equiv="refresh" content="{{ CONSTANTS.CONFIG.SESSION_LIFETIME }}">

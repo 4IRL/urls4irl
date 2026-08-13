@@ -33,6 +33,8 @@ export interface AppEventMap {
     target: "desktop" | "url-deck" | "utub-deck" | "member-deck" | "no-utub";
   };
   "data-export:status-changed": { message: string };
+  "url:multiselect-mode-changed": { active: boolean };
+  "url:multiselect-changed": { selectedURLCardIDs: number[] };
 }
 
 export const AppEvents = Object.freeze({
@@ -47,6 +49,8 @@ export const AppEvents = Object.freeze({
   CROSS_UTUB_SEARCH_VISIBILITY_CHANGED: "cross-utub-search:visibility-changed",
   MOBILE_DECK_SWITCHED: "mobile:deck-switched",
   DATA_EXPORT_STATUS_CHANGED: "data-export:status-changed",
+  URL_MULTISELECT_MODE_CHANGED: "url:multiselect-mode-changed",
+  URL_MULTISELECT_CHANGED: "url:multiselect-changed",
 } as const);
 
 const _handlers = new Map<string, Set<(payload: unknown) => void>>();
