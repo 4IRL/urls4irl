@@ -68,6 +68,7 @@ TAG_ALREADY_IN_UTUB = "UTub already contains this tag."
 ONLY_UTUB_MEMBERS_DELETE_TAGS = "Only UTub members can delete tags."
 ONLY_UTUB_MEMBERS_UPDATE_TAGS = "Only UTub members can update tags."
 TAG_EMPTY = "Tag must not be empty."
+INVALID_URL_ID = "Invalid URL id."
 
 
 class TAGS_FAILURE(FAILURE_GENERAL):
@@ -79,6 +80,7 @@ class TAGS_FAILURE(FAILURE_GENERAL):
     ONLY_UTUB_MEMBERS_DELETE_TAGS = ONLY_UTUB_MEMBERS_DELETE_TAGS
     TAG_ALREADY_IN_UTUB = TAG_ALREADY_IN_UTUB
     TAG_EMPTY = TAG_EMPTY
+    INVALID_URL_ID = INVALID_URL_ID
 
 
 # Strings for tags no change

@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 
 class UTubTagErrorCodes(IntEnum):
@@ -11,3 +11,7 @@ class URLTagErrorCodes(IntEnum):
     UNKNOWN_EXCEPTION = 1
     INVALID_FORM_INPUT = 2
     UTUB_IS_LOCKED = 3
+
+
+class BulkTagSkipReason(StrEnum):
+    OVER_LIMIT = "overLimit"

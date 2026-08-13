@@ -41,6 +41,9 @@ DEFAULT_VIEW = "defaultView"
 DEFAULT_SORT = "defaultSort"
 DENSITY = "density"
 DATE_FORMAT = "dateFormat"
+APPLIED = "applied"
+SKIPPED = "skipped"
+SKIP_REASON = "reason"
 
 
 class MODELS:
@@ -84,3 +87,6 @@ class MODELS:
     DEFAULT_SORT = DEFAULT_SORT
     DENSITY = DENSITY
     DATE_FORMAT = DATE_FORMAT
+    APPLIED = APPLIED
+    SKIPPED = SKIPPED
+    SKIP_REASON = SKIP_REASON
