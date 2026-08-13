@@ -12,6 +12,15 @@ from __future__ import annotations
 
 TAGS_BATCH_SIZE_BUCKETS: tuple[str, ...] = ("1", "2-5", "6-10", "11-15", "16-20")
 URL_TAG_COUNT_BUCKETS: tuple[str, ...] = ("0", "1", "2-5", "6-10", "11-15", "16-20")
+BULK_TAG_URL_BUCKETS: tuple[str, ...] = (
+    "0",
+    "1",
+    "2-5",
+    "6-10",
+    "11-25",
+    "26-50",
+    "51+",
+)
 
 
 def bucket_tags_batch_size(applied_count: int) -> str:
@@ -70,3 +79,38 @@ def bucket_url_tag_count(count: int) -> str:
     if count <= 15:
         return "11-15"
     return "16-20"
+
+
+def bucket_bulk_tag_url_count(count: int) -> str:
+    """Map a count of URLs (applied-to or skipped) to its closed-set size bucket.
+
+    Mirrors `BULK_TAG_URL_BUCKETS`. Backs both the `url_count_bucket` (URLs that
+    gained ≥1 tag) and `skipped_count_bucket` (URLs skipped over-limit) dimensions
+    of the `TAGS_APPLIED_MULTI_URL` DOMAIN event, so a single bucketer/tuple keeps
+    the registry and the Pydantic `Literal[...]` from drifting. Carries an explicit
+    "0" bucket because `skipped_count_bucket` is commonly 0 (a fully-successful
+    batch), and the buckets widen toward the top ("11-25" / "26-50" / "51+") so a
+    large Select-All multi-URL apply stays visible without unbounded cardinality.
+
+    Examples:
+        bucket_bulk_tag_url_count(0)   -> "0"
+        bucket_bulk_tag_url_count(1)   -> "1"
+        bucket_bulk_tag_url_count(4)   -> "2-5"
+        bucket_bulk_tag_url_count(9)   -> "6-10"
+        bucket_bulk_tag_url_count(20)  -> "11-25"
+        bucket_bulk_tag_url_count(40)  -> "26-50"
+        bucket_bulk_tag_url_count(200) -> "51+"
+    """
+    if count == 0:
+        return "0"
+    if count <= 1:
+        return "1"
+    if count <= 5:
+        return "2-5"
+    if count <= 10:
+        return "6-10"
+    if count <= 25:
+        return "11-25"
+    if count <= 50:
+        return "26-50"
+    return "51+"

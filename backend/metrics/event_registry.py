@@ -23,7 +23,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from backend.metrics.events import EventCategory, EventName
-from backend.metrics.tag_batch import TAGS_BATCH_SIZE_BUCKETS, URL_TAG_COUNT_BUCKETS
+from backend.metrics.tag_batch import (
+    BULK_TAG_URL_BUCKETS,
+    TAGS_BATCH_SIZE_BUCKETS,
+    URL_TAG_COUNT_BUCKETS,
+)
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 
@@ -116,6 +120,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Multiple tags applied to a URL in one batch",
         category=EventCategory.DOMAIN,
         dimensions={"batch_size_bucket": TAGS_BATCH_SIZE_BUCKETS},
+    ),
+    EventName.TAGS_APPLIED_MULTI_URL: EventRegistryEntry(
+        description="Tags applied to multiple URLs in one bulk action",
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "url_count_bucket": BULK_TAG_URL_BUCKETS,
+            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+        },
     ),
     EventName.TAG_REMOVED: EventRegistryEntry(
         description="Tag removed from a URL",

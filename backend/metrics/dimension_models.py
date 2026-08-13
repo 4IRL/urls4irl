@@ -10,7 +10,11 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
-from backend.metrics.tag_batch import TAGS_BATCH_SIZE_BUCKETS, URL_TAG_COUNT_BUCKETS
+from backend.metrics.tag_batch import (
+    BULK_TAG_URL_BUCKETS,
+    TAGS_BATCH_SIZE_BUCKETS,
+    URL_TAG_COUNT_BUCKETS,
+)
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 # ---------------------------------------------------------------------------
@@ -339,6 +343,16 @@ class _DimTagsAppliedBatch(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimTagsAppliedMultiUrl(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Both closed sets source the same `BULK_TAG_URL_BUCKETS` constant fed to the
+    # registry, so the audit set-compare between these Literals and the registry
+    # tuples can never drift.
+    url_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
+    skipped_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimUrlAddedToUtub(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # Closed set sourced from the same `URL_TAG_COUNT_BUCKETS` constant fed to
@@ -442,6 +456,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.REGISTER_SUCCESS: _DimDeviceOnly,
     EventName.TAG_APPLIED: _DimDeviceOnly,
     EventName.TAGS_APPLIED_BATCH: _DimTagsAppliedBatch,
+    EventName.TAGS_APPLIED_MULTI_URL: _DimTagsAppliedMultiUrl,
     EventName.TAG_DELETED: _DimDeviceOnly,
     EventName.TAG_REMOVED: _DimDeviceOnly,
     EventName.URL_ACCESSED: _DimDeviceOnly,

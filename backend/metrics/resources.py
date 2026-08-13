@@ -73,6 +73,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.URL_TRACKING_PARAMS_STRIPPED: Resource.URL,
     EventName.TAG_APPLIED: Resource.TAG,
     EventName.TAGS_APPLIED_BATCH: Resource.TAG,
+    EventName.TAGS_APPLIED_MULTI_URL: Resource.TAG,
     EventName.TAG_REMOVED: Resource.TAG,
     EventName.TAG_DELETED: Resource.TAG,
     EventName.UTUB_TAG_CREATED: Resource.TAG,
