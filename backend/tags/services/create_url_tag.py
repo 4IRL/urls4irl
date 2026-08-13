@@ -12,19 +12,25 @@ from backend.app_logger import (
 )
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
-from backend.metrics.tag_batch import bucket_tags_batch_size
+from backend.metrics.tag_batch import (
+    bucket_bulk_tag_url_count,
+    bucket_tags_batch_size,
+)
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.tags import (
+    AddTagsToUrlsResponseSchema,
+    UrlBatchTagAppliedSchema,
+    UrlBatchTagSkippedSchema,
     UrlTagModifiedResponseSchema,
     UrlTagsModifiedResponseSchema,
     UtubTagOnAddDeleteSchema,
     UtubTagSchema,
 )
-from backend.tags.constants import URLTagErrorCodes
+from backend.tags.constants import BulkTagSkipReason, URLTagErrorCodes
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 from backend.utubs.guards import reject_if_utub_locked
@@ -290,6 +296,192 @@ def add_batch_tags_to_existing_url(
         data=UrlTagsModifiedResponseSchema(
             utub_url_tag_ids=utub_url.associated_tag_ids,
             applied_tags=applied_tags,
+        ),
+    ).to_response()
+
+
+def add_tags_to_urls_in_utub(
+    tag_strings: list[str], utub_url_ids: list[int], utub: Utubs
+) -> FlaskResponse:
+    """
+    Applies a batch of tag strings to multiple URLs in a UTub in one request,
+    building a per-URL partial-success report. Each target URL is run through the
+    non-committing `apply_tags_core`; a URL already at the per-URL tag limit is
+    skipped and reported (never applied), while every non-skipped URL — including
+    the all-already-present no-op case — is reported in `applied`. The whole
+    batch is one transaction with a single final commit: either it commits with
+    the accumulated per-URL results, or an unexpected mid-loop exception rolls
+    everything back.
+
+    Invalid ids (unknown, or belonging to a different UTub) are rejected
+    all-or-nothing with a 400 before any rows are written — a foreign id is a
+    malformed/spoofed request, not a legitimate skip. Only over-limit is a
+    reported skip.
+
+    Args:
+        tag_strings (list[str]): The tag strings to apply to each selected URL
+        utub_url_ids (list[int]): The UTub-URL ids to tag (already deduped by the
+            request schema)
+        utub (Utubs): The UTub containing the URLs and tags
+
+    Returns:
+        tuple[Response, int]:
+        - Response: JSON partial-success report (`applied` / `skipped`).
+        - int: HTTP status code
+            200 (success — including the all-skipped and all-already-present cases)
+            400 (one or more ids are not valid URLs in this UTub)
+            403 (UTub is locked)
+    """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        utub, error_code=URLTagErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
+    # Defensively de-dup ids (order-preserving), mirroring the request schema's
+    # own dedup, so a direct/in-code caller cannot reprocess the same URL twice
+    # against its stale (pre-commit) associated_tag_ids and write duplicate
+    # association rows (there is no DB unique constraint to backstop that).
+    utub_url_ids = list(dict.fromkeys(utub_url_ids))
+
+    # Resolve + validate every id up front (all-or-nothing on invalid ids). A
+    # single query fetches all requested rows; any id that is unknown or belongs
+    # to a different UTub rejects the whole request before any write occurs.
+    url_rows: list[Utub_Urls] = Utub_Urls.query.filter(
+        Utub_Urls.id.in_(utub_url_ids)
+    ).all()
+    url_rows_by_id: dict[int, Utub_Urls] = {row.id: row for row in url_rows}
+    if any(
+        url_id not in url_rows_by_id or url_rows_by_id[url_id].utub_id != utub.id
+        for url_id in utub_url_ids
+    ):
+        return build_message_error_response(
+            message=TAGS_FAILURE.URL_NOT_IN_UTUB,
+            error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
+        )
+
+    applied_results: list[dict] = []
+    skipped_results: list[dict] = []
+    all_applied_tag_ids: set[int] = set()
+    urls_modified_count = 0
+
+    # The explicit rollback mirrors the single-URL batch wrapper: a mid-loop
+    # exception discards every flushed vocabulary row and association write across
+    # all URLs, rather than relying on the request-teardown rollback (which the
+    # test harness's SAVEPOINT does not trigger on a propagated exception).
+    try:
+        for url_id in utub_url_ids:
+            utub_url = url_rows_by_id[url_id]
+            # Snapshot the URL's current tag ids BEFORE apply_tags_core stages any
+            # writes. apply_tags_core computes an identical set internally but does
+            # not expose it (TagApplyResult carries only over_limit/to_apply), and
+            # re-reading utub_url.associated_tag_ids after the call returns the
+            # stale pre-apply collection — _add_url_tag adds via the raw FK column,
+            # not the ORM relationship, so the back-populated collection is not
+            # refreshed until the single end-of-loop commit + reload.
+            pre_apply_tag_ids = set(utub_url.associated_tag_ids)
+            result = apply_tags_core(tag_strings, utub, utub_url)
+
+            if result.over_limit:
+                skipped_results.append(
+                    {
+                        "utub_url_id": url_id,
+                        "reason": BulkTagSkipReason.OVER_LIMIT,
+                    }
+                )
+                continue
+
+            applied_tag_ids = [tag.id for tag in result.to_apply]
+            utub_url_tag_ids = sorted(
+                pre_apply_tag_ids | {tag.id for tag in result.to_apply}
+            )
+            applied_results.append(
+                {
+                    "utub_url_id": url_id,
+                    "utub_url_tag_ids": utub_url_tag_ids,
+                    "applied_tag_ids": applied_tag_ids,
+                }
+            )
+            if result.to_apply:
+                urls_modified_count += 1
+                all_applied_tag_ids.update(applied_tag_ids)
+
+        if urls_modified_count:
+            # Only bump the UTub modification time when at least one URL actually
+            # gained a tag; an all-skipped / all-already-present request is a no-op.
+            utub.set_last_updated()
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        warning_log(
+            f"Bulk multi-URL tag-apply failed | UTub.id={utub.id} "
+            f"| URLCount={len(utub_url_ids)} | error_type={type(exc).__name__}"
+        )
+        raise
+
+    safe_add_many_logs(
+        [
+            "Applied bulk multi-URL tags",
+            f"UTub.id={utub.id}",
+            f"URLsModified={urls_modified_count}",
+            f"URLsSkipped={len(skipped_results)}",
+        ]
+    )
+
+    # Counts + tag-string lookup are done once, post-commit, over the deduped set
+    # of applied tag ids to avoid an N+1 across URLs.
+    tag_applied_counts = get_tag_applied_counts(utub.id, list(all_applied_tag_ids))
+    tag_strings_by_id: dict[int, str] = {
+        tag.id: tag.tag_string
+        for tag in Utub_Tags.query.filter(Utub_Tags.id.in_(all_applied_tag_ids)).all()
+    }
+
+    applied_schemas = [
+        UrlBatchTagAppliedSchema(
+            utub_url_id=entry["utub_url_id"],
+            utub_url_tag_ids=entry["utub_url_tag_ids"],
+            applied_tags=[
+                UtubTagSchema(
+                    id=tag_id,
+                    tag_string=tag_strings_by_id[tag_id],
+                    tag_applied=tag_applied_counts.get(tag_id, 0),
+                )
+                for tag_id in entry["applied_tag_ids"]
+            ],
+        )
+        for entry in applied_results
+    ]
+    skipped_schemas = [
+        UrlBatchTagSkippedSchema(
+            utub_url_id=entry["utub_url_id"],
+            reason=entry["reason"],
+        )
+        for entry in skipped_results
+    ]
+
+    # Metrics (post-commit). One TAG_APPLIED per applied (url, tag) association —
+    # iterate the per-URL applied entries, never the deduped all_applied_tag_ids
+    # set, which would undercount a tag applied to multiple URLs. Emit a single
+    # TAGS_APPLIED_MULTI_URL only when at least one URL actually gained a tag.
+    for entry in applied_results:
+        for _applied_tag_id in entry["applied_tag_ids"]:
+            record_event(EventName.TAG_APPLIED)
+
+    if urls_modified_count:
+        record_event(
+            EventName.TAGS_APPLIED_MULTI_URL,
+            dimensions={
+                "url_count_bucket": bucket_bulk_tag_url_count(urls_modified_count),
+                "skipped_count_bucket": bucket_bulk_tag_url_count(len(skipped_results)),
+            },
+        )
+
+    return APIResponse(
+        message=TAGS_SUCCESS.TAGS_ADDED_TO_URLS,
+        data=AddTagsToUrlsResponseSchema(
+            applied=applied_schemas,
+            skipped=skipped_schemas,
         ),
     ).to_response()
 

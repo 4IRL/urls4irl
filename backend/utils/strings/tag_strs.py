@@ -6,6 +6,7 @@ from backend.utils.strings.utub_strs import UTUB_GENERAL
 # Strings for tags success
 TAG_ADDED_TO_URL = "Tag added to this URL."
 TAGS_ADDED_TO_URL = "Tags added to this URL."
+TAGS_ADDED_TO_URLS = "Tags added to selected URLs."
 TAG_ADDED_TO_UTUB = "Tag added to this UTub."
 TAG_REMOVED_FROM_URL = "Tag removed from this URL."
 TAG_REMOVED_FROM_UTUB = "Tag removed from UTub and associated URLs."
@@ -47,6 +48,7 @@ TAGS_EMPTY_HINT = "No tags yet — type to create one"
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     TAG_ADDED_TO_URL = TAG_ADDED_TO_URL
     TAGS_ADDED_TO_URL = TAGS_ADDED_TO_URL
+    TAGS_ADDED_TO_URLS = TAGS_ADDED_TO_URLS
     TAG_ADDED_TO_UTUB = TAG_ADDED_TO_UTUB
     TAG_REMOVED_FROM_URL = TAG_REMOVED_FROM_URL
     TAG_REMOVED_FROM_UTUB = TAG_REMOVED_FROM_UTUB
@@ -69,6 +71,7 @@ ONLY_UTUB_MEMBERS_DELETE_TAGS = "Only UTub members can delete tags."
 ONLY_UTUB_MEMBERS_UPDATE_TAGS = "Only UTub members can update tags."
 TAG_EMPTY = "Tag must not be empty."
 INVALID_URL_ID = "Invalid URL id."
+URL_NOT_IN_UTUB = "One or more URLs are not in this UTub."
 
 
 class TAGS_FAILURE(FAILURE_GENERAL):
@@ -81,6 +84,7 @@ class TAGS_FAILURE(FAILURE_GENERAL):
     TAG_ALREADY_IN_UTUB = TAG_ALREADY_IN_UTUB
     TAG_EMPTY = TAG_EMPTY
     INVALID_URL_ID = INVALID_URL_ID
+    URL_NOT_IN_UTUB = URL_NOT_IN_UTUB
 
 
 # Strings for tags no change
