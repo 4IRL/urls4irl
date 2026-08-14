@@ -39,6 +39,7 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.URL_TRACKING_PARAMS_STRIPPED,
         EventName.UTUB_TAG_CREATED,
         EventName.TAGS_APPLIED_BATCH,
+        EventName.TAGS_APPLIED_MULTI_URL,
         EventName.REGISTER_SUCCESS,
         EventName.REGISTER_REJECTED,
         EventName.LOGIN_SUCCESS,
@@ -68,7 +69,10 @@ tests/integration/search/. URL_TRACKING_PARAMS_STRIPPED fires only from the URL
 create/update service flows, not the shared seed; its per-dimension emit tests
 live under tests/integration/utuburls/. TAGS_APPLIED_BATCH fires only from the batch
 tag-apply service flow, which the shared seed does not exercise; its per-batch
-emit test lives under tests/integration/utubtags/. OAUTH_IDENTITY_LINKED and
+emit test lives under tests/integration/utubtags/. TAGS_APPLIED_MULTI_URL fires
+only from the multi-URL bulk tag-apply service flow, which the shared seed does
+not exercise; its per-request emit test lives under
+tests/integration/utubtags/test_apply_tags_to_urls_route.py. OAUTH_IDENTITY_LINKED and
 OAUTH_IDENTITY_UNLINKED fire only from the authenticated OAuth link/unlink
 service flows (settings-initiated link requiring a password re-auth or an OAuth
 provider round-trip, and the collision confirm-link path), which the shared

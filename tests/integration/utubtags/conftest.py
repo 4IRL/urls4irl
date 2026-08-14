@@ -4,7 +4,9 @@ import pytest
 from backend import db
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings import model_strs
 from tests.models_for_test import all_tags
 
@@ -84,5 +86,75 @@ def _add_one_tag_to_each_utub(app: Flask):
                 created_by=utub.utub_creator,
             )
             db.session.add(new_tag_in_utub)
+
+        db.session.commit()
+
+
+@pytest.fixture
+def add_mixed_tag_state_urls_in_first_utub(
+    app: Flask, add_all_urls_and_users_to_each_utub_no_tags
+):
+    """
+    Seed a mixed per-URL tag state on the first UTub (created by the first user),
+    so the multi-URL tag-apply endpoint can be exercised for per-URL partial
+    success in one request:
+
+    - URL A (first by id):  no tags
+    - URL B (second by id): exactly one tag applied
+    - URL C (third by id):  at the per-URL MAX_URL_TAGS limit (skipped on apply)
+
+    Builds on ``add_all_urls_and_users_to_each_utub_no_tags`` (three URLs and all
+    members in each UTub) and layers tag associations via direct ``db.session``
+    inserts, reusing ``tests.models_for_test.all_tags`` for the single-tag URL.
+    The first UTub is created by the first user, so a test that logs in as the
+    first user (``login_first_user_without_register``) is its creator.
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_all_urls_and_users_to_each_utub_no_tags (pytest fixture): Adds all
+            URLs and all members to each UTub, with no tags on any URL
+    """
+    with app.app_context():
+        first_utub: Utubs = Utubs.query.order_by(Utubs.id).first()
+        url_ids = [
+            utub_url.id
+            for utub_url in Utub_Urls.query.filter(Utub_Urls.utub_id == first_utub.id)
+            .order_by(Utub_Urls.id)
+            .all()
+        ]
+        url_b_id, url_c_id = url_ids[1], url_ids[2]
+
+        # URL B: exactly one applied tag (reuse a canonical test tag string).
+        single_tag = Utub_Tags(
+            utub_id=first_utub.id,
+            tag_string=all_tags[0][model_strs.TAG_STRING],
+            created_by=first_utub.utub_creator,
+        )
+        db.session.add(single_tag)
+        db.session.flush()
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=first_utub.id,
+                utub_url_id=url_b_id,
+                utub_tag_id=single_tag.id,
+            )
+        )
+
+        # URL C: filled to the per-URL tag limit so it is skipped over-limit.
+        for index in range(TAG_CONSTANTS.MAX_URL_TAGS):
+            limit_tag = Utub_Tags(
+                utub_id=first_utub.id,
+                tag_string=f"limit_seed_{url_c_id}_{index}",
+                created_by=first_utub.utub_creator,
+            )
+            db.session.add(limit_tag)
+            db.session.flush()
+            db.session.add(
+                Utub_Url_Tags(
+                    utub_id=first_utub.id,
+                    utub_url_id=url_c_id,
+                    utub_tag_id=limit_tag.id,
+                )
+            )
 
         db.session.commit()
