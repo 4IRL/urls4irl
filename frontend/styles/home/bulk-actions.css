@@ -545,3 +545,175 @@
     transition: none;
   }
 }
+
+/*
+ * ---- Bulk-tag picker + result banner (Phase 2) ----
+ * The picker mounts the BULK-mode tag combobox into #bulkTagPickerMount and the
+ * outcome renders into #bulkTagResultBanner. Both live inside #bulkActionBar but
+ * OUTSIDE #bulkActionButtons, so the action-button rebuild never touches them.
+ * The combobox chrome itself (.urlTagCombobox*, listbox, chips) reuses the styles
+ * in styles/home/tags.css — only the mount frame, banner, cancel/submit-loading,
+ * and the selection lock cue live here.
+ */
+.bulkTagPickerMount {
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--pageBackgroundColor);
+  border: 1px solid var(--deckSelectionGreen);
+  border-radius: var(--radius-sm);
+}
+
+.bulkTagBanner {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.bulkTagBanner.success {
+  background: rgba(67, 199, 154, 0.12);
+  border: 1px solid var(--splashGreen);
+}
+
+.bulkTagBanner.partial {
+  background: rgba(253, 231, 76, 0.12);
+  border: 1px solid var(--editURLColor);
+}
+
+.bulkTagBanner.fail {
+  background: rgba(220, 53, 69, 0.12);
+  border: 1px solid var(--removeIconColor);
+}
+
+.bulkTagBanner .bulkTagBannerIcon {
+  margin-right: 8px;
+  flex: 0 0 auto;
+}
+
+.bulkTagBanner .bulkTagBannerBody {
+  display: inline;
+}
+
+/* Cancel button — outlined danger, mirroring the mock's cancelBtn. */
+.urlTagComboboxCancelBtn {
+  border: 1px solid var(--removeIconColor);
+  border-radius: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--removeIconColor);
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.urlTagComboboxCancelBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.urlTagComboboxCancelBtn:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/* Submit in-flight loading affordance (bulk-tag.ts toggles the class). */
+.urlTagComboboxSubmitBtn.bulkTagSubmitLoading {
+  position: relative;
+  color: transparent;
+}
+
+.urlTagComboboxSubmitBtn.bulkTagSubmitLoading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: bulkTagSpin 0.6s linear infinite;
+  color: var(--panelBackgroundColor);
+}
+
+@keyframes bulkTagSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * Selection lock cue: while the picker is open the checkboxes are inert (the
+ * selection is snapshotted). Mirrors the mode-scoped #URLDeck state-class idiom
+ * used by #URLDeck.multiSelectActive .urlSelectCheckboxWrap above, and pairs with
+ * the aria-disabled Select-All / Clear treatment.
+ */
+#URLDeck.bulkTagPickerOpen .urlSelectCheckbox {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Desktop: the picker + banner wrap onto their own full-width row below the
+   inline Select All / Clear / action row (the bar becomes wrap-capable). */
+@media (min-width: 992px) {
+  #bulkActionBar {
+    flex-wrap: wrap;
+  }
+
+  .bulkTagPickerMount,
+  .bulkTagBanner {
+    flex-basis: 100%;
+  }
+}
+
+/*
+ * Mobile (<=991.98px): the picker is a bottom-docked drawer, one z-step above the
+ * bulk-action bar (1035) but BELOW the on-demand tag sheet (1040), reusing the
+ * bar's grabber + safe-area chrome. When the picker is open the selection is
+ * locked, so the tag-filter icon is guarded off in JS (bulk-actions/index.ts).
+ */
+@media (max-width: 991.98px) {
+  .bulkTagPickerMount {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1036;
+    margin-top: 0;
+    background: var(--panelBackgroundColor);
+    border: none;
+    border-top: 2px solid var(--contentTopBorder);
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: var(--shadow-lg);
+    padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  .bulkTagPickerMount::before {
+    content: "";
+    display: block;
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: #5a6565;
+    margin: 4px auto 8px;
+  }
+
+  .urlTagComboboxCancelBtn {
+    height: 2.75rem;
+    padding: 0 16px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urlTagComboboxSubmitBtn.bulkTagSubmitLoading::after {
+    animation: none;
+  }
+}

@@ -48,6 +48,14 @@ vi.mock("../delete.js", () => ({
 vi.mock("../../bulk-actions/bulk-selection.js", () => ({
   toggleURLCardSelection: vi.fn(),
 }));
+// selection.ts imports bulk-tag.js for the isBulkTagPickerOpen() selection-lock
+// guard. bulk-tag.js transitively pulls in the tag-deck modules → urls/search.js,
+// whose module-level on(URL_TAG_FILTER_APPLIED, reapplyURLSearchFilter)
+// subscription would fire against this suite's minimal DOM (no #URLContentSearch),
+// the same reason ../delete.js is mocked above. Mock it to the guard alone.
+vi.mock("../../bulk-actions/bulk-tag.js", () => ({
+  isBulkTagPickerOpen: vi.fn(() => false),
+}));
 
 const $ = window.jQuery;
 

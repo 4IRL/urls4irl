@@ -74,6 +74,7 @@ const appConfig = {
     createURLTagsBatch: "/utubs/-1/urls/-2/tags/batch",
     deleteURLTag: "/utubs/-1/urls/-2/tags/-3",
     createUTubTag: "/utubs/-1/tags",
+    applyTagsToURLs: "/utubs/-1/urls/tags/batch",
     deleteUTubTag: "/utubs/-1/tags/-2",
     createMember: "/utubs/-1/members",
     removeMember: "/utubs/-1/members/-4",
@@ -150,6 +151,16 @@ const appConfig = {
     TAGS_MATCH_COUNT: "{n} matches",
     TAGS_MATCH_COUNT_ONE: "1 match",
     TAGS_EMPTY_HINT: "No tags yet — type to create one",
+    URL_BULK_ADD_TAGS_ARIA: "Add tags to {n} selected URLs",
+    URL_BULK_TAGS_APPLIED: "Tags added to {n} URLs.",
+    URL_BULK_TAGS_APPLIED_ONE: "Tags added to 1 URL.",
+    URL_BULK_TAGS_PARTIAL:
+      "Tags added to {applied} URLs; {skipped} skipped (already at the {max}-tag limit): {titles}",
+    URL_BULK_TAGS_NONE:
+      "No tags added — all {n} selected URLs are at the {max}-tag limit.",
+    URL_BULK_TAGS_STALE_SELECTION:
+      "One or more selected URLs are no longer available — refresh your selection.",
+    URL_BULK_TAGS_SUBMITTING: "Adding tags…",
     URL_SEARCH_NO_RESULTS: "No URLs found",
     URL_BULK_SELECTED_COUNT: "{n} URLs selected",
     URL_BULK_SELECTED_COUNT_ONE: "1 URL selected",

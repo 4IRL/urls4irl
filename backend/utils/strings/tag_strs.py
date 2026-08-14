@@ -44,6 +44,23 @@ TAGS_MATCH_COUNT = "{n} matches"
 TAGS_MATCH_COUNT_ONE = "1 match"
 TAGS_EMPTY_HINT = "No tags yet — type to create one"
 
+# Bulk multi-URL tag-apply strings (Phase 2). Read dynamically by production
+# TypeScript (bulk-tag.ts / combobox.ts BULK mode) via APP_CONFIG.strings, so
+# they go through the full APP_CONFIG bridge (constants.STRINGS +
+# generate_strings_js() + frontend/test-setup.ts mock).
+URL_BULK_ADD_TAGS_ARIA = "Add tags to {n} selected URLs"
+URL_BULK_TAGS_APPLIED = "Tags added to {n} URLs."
+URL_BULK_TAGS_APPLIED_ONE = "Tags added to 1 URL."
+URL_BULK_TAGS_PARTIAL = (
+    "Tags added to {applied} URLs; {skipped} skipped "
+    "(already at the {max}-tag limit): {titles}"
+)
+URL_BULK_TAGS_NONE = "No tags added — all {n} selected URLs are at the {max}-tag limit."
+URL_BULK_TAGS_STALE_SELECTION = (
+    "One or more selected URLs are no longer available — refresh your selection."
+)
+URL_BULK_TAGS_SUBMITTING = "Adding tags…"
+
 
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     TAG_ADDED_TO_URL = TAG_ADDED_TO_URL

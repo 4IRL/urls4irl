@@ -78,7 +78,7 @@ export function updateURLsAndTagSubheaderWhenTagSelected(): void {
   sortTagFiltersInPlace();
 }
 
-function updateVisibleURLsForTagCount(): void {
+export function updateVisibleURLsForTagCount(): void {
   const currentTagIDs = currentTagDeckIDs();
   const visibleURLCards = $(".urlRow[filterable=true]");
 

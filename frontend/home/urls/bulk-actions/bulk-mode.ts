@@ -93,6 +93,12 @@ export function exitMultiSelectMode(): void {
   log("exit multi-select mode");
 
   clearURLSelection();
+  // Clear any lingering bulk-tag result banner so a partial-success/all-skipped
+  // banner never survives a mode exit or UTub switch. This DOM-only clear stays
+  // inline here; the picker mount + isBulkTagPickerOpen flag teardown lives in
+  // bulk-tag.ts's own URL_MULTISELECT_MODE_CHANGED subscription (so bulk-mode.ts
+  // never imports bulk-tag.ts).
+  $("#bulkTagResultBanner").addClass(HIDDEN_CLASS).empty();
   setState({ multiSelectMode: false });
   $("#URLDeck").removeClass(MULTI_SELECT_ACTIVE_CLASS);
   // Dropping the mainPanel mode class lets the collapsed tag-sheet peek slide

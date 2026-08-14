@@ -22,4 +22,13 @@
 		<button id="bulkSelectAll" class="barBtn" type="button">Select All</button>
 		<button id="bulkSelectClear" class="barBtn clear" type="button" aria-disabled="true">Clear</button>
 	</div>
+	<!--
+		Bulk-tag picker mount + result banner. Both live OUTSIDE #bulkActionButtons
+		(which bulk-bar.ts empties/rebuilds on every selection/filter change) so the
+		open picker and the outcome banner are never destroyed by that rebuild.
+		bulk-tag.ts (Phase 2) mounts the BULK-mode combobox into #bulkTagPickerMount
+		and renders success/partial/fail into #bulkTagResultBanner (role=status).
+	-->
+	<div id="bulkTagPickerMount" class="bulkTagPickerMount hidden"></div>
+	<div id="bulkTagResultBanner" class="bulkTagBanner hidden" role="status"></div>
 </div>

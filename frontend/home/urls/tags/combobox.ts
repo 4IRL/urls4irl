@@ -62,15 +62,21 @@ const TOOLTIP_STORE_KEY = "urlTagComboboxTooltip";
 export const STAGED_RESET_KEY = "urlTagComboboxResetStaged";
 export const STAGED_GET_KEY = "urlTagComboboxGetStaged";
 const LIMIT_SYNC_KEY = "urlTagComboboxSyncLimit";
+// Card-independent reset closure exposed for BULK mode (no `urlCard` DOM to
+// drive the full `hideAndResetTagCombobox`); `bulk-tag.ts` invokes it via
+// `wrap.data(BULK_RESET_KEY)` on every close path.
+export const BULK_RESET_KEY = "urlTagComboboxResetBulk";
 
 /**
- * The two modes the combobox can be mounted in. `URL` mounts on an existing URL
- * card and batch-applies tags; `CREATE` stages tags inline in the Create URL
- * form. Used as the discriminant of `ComboboxBlockArgs`.
+ * The three modes the combobox can be mounted in. `URL` mounts on an existing
+ * URL card and batch-applies tags; `CREATE` stages tags inline in the Create URL
+ * form; `BULK` stages tags for a multi-URL batch apply (no owning card, driven
+ * by an `onSubmit` callback). Used as the discriminant of `ComboboxBlockArgs`.
  */
 export const ComboboxMode = Object.freeze({
   URL: "url",
   CREATE: "create",
+  BULK: "bulk",
 } as const);
 export type ComboboxMode = (typeof ComboboxMode)[keyof typeof ComboboxMode];
 
@@ -96,13 +102,21 @@ type ComboboxBlockArgs =
       urlCard: null;
       utubID: number;
       onSecondEscape?: () => void;
+    }
+  | {
+      mode: typeof ComboboxMode.BULK;
+      urlCard: null;
+      utubID: number;
+      selectedCount: number;
+      onSubmit: (stagedStrings: string[]) => void;
     };
 
-interface ComboboxRefs {
-  mode: ComboboxMode;
-  urlCard: JQuery | null;
+// Fields shared by every combobox mode. Mode-specific fields (`urlCard`/
+// `utubUrlID` for URL, `onSecondEscape` for CREATE, `selectedCount`/`onSubmit`
+// for BULK) live on the per-mode variants below so TypeScript narrows them
+// together once a site discriminates on `refs.mode`.
+type ComboboxRefsBase = {
   utubID: number;
-  utubUrlID: number;
   wrap: JQuery;
   combobox: JQuery;
   input: JQuery;
@@ -112,8 +126,25 @@ interface ComboboxRefs {
   listboxId: string;
   stagedStrings: string[];
   debounceTimer: ReturnType<typeof setTimeout> | null;
-  onSecondEscape?: () => void;
-}
+};
+
+type ComboboxRefs =
+  | (ComboboxRefsBase & {
+      mode: typeof ComboboxMode.URL;
+      urlCard: JQuery;
+      utubUrlID: number;
+    })
+  | (ComboboxRefsBase & {
+      mode: typeof ComboboxMode.CREATE;
+      urlCard: null;
+      onSecondEscape?: () => void;
+    })
+  | (ComboboxRefsBase & {
+      mode: typeof ComboboxMode.BULK;
+      urlCard: null;
+      selectedCount: number;
+      onSubmit: (stagedStrings: string[]) => void;
+    });
 
 /**
  * Reads the count of tags already applied to this URL from its
@@ -151,7 +182,7 @@ function getAppliedTagIds(urlCard: JQuery | null): number[] {
 export function createTagComboboxBlock(
   args: ComboboxBlockArgs,
 ): JQuery<HTMLElement> {
-  const { mode, urlCard, utubID } = args;
+  const { mode, utubID } = args;
   const isCreateMode = mode === ComboboxMode.CREATE;
   const listboxId = `${OPTION_ID_PREFIX}Listbox-${++comboboxIdCounter}`;
 
@@ -179,16 +210,25 @@ export function createTagComboboxBlock(
     })
     .css("font-size", "16px");
 
-  // Create-mode shows a visible "Tags (optional)" sub-label tied to the input
-  // via `for=`; url-mode keeps the existing `aria-label="Add tags"` (no visible
-  // label in the URL card). A `<label for=>` takes precedence for screen readers,
-  // so the `aria-label` is omitted in create-mode to avoid a conflicting name.
-  if (isCreateMode) {
+  // Accessible-name dispatch is 3-way on `mode` (not the old two-way
+  // create-vs-not): create-mode shows a visible "Tags (optional)" sub-label tied
+  // to the input via `for=` (a `<label for=>` wins over aria-label for SR, so the
+  // aria-label is omitted); url-mode keeps the static `aria-label="Add tags"`;
+  // bulk-mode uses a count-aware "Add tags to {n} selected URLs" aria-label.
+  if (mode === ComboboxMode.CREATE) {
     const label = $(document.createElement("label"))
       .addClass("urlTagComboboxLabel")
       .attr({ for: inputId })
       .text(APP_CONFIG.strings.TAGS_OPTIONAL_LABEL);
     wrap.append(label);
+  } else if (mode === ComboboxMode.BULK) {
+    input.attr(
+      "aria-label",
+      APP_CONFIG.strings.URL_BULK_ADD_TAGS_ARIA.replace(
+        "{n}",
+        String(args.selectedCount),
+      ),
+    );
   } else {
     input.attr("aria-label", APP_CONFIG.strings.ADD_TAGS_ARIA_LABEL);
   }
@@ -212,8 +252,9 @@ export function createTagComboboxBlock(
     "urlTagComboboxActions flex-row gap-5p",
   );
 
-  // Create-mode has no internal submit button: staged tags are folded into the
-  // create-URL request, so the batch-apply submit button is omitted entirely.
+  // Only CREATE mode omits the internal submit button (staged tags are folded
+  // into the create-URL request). URL and BULK both keep it, so this `!isCreateMode`
+  // condition is already correct for all three modes.
   if (!isCreateMode) {
     actions.append(submitBtn);
   }
@@ -225,13 +266,8 @@ export function createTagComboboxBlock(
 
   wrap.append(combobox).append(listbox).append(footer);
 
-  const refs: ComboboxRefs = {
-    mode,
-    urlCard,
+  const base: ComboboxRefsBase = {
     utubID,
-    // url-mode owns a real `utubUrlID`; create-mode has none yet (the URL does
-    // not exist) and never reaches the batch-submit path that reads it.
-    utubUrlID: args.mode === ComboboxMode.URL ? args.utubUrlID : -1,
     wrap,
     combobox,
     input,
@@ -241,15 +277,61 @@ export function createTagComboboxBlock(
     listboxId,
     stagedStrings: [],
     debounceTimer: null,
-    onSecondEscape:
-      args.mode === ComboboxMode.CREATE ? args.onSecondEscape : undefined,
   };
+
+  // Build the matching discriminated-union variant per mode, so every mode-
+  // specific field is constructed alongside its gating `mode` value. All three
+  // arms are reachable: URL from the per-card mount (cards.ts), CREATE from the
+  // Create-URL form (create.ts), BULK from bulk-tag.ts's openBulkTagPicker.
+  let refs: ComboboxRefs;
+  switch (args.mode) {
+    case ComboboxMode.URL:
+      refs = {
+        ...base,
+        mode: ComboboxMode.URL,
+        urlCard: args.urlCard,
+        utubUrlID: args.utubUrlID,
+      };
+      break;
+    case ComboboxMode.CREATE:
+      refs = {
+        ...base,
+        mode: ComboboxMode.CREATE,
+        urlCard: null,
+        onSecondEscape: args.onSecondEscape,
+      };
+      break;
+    case ComboboxMode.BULK:
+      refs = {
+        ...base,
+        mode: ComboboxMode.BULK,
+        urlCard: null,
+        selectedCount: args.selectedCount,
+        onSubmit: args.onSubmit,
+      };
+      break;
+  }
 
   // Expose a staged-state reset so the close/reset lifecycle (which only has the
   // `urlCard` DOM, not this closure) can clear the backing string array — the
   // DOM chips are removed there, but `refs.stagedStrings` must be cleared too.
   wrap.data(STAGED_RESET_KEY, () => {
     refs.stagedStrings = [];
+  });
+
+  // Card-independent full reset for BULK mode (no `urlCard` DOM to drive
+  // `hideAndResetTagCombobox`). Clears the debounce timer plus the
+  // input/listbox/message/staged-chip state — the subset of the URL-card reset
+  // that is not tied to card-scoped DOM (add-tag button, tooltip, edit-lock).
+  wrap.data(BULK_RESET_KEY, () => {
+    if (refs.debounceTimer) clearTimeout(refs.debounceTimer);
+    refs.debounceTimer = null;
+    refs.stagedStrings = [];
+    refs.input.val("").prop("disabled", false);
+    wrap.find(".urlTagStagedChip").remove();
+    refs.listbox.empty().addClass("hidden").removeAttr("aria-activedescendant");
+    refs.combobox.removeClass("disabled focused");
+    refs.message.text("").removeClass("warn");
   });
 
   // Exposes the current staged strings to the create-URL form (which only has the
@@ -297,14 +379,19 @@ function bindComboboxBehavior(refs: ComboboxRefs): void {
     handleInputKeydown(refs, keydownEvent),
   );
 
-  // Create-mode has no batch-submit button and no `urlCard`/`utubUrlID`; staged
-  // tags are folded into the create-URL request instead, so the batch-apply
-  // click handler is never wired.
-  if (refs.urlCard === null) return;
-  const submitUrlCard = refs.urlCard;
+  // Only CREATE mode has no batch-submit button (staged tags fold into the
+  // create-URL request). URL and BULK both wire the button; this guard narrows
+  // `refs` to URL | BULK for the rest of the function.
+  if (refs.mode === ComboboxMode.CREATE) return;
 
   submitBtn.on("click.urlTagCombobox", () => {
     if (refs.stagedStrings.length === 0) return;
+    if (refs.mode === ComboboxMode.BULK) {
+      // BULK owns its own submit lifecycle (AJAX + banner + close/reset) via the
+      // provided callback; the open-form token is cleared by bulk-tag.ts.
+      refs.onSubmit([...refs.stagedStrings]);
+      return;
+    }
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.TAG_CREATE,
@@ -312,7 +399,7 @@ function bindComboboxBehavior(refs: ComboboxRefs): void {
     });
     clearOpenForm();
     void submitStagedTags({
-      urlCard: submitUrlCard,
+      urlCard: refs.urlCard,
       utubID: refs.utubID,
       utubUrlID: refs.utubUrlID,
       stagedStrings: [...refs.stagedStrings],
@@ -668,7 +755,12 @@ function handleInputKeydown(
         // no-op so it never folds into a batch AJAX call. Users Tab to (or click)
         // the form's "Add URL" button, which folds staged tags into the create
         // request instead.
-        if (refs.urlCard === null) break;
+        if (refs.mode === ComboboxMode.CREATE) break;
+        if (refs.mode === ComboboxMode.BULK) {
+          // BULK owns its own submit lifecycle via the provided callback.
+          refs.onSubmit([...refs.stagedStrings]);
+          break;
+        }
         emit({
           event: UI_EVENTS.UI_FORM_SUBMIT,
           form: HOME_FORM.TAG_CREATE,
@@ -691,8 +783,9 @@ function handleInputKeydown(
         keydownEvent.preventDefault();
         stageActiveOrQuery(refs, query, activeOption);
         // In create-mode `urlCard` is null and there is no internal submit button
-        // to focus; Tab propagates naturally to the form's "Add URL" button.
-        if (remainingCapacity(refs) <= 0 && refs.urlCard !== null) {
+        // to focus; Tab propagates naturally to the form's "Add URL" button. URL
+        // and BULK both keep a submit button, so both shift focus to it at capacity.
+        if (remainingCapacity(refs) <= 0 && refs.mode !== ComboboxMode.CREATE) {
           refs.submitBtn.trigger("focus");
         }
       }
@@ -715,12 +808,17 @@ function handleInputKeydown(
         closeDropdown(refs);
       } else {
         // Second Escape (dropdown already closed): cancel the whole combobox.
+        // BULK never reaches this per-input handler at runtime — bulk-tag.ts's
+        // container-level capture-phase listener intercepts and stops Escape
+        // first — so only CREATE and URL are dispatched here. Dispatch on
+        // `refs.mode` (not `refs.urlCard === null`, which both CREATE and BULK
+        // share) so this compiles cleanly against the 3-member union.
         emit({
           event: UI_EVENTS.UI_FORM_CANCEL,
           form: HOME_FORM.TAG_CREATE,
           trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
         });
-        if (refs.urlCard === null) {
+        if (refs.mode === ComboboxMode.CREATE) {
           // Create-mode: the combobox is a sub-control of the create-URL form. It
           // does not own the form lifecycle, but the open-form token
           // (`HOME_FORM.URL_CREATE`) must still be cleared here before delegating
@@ -728,7 +826,7 @@ function handleInputKeydown(
           // `clearOpenForm()`.
           clearOpenForm();
           refs.onSecondEscape?.();
-        } else {
+        } else if (refs.mode === ComboboxMode.URL) {
           clearOpenForm();
           hideAndResetTagCombobox(refs.urlCard);
         }

@@ -45,6 +45,7 @@ export interface AppRoutes {
   updateUTubDescription: (id: number) => string;
   createURL: (id: number) => string;
   createUTubTag: (id: number) => string;
+  applyTagsToURLs: (utubId: number) => string;
   createMember: (id: number) => string;
 
   // Dynamic two-param routes
@@ -169,6 +170,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
 
     createUTubTag: (id: number) =>
       rawConfig.routes.createUTubTag.replace("-1", String(id)),
+    applyTagsToURLs: (utubId: number) =>
+      rawConfig.routes.applyTagsToURLs.replace("-1", String(utubId)),
     deleteUTubTag: (utubId: number, tagId: number) =>
       rawConfig.routes.deleteUTubTag
         .replace("-1", String(utubId))
