@@ -238,6 +238,16 @@ class HomePageLocators(GenericPageLocator):
     BULK_TAG_FILTER_ICON = "#bulkTagFilterIcon"
     BULK_SELECTION_ANNOUNCEMENT = "#URLBulkSelectionAnnouncement"
 
+    # Bulk multi-URL tag-apply (Phase 2). The "Add tags" action button rendered
+    # into #bulkActionButtons by the bulk-action registry, the stable picker mount
+    # that hosts the BULK-mode combobox, and the partial-success result banner.
+    BUTTON_BULK_ADD_TAGS = '[data-bulk-action-id="bulk-add-tags"]'
+    BULK_TAG_PICKER_MOUNT = "#bulkTagPickerMount"
+    BULK_TAG_BANNER = "#bulkTagResultBanner"
+    # Dedicated Cancel button prepended into the BULK picker's actions row
+    # (distinct from the per-URL big-cancel button BUTTON_TAGS_CANCEL_BATCH).
+    BUTTON_BULK_TAG_CANCEL = ".urlTagComboboxCancelBtn"
+
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
