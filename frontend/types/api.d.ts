@@ -1475,6 +1475,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/urls/tags/batch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Apply tags to multiple URLs in a UTub */
+    post: operations["applyTagsToUtubUrls"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/urls/{utub_url_id}/tags/{utub_tag_id}": {
     parameters: {
       query?: never;
@@ -3115,6 +3132,45 @@ export interface components {
        * @default null
        */
       password: string | null;
+    };
+    AddTagsToUrlsRequest: {
+      /**
+       * @description UTub-URL ids to tag
+       * @example [
+       *       1,
+       *       2,
+       *       3
+       *     ]
+       */
+      utubUrlIds: number[];
+      /**
+       * @description Tags to apply to each selected URL
+       * @example [
+       *       "python",
+       *       "web"
+       *     ]
+       */
+      tagStrings: string[];
+    };
+    UrlBatchTagAppliedSchema: {
+      /** @description UTub-URL id that was (or already had) tags applied */
+      utubUrlID: number;
+      /** @description Full updated list of tag IDs on this URL */
+      utubUrlTagIDs: number[];
+      /** @description Tags newly applied to this URL in this request, with refreshed UTub-wide counts */
+      appliedTags: components["schemas"]["UtubTagSchema"][];
+    };
+    UrlBatchTagSkippedSchema: {
+      /** @description UTub-URL id skipped in this request */
+      utubUrlID: number;
+      /** @description Machine-readable skip reason (BulkTagSkipReason value, e.g. 'overLimit') */
+      reason: string;
+    };
+    AddTagsToUrlsResponseSchema: {
+      /** @description Every non-skipped URL (appliedTags may be empty when all tags were already present) */
+      applied: components["schemas"]["UrlBatchTagAppliedSchema"][];
+      /** @description URLs skipped because they were at the per-URL tag limit */
+      skipped: components["schemas"]["UrlBatchTagSkippedSchema"][];
     };
   };
   responses: never;
@@ -6148,6 +6204,7 @@ export interface operations {
           | "register_success"
           | "tag_applied"
           | "tags_applied_batch"
+          | "tags_applied_multi_url"
           | "tag_deleted"
           | "tag_removed"
           | "url_accessed"
@@ -6375,6 +6432,7 @@ export interface operations {
           | "register_success"
           | "tag_applied"
           | "tags_applied_batch"
+          | "tags_applied_multi_url"
           | "tag_deleted"
           | "tag_removed"
           | "url_accessed"
@@ -8373,6 +8431,60 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  applyTagsToUtubUrls: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AddTagsToUrlsRequest"];
+      };
+    };
+    responses: {
+      /** @description Add tags to urls */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["AddTagsToUrlsResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
       /** @description Not found */

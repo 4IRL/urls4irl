@@ -4450,6 +4450,7 @@
                 "register_success",
                 "tag_applied",
                 "tags_applied_batch",
+                "tags_applied_multi_url",
                 "tag_deleted",
                 "tag_removed",
                 "url_accessed",
@@ -4793,6 +4794,7 @@
                 "register_success",
                 "tag_applied",
                 "tags_applied_batch",
+                "tags_applied_multi_url",
                 "tag_deleted",
                 "tag_removed",
                 "url_accessed",
@@ -7802,6 +7804,92 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLTagErrorCodes": {
+            "$ref": "#/components/schemas/URLTagErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls/tags/batch": {
+      "post": {
+        "operationId": "applyTagsToUtubUrls",
+        "tags": ["tags"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Apply tags to multiple URLs in a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTagsToUrlsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Add tags to urls",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AddTagsToUrlsResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -11178,6 +11266,91 @@
             "description": "Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead"
           }
         },
+        "type": "object"
+      },
+      "AddTagsToUrlsRequest": {
+        "properties": {
+          "utubUrlIds": {
+            "description": "UTub-URL ids to tag",
+            "examples": [[1, 2, 3]],
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "tagStrings": {
+            "description": "Tags to apply to each selected URL",
+            "examples": [["python", "web"]],
+            "items": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": ["utubUrlIds", "tagStrings"],
+        "type": "object"
+      },
+      "UrlBatchTagAppliedSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "UTub-URL id that was (or already had) tags applied",
+            "type": "integer"
+          },
+          "utubUrlTagIDs": {
+            "description": "Full updated list of tag IDs on this URL",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "appliedTags": {
+            "description": "Tags newly applied to this URL in this request, with refreshed UTub-wide counts",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["utubUrlID", "utubUrlTagIDs", "appliedTags"],
+        "type": "object"
+      },
+      "UrlBatchTagSkippedSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "UTub-URL id skipped in this request",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "Machine-readable skip reason (BulkTagSkipReason value, e.g. 'overLimit')",
+            "type": "string"
+          }
+        },
+        "required": ["utubUrlID", "reason"],
+        "type": "object"
+      },
+      "AddTagsToUrlsResponseSchema": {
+        "properties": {
+          "applied": {
+            "description": "Every non-skipped URL (appliedTags may be empty when all tags were already present)",
+            "items": {
+              "$ref": "#/components/schemas/UrlBatchTagAppliedSchema"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "description": "URLs skipped because they were at the per-URL tag limit",
+            "items": {
+              "$ref": "#/components/schemas/UrlBatchTagSkippedSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["applied", "skipped"],
         "type": "object"
       }
     },

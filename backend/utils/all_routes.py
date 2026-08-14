@@ -42,6 +42,7 @@ class URL_TAG_ROUTES:
     _URL_TAGS = "utub_url_tags."
     CREATE_URL_TAG = _URL_TAGS + "create_utub_url_tag"
     BATCH_ADD_URL_TAGS = _URL_TAGS + "create_utub_url_tags"
+    APPLY_TAGS_TO_URLS = _URL_TAGS + "apply_tags_to_utub_urls"
     DELETE_URL_TAG = _URL_TAGS + "delete_utub_url_tag"
 
 
@@ -220,6 +221,7 @@ def generate_routes_js() -> dict[str, str]:
         "createURLTagsBatch": url_for(
             URL_TAG_ROUTES.BATCH_ADD_URL_TAGS, utub_id=-1, utub_url_id=-2
         ),
+        "applyTagsToURLs": url_for(URL_TAG_ROUTES.APPLY_TAGS_TO_URLS, utub_id=-1),
         "deleteURLTag": url_for(
             URL_TAG_ROUTES.DELETE_URL_TAG, utub_id=-1, utub_url_id=-2, utub_tag_id=-3
         ),
