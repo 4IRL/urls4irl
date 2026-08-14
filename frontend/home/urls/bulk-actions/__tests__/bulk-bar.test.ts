@@ -11,6 +11,7 @@ import {
   selectAllVisibleURLCards,
 } from "../bulk-selection.js";
 import { exitMultiSelectMode } from "../bulk-mode.js";
+import { isBulkTagPickerOpen, setBulkTagPickerOpen } from "../bulk-tag.js";
 
 vi.mock("../bulk-selection.js", () => ({
   selectAllVisibleURLCards: vi.fn(),
@@ -59,6 +60,9 @@ describe("bulk-bar", () => {
     vi.mocked(selectAllVisibleURLCards).mockClear();
     vi.mocked(clearURLSelection).mockClear();
     vi.mocked(exitMultiSelectMode).mockClear();
+    // Reset the (module-scoped) bulk-tag picker flag so a prior test's open
+    // picker never leaks into this one's action-button rebuild guard.
+    setBulkTagPickerOpen(false);
     initBulkBar();
   });
 
@@ -281,6 +285,34 @@ describe("bulk-bar", () => {
       expect(onActivate).toHaveBeenCalledWith(
         expect.objectContaining({ selectedURLCardIDs: [1] }),
       );
+    });
+
+    it("does NOT rebuild the action buttons while the bulk tag picker is open", () => {
+      registerBulkAction({
+        id: "fake",
+        label: "Fake Action",
+        isAvailable: () => true,
+        onActivate: vi.fn(),
+      });
+      setState({ selectedURLCardIDs: [1] });
+
+      // First paint (picker closed) renders the action button.
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+      expect($("#bulkActionButtons button").length).toBe(1);
+
+      // Drop a sentinel; a rebuild empties() the container, removing it.
+      $("#bulkActionButtons").append('<span id="rebuildSentinel"></span>');
+
+      setBulkTagPickerOpen(true);
+      expect(isBulkTagPickerOpen()).toBe(true);
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1, 2] });
+
+      // No rebuild: the sentinel survives (renderBulkActionButtons was skipped),
+      // while the count still repaints (it runs before the picker guard).
+      expect($("#rebuildSentinel").length).toBe(1);
+      expect($("#bulkSelectCount").text()).toBe("2");
+
+      setBulkTagPickerOpen(false);
     });
   });
 });
