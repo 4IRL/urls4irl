@@ -94,14 +94,14 @@ function mountBulkModeCombobox(
   return $("#bulkTagPickerMount").find(".urlTagComboboxWrap");
 }
 
-function typeInInput(wrap: JQuery, value: string): void {
+function typeInInput({ wrap, value }: { wrap: JQuery; value: string }): void {
   const input = wrap.find(".urlTagComboboxInput");
   input.val(value).trigger("input");
   vi.runAllTimers();
 }
 
-function stageOneChip(wrap: JQuery, query: string): void {
-  typeInInput(wrap, query);
+function stageOneChip({ wrap, query }: { wrap: JQuery; query: string }): void {
+  typeInInput({ wrap, value: query });
   wrap.find(".urlTagOptionCreateNew").trigger("click");
 }
 
@@ -139,7 +139,7 @@ describe("combobox — bulk mode", () => {
 
     // A render with no staged chips gates the submit button disabled
     // (updateSubmitState runs on every listbox render).
-    typeInInput(wrap, "py");
+    typeInInput({ wrap, value: "py" });
     expect(submitBtn.prop("disabled")).toBe(true);
 
     // Staging the first chip re-renders and enables submit.
@@ -152,7 +152,7 @@ describe("combobox — bulk mode", () => {
     const onSubmit = vi.fn();
     const wrap = mountBulkModeCombobox(onSubmit);
 
-    stageOneChip(wrap, "py");
+    stageOneChip({ wrap, query: "py" });
     wrap.find(".urlTagComboboxSubmitBtn").trigger("click");
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -162,7 +162,7 @@ describe("combobox — bulk mode", () => {
   it("invokes onSubmit via Enter when only staged chips remain (empty input)", () => {
     const onSubmit = vi.fn();
     const wrap = mountBulkModeCombobox(onSubmit);
-    stageOneChip(wrap, "py");
+    stageOneChip({ wrap, query: "py" });
 
     const input = wrap.find(".urlTagComboboxInput");
     // Close the dropdown so Enter lands on the submit path (no active option).
@@ -177,8 +177,8 @@ describe("combobox — bulk mode", () => {
 
     // With no owning card, applied-count is always 0, so staging multiple chips
     // stays under the staged-only cap and the input is never disabled.
-    stageOneChip(wrap, "py");
-    stageOneChip(wrap, "back");
+    stageOneChip({ wrap, query: "py" });
+    stageOneChip({ wrap, query: "back" });
 
     expect(wrap.find(".urlTagStagedChip").length).toBe(2);
     expect(wrap.find(".urlTagComboboxInput").prop("disabled")).toBe(false);
@@ -186,8 +186,8 @@ describe("combobox — bulk mode", () => {
 
   it("clears staged/input/message state via the card-independent BULK_RESET_KEY closure", () => {
     const wrap = mountBulkModeCombobox();
-    stageOneChip(wrap, "py");
-    typeInInput(wrap, "back");
+    stageOneChip({ wrap, query: "py" });
+    typeInInput({ wrap, value: "back" });
     expect(wrap.find(".urlTagStagedChip").length).toBe(1);
     expect(wrap.find(".urlTagListbox").hasClass("hidden")).toBe(false);
 

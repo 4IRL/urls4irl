@@ -216,6 +216,9 @@ class TAG_CONSTANTS:
     MIN_TAG_LENGTH = 1
     MAX_TAG_LENGTH = 30
     MAX_URL_TAGS = 20
+    # Max URLs targetable in one bulk tag-apply request — a generous "Select All"
+    # ceiling that bounds request cost.
+    MAX_BULK_TAG_URLS = 100
 
 
 class SEARCH_CONSTANTS:

@@ -571,7 +571,13 @@ function renderBulkResultBanner({
   const banner = $(BANNER_SELECTOR);
   banner.empty().removeClass("hidden success partial fail");
 
-  const appliedCount = applied.length;
+  // Count only URLs that genuinely gained ≥1 tag (DD-5). The backend `applied`
+  // array includes non-skipped URLs even when `appliedTags` is empty (every
+  // requested tag was already present), so those must NOT inflate the banner's
+  // "modified" count.
+  const appliedCount = applied.filter(
+    (entry) => entry.appliedTags.length > 0,
+  ).length;
   const skippedCount = skipped.length;
   const maxTags = String(APP_CONFIG.constants.TAGS_MAX_ON_URLS);
 

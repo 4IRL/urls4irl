@@ -75,6 +75,7 @@ class AddTagsRequest(BaseModel):
 class AddTagsToUrlsRequest(BaseModel):
     utubUrlIds: list[int] = Field(
         min_length=1,
+        max_length=TAG_CONSTANTS.MAX_BULK_TAG_URLS,
         description="UTub-URL ids to tag",
         examples=[[1, 2, 3]],
     )

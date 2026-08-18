@@ -261,6 +261,22 @@ describe("openBulkTagPicker (onActivate)", () => {
 
     expect($("#bulkTagPickerMount").find(".urlTagComboboxWrap").length).toBe(1);
   });
+
+  it("does not mount when there is no active UTub (DD-9)", () => {
+    storeState.activeUTubID = null;
+
+    openPickerFor([10, 20]);
+
+    expect(pickerWrap().length).toBe(0);
+    expect(isBulkTagPickerOpen()).toBe(false);
+  });
+
+  it("does not mount when the selection snapshot is empty (DD-9)", () => {
+    openPickerFor([]);
+
+    expect(pickerWrap().length).toBe(0);
+    expect(isBulkTagPickerOpen()).toBe(false);
+  });
 });
 
 describe("submitBulkTags — success", () => {
@@ -348,6 +364,50 @@ describe("submitBulkTags — success", () => {
       APP_CONFIG.strings.URL_BULK_TAGS_APPLIED.replace("{n}", "2"),
     );
     expect(banner.attr("aria-live")).toBe("polite");
+  });
+
+  it("counts only URLs that gained ≥1 tag (an already-present-tag entry is not counted) — DD-5", () => {
+    seedUrlRows([10, 20]);
+    storeState.urls = [
+      { utubUrlID: 10, utubUrlTagIDs: [1], urlTitle: "Alpha" },
+      { utubUrlID: 20, utubUrlTagIDs: [1], urlTitle: "Beta" },
+    ];
+    openPickerFor([10, 20]);
+
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValue(deferred);
+    comboboxState.lastOnSubmit!(["python"]);
+    // URL 10 genuinely gained the tag; URL 20 already carried it (backend still
+    // includes it in `applied`, but with an empty `appliedTags`).
+    deferred.resolve(
+      successResponse(
+        [
+          {
+            utubUrlID: 10,
+            utubUrlTagIDs: [1],
+            appliedTags: [{ id: 1, tagString: "python", tagApplied: 2 }],
+          },
+          {
+            utubUrlID: 20,
+            utubUrlTagIDs: [1],
+            appliedTags: [],
+          },
+        ],
+        [],
+      ),
+      "success",
+      { status: 200 },
+    );
+
+    const banner = $("#bulkTagResultBanner");
+    expect(banner.hasClass("success")).toBe(true);
+    // Only 1 URL was modified → singular copy, NOT the "applied to 2" plural.
+    expect(banner.text()).toContain(
+      APP_CONFIG.strings.URL_BULK_TAGS_APPLIED_ONE,
+    );
+    expect(banner.text()).not.toContain(
+      APP_CONFIG.strings.URL_BULK_TAGS_APPLIED.replace("{n}", "2"),
+    );
   });
 
   it("renders the partial banner naming the skipped URL and skips that card", () => {
@@ -453,6 +513,51 @@ describe("submitBulkTags — success", () => {
   });
 });
 
+describe("submitBulkTags — stale-UTub race (DD-3)", () => {
+  it("mutates nothing when the active UTub changes before the submit resolves", () => {
+    seedUrlRows([10, 20]);
+    storeState.urls = [
+      { utubUrlID: 10, utubUrlTagIDs: [], urlTitle: "Alpha" },
+      { utubUrlID: 20, utubUrlTagIDs: [], urlTitle: "Beta" },
+    ];
+    openPickerFor([10, 20]);
+
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValue(deferred);
+    comboboxState.lastOnSubmit!(["python"]);
+
+    // The user switches/deletes the active UTub while the request is in flight.
+    storeState.activeUTubID = 999;
+
+    deferred.resolve(
+      {
+        applied: [
+          {
+            utubUrlID: 10,
+            utubUrlTagIDs: [1],
+            appliedTags: [{ id: 1, tagString: "python", tagApplied: 3 }],
+          },
+          {
+            utubUrlID: 20,
+            utubUrlTagIDs: [1],
+            appliedTags: [{ id: 1, tagString: "python", tagApplied: 3 }],
+          },
+        ],
+        skipped: [],
+      },
+      "success",
+      { status: 200 },
+    );
+
+    // handleBulkSubmitSuccess bails on the stale utubID: no badges, no deck merge,
+    // and the result banner stays hidden against the now-foreign deck.
+    expect(vi.mocked(createTagBadgeInURL)).not.toHaveBeenCalled();
+    expect(vi.mocked(mergeAppliedTagsIntoStore)).not.toHaveBeenCalled();
+    expect($('.urlRow[utuburlid="10"] .tagBadge').length).toBe(0);
+    expect($("#bulkTagResultBanner").hasClass("hidden")).toBe(true);
+  });
+});
+
 describe("submitBulkTags — failure handling", () => {
   it("short-circuits (no inline warn) when is429Handled returns true", () => {
     seedUrlRows([10]);
@@ -502,6 +607,51 @@ describe("submitBulkTags — failure handling", () => {
     expect(wrap.find(".urlTagComboboxMsg").text()).toBe(
       APP_CONFIG.strings.URL_BULK_TAGS_STALE_SELECTION,
     );
+  });
+
+  it("redirects to the error page on a JSON 403/404 (DD-7)", () => {
+    const locationAssignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    try {
+      seedUrlRows([10]);
+      storeState.urls = [
+        { utubUrlID: 10, utubUrlTagIDs: [], urlTitle: "Alpha" },
+      ];
+      openPickerFor([10]);
+
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      comboboxState.lastOnSubmit!(["python"]);
+      deferred.reject({ status: 404, responseJSON: { message: "Not found" } });
+
+      expect(locationAssignSpy).toHaveBeenCalledWith(
+        APP_CONFIG.routes.errorPage,
+      );
+    } finally {
+      locationAssignSpy.mockRestore();
+    }
+  });
+
+  it("replaces the body with the server HTML on a non-JSON 403 (DD-7)", () => {
+    seedUrlRows([10]);
+    storeState.urls = [{ utubUrlID: 10, utubUrlTagIDs: [], urlTitle: "Alpha" }];
+    openPickerFor([10]);
+
+    const forbiddenHtml = '<div id="forbiddenPage">Forbidden</div>';
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValue(deferred);
+    comboboxState.lastOnSubmit!(["python"]);
+    // No `responseJSON` key → the non-JSON branch; a 403 with an HTML content type
+    // renders the server body in place rather than redirecting.
+    deferred.reject({
+      status: 403,
+      responseText: forbiddenHtml,
+      getResponseHeader: (name: string) =>
+        name === "Content-Type" ? "text/html; charset=utf-8" : null,
+    });
+
+    expect($("#forbiddenPage").length).toBe(1);
   });
 });
 

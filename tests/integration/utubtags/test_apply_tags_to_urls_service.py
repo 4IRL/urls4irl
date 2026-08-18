@@ -133,6 +133,47 @@ def test_service_applies_tags_to_multiple_urls_happy_path(
         )
 
 
+def test_service_dedups_duplicate_url_ids_not_pre_deduped(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub with a tag-less URL
+    WHEN the service is called DIRECTLY (bypassing the request schema) with a
+        utub_url_ids list containing the SAME id repeated three times
+    THEN the service's own defensive dedup collapses it: the URL appears exactly
+        once in `applied` and gains exactly one association row per tag string —
+        no duplicate rows — proving the in-service list(dict.fromkeys(...)) guard.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id, url_ids = _get_creator_utub_and_url_ids()
+        url_a = url_ids[0]
+        tag_strings = [FRESH_TAG_ALPHA, FRESH_TAG_BETA]
+        assoc_count_before = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_url_id == url_a
+        ).count()
+        utub: Utubs = Utubs.query.get(utub_id)
+
+        response, status_code = add_tags_to_urls_in_utub(
+            tag_strings=tag_strings,
+            utub_url_ids=[url_a, url_a, url_a],
+            utub=utub,
+        )
+        body = response.get_json()
+
+        assert status_code == 200
+        applied = body[MODEL_STRS.APPLIED]
+        assert len(applied) == 1
+        assert applied[0][MODEL_STRS.UTUB_URL_ID] == url_a
+        assert len(applied[0][MODEL_STRS.APPLIED_TAGS]) == len(tag_strings)
+
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_url_id == url_a
+        ).count() == assoc_count_before + len(tag_strings)
+
+
 def test_service_partial_success_over_limit_url_skipped(
     add_all_urls_and_users_to_each_utub_no_tags,
     login_first_user_without_register,

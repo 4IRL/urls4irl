@@ -209,6 +209,21 @@ describe("bulk-bar", () => {
       $("#bulkSelectExit").trigger("click");
       expect(vi.mocked(exitMultiSelectMode)).toHaveBeenCalledTimes(1);
     });
+
+    it("no-ops Select All and Clear while the bulk tag picker is open (DD-8)", () => {
+      // Enable Clear (non-empty selection) so a no-op proves the picker guard —
+      // not the aria-disabled guard — is what blocks the click.
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+      setBulkTagPickerOpen(true);
+
+      $("#bulkSelectAll").trigger("click");
+      $("#bulkSelectClear").trigger("click");
+
+      expect(vi.mocked(selectAllVisibleURLCards)).not.toHaveBeenCalled();
+      expect(vi.mocked(clearURLSelection)).not.toHaveBeenCalled();
+
+      setBulkTagPickerOpen(false);
+    });
   });
 
   describe("mode-changed show/hide + focus", () => {

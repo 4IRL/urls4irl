@@ -541,6 +541,74 @@ def test_apply_over_length_tag_rejected(
     assert response.json[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
+def test_apply_over_max_bulk_url_ids_rejected(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub
+    WHEN they POST utubUrlIds with MAX_BULK_TAG_URLS + 1 distinct ids
+    THEN the schema's max_length rejects the request 400 with an errors payload.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id, _ = _get_creator_utub_and_url_ids()
+
+    over_cap_url_ids = list(range(1, TAG_CONSTANTS.MAX_BULK_TAG_URLS + 2))
+    assert len(over_cap_url_ids) == TAG_CONSTANTS.MAX_BULK_TAG_URLS + 1
+
+    response = client.post(
+        url_for(ROUTES.URL_TAGS.APPLY_TAGS_TO_URLS, utub_id=utub_id),
+        json={
+            UTUB_URL_IDS_FIELD: over_cap_url_ids,
+            TAG_STRINGS_FIELD: [FRESH_TAG_ALPHA],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 400
+    assert response.json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        int(response.json[STD_JSON.ERROR_CODE]) == URLTagErrorCodes.INVALID_FORM_INPUT
+    )
+    assert STD_JSON.ERRORS in response.json
+
+
+def test_apply_over_max_url_tags_count_rejected(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub with a URL
+    WHEN they POST tagStrings with MAX_URL_TAGS + 1 distinct tag strings
+    THEN the schema's max_length on the list rejects the request 400 with an
+        errors payload.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id, url_ids = _get_creator_utub_and_url_ids()
+
+    over_cap_tag_strings = [
+        f"bulktag{index}" for index in range(TAG_CONSTANTS.MAX_URL_TAGS + 1)
+    ]
+    assert len(over_cap_tag_strings) == TAG_CONSTANTS.MAX_URL_TAGS + 1
+
+    response = client.post(
+        url_for(ROUTES.URL_TAGS.APPLY_TAGS_TO_URLS, utub_id=utub_id),
+        json={
+            UTUB_URL_IDS_FIELD: [url_ids[0]],
+            TAG_STRINGS_FIELD: over_cap_tag_strings,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 400
+    assert response.json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert STD_JSON.ERRORS in response.json
+
+
 def test_apply_duplicate_ids_deduped_applied_once(
     add_all_urls_and_users_to_each_utub_no_tags,
     login_first_user_without_register,
