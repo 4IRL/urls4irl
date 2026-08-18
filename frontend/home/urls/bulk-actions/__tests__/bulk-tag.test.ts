@@ -511,6 +511,87 @@ describe("submitBulkTags — success", () => {
     );
     expect(vi.mocked(createTagBadgeInURL)).not.toHaveBeenCalled();
   });
+
+  it("does NOT claim 'all at the limit' when only some URLs are skipped and the rest already had the tag", () => {
+    // Regression: one URL is at the limit (skipped) and the other already
+    // carries the tag (applied with empty appliedTags → 0 modified). This must
+    // render the some-skipped partial copy, NOT the all-over-limit failure.
+    seedUrlRows([10, 30]);
+    storeState.urls = [
+      { utubUrlID: 10, utubUrlTagIDs: [1], urlTitle: "Alpha" },
+      { utubUrlID: 30, utubUrlTagIDs: [], urlTitle: "Gamma" },
+    ];
+    openPickerFor([10, 30]);
+
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValue(deferred);
+    comboboxState.lastOnSubmit!(["python"]);
+    deferred.resolve(
+      successResponse(
+        // URL 10 already had "python" → non-skipped but appliedTags empty.
+        [{ utubUrlID: 10, utubUrlTagIDs: [1], appliedTags: [] }],
+        [{ utubUrlID: 30, reason: "overLimit" }],
+      ),
+      "success",
+      { status: 200 },
+    );
+
+    const banner = $("#bulkTagResultBanner");
+    expect(banner.hasClass("partial")).toBe(true);
+    expect(banner.hasClass("fail")).toBe(false);
+    expect(banner.attr("aria-live")).toBe("polite");
+    // Names the skipped URL and uses the some-skipped copy.
+    expect(banner.text()).toContain("Gamma");
+    expect(banner.text()).toContain(
+      APP_CONFIG.strings.URL_BULK_TAGS_NONE_SOME_SKIPPED.replace(
+        "{skipped}",
+        "1",
+      )
+        .replace("{max}", String(APP_CONFIG.constants.TAGS_MAX_ON_URLS))
+        .replace("{titles}", "Gamma"),
+    );
+    // Never the "all N at the limit" message.
+    expect(banner.text()).not.toContain(
+      APP_CONFIG.strings.URL_BULK_TAGS_NONE.replace("{n}", "2").replace(
+        "{max}",
+        String(APP_CONFIG.constants.TAGS_MAX_ON_URLS),
+      ),
+    );
+  });
+
+  it("renders the benign no-changes banner when every URL already had the tag (none skipped)", () => {
+    seedUrlRows([10, 20]);
+    storeState.urls = [
+      { utubUrlID: 10, utubUrlTagIDs: [1], urlTitle: "Alpha" },
+      { utubUrlID: 20, utubUrlTagIDs: [1], urlTitle: "Beta" },
+    ];
+    openPickerFor([10, 20]);
+
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValue(deferred);
+    comboboxState.lastOnSubmit!(["python"]);
+    deferred.resolve(
+      successResponse(
+        [
+          { utubUrlID: 10, utubUrlTagIDs: [1], appliedTags: [] },
+          { utubUrlID: 20, utubUrlTagIDs: [1], appliedTags: [] },
+        ],
+        [],
+      ),
+      "success",
+      { status: 200 },
+    );
+
+    const banner = $("#bulkTagResultBanner");
+    expect(banner.hasClass("fail")).toBe(false);
+    expect(banner.text()).toContain(
+      APP_CONFIG.strings.URL_BULK_TAGS_NO_CHANGES,
+    );
+    // Never the misleading "Tags added to 0 URLs." copy.
+    expect(banner.text()).not.toContain(
+      APP_CONFIG.strings.URL_BULK_TAGS_APPLIED.replace("{n}", "0"),
+    );
+  });
 });
 
 describe("submitBulkTags — stale-UTub race (DD-3)", () => {

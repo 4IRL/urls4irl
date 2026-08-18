@@ -555,9 +555,17 @@ function renderBulkAppliedTags({
 // --- Result banner ------------------------------------------------------------
 
 /**
- * Render the partial-success banner in `#bulkTagResultBanner`. Three states:
- * all-succeeded (polite), some-skipped (polite; skipped titles HTML-escaped via
- * `.text()`), all-over-limit (assertive).
+ * Render the result banner in `#bulkTagResultBanner`. Five states, keyed on how
+ * many URLs actually gained a tag (`modifiedCount`) vs. how many were skipped
+ * for being at the per-URL limit (`skippedCount`):
+ *   1. modified>0, skipped=0        → success (polite): tags applied cleanly
+ *   2. modified>0, skipped>0        → partial (polite): some applied, some at limit
+ *   3. modified=0, skipped=0        → no-op (polite): every URL already had the tag(s)
+ *   4. modified=0, skipped=all      → fail (assertive): every URL is at the limit
+ *   5. modified=0, 0<skipped<all    → partial (polite): some at limit, the rest
+ *                                     already had the tag(s) — must NOT claim
+ *                                     "all at the limit"
+ * Skipped titles are HTML-escaped via `.text()`.
  */
 function renderBulkResultBanner({
   applied,
@@ -575,29 +583,55 @@ function renderBulkResultBanner({
   // array includes non-skipped URLs even when `appliedTags` is empty (every
   // requested tag was already present), so those must NOT inflate the banner's
   // "modified" count.
-  const appliedCount = applied.filter(
+  const modifiedCount = applied.filter(
     (entry) => entry.appliedTags.length > 0,
   ).length;
   const skippedCount = skipped.length;
   const maxTags = String(APP_CONFIG.constants.TAGS_MAX_ON_URLS);
+  const skippedTitles = (): string =>
+    skipped
+      .map((skip) => urlTitleForId(skip.utubUrlID))
+      .filter((title) => title.length > 0)
+      .join(", ");
 
   let variant: string;
   let glyph: string;
   let ariaLive: string;
   let text: string;
 
-  if (skippedCount === 0) {
+  if (modifiedCount > 0 && skippedCount === 0) {
+    // 1. Every requested change landed; nothing was at the limit.
     variant = "success";
     glyph = "✅";
     ariaLive = "polite";
     text =
-      appliedCount === 1
+      modifiedCount === 1
         ? APP_CONFIG.strings.URL_BULK_TAGS_APPLIED_ONE
         : APP_CONFIG.strings.URL_BULK_TAGS_APPLIED.replace(
             "{n}",
-            String(appliedCount),
+            String(modifiedCount),
           );
-  } else if (appliedCount === 0) {
+  } else if (modifiedCount > 0) {
+    // 2. Some URLs gained tags; the rest were skipped for being at the limit.
+    variant = "partial";
+    glyph = "⚠️";
+    ariaLive = "polite";
+    text = APP_CONFIG.strings.URL_BULK_TAGS_PARTIAL.replace(
+      "{applied}",
+      String(modifiedCount),
+    )
+      .replace("{skipped}", String(skippedCount))
+      .replace("{max}", maxTags)
+      .replace("{titles}", skippedTitles());
+  } else if (skippedCount === 0) {
+    // 3. Nothing skipped and nothing newly applied — every selected URL already
+    // carried the requested tag(s). A benign no-op, not a failure.
+    variant = "partial";
+    glyph = "ℹ️";
+    ariaLive = "polite";
+    text = APP_CONFIG.strings.URL_BULK_TAGS_NO_CHANGES;
+  } else if (skippedCount >= totalSelected) {
+    // 4. Every selected URL was at the per-URL tag limit.
     variant = "fail";
     glyph = "🚫";
     ariaLive = "assertive";
@@ -606,20 +640,17 @@ function renderBulkResultBanner({
       String(totalSelected),
     ).replace("{max}", maxTags);
   } else {
+    // 5. No new tags landed: some URLs were at the limit, the remainder already
+    // carried the requested tag(s). Must NOT claim every URL is at the limit.
     variant = "partial";
     glyph = "⚠️";
     ariaLive = "polite";
-    const titles = skipped
-      .map((skip) => urlTitleForId(skip.utubUrlID))
-      .filter((title) => title.length > 0)
-      .join(", ");
-    text = APP_CONFIG.strings.URL_BULK_TAGS_PARTIAL.replace(
-      "{applied}",
-      String(appliedCount),
+    text = APP_CONFIG.strings.URL_BULK_TAGS_NONE_SOME_SKIPPED.replace(
+      "{skipped}",
+      String(skippedCount),
     )
-      .replace("{skipped}", String(skippedCount))
       .replace("{max}", maxTags)
-      .replace("{titles}", titles);
+      .replace("{titles}", skippedTitles());
   }
 
   // `.text()` escapes the whole string (including user-content titles).

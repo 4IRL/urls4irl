@@ -158,6 +158,10 @@ const appConfig = {
       "Tags added to {applied} URLs; {skipped} skipped (already at the {max}-tag limit): {titles}",
     URL_BULK_TAGS_NONE:
       "No tags added — all {n} selected URLs are at the {max}-tag limit.",
+    URL_BULK_TAGS_NONE_SOME_SKIPPED:
+      "No new tags added — {skipped} skipped (already at the {max}-tag limit): {titles}",
+    URL_BULK_TAGS_NO_CHANGES:
+      "No changes — the selected URLs already had those tags.",
     URL_BULK_TAGS_STALE_SELECTION:
       "One or more selected URLs are no longer available — refresh your selection.",
     URL_BULK_TAGS_SUBMITTING: "Adding tags…",

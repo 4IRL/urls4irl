@@ -281,6 +281,79 @@ def test_bulk_apply_partial_success_skips_over_limit_url(
     expect(banner.locator(".bulkTagBannerBody")).to_contain_text(skipped_title)
 
 
+def test_bulk_apply_some_skipped_rest_already_tagged_does_not_claim_all_at_limit(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN two selected URLs — one at the per-URL tag limit, the other already
+        carrying the tag being applied
+    WHEN the user bulk-applies that existing tag to both
+    THEN nothing new is applied and the banner names only the skipped at-limit
+        URL — it must NOT claim every selected URL is at the limit (regression:
+        the all-over-limit failure copy fired here once "modified" excluded the
+        already-tagged URL).
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    url_ids = _get_url_ids_ordered(app=app, utub_id=utub.id)
+    assert len(url_ids) >= 2
+    url_already_tagged = url_ids[0]
+    url_at_limit = url_ids[-1]
+    skipped_title = _get_url_title(app=app, utub_url_id=url_at_limit)
+
+    already_present_tag = "AlreadyPresentTag"
+    _seed_tag_on_url(
+        app=app,
+        utub_id=utub.id,
+        user_id=USER_ID_FOR_TEST,
+        utub_url_id=url_already_tagged,
+        tag_string=already_present_tag,
+    )
+    _seed_url_at_tag_limit(
+        app=app,
+        utub_id=utub.id,
+        user_id=USER_ID_FOR_TEST,
+        utub_url_id=url_at_limit,
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    expect_badge_count_on_url_row(
+        page=page, utub_url_id=url_at_limit, expected=TAG_CONSTANTS.MAX_URL_TAGS
+    )
+    expect_badge_count_on_url_row(page=page, utub_url_id=url_already_tagged, expected=1)
+
+    enter_multi_select_and_select_urls(
+        page=page, url_ids=[url_already_tagged, url_at_limit]
+    )
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
+
+    open_bulk_tag_picker(page=page)
+    stage_bulk_tag_suggestion(page=page, tag_text=already_present_tag)
+    submit_bulk_tags(page=page)
+
+    wait_until_hidden(page=page, css_selector=HPL.BULK_TAG_PICKER_MOUNT)
+
+    # No badge counts change — nothing new was applied to either URL.
+    expect_badge_count_on_url_row(page=page, utub_url_id=url_already_tagged, expected=1)
+    expect_badge_count_on_url_row(
+        page=page, utub_url_id=url_at_limit, expected=TAG_CONSTANTS.MAX_URL_TAGS
+    )
+
+    # Honest banner: partial styling, names the skipped URL, and NEVER claims
+    # every selected URL is at the limit.
+    banner = page.locator(HPL.BULK_TAG_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"(^|\s)partial(\s|$)"))
+    body = banner.locator(".bulkTagBannerBody")
+    expect(body).to_contain_text("No new tags added")
+    expect(body).to_contain_text(skipped_title)
+    # The all-over-limit failure phrasing must not appear here.
+    expect(body).not_to_contain_text("selected URLs are at")
+
+
 def test_bulk_picker_submit_disabled_without_staged_tags(
     page: Page, create_test_urls, provide_app: Flask
 ):
