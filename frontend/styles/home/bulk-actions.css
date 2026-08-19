@@ -660,16 +660,84 @@
   pointer-events: none;
 }
 
-/* Desktop: the picker + banner wrap onto their own full-width row below the
-   inline Select All / Clear / action row (the bar becomes wrap-capable). */
+/* Desktop (>=992px): the picker + result banner are FLOATING dropdowns anchored
+   under the action-button group, OVERLAYING the URL list instead of reflowing
+   into the inline header row. The old behaviour wrapped them full-width inside the
+   bar, which ballooned the bar's height and — because the header context row is
+   center-aligned — floated the "N selected" count and the ✕ / panel-toggle to the
+   vertical middle. Taking them out of flow (position:absolute) keeps the header a
+   clean single row: the count + controls never move, and the list is not pushed
+   down. #bulkActionBar is the positioning context. Covers BOTH the tag and copy
+   pickers and their shared .bulkTagBanner outcome banner; mobile keeps the
+   bottom-drawer chrome in its own <=991.98px blocks below. The picker is
+   height-capped + scrollable so a member of many UTubs can't create a giant panel. */
 @media (min-width: 992px) {
   #bulkActionBar {
-    flex-wrap: wrap;
+    position: relative;
   }
 
-  .bulkTagPickerMount,
-  .bulkTagBanner {
-    flex-basis: 100%;
+  /* Scoped under #bulkActionBar (ID) so these win over the base .bulk*PickerMount
+     class rules (width/background/margin-top) regardless of source order — media
+     queries add no specificity, and the base rules appear later in the file. */
+  #bulkActionBar .bulkTagPickerMount,
+  #bulkActionBar .bulkCopyPickerMount {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 1050;
+    width: min(420px, 80vw);
+    max-height: min(55vh, 360px);
+    overflow-y: auto;
+    margin-top: 0;
+    /* Opaque: the base mount uses the 81%-opaque --pageBackgroundColor, which let
+       the URL list bleed through the floating dropdown's row gaps. */
+    background: var(--panelBackgroundColor);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Keep the Copy / Cancel footer pinned + visible while the destination rows
+     scroll, so the primary action never falls below the dropdown's fold. */
+  .bulkCopyPickerMount .bulkCopyPickerFooter {
+    position: sticky;
+    bottom: 0;
+    margin-top: 8px;
+    padding-top: 8px;
+    background: var(--panelBackgroundColor);
+  }
+
+  #bulkActionBar .bulkTagBanner {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 1049;
+    width: min(420px, 80vw);
+    margin-top: 0;
+    box-shadow: var(--shadow-lg);
+    /* Opaque base under the state tint (see the .success/.partial/.fail overrides
+       below) so the floating banner doesn't show the URL list through it. */
+    background: var(--panelBackgroundColor);
+  }
+
+  /* Re-assert each state tint OVER the opaque panel base — a bare rgba tint would
+     otherwise let the list show through the now-floating banner. The colored
+     border (from the shared .bulkTagBanner.<state> rules above) still carries the
+     state signal; this only backs the tint with an opaque layer. */
+  #bulkActionBar .bulkTagBanner.success {
+    background: linear-gradient(
+        rgba(67, 199, 154, 0.12),
+        rgba(67, 199, 154, 0.12)
+      ),
+      var(--panelBackgroundColor);
+  }
+
+  #bulkActionBar .bulkTagBanner.partial {
+    background: linear-gradient(rgba(253, 231, 76, 0.12), rgba(253, 231, 76, 0.12)),
+      var(--panelBackgroundColor);
+  }
+
+  #bulkActionBar .bulkTagBanner.fail {
+    background: linear-gradient(rgba(220, 53, 69, 0.12), rgba(220, 53, 69, 0.12)),
+      var(--panelBackgroundColor);
   }
 }
 
@@ -920,12 +988,9 @@
   pointer-events: none;
 }
 
-/* Desktop: the picker + banner wrap onto their own full-width row. */
-@media (min-width: 992px) {
-  .bulkCopyPickerMount {
-    flex-basis: 100%;
-  }
-}
+/* Desktop (>=992px) floating-dropdown positioning for the copy picker is handled
+   together with the tag picker + shared banner in the consolidated block above
+   (search "FLOATING dropdowns"). */
 
 /*
  * Mobile (<=991.98px): the picker is a bottom-docked drawer, one z-step above the
