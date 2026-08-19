@@ -51,16 +51,19 @@ TAGS_EMPTY_HINT = "No tags yet — type to create one"
 URL_BULK_ADD_TAGS_ARIA = "Add tags to {n} selected URLs"
 URL_BULK_TAGS_APPLIED = "Tags added to {n} URLs."
 URL_BULK_TAGS_APPLIED_ONE = "Tags added to 1 URL."
+# Concise summaries — the per-card cues (URL_BULK_CARD_*) carry the "which", so the
+# banner never enumerates skipped URL titles (that list is unbounded on a big batch).
 URL_BULK_TAGS_PARTIAL = (
-    "Tags added to {applied} URLs; {skipped} skipped "
-    "(already at the {max}-tag limit): {titles}"
+    "Tags added to {applied} URLs; {skipped} at the {max}-tag limit."
 )
 URL_BULK_TAGS_NONE = "No tags added — all {n} selected URLs are at the {max}-tag limit."
 URL_BULK_TAGS_NONE_SOME_SKIPPED = (
-    "No new tags added — {skipped} skipped "
-    "(already at the {max}-tag limit): {titles}"
+    "No new tags added — {skipped} at the {max}-tag limit."
 )
 URL_BULK_TAGS_NO_CHANGES = "No changes — the selected URLs already had those tags."
+# Per-URL-card result cues (transient, self-fading) shown on each targeted card.
+URL_BULK_CARD_APPLIED = "Tagged"
+URL_BULK_CARD_SKIPPED = "At tag limit"
 URL_BULK_TAGS_STALE_SELECTION = (
     "One or more selected URLs are no longer available — refresh your selection."
 )

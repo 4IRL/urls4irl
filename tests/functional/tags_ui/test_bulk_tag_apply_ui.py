@@ -268,17 +268,29 @@ def test_bulk_apply_partial_success_skips_over_limit_url(
 
     wait_until_hidden(page=page, css_selector=HPL.BULK_TAG_PICKER_MOUNT)
 
+    # Per-card cues flag each outcome in place (transient — assert before the
+    # ~3s fade): the under-limit card shows the applied cue, the at-limit card
+    # the skipped cue.
+    expect(
+        page.locator(
+            f'.urlRow[utuburlid="{url_under_limit}"] .bulkCardResultCue--applied'
+        )
+    ).to_be_visible()
+    expect(
+        page.locator(f'.urlRow[utuburlid="{url_at_limit}"] .bulkCardResultCue--skipped')
+    ).to_be_visible()
+
+    # Concise partial banner — it no longer enumerates the skipped URL by title.
+    banner = page.locator(HPL.BULK_TAG_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"(^|\s)partial(\s|$)"))
+    expect(banner.locator(".bulkTagBannerBody")).not_to_contain_text(skipped_title)
+
     # The under-limit URL gained the fresh tag; the at-limit URL gained nothing.
     expect_badge_count_on_url_row(page=page, utub_url_id=url_under_limit, expected=1)
     expect_badge_count_on_url_row(
         page=page, utub_url_id=url_at_limit, expected=TAG_CONSTANTS.MAX_URL_TAGS
     )
-
-    # Partial banner surfaces the skipped URL by title.
-    banner = page.locator(HPL.BULK_TAG_BANNER)
-    expect(banner).to_be_visible()
-    expect(banner).to_have_class(re.compile(r"(^|\s)partial(\s|$)"))
-    expect(banner.locator(".bulkTagBannerBody")).to_contain_text(skipped_title)
 
 
 def test_bulk_apply_some_skipped_rest_already_tagged_does_not_claim_all_at_limit(
@@ -336,22 +348,30 @@ def test_bulk_apply_some_skipped_rest_already_tagged_does_not_claim_all_at_limit
 
     wait_until_hidden(page=page, css_selector=HPL.BULK_TAG_PICKER_MOUNT)
 
-    # No badge counts change — nothing new was applied to either URL.
-    expect_badge_count_on_url_row(page=page, utub_url_id=url_already_tagged, expected=1)
-    expect_badge_count_on_url_row(
-        page=page, utub_url_id=url_at_limit, expected=TAG_CONSTANTS.MAX_URL_TAGS
-    )
+    # Per-card cues (transient — assert before the ~3s fade): the at-limit card
+    # is flagged skipped; the already-tagged card gets NO cue (nothing changed).
+    expect(
+        page.locator(f'.urlRow[utuburlid="{url_at_limit}"] .bulkCardResultCue--skipped')
+    ).to_be_visible()
+    expect(
+        page.locator(f'.urlRow[utuburlid="{url_already_tagged}"] .bulkCardResultCue')
+    ).to_have_count(0)
 
-    # Honest banner: partial styling, names the skipped URL, and NEVER claims
-    # every selected URL is at the limit.
+    # Honest, concise banner: partial styling, no title list, and NEVER the
+    # all-over-limit failure phrasing.
     banner = page.locator(HPL.BULK_TAG_BANNER)
     expect(banner).to_be_visible()
     expect(banner).to_have_class(re.compile(r"(^|\s)partial(\s|$)"))
     body = banner.locator(".bulkTagBannerBody")
     expect(body).to_contain_text("No new tags added")
-    expect(body).to_contain_text(skipped_title)
-    # The all-over-limit failure phrasing must not appear here.
+    expect(body).not_to_contain_text(skipped_title)
     expect(body).not_to_contain_text("selected URLs are at")
+
+    # No badge counts change — nothing new was applied to either URL.
+    expect_badge_count_on_url_row(page=page, utub_url_id=url_already_tagged, expected=1)
+    expect_badge_count_on_url_row(
+        page=page, utub_url_id=url_at_limit, expected=TAG_CONSTANTS.MAX_URL_TAGS
+    )
 
 
 def test_bulk_picker_submit_disabled_without_staged_tags(

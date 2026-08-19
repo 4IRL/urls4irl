@@ -380,6 +380,7 @@ function handleBulkSubmitSuccess({
     skipped: response.skipped,
     totalSelected,
   });
+  flashCardResultCues({ applied: response.applied, skipped: response.skipped });
   closeAndResetPicker();
 }
 
@@ -565,7 +566,9 @@ function renderBulkAppliedTags({
  *   5. modified=0, 0<skipped<all    → partial (polite): some at limit, the rest
  *                                     already had the tag(s) — must NOT claim
  *                                     "all at the limit"
- * Skipped titles are HTML-escaped via `.text()`.
+ * The banner is a concise summary only — WHICH URLs applied/skipped is shown on
+ * the cards themselves via `flashCardResultCues` (an unbounded title list here
+ * would swamp the banner on a large batch, especially on mobile).
  */
 function renderBulkResultBanner({
   applied,
@@ -588,11 +591,6 @@ function renderBulkResultBanner({
   ).length;
   const skippedCount = skipped.length;
   const maxTags = String(APP_CONFIG.constants.TAGS_MAX_ON_URLS);
-  const skippedTitles = (): string =>
-    skipped
-      .map((skip) => urlTitleForId(skip.utubUrlID))
-      .filter((title) => title.length > 0)
-      .join(", ");
 
   let variant: string;
   let glyph: string;
@@ -621,8 +619,7 @@ function renderBulkResultBanner({
       String(modifiedCount),
     )
       .replace("{skipped}", String(skippedCount))
-      .replace("{max}", maxTags)
-      .replace("{titles}", skippedTitles());
+      .replace("{max}", maxTags);
   } else if (skippedCount === 0) {
     // 3. Nothing skipped and nothing newly applied — every selected URL already
     // carried the requested tag(s). A benign no-op, not a failure.
@@ -648,12 +645,10 @@ function renderBulkResultBanner({
     text = APP_CONFIG.strings.URL_BULK_TAGS_NONE_SOME_SKIPPED.replace(
       "{skipped}",
       String(skippedCount),
-    )
-      .replace("{max}", maxTags)
-      .replace("{titles}", skippedTitles());
+    ).replace("{max}", maxTags);
   }
 
-  // `.text()` escapes the whole string (including user-content titles).
+  // `.text()` escapes the whole string.
   const icon = $(document.createElement("span"))
     .addClass("bulkTagBannerIcon")
     .attr({ "aria-hidden": "true" })
@@ -669,8 +664,66 @@ function renderBulkResultBanner({
     .append(body);
 }
 
-/** URL title for a given utubUrlID from the store (empty string if unknown). */
-function urlTitleForId(utubUrlID: number): string {
-  const match = getState().urls.find((url) => url.utubUrlID === utubUrlID);
-  return match?.urlTitle ?? "";
+// --- Per-card result cues -----------------------------------------------------
+
+/** How long a per-card result cue stays fully visible before it fades. */
+const CARD_CUE_HOLD_MS = 2400;
+/** Fade duration — mirrors the CSS transition on `.bulkCardResultCue--fading`. */
+const CARD_CUE_FADE_MS = 600;
+
+/**
+ * Flash a transient, self-fading result cue on each targeted URL card after a
+ * bulk apply: a "Tagged" chip on every card that gained ≥1 tag, an "At tag limit"
+ * chip on every skipped (at-limit) card. Already-had cards (in `applied` but with
+ * an empty `appliedTags`) get nothing — nothing changed there, so a cue would be
+ * noise. Cues are `aria-hidden`; the result banner carries the screen-reader
+ * summary. This is what lets the banner stay a concise count instead of listing
+ * every skipped URL by title (unbounded on a large batch).
+ */
+function flashCardResultCues({
+  applied,
+  skipped,
+}: {
+  applied: UrlBatchTagAppliedEntry[];
+  skipped: UrlBatchTagSkippedEntry[];
+}): void {
+  const cues: Array<{
+    utubUrlID: number;
+    variant: "applied" | "skipped";
+    label: string;
+  }> = [
+    ...applied
+      .filter((entry) => entry.appliedTags.length > 0)
+      .map((entry) => ({
+        utubUrlID: entry.utubUrlID,
+        variant: "applied" as const,
+        label: APP_CONFIG.strings.URL_BULK_CARD_APPLIED,
+      })),
+    ...skipped.map((entry) => ({
+      utubUrlID: entry.utubUrlID,
+      variant: "skipped" as const,
+      label: APP_CONFIG.strings.URL_BULK_CARD_SKIPPED,
+    })),
+  ];
+
+  cues.forEach(({ utubUrlID, variant, label }) => {
+    const urlCard = $(`.urlRow[utuburlid=${utubUrlID}]`);
+    if (urlCard.length === 0) return;
+
+    // Replace any lingering cue from a prior apply so nothing stacks/duplicates.
+    urlCard.find(".bulkCardResultCue").remove();
+
+    const cue = $(document.createElement("span"))
+      .addClass(`bulkCardResultCue bulkCardResultCue--${variant}`)
+      .attr({ "aria-hidden": "true" })
+      .text(label);
+    urlCard.append(cue);
+
+    // Hold, then fade (CSS transition), then remove from the DOM.
+    window.setTimeout(
+      () => cue.addClass("bulkCardResultCue--fading"),
+      CARD_CUE_HOLD_MS,
+    );
+    window.setTimeout(() => cue.remove(), CARD_CUE_HOLD_MS + CARD_CUE_FADE_MS);
+  });
 }

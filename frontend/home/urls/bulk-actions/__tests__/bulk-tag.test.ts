@@ -410,7 +410,7 @@ describe("submitBulkTags — success", () => {
     );
   });
 
-  it("renders the partial banner naming the skipped URL and skips that card", () => {
+  it("renders the concise partial banner and flags each card with its result cue", () => {
     seedUrlRows([10, 30]);
     storeState.urls = [
       { utubUrlID: 10, utubUrlTagIDs: [], urlTitle: "Alpha" },
@@ -436,15 +436,30 @@ describe("submitBulkTags — success", () => {
       { status: 200 },
     );
 
+    // Banner is a concise count — it no longer lists the skipped URL by title.
     const banner = $("#bulkTagResultBanner");
     expect(banner.hasClass("partial")).toBe(true);
-    expect(banner.text()).toContain("Gamma");
-    // The skipped card gains no badge.
+    expect(banner.text()).toContain(
+      APP_CONFIG.strings.URL_BULK_TAGS_PARTIAL.replace("{applied}", "1")
+        .replace("{skipped}", "1")
+        .replace("{max}", String(APP_CONFIG.constants.TAGS_MAX_ON_URLS)),
+    );
+    expect(banner.text()).not.toContain("Gamma");
+
+    // The "which" is on the cards: applied card gets a green cue, skipped an amber.
+    const appliedCue = $('.urlRow[utuburlid="10"] .bulkCardResultCue');
+    expect(appliedCue.hasClass("bulkCardResultCue--applied")).toBe(true);
+    expect(appliedCue.text()).toBe(APP_CONFIG.strings.URL_BULK_CARD_APPLIED);
+    const skippedCue = $('.urlRow[utuburlid="30"] .bulkCardResultCue');
+    expect(skippedCue.hasClass("bulkCardResultCue--skipped")).toBe(true);
+    expect(skippedCue.text()).toBe(APP_CONFIG.strings.URL_BULK_CARD_SKIPPED);
+
+    // The skipped card gains no badge; the applied card gains one.
     expect($('.urlRow[utuburlid="30"] .tagBadge').length).toBe(0);
     expect($('.urlRow[utuburlid="10"] .tagBadge').length).toBe(1);
   });
 
-  it("HTML-escapes a hostile skipped URL title in the partial banner", () => {
+  it("never surfaces a skipped URL's title in the banner or card cue (no XSS surface)", () => {
     const hostileTitle = '<img src=x onerror="alert(1)">';
     seedUrlRows([10, 30]);
     storeState.urls = [
@@ -471,10 +486,14 @@ describe("submitBulkTags — success", () => {
       { status: 200 },
     );
 
+    // Titles are never surfaced now — the banner is a count and the card cue is a
+    // static label — so there is nowhere to inject the hostile title.
     const banner = $("#bulkTagResultBanner");
-    // The title is rendered as escaped TEXT, never parsed into a live element.
     expect(banner.find("img").length).toBe(0);
-    expect(banner.text()).toContain(hostileTitle);
+    expect(banner.text()).not.toContain(hostileTitle);
+    const skippedCue = $('.urlRow[utuburlid="30"] .bulkCardResultCue');
+    expect(skippedCue.find("img").length).toBe(0);
+    expect(skippedCue.text()).toBe(APP_CONFIG.strings.URL_BULK_CARD_SKIPPED);
   });
 
   it("renders the all-over-limit banner (assertive) and applies no badges", () => {
@@ -540,15 +559,12 @@ describe("submitBulkTags — success", () => {
     expect(banner.hasClass("partial")).toBe(true);
     expect(banner.hasClass("fail")).toBe(false);
     expect(banner.attr("aria-live")).toBe("polite");
-    // Names the skipped URL and uses the some-skipped copy.
-    expect(banner.text()).toContain("Gamma");
+    // Concise some-skipped copy — no title list.
     expect(banner.text()).toContain(
       APP_CONFIG.strings.URL_BULK_TAGS_NONE_SOME_SKIPPED.replace(
         "{skipped}",
         "1",
-      )
-        .replace("{max}", String(APP_CONFIG.constants.TAGS_MAX_ON_URLS))
-        .replace("{titles}", "Gamma"),
+      ).replace("{max}", String(APP_CONFIG.constants.TAGS_MAX_ON_URLS)),
     );
     // Never the "all N at the limit" message.
     expect(banner.text()).not.toContain(
@@ -557,6 +573,11 @@ describe("submitBulkTags — success", () => {
         String(APP_CONFIG.constants.TAGS_MAX_ON_URLS),
       ),
     );
+    // The at-limit card is flagged; the already-tagged card gets no cue (nothing
+    // changed there).
+    const skippedCue = $('.urlRow[utuburlid="30"] .bulkCardResultCue');
+    expect(skippedCue.hasClass("bulkCardResultCue--skipped")).toBe(true);
+    expect($('.urlRow[utuburlid="10"] .bulkCardResultCue').length).toBe(0);
   });
 
   it("renders the benign no-changes banner when every URL already had the tag (none skipped)", () => {
@@ -591,6 +612,48 @@ describe("submitBulkTags — success", () => {
     expect(banner.text()).not.toContain(
       APP_CONFIG.strings.URL_BULK_TAGS_APPLIED.replace("{n}", "0"),
     );
+  });
+
+  it("fades then removes each card result cue after the hold + fade delay", () => {
+    vi.useFakeTimers();
+    try {
+      seedUrlRows([10, 30]);
+      storeState.urls = [
+        { utubUrlID: 10, utubUrlTagIDs: [], urlTitle: "Alpha" },
+        { utubUrlID: 30, utubUrlTagIDs: [], urlTitle: "Gamma" },
+      ];
+      openPickerFor([10, 30]);
+
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      comboboxState.lastOnSubmit!(["python"]);
+      deferred.resolve(
+        successResponse(
+          [
+            {
+              utubUrlID: 10,
+              utubUrlTagIDs: [1],
+              appliedTags: [{ id: 1, tagString: "python", tagApplied: 3 }],
+            },
+          ],
+          [{ utubUrlID: 30, reason: "overLimit" }],
+        ),
+        "success",
+        { status: 200 },
+      );
+
+      // Both cues present and fully visible immediately after the result renders.
+      expect($(".bulkCardResultCue").length).toBe(2);
+      expect($(".bulkCardResultCue--fading").length).toBe(0);
+
+      // After the hold they begin fading, then remove themselves from the DOM.
+      vi.advanceTimersByTime(2400);
+      expect($(".bulkCardResultCue--fading").length).toBe(2);
+      vi.advanceTimersByTime(600);
+      expect($(".bulkCardResultCue").length).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

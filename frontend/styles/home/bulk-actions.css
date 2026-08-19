@@ -717,3 +717,53 @@
     animation: none;
   }
 }
+
+/*
+ * ---- Per-card bulk-tag result cue ----
+ * A transient chip flashed on each targeted URL card after a bulk apply
+ * (flashCardResultCues in bulk-tag.ts): "Tagged" (green) on cards that gained a
+ * tag, "At tag limit" (amber) on skipped cards. Absolutely positioned in the
+ * card's top-right corner — .urlRow is already the positioning context for the
+ * absolutely-positioned .urlRowSwipeReveal, so no new position:relative is
+ * needed. Decorative + pointer-events:none (the aria-live banner is the SR
+ * summary); JS removes it after the fade. `--fading` drives the opacity
+ * transition JS toggles on ~2.4s in. Text uses --textPrimary so it stays legible
+ * on the translucent tint in both light and dark themes; the tint + border color
+ * carry the applied/skipped distinction.
+ */
+.bulkCardResultCue {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 3;
+  pointer-events: none;
+  padding: 2px 9px;
+  border-radius: 5rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.5;
+  color: var(--textPrimary);
+  border: 1px solid transparent;
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+.bulkCardResultCue--fading {
+  opacity: 0;
+}
+
+.bulkCardResultCue--applied {
+  background: rgba(67, 199, 154, 0.18);
+  border-color: var(--splashGreen);
+}
+
+.bulkCardResultCue--skipped {
+  background: rgba(253, 231, 76, 0.22);
+  border-color: var(--editURLColor);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bulkCardResultCue {
+    transition: none;
+  }
+}
