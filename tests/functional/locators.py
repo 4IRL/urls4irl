@@ -248,6 +248,28 @@ class HomePageLocators(GenericPageLocator):
     # (distinct from the per-URL big-cancel button BUTTON_TAGS_CANCEL_BATCH).
     BUTTON_BULK_TAG_CANCEL = ".urlTagComboboxCancelBtn"
 
+    # Bulk multi-URL copy-to-UTub (Phase 3). The "Copy to UTub" action button
+    # rendered into #bulkActionButtons by the bulk-action registry, the stable
+    # destination-picker mount (a role="listbox" of role="option" rows), and the
+    # result banner. Row selectors resolve by role="option" (not just the
+    # .UTubSelector class) so Playwright's ARIA assertions (aria-selected,
+    # aria-disabled) read the role directly.
+    BUTTON_BULK_COPY_URLS = '[data-bulk-action-id="bulk-copy"]'
+    BULK_COPY_PICKER_MOUNT = "#bulkCopyPickerMount"
+    # Distinct listbox-role form of the mount, for asserting the role landed.
+    BULK_COPY_PICKER_LISTBOX = "#bulkCopyPickerMount[role='listbox']"
+    BULK_COPY_BANNER = "#bulkCopyResultBanner"
+    # Shared banner body class (the copy banner reuses .bulkTagBanner markup).
+    BULK_COPY_BANNER_BODY = f"{BULK_COPY_BANNER} .bulkTagBannerBody"
+    # Destination rows, resolved by role="option" (all rows / enabled-only).
+    BULK_COPY_OPTION = '.UTubSelector[role="option"]'
+    BULK_COPY_OPTION_ENABLED = '.UTubSelector[role="option"]:not(.disabled)'
+    # In-picker footer controls + the all-other-UTubs-locked message.
+    BUTTON_BULK_COPY_CANCEL = ".bulkCopyCancelBtn"
+    BUTTON_BULK_COPY_CONFIRM = ".bulkCopyConfirmBtn"
+    BULK_COPY_PICKER_MSG = ".bulkCopyPickerMsg"
+    BULK_COPY_ALL_LOCKED = ".bulkCopyAllLocked"
+
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"

@@ -1,0 +1,456 @@
+from __future__ import annotations
+
+import re
+
+from flask import Flask
+import pytest
+from playwright.sync_api import Page, expect
+
+from backend import db
+from backend.models.urls import Urls
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
+from backend.utils.constants import STRINGS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.db_utils import (
+    get_other_utub_this_user_is_member_of,
+    get_utub_this_user_created,
+    set_utub_locked_state,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_name,
+)
+from tests.functional.playwright_utils import (
+    get_all_url_ids_in_selected_utub,
+    wait_until_hidden,
+)
+from tests.functional.urls_ui.playwright_utils import (
+    enter_multi_select_and_select_urls,
+    expect_copy_cue_on_row,
+    open_bulk_copy_picker,
+    stage_copy_destination,
+    submit_bulk_copy,
+)
+
+pytestmark = pytest.mark.urls_ui
+
+USER_ID_FOR_TEST = 1
+
+
+# --- Seed helpers -------------------------------------------------------------
+# The default mock seeds the SAME five URL strings into every UTub, and
+# `Urls.url_string` is globally UNIQUE — so every mock URL already exists (same
+# `url_id`) in every UTub. Copying a mock URL would therefore always be a
+# duplicate-skip. These helpers seed URL strings that exist NOWHERE else, so a
+# copy of them lands in the destination as genuinely new.
+
+
+def _seed_source_url(
+    *,
+    app: Flask,
+    utub_id: int,
+    user_id: int,
+    url_string: str,
+    url_title: str,
+    tag_string: str | None = None,
+) -> tuple[int, int]:
+    """Insert a globally-unique URL + a `Utub_Urls` row into the source UTub.
+    Optionally apply one tag to it. Returns (utub_url_id, url_id)."""
+    with app.app_context():
+        raw_url: Urls | None = Urls.query.filter(Urls.url_string == url_string).first()
+        if raw_url is None:
+            raw_url = Urls(normalized_url=url_string, current_user_id=user_id)
+            db.session.add(raw_url)
+            db.session.flush()
+        new_utub_url = Utub_Urls(
+            utub_id=utub_id,
+            url_id=raw_url.id,
+            user_id=user_id,
+            url_title=url_title,
+        )
+        db.session.add(new_utub_url)
+        db.session.flush()
+        utub_url_id = new_utub_url.id
+        url_id = raw_url.id
+
+        if tag_string is not None:
+            tag = Utub_Tags(utub_id=utub_id, tag_string=tag_string, created_by=user_id)
+            db.session.add(tag)
+            db.session.flush()
+            db.session.add(
+                Utub_Url_Tags(
+                    utub_id=utub_id,
+                    utub_url_id=utub_url_id,
+                    utub_tag_id=tag.id,
+                )
+            )
+        db.session.commit()
+        return utub_url_id, url_id
+
+
+def _add_existing_url_to_utub(
+    *, app: Flask, utub_id: int, user_id: int, url_id: int, url_title: str
+) -> None:
+    """Insert an existing (already-created) URL into another UTub — used to
+    pre-seed a duplicate in the destination for the partial-success case."""
+    with app.app_context():
+        db.session.add(
+            Utub_Urls(
+                utub_id=utub_id,
+                url_id=url_id,
+                user_id=user_id,
+                url_title=url_title,
+            )
+        )
+        db.session.commit()
+
+
+def _count_dest_rows_for_url(*, app: Flask, utub_id: int, url_id: int) -> int:
+    with app.app_context():
+        return Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id
+        ).count()
+
+
+def _count_tags_on_dest_url(*, app: Flask, utub_id: int, url_id: int) -> int:
+    """Count the tags carried by the destination UTub's copy of `url_id`."""
+    with app.app_context():
+        return (
+            Utub_Url_Tags.query.join(
+                Utub_Urls, Utub_Url_Tags.utub_url_id == Utub_Urls.id
+            )
+            .filter(Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id)
+            .count()
+        )
+
+
+def _lock_all_other_utubs(*, app: Flask, source_utub_id: int) -> None:
+    """Lock every UTub except the source, so the copy picker has zero enabled
+    destination rows (DD-23 all-locked state)."""
+    with app.app_context():
+        other_utub_ids = [
+            utub.id for utub in Utubs.query.filter(Utubs.id != source_utub_id).all()
+        ]
+    for utub_id in other_utub_ids:
+        set_utub_locked_state(app, utub_id, True)
+
+
+def _delete_all_other_utubs(*, app: Flask, source_utub_id: int) -> None:
+    """Delete every UTub except the source (Utubs cascades to members/urls/tags)
+    so the logged-in user is left in exactly one UTub — no copy destination."""
+    with app.app_context():
+        others = Utubs.query.filter(Utubs.id != source_utub_id).all()
+        for utub in others:
+            db.session.delete(utub)
+        db.session.commit()
+
+
+# --- Tests --------------------------------------------------------------------
+
+
+def test_bulk_copy_happy_copies_selected_urls_with_banner_and_cues(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN two source-only URLs selected in multi-select mode
+    WHEN the user opens the copy picker, stages a destination, and confirms
+    THEN both URLs are copied (success banner + "Copied" cues), the staged row
+        carried aria-selected/tabindex, and the destination gains both rows.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    dest = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
+    dest_id, dest_name = dest.id, dest.name
+
+    utub_url_id_a, url_id_a = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-happy-a.test/",
+        url_title="Copy Happy A",
+    )
+    utub_url_id_b, url_id_b = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-happy-b.test/",
+        url_title="Copy Happy B",
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(
+        page=page, url_ids=[utub_url_id_a, utub_url_id_b]
+    )
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
+
+    open_bulk_copy_picker(page=page)
+    staged_row = stage_copy_destination(page=page, utub_name=dest_name)
+    # The staged row carries real focus state: aria-selected (asserted in the
+    # helper) plus the roving tabindex 0 (DD-7 real focus, never
+    # aria-activedescendant).
+    expect(staged_row).to_have_attribute("tabindex", "0")
+
+    submit_bulk_copy(page=page)
+
+    # Picker closes on success.
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+
+    # Per-card "Copied" cues on both source rows FIRST — they are transient
+    # (DOM-removed ~3s after the copy renders), so assert them at the start of the
+    # fade budget, before the (persistent) banner assertions.
+    expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id_a, kind="copied")
+    expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id_b, kind="copied")
+
+    # Success banner (all-copied → success/polite, count-only copy).
+    banner = page.locator(HPL.BULK_COPY_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"(^|\s)success(\s|$)"))
+    expect(page.locator(HPL.BULK_COPY_BANNER_BODY)).to_have_text(STRINGS.URLS_COPIED)
+
+    # The destination UTub now holds both copied URLs.
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_a) == 1
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_b) == 1
+
+
+def test_bulk_copy_arrow_key_navigation_moves_focus_and_tabindex(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the copy picker open with several enabled destination rows
+    WHEN the user roves with ArrowDown/ArrowUp
+    THEN real DOM focus and the roving tabindex move together (no staging), and
+        the focused row can then be staged with Enter.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    utub_url_id_a, _ = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-nav-a.test/",
+        url_title="Copy Nav A",
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id_a])
+    open_bulk_copy_picker(page=page)
+
+    rows = page.locator(f"{HPL.BULK_COPY_PICKER_MOUNT} {HPL.BULK_COPY_OPTION_ENABLED}")
+    expect(rows).to_have_count(4)  # UTubs 2-5 (all unlocked) for a member of 5
+    first_row = rows.nth(0)
+    second_row = rows.nth(1)
+
+    # On open the first enabled row holds real focus + tabindex 0.
+    expect(first_row).to_be_focused()
+    expect(first_row).to_have_attribute("tabindex", "0")
+
+    # ArrowDown roves focus + tabindex to the second row (no staging).
+    page.keyboard.press("ArrowDown")
+    expect(second_row).to_be_focused()
+    expect(second_row).to_have_attribute("tabindex", "0")
+    expect(first_row).to_have_attribute("tabindex", "-1")
+    expect(second_row).to_have_attribute("aria-selected", "false")
+
+    # ArrowUp roves back to the first row.
+    page.keyboard.press("ArrowUp")
+    expect(first_row).to_be_focused()
+    expect(first_row).to_have_attribute("tabindex", "0")
+
+    # Enter on the focused row stages it (keyup path).
+    first_row.press("Enter")
+    expect(first_row).to_have_attribute("aria-selected", "true")
+    expect(
+        page.locator(f"{HPL.BULK_COPY_PICKER_MOUNT} {HPL.BUTTON_BULK_COPY_CONFIRM}")
+    ).to_be_enabled()
+
+
+def test_bulk_copy_partial_skips_duplicate_with_already_there_cue(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN two selected source URLs, one already present in the destination
+    WHEN the user copies both
+    THEN the new URL is copied ("Copied") and the duplicate is skipped ("Already
+        there"), and the partial banner carries no URL title.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    dest = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
+    dest_id, dest_name = dest.id, dest.name
+
+    dup_title = "Copy Partial Dup"
+    utub_url_id_dup, url_id_dup = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-partial-dup.test/",
+        url_title=dup_title,
+    )
+    utub_url_id_new, url_id_new = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-partial-new.test/",
+        url_title="Copy Partial New",
+    )
+    # Pre-seed the duplicate into the destination so copying it is skipped.
+    _add_existing_url_to_utub(
+        app=app,
+        utub_id=dest_id,
+        user_id=USER_ID_FOR_TEST,
+        url_id=url_id_dup,
+        url_title=dup_title,
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(
+        page=page, url_ids=[utub_url_id_dup, utub_url_id_new]
+    )
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
+
+    open_bulk_copy_picker(page=page)
+    stage_copy_destination(page=page, utub_name=dest_name)
+    submit_bulk_copy(page=page)
+
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+
+    # Per-card cues FIRST (transient): the new URL copied, the duplicate flagged
+    # "already there".
+    expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id_new, kind="copied")
+    expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id_dup, kind="skipped")
+
+    # Partial banner — concise count only, never a URL title.
+    banner = page.locator(HPL.BULK_COPY_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"(^|\s)partial(\s|$)"))
+    body = page.locator(HPL.BULK_COPY_BANNER_BODY)
+    expect(body).not_to_contain_text(dup_title)
+
+    # Destination gained only the new URL; the duplicate stayed a single row.
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_new) == 1
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_dup) == 1
+
+
+def test_bulk_copy_button_absent_when_user_in_only_one_utub(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a user who belongs to exactly one UTub (no copy destination exists)
+    WHEN they enter multi-select mode and select a URL
+    THEN the copy bulk-action button is absent from the bar (isAvailable gate).
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    _delete_all_other_utubs(app=app, source_utub_id=source.id)
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    url_ids = get_all_url_ids_in_selected_utub(page=page)
+    assert len(url_ids) >= 1
+
+    enter_multi_select_and_select_urls(page=page, url_ids=[url_ids[0]])
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+
+    # The tag action still renders (single-UTub is fine for tagging), proving the
+    # action bar built successfully — so the copy action's absence is the
+    # isAvailable gate (no other UTub to copy to), not a broken bar.
+    expect(page.locator(HPL.BUTTON_BULK_ADD_TAGS)).to_have_count(1)
+    expect(page.locator(HPL.BUTTON_BULK_COPY_URLS)).to_have_count(0)
+
+
+def test_bulk_copy_does_not_carry_tags(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a tagged source URL selected for copy
+    WHEN it is copied into the destination
+    THEN the destination's copy carries zero tags (URL string + title only).
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    dest = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
+    dest_id, dest_name = dest.id, dest.name
+
+    utub_url_id_tagged, url_id_tagged = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-tagged.test/",
+        url_title="Copy Tagged",
+        tag_string="CopyTag",
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id_tagged])
+    open_bulk_copy_picker(page=page)
+    stage_copy_destination(page=page, utub_name=dest_name)
+    submit_bulk_copy(page=page)
+
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+    expect(page.locator(HPL.BULK_COPY_BANNER)).to_be_visible()
+
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_tagged) == 1
+    assert _count_tags_on_dest_url(app=app, utub_id=dest_id, url_id=url_id_tagged) == 0
+
+
+def test_bulk_copy_all_other_utubs_locked_shows_message_and_disables_copy(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    DD-23: every other UTub is locked.
+
+    GIVEN a source URL selected with every other UTub locked
+    WHEN the user opens the copy picker
+    THEN the all-locked message renders (role=status, aria-live=polite) and the
+        Copy button stays disabled — no focusable destination row.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    _lock_all_other_utubs(app=app, source_utub_id=source.id)
+
+    utub_url_id_a, _ = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-locked.test/",
+        url_title="Copy Locked",
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id_a])
+    open_bulk_copy_picker(page=page)
+
+    all_locked = page.locator(HPL.BULK_COPY_ALL_LOCKED)
+    expect(all_locked).to_be_visible()
+    expect(all_locked).to_have_text(STRINGS.URL_BULK_COPY_ALL_LOCKED)
+    expect(all_locked).to_have_attribute("role", "status")
+    expect(all_locked).to_have_attribute("aria-live", "polite")
+
+    # No enabled destination rows, and Copy stays disabled (DD-18).
+    expect(
+        page.locator(f"{HPL.BULK_COPY_PICKER_MOUNT} {HPL.BULK_COPY_OPTION_ENABLED}")
+    ).to_have_count(0)
+    expect(
+        page.locator(f"{HPL.BULK_COPY_PICKER_MOUNT} {HPL.BUTTON_BULK_COPY_CONFIRM}")
+    ).to_be_disabled()
