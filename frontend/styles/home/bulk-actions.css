@@ -893,23 +893,23 @@
   gap: 8px;
 }
 
-/* Destination filter box (typing narrows the option rows). Theme-aware tokens so
-   it stays legible in light + dark, matching the .barBtn treatment. */
-.bulkCopyFilterInput {
+/* Destination filter box: reuses the app's canonical deck-search styling
+   (.text-input.search-input pill + prefix funnel icon, styles/home/forms.css) so
+   it matches the UTub / Tag / Member / URL search bars. The base .search-input
+   ships collapsed (width:0/opacity:0) and is revealed per-input — reveal ours the
+   same way #UTubNameSearch is, and inset the text for the prefix icon. */
+.bulkCopyFilterInput.search-input.text-input[type="search"] {
   width: 100%;
-  box-sizing: border-box;
-  padding: 8px 10px;
-  border: 1px solid var(--borderColor);
-  border-radius: 6px;
-  background: var(--cardBackgroundColor);
-  color: var(--textPrimary);
-  font-family: inherit;
-  font-size: 0.85rem;
+  opacity: 1;
+  transition: none;
+  padding-left: 32px;
 }
 
-.bulkCopyFilterInput:focus-visible {
-  outline: 2px solid var(--deckSelectionGreen);
-  outline-offset: 2px;
+/* Suppress the native search "X" (the app uses its own affordances; mirrors the
+   #UTubNameSearch/#TagNameSearch/... suppression in forms.css). */
+.bulkCopyFilterInput::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 /* Shown inside the listbox when the typed filter matches no UTubs (announced via
@@ -1083,11 +1083,6 @@
     min-height: 2.75rem;
     padding: 0 16px;
     font-size: 0.9rem;
-  }
-
-  /* 44px filter input on the drawer. */
-  .bulkCopyFilterInput {
-    min-height: 2.75rem;
   }
 
   /* Bound the drawer height by scrolling ONLY the option rows: the filter box

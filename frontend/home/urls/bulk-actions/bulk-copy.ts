@@ -62,6 +62,16 @@ const BULK_COPY_ICON_HTML =
   '<path d="M8 7.2v3.2M6.4 8.8h3.2" stroke-linecap="round"/>' +
   "</svg>";
 
+// Funnel prefix icon for the destination filter — the SAME markup the app's deck
+// search bars use (utub-search-prefix-icon in UTubDeckHeaders.html), so the copy
+// filter box reads as the same control. Trusted static literal — never
+// interpolate user content into it.
+const FILTER_ICON_HTML =
+  '<svg class="utub-search-prefix-icon" xmlns="http://www.w3.org/2000/svg" ' +
+  'fill="currentColor" height="14" width="14" viewBox="0 0 16 16" aria-hidden="true">' +
+  '<path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z"/>' +
+  "</svg>";
+
 // --- Picker-open flag (owned here; mirrored into the shared registry) ---------
 
 let bulkCopyPickerOpen = false;
@@ -275,21 +285,31 @@ function renderPicker({
  * listener). It is NOT a listbox child, so it does not corrupt the listbox's ARIA.
  */
 function buildFilterInput(): JQuery {
-  // Wrapper carries the sticky-top + opaque background so scrolling rows never
-  // peek through the mount's padding above the input.
+  // Reuse the app's canonical deck-search markup — a `.text-input.search-input`
+  // pill inside a `.text-input-inner-container` with an absolutely-positioned
+  // funnel prefix icon — so this box is visually identical to the UTub / Tag /
+  // Member / URL search bars. The outer wrapper adds the desktop sticky-top +
+  // opaque background so scrolling rows never peek through the mount's padding.
   const wrap = $(document.createElement("div")).addClass("bulkCopyFilterWrap");
+  const inner = $(document.createElement("div")).addClass(
+    "text-input-inner-container",
+  );
+  inner.append(FILTER_ICON_HTML);
   const input = $(document.createElement("input"))
-    .addClass("bulkCopyFilterInput tabbable")
+    .addClass("text-input search-input bulkCopyFilterInput")
     .attr({
       type: "search",
       autocomplete: "off",
+      autocorrect: "off",
+      autocapitalize: "off",
       "aria-label": APP_CONFIG.strings.URL_BULK_COPY_FILTER_PLACEHOLDER,
       placeholder: APP_CONFIG.strings.URL_BULK_COPY_FILTER_PLACEHOLDER,
     });
   input.on("input.bulkCopyFilter", () =>
     applyFilter(String(input.val() ?? "")),
   );
-  wrap.append(input);
+  inner.append(input);
+  wrap.append(inner);
   return wrap;
 }
 
