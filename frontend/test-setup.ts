@@ -177,6 +177,8 @@ const appConfig = {
     URL_BULK_COPY_SUBMITTING: "Copying…",
     URL_BULK_COPY_ALL_LOCKED: "All other UTubs are locked.",
     URL_BULK_COPY_ARIA: "Copy {n} selected URLs to…",
+    URL_BULK_COPY_FILTER_PLACEHOLDER: "Filter UTubs…",
+    URL_BULK_COPY_NO_MATCHES: "No UTubs match your filter.",
     UNABLE_TO_COPY_URLS: "Unable to copy the selected URLs.",
     URL_SEARCH_NO_RESULTS: "No URLs found",
     URL_BULK_SELECTED_COUNT: "{n} URLs selected",

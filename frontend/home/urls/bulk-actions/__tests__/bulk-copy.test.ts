@@ -174,17 +174,20 @@ describe("openBulkCopyPicker (onActivate)", () => {
     expect($("#URLDeck").hasClass("bulkCopyPickerOpen")).toBe(true);
   });
 
-  it("renders role=listbox on the mount and role=option/stable-id/aria-selected=false on each row", () => {
+  it("renders role=listbox on the INNER listbox (not the mount) and role=option/stable-id/aria-selected=false on each row", () => {
     openPickerFor([10]);
 
-    expect(mount().attr("role")).toBe("listbox");
+    // The role=listbox moved to an inner element so the filter input + footer
+    // are not invalid children of a listbox.
+    expect(mount().attr("role")).toBeUndefined();
+    expect(mount().find(".bulkCopyListbox").attr("role")).toBe("listbox");
     const firstRow = mount().find("#bulkCopyOption-2");
     expect(firstRow.attr("role")).toBe("option");
     expect(firstRow.attr("aria-selected")).toBe("false");
     expect(firstRow.attr("id")).toBe("bulkCopyOption-2");
   });
 
-  it("focuses the first enabled row (tabindex 0), all others tabindex -1, and the aria-label carries the count (DD-10/DD-24)", () => {
+  it("focuses the FILTER INPUT on open, keeps the first enabled row as the roving entry (tabindex 0), all others -1, and the listbox aria-label carries the count (DD-10/DD-24)", () => {
     openPickerFor([10, 20, 30]);
 
     const firstEnabled = mount().find("#bulkCopyOption-2");
@@ -193,10 +196,15 @@ describe("openBulkCopyPicker (onActivate)", () => {
     expect(firstEnabled.attr("tabindex")).toBe("0");
     expect(secondEnabled.attr("tabindex")).toBe("-1");
     expect(locked.attr("tabindex")).toBe("-1");
-    expect(document.activeElement).toBe(firstEnabled[0]);
+    // Real DOM focus lands on the filter input so the user can immediately type
+    // to narrow; the first enabled row holds tabindex 0 as the roving entry.
+    expect(document.activeElement).toBe(
+      mount().find(".bulkCopyFilterInput")[0],
+    );
+    const listbox = mount().find(".bulkCopyListbox");
     // No aria-activedescendant anywhere — DD-7 dropped it entirely.
-    expect(mount().attr("aria-activedescendant")).toBeUndefined();
-    expect(mount().attr("aria-label")).toContain(
+    expect(listbox.attr("aria-activedescendant")).toBeUndefined();
+    expect(listbox.attr("aria-label")).toContain(
       APP_CONFIG.strings.URL_BULK_COPY_ARIA.replace("{n}", "3"),
     );
   });
@@ -236,6 +244,92 @@ describe("openBulkCopyPicker (onActivate)", () => {
     storeState.activeUTubID = null;
     openPickerFor([10]);
     expect(isBulkCopyPickerOpen()).toBe(false);
+  });
+});
+
+describe("destination filter box", () => {
+  const filterInput = (): JQuery => mount().find(".bulkCopyFilterInput");
+  const optionRows = (): JQuery => mount().find('.UTubSelector[role="option"]');
+  const visibleRows = (): JQuery =>
+    optionRows().filter((_, el) => !$(el).hasClass("hidden"));
+
+  it("renders a filter input (with the bridged placeholder) above the listbox", () => {
+    openPickerFor([10]);
+    expect(filterInput().length).toBe(1);
+    expect(filterInput().attr("type")).toBe("search");
+    expect(filterInput().attr("placeholder")).toBe(
+      APP_CONFIG.strings.URL_BULK_COPY_FILTER_PLACEHOLDER,
+    );
+    expect(filterInput().attr("aria-label")).toBe(
+      APP_CONFIG.strings.URL_BULK_COPY_FILTER_PLACEHOLDER,
+    );
+  });
+
+  it("typing narrows the option rows by UTub name (case-insensitive), hiding non-matches", () => {
+    openPickerFor([10]);
+    // DEFAULT_UTUBS destinations: id2 "Recipes to try", id3 "Reading list",
+    // id4 "Locked one". "read" matches only "Reading list" (id3).
+    filterInput().val("read").trigger("input");
+    expect(mount().find("#bulkCopyOption-3").hasClass("hidden")).toBe(false);
+    expect(mount().find("#bulkCopyOption-2").hasClass("hidden")).toBe(true);
+    expect(mount().find("#bulkCopyOption-4").hasClass("hidden")).toBe(true);
+    expect(visibleRows().length).toBe(1);
+  });
+
+  it("shows the no-matches message when nothing matches, and clears it when the filter matches again", () => {
+    openPickerFor([10]);
+    const noMatches = mount().find(".bulkCopyNoMatches");
+
+    filterInput().val("zzzz").trigger("input");
+    expect(noMatches.hasClass("hidden")).toBe(false);
+    expect(visibleRows().length).toBe(0);
+
+    // Clearing the filter restores every row and hides the message.
+    filterInput().val("").trigger("input");
+    expect(noMatches.hasClass("hidden")).toBe(true);
+    expect(visibleRows().length).toBe(3);
+  });
+
+  it("moves the roving entry (tabindex 0) onto the first STILL-VISIBLE enabled row after filtering", () => {
+    openPickerFor([10]);
+    // Match only id3 → the previously-first enabled row (id2) is filtered out.
+    filterInput().val("reading").trigger("input");
+    expect(mount().find("#bulkCopyOption-2").hasClass("hidden")).toBe(true);
+    expect(mount().find("#bulkCopyOption-3").attr("tabindex")).toBe("0");
+    expect(mount().find("#bulkCopyOption-2").attr("tabindex")).toBe("-1");
+  });
+
+  it("keeps a staged destination staged + Copy enabled even when the filter hides its row", () => {
+    openPickerFor([10]);
+    // Stage id3 (Reading list).
+    mount().find("#bulkCopyOption-3").trigger("click");
+    expect(mount().find("#bulkCopyOption-3").attr("aria-selected")).toBe(
+      "true",
+    );
+    expect(mount().find(".bulkCopyConfirmBtn").prop("disabled")).toBe(false);
+
+    // Filter to "recipes" → hides the staged id3 but keeps it staged.
+    filterInput().val("recipes").trigger("input");
+    expect(mount().find("#bulkCopyOption-3").hasClass("hidden")).toBe(true);
+    expect(mount().find("#bulkCopyOption-3").attr("aria-selected")).toBe(
+      "true",
+    );
+    expect(mount().find("#bulkCopyOption-3").hasClass("active")).toBe(true);
+    expect(mount().find(".bulkCopyConfirmBtn").prop("disabled")).toBe(false);
+  });
+
+  it("ArrowDown from the filter input moves real focus to the first VISIBLE row after filtering", () => {
+    openPickerFor([10]);
+    // Filter so only id3 remains, then ArrowDown from the (focused) input.
+    filterInput().val("reading").trigger("input");
+    mount()[0]!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "ArrowDown",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(document.activeElement).toBe(mount().find("#bulkCopyOption-3")[0]);
   });
 });
 
@@ -294,6 +388,8 @@ describe("staging (DD-8/DD-9/DD-20)", () => {
     const first = mount().find("#bulkCopyOption-2");
     const second = mount().find("#bulkCopyOption-3");
 
+    // On open focus is on the filter input, so the FIRST ArrowDown enters the
+    // list at the first enabled row.
     const down = new KeyboardEvent("keydown", {
       key: "ArrowDown",
       bubbles: true,
@@ -301,6 +397,17 @@ describe("staging (DD-8/DD-9/DD-20)", () => {
     });
     mount()[0]!.dispatchEvent(down);
     expect(down.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(first[0]);
+    expect(first.attr("tabindex")).toBe("0");
+
+    // ArrowDown again moves to the second enabled row.
+    mount()[0]!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "ArrowDown",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
     expect(document.activeElement).toBe(second[0]);
     expect(second.attr("tabindex")).toBe("0");
     expect(first.attr("tabindex")).toBe("-1");

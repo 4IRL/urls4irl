@@ -47,6 +47,10 @@ URL_BULK_COPY_ALL_LOCKED = "All other UTubs are locked."
 # Picker listbox aria-label ({n} = selected-URL count); mirrors the
 # URL_BULK_ADD_TAGS_ARIA precedent for the tag picker.
 URL_BULK_COPY_ARIA = "Copy {n} selected URLs to…"
+# Destination-picker filter box: placeholder / aria-label, and the no-results
+# message shown inside the listbox when the typed filter matches no UTubs.
+URL_BULK_COPY_FILTER_PLACEHOLDER = "Filter UTubs…"
+URL_BULK_COPY_NO_MATCHES = "No UTubs match your filter."
 
 # Multi-select bulk-action bar screen-reader announcements. TS composes the live
 # announcement in bulk-actions/bulk-bar.ts from these templates ({n} is replaced
@@ -102,6 +106,8 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_BULK_COPY_SUBMITTING = URL_BULK_COPY_SUBMITTING
     URL_BULK_COPY_ALL_LOCKED = URL_BULK_COPY_ALL_LOCKED
     URL_BULK_COPY_ARIA = URL_BULK_COPY_ARIA
+    URL_BULK_COPY_FILTER_PLACEHOLDER = URL_BULK_COPY_FILTER_PLACEHOLDER
+    URL_BULK_COPY_NO_MATCHES = URL_BULK_COPY_NO_MATCHES
 
 
 # Strings for URL failure

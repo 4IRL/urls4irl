@@ -218,6 +218,63 @@ def test_bulk_copy_happy_copies_selected_urls_with_banner_and_cues(
     assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_b) == 1
 
 
+def test_bulk_copy_filter_narrows_destinations_then_copies(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the copy picker open with several destination rows
+    WHEN the user types in the filter box
+    THEN a non-matching query hides every row + shows the no-results message (Copy
+        stays disabled), and filtering to a destination's name reveals it so it can
+        be staged and copied.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    dest = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
+    dest_id, dest_name = dest.id, dest.name
+
+    utub_url_id, url_id = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-filter.test/",
+        url_title="Copy Filter",
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+    enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
+    open_bulk_copy_picker(page=page)
+
+    # The filter box is focused on open.
+    filter_input = page.locator(HPL.BULK_COPY_FILTER_INPUT)
+    expect(filter_input).to_be_focused()
+
+    mount = HPL.BULK_COPY_PICKER_MOUNT
+    # A non-matching query hides every row and announces the no-results message;
+    # Copy stays disabled (nothing staged).
+    filter_input.fill("zzq-no-such-utub-zzq")
+    expect(page.locator(f"{mount} {HPL.BULK_COPY_NO_MATCHES}")).to_be_visible()
+    expect(page.locator(f"{mount} {HPL.BULK_COPY_OPTION_VISIBLE}")).to_have_count(0)
+    expect(page.locator(f"{mount} {HPL.BUTTON_BULK_COPY_CONFIRM}")).to_be_disabled()
+
+    # Filtering to the destination's name reveals it; stage + confirm the copy.
+    filter_input.fill(dest_name)
+    dest_row = page.locator(mount).get_by_role("option", name=dest_name, exact=True)
+    expect(dest_row).to_be_visible()
+    dest_row.click()
+    expect(dest_row).to_have_attribute("aria-selected", "true")
+
+    submit_bulk_copy(page=page)
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+
+    banner = page.locator(HPL.BULK_COPY_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"(^|\s)success(\s|$)"))
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id) == 1
+
+
 def test_bulk_copy_arrow_key_navigation_moves_focus_and_tabindex(
     page: Page, create_test_urls, provide_app: Flask
 ):
@@ -250,7 +307,13 @@ def test_bulk_copy_arrow_key_navigation_moves_focus_and_tabindex(
     first_row = rows.nth(0)
     second_row = rows.nth(1)
 
-    # On open the first enabled row holds real focus + tabindex 0.
+    # On open, real focus is on the FILTER INPUT (so the user can type to narrow
+    # immediately); the first enabled row holds tabindex 0 as the roving entry.
+    expect(page.locator(HPL.BULK_COPY_FILTER_INPUT)).to_be_focused()
+    expect(first_row).to_have_attribute("tabindex", "0")
+
+    # ArrowDown from the input enters the list at the first enabled row.
+    page.keyboard.press("ArrowDown")
     expect(first_row).to_be_focused()
     expect(first_row).to_have_attribute("tabindex", "0")
 

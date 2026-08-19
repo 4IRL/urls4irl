@@ -695,6 +695,18 @@
     box-shadow: var(--shadow-lg);
   }
 
+  /* Keep the filter box pinned to the TOP while the destination rows scroll. The
+     negative margins bleed it across the mount's 12px padding so scrolling rows
+     never peek above/beside it; the padding restores the input's inset. */
+  .bulkCopyPickerMount .bulkCopyFilterWrap {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: -12px -12px 4px;
+    padding: 12px 12px 6px;
+    background: var(--panelBackgroundColor);
+  }
+
   /* Keep the Copy / Cancel footer pinned + visible while the destination rows
      scroll, so the primary action never falls below the dropdown's fold. */
   .bulkCopyPickerMount .bulkCopyPickerFooter {
@@ -865,9 +877,47 @@
   border-radius: var(--radius-sm);
 }
 
-/* The mount is a listbox in the open state; reveal it as a column flexbox. */
+/* The mount is the picker container in the open state; reveal it as a column
+   flexbox holding [filter wrap] [inner listbox] [footer]. */
 .bulkCopyPickerMount:not(.hidden) {
   display: flex;
+}
+
+/* Inner role="listbox": holds ONLY the option rows + the no-results message
+   (the filter input and footer are siblings, not listbox children — correct
+   ARIA). Column layout gives the rows their spacing now that they are no longer
+   direct flex children of the mount. */
+.bulkCopyListbox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Destination filter box (typing narrows the option rows). Theme-aware tokens so
+   it stays legible in light + dark, matching the .barBtn treatment. */
+.bulkCopyFilterInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--borderColor);
+  border-radius: 6px;
+  background: var(--cardBackgroundColor);
+  color: var(--textPrimary);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.bulkCopyFilterInput:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+/* Shown inside the listbox when the typed filter matches no UTubs (announced via
+   role=status/aria-live in bulk-copy.ts). */
+.bulkCopyNoMatches {
+  padding: 10px 4px;
+  font-size: 0.85rem;
+  color: var(--grayBadgeSelection);
 }
 
 /* Destination rows reuse the .UTubSelector look; give them a comfortable target
@@ -1033,6 +1083,19 @@
     min-height: 2.75rem;
     padding: 0 16px;
     font-size: 0.9rem;
+  }
+
+  /* 44px filter input on the drawer. */
+  .bulkCopyFilterInput {
+    min-height: 2.75rem;
+  }
+
+  /* Bound the drawer height by scrolling ONLY the option rows: the filter box
+     (above) and the Cancel/Copy footer (below) stay statically in place, so no
+     sticky positioning is needed on the drawer. */
+  .bulkCopyPickerMount .bulkCopyListbox {
+    max-height: 45dvh;
+    overflow-y: auto;
   }
 }
 

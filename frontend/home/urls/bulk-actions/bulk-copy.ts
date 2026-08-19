@@ -33,8 +33,18 @@ const PICKER_OPEN_CLASS = "bulkCopyPickerOpen";
 // Stable in-mode focus-return anchor (the header Exit control) — never the
 // ephemeral #bulkActionButtons button, which rebuilds on every selection change.
 const FOCUS_RETURN_SELECTOR = "#bulkSelectExit";
+// The role="listbox" element is an INNER child of the mount (not the mount
+// itself) so the filter input + footer can live inside the floating dropdown
+// without being invalid children of a listbox.
+const LISTBOX_SELECTOR = ".bulkCopyListbox";
+const FILTER_INPUT_SELECTOR = ".bulkCopyFilterInput";
+const NO_MATCHES_SELECTOR = ".bulkCopyNoMatches";
 const OPTION_SELECTOR = '.UTubSelector[role="option"]';
-const ENABLED_OPTION_SELECTOR = '.UTubSelector[role="option"]:not(.disabled)';
+// "Enabled" for roving/focus = not locked AND not filtered out (.hidden). The
+// filter box adds/removes .hidden as the user types, so arrow-key navigation and
+// the roving entry-point row automatically skip filtered rows.
+const ENABLED_OPTION_SELECTOR =
+  '.UTubSelector[role="option"]:not(.disabled):not(.hidden)';
 const CANCEL_BTN_SELECTOR = ".bulkCopyCancelBtn";
 const CONFIRM_BTN_SELECTOR = ".bulkCopyConfirmBtn";
 const MESSAGE_SELECTOR = ".bulkCopyPickerMsg";
@@ -165,10 +175,13 @@ function openBulkCopyPicker(context: BulkActionContext): void {
 }
 
 /**
- * Build and mount the picker markup: a `role="listbox"` mount holding the
- * destination `role="option"` rows (roving tabindex) plus a footer (message,
- * Cancel, Copy). When every other UTub is locked, an accessible all-locked
- * message replaces the rows and Copy stays disabled (DD-18).
+ * Build and mount the picker markup: a filter input (sticky top), an inner
+ * `role="listbox"` holding the destination `role="option"` rows (roving
+ * tabindex), and a footer (message, Cancel, Copy). The listbox is an INNER child
+ * of the mount — not the mount itself — so the filter input and footer are not
+ * invalid children of a listbox. When every other UTub is locked, an accessible
+ * all-locked message replaces the rows (and the filter) and Copy stays disabled
+ * (DD-18).
  */
 function renderPicker({
   destinations,
@@ -178,8 +191,10 @@ function renderPicker({
   selectedCount: number;
 }): void {
   const mount = $(PICKER_MOUNT_SELECTOR);
-  mount.empty();
-  mount.attr({
+  mount.empty().removeAttr("role").removeAttr("aria-label");
+
+  const listbox = $(document.createElement("div")).addClass("bulkCopyListbox");
+  listbox.attr({
     role: "listbox",
     "aria-label": APP_CONFIG.strings.URL_BULK_COPY_ARIA.replace(
       "{n}",
@@ -190,14 +205,15 @@ function renderPicker({
   const enabledDestinations = destinations.filter((utub) => !utub.isLocked);
 
   if (enabledDestinations.length === 0) {
-    // Every other UTub is locked — no focusable destination row. Render an
-    // announced message and focus it; Copy stays disabled (DD-18).
+    // Every other UTub is locked — no focusable destination row and nothing to
+    // filter. Render an announced message and focus it; Copy stays disabled
+    // (DD-18). No filter input in this path.
     const allLocked = $(document.createElement("div"))
       .addClass("bulkCopyAllLocked")
       .attr({ role: "status", "aria-live": "polite", tabindex: "-1" })
       .text(APP_CONFIG.strings.URL_BULK_COPY_ALL_LOCKED);
-    mount.append(allLocked);
-    mount.append(buildFooter());
+    listbox.append(allLocked);
+    mount.append(listbox).append(buildFooter());
     attachKeyListeners();
     mount.removeClass("hidden");
     allLocked[0]?.focus();
@@ -231,16 +247,87 @@ function renderPicker({
       if (row.hasClass("disabled")) return;
       stageRow(row);
     });
-    mount.append(row);
+    listbox.append(row);
   });
 
-  mount.append(buildFooter());
+  // No-results message shown inside the listbox when the typed filter matches no
+  // destination rows; hidden until then (announced via role=status/aria-live).
+  const noMatches = $(document.createElement("div"))
+    .addClass("bulkCopyNoMatches hidden")
+    .attr({ role: "status", "aria-live": "polite" })
+    .text(APP_CONFIG.strings.URL_BULK_COPY_NO_MATCHES);
+  listbox.append(noMatches);
+
+  mount.append(buildFilterInput()).append(listbox).append(buildFooter());
   attachKeyListeners();
   mount.removeClass("hidden");
 
-  // Focus the first enabled row (real DOM focus — DD-7).
-  const firstEnabled = mount.find(ENABLED_OPTION_SELECTOR).first();
-  firstEnabled[0]?.focus();
+  // Focus the filter input on open so a member of many UTubs can immediately
+  // type to narrow the list; the first enabled row keeps tabindex 0 as the
+  // roving entry point (Tab / ArrowDown moves real DOM focus into the list).
+  mount.find(FILTER_INPUT_SELECTOR)[0]?.focus();
+}
+
+/**
+ * Build the destination-filter input (sticky top of the dropdown). Typing filters
+ * the option rows by UTub name (case-insensitive substring); ArrowDown/ArrowUp
+ * from the input rove real focus into the list (handled by the mount keydown
+ * listener). It is NOT a listbox child, so it does not corrupt the listbox's ARIA.
+ */
+function buildFilterInput(): JQuery {
+  // Wrapper carries the sticky-top + opaque background so scrolling rows never
+  // peek through the mount's padding above the input.
+  const wrap = $(document.createElement("div")).addClass("bulkCopyFilterWrap");
+  const input = $(document.createElement("input"))
+    .addClass("bulkCopyFilterInput tabbable")
+    .attr({
+      type: "search",
+      autocomplete: "off",
+      "aria-label": APP_CONFIG.strings.URL_BULK_COPY_FILTER_PLACEHOLDER,
+      placeholder: APP_CONFIG.strings.URL_BULK_COPY_FILTER_PLACEHOLDER,
+    });
+  input.on("input.bulkCopyFilter", () =>
+    applyFilter(String(input.val() ?? "")),
+  );
+  wrap.append(input);
+  return wrap;
+}
+
+/**
+ * Filter the destination rows by the typed query (case-insensitive substring on
+ * the UTub name). Non-matching rows get `.hidden` (excluded from roving/focus via
+ * ENABLED_OPTION_SELECTOR); the no-results message shows when nothing matches. A
+ * currently-staged row stays staged even if filtered out — the staged id, not the
+ * row's visibility, is what Copy commits.
+ */
+function applyFilter(rawQuery: string): void {
+  const query = rawQuery.trim().toLowerCase();
+  const listbox = $(PICKER_MOUNT_SELECTOR).find(LISTBOX_SELECTOR);
+
+  let visibleCount = 0;
+  listbox.find(OPTION_SELECTOR).each((_, element) => {
+    const row = $(element);
+    const name = row.find(".UTubName").text().toLowerCase();
+    const matches = query === "" || name.includes(query);
+    row.toggleClass("hidden", !matches);
+    if (matches) visibleCount += 1;
+  });
+
+  listbox.find(NO_MATCHES_SELECTOR).toggleClass("hidden", visibleCount > 0);
+  // Keep a single visible enabled row as the roving entry point (tabindex 0) so
+  // ArrowDown / Tab from the input always lands on a shown row.
+  resetRovingEntry();
+}
+
+/**
+ * Reset the roving tabindex entry point after a filter change: clear tabindex on
+ * every option row, then set the FIRST still-visible enabled row to tabindex 0.
+ * Focus is not moved (it stays in the filter input while the user types).
+ */
+function resetRovingEntry(): void {
+  const mount = $(PICKER_MOUNT_SELECTOR);
+  mount.find(OPTION_SELECTOR).attr("tabindex", "-1");
+  mount.find(ENABLED_OPTION_SELECTOR).first().attr("tabindex", "0");
 }
 
 /** Build the picker footer: a live-region message + Cancel + Copy buttons. */

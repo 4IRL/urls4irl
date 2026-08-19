@@ -256,14 +256,22 @@ class HomePageLocators(GenericPageLocator):
     # aria-disabled) read the role directly.
     BUTTON_BULK_COPY_URLS = '[data-bulk-action-id="bulk-copy"]'
     BULK_COPY_PICKER_MOUNT = "#bulkCopyPickerMount"
-    # Distinct listbox-role form of the mount, for asserting the role landed.
-    BULK_COPY_PICKER_LISTBOX = "#bulkCopyPickerMount[role='listbox']"
+    # role="listbox" lives on an INNER element (not the mount itself) so the
+    # filter input + footer are not invalid listbox children.
+    BULK_COPY_PICKER_LISTBOX = "#bulkCopyPickerMount .bulkCopyListbox[role='listbox']"
+    # Destination-picker filter box + its no-results message.
+    BULK_COPY_FILTER_INPUT = ".bulkCopyFilterInput"
+    BULK_COPY_NO_MATCHES = ".bulkCopyNoMatches"
     BULK_COPY_BANNER = "#bulkCopyResultBanner"
     # Shared banner body class (the copy banner reuses .bulkTagBanner markup).
     BULK_COPY_BANNER_BODY = f"{BULK_COPY_BANNER} .bulkTagBannerBody"
-    # Destination rows, resolved by role="option" (all rows / enabled-only).
+    # Destination rows, resolved by role="option" (all rows / enabled-only /
+    # enabled-and-visible, the last excluding rows the filter box has hidden).
     BULK_COPY_OPTION = '.UTubSelector[role="option"]'
     BULK_COPY_OPTION_ENABLED = '.UTubSelector[role="option"]:not(.disabled)'
+    BULK_COPY_OPTION_VISIBLE = (
+        '.UTubSelector[role="option"]:not(.disabled):not(.hidden)'
+    )
     # In-picker footer controls + the all-other-UTubs-locked message.
     BUTTON_BULK_COPY_CANCEL = ".bulkCopyCancelBtn"
     BUTTON_BULK_COPY_CONFIRM = ".bulkCopyConfirmBtn"
