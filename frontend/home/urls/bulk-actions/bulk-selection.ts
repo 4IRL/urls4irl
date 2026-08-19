@@ -4,6 +4,7 @@ import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { dedupe, removeIds, toggleId } from "../../../logic/multi-select.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { VISIBLE_URL_SELECTOR } from "../utils.js";
+import { isAnyBulkPickerOpen } from "./picker-guard.js";
 
 const log = debug("urls:cards");
 
@@ -73,6 +74,12 @@ export function toggleURLCardSelection(id: number): void {
 
 /** Empty the selection and strip every multi-select mark from the deck. */
 export function clearURLSelection(): void {
+  // Defense-in-depth: the selection is snapshotted while a bulk sub-picker is
+  // open, so it must not be cleared out from under an open/in-flight picker. The
+  // normal mode-exit path (bulk-mode.ts) calls closeAllPickers() BEFORE this, so
+  // no picker is open by the time a legitimate exit reaches here; this guard only
+  // fires for a caller that reaches clearURLSelection() without that ordering.
+  if (isAnyBulkPickerOpen()) return;
   log("clear URL selection");
   const marked = $(`.urlRow.${MULTI_SELECTED_CLASS}`);
   marked.removeClass(MULTI_SELECTED_CLASS).attr("aria-checked", "false");
@@ -98,6 +105,10 @@ export function clearURLSelection(): void {
  * wholesale. Only rows matching VISIBLE_URL_SELECTOR are added.
  */
 export function selectAllVisibleURLCards(): void {
+  // Selection is locked while a bulk sub-picker (tag or copy) is open —
+  // defense-in-depth for any caller that reaches this export without going
+  // through bulk-bar.ts's own call-site guard.
+  if (isAnyBulkPickerOpen()) return;
   const visibleIDs: number[] = [];
   $(VISIBLE_URL_SELECTOR).each((_index, element) => {
     const id = urlCardId($(element));

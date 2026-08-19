@@ -44,6 +44,9 @@ URL_BULK_CARD_ALREADY_THERE = "Already there"
 URL_BULK_COPY_LABEL = "Copy to UTub"
 URL_BULK_COPY_SUBMITTING = "Copying…"
 URL_BULK_COPY_ALL_LOCKED = "All other UTubs are locked."
+# Picker listbox aria-label ({n} = selected-URL count); mirrors the
+# URL_BULK_ADD_TAGS_ARIA precedent for the tag picker.
+URL_BULK_COPY_ARIA = "Copy {n} selected URLs to…"
 
 # Multi-select bulk-action bar screen-reader announcements. TS composes the live
 # announcement in bulk-actions/bulk-bar.ts from these templates ({n} is replaced
@@ -98,6 +101,7 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_BULK_COPY_LABEL = URL_BULK_COPY_LABEL
     URL_BULK_COPY_SUBMITTING = URL_BULK_COPY_SUBMITTING
     URL_BULK_COPY_ALL_LOCKED = URL_BULK_COPY_ALL_LOCKED
+    URL_BULK_COPY_ARIA = URL_BULK_COPY_ARIA
 
 
 # Strings for URL failure

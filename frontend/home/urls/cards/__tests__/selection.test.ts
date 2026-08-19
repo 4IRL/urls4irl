@@ -14,6 +14,7 @@ import { getState, resetStore, setState } from "../../../../store/app-store.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { isCoarsePointer } from "../../../mobile.js";
 import { toggleURLCardSelection } from "../../bulk-actions/bulk-selection.js";
+import { isAnyBulkPickerOpen } from "../../bulk-actions/picker-guard.js";
 
 vi.mock("../update-title.js", () => ({
   hideAndResetUpdateURLTitleForm: vi.fn(),
@@ -48,13 +49,12 @@ vi.mock("../delete.js", () => ({
 vi.mock("../../bulk-actions/bulk-selection.js", () => ({
   toggleURLCardSelection: vi.fn(),
 }));
-// selection.ts imports bulk-tag.js for the isBulkTagPickerOpen() selection-lock
-// guard. bulk-tag.js transitively pulls in the tag-deck modules → urls/search.js,
-// whose module-level on(URL_TAG_FILTER_APPLIED, reapplyURLSearchFilter)
-// subscription would fire against this suite's minimal DOM (no #URLContentSearch),
-// the same reason ../delete.js is mocked above. Mock it to the guard alone.
-vi.mock("../../bulk-actions/bulk-tag.js", () => ({
-  isBulkTagPickerOpen: vi.fn(() => false),
+// selection.ts imports picker-guard.js for the isAnyBulkPickerOpen()
+// selection-lock guard (DD-14/DD-22 — widened from the old bulk-tag-only
+// isBulkTagPickerOpen import). picker-guard.js is a leaf module, but mock it so
+// tests can stub the guard directly.
+vi.mock("../../bulk-actions/picker-guard.js", () => ({
+  isAnyBulkPickerOpen: vi.fn(() => false),
 }));
 
 const $ = window.jQuery;
@@ -440,6 +440,30 @@ describe("URL Card Selection", () => {
       urlCard.trigger("click");
 
       expect(vi.mocked(toggleURLCardSelection)).toHaveBeenCalledWith(42);
+    });
+
+    it("does NOT toggle a row tap while a bulk picker is open (baseline lock — DD-22)", () => {
+      // The selection is snapshotted while a picker is open, so a row tap must
+      // not mutate it. This branch had no prior coverage under either guard name.
+      vi.mocked(isAnyBulkPickerOpen).mockReturnValue(true);
+      setURLCardSelectionEventListener(urlCard);
+
+      urlCard.trigger("click");
+
+      expect(vi.mocked(toggleURLCardSelection)).not.toHaveBeenCalled();
+      vi.mocked(isAnyBulkPickerOpen).mockReturnValue(false);
+    });
+
+    it("isAnyBulkPickerOpen() blocks the row tap while the bulk COPY picker is open (DD-14)", () => {
+      // The widened guard covers the copy picker too — the scenario it was
+      // introduced for. Same drive/tap/assert as the baseline, framed as copy.
+      vi.mocked(isAnyBulkPickerOpen).mockReturnValue(true);
+      setURLCardSelectionEventListener(urlCard);
+
+      urlCard.trigger("click");
+
+      expect(vi.mocked(toggleURLCardSelection)).not.toHaveBeenCalled();
+      vi.mocked(isAnyBulkPickerOpen).mockReturnValue(false);
     });
   });
 

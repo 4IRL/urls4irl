@@ -9,7 +9,9 @@ import {
   openTagSheetFromUserAction,
 } from "../../tags/sheet.js";
 import { initBulkBar } from "./bulk-bar.js";
-import { initBulkTag, isBulkTagPickerOpen } from "./bulk-tag.js";
+import { initBulkCopy } from "./bulk-copy.js";
+import { initBulkTag } from "./bulk-tag.js";
+import { isAnyBulkPickerOpen } from "./picker-guard.js";
 import {
   enterMultiSelectMode,
   exitMultiSelectMode,
@@ -69,6 +71,9 @@ export function initBulkActions(): void {
   // Registers the "Add tags" bulk action + its mode-exit teardown. The import
   // above is what makes the registration run.
   initBulkTag();
+  // Registers the "Copy to UTub" bulk action + its picker-close callback. The
+  // import above is what makes the registration run.
+  initBulkCopy();
 
   $(MULTI_SELECT_TOGGLE_SELECTOR).offAndOnExact(TOGGLE_CLICK_NAMESPACE, () => {
     if (isMultiSelectActive()) {
@@ -84,9 +89,9 @@ export function initBulkActions(): void {
   // captures it as _opener for WCAG focus-return.
   $(TAG_FILTER_ICON_SELECTOR).offAndOnExact(TAG_FILTER_CLICK_NAMESPACE, () => {
     if (!isMobile()) return;
-    // The bulk tag picker owns the deck while open — tapping the tag-filter icon
-    // must not open the tag sheet over/under it.
-    if (isBulkTagPickerOpen()) return;
+    // A bulk sub-picker (tag or copy) owns the deck while open — tapping the
+    // tag-filter icon must not open the tag sheet over/under it.
+    if (isAnyBulkPickerOpen()) return;
     openTagSheetFromUserAction();
     syncTagFilterExpanded();
   });
@@ -109,10 +114,10 @@ export function initBulkActions(): void {
       if (isTextInputFocused()) return;
       if (isTagSheetOpen()) return;
       if (isCrossUtubSearchActive()) return;
-      // Redundant second exit path: the picker's own container capture-phase
+      // Redundant second exit path: an open picker's own container capture-phase
       // listener already stops Escape from reaching here while it is open, but
-      // guard defensively in case focus ever escapes the picker container.
-      if (isBulkTagPickerOpen()) return;
+      // guard defensively (either picker) in case focus ever escapes it.
+      if (isAnyBulkPickerOpen()) return;
       log("escape exits multi-select mode");
       exitMultiSelectMode();
     },

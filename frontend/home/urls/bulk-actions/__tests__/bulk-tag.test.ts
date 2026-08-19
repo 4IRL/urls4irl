@@ -5,6 +5,7 @@ import {
 } from "../bulk-tag.js";
 import { getAvailableBulkActions } from "../bulk-action-registry.js";
 import type { BulkAction, BulkActionContext } from "../bulk-action-registry.js";
+import { setPickerOpen } from "../picker-guard.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
@@ -223,6 +224,9 @@ afterEach(() => {
     emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: false });
   }
   setBulkTagPickerOpen(false);
+  // Reset the copy picker's registry entry too (a DD-13 case sets it) so it never
+  // leaks into a sibling test's isAnyBulkPickerOpen()-guarded path.
+  setPickerOpen("bulk-copy", false);
   document.body.innerHTML = "";
 });
 
@@ -260,6 +264,18 @@ describe("openBulkTagPicker (onActivate)", () => {
     openPickerFor([10, 20]);
 
     expect($("#bulkTagPickerMount").find(".urlTagComboboxWrap").length).toBe(1);
+  });
+
+  it("no-ops while the bulk COPY picker is open (DD-13, isAnyBulkPickerOpen)", () => {
+    // Simulate the copy picker holding the shared registry open.
+    setPickerOpen("bulk-copy", true);
+
+    openPickerFor([10, 20]);
+
+    expect(pickerWrap().length).toBe(0);
+    expect(isBulkTagPickerOpen()).toBe(false);
+
+    setPickerOpen("bulk-copy", false);
   });
 
   it("does not mount when there is no active UTub (DD-9)", () => {

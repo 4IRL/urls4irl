@@ -761,6 +761,12 @@
   border-color: var(--splashGreen);
 }
 
+/* Bulk-copy "Copied" cue — same green as the applied/tagged cue. */
+.bulkCardResultCue--copied {
+  background: var(--splashGreen);
+  border-color: var(--splashGreen);
+}
+
 .bulkCardResultCue--skipped {
   background: var(--editURLColor);
   border-color: var(--editURLColor);
@@ -769,5 +775,204 @@
 @media (prefers-reduced-motion: reduce) {
   .bulkCardResultCue {
     transition: none;
+  }
+}
+
+/*
+ * ---- Bulk-copy destination picker + result banner (Phase 3) ----
+ * The picker mounts a roving-tabindex listbox of destination UTub rows into
+ * #bulkCopyPickerMount and renders the outcome into #bulkCopyResultBanner (which
+ * reuses the .bulkTagBanner styling above). Both live inside #bulkActionBar but
+ * OUTSIDE #bulkActionButtons, so the action-button rebuild never touches them.
+ * The desktop panel frame + mobile bottom-drawer chrome mirror the tag picker.
+ */
+.bulkCopyPickerMount {
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--pageBackgroundColor);
+  border: 1px solid var(--deckSelectionGreen);
+  border-radius: var(--radius-sm);
+}
+
+/* The mount is a listbox in the open state; reveal it as a column flexbox. */
+.bulkCopyPickerMount:not(.hidden) {
+  display: flex;
+}
+
+/* Destination rows reuse the .UTubSelector look; give them a comfortable target
+   and a clear staged (green) highlight. `.active` and `[aria-selected="true"]`
+   always toggle together per the Stage logic, so either selector alone suffices —
+   both are listed defensively. */
+.bulkCopyPickerMount .UTubSelector[role="option"] {
+  min-height: 2.25rem;
+  padding: 8px 12px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--textPrimary);
+}
+
+.bulkCopyPickerMount .UTubSelector[role="option"]:hover {
+  background: var(--cardBackgroundColorHover);
+}
+
+.bulkCopyPickerMount .UTubSelector[role="option"].active,
+.bulkCopyPickerMount .UTubSelector[role="option"][aria-selected="true"] {
+  background: var(--selectedUTubColorBackground);
+  border-color: var(--deckSelectionGreen);
+  color: var(--deckSelectionGreen);
+}
+
+/* Locked destinations are inert to clicks, not just visually dimmed — matches
+   the arrow-key roving's own skip-disabled-rows behaviour. */
+.bulkCopyPickerMount .UTubSelector[role="option"][aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Focus-visible must fire correctly as DOM focus roves between rows (DD-7/DD-20),
+   not just on the initial mount. */
+.bulkCopyPickerMount .UTubSelector[role="option"]:focus-visible,
+.bulkCopyCancelBtn:focus-visible,
+.bulkCopyConfirmBtn:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+.bulkCopyAllLocked {
+  padding: 10px 4px;
+  font-size: 0.85rem;
+  color: var(--grayBadgeSelection);
+}
+
+.bulkCopyPickerFooter {
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.bulkCopyPickerMsg {
+  flex: 1 1 auto;
+  font-size: 0.8rem;
+  color: var(--grayBadgeSelection);
+}
+
+/* Cancel — outlined danger (mirrors .urlTagComboboxCancelBtn). */
+.bulkCopyCancelBtn {
+  border: 1px solid var(--removeIconColor);
+  border-radius: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--removeIconColor);
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.bulkCopyCancelBtn:disabled,
+.bulkCopyConfirmBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Copy — green accent commit button. */
+.bulkCopyConfirmBtn {
+  position: relative;
+  border: 1px solid var(--deckSelectionGreen);
+  border-radius: 6px;
+  padding: 6px 14px;
+  background: var(--deckSelectionGreen);
+  color: #06231a;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Submit in-flight spinner (mirrors the bulk-tag submit spinner). */
+.bulkCopyConfirmBtn.bulkCopySubmitLoading {
+  color: transparent;
+}
+
+.bulkCopyConfirmBtn.bulkCopySubmitLoading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid #06231a;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: bulkTagSpin 0.6s linear infinite;
+}
+
+/* Selection lock cue: while the picker is open the checkboxes are inert (the
+   selection is snapshotted). Mirrors #URLDeck.bulkTagPickerOpen above. */
+#URLDeck.bulkCopyPickerOpen .urlSelectCheckboxWrap {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Desktop: the picker + banner wrap onto their own full-width row. */
+@media (min-width: 992px) {
+  .bulkCopyPickerMount {
+    flex-basis: 100%;
+  }
+}
+
+/*
+ * Mobile (<=991.98px): the picker is a bottom-docked drawer, one z-step above the
+ * bulk-action bar (1035) but BELOW the on-demand tag sheet (1040) — identical to
+ * the tag picker's drawer chrome (grabber lip + safe-area padding).
+ */
+@media (max-width: 991.98px) {
+  .bulkCopyPickerMount {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1036;
+    margin-top: 0;
+    background: var(--panelBackgroundColor);
+    border: none;
+    border-top: 2px solid var(--contentTopBorder);
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: var(--shadow-lg);
+    padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  .bulkCopyPickerMount::before {
+    content: "";
+    display: block;
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: #5a6565;
+    margin: 4px auto 8px;
+  }
+
+  /* 44px coarse-pointer touch targets for the rows + footer buttons. */
+  .bulkCopyPickerMount .UTubSelector[role="option"] {
+    min-height: 2.75rem;
+  }
+
+  .bulkCopyCancelBtn,
+  .bulkCopyConfirmBtn {
+    min-height: 2.75rem;
+    padding: 0 16px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bulkCopyConfirmBtn.bulkCopySubmitLoading::after {
+    animation: none;
   }
 }

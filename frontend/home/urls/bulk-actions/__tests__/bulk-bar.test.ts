@@ -12,6 +12,7 @@ import {
 } from "../bulk-selection.js";
 import { exitMultiSelectMode } from "../bulk-mode.js";
 import { isBulkTagPickerOpen, setBulkTagPickerOpen } from "../bulk-tag.js";
+import { setBulkCopyPickerOpen } from "../bulk-copy.js";
 
 vi.mock("../bulk-selection.js", () => ({
   selectAllVisibleURLCards: vi.fn(),
@@ -60,9 +61,11 @@ describe("bulk-bar", () => {
     vi.mocked(selectAllVisibleURLCards).mockClear();
     vi.mocked(clearURLSelection).mockClear();
     vi.mocked(exitMultiSelectMode).mockClear();
-    // Reset the (module-scoped) bulk-tag picker flag so a prior test's open
-    // picker never leaks into this one's action-button rebuild guard.
+    // Reset the (module-scoped) picker flags so a prior test's open picker never
+    // leaks into this one's action-button rebuild guard. Both mirror into the
+    // shared picker-guard registry that the bar now reads via isAnyBulkPickerOpen.
     setBulkTagPickerOpen(false);
+    setBulkCopyPickerOpen(false);
     initBulkBar();
   });
 
@@ -224,6 +227,19 @@ describe("bulk-bar", () => {
 
       setBulkTagPickerOpen(false);
     });
+
+    it("no-ops Select All and Clear while the bulk COPY picker is open (isAnyBulkPickerOpen covers both)", () => {
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+      setBulkCopyPickerOpen(true);
+
+      $("#bulkSelectAll").trigger("click");
+      $("#bulkSelectClear").trigger("click");
+
+      expect(vi.mocked(selectAllVisibleURLCards)).not.toHaveBeenCalled();
+      expect(vi.mocked(clearURLSelection)).not.toHaveBeenCalled();
+
+      setBulkCopyPickerOpen(false);
+    });
   });
 
   describe("mode-changed show/hide + focus", () => {
@@ -328,6 +344,29 @@ describe("bulk-bar", () => {
       expect($("#bulkSelectCount").text()).toBe("2");
 
       setBulkTagPickerOpen(false);
+    });
+
+    it("does NOT rebuild the action buttons while the bulk COPY picker is open", () => {
+      registerBulkAction({
+        id: "fake",
+        label: "Fake Action",
+        isAvailable: () => true,
+        onActivate: vi.fn(),
+      });
+      setState({ selectedURLCardIDs: [1] });
+
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+      expect($("#bulkActionButtons button").length).toBe(1);
+
+      $("#bulkActionButtons").append('<span id="rebuildSentinel"></span>');
+
+      setBulkCopyPickerOpen(true);
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1, 2] });
+
+      expect($("#rebuildSentinel").length).toBe(1);
+      expect($("#bulkSelectCount").text()).toBe("2");
+
+      setBulkCopyPickerOpen(false);
     });
   });
 });

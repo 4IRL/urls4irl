@@ -31,4 +31,13 @@
 	-->
 	<div id="bulkTagPickerMount" class="bulkTagPickerMount hidden"></div>
 	<div id="bulkTagResultBanner" class="bulkTagBanner hidden" role="status"></div>
+	<!--
+		Bulk-copy destination-UTub picker mount + result banner (Phase 3). Same
+		outside-#bulkActionButtons placement as the tag pair above so the open
+		picker + outcome banner survive the action-button rebuild. bulk-copy.ts
+		mounts a roving-tabindex listbox into #bulkCopyPickerMount and renders
+		success/partial/fail into #bulkCopyResultBanner (role=status).
+	-->
+	<div id="bulkCopyPickerMount" class="bulkCopyPickerMount hidden"></div>
+	<div id="bulkCopyResultBanner" class="bulkTagBanner hidden" role="status"></div>
 </div>
