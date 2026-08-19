@@ -1198,6 +1198,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/urls/copy": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Copy selected URLs from a source UTub into this UTub */
+    post: operations["copyUrlsToUtub"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/urls/{utub_url_id}": {
     parameters: {
       query?: never;
@@ -2769,6 +2786,44 @@ export interface components {
     HealthResponseSchema: {
       /** @description Service health status */
       status: string;
+    };
+    CopyUrlsRequest: {
+      /**
+       * @description Source UTub to copy URLs from
+       * @example 1
+       */
+      sourceUtubId: number;
+      /**
+       * @description UTub-URL ids in the source UTub to copy
+       * @example [
+       *       1,
+       *       2,
+       *       3
+       *     ]
+       */
+      utubUrlIds: number[];
+    };
+    UrlCopiedItemSchema: {
+      /** @description Source Utub_Urls id the copy originated from (for per-card cues) */
+      sourceUtubUrlID: number;
+      /** @description New destination Utub_Urls id created by the copy */
+      utubUrlID: number;
+      /** @description The copied URL string */
+      urlString: string;
+      /** @description Display title carried over to the copy */
+      urlTitle: string;
+    };
+    UrlCopySkippedSchema: {
+      /** @description Source Utub_Urls id skipped because it is already in the destination */
+      utubUrlID: number;
+      /** @description Machine-readable skip reason (BulkCopySkipReason value, e.g. 'duplicate') */
+      reason: string;
+    };
+    CopyUrlsResponseSchema: {
+      /** @description URLs copied into the destination UTub, with source→destination id pairs */
+      copied: components["schemas"]["UrlCopiedItemSchema"][];
+      /** @description Source URLs skipped because they were already in the destination UTub */
+      skipped: components["schemas"]["UrlCopySkippedSchema"][];
     };
     ChangeUsernameRequest: {
       /**
@@ -7427,6 +7482,60 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+    };
+  };
+  copyUrlsToUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CopyUrlsRequest"];
+      };
+    };
+    responses: {
+      /** @description Copy urls */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["CopyUrlsResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };

@@ -6315,6 +6315,92 @@
         }
       }
     },
+    "/utubs/{utub_id}/urls/copy": {
+      "post": {
+        "operationId": "copyUrlsToUtub",
+        "tags": ["urls"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Copy selected URLs from a source UTub into this UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyUrlsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Copy urls",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CopyUrlsResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLErrorCodes": {
+            "$ref": "#/components/schemas/URLErrorCodes"
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/urls/{utub_url_id}": {
       "get": {
         "operationId": "getUrl",
@@ -10630,6 +10716,84 @@
           }
         },
         "required": ["status"],
+        "type": "object"
+      },
+      "CopyUrlsRequest": {
+        "properties": {
+          "sourceUtubId": {
+            "description": "Source UTub to copy URLs from",
+            "examples": [1],
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "utubUrlIds": {
+            "description": "UTub-URL ids in the source UTub to copy",
+            "examples": [[1, 2, 3]],
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": ["sourceUtubId", "utubUrlIds"],
+        "type": "object"
+      },
+      "UrlCopiedItemSchema": {
+        "properties": {
+          "sourceUtubUrlID": {
+            "description": "Source Utub_Urls id the copy originated from (for per-card cues)",
+            "type": "integer"
+          },
+          "utubUrlID": {
+            "description": "New destination Utub_Urls id created by the copy",
+            "type": "integer"
+          },
+          "urlString": {
+            "description": "The copied URL string",
+            "type": "string"
+          },
+          "urlTitle": {
+            "description": "Display title carried over to the copy",
+            "type": "string"
+          }
+        },
+        "required": ["sourceUtubUrlID", "utubUrlID", "urlString", "urlTitle"],
+        "type": "object"
+      },
+      "UrlCopySkippedSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "Source Utub_Urls id skipped because it is already in the destination",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "Machine-readable skip reason (BulkCopySkipReason value, e.g. 'duplicate')",
+            "type": "string"
+          }
+        },
+        "required": ["utubUrlID", "reason"],
+        "type": "object"
+      },
+      "CopyUrlsResponseSchema": {
+        "properties": {
+          "copied": {
+            "description": "URLs copied into the destination UTub, with source\u2192destination id pairs",
+            "items": {
+              "$ref": "#/components/schemas/UrlCopiedItemSchema"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Source URLs skipped because they were already in the destination UTub",
+            "items": {
+              "$ref": "#/components/schemas/UrlCopySkippedSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["copied", "skipped"],
         "type": "object"
       },
       "ChangeUsernameRequest": {
