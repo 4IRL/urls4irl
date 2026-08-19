@@ -47,6 +47,7 @@ class EventName(StrEnum):
     REGISTER_SUCCESS = "register_success"
     TAG_APPLIED = "tag_applied"
     TAGS_APPLIED_BATCH = "tags_applied_batch"
+    TAGS_APPLIED_MULTI_URL = "tags_applied_multi_url"
     TAG_DELETED = "tag_deleted"
     TAG_REMOVED = "tag_removed"
     URL_ACCESSED = "url_accessed"

@@ -9,6 +9,7 @@ import {
   getAvailableBulkActions,
 } from "./bulk-action-registry.js";
 import { exitMultiSelectMode } from "./bulk-mode.js";
+import { isBulkTagPickerOpen } from "./bulk-tag.js";
 import {
   clearURLSelection,
   selectAllVisibleURLCards,
@@ -143,7 +144,13 @@ function updateBar(selectedURLCardIDs: number[]): void {
     selectedCount === 0 ? "true" : "false",
   );
 
-  renderBulkActionButtons(buildContext());
+  // The action-button region rebuilds on every selection/filter/search change.
+  // While the bulk tag picker is open the selection is locked, so skip the
+  // rebuild — it would otherwise destroy and recreate the ephemeral action button
+  // out from under the open picker mounted in the stable container.
+  if (!isBulkTagPickerOpen()) {
+    renderBulkActionButtons(buildContext());
+  }
 }
 
 /** Show/hide the bar and manage focus on mode enter/exit. */
@@ -177,10 +184,13 @@ function toggleBar(active: boolean): void {
  * change; show-hide + focus on mode change). Called from initBulkActions().
  */
 export function initBulkBar(): void {
-  $(SELECT_ALL_SELECTOR).offAndOnExact(SELECT_ALL_CLICK, () =>
-    selectAllVisibleURLCards(),
-  );
+  $(SELECT_ALL_SELECTOR).offAndOnExact(SELECT_ALL_CLICK, () => {
+    // Selection is locked while the bulk tag picker is open (see bulk-tag.ts).
+    if (isBulkTagPickerOpen()) return;
+    selectAllVisibleURLCards();
+  });
   $(CLEAR_SELECTOR).offAndOnExact(CLEAR_CLICK, () => {
+    if (isBulkTagPickerOpen()) return;
     if ($(CLEAR_SELECTOR).attr("aria-disabled") === "true") return;
     clearURLSelection();
   });

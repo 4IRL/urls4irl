@@ -1,6 +1,7 @@
 from flask import Blueprint
 
 from backend.api_common.auth_decorators import (
+    utub_membership_required,
     utub_membership_with_valid_url_in_utub_required,
     utub_membership_with_valid_url_tag,
 )
@@ -11,8 +12,13 @@ from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.tags import AddTagRequest, AddTagsRequest
+from backend.schemas.requests.tags import (
+    AddTagRequest,
+    AddTagsRequest,
+    AddTagsToUrlsRequest,
+)
 from backend.schemas.tags import (
+    AddTagsToUrlsResponseSchema,
     UrlTagModifiedResponseSchema,
     UrlTagsModifiedResponseSchema,
 )
@@ -20,6 +26,7 @@ from backend.tags.constants import URLTagErrorCodes
 from backend.tags.services.create_url_tag import (
     add_batch_tags_to_existing_url,
     add_tag_to_url_if_valid,
+    add_tags_to_urls_in_utub,
 )
 from backend.tags.services.delete_url_tag import delete_url_tag
 from backend.utils.strings.openapi_strs import OPEN_API
@@ -107,6 +114,44 @@ def create_utub_url_tags(
         tag_strings=add_tags_request.tagStrings,
         utub=current_utub,
         utub_url=current_utub_url,
+    )
+
+
+@utub_url_tags.route("/utubs/<int:utub_id>/urls/tags/batch", methods=["POST"])
+@utub_membership_required
+@api_route(
+    request_schema=AddTagsToUrlsRequest,
+    response_schema=AddTagsToUrlsResponseSchema,
+    error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+    error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.TAGS],
+    description="Apply tags to multiple URLs in a UTub",
+    status_codes={
+        200: AddTagsToUrlsResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def apply_tags_to_utub_urls(
+    utub_id: int,
+    current_utub: Utubs,
+    add_tags_to_urls_request: AddTagsToUrlsRequest,
+) -> FlaskResponse:
+    """
+    User wants to apply one or more tags to multiple selected URLs in a UTub in
+    a single request. URLs already at the per-URL tag limit are skipped and
+    reported; every other selected URL is reported as applied.
+
+    Args:
+        utub_id (int): The UTub containing the URLs
+        current_utub (Utubs): The UTub model
+        add_tags_to_urls_request (AddTagsToUrlsRequest): Validated request schema
+    """
+    return add_tags_to_urls_in_utub(
+        tag_strings=add_tags_to_urls_request.tagStrings,
+        utub_url_ids=add_tags_to_urls_request.utubUrlIds,
+        utub=current_utub,
     )
 
 

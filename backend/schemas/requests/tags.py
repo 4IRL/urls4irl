@@ -70,3 +70,32 @@ class AddTagsRequest(BaseModel):
     @classmethod
     def tag_strings_valid(cls, tag_strings: list[str]) -> list[str]:
         return validate_tag_strings(tag_strings)
+
+
+class AddTagsToUrlsRequest(BaseModel):
+    utubUrlIds: list[int] = Field(
+        min_length=1,
+        max_length=TAG_CONSTANTS.MAX_BULK_TAG_URLS,
+        description="UTub-URL ids to tag",
+        examples=[[1, 2, 3]],
+    )
+    tagStrings: list[TagStringItem] = Field(
+        min_length=1,
+        max_length=TAG_CONSTANTS.MAX_URL_TAGS,
+        description="Tags to apply to each selected URL",
+        examples=[["python", "web"]],
+    )
+
+    @field_validator("tagStrings", mode="after")
+    @classmethod
+    def tag_strings_valid(cls, tag_strings: list[str]) -> list[str]:
+        return validate_tag_strings(tag_strings)
+
+    @field_validator("utubUrlIds", mode="after")
+    @classmethod
+    def utub_url_ids_valid(cls, utub_url_ids: list[int]) -> list[int]:
+        # Preserve order while dropping duplicate ids
+        deduped = list(dict.fromkeys(utub_url_ids))
+        if any(url_id <= 0 for url_id in deduped):
+            raise ValueError(TAGS_FAILURE.INVALID_URL_ID)
+        return deduped

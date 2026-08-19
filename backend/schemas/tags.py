@@ -92,3 +92,40 @@ class UrlTagsModifiedResponseSchema(BaseSchema):
         alias=M.APPLIED_TAGS,
         description="Tags newly applied in this batch, with refreshed UTub-wide counts",
     )
+
+
+class UrlBatchTagAppliedSchema(BaseSchema):
+    utub_url_id: int = Field(
+        alias=M.UTUB_URL_ID,
+        description="UTub-URL id that was (or already had) tags applied",
+    )
+    utub_url_tag_ids: list[int] = Field(
+        alias=M.URL_TAG_IDS,
+        description="Full updated list of tag IDs on this URL",
+    )
+    applied_tags: list[UtubTagSchema] = Field(
+        alias=M.APPLIED_TAGS,
+        description="Tags newly applied to this URL in this request, with refreshed UTub-wide counts",
+    )
+
+
+class UrlBatchTagSkippedSchema(BaseSchema):
+    utub_url_id: int = Field(
+        alias=M.UTUB_URL_ID,
+        description="UTub-URL id skipped in this request",
+    )
+    reason: str = Field(
+        alias=M.SKIP_REASON,
+        description="Machine-readable skip reason (BulkTagSkipReason value, e.g. 'overLimit')",
+    )
+
+
+class AddTagsToUrlsResponseSchema(BaseSchema):
+    applied: list[UrlBatchTagAppliedSchema] = Field(
+        alias=M.APPLIED,
+        description="Every non-skipped URL (appliedTags may be empty when all tags were already present)",
+    )
+    skipped: list[UrlBatchTagSkippedSchema] = Field(
+        alias=M.SKIPPED,
+        description="URLs skipped because they were at the per-URL tag limit",
+    )

@@ -24,6 +24,7 @@ const DECK_HTML = `
   <main id="mainPanel">
     <div id="URLDeck">
       <button id="utubEditPanelToggle" type="button"></button>
+      <div id="bulkTagResultBanner" class="bulkTagBanner hidden" role="status"></div>
       <div class="urlRow multiSelected" utuburlid="1" aria-checked="true"></div>
       <div class="urlRow multiSelected" utuburlid="2" aria-checked="true"></div>
     </div>
@@ -77,6 +78,20 @@ describe("bulk-mode", () => {
       expect(handler).toHaveBeenCalledWith({ active: false });
 
       unsubscribe();
+    });
+
+    it("clears/hides #bulkTagResultBanner on exit (banner teardown on mode exit)", () => {
+      enterMultiSelectMode();
+      // Seed a visible partial-success banner as if a prior bulk-apply rendered it.
+      $("#bulkTagResultBanner")
+        .removeClass("hidden")
+        .html('<div class="bulkTagBannerBody">Tags added to 2 URLs.</div>');
+      expect($("#bulkTagResultBanner").hasClass("hidden")).toBe(false);
+
+      exitMultiSelectMode();
+
+      expect($("#bulkTagResultBanner").hasClass("hidden")).toBe(true);
+      expect($("#bulkTagResultBanner").children().length).toBe(0);
     });
   });
 

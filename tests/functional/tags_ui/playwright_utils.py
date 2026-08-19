@@ -25,6 +25,10 @@ from tests.functional.playwright_utils import (
 from tests.functional.tags_ui.playwright_assert_utils import (
     assert_delete_utub_tag_modal_shown,
 )
+from tests.functional.urls_ui.playwright_utils import (
+    enter_multi_select_mode,
+    tap_url_checkbox,
+)
 
 SWIPE_COMMIT_PX = 220
 SWIPE_SNAP_BACK_PX = 60
@@ -330,3 +334,104 @@ def delete_utub_tag_elem(*, page: Page, tag_id: str, app: Flask) -> None:
     )
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=utub_tag_locator)
+
+
+# --- Bulk multi-URL tag-apply helpers (Phase 2) -------------------------------
+# The BULK combobox mounts in the stable `#bulkTagPickerMount` container (never a
+# URL card), so these staging/submit helpers scope to that mount rather than
+# `ROW_SELECTED_URL` like the per-URL combobox helpers above.
+
+_BULK_PICKER_INPUT = f"{HPL.BULK_TAG_PICKER_MOUNT} {HPL.INPUT_TAG_COMBOBOX}"
+
+
+def enter_multi_select_and_select_urls(*, page: Page, url_ids: list[int]) -> None:
+    """Enter multi-select mode and tap each given row's 44px checkbox to build a
+    live selection for a bulk action."""
+    enter_multi_select_mode(page=page)
+    for utub_url_id in url_ids:
+        tap_url_checkbox(page=page, utub_url_id=utub_url_id)
+
+
+def open_bulk_tag_picker(*, page: Page) -> None:
+    """Click the registry-rendered "Add tags" bulk-action button and settle into
+    the mounted BULK-mode picker (combobox input visible + focused)."""
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_BULK_ADD_TAGS)
+    wait_until_visible_css_selector(page=page, css_selector=_BULK_PICKER_INPUT)
+    wait_until_in_focus(page=page, css_selector=_BULK_PICKER_INPUT)
+
+
+def _count_staged_chips_in_picker(*, page: Page) -> int:
+    chip_selector = f"{HPL.BULK_TAG_PICKER_MOUNT} {HPL.TAG_STAGED_CHIP}"
+    return page.locator(chip_selector).count()
+
+
+def _wait_for_staged_chip_count_in_picker(*, page: Page, expected_count: int) -> None:
+    chip_selector = f"{HPL.BULK_TAG_PICKER_MOUNT} {HPL.TAG_STAGED_CHIP}"
+    expect(page.locator(chip_selector)).to_have_count(expected_count)
+
+
+def type_in_bulk_tag_combobox(*, page: Page, text: str) -> Locator:
+    """Type into the BULK picker's combobox input (scoped to the mount)."""
+    wait_then_click_element(page=page, css_selector=_BULK_PICKER_INPUT)
+    wait_until_in_focus(page=page, css_selector=_BULK_PICKER_INPUT)
+    combobox_input = page.locator(_BULK_PICKER_INPUT).first
+    expect(combobox_input).to_be_visible()
+    clear_then_send_keys(locator=combobox_input, input_text=text)
+    return combobox_input
+
+
+def stage_bulk_tag_suggestion(*, page: Page, tag_text: str) -> None:
+    """Filter the BULK picker's existing-tag suggestions to `tag_text`, then stage
+    the exact-match option as a chip. The find + click runs atomically in the
+    browser so the 200ms debounce re-render cannot invalidate the matched option
+    between finding and clicking it."""
+    chips_before = _count_staged_chips_in_picker(page=page)
+    type_in_bulk_tag_combobox(page=page, text=tag_text)
+    options_selector = (
+        f"{HPL.BULK_TAG_PICKER_MOUNT} {HPL.TAG_COMBOBOX_OPTION} "
+        f"{HPL.TAG_COMBOBOX_OPTION_LABEL}"
+    )
+    wait_then_get_element(page=page, css_selector=options_selector)
+    page.wait_for_function(
+        """({ selector, targetText }) => {
+            const options = Array.from(document.querySelectorAll(selector));
+            const match = options.find(
+                (option) => option.textContent.trim() === targetText.trim()
+            );
+            if (!match || !match.offsetParent) return false;
+            match.click();
+            return true;
+        }""",
+        arg={"selector": options_selector, "targetText": tag_text},
+    )
+    _wait_for_staged_chip_count_in_picker(page=page, expected_count=chips_before + 1)
+
+
+def stage_bulk_new_tag(*, page: Page, text: str) -> None:
+    """Type `text` into the BULK picker and stage it via the "Create tag" option
+    (a brand-new tag not yet in the UTub becomes a chip)."""
+    chips_before = _count_staged_chips_in_picker(page=page)
+    type_in_bulk_tag_combobox(page=page, text=text)
+    create_new_label_selector = (
+        f"{HPL.BULK_TAG_PICKER_MOUNT} {HPL.TAG_COMBOBOX_CREATE_NEW} "
+        f"{HPL.TAG_COMBOBOX_OPTION_LABEL}"
+    )
+    wait_then_click_element(page=page, css_selector=create_new_label_selector)
+    _wait_for_staged_chip_count_in_picker(page=page, expected_count=chips_before + 1)
+
+
+def submit_bulk_tags(*, page: Page) -> None:
+    """Click the BULK picker's submit button."""
+    submit_selector = f"{HPL.BULK_TAG_PICKER_MOUNT} {HPL.BUTTON_TAGS_SUBMIT_BATCH}"
+    wait_then_click_element(page=page, css_selector=submit_selector)
+
+
+def expect_badge_count_on_url_row(
+    *, page: Page, utub_url_id: int, expected: int
+) -> None:
+    """Assert (auto-retrying) the `.tagBadge` count on a specific (not-necessarily-
+    selected) URL row. Uses Playwright's retrying `to_have_count` rather than a
+    snapshot `.count()` so a badge DOM update that trails the picker-hide or the
+    initial deck render cannot flake the assertion."""
+    badge_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}'] {HPL.TAG_BADGES}"
+    expect(page.locator(badge_selector)).to_have_count(expected)
