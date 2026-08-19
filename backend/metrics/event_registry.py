@@ -192,6 +192,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         category=EventCategory.DOMAIN,
         dimensions={"stripped": ("true", "false")},
     ),
+    EventName.URLS_COPIED_TO_UTUB: EventRegistryEntry(
+        description="URLs copied from a source UTub into another UTub in one bulk action",
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "url_count_bucket": BULK_TAG_URL_BUCKETS,
+            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+        },
+    ),
     EventName.UTUB_TAG_CREATED: EventRegistryEntry(
         description=("New tag vocabulary added to a UTub (distinct from TAG_APPLIED)"),
         category=EventCategory.DOMAIN,
@@ -508,6 +516,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
                 "utub_desc_edit",
                 "tag_create",
                 "member_invite",
+                "bulk_copy",
             ),
         },
     ),
@@ -525,6 +534,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
                 "utub_desc_edit",
                 "tag_create",
                 "member_invite",
+                "bulk_copy",
             ),
         },
     ),

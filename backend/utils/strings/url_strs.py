@@ -35,6 +35,16 @@ URL_SEARCH_NO_RESULTS = "No URLs found"
 UTUB_NO_URLS = "No URLs yet"
 ADD_URL_BUTTON = "Add URL"
 
+# Bulk copy-to-UTub success / banner / per-card cue strings.
+URLS_COPIED = "URLs copied to UTub."
+URLS_COPIED_PARTIAL = "{copied} copied; {skipped} already in the UTub."
+URLS_COPY_NONE_NEW = "All selected URLs are already in the UTub."
+URL_BULK_CARD_COPIED = "Copied"
+URL_BULK_CARD_ALREADY_THERE = "Already there"
+URL_BULK_COPY_LABEL = "Copy to UTub"
+URL_BULK_COPY_SUBMITTING = "Copying…"
+URL_BULK_COPY_ALL_LOCKED = "All other UTubs are locked."
+
 # Multi-select bulk-action bar screen-reader announcements. TS composes the live
 # announcement in bulk-actions/bulk-bar.ts from these templates ({n} is replaced
 # with the selected / hidden count); the singular form mirrors the
@@ -80,6 +90,14 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_FOUND_IN_UTUB = URL_FOUND_IN_UTUB
     URL_TAGS = URL_TAGS
     TAG_COUNTS_MODIFIED = TAG_COUNTS_MODIFIED
+    URLS_COPIED = URLS_COPIED
+    URLS_COPIED_PARTIAL = URLS_COPIED_PARTIAL
+    URLS_COPY_NONE_NEW = URLS_COPY_NONE_NEW
+    URL_BULK_CARD_COPIED = URL_BULK_CARD_COPIED
+    URL_BULK_CARD_ALREADY_THERE = URL_BULK_CARD_ALREADY_THERE
+    URL_BULK_COPY_LABEL = URL_BULK_COPY_LABEL
+    URL_BULK_COPY_SUBMITTING = URL_BULK_COPY_SUBMITTING
+    URL_BULK_COPY_ALL_LOCKED = URL_BULK_COPY_ALL_LOCKED
 
 
 # Strings for URL failure
@@ -98,6 +116,10 @@ EMPTY_URL = "URL cannot be empty."
 TOO_MANY_WAYBACK_ATTEMPTS = "Too many attempts, please try again in one minute."
 UNEXPECTED_VALIDATION_EXCEPTION = "Unexpected exception while validating the URL."
 URLS_WITH_CREDENTIALS_EXCEPTION = "URLs with credentials not allowed."
+UNABLE_TO_COPY_URLS = "Unable to copy the selected URLs."
+URL_NOT_IN_UTUB = "URL not found in the source UTub."
+INVALID_URL_ID = "Invalid URL ID."
+CANNOT_COPY_TO_SAME_UTUB = "Cannot copy URLs into the same UTub."
 
 
 class URL_FAILURE(FAILURE_GENERAL):
@@ -116,6 +138,10 @@ class URL_FAILURE(FAILURE_GENERAL):
     TOO_MANY_WAYBACK_ATTEMPTS = TOO_MANY_WAYBACK_ATTEMPTS
     UNEXPECTED_VALIDATION_EXCEPTION = UNEXPECTED_VALIDATION_EXCEPTION
     URLS_WITH_CREDENTIALS_EXCEPTION = URLS_WITH_CREDENTIALS_EXCEPTION
+    UNABLE_TO_COPY_URLS = UNABLE_TO_COPY_URLS
+    URL_NOT_IN_UTUB = URL_NOT_IN_UTUB
+    INVALID_URL_ID = INVALID_URL_ID
+    CANNOT_COPY_TO_SAME_UTUB = CANNOT_COPY_TO_SAME_UTUB
 
 
 # Strings for URL no change

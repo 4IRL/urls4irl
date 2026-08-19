@@ -44,6 +44,8 @@ DATE_FORMAT = "dateFormat"
 APPLIED = "applied"
 SKIPPED = "skipped"
 SKIP_REASON = "reason"
+COPIED = "copied"
+SOURCE_UTUB_URL_ID = "sourceUtubUrlID"
 
 
 class MODELS:
@@ -90,3 +92,5 @@ class MODELS:
     APPLIED = APPLIED
     SKIPPED = SKIPPED
     SKIP_REASON = SKIP_REASON
+    COPIED = COPIED
+    SOURCE_UTUB_URL_ID = SOURCE_UTUB_URL_ID

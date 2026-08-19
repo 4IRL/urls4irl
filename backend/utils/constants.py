@@ -214,6 +214,9 @@ class URL_CONSTANTS:
     MIN_URL_LENGTH = 1
     MAX_URL_TITLE_LENGTH = 100
     MAX_URL_LENGTH = 8000
+    # Max URLs targetable in one bulk copy-to-UTub request — a generous
+    # "Select All" ceiling that bounds request cost (mirrors MAX_BULK_TAG_URLS).
+    MAX_BULK_COPY_URLS = 100
 
 
 class TAG_CONSTANTS:

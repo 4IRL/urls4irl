@@ -4460,6 +4460,7 @@
                 "url_string_updated",
                 "url_title_updated",
                 "url_tracking_params_stripped",
+                "urls_copied_to_utub",
                 "utub_created",
                 "utub_deleted",
                 "utub_desc_updated",
@@ -4804,6 +4805,7 @@
                 "url_string_updated",
                 "url_title_updated",
                 "url_tracking_params_stripped",
+                "urls_copied_to_utub",
                 "utub_created",
                 "utub_deleted",
                 "utub_desc_updated",
@@ -8715,7 +8717,7 @@
       },
       "URLErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -8724,7 +8726,8 @@
           "UNEXPECTED_VALIDATION_ERROR",
           "URL_ALREADY_IN_UTUB_ERROR",
           "EMPTY_URL",
-          "UTUB_IS_LOCKED"
+          "UTUB_IS_LOCKED",
+          "UNABLE_TO_COPY_URLS_ERROR"
         ],
         "description": "Error codes for URLErrorCodes"
       },
