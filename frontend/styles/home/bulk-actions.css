@@ -742,7 +742,11 @@
   font-size: 0.7rem;
   font-weight: 800;
   line-height: 1.5;
-  color: var(--textPrimary);
+  /* Opaque chip with fixed dark text (the same #06231a the count pill uses) so
+     it reads as a solid label in BOTH themes and never lets the selected card's
+     teal fill bleed through — a translucent tint washed out over the selection
+     highlight. */
+  color: #06231a;
   border: 1px solid transparent;
   opacity: 1;
   transition: opacity 0.6s ease;
@@ -753,12 +757,12 @@
 }
 
 .bulkCardResultCue--applied {
-  background: rgba(67, 199, 154, 0.18);
+  background: var(--splashGreen);
   border-color: var(--splashGreen);
 }
 
 .bulkCardResultCue--skipped {
-  background: rgba(253, 231, 76, 0.22);
+  background: var(--editURLColor);
   border-color: var(--editURLColor);
 }
 
