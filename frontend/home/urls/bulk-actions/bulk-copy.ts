@@ -648,12 +648,12 @@ function handleCopySuccess({ response }: { response: CopyUrlsResponse }): void {
     cues: [
       ...response.copied.map((entry) => ({
         utubUrlID: entry.sourceUtubUrlID,
-        variant: "copied",
+        variant: "copied" as const,
         label: APP_CONFIG.strings.URL_BULK_CARD_COPIED,
       })),
       ...response.skipped.map((entry) => ({
         utubUrlID: entry.utubUrlID,
-        variant: "skipped",
+        variant: "skipped" as const,
         label: APP_CONFIG.strings.URL_BULK_CARD_ALREADY_THERE,
       })),
     ],

@@ -595,6 +595,61 @@ describe("confirm (Copy) — resolve flows", () => {
     expect(banner.text()).toContain(APP_CONFIG.strings.UNABLE_TO_COPY_URLS);
     expect(isBulkCopyPickerOpen()).toBe(false);
   });
+
+  it("redirects to the error page on a JSON 403 (auth/lock lost mid-flight)", () => {
+    const locationAssignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    try {
+      seedUrlRows([10]);
+      openPickerFor([10]);
+      const deferred = stageAndSubmit("#bulkCopyOption-2");
+      deferred.reject({ status: 403, responseJSON: { message: "Forbidden" } });
+
+      expect(locationAssignSpy).toHaveBeenCalledWith(
+        APP_CONFIG.routes.errorPage,
+      );
+    } finally {
+      locationAssignSpy.mockRestore();
+    }
+  });
+
+  it("redirects to the error page on a JSON 404 (stale source UTub/URL)", () => {
+    const locationAssignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    try {
+      seedUrlRows([10]);
+      openPickerFor([10]);
+      const deferred = stageAndSubmit("#bulkCopyOption-2");
+      deferred.reject({ status: 404, responseJSON: { message: "Not found" } });
+
+      expect(locationAssignSpy).toHaveBeenCalledWith(
+        APP_CONFIG.routes.errorPage,
+      );
+    } finally {
+      locationAssignSpy.mockRestore();
+    }
+  });
+
+  it("replaces the body with the server HTML on a non-JSON 403 (CSRF expired)", () => {
+    seedUrlRows([10]);
+    openPickerFor([10]);
+    const deferred = stageAndSubmit("#bulkCopyOption-2");
+
+    const forbiddenHtml = '<div id="forbiddenPage">Forbidden</div>';
+    // No `responseJSON` key → the non-JSON branch; a 403 with an HTML content
+    // type swaps the server body in place (login/forbidden page) rather than
+    // redirecting to the error page.
+    deferred.reject({
+      status: 403,
+      responseText: forbiddenHtml,
+      getResponseHeader: (name: string) =>
+        name === "Content-Type" ? "text/html; charset=utf-8" : null,
+    });
+
+    expect($("#forbiddenPage").length).toBe(1);
+  });
 });
 
 describe("Escape + Cancel (DD-17)", () => {

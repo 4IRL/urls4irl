@@ -408,12 +408,12 @@ function handleBulkSubmitSuccess({
         .filter((entry) => entry.appliedTags.length > 0)
         .map((entry) => ({
           utubUrlID: entry.utubUrlID,
-          variant: "applied",
+          variant: "applied" as const,
           label: APP_CONFIG.strings.URL_BULK_CARD_APPLIED,
         })),
       ...response.skipped.map((entry) => ({
         utubUrlID: entry.utubUrlID,
-        variant: "skipped",
+        variant: "skipped" as const,
         label: APP_CONFIG.strings.URL_BULK_CARD_SKIPPED,
       })),
     ],

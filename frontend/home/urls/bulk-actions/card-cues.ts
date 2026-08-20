@@ -16,6 +16,14 @@
 
 import { $ } from "../../../lib/globals.js";
 
+/**
+ * The colour variants a per-card cue can take, each mapping to a
+ * `.bulkCardResultCue--${variant}` class in bulk-actions.css. Typing the cue
+ * `variant` with this union (rather than bare `string`) stops a typo at a call
+ * site from type-checking into an unstyled chip at runtime.
+ */
+export type CardCueVariant = "applied" | "copied" | "skipped";
+
 /** How long a per-card result cue stays fully visible before it fades. */
 const CARD_CUE_HOLD_MS = 2400;
 /** Fade duration — mirrors the CSS transition on `.bulkCardResultCue--fading`. */
@@ -30,7 +38,7 @@ const CARD_CUE_FADE_MS = 600;
 export function flashCardResultCues({
   cues,
 }: {
-  cues: Array<{ utubUrlID: number; variant: string; label: string }>;
+  cues: Array<{ utubUrlID: number; variant: CardCueVariant; label: string }>;
 }): void {
   cues.forEach(({ utubUrlID, variant, label }) => {
     const urlCard = $(`.urlRow[utuburlid=${utubUrlID}]`);
