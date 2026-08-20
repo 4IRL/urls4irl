@@ -365,11 +365,12 @@ class _DimUrlAddedToUtub(BaseModel):
 
 class _DimUrlsCopiedToUtub(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    # Both closed sets source the same `BULK_TAG_URL_BUCKETS` constant fed to the
-    # registry, so the audit set-compare between these Literals and the registry
+    # All three closed sets source the same `BULK_TAG_URL_BUCKETS` constant fed to
+    # the registry, so the audit set-compare between these Literals and the registry
     # tuples can never drift.
     url_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
     skipped_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
+    destination_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 

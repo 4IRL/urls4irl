@@ -17,6 +17,11 @@ class BulkCopySkipReason(StrEnum):
     DUPLICATE = "duplicate"
 
 
+class DestCopyStatus(StrEnum):
+    OK = "ok"
+    LOCKED = "locked"
+
+
 class URLState(IntEnum):
     FRESH_URL = 1
     EXISTING_URL_IN_U4I = 2

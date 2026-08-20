@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.schemas.requests.urls import (
+    CopyUrlsMultiRequest,
     CopyUrlsRequest,
     CreateURLRequest,
     UpdateURLTitleRequest,
@@ -250,6 +251,55 @@ class TestCopyUrlsRequest:
     def test_negative_source_utub_id_rejected(self):
         with pytest.raises(ValidationError):
             CopyUrlsRequest(sourceUtubId=-1, utubUrlIds=[1])
+
+
+class TestCopyUrlsMultiRequest:
+    """Tests for CopyUrlsMultiRequest validation of the new destUtubIds field
+    (source UTub + selected UTub-URL ids + destination UTub ids)."""
+
+    def test_valid_request_round_trips(self):
+        request = CopyUrlsMultiRequest(
+            sourceUtubId=1, utubUrlIds=[1, 2, 3], destUtubIds=[2, 3]
+        )
+        assert request.sourceUtubId == 1
+        assert request.utubUrlIds == [1, 2, 3]
+        assert request.destUtubIds == [2, 3]
+
+    def test_dest_ids_dedup_collapses_duplicates_preserving_order(self):
+        request = CopyUrlsMultiRequest(
+            sourceUtubId=1, utubUrlIds=[1], destUtubIds=[3, 2, 3, 4, 2]
+        )
+        assert request.destUtubIds == [3, 2, 4]
+
+    def test_non_positive_dest_id_rejected(self):
+        with pytest.raises(ValidationError) as exc_info:
+            CopyUrlsMultiRequest(sourceUtubId=1, utubUrlIds=[1], destUtubIds=[2, 0, 3])
+        assert URL_FAILURE.INVALID_URL_ID in str(exc_info.value)
+
+    def test_negative_dest_id_rejected(self):
+        with pytest.raises(ValidationError) as exc_info:
+            CopyUrlsMultiRequest(sourceUtubId=1, utubUrlIds=[1], destUtubIds=[-5])
+        assert URL_FAILURE.INVALID_URL_ID in str(exc_info.value)
+
+    def test_empty_dest_id_list_rejected(self):
+        with pytest.raises(ValidationError):
+            CopyUrlsMultiRequest(sourceUtubId=1, utubUrlIds=[1], destUtubIds=[])
+
+    def test_over_max_bulk_copy_destinations_rejected(self):
+        too_many = list(range(1, URL_CONSTANTS.MAX_BULK_COPY_DESTINATIONS + 2))
+        with pytest.raises(ValidationError):
+            CopyUrlsMultiRequest(sourceUtubId=1, utubUrlIds=[1], destUtubIds=too_many)
+
+    def test_at_max_bulk_copy_destinations_allowed(self):
+        at_limit = list(range(1, URL_CONSTANTS.MAX_BULK_COPY_DESTINATIONS + 1))
+        request = CopyUrlsMultiRequest(
+            sourceUtubId=1, utubUrlIds=[1], destUtubIds=at_limit
+        )
+        assert len(request.destUtubIds) == URL_CONSTANTS.MAX_BULK_COPY_DESTINATIONS
+
+    def test_dest_ids_missing_rejected(self):
+        with pytest.raises(ValidationError):
+            CopyUrlsMultiRequest(sourceUtubId=1, utubUrlIds=[1])
 
 
 class TestUpdateURLTitleRequestWhitespaceStripping:

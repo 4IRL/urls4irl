@@ -179,6 +179,12 @@ def copy_urls_into_utub(
             dimensions={
                 "url_count_bucket": bucket_bulk_tag_url_count(len(copied_results)),
                 "skipped_count_bucket": bucket_bulk_tag_url_count(len(skipped_results)),
+                # This single-destination path always copies into exactly one
+                # destination. The dim is required on the shared _DimUrlsCopiedToUtub
+                # model (added for the multi-destination orchestrator); feed it here
+                # so this still-live emit passes validation. This whole function +
+                # emit is retired in Step 3.
+                "destination_count_bucket": bucket_bulk_tag_url_count(1),
             },
         )
 

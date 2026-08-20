@@ -46,6 +46,10 @@ SKIPPED = "skipped"
 SKIP_REASON = "reason"
 COPIED = "copied"
 SOURCE_UTUB_URL_ID = "sourceUtubUrlID"
+DEST_UTUB_ID = "destUtubID"
+STATUS = "status"
+TOTAL_COPIED = "totalCopied"
+TOTAL_SKIPPED = "totalSkipped"
 
 
 class MODELS:
@@ -94,3 +98,7 @@ class MODELS:
     SKIP_REASON = SKIP_REASON
     COPIED = COPIED
     SOURCE_UTUB_URL_ID = SOURCE_UTUB_URL_ID
+    DEST_UTUB_ID = DEST_UTUB_ID
+    STATUS = STATUS
+    TOTAL_COPIED = TOTAL_COPIED
+    TOTAL_SKIPPED = TOTAL_SKIPPED

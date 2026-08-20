@@ -207,5 +207,24 @@ class CopyUrlsResponseSchema(BaseSchema):
     )
 
 
+class PerDestinationCopyResultSchema(BaseSchema):
+    dest_utub_id: int = Field(alias=M.DEST_UTUB_ID, description="Destination UTub id")
+    status: str = Field(
+        alias=M.STATUS, description="DestCopyStatus value: 'ok' or 'locked'"
+    )
+    copied: list[UrlCopiedItemSchema] = Field(alias=M.COPIED)
+    skipped: list[UrlCopySkippedSchema] = Field(alias=M.SKIPPED)
+
+
+# TEMPORARY name (DD-2): coexists with the still-live single-destination
+# CopyUrlsResponseSchema through Steps 1-2. Step 3 deletes the old flat schema and
+# renames this onto the canonical CopyUrlsResponseSchema name in the same commit
+# as the route retirement.
+class CopyUrlsMultiResponseSchema(BaseSchema):
+    results: list[PerDestinationCopyResultSchema] = Field(alias=M.SEARCH_RESULTS)
+    total_copied: int = Field(alias=M.TOTAL_COPIED)
+    total_skipped: int = Field(alias=M.TOTAL_SKIPPED)
+
+
 UtubUrlSchema.model_rebuild()
 UtubUrlDetailSchema.model_rebuild()

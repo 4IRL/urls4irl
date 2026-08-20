@@ -198,6 +198,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         dimensions={
             "url_count_bucket": BULK_TAG_URL_BUCKETS,
             "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+            "destination_count_bucket": BULK_TAG_URL_BUCKETS,
         },
     ),
     EventName.UTUB_TAG_CREATED: EventRegistryEntry(

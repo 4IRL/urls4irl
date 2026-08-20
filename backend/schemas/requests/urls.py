@@ -60,6 +60,44 @@ class CopyUrlsRequest(BaseModel):
         return deduped
 
 
+# TEMPORARY name (DD-9): coexists with the still-live single-destination
+# CopyUrlsRequest through Steps 1-2. Step 3 deletes the old CopyUrlsRequest and
+# renames this onto the canonical CopyUrlsRequest name in the same commit as the
+# route retirement.
+class CopyUrlsMultiRequest(BaseModel):
+    sourceUtubId: int = Field(
+        gt=0, description="Source UTub to copy URLs from", examples=[1]
+    )
+    utubUrlIds: list[int] = Field(
+        min_length=1,
+        max_length=URL_CONSTANTS.MAX_BULK_COPY_URLS,
+        description="UTub-URL ids in the source UTub to copy",
+        examples=[[1, 2, 3]],
+    )
+    destUtubIds: list[int] = Field(
+        min_length=1,
+        max_length=URL_CONSTANTS.MAX_BULK_COPY_DESTINATIONS,
+        description="Destination UTub ids to copy the selected URLs into",
+        examples=[[2, 3]],
+    )
+
+    @field_validator("utubUrlIds", mode="after")
+    @classmethod
+    def utub_url_ids_valid(cls, utub_url_ids: list[int]) -> list[int]:
+        deduped = list(dict.fromkeys(utub_url_ids))
+        if any(url_id <= 0 for url_id in deduped):
+            raise ValueError(URL_FAILURE.INVALID_URL_ID)
+        return deduped
+
+    @field_validator("destUtubIds", mode="after")
+    @classmethod
+    def dest_utub_ids_valid(cls, dest_utub_ids: list[int]) -> list[int]:
+        deduped = list(dict.fromkeys(dest_utub_ids))
+        if any(dest_id <= 0 for dest_id in deduped):
+            raise ValueError(URL_FAILURE.INVALID_URL_ID)
+        return deduped
+
+
 class UpdateURLStringRequest(BaseModel):
     urlString: str = Field(
         min_length=URL_CONSTANTS.MIN_URL_LENGTH,
