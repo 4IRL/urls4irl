@@ -417,6 +417,13 @@
    flip between light and dark, so the buttons stay legible in both (the mock's
    hardcoded white-on-transparent would vanish on the light theme's panel). */
 .barBtn {
+  /* Flex row so a registry-injected leading icon (Add tags, Copy to UTub) sits
+     vertically centered with the label and a real gap between them — a bare inline
+     SVG otherwise baseline-aligns (sits low) and hugs the text. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: 2.25rem;
   padding: 0 14px;
   border-radius: var(--radius-sm);
@@ -430,6 +437,11 @@
   /* Never break a label mid-phrase; on the narrow mobile drawer the buttons wrap
      as whole units into the grid below instead. */
   white-space: nowrap;
+}
+
+/* The injected leading icon should not shrink and should center on the label. */
+.barBtn > svg {
+  flex: 0 0 auto;
 }
 
 .barBtn:hover {
