@@ -427,6 +427,9 @@
   font-weight: 600;
   font-size: 0.85rem;
   font-family: inherit;
+  /* Never break a label mid-phrase; on the narrow mobile drawer the buttons wrap
+     as whole units into the grid below instead. */
+  white-space: nowrap;
 }
 
 .barBtn:hover {
@@ -506,8 +509,28 @@
     margin: 4px auto 12px;
   }
 
-  /* 44px coarse-pointer touch targets for the bar controls. */
+  /* The four actions (Add tags, Copy to UTub, Select All, Clear) don't fit one
+     390px row, so they were shrinking until labels wrapped mid-phrase and the row
+     clipped off the drawer. Lay them out as an even two-by-two grid instead: wrap
+     the row, drop the desktop push-spacer, and dissolve the .bulkActions wrapper
+     (display:contents) so all four buttons are equal flex items of .bulkBarRow. */
+  .bulkBarRow {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .bulkBarRow .bulkSpacer {
+    display: none;
+  }
+
+  .bulkActions {
+    display: contents;
+  }
+
+  /* 44px coarse-pointer touch targets; each button fills half the row (2 per
+     line) so the grid stays even regardless of label length. */
   .barBtn {
+    flex: 1 1 calc(50% - 4px);
     height: 2.75rem;
     padding: 0 16px;
     font-size: 0.9rem;
