@@ -272,6 +272,13 @@ class HomePageLocators(GenericPageLocator):
     BULK_COPY_OPTION_VISIBLE = (
         '.UTubSelector[role="option"]:not(.disabled):not(.hidden)'
     )
+    # Multi-select: destination rows currently staged (aria-selected="true") —
+    # used to count how many destinations are staged (2+ for multi-copy).
+    BULK_COPY_OPTION_SELECTED = '.UTubSelector[role="option"][aria-selected="true"]'
+    # Per-row trailing affordances (DD-4/DD-12, mutually exclusive): an enabled
+    # row shows its role badge; a locked row shows the locked text label instead.
+    BULK_COPY_ROLE_BADGE = ".bulkCopyRoleBadge"
+    BULK_COPY_LOCKED_LABEL = ".bulkCopyLockedLabel"
     # In-picker footer controls + the all-other-UTubs-locked message.
     BUTTON_BULK_COPY_CANCEL = ".bulkCopyCancelBtn"
     BUTTON_BULK_COPY_CONFIRM = ".bulkCopyConfirmBtn"

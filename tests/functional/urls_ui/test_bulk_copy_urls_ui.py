@@ -15,6 +15,7 @@ from backend.models.utubs import Utubs
 from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import (
+    get_n_other_utubs_this_user_is_member_of,
     get_other_utub_this_user_is_member_of,
     get_utub_this_user_created,
     set_utub_locked_state,
@@ -28,10 +29,13 @@ from tests.functional.playwright_utils import (
     wait_until_hidden,
 )
 from tests.functional.urls_ui.playwright_utils import (
+    bulk_copy_option_by_name,
     enter_multi_select_and_select_urls,
     expect_copy_cue_on_row,
+    expect_staged_destination_count,
     open_bulk_copy_picker,
     stage_copy_destination,
+    stage_copy_destinations,
     submit_bulk_copy,
 )
 
@@ -151,19 +155,23 @@ def _delete_all_other_utubs(*, app: Flask, source_utub_id: int) -> None:
 # --- Tests --------------------------------------------------------------------
 
 
-def test_bulk_copy_happy_copies_selected_urls_with_banner_and_cues(
+def test_bulk_copy_happy_copies_selected_urls_into_two_destinations(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN two source-only URLs selected in multi-select mode
-    WHEN the user opens the copy picker, stages a destination, and confirms
-    THEN both URLs are copied (success banner + "Copied" cues), the staged row
-        carried aria-selected/tabindex, and the destination gains both rows.
+    WHEN the user opens the copy picker, stages TWO destinations, and confirms
+    THEN both URLs land in BOTH destinations (multi-destination success banner +
+        "Copied" cues), each staged row carried aria-selected simultaneously, and
+        both destinations gained both rows.
     """
     app = provide_app
     source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
-    dest = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
-    dest_id, dest_name = dest.id, dest.name
+    dest_a, dest_b = get_n_other_utubs_this_user_is_member_of(
+        app, USER_ID_FOR_TEST, source.id, 2
+    )
+    dest_a_id, dest_a_name = dest_a.id, dest_a.name
+    dest_b_id, dest_b_name = dest_b.id, dest_b.name
 
     utub_url_id_a, url_id_a = _seed_source_url(
         app=app,
@@ -190,11 +198,17 @@ def test_bulk_copy_happy_copies_selected_urls_with_banner_and_cues(
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
 
     open_bulk_copy_picker(page=page)
-    staged_row = stage_copy_destination(page=page, utub_name=dest_name)
-    # The staged row carries real focus state: aria-selected (asserted in the
-    # helper) plus the roving tabindex 0 (DD-7 real focus, never
-    # aria-activedescendant).
-    expect(staged_row).to_have_attribute("tabindex", "0")
+    # Stage BOTH destinations; multi-select keeps every staged row selected.
+    staged_rows = stage_copy_destinations(
+        page=page, utub_names=[dest_a_name, dest_b_name]
+    )
+    expect_staged_destination_count(page=page, count=2)
+    # Multi-select moves the roving tabindex to whichever row was toggled LAST
+    # (each toggle calls setActiveRow first), so real DOM focus + tabindex 0 land
+    # on the second-staged row while the first-staged row drops to -1 — both stay
+    # aria-selected (DD-7 real focus, never aria-activedescendant).
+    expect(staged_rows[-1]).to_have_attribute("tabindex", "0")
+    expect(staged_rows[0]).to_have_attribute("tabindex", "-1")
 
     submit_bulk_copy(page=page)
 
@@ -207,15 +221,174 @@ def test_bulk_copy_happy_copies_selected_urls_with_banner_and_cues(
     expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id_a, kind="copied")
     expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id_b, kind="copied")
 
-    # Success banner (all-copied → success/polite, count-only copy).
+    # Success banner — all destinations copied cleanly → success/polite, the
+    # multi-destination "Copied to 2 UTubs." wording (count-only, no names).
     banner = page.locator(HPL.BULK_COPY_BANNER)
     expect(banner).to_be_visible()
     expect(banner).to_have_class(re.compile(r"(^|\s)success(\s|$)"))
-    expect(page.locator(HPL.BULK_COPY_BANNER_BODY)).to_have_text(STRINGS.URLS_COPIED)
+    expect(page.locator(HPL.BULK_COPY_BANNER_BODY)).to_have_text(
+        STRINGS.URLS_COPIED_MULTI.replace("{n}", "2")
+    )
 
-    # The destination UTub now holds both copied URLs.
-    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_a) == 1
-    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_b) == 1
+    # BOTH destination UTubs now hold both copied URLs.
+    for dest_id in (dest_a_id, dest_b_id):
+        assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_a) == 1
+        assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_b) == 1
+
+
+def test_bulk_copy_partial_across_two_destinations_greens_any_hit(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN two source URLs copied into two destinations, one URL already present
+        in ONE of the destinations
+    WHEN the user copies both into both destinations
+    THEN both destinations still receive a copy (destsSucceeded == 2), so the
+        aggregate multi-destination PARTIAL banner shows (count-only, no title/
+        name), and the pre-existing URL still earns a GREEN "copied" cue because
+        it landed in the OTHER destination (green-if-any, DD-8).
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    dest_a, dest_b = get_n_other_utubs_this_user_is_member_of(
+        app, USER_ID_FOR_TEST, source.id, 2
+    )
+    dest_a_id, dest_a_name = dest_a.id, dest_a.name
+    dest_b_id, dest_b_name = dest_b.id, dest_b.name
+
+    dup_title = "Copy Multi Partial Dup"
+    utub_url_id_dup, url_id_dup = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-multi-partial-dup.test/",
+        url_title=dup_title,
+    )
+    utub_url_id_new, url_id_new = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-multi-partial-new.test/",
+        url_title="Copy Multi Partial New",
+    )
+    # Pre-seed the duplicate into ONLY dest A — so dest A skips it (duplicate) but
+    # dest B copies it, keeping BOTH destinations "succeeded" and the dup URL
+    # green-if-any across destinations.
+    _add_existing_url_to_utub(
+        app=app,
+        utub_id=dest_a_id,
+        user_id=USER_ID_FOR_TEST,
+        url_id=url_id_dup,
+        url_title=dup_title,
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(
+        page=page, url_ids=[utub_url_id_dup, utub_url_id_new]
+    )
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
+
+    open_bulk_copy_picker(page=page)
+    stage_copy_destinations(page=page, utub_names=[dest_a_name, dest_b_name])
+    expect_staged_destination_count(page=page, count=2)
+    submit_bulk_copy(page=page)
+
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+
+    # Per-card cues FIRST (transient): BOTH source rows are green — the "new" URL
+    # copied everywhere, and the "dup" URL copied into dest B even though dest A
+    # skipped it (green-if-any, DD-8).
+    expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id_new, kind="copied")
+    expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id_dup, kind="copied")
+
+    # Aggregate multi-destination partial banner — concise count only, never a URL
+    # title or a UTub name.
+    banner = page.locator(HPL.BULK_COPY_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"(^|\s)partial(\s|$)"))
+    body = page.locator(HPL.BULK_COPY_BANNER_BODY)
+    expect(body).not_to_contain_text(dup_title)
+    expect(body).not_to_contain_text(dest_a_name)
+    expect(body).not_to_contain_text(dest_b_name)
+
+    # Dest A: gained only the new URL (dup already there, single row);
+    # Dest B: gained BOTH the new and the (not-yet-present) dup URL.
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_a_id, url_id=url_id_new) == 1
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_a_id, url_id=url_id_dup) == 1
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_b_id, url_id=url_id_new) == 1
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_b_id, url_id=url_id_dup) == 1
+
+
+def test_bulk_copy_locked_destination_row_is_disabled_and_labeled(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    DD-3/DD-4/DD-10/DD-12: a locked destination is skipped-and-reported at the
+    service layer, but the picker never lets the user stage it in the first place.
+
+    GIVEN one of the user's other UTubs is locked
+    WHEN the user opens the copy picker
+    THEN the locked row is present-but-disabled (aria-disabled), shows the
+        "🔒 locked" text label and NOT the role badge; an enabled row instead
+        shows its role badge and NOT the locked label; and staging a clean
+        destination + confirming still copies successfully.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    locked_dest, clean_dest = get_n_other_utubs_this_user_is_member_of(
+        app, USER_ID_FOR_TEST, source.id, 2
+    )
+    locked_dest_name = locked_dest.name
+    clean_dest_id, clean_dest_name = clean_dest.id, clean_dest.name
+    set_utub_locked_state(app, locked_dest.id, True)
+
+    utub_url_id, url_id = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-locked-dest.test/",
+        url_title="Copy Locked Dest",
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
+    open_bulk_copy_picker(page=page)
+
+    # The locked row is present, disabled, unstageable, and labeled "🔒 locked"
+    # WITHOUT a role badge (DD-12 mutual exclusivity).
+    locked_row = bulk_copy_option_by_name(page=page, utub_name=locked_dest_name)
+    expect(locked_row).to_have_attribute("aria-disabled", "true")
+    expect(locked_row.locator(HPL.BULK_COPY_LOCKED_LABEL)).to_have_text(
+        STRINGS.URL_BULK_COPY_LOCKED_LABEL
+    )
+    expect(locked_row.locator(HPL.BULK_COPY_ROLE_BADGE)).to_have_count(0)
+    # Clicking the locked row never stages it: the row carries aria-disabled, so
+    # Playwright treats it as not-enabled — force the click past actionability to
+    # exercise the picker's own `if (row.hasClass("disabled")) return;` guard and
+    # prove it stays unstaged.
+    locked_row.click(force=True)
+    expect(locked_row).to_have_attribute("aria-selected", "false")
+
+    # An enabled row instead shows its role badge (member/creator/cocreator) and
+    # NOT the locked label.
+    clean_row = bulk_copy_option_by_name(page=page, utub_name=clean_dest_name)
+    role_badge = clean_row.locator(HPL.BULK_COPY_ROLE_BADGE)
+    expect(role_badge).to_have_count(1)
+    expect(role_badge).not_to_be_empty()
+    expect(clean_row.locator(HPL.BULK_COPY_LOCKED_LABEL)).to_have_count(0)
+
+    # Staging the clean destination + confirming copies successfully.
+    stage_copy_destination(page=page, utub_name=clean_dest_name)
+    submit_bulk_copy(page=page)
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+    expect(page.locator(HPL.BULK_COPY_BANNER)).to_be_visible()
+    assert _count_dest_rows_for_url(app=app, utub_id=clean_dest_id, url_id=url_id) == 1
 
 
 def test_bulk_copy_filter_narrows_destinations_then_copies(
@@ -261,7 +434,7 @@ def test_bulk_copy_filter_narrows_destinations_then_copies(
 
     # Filtering to the destination's name reveals it; stage + confirm the copy.
     filter_input.fill(dest_name)
-    dest_row = page.locator(mount).get_by_role("option", name=dest_name, exact=True)
+    dest_row = bulk_copy_option_by_name(page=page, utub_name=dest_name)
     expect(dest_row).to_be_visible()
     dest_row.click()
     expect(dest_row).to_have_attribute("aria-selected", "true")
