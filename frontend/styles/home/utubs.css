@@ -316,6 +316,37 @@
     }
 }
 
+/* URL filter clear/close, relocated INTO the search box (see URLDeckSubheader.html)
+   so it no longer renders as a second bare "X" in the header next to the
+   multi-select Exit ("X") control. Sits at the input's right end as a neutral
+   clear affordance; #URLContentSearch gets matching right padding so text never
+   sits under it. The desktop `display:none !important` above still hides it there
+   (the search box is persistent on desktop — no open/close cycle). */
+.text-input-inner-container > #URLSearchFilterIconClose.url-search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: auto;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.text-input-inner-container > #URLSearchFilterIconClose.url-search-clear > svg {
+    height: 16px;
+    width: 16px;
+    fill: var(--grayBadgeSelection);
+}
+
+#SearchURLWrap #URLContentSearch {
+    padding-right: 30px;
+}
+
 #UTubDescriptionSubheaderWrap {
     margin-bottom: 0.25rem;
     min-width: 0;

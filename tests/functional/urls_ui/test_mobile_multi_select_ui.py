@@ -133,6 +133,56 @@ def test_mobile_bulk_bar_appears_and_checkbox_toggles(
     expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(0)
 
 
+def test_mobile_backgrounding_app_does_not_expand_selected_card(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a mobile user in multi-select mode with a URL selected (its card holds
+        focus, as after tapping the checkbox)
+    WHEN the browser app is backgrounded then refocused (window blur then focus)
+    THEN the selected card must NOT auto-expand — regression: the visibility blur
+        handler used to flip urlselected=true on the focused card, reopening it
+        (tags + action buttons) on return, corrupting the selection view.
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    utub: Utubs = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    url_ids = get_all_url_ids_in_selected_utub(page=page)
+    assert len(url_ids) >= 1
+
+    enter_multi_select_mode(page=page)
+    tap_url_checkbox(page=page, utub_url_id=url_ids[0])
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+
+    # Simulate backgrounding + returning to the app while the selected card holds
+    # focus (mobile Safari fires window blur then focus). closest('.urlRow')
+    # resolves to this row whether a child or the row itself is the activeElement.
+    page.evaluate(
+        """(utubUrlId) => {
+            const row = document.querySelector(
+                `.urlRow[utuburlid="${utubUrlId}"]`
+            );
+            row.setAttribute('tabindex', '-1');
+            row.focus();
+            window.dispatchEvent(new Event('blur'));
+            window.dispatchEvent(new Event('focus'));
+        }""",
+        url_ids[0],
+    )
+
+    # The card stays collapsed (never urlselected=true) and still selected.
+    expect(
+        page.locator(f'.urlRow[utuburlid="{url_ids[0]}"][urlselected="true"]')
+    ).to_have_count(0)
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+    expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(1)
+
+
 def test_mobile_switching_panel_exits_mode(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):

@@ -375,11 +375,6 @@
   }
 }
 
-/* The mobile grabber lip is desktop-invisible. */
-.bulkBarGrabber {
-  display: none;
-}
-
 .bulkBarRow {
   gap: 12px;
 }
@@ -417,6 +412,13 @@
    flip between light and dark, so the buttons stay legible in both (the mock's
    hardcoded white-on-transparent would vanish on the light theme's panel). */
 .barBtn {
+  /* Flex row so a registry-injected leading icon (Add tags, Copy to UTub) sits
+     vertically centered with the label and a real gap between them — a bare inline
+     SVG otherwise baseline-aligns (sits low) and hugs the text. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: 2.25rem;
   padding: 0 14px;
   border-radius: var(--radius-sm);
@@ -427,6 +429,14 @@
   font-weight: 600;
   font-size: 0.85rem;
   font-family: inherit;
+  /* Never break a label mid-phrase; on the narrow mobile drawer the buttons wrap
+     as whole units into the grid below instead. */
+  white-space: nowrap;
+}
+
+/* The injected leading icon should not shrink and should center on the label. */
+.barBtn > svg {
+  flex: 0 0 auto;
 }
 
 .barBtn:hover {
@@ -476,7 +486,10 @@
     border-top: 2px solid var(--contentTopBorder);
     border-radius: 1.25rem 1.25rem 0 0;
     box-shadow: var(--shadow-lg);
-    padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    /* Slightly taller top padding now that the grabber lip (which used to hold the
+       top spacing) is gone, so the action row isn't cramped against the rounded
+       top edge. */
+    padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
   }
 
   /*
@@ -497,17 +510,28 @@
     display: none !important;
   }
 
-  .bulkBarGrabber {
-    display: block;
-    width: 38px;
-    height: 4px;
-    border-radius: 2px;
-    background: #5a6565;
-    margin: 4px auto 12px;
+  /* The four actions (Add tags, Copy to UTub, Select All, Clear) don't fit one
+     390px row, so they were shrinking until labels wrapped mid-phrase and the row
+     clipped off the drawer. Lay them out as an even two-by-two grid instead: wrap
+     the row, drop the desktop push-spacer, and dissolve the .bulkActions wrapper
+     (display:contents) so all four buttons are equal flex items of .bulkBarRow. */
+  .bulkBarRow {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
-  /* 44px coarse-pointer touch targets for the bar controls. */
+  .bulkBarRow .bulkSpacer {
+    display: none;
+  }
+
+  .bulkActions {
+    display: contents;
+  }
+
+  /* 44px coarse-pointer touch targets; each button fills half the row (2 per
+     line) so the grid stays even regardless of label length. */
   .barBtn {
+    flex: 1 1 calc(50% - 4px);
     height: 2.75rem;
     padding: 0 16px;
     font-size: 0.9rem;
@@ -660,16 +684,96 @@
   pointer-events: none;
 }
 
-/* Desktop: the picker + banner wrap onto their own full-width row below the
-   inline Select All / Clear / action row (the bar becomes wrap-capable). */
+/* Desktop (>=992px): the picker + result banner are FLOATING dropdowns anchored
+   under the action-button group, OVERLAYING the URL list instead of reflowing
+   into the inline header row. The old behaviour wrapped them full-width inside the
+   bar, which ballooned the bar's height and — because the header context row is
+   center-aligned — floated the "N selected" count and the ✕ / panel-toggle to the
+   vertical middle. Taking them out of flow (position:absolute) keeps the header a
+   clean single row: the count + controls never move, and the list is not pushed
+   down. #bulkActionBar is the positioning context. Covers BOTH the tag and copy
+   pickers and their shared .bulkTagBanner outcome banner; mobile keeps the
+   bottom-drawer chrome in its own <=991.98px blocks below. The picker is
+   height-capped + scrollable so a member of many UTubs can't create a giant panel. */
 @media (min-width: 992px) {
   #bulkActionBar {
-    flex-wrap: wrap;
+    position: relative;
   }
 
-  .bulkTagPickerMount,
-  .bulkTagBanner {
-    flex-basis: 100%;
+  /* Scoped under #bulkActionBar (ID) so these win over the base .bulk*PickerMount
+     class rules (width/background/margin-top) regardless of source order — media
+     queries add no specificity, and the base rules appear later in the file. */
+  #bulkActionBar .bulkTagPickerMount,
+  #bulkActionBar .bulkCopyPickerMount {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 1050;
+    width: min(420px, 80vw);
+    max-height: min(55vh, 360px);
+    overflow-y: auto;
+    margin-top: 0;
+    /* Opaque: the base mount uses the 81%-opaque --pageBackgroundColor, which let
+       the URL list bleed through the floating dropdown's row gaps. */
+    background: var(--panelBackgroundColor);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Keep the filter box pinned to the TOP while the destination rows scroll. The
+     negative margins bleed it across the mount's 12px padding so scrolling rows
+     never peek above/beside it; the padding restores the input's inset. */
+  .bulkCopyPickerMount .bulkCopyFilterWrap {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: -12px -12px 4px;
+    padding: 12px 12px 6px;
+    background: var(--panelBackgroundColor);
+  }
+
+  /* Keep the Copy / Cancel footer pinned + visible while the destination rows
+     scroll, so the primary action never falls below the dropdown's fold. */
+  .bulkCopyPickerMount .bulkCopyPickerFooter {
+    position: sticky;
+    bottom: 0;
+    margin-top: 8px;
+    padding-top: 8px;
+    background: var(--panelBackgroundColor);
+  }
+
+  #bulkActionBar .bulkTagBanner {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 1049;
+    width: min(420px, 80vw);
+    margin-top: 0;
+    box-shadow: var(--shadow-lg);
+    /* Opaque base under the state tint (see the .success/.partial/.fail overrides
+       below) so the floating banner doesn't show the URL list through it. */
+    background: var(--panelBackgroundColor);
+  }
+
+  /* Re-assert each state tint OVER the opaque panel base — a bare rgba tint would
+     otherwise let the list show through the now-floating banner. The colored
+     border (from the shared .bulkTagBanner.<state> rules above) still carries the
+     state signal; this only backs the tint with an opaque layer. */
+  #bulkActionBar .bulkTagBanner.success {
+    background: linear-gradient(
+        rgba(67, 199, 154, 0.12),
+        rgba(67, 199, 154, 0.12)
+      ),
+      var(--panelBackgroundColor);
+  }
+
+  #bulkActionBar .bulkTagBanner.partial {
+    background: linear-gradient(rgba(253, 231, 76, 0.12), rgba(253, 231, 76, 0.12)),
+      var(--panelBackgroundColor);
+  }
+
+  #bulkActionBar .bulkTagBanner.fail {
+    background: linear-gradient(rgba(220, 53, 69, 0.12), rgba(220, 53, 69, 0.12)),
+      var(--panelBackgroundColor);
   }
 }
 
@@ -761,6 +865,12 @@
   border-color: var(--splashGreen);
 }
 
+/* Bulk-copy "Copied" cue — same green as the applied/tagged cue. */
+.bulkCardResultCue--copied {
+  background: var(--splashGreen);
+  border-color: var(--splashGreen);
+}
+
 .bulkCardResultCue--skipped {
   background: var(--editURLColor);
   border-color: var(--editURLColor);
@@ -769,5 +879,247 @@
 @media (prefers-reduced-motion: reduce) {
   .bulkCardResultCue {
     transition: none;
+  }
+}
+
+/*
+ * ---- Bulk-copy destination picker + result banner (Phase 3) ----
+ * The picker mounts a roving-tabindex listbox of destination UTub rows into
+ * #bulkCopyPickerMount and renders the outcome into #bulkCopyResultBanner (which
+ * reuses the .bulkTagBanner styling above). Both live inside #bulkActionBar but
+ * OUTSIDE #bulkActionButtons, so the action-button rebuild never touches them.
+ * The desktop panel frame + mobile bottom-drawer chrome mirror the tag picker.
+ */
+.bulkCopyPickerMount {
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--pageBackgroundColor);
+  border: 1px solid var(--deckSelectionGreen);
+  border-radius: var(--radius-sm);
+}
+
+/* The mount is the picker container in the open state; reveal it as a column
+   flexbox holding [filter wrap] [inner listbox] [footer]. */
+.bulkCopyPickerMount:not(.hidden) {
+  display: flex;
+}
+
+/* Inner role="listbox": holds ONLY the option rows + the no-results message
+   (the filter input and footer are siblings, not listbox children — correct
+   ARIA). Column layout gives the rows their spacing now that they are no longer
+   direct flex children of the mount. */
+.bulkCopyListbox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Destination filter box: reuses the app's canonical deck-search styling
+   (.text-input.search-input pill + prefix funnel icon, styles/home/forms.css) so
+   it matches the UTub / Tag / Member / URL search bars. The base .search-input
+   ships collapsed (width:0/opacity:0) and is revealed per-input — reveal ours the
+   same way #UTubNameSearch is, and inset the text for the prefix icon. */
+.bulkCopyFilterInput.search-input.text-input[type="search"] {
+  width: 100%;
+  opacity: 1;
+  transition: none;
+  padding-left: 32px;
+}
+
+/* Suppress the native search "X" (the app uses its own affordances; mirrors the
+   #UTubNameSearch/#TagNameSearch/... suppression in forms.css). */
+.bulkCopyFilterInput::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Shown inside the listbox when the typed filter matches no UTubs (announced via
+   role=status/aria-live in bulk-copy.ts). */
+.bulkCopyNoMatches {
+  padding: 10px 4px;
+  font-size: 0.85rem;
+  color: var(--grayBadgeSelection);
+}
+
+/* Destination rows reuse the .UTubSelector look; give them a comfortable target
+   and a clear staged (green) highlight. `.active` and `[aria-selected="true"]`
+   always toggle together per the Stage logic, so either selector alone suffices —
+   both are listed defensively. */
+.bulkCopyPickerMount .UTubSelector[role="option"] {
+  min-height: 2.25rem;
+  padding: 8px 12px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--textPrimary);
+}
+
+.bulkCopyPickerMount .UTubSelector[role="option"]:hover {
+  background: var(--cardBackgroundColorHover);
+}
+
+.bulkCopyPickerMount .UTubSelector[role="option"].active,
+.bulkCopyPickerMount .UTubSelector[role="option"][aria-selected="true"] {
+  background: var(--selectedUTubColorBackground);
+  border-color: var(--deckSelectionGreen);
+  color: var(--deckSelectionGreen);
+}
+
+/* Locked destinations are inert to clicks, not just visually dimmed — matches
+   the arrow-key roving's own skip-disabled-rows behaviour. */
+.bulkCopyPickerMount .UTubSelector[role="option"][aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Focus-visible must fire correctly as DOM focus roves between rows (DD-7/DD-20),
+   not just on the initial mount. */
+.bulkCopyPickerMount .UTubSelector[role="option"]:focus-visible,
+.bulkCopyCancelBtn:focus-visible,
+.bulkCopyConfirmBtn:focus-visible {
+  outline: 2px solid var(--deckSelectionGreen);
+  outline-offset: 2px;
+}
+
+.bulkCopyAllLocked {
+  padding: 10px 4px;
+  font-size: 0.85rem;
+  color: var(--grayBadgeSelection);
+}
+
+.bulkCopyPickerFooter {
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.bulkCopyPickerMsg {
+  flex: 1 1 auto;
+  font-size: 0.8rem;
+  color: var(--grayBadgeSelection);
+}
+
+/* Cancel — outlined danger (mirrors .urlTagComboboxCancelBtn). */
+.bulkCopyCancelBtn {
+  border: 1px solid var(--removeIconColor);
+  border-radius: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--removeIconColor);
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.bulkCopyCancelBtn:disabled,
+.bulkCopyConfirmBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Copy — green accent commit button. */
+.bulkCopyConfirmBtn {
+  position: relative;
+  border: 1px solid var(--deckSelectionGreen);
+  border-radius: 6px;
+  padding: 6px 14px;
+  background: var(--deckSelectionGreen);
+  color: #06231a;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Submit in-flight spinner (mirrors the bulk-tag submit spinner). */
+.bulkCopyConfirmBtn.bulkCopySubmitLoading {
+  color: transparent;
+}
+
+.bulkCopyConfirmBtn.bulkCopySubmitLoading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid #06231a;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: bulkTagSpin 0.6s linear infinite;
+}
+
+/* Selection lock cue: while the picker is open the checkboxes are inert (the
+   selection is snapshotted). Mirrors #URLDeck.bulkTagPickerOpen above. */
+#URLDeck.bulkCopyPickerOpen .urlSelectCheckboxWrap {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Desktop (>=992px) floating-dropdown positioning for the copy picker is handled
+   together with the tag picker + shared banner in the consolidated block above
+   (search "FLOATING dropdowns"). */
+
+/*
+ * Mobile (<=991.98px): the picker is a bottom-docked drawer, one z-step above the
+ * bulk-action bar (1035) but BELOW the on-demand tag sheet (1040) — identical to
+ * the tag picker's drawer chrome (grabber lip + safe-area padding).
+ */
+@media (max-width: 991.98px) {
+  .bulkCopyPickerMount {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1036;
+    margin-top: 0;
+    background: var(--panelBackgroundColor);
+    border: none;
+    border-top: 2px solid var(--contentTopBorder);
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: var(--shadow-lg);
+    padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  .bulkCopyPickerMount::before {
+    content: "";
+    display: block;
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: #5a6565;
+    margin: 4px auto 8px;
+  }
+
+  /* 44px coarse-pointer touch targets for the rows + footer buttons. */
+  .bulkCopyPickerMount .UTubSelector[role="option"] {
+    min-height: 2.75rem;
+  }
+
+  .bulkCopyCancelBtn,
+  .bulkCopyConfirmBtn {
+    min-height: 2.75rem;
+    padding: 0 16px;
+    font-size: 0.9rem;
+  }
+
+  /* Bound the drawer height by scrolling ONLY the option rows: the filter box
+     (above) and the Cancel/Copy footer (below) stay statically in place, so no
+     sticky positioning is needed on the drawer. */
+  .bulkCopyPickerMount .bulkCopyListbox {
+    max-height: 45dvh;
+    overflow-y: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bulkCopyConfirmBtn.bulkCopySubmitLoading::after {
+    animation: none;
   }
 }

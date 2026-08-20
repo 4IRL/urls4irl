@@ -4,6 +4,7 @@ import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { deselectAllURLs } from "../cards/selection.js";
 import { clearURLSelection } from "./bulk-selection.js";
+import { closeAllPickers } from "./picker-guard.js";
 
 const log = debug("urls:cards");
 
@@ -92,13 +93,25 @@ export function exitMultiSelectMode(): void {
   }
   log("exit multi-select mode");
 
+  // Close every open bulk sub-picker FIRST (DD-12), synchronously, before the
+  // selection is cleared. clearURLSelection() below is guarded to no-op while a
+  // picker is open (the selection is snapshotted), so without this a still-open
+  // picker would silently block the clear on exit — the stale-selection bug this
+  // fixes. picker-guard.ts is a leaf registry, so bulk-mode.ts still never
+  // imports bulk-tag.ts / bulk-copy.ts directly. The reactive per-module
+  // URL_MULTISELECT_MODE_CHANGED subscriptions those pickers own only fire from
+  // the emit() at the very end of this function (after clearURLSelection), so
+  // they cannot substitute for this ordering — they remain a harmless idempotent
+  // safety net for a future out-of-band emitter.
+  closeAllPickers();
   clearURLSelection();
-  // Clear any lingering bulk-tag result banner so a partial-success/all-skipped
-  // banner never survives a mode exit or UTub switch. This DOM-only clear stays
-  // inline here; the picker mount + isBulkTagPickerOpen flag teardown lives in
-  // bulk-tag.ts's own URL_MULTISELECT_MODE_CHANGED subscription (so bulk-mode.ts
-  // never imports bulk-tag.ts).
+  // Clear any lingering bulk-tag / bulk-copy result banner so a partial-success
+  // / all-skipped banner never survives a mode exit or UTub switch. These are
+  // DOM-only clears; the picker mount + open-flag teardown lives in each picker
+  // module's own close path (invoked via closeAllPickers above), so bulk-mode.ts
+  // never imports a picker module.
   $("#bulkTagResultBanner").addClass(HIDDEN_CLASS).empty();
+  $("#bulkCopyResultBanner").addClass(HIDDEN_CLASS).empty();
   setState({ multiSelectMode: false });
   $("#URLDeck").removeClass(MULTI_SELECT_ACTIVE_CLASS);
   // Dropping the mainPanel mode class lets the collapsed tag-sheet peek slide

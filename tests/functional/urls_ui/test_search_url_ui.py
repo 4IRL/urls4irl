@@ -224,6 +224,16 @@ def test_mobile_open_and_close_search_box(
         utub_name=URL_SEARCH_UTUB_NAME,
     )
 
+    # Regression guard (double-X fix): the close/clear control lives INSIDE the
+    # filter input box, NOT as a second header "X" beside the multi-select Exit
+    # control. It must be a descendant of the input's .text-input-inner-container
+    # (structural — holds whether the box is open or closed).
+    expect(
+        page_mobile_portrait.locator(
+            f".text-input-inner-container {HPL.URL_CLOSE_SEARCH_ICON}"
+        )
+    ).to_have_count(1)
+
     open_url_search_box(page=page_mobile_portrait)
 
     search_input = wait_then_get_element(
@@ -231,6 +241,8 @@ def test_mobile_open_and_close_search_box(
     )
     expect(search_input).to_be_visible()
     expect(search_input).to_be_focused()
+    # The in-box clear/close control is revealed alongside the open input.
+    expect(page_mobile_portrait.locator(HPL.URL_CLOSE_SEARCH_ICON)).to_be_visible()
 
     wait_then_click_element(
         page=page_mobile_portrait, css_selector=HPL.URL_CLOSE_SEARCH_ICON

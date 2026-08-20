@@ -6,6 +6,11 @@ import {
 import { deselectAllURLs } from "../../cards/selection.js";
 import { resetStore, getState, setState } from "../../../../store/app-store.js";
 import { AppEvents, on } from "../../../../lib/event-bus.js";
+import {
+  isAnyBulkPickerOpen,
+  registerPickerClose,
+  setPickerOpen,
+} from "../picker-guard.js";
 
 vi.mock("../../cards/selection.js", () => ({
   deselectAllURLs: vi.fn(),
@@ -25,6 +30,7 @@ const DECK_HTML = `
     <div id="URLDeck">
       <button id="utubEditPanelToggle" type="button"></button>
       <div id="bulkTagResultBanner" class="bulkTagBanner hidden" role="status"></div>
+      <div id="bulkCopyResultBanner" class="bulkTagBanner hidden" role="status"></div>
       <div class="urlRow multiSelected" utuburlid="1" aria-checked="true"></div>
       <div class="urlRow multiSelected" utuburlid="2" aria-checked="true"></div>
     </div>
@@ -37,6 +43,10 @@ describe("bulk-mode", () => {
     resetStore();
     document.body.innerHTML = DECK_HTML;
     vi.mocked(deselectAllURLs).mockClear();
+    // Reset the shared picker-guard registry so a prior test's staged picker
+    // never leaks into this one (bulk-mode.ts drives it via closeAllPickers).
+    setPickerOpen("bulk-tag", false);
+    setPickerOpen("bulk-copy", false);
   });
 
   describe("enterMultiSelectMode", () => {
@@ -92,6 +102,41 @@ describe("bulk-mode", () => {
 
       expect($("#bulkTagResultBanner").hasClass("hidden")).toBe(true);
       expect($("#bulkTagResultBanner").children().length).toBe(0);
+    });
+
+    it("clears/hides #bulkCopyResultBanner on exit (copy banner teardown on mode exit)", () => {
+      enterMultiSelectMode();
+      $("#bulkCopyResultBanner")
+        .removeClass("hidden")
+        .html('<div class="bulkTagBannerBody">URLs copied to UTub.</div>');
+      expect($("#bulkCopyResultBanner").hasClass("hidden")).toBe(false);
+
+      exitMultiSelectMode();
+
+      expect($("#bulkCopyResultBanner").hasClass("hidden")).toBe(true);
+      expect($("#bulkCopyResultBanner").children().length).toBe(0);
+    });
+
+    it("calls closeAllPickers() BEFORE clearURLSelection() so an open picker never blocks the clear (DD-12)", () => {
+      // Register a fake open picker in the shared registry. clearURLSelection()
+      // is guarded to no-op while any picker is open, so the selection is only
+      // actually cleared if closeAllPickers() ran FIRST (the ordering this fixes).
+      const closeSpy = vi.fn(() => setPickerOpen("bulk-copy", false));
+      registerPickerClose("bulk-copy", closeSpy);
+      setPickerOpen("bulk-copy", true);
+
+      enterMultiSelectMode();
+      setState({ selectedURLCardIDs: [1, 2] });
+
+      exitMultiSelectMode();
+
+      // The picker's close callback ran, the registry is empty, AND the selection
+      // was actually cleared (would have silently no-op'd if the picker were still
+      // open when clearURLSelection ran).
+      expect(closeSpy).toHaveBeenCalledTimes(1);
+      expect(isAnyBulkPickerOpen()).toBe(false);
+      expect(getState().selectedURLCardIDs).toEqual([]);
+      expect($(".urlRow.multiSelected").length).toBe(0);
     });
   });
 

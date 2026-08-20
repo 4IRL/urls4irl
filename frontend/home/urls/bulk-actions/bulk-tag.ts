@@ -26,6 +26,12 @@ import {
   type BulkActionContext,
   registerBulkAction,
 } from "./bulk-action-registry.js";
+import { flashCardResultCues } from "./card-cues.js";
+import {
+  isAnyBulkPickerOpen,
+  registerPickerClose,
+  setPickerOpen,
+} from "./picker-guard.js";
 
 const log = debug("urls:cards");
 
@@ -76,9 +82,13 @@ export function isBulkTagPickerOpen(): boolean {
   return bulkTagPickerOpen;
 }
 
-/** Set the picker-open flag. */
+/** Set the picker-open flag (and mirror it into the shared picker registry). */
 export function setBulkTagPickerOpen(open: boolean): void {
   bulkTagPickerOpen = open;
+  // Keep the shared open-picker registry in lock-step with this module's own
+  // flag so isAnyBulkPickerOpen()/closeAllPickers() (picker-guard.ts) always
+  // agree with bulkTagPickerOpen.
+  setPickerOpen("bulk-tag", open);
 }
 
 // --- Open-picker lifecycle state ----------------------------------------------
@@ -115,6 +125,13 @@ export function initBulkTag(): void {
 
   registerBulkAction(bulkAddTagsAction);
 
+  // Register this picker's teardown so closeAllPickers() (picker-guard.ts,
+  // invoked by bulk-mode.ts's exitMultiSelectMode before it clears the
+  // selection) can close it alongside the copy picker.
+  registerPickerClose("bulk-tag", () =>
+    closeAndResetPicker({ returnFocus: false }),
+  );
+
   // Mode exit / UTub switch tears the picker down even if the user never closed
   // it. bulk-tag.ts depends on the event, never on bulk-mode.ts (which stays a
   // leaf module unaware this module exists), keeping the dependency one-way.
@@ -134,7 +151,9 @@ export function initBulkTag(): void {
  * selection, and focus the input. Re-entrant activation is a defined no-op.
  */
 function openBulkTagPicker(context: BulkActionContext): void {
-  if (isBulkTagPickerOpen()) return;
+  // Re-entrant / cross-picker guard: no-op while this picker OR the copy picker
+  // is already open (only one bulk sub-picker at a time — DD-13).
+  if (isAnyBulkPickerOpen()) return;
 
   const utubID = getState().activeUTubID;
   if (utubID === null) return;
@@ -380,7 +399,25 @@ function handleBulkSubmitSuccess({
     skipped: response.skipped,
     totalSelected,
   });
-  flashCardResultCues({ applied: response.applied, skipped: response.skipped });
+  // Build this feature's applied/skipped cues, then flash them via the shared
+  // helper (DD-16). "Tagged" only on cards that genuinely gained ≥1 tag; an
+  // already-had card (in `applied` with an empty `appliedTags`) gets nothing.
+  flashCardResultCues({
+    cues: [
+      ...response.applied
+        .filter((entry) => entry.appliedTags.length > 0)
+        .map((entry) => ({
+          utubUrlID: entry.utubUrlID,
+          variant: "applied" as const,
+          label: APP_CONFIG.strings.URL_BULK_CARD_APPLIED,
+        })),
+      ...response.skipped.map((entry) => ({
+        utubUrlID: entry.utubUrlID,
+        variant: "skipped" as const,
+        label: APP_CONFIG.strings.URL_BULK_CARD_SKIPPED,
+      })),
+    ],
+  });
   closeAndResetPicker();
 }
 
@@ -662,68 +699,4 @@ function renderBulkResultBanner({
     .attr("aria-live", ariaLive)
     .append(icon)
     .append(body);
-}
-
-// --- Per-card result cues -----------------------------------------------------
-
-/** How long a per-card result cue stays fully visible before it fades. */
-const CARD_CUE_HOLD_MS = 2400;
-/** Fade duration — mirrors the CSS transition on `.bulkCardResultCue--fading`. */
-const CARD_CUE_FADE_MS = 600;
-
-/**
- * Flash a transient, self-fading result cue on each targeted URL card after a
- * bulk apply: a "Tagged" chip on every card that gained ≥1 tag, an "At tag limit"
- * chip on every skipped (at-limit) card. Already-had cards (in `applied` but with
- * an empty `appliedTags`) get nothing — nothing changed there, so a cue would be
- * noise. Cues are `aria-hidden`; the result banner carries the screen-reader
- * summary. This is what lets the banner stay a concise count instead of listing
- * every skipped URL by title (unbounded on a large batch).
- */
-function flashCardResultCues({
-  applied,
-  skipped,
-}: {
-  applied: UrlBatchTagAppliedEntry[];
-  skipped: UrlBatchTagSkippedEntry[];
-}): void {
-  const cues: Array<{
-    utubUrlID: number;
-    variant: "applied" | "skipped";
-    label: string;
-  }> = [
-    ...applied
-      .filter((entry) => entry.appliedTags.length > 0)
-      .map((entry) => ({
-        utubUrlID: entry.utubUrlID,
-        variant: "applied" as const,
-        label: APP_CONFIG.strings.URL_BULK_CARD_APPLIED,
-      })),
-    ...skipped.map((entry) => ({
-      utubUrlID: entry.utubUrlID,
-      variant: "skipped" as const,
-      label: APP_CONFIG.strings.URL_BULK_CARD_SKIPPED,
-    })),
-  ];
-
-  cues.forEach(({ utubUrlID, variant, label }) => {
-    const urlCard = $(`.urlRow[utuburlid=${utubUrlID}]`);
-    if (urlCard.length === 0) return;
-
-    // Replace any lingering cue from a prior apply so nothing stacks/duplicates.
-    urlCard.find(".bulkCardResultCue").remove();
-
-    const cue = $(document.createElement("span"))
-      .addClass(`bulkCardResultCue bulkCardResultCue--${variant}`)
-      .attr({ "aria-hidden": "true" })
-      .text(label);
-    urlCard.append(cue);
-
-    // Hold, then fade (CSS transition), then remove from the DOM.
-    window.setTimeout(
-      () => cue.addClass("bulkCardResultCue--fading"),
-      CARD_CUE_HOLD_MS,
-    );
-    window.setTimeout(() => cue.remove(), CARD_CUE_HOLD_MS + CARD_CUE_FADE_MS);
-  });
 }

@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 
 class URLErrorCodes(IntEnum):
@@ -10,6 +10,11 @@ class URLErrorCodes(IntEnum):
     URL_ALREADY_IN_UTUB_ERROR = 6
     EMPTY_URL = 7
     UTUB_IS_LOCKED = 8
+    UNABLE_TO_COPY_URLS_ERROR = 9
+
+
+class BulkCopySkipReason(StrEnum):
+    DUPLICATE = "duplicate"
 
 
 class URLState(IntEnum):

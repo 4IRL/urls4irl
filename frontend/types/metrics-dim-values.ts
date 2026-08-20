@@ -30,6 +30,7 @@ export const HOME_FORM = {
   UTUB_DESC_EDIT: "utub_desc_edit",
   TAG_CREATE: "tag_create",
   MEMBER_INVITE: "member_invite",
+  BULK_COPY: "bulk_copy",
 } as const;
 
 export type HomeForm = (typeof HOME_FORM)[keyof typeof HOME_FORM];

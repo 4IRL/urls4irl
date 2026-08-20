@@ -32,6 +32,24 @@ def set_utub_locked_state(app: Flask, utub_id: int, is_locked: bool) -> None:
         db.session.commit()
 
 
+def get_other_utub_this_user_is_member_of(
+    app: Flask, user_id: int, source_utub_id: int
+) -> Utubs:
+    """Return another UTub (id != ``source_utub_id``) this user is a member of —
+    the natural copy destination. Ordered by id for determinism."""
+    with app.app_context():
+        membership: Utub_Members = (
+            Utub_Members.query.filter(
+                Utub_Members.user_id == user_id,
+                Utub_Members.utub_id != source_utub_id,
+            )
+            .order_by(Utub_Members.utub_id)
+            .first()
+        )
+        assert membership is not None
+        return Utubs.query.get(membership.utub_id)
+
+
 def get_url_in_utub(app: Flask, utub_id: int) -> Utub_Urls:
     with app.app_context():
         return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first()

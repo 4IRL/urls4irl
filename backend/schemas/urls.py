@@ -170,5 +170,42 @@ class UrlUpdatedResponseSchema(BaseSchema):
     )
 
 
+class UrlCopiedItemSchema(BaseSchema):
+    source_utub_url_id: int = Field(
+        alias=M.SOURCE_UTUB_URL_ID,
+        description="Source Utub_Urls id the copy originated from (for per-card cues)",
+    )
+    utub_url_id: int = Field(
+        alias=M.UTUB_URL_ID,
+        description="New destination Utub_Urls id created by the copy",
+    )
+    url_string: str = Field(alias=M.URL_STRING, description="The copied URL string")
+    url_title: str = Field(
+        alias=M.URL_TITLE, description="Display title carried over to the copy"
+    )
+
+
+class UrlCopySkippedSchema(BaseSchema):
+    utub_url_id: int = Field(
+        alias=M.UTUB_URL_ID,
+        description="Source Utub_Urls id skipped because it is already in the destination",
+    )
+    reason: str = Field(
+        alias=M.SKIP_REASON,
+        description="Machine-readable skip reason (BulkCopySkipReason value, e.g. 'duplicate')",
+    )
+
+
+class CopyUrlsResponseSchema(BaseSchema):
+    copied: list[UrlCopiedItemSchema] = Field(
+        alias=M.COPIED,
+        description="URLs copied into the destination UTub, with source→destination id pairs",
+    )
+    skipped: list[UrlCopySkippedSchema] = Field(
+        alias=M.SKIPPED,
+        description="Source URLs skipped because they were already in the destination UTub",
+    )
+
+
 UtubUrlSchema.model_rebuild()
 UtubUrlDetailSchema.model_rebuild()

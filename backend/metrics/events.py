@@ -57,6 +57,7 @@ class EventName(StrEnum):
     URL_STRING_UPDATED = "url_string_updated"
     URL_TITLE_UPDATED = "url_title_updated"
     URL_TRACKING_PARAMS_STRIPPED = "url_tracking_params_stripped"
+    URLS_COPIED_TO_UTUB = "urls_copied_to_utub"
     UTUB_CREATED = "utub_created"
     UTUB_DELETED = "utub_deleted"
     UTUB_DESC_UPDATED = "utub_desc_updated"

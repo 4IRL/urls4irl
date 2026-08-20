@@ -15,7 +15,7 @@ import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
 import { isCoarsePointer } from "../../mobile.js";
 import { _consumeSwipeClickSuppression } from "./swipe.js";
 import { toggleURLCardSelection } from "../bulk-actions/bulk-selection.js";
-import { isBulkTagPickerOpen } from "../bulk-actions/bulk-tag.js";
+import { isAnyBulkPickerOpen } from "../bulk-actions/picker-guard.js";
 import { debug } from "../../../lib/debug.js";
 
 const log = debug("urls:cards");
@@ -178,10 +178,10 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
       // selectURLCard/deselectAllURLs. Reads the flag via the store (no import
       // of bulk-mode.ts) to keep the leaf-module boundary.
       if (getState().multiSelectMode) {
-        // Selection is locked while the bulk tag picker is open — the picker
-        // submits against a snapshot of the selection, so a row tap must not
-        // mutate it out from under an in-flight/open picker.
-        if (isBulkTagPickerOpen()) return;
+        // Selection is locked while a bulk sub-picker (tag or copy) is open —
+        // the picker submits against a snapshot of the selection, so a row tap
+        // must not mutate it out from under an in-flight/open picker.
+        if (isAnyBulkPickerOpen()) return;
         toggleURLCardSelection(parseInt(urlCard.attr("utuburlid")!, 10));
         return;
       }
