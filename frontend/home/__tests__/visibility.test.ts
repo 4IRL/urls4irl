@@ -1,7 +1,13 @@
 import { isHidden, initVisibilityHandlers } from "../visibility.js";
+import { enableTabbableChildElements } from "../../lib/jquery-plugins.js";
 
 vi.mock("../../lib/jquery-plugins.js", () => ({
   enableTabbableChildElements: vi.fn(),
+}));
+
+const storeState = { multiSelectMode: false };
+vi.mock("../../store/app-store.js", () => ({
+  getState: vi.fn(() => storeState),
 }));
 
 const $ = window.jQuery;
@@ -18,6 +24,11 @@ const VISIBILITY_HTML = `
 describe("visibility", () => {
   beforeEach(() => {
     document.body.innerHTML = VISIBILITY_HTML;
+    // Each initVisibilityHandlers() binds fresh window focus/blur handlers;
+    // clear them (and the mocks / store flag) so triggers fire exactly once.
+    $(window).off("focus blur");
+    storeState.multiSelectMode = false;
+    vi.clearAllMocks();
   });
 
   describe("isHidden", () => {
@@ -77,6 +88,31 @@ describe("visibility", () => {
 
       // No errors should occur - the early return should fire
       expect($(".focus").length).toBe(0);
+    });
+
+    it("blur handler auto-expands the focused URL card in NORMAL mode (urlselected + tabbable children)", () => {
+      storeState.multiSelectMode = false;
+      initVisibilityHandlers();
+
+      // Focus an element inside a .urlRow, then background the tab (window blur).
+      ($(".urlRow button")[0] as HTMLElement).focus();
+      $(window).trigger("blur");
+
+      expect($(".urlRow").attr("urlselected")).toBe("true");
+      expect(vi.mocked(enableTabbableChildElements)).toHaveBeenCalledTimes(1);
+    });
+
+    it("blur handler does NOT auto-expand the focused URL card in MULTI-SELECT mode (bug: backgrounding the app reopened a selected card)", () => {
+      storeState.multiSelectMode = true;
+      initVisibilityHandlers();
+
+      ($(".urlRow button")[0] as HTMLElement).focus();
+      $(window).trigger("blur");
+
+      // The selected card must stay collapsed: no urlselected flip, no tabbable
+      // re-enable — otherwise it renders expanded (tags + actions) on return.
+      expect($(".urlRow").attr("urlselected")).toBeUndefined();
+      expect(vi.mocked(enableTabbableChildElements)).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,5 +1,6 @@
 import { $ } from "../lib/globals.js";
 import { enableTabbableChildElements } from "../lib/jquery-plugins.js";
+import { getState } from "../store/app-store.js";
 
 // Where el is the DOM element you'd like to test for visibility
 export function isHidden(el: JQuery<HTMLElement>): boolean {
@@ -38,6 +39,15 @@ export function initVisibilityHandlers(): void {
         activeElement.addClass("focus");
         return;
       }
+
+      // In multi-select mode a focused URL card must NOT auto-expand when the app
+      // is backgrounded / the tab loses focus. Tapping a card's checkbox to select
+      // it leaves that card as document.activeElement, so without this guard
+      // backgrounding mobile Safari would set urlselected=true on it and it would
+      // be expanded (tags + action buttons showing) on return — corrupting the
+      // selection view. Selection state is untouched; only the auto-expand is
+      // suppressed while selecting.
+      if (getState().multiSelectMode) return;
 
       urlCard.attr({ urlselected: true });
       enableTabbableChildElements(urlCard);
