@@ -6315,9 +6315,9 @@
         }
       }
     },
-    "/utubs/{utub_id}/urls/copy": {
+    "/utubs/urls/copy": {
       "post": {
-        "operationId": "copyUrlsToUtub",
+        "operationId": "copyUrlsToUtubs",
         "tags": ["urls"],
         "security": [
           {
@@ -6325,17 +6325,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Copy selected URLs from a source UTub into this UTub",
-        "parameters": [
-          {
-            "name": "utub_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
+        "description": "Copy selected URLs from a source UTub into one or more destination UTubs",
         "requestBody": {
           "content": {
             "application/json": {
@@ -6369,16 +6359,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -10735,9 +10715,45 @@
             "maxItems": 100,
             "minItems": 1,
             "type": "array"
+          },
+          "destUtubIds": {
+            "description": "Destination UTub ids to copy the selected URLs into",
+            "examples": [[2, 3]],
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 25,
+            "minItems": 1,
+            "type": "array"
           }
         },
-        "required": ["sourceUtubId", "utubUrlIds"],
+        "required": ["sourceUtubId", "utubUrlIds", "destUtubIds"],
+        "type": "object"
+      },
+      "PerDestinationCopyResultSchema": {
+        "properties": {
+          "destUtubID": {
+            "description": "Destination UTub id",
+            "type": "integer"
+          },
+          "status": {
+            "description": "DestCopyStatus value: 'ok' or 'locked'",
+            "type": "string"
+          },
+          "copied": {
+            "items": {
+              "$ref": "#/components/schemas/UrlCopiedItemSchema"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/UrlCopySkippedSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["destUtubID", "status", "copied", "skipped"],
         "type": "object"
       },
       "UrlCopiedItemSchema": {
@@ -10778,22 +10794,20 @@
       },
       "CopyUrlsResponseSchema": {
         "properties": {
-          "copied": {
-            "description": "URLs copied into the destination UTub, with source\u2192destination id pairs",
+          "results": {
             "items": {
-              "$ref": "#/components/schemas/UrlCopiedItemSchema"
+              "$ref": "#/components/schemas/PerDestinationCopyResultSchema"
             },
             "type": "array"
           },
-          "skipped": {
-            "description": "Source URLs skipped because they were already in the destination UTub",
-            "items": {
-              "$ref": "#/components/schemas/UrlCopySkippedSchema"
-            },
-            "type": "array"
+          "totalCopied": {
+            "type": "integer"
+          },
+          "totalSkipped": {
+            "type": "integer"
           }
         },
-        "required": ["copied", "skipped"],
+        "required": ["results", "totalCopied", "totalSkipped"],
         "type": "object"
       },
       "ChangeUsernameRequest": {

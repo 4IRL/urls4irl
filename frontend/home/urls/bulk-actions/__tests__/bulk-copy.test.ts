@@ -50,6 +50,18 @@ interface SkippedEntry {
   utubUrlID: number;
   reason: string;
 }
+type DestStatus = "ok" | "locked";
+interface DestResult {
+  destUtubID: number;
+  status: DestStatus;
+  copied: CopiedEntry[];
+  skipped: SkippedEntry[];
+}
+interface MultiCopyResponse {
+  results: DestResult[];
+  totalCopied: number;
+  totalSkipped: number;
+}
 
 const BASE_HTML = `
   <div id="URLDeck">
@@ -100,12 +112,43 @@ function openPickerFor(selectedURLCardIDs: number[]): void {
   });
 }
 
-function successResponse(
-  copied: CopiedEntry[],
-  skipped: SkippedEntry[],
-): { copied: CopiedEntry[]; skipped: SkippedEntry[] } {
-  return { copied, skipped };
+/** Build a single per-destination result. */
+function destResult(
+  destUtubID: number,
+  {
+    status = "ok",
+    copied = [],
+    skipped = [],
+  }: { status?: DestStatus; copied?: CopiedEntry[]; skipped?: SkippedEntry[] },
+): DestResult {
+  return { destUtubID, status, copied, skipped };
 }
+
+/** Build the aggregated multi-destination response envelope from per-dest results. */
+function multiResponse(results: DestResult[]): MultiCopyResponse {
+  const totalCopied = results.reduce(
+    (sum, result) => sum + result.copied.length,
+    0,
+  );
+  const totalSkipped = results.reduce(
+    (sum, result) => sum + result.skipped.length,
+    0,
+  );
+  return { results, totalCopied, totalSkipped };
+}
+
+const COPIED_10: CopiedEntry = {
+  sourceUtubUrlID: 10,
+  utubUrlID: 100,
+  urlString: "a",
+  urlTitle: "A",
+};
+const COPIED_20: CopiedEntry = {
+  sourceUtubUrlID: 20,
+  utubUrlID: 200,
+  urlString: "b",
+  urlTitle: "B",
+};
 
 beforeAll(() => {
   document.body.innerHTML = BASE_HTML;
@@ -225,6 +268,41 @@ describe("openBulkCopyPicker (onActivate)", () => {
     // No focusable destination rows; Copy is disabled.
     expect(mount().find('.UTubSelector[role="option"]').length).toBe(0);
     expect(mount().find(".bulkCopyConfirmBtn").prop("disabled")).toBe(true);
+  });
+
+  it("renders a per-row role badge on enabled rows and a locked label on locked rows, mutually exclusively (DD-4/DD-12)", () => {
+    openPickerFor([10]);
+
+    // Enabled row (id 2, memberRole "member"): role badge present with the
+    // interpolated aria-label + raw role text; no locked label.
+    const enabled = mount().find("#bulkCopyOption-2");
+    const badge = enabled.find(".bulkCopyRoleBadge");
+    expect(badge.length).toBe(1);
+    expect(badge.text()).toBe("member");
+    expect(badge.attr("aria-label")).toBe(
+      APP_CONFIG.strings.URL_BULK_COPY_ROLE_ARIA.replace("{role}", "member"),
+    );
+    expect(enabled.find(".bulkCopyLockedLabel").length).toBe(0);
+    // Decorative aria-hidden check affordance is present.
+    const check = enabled.find(".bulkCopyOptionCheck");
+    expect(check.length).toBe(1);
+    expect(check.attr("aria-hidden")).toBe("true");
+
+    // Locked row (id 4): locked label with "🔒 locked"; no role badge.
+    const locked = mount().find("#bulkCopyOption-4");
+    const lockedLabel = locked.find(".bulkCopyLockedLabel");
+    expect(lockedLabel.length).toBe(1);
+    expect(lockedLabel.text()).toBe(
+      APP_CONFIG.strings.URL_BULK_COPY_LOCKED_LABEL,
+    );
+    expect(locked.find(".bulkCopyRoleBadge").length).toBe(0);
+  });
+
+  it("marks the inner listbox aria-multiselectable=true (DD-7)", () => {
+    openPickerFor([10]);
+    expect(mount().find(".bulkCopyListbox").attr("aria-multiselectable")).toBe(
+      "true",
+    );
   });
 
   it("is a no-op re-entrant activation (never double-mounts) — DD-15", () => {
@@ -423,62 +501,104 @@ describe("staging (DD-8/DD-9/DD-20)", () => {
     expect(document.activeElement).toBe(first[0]);
   });
 
-  it("staging a second row clears aria-selected on the previously-staged row", () => {
+  it("staging 2+ rows leaves BOTH aria-selected=true simultaneously (multi-select)", () => {
     openPickerFor([10]);
     mount().find("#bulkCopyOption-2").trigger("click");
     mount().find("#bulkCopyOption-3").trigger("click");
     expect(mount().find("#bulkCopyOption-2").attr("aria-selected")).toBe(
-      "false",
+      "true",
     );
     expect(mount().find("#bulkCopyOption-3").attr("aria-selected")).toBe(
       "true",
+    );
+    expect(mount().find("#bulkCopyOption-2").hasClass("active")).toBe(true);
+    expect(mount().find("#bulkCopyOption-3").hasClass("active")).toBe(true);
+    // Footer live-region shows the plural staged count.
+    expect(mount().find(".bulkCopyPickerMsg").text()).toBe(
+      APP_CONFIG.strings.URL_BULK_COPY_N_SELECTED.replace("{n}", "2"),
+    );
+  });
+
+  it("toggling a staged row OFF clears its aria-selected; emptying the set disables Copy and shows the select-destination hint", () => {
+    openPickerFor([10]);
+    const row = mount().find("#bulkCopyOption-2");
+    // Stage it.
+    row.trigger("click");
+    expect(row.attr("aria-selected")).toBe("true");
+    expect(mount().find(".bulkCopyConfirmBtn").prop("disabled")).toBe(false);
+    expect(mount().find(".bulkCopyPickerMsg").text()).toBe(
+      APP_CONFIG.strings.URL_BULK_COPY_ONE_SELECTED,
+    );
+
+    // Toggle it back off — set empties.
+    row.trigger("click");
+    expect(row.attr("aria-selected")).toBe("false");
+    expect(row.hasClass("active")).toBe(false);
+    expect(mount().find(".bulkCopyConfirmBtn").prop("disabled")).toBe(true);
+    expect(mount().find(".bulkCopyPickerMsg").text()).toBe(
+      APP_CONFIG.strings.URL_BULK_COPY_SELECT_DESTINATION,
+    );
+  });
+
+  it("opens already showing the select-destination hint with Copy disabled (nothing staged)", () => {
+    openPickerFor([10]);
+    expect(mount().find(".bulkCopyConfirmBtn").prop("disabled")).toBe(true);
+    expect(mount().find(".bulkCopyPickerMsg").text()).toBe(
+      APP_CONFIG.strings.URL_BULK_COPY_SELECT_DESTINATION,
     );
   });
 });
 
 describe("confirm (Copy) — resolve flows", () => {
   function stageAndSubmit(
-    destOptionId: string,
+    destOptionIds: string[],
   ): ReturnType<typeof createMockJqXHR> {
     const deferred = createMockJqXHR();
     vi.mocked(ajaxCall).mockReturnValue(deferred);
-    mount().find(destOptionId).trigger("click");
+    destOptionIds.forEach((optionId) =>
+      mount().find(optionId).trigger("click"),
+    );
     mount().find(".bulkCopyConfirmBtn").trigger("click");
     return deferred;
   }
 
-  it("all-copied → success banner, Copied cues on source rows, picker closed, no store patch", () => {
+  it("fires ONE batch request whose body carries destUtubIds (order-preserved) + sourceUtubId + utubUrlIds (DD-2)", () => {
     seedUrlRows([10, 20]);
     openPickerFor([10, 20]);
-    const deferred = stageAndSubmit("#bulkCopyOption-2");
+    stageAndSubmit(["#bulkCopyOption-2", "#bulkCopyOption-3"]);
+
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+    const [method, url, body] = vi.mocked(ajaxCall).mock.calls[0];
+    expect(method).toBe("post");
+    expect(url).toBe(APP_CONFIG.routes.copyURLsToUtubs);
+    expect(body).toEqual({
+      sourceUtubId: 1,
+      destUtubIds: [2, 3],
+      utubUrlIds: [10, 20],
+    });
+  });
+
+  it("all-copied into 2 destinations → URLS_COPIED_MULTI banner, ONE green cue per source card (not two), picker closed, no store patch", () => {
+    seedUrlRows([10, 20]);
+    openPickerFor([10, 20]);
+    const deferred = stageAndSubmit(["#bulkCopyOption-2", "#bulkCopyOption-3"]);
 
     deferred.resolve(
-      successResponse(
-        [
-          {
-            sourceUtubUrlID: 10,
-            utubUrlID: 100,
-            urlString: "a",
-            urlTitle: "A",
-          },
-          {
-            sourceUtubUrlID: 20,
-            utubUrlID: 200,
-            urlString: "b",
-            urlTitle: "B",
-          },
-        ],
-        [],
-      ),
+      multiResponse([
+        destResult(2, { copied: [COPIED_10, COPIED_20] }),
+        destResult(3, { copied: [COPIED_10, COPIED_20] }),
+      ]),
       "success",
       { status: 200 },
     );
 
     const banner = $("#bulkCopyResultBanner");
     expect(banner.hasClass("success")).toBe(true);
-    expect(banner.text()).toContain(APP_CONFIG.strings.URLS_COPIED);
+    expect(banner.text()).toContain(
+      APP_CONFIG.strings.URLS_COPIED_MULTI.replace("{n}", "2"),
+    );
     expect(banner.attr("aria-live")).toBe("polite");
-    // "Copied" cues on both source rows.
+    // ONE green cue per source card, even though it landed in two destinations.
     expect($('.urlRow[utuburlid="10"] .bulkCardResultCue--copied').length).toBe(
       1,
     );
@@ -488,23 +608,23 @@ describe("confirm (Copy) — resolve flows", () => {
     expect(isBulkCopyPickerOpen()).toBe(false);
   });
 
-  it("partial → partial banner + mixed cues; the banner never contains a URL title", () => {
+  it("partial across destinations (green-if-any) → URLS_COPIED_MULTI_PARTIAL; banner has no URL title", () => {
     seedUrlRows([10, 20]);
     openPickerFor([10, 20]);
-    const deferred = stageAndSubmit("#bulkCopyOption-2");
+    const deferred = stageAndSubmit(["#bulkCopyOption-2", "#bulkCopyOption-3"]);
 
+    // id 10 is new in BOTH dests; id 20 is new in dest 2 but a duplicate in
+    // dest 3 → green-if-any means id 20 still shows a green cue.
     deferred.resolve(
-      successResponse(
-        [
-          {
-            sourceUtubUrlID: 10,
-            utubUrlID: 100,
-            urlString: "a",
-            urlTitle: "Flexbox cheatsheet",
-          },
-        ],
-        [{ utubUrlID: 20, reason: "duplicate" }],
-      ),
+      multiResponse([
+        destResult(2, {
+          copied: [COPIED_10, { ...COPIED_20, urlTitle: "Flexbox cheatsheet" }],
+        }),
+        destResult(3, {
+          copied: [COPIED_10],
+          skipped: [{ utubUrlID: 20, reason: "duplicate" }],
+        }),
+      ]),
       "success",
       { status: 200 },
     );
@@ -512,27 +632,122 @@ describe("confirm (Copy) — resolve flows", () => {
     const banner = $("#bulkCopyResultBanner");
     expect(banner.hasClass("partial")).toBe(true);
     expect(banner.text()).toContain(
-      APP_CONFIG.strings.URLS_COPIED_PARTIAL.replace("{copied}", "1").replace(
+      APP_CONFIG.strings.URLS_COPIED_MULTI_PARTIAL.replace("{n}", "2").replace(
         "{skipped}",
         "1",
       ),
     );
     expect(banner.text()).not.toContain("Flexbox cheatsheet");
+    // Both source cards show a GREEN cue (id 20 was new in ≥1 dest).
     expect($('.urlRow[utuburlid="10"] .bulkCardResultCue--copied').length).toBe(
       1,
     );
+    expect($('.urlRow[utuburlid="20"] .bulkCardResultCue--copied').length).toBe(
+      1,
+    );
+  });
+
+  it("locked destination + 2 copying → plural URLS_COPIED_MULTI_SOME_LOCKED (assertive)", () => {
+    seedUrlRows([10]);
+    openPickerFor([10]);
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
+
+    deferred.resolve(
+      multiResponse([
+        destResult(2, { copied: [COPIED_10] }),
+        destResult(3, { copied: [COPIED_10] }),
+        destResult(4, { status: "locked" }),
+      ]),
+      "success",
+      { status: 200 },
+    );
+
+    const banner = $("#bulkCopyResultBanner");
+    expect(banner.hasClass("partial")).toBe(true);
+    expect(banner.attr("aria-live")).toBe("assertive");
+    expect(banner.text()).toContain(
+      APP_CONFIG.strings.URLS_COPIED_MULTI_SOME_LOCKED.replace(
+        "{n}",
+        "2",
+      ).replace("{locked}", "1"),
+    );
+  });
+
+  it("locked destination + exactly ONE copying → singular URLS_COPIED_SOME_LOCKED (assertive, DD-11)", () => {
+    seedUrlRows([10]);
+    openPickerFor([10]);
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
+
+    deferred.resolve(
+      multiResponse([
+        destResult(2, { copied: [COPIED_10] }),
+        destResult(3, { status: "locked" }),
+      ]),
+      "success",
+      { status: 200 },
+    );
+
+    const banner = $("#bulkCopyResultBanner");
+    expect(banner.hasClass("partial")).toBe(true);
+    expect(banner.attr("aria-live")).toBe("assertive");
+    expect(banner.text()).toContain(
+      APP_CONFIG.strings.URLS_COPIED_SOME_LOCKED.replace("{locked}", "1"),
+    );
+  });
+
+  it("every targeted destination locked (nothing copied) → UNABLE_TO_COPY_URLS fail banner AND no per-card cue (DD-13)", () => {
+    seedUrlRows([10]);
+    openPickerFor([10]);
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
+
+    deferred.resolve(
+      multiResponse([destResult(2, { status: "locked" })]),
+      "success",
+      { status: 200 },
+    );
+
+    const banner = $("#bulkCopyResultBanner");
+    expect(banner.hasClass("fail")).toBe(true);
+    expect(banner.attr("aria-live")).toBe("assertive");
+    expect(banner.text()).toContain(APP_CONFIG.strings.UNABLE_TO_COPY_URLS);
+    // Cues suppressed — a lock-block must not paint a misleading amber cue.
+    expect($('.urlRow[utuburlid="10"] .bulkCardResultCue').length).toBe(0);
+  });
+
+  it("all-duplicate, no locks, 2+ destinations → URLS_COPY_MULTI_NONE_NEW AND amber cues DO fire (DD-13)", () => {
+    seedUrlRows([10]);
+    openPickerFor([10]);
+    const deferred = stageAndSubmit(["#bulkCopyOption-2", "#bulkCopyOption-3"]);
+
+    deferred.resolve(
+      multiResponse([
+        destResult(2, { skipped: [{ utubUrlID: 10, reason: "duplicate" }] }),
+        destResult(3, { skipped: [{ utubUrlID: 10, reason: "duplicate" }] }),
+      ]),
+      "success",
+      { status: 200 },
+    );
+
+    const banner = $("#bulkCopyResultBanner");
+    expect(banner.hasClass("partial")).toBe(true);
+    expect(banner.text()).toContain(
+      APP_CONFIG.strings.URLS_COPY_MULTI_NONE_NEW,
+    );
+    // Unlike the all-locked case, amber "Already there" cues DO fire.
     expect(
-      $('.urlRow[utuburlid="20"] .bulkCardResultCue--skipped').length,
+      $('.urlRow[utuburlid="10"] .bulkCardResultCue--skipped').length,
     ).toBe(1);
   });
 
-  it("all-skipped → info banner (URLS_COPY_NONE_NEW), picker closed", () => {
+  it("single-destination all-duplicate → singular URLS_COPY_NONE_NEW (DD-14) + amber cue fires", () => {
     seedUrlRows([10]);
     openPickerFor([10]);
-    const deferred = stageAndSubmit("#bulkCopyOption-2");
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
 
     deferred.resolve(
-      successResponse([], [{ utubUrlID: 10, reason: "duplicate" }]),
+      multiResponse([
+        destResult(2, { skipped: [{ utubUrlID: 10, reason: "duplicate" }] }),
+      ]),
       "success",
       { status: 200 },
     );
@@ -540,27 +755,22 @@ describe("confirm (Copy) — resolve flows", () => {
     const banner = $("#bulkCopyResultBanner");
     expect(banner.hasClass("partial")).toBe(true);
     expect(banner.text()).toContain(APP_CONFIG.strings.URLS_COPY_NONE_NEW);
-    expect(isBulkCopyPickerOpen()).toBe(false);
+    expect(banner.text()).not.toContain(
+      APP_CONFIG.strings.URLS_COPY_MULTI_NONE_NEW,
+    );
+    expect(
+      $('.urlRow[utuburlid="10"] .bulkCardResultCue--skipped').length,
+    ).toBe(1);
   });
 
   it("stale-UTub race: nothing rendered when activeUTubID changes mid-flight", () => {
     seedUrlRows([10]);
     openPickerFor([10]);
-    const deferred = stageAndSubmit("#bulkCopyOption-2");
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
 
     storeState.activeUTubID = 999;
     deferred.resolve(
-      successResponse(
-        [
-          {
-            sourceUtubUrlID: 10,
-            utubUrlID: 100,
-            urlString: "a",
-            urlTitle: "A",
-          },
-        ],
-        [],
-      ),
+      multiResponse([destResult(2, { copied: [COPIED_10] })]),
       "success",
       { status: 200 },
     );
@@ -573,7 +783,7 @@ describe("confirm (Copy) — resolve flows", () => {
     seedUrlRows([10]);
     openPickerFor([10]);
     vi.mocked(is429Handled).mockReturnValueOnce(true);
-    const deferred = stageAndSubmit("#bulkCopyOption-2");
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
     deferred.reject({ status: 429 });
 
     // No fail banner rendered.
@@ -583,7 +793,7 @@ describe("confirm (Copy) — resolve flows", () => {
   it("a message-level 400 renders the fail banner and closes the picker", () => {
     seedUrlRows([10]);
     openPickerFor([10]);
-    const deferred = stageAndSubmit("#bulkCopyOption-2");
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
     deferred.reject({
       status: 400,
       responseJSON: { message: "URL not found in the source UTub." },
@@ -603,7 +813,7 @@ describe("confirm (Copy) — resolve flows", () => {
     try {
       seedUrlRows([10]);
       openPickerFor([10]);
-      const deferred = stageAndSubmit("#bulkCopyOption-2");
+      const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
       deferred.reject({ status: 403, responseJSON: { message: "Forbidden" } });
 
       expect(locationAssignSpy).toHaveBeenCalledWith(
@@ -621,7 +831,7 @@ describe("confirm (Copy) — resolve flows", () => {
     try {
       seedUrlRows([10]);
       openPickerFor([10]);
-      const deferred = stageAndSubmit("#bulkCopyOption-2");
+      const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
       deferred.reject({ status: 404, responseJSON: { message: "Not found" } });
 
       expect(locationAssignSpy).toHaveBeenCalledWith(
@@ -635,7 +845,7 @@ describe("confirm (Copy) — resolve flows", () => {
   it("replaces the body with the server HTML on a non-JSON 403 (CSRF expired)", () => {
     seedUrlRows([10]);
     openPickerFor([10]);
-    const deferred = stageAndSubmit("#bulkCopyOption-2");
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
 
     const forbiddenHtml = '<div id="forbiddenPage">Forbidden</div>';
     // No `responseJSON` key → the non-JSON branch; a 403 with an HTML content
@@ -721,6 +931,6 @@ describe("in-flight guards", () => {
     expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
 
     // Settle so the module's in-flight state resets for the next test.
-    deferred.resolve(successResponse([], []), "success", { status: 200 });
+    deferred.resolve(multiResponse([]), "success", { status: 200 });
   });
 });

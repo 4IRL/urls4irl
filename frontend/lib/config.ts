@@ -18,13 +18,15 @@ export type RouteId =
   | "createUTub"
   | "getUTubs"
   | "contactUs"
-  | "crossUtubSearch";
+  | "crossUtubSearch"
+  | "copyURLsToUtubs";
 
 export interface AppRoutes {
   // Static routes (string values)
   home: string;
   createUTub: string;
   getUTubs: string;
+  copyURLsToUtubs: string;
   login: string;
   register: string;
   confirmEmailAfterRegister: string;
@@ -46,7 +48,6 @@ export interface AppRoutes {
   createURL: (id: number) => string;
   createUTubTag: (id: number) => string;
   applyTagsToURLs: (utubId: number) => string;
-  copyURLsToUtub: (utubId: number) => string;
   createMember: (id: number) => string;
 
   // Dynamic two-param routes
@@ -117,6 +118,7 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     home: rawConfig.routes.home,
     createUTub: rawConfig.routes.createUTub,
     getUTubs: rawConfig.routes.getUTubs,
+    copyURLsToUtubs: rawConfig.routes.copyURLsToUtubs,
     login: rawConfig.routes.login,
     register: rawConfig.routes.register,
     confirmEmailAfterRegister: rawConfig.routes.confirmEmailAfterRegister,
@@ -173,8 +175,6 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.createUTubTag.replace("-1", String(id)),
     applyTagsToURLs: (utubId: number) =>
       rawConfig.routes.applyTagsToURLs.replace("-1", String(utubId)),
-    copyURLsToUtub: (utubId: number) =>
-      rawConfig.routes.copyURLsToUtub.replace("-1", String(utubId)),
     deleteUTubTag: (utubId: number, tagId: number) =>
       rawConfig.routes.deleteUTubTag
         .replace("-1", String(utubId))

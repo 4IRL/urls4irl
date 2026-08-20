@@ -968,6 +968,69 @@
   color: var(--deckSelectionGreen);
 }
 
+/* Decorative teal check affordance (aria-hidden, NOT a real checkbox) mirroring
+   .urlSelectCheckbox: an empty ring that fills teal with a ✓ when the row is
+   staged. Multi-select — several rows can show a filled check at once. */
+.bulkCopyOptionCheck {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--grayBadgeSelection);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.bulkCopyPickerMount .UTubSelector[role="option"].active .bulkCopyOptionCheck,
+.bulkCopyPickerMount
+  .UTubSelector[role="option"][aria-selected="true"]
+  .bulkCopyOptionCheck {
+  background: var(--deckSelectionGreen);
+  border-color: var(--deckSelectionGreen);
+  color: #06231a;
+}
+
+.bulkCopyPickerMount .UTubSelector[role="option"].active .bulkCopyOptionCheck::after,
+.bulkCopyPickerMount
+  .UTubSelector[role="option"][aria-selected="true"]
+  .bulkCopyOptionCheck::after {
+  content: "✓";
+}
+
+/* Locked destinations get a dashed (rather than solid) empty ring, reinforcing
+   the row's dimmed/disabled treatment. */
+.bulkCopyPickerMount
+  .UTubSelector[role="option"][aria-disabled="true"]
+  .bulkCopyOptionCheck {
+  border-style: dashed;
+}
+
+/* Per-row role badge (enabled rows) + locked text label (locked rows) —
+   mutually exclusive, mirroring the mock's .roleIcon / .lockTag. Both stay
+   flex:0 0 auto so they never grow the row past the 44px mobile touch target. */
+.bulkCopyRoleBadge {
+  flex: 0 0 auto;
+  color: var(--grayBadgeSelection);
+  font-size: 0.78rem;
+}
+
+.bulkCopyLockedLabel {
+  flex: 0 0 auto;
+  color: var(--grayBadgeSelection);
+  font-size: 0.68rem;
+  font-style: italic;
+}
+
 /* Locked destinations are inert to clicks, not just visually dimmed — matches
    the arrow-key roving's own skip-disabled-rows behaviour. */
 .bulkCopyPickerMount .UTubSelector[role="option"][aria-disabled="true"] {

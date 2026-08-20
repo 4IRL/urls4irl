@@ -24,7 +24,7 @@ import {
 
 const log = debug("urls:cards");
 
-type CopyUrlsResponse = SuccessResponse<"copyUrlsToUtub">;
+type CopyUrlsResponse = SuccessResponse<"copyUrlsToUtubs">;
 
 const PICKER_MOUNT_SELECTOR = "#bulkCopyPickerMount";
 const BANNER_SELECTOR = "#bulkCopyResultBanner";
@@ -93,7 +93,9 @@ export function setBulkCopyPickerOpen(open: boolean): void {
 
 let currentSnapshot: number[] = [];
 let currentSourceUtubID: number | null = null;
-let stagedDestUtubID: number | null = null;
+// Multi-select: the staged destination UTub ids. Cleared (never reassigned) so
+// the module-level reference stays stable across the picker lifecycle.
+const stagedDestUtubIDs = new Set<number>();
 let submitInFlight = false;
 let loadingTimeoutID: number | null = null;
 let keydownListener: ((event: KeyboardEvent) => void) | null = null;
@@ -169,7 +171,7 @@ function openBulkCopyPicker(context: BulkActionContext): void {
 
   currentSnapshot = snapshot;
   currentSourceUtubID = sourceUtubID;
-  stagedDestUtubID = null;
+  stagedDestUtubIDs.clear();
   submitInFlight = false;
   setBulkCopyPickerOpen(true);
   setOpenForm(HOME_FORM.BULK_COPY);
@@ -206,6 +208,7 @@ function renderPicker({
   const listbox = $(document.createElement("div")).addClass("bulkCopyListbox");
   listbox.attr({
     role: "listbox",
+    "aria-multiselectable": "true",
     "aria-label": APP_CONFIG.strings.URL_BULK_COPY_ARIA.replace(
       "{n}",
       String(selectedCount),
@@ -249,13 +252,45 @@ function renderPicker({
       });
     if (!isEnabled) row.addClass("disabled").attr("aria-disabled", "true");
 
+    // Decorative teal check affordance (DD-7 — aria-hidden, NOT role="checkbox";
+    // the row's own aria-selected carries the selected state). Prepended as the
+    // FIRST child so it reads left-of-name, mirroring .urlSelectCheckbox.
+    row.append(
+      $(document.createElement("span"))
+        .addClass("bulkCopyOptionCheck")
+        .attr({ "aria-hidden": "true" }),
+    );
     row.append(
       $(document.createElement("b")).addClass("UTubName").text(utub.name),
     );
-    // Row click stages the destination (never fires the copy).
+    // Per-row trailing affordance (DD-4/DD-12 — mutually exclusive): an enabled
+    // row shows its role badge; a locked row shows the locked label instead,
+    // never both. Both use .text() (never innerHTML) so a UTub/role value can
+    // never inject markup.
+    if (isEnabled) {
+      row.append(
+        $(document.createElement("span"))
+          .addClass("bulkCopyRoleBadge")
+          .attr(
+            "aria-label",
+            APP_CONFIG.strings.URL_BULK_COPY_ROLE_ARIA.replace(
+              "{role}",
+              utub.memberRole,
+            ),
+          )
+          .text(utub.memberRole),
+      );
+    } else {
+      row.append(
+        $(document.createElement("span"))
+          .addClass("bulkCopyLockedLabel")
+          .text(APP_CONFIG.strings.URL_BULK_COPY_LOCKED_LABEL),
+      );
+    }
+    // Row click toggles the destination (never fires the copy).
     row.on("click.bulkCopyStage", () => {
       if (row.hasClass("disabled")) return;
-      stageRow(row);
+      toggleRow(row);
     });
     listbox.append(row);
   });
@@ -269,6 +304,9 @@ function renderPicker({
   listbox.append(noMatches);
 
   mount.append(buildFilterInput()).append(listbox).append(buildFooter());
+  // Seed the footer live-region + disabled Copy button so the picker opens
+  // already showing the "select at least one" hint (nothing staged yet).
+  updateConfirmEnabled();
   attachKeyListeners();
   mount.removeClass("hidden");
 
@@ -404,7 +442,7 @@ function closeAndResetPicker({
 
   currentSnapshot = [];
   currentSourceUtubID = null;
-  stagedDestUtubID = null;
+  stagedDestUtubIDs.clear();
   submitInFlight = false;
   if (loadingTimeoutID !== null) {
     clearTimeout(loadingTimeoutID);
@@ -460,26 +498,58 @@ function moveRoving({ direction }: { direction: 1 | -1 }): void {
 }
 
 /**
- * Stage a destination row: move roving focus to it FIRST (so a click on a row
- * that did not already hold focus never leaves tabindex/focus on a stale row),
- * then record the staged id, mark it `aria-selected`/`.active` (clearing any
- * previously-staged row), and enable the Copy button.
+ * Toggle a destination row's staged state (multi-select, DD-7): move roving
+ * focus to it FIRST (so a click on a row that did not already hold focus never
+ * leaves tabindex/focus on a stale row), then add or remove its id from the
+ * staged set and flip its own `aria-selected`/`.active`. Other rows are left
+ * untouched — several destinations can be staged at once.
  */
-function stageRow(row: JQuery): void {
+function toggleRow(row: JQuery): void {
   const rowEl = row[0];
   if (!rowEl) return;
   setActiveRow(rowEl);
 
-  const mount = $(PICKER_MOUNT_SELECTOR);
-  mount
-    .find(OPTION_SELECTOR)
-    .attr("aria-selected", "false")
-    .removeClass("active");
-  row.attr("aria-selected", "true").addClass("active");
+  const id = parseInt(row.attr("utubid") ?? "", 10);
+  if (Number.isNaN(id)) return;
 
-  stagedDestUtubID = parseInt(row.attr("utubid") ?? "", 10);
-  mount.find(CONFIRM_BTN_SELECTOR).prop("disabled", false);
-  log("stage bulk copy destination", { stagedDestUtubID });
+  if (stagedDestUtubIDs.has(id)) {
+    stagedDestUtubIDs.delete(id);
+    row.attr("aria-selected", "false").removeClass("active");
+  } else {
+    stagedDestUtubIDs.add(id);
+    row.attr("aria-selected", "true").addClass("active");
+  }
+
+  updateConfirmEnabled();
+  log("toggle bulk copy destination", {
+    id,
+    staged: [...stagedDestUtubIDs],
+  });
+}
+
+/**
+ * Sync the Copy button's enabled state and the footer live-region count to the
+ * staged set: Copy is enabled at ≥1 staged destination; the message shows the
+ * "select at least one" hint at 0, a singular "1 UTub selected." at 1, and the
+ * plural "{n} UTubs selected." otherwise. Count-only / XSS-safe (`.text()`).
+ */
+function updateConfirmEnabled(): void {
+  const mount = $(PICKER_MOUNT_SELECTOR);
+  const stagedCount = stagedDestUtubIDs.size;
+  mount.find(CONFIRM_BTN_SELECTOR).prop("disabled", stagedCount === 0);
+
+  let message: string;
+  if (stagedCount === 0) {
+    message = APP_CONFIG.strings.URL_BULK_COPY_SELECT_DESTINATION;
+  } else if (stagedCount === 1) {
+    message = APP_CONFIG.strings.URL_BULK_COPY_ONE_SELECTED;
+  } else {
+    message = APP_CONFIG.strings.URL_BULK_COPY_N_SELECTED.replace(
+      "{n}",
+      String(stagedCount),
+    );
+  }
+  mount.find(MESSAGE_SELECTOR).text(message);
 }
 
 // --- Keyboard handling (capture-phase keydown + keyup on the mount) -----------
@@ -554,9 +624,9 @@ function handleMountKeydown(event: KeyboardEvent): void {
 }
 
 /**
- * Keyup: Enter or Space on the currently-focused enabled row stages it (mirrors
- * the .UTubSelector keyup-stage idiom, extended to Space since staging here is
- * an action, not navigation). Disabled rows never stage.
+ * Keyup: Enter or Space on the currently-focused enabled row toggles its staged
+ * state (mirrors the .UTubSelector keyup-stage idiom, extended to Space since
+ * toggling here is an action, not navigation). Disabled rows never toggle.
  */
 function handleMountKeyup(event: KeyboardEvent): void {
   if (event.key !== KEYS.ENTER && event.key !== KEYS.SPACE) return;
@@ -564,7 +634,7 @@ function handleMountKeyup(event: KeyboardEvent): void {
   if (target === null) return;
   const row = $(target).closest(OPTION_SELECTOR);
   if (row.length === 0 || row.hasClass("disabled")) return;
-  stageRow(row);
+  toggleRow(row);
 }
 
 // --- Confirm (Copy) -----------------------------------------------------------
@@ -577,9 +647,9 @@ function handleMountKeyup(event: KeyboardEvent): void {
  */
 function submitCopy(): void {
   if (submitInFlight) return;
-  if (stagedDestUtubID === null || currentSourceUtubID === null) return;
+  if (stagedDestUtubIDs.size === 0 || currentSourceUtubID === null) return;
 
-  const destUtubID = stagedDestUtubID;
+  const destIDs = [...stagedDestUtubIDs];
   const sourceUtubID = currentSourceUtubID;
   const snapshot = [...currentSnapshot];
   const mount = $(PICKER_MOUNT_SELECTOR);
@@ -595,12 +665,18 @@ function submitCopy(): void {
   }, SHOW_LOADING_ICON_AFTER_MS);
   message.text(APP_CONFIG.strings.URL_BULK_COPY_SUBMITTING);
 
-  log("submit bulk copy", { sourceUtubID, destUtubID, snapshot });
+  log("submit bulk copy", { sourceUtubID, destIDs, snapshot });
 
+  // ONE batch request to the multi-destination endpoint (DD-2): source + the
+  // full destination list travel in the body (no path param). The explicit 90s
+  // timeout (DD-5) bounds the worst case — MAX_BULK_COPY_DESTINATIONS(25) ×
+  // MAX_BULK_COPY_URLS(100) = 2,500 row-copies in ONE transaction — well above
+  // the 35s single-row precedent.
   const request = ajaxCall(
     "post",
-    APP_CONFIG.routes.copyURLsToUtub(destUtubID),
-    { sourceUtubId: sourceUtubID, utubUrlIds: snapshot },
+    APP_CONFIG.routes.copyURLsToUtubs,
+    { sourceUtubId: sourceUtubID, destUtubIds: destIDs, utubUrlIds: snapshot },
+    90000,
   );
 
   request.done(function (
@@ -612,7 +688,7 @@ function submitCopy(): void {
     // Bail if the active UTub changed while the request was in flight — the
     // banner + cues target the SOURCE deck, which is no longer showing.
     if (getState().activeUTubID !== sourceUtubID) return;
-    handleCopySuccess({ response });
+    handleCopySuccess({ response, snapshot });
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
@@ -635,28 +711,61 @@ function submitCopy(): void {
   });
 }
 
-function handleCopySuccess({ response }: { response: CopyUrlsResponse }): void {
-  const copiedCount = response.copied.length;
-  const skippedCount = response.skipped.length;
+function handleCopySuccess({
+  response,
+  snapshot,
+}: {
+  response: CopyUrlsResponse;
+  snapshot: number[];
+}): void {
+  const results = response.results;
+  // Destinations that actually received ≥1 copy, and destinations skipped whole
+  // because they were locked at write time (DD-8/DD-13). Both feed the banner;
+  // lockedCount also gates the per-card cue decision below.
+  const destsSucceeded = results.filter(
+    (result) => result.status === "ok" && result.copied.length > 0,
+  ).length;
+  const lockedCount = results.filter(
+    (result) => result.status === "locked",
+  ).length;
 
-  renderCopyResultBanner({ copiedCount, skippedCount });
+  // Per-card cue (single flashCardResultCues call; DD-13): suppress ONLY when
+  // nothing copied into ANY destination AND at least one targeted destination
+  // was lock-blocked — never paint a misleading amber "Already there" cue when
+  // the real cause was a lock, not a duplicate. Otherwise flash green-if-any:
+  // a source id copied into ≥1 destination gets "Copied", else "Already there".
+  if (!(destsSucceeded === 0 && lockedCount > 0)) {
+    const copiedSourceIDs = new Set<number>();
+    results
+      .filter((result) => result.status === "ok")
+      .forEach((result) =>
+        result.copied.forEach((entry) =>
+          copiedSourceIDs.add(entry.sourceUtubUrlID),
+        ),
+      );
 
-  // Per-card cues on the SOURCE deck: "Copied" (green) for each copied source
-  // row, "Already there" (amber) for each skipped duplicate. Keyed on the source
-  // Utub_Urls id (copied[].sourceUtubUrlID / skipped[].utubUrlID).
-  flashCardResultCues({
-    cues: [
-      ...response.copied.map((entry) => ({
-        utubUrlID: entry.sourceUtubUrlID,
-        variant: "copied" as const,
-        label: APP_CONFIG.strings.URL_BULK_CARD_COPIED,
-      })),
-      ...response.skipped.map((entry) => ({
-        utubUrlID: entry.utubUrlID,
-        variant: "skipped" as const,
-        label: APP_CONFIG.strings.URL_BULK_CARD_ALREADY_THERE,
-      })),
-    ],
+    const cues = snapshot.map((sourceUtubUrlID) =>
+      copiedSourceIDs.has(sourceUtubUrlID)
+        ? {
+            utubUrlID: sourceUtubUrlID,
+            variant: "copied" as const,
+            label: APP_CONFIG.strings.URL_BULK_CARD_COPIED,
+          }
+        : {
+            utubUrlID: sourceUtubUrlID,
+            variant: "skipped" as const,
+            label: APP_CONFIG.strings.URL_BULK_CARD_ALREADY_THERE,
+          },
+    );
+    flashCardResultCues({ cues });
+  }
+
+  renderCopyResultBanner({
+    destsSucceeded,
+    lockedCount,
+    destsTargeted: results.length,
+    totalCopied: response.totalCopied,
+    totalSkipped: response.totalSkipped,
   });
 
   closeAndResetPicker({ returnFocus: true });
@@ -686,15 +795,20 @@ function handleCopyFail({
 
   switch (xhr.status) {
     case 400: {
-      // The only message-level 400 is a stale/foreign selection
-      // (URL_NOT_IN_UTUB / same-UTub / invalid id). Surface the concise fail
-      // banner (count-free copy) and close the picker so the user re-selects.
-      // Bail if the active UTub changed mid-flight — the banner targets the
-      // SOURCE deck, which is no longer showing (mirrors the success guard).
+      // A message-level 400 is a stale/foreign selection (URL_NOT_IN_UTUB /
+      // same-UTub / invalid source id) OR a destination-list validation failure
+      // (empty / over-cap / invalid destUtubIds). Either way, surface the
+      // concise fail banner (count-free copy) and close the picker so the user
+      // re-selects. Bail if the active UTub changed mid-flight — the banner
+      // targets the SOURCE deck, which is no longer showing (mirrors the
+      // success guard).
       if (getState().activeUTubID !== sourceUtubID) return;
       renderCopyResultBanner({
-        copiedCount: 0,
-        skippedCount: 0,
+        destsSucceeded: 0,
+        lockedCount: 0,
+        destsTargeted: 0,
+        totalCopied: 0,
+        totalSkipped: 0,
         forceFail: true,
       });
       closeAndResetPicker({ returnFocus: true });
@@ -710,21 +824,34 @@ function handleCopyFail({
 // --- Result banner (concise COUNT ONLY — never a URL title / dest name) --------
 
 /**
- * Render the result banner in `#bulkCopyResultBanner`. Four states:
- *   - all-copied (skipped=0, copied>0) → success/polite  (URLS_COPIED)
- *   - mixed (copied>0, skipped>0)      → partial/polite   (URLS_COPIED_PARTIAL)
- *   - all-skipped (copied=0)           → partial/polite   (URLS_COPY_NONE_NEW)
- *   - hard failure (forceFail)         → fail/assertive   (UNABLE_TO_COPY_URLS)
+ * Render the aggregated multi-destination result banner in
+ * `#bulkCopyResultBanner`, keyed on how many destinations succeeded, how many
+ * were lock-skipped, and the total copied/skipped counts. Singular vs `_MULTI`
+ * wording is chosen by the SUCCESS count (destsSucceeded===1) — except the
+ * pure all-duplicate branch, which keys off destinations TARGETED
+ * (destsTargeted===1, DD-14) since no destination succeeded there. States:
+ *   - hard failure (forceFail)                         → fail/assertive
+ *   - all duplicates, no locks (totalCopied===0)       → partial/polite   NONE_NEW
+ *   - all picked destinations locked, nothing copied   → fail/assertive
+ *   - some copied + some locked                        → partial/assertive SOME_LOCKED
+ *   - mixed duplicates, no locks (totalSkipped>0)      → partial/polite   _PARTIAL
+ *   - all clean                                        → success/polite
  * The banner is a concise COUNT ONLY — it MUST NOT echo any URL title or
  * destination UTub name (XSS-safe; the per-card cues carry the which — DD-19).
  */
 function renderCopyResultBanner({
-  copiedCount,
-  skippedCount,
+  destsSucceeded,
+  lockedCount,
+  destsTargeted,
+  totalCopied,
+  totalSkipped,
   forceFail = false,
 }: {
-  copiedCount: number;
-  skippedCount: number;
+  destsSucceeded: number;
+  lockedCount: number;
+  destsTargeted: number;
+  totalCopied: number;
+  totalSkipped: number;
   forceFail?: boolean;
 }): void {
   const banner = $(BANNER_SELECTOR);
@@ -740,25 +867,65 @@ function renderCopyResultBanner({
     glyph = "🚫";
     ariaLive = "assertive";
     text = APP_CONFIG.strings.UNABLE_TO_COPY_URLS;
-  } else if (copiedCount > 0 && skippedCount === 0) {
+  } else if (totalCopied === 0 && lockedCount === 0) {
+    // Nothing copied and nothing locked → every selected URL was already in
+    // every chosen destination. Singular vs plural keys off destsTargeted.
+    variant = "partial";
+    glyph = "ℹ️";
+    ariaLive = "polite";
+    text =
+      destsTargeted === 1
+        ? APP_CONFIG.strings.URLS_COPY_NONE_NEW
+        : APP_CONFIG.strings.URLS_COPY_MULTI_NONE_NEW;
+  } else if (lockedCount > 0 && destsSucceeded === 0) {
+    // Nothing copied AND everything the user picked was locked → surface as a
+    // failure (there is no success to report).
+    variant = "fail";
+    glyph = "🚫";
+    ariaLive = "assertive";
+    text = APP_CONFIG.strings.UNABLE_TO_COPY_URLS;
+  } else if (lockedCount > 0) {
+    // Some destinations copied, some were locked → assertive partial.
+    variant = "partial";
+    glyph = "ℹ️";
+    ariaLive = "assertive";
+    text =
+      destsSucceeded === 1
+        ? APP_CONFIG.strings.URLS_COPIED_SOME_LOCKED.replace(
+            "{locked}",
+            String(lockedCount),
+          )
+        : APP_CONFIG.strings.URLS_COPIED_MULTI_SOME_LOCKED.replace(
+            "{n}",
+            String(destsSucceeded),
+          ).replace("{locked}", String(lockedCount));
+  } else if (totalSkipped > 0) {
+    // Some copied, some duplicate-skipped, no locks → polite partial.
+    variant = "partial";
+    glyph = "ℹ️";
+    ariaLive = "polite";
+    text =
+      destsSucceeded === 1
+        ? APP_CONFIG.strings.URLS_COPIED_PARTIAL.replace(
+            "{copied}",
+            String(totalCopied),
+          ).replace("{skipped}", String(totalSkipped))
+        : APP_CONFIG.strings.URLS_COPIED_MULTI_PARTIAL.replace(
+            "{n}",
+            String(destsSucceeded),
+          ).replace("{skipped}", String(totalSkipped));
+  } else {
+    // All clean — everything copied into every destination, no skips, no locks.
     variant = "success";
     glyph = "✅";
     ariaLive = "polite";
-    text = APP_CONFIG.strings.URLS_COPIED;
-  } else if (copiedCount > 0) {
-    variant = "partial";
-    glyph = "ℹ️";
-    ariaLive = "polite";
-    text = APP_CONFIG.strings.URLS_COPIED_PARTIAL.replace(
-      "{copied}",
-      String(copiedCount),
-    ).replace("{skipped}", String(skippedCount));
-  } else {
-    // copiedCount === 0 → every selected URL was already in the destination.
-    variant = "partial";
-    glyph = "ℹ️";
-    ariaLive = "polite";
-    text = APP_CONFIG.strings.URLS_COPY_NONE_NEW;
+    text =
+      destsSucceeded === 1
+        ? APP_CONFIG.strings.URLS_COPIED
+        : APP_CONFIG.strings.URLS_COPIED_MULTI.replace(
+            "{n}",
+            String(destsSucceeded),
+          );
   }
 
   // `.text()` escapes the whole string.

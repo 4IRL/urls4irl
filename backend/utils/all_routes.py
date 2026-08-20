@@ -59,7 +59,7 @@ class URL_ROUTES:
     CREATE_URL = _URLS + "create_url"
     UPDATE_URL = _URLS + "update_url"
     UPDATE_URL_TITLE = _URLS + "update_url_title"
-    COPY_URLS = _URLS + "copy_urls_to_utub"
+    COPY_URLS_MULTI = _URLS + "copy_urls_to_utubs"
 
 
 class USER_ROUTES:
@@ -215,7 +215,7 @@ def generate_routes_js() -> dict[str, str]:
         "updateURLTitle": url_for(
             URL_ROUTES.UPDATE_URL_TITLE, utub_id=-1, utub_url_id=-2
         ),
-        "copyURLsToUtub": url_for(URL_ROUTES.COPY_URLS, utub_id=-1),
+        "copyURLsToUtubs": url_for(URL_ROUTES.COPY_URLS_MULTI),
         # UTub URL Tag routes
         "createURLTag": url_for(
             URL_TAG_ROUTES.CREATE_URL_TAG, utub_id=-1, utub_url_id=-2
