@@ -15,7 +15,9 @@
 	Phase 1; bulk-tag (Phase 2) and bulk-copy (Phase 3) render buttons into it.
 -->
 <div id="bulkActionBar" class="bulkBar hidden" role="region" aria-label="Bulk actions">
-	<div class="bulkBarGrabber" aria-hidden="true"></div>
+	{# No drag-handle "grabber" lip here: the mobile bulk-action bar is a FIXED
+	   docked drawer, not a draggable/swipeable sheet, so a grabber falsely implied
+	   it could be dragged. #}
 	<div class="bulkBarRow flex-row align-center">
 		<div id="bulkActionButtons" class="bulkActions"></div>
 		<span class="bulkSpacer"></span>
