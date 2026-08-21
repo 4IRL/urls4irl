@@ -240,6 +240,21 @@
     align-items: center;
     gap: var(--space-2, 0.5rem);
     min-height: var(--deckSubheaderMinHeight);
+    /* Inset the buttons from the band's top divider and bottom panel border so
+       they read as sitting comfortably inside the subheader rather than filling
+       it edge-to-edge. */
+    padding-block: 5px;
+  }
+
+  /* The strip is a SECONDARY control cluster in the subheader, so its buttons run
+     a touch smaller than the primary header .barBtn (Add tags / Copy, 2.25rem) —
+     scoped to the strip only so the shared header + mobile-drawer .barBtn keep
+     their size. The strip is display:none below 992px, so this is desktop-only. */
+  #URLDeck.multiSelectActive #bulkSelectRangeStrip .barBtn {
+    height: 1.9rem;
+    padding: 0 11px;
+    gap: 5px;
+    font-size: 0.8rem;
   }
 
   /* Hide the header/desktop copies of Select All / Clear so they don't double up
