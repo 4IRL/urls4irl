@@ -29,3 +29,21 @@ export function removeIds(ids: number[], removed: number[]): number[] {
 export function dedupe(ids: number[]): number[] {
   return [...new Set(ids)];
 }
+
+/**
+ * Returns a new array that flips membership of every id in `toggle` against
+ * `current` (a symmetric difference): each currently-selected id NOT in `toggle`
+ * is kept (e.g. hidden-but-selected survivors), and each id in `toggle` NOT
+ * currently selected is added. Ids in both are dropped. Preserves order (kept
+ * survivors first, then newly-toggled-on ids in `toggle` iteration order) and
+ * never mutates the inputs.
+ */
+export function symmetricToggle(
+  current: number[],
+  toggle: Set<number>,
+): number[] {
+  return [
+    ...current.filter((existingId) => !toggle.has(existingId)),
+    ...[...toggle].filter((toggledId) => !current.includes(toggledId)),
+  ];
+}

@@ -2,11 +2,13 @@ import {
   toggleURLCardSelection,
   clearURLSelection,
   selectAllVisibleURLCards,
+  invertVisibleSelection,
   getSelectedURLCardIDs,
   reapplyMultiSelectMark,
   reapplyAllMultiSelectMarks,
   pruneRemovedFromSelection,
 } from "../bulk-selection.js";
+import { setPickerOpen } from "../picker-guard.js";
 import { resetStore, setState, getState } from "../../../../store/app-store.js";
 import { AppEvents, on } from "../../../../lib/event-bus.js";
 
@@ -177,6 +179,79 @@ describe("bulk-selection", () => {
       selectAllVisibleURLCards();
 
       expect(getState().selectedURLCardIDs).not.toContain(2);
+    });
+  });
+
+  describe("invertVisibleSelection", () => {
+    it("flips exactly the visible rows' membership, leaving the array correct", () => {
+      setState({ selectedURLCardIDs: [1] }); // row 1 selected; 2 and 3 not
+
+      invertVisibleSelection();
+
+      const selected = getState().selectedURLCardIDs;
+      expect(selected).not.toContain(1); // flipped off
+      expect(selected).toContain(2); // flipped on
+      expect(selected).toContain(3); // flipped on
+      expect(selected).toHaveLength(2);
+    });
+
+    it("preserves hidden-but-selected ids and leaves a hidden-unselected row alone", () => {
+      rowById(3).attr("searchable", "false"); // hidden by search, will be selected
+      rowById(2).attr("filterable", "false"); // hidden by filter, stays unselected
+      setState({ selectedURLCardIDs: [3] }); // only the hidden row is selected
+
+      invertVisibleSelection(); // visible set is just row 1
+
+      const selected = getState().selectedURLCardIDs;
+      expect(selected).toContain(3); // hidden-but-selected survivor persists
+      expect(selected).toContain(1); // the one visible row flips on
+      expect(selected).not.toContain(2); // hidden-unselected row stays unselected
+    });
+
+    it("emits URL_MULTISELECT_CHANGED once with the new array and repaints marks", () => {
+      setState({ selectedURLCardIDs: [1] });
+      const handler = vi.fn();
+      const unsubscribe = on(AppEvents.URL_MULTISELECT_CHANGED, handler);
+
+      invertVisibleSelection();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith({ selectedURLCardIDs: [2, 3] });
+      // Marks repaint: 1 unmarked, 2 and 3 marked.
+      expect(rowById(1).hasClass("multiSelected")).toBe(false);
+      expect(rowById(2).hasClass("multiSelected")).toBe(true);
+      expect(rowById(3).hasClass("multiSelected")).toBe(true);
+
+      unsubscribe();
+    });
+
+    it("is a no-op while a bulk picker is open (state unchanged, no emit)", () => {
+      setState({ selectedURLCardIDs: [1] });
+      const handler = vi.fn();
+      const unsubscribe = on(AppEvents.URL_MULTISELECT_CHANGED, handler);
+
+      // Open a picker for the duration of the invert call, then close it within
+      // the same test so no picker-guard state leaks into later tests (this
+      // suite's beforeEach does not reset picker-guard).
+      setPickerOpen("bulk-tag", true);
+      invertVisibleSelection();
+      setPickerOpen("bulk-tag", false);
+
+      expect(getState().selectedURLCardIDs).toEqual([1]);
+      expect(handler).not.toHaveBeenCalled();
+
+      unsubscribe();
+    });
+
+    it("is a no-op on the visible axis with 0 visible rows (only hidden survivors remain)", () => {
+      rowById(1).attr("filterable", "false");
+      rowById(2).attr("filterable", "false");
+      rowById(3).attr("filterable", "false");
+      setState({ selectedURLCardIDs: [2] }); // a hidden survivor
+
+      invertVisibleSelection();
+
+      expect(getState().selectedURLCardIDs).toEqual([2]);
     });
   });
 
