@@ -8,20 +8,36 @@ import {
 } from "../bulk-action-registry.js";
 import {
   clearURLSelection,
+  invertVisibleSelection,
   selectAllVisibleURLCards,
 } from "../bulk-selection.js";
 import { exitMultiSelectMode } from "../bulk-mode.js";
+import { onPickerOpenChange } from "../picker-guard.js";
 import { isBulkTagPickerOpen, setBulkTagPickerOpen } from "../bulk-tag.js";
 import { setBulkCopyPickerOpen } from "../bulk-copy.js";
 
 vi.mock("../bulk-selection.js", () => ({
   selectAllVisibleURLCards: vi.fn(),
   clearURLSelection: vi.fn(),
+  invertVisibleSelection: vi.fn(),
 }));
 
 vi.mock("../bulk-mode.js", () => ({
   exitMultiSelectMode: vi.fn(),
 }));
+
+// PARTIAL mock (Pass2-DD-2): keep isAnyBulkPickerOpen / setPickerOpen /
+// registerPickerClose / closeAllPickers REAL so the existing picker-guard-driven
+// assertions in this file (and bulk-bar.ts's own guards) keep working, and wrap
+// ONLY onPickerOpenChange with a vi.fn() to capture the callback bulk-bar.ts
+// registers. A wholesale mock would undefine the rest for every importer.
+vi.mock("../picker-guard.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../picker-guard.js")>(
+      "../picker-guard.js",
+    );
+  return { ...actual, onPickerOpenChange: vi.fn() };
+});
 
 const $ = window.jQuery;
 
@@ -45,6 +61,12 @@ const HTML = `
       <button id="bulkSelectExit" type="button">Exit</button>
       <span id="URLBulkSelectionAnnouncement" aria-live="polite"></span>
     </div>
+    <div id="bulkSelectRangeStrip" class="bulkSelectRangeStrip" role="group"
+         aria-label="Selection controls">
+      <button id="bulkRangeSelectAll" type="button" class="barBtn">Select all</button>
+      <button id="bulkRangeInvert" type="button" class="barBtn">Invert</button>
+      <button id="bulkRangeClear" type="button" class="barBtn clear" aria-disabled="true">Clear</button>
+    </div>
     <div id="listURLs">
       <div class="urlRow" utuburlid="1" filterable="true"></div>
       <div class="urlRow" utuburlid="2" filterable="true"></div>
@@ -60,6 +82,7 @@ describe("bulk-bar", () => {
     document.body.innerHTML = HTML;
     vi.mocked(selectAllVisibleURLCards).mockClear();
     vi.mocked(clearURLSelection).mockClear();
+    vi.mocked(invertVisibleSelection).mockClear();
     vi.mocked(exitMultiSelectMode).mockClear();
     // Reset the (module-scoped) picker flags so a prior test's open picker never
     // leaks into this one's action-button rebuild guard. Both mirror into the
@@ -239,6 +262,199 @@ describe("bulk-bar", () => {
       expect(vi.mocked(clearURLSelection)).not.toHaveBeenCalled();
 
       setBulkCopyPickerOpen(false);
+    });
+  });
+
+  describe("desktop range strip", () => {
+    describe("button clicks", () => {
+      it("calls selectAllVisibleURLCards() when the strip Select all is clicked", () => {
+        $("#bulkRangeSelectAll").trigger("click");
+        expect(vi.mocked(selectAllVisibleURLCards)).toHaveBeenCalledTimes(1);
+      });
+
+      it("calls invertVisibleSelection() when the strip Invert is clicked with a live selection", () => {
+        // Invert is aria-disabled at 0 selected (DD-6); enable it first.
+        setState({ selectedURLCardIDs: [1] });
+        emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+
+        $("#bulkRangeInvert").trigger("click");
+
+        expect(vi.mocked(invertVisibleSelection)).toHaveBeenCalledTimes(1);
+      });
+
+      it("calls clearURLSelection() when the strip Clear is clicked with a live selection", () => {
+        setState({ selectedURLCardIDs: [1] });
+        emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+
+        $("#bulkRangeClear").trigger("click");
+
+        expect(vi.mocked(clearURLSelection)).toHaveBeenCalledTimes(1);
+      });
+
+      it("no-ops the strip Clear while it is aria-disabled (empty selection)", () => {
+        setState({ selectedURLCardIDs: [] });
+        emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [] });
+
+        $("#bulkRangeClear").trigger("click");
+
+        expect(vi.mocked(clearURLSelection)).not.toHaveBeenCalled();
+      });
+
+      it("no-ops the strip Invert while it is aria-disabled (0 selected)", () => {
+        setState({ selectedURLCardIDs: [] });
+        emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [] });
+
+        $("#bulkRangeInvert").trigger("click");
+
+        expect(vi.mocked(invertVisibleSelection)).not.toHaveBeenCalled();
+      });
+
+      it("no-ops all three strip controls while the bulk tag picker is open (isAnyBulkPickerOpen guard)", () => {
+        // Live selection so a no-op proves the picker guard — not the
+        // aria-disabled guard — is what blocks the clicks.
+        setState({ selectedURLCardIDs: [1] });
+        emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+        setBulkTagPickerOpen(true);
+
+        $("#bulkRangeSelectAll").trigger("click");
+        $("#bulkRangeInvert").trigger("click");
+        $("#bulkRangeClear").trigger("click");
+
+        expect(vi.mocked(selectAllVisibleURLCards)).not.toHaveBeenCalled();
+        expect(vi.mocked(invertVisibleSelection)).not.toHaveBeenCalled();
+        expect(vi.mocked(clearURLSelection)).not.toHaveBeenCalled();
+
+        setBulkTagPickerOpen(false);
+      });
+
+      it("no-ops all three strip controls while the bulk COPY picker is open (guard covers both pickers)", () => {
+        setState({ selectedURLCardIDs: [1] });
+        emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+        setBulkCopyPickerOpen(true);
+
+        $("#bulkRangeSelectAll").trigger("click");
+        $("#bulkRangeInvert").trigger("click");
+        $("#bulkRangeClear").trigger("click");
+
+        expect(vi.mocked(selectAllVisibleURLCards)).not.toHaveBeenCalled();
+        expect(vi.mocked(invertVisibleSelection)).not.toHaveBeenCalled();
+        expect(vi.mocked(clearURLSelection)).not.toHaveBeenCalled();
+
+        setBulkCopyPickerOpen(false);
+      });
+    });
+
+    describe("aria-disabled sync (syncRangeButtonStates)", () => {
+      it("disables Clear AND Invert at 0 selected while rows are visible, keeping Select all enabled (DD-6)", () => {
+        // 3 visible rows in the fixture, nothing selected.
+        setState({ selectedURLCardIDs: [] });
+        emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [] });
+
+        expect($("#bulkRangeClear").attr("aria-disabled")).toBe("true");
+        // DD-6: Invert disables at 0 selected even though rows are visible —
+        // inverting from empty == Select All, so it is a redundant control.
+        expect($("#bulkRangeInvert").attr("aria-disabled")).toBe("true");
+        expect($("#bulkRangeSelectAll").attr("aria-disabled")).toBe("false");
+      });
+
+      it("enables Clear and Invert once at least one row is selected", () => {
+        setState({ selectedURLCardIDs: [1] });
+        emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+
+        expect($("#bulkRangeClear").attr("aria-disabled")).toBe("false");
+        expect($("#bulkRangeInvert").attr("aria-disabled")).toBe("false");
+        expect($("#bulkRangeSelectAll").attr("aria-disabled")).toBe("false");
+      });
+
+      it("disables Select all AND Invert when a search leaves 0 visible rows (visibleCount === 0 arm)", () => {
+        // Seed a live selection, then search-hide every row so nothing matches
+        // VISIBLE_URL_SELECTOR (.urlRow[filterable=true]:not([searchable=false])).
+        setState({ selectedURLCardIDs: [1] });
+        $(".urlRow").attr("searchable", "false");
+        emit(AppEvents.URL_SEARCH_VISIBILITY_CHANGED);
+
+        expect($("#bulkRangeSelectAll").attr("aria-disabled")).toBe("true");
+        expect($("#bulkRangeInvert").attr("aria-disabled")).toBe("true");
+      });
+
+      it("disables Select all AND Invert on URL_TAG_FILTER_APPLIED that yields 0 visible rows", () => {
+        setState({ selectedURLCardIDs: [1] });
+        $(".urlRow").attr("filterable", "false");
+        emit(AppEvents.URL_TAG_FILTER_APPLIED);
+
+        expect($("#bulkRangeSelectAll").attr("aria-disabled")).toBe("true");
+        expect($("#bulkRangeInvert").attr("aria-disabled")).toBe("true");
+      });
+    });
+
+    describe("picker-open inert sync (onPickerOpenChange subscriber)", () => {
+      // bulk-bar.ts registers exactly one onPickerOpenChange callback (the
+      // subscription block is behind a module-level once-guard), so calls[0][0]
+      // is the callback for the whole file. It is intentionally NOT cleared
+      // between tests — this block relies on vitest.config.ts leaving clearMocks
+      // false; the length assertion below fails loudly (with intent) if that
+      // ever changes rather than silently reading an undefined callback.
+      function pickerOpenCallback(): (open: boolean) => void {
+        const calls = vi.mocked(onPickerOpenChange).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        return calls[0][0];
+      }
+
+      it("forces the container and all three buttons aria-disabled when a picker opens", () => {
+        pickerOpenCallback()(true);
+
+        expect($("#bulkSelectRangeStrip").attr("aria-disabled")).toBe("true");
+        expect($("#bulkRangeSelectAll").attr("aria-disabled")).toBe("true");
+        expect($("#bulkRangeInvert").attr("aria-disabled")).toBe("true");
+        expect($("#bulkRangeClear").attr("aria-disabled")).toBe("true");
+      });
+
+      it("on picker close re-derives each button from current selection/visibility (not a blind clear)", () => {
+        // 0 selected, 3 visible rows: after close, Clear + Invert must STAY
+        // disabled (re-derived), while Select all + the container re-enable —
+        // proving the close path re-syncs rather than blindly clearing.
+        setState({ selectedURLCardIDs: [] });
+        const callback = pickerOpenCallback();
+
+        callback(true);
+        callback(false);
+
+        expect($("#bulkSelectRangeStrip").attr("aria-disabled")).toBe("false");
+        expect($("#bulkRangeSelectAll").attr("aria-disabled")).toBe("false");
+        expect($("#bulkRangeInvert").attr("aria-disabled")).toBe("true");
+        expect($("#bulkRangeClear").attr("aria-disabled")).toBe("true");
+      });
+
+      it("on picker close re-enables all three when a live selection is present", () => {
+        setState({ selectedURLCardIDs: [1] });
+        const callback = pickerOpenCallback();
+
+        callback(true);
+        callback(false);
+
+        expect($("#bulkSelectRangeStrip").attr("aria-disabled")).toBe("false");
+        expect($("#bulkRangeSelectAll").attr("aria-disabled")).toBe("false");
+        expect($("#bulkRangeInvert").attr("aria-disabled")).toBe("false");
+        expect($("#bulkRangeClear").attr("aria-disabled")).toBe("false");
+      });
+
+      it("on picker close keeps Select all + Invert disabled when the close-path re-derive finds 0 visible rows", () => {
+        // A live selection but every row hidden: after close, the container
+        // re-enables while Select all + Invert STAY disabled via the
+        // visibleCount === 0 arm of syncRangeButtonStates (close-path re-derive).
+        setState({ selectedURLCardIDs: [1] });
+        $(".urlRow").attr("filterable", "false");
+        const callback = pickerOpenCallback();
+
+        callback(true);
+        callback(false);
+
+        expect($("#bulkSelectRangeStrip").attr("aria-disabled")).toBe("false");
+        expect($("#bulkRangeSelectAll").attr("aria-disabled")).toBe("true");
+        expect($("#bulkRangeInvert").attr("aria-disabled")).toBe("true");
+        // Clear gates on selection only, so a live selection keeps it enabled.
+        expect($("#bulkRangeClear").attr("aria-disabled")).toBe("false");
+      });
     });
   });
 
