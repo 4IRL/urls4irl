@@ -789,25 +789,38 @@
     box-shadow: var(--shadow-lg);
   }
 
-  /* Keep the filter box pinned to the TOP while the destination rows scroll. The
-     negative margins bleed it across the mount's 12px padding so scrolling rows
-     never peek above/beside it; the padding restores the input's inset. */
+  /* The picker is a fixed-height flex column with a STATIC filter (top) and footer
+     (bottom); ONLY the destination rows scroll between them. Clip the mount itself
+     (the .bulkCopyListbox below is the sole scroll region) so no row can peek in the
+     mount's padding band below the footer — the sticky-footer approach let the last
+     row show through that 12px bottom-padding gap. Mirrors the mobile drawer. */
+  #bulkActionBar .bulkCopyPickerMount {
+    overflow: hidden;
+  }
+
+  /* Filter box at the top. The negative margins bleed it across the mount's 12px
+     padding so scrolling rows never peek above/beside it; the padding restores the
+     input's inset. */
   .bulkCopyPickerMount .bulkCopyFilterWrap {
-    position: sticky;
-    top: 0;
-    z-index: 1;
     margin: -12px -12px 4px;
     padding: 12px 12px 6px;
     background: var(--panelBackgroundColor);
   }
 
-  /* Keep the Copy / Cancel footer pinned + visible while the destination rows
-     scroll, so the primary action never falls below the dropdown's fold. */
+  /* The sole scroll region: grows to fill the space between the static filter and
+     footer and clips its rows, so none render below the pinned footer. */
+  .bulkCopyPickerMount .bulkCopyListbox {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Copy / Cancel footer flush to the drawer bottom. The negative bottom + side
+     margins bleed it across the mount's padding so it seals the bottom edge with no
+     row peeking beneath it; the padding restores the buttons' inset. */
   .bulkCopyPickerMount .bulkCopyPickerFooter {
-    position: sticky;
-    bottom: 0;
-    margin-top: 8px;
-    padding-top: 8px;
+    margin: 8px -12px -12px;
+    padding: 8px 12px 12px;
     background: var(--panelBackgroundColor);
   }
 
