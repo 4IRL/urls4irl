@@ -220,6 +220,56 @@
 }
 
 /*
+ * ---- Selection-context range strip (desktop-only subheader controls) ----
+ * Select all · Invert · Clear, living as the FIRST (left) child of
+ * #UTubDescriptionSubheaderOuterWrap (URLDeckSubheader.html); the filter
+ * #SearchURLWrap self-pins right via margin-left:auto. DESKTOP ONLY — the mobile
+ * drawer keeps its own #bulkSelectAll/#bulkSelectClear (BulkActionBar.html) and
+ * gets no strip.
+ */
+#bulkSelectRangeStrip {
+  display: none;
+}
+
+@media (min-width: 992px) {
+  /* Reveal in mode; the explicit min-height defeats the in-mode subheader
+     collapse to min-height:0 (the :not(.url-search-open) rule below) so the strip
+     owns its own vertical rhythm rather than inheriting the band's. */
+  #URLDeck.multiSelectActive #bulkSelectRangeStrip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    min-height: var(--deckSubheaderMinHeight);
+  }
+
+  /* Hide the header/desktop copies of Select All / Clear so they don't double up
+     with the strip (the strip is the sole desktop surface for these). No existing
+     rule targets these ids, so this id-scoped rule needs no !important. */
+  #URLDeck.multiSelectActive #bulkActionBar #bulkSelectAll,
+  #URLDeck.multiSelectActive #bulkActionBar #bulkSelectClear {
+    display: none;
+  }
+}
+
+/* The strip never shows on mobile; the drawer's Select All / Clear are untouched
+   there. !important beats the desktop-reveal rule below the breakpoint boundary. */
+@media (max-width: 991.98px) {
+  #bulkSelectRangeStrip {
+    display: none !important;
+  }
+}
+
+/* Picker-inert (DD-5): while a bulk sub-picker is open, bulk-bar.ts sets the
+   container's aria-disabled from one place. pointer-events:none on the container
+   is inherited by all three buttons (none override it), blocking interaction at
+   once. NO opacity on the container — the three buttons carry their own
+   aria-disabled for per-control SR disclosure + the .barBtn[aria-disabled] dim,
+   so keeping opacity off the container prevents two opacity layers stacking. */
+#bulkSelectRangeStrip[aria-disabled="true"] {
+  pointer-events: none;
+}
+
+/*
  * In mode the header row hosts, left→right: the count context (#bulkSelectContext),
  * the inline Select All / Clear bar (#bulkActionBar — desktop only; on mobile it is
  * a fixed bottom drawer and so contributes nothing to this row's flow), and the
@@ -448,9 +498,14 @@
   outline-offset: 2px;
 }
 
-/* Clear reflects its disabled state via aria-disabled (not the native disabled
-   attribute) so it stays focusable as the mode-enter focus target. */
-.barBtn.clear[aria-disabled="true"] {
+/* A bar button reflects its disabled state via aria-disabled (not the native
+   disabled attribute) so it stays focusable — Clear is the mode-enter focus
+   target, and the strip's Select all / Invert stay reachable while inert. The
+   selector is intentionally NOT scoped to .clear so every disabled .barBtn dims
+   consistently: the range-strip's #bulkRangeSelectAll / #bulkRangeInvert (plain
+   .barBtn, no .clear class) share this dim once their own aria-disabled is set
+   by bulk-bar.ts's syncRangeButtonStates() / picker-inert wiring. */
+.barBtn[aria-disabled="true"] {
   opacity: 0.4;
   cursor: default;
 }
