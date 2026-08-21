@@ -233,6 +233,14 @@ class HomePageLocators(GenericPageLocator):
     BULK_SELECT_ALL = "#bulkSelectAll"
     BULK_SELECT_CLEAR = "#bulkSelectClear"
     BULK_SELECT_EXIT = "#bulkSelectExit"
+    # Desktop-only selection-context "range strip" (subheader left). Select all /
+    # Clear are surfaced here on desktop (the header #bulkSelectAll/#bulkSelectClear
+    # are display:none >=992px); Invert is net-new (flips the visible selection).
+    # The strip is hidden on mobile — the drawer keeps its own Select All / Clear.
+    BULK_SELECT_RANGE_STRIP = "#bulkSelectRangeStrip"
+    BULK_RANGE_SELECT_ALL = "#bulkRangeSelectAll"
+    BULK_RANGE_INVERT = "#bulkRangeInvert"
+    BULK_RANGE_CLEAR = "#bulkRangeClear"
     # Mobile-only on-demand tag-filter glyph (bi-tag) in the header; opens the
     # existing tag-sheet in selection mode. Hidden on desktop (min-width:992px).
     BULK_TAG_FILTER_ICON = "#bulkTagFilterIcon"

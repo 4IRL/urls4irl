@@ -716,14 +716,26 @@ def wait_until_url_card_swipe_reset(*, page: Page, timeout: int = 10) -> None:
 
 
 def enter_multi_select_mode(*, page: Page) -> None:
-    """Click/tap the header toggle and settle into multi-select mode (bulk bar
-    visible, aria-pressed reflecting the pressed state). Shared by the desktop
-    and mobile multi-select suites."""
+    """Click/tap the header toggle and settle into multi-select mode (deck marked
+    active, aria-pressed reflecting the pressed state). Shared by the desktop and
+    mobile multi-select suites.
+
+    The #URLDeck.multiSelectActive class is the viewport-agnostic "in mode" signal
+    (bulk-mode.ts sets it unconditionally on entry). We assert it rather than
+    #bulkActionBar visibility: on desktop the bar is now an inline action-buttons
+    host that is legitimately empty — and therefore zero-size / not "visible" to
+    Playwright — at 0 selection, because Select All / Clear moved into the subheader
+    range strip and the Add tags / Copy buttons are capability-gated (rendered only
+    once >=1 URL is selected). On mobile the bar is the fixed drawer and stays
+    visible, but the deck class holds on both, so it is the robust cross-viewport
+    settle signal."""
     toggle = page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)
     expect(toggle).to_be_visible()
     toggle.click()
     expect(toggle).to_have_attribute("aria-pressed", "true")
-    expect(page.locator(HPL.BULK_ACTION_BAR)).to_be_visible()
+    expect(page.locator(HPL.URL_DECK)).to_have_class(
+        re.compile(r"(^|\s)multiSelectActive(\s|$)")
+    )
 
 
 def tap_url_checkbox(*, page: Page, utub_url_id: int) -> None:
