@@ -1167,9 +1167,12 @@
   cursor: default;
 }
 
-/* Copy — green accent commit button. */
+/* Copy — green accent commit button. Never wrap the "Copy to UTub" label; the
+   button widens to fit it on one line (the footer's flex message shrinks/wraps
+   instead), and flex-shrink:0 keeps it from being squeezed narrower than its text. */
 .bulkCopyConfirmBtn {
   position: relative;
+  flex: 0 0 auto;
   border: 1px solid var(--deckSelectionGreen);
   border-radius: 6px;
   padding: 6px 14px;
@@ -1178,6 +1181,7 @@
   font-weight: 700;
   font-size: 0.85rem;
   font-family: inherit;
+  white-space: nowrap;
   cursor: pointer;
 }
 
