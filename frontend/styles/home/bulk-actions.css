@@ -1047,6 +1047,15 @@
   color: var(--textPrimary);
 }
 
+/* Left-justify the UTub name. The row is flex-row + jc-sb (space-between), so
+   without flex-grow the name sits in the middle of the row (between the radio and
+   the role badge) and reads as centered. Growing it fills the space after the radio
+   and left-aligns the text, while the role badge stays pinned right. */
+.bulkCopyPickerMount .UTubSelector[role="option"] .UTubName {
+  flex: 1 1 auto;
+  text-align: left;
+}
+
 .bulkCopyPickerMount .UTubSelector[role="option"]:hover {
   background: var(--cardBackgroundColorHover);
 }
