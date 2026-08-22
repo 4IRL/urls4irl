@@ -50,6 +50,30 @@ def get_other_utub_this_user_is_member_of(
         return Utubs.query.get(membership.utub_id)
 
 
+def get_n_other_utubs_this_user_is_member_of(
+    app: Flask, user_id: int, source_utub_id: int, num_utubs: int
+) -> list[Utubs]:
+    """Return ``num_utubs`` other UTubs (id != ``source_utub_id``) this user is a
+    member of — the natural multi-copy destinations. Ordered by
+    ``Utub_Members.utub_id`` for determinism; asserts that many memberships
+    exist."""
+    with app.app_context():
+        memberships: list[Utub_Members] = (
+            Utub_Members.query.filter(
+                Utub_Members.user_id == user_id,
+                Utub_Members.utub_id != source_utub_id,
+            )
+            .order_by(Utub_Members.utub_id)
+            .limit(num_utubs)
+            .all()
+        )
+        assert len(memberships) == num_utubs, (
+            f"Expected {num_utubs} other UTubs for user {user_id}, "
+            f"found {len(memberships)}"
+        )
+        return [Utubs.query.get(membership.utub_id) for membership in memberships]
+
+
 def get_url_in_utub(app: Flask, utub_id: int) -> Utub_Urls:
     with app.app_context():
         return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first()

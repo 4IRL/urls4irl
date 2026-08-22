@@ -12,7 +12,7 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.constants import STRINGS
 from tests.functional.db_utils import (
-    get_other_utub_this_user_is_member_of,
+    get_n_other_utubs_this_user_is_member_of,
     get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
@@ -24,6 +24,7 @@ from tests.functional.playwright_utils import Decks, wait_until_hidden
 from tests.functional.urls_ui.playwright_utils import (
     enter_multi_select_and_select_urls,
     expect_copy_cue_on_row,
+    expect_staged_destination_count,
     open_bulk_copy_picker,
     stage_copy_destination,
     submit_bulk_copy,
@@ -69,22 +70,26 @@ def _count_dest_rows_for_url(*, app: Flask, utub_id: int, url_id: int) -> int:
         ).count()
 
 
-def test_mobile_bulk_copy_bottom_drawer_stage_confirm(
+def test_mobile_bulk_copy_bottom_drawer_stage_two_and_confirm(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a mobile user with a source-only URL selected in multi-select mode
-    WHEN they open the copy picker, stage a destination by tapping a row, and
-        confirm
+    WHEN they open the copy picker, stage TWO destinations by tapping their rows,
+        and confirm
     THEN the picker mounts as a bottom drawer with 44px tappable rows/buttons,
-        the copy succeeds (success banner + "Copied" cue), and the destination
-        gains the row.
+        both rows stay staged (aria-selected="true"), the copy succeeds into BOTH
+        destinations (multi-destination banner + "Copied" cue), and each
+        destination gains the row.
     """
     page = page_mobile_portrait
     app = provide_app
     source: Utubs = get_utub_this_user_created(app, USER_ID_FOR_TEST)
-    dest = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
-    dest_id, dest_name = dest.id, dest.name
+    dest_a, dest_b = get_n_other_utubs_this_user_is_member_of(
+        app, USER_ID_FOR_TEST, source.id, 2
+    )
+    dest_a_id, dest_a_name = dest_a.id, dest_a.name
+    dest_b_id, dest_b_name = dest_b.id, dest_b.name
 
     utub_url_id_a, url_id_a = _seed_source_url(
         app=app,
@@ -125,8 +130,12 @@ def test_mobile_bulk_copy_bottom_drawer_stage_confirm(
     assert cancel_box is not None
     assert cancel_box["height"] >= _MIN_TOUCH_TARGET_PX
 
-    # Stage by tapping the destination row, then confirm.
-    stage_copy_destination(page=page, utub_name=dest_name, via_keyboard=False)
+    # Stage BOTH destinations by tapping their rows; multi-select keeps each row
+    # staged (aria-selected asserted per-row in the helper).
+    stage_copy_destination(page=page, utub_name=dest_a_name, via_keyboard=False)
+    stage_copy_destination(page=page, utub_name=dest_b_name, via_keyboard=False)
+    expect_staged_destination_count(page=page, count=2)
+
     submit_bulk_copy(page=page)
 
     wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
@@ -138,6 +147,10 @@ def test_mobile_bulk_copy_bottom_drawer_stage_confirm(
     banner = page.locator(HPL.BULK_COPY_BANNER)
     expect(banner).to_be_visible()
     expect(banner).to_have_class(re.compile(r"(^|\s)success(\s|$)"))
-    expect(page.locator(HPL.BULK_COPY_BANNER_BODY)).to_have_text(STRINGS.URLS_COPIED)
+    expect(page.locator(HPL.BULK_COPY_BANNER_BODY)).to_have_text(
+        STRINGS.URLS_COPIED_MULTI.replace("{n}", "2")
+    )
 
-    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id_a) == 1
+    # Both destinations gained the copied URL.
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_a_id, url_id=url_id_a) == 1
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_b_id, url_id=url_id_a) == 1

@@ -84,6 +84,18 @@
     transition: none;
 }
 
+/* Legible placeholder on the grey search pill. Without this, these deck filter
+   inputs fall back to the browser-default placeholder color, which is near-invisible
+   against --searchInputBackgroundColor (the medium-grey pill) — so users never saw
+   the "Filter UTubs" / "Filter tags" / "Filter members" / "Filter URLs" hint.
+   Mirrors the existing #crossUtubSearchInput::placeholder value. */
+#URLContentSearch::placeholder,
+#UTubNameSearch::placeholder,
+#TagNameSearch::placeholder,
+#MemberNameSearch::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
 #UTubNameSearch+.text-input-label {
     background: var(--searchInputBackgroundColor);
     color: #c6c6c6;

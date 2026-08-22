@@ -75,7 +75,7 @@ const appConfig = {
     deleteURLTag: "/utubs/-1/urls/-2/tags/-3",
     createUTubTag: "/utubs/-1/tags",
     applyTagsToURLs: "/utubs/-1/urls/tags/batch",
-    copyURLsToUtub: "/utubs/-1/urls/copy",
+    copyURLsToUtubs: "/utubs/urls/copy",
     deleteUTubTag: "/utubs/-1/tags/-2",
     createMember: "/utubs/-1/members",
     removeMember: "/utubs/-1/members/-4",
@@ -171,6 +171,19 @@ const appConfig = {
     URLS_COPIED: "URLs copied to UTub.",
     URLS_COPIED_PARTIAL: "{copied} copied; {skipped} already in the UTub.",
     URLS_COPY_NONE_NEW: "All selected URLs are already in the UTub.",
+    URLS_COPIED_MULTI: "Copied to {n} UTubs.",
+    URLS_COPIED_MULTI_PARTIAL:
+      "Copied to {n} UTubs; {skipped} already present.",
+    URLS_COPY_MULTI_NONE_NEW:
+      "All selected URLs were already in the chosen UTubs.",
+    URLS_COPIED_MULTI_SOME_LOCKED:
+      "Copied to {n} UTubs; {locked} skipped (locked).",
+    URLS_COPIED_SOME_LOCKED: "Copied to 1 UTub; {locked} skipped (locked).",
+    URL_BULK_COPY_SELECT_DESTINATION: "Select at least one UTub to copy into.",
+    URL_BULK_COPY_ONE_SELECTED: "1 UTub selected.",
+    URL_BULK_COPY_N_SELECTED: "{n} UTubs selected.",
+    URL_BULK_COPY_ROLE_ARIA: "Role: {role}",
+    URL_BULK_COPY_LOCKED_LABEL: "🔒 locked",
     URL_BULK_CARD_COPIED: "Copied",
     URL_BULK_CARD_ALREADY_THERE: "Already there",
     URL_BULK_COPY_LABEL: "Copy to UTub",

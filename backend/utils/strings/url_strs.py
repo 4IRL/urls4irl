@@ -39,6 +39,25 @@ ADD_URL_BUTTON = "Add URL"
 URLS_COPIED = "URLs copied to UTub."
 URLS_COPIED_PARTIAL = "{copied} copied; {skipped} already in the UTub."
 URLS_COPY_NONE_NEW = "All selected URLs are already in the UTub."
+# Multi-destination bulk-copy banner strings (n >= 2 destinations succeeded). The
+# frontend selects singular (URLS_COPIED/_PARTIAL) vs these _MULTI forms by the
+# destination success count, avoiding ungrammatical "Copied to 1 UTubs".
+URLS_COPIED_MULTI = "Copied to {n} UTubs."
+URLS_COPIED_MULTI_PARTIAL = "Copied to {n} UTubs; {skipped} already present."
+URLS_COPY_MULTI_NONE_NEW = "All selected URLs were already in the chosen UTubs."
+URLS_COPIED_MULTI_SOME_LOCKED = "Copied to {n} UTubs; {locked} skipped (locked)."
+# Singular locked-skip fallback (exactly one destination succeeded); "1" is a
+# literal, only {locked} is interpolated in TS.
+URLS_COPIED_SOME_LOCKED = "Copied to 1 UTub; {locked} skipped (locked)."
+# In-picker hint shown when no destination is staged.
+URL_BULK_COPY_SELECT_DESTINATION = "Select at least one UTub to copy into."
+# Picker footer live-region staged-count message (singular vs plural).
+URL_BULK_COPY_ONE_SELECTED = "1 UTub selected."
+URL_BULK_COPY_N_SELECTED = "{n} UTubs selected."
+# Per-row role-badge aria-label template ({role} interpolated in TS with the row's
+# raw memberRole value) and the per-row locked text label.
+URL_BULK_COPY_ROLE_ARIA = "Role: {role}"
+URL_BULK_COPY_LOCKED_LABEL = "🔒 locked"
 URL_BULK_CARD_COPIED = "Copied"
 URL_BULK_CARD_ALREADY_THERE = "Already there"
 URL_BULK_COPY_LABEL = "Copy to UTub"
@@ -100,6 +119,16 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URLS_COPIED = URLS_COPIED
     URLS_COPIED_PARTIAL = URLS_COPIED_PARTIAL
     URLS_COPY_NONE_NEW = URLS_COPY_NONE_NEW
+    URLS_COPIED_MULTI = URLS_COPIED_MULTI
+    URLS_COPIED_MULTI_PARTIAL = URLS_COPIED_MULTI_PARTIAL
+    URLS_COPY_MULTI_NONE_NEW = URLS_COPY_MULTI_NONE_NEW
+    URLS_COPIED_MULTI_SOME_LOCKED = URLS_COPIED_MULTI_SOME_LOCKED
+    URLS_COPIED_SOME_LOCKED = URLS_COPIED_SOME_LOCKED
+    URL_BULK_COPY_SELECT_DESTINATION = URL_BULK_COPY_SELECT_DESTINATION
+    URL_BULK_COPY_ONE_SELECTED = URL_BULK_COPY_ONE_SELECTED
+    URL_BULK_COPY_N_SELECTED = URL_BULK_COPY_N_SELECTED
+    URL_BULK_COPY_ROLE_ARIA = URL_BULK_COPY_ROLE_ARIA
+    URL_BULK_COPY_LOCKED_LABEL = URL_BULK_COPY_LOCKED_LABEL
     URL_BULK_CARD_COPIED = URL_BULK_CARD_COPIED
     URL_BULK_CARD_ALREADY_THERE = URL_BULK_CARD_ALREADY_THERE
     URL_BULK_COPY_LABEL = URL_BULK_COPY_LABEL
@@ -129,6 +158,7 @@ URLS_WITH_CREDENTIALS_EXCEPTION = "URLs with credentials not allowed."
 UNABLE_TO_COPY_URLS = "Unable to copy the selected URLs."
 URL_NOT_IN_UTUB = "URL not found in the source UTub."
 INVALID_URL_ID = "Invalid URL ID."
+INVALID_UTUB_ID = "Invalid UTub ID."
 CANNOT_COPY_TO_SAME_UTUB = "Cannot copy URLs into the same UTub."
 
 
@@ -151,6 +181,7 @@ class URL_FAILURE(FAILURE_GENERAL):
     UNABLE_TO_COPY_URLS = UNABLE_TO_COPY_URLS
     URL_NOT_IN_UTUB = URL_NOT_IN_UTUB
     INVALID_URL_ID = INVALID_URL_ID
+    INVALID_UTUB_ID = INVALID_UTUB_ID
     CANNOT_COPY_TO_SAME_UTUB = CANNOT_COPY_TO_SAME_UTUB
 
 

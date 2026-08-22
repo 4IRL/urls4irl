@@ -1,7 +1,12 @@
 import { $ } from "../../../lib/globals.js";
 import { debug } from "../../../lib/debug.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
-import { dedupe, removeIds, toggleId } from "../../../logic/multi-select.js";
+import {
+  dedupe,
+  removeIds,
+  symmetricToggle,
+  toggleId,
+} from "../../../logic/multi-select.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { VISIBLE_URL_SELECTOR } from "../utils.js";
 import { isAnyBulkPickerOpen } from "./picker-guard.js";
@@ -116,6 +121,30 @@ export function selectAllVisibleURLCards(): void {
   });
   const next = dedupe([...getState().selectedURLCardIDs, ...visibleIDs]);
   log("select all visible URL cards", { visibleIDs, next });
+  setState({ selectedURLCardIDs: next });
+  reapplyAllMultiSelectMarks();
+  emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: next });
+}
+
+/**
+ * Flip the selection membership of every currently-visible row (DD-2: visible
+ * axis only), preserving hidden-but-selected ids. A visible selected row becomes
+ * unselected and a visible unselected row becomes selected; rows hidden by a
+ * filter (not matching VISIBLE_URL_SELECTOR) keep whatever selection state they
+ * had. Mirrors selectAllVisibleURLCards()'s commit shape.
+ */
+export function invertVisibleSelection(): void {
+  // Selection is locked while a bulk sub-picker (tag or copy) is open —
+  // defense-in-depth for any caller that reaches this export without going
+  // through bulk-bar.ts's own call-site guard.
+  if (isAnyBulkPickerOpen()) return;
+  const visibleIDs = new Set<number>();
+  $(VISIBLE_URL_SELECTOR).each((_index, element) => {
+    const id = urlCardId($(element));
+    if (!Number.isNaN(id)) visibleIDs.add(id);
+  });
+  const next = symmetricToggle(getState().selectedURLCardIDs, visibleIDs);
+  log("invert visible selection", { visibleIDs: [...visibleIDs], next });
   setState({ selectedURLCardIDs: next });
   reapplyAllMultiSelectMarks();
   emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: next });

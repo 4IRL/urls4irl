@@ -2,6 +2,7 @@ from flask import Blueprint
 from flask_login import current_user
 
 from backend.api_common.auth_decorators import (
+    email_validation_required,
     url_adder_or_creator_required,
     utub_membership_required,
     utub_membership_with_valid_url_in_utub_required,
@@ -26,7 +27,7 @@ from backend.schemas.urls import (
     UrlUpdatedResponseSchema,
 )
 from backend.urls.constants import URLErrorCodes
-from backend.urls.services.copy_urls import copy_urls_into_utub
+from backend.urls.services.copy_urls import copy_urls_into_utubs
 from backend.urls.services.create_urls import create_url_in_utub
 from backend.urls.services.delete_urls import delete_url_in_utub
 from backend.urls.services.read_urls import get_url_in_utub
@@ -75,44 +76,43 @@ def create_url(
     )
 
 
-@urls.route("/utubs/<int:utub_id>/urls/copy", methods=["POST"])
-@utub_membership_required
+@urls.route("/utubs/urls/copy", methods=["POST"])
+@email_validation_required
 @api_route(
     request_schema=CopyUrlsRequest,
     response_schema=CopyUrlsResponseSchema,
     error_message=URL_FAILURE.UNABLE_TO_COPY_URLS,
     error_code=URLErrorCodes.UNABLE_TO_COPY_URLS_ERROR,
     tags=[OPEN_API.URLS],
-    description="Copy selected URLs from a source UTub into this UTub",
+    description="Copy selected URLs from a source UTub into one or more destination UTubs",
     status_codes={
         200: CopyUrlsResponseSchema,
         400: ErrorResponse,
-        403: ErrorResponse,
         404: ErrorResponse,
     },
 )
-def copy_urls_to_utub(
-    utub_id: int, current_utub: Utubs, copy_urls_request: CopyUrlsRequest
-) -> FlaskResponse:
+def copy_urls_to_utubs(copy_urls_request: CopyUrlsRequest) -> FlaskResponse:
     """
-    User wants to copy one or more selected URLs from a SOURCE UTub into this
-    (destination) UTub in a single request. The path param `utub_id` is the
-    DESTINATION, guarded/injected by `@utub_membership_required`; the source UTub
-    id travels in the body (`sourceUtubId`). URLs already present in the
-    destination are skipped and reported; tags are never carried across the copy.
+    User wants to copy one or more selected URLs from a SOURCE UTub into one or
+    more DESTINATION UTubs in a single request. The endpoint carries no path
+    param — the source UTub id, the destination UTub ids, and the selected
+    UTub-URL ids all travel in the body (`sourceUtubId`, `destUtubIds`,
+    `utubUrlIds`). URLs already present in a given destination are skipped and
+    reported per-destination; a destination locked at write time is skipped and
+    reported (`status="locked"`) rather than failing the whole request; tags are
+    never carried across the copy.
 
-    Source membership and that each `utubUrlId` belongs to the source UTub are
-    validated inside the service (the route decorator only guards the destination).
+    All source AND destination membership + lock + same-UTub validation is
+    performed inside the service (`@email_validation_required` only proves a
+    logged-in, email-validated user).
 
     Args:
-        utub_id (int): The destination UTub the URLs are copied INTO
-        current_utub (Utubs): The destination UTub model
         copy_urls_request (CopyUrlsRequest): Validated request schema
     """
-    return copy_urls_into_utub(
+    return copy_urls_into_utubs(
         source_utub_id=copy_urls_request.sourceUtubId,
+        dest_utub_ids=copy_urls_request.destUtubIds,
         utub_url_ids=copy_urls_request.utubUrlIds,
-        dest_utub=current_utub,
         current_user_id=current_user.id,
     )
 

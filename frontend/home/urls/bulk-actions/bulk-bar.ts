@@ -9,9 +9,10 @@ import {
   getAvailableBulkActions,
 } from "./bulk-action-registry.js";
 import { exitMultiSelectMode } from "./bulk-mode.js";
-import { isAnyBulkPickerOpen } from "./picker-guard.js";
+import { isAnyBulkPickerOpen, onPickerOpenChange } from "./picker-guard.js";
 import {
   clearURLSelection,
+  invertVisibleSelection,
   selectAllVisibleURLCards,
 } from "./bulk-selection.js";
 
@@ -25,6 +26,14 @@ const ACTION_BUTTONS_SELECTOR = "#bulkActionButtons";
 const SELECT_ALL_SELECTOR = "#bulkSelectAll";
 const CLEAR_SELECTOR = "#bulkSelectClear";
 const EXIT_SELECTOR = "#bulkSelectExit";
+// Desktop selection-context range strip (subheader). Its Select all / Invert /
+// Clear are a responsive DUPLICATE of the header/drawer #bulkSelectAll /
+// #bulkSelectClear (shown only >=992px; the drawer copies show only < 992px),
+// bound to the same handlers below.
+const RANGE_SELECT_ALL_SELECTOR = "#bulkRangeSelectAll";
+const RANGE_INVERT_SELECTOR = "#bulkRangeInvert";
+const RANGE_CLEAR_SELECTOR = "#bulkRangeClear";
+const RANGE_STRIP_SELECTOR = "#bulkSelectRangeStrip";
 const MULTI_SELECT_TOGGLE_SELECTOR = "#urlBtnMultiSelect";
 const DECK_SELECTOR = "#URLDeck";
 const HIDDEN_CLASS = "hidden";
@@ -32,6 +41,9 @@ const HIDDEN_CLASS = "hidden";
 const SELECT_ALL_CLICK = "click.bulkSelectAll";
 const CLEAR_CLICK = "click.bulkSelectClear";
 const EXIT_CLICK = "click.bulkSelectExit";
+const RANGE_SELECT_ALL_CLICK = "click.bulkRangeSelectAll";
+const RANGE_INVERT_CLICK = "click.bulkRangeInvert";
+const RANGE_CLEAR_CLICK = "click.bulkRangeClear";
 
 // Bus subscriptions are process-wide (the bus has no rebind), so guard them
 // against a repeat initBulkBar() accumulating duplicate handlers. The DOM
@@ -111,6 +123,34 @@ function renderBulkActionButtons(context: BulkActionContext): void {
   }
 }
 
+/**
+ * Re-derive the three desktop range-strip buttons' aria-disabled from the CURRENT
+ * selection/visibility state and write them. The single place both updateBar()
+ * and the picker-close path call, so the gating lives in one spot:
+ *  - Clear      → disabled at 0 selected (same value as #bulkSelectClear).
+ *  - Select all → disabled at 0 visible (can't act on the visible axis).
+ *  - Invert     → disabled at 0 selected OR 0 visible (DD-6: at 0 selected,
+ *                 inverting the visible set == Select All, so it's redundant).
+ * visibleCount is derived the same way the "N hidden by filter" hint is —
+ * $(VISIBLE_URL_SELECTOR).length.
+ */
+function syncRangeButtonStates(): void {
+  const selectedCount = getState().selectedURLCardIDs.length;
+  const visibleCount = $(VISIBLE_URL_SELECTOR).length;
+  $(RANGE_SELECT_ALL_SELECTOR).attr(
+    "aria-disabled",
+    visibleCount === 0 ? "true" : "false",
+  );
+  $(RANGE_INVERT_SELECTOR).attr(
+    "aria-disabled",
+    selectedCount === 0 || visibleCount === 0 ? "true" : "false",
+  );
+  $(RANGE_CLEAR_SELECTOR).attr(
+    "aria-disabled",
+    selectedCount === 0 ? "true" : "false",
+  );
+}
+
 /** Repaint the bar (count, hidden hint, SR announcement, Clear state, actions). */
 function updateBar(selectedURLCardIDs: number[]): void {
   const selectedCount = selectedURLCardIDs.length;
@@ -150,6 +190,14 @@ function updateBar(selectedURLCardIDs: number[]): void {
   // action button out from under the open picker mounted in the stable container.
   if (!isAnyBulkPickerOpen()) {
     renderBulkActionButtons(buildContext());
+  }
+
+  // Same picker-open guard: while a picker is up the onPickerOpenChange OPEN
+  // handler has force-disabled all three strip buttons, so updateBar() must NOT
+  // re-enable them by re-deriving from selection/visibility. The picker-close
+  // handler re-runs syncRangeButtonStates() itself once the picker closes.
+  if (!isAnyBulkPickerOpen()) {
+    syncRangeButtonStates();
   }
 }
 
@@ -194,6 +242,24 @@ export function initBulkBar(): void {
     if ($(CLEAR_SELECTOR).attr("aria-disabled") === "true") return;
     clearURLSelection();
   });
+  // Desktop range-strip controls. Each guards on BOTH the picker-open state and
+  // its own aria-disabled — the DD-6 gating must be enforced, not just painted —
+  // mirroring the #bulkSelectClear guard shape above.
+  $(RANGE_SELECT_ALL_SELECTOR).offAndOnExact(RANGE_SELECT_ALL_CLICK, () => {
+    if (isAnyBulkPickerOpen()) return;
+    if ($(RANGE_SELECT_ALL_SELECTOR).attr("aria-disabled") === "true") return;
+    selectAllVisibleURLCards();
+  });
+  $(RANGE_INVERT_SELECTOR).offAndOnExact(RANGE_INVERT_CLICK, () => {
+    if (isAnyBulkPickerOpen()) return;
+    if ($(RANGE_INVERT_SELECTOR).attr("aria-disabled") === "true") return;
+    invertVisibleSelection();
+  });
+  $(RANGE_CLEAR_SELECTOR).offAndOnExact(RANGE_CLEAR_CLICK, () => {
+    if (isAnyBulkPickerOpen()) return;
+    if ($(RANGE_CLEAR_SELECTOR).attr("aria-disabled") === "true") return;
+    clearURLSelection();
+  });
   $(EXIT_SELECTOR).offAndOnExact(EXIT_CLICK, () => exitMultiSelectMode());
 
   if (_barSubscriptionsRegistered) return;
@@ -219,5 +285,25 @@ export function initBulkBar(): void {
   on(AppEvents.URL_SEARCH_VISIBILITY_CHANGED, () => {
     log("bulk-bar url search visibility changed");
     updateBar(getState().selectedURLCardIDs);
+  });
+
+  // Picker-inert wiring (DD-5 + Pass2-DD-3): the single place that syncs the
+  // range strip's inert state for BOTH pickers. The container carries its own
+  // aria-disabled for the CSS pointer-events:none rule; the three buttons carry
+  // their own aria-disabled too, for per-control SR disclosure.
+  onPickerOpenChange((open) => {
+    $(RANGE_STRIP_SELECTOR).attr("aria-disabled", open ? "true" : "false");
+    if (open) {
+      // Picker open: force all three buttons inert regardless of current
+      // selection/visibility — the strip is locked while a picker is up.
+      $(RANGE_SELECT_ALL_SELECTOR).attr("aria-disabled", "true");
+      $(RANGE_INVERT_SELECTOR).attr("aria-disabled", "true");
+      $(RANGE_CLEAR_SELECTOR).attr("aria-disabled", "true");
+    } else {
+      // Picker closed: do NOT blindly clear each button's aria-disabled —
+      // re-derive from current selection/visibility so a button that should
+      // stay disabled (e.g. Clear at 0 selected) does.
+      syncRangeButtonStates();
+    }
   });
 }

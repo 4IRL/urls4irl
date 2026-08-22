@@ -220,6 +220,71 @@
 }
 
 /*
+ * ---- Selection-context range strip (desktop-only subheader controls) ----
+ * Select all · Invert · Clear, living as the FIRST (left) child of
+ * #UTubDescriptionSubheaderOuterWrap (URLDeckSubheader.html); the filter
+ * #SearchURLWrap self-pins right via margin-left:auto. DESKTOP ONLY — the mobile
+ * drawer keeps its own #bulkSelectAll/#bulkSelectClear (BulkActionBar.html) and
+ * gets no strip.
+ */
+#bulkSelectRangeStrip {
+  display: none;
+}
+
+@media (min-width: 992px) {
+  /* Reveal in mode; the explicit min-height defeats the in-mode subheader
+     collapse to min-height:0 (the :not(.url-search-open) rule below) so the strip
+     owns its own vertical rhythm rather than inheriting the band's. */
+  #URLDeck.multiSelectActive #bulkSelectRangeStrip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    min-height: var(--deckSubheaderMinHeight);
+    /* Inset the buttons from the band's top divider and bottom panel border so
+       they read as sitting comfortably inside the subheader rather than filling
+       it edge-to-edge. */
+    padding-block: 5px;
+  }
+
+  /* The strip is a SECONDARY control cluster in the subheader, so its buttons run
+     a touch smaller than the primary header .barBtn (Add tags / Copy, 2.25rem) —
+     scoped to the strip only so the shared header + mobile-drawer .barBtn keep
+     their size. The strip is display:none below 992px, so this is desktop-only. */
+  #URLDeck.multiSelectActive #bulkSelectRangeStrip .barBtn {
+    height: 1.9rem;
+    padding: 0 11px;
+    gap: 5px;
+    font-size: 0.8rem;
+  }
+
+  /* Hide the header/desktop copies of Select All / Clear so they don't double up
+     with the strip (the strip is the sole desktop surface for these). No existing
+     rule targets these ids, so this id-scoped rule needs no !important. */
+  #URLDeck.multiSelectActive #bulkActionBar #bulkSelectAll,
+  #URLDeck.multiSelectActive #bulkActionBar #bulkSelectClear {
+    display: none;
+  }
+}
+
+/* The strip never shows on mobile; the drawer's Select All / Clear are untouched
+   there. !important beats the desktop-reveal rule below the breakpoint boundary. */
+@media (max-width: 991.98px) {
+  #bulkSelectRangeStrip {
+    display: none !important;
+  }
+}
+
+/* Picker-inert (DD-5): while a bulk sub-picker is open, bulk-bar.ts sets the
+   container's aria-disabled from one place. pointer-events:none on the container
+   is inherited by all three buttons (none override it), blocking interaction at
+   once. NO opacity on the container — the three buttons carry their own
+   aria-disabled for per-control SR disclosure + the .barBtn[aria-disabled] dim,
+   so keeping opacity off the container prevents two opacity layers stacking. */
+#bulkSelectRangeStrip[aria-disabled="true"] {
+  pointer-events: none;
+}
+
+/*
  * In mode the header row hosts, left→right: the count context (#bulkSelectContext),
  * the inline Select All / Clear bar (#bulkActionBar — desktop only; on mobile it is
  * a fixed bottom drawer and so contributes nothing to this row's flow), and the
@@ -448,9 +513,14 @@
   outline-offset: 2px;
 }
 
-/* Clear reflects its disabled state via aria-disabled (not the native disabled
-   attribute) so it stays focusable as the mode-enter focus target. */
-.barBtn.clear[aria-disabled="true"] {
+/* A bar button reflects its disabled state via aria-disabled (not the native
+   disabled attribute) so it stays focusable — Clear is the mode-enter focus
+   target, and the strip's Select all / Invert stay reachable while inert. The
+   selector is intentionally NOT scoped to .clear so every disabled .barBtn dims
+   consistently: the range-strip's #bulkRangeSelectAll / #bulkRangeInvert (plain
+   .barBtn, no .clear class) share this dim once their own aria-disabled is set
+   by bulk-bar.ts's syncRangeButtonStates() / picker-inert wiring. */
+.barBtn[aria-disabled="true"] {
   opacity: 0.4;
   cursor: default;
 }
@@ -719,25 +789,38 @@
     box-shadow: var(--shadow-lg);
   }
 
-  /* Keep the filter box pinned to the TOP while the destination rows scroll. The
-     negative margins bleed it across the mount's 12px padding so scrolling rows
-     never peek above/beside it; the padding restores the input's inset. */
+  /* The picker is a fixed-height flex column with a STATIC filter (top) and footer
+     (bottom); ONLY the destination rows scroll between them. Clip the mount itself
+     (the .bulkCopyListbox below is the sole scroll region) so no row can peek in the
+     mount's padding band below the footer — the sticky-footer approach let the last
+     row show through that 12px bottom-padding gap. Mirrors the mobile drawer. */
+  #bulkActionBar .bulkCopyPickerMount {
+    overflow: hidden;
+  }
+
+  /* Filter box at the top. The negative margins bleed it across the mount's 12px
+     padding so scrolling rows never peek above/beside it; the padding restores the
+     input's inset. */
   .bulkCopyPickerMount .bulkCopyFilterWrap {
-    position: sticky;
-    top: 0;
-    z-index: 1;
     margin: -12px -12px 4px;
     padding: 12px 12px 6px;
     background: var(--panelBackgroundColor);
   }
 
-  /* Keep the Copy / Cancel footer pinned + visible while the destination rows
-     scroll, so the primary action never falls below the dropdown's fold. */
+  /* The sole scroll region: grows to fill the space between the static filter and
+     footer and clips its rows, so none render below the pinned footer. */
+  .bulkCopyPickerMount .bulkCopyListbox {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Copy / Cancel footer flush to the drawer bottom. The negative bottom + side
+     margins bleed it across the mount's padding so it seals the bottom edge with no
+     row peeking beneath it; the padding restores the buttons' inset. */
   .bulkCopyPickerMount .bulkCopyPickerFooter {
-    position: sticky;
-    bottom: 0;
-    margin-top: 8px;
-    padding-top: 8px;
+    margin: 8px -12px -12px;
+    padding: 8px 12px 12px;
     background: var(--panelBackgroundColor);
   }
 
@@ -929,6 +1012,13 @@
   padding-left: 32px;
 }
 
+/* Legible placeholder on the grey search pill (see forms.css) — the browser default
+   is near-invisible on --searchInputBackgroundColor, so the "Filter UTubs…" hint
+   never showed in the copy picker. */
+.bulkCopyFilterInput::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* Suppress the native search "X" (the app uses its own affordances; mirrors the
    #UTubNameSearch/#TagNameSearch/... suppression in forms.css). */
 .bulkCopyFilterInput::-webkit-search-cancel-button {
@@ -951,10 +1041,22 @@
 .bulkCopyPickerMount .UTubSelector[role="option"] {
   min-height: 2.25rem;
   padding: 8px 12px;
+  /* Space the radio check, the UTub name, and the role badge apart — .flex-row sets
+     no gap, so without this the name hugs the check ring. */
+  gap: 12px;
   border-radius: 5px;
   border: 1px solid transparent;
   cursor: pointer;
   color: var(--textPrimary);
+}
+
+/* Left-justify the UTub name. The row is flex-row + jc-sb (space-between), so
+   without flex-grow the name sits in the middle of the row (between the radio and
+   the role badge) and reads as centered. Growing it fills the space after the radio
+   and left-aligns the text, while the role badge stays pinned right. */
+.bulkCopyPickerMount .UTubSelector[role="option"] .UTubName {
+  flex: 1 1 auto;
+  text-align: left;
 }
 
 .bulkCopyPickerMount .UTubSelector[role="option"]:hover {
@@ -966,6 +1068,69 @@
   background: var(--selectedUTubColorBackground);
   border-color: var(--deckSelectionGreen);
   color: var(--deckSelectionGreen);
+}
+
+/* Decorative teal check affordance (aria-hidden, NOT a real checkbox) mirroring
+   .urlSelectCheckbox: an empty ring that fills teal with a ✓ when the row is
+   staged. Multi-select — several rows can show a filled check at once. */
+.bulkCopyOptionCheck {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--grayBadgeSelection);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.bulkCopyPickerMount .UTubSelector[role="option"].active .bulkCopyOptionCheck,
+.bulkCopyPickerMount
+  .UTubSelector[role="option"][aria-selected="true"]
+  .bulkCopyOptionCheck {
+  background: var(--deckSelectionGreen);
+  border-color: var(--deckSelectionGreen);
+  color: #06231a;
+}
+
+.bulkCopyPickerMount .UTubSelector[role="option"].active .bulkCopyOptionCheck::after,
+.bulkCopyPickerMount
+  .UTubSelector[role="option"][aria-selected="true"]
+  .bulkCopyOptionCheck::after {
+  content: "✓";
+}
+
+/* Locked destinations get a dashed (rather than solid) empty ring, reinforcing
+   the row's dimmed/disabled treatment. */
+.bulkCopyPickerMount
+  .UTubSelector[role="option"][aria-disabled="true"]
+  .bulkCopyOptionCheck {
+  border-style: dashed;
+}
+
+/* Per-row role badge (enabled rows) + locked text label (locked rows) —
+   mutually exclusive, mirroring the mock's .roleIcon / .lockTag. Both stay
+   flex:0 0 auto so they never grow the row past the 44px mobile touch target. */
+.bulkCopyRoleBadge {
+  flex: 0 0 auto;
+  color: var(--grayBadgeSelection);
+  font-size: 0.78rem;
+}
+
+.bulkCopyLockedLabel {
+  flex: 0 0 auto;
+  color: var(--grayBadgeSelection);
+  font-size: 0.68rem;
+  font-style: italic;
 }
 
 /* Locked destinations are inert to clicks, not just visually dimmed — matches
@@ -1021,9 +1186,12 @@
   cursor: default;
 }
 
-/* Copy — green accent commit button. */
+/* Copy — green accent commit button. Never wrap the "Copy to UTub" label; the
+   button widens to fit it on one line (the footer's flex message shrinks/wraps
+   instead), and flex-shrink:0 keeps it from being squeezed narrower than its text. */
 .bulkCopyConfirmBtn {
   position: relative;
+  flex: 0 0 auto;
   border: 1px solid var(--deckSelectionGreen);
   border-radius: 6px;
   padding: 6px 14px;
@@ -1032,6 +1200,7 @@
   font-weight: 700;
   font-size: 0.85rem;
   font-family: inherit;
+  white-space: nowrap;
   cursor: pointer;
 }
 

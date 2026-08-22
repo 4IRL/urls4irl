@@ -716,14 +716,26 @@ def wait_until_url_card_swipe_reset(*, page: Page, timeout: int = 10) -> None:
 
 
 def enter_multi_select_mode(*, page: Page) -> None:
-    """Click/tap the header toggle and settle into multi-select mode (bulk bar
-    visible, aria-pressed reflecting the pressed state). Shared by the desktop
-    and mobile multi-select suites."""
+    """Click/tap the header toggle and settle into multi-select mode (deck marked
+    active, aria-pressed reflecting the pressed state). Shared by the desktop and
+    mobile multi-select suites.
+
+    The #URLDeck.multiSelectActive class is the viewport-agnostic "in mode" signal
+    (bulk-mode.ts sets it unconditionally on entry). We assert it rather than
+    #bulkActionBar visibility: on desktop the bar is now an inline action-buttons
+    host that is legitimately empty — and therefore zero-size / not "visible" to
+    Playwright — at 0 selection, because Select All / Clear moved into the subheader
+    range strip and the Add tags / Copy buttons are capability-gated (rendered only
+    once >=1 URL is selected). On mobile the bar is the fixed drawer and stays
+    visible, but the deck class holds on both, so it is the robust cross-viewport
+    settle signal."""
     toggle = page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)
     expect(toggle).to_be_visible()
     toggle.click()
     expect(toggle).to_have_attribute("aria-pressed", "true")
-    expect(page.locator(HPL.BULK_ACTION_BAR)).to_be_visible()
+    expect(page.locator(HPL.URL_DECK)).to_have_class(
+        re.compile(r"(^|\s)multiSelectActive(\s|$)")
+    )
 
 
 def tap_url_checkbox(*, page: Page, utub_url_id: int) -> None:
@@ -735,10 +747,12 @@ def tap_url_checkbox(*, page: Page, utub_url_id: int) -> None:
     page.locator(checkbox_selector).first.click()
 
 
-# --- Bulk multi-URL copy-to-UTub helpers (Phase 3) ---------------------------
-# The copy destination picker mounts a role="listbox" of role="option" rows into
-# the stable `#bulkCopyPickerMount`; these helpers scope to that mount and drive
-# the Stage + Confirm rhythm the picker enforces.
+# --- Bulk multi-URL copy-to-UTub helpers -------------------------------------
+# The copy destination picker mounts a role="listbox" (aria-multiselectable) of
+# role="option" rows into the stable `#bulkCopyPickerMount`; these helpers scope
+# to that mount and drive the Stage + Confirm rhythm the picker enforces. Copy is
+# multi-destination: several rows can be staged before one Confirm fires a single
+# batch request.
 
 
 def enter_multi_select_and_select_urls(*, page: Page, url_ids: list[int]) -> None:
@@ -758,11 +772,14 @@ def open_bulk_copy_picker(*, page: Page) -> None:
     )
 
 
-def _bulk_copy_option_by_name(*, page: Page, utub_name: str) -> Locator:
-    """Resolve a destination row inside the picker by role="option" + its exact
-    accessible name (the UTub name), never by a raw CSS class."""
-    return page.locator(HPL.BULK_COPY_PICKER_MOUNT).get_by_role(
-        "option", name=utub_name, exact=True
+def bulk_copy_option_by_name(*, page: Page, utub_name: str) -> Locator:
+    """Resolve a destination row inside the picker by role="option" whose
+    ``.UTubName`` child holds exactly ``utub_name``. The row's computed accessible
+    name now folds in the per-row role badge / locked label text (DD-4/DD-12), so
+    matching on ``get_by_role(name=...)`` is no longer exact — filter on the
+    dedicated ``.UTubName`` node instead, keeping resolution stable and readable."""
+    return page.locator(f"{HPL.BULK_COPY_PICKER_MOUNT} {HPL.BULK_COPY_OPTION}").filter(
+        has=page.locator(".UTubName", has_text=re.compile(rf"^{re.escape(utub_name)}$"))
     )
 
 
@@ -774,7 +791,7 @@ def stage_copy_destination(
     the .UTubSelector idiom the picker reuses) rather than a raw click; pass
     ``via_keyboard=False`` to stage by clicking. Asserts the row's
     ``aria-selected`` flips to ``"true"`` after staging, then returns the row."""
-    row = _bulk_copy_option_by_name(page=page, utub_name=utub_name)
+    row = bulk_copy_option_by_name(page=page, utub_name=utub_name)
     expect(row).to_be_visible()
     if via_keyboard:
         # Focus then press: the picker stages on keyup of Enter/Space when a row
@@ -786,6 +803,35 @@ def stage_copy_destination(
         row.click()
     expect(row).to_have_attribute("aria-selected", "true")
     return row
+
+
+def stage_copy_destinations(*, page: Page, utub_names: list[str]) -> list[Locator]:
+    """Stage each named destination row for a MULTI-destination copy. The first
+    row is staged through the Enter/Space **keyup** path (real DOM focus + keyup,
+    exercising the keyboard toggle) and the remainder by click, so a single call
+    covers both interaction paths. Asserts EACH row's ``aria-selected`` flips to
+    ``"true"`` (multi-select leaves every prior staged row selected — staging one
+    row never clears the others), then returns the staged rows in order."""
+    staged_rows: list[Locator] = []
+    for index, utub_name in enumerate(utub_names):
+        row = bulk_copy_option_by_name(page=page, utub_name=utub_name)
+        expect(row).to_be_visible()
+        if index == 0:
+            row.focus()
+            row.press("Enter")
+        else:
+            row.click()
+        expect(row).to_have_attribute("aria-selected", "true")
+        staged_rows.append(row)
+    return staged_rows
+
+
+def expect_staged_destination_count(*, page: Page, count: int) -> None:
+    """Assert exactly ``count`` destination rows are currently staged
+    (``aria-selected="true"``) in the multi-select picker."""
+    expect(
+        page.locator(f"{HPL.BULK_COPY_PICKER_MOUNT} {HPL.BULK_COPY_OPTION_SELECTED}")
+    ).to_have_count(count)
 
 
 def submit_bulk_copy(*, page: Page) -> None:

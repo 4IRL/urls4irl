@@ -196,14 +196,33 @@ class UrlCopySkippedSchema(BaseSchema):
     )
 
 
-class CopyUrlsResponseSchema(BaseSchema):
+class PerDestinationCopyResultSchema(BaseSchema):
+    dest_utub_id: int = Field(alias=M.DEST_UTUB_ID, description="Destination UTub id")
+    status: str = Field(
+        alias=M.STATUS, description="DestCopyStatus value: 'ok' or 'locked'"
+    )
     copied: list[UrlCopiedItemSchema] = Field(
         alias=M.COPIED,
-        description="URLs copied into the destination UTub, with source→destination id pairs",
+        description="URLs copied into this destination",
     )
     skipped: list[UrlCopySkippedSchema] = Field(
         alias=M.SKIPPED,
-        description="Source URLs skipped because they were already in the destination UTub",
+        description="URLs skipped because they are already in this destination",
+    )
+
+
+class CopyUrlsResponseSchema(BaseSchema):
+    results: list[PerDestinationCopyResultSchema] = Field(
+        alias=M.RESULTS,
+        description="Per-destination copy results",
+    )
+    total_copied: int = Field(
+        alias=M.TOTAL_COPIED,
+        description="Total number of URLs copied across all destinations",
+    )
+    total_skipped: int = Field(
+        alias=M.TOTAL_SKIPPED,
+        description="Total number of URLs skipped across all destinations",
     )
 
 

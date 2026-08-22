@@ -133,6 +133,37 @@ def test_mobile_bulk_bar_appears_and_checkbox_toggles(
     expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(0)
 
 
+def test_mobile_range_strip_absent_drawer_keeps_select_all_clear(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a mobile user in multi-select mode
+    THEN the desktop-only subheader range strip (#bulkSelectRangeStrip) is NOT
+        visible, and the bottom drawer still exposes its own Select All / Clear
+        (#bulkSelectAll / #bulkSelectClear) — the mobile drawer is unchanged
+        (DD-4); the strip is a desktop-only addition.
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    utub: Utubs = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    url_ids = get_all_url_ids_in_selected_utub(page=page)
+    assert len(url_ids) >= 1
+
+    enter_multi_select_mode(page=page)
+
+    # The desktop range strip never renders on mobile (force-hidden < 992px).
+    expect(page.locator(HPL.BULK_SELECT_RANGE_STRIP)).to_be_hidden()
+
+    # The drawer's own Select All / Clear stay present and visible on mobile.
+    expect(page.locator(HPL.BULK_SELECT_ALL)).to_be_visible()
+    expect(page.locator(HPL.BULK_SELECT_CLEAR)).to_be_visible()
+
+
 def test_mobile_backgrounding_app_does_not_expand_selected_card(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):

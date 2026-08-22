@@ -17,7 +17,10 @@ from tests.functional.playwright_utils import (
     select_utub_by_name,
     wait_then_click_element,
 )
-from tests.functional.tags_ui.playwright_utils import get_utub_tag_filter_selector
+from tests.functional.tags_ui.playwright_utils import (
+    get_utub_tag_filter_selector,
+    open_bulk_tag_picker,
+)
 from tests.functional.urls_ui.playwright_assert_utils import (
     assert_urls_are_multi_selected,
 )
@@ -150,7 +153,9 @@ def test_select_all_selects_every_visible_row(
     visible_count = len(url_ids)
 
     enter_multi_select_mode(page=page)
-    wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_ALL)
+    # Desktop surfaces Select All in the subheader range strip (#bulkSelectAll in
+    # the header is display:none >=992px); click the strip control.
+    wait_then_click_element(page=page, css_selector=HPL.BULK_RANGE_SELECT_ALL)
 
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text(str(visible_count))
     expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(visible_count)
@@ -266,8 +271,9 @@ def test_clear_zeroes_and_exit_restores_single_select(
     tap_url_checkbox(page=page, utub_url_id=url_ids[1])
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
 
-    # Clear empties the selection but stays in mode.
-    wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_CLEAR)
+    # Clear empties the selection but stays in mode. On desktop Clear is the
+    # subheader range-strip control (#bulkSelectClear in the header is hidden).
+    wait_then_click_element(page=page, css_selector=HPL.BULK_RANGE_CLEAR)
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("0")
     expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(0)
 
@@ -320,8 +326,8 @@ def test_go_to_icon_suppressed_in_mode_and_does_not_leak_after_exit(
     # In mode the go-to icon is suppressed on the tapped row despite the focus.
     expect(go_to_icon).to_be_hidden()
 
-    # Clear the selection and Exit back to single-select.
-    wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_CLEAR)
+    # Clear the selection and Exit back to single-select (desktop strip Clear).
+    wait_then_click_element(page=page, css_selector=HPL.BULK_RANGE_CLEAR)
     wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_EXIT)
     expect(page.locator(HPL.BULK_ACTION_BAR)).to_be_hidden()
 
@@ -479,7 +485,8 @@ def test_text_filter_narrows_rows_with_selection_surviving(
     )
 
     enter_multi_select_mode(page=page)
-    wait_then_click_element(page=page, css_selector=HPL.BULK_SELECT_ALL)
+    # Desktop Select All lives in the subheader range strip on desktop.
+    wait_then_click_element(page=page, css_selector=HPL.BULK_RANGE_SELECT_ALL)
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text(str(total_urls))
 
     # Apply the funnel text filter (always-visible input on desktop).
@@ -502,3 +509,290 @@ def test_text_filter_narrows_rows_with_selection_surviving(
     expect(page.locator(HPL.BULK_SELECTION_ANNOUNCEMENT)).to_have_text(
         _expected_announcement(selected_count=total_urls, hidden_count=expected_hidden)
     )
+
+
+# --- Desktop selection-context range strip (subheader) -----------------------
+# On desktop (>=992px) the subheader hosts a Select all · Invert · Clear strip;
+# the header #bulkSelectAll/#bulkSelectClear are display:none there (the strip is
+# their sole desktop surface). Mobile is unchanged (see the mobile guard test in
+# test_mobile_multi_select_ui.py). These cases exercise the strip's desktop-only
+# reveal, the DD-2 visible-only Invert, the DD-6 gating, and picker-inert.
+
+
+def test_desktop_strip_visible_in_mode_and_header_controls_hidden(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub with URLs on desktop
+    WHEN the user enters multi-select mode
+    THEN the subheader range strip (Select all · Invert · Clear) is revealed and
+        the header copies of Select All / Clear are display:none on desktop (the
+        strip is their sole desktop surface).
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    # Mode off: the strip is hidden.
+    expect(page.locator(HPL.BULK_SELECT_RANGE_STRIP)).to_be_hidden()
+
+    enter_multi_select_mode(page=page)
+
+    # Mode on: the strip and its three controls are visible on desktop.
+    expect(page.locator(HPL.BULK_SELECT_RANGE_STRIP)).to_be_visible()
+    expect(page.locator(HPL.BULK_RANGE_SELECT_ALL)).to_be_visible()
+    expect(page.locator(HPL.BULK_RANGE_INVERT)).to_be_visible()
+    expect(page.locator(HPL.BULK_RANGE_CLEAR)).to_be_visible()
+
+    # The header Select All / Clear are hidden on desktop (display:none), so the
+    # strip is the only place those actions surface.
+    expect(page.locator(HPL.BULK_SELECT_ALL)).to_be_hidden()
+    expect(page.locator(HPL.BULK_SELECT_CLEAR)).to_be_hidden()
+
+
+def test_desktop_strip_select_all_respects_active_filter(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN multi-select mode on desktop with a text filter narrowing the deck to a
+        single row
+    WHEN the user clicks the strip's Select all
+    THEN only the visible (filter-matching) row is selected — Select all acts on
+        the visible axis, not the whole UTub — and no hidden-selection hint shows
+        (the filtered-out rows were never selected).
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub.id)
+            .order_by(Utub_Urls.id)
+            .all()
+        )
+        assert len(utub_urls) >= 2
+        # A full URL string uniquely matches exactly its own row.
+        search_term = utub_urls[0].standalone_url.url_string
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_mode(page=page)
+
+    # Filter first so only one row is visible, THEN Select all — it must select
+    # only that visible row.
+    focus_url_search_input(page=page)
+    page.locator(HPL.URL_SEARCH_INPUT).fill(search_term)
+    wait_for_url_search_filter_applied(page=page)
+
+    search_visible = f"{HPL.ROWS_URLS}[filterable='true'][searchable='true']"
+    expect(page.locator(search_visible)).to_have_count(1)
+
+    wait_then_click_element(page=page, css_selector=HPL.BULK_RANGE_SELECT_ALL)
+
+    # Exactly the one visible row is selected; the hidden rows were never selected
+    # so the "N hidden by filter" hint stays hidden.
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+    expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(1)
+    expect(page.locator(HPL.BULK_SELECT_HIDDEN_HINT)).to_be_hidden()
+
+
+def test_desktop_strip_button_gating_by_selection(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN multi-select mode on desktop with visible rows
+    WHEN selection goes 0 -> 1 -> 0 (via a tap then the strip Clear)
+    THEN Invert and Clear are aria-disabled at 0 selected (DD-6: at 0, inverting
+        the visible set equals Select all, so Invert is redundant), become
+        actionable at >=1, and Clear empties the selection and re-disables both
+        (Select all stays enabled throughout — visible rows are present).
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    url_ids = get_all_url_ids_in_selected_utub(page=page)
+    assert len(url_ids) >= 1
+
+    enter_multi_select_mode(page=page)
+
+    invert = page.locator(HPL.BULK_RANGE_INVERT)
+    clear = page.locator(HPL.BULK_RANGE_CLEAR)
+    select_all = page.locator(HPL.BULK_RANGE_SELECT_ALL)
+
+    # 0 selected: Invert + Clear disabled; Select all enabled (rows are visible).
+    expect(invert).to_have_attribute("aria-disabled", "true")
+    expect(clear).to_have_attribute("aria-disabled", "true")
+    expect(select_all).to_have_attribute("aria-disabled", "false")
+
+    # 1 selected: Invert + Clear become actionable.
+    tap_url_checkbox(page=page, utub_url_id=url_ids[0])
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+    expect(invert).to_have_attribute("aria-disabled", "false")
+    expect(clear).to_have_attribute("aria-disabled", "false")
+
+    # Strip Clear empties the selection and both re-disable at 0.
+    wait_then_click_element(page=page, css_selector=HPL.BULK_RANGE_CLEAR)
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("0")
+    expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(0)
+    expect(invert).to_have_attribute("aria-disabled", "true")
+    expect(clear).to_have_attribute("aria-disabled", "true")
+
+
+def test_desktop_strip_invert_flips_visible_preserving_hidden(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a tag filter hiding one still-selected row, plus a visible selected row
+        and a visible unselected row
+    WHEN the user clicks the strip's Invert
+    THEN membership flips among the VISIBLE rows only (DD-2): the selected visible
+        row deselects, the unselected visible row selects, and the hidden-selected
+        row is preserved untouched.
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    tag = add_tag_to_utub_user_created(
+        app, utub.id, USER_ID_FOR_TEST, UNMATCHED_TAG_STRING
+    )
+    tag_id = tag.id
+
+    # Tag the first two URLs so filtering on the tag hides only the third.
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub.id)
+            .order_by(Utub_Urls.id)
+            .all()
+        )
+        assert len(utub_urls) >= 3
+        tagged_ids = [utub_urls[0].id, utub_urls[1].id]
+        untagged_id = utub_urls[2].id
+        for utub_url_id in tagged_ids:
+            db.session.add(
+                Utub_Url_Tags(
+                    utub_id=utub.id, utub_url_id=utub_url_id, utub_tag_id=tag_id
+                )
+            )
+        db.session.commit()
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_mode(page=page)
+
+    # Select one row that will stay visible (tagged[0]) and the row that will be
+    # hidden by the filter (untagged) — the hidden-but-selected survivor.
+    tap_url_checkbox(page=page, utub_url_id=tagged_ids[0])
+    tap_url_checkbox(page=page, utub_url_id=untagged_id)
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
+
+    # Apply the tag filter — the untagged (still-selected) row hides. Visible now:
+    # tagged[0] (selected) and tagged[1] (unselected).
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
+    hidden_row = page.locator(f"{HPL.ROWS_URLS}[utuburlid='{untagged_id}']").first
+    expect(hidden_row).to_be_hidden()
+
+    # Invert flips the visible set only.
+    wait_then_click_element(page=page, css_selector=HPL.BULK_RANGE_INVERT)
+
+    # tagged[0] (was selected, visible) is now unselected.
+    tagged0_checkbox = (
+        page.locator(f"{HPL.ROWS_URLS}[utuburlid='{tagged_ids[0]}']")
+        .first.locator(HPL.URL_SELECT_CHECKBOX)
+        .first
+    )
+    expect(tagged0_checkbox).to_have_attribute("aria-checked", "false")
+
+    # tagged[1] (was unselected, visible) and the hidden untagged row (preserved)
+    # are the selection now — count 2.
+    assert_urls_are_multi_selected(page=page, utub_url_ids=[tagged_ids[1], untagged_id])
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
+
+
+def test_desktop_strip_inert_while_picker_open(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a live selection in multi-select mode on desktop
+    WHEN the Add tags bulk picker is opened (it floats over the subheader)
+    THEN the strip container goes aria-disabled=true (CSS pointer-events:none) and
+        all three controls are individually aria-disabled for SR disclosure — none
+        are actionable while the picker is up (DD-5).
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    url_ids = get_all_url_ids_in_selected_utub(page=page)
+    assert len(url_ids) >= 1
+
+    enter_multi_select_mode(page=page)
+    tap_url_checkbox(page=page, utub_url_id=url_ids[0])
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+
+    # Open the Add tags picker — it anchors in the header and paints over the strip.
+    open_bulk_tag_picker(page=page)
+
+    # The container and every control report aria-disabled while the picker is open.
+    expect(page.locator(HPL.BULK_SELECT_RANGE_STRIP)).to_have_attribute(
+        "aria-disabled", "true"
+    )
+    expect(page.locator(HPL.BULK_RANGE_SELECT_ALL)).to_have_attribute(
+        "aria-disabled", "true"
+    )
+    expect(page.locator(HPL.BULK_RANGE_INVERT)).to_have_attribute(
+        "aria-disabled", "true"
+    )
+    expect(page.locator(HPL.BULK_RANGE_CLEAR)).to_have_attribute(
+        "aria-disabled", "true"
+    )
+
+
+def test_desktop_strip_and_rows_keyboard_operable(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN multi-select mode on desktop with the strip present
+    WHEN the user keyboard-operates a URL row checkbox (Space) and a strip button
+        (Enter)
+    THEN both work — the strip's insertion in the subheader introduces no
+        focus-order regression: rows stay keyboard-toggleable and the strip's
+        Select all is keyboard-actionable.
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    url_ids = get_all_url_ids_in_selected_utub(page=page)
+    visible_count = len(url_ids)
+    assert visible_count >= 1
+
+    enter_multi_select_mode(page=page)
+
+    # A row checkbox (role="checkbox", tabindex=0) is keyboard-focusable and
+    # Space toggles its selection.
+    checkbox = (
+        page.locator(f"{HPL.ROWS_URLS}[utuburlid='{url_ids[0]}']")
+        .first.locator(HPL.URL_SELECT_CHECKBOX)
+        .first
+    )
+    checkbox.focus()
+    expect(checkbox).to_be_focused()
+    page.keyboard.press("Space")
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+
+    # The strip's Select all is keyboard-focusable and Enter activates it.
+    select_all = page.locator(HPL.BULK_RANGE_SELECT_ALL)
+    select_all.focus()
+    expect(select_all).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text(str(visible_count))
+    expect(page.locator(HPL.ROW_MULTI_SELECTED)).to_have_count(visible_count)

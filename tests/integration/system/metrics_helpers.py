@@ -77,7 +77,7 @@ tests/integration/utubtags/test_apply_tags_to_urls_route.py. URLS_COPIED_TO_UTUB
 fires only from the bulk URL-copy service flow (copying selected URLs from one
 UTub into another), which the shared success-path seed does not drive; its
 per-flow emit tests live under
-tests/integration/utuburls/test_copy_urls_to_utub_service.py. OAUTH_IDENTITY_LINKED and
+tests/integration/utuburls/test_copy_urls_to_multi_utub_service.py. OAUTH_IDENTITY_LINKED and
 OAUTH_IDENTITY_UNLINKED fire only from the authenticated OAuth link/unlink
 service flows (settings-initiated link requiring a password re-auth or an OAuth
 provider round-trip, and the collision confirm-link path), which the shared

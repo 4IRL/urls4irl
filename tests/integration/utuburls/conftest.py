@@ -109,22 +109,22 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
 
 
 @pytest.fixture
-def add_mixed_state_source_and_dest_for_copy(
+def add_multi_dest_state_for_copy(
     app: Flask, add_one_url_and_all_users_to_each_utub_no_tags
 ):
     """
-    Set up a mixed-state source/destination pair for bulk-copy partial-success
-    coverage in ONE request.
+    Set up a source UTub plus two clean destination UTubs for multi-destination
+    bulk-copy coverage.
 
     Starting from every user being a member of every UTub with UTub `i` holding
     URL `i`, this fixture adds URL 2 and URL 3 into the SOURCE UTub (id 1), so:
 
-    - SOURCE  = UTub 1: now holds URLs {1, 2, 3} (all attributed to User 1).
-    - DEST    = UTub 2: still holds only URL 2.
+    - SOURCE = UTub 1: now holds URLs {1, 2, 3} (all attributed to User 1).
+    - DEST   = UTub 2: still holds only URL 2.
+    - DEST   = UTub 3: still holds only URL 3.
 
-    Copying SOURCE UTub 1's three URLs into DEST UTub 2 therefore yields a mixed
-    result: URL 2 is already present (skipped as a duplicate) while URLs 1 and 3
-    are copied — exercising the copied/skipped partition in a single request.
+    URL 1 is net-new to BOTH destinations, so copying it into [2, 3] copies cleanly
+    into each. The copier (User 1) is a member of all three UTubs.
 
     Args:
         app (Flask): The Flask client providing an app context
@@ -146,6 +146,67 @@ def add_mixed_state_source_and_dest_for_copy(
             new_url_in_source.url_title = f"This is {url.url_string}"
             db.session.add(new_url_in_source)
 
+        db.session.commit()
+
+
+@pytest.fixture
+def add_multi_dest_with_one_dup(app: Flask, add_multi_dest_state_for_copy):
+    """
+    Pre-seed source URL 1 into DEST UTub 3, so copying URL 1 into destinations
+    [2, 3] copies cleanly into UTub 2 but is a DUPLICATE skip in UTub 3.
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_multi_dest_state_for_copy (pytest fixture): Source UTub 1 holds URLs
+            {1, 2, 3}; destinations 2 and 3 hold only their own base URL
+    """
+    with app.app_context():
+        dest_utub: Utubs = Utubs.query.get(3)
+        already_present = {utub_url.url_id for utub_url in dest_utub.utub_urls}
+        if 1 not in already_present:
+            url = Urls.query.get(1)
+            duplicate_in_dest = Utub_Urls()
+            duplicate_in_dest.standalone_url = url
+            duplicate_in_dest.url_id = url.id
+            duplicate_in_dest.utub_id = dest_utub.id
+            duplicate_in_dest.user_id = dest_utub.utub_creator
+            duplicate_in_dest.url_title = f"This is {url.url_string}"
+            db.session.add(duplicate_in_dest)
+            db.session.commit()
+
+
+@pytest.fixture
+def add_multi_dest_with_one_locked(app: Flask, add_multi_dest_state_for_copy):
+    """
+    Mark DEST UTub 3 locked, so a copy into destinations [2, 3] copies into UTub 2
+    and is skipped-and-reported (`status="locked"`) for UTub 3.
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_multi_dest_state_for_copy (pytest fixture): Source UTub 1 holds URLs
+            {1, 2, 3}; destinations 2 and 3 hold only their own base URL
+    """
+    with app.app_context():
+        dest_utub: Utubs = Utubs.query.get(3)
+        dest_utub.is_locked = True
+        db.session.commit()
+
+
+@pytest.fixture
+def add_multi_dest_with_one_nonmember(app: Flask, add_multi_dest_state_for_copy):
+    """
+    Remove the copier (User 1) from DEST UTub 3, making it a genuine non-membership
+    destination (masked 404) while User 1 remains a member of source UTub 1 and
+    destination UTub 2.
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_multi_dest_state_for_copy (pytest fixture): Source UTub 1 holds URLs
+            {1, 2, 3}; destinations 2 and 3 hold only their own base URL
+    """
+    with app.app_context():
+        membership = Utub_Members.query.get((3, 1))
+        db.session.delete(membership)
         db.session.commit()
 
 

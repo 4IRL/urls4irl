@@ -1198,7 +1198,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/utubs/{utub_id}/urls/copy": {
+  "/utubs/urls/copy": {
     parameters: {
       query?: never;
       header?: never;
@@ -1207,8 +1207,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Copy selected URLs from a source UTub into this UTub */
-    post: operations["copyUrlsToUtub"];
+    /** @description Copy selected URLs from a source UTub into one or more destination UTubs */
+    post: operations["copyUrlsToUtubs"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2802,6 +2802,24 @@ export interface components {
        *     ]
        */
       utubUrlIds: number[];
+      /**
+       * @description Destination UTub ids to copy the selected URLs into
+       * @example [
+       *       2,
+       *       3
+       *     ]
+       */
+      destUtubIds: number[];
+    };
+    PerDestinationCopyResultSchema: {
+      /** @description Destination UTub id */
+      destUtubID: number;
+      /** @description DestCopyStatus value: 'ok' or 'locked' */
+      status: string;
+      /** @description URLs copied into this destination */
+      copied: components["schemas"]["UrlCopiedItemSchema"][];
+      /** @description URLs skipped because they are already in this destination */
+      skipped: components["schemas"]["UrlCopySkippedSchema"][];
     };
     UrlCopiedItemSchema: {
       /** @description Source Utub_Urls id the copy originated from (for per-card cues) */
@@ -2820,10 +2838,12 @@ export interface components {
       reason: string;
     };
     CopyUrlsResponseSchema: {
-      /** @description URLs copied into the destination UTub, with source→destination id pairs */
-      copied: components["schemas"]["UrlCopiedItemSchema"][];
-      /** @description Source URLs skipped because they were already in the destination UTub */
-      skipped: components["schemas"]["UrlCopySkippedSchema"][];
+      /** @description Per-destination copy results */
+      results: components["schemas"]["PerDestinationCopyResultSchema"][];
+      /** @description Total number of URLs copied across all destinations */
+      totalCopied: number;
+      /** @description Total number of URLs skipped across all destinations */
+      totalSkipped: number;
     };
     ChangeUsernameRequest: {
       /**
@@ -7486,13 +7506,11 @@ export interface operations {
       };
     };
   };
-  copyUrlsToUtub: {
+  copyUrlsToUtubs: {
     parameters: {
       query?: never;
       header?: never;
-      path: {
-        utub_id: number;
-      };
+      path?: never;
       cookie?: never;
     };
     requestBody?: {
@@ -7518,15 +7536,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
-        };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
       /** @description Not found */

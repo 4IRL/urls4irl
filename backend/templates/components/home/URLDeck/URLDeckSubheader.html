@@ -1,4 +1,37 @@
 <div id="UTubDescriptionSubheaderOuterWrap" class="titleElement pad-in-15p dynamic-subheader flex-start align-center">
+	{# Desktop-only selection-context "range strip": Select all · Invert · Clear.
+	   Base-hidden; revealed only under #URLDeck.multiSelectActive at >=992px and
+	   force-hidden on mobile (bulk-actions.css). The header/drawer copies
+	   (#bulkSelectAll/#bulkSelectClear in BulkActionBar.html) stay for the mobile
+	   drawer and are hidden on desktop by CSS — this is intentional responsive
+	   duplication, and all four bind to the same handlers (bulk-bar.ts). Visible
+	   labels + aria-labels are Jinja literals (no string bridge; nothing TS/tests
+	   read the literal). Icon color resolves to --grayBadgeSelection. #}
+	<div id="bulkSelectRangeStrip" class="bulkSelectRangeStrip flex-row align-center" role="group"
+		 aria-label="Selection controls">
+		<button id="bulkRangeSelectAll" type="button" class="barBtn" aria-label="Select all visible URLs">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+				class="bi bi-ui-checks" viewBox="0 0 16 16" aria-hidden="true">
+				<path d="M7 2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5zM2 1a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm0 8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2zm.854-3.646a.5.5 0 0 1-.708 0l-1-1a.5.5 0 1 1 .708-.708l.646.647 1.646-1.647a.5.5 0 1 1 .708.708zm0 8a.5.5 0 0 1-.708 0l-1-1a.5.5 0 0 1 .708-.708l.646.647 1.646-1.647a.5.5 0 0 1 .708.708zM7 10.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5zm0-5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 8a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+			</svg>
+			Select all
+		</button>
+		<button id="bulkRangeInvert" type="button" class="barBtn" aria-label="Invert selection of visible URLs">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+				class="bi bi-arrow-left-right" viewBox="0 0 16 16" aria-hidden="true">
+				<path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5m14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5"/>
+			</svg>
+			Invert
+		</button>
+		<button id="bulkRangeClear" type="button" class="barBtn clear" aria-disabled="true"
+				aria-label="Clear selection">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+				class="bi bi-x" viewBox="0 0 16 16" aria-hidden="true">
+				<path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+			</svg>
+			Clear
+		</button>
+	</div>
 	<div class="flex-row align-center flex-start" id="UTubDescriptionSubheaderWrap">
 		<h5 id="URLDeckSubheader">{{CONSTANTS.STRINGS.UTUB_SELECT}}</h5>
 		<span class="edit-pencil-icon hidden" role="button" tabindex="0"
