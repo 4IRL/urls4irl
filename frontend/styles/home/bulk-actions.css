@@ -1041,6 +1041,9 @@
 .bulkCopyPickerMount .UTubSelector[role="option"] {
   min-height: 2.25rem;
   padding: 8px 12px;
+  /* Space the radio check, the UTub name, and the role badge apart — .flex-row sets
+     no gap, so without this the name hugs the check ring. */
+  gap: 12px;
   border-radius: 5px;
   border: 1px solid transparent;
   cursor: pointer;
