@@ -420,10 +420,13 @@ def test_bulk_copy_filter_narrows_destinations_then_copies(
     enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
     open_bulk_copy_picker(page=page)
 
-    # The filter box is focused on open.
-    filter_input = page.locator(HPL.BULK_COPY_FILTER_INPUT)
-    expect(filter_input).to_be_focused()
+    # The first enabled destination row is focused on open (the filter box is no
+    # longer autofocused — no cursor-in-textbox / mobile keyboard popup). The
+    # filter stays reachable; filling it (below) moves focus into it.
+    rows = page.locator(f"{HPL.BULK_COPY_PICKER_MOUNT} {HPL.BULK_COPY_OPTION_ENABLED}")
+    expect(rows.nth(0)).to_be_focused()
 
+    filter_input = page.locator(HPL.BULK_COPY_FILTER_INPUT)
     mount = HPL.BULK_COPY_PICKER_MOUNT
     # A non-matching query hides every row and announces the no-results message;
     # Copy stays disabled (nothing staged).
@@ -480,13 +483,9 @@ def test_bulk_copy_arrow_key_navigation_moves_focus_and_tabindex(
     first_row = rows.nth(0)
     second_row = rows.nth(1)
 
-    # On open, real focus is on the FILTER INPUT (so the user can type to narrow
-    # immediately); the first enabled row holds tabindex 0 as the roving entry.
-    expect(page.locator(HPL.BULK_COPY_FILTER_INPUT)).to_be_focused()
-    expect(first_row).to_have_attribute("tabindex", "0")
-
-    # ArrowDown from the input enters the list at the first enabled row.
-    page.keyboard.press("ArrowDown")
+    # On open, real focus is on the FIRST ENABLED ROW (the filter box is no
+    # longer autofocused — keyboard/SR users land inside the listbox, no
+    # cursor-in-textbox / mobile keyboard popup). That row holds tabindex 0.
     expect(first_row).to_be_focused()
     expect(first_row).to_have_attribute("tabindex", "0")
 

@@ -230,7 +230,7 @@ describe("openBulkCopyPicker (onActivate)", () => {
     expect(firstRow.attr("id")).toBe("bulkCopyOption-2");
   });
 
-  it("focuses the FILTER INPUT on open, keeps the first enabled row as the roving entry (tabindex 0), all others -1, and the listbox aria-label carries the count (DD-10/DD-24)", () => {
+  it("focuses the FIRST ENABLED ROW on open (roving entry, tabindex 0), all others -1, and the listbox aria-label carries the count (DD-10/DD-24)", () => {
     openPickerFor([10, 20, 30]);
 
     const firstEnabled = mount().find("#bulkCopyOption-2");
@@ -239,11 +239,11 @@ describe("openBulkCopyPicker (onActivate)", () => {
     expect(firstEnabled.attr("tabindex")).toBe("0");
     expect(secondEnabled.attr("tabindex")).toBe("-1");
     expect(locked.attr("tabindex")).toBe("-1");
-    // Real DOM focus lands on the filter input so the user can immediately type
-    // to narrow; the first enabled row holds tabindex 0 as the roving entry.
-    expect(document.activeElement).toBe(
-      mount().find(".bulkCopyFilterInput")[0],
-    );
+    // Real DOM focus lands on the first enabled row (never the filter input), so
+    // keyboard/SR users land inside the listbox with no cursor-in-textbox and no
+    // mobile soft-keyboard popup. That row also holds tabindex 0 as the roving
+    // entry — setActiveRow() moves focus + tabindex atomically.
+    expect(document.activeElement).toBe(firstEnabled[0]);
     const listbox = mount().find(".bulkCopyListbox");
     // No aria-activedescendant anywhere — DD-7 dropped it entirely.
     expect(listbox.attr("aria-activedescendant")).toBeUndefined();
@@ -398,7 +398,10 @@ describe("destination filter box", () => {
 
   it("ArrowDown from the filter input moves real focus to the first VISIBLE row after filtering", () => {
     openPickerFor([10]);
-    // Filter so only id3 remains, then ArrowDown from the (focused) input.
+    // The filter input is no longer auto-focused on open (focus starts on the
+    // first enabled row), so explicitly focus it before typing. Then filter so
+    // only id3 remains and ArrowDown from the (now-focused) input.
+    filterInput()[0]!.focus();
     filterInput().val("reading").trigger("input");
     mount()[0]!.dispatchEvent(
       new KeyboardEvent("keydown", {
@@ -466,8 +469,11 @@ describe("staging (DD-8/DD-9/DD-20)", () => {
     const first = mount().find("#bulkCopyOption-2");
     const second = mount().find("#bulkCopyOption-3");
 
-    // On open focus is on the filter input, so the FIRST ArrowDown enters the
-    // list at the first enabled row.
+    // On open, focus already sits on the FIRST enabled row (no filter autofocus),
+    // so the first ArrowDown moves to the SECOND enabled row.
+    expect(document.activeElement).toBe(first[0]);
+    expect(first.attr("tabindex")).toBe("0");
+
     const down = new KeyboardEvent("keydown", {
       key: "ArrowDown",
       bubbles: true,
@@ -475,17 +481,6 @@ describe("staging (DD-8/DD-9/DD-20)", () => {
     });
     mount()[0]!.dispatchEvent(down);
     expect(down.defaultPrevented).toBe(true);
-    expect(document.activeElement).toBe(first[0]);
-    expect(first.attr("tabindex")).toBe("0");
-
-    // ArrowDown again moves to the second enabled row.
-    mount()[0]!.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "ArrowDown",
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
     expect(document.activeElement).toBe(second[0]);
     expect(second.attr("tabindex")).toBe("0");
     expect(first.attr("tabindex")).toBe("-1");
@@ -499,6 +494,19 @@ describe("staging (DD-8/DD-9/DD-20)", () => {
       }),
     );
     expect(document.activeElement).toBe(first[0]);
+    expect(first.attr("tabindex")).toBe("0");
+    expect(second.attr("tabindex")).toBe("-1");
+
+    // ArrowUp from the first enabled row wraps back up to the second (last
+    // enabled) row — roving still works in both directions.
+    mount()[0]!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "ArrowUp",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(document.activeElement).toBe(second[0]);
   });
 
   it("staging 2+ rows leaves BOTH aria-selected=true simultaneously (multi-select)", () => {

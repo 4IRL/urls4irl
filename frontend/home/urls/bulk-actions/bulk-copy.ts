@@ -37,7 +37,6 @@ const FOCUS_RETURN_SELECTOR = "#bulkSelectExit";
 // itself) so the filter input + footer can live inside the floating dropdown
 // without being invalid children of a listbox.
 const LISTBOX_SELECTOR = ".bulkCopyListbox";
-const FILTER_INPUT_SELECTOR = ".bulkCopyFilterInput";
 const NO_MATCHES_SELECTOR = ".bulkCopyNoMatches";
 const OPTION_SELECTOR = '.UTubSelector[role="option"]';
 // "Enabled" for roving/focus = not locked AND not filtered out (.hidden). The
@@ -310,10 +309,15 @@ function renderPicker({
   attachKeyListeners();
   mount.removeClass("hidden");
 
-  // Focus the filter input on open so a member of many UTubs can immediately
-  // type to narrow the list; the first enabled row keeps tabindex 0 as the
-  // roving entry point (Tab / ArrowDown moves real DOM focus into the list).
-  mount.find(FILTER_INPUT_SELECTOR)[0]?.focus();
+  // Focus the FIRST ENABLED destination row on open (never the filter input):
+  // keyboard/SR users land inside the listbox with no cursor sitting in a
+  // textbox and no mobile soft-keyboard popup. setActiveRow() moves the roving
+  // tabindex (0) AND real DOM focus atomically onto that row, so they can never
+  // drift. The filter stays reachable via Tab/click and still narrows the list.
+  // The all-locked case returns earlier, so there is normally ≥1 enabled row
+  // here; guard defensively in case the lookup is empty.
+  const firstEnabledRow = mount.find(ENABLED_OPTION_SELECTOR)[0];
+  if (firstEnabledRow) setActiveRow(firstEnabledRow);
 }
 
 /**
