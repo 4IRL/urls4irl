@@ -1012,6 +1012,13 @@
   padding-left: 32px;
 }
 
+/* Legible placeholder on the grey search pill (see forms.css) — the browser default
+   is near-invisible on --searchInputBackgroundColor, so the "Filter UTubs…" hint
+   never showed in the copy picker. */
+.bulkCopyFilterInput::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* Suppress the native search "X" (the app uses its own affordances; mirrors the
    #UTubNameSearch/#TagNameSearch/... suppression in forms.css). */
 .bulkCopyFilterInput::-webkit-search-cancel-button {
