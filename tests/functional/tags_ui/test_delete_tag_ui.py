@@ -1,6 +1,6 @@
 from flask import Flask
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from backend.models.users import Users
 from tests.functional.db_utils import (
@@ -59,7 +59,7 @@ def test_get_delete_tag_button_on_hover(
         page=page, tag_badge_selector=tag_badge_selector
     )
 
-    assert delete_tag_button.is_visible()
+    expect(delete_tag_button).to_be_visible()
 
 
 def test_hide_delete_tag_button_after_hover(
@@ -86,7 +86,7 @@ def test_hide_delete_tag_button_after_hover(
         page=page, tag_badge_selector=tag_badge_selector
     )
 
-    assert delete_tag_button.is_visible()
+    expect(delete_tag_button).to_be_visible()
 
     url_title_selector = f"{HPL.ROW_SELECTED_URL} {HPL.URL_TITLE_READ}"
     page.locator(url_title_selector).first.hover()
