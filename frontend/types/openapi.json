@@ -10741,12 +10741,14 @@
             "type": "string"
           },
           "copied": {
+            "description": "URLs copied into this destination",
             "items": {
               "$ref": "#/components/schemas/UrlCopiedItemSchema"
             },
             "type": "array"
           },
           "skipped": {
+            "description": "URLs skipped because they are already in this destination",
             "items": {
               "$ref": "#/components/schemas/UrlCopySkippedSchema"
             },
@@ -10795,15 +10797,18 @@
       "CopyUrlsResponseSchema": {
         "properties": {
           "results": {
+            "description": "Per-destination copy results",
             "items": {
               "$ref": "#/components/schemas/PerDestinationCopyResultSchema"
             },
             "type": "array"
           },
           "totalCopied": {
+            "description": "Total number of URLs copied across all destinations",
             "type": "integer"
           },
           "totalSkipped": {
+            "description": "Total number of URLs skipped across all destinations",
             "type": "integer"
           }
         },

@@ -69,7 +69,7 @@ class CopyUrlsRequest(BaseModel):
     def dest_utub_ids_valid(cls, dest_utub_ids: list[int]) -> list[int]:
         deduped = list(dict.fromkeys(dest_utub_ids))
         if any(dest_id <= 0 for dest_id in deduped):
-            raise ValueError(URL_FAILURE.INVALID_URL_ID)
+            raise ValueError(URL_FAILURE.INVALID_UTUB_ID)
         return deduped
 
 

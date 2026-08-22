@@ -608,6 +608,31 @@ describe("confirm (Copy) — resolve flows", () => {
     expect(isBulkCopyPickerOpen()).toBe(false);
   });
 
+  it("single-destination all-copied → singular URLS_COPIED success banner (polite), not URLS_COPIED_MULTI", () => {
+    seedUrlRows([10]);
+    openPickerFor([10]);
+    const deferred = stageAndSubmit(["#bulkCopyOption-2"]);
+
+    deferred.resolve(
+      multiResponse([destResult(2, { copied: [COPIED_10] })]),
+      "success",
+      { status: 200 },
+    );
+
+    const banner = $("#bulkCopyResultBanner");
+    expect(banner.hasClass("success")).toBe(true);
+    expect(banner.attr("aria-live")).toBe("polite");
+    expect(banner.text()).toContain(APP_CONFIG.strings.URLS_COPIED);
+    expect(banner.text()).not.toContain(
+      APP_CONFIG.strings.URLS_COPIED_MULTI.replace("{n}", "1"),
+    );
+    // ONE green cue on the single source card.
+    expect($('.urlRow[utuburlid="10"] .bulkCardResultCue--copied').length).toBe(
+      1,
+    );
+    expect(isBulkCopyPickerOpen()).toBe(false);
+  });
+
   it("partial across destinations (green-if-any) → URLS_COPIED_MULTI_PARTIAL; banner has no URL title", () => {
     seedUrlRows([10, 20]);
     openPickerFor([10, 20]);

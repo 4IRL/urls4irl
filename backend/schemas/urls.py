@@ -201,14 +201,29 @@ class PerDestinationCopyResultSchema(BaseSchema):
     status: str = Field(
         alias=M.STATUS, description="DestCopyStatus value: 'ok' or 'locked'"
     )
-    copied: list[UrlCopiedItemSchema] = Field(alias=M.COPIED)
-    skipped: list[UrlCopySkippedSchema] = Field(alias=M.SKIPPED)
+    copied: list[UrlCopiedItemSchema] = Field(
+        alias=M.COPIED,
+        description="URLs copied into this destination",
+    )
+    skipped: list[UrlCopySkippedSchema] = Field(
+        alias=M.SKIPPED,
+        description="URLs skipped because they are already in this destination",
+    )
 
 
 class CopyUrlsResponseSchema(BaseSchema):
-    results: list[PerDestinationCopyResultSchema] = Field(alias=M.SEARCH_RESULTS)
-    total_copied: int = Field(alias=M.TOTAL_COPIED)
-    total_skipped: int = Field(alias=M.TOTAL_SKIPPED)
+    results: list[PerDestinationCopyResultSchema] = Field(
+        alias=M.RESULTS,
+        description="Per-destination copy results",
+    )
+    total_copied: int = Field(
+        alias=M.TOTAL_COPIED,
+        description="Total number of URLs copied across all destinations",
+    )
+    total_skipped: int = Field(
+        alias=M.TOTAL_SKIPPED,
+        description="Total number of URLs skipped across all destinations",
+    )
 
 
 UtubUrlSchema.model_rebuild()

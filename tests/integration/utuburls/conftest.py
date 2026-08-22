@@ -109,47 +109,6 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
 
 
 @pytest.fixture
-def add_mixed_state_source_and_dest_for_copy(
-    app: Flask, add_one_url_and_all_users_to_each_utub_no_tags
-):
-    """
-    Set up a mixed-state source/destination pair for bulk-copy partial-success
-    coverage in ONE request.
-
-    Starting from every user being a member of every UTub with UTub `i` holding
-    URL `i`, this fixture adds URL 2 and URL 3 into the SOURCE UTub (id 1), so:
-
-    - SOURCE  = UTub 1: now holds URLs {1, 2, 3} (all attributed to User 1).
-    - DEST    = UTub 2: still holds only URL 2.
-
-    Copying SOURCE UTub 1's three URLs into DEST UTub 2 therefore yields a mixed
-    result: URL 2 is already present (skipped as a duplicate) while URLs 1 and 3
-    are copied — exercising the copied/skipped partition in a single request.
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        add_one_url_and_all_users_to_each_utub_no_tags (pytest fixture): Adds all
-            users to all UTubs, each UTub containing a single URL added by its creator
-    """
-    with app.app_context():
-        source_utub: Utubs = Utubs.query.get(1)
-        existing_url_ids = {utub_url.url_id for utub_url in source_utub.utub_urls}
-
-        for url in Urls.query.filter(Urls.id.in_([2, 3])).all():
-            if url.id in existing_url_ids:
-                continue
-            new_url_in_source = Utub_Urls()
-            new_url_in_source.standalone_url = url
-            new_url_in_source.url_id = url.id
-            new_url_in_source.utub_id = source_utub.id
-            new_url_in_source.user_id = source_utub.utub_creator
-            new_url_in_source.url_title = f"This is {url.url_string}"
-            db.session.add(new_url_in_source)
-
-        db.session.commit()
-
-
-@pytest.fixture
 def add_multi_dest_state_for_copy(
     app: Flask, add_one_url_and_all_users_to_each_utub_no_tags
 ):

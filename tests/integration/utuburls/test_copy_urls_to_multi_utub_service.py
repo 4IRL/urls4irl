@@ -642,6 +642,53 @@ def test_service_records_metric_on_mixed_multi_dest_copy(
         assert dims[DESTINATION_COUNT_BUCKET_DIM_KEY] == "2-5"
 
 
+def test_service_metric_destination_bucket_counts_only_copied_into_dests(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_multi_dest_with_one_locked,
+    login_first_user_without_register,
+):
+    """
+    GIVEN metrics enabled and two targeted destinations where ONE (dest 3) is locked
+        and ONE (dest 2) receives the copy
+    WHEN source URL 1 is copied into [2, 3]
+    THEN the single URLS_COPIED_TO_UTUB counter's destination_count_bucket reflects the
+        number of destinations actually copied INTO (1 → bucket_bulk_tag_url_count(1)
+        == "1"), NOT the targeted destination count of 2 (which would bucket as "2-5").
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
+        target_id = source_by_url_id[1].id
+
+        assert (
+            count_counter_keys(provide_metrics_redis, EventName.URLS_COPIED_TO_UTUB)
+            == 0
+        )
+
+        copy_urls_into_utubs(
+            source_utub_id=SOURCE_UTUB_ID,
+            dest_utub_ids=[DEST_UTUB_ID, THIRD_UTUB_ID],
+            utub_url_ids=[target_id],
+            current_user_id=copier_id,
+        )
+
+        assert (
+            count_counter_keys(provide_metrics_redis, EventName.URLS_COPIED_TO_UTUB)
+            == 1
+        )
+        keys = find_counter_keys(provide_metrics_redis, EventName.URLS_COPIED_TO_UTUB)
+        dims = parse_dims(keys[0])
+        # 1 copied -> "1"; 0 skipped -> "0"; only 1 destination received a copy (the
+        # other was locked) -> bucket_bulk_tag_url_count(1) == "1", NOT the targeted
+        # count of 2 (which would bucket as "2-5").
+        assert dims[URL_COUNT_BUCKET_DIM_KEY] == "1"
+        assert dims[SKIPPED_COUNT_BUCKET_DIM_KEY] == "0"
+        assert dims[DESTINATION_COUNT_BUCKET_DIM_KEY] == "1"
+
+
 def test_service_no_metric_when_all_skipped(
     metrics_enabled_app,
     provide_metrics_redis,

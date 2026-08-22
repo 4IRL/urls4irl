@@ -2816,7 +2816,9 @@ export interface components {
       destUtubID: number;
       /** @description DestCopyStatus value: 'ok' or 'locked' */
       status: string;
+      /** @description URLs copied into this destination */
       copied: components["schemas"]["UrlCopiedItemSchema"][];
+      /** @description URLs skipped because they are already in this destination */
       skipped: components["schemas"]["UrlCopySkippedSchema"][];
     };
     UrlCopiedItemSchema: {
@@ -2836,8 +2838,11 @@ export interface components {
       reason: string;
     };
     CopyUrlsResponseSchema: {
+      /** @description Per-destination copy results */
       results: components["schemas"]["PerDestinationCopyResultSchema"][];
+      /** @description Total number of URLs copied across all destinations */
       totalCopied: number;
+      /** @description Total number of URLs skipped across all destinations */
       totalSkipped: number;
     };
     ChangeUsernameRequest: {

@@ -273,12 +273,12 @@ class TestCopyUrlsRequest:
     def test_non_positive_dest_id_rejected(self):
         with pytest.raises(ValidationError) as exc_info:
             CopyUrlsRequest(sourceUtubId=1, utubUrlIds=[1], destUtubIds=[2, 0, 3])
-        assert URL_FAILURE.INVALID_URL_ID in str(exc_info.value)
+        assert URL_FAILURE.INVALID_UTUB_ID in str(exc_info.value)
 
     def test_negative_dest_id_rejected(self):
         with pytest.raises(ValidationError) as exc_info:
             CopyUrlsRequest(sourceUtubId=1, utubUrlIds=[1], destUtubIds=[-5])
-        assert URL_FAILURE.INVALID_URL_ID in str(exc_info.value)
+        assert URL_FAILURE.INVALID_UTUB_ID in str(exc_info.value)
 
     def test_empty_dest_id_list_rejected(self):
         with pytest.raises(ValidationError):
