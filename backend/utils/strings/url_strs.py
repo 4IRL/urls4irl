@@ -35,6 +35,9 @@ URL_SEARCH_NO_RESULTS = "No URLs found"
 UTUB_NO_URLS = "No URLs yet"
 ADD_URL_BUTTON = "Add URL"
 
+# Bulk delete-from-UTub success string.
+URLS_DELETED = "URLs deleted from this UTub."
+
 # Bulk copy-to-UTub success / banner / per-card cue strings.
 URLS_COPIED = "URLs copied to UTub."
 URLS_COPIED_PARTIAL = "{copied} copied; {skipped} already in the UTub."
@@ -116,6 +119,7 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_FOUND_IN_UTUB = URL_FOUND_IN_UTUB
     URL_TAGS = URL_TAGS
     TAG_COUNTS_MODIFIED = TAG_COUNTS_MODIFIED
+    URLS_DELETED = URLS_DELETED
     URLS_COPIED = URLS_COPIED
     URLS_COPIED_PARTIAL = URLS_COPIED_PARTIAL
     URLS_COPY_NONE_NEW = URLS_COPY_NONE_NEW
@@ -156,7 +160,9 @@ TOO_MANY_WAYBACK_ATTEMPTS = "Too many attempts, please try again in one minute."
 UNEXPECTED_VALIDATION_EXCEPTION = "Unexpected exception while validating the URL."
 URLS_WITH_CREDENTIALS_EXCEPTION = "URLs with credentials not allowed."
 UNABLE_TO_COPY_URLS = "Unable to copy the selected URLs."
+UNABLE_TO_DELETE_URLS = "Unable to delete these URLs."
 URL_NOT_IN_UTUB = "URL not found in the source UTub."
+URLS_NOT_IN_UTUB = "One or more URLs are not in this UTub."
 INVALID_URL_ID = "Invalid URL ID."
 INVALID_UTUB_ID = "Invalid UTub ID."
 CANNOT_COPY_TO_SAME_UTUB = "Cannot copy URLs into the same UTub."
@@ -179,7 +185,9 @@ class URL_FAILURE(FAILURE_GENERAL):
     UNEXPECTED_VALIDATION_EXCEPTION = UNEXPECTED_VALIDATION_EXCEPTION
     URLS_WITH_CREDENTIALS_EXCEPTION = URLS_WITH_CREDENTIALS_EXCEPTION
     UNABLE_TO_COPY_URLS = UNABLE_TO_COPY_URLS
+    UNABLE_TO_DELETE_URLS = UNABLE_TO_DELETE_URLS
     URL_NOT_IN_UTUB = URL_NOT_IN_UTUB
+    URLS_NOT_IN_UTUB = URLS_NOT_IN_UTUB
     INVALID_URL_ID = INVALID_URL_ID
     INVALID_UTUB_ID = INVALID_UTUB_ID
     CANNOT_COPY_TO_SAME_UTUB = CANNOT_COPY_TO_SAME_UTUB

@@ -242,6 +242,10 @@ class URL_CONSTANTS:
     # Max destination UTubs targetable in one bulk copy-to-UTub request —
     # bounds the urls×destinations request cost.
     MAX_BULK_COPY_DESTINATIONS = 25
+    # Max URLs targetable in one bulk delete-from-UTub request — a generous
+    # "Select All" ceiling that bounds request cost (mirrors MAX_BULK_COPY_URLS
+    # / MAX_BULK_TAG_URLS).
+    MAX_BULK_DELETE_URLS = 100
 
 
 class TAG_CONSTANTS:

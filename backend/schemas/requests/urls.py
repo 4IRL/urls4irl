@@ -73,6 +73,23 @@ class CopyUrlsRequest(BaseModel):
         return deduped
 
 
+class DeleteUrlsRequest(BaseModel):
+    utubUrlIds: list[int] = Field(
+        min_length=1,
+        max_length=URL_CONSTANTS.MAX_BULK_DELETE_URLS,
+        description="UTub-URL ids in the active UTub to delete",
+        examples=[[1, 2, 3]],
+    )
+
+    @field_validator("utubUrlIds", mode="after")
+    @classmethod
+    def utub_url_ids_valid(cls, utub_url_ids: list[int]) -> list[int]:
+        deduped = list(dict.fromkeys(utub_url_ids))
+        if any(url_id <= 0 for url_id in deduped):
+            raise ValueError(URL_FAILURE.INVALID_URL_ID)
+        return deduped
+
+
 class UpdateURLStringRequest(BaseModel):
     urlString: str = Field(
         min_length=URL_CONSTANTS.MIN_URL_LENGTH,

@@ -11,10 +11,15 @@ class URLErrorCodes(IntEnum):
     EMPTY_URL = 7
     UTUB_IS_LOCKED = 8
     UNABLE_TO_COPY_URLS_ERROR = 9
+    UNABLE_TO_DELETE_URLS_ERROR = 10
 
 
 class BulkCopySkipReason(StrEnum):
     DUPLICATE = "duplicate"
+
+
+class BulkDeleteSkipReason(StrEnum):
+    FORBIDDEN = "forbidden"
 
 
 class DestCopyStatus(StrEnum):
