@@ -656,12 +656,29 @@
     font-size: 0.9rem;
   }
 
-  /* The destructive Delete action gets its own full-width row on the drawer
-     instead of sharing a 2-per-row slot with the other three actions — so the
-     irreversible action reads as visually distinct and can never be mis-tapped
-     as its row neighbour. */
-  .barBtn.danger {
+  /* Mobile drawer slot swap: Delete pairs up on the top row with Add tags, and
+     Copy to UTub takes its own full-width row below. `order` is set on every
+     flex child of .bulkBarRow so the visual sequence — Add tags, Delete, Copy,
+     Select All, Clear — is independent of the DOM/registration order (which
+     stays Add tags, Copy, Delete for the desktop inline row). Delete inherits
+     the base .barBtn 50% width (no longer full-width); Copy becomes full-width.
+     Delete stays visually distinct via its .danger red text/border + trash icon
+     (base rule), so the destructive action is still unmistakable when paired. */
+  [data-bulk-action-id="bulk-add-tags"] {
+    order: 1;
+  }
+  [data-bulk-action-id="bulk-delete"] {
+    order: 2;
+  }
+  [data-bulk-action-id="bulk-copy"] {
+    order: 3;
     flex: 1 1 100%;
+  }
+  #bulkSelectAll {
+    order: 4;
+  }
+  #bulkSelectClear {
+    order: 5;
   }
 
   /* Keep the last URL card clear of the docked bar. Recomputed for the bar's own

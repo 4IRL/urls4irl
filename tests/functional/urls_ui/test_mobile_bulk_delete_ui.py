@@ -125,13 +125,22 @@ def test_mobile_bulk_delete_bottom_drawer_confirm_stacks_and_deletes(
     )
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
 
-    # The destructive Delete action renders as a full-width, 44px-tall row in the
-    # bottom drawer.
+    # Mobile drawer slot swap: the destructive Delete action pairs up on the top
+    # row (~half width) while Copy to UTub takes its own full-width row BELOW it.
+    # Delete is still a 44px-tall coarse-pointer touch target.
     delete_btn = page.locator(HPL.BUTTON_BULK_DELETE_URLS)
+    copy_btn = page.locator(HPL.BUTTON_BULK_COPY_URLS)
     expect(delete_btn).to_be_visible()
+    expect(copy_btn).to_be_visible()
     delete_box = delete_btn.bounding_box()
-    assert delete_box is not None
+    copy_box = copy_btn.bounding_box()
+    assert delete_box is not None and copy_box is not None
     assert delete_box["height"] >= _MIN_TOUCH_TARGET_PX
+    # Delete is paired (half-width), Copy is the full-width row: Copy is clearly
+    # wider than the paired Delete.
+    assert copy_box["width"] > delete_box["width"]
+    # Copy sits on the row BELOW Delete (Delete pairs with Add tags on top).
+    assert copy_box["y"] > delete_box["y"]
 
     open_bulk_delete_confirm(page=page)
 
