@@ -10,6 +10,7 @@ import { AppEvents, on } from "../../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { getState } from "../../../store/app-store.js";
+import { isMobile } from "../../mobile.js";
 import {
   type BulkAction,
   type BulkActionContext,
@@ -48,6 +49,11 @@ const CANCEL_BTN_SELECTOR = ".bulkCopyCancelBtn";
 const CONFIRM_BTN_SELECTOR = ".bulkCopyConfirmBtn";
 const MESSAGE_SELECTOR = ".bulkCopyPickerMsg";
 const SUBMIT_LOADING_CLASS = "bulkCopySubmitLoading";
+// Namespaced document-level tap-outside listener (MOBILE ONLY). On mobile the
+// picker is a bottom-docked drawer, so a tap anywhere outside its mount closes
+// it (returning to the bulk-action bar, staying in multi-select mode). Namespaced
+// so teardown removes exactly this listener (mirrors cookie-banner.ts).
+const OUTSIDE_TAP_NAMESPACE = "click.bulkCopyOutside";
 
 // Trusted static folder-plus icon (green accent — NOT the purple clipboard glyph
 // used for single-URL copy). Injected as raw HTML via the registry's
@@ -99,6 +105,8 @@ let submitInFlight = false;
 let loadingTimeoutID: number | null = null;
 let keydownListener: ((event: KeyboardEvent) => void) | null = null;
 let keyupListener: ((event: KeyboardEvent) => void) | null = null;
+// Pending deferred bind of the mobile tap-outside listener (see openBulkCopyPicker).
+let outsideTapBindTimeoutID: ReturnType<typeof setTimeout> | null = null;
 
 // --- Action registration ------------------------------------------------------
 
@@ -183,6 +191,34 @@ function openBulkCopyPicker(context: BulkActionContext): void {
     (utub) => utub.id !== sourceUtubID,
   );
   renderPicker({ destinations, selectedCount: snapshot.length });
+
+  // MOBILE ONLY: on mobile the picker is a bottom-docked drawer, so a tap
+  // OUTSIDE its mount should dismiss it (back to the bulk-action bar, still in
+  // multi-select mode). Desktop is untouched — the isMobile() gate skips the
+  // bind entirely there. The bind is DEFERRED to the next tick (setTimeout 0)
+  // so the very click that opened the picker (the Copy button) finishes
+  // bubbling to `document` BEFORE the listener attaches — otherwise it would
+  // fire immediately and close the picker on open. `click` (not pointerdown) so
+  // a background scroll/drag never dismisses it.
+  if (isMobile()) {
+    outsideTapBindTimeoutID = setTimeout(() => {
+      outsideTapBindTimeoutID = null;
+      $(document).on(OUTSIDE_TAP_NAMESPACE, handleOutsideCopyTap);
+    }, 0);
+  }
+}
+
+/**
+ * Document-level tap handler (MOBILE): a tap whose target is OUTSIDE the picker
+ * mount closes the picker (returning focus to the stable Exit control, staying
+ * in multi-select mode). A tap INSIDE the mount is ignored.
+ */
+function handleOutsideCopyTap(event: JQuery.TriggeredEvent): void {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  if ($(target).closest(PICKER_MOUNT_SELECTOR).length === 0) {
+    closeAndResetPicker({ returnFocus: true });
+  }
 }
 
 /**
@@ -434,6 +470,14 @@ function closeAndResetPicker({
   returnFocus?: boolean;
 } = {}): void {
   detachKeyListeners();
+  // Tear down the mobile tap-outside listener: cancel a still-pending deferred
+  // bind AND remove any already-bound listener (idempotent on desktop, where
+  // neither was ever set up).
+  if (outsideTapBindTimeoutID !== null) {
+    clearTimeout(outsideTapBindTimeoutID);
+    outsideTapBindTimeoutID = null;
+  }
+  $(document).off(OUTSIDE_TAP_NAMESPACE);
   $(PICKER_MOUNT_SELECTOR)
     .empty()
     .addClass("hidden")

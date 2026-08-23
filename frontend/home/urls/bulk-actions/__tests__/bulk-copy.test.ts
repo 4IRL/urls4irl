@@ -6,6 +6,7 @@ import {
 import { getAvailableBulkActions } from "../bulk-action-registry.js";
 import type { BulkAction, BulkActionContext } from "../bulk-action-registry.js";
 import { setPickerOpen } from "../picker-guard.js";
+import { isMobile } from "../../../mobile.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
@@ -14,6 +15,12 @@ import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),
+}));
+
+// Mobile gate for the tap-outside-to-close drawer behaviour. Defaults to mobile
+// (true); the desktop tests override it to false via vi.mocked(isMobile).
+vi.mock("../../../mobile.js", () => ({
+  isMobile: vi.fn(() => true),
 }));
 
 vi.mock("../../../../lib/modal-tracking.js", () => ({
@@ -161,6 +168,9 @@ beforeEach(() => {
   storeState.utubs = DEFAULT_UTUBS.map((utub) => ({ ...utub }));
   vi.clearAllMocks();
   vi.mocked(is429Handled).mockReturnValue(false);
+  // Default every test to mobile so the tap-outside drawer path is live; the
+  // desktop test overrides this to false.
+  vi.mocked(isMobile).mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -933,6 +943,61 @@ describe("Escape + Cancel (DD-17)", () => {
     cancelBtn.dispatchEvent(spaceOnButton);
     // Space on the button keeps native behaviour — not prevented.
     expect(spaceOnButton.defaultPrevented).toBe(false);
+  });
+});
+
+describe("tap-outside-to-close (mobile drawer)", () => {
+  it("MOBILE — a tap OUTSIDE the picker mount closes it (still in multi-select mode)", () => {
+    vi.useFakeTimers();
+    try {
+      openPickerFor([10]);
+      expect(isBulkCopyPickerOpen()).toBe(true);
+      // Flush the deferred (setTimeout 0) bind that avoids the opening click.
+      vi.runAllTimers();
+
+      // A tap whose target is OUTSIDE #bulkCopyPickerMount dismisses the drawer.
+      document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+      expect(isBulkCopyPickerOpen()).toBe(false);
+      expect(mount().hasClass("hidden")).toBe(true);
+      expect(mount().children().length).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("MOBILE — a tap INSIDE the picker mount leaves it OPEN", () => {
+    vi.useFakeTimers();
+    try {
+      openPickerFor([10]);
+      vi.runAllTimers();
+
+      const insideEl = mount().find(".bulkCopyListbox")[0]!;
+      insideEl.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+      expect(isBulkCopyPickerOpen()).toBe(true);
+      expect(mount().hasClass("hidden")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("DESKTOP — opening binds NO outside listener; an outside tap leaves it OPEN", () => {
+    vi.mocked(isMobile).mockReturnValue(false);
+    vi.useFakeTimers();
+    try {
+      openPickerFor([10]);
+      expect(isBulkCopyPickerOpen()).toBe(true);
+      // No deferred bind was scheduled on desktop; flushing timers is a no-op.
+      vi.runAllTimers();
+
+      document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+      expect(isBulkCopyPickerOpen()).toBe(true);
+      expect(mount().hasClass("hidden")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
