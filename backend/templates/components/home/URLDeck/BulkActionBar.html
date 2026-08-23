@@ -42,4 +42,14 @@
 	-->
 	<div id="bulkCopyPickerMount" class="bulkCopyPickerMount hidden"></div>
 	<div id="bulkCopyResultBanner" class="bulkTagBanner hidden" role="status"></div>
+	<!--
+		Bulk-delete result banner (Phase 5). The destructive Delete action reuses the
+		shared Bootstrap #confirmModal (not an in-deck picker), so there is no picker
+		mount here — only the outcome banner, kept OUTSIDE #bulkActionButtons (which
+		bulk-bar.ts empties/rebuilds on every selection change) so a partial-success
+		banner survives that rebuild. bulk-delete.ts renders success/partial/fail into
+		it (role=status). When the deck EMPTIES, the outcome is instead announced via
+		#URLDeckOutcomeAnnouncement (URLDeckSubheader.html), which survives mode exit.
+	-->
+	<div id="bulkDeleteResultBanner" class="bulkTagBanner hidden" role="status"></div>
 </div>

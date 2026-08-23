@@ -87,6 +87,13 @@
 	<!-- Shared polite announcer for the mobile per-field "Saved ✓" acknowledgment
 	     (UTub header name/description + URL card title/string fields). -->
 	<span id="fieldSavedAnnouncement" aria-live="polite" class="visually-hidden"></span>
+	<!-- Deck-level outcome announcer for the bulk-delete "Deleted N URLs" message
+	     on the deck-empties path. It lives here (the subheader, outside
+	     #bulkActionBar) deliberately so it SURVIVES exitMultiSelectMode()'s
+	     bulk-bar banner teardown — the empty-deck path exits mode, which would
+	     otherwise clear a bulk-bar banner before it could be read. Not part of
+	     bulk-mode.ts's banner-clear list. -->
+	<span id="URLDeckOutcomeAnnouncement" class="visually-hidden" aria-live="polite"></span>
 
 	<!-- Update UTub Description -->
 	{% include 'components/home/URLDeck/UpdateUTubDescriptionForm.html' %}

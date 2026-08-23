@@ -513,6 +513,55 @@
   outline-offset: 2px;
 }
 
+/* Destructive variant for the bulk "Delete" action (Phase 5). Outlined danger —
+   red text + border with a trash icon (aria-hidden) — NOT color-only: the visible
+   "Delete" label is always kept so the action never relies on color alone (WCAG
+   1.4.1). Mirrors the outlined-danger treatment the picker Cancel buttons use. */
+.barBtn.danger {
+  color: var(--removeIconColor);
+  border-color: var(--removeIconColor);
+}
+
+.barBtn.danger:hover {
+  background: rgba(220, 53, 69, 0.12);
+}
+
+.barBtn.danger:focus-visible {
+  outline-color: var(--removeIconColor);
+}
+
+/* Bulk-delete confirm (shared #confirmModal): delayed in-flight spinner on the
+   destructive submit, mirroring the bulk-copy/bulk-tag confirm spinner. The class
+   is toggled by bulk-delete.ts after SHOW_LOADING_ICON_AFTER_MS. Scoped to
+   #modalSubmit (the shared confirm button has no .bulkCopyConfirmBtn class). */
+#modalSubmit.bulkDeleteSubmitLoading {
+  color: transparent;
+  position: relative;
+}
+
+#modalSubmit.bulkDeleteSubmitLoading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: bulkTagSpin 0.6s linear infinite;
+}
+
+/* Confirm-body scope warnings (hidden-by-filter / not-deletable). Amber emphasis
+   so the destructive-reach disclosures stand out from the base body copy. */
+.bulkDeleteConfirmWarn {
+  margin-top: 8px;
+  color: var(--editURLColor);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
 /* A bar button reflects its disabled state via aria-disabled (not the native
    disabled attribute) so it stays focusable — Clear is the mode-enter focus
    target, and the strip's Select all / Invert stay reachable while inert. The
@@ -607,6 +656,14 @@
     font-size: 0.9rem;
   }
 
+  /* The destructive Delete action gets its own full-width row on the drawer
+     instead of sharing a 2-per-row slot with the other three actions — so the
+     irreversible action reads as visually distinct and can never be mis-tapped
+     as its row neighbour. */
+  .barBtn.danger {
+    flex: 1 1 100%;
+  }
+
   /* Keep the last URL card clear of the docked bar. Recomputed for the bar's own
      height only: the tag-sheet peek is suppressed in mode (Step 6), so its
      --tag-sheet-peek reservation is no longer needed here. This rule
@@ -631,12 +688,23 @@
   .barBtn:hover {
     background: transparent;
   }
+
+  /* Bulk-delete reuses the shared #confirmModal. Ensure its footer buttons
+     (Just kidding / Delete) meet the 44px WCAG 2.5.5 touch-target floor on
+     coarse pointers — the destructive confirm must be comfortable to tap. */
+  #confirmModal .modal-footer .btn {
+    min-height: 2.75rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .urlSelectCheckbox,
   .barBtn {
     transition: none;
+  }
+
+  #modalSubmit.bulkDeleteSubmitLoading::after {
+    animation: none;
   }
 }
 

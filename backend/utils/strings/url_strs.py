@@ -74,6 +74,42 @@ URL_BULK_COPY_ARIA = "Copy {n} selected URLs to…"
 URL_BULK_COPY_FILTER_PLACEHOLDER = "Filter UTubs…"
 URL_BULK_COPY_NO_MATCHES = "No UTubs match your filter."
 
+# Bulk delete-from-UTub confirm + banner + per-card cue strings — read by
+# bulk-actions/bulk-delete.ts. The confirm reuses the shared #confirmModal; the
+# result banner + card cue reuse the shared .bulkTagBanner / .bulkCardResultCue
+# styling. Every banner/cue string is count-only (XSS-safe): a URL title is never
+# interpolated. Singular vs plural forms are selected in TS by the relevant count.
+URL_BULK_DELETE_LABEL = "Delete"
+URL_BULK_DELETE_CONFIRM_TITLE = "Delete {n} URLs from this UTub?"
+URL_BULK_DELETE_CONFIRM_TITLE_ONE = "Delete 1 URL from this UTub?"
+URL_BULK_DELETE_CONFIRM_BODY = (
+    "This permanently removes them from this UTub for everyone. It can't be undone."
+)
+URL_BULK_DELETE_HIDDEN_WARNING = (
+    "{n} selected URLs are hidden by your filter and will still be deleted."
+)
+URL_BULK_DELETE_HIDDEN_WARNING_ONE = (
+    "1 selected URL is hidden by your filter and will still be deleted."
+)
+URL_BULK_DELETE_SKIPPED_WARNING = (
+    "{n} selected URLs were added by another member and will be skipped."
+)
+URL_BULK_DELETE_SKIPPED_WARNING_ONE = (
+    "1 selected URL was added by another member and will be skipped."
+)
+URL_BULK_DELETE_SUBMIT = "Delete {n} URLs"
+URL_BULK_DELETE_SUBMIT_ONE = "Delete 1 URL"
+URL_BULK_DELETE_CANCEL = "Just kidding"
+URL_BULK_DELETED = "Deleted {n} URLs."
+URL_BULK_DELETED_ONE = "Deleted 1 URL."
+# Partial-outcome suffix appended after the deleted-count clause when some
+# selected URLs were skipped (not deletable by this user).
+URL_BULK_DELETE_SKIPPED_SUFFIX = "{n} skipped because you can't delete them."
+URL_BULK_DELETE_SKIPPED_SUFFIX_ONE = "1 skipped because you can't delete it."
+# Shown when nothing was deleted (every selected URL was skipped as non-deletable).
+URL_BULK_DELETE_NONE = "No URLs were deleted — you can't delete the selected URLs."
+URL_BULK_CARD_CANT_DELETE = "Can't delete"
+
 # Multi-select bulk-action bar screen-reader announcements. TS composes the live
 # announcement in bulk-actions/bulk-bar.ts from these templates ({n} is replaced
 # with the selected / hidden count); the singular form mirrors the
@@ -141,6 +177,23 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_BULK_COPY_ARIA = URL_BULK_COPY_ARIA
     URL_BULK_COPY_FILTER_PLACEHOLDER = URL_BULK_COPY_FILTER_PLACEHOLDER
     URL_BULK_COPY_NO_MATCHES = URL_BULK_COPY_NO_MATCHES
+    URL_BULK_DELETE_LABEL = URL_BULK_DELETE_LABEL
+    URL_BULK_DELETE_CONFIRM_TITLE = URL_BULK_DELETE_CONFIRM_TITLE
+    URL_BULK_DELETE_CONFIRM_TITLE_ONE = URL_BULK_DELETE_CONFIRM_TITLE_ONE
+    URL_BULK_DELETE_CONFIRM_BODY = URL_BULK_DELETE_CONFIRM_BODY
+    URL_BULK_DELETE_HIDDEN_WARNING = URL_BULK_DELETE_HIDDEN_WARNING
+    URL_BULK_DELETE_HIDDEN_WARNING_ONE = URL_BULK_DELETE_HIDDEN_WARNING_ONE
+    URL_BULK_DELETE_SKIPPED_WARNING = URL_BULK_DELETE_SKIPPED_WARNING
+    URL_BULK_DELETE_SKIPPED_WARNING_ONE = URL_BULK_DELETE_SKIPPED_WARNING_ONE
+    URL_BULK_DELETE_SUBMIT = URL_BULK_DELETE_SUBMIT
+    URL_BULK_DELETE_SUBMIT_ONE = URL_BULK_DELETE_SUBMIT_ONE
+    URL_BULK_DELETE_CANCEL = URL_BULK_DELETE_CANCEL
+    URL_BULK_DELETED = URL_BULK_DELETED
+    URL_BULK_DELETED_ONE = URL_BULK_DELETED_ONE
+    URL_BULK_DELETE_SKIPPED_SUFFIX = URL_BULK_DELETE_SKIPPED_SUFFIX
+    URL_BULK_DELETE_SKIPPED_SUFFIX_ONE = URL_BULK_DELETE_SKIPPED_SUFFIX_ONE
+    URL_BULK_DELETE_NONE = URL_BULK_DELETE_NONE
+    URL_BULK_CARD_CANT_DELETE = URL_BULK_CARD_CANT_DELETE
 
 
 # Strings for URL failure

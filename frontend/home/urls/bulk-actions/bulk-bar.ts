@@ -61,7 +61,7 @@ function visibleURLCardIDs(): Set<number> {
 }
 
 /** How many selected ids are not in the visible set (hidden by search/filter). */
-function hiddenSelectedCount(selectedURLCardIDs: number[]): number {
+export function hiddenSelectedCount(selectedURLCardIDs: number[]): number {
   const visible = visibleURLCardIDs();
   return selectedURLCardIDs.filter((id) => !visible.has(id)).length;
 }
@@ -117,6 +117,7 @@ function renderBulkActionButtons(context: BulkActionContext): void {
       .attr("data-bulk-action-id", action.id)
       .addClass("barBtn")
       .text(action.label);
+    if (action.className) button.addClass(action.className);
     if (action.iconHtml) button.prepend(action.iconHtml);
     button.on("click", () => action.onActivate(buildContext()));
     container.append(button);

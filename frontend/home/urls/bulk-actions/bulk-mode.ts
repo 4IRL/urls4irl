@@ -112,6 +112,7 @@ export function exitMultiSelectMode(): void {
   // never imports a picker module.
   $("#bulkTagResultBanner").addClass(HIDDEN_CLASS).empty();
   $("#bulkCopyResultBanner").addClass(HIDDEN_CLASS).empty();
+  $("#bulkDeleteResultBanner").addClass(HIDDEN_CLASS).empty();
   setState({ multiSelectMode: false });
   $("#URLDeck").removeClass(MULTI_SELECT_ACTIVE_CLASS);
   // Dropping the mainPanel mode class lets the collapsed tag-sheet peek slide

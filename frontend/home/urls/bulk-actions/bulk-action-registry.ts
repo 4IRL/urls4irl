@@ -27,6 +27,12 @@ export interface BulkAction {
    * which would be an HTML-injection sink in the bulk bar.
    */
   iconHtml?: string;
+  /**
+   * Optional extra CSS class(es) added to the rendered `.barBtn` — e.g. the
+   * destructive "danger" variant for bulk-delete. A trusted static literal set by
+   * the action itself; never user-controlled.
+   */
+  className?: string;
   isAvailable(context: BulkActionContext): boolean;
   onActivate(context: BulkActionContext): void;
 }
