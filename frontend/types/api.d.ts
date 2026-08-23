@@ -1829,7 +1829,7 @@ export interface components {
      * @description Error codes for URLErrorCodes
      * @enum {integer}
      */
-    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -6290,6 +6290,7 @@ export interface operations {
           | "url_title_updated"
           | "url_tracking_params_stripped"
           | "urls_copied_to_utub"
+          | "urls_deleted_from_utub"
           | "utub_created"
           | "utub_deleted"
           | "utub_desc_updated"
@@ -6519,6 +6520,7 @@ export interface operations {
           | "url_title_updated"
           | "url_tracking_params_stripped"
           | "urls_copied_to_utub"
+          | "urls_deleted_from_utub"
           | "utub_created"
           | "utub_deleted"
           | "utub_desc_updated"
