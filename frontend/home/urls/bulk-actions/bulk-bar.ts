@@ -1,6 +1,7 @@
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { debug } from "../../../lib/debug.js";
+import { makeDebouncer } from "../../../lib/debounce.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { getState } from "../../../store/app-store.js";
 import { VISIBLE_URL_SELECTOR } from "../utils.js";
@@ -37,6 +38,12 @@ const RANGE_STRIP_SELECTOR = "#bulkSelectRangeStrip";
 const MULTI_SELECT_TOGGLE_SELECTOR = "#urlBtnMultiSelect";
 const DECK_SELECTOR = "#URLDeck";
 const HIDDEN_CLASS = "hidden";
+// Custom property the mobile drawer media-query rule in bulk-actions.css reads to
+// reserve the deck's bottom padding; kept in sync with the bar's measured height.
+const BAR_HEIGHT_VAR = "--bulk-bar-height";
+// Matches RESIZE_DEBOUNCE_MS in home/utubs/header-fit.ts — the established window
+// for home-view resize listeners.
+const RESIZE_DEBOUNCE_MS = 150;
 
 const SELECT_ALL_CLICK = "click.bulkSelectAll";
 const CLEAR_CLICK = "click.bulkSelectClear";
@@ -152,6 +159,30 @@ function syncRangeButtonStates(): void {
   );
 }
 
+/**
+ * Reserve the docked drawer's measured height as the URL deck's bottom padding
+ * (consumed by the mobile media-query rule in bulk-actions.css via
+ * --bulk-bar-height) so the last URL row is never hidden behind the fixed drawer.
+ * The bar wraps to a variable number of rows (Delete/Copy render conditionally),
+ * so measuring the real height is the only correct reservation. offsetHeight
+ * already includes the drawer's padding (which carries env(safe-area-inset-bottom)),
+ * so no extra safe-area math is needed. No-op while the bar is hidden (mode
+ * inactive) — the reservation only matters while the drawer is docked. Not gated
+ * on isMobile: the var is only read by the mobile rule, and keeping it current
+ * across breakpoints lets the resize handler self-correct.
+ */
+function updateDeckBottomReservation(): void {
+  const bar = $(BAR_SELECTOR);
+  const barElement = bar[0];
+  if (barElement === undefined || bar.hasClass(HIDDEN_CLASS)) return;
+  $(DECK_SELECTOR).css(BAR_HEIGHT_VAR, `${barElement.offsetHeight}px`);
+}
+
+/** Clear the reserved drawer height (mode exit / bar hidden). */
+function clearDeckBottomReservation(): void {
+  $(DECK_SELECTOR).css(BAR_HEIGHT_VAR, "");
+}
+
 /** Repaint the bar (count, hidden hint, SR announcement, Clear state, actions). */
 function updateBar(selectedURLCardIDs: number[]): void {
   const selectedCount = selectedURLCardIDs.length;
@@ -200,6 +231,11 @@ function updateBar(selectedURLCardIDs: number[]): void {
   if (!isAnyBulkPickerOpen()) {
     syncRangeButtonStates();
   }
+
+  // A selection change can add/remove drawer rows (Delete/Copy render
+  // conditionally), changing the bar's height — re-measure. No-ops when the bar
+  // is hidden (mode inactive), so this is inert outside multi-select mode.
+  updateDeckBottomReservation();
 }
 
 /** Show/hide the bar and manage focus on mode enter/exit. */
@@ -208,6 +244,9 @@ function toggleBar(active: boolean): void {
   if (active) {
     bar.removeClass(HIDDEN_CLASS);
     updateBar(getState().selectedURLCardIDs);
+    // Bar is now revealed and laid out — reserve its height under the deck so the
+    // last URL row clears the fixed mobile drawer.
+    updateDeckBottomReservation();
     // Exit (the header's primary in-mode control) is the intentional initial
     // focus target now that the context/Exit live in the header; the bottom bar
     // hosts only the (empty in Phase 1) action registry + Select All / Clear.
@@ -215,6 +254,9 @@ function toggleBar(active: boolean): void {
     return;
   }
   bar.addClass(HIDDEN_CLASS);
+  // Bar hidden: drop the deck's reserved bottom padding so normal mode reflows
+  // without the drawer gap.
+  clearDeckBottomReservation();
   // Restore focus to the toggle, unless the empty-state path hid it while mode
   // was still active (a remote diff removing the last URL, per Step 7's
   // removeElement empty-state bullet) — then fall back to the always-rendered
@@ -265,6 +307,15 @@ export function initBulkBar(): void {
 
   if (_barSubscriptionsRegistered) return;
   _barSubscriptionsRegistered = true;
+
+  // A viewport resize (rotation, breakpoint crossing, on-screen keyboard) can
+  // reflow the drawer to a different height, so recompute the reservation —
+  // debounced to the shared home-view resize window. updateDeckBottomReservation
+  // no-ops while the bar is hidden, so this is inert outside multi-select mode.
+  window.addEventListener(
+    "resize",
+    makeDebouncer(updateDeckBottomReservation, RESIZE_DEBOUNCE_MS),
+  );
 
   on(AppEvents.URL_MULTISELECT_CHANGED, ({ selectedURLCardIDs }) => {
     log("bulk-bar selection changed", { selectedURLCardIDs });

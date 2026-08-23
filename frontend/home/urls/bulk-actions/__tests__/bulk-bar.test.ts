@@ -486,6 +486,67 @@ describe("bulk-bar", () => {
     });
   });
 
+  describe("mobile drawer height reservation (--bulk-bar-height)", () => {
+    // jsdom always reports offsetHeight 0, so stub the rendered height of the
+    // #bulkActionBar drawer to a realistic multi-row value and assert the deck's
+    // reserved bottom-padding var tracks it.
+    function stubBarHeight(px: number): void {
+      const bar = document.querySelector("#bulkActionBar");
+      if (bar === null) throw new Error("missing #bulkActionBar fixture");
+      Object.defineProperty(bar, "offsetHeight", {
+        configurable: true,
+        get: () => px,
+      });
+    }
+
+    function reservedHeight(): string {
+      return (
+        document
+          .querySelector<HTMLElement>("#URLDeck")
+          ?.style.getPropertyValue("--bulk-bar-height") ?? ""
+      );
+    }
+
+    it("reserves the measured bar height on the deck when mode is entered", () => {
+      stubBarHeight(200);
+
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+
+      expect(reservedHeight()).toBe("200px");
+    });
+
+    it("keeps the reservation in sync on a selection change while the bar is visible", () => {
+      stubBarHeight(200);
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+      expect(reservedHeight()).toBe("200px");
+
+      // A selection change can add/remove drawer rows; the repaint re-measures.
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1, 2] });
+
+      expect(reservedHeight()).toBe("200px");
+    });
+
+    it("does NOT reserve a height while the bar is hidden (mode inactive)", () => {
+      stubBarHeight(200);
+
+      // No mode-enter: the bar keeps its initial `hidden` class, so a bare
+      // selection repaint must leave the reservation unset.
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+
+      expect(reservedHeight()).toBe("");
+    });
+
+    it("clears the reservation when mode is exited", () => {
+      stubBarHeight(200);
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+      expect(reservedHeight()).toBe("200px");
+
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: false });
+
+      expect(reservedHeight()).toBe("");
+    });
+  });
+
   describe("action registry rendering", () => {
     it("renders no action buttons when nothing is registered", () => {
       emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });

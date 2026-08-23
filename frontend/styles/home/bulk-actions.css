@@ -681,13 +681,19 @@
     order: 5;
   }
 
-  /* Keep the last URL card clear of the docked bar. Recomputed for the bar's own
-     height only: the tag-sheet peek is suppressed in mode (Step 6), so its
-     --tag-sheet-peek reservation is no longer needed here. This rule
-     (1 id + 3 classes) outranks tag-sheet.css's `#URLDeck .flex-column.content`
-     (1 id + 2 classes) so it wins when the deck is in mode. */
+  /* Keep the last URL card clear of the docked bar. The reservation TRACKS the
+     drawer's measured height: the bar wraps to a variable number of rows (Delete
+     renders only for a deletable selection, Copy only when other UTubs exist), so
+     a static value can't fit every case — bulk-bar.ts measures #bulkActionBar and
+     writes its rendered height into --bulk-bar-height, and the +12px adds a
+     breathing gap above the drawer. The 96px fallback covers the first paint
+     before JS has measured (a typical two-row drawer). The tag-sheet peek is
+     suppressed in mode (Step 6), so its --tag-sheet-peek reservation is no longer
+     needed here. This rule (1 id + 3 classes) outranks tag-sheet.css's
+     `#URLDeck .flex-column.content` (1 id + 2 classes) so it wins when the deck is
+     in mode. */
   #URLDeck.multiSelectActive .flex-column.content {
-    padding-bottom: 88px;
+    padding-bottom: calc(var(--bulk-bar-height, 96px) + 12px);
   }
 }
 
