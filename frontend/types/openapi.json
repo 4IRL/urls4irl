@@ -6706,6 +6706,92 @@
         }
       }
     },
+    "/utubs/{utub_id}/urls/delete": {
+      "post": {
+        "operationId": "deleteUrlsFromUtub",
+        "tags": ["urls"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Bulk-delete selected URLs from a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteUrlsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delete urls",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DeleteUrlsResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLErrorCodes": {
+            "$ref": "#/components/schemas/URLErrorCodes"
+          }
+        }
+      }
+    },
     "/users/{user_id}/username": {
       "put": {
         "operationId": "changeUsername",
@@ -10816,6 +10902,77 @@
           }
         },
         "required": ["results", "totalCopied", "totalSkipped"],
+        "type": "object"
+      },
+      "DeleteUrlsRequest": {
+        "properties": {
+          "utubUrlIds": {
+            "description": "UTub-URL ids in the active UTub to delete",
+            "examples": [[1, 2, 3]],
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": ["utubUrlIds"],
+        "type": "object"
+      },
+      "UrlDeleteSkippedSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "Utub_Urls id skipped because the user may not delete it",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "Machine-readable skip reason (BulkDeleteSkipReason value, e.g. 'forbidden')",
+            "type": "string"
+          }
+        },
+        "required": ["utubUrlID", "reason"],
+        "type": "object"
+      },
+      "DeleteUrlsResponseSchema": {
+        "properties": {
+          "deleted": {
+            "description": "URLs deleted from the UTub",
+            "items": {
+              "$ref": "#/components/schemas/UtubUrlDeleteSchema"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "description": "URLs skipped because the user may not delete them",
+            "items": {
+              "$ref": "#/components/schemas/UrlDeleteSkippedSchema"
+            },
+            "type": "array"
+          },
+          "tagCountsInUtub": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Map of tag ID to new applied count after the bulk delete",
+            "type": "object"
+          },
+          "totalDeleted": {
+            "description": "Total number of URLs deleted from the UTub",
+            "type": "integer"
+          },
+          "totalSkipped": {
+            "description": "Total number of URLs skipped during the bulk delete",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted",
+          "skipped",
+          "tagCountsInUtub",
+          "totalDeleted",
+          "totalSkipped"
+        ],
         "type": "object"
       },
       "ChangeUsernameRequest": {

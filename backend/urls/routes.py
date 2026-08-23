@@ -15,11 +15,13 @@ from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.urls import (
     CopyUrlsRequest,
     CreateURLRequest,
+    DeleteUrlsRequest,
     UpdateURLStringRequest,
     UpdateURLTitleRequest,
 )
 from backend.schemas.urls import (
     CopyUrlsResponseSchema,
+    DeleteUrlsResponseSchema,
     UrlCreatedResponseSchema,
     UrlDeletedResponseSchema,
     UrlReadResponseSchema,
@@ -29,7 +31,7 @@ from backend.schemas.urls import (
 from backend.urls.constants import URLErrorCodes
 from backend.urls.services.copy_urls import copy_urls_into_utubs
 from backend.urls.services.create_urls import create_url_in_utub
-from backend.urls.services.delete_urls import delete_url_in_utub
+from backend.urls.services.delete_urls import delete_url_in_utub, delete_urls_in_utub
 from backend.urls.services.read_urls import get_url_in_utub
 from backend.urls.services.update_url_titles import update_url_title_if_new
 from backend.urls.services.update_urls import update_url_in_utub
@@ -252,4 +254,45 @@ def delete_url(
     """
     return delete_url_in_utub(
         current_utub=current_utub, current_utub_url=current_utub_url
+    )
+
+
+@urls.route("/utubs/<int:utub_id>/urls/delete", methods=["POST"])
+@utub_membership_required
+@api_route(
+    request_schema=DeleteUrlsRequest,
+    response_schema=DeleteUrlsResponseSchema,
+    error_message=URL_FAILURE.UNABLE_TO_DELETE_URLS,
+    error_code=URLErrorCodes.UNABLE_TO_DELETE_URLS_ERROR,
+    tags=[OPEN_API.URLS],
+    description="Bulk-delete selected URLs from a UTub",
+    status_codes={
+        200: DeleteUrlsResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def delete_urls_from_utub(
+    utub_id: int, current_utub: Utubs, delete_urls_request: DeleteUrlsRequest
+) -> FlaskResponse:
+    """
+    User wants to bulk-delete selected URLs from a single (active) UTub in one
+    request. Membership is proved by ``@utub_membership_required``; the per-URL
+    delete permission is re-checked inside the service against
+    ``current_utub.utub_creator`` (the literal-creator predicate, matching each
+    URL's ``canDelete``) rather than the broader, co-creator-inclusive
+    ``g.is_creator``. URLs the user may not delete are skipped and reported;
+    unknown or cross-UTub ids reject the whole request as a 400; a locked UTub is
+    a whole-request 403.
+
+    Args:
+        utub_id (int): The UTub to delete the selected URLs from
+        current_utub (Utubs): The UTub for this request (membership already proved)
+        delete_urls_request (DeleteUrlsRequest): Validated request schema
+    """
+    return delete_urls_in_utub(
+        utub_url_ids=delete_urls_request.utubUrlIds,
+        utub=current_utub,
+        current_user_id=current_user.id,
     )

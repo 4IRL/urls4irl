@@ -19,7 +19,8 @@ export type RouteId =
   | "getUTubs"
   | "contactUs"
   | "crossUtubSearch"
-  | "copyURLsToUtubs";
+  | "copyURLsToUtubs"
+  | "bulkDeleteURLs";
 
 export interface AppRoutes {
   // Static routes (string values)
@@ -48,6 +49,7 @@ export interface AppRoutes {
   createURL: (id: number) => string;
   createUTubTag: (id: number) => string;
   applyTagsToURLs: (utubId: number) => string;
+  bulkDeleteURLs: (utubId: number) => string;
   createMember: (id: number) => string;
 
   // Dynamic two-param routes
@@ -175,6 +177,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.createUTubTag.replace("-1", String(id)),
     applyTagsToURLs: (utubId: number) =>
       rawConfig.routes.applyTagsToURLs.replace("-1", String(utubId)),
+    bulkDeleteURLs: (utubId: number) =>
+      rawConfig.routes.bulkDeleteURLs.replace("-1", String(utubId)),
     deleteUTubTag: (utubId: number, tagId: number) =>
       rawConfig.routes.deleteUTubTag
         .replace("-1", String(utubId))
