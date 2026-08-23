@@ -629,6 +629,44 @@ def force_next_delete_ajax_failure_no_navigate(*, page: Page) -> None:
     }""")
 
 
+def force_next_bulk_delete_ajax_failure_no_navigate(*, page: Page) -> None:
+    """Monkey-patches $.ajax so the next POST to the bulk-delete route
+    (``/urls/delete``) fails with a fake 500 whose _429Handled getter always
+    reads true — the bulk-delete failure handler's is429Handled short-circuit
+    then returns early WITHOUT navigating, while the request's .always() still
+    re-enables #modalSubmit / #modalDismiss. Mirrors
+    force_next_delete_ajax_failure_no_navigate for the single-URL DELETE, but
+    scoped to the bulk POST (the bulk endpoint is POST, not DELETE)."""
+    page.evaluate("""() => {
+        var originalAjax = $.ajax;
+        $.ajax = function(options) {
+            var isPost =
+                options && options.type && options.type.toLowerCase() === 'post';
+            var url = options && options.url ? String(options.url) : '';
+            if (isPost && url.indexOf('/urls/delete') !== -1) {
+                $.ajax = originalAjax;
+                var deferred = $.Deferred();
+                var fakeXhr = {
+                    status: 500,
+                    getResponseHeader: function() { return 'application/json'; },
+                    responseText: '{"error": "forced test failure"}'
+                };
+                Object.defineProperty(fakeXhr, '_429Handled', {
+                    get: function() { return true; },
+                    set: function() { /* no-op: ignore writes from ajaxCall */ },
+                    configurable: true
+                });
+                setTimeout(function() {
+                    deferred.reject(fakeXhr, 'error', 'Internal Server Error');
+                }, 0);
+                deferred.promise(fakeXhr);
+                return fakeXhr;
+            }
+            return originalAjax.apply(this, arguments);
+        };
+    }""")
+
+
 def open_update_url_title(*, page: Page, selected_url_row: Locator) -> None:
     """Hover the selected URL's title to reveal the edit button, click it,
     and wait for the title-update input to become visible."""
