@@ -82,6 +82,19 @@ def _computed_z_index(*, page: Page, css_selector: str) -> int:
     return int(value)
 
 
+def _computed_position(*, page: Page, css_selector: str) -> str:
+    value = page.evaluate(
+        """(selector) => {
+            const el = document.querySelector(selector);
+            if (!el) return null;
+            return window.getComputedStyle(el).position;
+        }""",
+        css_selector,
+    )
+    assert value is not None, f"Element {css_selector} not found for position check"
+    return value
+
+
 def test_mobile_bulk_delete_bottom_drawer_confirm_stacks_and_deletes(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
@@ -89,7 +102,8 @@ def test_mobile_bulk_delete_bottom_drawer_confirm_stacks_and_deletes(
     GIVEN a mobile user with two deletable URLs selected in multi-select mode
     WHEN they open the destructive confirm from the bottom drawer and confirm
     THEN the drawer Delete action meets the 44px touch target, the confirm modal
-        stacks ABOVE the z-1035 drawer, both rows are removed, the result banner
+        (position:fixed, in the overlay layer) stacks ABOVE the now in-flow
+        (position:static) bottom drawer, both rows are removed, the result banner
         shows, and the DB rows are gone.
     """
     page = page_mobile_portrait
@@ -144,12 +158,26 @@ def test_mobile_bulk_delete_bottom_drawer_confirm_stacks_and_deletes(
 
     open_bulk_delete_confirm(page=page)
 
-    # The confirm modal stacks ABOVE the z-1035 bottom drawer.
-    modal_z = _computed_z_index(page=page, css_selector=HPL.HOME_MODAL)
-    drawer_z = _computed_z_index(page=page, css_selector=HPL.BULK_ACTION_BAR)
+    # The confirm modal stacks ABOVE the now in-flow bottom drawer. The drawer is
+    # `position: static` (an in-flow deck-bottom bar), so it lives in the normal
+    # flow with no stacking context of its own; the Bootstrap confirm modal is
+    # `position: fixed` with a numeric z-index in the fixed/positioned overlay
+    # layer, plus a `.modal-backdrop` over the deck. A fixed, positioned modal
+    # necessarily paints above an in-flow static element regardless of source
+    # order, so the modal is on top.
+    expect(page.locator(HPL.HOME_MODAL)).to_be_visible()
+    modal_position = _computed_position(page=page, css_selector=HPL.HOME_MODAL)
     assert (
-        modal_z > drawer_z
-    ), f"Confirm modal (z={modal_z}) must stack above the drawer (z={drawer_z})"
+        modal_position == "fixed"
+    ), f"Confirm modal must be position:fixed to overlay the deck, got {modal_position!r}"
+    # A numeric z-index confirms the modal participates in the positioned overlay layer.
+    _computed_z_index(page=page, css_selector=HPL.HOME_MODAL)
+    drawer_position = _computed_position(page=page, css_selector=HPL.BULK_ACTION_BAR)
+    assert (
+        drawer_position == "static"
+    ), f"Bottom drawer must be in-flow (position:static), got {drawer_position!r}"
+    # The Bootstrap backdrop covers the deck, confirming the modal layer sits over it.
+    expect(page.locator(".modal-backdrop")).to_be_visible()
 
     submit_bulk_delete(page=page)
 
