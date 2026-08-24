@@ -111,9 +111,16 @@ const bulkDeleteAction: BulkAction = {
   // .barBtn.danger CSS (red text/border + own full-width row on the mobile
   // drawer) applies.
   className: "danger",
-  // Available only when something is selected AND ≥1 selected URL is deletable by
-  // this user (server re-checks each id as the source of truth — partial-skip).
-  isAvailable: hasDeletableSelection,
+  // Rendered whenever there's a selection (same gate as Add tags / Copy) so the
+  // destructive action stays a discoverable affordance. Whether it's ENABLED is a
+  // separate capability check: only when ≥1 selected URL is deletable by this user
+  // (server re-checks each id as the source of truth — partial-skip). When nothing
+  // deletable is selected the bar shows Delete DISABLED with disabledReason rather
+  // than hiding it, so a member never wonders where "Delete" went.
+  isAvailable: (context: BulkActionContext) =>
+    context.selectedURLCardIDs.length > 0,
+  isEnabled: hasDeletableSelection,
+  disabledReason: APP_CONFIG.strings.URL_BULK_DELETE_DISABLED_REASON,
   onActivate: openBulkDeleteConfirm,
 };
 

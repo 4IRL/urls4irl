@@ -611,6 +611,70 @@ describe("bulk-bar", () => {
       );
     });
 
+    it("renders an isEnabled=false action as visible-but-disabled (aria-disabled + tooltip + accessible name)", () => {
+      registerBulkAction({
+        id: "fake",
+        label: "Fake Action",
+        isAvailable: () => true,
+        isEnabled: () => false,
+        disabledReason: "Pick something you can act on",
+        onActivate: vi.fn(),
+      });
+
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+
+      const button = $("#bulkActionButtons button");
+      // Still rendered (not hidden) — just inert.
+      expect(button.length).toBe(1);
+      expect(button.attr("aria-disabled")).toBe("true");
+      expect(button.attr("title")).toBe("Pick something you can act on");
+      expect(button.attr("aria-label")).toBe(
+        "Fake Action. Pick something you can act on",
+      );
+    });
+
+    it("renders an isEnabled=true action as enabled (no aria-disabled / tooltip)", () => {
+      registerBulkAction({
+        id: "fake",
+        label: "Fake Action",
+        isAvailable: () => true,
+        isEnabled: () => true,
+        disabledReason: "Pick something you can act on",
+        onActivate: vi.fn(),
+      });
+
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+
+      const button = $("#bulkActionButtons button");
+      expect(button.attr("aria-disabled")).toBeUndefined();
+      expect(button.attr("title")).toBeUndefined();
+    });
+
+    it("no-ops the click while an action is isEnabled=false, then fires once it becomes enabled", () => {
+      const onActivate = vi.fn();
+      let deletableSelected = false;
+      registerBulkAction({
+        id: "fake",
+        label: "Fake Action",
+        isAvailable: () => true,
+        isEnabled: () => deletableSelected,
+        disabledReason: "Pick something you can act on",
+        onActivate,
+      });
+      setState({ selectedURLCardIDs: [1] });
+
+      // Disabled paint → the click is inert.
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+      $("#bulkActionButtons button").trigger("click");
+      expect(onActivate).not.toHaveBeenCalled();
+
+      // Selection now holds a deletable URL → repaint enabled → click fires.
+      deletableSelected = true;
+      emit(AppEvents.URL_MULTISELECT_CHANGED, { selectedURLCardIDs: [1] });
+      $("#bulkActionButtons button").trigger("click");
+      expect(onActivate).toHaveBeenCalledTimes(1);
+    });
+
     it("does NOT rebuild the action buttons while the bulk tag picker is open", () => {
       registerBulkAction({
         id: "fake",

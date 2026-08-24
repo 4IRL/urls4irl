@@ -128,7 +128,25 @@ function renderBulkActionButtons(context: BulkActionContext): void {
       .text(action.label);
     if (action.className) button.addClass(action.className);
     if (action.iconHtml) button.prepend(action.iconHtml);
-    button.on("click", () => action.onActivate(buildContext()));
+
+    // Enabled gate — distinct from availability (which decides rendering). A
+    // disabled action stays VISIBLE but inert: aria-disabled (not the native
+    // `disabled` attr) keeps it a valid focus/hover target so the tooltip +
+    // accessible name can disclose WHY it's off, and the click handler no-ops.
+    // Mirrors the range-strip Clear/Select-all aria-disabled pattern.
+    const enabled = action.isEnabled?.(context) ?? true;
+    if (!enabled) {
+      button.attr("aria-disabled", "true");
+      if (action.disabledReason) {
+        button.attr("title", action.disabledReason);
+        button.attr("aria-label", `${action.label}. ${action.disabledReason}`);
+      }
+    }
+    button.on("click", () => {
+      const clickContext = buildContext();
+      if (action.isEnabled && !action.isEnabled(clickContext)) return;
+      action.onActivate(clickContext);
+    });
     container.append(button);
   }
 }
