@@ -1,4 +1,4 @@
-import type { MemberItem } from "../types/member.js";
+import type { MemberCandidate, MemberItem } from "../types/member.js";
 import type {
   DateFormatValue,
   DensityValue,
@@ -33,6 +33,13 @@ export interface AppState {
   urls: UtubUrlItem[]; // narrowed in Phase 7
   tags: UtubTag[]; // narrowed in Phase 9
   members: MemberItem[]; // narrowed in Phase 8
+  // Co-member add candidates for the active UTub, hydrated once when the add UI
+  // opens (see loadCoMemberCandidates). Held only for the active UTub and
+  // cleared on UTub switch / reset so it never leaks across UTubs.
+  coMemberCandidates: MemberCandidate[];
+  // False until the co-member fetch settles (success OR degrade-fail), so the
+  // combobox can tell "haven't loaded yet" apart from "loaded and empty".
+  coMemberCandidatesLoaded: boolean;
   preferences: UserPreferences;
 }
 
@@ -53,6 +60,8 @@ function createInitialState(): AppState {
     urls: [],
     tags: [],
     members: [],
+    coMemberCandidates: [],
+    coMemberCandidatesLoaded: false,
     preferences: {
       theme: "system",
       defaultView: "list",

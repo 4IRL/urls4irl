@@ -3,8 +3,9 @@ import type { MemberItem } from "../../types/member.js";
 import { $ } from "../../lib/globals.js";
 import { debug } from "../../lib/debug.js";
 import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
-import { getState } from "../../store/app-store.js";
+import { getState, setState } from "../../store/app-store.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
+import { cancelCoMemberCandidatesFetch } from "./co-member-fetch.js";
 import { createMemberBadge, createOwnerBadge } from "./members.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
@@ -28,6 +29,12 @@ export function resetMemberDeck(): void {
   $("#MemberSearchAnnouncement").text("");
   resetMemberFilter();
   hideMemberFilterBar();
+  // Drop any co-member add candidates so they never leak across UTubs; the next
+  // add-UI open re-hydrates them via loadCoMemberCandidates for the new UTub.
+  // Abort any in-flight fetch first — otherwise a response for the prior UTub
+  // could resolve after this clear and repopulate the slice for the new UTub.
+  cancelCoMemberCandidatesFetch();
+  setState({ coMemberCandidates: [], coMemberCandidatesLoaded: false });
 }
 
 // Update member deck on asynchronous update, either due to stale data or refresh
