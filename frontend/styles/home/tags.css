@@ -403,7 +403,9 @@
 }
 
 .urlTagComboboxMsg.warn {
-    color: var(--editURLColor);
+    /* Theme-aware caution text (accessible dark amber in light mode) — the raw
+       --editURLColor yellow washed out on the near-white combobox surface. */
+    color: var(--cautionText);
 }
 
 /* Footer: the quiet "N matches" helper text sits right next to the single

@@ -95,6 +95,12 @@
     /* Global link color (base.css `a`). Aqua reads on the dark surfaces; the
        light override below swaps it for an accessible on-white blue. */
     --linkColor: aqua;
+    /* Caution/amber TEXT (e.g. the bulk-delete confirm skip warning). Distinct
+       from --editURLColor, which is the same yellow but used as a fill/border on
+       dark surfaces (edit-URL button, pipeline bars) and must stay bright. As
+       running text this bright yellow is illegible on the near-white light-mode
+       surfaces, so the light override below darkens it to an accessible amber. */
+    --cautionText: rgba(253, 231, 76, 1.0);
 
     --cardURLTextColor: rgba(140, 155, 157, 1.0);
     --selectedUrlBorder: rgba(13, 255, 0, 1.0);
@@ -202,6 +208,9 @@
     --light-UTubDescriptionColor: #1f2424;
     /* Accessible link blue on white (~4.6:1) in place of aqua. */
     --light-linkColor: #0b6bcb;
+    /* Caution/amber text darkened for legibility on white — dark amber ~6.4:1,
+       in place of the dark-theme bright yellow which washes out on light. */
+    --light-cautionText: #7a5900;
     --light-cardURLTextColor: #5c6b6d;
     /* Deck item names (UTubs/members/tags) use --grayBadgeSelection for their
        text; the dark-theme #aaa is far too dim on white (~2.3:1). Darken to a
@@ -247,6 +256,7 @@
     --textPrimary: var(--light-textPrimary);
     --UTubDescriptionColor: var(--light-UTubDescriptionColor);
     --linkColor: var(--light-linkColor);
+    --cautionText: var(--light-cautionText);
     --cardURLTextColor: var(--light-cardURLTextColor);
     --grayBadgeSelection: var(--light-grayBadgeSelection);
     --memberRoleIconColor: var(--light-memberRoleIconColor);
@@ -284,6 +294,7 @@
         --textPrimary: var(--light-textPrimary);
         --UTubDescriptionColor: var(--light-UTubDescriptionColor);
         --linkColor: var(--light-linkColor);
+        --cautionText: var(--light-cautionText);
         --cardURLTextColor: var(--light-cardURLTextColor);
         --grayBadgeSelection: var(--light-grayBadgeSelection);
         --memberRoleIconColor: var(--light-memberRoleIconColor);
