@@ -1706,6 +1706,19 @@ auto-coverage only (no DOMAIN events).
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                        |
 | **Tests**      | `tests/integration/mobile_api/test_members_endpoints.py` (marker: `mobile_api`)                                                                                                                                                      |
 
+### GET /api/v1/utubs/\<utub_id\>/co-members
+
+| Layer          | Location                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/api_v1/utub_member_routes.py:api_v1_get_co_member_candidates` (bearer-token twin of `backend/members/routes.py:get_co_member_candidates_route`)                                                                             |
+| **Decorators** | `@api_utub_creator_required`, `@api_route(response_schema=CoMemberListSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`                                                                          |
+| **Service**    | `backend/members/services/co_member_search.py:get_co_member_candidates` (same service as the web route — no logic duplication; emits `MEMBER_ADD_CANDIDATES_LOADED` with `has_results`)                                              |
+| **Schema**     | `backend/schemas/users.py:CoMemberListSchema` (wraps `list[CoMemberSchema]{id, username, sharedUtubCount}`)                                                                                                                         |
+| **Metrics**    | `MEMBER_ADD_CANDIDATES_LOADED` (DOMAIN, `Resource.MEMBER`, dim `has_results: true/false`)                                                                                                                                           |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                             |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                        |
+| **Tests**      | `tests/integration/mobile_api/test_co_member_candidates_endpoint.py` (marker: `mobile_api`)                                                                                                                                         |
+
 ### POST /api/v1/utubs/\<utub_id\>/urls
 
 | Layer          | Location                                                                                                                                                                                                                                                               |

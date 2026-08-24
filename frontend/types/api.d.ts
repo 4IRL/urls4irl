@@ -669,6 +669,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/utubs/{utub_id}/co-members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Get co-member add candidates for a UTub (creator only) */
+    get: operations["apiV1GetCoMemberCandidates"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/utubs": {
     parameters: {
       query?: never;
@@ -1969,6 +1986,28 @@ export interface components {
      * @enum {integer}
      */
     UTubMembersErrorCodes: 1 | 2 | 3;
+    /**
+     * @description A co-member add candidate: a user who shares >=1 other UTub with the
+     *     requester and is not already a member of the target UTub.
+     */
+    CoMemberSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Number of the requester's UTubs this candidate also belongs to */
+      sharedUtubCount: number;
+    };
+    /**
+     * @description Wrapper list of co-member add candidates for the target UTub.
+     *
+     *     A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
+     *     at the top level via ``**data_dict``.
+     */
+    CoMemberListSchema: {
+      /** @description Co-member add candidates for the target UTub */
+      members?: components["schemas"]["CoMemberSchema"][];
+    };
     CreateUTubRequest: {
       /** @description Name of the UTub to create */
       utubName: string;
@@ -2116,28 +2155,6 @@ export interface components {
      * @enum {integer}
      */
     ContactErrorCodes: 1;
-    /**
-     * @description A co-member add candidate: a user who shares >=1 other UTub with the
-     *     requester and is not already a member of the target UTub.
-     */
-    CoMemberSchema: {
-      /** @description Unique user ID */
-      id: number;
-      /** @description Username of the user */
-      username: string;
-      /** @description Number of the requester's UTubs this candidate also belongs to */
-      sharedUtubCount: number;
-    };
-    /**
-     * @description Wrapper list of co-member add candidates for the target UTub.
-     *
-     *     A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
-     *     at the top level via ``**data_dict``.
-     */
-    CoMemberListSchema: {
-      /** @description Co-member add candidates for the target UTub */
-      members?: components["schemas"]["CoMemberSchema"][];
-    };
     /**
      * @description One UI metrics event submitted by the browser.
      *
@@ -5736,6 +5753,61 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1GetCoMemberCandidates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Wrapper list of co-member add candidates for the target UTub.
+       *
+       *         A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
+       *         at the top level via ``**data_dict``.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["CoMemberListSchema"];
         };
       };
       /** @description Unauthorized */

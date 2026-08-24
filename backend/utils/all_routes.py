@@ -163,6 +163,7 @@ class API_V1_ROUTES:
     # Member routes
     CREATE_MEMBER = _API_V1 + "api_v1_create_member"
     REMOVE_MEMBER = _API_V1 + "api_v1_remove_member"
+    CO_MEMBER_CANDIDATES = _API_V1 + "api_v1_get_co_member_candidates"
     # URL routes
     CREATE_URL = _API_V1 + "api_v1_create_url"
     GET_URL = _API_V1 + "api_v1_get_url"
