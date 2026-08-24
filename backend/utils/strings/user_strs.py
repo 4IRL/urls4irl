@@ -100,6 +100,27 @@ MEMBER_SEARCH_NO_RESULTS = "No members found"
 MEMBER_SEARCH_PLACEHOLDER = "Filter members"
 MEMBER_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} members shown"
 
+# Add-member combobox (member-combobox.ts). Distinct from the MEMBER_SEARCH_*
+# strings above, which belong to the client-side member-list FILTER, not this
+# add-member typeahead.
+MEMBER_ADD_LABEL = "Add member"
+MEMBER_ADD_PLACEHOLDER = "Add a member by username"
+MEMBER_ADD_SUBMIT = "Add"
+MEMBER_ADD_LOADING_HINT = "Loading matches…"
+MEMBER_ADD_NO_COMEMBERS_HINT = "No shared members yet — type a username to add"
+MEMBER_ADD_ALREADY_MEMBER_HINT = '"{{ username }}" is already a member'
+MEMBER_ADD_OUTSIDER_LABEL = 'Add "{{ username }}" as an exact username'
+MEMBER_ADD_SHARES_COUNT_ONE = "shares 1 UTub"
+MEMBER_ADD_SHARES_COUNT = "shares {n} UTubs"
+# "Add N" batch-submit label (Step 6). MEMBER_ADD_SUBMIT ("Add") is the disabled
+# zero-staged base; this carries the staged count once ≥1 chip is staged.
+MEMBER_ADD_SUBMIT_COUNT = "Add {n}"
+# Batched aria-live per-chip outcome fragments (Step 6), joined with ", " into a
+# single summary announced once after the whole batch settles (e.g.
+# "alice added, bob failed: user does not exist").
+MEMBER_ADD_STATUS_ADDED = "{{ username }} added"
+MEMBER_ADD_STATUS_FAILED = "{{ username }} failed: {{ reason }}"
+
 
 class MEMBER_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     MEMBER_REMOVED = MEMBER_REMOVED

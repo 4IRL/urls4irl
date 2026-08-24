@@ -11,6 +11,7 @@ import {
 
 import { APP_CONFIG } from "../../../lib/config.js";
 
+import { AppEvents, on } from "../../../lib/event-bus.js";
 import { filterMembersByName } from "../../../logic/member-search.js";
 
 vi.mock("../../../logic/member-search.js", () => ({
@@ -211,6 +212,16 @@ describe("Member Filter", () => {
       expect($("#memberNameFilterBtn").hasClass("hidden")).toBe(true);
       expect($("#memberNameFilterBtnClose").hasClass("hidden")).toBe(false);
       expect($("#memberNameFilterBtn").attr("aria-expanded")).toBe("true");
+    });
+
+    it("openMemberNameFilter emits MEMBER_FILTER_OPENED so the add-member combobox tears itself down (reverse mutual exclusion)", () => {
+      const handler = vi.fn();
+      const unsubscribe = on(AppEvents.MEMBER_FILTER_OPENED, handler);
+
+      openMemberNameFilter();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      unsubscribe();
     });
 
     it("closeMemberNameFilter collapses the filter, resets the search, and sets aria-expanded false", () => {

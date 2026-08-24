@@ -174,27 +174,29 @@ describe("removeMemberFail - is429Handled early-return", () => {
 
 const CREATE_MEMBER_FORM_HTML = `
   <div>
-    <div id="createMemberWrap"></div>
+    <div id="createMemberWrap" class="visible-flex">
+      <div class="memberAddComboboxWrap"></div>
+    </div>
     <div id="displayMemberWrap"></div>
     <button id="memberBtnCreate"></button>
-    <input id="memberCreate" type="text" value="existing-text" />
-    <div id="memberCreate-error" class="visible"></div>
   </div>
 `;
 
-describe("resetNewMemberForm via createMemberHideInput", () => {
+describe("createMemberHideInput tears down the add-member combobox", () => {
   beforeEach(() => {
     document.body.innerHTML = CREATE_MEMBER_FORM_HTML;
     vi.clearAllMocks();
   });
 
-  it("resets the #memberCreate input value to the empty string (not null)", () => {
-    $("#memberCreate").val("some-username");
-    expect($("#memberCreate").val()).toBe("some-username");
+  it("empties and hides #createMemberWrap", () => {
+    expect($("#createMemberWrap").find(".memberAddComboboxWrap").length).toBe(
+      1,
+    );
 
     createMemberHideInput();
 
-    expect($("#memberCreate").val()).toBe("");
+    expect($("#createMemberWrap").hasClass("hidden")).toBe(true);
+    expect($("#createMemberWrap").children().length).toBe(0);
   });
 });
 

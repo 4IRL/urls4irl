@@ -7,16 +7,35 @@ const { mockMetricsClient } = await vi.hoisted(
 
 vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
 
-vi.mock("../../../lib/ajax.js", () => ({
-  ajaxCall: vi.fn(),
-  is429Handled: vi.fn(() => false),
+// showMemberCombobox (member-combobox.ts) is exercised end-to-end here to prove
+// the invite-open metric still fires on open; stub its side-effecting deps so
+// the emit assertion is isolated from the fetch / filter / modal machinery.
+vi.mock("../co-member-fetch.js", () => ({
+  loadCoMemberCandidates: vi.fn(),
+  cancelCoMemberCandidatesFetch: vi.fn(),
 }));
 
-vi.mock("../members.js", () => ({ createMemberBadge: vi.fn() }));
-vi.mock("../deck.js", () => ({ setMemberDeckForUTub: vi.fn() }));
+vi.mock("../search.js", () => ({
+  closeMemberNameFilter: vi.fn(),
+}));
+
+vi.mock("../../../lib/modal-tracking.js", () => ({
+  setOpenForm: vi.fn(),
+  clearOpenForm: vi.fn(),
+}));
+
+vi.mock("../../mobile.js", () => ({
+  isMobile: vi.fn(() => false),
+}));
 
 vi.mock("../../../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ members: [] })),
+  getState: vi.fn(() => ({
+    members: [],
+    coMemberCandidates: [],
+    coMemberCandidatesLoaded: false,
+    activeUTubID: 7,
+    isCurrentUserOwner: true,
+  })),
   setState: vi.fn(),
 }));
 
@@ -24,11 +43,9 @@ const $ = window.jQuery;
 
 const CREATE_MEMBER_FORM_HTML = `
   <div>
-    <div id="createMemberWrap"></div>
+    <div id="createMemberWrap" class="hidden"></div>
     <div id="displayMemberWrap"></div>
     <button id="memberBtnCreate"></button>
-    <input id="memberCreate" type="text" />
-    <div id="memberCreate-error"></div>
   </div>
 `;
 

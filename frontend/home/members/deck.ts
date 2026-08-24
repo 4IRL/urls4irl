@@ -3,9 +3,10 @@ import type { MemberItem } from "../../types/member.js";
 import { $ } from "../../lib/globals.js";
 import { debug } from "../../lib/debug.js";
 import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
-import { getState, setState } from "../../store/app-store.js";
+import { getState } from "../../store/app-store.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { cancelCoMemberCandidatesFetch } from "./co-member-fetch.js";
+import { hideAndResetMemberCombobox } from "./member-combobox.js";
 import { createMemberBadge, createOwnerBadge } from "./members.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
@@ -34,7 +35,10 @@ export function resetMemberDeck(): void {
   // Abort any in-flight fetch first — otherwise a response for the prior UTub
   // could resolve after this clear and repopulate the slice for the new UTub.
   cancelCoMemberCandidatesFetch();
-  setState({ coMemberCandidates: [], coMemberCandidatesLoaded: false });
+  // Tear down any open/staged add-member combobox so a UTub switch never strands
+  // staged chips or in-flight combobox state; this also clears the co-member
+  // slice + loaded flag, so no separate setState clear is needed here.
+  hideAndResetMemberCombobox();
 }
 
 // Update member deck on asynchronous update, either due to stale data or refresh

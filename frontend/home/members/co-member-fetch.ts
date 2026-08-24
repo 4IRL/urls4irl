@@ -22,7 +22,10 @@ let _inFlight: JQuery.jqXHR | null = null;
  * distinguishable from "not yet loaded". Follows the GET conventions of
  * cross-utub-search.ts (no CSRF needed for GET).
  */
-export function loadCoMemberCandidates(utubID: number): void {
+export function loadCoMemberCandidates(
+  utubID: number,
+  onSettle?: () => void,
+): void {
   _inFlight?.abort();
   _inFlight = ajaxCall(
     "GET",
@@ -34,6 +37,10 @@ export function loadCoMemberCandidates(utubID: number): void {
         coMemberCandidates: data.members ?? [],
         coMemberCandidatesLoaded: true,
       });
+      // Notify the opener so it can swap the "Loading matches…" hint for real
+      // content once the fetch settles (no keystroke required). Not fired on an
+      // aborted/429 path below — the store is not updated there.
+      onSettle?.();
     })
     .fail((xhr: JQuery.jqXHR) => {
       if (is429Handled(xhr)) return;
@@ -42,6 +49,7 @@ export function loadCoMemberCandidates(utubID: number): void {
       // so this stale one must not degrade it to empty.
       if (xhr.status === 0) return;
       setState({ coMemberCandidates: [], coMemberCandidatesLoaded: true });
+      onSettle?.();
     })
     .always(() => {
       _inFlight = null;
