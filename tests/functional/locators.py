@@ -384,12 +384,38 @@ class HomePageLocators(GenericPageLocator):
     HEADER_MEMBER_DECK = "#MemberDeckHeader"
     HEADER_AND_CARET_MEMBER_DECK = "#MemberDeckHeaderAndCaret"
     BUTTON_MEMBER_CREATE = "#memberBtnCreate"
-    INPUT_MEMBER_CREATE = "#memberCreate"
-    BUTTON_MEMBER_CANCEL_CREATE = "#memberCancelBtnCreate"
-    BUTTON_MEMBER_SUBMIT_CREATE = "#memberSubmitBtnCreate"
     BUTTON_UTUB_LEAVE = "#memberSelfBtnDelete"
     BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"
-    INPUT_MEMBER_CREATE_ERROR = INPUT_MEMBER_CREATE + INVALID_FIELD_SUFFIX
+
+    # Add-member combobox (built in TS by member-combobox.ts; mounted into
+    # #createMemberWrap on open). The legacy single #memberCreate input,
+    # #memberCancelBtnCreate, and #memberSubmitBtnCreate were removed in the
+    # member-add-search feature — every element below is the combobox shell.
+    CREATE_MEMBER_WRAP = "#createMemberWrap"
+    MEMBER_COMBOBOX_WRAP = ".memberAddComboboxWrap"
+    # The flex-row that holds staged chips + the input (flex-wrap:wrap on mobile).
+    MEMBER_COMBOBOX = ".memberAddCombobox"
+    MEMBER_COMBOBOX_INPUT = ".memberAddComboboxInput"
+    MEMBER_COMBOBOX_LABEL = ".memberAddComboboxLabel"
+    MEMBER_COMBOBOX_LISTBOX = ".memberAddListbox"
+    MEMBER_COMBOBOX_OPTION = ".memberAddOption"
+    MEMBER_COMBOBOX_OPTION_OUTSIDER = ".memberAddOptionOutsider"
+    MEMBER_COMBOBOX_OPTION_LABEL = ".memberAddOptionLabel"
+    MEMBER_COMBOBOX_OPTION_COUNT = ".memberAddOptionCount"
+    MEMBER_COMBOBOX_OPTION_ROLE = ".memberAddOptionRole"
+    MEMBER_COMBOBOX_LISTBOX_HINT = ".memberAddListboxHint"
+    MEMBER_COMBOBOX_STAGED_CHIP = ".memberAddStagedChip"
+    MEMBER_COMBOBOX_STAGED_CHIP_TEXT = ".memberAddStagedChipText"
+    MEMBER_COMBOBOX_STAGED_CHIP_NEW = ".memberAddStagedChipNew"
+    MEMBER_COMBOBOX_STAGED_CHIP_RING = ".memberAddStagedChipRing"
+    MEMBER_COMBOBOX_STAGED_CHIP_STATUS = ".memberAddStagedChipStatus"
+    MEMBER_COMBOBOX_STAGED_CHIP_ERROR = ".memberAddStagedChipError"
+    MEMBER_COMBOBOX_STAGED_CHIP_REMOVE = ".memberAddStagedChipRemove"
+    MEMBER_COMBOBOX_STAGED_CHIP_OUTSIDER = ".memberAddStagedChipOutsider"
+    MEMBER_COMBOBOX_LOADING_RING = ".dual-loading-ring"
+    MEMBER_COMBOBOX_SUBMIT = ".memberAddComboboxSubmitBtn"
+    MEMBER_COMBOBOX_MESSAGE = ".memberAddComboboxMsg"
+    MEMBER_COMBOBOX_CANCEL_BTN = "#memberBtnCreate.memberBtnCreateCancel"
 
     LIST_MEMBERS = "#listMembers"
     BADGES_MEMBERS = ".member"

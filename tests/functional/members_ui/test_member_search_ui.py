@@ -1,8 +1,8 @@
 import re
 
 from flask import Flask
-import pytest
 from playwright.sync_api import Page, expect
+import pytest
 
 from backend import db
 from backend.cli.mock_constants import USERNAME_BASE
@@ -12,8 +12,11 @@ from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import (
-    create_member_active_utub,
+    click_add_member_submit,
+    close_add_member_combobox,
+    open_add_member_combobox,
     open_member_name_filter,
+    stage_outsider_username,
 )
 from tests.functional.playwright_assert_utils import (
     assert_not_visible_css_selector,
@@ -29,7 +32,6 @@ from tests.functional.playwright_utils import (
     click_on_navbar,
     wait_for_class_to_be_removed,
     wait_then_click_element,
-    wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
@@ -493,11 +495,19 @@ def test_member_filter_reapplied_after_successful_add(
     assert_not_visible_css_selector(page=page, css_selector=owner_selector)
     assert_visible_css_selector(page=page, css_selector=seeded_selector)
 
-    # Add a brand-new member (opening the form collapses the filter and clears the
-    # term; on success reapplyMemberFilter runs against the empty term).
-    create_member_active_utub(page=page, member_name=new_member_username)
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MEMBER_SUBMIT_CREATE)
-    wait_until_hidden(page=page, css_selector=HPL.BUTTON_MEMBER_SUBMIT_CREATE)
+    # Add a brand-new member (opening the combobox collapses the filter and
+    # clears the term; on success reapplyMemberFilter runs against the empty
+    # term). The new member shares no other UTub with the owner, so it stages via
+    # the exact-username outsider row.
+    open_add_member_combobox(page=page)
+    stage_outsider_username(page=page, username=new_member_username)
+    click_add_member_submit(page=page)
+
+    # The stay-open combobox hides #displayMemberWrap; wait for the new badge to
+    # attach (add settled + reapplyMemberFilter ran), then close the combobox to
+    # reveal the deck and assert the reapplied (cleared-term) filter state.
+    expect(page.locator(new_member_selector)).to_be_attached()
+    close_add_member_combobox(page=page)
 
     # After the add: reapplyMemberFilter re-evaluated every row against the cleared
     # term, so the previously hidden owner is visible again and the newly appended
