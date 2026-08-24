@@ -195,6 +195,8 @@ const appConfig = {
     URL_BULK_COPY_NO_MATCHES: "No UTubs match your filter.",
     UNABLE_TO_COPY_URLS: "Unable to copy the selected URLs.",
     URL_BULK_DELETE_LABEL: "Delete",
+    URL_BULK_DELETE_DISABLED_REASON:
+      "You can delete only URLs you added, or any URL in a UTub you created.",
     URL_BULK_DELETE_CONFIRM_TITLE: "Delete {n} URLs from this UTub?",
     URL_BULK_DELETE_CONFIRM_TITLE_ONE: "Delete 1 URL from this UTub?",
     URL_BULK_DELETE_CONFIRM_BODY:

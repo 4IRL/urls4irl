@@ -574,6 +574,15 @@
   cursor: default;
 }
 
+/* A disabled bar button must not paint an interactive hover state — the base
+   .barBtn:hover / .barBtn.danger:hover fills would otherwise make an inert button
+   (e.g. bulk Delete with no deletable selection, or a disabled Clear) look
+   clickable. Hold the dimmed rest look on hover. (0,3,0) ties .barBtn.danger:hover
+   and wins on source order (this rule follows it). */
+.barBtn[aria-disabled="true"]:hover {
+  background: transparent;
+}
+
 /*
  * Mobile (<=991.98px): the bar is a single bottom-docked drawer (tag-sheet
  * pattern) inside #mainPanel.

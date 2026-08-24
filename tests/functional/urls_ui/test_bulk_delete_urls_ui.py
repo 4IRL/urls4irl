@@ -45,6 +45,7 @@ from tests.functional.urls_ui.playwright_utils import (
     expect_cant_delete_cue_on_row,
     open_bulk_delete_confirm,
     submit_bulk_delete,
+    tap_url_checkbox,
 )
 
 pytestmark = pytest.mark.urls_ui
@@ -330,6 +331,71 @@ def test_bulk_delete_partial_permission_skips_others_url(
     # DB: only the acting user's URL was deleted.
     assert not _utub_url_row_exists(app=app, utub_url_id=deletable_id)
     assert _utub_url_row_exists(app=app, utub_url_id=non_deletable_id)
+
+
+def test_bulk_delete_button_disabled_until_deletable_url_selected(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN, in a UTub the acting user did NOT create, one URL authored by another
+        member (not deletable) and one authored by the acting user (deletable)
+    WHEN only the other member's URL is selected in multi-select mode
+    THEN the bulk Delete button is VISIBLE but disabled (aria-disabled=true) with
+        the explanatory tooltip, and it ENABLES only once a URL the user can
+        delete joins the selection — re-disabling when that URL is deselected.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    other_utub = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
+    other_utub_id = other_utub.id
+    # The acting user must be a non-creator here so the other member's URL is
+    # genuinely non-deletable by them.
+    assert other_utub.utub_creator != USER_ID_FOR_TEST
+
+    other_member: Users = get_other_member_in_utub(app, other_utub_id, USER_ID_FOR_TEST)
+    other_member_id = other_member.id
+
+    non_deletable_id, _ = _seed_url_in_utub(
+        app=app,
+        utub_id=other_utub_id,
+        user_id=other_member_id,
+        url_string="https://bulk-delete-disabled-theirs.test/",
+        url_title="Bulk Delete Disabled Theirs",
+    )
+    deletable_id, _ = _seed_url_in_utub(
+        app=app,
+        utub_id=other_utub_id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://bulk-delete-disabled-mine.test/",
+        url_title="Bulk Delete Disabled Mine",
+    )
+
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=other_utub_id
+    )
+
+    # Select ONLY the other member's (non-deletable) URL.
+    enter_multi_select_and_select_urls(page=page, url_ids=[non_deletable_id])
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+
+    delete_button = page.locator(HPL.BUTTON_BULK_DELETE_URLS)
+    # Visible-but-disabled: the prior behavior hid the button entirely here.
+    expect(delete_button).to_be_visible()
+    expect(delete_button).to_have_attribute("aria-disabled", "true")
+    expect(delete_button).to_have_attribute(
+        "title", STRINGS.URL_BULK_DELETE_DISABLED_REASON
+    )
+
+    # Add a URL the acting user CAN delete → the button enables (rebuilt without
+    # the aria-disabled flag).
+    tap_url_checkbox(page=page, utub_url_id=deletable_id)
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
+    expect(delete_button).not_to_have_attribute("aria-disabled", "true")
+
+    # Deselect it → back to a non-deletable-only selection → disabled again.
+    tap_url_checkbox(page=page, utub_url_id=deletable_id)
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("1")
+    expect(delete_button).to_have_attribute("aria-disabled", "true")
 
 
 def test_bulk_delete_deck_empties_announces_and_exits(

@@ -34,6 +34,23 @@ export interface BulkAction {
    */
   className?: string;
   isAvailable(context: BulkActionContext): boolean;
+  /**
+   * Optional ENABLED gate, distinct from `isAvailable` (which decides whether the
+   * button renders at all). When present and it returns false, the bar renders
+   * the button DISABLED — visible but inert (aria-disabled, no-op click, greyed)
+   * with `disabledReason` surfaced — instead of hiding it. This lets bulk-delete
+   * stay visible as a discoverable affordance while the current selection holds
+   * no URL the user may delete, enabling only once a deletable URL is selected.
+   * Absent → the action is always enabled whenever it is available.
+   */
+  isEnabled?(context: BulkActionContext): boolean;
+  /**
+   * Human-readable reason the action is disabled, shown as the button's tooltip
+   * (`title`) and accessible name (`aria-label`) while `isEnabled` returns false.
+   * A trusted static string (rendered via jQuery `.attr()`, never `.html()`);
+   * ignored when `isEnabled` is absent or returns true.
+   */
+  disabledReason?: string;
   onActivate(context: BulkActionContext): void;
 }
 

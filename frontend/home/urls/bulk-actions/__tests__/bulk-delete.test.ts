@@ -198,22 +198,45 @@ describe("bulk-delete action registration + availability", () => {
     ).toBe(false);
   });
 
-  it("isAvailable is false when no selected URL is deletable", () => {
+  it("isAvailable is true whenever something is selected, even if nothing is deletable", () => {
+    // Availability now only gates on a non-empty selection; the destructive
+    // button stays visible-but-disabled when nothing is deletable (isEnabled).
     expect(
       resolveDeleteAction().isAvailable({
+        selectedURLCardIDs: [10, 20],
+        urls: [url(10, false), url(20, false)] as never,
+      }),
+    ).toBe(true);
+  });
+
+  it("isEnabled is false with no selection", () => {
+    expect(
+      resolveDeleteAction().isEnabled!({ selectedURLCardIDs: [], urls: [] }),
+    ).toBe(false);
+  });
+
+  it("isEnabled is false when no selected URL is deletable", () => {
+    expect(
+      resolveDeleteAction().isEnabled!({
         selectedURLCardIDs: [10, 20],
         urls: [url(10, false), url(20, false)] as never,
       }),
     ).toBe(false);
   });
 
-  it("isAvailable is true when at least one selected URL is deletable", () => {
+  it("isEnabled is true when at least one selected URL is deletable", () => {
     expect(
-      resolveDeleteAction().isAvailable({
+      resolveDeleteAction().isEnabled!({
         selectedURLCardIDs: [10, 20],
         urls: [url(10, false), url(20, true)] as never,
       }),
     ).toBe(true);
+  });
+
+  it("carries the bridged disabledReason shown while disabled", () => {
+    expect(resolveDeleteAction().disabledReason).toBe(
+      APP_CONFIG.strings.URL_BULK_DELETE_DISABLED_REASON,
+    );
   });
 });
 
