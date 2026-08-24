@@ -6,6 +6,17 @@ from backend.schemas.requests._sanitize import SanitizedStr
 from backend.schemas.requests.tags import TagStringItem, validate_tag_strings
 
 
+def dedup_and_reject_non_positive(ids: list[int], error_message: str) -> list[int]:
+    """Preserve order while dropping duplicate ids; reject any non-positive id.
+
+    Raises ``ValueError(error_message)`` if any surviving id is ``<= 0``.
+    """
+    deduped = list(dict.fromkeys(ids))
+    if any(id_value <= 0 for id_value in deduped):
+        raise ValueError(error_message)
+    return deduped
+
+
 class CreateURLRequest(BaseModel):
     urlString: str = Field(
         min_length=URL_CONSTANTS.MIN_URL_LENGTH,
@@ -59,18 +70,12 @@ class CopyUrlsRequest(BaseModel):
     @field_validator("utubUrlIds", mode="after")
     @classmethod
     def utub_url_ids_valid(cls, utub_url_ids: list[int]) -> list[int]:
-        deduped = list(dict.fromkeys(utub_url_ids))
-        if any(url_id <= 0 for url_id in deduped):
-            raise ValueError(URL_FAILURE.INVALID_URL_ID)
-        return deduped
+        return dedup_and_reject_non_positive(utub_url_ids, URL_FAILURE.INVALID_URL_ID)
 
     @field_validator("destUtubIds", mode="after")
     @classmethod
     def dest_utub_ids_valid(cls, dest_utub_ids: list[int]) -> list[int]:
-        deduped = list(dict.fromkeys(dest_utub_ids))
-        if any(dest_id <= 0 for dest_id in deduped):
-            raise ValueError(URL_FAILURE.INVALID_UTUB_ID)
-        return deduped
+        return dedup_and_reject_non_positive(dest_utub_ids, URL_FAILURE.INVALID_UTUB_ID)
 
 
 class DeleteUrlsRequest(BaseModel):
@@ -84,10 +89,7 @@ class DeleteUrlsRequest(BaseModel):
     @field_validator("utubUrlIds", mode="after")
     @classmethod
     def utub_url_ids_valid(cls, utub_url_ids: list[int]) -> list[int]:
-        deduped = list(dict.fromkeys(utub_url_ids))
-        if any(url_id <= 0 for url_id in deduped):
-            raise ValueError(URL_FAILURE.INVALID_URL_ID)
-        return deduped
+        return dedup_and_reject_non_positive(utub_url_ids, URL_FAILURE.INVALID_URL_ID)
 
 
 class UpdateURLStringRequest(BaseModel):
