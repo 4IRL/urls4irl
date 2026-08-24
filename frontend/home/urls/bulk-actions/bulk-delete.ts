@@ -12,6 +12,7 @@ import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
   updateTagFilteringOnURLOrURLTagDeletion,
   updateVisibleURLsForTagCount,
+  writeTagChipDenominator,
 } from "../cards/filtering.js";
 import { showURLsEmptyState } from "../empty-state.js";
 import { hideURLSearchIcon } from "../search.js";
@@ -536,12 +537,7 @@ function finishDeckAfterRemoval({
  */
 function applyTagCountsInUtub(tagCountsInUtub: Record<string, number>): void {
   for (const [tagID, count] of Object.entries(tagCountsInUtub)) {
-    const countElem = $(
-      `.tagFilter[data-utub-tag-id="${tagID}"] .tagAppliedToUrlsCount`,
-    );
-    const parts = countElem.text().split(" / ");
-    if (parts.length !== 2) continue;
-    countElem.text(`${parts[0]} / ${count}`);
+    writeTagChipDenominator({ tagId: tagID, count });
   }
 }
 

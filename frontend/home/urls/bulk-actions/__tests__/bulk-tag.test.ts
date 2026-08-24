@@ -114,9 +114,17 @@ vi.mock("../../../tags/search.js", () => ({
   reapplyTagFilter: vi.fn(),
 }));
 
-vi.mock("../../cards/filtering.js", () => ({
-  updateVisibleURLsForTagCount: vi.fn(),
-}));
+// Partial mock: keep the real writeTagChipDenominator (the DD-23 assertion below
+// checks the actual "X / Y" chip DOM write) while stubbing the deck-wide
+// numerator recompute so its call count can be asserted in isolation.
+vi.mock("../../cards/filtering.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../cards/filtering.js")>();
+  return {
+    ...actual,
+    updateVisibleURLsForTagCount: vi.fn(),
+  };
+});
 
 interface StoreUrl {
   utubUrlID: number;

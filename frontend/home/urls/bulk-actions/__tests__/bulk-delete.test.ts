@@ -23,6 +23,7 @@ vi.mock("../../../../lib/ajax.js", () => ({
 vi.mock("../../cards/filtering.js", () => ({
   updateTagFilteringOnURLOrURLTagDeletion: vi.fn(),
   updateVisibleURLsForTagCount: vi.fn(),
+  writeTagChipDenominator: vi.fn(),
 }));
 
 vi.mock("../../empty-state.js", () => ({
