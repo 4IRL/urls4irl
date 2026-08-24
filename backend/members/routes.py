@@ -1,13 +1,14 @@
 from flask import Blueprint
 from flask_login import current_user
 
+from backend import limiter
 from backend.api_common.auth_decorators import (
     utub_creator_required,
     utub_membership_required,
 )
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import APIResponse, FlaskResponse
-from backend.members.constants import UTubMembersErrorCodes
+from backend.members.constants import MEMBER_ADD_RATE_LIMIT, UTubMembersErrorCodes
 from backend.members.services.co_member_search import get_co_member_candidates
 from backend.members.services.create_members import create_utub_member
 from backend.members.services.delete_members import remove_member_or_self_from_utub
@@ -60,8 +61,10 @@ def remove_member(utub_id: int, user_id: int, current_utub: Utubs) -> FlaskRespo
         400: ErrorResponse,
         403: ErrorResponse,
         404: ErrorResponse,
+        429: ErrorResponse,
     },
 )
+@limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=["POST"])
 def create_member(
     utub_id: int, current_utub: Utubs, add_member_request: AddMemberRequest
 ) -> FlaskResponse:
@@ -72,7 +75,9 @@ def create_member(
         utub_id (int): The utub to which this user is being added
     """
     return create_utub_member(
-        username=add_member_request.username, current_utub=current_utub
+        username=add_member_request.username,
+        current_utub=current_utub,
+        source=add_member_request.source,
     )
 
 

@@ -120,6 +120,10 @@ INVALID_PERMISSION_TO_ADD = "Not allowed to add a member to this UTub."
 MEMBER_NOT_IN_UTUB = "Member does not exist or not found in this UTub."
 MEMBER_ALREADY_IN_UTUB = "Member already in UTub."
 UNABLE_TO_ADD_MEMBER = "Unable to add that member to this UTub."
+# Per-user per-day add-member cap copy. Fail-open anti-abuse counter that bounds
+# username-oracle probing; not a security boundary. Mirrors
+# USERNAME_CHANGE_RATE_LIMITED.
+MEMBER_ADD_RATE_LIMITED = "You've added too many members today. Please try again later."
 EMAIL_TAKEN = "That email address is already in use."
 USERNAME_TAKEN = "That username is already taken. Please choose another."
 USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
@@ -219,3 +223,4 @@ class MEMBER_FAILURE(FAILURE_GENERAL):
     MEMBER_NOT_IN_UTUB = MEMBER_NOT_IN_UTUB
     MEMBER_ALREADY_IN_UTUB = MEMBER_ALREADY_IN_UTUB
     UNABLE_TO_ADD_MEMBER = UNABLE_TO_ADD_MEMBER
+    MEMBER_ADD_RATE_LIMITED = MEMBER_ADD_RATE_LIMITED

@@ -1,9 +1,15 @@
-from flask import url_for
+from flask import Flask, url_for
 from flask_login import current_user
 import pytest
+from redis import Redis
 
-from backend import db
-from backend.members.constants import UTubMembersErrorCodes
+from backend import db, limiter
+from backend.members.constants import (
+    MEMBER_ADD_DAILY_CAP,
+    MEMBER_ADD_RATE_LIMIT,
+    MemberAddSource,
+    UTubMembersErrorCodes,
+)
 from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import Users
@@ -20,10 +26,15 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from backend.schemas.users import UserSchema
-from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+)
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.members
@@ -225,6 +236,8 @@ def test_add_member_to_utub_records_metric(
     # Before-state: no MEMBER_ADDED counter exists yet
     assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 0
 
+    # A raw-username add (no `source` in the body) falls back to the
+    # exact_username default.
     add_member_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_user_is_creator_of),
         json={ADD_USER_FORM.USERNAME: non_member_username},
@@ -232,7 +245,48 @@ def test_add_member_to_utub_records_metric(
     )
 
     assert add_member_response.status_code == 200
-    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 1
+    member_added_keys = find_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED)
+    assert len(member_added_keys) == 1
+    assert parse_dims(member_added_keys[0])["source"] == MemberAddSource.EXACT_USERNAME
+
+
+def test_add_member_to_utub_records_metric_search_result_source(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub (no other members) and metrics enabled
+    WHEN the creator POSTs to add a non-member with source='search_result'
+    THEN the request returns HTTP 200 AND the MEMBER_ADDED counter key carries
+        the search_result source dimension.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+        non_member: Users = Users.query.filter(Users.id != current_user.id).first()
+        non_member_username = non_member.username
+
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 0
+
+    add_member_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_user_is_creator_of),
+        json={
+            ADD_USER_FORM.USERNAME: non_member_username,
+            "source": MemberAddSource.SEARCH_RESULT.value,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_member_response.status_code == 200
+    member_added_keys = find_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED)
+    assert len(member_added_keys) == 1
+    assert parse_dims(member_added_keys[0])["source"] == MemberAddSource.SEARCH_RESULT
 
 
 def test_add_then_remove_then_add_user_who_has_urls_to_utub(
@@ -986,3 +1040,261 @@ def test_add_user_as_member_invalid_log(
         f"User={user.id} not creator: UTub.id={utub_id_of_current_user}",
         caplog.records,
     )
+
+
+# ===========================================================================
+# Per-IP Flask-Limiter 429 on the add-member route
+# ===========================================================================
+
+
+def _enable_limiter(app: Flask) -> None:
+    """Re-arm flask-limiter for this test (globally disabled in tests).
+
+    Mirrors the established pattern in
+    tests/integration/splash/test_splash_auth_rate_limit.py.
+    """
+    original_first_request = app._got_first_request
+    app._got_first_request = False
+    app.config["RATELIMIT_ENABLED"] = True
+    limiter.enabled = True
+    limiter.init_app(app)
+    app._got_first_request = original_first_request
+
+
+def _disable_limiter() -> None:
+    if limiter._storage is not None:
+        limiter._storage.reset()
+    limiter._storage = None
+    limiter._limiter = None
+    limiter.enabled = False
+    limiter.initialized = False
+
+
+def test_add_member_rate_limit_returns_html_429(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
+    """
+    GIVEN the per-IP MEMBER_ADD_RATE_LIMIT (30/minute) on POST /utubs/<id>/members
+    WHEN a 31st add-member request arrives within the window
+    THEN a 429 is returned as the HTML 429 page (web AJAX; only /api/v1 gets JSON).
+
+    The same non-member username is re-POSTed: the first add succeeds (200) and
+    every subsequent one is a MEMBER_ALREADY_IN_UTUB 400, but flask-limiter
+    counts all of them, so the 31st trips the per-IP cap.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    allowed_per_window = int(MEMBER_ADD_RATE_LIMIT.split("/")[0])
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+        non_member: Users = Users.query.filter(Users.id != current_user.id).first()
+        non_member_username = non_member.username
+
+    add_url = url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_user_is_creator_of)
+    add_body = {ADD_USER_FORM.USERNAME: non_member_username}
+
+    _enable_limiter(app)
+    try:
+        for _attempt_number in range(allowed_per_window):
+            response = client.post(
+                add_url, json=add_body, headers={"X-CSRFToken": csrf_token}
+            )
+            assert response.status_code != 429
+
+        rate_limited_response = client.post(
+            add_url, json=add_body, headers={"X-CSRFToken": csrf_token}
+        )
+        assert rate_limited_response.status_code == 429
+        assert not rate_limited_response.is_json
+        assert IDENTIFIERS.HTML_429 in rate_limited_response.get_data(as_text=True)
+    finally:
+        _disable_limiter()
+
+
+# ===========================================================================
+# Per-user fail-open Redis daily add-member cap
+# ===========================================================================
+
+
+def _enforcement_redis(app: Flask) -> Redis | None:
+    redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI)
+    if not redis_uri or redis_uri == "memory://":
+        return None
+    return Redis.from_url(redis_uri)
+
+
+def test_add_member_daily_cap_rejects_at_limit(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
+    """
+    GIVEN the per-user daily add-member cap (MEMBER_ADD_DAILY_CAP) already
+        reached for the acting user (counter seeded at the cap)
+    WHEN the creator POSTs one more add-member request
+    THEN it is rejected with HTTP 400 and the daily-cap error message, and no
+        new member association is created.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        acting_user_id = current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+        non_member: Users = Users.query.filter(Users.id != current_user.id).first()
+        non_member_username = non_member.username
+        non_member_id = non_member.id
+
+    redis_client = _enforcement_redis(app)
+    if redis_client is None:
+        pytest.skip("Enforcement Redis unavailable (memory:// stub) — cap not enforced")
+
+    rate_limit_key = f"member-add-lookup:{acting_user_id}"
+    redis_client.set(rate_limit_key, MEMBER_ADD_DAILY_CAP)
+
+    add_member_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_user_is_creator_of),
+        json={ADD_USER_FORM.USERNAME: non_member_username},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_member_response.status_code == 400
+    response_json = add_member_response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_ADD_RATE_LIMITED
+
+    with app.app_context():
+        # The rejected attempt created no membership row.
+        assert (
+            Utub_Members.query.filter(
+                Utub_Members.utub_id == utub_id_user_is_creator_of,
+                Utub_Members.user_id == non_member_id,
+            ).count()
+            == 0
+        )
+    redis_client.close()
+
+
+def test_add_member_daily_cap_fails_open_when_redis_unavailable(
+    monkeypatch, every_user_makes_a_unique_utub, login_first_user_without_register
+):
+    """
+    GIVEN the daily-cap Redis client is unavailable (helper returns None)
+    WHEN the creator POSTs a valid add-member request
+    THEN the add still succeeds (HTTP 200) — the cap fails open.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+        non_member: Users = Users.query.filter(Users.id != current_user.id).first()
+        non_member_username = non_member.username
+
+    monkeypatch.setattr(
+        "backend.members.services.create_members._build_member_rate_limit_redis",
+        lambda: None,
+    )
+
+    add_member_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_user_is_creator_of),
+        json={ADD_USER_FORM.USERNAME: non_member_username},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_member_response.status_code == 200
+
+
+class _RaisingRedis:
+    """Stand-in enforcement Redis whose counter ops all raise — exercises the
+    fail-open try/except in create_utub_member on a LIVE (not None) client."""
+
+    def get(self, *_args, **_kwargs):
+        raise RuntimeError("redis unavailable")
+
+    def incr(self, *_args, **_kwargs):
+        raise RuntimeError("redis unavailable")
+
+    def expire(self, *_args, **_kwargs):
+        raise RuntimeError("redis unavailable")
+
+
+def test_add_member_daily_cap_fails_open_on_live_redis_error(
+    monkeypatch, every_user_makes_a_unique_utub, login_first_user_without_register
+):
+    """
+    GIVEN a live daily-cap Redis client whose get/incr/expire all raise
+    WHEN the creator POSTs a valid add-member request
+    THEN the add still succeeds (HTTP 200) — the counter fails open on any
+        Redis error rather than blocking the add.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+        non_member: Users = Users.query.filter(Users.id != current_user.id).first()
+        non_member_username = non_member.username
+
+    monkeypatch.setattr(
+        "backend.members.services.create_members._build_member_rate_limit_redis",
+        lambda: _RaisingRedis(),
+    )
+
+    add_member_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_user_is_creator_of),
+        json={ADD_USER_FORM.USERNAME: non_member_username},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_member_response.status_code == 200
+
+
+def test_add_member_failed_probe_burns_a_slot_with_ttl(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
+    """
+    GIVEN a creator and an enforcement Redis
+    WHEN the creator probes a NONEXISTENT username (which 400s as USER_NOT_EXIST)
+    THEN the per-user daily counter is still incremented (to 1) with a ~24h TTL
+        — proving every attempt reaching the lookup burns a slot within a
+        bounded window, so enumeration probing is capped.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        acting_user_id = current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+    redis_client = _enforcement_redis(app)
+    if redis_client is None:
+        pytest.skip("Enforcement Redis unavailable (memory:// stub) — cap not enforced")
+
+    rate_limit_key = f"member-add-lookup:{acting_user_id}"
+    assert redis_client.get(rate_limit_key) is None
+
+    # A nonexistent BUT valid-length (<=20 char) username so the request
+    # clears form validation and reaches the username lookup (the slot-burn
+    # point). A 30-char probe would 400 at schema validation before the counter.
+    probe_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_user_is_creator_of),
+        json={ADD_USER_FORM.USERNAME: "no_such_user_xyz"},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    # A nonexistent username resolves to a 400, but the attempt still counts.
+    assert probe_response.status_code == 400
+    assert int(redis_client.get(rate_limit_key)) == 1
+    ttl = redis_client.ttl(rate_limit_key)
+    assert 0 < ttl <= 86400
+    redis_client.close()

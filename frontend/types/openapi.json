@@ -3433,6 +3433,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "x-error-codes": {
@@ -4254,6 +4264,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -9223,6 +9243,10 @@
         "required": ["results"],
         "type": "object"
       },
+      "MemberAddSource": {
+        "enum": ["search_result", "exact_username"],
+        "type": "string"
+      },
       "AddMemberRequest": {
         "properties": {
           "username": {
@@ -9230,6 +9254,11 @@
             "maxLength": 20,
             "minLength": 3,
             "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MemberAddSource",
+            "default": "exact_username",
+            "description": "Where the add originated: a co-member typeahead pick (search_result) or the exact-username outsider path (exact_username, the default when omitted)"
           }
         },
         "required": ["username"],

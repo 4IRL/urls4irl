@@ -22,7 +22,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from backend.members.constants import MEMBER_ADD_HAS_RESULTS_VALUES
+from backend.members.constants import (
+    MEMBER_ADD_HAS_RESULTS_VALUES,
+    MEMBER_ADD_SOURCE_VALUES,
+)
 from backend.metrics.events import EventCategory, EventName
 from backend.metrics.tag_batch import (
     BULK_TAG_URL_BUCKETS,
@@ -141,6 +144,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.MEMBER_ADDED: EventRegistryEntry(
         description="Member invited to a UTub",
         category=EventCategory.DOMAIN,
+        dimensions={"source": MEMBER_ADD_SOURCE_VALUES},
     ),
     EventName.MEMBER_ADD_CANDIDATES_LOADED: EventRegistryEntry(
         description=(

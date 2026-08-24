@@ -10,6 +10,7 @@ with three changes:
 
 from flask_login import current_user
 
+from backend import limiter
 from backend.api_common.auth_decorators import (
     api_utub_creator_required,
     api_utub_membership_required,
@@ -17,7 +18,7 @@ from backend.api_common.auth_decorators import (
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.api_v1.routes import api_v1
-from backend.members.constants import UTubMembersErrorCodes
+from backend.members.constants import MEMBER_ADD_RATE_LIMIT, UTubMembersErrorCodes
 from backend.members.services.co_member_search import get_co_member_candidates
 from backend.members.services.create_members import create_utub_member
 from backend.members.services.delete_members import remove_member_or_self_from_utub
@@ -45,8 +46,10 @@ from backend.utils.strings.user_strs import MEMBER_FAILURE
         401: ErrorResponse,
         403: ErrorResponse,
         404: ErrorResponse,
+        429: ErrorResponse,
     },
 )
+@limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=["POST"])
 def api_v1_create_member(
     utub_id: int,
     current_utub: Utubs,
@@ -54,7 +57,9 @@ def api_v1_create_member(
 ) -> FlaskResponse:
     """Add a user to a UTub by username. Caller must be UTub creator."""
     return create_utub_member(
-        username=add_member_request.username, current_utub=current_utub
+        username=add_member_request.username,
+        current_utub=current_utub,
+        source=add_member_request.source,
     )
 
 

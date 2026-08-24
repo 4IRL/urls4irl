@@ -6,7 +6,21 @@ import pytest
 from backend import db
 from backend.models.users import Users
 from backend.utils.strings import model_strs
+from tests.integration.utils import flush_member_add_lookup_keys
 from tests.models_for_test import valid_user_2, valid_user_3
+
+
+@pytest.fixture(autouse=True)
+def _flush_member_add_lookup_counter(app: Flask) -> Generator[None, None, None]:
+    """Clear the per-user ``member-add-lookup:*`` daily-counter keys before and
+    after every members-marker test in this directory. The counter is written to
+    the shared enforcement Redis by ``create_utub_member`` and survives DB
+    teardown, so without this flush a daily-cap test could 400 an unrelated later
+    test on the same xdist worker. Covers every test in this directory (the
+    add-member route tests plus the co-member candidate sibling test files)."""
+    flush_member_add_lookup_keys(app)
+    yield
+    flush_member_add_lookup_keys(app)
 
 
 @pytest.fixture

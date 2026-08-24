@@ -14,7 +14,9 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
+from backend import limiter
 from backend.api_v1.services.tokens import create_access_token
+from backend.members.constants import MEMBER_ADD_RATE_LIMIT
 from backend.models.utub_members import Utub_Members
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
@@ -363,3 +365,67 @@ def test_remove_member_nonexistent_member_is_404(
     assert response.status_code == 404
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+# ===========================================================================
+# Per-IP Flask-Limiter 429 on the /api/v1 add-member twin (JSON envelope)
+# ===========================================================================
+
+
+def _enable_limiter(app: Flask) -> None:
+    """Re-arm flask-limiter for this test (globally disabled in tests).
+
+    Mirrors the established pattern in
+    tests/integration/mobile_api/test_auth_rate_limit.py.
+    """
+    original_first_request = app._got_first_request
+    app._got_first_request = False
+    app.config["RATELIMIT_ENABLED"] = True
+    limiter.enabled = True
+    limiter.init_app(app)
+    app._got_first_request = original_first_request
+
+
+def _disable_limiter() -> None:
+    if limiter._storage is not None:
+        limiter._storage.reset()
+    limiter._storage = None
+    limiter._limiter = None
+    limiter.enabled = False
+    limiter.initialized = False
+
+
+def test_add_member_rate_limit_returns_json_429(
+    app: Flask,
+    api_client: FlaskClient,
+    make_bearer_headers,
+    every_user_makes_a_unique_utub,
+):
+    """
+    GIVEN the per-IP MEMBER_ADD_RATE_LIMIT (30/minute) on POST
+        /api/v1/utubs/<id>/members
+    WHEN a 31st add-member request arrives within the window
+    THEN a 429 is returned as the JSON ErrorResponse envelope (never HTML).
+    """
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_2_username = valid_users[1]["username"]
+    add_url = _create_member_url(app, utub_id=1)
+    add_body = {_USERNAME_FIELD: user_2_username}
+    allowed_per_window = int(MEMBER_ADD_RATE_LIMIT.split("/")[0])
+
+    _enable_limiter(app)
+    try:
+        for _attempt_number in range(allowed_per_window):
+            response = api_client.post(add_url, json=add_body, headers=user_1_headers)
+            assert response.status_code != 429
+
+        rate_limited_response = api_client.post(
+            add_url, json=add_body, headers=user_1_headers
+        )
+        assert rate_limited_response.status_code == 429
+        assert rate_limited_response.is_json
+        rate_limited_json = rate_limited_response.get_json()
+        assert rate_limited_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert rate_limited_json[STD_JSON.MESSAGE] == STD_JSON.TOO_MANY_REQUESTS
+    finally:
+        _disable_limiter()

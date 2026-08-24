@@ -4,7 +4,10 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
-from backend.members.constants import MEMBER_ADD_HAS_RESULTS_VALUES
+from backend.members.constants import (
+    MEMBER_ADD_HAS_RESULTS_VALUES,
+    MEMBER_ADD_SOURCE_VALUES,
+)
 from backend.metrics.events import (
     EVENT_CATEGORY,
     DeviceType,
@@ -449,6 +452,15 @@ class _DimRegisterRejected(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimMemberAdded(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Closed set sourced from the same `MEMBER_ADD_SOURCE_VALUES` constant fed to
+    # the registry, so the audit set-compare between this Literal and the
+    # registry tuple can never drift.
+    source: Literal[MEMBER_ADD_SOURCE_VALUES]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimMemberAddCandidatesLoaded(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # Closed set sourced from the same `MEMBER_ADD_HAS_RESULTS_VALUES` constant
@@ -478,7 +490,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
     EventName.LOGIN_SUCCESS: _DimLoginSuccess,
-    EventName.MEMBER_ADDED: _DimDeviceOnly,
+    EventName.MEMBER_ADDED: _DimMemberAdded,
     EventName.MEMBER_ADD_CANDIDATES_LOADED: _DimMemberAddCandidatesLoaded,
     EventName.MEMBER_REMOVED: _DimDeviceOnly,
     EventName.OAUTH_IDENTITY_LINKED: _DimOAuthIdentityLinkChange,

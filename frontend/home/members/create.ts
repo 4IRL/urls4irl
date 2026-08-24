@@ -175,7 +175,7 @@ function createMemberSetup(utubID: number): [string, AddMemberRequest] {
   const postURL = APP_CONFIG.routes.createMember(utubID);
 
   const username = getInputValue("#memberCreate");
-  const data: AddMemberRequest = { username };
+  const data: AddMemberRequest = { username, source: "exact_username" };
 
   return [postURL, data];
 }
