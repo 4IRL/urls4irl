@@ -425,6 +425,26 @@ button {
 
 @media (max-width: 991.98px) {
 
+    /* iOS Safari over-scroll fix. base.css gives body only `min-height: 100dvh`
+       (no definite height). Chrome resolves `main { flex:1; overflow:hidden;
+       min-height:0 }` against that and bounds the deck so #URLDeck's
+       `.flex-column.content` is the sole scroller (page never scrolls). iOS
+       Safari, however, will NOT shrink a `flex:1` child below its content when
+       the flex container's size comes from `min-height` alone — so `main` grows
+       to the deck's full natural height (all rows + the in-flow bulk bar), body
+       exceeds 100dvh, and the whole PAGE scrolls: dead space appears past the
+       last URL row and the footer scrolls up into the deck view. Pinning the
+       home body to a *definite* 100dvh (dynamic viewport = iOS-correct) makes the
+       flex-shrink deterministic on every engine: nav + footer take their natural
+       height and `main` fills the exact remainder, so the deck is viewport-capped
+       and its list scrolls internally. Scoped via `:has(#mainPanel)` to the home
+       layout only (splash/settings/admin mobile pages, which legitimately
+       page-scroll, are untouched). Chrome already rendered this way, so this only
+       aligns iOS; desktop (>=992px) is outside this media query. */
+    body.flex-column:has(#mainPanel) {
+        height: 100dvh;
+    }
+
     .panel#centerPanel,
     .deck#MemberDeck,
     .deck#TagDeck {

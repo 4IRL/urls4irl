@@ -134,11 +134,17 @@ def test_mobile_last_url_row_reachable_above_bulk_drawer(
     WHEN they enter multi-select mode and Select All — so the multi-row drawer
         renders every row (Add tags + Delete, the full-width Copy row, and
         Select All / Clear) — then scroll the URL deck to the bottom
-    THEN the last URL row is fully reachable ABOVE the fixed bottom drawer: its
-        bounding-box bottom clears the drawer's top edge. This proves the deck's
-        measured bottom-padding reservation (--bulk-bar-height) tracks the real
-        drawer height; the old static 88px reservation was shorter than the
-        multi-row drawer, leaving the last row hidden behind it.
+    THEN the last URL row sits directly ABOVE the in-flow bulk-action bar with
+        no dead scroll space between them, AND the PAGE itself does not scroll
+        (the deck is viewport-capped and its `.flex-column.content` is the sole
+        scroller). The bar is an in-flow last child of #URLDeck (not fixed), so
+        the scroll container shrinks to the space above it. Two regressions are
+        guarded: (1) the last row must not be overlapped by the bar; (2) the last
+        row's bottom must sit within a few px of the bar's top — a large gap means
+        the obsolete `--tag-sheet-peek` bottom padding is still reserving ~48px of
+        dead space in multi-select (where the tag-sheet peek is slid off-screen);
+        (3) the body must be capped to the dynamic viewport so the whole page can
+        never over-scroll past the list into the footer (iOS Safari regression).
     """
     page = page_mobile_portrait
     app = provide_app
@@ -201,9 +207,42 @@ def test_mobile_last_url_row_reachable_above_bulk_drawer(
     last_row_box = page.locator(HPL.ROWS_URLS).last.bounding_box()
     bar_box = page.locator(HPL.BULK_ACTION_BAR).bounding_box()
     assert last_row_box is not None and bar_box is not None
-    assert last_row_box["y"] + last_row_box["height"] <= bar_box["y"] + 2, (
+    last_row_bottom = last_row_box["y"] + last_row_box["height"]
+    gap_to_bar = bar_box["y"] - last_row_bottom
+    # (1) The last row must not be overlapped by the bar.
+    assert last_row_bottom <= bar_box["y"] + 2, (
         "Last URL row is overlapped by the bulk-action drawer: row bottom "
-        f"{last_row_box['y'] + last_row_box['height']} > drawer top {bar_box['y']}"
+        f"{last_row_bottom} > drawer top {bar_box['y']}"
+    )
+    # (2) No dead space: the last row's bottom sits within a few px of the bar's
+    # top (the scroller keeps only its base ~3px padding + 2px border). A gap the
+    # size of --tag-sheet-peek (~48px) means that obsolete reservation leaked into
+    # multi-select, where the tag-sheet peek is slid off-screen.
+    assert gap_to_bar <= 12, (
+        "Dead scroll space between the last URL row and the bulk-action bar: gap "
+        f"{gap_to_bar}px (row bottom {last_row_bottom}, bar top {bar_box['y']}). "
+        "The obsolete --tag-sheet-peek padding is likely still reserved in mode."
+    )
+
+    # (3) The page itself must not over-scroll. Attempt to scroll the window past
+    # its end; the deck is viewport-capped so the scrolling element stays at 0 and
+    # its scroll height never exceeds the client height (the footer can never be
+    # dragged up into the deck view).
+    page_scroll = page.evaluate("""() => {
+            window.scrollTo(0, 999999);
+            const el = document.scrollingElement || document.documentElement;
+            return {
+                scrollTop: el.scrollTop,
+                overflow: el.scrollHeight - el.clientHeight,
+            };
+        }""")
+    assert page_scroll["scrollTop"] <= 1, (
+        f"Page over-scrolled (scrollTop={page_scroll['scrollTop']}): the deck is "
+        "not viewport-capped, so the whole page scrolls past the URL list."
+    )
+    assert page_scroll["overflow"] <= 1, (
+        f"Page is taller than the viewport (overflow={page_scroll['overflow']}px): "
+        "the body is not capped to the dynamic viewport, letting the footer intrude."
     )
 
 
