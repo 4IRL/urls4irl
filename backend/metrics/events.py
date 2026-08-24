@@ -38,6 +38,7 @@ class EventName(StrEnum):
     LOGIN_FAILURE = "login_failure"
     LOGIN_SUCCESS = "login_success"
     MEMBER_ADDED = "member_added"
+    MEMBER_ADD_CANDIDATES_LOADED = "member_add_candidates_loaded"
     MEMBER_REMOVED = "member_removed"
     OAUTH_IDENTITY_LINKED = "oauth_identity_linked"
     OAUTH_IDENTITY_UNLINKED = "oauth_identity_unlinked"

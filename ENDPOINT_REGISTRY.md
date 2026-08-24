@@ -436,6 +436,18 @@ Base path: `/utubs/<utub_id>/members`
 | **CSRF**       | Meta tag                                                                                                                                                                                                                                                                                    |
 | **Tests**      | `tests/integration/members/test_add_member_to_utub_route.py` (marker: `members`), `tests/functional/members_ui/test_create_member_ui.py` (marker: `members_ui`)                                                                                                                             |
 
+### GET /utubs/\<utub_id\>/co-members
+
+| Layer          | Location                                                                                                                                                                                                                                                          |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/members/routes.py:get_co_member_candidates_route`                                                                                                                                                                                                        |
+| **Decorators** | `@utub_creator_required` (creator-only — only the creator opens the add-member UI), `@api_route(response_schema=CoMemberListSchema, ajax_required=True, tags=["members"], description="Get co-member add candidates for a UTub (creator only)", status_codes={200: CoMemberListSchema, 403: ErrorResponse, 404: ErrorResponse})` |
+| **Service**    | `backend/members/services/co_member_search.py:get_co_member_candidates` (single-join `Utub_Members` self-join over the requester's UTubs, excluding self + target-UTub existing members; `func.count(distinct(...))` for `shared_utub_count`; ordered by `func.lower(username)`; emits `MEMBER_ADD_CANDIDATES_LOADED` with `has_results`) |
+| **Schema**     | `backend/schemas/users.py:CoMemberListSchema` (wraps `list[CoMemberSchema]{id, username, sharedUtubCount}`)                                                                                                                                                        |
+| **Metrics**    | `MEMBER_ADD_CANDIDATES_LOADED` (DOMAIN, `Resource.MEMBER`, dim `has_results: true/false`)                                                                                                                                                                         |
+| **JS Module**  | `frontend/lib/config.ts` route `coMemberCandidates(utubID)` (client fetch-on-open added in Step 4)                                                                                                                                                                |
+| **Tests**      | `tests/integration/utubmembers/test_co_member_candidates_service.py`, `tests/integration/utubmembers/test_co_member_candidates_route.py` (marker: `members`)                                                                                                       |
+
 ### DELETE /utubs/\<utub_id\>/members/\<user_id\>
 
 | Layer          | Location                                                                                                                                                                                                                                                           |

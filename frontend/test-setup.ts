@@ -79,6 +79,7 @@ const appConfig = {
     bulkDeleteURLs: "/utubs/-1/urls/delete",
     deleteUTubTag: "/utubs/-1/tags/-2",
     createMember: "/utubs/-1/members",
+    coMemberCandidates: "/utubs/-1/co-members",
     removeMember: "/utubs/-1/members/-4",
     contactUs: "/contact",
     crossUtubSearch: "/search",

@@ -9,6 +9,7 @@ class MEMBER_ROUTES:
     _MEMBERS = "members."
     REMOVE_MEMBER = _MEMBERS + "remove_member"
     CREATE_MEMBER = _MEMBERS + "create_member"
+    CO_MEMBER_CANDIDATES = _MEMBERS + "get_co_member_candidates_route"
 
 
 class SPLASH_ROUTES:
@@ -236,6 +237,7 @@ def generate_routes_js() -> dict[str, str]:
         ),
         # Member routes
         "createMember": url_for(MEMBER_ROUTES.CREATE_MEMBER, utub_id=-1),
+        "coMemberCandidates": url_for(MEMBER_ROUTES.CO_MEMBER_CANDIDATES, utub_id=-1),
         "removeMember": url_for(MEMBER_ROUTES.REMOVE_MEMBER, utub_id=-1, user_id=-4),
         # Splash routes
         "login": url_for(SPLASH_ROUTES.LOGIN),

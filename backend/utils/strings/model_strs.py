@@ -12,6 +12,7 @@ IS_CREATOR = "isCreator"
 IS_LOCKED = "isLocked"
 MEMBERS = "members"
 MEMBER_ROLE = "memberRole"
+SHARED_UTUB_COUNT = "sharedUtubCount"
 NAME = "name"
 PASSWORD = "password"
 TAG_STRING = "tagString"
@@ -77,6 +78,7 @@ class MODELS:
     DESCRIPTION = DESCRIPTION
     MEMBERS = MEMBERS
     MEMBER_ROLE = MEMBER_ROLE
+    SHARED_UTUB_COUNT = SHARED_UTUB_COUNT
     URLS = URLS
     TAGS = TAGS
     URL = URL

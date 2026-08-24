@@ -22,6 +22,32 @@ class UserSchema(BaseSchema):
 MemberSchema = UserSchema
 
 
+class CoMemberSchema(BaseSchema):
+    """A co-member add candidate: a user who shares >=1 other UTub with the
+    requester and is not already a member of the target UTub."""
+
+    id: int = Field(alias=M.ID, description="Unique user ID")
+    username: str = Field(alias=M.USERNAME, description="Username of the user")
+    shared_utub_count: int = Field(
+        alias=M.SHARED_UTUB_COUNT,
+        description="Number of the requester's UTubs this candidate also belongs to",
+    )
+
+
+class CoMemberListSchema(BaseSchema):
+    """Wrapper list of co-member add candidates for the target UTub.
+
+    A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
+    at the top level via ``**data_dict``.
+    """
+
+    members: list[CoMemberSchema] = Field(
+        default_factory=list,
+        alias=M.MEMBERS,
+        description="Co-member add candidates for the target UTub",
+    )
+
+
 class UtubSummaryItemSchema(BaseSchema):
     id: int = Field(alias=M.ID, description="Unique UTub ID")
     name: str = Field(alias=M.NAME, description="Name of the UTub")
