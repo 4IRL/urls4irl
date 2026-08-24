@@ -243,6 +243,39 @@ describe("openBulkDeleteConfirm (onActivate)", () => {
     );
   });
 
+  it("renders the plural {n}-interpolated hidden + skipped warnings (not the _ONE variants) for 2+ of each", () => {
+    // id 10 → deletable + visible (the required deletable survivor).
+    // ids 20, 30 → deletable but NO row → hidden by filter (2 hidden).
+    // ids 40, 50 → not deletable but visible → skipped (2 skipped).
+    seedUrlRows([10, 40, 50]);
+    openConfirmFor(
+      [10, 20, 30, 40, 50],
+      [
+        url(10, true),
+        url(20, true),
+        url(30, true),
+        url(40, false),
+        url(50, false),
+      ],
+    );
+
+    const bodyText = $("#confirmModalBody").text();
+    // Plural templates render with the correct interpolated counts…
+    expect(bodyText).toContain(
+      APP_CONFIG.strings.URL_BULK_DELETE_HIDDEN_WARNING.replace("{n}", "2"),
+    );
+    expect(bodyText).toContain(
+      APP_CONFIG.strings.URL_BULK_DELETE_SKIPPED_WARNING.replace("{n}", "2"),
+    );
+    // …and the singular _ONE variants are NOT used when the count is > 1.
+    expect(bodyText).not.toContain(
+      APP_CONFIG.strings.URL_BULK_DELETE_HIDDEN_WARNING_ONE,
+    );
+    expect(bodyText).not.toContain(
+      APP_CONFIG.strings.URL_BULK_DELETE_SKIPPED_WARNING_ONE,
+    );
+  });
+
   it("opening the confirm does NOT fire a request (confirm gates the AJAX)", () => {
     openConfirmFor([10], [url(10, true)]);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
