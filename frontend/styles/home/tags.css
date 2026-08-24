@@ -292,7 +292,11 @@
     border: 1px solid var(--grayBadgeSelection);
     border-radius: 12px;
     padding: 3px 8px;
-    color: whitesmoke;
+    /* Theme-aware: a hardcoded `whitesmoke` made the staged/new tag text
+       invisible on the near-white light-mode surface (same trap the combobox
+       input hit above). --textPrimary is dark ink in light mode and near-white
+       in dark mode, so the pending chip reads in both. */
+    color: var(--textPrimary);
     font-weight: 700;
     font-size: 0.85rem;
     transition: background-color 0.2s ease;
@@ -345,13 +349,27 @@
     background: rgba(126, 130, 130, 1.0);
 }
 
-/* "Create new" is an action, not a match — set it apart with a subtle green
-   tint and a leading "+", and group icon+label on the left (no space-between). */
+/* "Create new" is an action, not a match — set it apart with a green tint and a
+   leading "+", and group icon+label on the left (no space-between). Brand-green
+   channels (not the mint literal) so the tint reads as a clear "create" action
+   in light mode too, where a 12% mint on white was barely visible. */
 .urlTagOptionCreateNew {
     justify-content: flex-start;
     gap: 8px;
     color: var(--deckSelectionGreen);
-    background: rgba(96, 218, 170, 0.12);
+    background: rgba(var(--color-brand-green-rgb), 0.16);
+}
+
+/* Keep the create-new row GREEN when it is the highlighted/active option —
+   without this it inherits the neutral-gray `.urlTagOption.active` fill
+   (rgba(126,130,130,1.0)), which in light mode rendered as a muddy gray block
+   that hid the "+ Create tag" affordance (the default-highlighted option on
+   open). The compound `.urlTagOption.urlTagOptionCreateNew.active` (0,3,0)
+   out-specifies `.urlTagOption.active` (0,2,0); applied on all pointers so the
+   mobile keyboard/tap highlight stays green too. The matching :hover override
+   lives in the fine-pointer media block below. */
+.urlTagOption.urlTagOptionCreateNew.active {
+    background: rgba(var(--color-brand-green-rgb), 0.30);
 }
 
 .urlTagOptionCreateIcon {
@@ -433,6 +451,13 @@
 @media not all and (any-pointer: coarse) {
     .urlTagOption:hover {
         background: rgba(126, 130, 130, 0.5);
+    }
+
+    /* Create-new keeps its green identity on hover instead of flipping to the
+       gray hover fill above (see the .active override for the full rationale).
+       (0,3,0) out-specifies `.urlTagOption:hover` (0,2,0). */
+    .urlTagOption.urlTagOptionCreateNew:hover {
+        background: rgba(var(--color-brand-green-rgb), 0.24);
     }
 
     .urlTagComboboxSubmitBtn:hover:not(:disabled) {

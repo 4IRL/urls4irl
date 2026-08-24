@@ -297,6 +297,12 @@ def test_delete_tag_invalid_csrf(page: Page, create_test_tags, provide_app: Flas
     )
 
     invalidate_csrf_token_on_page(page=page)
+    # invalidate_csrf_token_on_page runs a page.evaluate between the hover-reveal
+    # and the click; under CI load that intervening call can drop the tag badge's
+    # :hover state, collapsing the width:0/opacity:0 delete button and timing the
+    # click out. Re-hover immediately before clicking — same guard as
+    # test_delete_tag_rate_limits, which has the identical page.evaluate ordering.
+    page.locator(tag_badge_selector).first.hover()
     delete_tag_button.click()
 
     assert_visited_403_on_invalid_csrf_and_reload(page=page)
