@@ -20,11 +20,19 @@ vi.mock("../../../../lib/ajax.js", () => ({
   is429Handled: vi.fn(() => false),
 }));
 
-vi.mock("../../cards/filtering.js", () => ({
-  updateTagFilteringOnURLOrURLTagDeletion: vi.fn(),
-  updateVisibleURLsForTagCount: vi.fn(),
-  writeTagChipDenominator: vi.fn(),
-}));
+// Partial mock: keep the real writeTagChipDenominator (the DD-2 assertion below
+// checks the actual "X / Y" chip DOM write) while stubbing the numerator
+// recompute (its call count is asserted in isolation) and the tag-filter refresh
+// (stubbed for DOM isolation so it can't rewrite the chip under test).
+vi.mock("../../cards/filtering.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../cards/filtering.js")>();
+  return {
+    ...actual,
+    updateTagFilteringOnURLOrURLTagDeletion: vi.fn(),
+    updateVisibleURLsForTagCount: vi.fn(),
+  };
+});
 
 vi.mock("../../empty-state.js", () => ({
   showURLsEmptyState: vi.fn(),
@@ -359,6 +367,36 @@ describe("confirm submit + success (active-deck mutation)", () => {
     expect(vi.mocked(updateVisibleURLsForTagCount)).toHaveBeenCalledTimes(1);
     // Survivors remain → mode is NOT exited.
     expect(vi.mocked(exitMultiSelectMode)).not.toHaveBeenCalled();
+  });
+
+  it("applyTagCountsInUtub writes the server denominator onto the affected tag chip", () => {
+    seedUrlRows([10, 20, 99]);
+    storeState.urls = [url(10, true), url(20, true), url(99, false)];
+    // Tag 5 lives in the deck showing a STALE "2 / 4". The server-reported
+    // UTub-wide total (7) is unreachable by any per-card ±1 of the stale base, so
+    // the "2 / 7" assertion genuinely discriminates the direct server-set path
+    // (the numerator recompute is stubbed, so it can't have moved the digit).
+    $("#URLDeck").append(
+      '<div class="tagFilter" data-utub-tag-id="5">' +
+        '<span class="tagAppliedToUrlsCount">2 / 4</span>' +
+        "</div>",
+    );
+    const deferred = openAndSubmit(
+      [10, 20],
+      [url(10, true), url(20, true), url(99, false)],
+    );
+
+    deferred.resolve(
+      deleteResponse({ deletedIds: [10, 20], tagCountsInUtub: { "5": 7 } }),
+      "success",
+      { status: 200 },
+    );
+
+    // Denominator half set directly to the authoritative server count (7); the
+    // numerator half ("2") is left untouched for the (stubbed) later recompute.
+    expect(
+      $('.tagFilter[data-utub-tag-id="5"] .tagAppliedToUrlsCount').text(),
+    ).toBe("2 / 7");
   });
 
   it("partial (client-side skip) → partial banner + amber Can't-delete cue on the survivor", () => {
