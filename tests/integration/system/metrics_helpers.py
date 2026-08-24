@@ -32,6 +32,7 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.ACCOUNT_SESSIONS_REVOKED,
         EventName.CROSS_UTUB_SEARCH_PERFORMED,
         EventName.DATA_EXPORTED,
+        EventName.MEMBER_ADD_CANDIDATES_LOADED,
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
         EventName.URL_REMOVED_FROM_UTUB,
@@ -103,7 +104,12 @@ fires only from the authenticated self-service data-export Settings flow (a
 non-mutating read that serializes every UTub the user belongs to to a
 downloadable JSON file), which the shared success-path seed does not drive; its
 per-flow emit test lives under
-tests/integration/account_and_settings/test_data_export.py. Each excluded
+tests/integration/account_and_settings/test_data_export.py.
+MEMBER_ADD_CANDIDATES_LOADED fires only from the co-member candidate-search
+endpoint, which the shared success-path seed does not call; its per-route emit
+tests live under
+tests/integration/utubmembers/test_co_member_candidates_metrics.py and
+tests/functional/members_ui/test_members_metrics_ui.py. Each excluded
 event has its own per-route emit test under tests/integration/<feature>/ and
 flushes through the same pipeline, so the end-to-end invariant is still covered.
 """

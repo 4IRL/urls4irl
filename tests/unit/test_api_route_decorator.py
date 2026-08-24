@@ -505,6 +505,7 @@ ALL_API_ROUTES = [
             400: ErrorResponse,
             403: ErrorResponse,
             404: ErrorResponse,
+            429: ErrorResponse,
         },
     ),
     (
