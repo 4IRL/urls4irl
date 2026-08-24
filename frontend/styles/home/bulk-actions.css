@@ -557,7 +557,10 @@
    so the destructive-reach disclosures stand out from the base body copy. */
 .bulkDeleteConfirmWarn {
   margin-top: 8px;
-  color: var(--editURLColor);
+  /* Theme-aware caution text: --editURLColor's bright yellow is illegible as
+     running text on the near-white light-mode confirm modal. --cautionText is
+     that same yellow in dark mode and an accessible dark amber in light. */
+  color: var(--cautionText);
   font-weight: 600;
   font-size: 0.85rem;
 }
