@@ -7,7 +7,7 @@ from backend.models.urls import Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import Users
 from backend.models.utubs import Utubs
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 
 
@@ -207,6 +207,142 @@ def add_multi_dest_with_one_nonmember(app: Flask, add_multi_dest_state_for_copy)
     with app.app_context():
         membership = Utub_Members.query.get((3, 1))
         db.session.delete(membership)
+        db.session.commit()
+
+
+@pytest.fixture
+def add_mixed_delete_permission_urls_in_first_utub(
+    app: Flask, add_tags_to_utubs, add_one_url_and_all_users_to_each_utub_no_tags
+):
+    """
+    Seed the FIRST UTub (id 1, created by user 1) with a mix of URLs the acting user
+    may or may not delete, plus tags arranged to exercise the bulk-delete tag-count
+    recompute (shared-tag aggregate + zero-count backfill).
+
+    Starting from every user being a member of every UTub with UTub 1 holding URL 1
+    (added by user 1), this fixture adds:
+
+    - URL 2 into UTub 1, added by MEMBER user 2 (user_id=2)
+    - URL 3 into UTub 1, added by MEMBER user 3 (user_id=3)
+
+    So UTub 1 holds three URL rows attributed to users 1, 2, and 3 respectively:
+
+    - The literal creator (user 1) may delete ALL three (creator predicate).
+    - A plain member (e.g. user 2) may delete only their own URL (URL 2) and is
+      FORBIDDEN from the other two.
+
+    Tags in UTub 1 (three ``Utub_Tags`` seeded by ``add_tags_to_utubs``):
+
+    - ``shared`` tag (first UTub-1 tag) applied to URL 1, URL 2, AND URL 3 — deleting
+      URL 1 + URL 2 leaves it on URL 3, so its recomputed count is the aggregate 1,
+      not a naive per-URL double-decrement.
+    - ``solo`` tag (second UTub-1 tag) applied to URL 1 ONLY — deleting URL 1 empties
+      it, so the recompute must return count 0 (present in the map, not omitted).
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_tags_to_utubs (pytest fixture): Seeds UTub tags for every UTub
+        add_one_url_and_all_users_to_each_utub_no_tags (pytest fixture): Adds all users
+            to all UTubs, each UTub containing a single URL added by its creator
+    """
+    with app.app_context():
+        first_utub: Utubs = Utubs.query.get(1)
+
+        added_url_rows: dict[int, Utub_Urls] = {}
+        for url_id_and_adder in (2, 3):
+            url: Urls = Urls.query.get(url_id_and_adder)
+            new_utub_url = Utub_Urls()
+            new_utub_url.standalone_url = url
+            new_utub_url.url_id = url.id
+            new_utub_url.utub_id = first_utub.id
+            new_utub_url.user_id = url_id_and_adder
+            new_utub_url.url_title = f"This is {url.url_string}"
+            db.session.add(new_utub_url)
+            added_url_rows[url_id_and_adder] = new_utub_url
+
+        db.session.flush()
+
+        first_url_row: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == first_utub.id,
+            Utub_Urls.url_id == 1,
+        ).first()
+
+        first_utub_tags = (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == first_utub.id)
+            .order_by(Utub_Tags.id)
+            .all()
+        )
+        shared_tag = first_utub_tags[0]
+        solo_tag = first_utub_tags[1]
+
+        # Shared tag on URL 1, URL 2, and URL 3.
+        for url_row in (first_url_row, added_url_rows[2], added_url_rows[3]):
+            db.session.add(
+                Utub_Url_Tags(
+                    utub_id=first_utub.id,
+                    utub_url_id=url_row.id,
+                    utub_tag_id=shared_tag.id,
+                    user_id=first_utub.utub_creator,
+                )
+            )
+
+        # Solo tag on URL 1 only.
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=first_utub.id,
+                utub_url_id=first_url_row.id,
+                utub_tag_id=solo_tag.id,
+                user_id=first_utub.utub_creator,
+            )
+        )
+
+        db.session.commit()
+
+
+@pytest.fixture
+def add_co_creator_and_mixed_delete_permission_urls(
+    app: Flask, add_one_url_and_all_users_to_each_utub_no_tags
+):
+    """
+    Seed the FIRST UTub (id 1, created by user 1) with user 2 promoted to a
+    ``Member_Role.CO_CREATOR`` membership plus a mix of URLs, to distinguish the
+    literal-creator delete predicate from the broader ``g.is_creator`` (co-creator
+    inclusive) one.
+
+    Starting from every user being a member of every UTub with UTub 1 holding URL 1
+    (added by creator user 1), this fixture:
+
+    - Promotes user 2's UTub-1 membership to ``Member_Role.CO_CREATOR``.
+    - Adds URL 2 into UTub 1, added by the CO_CREATOR (user 2).
+    - Adds URL 3 into UTub 1, added by a THIRD member (user 3).
+
+    Acting as the co-creator (user 2, NOT the literal ``utub.utub_creator``):
+
+    - URL 2 (co-creator's own) is deletable.
+    - URL 1 (creator's) and URL 3 (third member's) must be FORBIDDEN-skipped — a case
+      that would incorrectly succeed under the co-creator-inclusive ``g.is_creator``.
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_one_url_and_all_users_to_each_utub_no_tags (pytest fixture): Adds all users
+            to all UTubs, each UTub containing a single URL added by its creator
+    """
+    with app.app_context():
+        first_utub: Utubs = Utubs.query.get(1)
+
+        co_creator_membership: Utub_Members = Utub_Members.query.get((first_utub.id, 2))
+        co_creator_membership.member_role = Member_Role.CO_CREATOR
+
+        for url_id_and_adder in (2, 3):
+            url: Urls = Urls.query.get(url_id_and_adder)
+            new_utub_url = Utub_Urls()
+            new_utub_url.standalone_url = url
+            new_utub_url.url_id = url.id
+            new_utub_url.utub_id = first_utub.id
+            new_utub_url.user_id = url_id_and_adder
+            new_utub_url.url_title = f"This is {url.url_string}"
+            db.session.add(new_utub_url)
+
         db.session.commit()
 
 

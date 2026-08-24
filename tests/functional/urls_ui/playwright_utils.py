@@ -12,6 +12,7 @@ from tests.functional.playwright_utils import (
     wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_css_property,
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
@@ -846,5 +847,43 @@ def expect_copy_cue_on_row(*, page: Page, utub_url_id: int, kind: str) -> None:
     fade removes it."""
     cue_selector = (
         f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}'] " f".bulkCardResultCue--{kind}"
+    )
+    expect(page.locator(cue_selector)).to_be_visible()
+
+
+# --- Bulk multi-URL delete-from-UTub helpers ---------------------------------
+# Delete reuses the shared #confirmModal (a count-aware destructive confirm),
+# NOT an in-deck picker. These helpers open that confirm and drive its submit
+# with the same opacity-gated rhythm the single-URL delete confirm uses:
+# clicking #modalSubmit mid-fade makes Bootstrap drop the later modal("hide"), so
+# the modal never hides. Shared by the desktop and mobile bulk-delete suites.
+
+
+def open_bulk_delete_confirm(*, page: Page) -> None:
+    """Click the registry-rendered destructive "Delete" bulk-action button and
+    settle into the shared confirm modal (visible)."""
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_BULK_DELETE_URLS)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+
+
+def submit_bulk_delete(*, page: Page) -> None:
+    """Confirm the destructive delete. Gate the click on the modal fade-in being
+    fully settled (opacity == 1) so Bootstrap honors the subsequent modal("hide")
+    (mirrors the single-URL delete confirm rhythm in test_delete_url_ui)."""
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+
+
+def expect_cant_delete_cue_on_row(*, page: Page, utub_url_id: int) -> None:
+    """Assert the transient amber "Can't delete" cue is visible on the given
+    survivor URL row after a partial bulk delete. Assert promptly — the cue fades
+    out after a few seconds."""
+    cue_selector = (
+        f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}'] .bulkCardResultCue--skipped"
     )
     expect(page.locator(cue_selector)).to_be_visible()

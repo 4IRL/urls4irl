@@ -154,3 +154,70 @@ def test_mobile_bulk_copy_bottom_drawer_stage_two_and_confirm(
     # Both destinations gained the copied URL.
     assert _count_dest_rows_for_url(app=app, utub_id=dest_a_id, url_id=url_id_a) == 1
     assert _count_dest_rows_for_url(app=app, utub_id=dest_b_id, url_id=url_id_a) == 1
+
+
+def test_mobile_bulk_copy_tap_outside_closes_drawer_keeps_mode(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a mobile user in multi-select mode with URLs selected and the
+        Copy-to-UTub destination drawer open
+    WHEN they tap OUTSIDE the drawer (an area of the URL deck above it, outside
+        #bulkCopyPickerMount)
+    THEN the drawer closes (picker hidden) but multi-select mode stays active —
+        the bulk-action bar is still present and the deck is still marked
+        multiSelectActive (the tap only dismissed the picker, it did NOT exit mode).
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    source: Utubs = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    utub_url_id_a, _ = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-outside-a.test/",
+        url_title="Copy Outside A",
+    )
+    utub_url_id_b, _ = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-outside-b.test/",
+        url_title="Copy Outside B",
+    )
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=source.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    enter_multi_select_and_select_urls(
+        page=page, url_ids=[utub_url_id_a, utub_url_id_b]
+    )
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
+
+    open_bulk_copy_picker(page=page)
+
+    picker = page.locator(HPL.BULK_COPY_PICKER_MOUNT)
+    expect(picker).to_be_visible()
+    picker_box = picker.bounding_box()
+    viewport = page.viewport_size
+    assert picker_box is not None and viewport is not None
+
+    # Tap OUTSIDE the bottom drawer: the URL-deck area above the picker's top edge,
+    # at horizontal center (clear of the left-edge row checkboxes and the header
+    # Exit control near the very top).
+    outside_x = viewport["width"] / 2
+    outside_y = picker_box["y"] - 30
+    page.mouse.click(outside_x, outside_y)
+
+    # The drawer closes...
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+
+    # ...but multi-select mode is UNCHANGED: bulk bar still present + deck still
+    # marked multiSelectActive (the tap dismissed the picker, not the mode).
+    expect(page.locator(HPL.BULK_ACTION_BAR)).to_be_visible()
+    expect(page.locator(HPL.URL_DECK)).to_have_class(
+        re.compile(r"(^|\s)multiSelectActive(\s|$)")
+    )

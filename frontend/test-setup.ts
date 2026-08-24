@@ -76,6 +76,7 @@ const appConfig = {
     createUTubTag: "/utubs/-1/tags",
     applyTagsToURLs: "/utubs/-1/urls/tags/batch",
     copyURLsToUtubs: "/utubs/urls/copy",
+    bulkDeleteURLs: "/utubs/-1/urls/delete",
     deleteUTubTag: "/utubs/-1/tags/-2",
     createMember: "/utubs/-1/members",
     removeMember: "/utubs/-1/members/-4",
@@ -193,6 +194,32 @@ const appConfig = {
     URL_BULK_COPY_FILTER_PLACEHOLDER: "Filter UTubs…",
     URL_BULK_COPY_NO_MATCHES: "No UTubs match your filter.",
     UNABLE_TO_COPY_URLS: "Unable to copy the selected URLs.",
+    URL_BULK_DELETE_LABEL: "Delete",
+    URL_BULK_DELETE_CONFIRM_TITLE: "Delete {n} URLs from this UTub?",
+    URL_BULK_DELETE_CONFIRM_TITLE_ONE: "Delete 1 URL from this UTub?",
+    URL_BULK_DELETE_CONFIRM_BODY:
+      "This permanently removes them from this UTub for everyone. It can't be undone.",
+    URL_BULK_DELETE_HIDDEN_WARNING:
+      "{n} selected URLs are hidden by your filter and will still be deleted.",
+    URL_BULK_DELETE_HIDDEN_WARNING_ONE:
+      "1 selected URL is hidden by your filter and will still be deleted.",
+    URL_BULK_DELETE_SKIPPED_WARNING:
+      "{n} selected URLs were added by another member and will be skipped.",
+    URL_BULK_DELETE_SKIPPED_WARNING_ONE:
+      "1 selected URL was added by another member and will be skipped.",
+    URL_BULK_DELETE_SUBMIT: "Delete {n} URLs",
+    URL_BULK_DELETE_SUBMIT_ONE: "Delete 1 URL",
+    URL_BULK_DELETE_CANCEL: "Just kidding",
+    URL_BULK_DELETED: "Deleted {n} URLs.",
+    URL_BULK_DELETED_ONE: "Deleted 1 URL.",
+    URL_BULK_DELETE_SKIPPED_SUFFIX:
+      "{n} skipped because you can't delete them.",
+    URL_BULK_DELETE_SKIPPED_SUFFIX_ONE:
+      "1 skipped because you can't delete it.",
+    URL_BULK_DELETE_NONE:
+      "No URLs were deleted — you can't delete the selected URLs.",
+    URL_BULK_CARD_CANT_DELETE: "Can't delete",
+    UNABLE_TO_DELETE_URLS: "Unable to delete these URLs.",
     URL_SEARCH_NO_RESULTS: "No URLs found",
     URL_BULK_SELECTED_COUNT: "{n} URLs selected",
     URL_BULK_SELECTED_COUNT_ONE: "1 URL selected",

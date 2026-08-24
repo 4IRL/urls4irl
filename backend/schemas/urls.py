@@ -226,5 +226,39 @@ class CopyUrlsResponseSchema(BaseSchema):
     )
 
 
+class UrlDeleteSkippedSchema(BaseSchema):
+    utub_url_id: int = Field(
+        alias=M.UTUB_URL_ID,
+        description="Utub_Urls id skipped because the user may not delete it",
+    )
+    reason: str = Field(
+        alias=M.SKIP_REASON,
+        description="Machine-readable skip reason (BulkDeleteSkipReason value, e.g. 'forbidden')",
+    )
+
+
+class DeleteUrlsResponseSchema(BaseSchema):
+    deleted: list[UtubUrlDeleteSchema] = Field(
+        alias=M.DELETED,
+        description="URLs deleted from the UTub",
+    )
+    skipped: list[UrlDeleteSkippedSchema] = Field(
+        alias=M.SKIPPED,
+        description="URLs skipped because the user may not delete them",
+    )
+    tag_counts_modified: dict[int, int] = Field(
+        alias=TAG_COUNTS_MODIFIED,
+        description="Map of tag ID to new applied count after the bulk delete",
+    )
+    total_deleted: int = Field(
+        alias=M.TOTAL_DELETED,
+        description="Total number of URLs deleted from the UTub",
+    )
+    total_skipped: int = Field(
+        alias=M.TOTAL_SKIPPED,
+        description="Total number of URLs skipped during the bulk delete",
+    )
+
+
 UtubUrlSchema.model_rebuild()
 UtubUrlDetailSchema.model_rebuild()

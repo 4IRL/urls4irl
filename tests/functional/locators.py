@@ -293,6 +293,17 @@ class HomePageLocators(GenericPageLocator):
     BULK_COPY_PICKER_MSG = ".bulkCopyPickerMsg"
     BULK_COPY_ALL_LOCKED = ".bulkCopyAllLocked"
 
+    # Bulk multi-URL delete-from-UTub (Phase 5). The destructive "Delete" action
+    # button rendered into #bulkActionButtons by the bulk-action registry, and the
+    # result banner (reusing the shared .bulkTagBanner markup) that survives the
+    # action-button rebuild. The confirm reuses the shared #confirmModal
+    # (ACTION_CONFIRM_MODAL) rather than an in-deck picker.
+    BUTTON_BULK_DELETE_URLS = '[data-bulk-action-id="bulk-delete"]'
+    BULK_DELETE_BANNER = "#bulkDeleteResultBanner"
+    # Deck-level outcome announcer (subheader live region) used on the
+    # deck-empties path, where the bulk-bar banner is torn down by mode exit.
+    URL_DECK_OUTCOME_ANNOUNCEMENT = "#URLDeckOutcomeAnnouncement"
+
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"

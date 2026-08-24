@@ -1,5 +1,6 @@
 import { initBulkBar } from "../bulk-bar.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
+import { isMobile } from "../../../mobile.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { resetStore, setState } from "../../../../store/app-store.js";
 import {
@@ -26,6 +27,14 @@ vi.mock("../bulk-mode.js", () => ({
   exitMultiSelectMode: vi.fn(),
 }));
 
+// Mock the viewport check so relocateBulkBarForViewport()'s branch is
+// deterministic (jsdom has no real width). Defaults to desktop (false); the
+// relocation tests flip it to true via vi.mocked(isMobile). Mocking the whole
+// module also keeps the heavy home/mobile.ts import graph out of this suite.
+vi.mock("../../../mobile.js", () => ({
+  isMobile: vi.fn(() => false),
+}));
+
 // PARTIAL mock (Pass2-DD-2): keep isAnyBulkPickerOpen / setPickerOpen /
 // registerPickerClose / closeAllPickers REAL so the existing picker-guard-driven
 // assertions in this file (and bulk-bar.ts's own guards) keep working, and wrap
@@ -47,30 +56,40 @@ const $ = window.jQuery;
 // search.ts, whose module-level URL_TAG_FILTER_APPLIED subscriber
 // (reapplyURLSearchFilter) reads that input; with an empty value it returns
 // early (term too short), so it stays inert during these bar tests.
+// #bulkSelectContext (the "N selected" pill) is the bar's desktop anchor:
+// relocateBulkBarForViewport() re-inserts #bulkActionBar immediately after it in
+// the header .titleElement on desktop, and moves it to be the last child of
+// #URLDeck (after the scroll container) on mobile. The fixture mirrors that
+// header→deck-bottom split so both relocation branches are assertable.
 const HTML = `
   <div id="URLDeck" tabindex="-1">
-    <input id="URLContentSearch" value="" />
-    <button id="urlBtnMultiSelect" aria-pressed="false"></button>
-    <div id="bulkActionBar" class="hidden">
-      <span id="bulkSelectCount">0</span>
-      <span class="bulkLabel">selected</span>
-      <span id="bulkSelectHiddenHint" class="hidden" aria-hidden="true"></span>
-      <div id="bulkActionButtons"></div>
-      <button id="bulkSelectAll" type="button">Select All</button>
-      <button id="bulkSelectClear" type="button">Clear</button>
-      <button id="bulkSelectExit" type="button">Exit</button>
-      <span id="URLBulkSelectionAnnouncement" aria-live="polite"></span>
+    <div class="titleElement">
+      <div id="bulkSelectContext"></div>
+      <div id="bulkActionBar" class="hidden">
+        <span id="bulkSelectCount">0</span>
+        <span class="bulkLabel">selected</span>
+        <span id="bulkSelectHiddenHint" class="hidden" aria-hidden="true"></span>
+        <div id="bulkActionButtons"></div>
+        <button id="bulkSelectAll" type="button">Select All</button>
+        <button id="bulkSelectClear" type="button">Clear</button>
+        <button id="bulkSelectExit" type="button">Exit</button>
+        <span id="URLBulkSelectionAnnouncement" aria-live="polite"></span>
+      </div>
+      <button id="urlBtnMultiSelect" aria-pressed="false"></button>
     </div>
+    <input id="URLContentSearch" value="" />
     <div id="bulkSelectRangeStrip" class="bulkSelectRangeStrip" role="group"
          aria-label="Selection controls">
       <button id="bulkRangeSelectAll" type="button" class="barBtn">Select all</button>
       <button id="bulkRangeInvert" type="button" class="barBtn">Invert</button>
       <button id="bulkRangeClear" type="button" class="barBtn clear" aria-disabled="true">Clear</button>
     </div>
-    <div id="listURLs">
-      <div class="urlRow" utuburlid="1" filterable="true"></div>
-      <div class="urlRow" utuburlid="2" filterable="true"></div>
-      <div class="urlRow" utuburlid="3" filterable="true"></div>
+    <div class="flex-column content">
+      <div id="listURLs">
+        <div class="urlRow" utuburlid="1" filterable="true"></div>
+        <div class="urlRow" utuburlid="2" filterable="true"></div>
+        <div class="urlRow" utuburlid="3" filterable="true"></div>
+      </div>
     </div>
   </div>
 `;
@@ -84,6 +103,10 @@ describe("bulk-bar", () => {
     vi.mocked(clearURLSelection).mockClear();
     vi.mocked(invertVisibleSelection).mockClear();
     vi.mocked(exitMultiSelectMode).mockClear();
+    // Default to desktop each test; the relocation tests opt into mobile. Reset is
+    // explicit because vitest.config leaves clearMocks false (see the picker-open
+    // block below), so a prior mobile test's mockReturnValue would otherwise leak.
+    vi.mocked(isMobile).mockReturnValue(false);
     // Reset the (module-scoped) picker flags so a prior test's open picker never
     // leaks into this one's action-button rebuild guard. Both mirror into the
     // shared picker-guard registry that the bar now reads via isAnyBulkPickerOpen.
@@ -483,6 +506,60 @@ describe("bulk-bar", () => {
       emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: false });
 
       expect(document.activeElement).toBe($("#URLDeck")[0]);
+    });
+  });
+
+  describe("in-flow bar relocation across the viewport breakpoint", () => {
+    it("moves #bulkActionBar to be the LAST child of #URLDeck on mobile mode-enter", () => {
+      vi.mocked(isMobile).mockReturnValue(true);
+
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+
+      const deck = document.querySelector("#URLDeck");
+      const bar = document.querySelector("#bulkActionBar");
+      // In-flow deck-bottom bar: a direct child of #URLDeck (out of the header)
+      // AND the last child, so it sits after the scroll container.
+      expect(bar?.parentElement).toBe(deck);
+      expect(deck?.lastElementChild).toBe(bar);
+      expect($("#bulkActionBar").hasClass("hidden")).toBe(false);
+    });
+
+    it("keeps #bulkActionBar in the header slot after #bulkSelectContext on desktop mode-enter", () => {
+      // isMobile defaults to false (desktop) in beforeEach.
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+
+      const bar = document.querySelector("#bulkActionBar");
+      const context = document.querySelector("#bulkSelectContext");
+      // Desktop home: inside the header .titleElement, immediately after the
+      // "N selected" context — identical to its authored position.
+      expect(bar?.parentElement?.classList.contains("titleElement")).toBe(true);
+      expect(context?.nextElementSibling).toBe(bar);
+    });
+
+    it("re-slots the bar to the deck bottom on a resize that crosses into mobile", () => {
+      // Enter mode on desktop first (bar stays in the header).
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+      expect(
+        document
+          .querySelector("#bulkActionBar")
+          ?.parentElement?.classList.contains("titleElement"),
+      ).toBe(true);
+
+      // A rotation/resize crosses the breakpoint into mobile; the debounced
+      // resize handler re-slots the bar to the deck bottom.
+      vi.mocked(isMobile).mockReturnValue(true);
+      window.dispatchEvent(new Event("resize"));
+
+      // The resize handler is debounced (RESIZE_DEBOUNCE_MS); flush it.
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          const deck = document.querySelector("#URLDeck");
+          expect(deck?.lastElementChild).toBe(
+            document.querySelector("#bulkActionBar"),
+          );
+          resolve();
+        }, 200);
+      });
     });
   });
 

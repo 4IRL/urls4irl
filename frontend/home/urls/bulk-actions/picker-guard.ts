@@ -1,5 +1,6 @@
 /**
- * Shared open-picker registry for the bulk sub-pickers (bulk-tag, bulk-copy).
+ * Shared open-picker registry for the bulk sub-pickers (bulk-tag, bulk-copy,
+ * bulk-delete's confirm modal).
  *
  * This module is a deliberate LEAF: it imports NEITHER picker module. The two
  * picker modules depend on `picker-guard.ts` (they call `setPickerOpen(...)` /
@@ -12,7 +13,7 @@
  * single teardown (`closeAllPickers`) that cover BOTH pickers.
  */
 
-export type PickerId = "bulk-tag" | "bulk-copy";
+export type PickerId = "bulk-tag" | "bulk-copy" | "bulk-delete";
 
 const openPickerIds = new Set<PickerId>();
 const closeCallbacks = new Map<PickerId, () => void>();
@@ -46,7 +47,7 @@ export function setPickerOpen(id: PickerId, open: boolean): void {
   openChangeListeners.forEach((callback) => callback(anyOpen));
 }
 
-/** Whether any bulk sub-picker (tag or copy) is currently open. */
+/** Whether any bulk sub-picker (tag, copy, or delete confirm) is currently open. */
 export function isAnyBulkPickerOpen(): boolean {
   return openPickerIds.size > 0;
 }

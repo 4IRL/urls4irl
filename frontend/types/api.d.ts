@@ -1251,6 +1251,23 @@ export interface paths {
     patch: operations["updateUrlTitle"];
     trace?: never;
   };
+  "/utubs/{utub_id}/urls/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Bulk-delete selected URLs from a UTub */
+    post: operations["deleteUrlsFromUtub"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/username": {
     parameters: {
       query?: never;
@@ -1829,7 +1846,7 @@ export interface components {
      * @description Error codes for URLErrorCodes
      * @enum {integer}
      */
-    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -2843,6 +2860,37 @@ export interface components {
       /** @description Total number of URLs copied across all destinations */
       totalCopied: number;
       /** @description Total number of URLs skipped across all destinations */
+      totalSkipped: number;
+    };
+    DeleteUrlsRequest: {
+      /**
+       * @description UTub-URL ids in the active UTub to delete
+       * @example [
+       *       1,
+       *       2,
+       *       3
+       *     ]
+       */
+      utubUrlIds: number[];
+    };
+    UrlDeleteSkippedSchema: {
+      /** @description Utub_Urls id skipped because the user may not delete it */
+      utubUrlID: number;
+      /** @description Machine-readable skip reason (BulkDeleteSkipReason value, e.g. 'forbidden') */
+      reason: string;
+    };
+    DeleteUrlsResponseSchema: {
+      /** @description URLs deleted from the UTub */
+      deleted: components["schemas"]["UtubUrlDeleteSchema"][];
+      /** @description URLs skipped because the user may not delete them */
+      skipped: components["schemas"]["UrlDeleteSkippedSchema"][];
+      /** @description Map of tag ID to new applied count after the bulk delete */
+      tagCountsInUtub: {
+        [key: string]: number;
+      };
+      /** @description Total number of URLs deleted from the UTub */
+      totalDeleted: number;
+      /** @description Total number of URLs skipped during the bulk delete */
       totalSkipped: number;
     };
     ChangeUsernameRequest: {
@@ -6290,6 +6338,7 @@ export interface operations {
           | "url_title_updated"
           | "url_tracking_params_stripped"
           | "urls_copied_to_utub"
+          | "urls_deleted_from_utub"
           | "utub_created"
           | "utub_deleted"
           | "utub_desc_updated"
@@ -6519,6 +6568,7 @@ export interface operations {
           | "url_title_updated"
           | "url_tracking_params_stripped"
           | "urls_copied_to_utub"
+          | "urls_deleted_from_utub"
           | "utub_created"
           | "utub_deleted"
           | "utub_desc_updated"
@@ -7712,6 +7762,60 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["UrlTitleUpdatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  deleteUrlsFromUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["DeleteUrlsRequest"];
+      };
+    };
+    responses: {
+      /** @description Delete urls */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["DeleteUrlsResponseSchema"];
         };
       };
       /** @description Bad request */

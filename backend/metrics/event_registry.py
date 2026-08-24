@@ -201,6 +201,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
             "destination_count_bucket": BULK_TAG_URL_BUCKETS,
         },
     ),
+    EventName.URLS_DELETED_FROM_UTUB: EventRegistryEntry(
+        description="Selected URLs deleted from the active UTub in one bulk action",
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "url_count_bucket": BULK_TAG_URL_BUCKETS,
+            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+        },
+    ),
     EventName.UTUB_TAG_CREATED: EventRegistryEntry(
         description=("New tag vocabulary added to a UTub (distinct from TAG_APPLIED)"),
         category=EventCategory.DOMAIN,

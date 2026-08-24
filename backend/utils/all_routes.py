@@ -60,6 +60,7 @@ class URL_ROUTES:
     UPDATE_URL = _URLS + "update_url"
     UPDATE_URL_TITLE = _URLS + "update_url_title"
     COPY_URLS_MULTI = _URLS + "copy_urls_to_utubs"
+    DELETE_URLS_BULK = _URLS + "delete_urls_from_utub"
 
 
 class USER_ROUTES:
@@ -216,6 +217,7 @@ def generate_routes_js() -> dict[str, str]:
             URL_ROUTES.UPDATE_URL_TITLE, utub_id=-1, utub_url_id=-2
         ),
         "copyURLsToUtubs": url_for(URL_ROUTES.COPY_URLS_MULTI),
+        "bulkDeleteURLs": url_for(URL_ROUTES.DELETE_URLS_BULK, utub_id=-1),
         # UTub URL Tag routes
         "createURLTag": url_for(
             URL_TAG_ROUTES.CREATE_URL_TAG, utub_id=-1, utub_url_id=-2

@@ -17,7 +17,10 @@ import {
   createTagComboboxBlock,
 } from "../tags/combobox.js";
 import { createTagBadgeInURL } from "../tags/tags.js";
-import { updateVisibleURLsForTagCount } from "../cards/filtering.js";
+import {
+  updateVisibleURLsForTagCount,
+  writeTagChipDenominator,
+} from "../cards/filtering.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { reapplyTagFilter } from "../../tags/search.js";
@@ -570,13 +573,10 @@ function renderBulkAppliedTags({
       // right-hand/denominator digit of `X / Y`) directly from `tagApplied`. The
       // visible/numerator half is recomputed once, below — never mirrored from the
       // total (a bulk selection can include filter-hidden URLs).
-      const countElem = $(
-        `.tagFilter[data-utub-tag-id="${appliedTag.id}"] .tagAppliedToUrlsCount`,
-      );
-      const countText = countElem.text().split(" / ");
-      if (countText.length === 2) {
-        countElem.text(`${countText[0]} / ${appliedTag.tagApplied}`);
-      }
+      writeTagChipDenominator({
+        tagId: appliedTag.id,
+        count: appliedTag.tagApplied,
+      });
     }
   });
 

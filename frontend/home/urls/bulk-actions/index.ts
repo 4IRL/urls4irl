@@ -10,6 +10,7 @@ import {
 } from "../../tags/sheet.js";
 import { initBulkBar } from "./bulk-bar.js";
 import { initBulkCopy } from "./bulk-copy.js";
+import { initBulkDelete } from "./bulk-delete.js";
 import { initBulkTag } from "./bulk-tag.js";
 import { isAnyBulkPickerOpen } from "./picker-guard.js";
 import {
@@ -74,6 +75,9 @@ export function initBulkActions(): void {
   // Registers the "Copy to UTub" bulk action + its picker-close callback. The
   // import above is what makes the registration run.
   initBulkCopy();
+  // Registers the destructive "Delete" bulk action + its confirm-modal
+  // picker-close callback. The import above is what makes the registration run.
+  initBulkDelete();
 
   $(MULTI_SELECT_TOGGLE_SELECTOR).offAndOnExact(TOGGLE_CLICK_NAMESPACE, () => {
     if (isMultiSelectActive()) {

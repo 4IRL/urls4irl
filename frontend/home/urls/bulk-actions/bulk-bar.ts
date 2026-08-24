@@ -1,6 +1,8 @@
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { debug } from "../../../lib/debug.js";
+import { makeDebouncer } from "../../../lib/debounce.js";
+import { isMobile } from "../../mobile.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { getState } from "../../../store/app-store.js";
 import { VISIBLE_URL_SELECTOR } from "../utils.js";
@@ -36,7 +38,14 @@ const RANGE_CLEAR_SELECTOR = "#bulkRangeClear";
 const RANGE_STRIP_SELECTOR = "#bulkSelectRangeStrip";
 const MULTI_SELECT_TOGGLE_SELECTOR = "#urlBtnMultiSelect";
 const DECK_SELECTOR = "#URLDeck";
+// The bar's desktop home: the header context row, immediately after the
+// "N selected" count (#bulkSelectContext), where relocateBulkBarForViewport()
+// re-inserts it above 992px. On mobile it moves to the deck bottom instead.
+const HEADER_ANCHOR_SELECTOR = "#bulkSelectContext";
 const HIDDEN_CLASS = "hidden";
+// Matches RESIZE_DEBOUNCE_MS in home/utubs/header-fit.ts — the established window
+// for home-view resize listeners.
+const RESIZE_DEBOUNCE_MS = 150;
 
 const SELECT_ALL_CLICK = "click.bulkSelectAll";
 const CLEAR_CLICK = "click.bulkSelectClear";
@@ -61,7 +70,7 @@ function visibleURLCardIDs(): Set<number> {
 }
 
 /** How many selected ids are not in the visible set (hidden by search/filter). */
-function hiddenSelectedCount(selectedURLCardIDs: number[]): number {
+export function hiddenSelectedCount(selectedURLCardIDs: number[]): number {
   const visible = visibleURLCardIDs();
   return selectedURLCardIDs.filter((id) => !visible.has(id)).length;
 }
@@ -117,6 +126,7 @@ function renderBulkActionButtons(context: BulkActionContext): void {
       .attr("data-bulk-action-id", action.id)
       .addClass("barBtn")
       .text(action.label);
+    if (action.className) button.addClass(action.className);
     if (action.iconHtml) button.prepend(action.iconHtml);
     button.on("click", () => action.onActivate(buildContext()));
     container.append(button);
@@ -149,6 +159,39 @@ function syncRangeButtonStates(): void {
     "aria-disabled",
     selectedCount === 0 ? "true" : "false",
   );
+}
+
+/**
+ * Place #bulkActionBar in the DOM slot that matches the current viewport so its
+ * per-breakpoint chrome + layout are correct:
+ *  - Mobile (<992px): an IN-FLOW bar as the LAST child of #URLDeck — a sibling
+ *    AFTER the scroll container (.flex-column.content). Because that container is
+ *    `flex: 1 1 0; min-height: 0; overflow-y: auto`, it shrinks to the space
+ *    ABOVE the in-flow bar and scrolls internally, so the last URL row is always
+ *    reachable on every engine — no viewport math, no fixed positioning (this
+ *    replaces the old measured padding-bottom reservation, which iOS Safari's
+ *    dynamic viewport defeated, leaving the last rows under the fixed drawer).
+ *  - Desktop (>=992px): back in the header context row, immediately after
+ *    #bulkSelectContext ("N selected"), where CSS renders it as an inline group
+ *    exactly as authored — so a desktop user in mode sees no change.
+ *
+ * The bar's jQuery handlers travel with the node (offAndOnExact + global $(id)
+ * lookups), so moving it is safe. Idempotent: re-inserting an already-correct
+ * node is a no-op reorder. Guards for element existence so a partial DOM (tests,
+ * early init) never throws.
+ */
+function relocateBulkBarForViewport(): void {
+  const bar = $(BAR_SELECTOR);
+  if (bar.length === 0) return;
+  if (isMobile()) {
+    const deck = $(DECK_SELECTOR);
+    if (deck.length === 0) return;
+    bar.appendTo(deck);
+  } else {
+    const anchor = $(HEADER_ANCHOR_SELECTOR);
+    if (anchor.length === 0) return;
+    bar.insertAfter(anchor);
+  }
 }
 
 /** Repaint the bar (count, hidden hint, SR announcement, Clear state, actions). */
@@ -205,6 +248,10 @@ function updateBar(selectedURLCardIDs: number[]): void {
 function toggleBar(active: boolean): void {
   const bar = $(BAR_SELECTOR);
   if (active) {
+    // Put the bar in the correct DOM slot for the viewport BEFORE revealing it:
+    // an in-flow deck-bottom bar on mobile (so the last URL row is always
+    // reachable), or the header context row on desktop.
+    relocateBulkBarForViewport();
     bar.removeClass(HIDDEN_CLASS);
     updateBar(getState().selectedURLCardIDs);
     // Exit (the header's primary in-mode control) is the intentional initial
@@ -264,6 +311,16 @@ export function initBulkBar(): void {
 
   if (_barSubscriptionsRegistered) return;
   _barSubscriptionsRegistered = true;
+
+  // A viewport resize (rotation, breakpoint crossing, on-screen keyboard) can
+  // move the bar across the 992px breakpoint, so re-slot it — debounced to the
+  // shared home-view resize window. relocateBulkBarForViewport is idempotent
+  // (a no-op reorder when the slot is already correct) and cheap, so running it
+  // outside multi-select mode (bar hidden) is harmless.
+  window.addEventListener(
+    "resize",
+    makeDebouncer(relocateBulkBarForViewport, RESIZE_DEBOUNCE_MS),
+  );
 
   on(AppEvents.URL_MULTISELECT_CHANGED, ({ selectedURLCardIDs }) => {
     log("bulk-bar selection changed", { selectedURLCardIDs });

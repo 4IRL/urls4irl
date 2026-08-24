@@ -374,6 +374,16 @@ class _DimUrlsCopiedToUtub(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimUrlsDeletedFromUtub(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Both closed sets source the same `BULK_TAG_URL_BUCKETS` constant fed to the
+    # registry, so the audit set-compare between these Literals and the registry
+    # tuples can never drift.
+    url_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
+    skipped_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimCrossUtubSearchPerformed(BaseModel):
     model_config = ConfigDict(extra="forbid")
     has_results: Literal["true", "false"]
@@ -479,6 +489,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.URL_TITLE_UPDATED: _DimDeviceOnly,
     EventName.URL_TRACKING_PARAMS_STRIPPED: _DimUrlTrackingParamsStripped,
     EventName.URLS_COPIED_TO_UTUB: _DimUrlsCopiedToUtub,
+    EventName.URLS_DELETED_FROM_UTUB: _DimUrlsDeletedFromUtub,
     EventName.UTUB_CREATED: _DimDeviceOnly,
     EventName.UTUB_DELETED: _DimDeviceOnly,
     EventName.UTUB_DESC_UPDATED: _DimDeviceOnly,

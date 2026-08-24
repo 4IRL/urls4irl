@@ -108,6 +108,26 @@ export function updateVisibleURLsForTagCount(): void {
   }
 }
 
+// Write only the authoritative UTub-wide total (the right-hand/denominator digit
+// of the `X / Y` count on a tag-filter chip) directly from server data, leaving
+// the visible/numerator half untouched (it is recomputed in a single later pass
+// by updateVisibleURLsForTagCount). Guards on the `X / Y` split so a malformed or
+// missing chip label is left as-is. Shared by bulk-tag and bulk-delete.
+export function writeTagChipDenominator({
+  tagId,
+  count,
+}: {
+  tagId: number | string;
+  count: number;
+}): void {
+  const tagCountElem = $(
+    `.tagFilter[data-utub-tag-id="${tagId}"] .tagAppliedToUrlsCount`,
+  );
+  const tagCountText = tagCountElem.text().split(" / ");
+  if (tagCountText.length !== 2) return;
+  tagCountElem.text(`${tagCountText[0]} / ${count}`);
+}
+
 export function updateTagFilterCount(
   utubTagID: number,
   tagCount: number,
