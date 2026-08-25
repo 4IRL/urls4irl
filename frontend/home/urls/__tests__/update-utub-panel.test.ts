@@ -93,6 +93,7 @@ vi.mock("../cards/selection.js", () => ({
 
 vi.mock("../bulk-actions/bulk-mode.js", () => ({
   isMultiSelectActive: vi.fn(() => false),
+  refreshMultiSelectToggleVisibility: vi.fn(),
 }));
 
 vi.mock("../../visibility.js", () => ({

@@ -1,6 +1,7 @@
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   setupUpdateUTubNameEventListeners,
+  updateUTubNameHideInput,
   updateUTubNameShowInput,
 } from "../update-name.js";
 import { getState } from "../../../store/app-store.js";
@@ -114,6 +115,7 @@ const NAME_EDIT_HTML = `
   <button id="URLDeckSubheaderCreateDescription"></button>
   <button id="URLSearchFilterIcon"></button>
   <button id="urlBtnCreate"></button>
+  <button id="urlBtnMultiSelect" class="visible"></button>
   <button id="utubEditPanelToggle" class="hidden"></button>
   <button id="utubEditPanelClose" class="hidden"></button>
   <ul id="listUTubs"><li class="active"><span class="UTubName">Test UTub</span></li></ul>
@@ -560,5 +562,51 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       // No second PATCH — the post-rebind Enter took the unchanged-skip path.
       expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("update-name — #urlBtnMultiSelect toggle gating", () => {
+  // utils.js is unmocked here, so getNumOfURLs() counts real .urlRow nodes; the
+  // fixture's URL count drives the guarded restore on close.
+  beforeEach(() => {
+    document.body.innerHTML = NAME_EDIT_HTML;
+    vi.clearAllMocks();
+    vi.mocked(getState).mockReturnValue({
+      isCurrentUserOwner: true,
+    } as ReturnType<typeof getState>);
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    $(window).off();
+    document.body.innerHTML = "";
+  });
+
+  it("hides the multi-select toggle when the name edit form opens", () => {
+    $("#urlBtnMultiSelect").showClassNormal();
+
+    updateUTubNameShowInput(UTUB_ID);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
+  });
+
+  it("restores the toggle on close when the UTub still has URLs", () => {
+    $("#listUTubs").before('<div class="urlRow"></div>');
+    $("#urlBtnMultiSelect").hideClass();
+
+    updateUTubNameHideInput();
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(false);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(true);
+  });
+
+  it("keeps the toggle hidden on close when the UTub has no URLs", () => {
+    $("#urlBtnMultiSelect").hideClass();
+
+    updateUTubNameHideInput();
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
   });
 });

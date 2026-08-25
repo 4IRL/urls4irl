@@ -106,6 +106,7 @@ const DESCRIPTION_EDIT_HTML = `
   <span class="visually-hidden" id="fieldSavedAnnouncement" aria-live="polite"></span>
   <button id="URLSearchFilterIcon"></button>
   <button id="urlBtnCreate"></button>
+  <button id="urlBtnMultiSelect" class="visible"></button>
   <button id="utubEditPanelToggle" class="hidden"></button>
   <button id="utubEditPanelClose" class="hidden"></button>
 `;
@@ -455,5 +456,53 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
         status: 500,
       });
     });
+  });
+});
+
+describe("update-description — #urlBtnMultiSelect toggle gating", () => {
+  // utils.js is unmocked here, so getNumOfURLs() counts real .urlRow nodes; the
+  // fixture's URL count drives the guarded restore on close.
+  beforeEach(() => {
+    document.body.innerHTML = DESCRIPTION_EDIT_HTML;
+    vi.clearAllMocks();
+    vi.mocked(getState).mockReturnValue({
+      isCurrentUserOwner: true,
+    } as ReturnType<typeof getState>);
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    $(window).off();
+    document.body.innerHTML = "";
+  });
+
+  it("hides the multi-select toggle when the description edit form opens", () => {
+    $("#urlBtnMultiSelect").showClassNormal();
+
+    updateUTubDescriptionShowInput(UTUB_ID);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
+  });
+
+  it("restores the toggle on close when the UTub still has URLs", () => {
+    $("#UTubDescriptionSubheaderOuterWrap").before(
+      '<div class="urlRow"></div>',
+    );
+    $("#urlBtnMultiSelect").hideClass();
+
+    updateUTubDescriptionHideInput(UTUB_ID);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(false);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(true);
+  });
+
+  it("keeps the toggle hidden on close when the UTub has no URLs", () => {
+    $("#urlBtnMultiSelect").hideClass();
+
+    updateUTubDescriptionHideInput(UTUB_ID);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
   });
 });

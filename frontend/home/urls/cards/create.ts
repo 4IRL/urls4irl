@@ -17,6 +17,7 @@ import {
   newURLInputAddEventListeners,
 } from "./cards.js";
 import { selectURLCard } from "./selection.js";
+import { refreshMultiSelectToggleVisibility } from "../bulk-actions/bulk-mode.js";
 import { triggerURLSwipeNudgeIfEligible } from "./swipe.js";
 import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
 import {
@@ -109,6 +110,8 @@ export function resetNewURLForm(): void {
   newURLInputRemoveEventListeners();
   resetCreateURLTagCombobox();
   $("#urlBtnCreate").showClassNormal();
+  // Restore the multi-select toggle (guarded on the UTub still having URLs).
+  refreshMultiSelectToggleVisibility();
 }
 
 // Clears the staged-tags backing state (via the combobox's exposed reset
@@ -143,6 +146,7 @@ export function createURLShowInput(utubID: number): void {
   // on form-open (it is a staging-only sub-control of the create form).
   $("#urlTitleCreate").trigger("focus");
   $("#urlBtnCreate").hideClass();
+  $("#urlBtnMultiSelect").hideClass();
   temporarilyHideSearchForEdit();
 }
 

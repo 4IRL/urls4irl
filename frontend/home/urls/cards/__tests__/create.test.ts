@@ -107,6 +107,7 @@ const CREATE_URL_FORM_HTML = `
   <div id="urlStringCreate-error"></div>
   <div id="urlTitleCreate-error"></div>
   <button id="urlBtnCreate"></button>
+  <button id="urlBtnMultiSelect" class="visible"></button>
   <div id="noURLsEmptyState" class="hidden">
     <p id="noURLsSubheader"></p>
     <div id="urlBtnDeckCreateWrap"></div>
@@ -206,6 +207,40 @@ describe("createURL - client-side validation", () => {
       createURLShowInput(1);
 
       expect(hideURLsEmptyState).toHaveBeenCalled();
+    });
+  });
+
+  describe("#urlBtnMultiSelect toggle gating around the create-URL form", () => {
+    it("hides the multi-select toggle when the create form opens", () => {
+      // A form can only be opened from single-select, where a non-empty UTub
+      // shows the toggle.
+      vi.mocked(getNumOfURLs).mockReturnValue(3);
+      $("#urlBtnMultiSelect").showClassNormal();
+
+      createURLShowInput(1);
+
+      expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+      expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
+    });
+
+    it("restores the toggle on close when the UTub still has URLs", () => {
+      vi.mocked(getNumOfURLs).mockReturnValue(3);
+      $("#urlBtnMultiSelect").hideClass();
+
+      createURLHideInput();
+
+      expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(false);
+      expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(true);
+    });
+
+    it("keeps the toggle hidden on close when the UTub has no URLs", () => {
+      vi.mocked(getNumOfURLs).mockReturnValue(0);
+      $("#urlBtnMultiSelect").hideClass();
+
+      createURLHideInput();
+
+      expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+      expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
     });
   });
 

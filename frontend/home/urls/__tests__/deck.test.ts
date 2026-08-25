@@ -14,6 +14,7 @@ import {
 } from "../deck.js";
 import { reapplyURLSearchFilter } from "../search.js";
 import { updateUTubNameHideInput } from "../update-name.js";
+import { getNumOfURLs } from "../utils.js";
 import { showURLsEmptyState } from "../empty-state.js";
 import { exitMultiSelectMode } from "../bulk-actions/bulk-mode.js";
 import {
@@ -464,6 +465,37 @@ describe("#urlBtnMultiSelect visibility (empty-state toggle)", () => {
     resetURLDeckOnDeleteUTub();
 
     expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+  });
+
+  // The shared restore helper the three inline forms call on close. bulk-mode.js
+  // is module-mocked in this suite, so pull the REAL helper via importActual and
+  // drive its only input — getNumOfURLs() — through the existing utils.js mock.
+  describe("refreshMultiSelectToggleVisibility (guarded restore helper)", () => {
+    it("hides the toggle when the UTub has no URLs", async () => {
+      const { refreshMultiSelectToggleVisibility } = await vi.importActual<
+        typeof import("../bulk-actions/bulk-mode.js")
+      >("../bulk-actions/bulk-mode.js");
+      vi.mocked(getNumOfURLs).mockReturnValue(0);
+      $("#urlBtnMultiSelect").showClassNormal();
+
+      refreshMultiSelectToggleVisibility();
+
+      expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+      expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
+    });
+
+    it("shows the toggle when the UTub has URLs", async () => {
+      const { refreshMultiSelectToggleVisibility } = await vi.importActual<
+        typeof import("../bulk-actions/bulk-mode.js")
+      >("../bulk-actions/bulk-mode.js");
+      vi.mocked(getNumOfURLs).mockReturnValue(3);
+      $("#urlBtnMultiSelect").hideClass();
+
+      refreshMultiSelectToggleVisibility();
+
+      expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(false);
+      expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(true);
+    });
   });
 });
 

@@ -15,7 +15,10 @@ import { updateUTubNameHideInput } from "./update-name.js";
 import { showFieldSavedTick } from "./field-saved-tick.js";
 import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
-import { isMultiSelectActive } from "./bulk-actions/bulk-mode.js";
+import {
+  isMultiSelectActive,
+  refreshMultiSelectToggleVisibility,
+} from "./bulk-actions/bulk-mode.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 import {
   FORM_CANCEL_TRIGGER,
@@ -266,6 +269,7 @@ export function updateUTubDescriptionShowInput(utubID: number): void {
   $("#URLDeckSubheaderCreateDescription").addClass("width-0");
   temporarilyHideSearchForEdit();
   $("#urlBtnCreate").hideClass();
+  $("#urlBtnMultiSelect").hideClass();
 
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
 }
@@ -312,6 +316,8 @@ export function updateUTubDescriptionHideInput(
   descEditOpenedViaKeyboard = false;
   showURLSearchIcon();
   $("#urlBtnCreate").showClassNormal();
+  // Restore the multi-select toggle (guarded on the UTub still having URLs).
+  refreshMultiSelectToggleVisibility();
 
   // Reset errors on hiding of inputs
   resetUpdateUTubDescriptionFailErrors();
