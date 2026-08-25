@@ -1,6 +1,7 @@
 import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { filterMembersByName } from "../../logic/member-search.js";
@@ -173,6 +174,15 @@ export function reapplyMemberFilter(): void {
 }
 
 export function openMemberNameFilter(): void {
+  // Reverse mutual exclusion: opening the filter tears down any open add-member
+  // combobox so the two #MemberDeck "search" inputs never co-occupy focus/state.
+  // The forward direction (opening the combobox closes the filter) lives in
+  // showMemberCombobox's closeMemberNameFilter() call; this closes the loop.
+  // Signalled via the event bus rather than a direct import so this filter module
+  // stays decoupled from the (heavy) member-combobox module graph — member-combobox
+  // subscribes to MEMBER_FILTER_OPENED and tears itself down (safe no-op when the
+  // combobox is not open).
+  emitAppEvent(AppEvents.MEMBER_FILTER_OPENED);
   $("#MemberDeck").addClass("member-search-open");
   $("#memberNameFilterBtn").addClass("hidden").attr("aria-expanded", "true");
   $("#memberNameFilterBtnClose").removeClass("hidden");

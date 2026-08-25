@@ -3,6 +3,7 @@ import { debug } from "../../../lib/debug.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { deselectAllURLs } from "../cards/selection.js";
+import { getNumOfURLs } from "../utils.js";
 import { clearURLSelection } from "./bulk-selection.js";
 import { closeAllPickers } from "./picker-guard.js";
 
@@ -35,6 +36,26 @@ let editPanelToggleWasVisible = false;
 /** Whether multi-select mode is currently active (store is the source of truth). */
 export function isMultiSelectActive(): boolean {
   return getState().multiSelectMode;
+}
+
+/**
+ * Restore the multi-select mode toggle to its correct resting visibility.
+ *
+ * The toggle only makes sense when the current UTub actually has URLs to
+ * select, so — mirroring the reveal logic in deck.ts's
+ * setURLDeckOnUTubSelected — show it only when getNumOfURLs() > 0 and hide it
+ * otherwise. This is the guarded counterpart the three inline forms (create
+ * URL, edit UTub name, edit UTub description) call on close, after each hid the
+ * toggle on open beside #urlBtnCreate. No isMultiSelectActive() check is needed:
+ * the `#URLDeck.multiSelectActive #urlBtnMultiSelect` CSS rule keeps it hidden
+ * in-mode, and a form can never be open while in mode.
+ */
+export function refreshMultiSelectToggleVisibility(): void {
+  if (getNumOfURLs() > 0) {
+    $("#urlBtnMultiSelect").showClassNormal();
+  } else {
+    $("#urlBtnMultiSelect").hideClass();
+  }
 }
 
 /**

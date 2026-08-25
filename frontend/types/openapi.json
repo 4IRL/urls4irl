@@ -3433,6 +3433,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "x-error-codes": {
@@ -3494,6 +3504,77 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/utubs/{utub_id}/co-members": {
+      "get": {
+        "operationId": "apiV1GetCoMemberCandidates",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Get co-member add candidates for a UTub (creator only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wrapper list of co-member add candidates for the target UTub.\n\n    A wrapper (never a bare list) because ``APIResponse`` spreads the data dict\n    at the top level via ``**data_dict``.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CoMemberListSchema"
+                    }
+                  ]
                 }
               }
             }
@@ -4190,11 +4271,82 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "x-error-codes": {
           "UTubMembersErrorCodes": {
             "$ref": "#/components/schemas/UTubMembersErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/co-members": {
+      "get": {
+        "operationId": "getCoMemberCandidatesRoute",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "Get co-member add candidates for a UTub (creator only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wrapper list of co-member add candidates for the target UTub.\n\n    A wrapper (never a bare list) because ``APIResponse`` spreads the data dict\n    at the top level via ``**data_dict``.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CoMemberListSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4441,6 +4593,7 @@
                 "login_failure",
                 "login_success",
                 "member_added",
+                "member_add_candidates_loaded",
                 "member_removed",
                 "oauth_identity_linked",
                 "oauth_identity_unlinked",
@@ -4787,6 +4940,7 @@
                 "login_failure",
                 "login_success",
                 "member_added",
+                "member_add_candidates_loaded",
                 "member_removed",
                 "oauth_identity_linked",
                 "oauth_identity_unlinked",
@@ -9089,6 +9243,10 @@
         "required": ["results"],
         "type": "object"
       },
+      "MemberAddSource": {
+        "enum": ["search_result", "exact_username"],
+        "type": "string"
+      },
       "AddMemberRequest": {
         "properties": {
           "username": {
@@ -9096,6 +9254,11 @@
             "maxLength": 20,
             "minLength": 3,
             "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MemberAddSource",
+            "default": "exact_username",
+            "description": "Where the add originated: a co-member typeahead pick (search_result) or the exact-username outsider path (exact_username, the default when omitted)"
           }
         },
         "required": ["username"],
@@ -9153,6 +9316,38 @@
           "UTUB_IS_LOCKED"
         ],
         "description": "Error codes for UTubMembersErrorCodes"
+      },
+      "CoMemberSchema": {
+        "description": "A co-member add candidate: a user who shares >=1 other UTub with the\nrequester and is not already a member of the target UTub.",
+        "properties": {
+          "id": {
+            "description": "Unique user ID",
+            "type": "integer"
+          },
+          "username": {
+            "description": "Username of the user",
+            "type": "string"
+          },
+          "sharedUtubCount": {
+            "description": "Number of the requester's UTubs this candidate also belongs to",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "username", "sharedUtubCount"],
+        "type": "object"
+      },
+      "CoMemberListSchema": {
+        "description": "Wrapper list of co-member add candidates for the target UTub.\n\nA wrapper (never a bare list) because ``APIResponse`` spreads the data dict\nat the top level via ``**data_dict``.",
+        "properties": {
+          "members": {
+            "description": "Co-member add candidates for the target UTub",
+            "items": {
+              "$ref": "#/components/schemas/CoMemberSchema"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
       },
       "CreateUTubRequest": {
         "properties": {

@@ -100,6 +100,30 @@ MEMBER_SEARCH_NO_RESULTS = "No members found"
 MEMBER_SEARCH_PLACEHOLDER = "Filter members"
 MEMBER_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} members shown"
 
+# Add-member combobox (member-combobox.ts). Distinct from the MEMBER_SEARCH_*
+# strings above, which belong to the client-side member-list FILTER, not this
+# add-member typeahead.
+MEMBER_ADD_LABEL = "Add member"
+MEMBER_ADD_PLACEHOLDER = "Add a member by username"
+MEMBER_ADD_SUBMIT = "Add"
+MEMBER_ADD_LOADING_HINT = "Loading matches…"
+MEMBER_ADD_NO_COMEMBERS_HINT = "No shared members yet — type a username to add"
+MEMBER_ADD_ALREADY_MEMBER_HINT = '"{{ username }}" is already a member'
+MEMBER_ADD_OUTSIDER_LABEL = 'Add "{{ username }}" by username'
+MEMBER_ADD_SHARES_COUNT_ONE = "shares 1 UTub"
+MEMBER_ADD_SHARES_COUNT = "shares {n} UTubs"
+# "Add N" batch-submit label (Step 6). MEMBER_ADD_SUBMIT ("Add") is the disabled
+# zero-staged base; this carries the staged count once ≥1 chip is staged.
+MEMBER_ADD_SUBMIT_COUNT = "Add {n}"
+# Batched aria-live count summary (Step 6): a brief count recap announced once
+# after the whole batch settles (e.g. "3 members added, 2 members couldn't be
+# added"). Per-chip ✓/✗ markers carry the specifics; 429-skipped chips are
+# excluded from the counts. Singular/plural pair mirrors TAGS_MATCH_COUNT(_ONE).
+MEMBER_ADD_SUMMARY_ADDED_ONE = "1 member added"
+MEMBER_ADD_SUMMARY_ADDED = "{{ count }} members added"
+MEMBER_ADD_SUMMARY_FAILED_ONE = "1 member couldn't be added"
+MEMBER_ADD_SUMMARY_FAILED = "{{ count }} members couldn't be added"
+
 
 class MEMBER_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     MEMBER_REMOVED = MEMBER_REMOVED
@@ -120,6 +144,10 @@ INVALID_PERMISSION_TO_ADD = "Not allowed to add a member to this UTub."
 MEMBER_NOT_IN_UTUB = "Member does not exist or not found in this UTub."
 MEMBER_ALREADY_IN_UTUB = "Member already in UTub."
 UNABLE_TO_ADD_MEMBER = "Unable to add that member to this UTub."
+# Per-user per-day add-member cap copy. Fail-open anti-abuse counter that bounds
+# username-oracle probing; not a security boundary. Mirrors
+# USERNAME_CHANGE_RATE_LIMITED.
+MEMBER_ADD_RATE_LIMITED = "You've added too many members today. Please try again later."
 EMAIL_TAKEN = "That email address is already in use."
 USERNAME_TAKEN = "That username is already taken. Please choose another."
 USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
@@ -219,3 +247,4 @@ class MEMBER_FAILURE(FAILURE_GENERAL):
     MEMBER_NOT_IN_UTUB = MEMBER_NOT_IN_UTUB
     MEMBER_ALREADY_IN_UTUB = MEMBER_ALREADY_IN_UTUB
     UNABLE_TO_ADD_MEMBER = UNABLE_TO_ADD_MEMBER
+    MEMBER_ADD_RATE_LIMITED = MEMBER_ADD_RATE_LIMITED

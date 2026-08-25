@@ -80,6 +80,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.TAG_DELETED: Resource.TAG,
     EventName.UTUB_TAG_CREATED: Resource.TAG,
     EventName.MEMBER_ADDED: Resource.MEMBER,
+    EventName.MEMBER_ADD_CANDIDATES_LOADED: Resource.MEMBER,
     EventName.MEMBER_REMOVED: Resource.MEMBER,
     EventName.EMAIL_VERIFIED: Resource.AUTH,
     EventName.LOGIN_FAILURE: Resource.AUTH,

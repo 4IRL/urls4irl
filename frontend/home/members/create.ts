@@ -1,42 +1,24 @@
-import type {
-  AddMemberRequest,
-  MemberModifiedResponse,
-} from "../../types/member.js";
-
-import { $, getInputValue } from "../../lib/globals.js";
-import { APP_CONFIG } from "../../lib/config.js";
+import { $ } from "../../lib/globals.js";
 import { KEYS } from "../../lib/constants.js";
-import { debug } from "../../lib/debug.js";
-import { ajaxCall, is429Handled } from "../../lib/ajax.js";
-import { emit } from "../../lib/metrics-client.js";
-import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
-import { UI_EVENTS } from "../../types/metrics-events.js";
-import { createMemberBadge } from "./members.js";
-import { setMemberDeckForUTub } from "./deck.js";
-import { reapplyMemberFilter, closeMemberNameFilter } from "./search.js";
-import { getState, setState } from "../../store/app-store.js";
 import {
-  FORM_CANCEL_TRIGGER,
-  FORM_SUBMIT_TRIGGER,
-  HOME_FORM,
-} from "../../types/metrics-dim-values.js";
+  hideAndResetMemberCombobox,
+  showMemberCombobox,
+} from "./member-combobox.js";
 
-const MEMBER_FIELD_NAMES = ["username"] as const;
-
-type MemberFieldName = (typeof MEMBER_FIELD_NAMES)[number];
-
-function isMemberFieldName(key: string): key is MemberFieldName {
-  return (MEMBER_FIELD_NAMES as readonly string[]).includes(key);
-}
-
-const log = debug("members");
+// Thin shell over the add-member combobox (member-combobox.ts). This module
+// keeps only the two exported entry points other modules depend on —
+// setupShowCreateMemberFormEventListeners (deck.ts) and createMemberHideInput
+// (btns-forms.ts) — plus the module-private opener; all the input/listbox/chips/
+// submit logic now lives in the combobox component. The single-input add form
+// (13 superseded functions) was removed when the combobox replaced it.
 
 export function setupShowCreateMemberFormEventListeners(utubID: number): void {
-  /* Bind click functions */
   const memberBtnCreate = $("#memberBtnCreate");
 
-  // Add member to UTub
-  memberBtnCreate.offAndOn("click.createMember", function () {
+  // Full off("click") clears any leftover reopen handler that
+  // hideAndResetMemberCombobox may have bound (offAndOnExact), so a re-bind on
+  // UTub select never double-opens the combobox.
+  memberBtnCreate.off("click").on("click.createMember", function () {
     createMemberShowInput(utubID);
   });
 
@@ -54,242 +36,13 @@ export function setupShowCreateMemberFormEventListeners(utubID: number): void {
   });
 }
 
-function setupCreateMemberEventListeners(utubID: number): void {
-  const memberSubmitBtnCreate = $("#memberSubmitBtnCreate");
-  const memberCancelBtnCreate = $("#memberCancelBtnCreate");
-
-  memberSubmitBtnCreate.offAndOnExact("click.createMemberSubmit", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: HOME_FORM.MEMBER_INVITE,
-      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
-    });
-    clearOpenForm();
-    createMember(utubID);
-  });
-
-  memberCancelBtnCreate.offAndOnExact("click.createMemberEscape", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_CANCEL,
-      form: HOME_FORM.MEMBER_INVITE,
-      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
-    });
-    clearOpenForm();
-    createMemberHideInput();
-  });
-
-  const memberInput = $("#memberCreate");
-  memberInput.on("focus.createMemberSubmitEscape", function () {
-    bindCreateMemberFocusEventListeners(utubID, memberInput);
-  });
-  memberInput.on("blur.createMemberSubmitSubmitEscape", function () {
-    unbindCreateMemberFocusEventListeners();
-  });
-}
-
-function removeCreateMemberEventListeners(): void {
-  $("#memberCreate").off(".createMemberSubmitEscape");
-}
-
-function bindCreateMemberFocusEventListeners(
-  utubID: number,
-  memberInput: JQuery,
-): void {
-  // Allow closing by pressing escape key
-  memberInput.on(
-    "keydown.createMemberSubmitEscape",
-    function (event: JQuery.TriggeredEvent) {
-      if ((event.originalEvent as KeyboardEvent).repeat) return;
-      switch (event.key) {
-        case KEYS.ENTER:
-          // Handle enter key pressed
-          emit({
-            event: UI_EVENTS.UI_FORM_SUBMIT,
-            form: HOME_FORM.MEMBER_INVITE,
-            trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
-          });
-          clearOpenForm();
-          createMember(utubID);
-          break;
-        case KEYS.ESCAPE:
-          // Handle escape  key pressed
-          emit({
-            event: UI_EVENTS.UI_FORM_CANCEL,
-            form: HOME_FORM.MEMBER_INVITE,
-            trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
-          });
-          clearOpenForm();
-          createMemberHideInput();
-          break;
-        default:
-        /* no-op */
-      }
-    },
-  );
-}
-
-function unbindCreateMemberFocusEventListeners(): void {
-  $("#memberCreate").off(".createMemberSubmitEscape");
-}
-
-// Clear member creation
-function resetNewMemberForm(): void {
-  $("#memberCreate").val("");
-}
-
-// Shows new Member input fields
+// Shows the add-member combobox (delegates entirely to member-combobox.ts).
 function createMemberShowInput(utubID: number): void {
-  closeMemberNameFilter();
-  emit({ event: UI_EVENTS.UI_MEMBER_INVITE_OPEN });
-  setOpenForm(HOME_FORM.MEMBER_INVITE);
-  $("#createMemberWrap").showClassFlex();
-  $("#displayMemberWrap").hideClass();
-  $("#memberBtnCreate").hideClass();
-  setupCreateMemberEventListeners(utubID);
-  $("#memberCreate").trigger("focus");
+  showMemberCombobox(utubID);
 }
 
-// Hides new Member input fields
+// Hides + resets the add-member combobox (delegates entirely to
+// member-combobox.ts). Preserved for btns-forms.ts's hideInputs() cleanup path.
 export function createMemberHideInput(): void {
-  $("#createMemberWrap").hideClass();
-  // Only restore the member display + a role-appropriate control when a UTub is
-  // actually selected. Without this guard, the post-leave/delete cleanup path
-  // (hideInputs) would re-show the leave/add button after the deck was reset.
-  if (getState().activeUTubID !== null) {
-    $("#displayMemberWrap").showClassFlex();
-    // Only the UTub owner may add members — restore the add-member button for an
-    // owner. The leave action lives in the UTub deck and is not managed here.
-    if (getState().isCurrentUserOwner) {
-      $("#memberBtnCreate").showClassNormal();
-    } else {
-      $("#memberBtnCreate").hideClass();
-    }
-  }
-  removeCreateMemberEventListeners();
-  resetCreateMemberFailErrors();
-  resetNewMemberForm();
-}
-
-// This function will extract the current selection data needed for POST request (member ID)
-function createMemberSetup(utubID: number): [string, AddMemberRequest] {
-  const postURL = APP_CONFIG.routes.createMember(utubID);
-
-  const username = getInputValue("#memberCreate");
-  const data: AddMemberRequest = { username };
-
-  return [postURL, data];
-}
-
-function createMember(utubID: number): void {
-  // Extract data to submit in POST request
-  const [postURL, data] = createMemberSetup(utubID);
-  resetCreateMemberFailErrors();
-
-  const request = ajaxCall("post", postURL, data);
-
-  // Handle response
-  request.done(function (
-    response: MemberModifiedResponse,
-    _textStatus: JQuery.Ajax.SuccessTextStatus,
-    xhr: JQuery.jqXHR,
-  ) {
-    if (xhr.status === 200) {
-      createMemberSuccess(response, utubID);
-    }
-  });
-
-  request.fail(function (xhr: JQuery.jqXHR) {
-    createMemberFail(xhr);
-  });
-}
-
-// Perhaps update a scrollable/searchable list of members?
-function createMemberSuccess(
-  response: MemberModifiedResponse,
-  utubID: number,
-): void {
-  resetNewMemberForm();
-
-  log("createMember success — appending badge", {
-    memberID: response.member.id,
-    totalMembers: getState().members.length + 1,
-  });
-
-  setState({ members: [...getState().members, response.member] });
-
-  // Create and append newly created Member badge - only creators can add members
-  $("#listMembers").append(
-    createMemberBadge(
-      response.member.id,
-      response.member.username,
-      true,
-      utubID,
-    ),
-  );
-
-  createMemberHideInput();
-  setMemberDeckForUTub(true);
-  reapplyMemberFilter();
-}
-
-function createMemberFail(xhr: JQuery.jqXHR): void {
-  if (is429Handled(xhr)) return;
-
-  log("createMember failed", { status: xhr.status });
-
-  if (!("responseJSON" in xhr)) {
-    if (
-      xhr.status === 403 &&
-      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
-    ) {
-      $("body").html(xhr.responseText);
-      return;
-    }
-    window.location.assign(APP_CONFIG.routes.errorPage);
-    return;
-  }
-
-  switch (xhr.status) {
-    case 400: {
-      const responseJSON = xhr.responseJSON;
-      if (responseJSON.errors) {
-        // Show form errors
-        createMemberFailErrors(responseJSON.errors);
-        break;
-      } else if (responseJSON.message) {
-        // Show message
-        displayCreateMemberFailErrors(responseJSON.message);
-        break;
-      }
-      // Intentional fall-through: an unexpected 400 body shape (neither
-      // `errors` nor `message`) is treated as an unrecoverable error and
-      // falls through to the default error-page redirect below.
-    }
-    case 403:
-    case 404:
-    default:
-      window.location.assign(APP_CONFIG.routes.errorPage);
-  }
-}
-
-function createMemberFailErrors(errors: Record<string, string[]>): void {
-  for (const key in errors) {
-    if (!isMemberFieldName(key)) continue;
-    const errorMessage = errors[key][0];
-    displayCreateMemberFailErrors(errorMessage);
-    return;
-  }
-}
-
-function displayCreateMemberFailErrors(errorMessage: string): void {
-  $("#memberCreate-error").addClass("visible").text(errorMessage);
-  $("#memberCreate").addClass("invalid-field");
-}
-
-function resetCreateMemberFailErrors(): void {
-  const createMemberFields = ["member"];
-  createMemberFields.forEach((fieldName) => {
-    $("#" + fieldName + "Create-error").removeClass("visible");
-    $("#" + fieldName + "Create").removeClass("invalid-field");
-  });
+  hideAndResetMemberCombobox();
 }

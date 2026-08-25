@@ -1,7 +1,8 @@
+import os
 import re
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend import db
@@ -9,11 +10,17 @@ from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.db_utils import (
+    get_other_member_in_utub,
+    get_utub_this_user_created,
+)
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import (
-    create_member_active_utub,
+    click_add_member_submit,
+    close_add_member_combobox,
+    open_add_member_combobox,
     open_member_name_filter,
+    stage_outsider_username,
 )
 from tests.functional.playwright_assert_utils import (
     assert_not_visible_css_selector,
@@ -28,7 +35,9 @@ from tests.functional.playwright_utils import (
     Decks,
     click_on_navbar,
     wait_for_class_to_be_removed,
+    wait_for_modal_ready,
     wait_then_click_element,
+    wait_then_get_element,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
@@ -179,6 +188,114 @@ def test_member_filter_togglable_on_mobile(
     assert_visible_css_selector(
         page=page_mobile_portrait, css_selector=HPL.MEMBER_SEARCH_INPUT
     )
+
+
+def test_owner_sees_member_remove_button_on_touch_viewport(
+    page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN the UTub owner is on a coarse-pointer / touch mobile viewport (no hover)
+    WHEN the member deck renders for a UTub that has other members
+    THEN each non-owner member row's remove button (.memberOtherBtnDelete) has a
+         computed ``opacity`` of ``1`` and is a >=44px touch target, and tapping
+         it opens the shared confirm modal, which is dismissed with "Keep member"
+         WITHOUT removing the member (seeded state stays intact).
+
+    Regression guard for the touch-visibility fix: pre-fix the remove button was
+    ``opacity: 0`` and only revealed by ``.member:hover`` inside the fine-pointer
+    ``@media not all and (any-pointer: coarse)`` block (or ``:focus``). On a touch
+    device (coarse pointer, no hover) the owner could never see or tap it. The fix
+    adds a rule inside the ``@media (any-pointer: coarse)`` block that forces
+    ``opacity: 1`` plus a 44px min touch target.
+
+    NOTE ON THE GUARD: Playwright's ``to_be_visible()`` does NOT treat
+    ``opacity: 0`` as hidden (only ``display:none`` / ``visibility:hidden`` / a
+    zero-size box count as not-visible), so ``to_be_visible()`` alone would still
+    pass under the old CSS. The real regression guard here is the computed-style
+    assertion below: ``opacity == "1"`` reads ``"0"`` under the pre-fix cascade
+    and fails, and the pre-fix button also lacked the 44px min touch target. The
+    other delete-member tests run at a desktop/fine-pointer viewport, where the
+    fine-pointer hover rule applies, so they never exercised the coarse-pointer
+    cascade and missed this bug.
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app,
+        page=page_mobile_portrait,
+        user_id=user_id,
+        utub_id=utub_user_created.id,
+    )
+
+    # On mobile the member deck is a separate panel; navigate to it via the navbar.
+    click_on_navbar(page=page_mobile_portrait)
+    wait_then_click_element(
+        page=page_mobile_portrait, css_selector=HPL.NAVBAR_MEMBER_DECK
+    )
+    wait_for_class_to_be_removed(
+        page=page_mobile_portrait,
+        css_selector=HPL.NAVBAR_DROPDOWN,
+        class_name="collapsing",
+    )
+    assert_panel_visibility_mobile(
+        page=page_mobile_portrait, visible_deck=Decks.MEMBERS
+    )
+    wait_until_visible_css_selector(
+        page=page_mobile_portrait, css_selector=HPL.BADGES_MEMBERS
+    )
+
+    # Locate the non-owner member's row and its per-row remove button.
+    other_badge = page_mobile_portrait.locator(_member_badge_selector(other_member.id))
+    expect(other_badge).to_be_visible()
+    remove_btn = other_badge.locator(HPL.BUTTON_MEMBER_DELETE)
+
+    # The element is present/laid-out (a precondition for the computed-style read
+    # below). Note: this passes even under the pre-fix opacity:0 — Playwright does
+    # not treat opacity:0 as hidden — so it is a precondition, not the guard.
+    expect(remove_btn).to_be_visible()
+
+    # THE regression guard: in the coarse-pointer context the fix forces
+    # opacity:1 and a >=44px touch target (WCAG 2.5.5). The pre-fix cascade leaves
+    # opacity:0 with no min touch target, so these assertions fail without the fix.
+    button_metrics = remove_btn.evaluate(
+        "el => {"
+        "  const rect = el.getBoundingClientRect();"
+        "  return {"
+        "    opacity: getComputedStyle(el).opacity,"
+        "    height: rect.height,"
+        "    width: rect.width,"
+        "  };"
+        "}"
+    )
+    assert button_metrics["opacity"] == "1"
+    assert button_metrics["height"] >= 44
+    assert button_metrics["width"] >= 44
+
+    # Optional doc-screenshot capture (env-gated so normal CI runs skip the write).
+    screenshot_path = os.environ.get("U4I_MEMBER_REMOVE_SCREENSHOT")
+    if screenshot_path:
+        page_mobile_portrait.screenshot(path=screenshot_path)
+
+    # Tap (touch, not hover+click) opens the shared destructive-confirm modal.
+    remove_btn.tap()
+    warning_modal = wait_then_get_element(
+        page=page_mobile_portrait, css_selector=HPL.HOME_MODAL
+    )
+    expect(warning_modal).to_be_visible()
+
+    # Dismiss with "Keep member" WITHOUT confirming removal so the seeded member
+    # list is left untouched.
+    wait_for_modal_ready(page=page_mobile_portrait, modal_selector=HPL.HOME_MODAL)
+    wait_then_click_element(
+        page=page_mobile_portrait, css_selector=HPL.BUTTON_MODAL_DISMISS
+    )
+    wait_until_hidden(page=page_mobile_portrait, css_selector=HPL.HOME_MODAL)
+
+    # The member row is still present — no removal occurred.
+    expect(other_badge).to_be_visible()
 
 
 def test_typing_substring_hides_non_matching_members_and_clearing_shows_all(
@@ -493,11 +610,19 @@ def test_member_filter_reapplied_after_successful_add(
     assert_not_visible_css_selector(page=page, css_selector=owner_selector)
     assert_visible_css_selector(page=page, css_selector=seeded_selector)
 
-    # Add a brand-new member (opening the form collapses the filter and clears the
-    # term; on success reapplyMemberFilter runs against the empty term).
-    create_member_active_utub(page=page, member_name=new_member_username)
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MEMBER_SUBMIT_CREATE)
-    wait_until_hidden(page=page, css_selector=HPL.BUTTON_MEMBER_SUBMIT_CREATE)
+    # Add a brand-new member (opening the combobox collapses the filter and
+    # clears the term; on success reapplyMemberFilter runs against the empty
+    # term). The new member shares no other UTub with the owner, so it stages via
+    # the exact-username outsider row.
+    open_add_member_combobox(page=page)
+    stage_outsider_username(page=page, username=new_member_username)
+    click_add_member_submit(page=page)
+
+    # The stay-open combobox hides #displayMemberWrap; wait for the new badge to
+    # attach (add settled + reapplyMemberFilter ran), then close the combobox to
+    # reveal the deck and assert the reapplied (cleared-term) filter state.
+    expect(page.locator(new_member_selector)).to_be_attached()
+    close_add_member_combobox(page=page)
 
     # After the add: reapplyMemberFilter re-evaluated every row against the cleared
     # term, so the previously hidden owner is visible again and the newly appended

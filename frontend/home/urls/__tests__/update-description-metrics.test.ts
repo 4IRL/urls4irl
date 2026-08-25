@@ -99,13 +99,14 @@ const DESCRIPTION_EDIT_HTML = `
     <button id="utubDescriptionSubmitBtnUpdate"></button>
     <button id="utubDescriptionCancelBtnUpdate"></button>
     <div class="field-saved-tick-slot">
-      <span class="field-saved-tick opa-0" id="utubDescriptionSavedTick" aria-hidden="true">Saved <i class="bi bi-check"></i></span>
+      <span class="field-saved-tick opa-0" id="utubDescriptionSavedTick" aria-hidden="true">Saved <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg></span>
     </div>
     <span id="URLDeckNoDescription" class="hidden"></span>
   </div>
   <span class="visually-hidden" id="fieldSavedAnnouncement" aria-live="polite"></span>
   <button id="URLSearchFilterIcon"></button>
   <button id="urlBtnCreate"></button>
+  <button id="urlBtnMultiSelect" class="visible"></button>
   <button id="utubEditPanelToggle" class="hidden"></button>
   <button id="utubEditPanelClose" class="hidden"></button>
 `;
@@ -455,5 +456,53 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
         status: 500,
       });
     });
+  });
+});
+
+describe("update-description — #urlBtnMultiSelect toggle gating", () => {
+  // utils.js is unmocked here, so getNumOfURLs() counts real .urlRow nodes; the
+  // fixture's URL count drives the guarded restore on close.
+  beforeEach(() => {
+    document.body.innerHTML = DESCRIPTION_EDIT_HTML;
+    vi.clearAllMocks();
+    vi.mocked(getState).mockReturnValue({
+      isCurrentUserOwner: true,
+    } as ReturnType<typeof getState>);
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    $(window).off();
+    document.body.innerHTML = "";
+  });
+
+  it("hides the multi-select toggle when the description edit form opens", () => {
+    $("#urlBtnMultiSelect").showClassNormal();
+
+    updateUTubDescriptionShowInput(UTUB_ID);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
+  });
+
+  it("restores the toggle on close when the UTub still has URLs", () => {
+    $("#UTubDescriptionSubheaderOuterWrap").before(
+      '<div class="urlRow"></div>',
+    );
+    $("#urlBtnMultiSelect").hideClass();
+
+    updateUTubDescriptionHideInput(UTUB_ID);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(false);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(true);
+  });
+
+  it("keeps the toggle hidden on close when the UTub has no URLs", () => {
+    $("#urlBtnMultiSelect").hideClass();
+
+    updateUTubDescriptionHideInput(UTUB_ID);
+
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
+    expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
   });
 });

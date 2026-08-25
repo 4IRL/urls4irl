@@ -669,6 +669,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/utubs/{utub_id}/co-members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Get co-member add candidates for a UTub (creator only) */
+    get: operations["apiV1GetCoMemberCandidates"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/utubs": {
     parameters: {
       query?: never;
@@ -784,6 +801,23 @@ export interface paths {
     put?: never;
     /** @description Add a member to a UTub */
     post: operations["createMember"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/utubs/{utub_id}/co-members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Get co-member add candidates for a UTub (creator only) */
+    get: operations["getCoMemberCandidatesRoute"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1928,9 +1962,16 @@ export interface components {
       /** @description Groups ranked best-first; one group per source UTub with ≥1 matching URL */
       results: components["schemas"]["SearchUtubGroupSchema"][];
     };
+    /** @enum {string} */
+    MemberAddSource: "search_result" | "exact_username";
     AddMemberRequest: {
       /** @description Username of the member to add */
       username: string;
+      /**
+       * @description Where the add originated: a co-member typeahead pick (search_result) or the exact-username outsider path (exact_username, the default when omitted)
+       * @default exact_username
+       */
+      source: components["schemas"]["MemberAddSource"];
     };
     UserSchema: {
       /** @description Unique user ID */
@@ -1952,6 +1993,28 @@ export interface components {
      * @enum {integer}
      */
     UTubMembersErrorCodes: 1 | 2 | 3;
+    /**
+     * @description A co-member add candidate: a user who shares >=1 other UTub with the
+     *     requester and is not already a member of the target UTub.
+     */
+    CoMemberSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Number of the requester's UTubs this candidate also belongs to */
+      sharedUtubCount: number;
+    };
+    /**
+     * @description Wrapper list of co-member add candidates for the target UTub.
+     *
+     *     A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
+     *     at the top level via ``**data_dict``.
+     */
+    CoMemberListSchema: {
+      /** @description Co-member add candidates for the target UTub */
+      members?: components["schemas"]["CoMemberSchema"][];
+    };
     CreateUTubRequest: {
       /** @description Name of the UTub to create */
       utubName: string;
@@ -5666,6 +5729,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse"];
         };
       };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
     };
   };
   apiV1RemoveMember: {
@@ -5697,6 +5769,61 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1GetCoMemberCandidates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Wrapper list of co-member add candidates for the target UTub.
+       *
+       *         A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
+       *         at the top level via ``**data_dict``.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["CoMemberListSchema"];
         };
       };
       /** @description Unauthorized */
@@ -6181,6 +6308,61 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse"];
         };
       };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getCoMemberCandidatesRoute: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Wrapper list of co-member add candidates for the target UTub.
+       *
+       *         A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
+       *         at the top level via ``**data_dict``.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["CoMemberListSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
     };
   };
   ingest: {
@@ -6318,6 +6500,7 @@ export interface operations {
           | "login_failure"
           | "login_success"
           | "member_added"
+          | "member_add_candidates_loaded"
           | "member_removed"
           | "oauth_identity_linked"
           | "oauth_identity_unlinked"
@@ -6548,6 +6731,7 @@ export interface operations {
           | "login_failure"
           | "login_success"
           | "member_added"
+          | "member_add_candidates_loaded"
           | "member_removed"
           | "oauth_identity_linked"
           | "oauth_identity_unlinked"

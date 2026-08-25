@@ -23,6 +23,21 @@ from tests.integration.system.metrics_helpers import DOMAIN_EVENTS_TESTED_ELSEWH
 pytestmark = pytest.mark.cli
 
 
+# Every DOMAIN counter may carry `device_type` (a coarse, non-PII signal
+# auto-injected from request context). A handful of events additionally carry a
+# low-cardinality, closed-set match-type/outcome label that is deliberately NOT
+# PII — it never contains a username, id, or free-form string. This per-event
+# allow-list sanctions exactly those known-safe extra dims; every other DOMAIN
+# event is still held to `device_type` only, keeping the PII guard meaningful.
+_BASE_ALLOWED_DOMAIN_DIMS: frozenset[str] = frozenset({"device_type"})
+_SANCTIONED_CLOSED_SET_DOMAIN_DIMS: dict[EventName, frozenset[str]] = {
+    # `source` is a closed-set match-type label ('search_result'/'exact_username'),
+    # not the added member's username or id.
+    EventName.MEMBER_ADDED: _BASE_ALLOWED_DOMAIN_DIMS
+    | {"source"},
+}
+
+
 class _NoPiiSeedState(NamedTuple):
     extra_user_id: int
     seeded_utub_id: int
@@ -258,11 +273,16 @@ def test_domain_events_emit_no_pii_dimensions(
         parts = decoded.split(":", 4)
         event_value = parts[3]
         dims = json.loads(parts[4])
-        if EVENT_CATEGORY.get(EventName(event_value)) is not EventCategory.DOMAIN:
+        event_name = EventName(event_value)
+        if EVENT_CATEGORY.get(event_name) is not EventCategory.DOMAIN:
             continue
-        assert set(dims.keys()) <= {
-            "device_type"
-        }, f"DOMAIN counter leaked PII dims: key={decoded}, dims={dims}"
+        allowed_dims = _SANCTIONED_CLOSED_SET_DOMAIN_DIMS.get(
+            event_name, _BASE_ALLOWED_DOMAIN_DIMS
+        )
+        assert set(dims.keys()) <= allowed_dims, (
+            f"DOMAIN counter leaked PII dims: key={decoded}, dims={dims}, "
+            f"allowed={set(allowed_dims)}"
+        )
         observed_event_values.add(event_value)
 
     expected_event_values = {event.value for event in expected_domain_events}

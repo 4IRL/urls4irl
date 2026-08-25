@@ -19,6 +19,12 @@
     --memberRoleIconColor: rgba(154, 234, 174, 1.0);
     /* Warm amber padlock — reads as "locked" against the green role icons. */
     --utubLockedIconColor: rgba(240, 193, 90, 1.0);
+    /* Member add-combobox "outsider" fallback row: a warm amber (shares the
+       padlock amber above) signalling "this person is not in your circle —
+       exact username required". The tint is the low-alpha wash behind the row,
+       parallel to the green create-new's rgba(96,218,170,0.12). */
+    --memberOutsiderAmber: rgba(240, 193, 90, 1.0);
+    --memberOutsiderAmberTint: rgba(240, 193, 90, 0.12);
 
     /*1d2124*/
     --navbarTextHover: rgba(29, 33, 36, 1.0);
@@ -221,6 +227,10 @@
        --memberRoleIconColor; the dark-theme mint (#9aeaae) is nearly invisible
        on white (~1.4:1). Use the accessible dark accent green (~4.8:1). */
     --light-memberRoleIconColor: #1e8549;
+    /* Member outsider-row amber, darkened for legibility on white (dark amber
+       ~6.4:1, mirroring --light-cautionText); the tint stays a warm wash. */
+    --light-memberOutsiderAmber: #7a5900;
+    --light-memberOutsiderAmberTint: rgba(240, 193, 90, 0.18);
     /* Accent/focus green darkened for contrast on white surfaces. */
     --light-deckSelectionGreen: #1e8549;
     /* Create-time flash pulse start color — opaque pale mint tint on white
@@ -260,6 +270,8 @@
     --cardURLTextColor: var(--light-cardURLTextColor);
     --grayBadgeSelection: var(--light-grayBadgeSelection);
     --memberRoleIconColor: var(--light-memberRoleIconColor);
+    --memberOutsiderAmber: var(--light-memberOutsiderAmber);
+    --memberOutsiderAmberTint: var(--light-memberOutsiderAmberTint);
     --deckSelectionGreen: var(--light-deckSelectionGreen);
     --urlCreateFlashBg: var(--light-urlCreateFlashBg);
     --urlMultiSelectedBg: var(--light-urlMultiSelectedBg);
@@ -298,6 +310,8 @@
         --cardURLTextColor: var(--light-cardURLTextColor);
         --grayBadgeSelection: var(--light-grayBadgeSelection);
         --memberRoleIconColor: var(--light-memberRoleIconColor);
+        --memberOutsiderAmber: var(--light-memberOutsiderAmber);
+        --memberOutsiderAmberTint: var(--light-memberOutsiderAmberTint);
         --deckSelectionGreen: var(--light-deckSelectionGreen);
         --urlCreateFlashBg: var(--light-urlCreateFlashBg);
         --urlMultiSelectedBg: var(--light-urlMultiSelectedBg);

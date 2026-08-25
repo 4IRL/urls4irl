@@ -51,6 +51,7 @@ export interface AppRoutes {
   applyTagsToURLs: (utubId: number) => string;
   bulkDeleteURLs: (utubId: number) => string;
   createMember: (id: number) => string;
+  coMemberCandidates: (id: number) => string;
 
   // Dynamic two-param routes
   getURL: (utubId: number, urlId: number) => string;
@@ -186,6 +187,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
 
     createMember: (id: number) =>
       rawConfig.routes.createMember.replace("-1", String(id)),
+    coMemberCandidates: (id: number) =>
+      rawConfig.routes.coMemberCandidates.replace("-1", String(id)),
     removeMember: (utubId: number, userId: number) =>
       rawConfig.routes.removeMember
         .replace("-1", String(utubId))

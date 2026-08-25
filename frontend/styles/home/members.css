@@ -20,24 +20,43 @@
     background-color: var(--cardBackgroundColor);
 }
 
-.memberOtherBtnDelete:focus {
-    opacity: 1;
-}
-
 .memberOtherBtnDelete {
+    /* Strip iOS Safari's native button chrome: without -webkit-appearance:none a
+       <button> keeps native styling, and the global `button { background: inherit }`
+       reset (layout.css) then paints the row's opaque background as a solid box that
+       covers the row's `border-block` divider. Force transparent so the divider and
+       row background show through behind the icon (no box). Chromium resets buttons
+       differently, so this only manifested on iOS/WebKit. Scoped here (not the global
+       reset) to keep the blast radius to this button. */
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
     opacity: 0;
     color: var(--removeMemberColor);
     transition: color 0.2s;
 }
 
-.memberOtherBtnDelete:focus {
-    color: red;
+/* Normalize the delete glyph to the owner diamond's 16px so the two icons render
+   the same size down the right column. delete.ts sizes the inner SVG at 24px via
+   width/height attributes; a CSS width/height wins over presentation attributes,
+   so the box shrinks to match `.memberRole` (16px) without editing the source. */
+.memberOtherBtnDelete svg {
+    width: 16px;
+    height: 16px;
 }
 
-.memberOtherBtnDelete:focus {
-    outline: none;
-    box-shadow: none;
-    border: 1px solid red;
+/* Keyboard focus indicator (WCAG 2.4.7) — `:focus-visible` ONLY, so a touch tap or
+   mouse click leaves NO lingering box. Previously a plain `:focus { border:1px solid
+   red }` sat until blur — which on mobile meant the red box stuck after every tap,
+   and (now that the button is a 44px right-justified box) outlined the whole box
+   with the 16px icon in the corner. An outline avoids the 1px layout shift a border
+   caused; `:focus-visible` also reveals the otherwise hover-hidden button for
+   keyboard users without re-showing it on tap. */
+.memberOtherBtnDelete:focus-visible {
+    opacity: 1;
+    color: red;
+    outline: 2px solid red;
+    outline-offset: 2px;
 }
 
 #listMembers {
@@ -107,5 +126,214 @@
     #memberNameFilterBtn,
     #memberNameFilterBtnClose {
         min-height: 2.75rem;
+    }
+
+    /* Per-row remove-member button is `opacity: 0` by default and only revealed
+       by the `.member:hover` rule above — which is gated to fine pointers. Touch
+       devices have no hover, so on a phone the owner could never see/tap it.
+       Reveal it unconditionally on coarse pointers and give it a 44px touch
+       target. (The `.member-add-open` suppression gate below still out-specifies
+       this while the add combobox is open, so the button correctly greys out
+       then.) */
+    .memberOtherBtnDelete {
+        opacity: 1;
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+        /* Right-justify the glyph so it hugs the row's right edge exactly like the
+           owner diamond (both are the last child of a `jc-sb` row) — their centers
+           then fall on one vertical line. The 44px min box is preserved for the
+           WCAG 2.5.5 touch target, but the empty slack now sits to the LEFT of the
+           glyph, extending the tap area inward rather than pushing the glyph off
+           the right margin. padding-right:0 keeps the glyph flush to the edge. */
+        justify-content: flex-end;
+        padding-right: 0;
+    }
+}
+
+/* ============================================================================
+   Add-member combobox (member-combobox.ts)
+
+   The layout/skin shell is reused verbatim from the URL-tag combobox — every
+   member combobox element also carries its `.urlTag*` counterpart class, so the
+   wrap/input/listbox/option/count/hint/msg/chip/submit styling (tags.css) and
+   its reduced-motion + 44px coarse-pointer rules apply for free. The rules
+   below only add the member-specific bits that diverge: the mint role diamond,
+   the dashed-amber "outsider" fallback row, the outsider staged chip + NEW
+   marker, and the in-place Cancel affordance for #memberBtnCreate.
+   ========================================================================== */
+
+/* Mint role diamond on each co-member suggestion (mirrors the owner diamond). */
+.memberAddOptionRole {
+    flex-shrink: 0;
+    color: var(--memberRoleIconColor);
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+/* The "outsider" fallback row — add by exact, case-sensitive username. A dashed
+   amber border + low-alpha amber wash sets it apart from the mint co-member
+   matches (parallel to the tag combobox's green create-new row, re-skinned to
+   amber to read as "not in your circle"). Selector is compounded with
+   `.urlTagOption` (specificity 0,2,0) SO THE FULL 4-SIDED DASHED BORDER WINS: the
+   outsider row is always the listbox's last option, and the base
+   `.urlTagOption:last-child { border-bottom: none }` (also 0,2,0) would otherwise
+   strip the bottom dashed edge (members.css loads after tags.css, so the tie goes
+   to this rule) — leaving the border drawn only ~3/4 of the way around. */
+.urlTagOption.memberAddOptionOutsider {
+    justify-content: flex-start;
+    gap: 8px;
+    color: var(--memberOutsiderAmber);
+    background: var(--memberOutsiderAmberTint);
+    border: 1px dashed var(--memberOutsiderAmber);
+}
+
+/* Keep the outsider row amber when it is the highlighted/active option, instead
+   of inheriting the neutral-gray `.urlTagOption.active` fill. The compound
+   selector (0,3,0) out-specifies `.urlTagOption.active` (0,2,0); applied on all
+   pointers so the mobile keyboard/tap highlight stays amber too. */
+.urlTagOption.memberAddOptionOutsider.active {
+    background: var(--memberOutsiderAmberTint);
+    border-color: var(--memberOutsiderAmber);
+}
+
+/* Outsider staged chip: amber-tinted (vs. the neutral-gray co-member chip) to
+   carry the "exact username, not a known co-member" signal into the chip. */
+.memberAddStagedChipOutsider {
+    background: var(--memberOutsiderAmberTint);
+    border-color: var(--memberOutsiderAmber);
+    color: var(--memberOutsiderAmber);
+}
+
+/* "NEW" marker on an outsider chip (per mock State 2). */
+.memberAddStagedChipNew {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0 4px;
+    border-radius: var(--radius-sm);
+    background: var(--memberOutsiderAmber);
+    color: var(--panelBackgroundColor);
+}
+
+/* #memberBtnCreate transforms in place into the shared close-X (`bi-x-square-fill`
+   + `.cancelButton`, red) while the combobox is open (never hidden) — a +/× toggle
+   matching the app's form-cancel pattern. Strip iOS Safari's native button chrome
+   (same reason as `.memberOtherBtnDelete`): in the transparent close-X state the
+   native box would otherwise show on iOS. The green "+" state sets its own
+   background via `.green-clickable`, so `appearance: none` doesn't affect it. */
+#memberBtnCreate {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+@media not all and (any-pointer: coarse) {
+    .urlTagOption.memberAddOptionOutsider:hover {
+        background: var(--memberOutsiderAmberTint);
+    }
+}
+
+/* ==========================================================================
+   Per-chip batch-add feedback (Step 6): a chip-scoped delayed loading ring and a
+   status marker that resolves to a green check-circle icon (added) or a red
+   warning-triangle icon (failed) next to the username — a warning glyph, NOT an
+   ✗, so it never reads as the `×` remove button beside it. The failure reason is
+   NOT rendered inline beside the chip (it overflowed off-screen) — it is carried
+   by the chip's `title` tooltip and the batched summary line under the strip.
+   These real-time per-chip visuals touch only the chip's own staged-strip DOM.
+   ========================================================================== */
+
+/* The ring + status slots are always present in the chip DOM but empty at rest.
+   The chip is a flex row with `gap: 6px`, so an empty-but-present slot still
+   injects a phantom 6px gap on each side — that stacked the NEW↔warning and NEW↔×
+   spacing too far apart. Collapse each slot out of flow until it actually has
+   content, so the single `gap` between the visible chip parts stays uniform. */
+.memberAddStagedChipRing:not(.dual-loading-ring),
+.memberAddStagedChipStatus:empty {
+    display: none;
+}
+
+/* Chip-scoped loading-ring variant — the shared .dual-loading-ring is 38px
+   (URL-card sized); shrink it to sit inside a chip. Inert until the chip's POST
+   is in flight (the ring class is toggled on in member-combobox-submit.ts). The
+   chip's `gap` provides the spacing — no extra margin needed. */
+.memberAddStagedChipRing.dual-loading-ring {
+    height: 14px;
+    width: 14px;
+    flex-shrink: 0;
+}
+
+.memberAddStagedChipRing.dual-loading-ring:after {
+    height: 14px;
+    width: 14px;
+    border-width: 2.4px;
+}
+
+/* Status marker (green check-circle / red warning-triangle Bootstrap icon) next
+   to the username on a settled chip. The icon inherits its color (currentColor)
+   from the chip's outcome class so success reads green and failure reads red. */
+.memberAddStagedChipStatus:not(:empty) {
+    display: inline-flex;
+    align-items: center;
+}
+
+.memberAddStagedChipAdded .memberAddStagedChipStatus {
+    color: var(--memberRoleIconColor);
+}
+
+/* Failed chip (400: USER_NOT_EXIST / MEMBER_ALREADY_IN_UTUB): red warning icon +
+   red border. The reason is surfaced via the chip's `title` tooltip + the batched
+   summary line, never inline beside the username. */
+.memberAddStagedChipFailed {
+    border-color: var(--removeIconColor);
+}
+
+.memberAddStagedChipFailed .memberAddStagedChipStatus {
+    color: var(--removeIconColor);
+}
+
+/* ==========================================================================
+   Step 7: cross-feature suppression, a11y focus rings, and touch/mobile polish.
+   ========================================================================== */
+
+/* While the add-member combobox is open (or chips are staged — the combobox is
+   always open in that case), the deck's OTHER member controls are suppressed so a
+   removal modal can't strand staged combobox state and the filter can't fight the
+   combobox for the deck's search row. JS sets `disabled` on the controls present
+   at open time; this CSS gate additionally covers `.memberOtherBtnDelete` buttons
+   on badges appended by a successful batch add while the combobox stays open (and
+   reinforces the non-interactive state visually). This class is independent of
+   `.member-search-open` (the filter's own gate) — the two never collide. */
+#MemberDeck.member-add-open .memberOtherBtnDelete,
+#MemberDeck.member-add-open #memberNameFilterBtn {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* Keyboard focus rings (WCAG 2.4.7) — the reused `.urlTag*` shell has none on the
+   chip-remove or the "Add N" submit. `:focus-visible` only (keyboard), never
+   `:focus`, so a mouse click leaves no lingering ring. */
+.memberAddStagedChipRemove:focus-visible,
+.memberAddComboboxSubmitBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* Touch targets (44px min): option rows inherit the coarse min-height from
+   `.urlTagOption`, but the "Add N" submit does not — pin both to a comfortable
+   2.75rem (44px) on coarse pointers, matching the mock's mobile state. */
+@media (any-pointer: coarse) {
+    .memberAddOption,
+    .memberAddComboboxSubmitBtn {
+        min-height: 2.75rem;
+    }
+}
+
+/* Reduced-motion: drop the member-specific transitions. The reused `.urlTag*`
+   shell's own reduced-motion rule (tags.css) already covers the wrap/listbox/chip
+   transitions; this covers the staged-chip background transition (mirrors
+   tags.css's reduced-motion block). */
+@media (prefers-reduced-motion: reduce) {
+    .memberAddStagedChip {
+        transition: none;
     }
 }

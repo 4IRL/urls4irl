@@ -30,7 +30,10 @@ from tests.functional.urls_ui.playwright_utils import (
     tap_url_checkbox,
     wait_for_url_search_filter_applied,
 )
-from tests.functional.utubs_ui.playwright_utils import open_update_utub_name_input
+from tests.functional.utubs_ui.playwright_utils import (
+    open_update_utub_desc_input,
+    open_update_utub_name_input,
+)
 
 pytestmark = pytest.mark.urls_ui
 
@@ -443,6 +446,86 @@ def test_utub_name_edit_blocked_in_mode_and_restored_after_exit(
     expect(page.locator(HPL.INPUT_UTUB_NAME_UPDATE)).to_be_visible()
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE)
     expect(page.locator(HPL.INPUT_UTUB_NAME_UPDATE)).to_be_hidden()
+
+
+def test_multi_select_toggle_hidden_while_create_url_form_open(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub that HAS URLs (so the multi-select toggle is available)
+    WHEN the user opens the create-URL form, then closes it
+    THEN the multi-select toggle is hidden while the form is open and restored
+        (the UTub still has URLs) when the form closes.
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    # Baseline: the toggle is available for a non-empty UTub.
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_visible()
+
+    # Open the create-URL form — the toggle is hidden while it is open.
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE)
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_visible()
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_hidden()
+
+    # Cancel the form — the toggle returns (guarded on the UTub still having URLs).
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_URL_CANCEL_CREATE)
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_visible()
+
+
+def test_multi_select_toggle_hidden_while_edit_name_form_open(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub that HAS URLs and whose name is inline-editable (owner)
+    WHEN the user opens the edit-UTub-name form, then closes it
+    THEN the multi-select toggle is hidden while the form is open and restored
+        when the form closes.
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_visible()
+
+    open_update_utub_name_input(page=page)
+    expect(page.locator(HPL.INPUT_UTUB_NAME_UPDATE)).to_be_visible()
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_hidden()
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE)
+    expect(page.locator(HPL.INPUT_UTUB_NAME_UPDATE)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_visible()
+
+
+def test_multi_select_toggle_hidden_while_edit_description_form_open(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub that HAS URLs and a description that is inline-editable (owner)
+    WHEN the user opens the edit-UTub-description form, then closes it
+    THEN the multi-select toggle is hidden while the form is open and restored
+        when the form closes.
+    """
+    app = provide_app
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_visible()
+
+    open_update_utub_desc_input(page=page)
+    expect(page.locator(HPL.INPUT_UTUB_DESCRIPTION_UPDATE)).to_be_visible()
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_hidden()
+
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE
+    )
+    expect(page.locator(HPL.INPUT_UTUB_DESCRIPTION_UPDATE)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MULTI_SELECT_TOGGLE)).to_be_visible()
 
 
 def test_text_filter_narrows_rows_with_selection_surviving(

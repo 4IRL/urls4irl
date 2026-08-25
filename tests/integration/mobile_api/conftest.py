@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Generator
 
 from flask import Flask
 from flask.testing import FlaskClient
@@ -9,6 +9,21 @@ from backend.api_v1.services.tokens import create_access_token, issue_refresh_to
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.utils.strings.api_auth_strs import API_AUTH
+from tests.integration.utils import flush_member_add_lookup_keys
+
+
+@pytest.fixture(autouse=True)
+def _flush_member_add_lookup_counter(app: Flask) -> Generator[None, None, None]:
+    """Clear the per-user ``member-add-lookup:*`` daily-counter keys before and
+    after every mobile_api-marker test. The bearer add-member twin reaches the
+    same ``create_utub_member`` counter on the shared enforcement Redis, which
+    survives DB teardown — so this mirrors the web-side flush in
+    tests/integration/utubmembers/conftest.py to keep the counter from leaking
+    across tests on the same xdist worker."""
+    flush_member_add_lookup_keys(app)
+    yield
+    flush_member_add_lookup_keys(app)
+
 
 UNVALIDATED_USERNAME = "unvalidated_mobile"
 UNVALIDATED_EMAIL = "unvalidated_mobile_user@example.com"
