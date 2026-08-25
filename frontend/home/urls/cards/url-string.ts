@@ -17,6 +17,7 @@ import {
   isURLStringSubmitInFlight,
 } from "./update-string.js";
 import { isCoarsePointer } from "../../mobile.js";
+import { FIELD_SAVED_CHECK_SVG } from "../field-saved-tick.js";
 import {
   makeTextInput,
   makeSubmitButton,
@@ -155,7 +156,7 @@ function createUpdateURLStringInput(
       $(document.createElement("span"))
         .addClass("field-saved-tick opa-0")
         .attr("aria-hidden", "true")
-        .html(`${APP_CONFIG.strings.FIELD_SAVED} <i class="bi bi-check"></i>`),
+        .html(`${APP_CONFIG.strings.FIELD_SAVED} ${FIELD_SAVED_CHECK_SVG}`),
     );
 
   urlStringUpdateTextInputContainer
