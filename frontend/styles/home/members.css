@@ -20,10 +20,6 @@
     background-color: var(--cardBackgroundColor);
 }
 
-.memberOtherBtnDelete:focus {
-    opacity: 1;
-}
-
 .memberOtherBtnDelete {
     /* Strip iOS Safari's native button chrome: without -webkit-appearance:none a
        <button> keeps native styling, and the global `button { background: inherit }`
@@ -49,14 +45,18 @@
     height: 16px;
 }
 
-.memberOtherBtnDelete:focus {
+/* Keyboard focus indicator (WCAG 2.4.7) — `:focus-visible` ONLY, so a touch tap or
+   mouse click leaves NO lingering box. Previously a plain `:focus { border:1px solid
+   red }` sat until blur — which on mobile meant the red box stuck after every tap,
+   and (now that the button is a 44px right-justified box) outlined the whole box
+   with the 16px icon in the corner. An outline avoids the 1px layout shift a border
+   caused; `:focus-visible` also reveals the otherwise hover-hidden button for
+   keyboard users without re-showing it on tap. */
+.memberOtherBtnDelete:focus-visible {
+    opacity: 1;
     color: red;
-}
-
-.memberOtherBtnDelete:focus {
-    outline: none;
-    box-shadow: none;
-    border: 1px solid red;
+    outline: 2px solid red;
+    outline-offset: 2px;
 }
 
 #listMembers {
