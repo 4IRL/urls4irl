@@ -1,5 +1,6 @@
 import { createMemberComboboxBlock } from "../member-combobox.js";
 import { submitStagedMembers } from "../member-combobox-submit.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
@@ -265,6 +266,48 @@ describe("member-combobox-submit — mixed outcomes", () => {
     expect(vi.mocked(setMemberDeckForUTub)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(reapplyMemberFilter)).toHaveBeenCalledTimes(1);
   });
+
+  it("200 + non-400 (unrecognized status / 403 HTML): the fatal redirect fires and the batch still settles with that chip excluded", async () => {
+    seed({});
+    const wrap = mount();
+    stageTwoChips(wrap);
+
+    const firstDeferred = createMockJqXHR();
+    const secondDeferred = createMockJqXHR();
+    vi.mocked(ajaxCall)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+
+    const locationAssignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+
+    // Bob (co-member) succeeds; Ghost (outsider) rejects with an unrecognized
+    // status carrying no field-level responseJSON, so markChipFailed returns null
+    // and the fatal-redirect path runs (a non-403-HTML status falls through to
+    // the hard error-page navigation).
+    firstDeferred.resolve(
+      { utubID: 7, member: { id: 1, username: "Bob" } },
+      "success",
+      okXhr,
+    );
+    secondDeferred.reject({ status: 500 });
+
+    // The batch still settles — Promise.allSettled never hangs on the fatal chip.
+    await settle;
+
+    // redirectOnFatalFailure fired exactly once, to the error page.
+    expect(locationAssignSpy).toHaveBeenCalledTimes(1);
+    expect(locationAssignSpy).toHaveBeenCalledWith(APP_CONFIG.routes.errorPage);
+
+    // The succeeded chip is still applied after settle; the fatal chip
+    // contributes no member to the store (excluded from the added set).
+    expect(getState().members.map((member) => member.username)).toEqual([
+      "Bob",
+    ]);
+  });
 });
 
 describe("member-combobox-submit — 429 short-circuit", () => {
@@ -385,5 +428,53 @@ describe("member-combobox-submit — cross-UTub relevance", () => {
     expect(vi.mocked(setMemberDeckForUTub)).not.toHaveBeenCalled();
     // Completion surfaced via the persistent non-deck aria-live region instead.
     expect($("#MobilePanelAnnouncement").text()).toBe("2 members added");
+  });
+});
+
+describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
+  it("does not append a member (store entry + deck badge) twice when a mid-batch re-fetch already added them by id", async () => {
+    seed({});
+    const wrap = mount();
+    stageTwoChips(wrap);
+
+    const firstDeferred = createMockJqXHR();
+    const secondDeferred = createMockJqXHR();
+    vi.mocked(ajaxCall)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+
+    const { createMemberBadge } = await import("../members.js");
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+
+    // Mid-flight the creator switched away and back to the SAME UTub (activeUTubID
+    // is still the batch's UTub 7). That select flow re-fetched `members` fresh —
+    // already including Bob (id 1), whose independent POST had completed. This
+    // stale batch must NOT append Bob a second time.
+    setState({ members: [{ id: 1, username: "Bob" }] });
+
+    firstDeferred.resolve(
+      { utubID: 7, member: { id: 1, username: "Bob" } },
+      "success",
+      okXhr,
+    );
+    secondDeferred.resolve(
+      { utubID: 7, member: { id: 2, username: "Ghost" } },
+      "success",
+      okXhr,
+    );
+
+    await settle;
+
+    // Bob (already present) is deduped by id; only the genuinely-new Ghost is
+    // pushed into the store and badged into the deck.
+    expect(getState().members.map((member) => member.id)).toEqual([1, 2]);
+    expect(vi.mocked(createMemberBadge)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(createMemberBadge)).toHaveBeenCalledWith(
+      2,
+      "Ghost",
+      true,
+      7,
+    );
   });
 });

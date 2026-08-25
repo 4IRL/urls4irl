@@ -179,11 +179,18 @@ function applyPostSettleSideEffects({
   const fulfilled = results.filter((result) => result.outcome === "fulfilled");
 
   if (stillOnBatchUTub) {
+    // Dedupe by id against members already in the store: when the creator
+    // switched away and back to the SAME UTub mid-batch, the UTub-select flow
+    // re-fetched `members` fresh (already including an earlier-completing chip's
+    // member). Without this guard, this stale batch would append that member —
+    // store entry + duplicate #listMembers badge — a second time.
+    const existingMemberIds = new Set(
+      getState().members.map((member) => member.id),
+    );
     const addedMembers = fulfilled
       .map((result) => result.member)
-      .filter((member): member is NonNullable<typeof member> =>
-        Boolean(member),
-      );
+      .filter((member): member is NonNullable<typeof member> => Boolean(member))
+      .filter((member) => !existingMemberIds.has(member.id));
     if (addedMembers.length > 0) {
       // Store push + deck badge append are unified under this single
       // UTub-relevance check so getState().members and the deck DOM stay in sync
