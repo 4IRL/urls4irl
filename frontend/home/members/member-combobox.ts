@@ -520,10 +520,12 @@ function buildMemberStagedChip(
     );
   }
 
-  // Per-chip async-feedback slots for Step 6's batch submit, all empty/inert at
+  // Per-chip async-feedback slots for Step 6's batch submit, both empty/inert at
   // rest: a delayed loading-ring placeholder (gets `.dual-loading-ring` while
-  // that chip's POST is in flight), a success ✓ marker, and an inline error slot
-  // populated beside the chip when its own add fails (siblings unaffected).
+  // that chip's POST is in flight) and a status marker that becomes a green ✓ on
+  // success or a red ✗ on failure. The failure *reason* is not rendered beside the
+  // chip (it overflowed off-screen); it is carried by the chip's `title` tooltip
+  // and the batched summary line under the strip instead.
   chipEl.append(
     $(document.createElement("span"))
       .addClass("memberAddStagedChipRing")
@@ -533,11 +535,6 @@ function buildMemberStagedChip(
     $(document.createElement("span"))
       .addClass("memberAddStagedChipStatus")
       .attr({ "aria-hidden": "true" }),
-  );
-  chipEl.append(
-    $(document.createElement("span")).addClass(
-      "memberAddStagedChipError hidden",
-    ),
   );
 
   const removeButton = $(document.createElement("button"))

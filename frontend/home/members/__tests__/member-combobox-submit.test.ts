@@ -167,7 +167,7 @@ describe("member-combobox-submit — per-chip POSTs", () => {
 });
 
 describe("member-combobox-submit — mixed outcomes", () => {
-  it("200 + 400: succeeded chip removed, failed chip retained with inline error, input refocused", async () => {
+  it("200 + 400: succeeded chip removed, failed chip retained with red ✗ + reason tooltip, input refocused", async () => {
     seed({});
     const wrap = mount();
     stageTwoChips(wrap);
@@ -204,13 +204,14 @@ describe("member-combobox-submit — mixed outcomes", () => {
       .get();
     expect(usernames).toEqual(["Ghost"]);
 
-    // Failed chip retained WITH its inline error visible; siblings unaffected.
+    // Failed chip retained with a red ✗ marker + the reason in its title tooltip
+    // (never rendered inline beside the username); siblings unaffected.
     const failedChip = chips.filter(
       (_i, el) => $(el).attr("data-staged-username") === "Ghost",
     );
-    const error = failedChip.find(".memberAddStagedChipError");
-    expect(error.hasClass("hidden")).toBe(false);
-    expect(error.text()).toBe("That user does not exist.");
+    expect(failedChip.hasClass("memberAddStagedChipFailed")).toBe(true);
+    expect(failedChip.find(".memberAddStagedChipStatus").text()).toBe("✗");
+    expect(failedChip.attr("title")).toBe("That user does not exist.");
 
     // DD-10 post-settle refocus.
     expect(refocused).toBe(true);
@@ -258,7 +259,7 @@ describe("member-combobox-submit — mixed outcomes", () => {
 });
 
 describe("member-combobox-submit — 429 short-circuit", () => {
-  it("settles the 429 chip without an inline error and excludes it from the summary", async () => {
+  it("settles the 429 chip without a status marker and excludes it from the summary", async () => {
     seed({});
     const wrap = mount();
     stageTwoChips(wrap);
@@ -286,14 +287,15 @@ describe("member-combobox-submit — 429 short-circuit", () => {
     // Resolves (does not hang) — the 429 wrapper still settled.
     await settle;
 
-    // The 429 chip shows no inline error (its global 429 UI fired instead) and
-    // is excluded from the batched summary.
+    // The 429 chip stays visually pending — no ✓/✗ status marker, no failure
+    // tooltip (its global 429 UI fired instead) — and is excluded from the
+    // batched summary.
     const ghostChip = wrap
       .find(".memberAddStagedChip")
       .filter((_i, el) => $(el).attr("data-staged-username") === "Ghost");
-    expect(ghostChip.find(".memberAddStagedChipError").hasClass("hidden")).toBe(
-      true,
-    );
+    expect(ghostChip.find(".memberAddStagedChipStatus").text()).toBe("");
+    expect(ghostChip.attr("title")).toBeUndefined();
+    expect(ghostChip.hasClass("memberAddStagedChipFailed")).toBe(false);
     expect(wrap.find(".memberAddComboboxMsg").text()).toBe("Bob added");
   });
 });

@@ -145,9 +145,9 @@ function submitOneChip({
         return;
       }
 
-      // 400 → inline error beside this chip (siblings unaffected). Anything else
-      // (403 HTML / unknown) → the existing redirect path.
-      const errorText = renderChipInlineError(chipEl, xhr);
+      // 400 → red ✗ marker on this chip + reason in its title tooltip (siblings
+      // unaffected). Anything else (403 HTML / unknown) → the existing redirect.
+      const errorText = markChipFailed(chipEl, xhr);
       if (errorText === null) {
         redirectOnFatalFailure(xhr);
       }
@@ -270,23 +270,25 @@ function findChipElement(wrap: JQuery, username: string): JQuery {
     );
 }
 
-/** Marks a chip added: ✓ status, cleared inline error, success skin. */
+/** Marks a chip added: green ✓ status marker + success skin. */
 function markChipAdded(chipEl: JQuery): void {
-  chipEl.addClass("memberAddStagedChipAdded");
+  chipEl
+    .removeClass("memberAddStagedChipFailed")
+    .addClass("memberAddStagedChipAdded");
+  chipEl.removeAttr("title");
   chipEl.find(".memberAddStagedChipStatus").text("✓");
-  chipEl.find(".memberAddStagedChipError").text("").addClass("hidden");
 }
 
 /**
- * Renders a chip's inline 400 error beside it and returns the message text.
- * Returns `null` for any non-400 (403 HTML / unknown) so the caller redirects.
- * USER_NOT_EXIST arrives as `errors.username`; MEMBER_ALREADY_IN_UTUB as
- * `message`.
+ * Marks a chip failed on a 400: a red ✗ status marker next to the username + the
+ * failed skin, with the failure *reason* carried by the chip's `title` tooltip
+ * (never rendered inline beside the username — that text overflowed off-screen;
+ * the visible reason lives in the batched summary line under the strip instead).
+ * Returns the message text (for the summary), or `null` for any non-400 (403 HTML
+ * / unknown) so the caller redirects. USER_NOT_EXIST arrives as `errors.username`;
+ * MEMBER_ALREADY_IN_UTUB as `message`.
  */
-function renderChipInlineError(
-  chipEl: JQuery,
-  xhr: JQuery.jqXHR,
-): string | null {
+function markChipFailed(chipEl: JQuery, xhr: JQuery.jqXHR): string | null {
   if (!("responseJSON" in xhr) || xhr.status !== 400) {
     return null;
   }
@@ -300,8 +302,11 @@ function renderChipInlineError(
   } else if (responseJSON.message) {
     message = responseJSON.message;
   }
-  chipEl.addClass("memberAddStagedChipFailed");
-  chipEl.find(".memberAddStagedChipError").text(message).removeClass("hidden");
+  chipEl
+    .removeClass("memberAddStagedChipAdded")
+    .addClass("memberAddStagedChipFailed");
+  chipEl.find(".memberAddStagedChipStatus").text("✗");
+  if (message) chipEl.attr("title", message);
   return message;
 }
 
