@@ -296,7 +296,7 @@ describe("member-combobox-submit — 429 short-circuit", () => {
     expect(ghostChip.find(".memberAddStagedChipStatus").text()).toBe("");
     expect(ghostChip.attr("title")).toBeUndefined();
     expect(ghostChip.hasClass("memberAddStagedChipFailed")).toBe(false);
-    expect(wrap.find(".memberAddComboboxMsg").text()).toBe("Bob added");
+    expect(wrap.find(".memberAddComboboxMsg").text()).toBe("1 member added");
   });
 });
 
@@ -332,9 +332,7 @@ describe("member-combobox-submit — batched aria-live", () => {
     });
     await settle;
 
-    expect(message.text()).toBe(
-      "Bob added, Ghost failed: Member already in UTub.",
-    );
+    expect(message.text()).toBe("1 member added, 1 member couldn't be added");
   });
 });
 
@@ -375,6 +373,6 @@ describe("member-combobox-submit — cross-UTub relevance", () => {
     expect(vi.mocked(createMemberBadge)).not.toHaveBeenCalled();
     expect(vi.mocked(setMemberDeckForUTub)).not.toHaveBeenCalled();
     // Completion surfaced via the persistent non-deck aria-live region instead.
-    expect($("#MobilePanelAnnouncement").text()).toBe("Bob added, Ghost added");
+    expect($("#MobilePanelAnnouncement").text()).toBe("2 members added");
   });
 });

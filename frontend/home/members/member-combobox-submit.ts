@@ -239,26 +239,45 @@ function applyPostSettleSideEffects({
 }
 
 /**
- * Joins the per-chip outcomes into a single summary message (e.g.
- * "alice added, bob failed: user does not exist"). 429-skipped chips are
- * excluded — their global 429 UI already communicated the outcome.
+ * Builds a brief count-based summary of the batch outcome (e.g. "3 members
+ * added, 2 members couldn't be added"). Each chip already shows its own green
+ * ✓ / red ✗ (failed chips also carry the reason in a `title` tooltip), so the
+ * summary only recaps counts rather than enumerating every username. Singular
+ * vs plural is chosen per count. 429-skipped chips are excluded from the counts
+ * — their global 429 UI already communicated the outcome. Returns "" when both
+ * counts are 0 so the caller's `if (summary)` guard suppresses an empty
+ * announcement.
  */
 function buildSummaryMessage(results: ChipSettleResult[]): string {
-  return results
-    .filter((result) => result.outcome !== "skipped_429")
-    .map((result) => {
-      if (result.outcome === "fulfilled") {
-        return APP_CONFIG.strings.MEMBER_ADD_STATUS_ADDED.replace(
-          "{{ username }}",
-          () => result.chip.username,
-        );
-      }
-      return APP_CONFIG.strings.MEMBER_ADD_STATUS_FAILED.replace(
-        "{{ username }}",
-        () => result.chip.username,
-      ).replace("{{ reason }}", () => result.errorText ?? "");
-    })
-    .join(", ");
+  const addedCount = results.filter(
+    (result) => result.outcome === "fulfilled",
+  ).length;
+  const failedCount = results.filter(
+    (result) => result.outcome === "rejected",
+  ).length;
+
+  const parts: string[] = [];
+  if (addedCount > 0) {
+    parts.push(
+      addedCount === 1
+        ? APP_CONFIG.strings.MEMBER_ADD_SUMMARY_ADDED_ONE
+        : APP_CONFIG.strings.MEMBER_ADD_SUMMARY_ADDED.replace(
+            "{{ count }}",
+            () => String(addedCount),
+          ),
+    );
+  }
+  if (failedCount > 0) {
+    parts.push(
+      failedCount === 1
+        ? APP_CONFIG.strings.MEMBER_ADD_SUMMARY_FAILED_ONE
+        : APP_CONFIG.strings.MEMBER_ADD_SUMMARY_FAILED.replace(
+            "{{ count }}",
+            () => String(failedCount),
+          ),
+    );
+  }
+  return parts.join(", ");
 }
 
 /** Locates a staged chip's DOM element by its (unique, case-sensitive) username. */

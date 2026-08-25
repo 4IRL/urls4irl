@@ -115,11 +115,14 @@ MEMBER_ADD_SHARES_COUNT = "shares {n} UTubs"
 # "Add N" batch-submit label (Step 6). MEMBER_ADD_SUBMIT ("Add") is the disabled
 # zero-staged base; this carries the staged count once ≥1 chip is staged.
 MEMBER_ADD_SUBMIT_COUNT = "Add {n}"
-# Batched aria-live per-chip outcome fragments (Step 6), joined with ", " into a
-# single summary announced once after the whole batch settles (e.g.
-# "alice added, bob failed: user does not exist").
-MEMBER_ADD_STATUS_ADDED = "{{ username }} added"
-MEMBER_ADD_STATUS_FAILED = "{{ username }} failed: {{ reason }}"
+# Batched aria-live count summary (Step 6): a brief count recap announced once
+# after the whole batch settles (e.g. "3 members added, 2 members couldn't be
+# added"). Per-chip ✓/✗ markers carry the specifics; 429-skipped chips are
+# excluded from the counts. Singular/plural pair mirrors TAGS_MATCH_COUNT(_ONE).
+MEMBER_ADD_SUMMARY_ADDED_ONE = "1 member added"
+MEMBER_ADD_SUMMARY_ADDED = "{{ count }} members added"
+MEMBER_ADD_SUMMARY_FAILED_ONE = "1 member couldn't be added"
+MEMBER_ADD_SUMMARY_FAILED = "{{ count }} members couldn't be added"
 
 
 class MEMBER_SUCCESS(URL_GENERAL, UTUB_GENERAL):
