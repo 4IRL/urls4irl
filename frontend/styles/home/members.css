@@ -108,6 +108,20 @@
     #memberNameFilterBtnClose {
         min-height: 2.75rem;
     }
+
+    /* Per-row remove-member button is `opacity: 0` by default and only revealed
+       by the `.member:hover` rule above — which is gated to fine pointers. Touch
+       devices have no hover, so on a phone the owner could never see/tap it.
+       Reveal it unconditionally on coarse pointers and give it a 44px touch
+       target. (The `.member-add-open` suppression gate below still out-specifies
+       this while the add combobox is open, so the button correctly greys out
+       then.) */
+    .memberOtherBtnDelete {
+        opacity: 1;
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+        justify-content: center;
+    }
 }
 
 /* ============================================================================
