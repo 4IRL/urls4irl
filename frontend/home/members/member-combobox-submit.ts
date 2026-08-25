@@ -289,23 +289,46 @@ function findChipElement(wrap: JQuery, username: string): JQuery {
     );
 }
 
-/** Marks a chip added: green ✓ status marker + success skin. */
+// Status-marker icons as inline <svg> path data (Bootstrap Icons: check-circle-fill
+// / exclamation-triangle-fill). This project has NO bootstrap-icons FONT — every
+// `bi` icon in the codebase is inline SVG, and a bare `<i class="bi …">` renders
+// nothing — so the marker must be inline SVG. `fill="currentColor"` makes each
+// inherit its red/green from the chip's outcome CSS class; `aria-hidden` because
+// the outcome is conveyed by the aria-live summary + the chip's title tooltip.
+const STATUS_ICON_ADDED =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16" aria-hidden="true">' +
+  '<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>';
+const STATUS_ICON_FAILED =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-exclamation-triangle-fill" viewBox="0 0 16 16" aria-hidden="true">' +
+  '<path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>';
+
+/**
+ * Renders a status-marker SVG into the chip's (decorative, aria-hidden) status
+ * slot, replacing any prior marker. Inline SVG — not an icon-font `<i>` — because
+ * this project ships no bootstrap-icons font (see the icon consts above).
+ */
+function setChipStatusIcon(chipEl: JQuery, svgMarkup: string): void {
+  chipEl.find(".memberAddStagedChipStatus").html(svgMarkup);
+}
+
+/** Marks a chip added: green check-circle status icon + success skin. */
 function markChipAdded(chipEl: JQuery): void {
   chipEl
     .removeClass("memberAddStagedChipFailed")
     .addClass("memberAddStagedChipAdded");
   chipEl.removeAttr("title");
-  chipEl.find(".memberAddStagedChipStatus").text("✓");
+  setChipStatusIcon(chipEl, STATUS_ICON_ADDED);
 }
 
 /**
- * Marks a chip failed on a 400: a red ✗ status marker next to the username + the
- * failed skin, with the failure *reason* carried by the chip's `title` tooltip
- * (never rendered inline beside the username — that text overflowed off-screen;
- * the visible reason lives in the batched summary line under the strip instead).
- * Returns the message text (for the summary), or `null` for any non-400 (403 HTML
- * / unknown) so the caller redirects. USER_NOT_EXIST arrives as `errors.username`;
- * MEMBER_ALREADY_IN_UTUB as `message`.
+ * Marks a chip failed on a 400: a red WARNING icon (bi-exclamation-triangle-fill,
+ * deliberately not an ✗ — that collided with the `×` remove button) next to the
+ * username + the failed skin, with the failure *reason* carried by the chip's
+ * `title` tooltip (never rendered inline beside the username — that text overflowed
+ * off-screen; the visible reason lives in the batched summary line under the strip
+ * instead). Returns the message text (for the summary), or `null` for any non-400
+ * (403 HTML / unknown) so the caller redirects. USER_NOT_EXIST arrives as
+ * `errors.username`; MEMBER_ALREADY_IN_UTUB as `message`.
  */
 function markChipFailed(chipEl: JQuery, xhr: JQuery.jqXHR): string | null {
   if (!("responseJSON" in xhr) || xhr.status !== 400) {
@@ -324,7 +347,7 @@ function markChipFailed(chipEl: JQuery, xhr: JQuery.jqXHR): string | null {
   chipEl
     .removeClass("memberAddStagedChipAdded")
     .addClass("memberAddStagedChipFailed");
-  chipEl.find(".memberAddStagedChipStatus").text("✗");
+  setChipStatusIcon(chipEl, STATUS_ICON_FAILED);
   if (message) chipEl.attr("title", message);
   return message;
 }

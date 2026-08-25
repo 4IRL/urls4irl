@@ -167,7 +167,7 @@ describe("member-combobox-submit — per-chip POSTs", () => {
 });
 
 describe("member-combobox-submit — mixed outcomes", () => {
-  it("200 + 400: succeeded chip removed, failed chip retained with red ✗ + reason tooltip, input refocused", async () => {
+  it("200 + 400: succeeded chip removed, failed chip retained with red warning icon + reason tooltip, input refocused", async () => {
     seed({});
     const wrap = mount();
     stageTwoChips(wrap);
@@ -204,13 +204,22 @@ describe("member-combobox-submit — mixed outcomes", () => {
       .get();
     expect(usernames).toEqual(["Ghost"]);
 
-    // Failed chip retained with a red ✗ marker + the reason in its title tooltip
-    // (never rendered inline beside the username); siblings unaffected.
+    // Failed chip retained with a red warning-triangle icon + the reason in its
+    // title tooltip (never rendered inline beside the username); siblings
+    // unaffected. The failure marker is a warning icon, NOT an ✗ — it must not
+    // collide with the `×` remove button.
     const failedChip = chips.filter(
       (_i, el) => $(el).attr("data-staged-username") === "Ghost",
     );
     expect(failedChip.hasClass("memberAddStagedChipFailed")).toBe(true);
-    expect(failedChip.find(".memberAddStagedChipStatus").text()).toBe("✗");
+    // The failure marker is an inline warning-triangle SVG (NOT an ✗ that would
+    // collide with the `×` remove button, and NOT an icon-font `<i>` — this
+    // project ships no bootstrap-icons font).
+    expect(
+      failedChip.find(
+        ".memberAddStagedChipStatus svg.bi-exclamation-triangle-fill",
+      ).length,
+    ).toBe(1);
     expect(failedChip.attr("title")).toBe("That user does not exist.");
 
     // DD-10 post-settle refocus.
@@ -287,13 +296,15 @@ describe("member-combobox-submit — 429 short-circuit", () => {
     // Resolves (does not hang) — the 429 wrapper still settled.
     await settle;
 
-    // The 429 chip stays visually pending — no ✓/✗ status marker, no failure
-    // tooltip (its global 429 UI fired instead) — and is excluded from the
-    // batched summary.
+    // The 429 chip stays visually pending — no status icon, no failure tooltip
+    // (its global 429 UI fired instead) — and is excluded from the batched
+    // summary.
     const ghostChip = wrap
       .find(".memberAddStagedChip")
       .filter((_i, el) => $(el).attr("data-staged-username") === "Ghost");
-    expect(ghostChip.find(".memberAddStagedChipStatus").text()).toBe("");
+    expect(ghostChip.find(".memberAddStagedChipStatus").children().length).toBe(
+      0,
+    );
     expect(ghostChip.attr("title")).toBeUndefined();
     expect(ghostChip.hasClass("memberAddStagedChipFailed")).toBe(false);
     expect(wrap.find(".memberAddComboboxMsg").text()).toBe("1 member added");

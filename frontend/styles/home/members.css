@@ -204,11 +204,12 @@
 
 /* ==========================================================================
    Per-chip batch-add feedback (Step 6): a chip-scoped delayed loading ring and a
-   status marker that resolves to a green ✓ (added) or a red ✗ (failed) next to
-   the username. The failure reason is NOT rendered inline beside the chip (it
-   overflowed off-screen) — it is carried by the chip's `title` tooltip and the
-   batched summary line under the strip. These real-time per-chip visuals touch
-   only the chip's own staged-strip DOM.
+   status marker that resolves to a green check-circle icon (added) or a red
+   warning-triangle icon (failed) next to the username — a warning glyph, NOT an
+   ✗, so it never reads as the `×` remove button beside it. The failure reason is
+   NOT rendered inline beside the chip (it overflowed off-screen) — it is carried
+   by the chip's `title` tooltip and the batched summary line under the strip.
+   These real-time per-chip visuals touch only the chip's own staged-strip DOM.
    ========================================================================== */
 
 /* Chip-scoped loading-ring variant — the shared .dual-loading-ring is 38px
@@ -227,21 +228,22 @@
     border-width: 2.4px;
 }
 
-/* Status marker (green ✓ / red ✗) next to the username on a settled chip. The
-   glyph color is driven by the chip's outcome class so success reads green and
-   failure reads red. */
+/* Status marker (green check-circle / red warning-triangle Bootstrap icon) next
+   to the username on a settled chip. The icon inherits its color (currentColor)
+   from the chip's outcome class so success reads green and failure reads red. */
 .memberAddStagedChipStatus:not(:empty) {
     margin-left: 4px;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
 }
 
 .memberAddStagedChipAdded .memberAddStagedChipStatus {
     color: var(--memberRoleIconColor);
 }
 
-/* Failed chip (400: USER_NOT_EXIST / MEMBER_ALREADY_IN_UTUB): red ✗ + red border.
-   The reason is surfaced via the chip's `title` tooltip + the batched summary
-   line, never inline beside the username. */
+/* Failed chip (400: USER_NOT_EXIST / MEMBER_ALREADY_IN_UTUB): red warning icon +
+   red border. The reason is surfaced via the chip's `title` tooltip + the batched
+   summary line, never inline beside the username. */
 .memberAddStagedChipFailed {
     border-color: var(--removeIconColor);
 }

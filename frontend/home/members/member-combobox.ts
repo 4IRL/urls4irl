@@ -522,10 +522,12 @@ function buildMemberStagedChip(
 
   // Per-chip async-feedback slots for Step 6's batch submit, both empty/inert at
   // rest: a delayed loading-ring placeholder (gets `.dual-loading-ring` while
-  // that chip's POST is in flight) and a status marker that becomes a green ✓ on
-  // success or a red ✗ on failure. The failure *reason* is not rendered beside the
-  // chip (it overflowed off-screen); it is carried by the chip's `title` tooltip
-  // and the batched summary line under the strip instead.
+  // that chip's POST is in flight) and a status marker that becomes a green
+  // check-circle icon on success or a red warning-triangle icon on failure (a
+  // warning, NOT an ✗, so it never reads as the `×` remove button beside it). The
+  // failure *reason* is not rendered beside the chip (it overflowed off-screen);
+  // it is carried by the chip's `title` tooltip and the batched summary line under
+  // the strip instead.
   chipEl.append(
     $(document.createElement("span"))
       .addClass("memberAddStagedChipRing")
