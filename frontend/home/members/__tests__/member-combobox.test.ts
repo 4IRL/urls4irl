@@ -182,6 +182,22 @@ describe("member-combobox — outsider fallback row", () => {
       '"Zed" is already a member',
     );
   });
+
+  it("suppresses the outsider row when the exact typed username is already staged as an outsider chip", () => {
+    seed({ candidates: [], members: [] });
+    const wrap = mount();
+
+    // Stage "Ghost" as an outsider chip.
+    typeIn(wrap, "Ghost");
+    wrap.find(".memberAddOptionOutsider").trigger("click.memberAddCombobox");
+    expect(wrap.find(".memberAddStagedChip").length).toBe(1);
+
+    // Re-typing the exact staged username must NOT re-offer the clickable
+    // outsider row — its add would silently no-op (stageMemberUsername dedupes
+    // case-sensitively), so the dead-end row is suppressed.
+    typeIn(wrap, "Ghost");
+    expect(wrap.find(".memberAddOptionOutsider").length).toBe(0);
+  });
 });
 
 describe("member-combobox — staging", () => {

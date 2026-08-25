@@ -290,8 +290,18 @@ function renderMemberListbox(refs: MemberComboboxRefs): void {
     (member) => member.username === trimmedQuery,
   );
   const hasExactCandidate = hasExactCoMemberMatch({ query: trimmedQuery });
+  // Suppress the outsider row when the exact typed username is already staged as
+  // an outsider chip: re-typing it would otherwise show a clickable row whose add
+  // silently no-ops (stageMemberUsername dedupes case-sensitively). Mirrors the
+  // staged-username exclusion filterCoMemberSuggestions already applies.
+  const matchesStagedChip = refs.stagedChips.some(
+    (chip) => chip.username === trimmedQuery,
+  );
   const showOutsider =
-    trimmedQuery.length >= 1 && !hasExactCandidate && !matchesCurrentMember;
+    trimmedQuery.length >= 1 &&
+    !hasExactCandidate &&
+    !matchesCurrentMember &&
+    !matchesStagedChip;
 
   if (showOutsider) {
     listbox.append(buildOutsiderOption(refs, trimmedQuery, optionIndex++));
