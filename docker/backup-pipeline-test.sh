@@ -80,15 +80,30 @@ DB_STARTED=$(docker run -d \
   --name "$DB" \
   postgres:16.3-bookworm)
 
-echo "⏳ Waiting for Postgres to accept connections..."
-for _ in $(seq 1 30); do
-  if docker exec "$DB" pg_isready -U bob -d test >/dev/null 2>&1; then break; fi
+echo "⏳ Waiting for Postgres to accept TCP connections..."
+# Check TCP (-h 127.0.0.1), NOT the default local unix socket. The postgres image's
+# first-init boots a TEMPORARY socket-only server to run initdb/init scripts, then
+# shuts it down and restarts the real server. A socket `pg_isready` reports "ready"
+# during that temp phase, so a socket-based loop breaks early — and a single-shot
+# final check then lands in the brief gap while the temp server is stopping before
+# the real one is up, printing "never became ready" in ~1s despite the 30-iteration
+# loop (a first-init race, flaky by timing). The temp server never binds TCP, so a
+# TCP `pg_isready` only succeeds once the REAL server is up — no race. We also loop
+# a single readiness flag (no separate single-shot final check) and dump the
+# container logs on failure to make any genuine startup error diagnosable.
+DB_READY=0
+for _ in $(seq 1 60); do
+  if docker exec "$DB" pg_isready -h 127.0.0.1 -U bob -d test >/dev/null 2>&1; then
+    DB_READY=1
+    break
+  fi
   sleep 1
 done
-docker exec "$DB" pg_isready -U bob -d test >/dev/null 2>&1 || {
+if [ "$DB_READY" != 1 ]; then
   echo "❌ Postgres sidecar never became ready" >&2
+  docker logs "$DB" 2>&1 | tail -40 >&2 || true
   exit 1
-}
+fi
 
 # --- MinIO (S3-compatible) sidecar + buckets for the real-upload legs ---
 echo "🪣 Starting MinIO sidecar (alias minio)"
