@@ -267,7 +267,7 @@ const appConfig = {
     MEMBER_ADD_NO_COMEMBERS_HINT:
       "No shared members yet — type a username to add",
     MEMBER_ADD_ALREADY_MEMBER_HINT: '"{{ username }}" is already a member',
-    MEMBER_ADD_OUTSIDER_LABEL: 'Add "{{ username }}" as an exact username',
+    MEMBER_ADD_OUTSIDER_LABEL: 'Add "{{ username }}" by username',
     MEMBER_ADD_SHARES_COUNT_ONE: "shares 1 UTub",
     MEMBER_ADD_SHARES_COUNT: "shares {n} UTubs",
     MEMBER_ADD_SUBMIT_COUNT: "Add {n}",

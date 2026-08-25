@@ -130,7 +130,7 @@ def _suggestion_option_locator(*, page: Page, username: str) -> Locator:
     """Locate the co-member suggestion option whose label is exactly `username`.
 
     `text-is` (exact match) both excludes the amber outsider row (its label is
-    `Add "..." as an exact username`) and prevents a substring collision between
+    `Add "..." by username`) and prevents a substring collision between
     otherwise-similar mock usernames.
     """
     return page.locator(HPL.MEMBER_COMBOBOX_OPTION).filter(
@@ -162,7 +162,7 @@ def stage_co_member_suggestion(*, page: Page, username: str) -> Locator:
 def stage_outsider_username(*, page: Page, username: str) -> Locator:
     """Type a non-co-member username, click the amber outsider row, return chip.
 
-    The outsider row (`+ Add "username" as an exact username`) is the exact-add
+    The outsider row (`+ Add "username" by username`) is the exact-add
     fallback for anyone who is neither a co-member candidate nor a current
     member. Staging it carries `source='exact_username'`.
 

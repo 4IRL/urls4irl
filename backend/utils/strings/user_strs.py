@@ -109,7 +109,7 @@ MEMBER_ADD_SUBMIT = "Add"
 MEMBER_ADD_LOADING_HINT = "Loading matches…"
 MEMBER_ADD_NO_COMEMBERS_HINT = "No shared members yet — type a username to add"
 MEMBER_ADD_ALREADY_MEMBER_HINT = '"{{ username }}" is already a member'
-MEMBER_ADD_OUTSIDER_LABEL = 'Add "{{ username }}" as an exact username'
+MEMBER_ADD_OUTSIDER_LABEL = 'Add "{{ username }}" by username'
 MEMBER_ADD_SHARES_COUNT_ONE = "shares 1 UTub"
 MEMBER_ADD_SHARES_COUNT = "shares {n} UTubs"
 # "Add N" batch-submit label (Step 6). MEMBER_ADD_SUBMIT ("Add") is the disabled

@@ -160,7 +160,7 @@ describe("member-combobox — outsider fallback row", () => {
     const outsider = wrap.find(".memberAddOptionOutsider");
     expect(outsider.length).toBe(1);
     expect(outsider.find(".memberAddOptionLabel").text()).toBe(
-      'Add "new" as an exact username',
+      'Add "new" by username',
     );
   });
 
