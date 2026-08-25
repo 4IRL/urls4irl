@@ -25,6 +25,16 @@
 }
 
 .memberOtherBtnDelete {
+    /* Strip iOS Safari's native button chrome: without -webkit-appearance:none a
+       <button> keeps native styling, and the global `button { background: inherit }`
+       reset (layout.css) then paints the row's opaque background as a solid box that
+       covers the row's `border-block` divider. Force transparent so the divider and
+       row background show through behind the icon (no box). Chromium resets buttons
+       differently, so this only manifested on iOS/WebKit. Scoped here (not the global
+       reset) to keep the blast radius to this button. */
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
     opacity: 0;
     color: var(--removeMemberColor);
     transition: color 0.2s;
