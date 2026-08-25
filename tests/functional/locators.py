@@ -409,7 +409,7 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_COMBOBOX_STAGED_CHIP_NEW = ".memberAddStagedChipNew"
     MEMBER_COMBOBOX_STAGED_CHIP_RING = ".memberAddStagedChipRing"
     MEMBER_COMBOBOX_STAGED_CHIP_STATUS = ".memberAddStagedChipStatus"
-    MEMBER_COMBOBOX_STAGED_CHIP_ERROR = ".memberAddStagedChipError"
+    MEMBER_COMBOBOX_STAGED_CHIP_FAILED = ".memberAddStagedChipFailed"
     MEMBER_COMBOBOX_STAGED_CHIP_REMOVE = ".memberAddStagedChipRemove"
     MEMBER_COMBOBOX_STAGED_CHIP_OUTSIDER = ".memberAddStagedChipOutsider"
     MEMBER_COMBOBOX_LOADING_RING = ".dual-loading-ring"

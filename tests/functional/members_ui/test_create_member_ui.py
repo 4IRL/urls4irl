@@ -8,6 +8,8 @@ from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.users import Users
 from backend.utils.strings.user_strs import (
     MEMBER_ADD_SHARES_COUNT_ONE,
+    MEMBER_ADD_SUMMARY_ADDED_ONE,
+    MEMBER_ADD_SUMMARY_FAILED_ONE,
     MEMBER_FAILURE,
     USER_FAILURE,
 )
@@ -66,6 +68,13 @@ OUTSIDER_USER = USERNAME_BASE + "4"
 NONEXISTENT_USER = USERNAME_BASE + "999A"
 
 _DUAL_LOADING_RING_RE = re.compile(r"(^|\s)dual-loading-ring(\s|$)")
+_CHIP_FAILED_RE = re.compile(r"(^|\s)memberAddStagedChipFailed(\s|$)")
+# The per-chip failure marker is an inline warning SVG rendered into the chip's
+# decorative status slot (bi-exclamation-triangle-fill — this project ships no
+# icon font, so every `bi` icon is inline SVG).
+_STATUS_WARNING_ICON = (
+    f"{HPL.MEMBER_COMBOBOX_STAGED_CHIP_STATUS} svg.bi-exclamation-triangle-fill"
+)
 
 
 def _login_owner_with_co_members(
@@ -248,9 +257,10 @@ def test_outsider_nonexistent_user_shows_inline_error_and_ring_clears(
     """
     GIVEN a staged outsider chip for a username no user owns
     WHEN the owner submits with the POST briefly delayed
-    THEN the chip shows the ring in flight, then the ring clears and a per-chip
-         inline USER_NOT_EXIST error renders beside the retained chip (siblings
-         unaffected).
+    THEN the chip shows the ring in flight, then the ring clears and the chip is
+         marked failed (red warning icon + USER_NOT_EXIST reason in its `title`
+         tooltip) while staying staged, and a count-based failure summary renders
+         under the strip (siblings unaffected).
     """
     app = provide_app
     _login_owner_with_co_members(app=app, page=page, co_member_usernames=[CO_MEMBER_A])
@@ -265,12 +275,16 @@ def test_outsider_nonexistent_user_shows_inline_error_and_ring_clears(
     expect(ring).to_have_class(_DUAL_LOADING_RING_RE)
     release_add()
 
-    # After settle: ring class cleared, inline error shown, chip retained.
-    error = chip.locator(HPL.MEMBER_COMBOBOX_STAGED_CHIP_ERROR)
-    expect(error).to_be_visible()
-    expect(error).to_have_text(USER_FAILURE.USER_NOT_EXIST)
+    # After settle: ring class cleared; chip marked failed with the red warning
+    # icon + reason tooltip, retained; count-based summary shown under the strip.
+    expect(chip).to_have_class(_CHIP_FAILED_RE)
+    expect(chip.locator(_STATUS_WARNING_ICON)).to_be_visible()
+    expect(chip).to_have_attribute("title", USER_FAILURE.USER_NOT_EXIST)
     expect(ring).not_to_have_class(_DUAL_LOADING_RING_RE)
     expect(get_staged_chip(page=page, username=NONEXISTENT_USER)).to_have_count(1)
+    expect(page.locator(HPL.MEMBER_COMBOBOX_MESSAGE)).to_have_text(
+        MEMBER_ADD_SUMMARY_FAILED_ONE
+    )
 
 
 def test_duplicate_member_shows_inline_error(
@@ -280,8 +294,9 @@ def test_duplicate_member_shows_inline_error(
     GIVEN a co-member chip staged from the candidate list
     WHEN that user is added to the target UTub server-side before the batch POST
          fires (a stale-candidate race)
-    THEN the per-chip POST resolves to MEMBER_ALREADY_IN_UTUB, rendered as an
-         inline error beside the still-staged chip.
+    THEN the per-chip POST resolves to MEMBER_ALREADY_IN_UTUB, marking the
+         still-staged chip failed (red warning icon + reason in its `title`
+         tooltip) with a count-based failure summary under the strip.
     """
     app = provide_app
     target_utub = get_utub_this_user_created(app, 1)
@@ -301,10 +316,13 @@ def test_duplicate_member_shows_inline_error(
 
     click_add_member_submit(page=page)
 
-    error = chip.locator(HPL.MEMBER_COMBOBOX_STAGED_CHIP_ERROR)
-    expect(error).to_be_visible()
-    expect(error).to_have_text(MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB)
+    expect(chip).to_have_class(_CHIP_FAILED_RE)
+    expect(chip.locator(_STATUS_WARNING_ICON)).to_be_visible()
+    expect(chip).to_have_attribute("title", MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB)
     expect(get_staged_chip(page=page, username=CO_MEMBER_A)).to_have_count(1)
+    expect(page.locator(HPL.MEMBER_COMBOBOX_MESSAGE)).to_have_text(
+        MEMBER_ADD_SUMMARY_FAILED_ONE
+    )
 
 
 def test_mixed_outcome_batch_add_resolves_each_chip_independently(
@@ -314,8 +332,9 @@ def test_mixed_outcome_batch_add_resolves_each_chip_independently(
     GIVEN two staged chips in one batch: a valid co-member and a nonexistent user
     WHEN the owner submits the batch once
     THEN each chip resolves independently — the valid one succeeds (badge
-         appended, chip cleared) while the nonexistent one keeps its inline
-         USER_NOT_EXIST error and stays staged (siblings unaffected).
+         appended, chip cleared) while the nonexistent one is marked failed
+         (red warning icon + USER_NOT_EXIST reason in its `title` tooltip) and
+         stays staged; the batched count-based summary recaps both outcomes.
     """
     app = provide_app
     _login_owner_with_co_members(app=app, page=page, co_member_usernames=[CO_MEMBER_A])
@@ -331,11 +350,17 @@ def test_mixed_outcome_batch_add_resolves_each_chip_independently(
     expect(good_badge).to_be_attached()
     expect(get_staged_chip(page=page, username=CO_MEMBER_A)).to_have_count(0)
 
-    # The bad chip fails independently: retained with its inline error.
-    bad_error = bad_chip.locator(HPL.MEMBER_COMBOBOX_STAGED_CHIP_ERROR)
-    expect(bad_error).to_be_visible()
-    expect(bad_error).to_have_text(USER_FAILURE.USER_NOT_EXIST)
+    # The bad chip fails independently: retained with the red warning icon +
+    # reason tooltip, siblings unaffected.
+    expect(bad_chip).to_have_class(_CHIP_FAILED_RE)
+    expect(bad_chip.locator(_STATUS_WARNING_ICON)).to_be_visible()
+    expect(bad_chip).to_have_attribute("title", USER_FAILURE.USER_NOT_EXIST)
     expect(get_staged_chip(page=page, username=NONEXISTENT_USER)).to_have_count(1)
+
+    # Batched count-based summary recaps both outcomes: one added, one failed.
+    expect(page.locator(HPL.MEMBER_COMBOBOX_MESSAGE)).to_have_text(
+        f"{MEMBER_ADD_SUMMARY_ADDED_ONE}, {MEMBER_ADD_SUMMARY_FAILED_ONE}"
+    )
 
 
 def test_already_member_hint_suppresses_outsider_row(
