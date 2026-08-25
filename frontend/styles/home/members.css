@@ -215,36 +215,21 @@
     color: var(--panelBackgroundColor);
 }
 
-/* #memberBtnCreate transforms into a Cancel affordance in place while the
-   combobox is open (never hidden). Quiet red-outline ghost that fills solid on
-   hover/active — visually mirrors `.urlTagCancelBigBtnCreate.cancel`. Named in
-   the member domain's camelCase convention (cf. .memberOtherBtnDelete). */
-.memberBtnCreateCancel {
-    background: transparent;
-    border: 1px solid var(--removeIconColor);
-    color: var(--removeIconColor);
-    border-radius: var(--radius-sm);
-    white-space: nowrap;
-    padding: 2px 10px;
-    font-weight: 700;
+/* #memberBtnCreate transforms in place into the shared close-X (`bi-x-square-fill`
+   + `.cancelButton`, red) while the combobox is open (never hidden) — a +/× toggle
+   matching the app's form-cancel pattern. Strip iOS Safari's native button chrome
+   (same reason as `.memberOtherBtnDelete`): in the transparent close-X state the
+   native box would otherwise show on iOS. The green "+" state sets its own
+   background via `.green-clickable`, so `appearance: none` doesn't affect it. */
+#memberBtnCreate {
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 @media not all and (any-pointer: coarse) {
-    .memberBtnCreateCancel:hover {
-        background: var(--removeIconColor);
-        border-color: var(--removeIconColor);
-        color: var(--panelBackgroundColor);
-    }
-
     .urlTagOption.memberAddOptionOutsider:hover {
         background: var(--memberOutsiderAmberTint);
     }
-}
-
-.memberBtnCreateCancel:active {
-    background: var(--removeIconColor);
-    border-color: var(--removeIconColor);
-    color: var(--panelBackgroundColor);
 }
 
 /* ==========================================================================
@@ -345,10 +330,9 @@
 
 /* Reduced-motion: drop the member-specific transitions. The reused `.urlTag*`
    shell's own reduced-motion rule (tags.css) already covers the wrap/listbox/chip
-   transitions; this covers the member-only in-place Cancel affordance and the
-   staged-chip background transition (mirrors tags.css's reduced-motion block). */
+   transitions; this covers the staged-chip background transition (mirrors
+   tags.css's reduced-motion block). */
 @media (prefers-reduced-motion: reduce) {
-    .memberBtnCreateCancel,
     .memberAddStagedChip {
         transition: none;
     }

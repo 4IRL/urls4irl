@@ -415,7 +415,7 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_COMBOBOX_LOADING_RING = ".dual-loading-ring"
     MEMBER_COMBOBOX_SUBMIT = ".memberAddComboboxSubmitBtn"
     MEMBER_COMBOBOX_MESSAGE = ".memberAddComboboxMsg"
-    MEMBER_COMBOBOX_CANCEL_BTN = "#memberBtnCreate.memberBtnCreateCancel"
+    MEMBER_COMBOBOX_CANCEL_BTN = "#memberBtnCreate:has(svg.bi-x-square-fill)"
 
     LIST_MEMBERS = "#listMembers"
     BADGES_MEMBERS = ".member"

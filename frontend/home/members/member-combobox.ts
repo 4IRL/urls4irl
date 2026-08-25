@@ -729,13 +729,29 @@ function enableMemberDeckSiblingControls(): void {
 
 /**
  * Rebuilds the plus-square opener icon for #memberBtnCreate (restored on close
- * when reverting from the in-place Cancel affordance).
+ * when reverting from the in-place close affordance).
  */
 function createAddMemberIcon(): JQuery {
   return $(
     '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" ' +
       'class="bi bi-plus-square-fill" width="30" height="30" viewBox="0 0 16 16">' +
       '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0"/>' +
+      "</svg>",
+  );
+}
+
+/**
+ * The in-place close (cancel) icon that #memberBtnCreate shows while the combobox
+ * is open: the app's shared `bi-x-square-fill` cancel glyph (red via `.cancelButton`,
+ * same as Create UTub / Create Tag / Update-name+desc). Replaces the previous
+ * text "Cancel" — an X reads as "close" regardless of whether members were already
+ * added (the stay-open flow), and matches the form-cancel pattern used elsewhere.
+ */
+function createCloseMemberIcon(): JQuery {
+  return $(
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" ' +
+      'class="bi bi-x-square-fill cancelButton" width="30" height="30" viewBox="0 0 16 16">' +
+      '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
       "</svg>",
   );
 }
@@ -771,18 +787,20 @@ export function showMemberCombobox(utubID: number): void {
   const render = wrap.data(RENDER_KEY) as (() => void) | undefined;
   if (render) render();
 
-  // #memberBtnCreate transforms into a Cancel affordance in place — never
-  // hidden. The aria-label swap keeps the accessible name in sync with the
-  // visible "Cancel" label (WCAG 2.5.3/4.1.2). Also drop the opener's
-  // focus-bound Enter-to-reopen handler (create.ts binds keydown.createMember on
-  // focus) so pressing Enter on the focused Cancel button never spuriously
-  // re-opens (and re-emits the invite metric) before the click closes it.
+  // #memberBtnCreate transforms in place into the shared close (cancel) X — never
+  // hidden; the green "+" opener becomes the red `bi-x-square-fill` close glyph, a
+  // clean +/× toggle that matches the form-cancel pattern used elsewhere and reads
+  // as "close" even after members were added (stay-open flow). aria-label keeps the
+  // accessible action name (WCAG 4.1.2). Also drop the opener's focus-bound
+  // Enter-to-reopen handler (create.ts binds keydown.createMember on focus) so
+  // pressing Enter on the focused close button never spuriously re-opens (and
+  // re-emits the invite metric) before the click closes it.
   $("#memberBtnCreate")
     .off("keydown.createMember")
     .removeClass("green-clickable")
-    .addClass("memberBtnCreateCancel")
-    .text("Cancel")
-    .attr("aria-label", "Cancel")
+    .empty()
+    .append(createCloseMemberIcon())
+    .attr("aria-label", "Cancel adding members")
     .offAndOnExact("click", () =>
       cancelMemberCombobox(FORM_CANCEL_TRIGGER.CANCEL_BUTTON),
     );
@@ -844,12 +862,11 @@ export function hideAndResetMemberCombobox(): void {
   // is closed (idempotent — safe even when nothing was open).
   enableMemberDeckSiblingControls();
 
-  // Revert #memberBtnCreate from its Cancel state back to the plus opener.
+  // Revert #memberBtnCreate from its close-X state back to the green plus opener.
   const memberBtnCreate = $("#memberBtnCreate");
   memberBtnCreate
-    .removeClass("memberBtnCreateCancel")
     .addClass("green-clickable")
-    .text("")
+    .empty()
     .attr("aria-label", APP_CONFIG.strings.MEMBER_ADD_LABEL)
     .append(createAddMemberIcon());
 
