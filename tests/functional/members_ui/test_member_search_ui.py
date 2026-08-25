@@ -1,9 +1,9 @@
 import os
 import re
 
+import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
-import pytest
 
 from backend import db
 from backend.cli.mock_constants import USERNAME_BASE

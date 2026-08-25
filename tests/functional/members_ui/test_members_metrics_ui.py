@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
-import pytest
 from redis import Redis
 
 from backend.cli.mock_constants import USERNAME_BASE
