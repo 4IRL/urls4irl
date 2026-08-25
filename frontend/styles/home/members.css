@@ -133,8 +133,13 @@
 /* The "outsider" fallback row — add by exact, case-sensitive username. A dashed
    amber border + low-alpha amber wash sets it apart from the mint co-member
    matches (parallel to the tag combobox's green create-new row, re-skinned to
-   amber to read as "not in your circle"). */
-.memberAddOptionOutsider {
+   amber to read as "not in your circle"). Selector is compounded with
+   `.urlTagOption` (specificity 0,2,0) SO THE FULL 4-SIDED DASHED BORDER WINS: the
+   outsider row is always the listbox's last option, and the base
+   `.urlTagOption:last-child { border-bottom: none }` (also 0,2,0) would otherwise
+   strip the bottom dashed edge (members.css loads after tags.css, so the tie goes
+   to this rule) — leaving the border drawn only ~3/4 of the way around. */
+.urlTagOption.memberAddOptionOutsider {
     justify-content: flex-start;
     gap: 8px;
     color: var(--memberOutsiderAmber);
@@ -212,14 +217,24 @@
    These real-time per-chip visuals touch only the chip's own staged-strip DOM.
    ========================================================================== */
 
+/* The ring + status slots are always present in the chip DOM but empty at rest.
+   The chip is a flex row with `gap: 6px`, so an empty-but-present slot still
+   injects a phantom 6px gap on each side — that stacked the NEW↔warning and NEW↔×
+   spacing too far apart. Collapse each slot out of flow until it actually has
+   content, so the single `gap` between the visible chip parts stays uniform. */
+.memberAddStagedChipRing:not(.dual-loading-ring),
+.memberAddStagedChipStatus:empty {
+    display: none;
+}
+
 /* Chip-scoped loading-ring variant — the shared .dual-loading-ring is 38px
    (URL-card sized); shrink it to sit inside a chip. Inert until the chip's POST
-   is in flight (the ring class is toggled on in member-combobox-submit.ts). */
+   is in flight (the ring class is toggled on in member-combobox-submit.ts). The
+   chip's `gap` provides the spacing — no extra margin needed. */
 .memberAddStagedChipRing.dual-loading-ring {
     height: 14px;
     width: 14px;
     flex-shrink: 0;
-    margin-left: 4px;
 }
 
 .memberAddStagedChipRing.dual-loading-ring:after {
@@ -232,7 +247,6 @@
    to the username on a settled chip. The icon inherits its color (currentColor)
    from the chip's outcome class so success reads green and failure reads red. */
 .memberAddStagedChipStatus:not(:empty) {
-    margin-left: 4px;
     display: inline-flex;
     align-items: center;
 }
