@@ -30,6 +30,15 @@
     transition: color 0.2s;
 }
 
+/* Normalize the delete glyph to the owner diamond's 16px so the two icons render
+   the same size down the right column. delete.ts sizes the inner SVG at 24px via
+   width/height attributes; a CSS width/height wins over presentation attributes,
+   so the box shrinks to match `.memberRole` (16px) without editing the source. */
+.memberOtherBtnDelete svg {
+    width: 16px;
+    height: 16px;
+}
+
 .memberOtherBtnDelete:focus {
     color: red;
 }
@@ -120,7 +129,14 @@
         opacity: 1;
         min-height: 2.75rem;
         min-width: 2.75rem;
-        justify-content: center;
+        /* Right-justify the glyph so it hugs the row's right edge exactly like the
+           owner diamond (both are the last child of a `jc-sb` row) — their centers
+           then fall on one vertical line. The 44px min box is preserved for the
+           WCAG 2.5.5 touch target, but the empty slack now sits to the LEFT of the
+           glyph, extending the tap area inward rather than pushing the glyph off
+           the right margin. padding-right:0 keeps the glyph flush to the edge. */
+        justify-content: flex-end;
+        padding-right: 0;
     }
 }
 
