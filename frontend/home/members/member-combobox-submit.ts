@@ -36,8 +36,8 @@ type ChipSettleResult = {
   outcome: ChipOutcome;
   // Present only for a 200: the added member, appended once after settle.
   member?: MemberModifiedResponse["member"];
-  // Present only for a 400: the inline error text shown beside the chip, reused
-  // in the batched aria-live summary.
+  // Present only for a 400: the failure reason, carried by the chip's title
+  // tooltip and reused in the batched aria-live summary.
   errorText?: string;
 };
 
@@ -92,7 +92,7 @@ export async function submitStagedMembers({
  * Issues one chip's POST and returns a Promise that ALWAYS resolves with the
  * chip's settle result (captured from within its own `.done`/`.fail`). Shows the
  * per-chip delayed loading ring gated by SHOW_LOADING_ICON_AFTER_MS so fast adds
- * never flicker. Real-time per-chip visual feedback (ring / ✓ / inline error)
+ * never flicker. Real-time per-chip visual feedback (ring / green ✓ / red ✗)
  * touches only this chip's own staged-strip DOM — never the target UTub's deck.
  */
 function submitOneChip({
@@ -162,7 +162,7 @@ function submitOneChip({
  * fulfilled chip and syncs the deck ONCE; otherwise skips all deck-DOM mutations
  * (the deck may already be torn down) and surfaces completion via a non-deck
  * aria-live path. Then clears only the succeeded chips (stay-open flow), leaving
- * failed chips with their inline error for retry, and refocuses the input.
+ * failed chips (red ✗ + reason tooltip) staged for retry, and refocuses the input.
  */
 function applyPostSettleSideEffects({
   results,
@@ -218,7 +218,7 @@ function applyPostSettleSideEffects({
   }
 
   // Post-settle stay-open lifecycle: drop only the succeeded chips (DOM +
-  // backing staged state); leave failed chips in place with their inline error
+  // backing staged state); leave failed chips in place (red ✗ + reason tooltip)
   // so the creator can retry without re-typing. The combobox never auto-closes.
   const succeededUsernames = fulfilled.map((result) => result.chip.username);
   succeededUsernames.forEach((username) => {
