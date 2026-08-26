@@ -38,11 +38,6 @@ export function setDeleteEventListeners(utubID: number): void {
   utubBtnDelete.offAndOn("click.deleteUTub", function () {
     deleteUTubShowModal(utubID);
   });
-
-  // Removes the keydown listener from the document once the button is blurred
-  utubBtnDelete.offAndOn("blur.deleteUTub", function () {
-    utubBtnDelete.off("keydown.deleteUTub");
-  });
 }
 
 // Hide confirmation modal for deletion of the current UTub

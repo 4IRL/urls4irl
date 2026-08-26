@@ -53,10 +53,7 @@ export function createCopyURLBtn(url: UtubUrlItem): JQuery<HTMLElement> {
     .onExact("click", function (this: HTMLElement) {
       copyURLString(url.urlString, this);
     })
-    .append(createCopyURLIcon())
-    .on("blur", function () {
-      urlBtnCopy.off("keyup.copyURL");
-    });
+    .append(createCopyURLIcon());
 
   bootstrap.Tooltip.getOrCreateInstance(urlBtnCopy[0]);
   return urlBtnCopy;

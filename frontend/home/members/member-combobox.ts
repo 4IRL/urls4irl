@@ -801,12 +801,8 @@ export function showMemberCombobox(utubID: number): void {
   // hidden; the green "+" opener becomes the red `bi-x-square-fill` close glyph, a
   // clean +/× toggle that matches the form-cancel pattern used elsewhere and reads
   // as "close" even after members were added (stay-open flow). aria-label keeps the
-  // accessible action name (WCAG 4.1.2). Also drop the opener's focus-bound
-  // Enter-to-reopen handler (create.ts binds keydown.createMember on focus) so
-  // pressing Enter on the focused close button never spuriously re-opens (and
-  // re-emits the invite metric) before the click closes it.
+  // accessible action name (WCAG 4.1.2).
   $("#memberBtnCreate")
-    .off("keydown.createMember")
     .removeClass("green-clickable")
     .empty()
     .append(createCloseMemberIcon())

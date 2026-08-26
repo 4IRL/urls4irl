@@ -1,5 +1,4 @@
 import { $ } from "../../lib/globals.js";
-import { KEYS } from "../../lib/constants.js";
 import {
   hideAndResetMemberCombobox,
   showMemberCombobox,
@@ -20,19 +19,6 @@ export function setupShowCreateMemberFormEventListeners(utubID: number): void {
   // UTub select never double-opens the combobox.
   memberBtnCreate.off("click").on("click.createMember", function () {
     createMemberShowInput(utubID);
-  });
-
-  memberBtnCreate.offAndOn("focus", function () {
-    memberBtnCreate.on(
-      "keydown.createMember",
-      function (event: JQuery.TriggeredEvent) {
-        if (event.key === KEYS.ENTER) createMemberShowInput(utubID);
-      },
-    );
-  });
-
-  memberBtnCreate.offAndOn("blur", function () {
-    memberBtnCreate.off(".createMember");
   });
 }
 
