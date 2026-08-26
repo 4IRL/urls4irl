@@ -60,6 +60,49 @@ def test_create_utub_shows_url_deck_mobile(
     assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
 
+def test_create_utub_buttons_sit_below_inputs_mobile(
+    page_mobile_portrait: Page, create_test_users, provide_app: Flask
+):
+    """
+    Regression test for issue #424: on mobile the create-UTub submit/cancel row
+    must sit directly beneath the last input rather than growing to fill the deck
+    and pinning to its bottom, so the on-screen keyboard raised by the autofocused
+    name field does not hide the buttons.
+
+    GIVEN a user opens the create-UTub form on a mobile (coarse-pointer) viewport
+    WHEN the form is shown
+    THEN the submit (check) button sits immediately below the description input,
+        not anchored to the bottom of the UTub deck
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id = 1
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_CREATE)
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_SUBMIT_CREATE
+    )
+
+    description_box = page.locator(HPL.INPUT_UTUB_DESCRIPTION_CREATE).bounding_box()
+    submit_box = page.locator(HPL.BUTTON_UTUB_SUBMIT_CREATE).bounding_box()
+    assert description_box is not None
+    assert submit_box is not None
+
+    description_bottom = description_box["y"] + description_box["height"]
+    gap_below_last_input = submit_box["y"] - description_bottom
+
+    # The create wrap's own 20px row-gap separates the last input from the button
+    # row on the fixed layout. The ceiling stays generous enough to absorb
+    # sub-pixel/padding differences while still catching the pre-fix layout, where
+    # the row grew (flex: 1 1 auto) and bottom-anchored (align-items: flex-end) to
+    # the deck, leaving a ~490px gap with the buttons behind the keyboard.
+    assert 0 <= gap_below_last_input <= 80, (
+        "Create-UTub submit button should sit directly below the last input on "
+        f"mobile; gap was {gap_below_last_input}px"
+    )
+
+
 def test_tap_on_already_selected_utub_shows_url_deck_mobile(
     page_mobile_portrait: Page, create_test_utubs, provide_app: Flask
 ):
