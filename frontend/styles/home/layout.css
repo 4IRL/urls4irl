@@ -392,6 +392,19 @@ button {
     margin-top: 20px;
 }
 
+/* Issue #424 — on touch devices the on-screen keyboard covers the submit/cancel
+   row when it is grown (flex: 1 1 auto) and bottom-anchored (align-items: flex-end)
+   to the deck bottom. On coarse pointers keep that row in normal flow directly
+   beneath the last input so it stays visible above the keyboard. Scoped to the
+   UTub-create and UTub-tag-create forms only. */
+@media (any-pointer: coarse) {
+    #createUTubWrap > .flex-row,
+    #createUTubTagWrap > .flex-row {
+        flex: 0 0 auto;
+        align-items: center;
+    }
+}
+
 /* Media size for responsiveness
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/
  * */

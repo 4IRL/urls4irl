@@ -164,6 +164,67 @@ def test_tag_sheet_happy_path_open_filter_close(
     assert len(_visible_url_rows(page=page_mobile_portrait)) == num_urls_tagged
 
 
+def test_create_utub_tag_buttons_sit_below_input_mobile(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    Regression test for issue #424 (tag-create half of the fix): on mobile the
+    create-UTub-tag submit/cancel row must sit directly beneath the tag input
+    rather than growing to fill the deck and pinning to its bottom, so the
+    on-screen keyboard raised by the autofocused input does not hide the buttons.
+    On mobile the Tag deck (with the create-tag control) is relocated into the
+    bottom sheet, so the form is opened by opening the sheet then tapping create.
+
+    GIVEN a logged-in mobile user on the URL deck of one of their UTubs
+    WHEN they open the tag sheet and open the create-tag form
+    THEN the submit (check) button sits immediately below the tag input, not
+        anchored to the bottom of the sheet
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page_mobile_portrait, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page_mobile_portrait, visible_deck=Decks.URLS)
+
+    # The Tag deck lives inside the bottom sheet on mobile; open it before the
+    # create control is interactable (the sheet body is visibility:hidden while
+    # collapsed). wait_until_tag_sheet_open gates on the slide settling.
+    wait_until_tag_sheet_collapsed(page=page_mobile_portrait)
+    wait_then_click_element(
+        page=page_mobile_portrait, css_selector=HPL.TAG_SHEET_HANDLE
+    )
+    wait_until_tag_sheet_open(page=page_mobile_portrait)
+
+    wait_then_click_element(
+        page=page_mobile_portrait, css_selector=HPL.BUTTON_UTUB_TAG_CREATE
+    )
+    wait_until_in_focus(
+        page=page_mobile_portrait, css_selector=HPL.INPUT_UTUB_TAG_CREATE
+    )
+
+    input_box = page_mobile_portrait.locator(HPL.INPUT_UTUB_TAG_CREATE).bounding_box()
+    submit_box = page_mobile_portrait.locator(
+        HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE
+    ).bounding_box()
+    assert input_box is not None
+    assert submit_box is not None
+
+    input_bottom = input_box["y"] + input_box["height"]
+    gap_below_input = submit_box["y"] - input_bottom
+
+    # Same fixed layout as the UTub-create form: the wrap's 20px row-gap separates
+    # the input from the button row on coarse pointers. The ceiling absorbs
+    # sub-pixel/padding slack while still catching the pre-fix layout, where the
+    # row grew and bottom-anchored to the sheet with the buttons behind the
+    # keyboard.
+    assert 0 <= gap_below_input <= 80, (
+        "Create-tag submit button should sit directly below the tag input on "
+        f"mobile; gap was {gap_below_input}px"
+    )
+
+
 def test_tag_sheet_opens_over_url_deck_from_member_deck(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
