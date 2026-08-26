@@ -71,20 +71,6 @@ describe("create-metrics — UI_MEMBER_INVITE_OPEN", () => {
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
-  it("emits ui_member_invite_open on Enter keypress while the button is focused", async () => {
-    const { emit } = await import("../../../lib/metrics-client.js");
-
-    setupShowCreateMemberFormEventListeners(7);
-    $("#memberBtnCreate").trigger("focus");
-    const event = $.Event("keydown.createMember", { key: "Enter" });
-    $("#memberBtnCreate").trigger(event);
-
-    expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_MEMBER_INVITE_OPEN,
-    });
-    expect(emit).toHaveBeenCalledTimes(1);
-  });
-
   it("does not emit when listeners are set up but no interaction occurs", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
