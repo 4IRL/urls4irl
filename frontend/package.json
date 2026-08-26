@@ -27,11 +27,12 @@
     "openapi-typescript": "7.13.0",
     "postcss-preset-env": "11.2.0",
     "typescript": "6.0.2",
-    "vite": "7.3.2",
+    "vite": "7.3.5",
     "vitest": "4.1.0"
   },
   "overrides": {
+    "esbuild": "0.28.2",
     "picomatch": "4.0.4",
-    "postcss": "8.5.15"
+    "postcss": "8.5.23"
   }
 }

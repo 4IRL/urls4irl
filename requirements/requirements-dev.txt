@@ -5,7 +5,7 @@ identify==2.5.29
 nodeenv==1.8.0
 platformdirs==3.9.1
 pre-commit==3.7.0
-pyopenssl==26.0.0
+pyopenssl==26.4.0
 PyYAML==6.0.1
 virtualenv==20.36.1
 -r requirements-test.txt
