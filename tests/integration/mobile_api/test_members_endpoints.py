@@ -328,6 +328,106 @@ def test_remove_member_member_cannot_remove_other_member(
     )
 
 
+def test_remove_member_co_creator_can_remove_self(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN UTub id=1 where user 2 has been promoted to CO_CREATOR
+    WHEN user 2 (co-owner) removes themselves (user_id=2)
+    THEN 200 (co-creators may leave voluntarily — DD-5) and the row is gone
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+
+    with app.app_context():
+        initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
+
+    response = api_client.delete(
+        _remove_member_url(app, utub_id=1, user_id=2),
+        headers=user_2_headers,
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
+
+    with app.app_context():
+        assert Utub_Members.query.get((1, 2)) is None
+        assert (
+            Utub_Members.query.filter_by(utub_id=1).count() == initial_member_count - 1
+        )
+
+
+def test_remove_member_creator_cannot_remove_self_with_co_creator_present(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN UTub id=1 where user 2 has been promoted to CO_CREATOR
+    WHEN the literal creator (user 1) tries to remove themselves (user_id=1)
+    THEN 400 — the true owner stays blocked even when a co-creator exists
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+
+    response = api_client.delete(
+        _remove_member_url(app, utub_id=1, user_id=1),
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF
+    )
+
+    with app.app_context():
+        assert Utub_Members.query.get((1, 1)) is not None
+
+
+def test_remove_member_co_creator_can_remove_another_member(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN UTub id=1 with creator (user 1) and members (users 2, 3), where user 2
+        has been promoted to CO_CREATOR
+    WHEN the co-creator (user 2) removes another member (user 3)
+    THEN 200 — the co-owner's right to remove other members is preserved (DD-1)
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+
+    with app.app_context():
+        initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
+
+    response = api_client.delete(
+        _remove_member_url(app, utub_id=1, user_id=3),
+        headers=user_2_headers,
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
+    assert response_json[_MEMBER_KEY][MODELS.ID] == 3
+
+    with app.app_context():
+        assert Utub_Members.query.get((1, 3)) is None
+        assert (
+            Utub_Members.query.filter_by(utub_id=1).count() == initial_member_count - 1
+        )
+
+
 # ===========================================================================
 # PATCH /api/v1/utubs/<utub_id>/members/<user_id> — grant/revoke co-owner
 # ===========================================================================

@@ -1,7 +1,10 @@
 from flask_login import current_user
 
 from backend import db
-from backend.api_common.request_utils import is_current_utub_creator
+from backend.api_common.request_utils import (
+    is_current_utub_creator,
+    is_current_utub_true_owner,
+)
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, safe_add_many_logs, warning_log
 from backend.extensions.metrics.writer import record_event
@@ -44,9 +47,10 @@ def remove_member_or_self_from_utub(
         return utub_locked_error
 
     is_utub_creator = is_current_utub_creator()
+    is_true_owner = is_current_utub_true_owner(current_utub)
 
     creator_removing_themself = _creator_removing_themself(
-        is_utub_creator, user_id_to_remove
+        is_true_owner, user_id_to_remove
     )
 
     if creator_removing_themself:
@@ -78,19 +82,22 @@ def remove_member_or_self_from_utub(
     )
 
 
-def _creator_removing_themself(is_utub_creator: bool, user_id_to_remove: int) -> bool:
+def _creator_removing_themself(is_true_owner: bool, user_id_to_remove: int) -> bool:
     """
-    Creators cannot remove themselves from the UTub currently.
+    The literal UTub owner (creator) cannot remove themselves from the UTub
+    currently. Co-creators (co-owners) are NOT blocked here — they may leave
+    voluntarily, so this check keys on true ownership rather than the
+    co-creator-inclusive creator signal.
 
     Args:
-        is_utub_creator (bool): True if the user is this UTub's creator
+        is_true_owner (bool): True if the user is this UTub's literal owner (creator)
         user_id_to_remove (int): The ID of the user being removed
 
     Returns:
-        (bool): True if creator is removing themselves
+        (bool): True if the literal owner is removing themselves
     """
     is_creator_removing_themself = (
-        is_utub_creator and current_user.id == user_id_to_remove
+        is_true_owner and current_user.id == user_id_to_remove
     )
 
     if is_creator_removing_themself:
