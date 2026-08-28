@@ -21,9 +21,56 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.url_strs import URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, set_member_role
 
 pytestmark = pytest.mark.urls
+
+
+def test_delete_others_url_as_co_creator_no_tags(
+    add_all_urls_and_users_to_each_utub_no_tags, login_second_user_without_register
+):
+    """
+    GIVEN a co-creator (user 2, NOT the literal utub.utub_creator) of a UTub holding a
+        URL added by a DIFFERENT member
+    WHEN the co-creator removes that URL via DELETE to
+        "/utubs/<int:utub_id>/urls/<int:utub_url_id>"
+    THEN the server responds 200 and the URL-UTub association is removed — a co-owner
+        (co-creator) is a manager and may delete any URL in the UTub (DD-1). This guards
+        the already-co-creator-inclusive single-URL delete path against regression.
+    """
+    client, csrf_token_string, _, app = login_second_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator != current_user.id).first()
+        utub_id = utub.id
+        current_user_id = current_user.id
+        others_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id,
+            Utub_Urls.user_id != current_user_id,
+        ).first()
+        others_url_id = others_url.id
+        initial_count = Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).count()
+
+    set_member_role(app, utub_id, current_user_id, Member_Role.CO_CREATOR)
+
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=utub_id,
+            utub_url_id=others_url_id,
+        ),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert delete_url_response.status_code == 200
+    assert delete_url_response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+
+    with app.app_context():
+        assert Utub_Urls.query.get(others_url_id) is None
+        assert (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).count()
+            == initial_count - 1
+        )
 
 
 def test_delete_url_as_utub_creator_no_tags(

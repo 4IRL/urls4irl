@@ -683,7 +683,6 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
-        creator_of_utub_id = utub_user_is_creator_of.utub_creator
 
         # Get URL that is in this UTub, added by this user
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -692,7 +691,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = UtubUrlSchema.from_orm_url(
-            url_utub_association, current_user.id, creator_of_utub_id
+            url_utub_association, current_user.id, True
         ).model_dump(by_alias=True)
 
         num_of_tag_associations_with_url_in_utub = Utub_Url_Tags.query.filter(
@@ -765,7 +764,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
 
         assert (
             UtubUrlSchema.from_orm_url(
-                url_utub_tag_association, current_user.id, creator_of_utub_id
+                url_utub_tag_association, current_user.id, True
             ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
@@ -806,7 +805,6 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
             Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
-        creator_of_utub_id = utub_user_is_member_of.utub_creator
 
         # Get URL that is in this UTub, not added by this user
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -815,7 +813,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = UtubUrlSchema.from_orm_url(
-            url_utub_association, current_user.id, creator_of_utub_id
+            url_utub_association, current_user.id, False
         ).model_dump(by_alias=True)
 
         num_of_tag_associations_with_url_in_utub = Utub_Url_Tags.query.filter(
@@ -888,7 +886,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
 
         assert (
             UtubUrlSchema.from_orm_url(
-                url_utub_tag_association, current_user.id, creator_of_utub_id
+                url_utub_tag_association, current_user.id, False
             ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
@@ -1247,7 +1245,6 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         ).first()
         utub_user_not_member_of: Utubs = utub_user_association_not_member_of.to_utub
         utub_id_that_user_not_member_of = utub_user_not_member_of.id
-        creator_of_utub_id: int = utub_user_not_member_of.utub_creator
 
         num_of_users_in_utub = len(utub_user_not_member_of.members)
 
@@ -1259,7 +1256,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         ).first()
         url_id_for_url_in_utub: int = url_association_with_this_utub.id
         url_serialization_for_check = UtubUrlSchema.from_orm_url(
-            url_association_with_this_utub, current_user.id, creator_of_utub_id
+            url_association_with_this_utub, current_user.id, False
         ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
@@ -1321,7 +1318,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
                     Utub_Urls.id == url_id_for_url_in_utub,
                 ).first(),
                 current_user.id,
-                creator_of_utub_id,
+                False,
             ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
@@ -1463,7 +1460,6 @@ def test_add_tag_to_url_with_max_tags_as_utub_creator(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
-        creator_of_utub_id = utub_user_is_creator_of.utub_creator
 
         # Get all tags
         all_tags: list[Utub_Tags] = Utub_Tags.query.all()
@@ -1499,7 +1495,7 @@ def test_add_tag_to_url_with_max_tags_as_utub_creator(
                 Utub_Urls.user_id == current_user.id,
             ).first(),
             current_user.id,
-            creator_of_utub_id,
+            True,
         ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
@@ -1553,7 +1549,7 @@ def test_add_tag_to_url_with_max_tags_as_utub_creator(
                     Utub_Urls.id == url_id_in_this_utub,
                 ).first(),
                 current_user.id,
-                creator_of_utub_id,
+                True,
             ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
@@ -1685,7 +1681,6 @@ def test_add_tag_to_url_with_max_tags_as_utub_member(
             Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
-        creator_of_utub_id = utub_user_is_member_of.utub_creator
 
         # Get all tags
         all_tags: list[Utub_Tags] = Utub_Tags.query.all()
@@ -1721,7 +1716,7 @@ def test_add_tag_to_url_with_max_tags_as_utub_member(
                 Utub_Urls.user_id != current_user.id,
             ).first(),
             current_user.id,
-            creator_of_utub_id,
+            False,
         ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
@@ -1775,7 +1770,7 @@ def test_add_tag_to_url_with_max_tags_as_utub_member(
                     Utub_Urls.id == url_id_in_this_utub,
                 ).first(),
                 current_user.id,
-                creator_of_utub_id,
+                False,
             ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
@@ -1818,7 +1813,6 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
-        creator_of_utub_id = utub_user_is_creator_of.utub_creator
 
         # Get URL that is in this UTub, added by this user
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -1827,7 +1821,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = UtubUrlSchema.from_orm_url(
-            url_utub_association, current_user.id, creator_of_utub_id
+            url_utub_association, current_user.id, True
         ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
@@ -1868,7 +1862,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         assert url_serialization_for_check == UtubUrlSchema.from_orm_url(
             Utub_Urls.query.get(url_id_to_add_tag_to),
             current_user.id,
-            creator_of_utub_id,
+            True,
         ).model_dump(by_alias=True)
 
         # Ensure this tag does not exist in the database
@@ -2052,7 +2046,6 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
-        creator_of_utub_id = utub_user_is_creator_of.utub_creator
 
         # Get URL that is in this UTub, added by this user
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -2061,7 +2054,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = UtubUrlSchema.from_orm_url(
-            url_utub_association, current_user.id, creator_of_utub_id
+            url_utub_association, current_user.id, True
         ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
@@ -2090,7 +2083,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         assert url_serialization_for_check == UtubUrlSchema.from_orm_url(
             Utub_Urls.query.get(url_id_to_add_tag_to),
             current_user.id,
-            creator_of_utub_id,
+            True,
         ).model_dump(by_alias=True)
 
         # Ensure this tag does not exist in the database
@@ -2524,7 +2517,6 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
-        creator_of_utub_id = utub_user_is_creator_of.utub_creator
 
         # Get URL that is in this UTub, added by this user
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -2533,7 +2525,7 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = UtubUrlSchema.from_orm_url(
-            url_utub_association, current_user.id, creator_of_utub_id
+            url_utub_association, current_user.id, True
         ).model_dump(by_alias=True)
 
         num_of_tag_associations_with_url_in_utub = Utub_Url_Tags.query.filter(
@@ -2601,7 +2593,7 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
 
         assert (
             UtubUrlSchema.from_orm_url(
-                url_utub_tag_association, current_user.id, creator_of_utub_id
+                url_utub_tag_association, current_user.id, True
             ).model_dump(by_alias=True)
             == url_serialization_for_check
         )

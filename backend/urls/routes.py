@@ -279,12 +279,12 @@ def delete_urls_from_utub(
     """
     User wants to bulk-delete selected URLs from a single (active) UTub in one
     request. Membership is proved by ``@utub_membership_required``; the per-URL
-    delete permission is re-checked inside the service against
-    ``current_utub.utub_creator`` (the literal-creator predicate, matching each
-    URL's ``canDelete``) rather than the broader, co-creator-inclusive
-    ``g.is_creator``. URLs the user may not delete are skipped and reported;
-    unknown or cross-UTub ids reject the whole request as a 400; a locked UTub is
-    a whole-request 403.
+    delete permission is re-checked inside the service against the *manager*
+    predicate — the adder of a URL, or a manager (literal owner OR co-owner
+    ``CO_CREATOR``) — matching each URL's ``canDelete`` and the single-URL delete
+    guard. URLs the user may not delete are skipped and reported; unknown or
+    cross-UTub ids reject the whole request as a 400; a locked UTub is a
+    whole-request 403.
 
     Args:
         utub_id (int): The UTub to delete the selected URLs from

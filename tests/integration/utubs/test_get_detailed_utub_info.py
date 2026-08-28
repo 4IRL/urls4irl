@@ -19,7 +19,11 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
+from tests.utils_for_test import (
+    count_tag_instances_in_utub,
+    is_string_in_logs,
+    set_member_role,
+)
 
 pytestmark = pytest.mark.utubs
 
@@ -257,6 +261,55 @@ def test_get_valid_utub_as_creator_with_co_creator_present(
         if member[MODELS.MEMBER_ROLE] == Member_Role.CO_CREATOR.value
     )
     assert co_creator_entry[MODELS.ID] != current_user_id
+
+
+def test_get_valid_utub_as_co_creator_can_delete_others_url(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a co-creator (user ID == 2) of a UTub that holds a URL added by a DIFFERENT
+        member (the literal creator)
+    WHEN the co-creator requests the details of that UTub
+    THEN verify `isCoCreator` is True and that URL's `canDelete` is True — the client's
+        canDelete snapshot must match the co-owner's server-side delete right (DD-1).
+    """
+    client, _, _, app = login_second_user_without_register
+
+    with app.app_context():
+        utub_user_co_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        id_of_utub = utub_user_co_creator_of.id
+        current_user_id = current_user.id
+        others_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub,
+            Utub_Urls.user_id != current_user_id,
+        ).first()
+        others_url_id = others_url.id
+        # Sanity: the URL was added by someone other than the co-creator viewer.
+        assert others_url.user_id != current_user_id
+
+    set_member_role(app, id_of_utub, current_user_id, Member_Role.CO_CREATOR)
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=id_of_utub),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+
+    assert response_json is not None
+    assert response_json[MODELS.IS_CREATOR] is False
+    assert response_json[MODELS.IS_CO_CREATOR] is True
+
+    url_entry = next(
+        url
+        for url in response_json[MODELS.URLS]
+        if url[MODELS.UTUB_URL_ID] == others_url_id
+    )
+    assert url_entry[MODELS.CAN_DELETE] is True
 
 
 def test_get_valid_utub_as_not_member(

@@ -737,7 +737,7 @@ UTub selection via the query parameter is handled on the client side.
 >             "utubUrlID": 1,
 >             "urlString": "https://urls.4irl.app",
 >             "urlTagIDs": [1, 2, 3],
->             "canDelete": true,           // Can only delete if UTub creator, or adder of URL  
+>             "canDelete": true,           // Can only delete if UTub creator, co-owner (co-creator), or adder of URL  
 >             "urlTitle": "Title for URL",
 >         },
 >         {
@@ -1484,7 +1484,7 @@ URL already in UTub.
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully removed URL from UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to remove a given URL. |
+> | `403`         | `application/json`                | `See below.` | User must be creator of UTub, co-owner (co-creator), or adder of URL to remove a given URL. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 

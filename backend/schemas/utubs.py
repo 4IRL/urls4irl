@@ -94,12 +94,18 @@ class UtubDetailSchema(BaseSchema):
             and member.member_role == Member_Role.CO_CREATOR
             for member in utub.members
         )
+        # A "manager" (literal owner OR co-owner) may delete any URL in the UTub.
+        # This must stay in lockstep with the server-side delete predicate in
+        # ``delete_urls_in_utub`` (``backend/urls/services/delete_urls.py``) and the
+        # single-URL delete guard, so the client's ``canDelete`` snapshot matches
+        # server enforcement. Computed before ``urls`` so the comprehension can read it.
+        viewer_is_manager = (utub.utub_creator == current_user_id) or is_co_creator
         # ``ordered_utub_urls`` is the UTub's URL rows pre-ordered by the viewing
         # user's ``default_sort`` preference (server-authoritative, resolved by
         # ``get_single_utub_for_user``) — the serialized ``urls`` list is emitted
         # in exactly this order.
         urls = [
-            UtubUrlSchema.from_orm_url(u, current_user_id, utub.utub_creator)
+            UtubUrlSchema.from_orm_url(u, current_user_id, viewer_is_manager)
             for u in ordered_utub_urls
         ]
         tags = [UtubTagSchema(id=t.id, tag_string=t.tag_string) for t in utub.utub_tags]

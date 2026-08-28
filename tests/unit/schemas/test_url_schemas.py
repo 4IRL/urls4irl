@@ -37,7 +37,7 @@ def test_utub_url_schema_dump():
     from backend.schemas.urls import UtubUrlSchema
 
     schema = UtubUrlSchema.from_orm_url(
-        _MockUtubUrl(), current_user_id=2, utub_creator=2
+        _MockUtubUrl(), current_user_id=2, viewer_is_manager=True
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped[M.UTUB_URL_ID] == 10
@@ -53,7 +53,7 @@ def test_utub_url_schema_can_delete_false():
     from backend.schemas.urls import UtubUrlSchema
 
     schema = UtubUrlSchema.from_orm_url(
-        _MockUtubUrl(), current_user_id=99, utub_creator=100
+        _MockUtubUrl(), current_user_id=99, viewer_is_manager=False
     )
     assert schema.can_delete is False
 
