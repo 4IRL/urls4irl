@@ -1,4 +1,3 @@
-import { KEYS } from "../../lib/constants.js";
 import { $ } from "../../lib/globals.js";
 import {
   disableTabbableChildElements,
@@ -7,94 +6,35 @@ import {
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 import { closeTagNameFilter } from "./search.js";
 
+// Native `<button>`s already fire click on Enter/Space, so the open/close
+// buttons here need no separate keyboard handlers.
 export function initUpdateAllTags(): void {
   const utubTagBtnUnselectAll = $("#utubTagBtnUpdateAllOpen");
-  utubTagBtnUnselectAll
-    .on("click.openUTubTagUpdate", function () {
-      setTagDeckBtnsOnUpdateAllUTubTagsOpened();
-      openUTubTagBtnMenuOnUTubTags();
-    })
-    .offAndOn("focus.openUTubTagUpdate", function () {
-      $(document).offAndOn(
-        "keyup.openUTubTagUpdate",
-        function (event: JQuery.TriggeredEvent) {
-          if (event.key === KEYS.ENTER) {
-            setTagDeckBtnsOnUpdateAllUTubTagsOpened();
-            openUTubTagBtnMenuOnUTubTags();
-          }
-        },
-      );
-    })
-    .offAndOn("blur.openUTubTagUpdate", function () {
-      $(document).off("keyup.openUTubTagUpdate");
-    });
+  utubTagBtnUnselectAll.on("click.openUTubTagUpdate", function () {
+    setTagDeckBtnsOnUpdateAllUTubTagsOpened();
+    openUTubTagBtnMenuOnUTubTags();
+  });
 
   const utubTagBtnUpdateAllClose = $("#utubTagBtnUpdateAllClose");
-  utubTagBtnUpdateAllClose
-    .on("click.closeUTubTagUpdate", function () {
-      setTagDeckBtnsOnUpdateAllUTubTagsClosed();
-      closeUTubTagBtnMenuOnUTubTags();
-    })
-    .offAndOn("focus.closeUTubTagUpdate", function () {
-      $(document).offAndOn(
-        "keyup.closeUTubTagUpdate",
-        function (event: JQuery.TriggeredEvent) {
-          if (event.key === KEYS.ENTER) {
-            setTagDeckBtnsOnUpdateAllUTubTagsClosed();
-            closeUTubTagBtnMenuOnUTubTags();
-          }
-        },
-      );
-    })
-    .offAndOn("blur.closeUTubTagUpdate", function () {
-      $(document).off("keyup.closeUTubTagUpdate");
-    });
+  utubTagBtnUpdateAllClose.on("click.closeUTubTagUpdate", function () {
+    setTagDeckBtnsOnUpdateAllUTubTagsClosed();
+    closeUTubTagBtnMenuOnUTubTags();
+  });
 }
 
 export function setUnselectUpdateUTubTagEventListeners(): void {
   const utubTagBtnUnselectAll = $("#utubTagBtnUpdateAllOpen");
-  utubTagBtnUnselectAll
-    .offAndOn("click.openUTubTagUpdate", function () {
-      setTagDeckBtnsOnUpdateAllUTubTagsOpened();
-      openUTubTagBtnMenuOnUTubTags();
-    })
-    .offAndOn("focus.openUTubTagUpdate", function () {
-      $(document).offAndOn(
-        "keyup.openUTubTagUpdate",
-        function (event: JQuery.TriggeredEvent) {
-          if (event.key === KEYS.ENTER) {
-            setTagDeckBtnsOnUpdateAllUTubTagsOpened();
-            openUTubTagBtnMenuOnUTubTags();
-          }
-        },
-      );
-    })
-    .offAndOn("blur.openUTubTagUpdate", function () {
-      $(document).off("keyup.openUTubTagUpdate");
-    });
+  utubTagBtnUnselectAll.offAndOn("click.openUTubTagUpdate", function () {
+    setTagDeckBtnsOnUpdateAllUTubTagsOpened();
+    openUTubTagBtnMenuOnUTubTags();
+  });
 
   const utubTagBtnUpdateAllClose = $("#utubTagBtnUpdateAllClose");
-  utubTagBtnUpdateAllClose
-    .offAndOn("click.closeUTubTagUpdate", function () {
-      setTagDeckBtnsOnUpdateAllUTubTagsClosed();
-      closeUTubTagBtnMenuOnUTubTags();
-      updateURLsAndTagSubheaderWhenTagSelected();
-    })
-    .offAndOn("focus.closeUTubTagUpdate", function () {
-      $(document).offAndOn(
-        "keyup.closeUTubTagUpdate",
-        function (event: JQuery.TriggeredEvent) {
-          if (event.key === KEYS.ENTER) {
-            setTagDeckBtnsOnUpdateAllUTubTagsClosed();
-            closeUTubTagBtnMenuOnUTubTags();
-            updateURLsAndTagSubheaderWhenTagSelected();
-          }
-        },
-      );
-    })
-    .offAndOn("blur.closeUTubTagUpdate", function () {
-      $(document).off("keyup.closeUTubTagUpdate");
-    });
+  utubTagBtnUpdateAllClose.offAndOn("click.closeUTubTagUpdate", function () {
+    setTagDeckBtnsOnUpdateAllUTubTagsClosed();
+    closeUTubTagBtnMenuOnUTubTags();
+    updateURLsAndTagSubheaderWhenTagSelected();
+  });
 }
 
 export function setTagDeckBtnsOnUpdateAllUTubTagsOpened(): void {

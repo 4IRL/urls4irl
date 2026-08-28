@@ -1,5 +1,4 @@
 import { $ } from "../../lib/globals.js";
-import { KEYS } from "../../lib/constants.js";
 import {
   hideAndResetMemberCombobox,
   showMemberCombobox,
@@ -17,22 +16,10 @@ export function setupShowCreateMemberFormEventListeners(utubID: number): void {
 
   // Full off("click") clears any leftover reopen handler that
   // hideAndResetMemberCombobox may have bound (offAndOnExact), so a re-bind on
-  // UTub select never double-opens the combobox.
+  // UTub select never double-opens the combobox. Native `<button>`s already fire
+  // click on Enter/Space, so no separate keyboard handler is needed.
   memberBtnCreate.off("click").on("click.createMember", function () {
     createMemberShowInput(utubID);
-  });
-
-  memberBtnCreate.offAndOn("focus", function () {
-    memberBtnCreate.on(
-      "keydown.createMember",
-      function (event: JQuery.TriggeredEvent) {
-        if (event.key === KEYS.ENTER) createMemberShowInput(utubID);
-      },
-    );
-  });
-
-  memberBtnCreate.offAndOn("blur", function () {
-    memberBtnCreate.off(".createMember");
   });
 }
 
