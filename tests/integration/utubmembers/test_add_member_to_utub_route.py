@@ -1037,7 +1037,7 @@ def test_add_user_as_member_invalid_log(
     # Assert correct status code
     assert added_user_response.status_code == 403
     assert is_string_in_logs(
-        f"User={user.id} not creator: UTub.id={utub_id_of_current_user}",
+        f"User={user.id} not manager: UTub.id={utub_id_of_current_user}",
         caplog.records,
     )
 

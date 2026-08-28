@@ -10,9 +10,9 @@ with three changes:
 
 from backend.api_common.auth_decorators import (
     api_email_validation_required,
-    api_utub_creator_required,
+    api_utub_manager_required,
     api_utub_membership_required,
-    api_utub_true_owner_required,
+    api_utub_owner_required,
 )
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
@@ -109,7 +109,7 @@ def api_v1_get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
 
 
 @api_v1.route("/utubs/<int:utub_id>/name", methods=["PATCH"])
-@api_utub_creator_required
+@api_utub_manager_required
 @api_route(
     request_schema=UpdateUTubNameRequest,
     response_schema=UtubNameUpdatedResponseSchema,
@@ -136,7 +136,7 @@ def api_v1_update_utub_name(
 
 
 @api_v1.route("/utubs/<int:utub_id>/description", methods=["PATCH"])
-@api_utub_creator_required
+@api_utub_manager_required
 @api_route(
     request_schema=UpdateUTubDescriptionRequest,
     response_schema=UtubDescUpdatedResponseSchema,
@@ -165,7 +165,7 @@ def api_v1_update_utub_desc(
 
 
 @api_v1.route("/utubs/<int:utub_id>", methods=["DELETE"])
-@api_utub_true_owner_required
+@api_utub_owner_required
 @api_route(
     response_schema=UtubDeletedResponseSchema,
     ajax_required=False,

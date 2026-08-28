@@ -1118,6 +1118,6 @@ def test_delete_url_user_not_adder_or_creator_logs(
     # Ensure 200 HTTP status code response
     assert delete_url_response.status_code == 403
     assert is_string_in_logs(
-        f"User={user.id} not URL adder or UTub creator: UTubURL.id={utub_url_id_to_remove} in UTub.id={another_user_utub.id}",
+        f"User={user.id} not URL adder or UTub manager: UTubURL.id={utub_url_id_to_remove} in UTub.id={another_user_utub.id}",
         caplog.records,
     )

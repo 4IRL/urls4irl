@@ -3,9 +3,9 @@ from flask_login import current_user
 
 from backend import limiter
 from backend.api_common.auth_decorators import (
-    utub_creator_required,
+    utub_manager_required,
     utub_membership_required,
-    utub_true_owner_required,
+    utub_owner_required,
 )
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import APIResponse, FlaskResponse
@@ -52,7 +52,7 @@ def remove_member(utub_id: int, user_id: int, current_utub: Utubs) -> FlaskRespo
 
 
 @members.route("/utubs/<int:utub_id>/members/<int:user_id>", methods=["PATCH"])
-@utub_true_owner_required
+@utub_owner_required
 @api_route(
     request_schema=ModifyMemberRoleRequest,
     response_schema=MemberModifiedResponseSchema,
@@ -88,7 +88,7 @@ def modify_member_role(
 
 
 @members.route("/utubs/<int:utub_id>/members", methods=["POST"])
-@utub_creator_required
+@utub_manager_required
 @api_route(
     request_schema=AddMemberRequest,
     response_schema=MemberModifiedResponseSchema,
@@ -122,7 +122,7 @@ def create_member(
 
 
 @members.route("/utubs/<int:utub_id>/co-members", methods=["GET"])
-@utub_creator_required
+@utub_manager_required
 @api_route(
     response_schema=CoMemberListSchema,
     ajax_required=True,

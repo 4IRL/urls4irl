@@ -3,7 +3,7 @@ from flask_login import current_user
 
 from backend.api_common.auth_decorators import (
     email_validation_required,
-    url_adder_or_creator_required,
+    url_adder_or_manager_required,
     utub_membership_required,
     utub_membership_with_valid_url_in_utub_required,
 )
@@ -147,7 +147,7 @@ def get_url(
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["PATCH"])
-@url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
+@url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
 @api_route(
     request_schema=UpdateURLStringRequest,
     response_schema=UrlUpdatedResponseSchema,
@@ -189,7 +189,7 @@ def update_url(
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/title", methods=["PATCH"])
-@url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
+@url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
 @api_route(
     request_schema=UpdateURLTitleRequest,
     response_schema=UrlTitleUpdatedResponseSchema,
@@ -230,7 +230,7 @@ def update_url_title(
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["DELETE"])
-@url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)
+@url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)
 @api_route(
     response_schema=UrlDeletedResponseSchema,
     tags=[OPEN_API.URLS],

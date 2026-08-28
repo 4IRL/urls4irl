@@ -744,6 +744,6 @@ def test_delete_utub_as_member_logs(
 
     assert delete_utub_response.status_code == 403
     assert is_string_in_logs(
-        f"User={user.id} not true owner: UTub.id={utub_id_member_of} | UTub.name={utub_name}",
+        f"User={user.id} not owner: UTub.id={utub_id_member_of} | UTub.name={utub_name}",
         caplog.records,
     )

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from backend.api_common.auth_decorators import (
     api_email_validation_required,
-    api_url_adder_or_creator_required,
+    api_url_adder_or_manager_required,
     api_utub_membership_required,
     api_utub_membership_with_valid_url_in_utub_required,
 )
@@ -106,7 +106,7 @@ def api_v1_get_url(
 
 
 @api_v1.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["PATCH"])
-@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
+@api_url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
 @api_route(
     request_schema=UpdateURLStringRequest,
     response_schema=UrlUpdatedResponseSchema,
@@ -140,7 +140,7 @@ def api_v1_update_url(
 
 
 @api_v1.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/title", methods=["PATCH"])
-@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
+@api_url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
 @api_route(
     request_schema=UpdateURLTitleRequest,
     response_schema=UrlTitleUpdatedResponseSchema,
@@ -173,7 +173,7 @@ def api_v1_update_url_title(
 
 
 @api_v1.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["DELETE"])
-@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)
+@api_url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)
 @api_route(
     response_schema=UrlDeletedResponseSchema,
     ajax_required=False,
