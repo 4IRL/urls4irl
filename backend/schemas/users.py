@@ -22,6 +22,22 @@ class UserSchema(BaseSchema):
 MemberSchema = UserSchema
 
 
+class UtubMemberSchema(BaseSchema):
+    """A member of a UTub, carrying their role, for the open-UTub detail response.
+
+    Distinct from the shared ``UserSchema``/``MemberSchema`` (reused by the
+    add/remove-member responses where a role isn't naturally present) so that
+    role exposure is scoped to the detail response only.
+    """
+
+    id: int = Field(alias=M.ID, description="Unique user ID")
+    username: str = Field(alias=M.USERNAME, description="Username of the user")
+    member_role: str = Field(
+        alias=M.MEMBER_ROLE,
+        description="Role of the member in the UTub",
+    )
+
+
 class CoMemberSchema(BaseSchema):
     """A co-member add candidate: a user who shares >=1 other UTub with the
     requester and is not already a member of the target UTub."""

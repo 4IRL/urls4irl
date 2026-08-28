@@ -2072,6 +2072,21 @@ export interface components {
       /** @description List of UTubs the user is a member of */
       utubs: components["schemas"]["UtubSummaryItemSchema"][];
     };
+    /**
+     * @description A member of a UTub, carrying their role, for the open-UTub detail response.
+     *
+     *     Distinct from the shared ``UserSchema``/``MemberSchema`` (reused by the
+     *     add/remove-member responses where a role isn't naturally present) so that
+     *     role exposure is scoped to the detail response only.
+     */
+    UtubMemberSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Role of the member in the UTub */
+      memberRole: string;
+    };
     UtubUrlSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -2107,13 +2122,15 @@ export interface components {
       /** @description Description of the UTub */
       description: string;
       /** @description List of members in the UTub */
-      members: components["schemas"]["UserSchema"][];
+      members: components["schemas"]["UtubMemberSchema"][];
       /** @description List of URLs in the UTub */
       urls: components["schemas"]["UtubUrlSchema"][];
       /** @description List of tags used in the UTub */
       tags: components["schemas"]["UtubTagSchema"][];
       /** @description Whether the current user is the creator of the UTub */
       isCreator: boolean;
+      /** @description Whether the current user is a co-creator (co-owner) of the UTub */
+      isCoCreator: boolean;
       /** @description Whether the UTub is locked (frozen to all user mutations) */
       isLocked: boolean;
       /** @description ID of the currently authenticated user */

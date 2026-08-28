@@ -9,6 +9,7 @@ import pytest
 from backend import db
 from backend.metrics.events import EventName
 from backend.models.user_preferences import SortOrder, User_Preferences
+from backend.models.utub_members import Member_Role
 from backend.models.utub_tags import Utub_Tags
 from backend.models.urls import Urls
 from backend.models.users import Users
@@ -61,11 +62,13 @@ def test_get_valid_utub_as_creator(
     assert response_json[MODELS.IS_CREATOR] == (
         current_user_id == utub_user_creator_of.utub_creator
     )
+    assert response_json[MODELS.IS_CO_CREATOR] is False
     assert response_json[MODELS.CURRENT_USER] == current_user_id
 
     user_dict: dict[str, int | str] = {
         MODELS.ID: current_user_id,
         MODELS.USERNAME: current_user_username,
+        MODELS.MEMBER_ROLE: Member_Role.CREATOR.value,
     }
     assert user_dict in response_json[MODELS.MEMBERS]
     assert len(response_json[MODELS.TAGS]) == 0
@@ -147,11 +150,13 @@ def test_get_valid_utub_as_member(
     assert response_json[MODELS.IS_CREATOR] == (
         current_user_id == utub_user_member_of.utub_creator
     )
+    assert response_json[MODELS.IS_CO_CREATOR] is False
     assert response_json[MODELS.CURRENT_USER] == current_user_id
 
     user_dict: dict[str, int | str] = {
         MODELS.ID: current_user_id,
         MODELS.USERNAME: current_user_username,
+        MODELS.MEMBER_ROLE: Member_Role.MEMBER.value,
     }
     assert user_dict in response_json[MODELS.MEMBERS]
     assert len(response_json[MODELS.TAGS]) == 0
@@ -162,6 +167,96 @@ def test_get_valid_utub_as_member(
         assert (
             utub_user_member_of.last_updated - initial_last_updated
         ).total_seconds() > 0
+
+
+def test_get_valid_utub_as_co_creator(
+    add_co_creator_to_utub_without_logging_in,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a co-creator (co-owner) of a UTub (user ID == 2)
+    WHEN the user requests the details of that UTub
+    THEN verify `isCreator` is False, `isCoCreator` is True, and each member
+        entry carries the correct `memberRole` (creator for the owner,
+        cocreator for the co-owner viewer).
+    """
+    client, _, _, app = login_second_user_without_register
+
+    with app.app_context():
+        utub_user_co_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        id_of_utub = utub_user_co_creator_of.id
+        creator_id = utub_user_co_creator_of.utub_creator
+        current_user_id = current_user.id
+        current_user_username = current_user.username
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=id_of_utub),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+
+    assert response_json is not None
+    assert response_json[MODELS.IS_CREATOR] is False
+    assert response_json[MODELS.IS_CO_CREATOR] is True
+    assert response_json[MODELS.CURRENT_USER] == current_user_id
+
+    co_creator_dict: dict[str, int | str] = {
+        MODELS.ID: current_user_id,
+        MODELS.USERNAME: current_user_username,
+        MODELS.MEMBER_ROLE: Member_Role.CO_CREATOR.value,
+    }
+    assert co_creator_dict in response_json[MODELS.MEMBERS]
+
+    creator_entry = next(
+        member
+        for member in response_json[MODELS.MEMBERS]
+        if member[MODELS.ID] == creator_id
+    )
+    assert creator_entry[MODELS.MEMBER_ROLE] == Member_Role.CREATOR.value
+
+
+def test_get_valid_utub_as_creator_with_co_creator_present(
+    add_co_creator_to_utub_without_logging_in,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN the literal creator (user ID == 1) of a UTub that also has a co-creator
+    WHEN the creator requests the details of that UTub
+    THEN verify `isCreator` is True and `isCoCreator` is False (the literal-owner
+        signal stays strictly literal even when co-creators exist).
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub = utub_user_creator_of.id
+        current_user_id = current_user.id
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=id_of_utub),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+
+    assert response_json is not None
+    assert response_json[MODELS.IS_CREATOR] is True
+    assert response_json[MODELS.IS_CO_CREATOR] is False
+    assert response_json[MODELS.CURRENT_USER] == current_user_id
+
+    co_creator_entry = next(
+        member
+        for member in response_json[MODELS.MEMBERS]
+        if member[MODELS.MEMBER_ROLE] == Member_Role.CO_CREATOR.value
+    )
+    assert co_creator_entry[MODELS.ID] != current_user_id
 
 
 def test_get_valid_utub_as_not_member(
@@ -432,9 +527,15 @@ def test_get_valid_utub_with_members_urls_tags(
     assert len(response_json[MODELS.URLS]) == len(all_urls)
 
     for user in all_users:
+        expected_role = (
+            Member_Role.CREATOR.value
+            if user.id == utub_user_is_creator_of.utub_creator
+            else Member_Role.MEMBER.value
+        )
         user_dict: dict[str, int | str] = {
             MODELS.ID: user.id,
             MODELS.USERNAME: user.username,
+            MODELS.MEMBER_ROLE: expected_role,
         }
         assert user_dict in response_json[MODELS.MEMBERS]
 

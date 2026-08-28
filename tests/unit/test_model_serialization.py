@@ -394,6 +394,9 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
             ]
+            test_utub[MODEL_STRS.IS_CO_CREATOR] = utub_in_data_serialized[
+                MODEL_STRS.IS_CO_CREATOR
+            ]
             test_utub[MODEL_STRS.IS_LOCKED] = utub_in_data_serialized[
                 MODEL_STRS.IS_LOCKED
             ]
@@ -468,6 +471,9 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             # Match creator elements
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
+            ]
+            test_utub[MODEL_STRS.IS_CO_CREATOR] = utub_in_data_serialized[
+                MODEL_STRS.IS_CO_CREATOR
             ]
             test_utub[MODEL_STRS.IS_LOCKED] = utub_in_data_serialized[
                 MODEL_STRS.IS_LOCKED
@@ -571,6 +577,9 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             # Match creator elements
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
+            ]
+            test_utub[MODEL_STRS.IS_CO_CREATOR] = utub_in_data_serialized[
+                MODEL_STRS.IS_CO_CREATOR
             ]
             test_utub[MODEL_STRS.IS_LOCKED] = utub_in_data_serialized[
                 MODEL_STRS.IS_LOCKED

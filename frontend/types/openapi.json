@@ -9674,6 +9674,25 @@
         "required": ["utubs"],
         "type": "object"
       },
+      "UtubMemberSchema": {
+        "description": "A member of a UTub, carrying their role, for the open-UTub detail response.\n\nDistinct from the shared ``UserSchema``/``MemberSchema`` (reused by the\nadd/remove-member responses where a role isn't naturally present) so that\nrole exposure is scoped to the detail response only.",
+        "properties": {
+          "id": {
+            "description": "Unique user ID",
+            "type": "integer"
+          },
+          "username": {
+            "description": "Username of the user",
+            "type": "string"
+          },
+          "memberRole": {
+            "description": "Role of the member in the UTub",
+            "type": "string"
+          }
+        },
+        "required": ["id", "username", "memberRole"],
+        "type": "object"
+      },
       "UtubUrlSchema": {
         "properties": {
           "utubUrlID": {
@@ -9747,7 +9766,7 @@
           "members": {
             "description": "List of members in the UTub",
             "items": {
-              "$ref": "#/components/schemas/UserSchema"
+              "$ref": "#/components/schemas/UtubMemberSchema"
             },
             "type": "array"
           },
@@ -9769,6 +9788,10 @@
             "description": "Whether the current user is the creator of the UTub",
             "type": "boolean"
           },
+          "isCoCreator": {
+            "description": "Whether the current user is a co-creator (co-owner) of the UTub",
+            "type": "boolean"
+          },
           "isLocked": {
             "description": "Whether the UTub is locked (frozen to all user mutations)",
             "type": "boolean"
@@ -9788,6 +9811,7 @@
           "urls",
           "tags",
           "isCreator",
+          "isCoCreator",
           "isLocked",
           "currentUser"
         ],
