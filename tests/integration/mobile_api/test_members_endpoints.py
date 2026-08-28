@@ -428,6 +428,73 @@ def test_remove_member_co_creator_can_remove_another_member(
         )
 
 
+def test_remove_member_co_creator_cannot_remove_literal_owner(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN UTub id=1 with creator (user 1) and members (users 2, 3), where user 2
+        has been promoted to CO_CREATOR
+    WHEN the co-creator (user 2) tries to remove the literal owner (user 1)
+    THEN 403 with MEMBER_FAILURE.CANNOT_REMOVE_OWNER — the integrity guard prevents
+        an ownerless UTub, and the owner's membership row remains intact
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+
+    with app.app_context():
+        initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
+
+    response = api_client.delete(
+        _remove_member_url(app, utub_id=1, user_id=1),
+        headers=user_2_headers,
+    )
+
+    assert response.status_code == 403
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.CANNOT_REMOVE_OWNER
+
+    with app.app_context():
+        assert Utub_Members.query.get((1, 1)) is not None
+        assert Utub_Members.query.filter_by(utub_id=1).count() == initial_member_count
+
+
+def test_remove_member_plain_member_cannot_remove_literal_owner(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN UTub id=1 with creator (user 1) and plain members (users 2, 3)
+    WHEN a plain member (user 2) tries to remove the literal owner (user 1)
+    THEN 403 with MEMBER_FAILURE.CANNOT_REMOVE_OWNER — the integrity guard runs before the
+        generic "remove another member" check, yielding the specific owner-protection error,
+        and the owner's membership row remains intact
+    """
+    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+
+    with app.app_context():
+        initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
+
+    response = api_client.delete(
+        _remove_member_url(app, utub_id=1, user_id=1),
+        headers=user_2_headers,
+    )
+
+    assert response.status_code == 403
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.CANNOT_REMOVE_OWNER
+
+    with app.app_context():
+        assert Utub_Members.query.get((1, 1)) is not None
+        assert Utub_Members.query.filter_by(utub_id=1).count() == initial_member_count
+
+
 # ===========================================================================
 # PATCH /api/v1/utubs/<utub_id>/members/<user_id> — grant/revoke co-owner
 # ===========================================================================

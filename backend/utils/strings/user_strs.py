@@ -154,6 +154,11 @@ UNABLE_TO_MODIFY_MEMBER_ROLE = "Unable to modify that member's role in this UTub
 # Guard copy (400) returned when the grant/revoke endpoint targets the UTub's
 # literal owner (the creator's role cannot be changed).
 CANNOT_MODIFY_OWNER_ROLE = "Cannot change the UTub owner's role."
+# Integrity-guard copy (403) returned by the remove-member endpoint when anyone
+# other than the literal owner themselves attempts to remove the owner. Prevents
+# orphaning UTub ownership (Utubs.utub_creator pointing at a deleted membership).
+# Distinct from CREATOR_CANNOT_REMOVE_THEMSELF (400, owner removing self).
+CANNOT_REMOVE_OWNER = "The UTub owner cannot be removed."
 # Per-user per-day add-member cap copy. Fail-open anti-abuse counter that bounds
 # username-oracle probing; not a security boundary. Mirrors
 # USERNAME_CHANGE_RATE_LIMITED.
@@ -259,4 +264,5 @@ class MEMBER_FAILURE(FAILURE_GENERAL):
     UNABLE_TO_ADD_MEMBER = UNABLE_TO_ADD_MEMBER
     UNABLE_TO_MODIFY_MEMBER_ROLE = UNABLE_TO_MODIFY_MEMBER_ROLE
     CANNOT_MODIFY_OWNER_ROLE = CANNOT_MODIFY_OWNER_ROLE
+    CANNOT_REMOVE_OWNER = CANNOT_REMOVE_OWNER
     MEMBER_ADD_RATE_LIMITED = MEMBER_ADD_RATE_LIMITED

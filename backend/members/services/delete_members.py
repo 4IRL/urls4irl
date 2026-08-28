@@ -25,7 +25,10 @@ def remove_member_or_self_from_utub(
     Handles validating if a given user id corresponds to a valid UTub member, and whether that
     member can be removed by the current user.
 
-    UTub creators can remove anyone but themselves, and members can only remove themselves.
+    UTub creators (co-creator-inclusive) can remove other members, and plain members can only
+    remove themselves. The literal owner cannot remove themselves, and — as an integrity guard
+    preventing an ownerless UTub — the literal owner cannot be removed by anyone else (including
+    co-owners).
 
     Args:
         user_id_to_remove (int): The ID of the user to remove from this UTub
@@ -36,8 +39,9 @@ def remove_member_or_self_from_utub(
         - Response: JSON response on successful or invalid removal
         - int: HTTP status code
             - 200 (on successful removal)
-            - 400 (on creator trying to remove themselves)
-            - 403 (on member trying to remove someone else)
+            - 400 (on the literal owner trying to remove themselves)
+            - 403 (on a non-owner trying to remove the literal owner, or a member trying to
+              remove someone else)
             - 404 (on member being removed not existing in UTub)
     """
     utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
@@ -56,6 +60,16 @@ def remove_member_or_self_from_utub(
     if creator_removing_themself:
         return build_message_error_response(
             message=MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
+        )
+
+    someone_removing_the_true_owner = _someone_removing_the_true_owner(
+        current_utub=current_utub, user_id_to_remove=user_id_to_remove
+    )
+
+    if someone_removing_the_true_owner:
+        return build_message_error_response(
+            message=MEMBER_FAILURE.CANNOT_REMOVE_OWNER,
+            status_code=403,
         )
 
     member_removing_another_member = _member_is_removing_another_member(
@@ -104,6 +118,40 @@ def _creator_removing_themself(is_true_owner: bool, user_id_to_remove: int) -> b
         warning_log(f"User={current_user.id} | UTub creator tried to remove themselves")
 
     return is_creator_removing_themself
+
+
+def _someone_removing_the_true_owner(
+    current_utub: Utubs, user_id_to_remove: int
+) -> bool:
+    """
+    Nobody but the literal owner themselves may cause the literal owner's
+    membership to be removed. A co-creator (co-owner) has the co-creator-inclusive
+    "remove another member" right, which would otherwise let them remove the
+    literal owner — orphaning UTub ownership (``Utubs.utub_creator`` would still
+    point at a now-deleted membership, permanently disabling every owner-only
+    action). The owner-removes-self case is handled earlier by
+    ``_creator_removing_themself`` (400), so this guard only fires when the actor
+    is someone other than the owner.
+
+    Args:
+        current_utub (Utubs): The UTub the removal is targeting
+        user_id_to_remove (int): The ID of the user being removed
+
+    Returns:
+        (bool): True if a non-owner is attempting to remove the literal owner
+    """
+    is_removing_true_owner = (
+        user_id_to_remove == current_utub.utub_creator
+        and current_user.id != user_id_to_remove
+    )
+
+    if is_removing_true_owner:
+        critical_log(
+            f"User={current_user.id} tried removing the literal owner "
+            f"(User={user_id_to_remove}) from UTub.id={current_utub.id}"
+        )
+
+    return is_removing_true_owner
 
 
 def _member_is_removing_another_member(
