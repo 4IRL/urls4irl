@@ -34,7 +34,8 @@ let _utubDeleteConfirmed: boolean = false;
 export function setDeleteEventListeners(utubID: number): void {
   const utubBtnDelete = $("#utubBtnDelete");
 
-  // Delete UTub
+  // Delete UTub. Native `<button>`s already fire click on Enter/Space, so no
+  // separate keyboard handler is needed.
   utubBtnDelete.offAndOn("click.deleteUTub", function () {
     deleteUTubShowModal(utubID);
   });

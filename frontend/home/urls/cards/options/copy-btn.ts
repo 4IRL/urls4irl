@@ -50,6 +50,8 @@ export function createCopyURLBtn(url: UtubUrlItem): JQuery<HTMLElement> {
       "data-bs-title": `${APP_CONFIG.strings.COPY_URL_TOOLTIP}`,
     })
     .disableTab()
+    // Native `<button>`s already fire click on Enter/Space, so no separate
+    // keyboard handler is needed.
     .onExact("click", function (this: HTMLElement) {
       copyURLString(url.urlString, this);
     })

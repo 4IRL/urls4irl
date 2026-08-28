@@ -6,6 +6,8 @@ import {
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 import { closeTagNameFilter } from "./search.js";
 
+// Native `<button>`s already fire click on Enter/Space, so the open/close
+// buttons here need no separate keyboard handlers.
 export function initUpdateAllTags(): void {
   const utubTagBtnUnselectAll = $("#utubTagBtnUpdateAllOpen");
   utubTagBtnUnselectAll.on("click.openUTubTagUpdate", function () {
