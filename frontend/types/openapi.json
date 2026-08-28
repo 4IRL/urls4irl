@@ -3539,6 +3539,107 @@
             }
           }
         }
+      },
+      "patch": {
+        "operationId": "apiV1ModifyMemberRole",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Grant or revoke the co-owner role for a UTub member (owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifyMemberRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MemberModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubMembersErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubMembersErrorCodes": {
+            "$ref": "#/components/schemas/UTubMembersErrorCodes"
+          }
+        }
       }
     },
     "/api/v1/utubs/{utub_id}/co-members": {
@@ -4192,6 +4293,98 @@
             }
           }
         }
+      },
+      "patch": {
+        "operationId": "modifyMemberRole",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Grant or revoke the co-owner role for a UTub member (owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifyMemberRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MemberModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubMembersErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubMembersErrorCodes": {
+            "$ref": "#/components/schemas/UTubMembersErrorCodes"
+          }
+        }
       }
     },
     "/utubs/{utub_id}/members": {
@@ -4595,6 +4788,7 @@
                 "member_added",
                 "member_add_candidates_loaded",
                 "member_removed",
+                "member_role_changed",
                 "oauth_identity_linked",
                 "oauth_identity_unlinked",
                 "password_reset_completed",
@@ -4942,6 +5136,7 @@
                 "member_added",
                 "member_add_candidates_loaded",
                 "member_removed",
+                "member_role_changed",
                 "oauth_identity_linked",
                 "oauth_identity_unlinked",
                 "password_reset_completed",
@@ -9309,13 +9504,29 @@
       },
       "UTubMembersErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3],
+        "enum": [1, 2, 3, 4],
         "x-enum-varnames": [
           "UNKNOWN_EXCEPTION",
           "INVALID_FORM_INPUT",
-          "UTUB_IS_LOCKED"
+          "UTUB_IS_LOCKED",
+          "CANNOT_MODIFY_OWNER"
         ],
         "description": "Error codes for UTubMembersErrorCodes"
+      },
+      "MemberRoleTarget": {
+        "description": "Target role carried by the grant/revoke co-owner endpoint's request body.\n\n``CO_CREATOR`` promotes a plain member to co-owner; ``MEMBER`` revokes the\nco-owner role. The values MUST equal ``Member_Role.CO_CREATOR.value`` /\n``Member_Role.MEMBER.value`` (mirrors ``MemberAddSource``).",
+        "enum": ["cocreator", "member"],
+        "type": "string"
+      },
+      "ModifyMemberRoleRequest": {
+        "properties": {
+          "member_role": {
+            "$ref": "#/components/schemas/MemberRoleTarget",
+            "description": "Target role for the member: `cocreator` grants co-owner, `member` revokes it"
+          }
+        },
+        "required": ["member_role"],
+        "type": "object"
       },
       "CoMemberSchema": {
         "description": "A co-member add candidate: a user who shares >=1 other UTub with the\nrequester and is not already a member of the target UTub.",

@@ -40,6 +40,7 @@ class EventName(StrEnum):
     MEMBER_ADDED = "member_added"
     MEMBER_ADD_CANDIDATES_LOADED = "member_add_candidates_loaded"
     MEMBER_REMOVED = "member_removed"
+    MEMBER_ROLE_CHANGED = "member_role_changed"
     OAUTH_IDENTITY_LINKED = "oauth_identity_linked"
     OAUTH_IDENTITY_UNLINKED = "oauth_identity_unlinked"
     PASSWORD_RESET_COMPLETED = "password_reset_completed"

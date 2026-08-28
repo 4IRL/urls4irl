@@ -15,6 +15,7 @@ SESSION_ISSUED_AT_KEY = "session_issued_at"
 # Strings for users/members success
 MEMBER_REMOVED = "Member removed."
 MEMBER_ADDED = "Member added."
+MEMBER_ROLE_MODIFIED = "Member role updated."
 MEMBER_ID_ADDED = "userID"
 MEMBER_ID_REMOVED = MEMBER_ID_ADDED
 USER_REGISTERED = "User registered."
@@ -128,6 +129,7 @@ MEMBER_ADD_SUMMARY_FAILED = "{{ count }} members couldn't be added"
 class MEMBER_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     MEMBER_REMOVED = MEMBER_REMOVED
     MEMBER_ADDED = MEMBER_ADDED
+    MEMBER_ROLE_MODIFIED = MEMBER_ROLE_MODIFIED
     MEMBER_ID_REMOVED = MEMBER_ID_REMOVED
     MEMBER_ID_ADDED = MEMBER_ID_ADDED
     USER_REGISTERED = USER_REGISTERED
@@ -144,6 +146,14 @@ INVALID_PERMISSION_TO_ADD = "Not allowed to add a member to this UTub."
 MEMBER_NOT_IN_UTUB = "Member does not exist or not found in this UTub."
 MEMBER_ALREADY_IN_UTUB = "Member already in UTub."
 UNABLE_TO_ADD_MEMBER = "Unable to add that member to this UTub."
+# Generic invalid-form-input error for the grant/revoke co-owner endpoint (the
+# 400 INVALID_FORM_INPUT copy — missing/bad `member_role`). Distinct from the
+# more specific CANNOT_MODIFY_OWNER_ROLE (400, targeting the owner) and
+# MEMBER_NOT_IN_UTUB (404). Mirrors the UNABLE_TO_ADD_MEMBER pattern.
+UNABLE_TO_MODIFY_MEMBER_ROLE = "Unable to modify that member's role in this UTub."
+# Guard copy (400) returned when the grant/revoke endpoint targets the UTub's
+# literal owner (the creator's role cannot be changed).
+CANNOT_MODIFY_OWNER_ROLE = "Cannot change the UTub owner's role."
 # Per-user per-day add-member cap copy. Fail-open anti-abuse counter that bounds
 # username-oracle probing; not a security boundary. Mirrors
 # USERNAME_CHANGE_RATE_LIMITED.
@@ -247,4 +257,6 @@ class MEMBER_FAILURE(FAILURE_GENERAL):
     MEMBER_NOT_IN_UTUB = MEMBER_NOT_IN_UTUB
     MEMBER_ALREADY_IN_UTUB = MEMBER_ALREADY_IN_UTUB
     UNABLE_TO_ADD_MEMBER = UNABLE_TO_ADD_MEMBER
+    UNABLE_TO_MODIFY_MEMBER_ROLE = UNABLE_TO_MODIFY_MEMBER_ROLE
+    CANNOT_MODIFY_OWNER_ROLE = CANNOT_MODIFY_OWNER_ROLE
     MEMBER_ADD_RATE_LIMITED = MEMBER_ADD_RATE_LIMITED

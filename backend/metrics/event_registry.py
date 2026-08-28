@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from backend.members.constants import (
     MEMBER_ADD_HAS_RESULTS_VALUES,
     MEMBER_ADD_SOURCE_VALUES,
+    MEMBER_ROLE_CHANGE_VALUES,
 )
 from backend.metrics.events import EventCategory, EventName
 from backend.metrics.tag_batch import (
@@ -156,6 +157,11 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.MEMBER_REMOVED: EventRegistryEntry(
         description="Member removed from a UTub",
         category=EventCategory.DOMAIN,
+    ),
+    EventName.MEMBER_ROLE_CHANGED: EventRegistryEntry(
+        description="A member's role was changed by the UTub owner",
+        category=EventCategory.DOMAIN,
+        dimensions={"new_role": MEMBER_ROLE_CHANGE_VALUES},
     ),
     EventName.URL_TITLE_UPDATED: EventRegistryEntry(
         description="URL title edited",

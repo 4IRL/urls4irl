@@ -450,6 +450,21 @@ Base path: `/utubs/<utub_id>/members`
 | **JS Module**  | `frontend/lib/config.ts` route `coMemberCandidates(utubID)` (client fetch-on-open added in Step 4)                                                                                                                                                                |
 | **Tests**      | `tests/integration/utubmembers/test_co_member_candidates_service.py`, `tests/integration/utubmembers/test_co_member_candidates_route.py` (marker: `members`)                                                                                                       |
 
+### PATCH /utubs/\<utub_id\>/members/\<user_id\>
+
+Grant/revoke the co-owner (`CO_CREATOR`) role. Shares the path with the DELETE (remove-member) route via a distinct endpoint name (`members.modify_member_role`). Owner-only.
+
+| Layer          | Location                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/members/routes.py:modify_member_role`                                                                                                                                                                                                                     |
+| **Decorators** | `@utub_true_owner_required` (literal-owner-only, owner ≠ co-owner), `@api_route(request_schema=ModifyMemberRoleRequest, response_schema=MemberModifiedResponseSchema, error_message=MEMBER_FAILURE.UNABLE_TO_MODIFY_MEMBER_ROLE, error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT, tags=["members"], status_codes={200: MemberModifiedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
+| **Service**    | `backend/members/services/modify_member_role.py:modify_member_role` (lock guard → 404 non-member → 400 targeting owner → maps target role → no-op returns success without write/metric → else commit + `record_event(MEMBER_ROLE_CHANGED)`) |
+| **Schema**     | `backend/schemas/requests/members.py:ModifyMemberRoleRequest` (`member_role: MemberRoleTarget` — `cocreator` grants / `member` revokes)                                                                                                                            |
+| **Metrics**    | `MEMBER_ROLE_CHANGED` (DOMAIN, `Resource.MEMBER`, dim `new_role: cocreator/member`; not emitted on a no-op)                                                                                                                                                        |
+| **JS Module**  | `frontend/lib/config.ts` route `modifyMemberRole(utubID, userID)` (members-panel/transfer UI lands in a later phase)                                                                                                                                               |
+| **CSRF**       | Meta tag                                                                                                                                                                                                                                                           |
+| **Tests**      | `tests/integration/utubmembers/test_modify_member_role_route.py` (marker: `members`; grant/revoke, no-op-no-emit, authz matrix, locked, 400/404 branches)                                                                                                          |
+
 ### DELETE /utubs/\<utub_id\>/members/\<user_id\>
 
 | Layer          | Location                                                                                                                                                                                                                                                           |
@@ -1709,6 +1724,19 @@ auto-coverage only (no DOMAIN events).
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                              |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                        |
 | **Tests**      | `tests/integration/mobile_api/test_members_endpoints.py` (marker: `mobile_api`)                                                                                                                                                      |
+
+### PATCH /api/v1/utubs/\<utub_id\>/members/\<user_id\>
+
+| Layer          | Location                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/api_v1/utub_member_routes.py:api_v1_modify_member_role` (bearer-token twin of `backend/members/routes.py:modify_member_role`)                                                                                               |
+| **Decorators** | `@api_utub_true_owner_required`, `@api_route(request_schema=ModifyMemberRoleRequest, response_schema=MemberModifiedResponseSchema, error_message=MEMBER_FAILURE.UNABLE_TO_MODIFY_MEMBER_ROLE, error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})` |
+| **Service**    | `backend/members/services/modify_member_role.py:modify_member_role` (same service as the web route — no logic duplication; emits `MEMBER_ROLE_CHANGED` with `new_role`)                                                              |
+| **Schema**     | `backend/schemas/requests/members.py:ModifyMemberRoleRequest` (`member_role: MemberRoleTarget`)                                                                                                                                     |
+| **Metrics**    | `MEMBER_ROLE_CHANGED` (DOMAIN, `Resource.MEMBER`, dim `new_role: cocreator/member`; not emitted on a no-op)                                                                                                                          |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                             |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                        |
+| **Tests**      | `tests/integration/mobile_api/test_members_endpoints.py` (marker: `mobile_api`)                                                                                                                                                     |
 
 ### GET /api/v1/utubs/\<utub_id\>/co-members
 
