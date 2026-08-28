@@ -11,14 +11,6 @@ from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utubs.guards import reject_if_utub_locked
 
-# Maps the request-body target role onto the persisted membership role enum.
-# The two enums share identical wire values, so this lookup is total and keeps
-# the mapping explicit at the one call site that writes the role.
-_TARGET_ROLE_TO_MEMBER_ROLE: dict[MemberRoleTarget, Member_Role] = {
-    MemberRoleTarget.CO_CREATOR: Member_Role.CO_CREATOR,
-    MemberRoleTarget.MEMBER: Member_Role.MEMBER,
-}
-
 
 def modify_member_role(
     *,
@@ -68,7 +60,9 @@ def modify_member_role(
             status_code=400,
         )
 
-    new_member_role: Member_Role = _TARGET_ROLE_TO_MEMBER_ROLE[target_role]
+    # Relies on the MemberRoleTarget.value == Member_Role.value invariant: the
+    # two enums share identical wire values, so constructing directly is total.
+    new_member_role: Member_Role = Member_Role(target_role.value)
 
     if member.member_role == new_member_role:
         # No-op: the member already holds the requested role. Return success
