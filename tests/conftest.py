@@ -814,6 +814,39 @@ def add_single_user_to_utub_without_logging_in(app: Flask, register_multiple_use
 
 
 @pytest.fixture
+def add_co_creator_to_utub_without_logging_in(app: Flask, register_multiple_users):
+    """
+    Sets up a single UTub in the database, created by user with ID == 1, and adds
+        the user with ID == 2 to the UTub as a CO_CREATOR (co-owner)
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        register_multiple_users (pytest fixture): Registers the users with ID == 1, 2, 3
+    """
+    with app.app_context():
+        creator = Users.query.get(1)
+        new_utub = Utubs(
+            name=valid_empty_utub_1[model_strs.NAME],
+            utub_creator=creator.id,
+            utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
+        )
+        creator_to_utub = Utub_Members()
+        creator_to_utub.to_user = creator
+        creator_to_utub.member_role = Member_Role.CREATOR
+        new_utub.members.append(creator_to_utub)
+
+        # Grab and add second user as a co-creator (co-owner)
+        user_to_utub = Users.query.get(2)
+        new_user_for_utub = Utub_Members()
+        new_user_for_utub.to_user = user_to_utub
+        new_user_for_utub.member_role = Member_Role.CO_CREATOR
+        new_utub.members.append(new_user_for_utub)
+
+        db.session.add(new_utub)
+        db.session.commit()
+
+
+@pytest.fixture
 def add_multiple_users_to_utub_without_logging_in(app: Flask, register_multiple_users):
     """
     Sets up a single UTub in the database, created by user with ID == 1, and adds
