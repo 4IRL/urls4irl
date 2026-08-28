@@ -250,6 +250,43 @@ def test_noop_role_change_emits_no_metric(
     assert _role_of(app, utub_id, THIRD_USER_ID) == Member_Role.MEMBER
 
 
+def test_noop_grant_role_change_emits_no_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    register_multiple_users,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Owner PATCHes a co-creator already at `cocreator` → 200 success with
+    ZERO new MEMBER_ROLE_CHANGED counter keys (guards the grant-direction
+    no-op branch)."""
+    logged_in_client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        owner = Users.query.get(FIRST_USER_ID)
+        co_creator = Users.query.get(SECOND_USER_ID)
+        utub = _make_utub(owner, "Target")
+        _add_member(utub, co_creator, Member_Role.CO_CREATOR)
+        utub_id = utub.id
+
+    before = count_counter_keys(provide_metrics_redis, EventName.MEMBER_ROLE_CHANGED)
+
+    response = logged_in_client.patch(
+        url_for(
+            ROUTES.MEMBERS.MODIFY_MEMBER_ROLE, utub_id=utub_id, user_id=SECOND_USER_ID
+        ),
+        json={_MEMBER_ROLE_FIELD: _ROLE_CO_CREATOR},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    after = count_counter_keys(provide_metrics_redis, EventName.MEMBER_ROLE_CHANGED)
+    assert after == before
+    # Role unchanged
+    assert _role_of(app, utub_id, SECOND_USER_ID) == Member_Role.CO_CREATOR
+
+
 # ===========================================================================
 # Authorization matrix
 # ===========================================================================
