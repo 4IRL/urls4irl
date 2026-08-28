@@ -3,7 +3,10 @@ from flask import abort, g, redirect, session, url_for
 from flask_login import login_required, current_user
 from functools import wraps
 
-from backend.api_common.request_utils import is_current_utub_creator
+from backend.api_common.request_utils import (
+    is_current_utub_creator,
+    is_current_utub_true_owner,
+)
 from backend.schemas.errors import build_message_error_response
 from backend.app_logger import critical_log, warning_log
 from backend.models.users import User_Role
@@ -123,6 +126,28 @@ def utub_creator_required(func: Callable) -> Callable:
     return decorated_view
 
 
+def utub_true_owner_required(func: Callable) -> Callable:
+    @wraps(func)
+    @utub_membership_required
+    def decorated_view(*args, **kwargs):
+        current_utub: Utubs = kwargs["current_utub"]
+        if not is_current_utub_true_owner(current_utub):
+            utub_id: int = kwargs["utub_id"]
+            critical_log(
+                f"User={current_user.id} not true owner: UTub.id={utub_id} | UTub.name={current_utub.name}"
+            )
+
+            return build_message_error_response(
+                message=UTUB_FAILURE.NOT_AUTHORIZED,
+                status_code=403,
+            )
+
+        return func(*args, **kwargs)
+
+    decorated_view._auth_decorator = utub_true_owner_required.__name__
+    return decorated_view
+
+
 def utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
     @wraps(func)
     @utub_membership_required
@@ -230,6 +255,7 @@ SESSION_AUTH_DECORATORS: frozenset[str] = frozenset(
         session_required.__name__,
         url_adder_or_creator_required.__name__,
         utub_creator_required.__name__,
+        utub_true_owner_required.__name__,
         utub_membership_required.__name__,
         utub_membership_with_valid_url_in_utub_required.__name__,
         utub_membership_with_valid_url_tag.__name__,
@@ -406,6 +432,28 @@ def api_utub_creator_required(func: Callable) -> Callable:
     return decorated_view
 
 
+def api_utub_true_owner_required(func: Callable) -> Callable:
+    @wraps(func)
+    @api_utub_membership_required
+    def decorated_view(*args, **kwargs):
+        current_utub: Utubs = kwargs["current_utub"]
+        if not is_current_utub_true_owner(current_utub):
+            utub_id: int = kwargs["utub_id"]
+            critical_log(
+                f"User={current_user.id} not true owner: UTub.id={utub_id} | UTub.name={current_utub.name}"
+            )
+
+            return build_message_error_response(
+                message=UTUB_FAILURE.NOT_AUTHORIZED,
+                status_code=403,
+            )
+
+        return func(*args, **kwargs)
+
+    decorated_view._auth_decorator = api_utub_true_owner_required.__name__
+    return decorated_view
+
+
 def api_utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
     @wraps(func)
     @api_utub_membership_required
@@ -500,6 +548,7 @@ API_AUTH_DECORATORS: frozenset[str] = frozenset(
         api_email_validation_required.__name__,
         api_url_adder_or_creator_required.__name__,
         api_utub_creator_required.__name__,
+        api_utub_true_owner_required.__name__,
         api_utub_membership_required.__name__,
         api_utub_membership_with_valid_url_in_utub_required.__name__,
         api_utub_membership_with_valid_url_tag.__name__,

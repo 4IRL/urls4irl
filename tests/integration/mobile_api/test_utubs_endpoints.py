@@ -570,6 +570,36 @@ def test_delete_utub_not_creator_is_403(
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
+def test_delete_utub_as_co_creator_is_403(
+    app: Flask,
+    api_client: FlaskClient,
+    add_co_creator_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN a UTub created by user id=1 with user id=2 seeded as a CO_CREATOR (co-owner)
+    WHEN the co-creator DELETEs /api/v1/utubs/1 with a valid bearer token
+    THEN the literal-owner-only guard rejects it: 403 JSON failure envelope, and the
+        UTub still exists (co-creators are not literal owners — DD-1/DD-2).
+    """
+    user_2_token = _token_for_user(app, user_id=2)
+
+    with app.app_context():
+        initial_count = Utubs.query.count()
+
+    response = api_client.delete(
+        _delete_utub_url(app, utub_id=1),
+        headers=make_bearer_headers(user_2_token),
+    )
+
+    assert response.status_code == 403
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+    with app.app_context():
+        assert Utubs.query.count() == initial_count
+
+
 def test_delete_utub_nonexistent_is_404(
     app: Flask,
     api_client: FlaskClient,

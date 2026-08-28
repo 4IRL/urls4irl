@@ -12,6 +12,7 @@ from backend.api_common.auth_decorators import (
     api_email_validation_required,
     api_utub_creator_required,
     api_utub_membership_required,
+    api_utub_true_owner_required,
 )
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
@@ -164,7 +165,7 @@ def api_v1_update_utub_desc(
 
 
 @api_v1.route("/utubs/<int:utub_id>", methods=["DELETE"])
-@api_utub_creator_required
+@api_utub_true_owner_required
 @api_route(
     response_schema=UtubDeletedResponseSchema,
     ajax_required=False,

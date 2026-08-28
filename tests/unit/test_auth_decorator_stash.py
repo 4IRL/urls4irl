@@ -13,6 +13,7 @@ from backend.api_common.auth_decorators import (
     utub_membership_with_valid_url_in_utub_required,
     utub_membership_with_valid_url_tag,
     utub_membership_with_valid_utub_tag,
+    utub_true_owner_required,
 )
 from backend.api_common.parse_request import api_route
 
@@ -53,6 +54,11 @@ class TestAuthDecoratorStashAttribute:
         wrapped = utub_creator_required(_dummy_fn)
         assert hasattr(wrapped, AUTH_DECORATOR_ATTR)
         assert wrapped._auth_decorator == "utub_creator_required"
+
+    def test_utub_true_owner_required_stashes_name(self):
+        wrapped = utub_true_owner_required(_dummy_fn)
+        assert hasattr(wrapped, AUTH_DECORATOR_ATTR)
+        assert wrapped._auth_decorator == "utub_true_owner_required"
 
     def test_utub_membership_with_valid_url_in_utub_required_stashes_name(self):
         wrapped = utub_membership_with_valid_url_in_utub_required(_dummy_fn)
@@ -111,6 +117,7 @@ class TestSessionAuthDecoratorRegistry:
             session_required.__name__,
             utub_membership_required.__name__,
             utub_creator_required.__name__,
+            utub_true_owner_required.__name__,
             utub_membership_with_valid_url_in_utub_required.__name__,
             utub_membership_with_valid_utub_tag.__name__,
             utub_membership_with_valid_url_tag.__name__,
@@ -119,4 +126,4 @@ class TestSessionAuthDecoratorRegistry:
         assert SESSION_AUTH_DECORATORS == expected
 
     def test_registry_size(self):
-        assert len(SESSION_AUTH_DECORATORS) == 8
+        assert len(SESSION_AUTH_DECORATORS) == 9
