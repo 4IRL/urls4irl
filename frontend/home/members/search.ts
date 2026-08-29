@@ -54,6 +54,10 @@ export function applyAlternatingMemberBackground(): void {
 
 // Toggle `.hidden` on member rows across both containers by memberid.
 export function updatedMemberFilterDisplay(memberIdsToHide: number[]): void {
+  // The visible member-row set is about to change — close any open per-row kebab
+  // menu so it never lingers over a row that just got filtered out (DD-5).
+  // row-menu.ts subscribes to this via the event bus (decoupled from this module).
+  emitAppEvent(AppEvents.MEMBER_FILTER_CHANGED);
   if (memberIdsToHide.length === 0) {
     $(MEMBER_ROW_SELECTOR).removeClass("hidden");
     applyAlternatingMemberBackground();
@@ -149,6 +153,10 @@ export function setMemberSelectorSearchEventListener(): void {
 }
 
 export function resetMemberFilter(): void {
+  // Direct-manipulation reset path (does not funnel through
+  // updatedMemberFilterDisplay), so emit the row-set-changed signal here too so
+  // an open kebab menu is closed on a filter reset/close (DD-5).
+  emitAppEvent(AppEvents.MEMBER_FILTER_CHANGED);
   if (_memberSearchOpen) {
     emit({
       event: UI_EVENTS.UI_MEMBER_SEARCH_CLOSE,

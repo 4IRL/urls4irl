@@ -3,7 +3,7 @@ import {
   createMockXhr,
 } from "../../../__tests__/helpers/mock-jquery.js";
 import { createOwnerBadge, createMemberBadge } from "../members.js";
-import { createMemberRemoveBtn, removeMemberShowModal } from "../delete.js";
+import { removeMemberShowModal } from "../delete.js";
 import { createMemberHideInput } from "../create.js";
 import { updateMemberDeck } from "../deck.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
@@ -15,16 +15,6 @@ import {
   resetUTubDeckIfNoUTubs,
 } from "../../utubs/deck.js";
 
-vi.mock("../delete.js", async () => {
-  const actual =
-    await vi.importActual<typeof import("../delete.js")>("../delete.js");
-  return {
-    ...actual,
-    createMemberRemoveBtn: vi.fn(() =>
-      window.jQuery('<button class="memberOtherBtnDelete"></button>'),
-    ),
-  };
-});
 vi.mock("../../btns-forms.js", () => ({ hideInputs: vi.fn() }));
 vi.mock("../../urls/cards/selection.js", () => ({ deselectAllURLs: vi.fn() }));
 vi.mock("../../../lib/ajax.js", () => ({
@@ -171,18 +161,7 @@ describe("createMemberBadge", () => {
   });
 
   describe("when the current user is the UTub owner (isCurrentUserOwner=true)", () => {
-    it("calls createMemberRemoveBtn to create a remove button", () => {
-      createMemberBadge({
-        memberID: 5,
-        username: "Bob",
-        memberRole: "member",
-        isCurrentUserOwner: true,
-        utubID: 10,
-      });
-      expect(vi.mocked(createMemberRemoveBtn)).toHaveBeenCalledOnce();
-    });
-
-    it("appends the remove button to the member span", () => {
+    it("renders exactly one kebab (overflow) menu trigger", () => {
       const el = createMemberBadge({
         memberID: 5,
         username: "Bob",
@@ -190,23 +169,27 @@ describe("createMemberBadge", () => {
         isCurrentUserOwner: true,
         utubID: 10,
       });
-      expect(el.find(".memberOtherBtnDelete").length).toBe(1);
+      expect(el.find(".memberRowKebab").length).toBe(1);
+    });
+
+    it("folds the remove action into the menu and renders no bare remove button", () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      // The standalone remove button is folded into the kebab menu.
+      expect(el.find(".memberOtherBtnDelete").length).toBe(0);
+      expect(el.find(".memberRowMenu .memberRowMenuItem.danger").length).toBe(
+        1,
+      );
     });
   });
 
   describe("when the current user is a member (isCurrentUserOwner=false)", () => {
-    it("does not call createMemberRemoveBtn", () => {
-      createMemberBadge({
-        memberID: 5,
-        username: "Bob",
-        memberRole: "member",
-        isCurrentUserOwner: false,
-        utubID: 10,
-      });
-      expect(vi.mocked(createMemberRemoveBtn)).not.toHaveBeenCalled();
-    });
-
-    it("does not append a remove button to the span", () => {
+    it("does not render a kebab menu trigger", () => {
       const el = createMemberBadge({
         memberID: 5,
         username: "Bob",
@@ -214,7 +197,18 @@ describe("createMemberBadge", () => {
         isCurrentUserOwner: false,
         utubID: 10,
       });
-      expect(el.find(".memberOtherBtnDelete").length).toBe(0);
+      expect(el.find(".memberRowKebab").length).toBe(0);
+    });
+
+    it("does not render a row menu", () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find(".memberRowMenu").length).toBe(0);
     });
   });
 });

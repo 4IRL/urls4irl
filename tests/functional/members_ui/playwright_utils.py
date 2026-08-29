@@ -315,10 +315,13 @@ def add_existing_user_as_member_of_utub(
 
 
 def delete_member_active_utub(*, page: Page, member_name: str) -> None:
-    """Hover over the named member badge and click the delete button.
+    """Open the named member row's kebab menu and click "Remove member".
 
-    Playwright's click auto-waits for the delete button to be actionable
-    (visible, stable, enabled) after the hover reveals it — no pause needed.
+    The owner's per-row actions now live behind a kebab (overflow) menu instead
+    of a standalone remove button. Hovering the row reveals the kebab (opacity:0
+    until :hover on fine pointers), clicking it toggles the menu open (`.open` +
+    unset `hidden`), and the menu's "Remove member" item opens the confirm modal.
+    Playwright auto-waits for each target to be actionable — no pauses needed.
 
     Args:
         page: Playwright Page open to a selected UTub owned by the current user
@@ -327,7 +330,10 @@ def delete_member_active_utub(*, page: Page, member_name: str) -> None:
     badge = page.locator(HPL.BADGES_MEMBERS).filter(has_text=member_name).first
     expect(badge).to_be_visible()
     badge.hover()
-    badge.locator(HPL.BUTTON_MEMBER_DELETE).click()
+    badge.locator(HPL.MEMBER_ROW_KEBAB).click()
+    remove_item = badge.locator(HPL.MEMBER_ROW_MENU_REMOVE)
+    expect(remove_item).to_be_visible()
+    remove_item.click()
 
 
 def leave_utub_as_member(*, page: Page, utub_to_leave: Utubs) -> None:

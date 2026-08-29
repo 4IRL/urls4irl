@@ -1,9 +1,26 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
-import { createMemberRemoveBtn, removeMemberShowModal } from "./delete.js";
+import { removeMemberShowModal } from "./delete.js";
+import {
+  bindMemberRowMenu,
+  bindMemberRowModalFocusRestore,
+  closeAllMemberRowMenus,
+} from "./row-menu.js";
 import { makeUTubRoleIcon } from "../utubs/selectors.js";
 import { hideInputs } from "../btns-forms.js";
 import { deselectAllURLs } from "../urls/cards/selection.js";
+
+// Inline SVG icons (bootstrap-icons font is NOT loaded in this app — `<i class="bi
+// …">` renders nothing — so every glyph must be inline <svg> with explicit path
+// data). Kebab (overflow) trigger + the "Remove member" menu-item glyph.
+const KEBAB_ICON_SVG =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-three-dots-vertical" viewBox="0 0 16 16" aria-hidden="true">` +
+  `<path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>` +
+  `</svg>`;
+const REMOVE_MEMBER_ICON_SVG =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-x-fill" viewBox="0 0 16 16" aria-hidden="true">` +
+  `<path fill-rule="evenodd" d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m6.146-2.854a.5.5 0 0 1 .708 0L14 6.293l1.146-1.147a.5.5 0 0 1 .708.708L14.707 7l1.147 1.146a.5.5 0 0 1-.708.708L14 7.707l-1.146 1.147a.5.5 0 0 1-.708-.708L13.293 7l-1.147-1.146a.5.5 0 0 1 0-.708"/>` +
+  `</svg>`;
 
 // Human-readable role label for the visually-hidden text that accompanies the
 // decorative role icon. Shares the same 3-way switch shape makeUTubRoleIcon uses
@@ -87,11 +104,41 @@ export function createMemberBadge({
   $(memberSpan).append(memberRight);
 
   if (isCurrentUserOwner) {
-    const removeIcon = createMemberRemoveBtn();
-    removeIcon.offAndOnExact("click.removeMember", function () {
-      removeMemberShowModal(memberID, isCurrentUserOwner, utubID);
-    });
-    memberRight.append(removeIcon);
+    // Owner viewer: fold the row's actions into a kebab (overflow) menu. Step 3
+    // ships it with only "Remove member" (reusing removeMemberShowModal); the
+    // grant/revoke item is added in Step 4.
+    const kebabBtn = $(
+      `<button type="button" class="memberRowKebab flex-row align-center" aria-haspopup="menu" aria-expanded="false">${KEBAB_ICON_SVG}</button>`,
+    ) as JQuery<HTMLButtonElement>;
+    // Set the member-naming aria-label via the attr-setter (not interpolated into
+    // the HTML string above) so a username containing a double-quote cannot break
+    // out of the attribute and inject markup — usernames are not HTML-escaped and
+    // the backend only rejects angle brackets, so `"` reaches the client intact.
+    kebabBtn.attr("aria-label", `Actions for ${username}`);
+    kebabBtn.enableTab();
+
+    const rowMenu = $(
+      `<div class="memberRowMenu" role="menu" hidden>` +
+        `<button type="button" role="menuitem" class="memberRowMenuItem danger">` +
+        `${REMOVE_MEMBER_ICON_SVG}<span>Remove member</span>` +
+        `</button>` +
+        `</div>`,
+    ) as JQuery<HTMLDivElement>;
+
+    memberRight.append(kebabBtn).append(rowMenu);
+
+    // DD-13: bind the shared open/close/keyboard wiring on the freshly-built pair.
+    bindMemberRowMenu({ kebab: kebabBtn, menu: rowMenu, memberID });
+
+    // Wire "Remove member": DD-16 close the menu first, DD-25 arm the focus
+    // restore, THEN open the modal — never show the modal while the menu is open.
+    rowMenu
+      .find(".memberRowMenuItem.danger")
+      .offAndOnExact("click.memberRowMenuRemove", function () {
+        closeAllMemberRowMenus();
+        bindMemberRowModalFocusRestore(memberID);
+        removeMemberShowModal(memberID, isCurrentUserOwner, utubID);
+      });
   } else {
     // Leave UTub if member
     $("#memberSelfBtnDelete").offAndOnExact("click.removeMember", function () {

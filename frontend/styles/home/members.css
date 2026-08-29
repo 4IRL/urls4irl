@@ -12,6 +12,9 @@
 }
 
 .member {
+    /* Positioning context for the absolutely-positioned per-row kebab menu
+       (.memberRowMenu), which anchors to the row's right/bottom edge. */
+    position: relative;
     color: var(--grayBadgeSelection);
     border-color: var(--grayBadgeSelection);
     border-radius: 0;
@@ -57,6 +60,118 @@
     color: red;
     outline: 2px solid red;
     outline-offset: 2px;
+}
+
+/* ============================================================================
+   Per-row kebab (overflow) menu (row-menu.ts) — owner viewer only.
+
+   Trigger mirrors .memberOtherBtnDelete: appearance-none (strip iOS Safari's
+   native button chrome so no opaque box paints over the row divider), opacity-0
+   hover-reveal on fine pointers, always-visible 44px target on coarse pointers,
+   and a :focus-visible ring for keyboard users. The menu itself is a floating
+   card anchored to the row's bottom-right.
+   ========================================================================== */
+.memberRowKebab {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    opacity: 0;
+    color: var(--grayBadgeSelection);
+    transition: color 0.2s, opacity 0.2s;
+}
+
+.memberRowKebab svg {
+    width: 16px;
+    height: 16px;
+}
+
+.memberRowKebab:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* Floating menu card, anchored to the row's bottom-right (the row is
+   position:relative). Hidden at rest; .open reveals it as a vertical stack. */
+.memberRowMenu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 20;
+    background: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    padding: 4px;
+    display: none;
+}
+
+.memberRowMenu.open {
+    display: flex;
+    flex-direction: column;
+}
+
+.memberRowMenuItem {
+    -webkit-appearance: none;
+    appearance: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--textPrimary);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.memberRowMenuItem svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Ring drawn INSIDE the item (negative offset) so it never clips against the
+   card's own border. */
+.memberRowMenuItem:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+.memberRowMenuItem.danger {
+    color: var(--removeIconColor);
+}
+
+@media not all and (any-pointer: coarse) {
+
+    .member:hover .memberRowKebab,
+    .member:focus-within .memberRowKebab {
+        opacity: 1;
+    }
+
+    .memberRowMenuItem:hover {
+        background: var(--cardBackgroundColorHover);
+    }
+}
+
+/* Touch devices have no hover — reveal the kebab unconditionally with a 44px
+   target (mirrors the .memberOtherBtnDelete coarse-pointer treatment). */
+@media (any-pointer: coarse) {
+    .memberRowKebab {
+        opacity: 1;
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+        justify-content: flex-end;
+        padding-right: 0;
+    }
+
+    .memberRowMenuItem {
+        min-height: 2.75rem;
+    }
 }
 
 #listMembers {
@@ -304,6 +419,7 @@
    reinforces the non-interactive state visually). This class is independent of
    `.member-search-open` (the filter's own gate) — the two never collide. */
 #MemberDeck.member-add-open .memberOtherBtnDelete,
+#MemberDeck.member-add-open .memberRowKebab,
 #MemberDeck.member-add-open #memberNameFilterBtn {
     pointer-events: none;
     opacity: 0.5;

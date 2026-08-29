@@ -53,10 +53,12 @@ vi.mock("../../../logic/apply-deck-diff.js", () => ({
 
 vi.mock("../../../lib/event-bus.js", () => ({
   on: vi.fn(),
+  emit: vi.fn(),
   AppEvents: {
     UTUB_SELECTED: "utub_selected",
     STALE_DATA_DETECTED: "stale_data_detected",
     MEMBER_FILTER_OPENED: "member-filter:opened",
+    MEMBER_ADD_OPENED: "member-add:opened",
   },
 }));
 

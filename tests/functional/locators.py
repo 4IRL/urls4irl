@@ -387,6 +387,15 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_UTUB_LEAVE = "#memberSelfBtnDelete"
     BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"
 
+    # Per-row kebab (overflow) menu — the owner's view of each non-owner member
+    # row folds its actions (currently only "Remove member") into this menu.
+    # Built in members.ts's createMemberBadge; open/close wiring in row-menu.ts.
+    # The kebab is opacity:0 until row-hover on fine pointers and always-visible
+    # on coarse pointers; opening it toggles `.open` + unsets `hidden` on the menu.
+    MEMBER_ROW_KEBAB = ".memberRowKebab"
+    MEMBER_ROW_MENU = ".memberRowMenu"
+    MEMBER_ROW_MENU_REMOVE = ".memberRowMenuItem.danger"
+
     # Add-member combobox (built in TS by member-combobox.ts; mounted into
     # #createMemberWrap on open). The legacy single #memberCreate input,
     # #memberCancelBtnCreate, and #memberSubmitBtnCreate were removed in the

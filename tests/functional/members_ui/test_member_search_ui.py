@@ -196,27 +196,29 @@ def test_owner_sees_member_remove_button_on_touch_viewport(
     """
     GIVEN the UTub owner is on a coarse-pointer / touch mobile viewport (no hover)
     WHEN the member deck renders for a UTub that has other members
-    THEN each non-owner member row's remove button (.memberOtherBtnDelete) has a
-         computed ``opacity`` of ``1`` and is a >=44px touch target, and tapping
-         it opens the shared confirm modal, which is dismissed with "Keep member"
-         WITHOUT removing the member (seeded state stays intact).
+    THEN each non-owner member row's kebab trigger (.memberRowKebab) — which now
+         holds the "Remove member" action — has a computed ``opacity`` of ``1``
+         and is a >=44px touch target, and tapping it opens the row menu whose
+         "Remove member" item opens the shared confirm modal, which is dismissed
+         with "Keep member" WITHOUT removing the member (seeded state stays intact).
 
-    Regression guard for the touch-visibility fix: pre-fix the remove button was
+    Regression guard for the touch-visibility fix: the owner's per-row actions now
+    live behind a kebab (overflow) menu (the standalone .memberOtherBtnDelete no
+    longer renders on the owner view). Like the old remove button, the kebab is
     ``opacity: 0`` and only revealed by ``.member:hover`` inside the fine-pointer
     ``@media not all and (any-pointer: coarse)`` block (or ``:focus``). On a touch
-    device (coarse pointer, no hover) the owner could never see or tap it. The fix
-    adds a rule inside the ``@media (any-pointer: coarse)`` block that forces
-    ``opacity: 1`` plus a 44px min touch target.
+    device (coarse pointer, no hover) the owner could never see or tap it without
+    the coarse-pointer rule that forces ``opacity: 1`` plus a 44px min touch target.
 
     NOTE ON THE GUARD: Playwright's ``to_be_visible()`` does NOT treat
     ``opacity: 0`` as hidden (only ``display:none`` / ``visibility:hidden`` / a
     zero-size box count as not-visible), so ``to_be_visible()`` alone would still
-    pass under the old CSS. The real regression guard here is the computed-style
-    assertion below: ``opacity == "1"`` reads ``"0"`` under the pre-fix cascade
-    and fails, and the pre-fix button also lacked the 44px min touch target. The
-    other delete-member tests run at a desktop/fine-pointer viewport, where the
-    fine-pointer hover rule applies, so they never exercised the coarse-pointer
-    cascade and missed this bug.
+    pass under the fine-pointer cascade. The real regression guard here is the
+    computed-style assertion below: ``opacity == "1"`` reads ``"0"`` under the
+    fine-pointer cascade and fails, and the fine-pointer kebab also lacks the 44px
+    min touch target. The other delete-member tests run at a desktop/fine-pointer
+    viewport, where the fine-pointer hover rule applies, so they never exercise the
+    coarse-pointer cascade and would miss this bug.
     """
     app = provide_app
     user_id = 1
@@ -247,20 +249,21 @@ def test_owner_sees_member_remove_button_on_touch_viewport(
         page=page_mobile_portrait, css_selector=HPL.BADGES_MEMBERS
     )
 
-    # Locate the non-owner member's row and its per-row remove button.
+    # Locate the non-owner member's row and its per-row kebab trigger (which now
+    # holds the "Remove member" action).
     other_badge = page_mobile_portrait.locator(_member_badge_selector(other_member.id))
     expect(other_badge).to_be_visible()
-    remove_btn = other_badge.locator(HPL.BUTTON_MEMBER_DELETE)
+    kebab_btn = other_badge.locator(HPL.MEMBER_ROW_KEBAB)
 
     # The element is present/laid-out (a precondition for the computed-style read
-    # below). Note: this passes even under the pre-fix opacity:0 — Playwright does
-    # not treat opacity:0 as hidden — so it is a precondition, not the guard.
-    expect(remove_btn).to_be_visible()
+    # below). Note: this passes even under a fine-pointer opacity:0 — Playwright
+    # does not treat opacity:0 as hidden — so it is a precondition, not the guard.
+    expect(kebab_btn).to_be_visible()
 
-    # THE regression guard: in the coarse-pointer context the fix forces
-    # opacity:1 and a >=44px touch target (WCAG 2.5.5). The pre-fix cascade leaves
-    # opacity:0 with no min touch target, so these assertions fail without the fix.
-    button_metrics = remove_btn.evaluate(
+    # THE regression guard: in the coarse-pointer context the kebab is forced to
+    # opacity:1 with a >=44px touch target (WCAG 2.5.5). The fine-pointer cascade
+    # leaves opacity:0 with no min touch target, so these assertions fail there.
+    button_metrics = kebab_btn.evaluate(
         "el => {"
         "  const rect = el.getBoundingClientRect();"
         "  return {"
@@ -279,8 +282,12 @@ def test_owner_sees_member_remove_button_on_touch_viewport(
     if screenshot_path:
         page_mobile_portrait.screenshot(path=screenshot_path)
 
-    # Tap (touch, not hover+click) opens the shared destructive-confirm modal.
-    remove_btn.tap()
+    # Tap (touch, not hover+click) opens the row menu; tapping its "Remove member"
+    # item opens the shared destructive-confirm modal.
+    kebab_btn.tap()
+    remove_item = other_badge.locator(HPL.MEMBER_ROW_MENU_REMOVE)
+    expect(remove_item).to_be_visible()
+    remove_item.tap()
     warning_modal = wait_then_get_element(
         page=page_mobile_portrait, css_selector=HPL.HOME_MODAL
     )
