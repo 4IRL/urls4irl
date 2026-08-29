@@ -44,6 +44,12 @@ pytestmark = pytest.mark.members
 
 FIRST_USER_ID = 1
 SECOND_USER_ID = 2
+# THIRD_USER_ID and NONMEMBER_USER_ID are INTENTIONALLY the same user id (3).
+# It is the same "third user" viewed under two setups: in the not-added tests
+# user 3 is a non-member of the UTub (transfer target must 404), while in the
+# added-member tests user 3 has been added as a plain member (transfer target
+# succeeds). Keep these two constants equal — desyncing them would silently
+# point the two test groups at different users and break that shared framing.
 THIRD_USER_ID = 3
 NONMEMBER_USER_ID = 3
 
