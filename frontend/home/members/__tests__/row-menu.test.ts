@@ -1,13 +1,18 @@
 import { createMemberBadge } from "../members.js";
 import { bindMemberRowModalFocusRestore } from "../row-menu.js";
 import { removeMemberShowModal } from "../delete.js";
+import { modifyMemberRoleShowModal } from "../role.js";
 import { emit, AppEvents } from "../../../lib/event-bus.js";
 
 // createMemberBadge (members.js) builds the kebab + menu and wires the real
-// row-menu.js behavior; only removeMemberShowModal is stubbed so the "Remove
-// member" item's call can be asserted without opening the real modal.
+// row-menu.js behavior; only removeMemberShowModal / modifyMemberRoleShowModal
+// are stubbed so the "Remove member" / role-toggle items' calls can be asserted
+// without opening the real modals.
 vi.mock("../delete.js", () => ({
   removeMemberShowModal: vi.fn(),
+}));
+vi.mock("../role.js", () => ({
+  modifyMemberRoleShowModal: vi.fn(),
 }));
 vi.mock("../../btns-forms.js", () => ({ hideInputs: vi.fn() }));
 vi.mock("../../urls/cards/selection.js", () => ({ deselectAllURLs: vi.fn() }));
@@ -119,6 +124,27 @@ describe("member row kebab menu (row-menu.ts)", () => {
 
     expect(menu.hasClass("open")).toBe(false);
     expect(kebab.attr("aria-expanded")).toBe("false");
+  });
+
+  it("clicking the role item closes the menu (DD-16) and calls modifyMemberRoleShowModal with the row's args", () => {
+    const row = buildOwnerRow(5);
+    $("#listMembers").append(row);
+    const kebab = row.find(".memberRowKebab");
+    const menu = row.find(".memberRowMenu");
+
+    kebab.trigger("click");
+    row.find(".memberRowMenuItemRole").trigger("click");
+
+    // DD-16: the menu closes before the (mocked) role modal would open.
+    expect(menu.hasClass("open")).toBe(false);
+    expect(kebab.attr("aria-expanded")).toBe("false");
+    // currentRole is sourced at click time; the store is empty here so it falls
+    // back to the row's creation-time role ("member"), the grant direction.
+    expect(vi.mocked(modifyMemberRoleShowModal)).toHaveBeenCalledWith({
+      memberID: 5,
+      currentRole: "member",
+      utubID: 10,
+    });
   });
 
   it("opening one row's menu closes any other open row menu (DD-4a)", () => {
