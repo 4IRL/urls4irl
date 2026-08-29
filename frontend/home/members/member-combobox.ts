@@ -885,8 +885,8 @@ export function hideAndResetMemberCombobox(): void {
       showMemberCombobox(activeUTubID),
     );
     $("#displayMemberWrap").showClassFlex();
-    // Only the UTub owner may add members.
-    if (!getState().isCurrentUserOwner) {
+    // The UTub owner and co-owners may add members (DD-1).
+    if (!(getState().isCurrentUserOwner || getState().isCoCreator)) {
       memberBtnCreate.hideClass();
     }
   }

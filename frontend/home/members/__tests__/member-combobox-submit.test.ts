@@ -261,6 +261,12 @@ describe("member-combobox-submit — mixed outcomes", () => {
       "Bob",
       "Ghost",
     ]);
+    // Freshly-added members are pushed with the plain-member role so the widened
+    // MemberItem is satisfied and the correct role icon renders downstream (DD-1).
+    expect(getState().members.map((member) => member.memberRole)).toEqual([
+      "member",
+      "member",
+    ]);
     // Deck sync runs ONCE total, from the resolved results array.
     expect(vi.mocked(createMemberBadge)).toHaveBeenCalledTimes(2);
     expect(vi.mocked(setMemberDeckForUTub)).toHaveBeenCalledTimes(1);
@@ -451,7 +457,7 @@ describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
     // is still the batch's UTub 7). That select flow re-fetched `members` fresh —
     // already including Bob (id 1), whose independent POST had completed. This
     // stale batch must NOT append Bob a second time.
-    setState({ members: [{ id: 1, username: "Bob" }] });
+    setState({ members: [{ id: 1, username: "Bob", memberRole: "member" }] });
 
     firstDeferred.resolve(
       { utubID: 7, member: { id: 1, username: "Bob" } },

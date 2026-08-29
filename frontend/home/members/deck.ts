@@ -86,7 +86,11 @@ export function setMemberDeckOnUTubSelected(
   $("#displayMemberWrap").showClassFlex();
   const parent = $("#listMembers");
 
-  if (isCurrentUserOwner) setupShowCreateMemberFormEventListeners(utubID);
+  // Co-owners can add members too (DD-1), so gate the add affordance on
+  // owner-OR-co-creator rather than the literal owner flag alone.
+  const canManageMembers = isCurrentUserOwner || getState().isCoCreator;
+
+  if (canManageMembers) setupShowCreateMemberFormEventListeners(utubID);
 
   // Instantiate deck with list of members with access to current UTub
   for (const utubMember of dictMembers) {
@@ -123,7 +127,7 @@ export function setMemberDeckOnUTubSelected(
   showMemberFilterBar();
 
   // Subheader prompt
-  setMemberDeckForUTub(isCurrentUserOwner);
+  setMemberDeckForUTub(canManageMembers);
 }
 
 export function setMemberDeckWhenNoUTubSelected(): void {
@@ -140,19 +144,19 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   $("#MemberDeckCount").text("");
 }
 
-export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {
+export function setMemberDeckForUTub(canManageMembers: boolean = true): void {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
 
   log("setMemberDeckForUTub — permission-gated UI", {
-    isCurrentUserOwner,
+    canManageMembers,
     numOfMembers,
-    showingAddButton: isCurrentUserOwner,
-    showingLeaveButton: !isCurrentUserOwner,
+    showingAddButton: canManageMembers,
   });
 
-  // Ability to add members is restricted to UTub owner. The leave/delete actions
-  // live in the UTub deck (setUTubDeckOnUTubSelected) and are not managed here.
-  if (isCurrentUserOwner) {
+  // Ability to add members is limited to the UTub owner and co-owners (DD-1). The
+  // leave/delete actions live in the UTub deck (setUTubDeckOnUTubSelected) and are
+  // not managed here.
+  if (canManageMembers) {
     $("#memberBtnCreate").showClassNormal();
   } else {
     $("#memberBtnCreate").hideClass();

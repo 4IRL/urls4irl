@@ -156,6 +156,7 @@ function deleteUTubSuccess(utubID: number): void {
       activeUTubName: null,
       activeUTubDescription: null,
       isCurrentUserOwner: false,
+      isCoCreator: false,
       urls: [],
       tags: [],
       members: [],

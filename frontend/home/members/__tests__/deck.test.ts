@@ -4,6 +4,7 @@ import {
   setMemberDeckOnUTubSelected,
   setMemberDeckWhenNoUTubSelected,
 } from "../deck.js";
+import { resetStore, setState } from "../../../store/app-store.js";
 
 vi.mock("../../../logic/apply-deck-diff.js", () => ({
   applyDeckDiff: vi.fn(),
@@ -50,13 +51,24 @@ const MEMBER_DECK_HTML = `
 describe("Member deck visibility on UTub selection", () => {
   beforeEach(() => {
     document.body.innerHTML = MEMBER_DECK_HTML;
+    resetStore();
+  });
+
+  afterEach(() => {
+    resetStore();
   });
 
   it("reveals the member list and shows the inline count when a UTub is selected", () => {
     const wrap = window.jQuery("#displayMemberWrap");
     expect(wrap.hasClass("hidden")).toBe(true);
 
-    setMemberDeckOnUTubSelected([{ id: 1, username: "owner" }], 1, true, 1, 42);
+    setMemberDeckOnUTubSelected(
+      [{ id: 1, username: "owner", memberRole: "creator" }],
+      1,
+      true,
+      1,
+      42,
+    );
 
     expect(wrap.hasClass("hidden")).toBe(false);
     expect(window.jQuery("#MemberDeckCount").text()).toBe("(1)");
@@ -91,6 +103,42 @@ describe("Member deck visibility on UTub selection", () => {
 
     expect(window.jQuery("#MemberDeckCount").text()).toBe("(2)");
     // The leave button lives in the UTub deck now and is not managed here.
+    expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(true);
+  });
+
+  it("shows the add-member button for a non-owner co-owner on UTub selection (DD-1)", () => {
+    // A co-owner (isCurrentUserOwner: false, isCoCreator: true) can add members,
+    // so setMemberDeckOnUTubSelected's canManageMembers OR-gate must reveal the
+    // add button even though the literal owner flag is false.
+    resetStore();
+    setState({ isCoCreator: true });
+
+    setMemberDeckOnUTubSelected(
+      [{ id: 1, username: "owner", memberRole: "creator" }],
+      1,
+      false,
+      1,
+      42,
+    );
+
+    expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(false);
+  });
+
+  it("keeps the add-member button hidden for a plain non-owner member on UTub selection (DD-12 sad path)", () => {
+    // Neither owner nor co-owner: canManageMembers is false, so the add button
+    // stays hidden. Guards the OR-gate against a regression that would leak the
+    // add affordance to plain members.
+    resetStore();
+    setState({ isCoCreator: false });
+
+    setMemberDeckOnUTubSelected(
+      [{ id: 1, username: "owner", memberRole: "creator" }],
+      1,
+      false,
+      1,
+      42,
+    );
+
     expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(true);
   });
 });

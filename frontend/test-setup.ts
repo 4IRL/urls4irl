@@ -81,6 +81,7 @@ const appConfig = {
     createMember: "/utubs/-1/members",
     coMemberCandidates: "/utubs/-1/co-members",
     removeMember: "/utubs/-1/members/-4",
+    modifyMemberRole: "/utubs/-1/members/-4",
     contactUs: "/contact",
     crossUtubSearch: "/search",
   },
@@ -94,8 +95,9 @@ const appConfig = {
     TAGS_MAX_LENGTH: 30,
     TAGS_MAX_ON_URLS: 20,
     MEMBER_ROLES: {
-      CREATOR: "CREATOR",
-      CO_CREATOR: "CO_CREATOR",
+      MEMBER: "member",
+      CREATOR: "creator",
+      CO_CREATOR: "cocreator",
     },
     // Source of truth: backend/metrics/dimension_models.py (DIMENSION_MODELS registry).
     // — keep this array in sync when DIMENSION_MODELS changes.

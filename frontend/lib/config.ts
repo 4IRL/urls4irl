@@ -62,12 +62,14 @@ export interface AppRoutes {
   createURLTagsBatch: (utubId: number, urlId: number) => string;
   deleteUTubTag: (utubId: number, tagId: number) => string;
   removeMember: (utubId: number, userId: number) => string;
+  modifyMemberRole: (utubId: number, userId: number) => string;
 
   // Dynamic three-param routes
   deleteURLTag: (utubId: number, urlId: number, tagId: number) => string;
 }
 
 export interface MemberRoles {
+  readonly MEMBER: string;
   readonly CREATOR: string;
   readonly CO_CREATOR: string;
 }
@@ -191,6 +193,10 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.coMemberCandidates.replace("-1", String(id)),
     removeMember: (utubId: number, userId: number) =>
       rawConfig.routes.removeMember
+        .replace("-1", String(utubId))
+        .replace("-4", String(userId)),
+    modifyMemberRole: (utubId: number, userId: number) =>
+      rawConfig.routes.modifyMemberRole
         .replace("-1", String(utubId))
         .replace("-4", String(userId)),
 
