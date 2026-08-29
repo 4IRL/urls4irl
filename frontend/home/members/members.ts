@@ -1,5 +1,6 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { getState } from "../../store/app-store.js";
 import { removeMemberShowModal } from "./delete.js";
 import { modifyMemberRoleShowModal } from "./role.js";
 import {
@@ -194,7 +195,14 @@ export function createMemberBadge({
         bindMemberRowModalFocusRestore(memberID);
         modifyMemberRoleShowModal({
           memberID,
-          currentRole: memberRole,
+          // Source the CURRENT role at click time, not the creation-time
+          // `memberRole` closure: swapMemberRoleInRow re-renders the row in place
+          // (no full deck rebuild, so this handler is never rebound), so a stale
+          // closure would compute the wrong targetRole on a second toggle. Mirrors
+          // the DD-22 store lookup role.ts's success handler already uses.
+          currentRole:
+            getState().members.find((member) => member.id === memberID)
+              ?.memberRole ?? memberRole,
           utubID,
         });
       });
