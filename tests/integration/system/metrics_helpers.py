@@ -34,6 +34,7 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.DATA_EXPORTED,
         EventName.MEMBER_ADD_CANDIDATES_LOADED,
         EventName.MEMBER_ROLE_CHANGED,
+        EventName.OWNERSHIP_TRANSFERRED,
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
         EventName.URL_REMOVED_FROM_UTUB,
@@ -114,7 +115,13 @@ tests/functional/members_ui/test_members_metrics_ui.py.
 MEMBER_ROLE_CHANGED fires only from the owner-only grant/revoke co-owner
 endpoint, which the shared success-path seed does not call; its per-route emit
 tests (grant, revoke, and no-op-no-emit) live under
-tests/integration/utubmembers/test_modify_member_role_route.py. Each excluded
+tests/integration/utubmembers/test_modify_member_role_route.py.
+OWNERSHIP_TRANSFERRED fires only from the owner-only ownership-transfer endpoint
+(reassigning utub_creator to a chosen member, promoting them to CREATOR and
+demoting the outgoing owner to CO_CREATOR), which the shared success-path seed
+does not call; its per-route emit test lives under
+tests/integration/utubmembers/test_transfer_ownership_route.py (added in Step 3).
+Each excluded
 event has its own per-route emit test under tests/integration/<feature>/ and
 flushes through the same pipeline, so the end-to-end invariant is still covered.
 """

@@ -163,6 +163,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         category=EventCategory.DOMAIN,
         dimensions={"new_role": MEMBER_ROLE_CHANGE_VALUES},
     ),
+    EventName.OWNERSHIP_TRANSFERRED: EventRegistryEntry(
+        description="UTub ownership transferred to a member by the outgoing owner",
+        category=EventCategory.DOMAIN,
+    ),
     EventName.URL_TITLE_UPDATED: EventRegistryEntry(
         description="URL title edited",
         category=EventCategory.DOMAIN,

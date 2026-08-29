@@ -83,6 +83,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.MEMBER_ADD_CANDIDATES_LOADED: Resource.MEMBER,
     EventName.MEMBER_REMOVED: Resource.MEMBER,
     EventName.MEMBER_ROLE_CHANGED: Resource.MEMBER,
+    EventName.OWNERSHIP_TRANSFERRED: Resource.MEMBER,
     EventName.EMAIL_VERIFIED: Resource.AUTH,
     EventName.LOGIN_FAILURE: Resource.AUTH,
     EventName.LOGIN_SUCCESS: Resource.AUTH,
