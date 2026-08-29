@@ -204,7 +204,13 @@ function applyPostSettleSideEffects({
       const listMembers = $("#listMembers");
       addedMembers.forEach((member) => {
         listMembers.append(
-          createMemberBadge(member.id, member.username, isOwner, batchUtubID),
+          createMemberBadge({
+            memberID: member.id,
+            username: member.username,
+            memberRole: member.memberRole,
+            isCurrentUserOwner: isOwner,
+            utubID: batchUtubID,
+          }),
         );
       });
       // Deck subheader count + filter re-stripe run ONCE total, after the appends.

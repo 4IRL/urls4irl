@@ -289,7 +289,7 @@ export function setUTubSelectorEventListeners(utub: HTMLElement): void {
     });
 }
 
-function makeUTubRoleIcon({
+export function makeUTubRoleIcon({
   memberRole,
   isLocked,
 }: {

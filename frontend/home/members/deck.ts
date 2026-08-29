@@ -61,12 +61,13 @@ export function updateMemberDeck(
       $(".member[memberid=" + memberID + "]").remove(),
     addElement: (member) => {
       $("#listMembers").append(
-        createMemberBadge(
-          member.id,
-          member.username,
+        createMemberBadge({
+          memberID: member.id,
+          username: member.username,
+          memberRole: member.memberRole,
           isCurrentUserOwner,
           utubID,
-        ),
+        }),
       );
     },
   });
@@ -103,12 +104,13 @@ export function setMemberDeckOnUTubSelected(
       );
     } else {
       parent.append(
-        createMemberBadge(
-          utubMemberUserID,
-          utubMemberUsername,
+        createMemberBadge({
+          memberID: utubMemberUserID,
+          username: utubMemberUsername,
+          memberRole: utubMember.memberRole,
           isCurrentUserOwner,
           utubID,
-        ),
+        }),
       );
     }
   }

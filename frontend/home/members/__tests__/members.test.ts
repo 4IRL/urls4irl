@@ -76,6 +76,11 @@ describe("createOwnerBadge", () => {
     const $el = $(createOwnerBadge(1, "Alice"));
     expect($el.find("svg.bi-diamond-fill.memberRole").length).toBe(1);
   });
+
+  it("renders a visually-hidden 'Owner' role label alongside the icon", () => {
+    const $el = $(createOwnerBadge(1, "Alice"));
+    expect($el.find(".member-role-wrap .visually-hidden").text()).toBe("Owner");
+  });
 });
 
 describe("createMemberBadge", () => {
@@ -83,12 +88,24 @@ describe("createMemberBadge", () => {
 
   describe("element structure", () => {
     it("sets memberid attribute to the member user ID", () => {
-      const el = createMemberBadge(42, "Bob", false, 10);
+      const el = createMemberBadge({
+        memberID: 42,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
       expect(el.attr("memberid")).toBe("42");
     });
 
     it("has member, full-width, flex-row, jc-sb, align-center, flex-start classes", () => {
-      const el = createMemberBadge(1, "Bob", false, 10);
+      const el = createMemberBadge({
+        memberID: 1,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
       expect(el.hasClass("member")).toBe(true);
       expect(el.hasClass("full-width")).toBe(true);
       expect(el.hasClass("flex-row")).toBe(true);
@@ -98,31 +115,105 @@ describe("createMemberBadge", () => {
     });
 
     it("renders the username inside a bold element", () => {
-      const el = createMemberBadge(1, "Bob", false, 10);
+      const el = createMemberBadge({
+        memberID: 1,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
       expect(el.find("b").text()).toBe("Bob");
+    });
+  });
+
+  describe("per-row role icon (DD-2/DD-10/DD-18)", () => {
+    it("renders the co-creator diamond-half icon + 'Co-owner' label", () => {
+      const el = createMemberBadge({
+        memberID: 3,
+        username: "Bob",
+        memberRole: "cocreator",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find("svg.bi-diamond-half.memberRole").length).toBe(1);
+      expect(el.find(".member-role-wrap .visually-hidden").text()).toBe(
+        "Co-owner",
+      );
+    });
+
+    it("renders the creator diamond-fill icon + 'Owner' label", () => {
+      const el = createMemberBadge({
+        memberID: 3,
+        username: "Bob",
+        memberRole: "creator",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find("svg.bi-diamond-fill.memberRole").length).toBe(1);
+      expect(el.find(".member-role-wrap .visually-hidden").text()).toBe(
+        "Owner",
+      );
+    });
+
+    it("renders the plain-member people-fill icon + 'Member' label", () => {
+      const el = createMemberBadge({
+        memberID: 3,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find("svg.bi-people-fill.memberRole").length).toBe(1);
+      expect(el.find(".member-role-wrap .visually-hidden").text()).toBe(
+        "Member",
+      );
     });
   });
 
   describe("when the current user is the UTub owner (isCurrentUserOwner=true)", () => {
     it("calls createMemberRemoveBtn to create a remove button", () => {
-      createMemberBadge(5, "Bob", true, 10);
+      createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
       expect(vi.mocked(createMemberRemoveBtn)).toHaveBeenCalledOnce();
     });
 
     it("appends the remove button to the member span", () => {
-      const el = createMemberBadge(5, "Bob", true, 10);
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
       expect(el.find(".memberOtherBtnDelete").length).toBe(1);
     });
   });
 
   describe("when the current user is a member (isCurrentUserOwner=false)", () => {
     it("does not call createMemberRemoveBtn", () => {
-      createMemberBadge(5, "Bob", false, 10);
+      createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
       expect(vi.mocked(createMemberRemoveBtn)).not.toHaveBeenCalled();
     });
 
     it("does not append a remove button to the span", () => {
-      const el = createMemberBadge(5, "Bob", false, 10);
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
       expect(el.find(".memberOtherBtnDelete").length).toBe(0);
     });
   });

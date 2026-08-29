@@ -64,7 +64,14 @@ def get_all_member_badges(*, page: Page) -> list[Locator]:
 
 
 def get_all_member_usernames(*, page: Page) -> list[str]:
-    """Return the inner-text of every visible member badge as a list.
+    """Return the bare username of every visible member badge as a list.
+
+    Each ``.member`` badge concatenates the username with a role annotation
+    ("Owner"/"Member"/"Co-owner"), so the badge's full text content is
+    ``"<username>\\n<Role>"``. The username itself lives in the row's direct-child
+    ``<b>`` element (``createMemberBadge``/``createOwnerBadge`` build
+    ``.html("<b>" + username + "</b>")`` plus the separate role wrap), so read the
+    ``<b>`` text to return bare usernames rather than the role-suffixed row text.
 
     Args:
         page: Playwright Page open to a selected UTub
@@ -74,7 +81,7 @@ def get_all_member_usernames(*, page: Page) -> list[str]:
     """
     badges_locator = page.locator(HPL.BADGES_MEMBERS)
     expect(badges_locator.first).to_be_visible()
-    return badges_locator.all_inner_texts()
+    return page.locator(f"{HPL.BADGES_MEMBERS} > b").all_inner_texts()
 
 
 def member_badge_by_username(*, page: Page, username: str) -> Locator:

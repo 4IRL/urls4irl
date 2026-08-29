@@ -33,10 +33,11 @@ vi.mock("../search.js", () => ({
 }));
 
 vi.mock("../members.js", () => ({
-  createMemberBadge: vi.fn((id: number, username: string) =>
-    window.jQuery(
-      `<span class="member" memberid="${id}"><b>${username}</b></span>`,
-    ),
+  createMemberBadge: vi.fn(
+    ({ memberID, username }: { memberID: number; username: string }) =>
+      window.jQuery(
+        `<span class="member" memberid="${memberID}"><b>${username}</b></span>`,
+      ),
   ),
 }));
 
@@ -476,11 +477,12 @@ describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
     // pushed into the store and badged into the deck.
     expect(getState().members.map((member) => member.id)).toEqual([1, 2]);
     expect(vi.mocked(createMemberBadge)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(createMemberBadge)).toHaveBeenCalledWith(
-      2,
-      "Ghost",
-      true,
-      7,
-    );
+    expect(vi.mocked(createMemberBadge)).toHaveBeenCalledWith({
+      memberID: 2,
+      username: "Ghost",
+      memberRole: "member",
+      isCurrentUserOwner: true,
+      utubID: 7,
+    });
   });
 });
