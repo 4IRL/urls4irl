@@ -3642,6 +3642,101 @@
         }
       }
     },
+    "/api/v1/utubs/{utub_id}/owner": {
+      "patch": {
+        "operationId": "apiV1TransferUtubOwnership",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Transfer UTub ownership to a chosen member (owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferOwnershipRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\n    Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n    (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\n    the client can update both role displays without a reload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnershipTransferredResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubMembersErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubMembersErrorCodes": {
+            "$ref": "#/components/schemas/UTubMembersErrorCodes"
+          }
+        }
+      }
+    },
     "/api/v1/utubs/{utub_id}/co-members": {
       "get": {
         "operationId": "apiV1GetCoMemberCandidates",
@@ -9618,6 +9713,54 @@
         "required": ["member_role"],
         "type": "object"
       },
+      "TransferOwnershipRequest": {
+        "properties": {
+          "new_owner_id": {
+            "description": "User ID of the member to promote to UTub owner",
+            "type": "integer"
+          }
+        },
+        "required": ["new_owner_id"],
+        "type": "object"
+      },
+      "UtubMemberSchema": {
+        "description": "A member of a UTub, carrying their role, for the open-UTub detail response.\n\nDistinct from the shared ``UserSchema``/``MemberSchema`` (reused by the\nadd/remove-member responses where a role isn't naturally present) so that\nrole exposure is scoped to the detail response only.",
+        "properties": {
+          "id": {
+            "description": "Unique user ID",
+            "type": "integer"
+          },
+          "username": {
+            "description": "Username of the user",
+            "type": "string"
+          },
+          "memberRole": {
+            "description": "Role of the member in the UTub",
+            "type": "string"
+          }
+        },
+        "required": ["id", "username", "memberRole"],
+        "type": "object"
+      },
+      "OwnershipTransferredResponseSchema": {
+        "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\nReuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n(now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\nthe client can update both role displays without a reload.",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub whose ownership was transferred",
+            "type": "integer"
+          },
+          "newOwner": {
+            "$ref": "#/components/schemas/UtubMemberSchema",
+            "description": "The promoted member, now CREATOR"
+          },
+          "previousOwner": {
+            "$ref": "#/components/schemas/UtubMemberSchema",
+            "description": "The demoted member, now CO_CREATOR"
+          }
+        },
+        "required": ["utubID", "newOwner", "previousOwner"],
+        "type": "object"
+      },
       "CoMemberSchema": {
         "description": "A co-member add candidate: a user who shares >=1 other UTub with the\nrequester and is not already a member of the target UTub.",
         "properties": {
@@ -9762,25 +9905,6 @@
           }
         },
         "required": ["utubs"],
-        "type": "object"
-      },
-      "UtubMemberSchema": {
-        "description": "A member of a UTub, carrying their role, for the open-UTub detail response.\n\nDistinct from the shared ``UserSchema``/``MemberSchema`` (reused by the\nadd/remove-member responses where a role isn't naturally present) so that\nrole exposure is scoped to the detail response only.",
-        "properties": {
-          "id": {
-            "description": "Unique user ID",
-            "type": "integer"
-          },
-          "username": {
-            "description": "Username of the user",
-            "type": "string"
-          },
-          "memberRole": {
-            "description": "Role of the member in the UTub",
-            "type": "string"
-          }
-        },
-        "required": ["id", "username", "memberRole"],
         "type": "object"
       },
       "UtubUrlSchema": {
@@ -10051,35 +10175,6 @@
         "enum": [1],
         "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for ContactErrorCodes"
-      },
-      "TransferOwnershipRequest": {
-        "properties": {
-          "new_owner_id": {
-            "description": "User ID of the member to promote to UTub owner",
-            "type": "integer"
-          }
-        },
-        "required": ["new_owner_id"],
-        "type": "object"
-      },
-      "OwnershipTransferredResponseSchema": {
-        "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\nReuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n(now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\nthe client can update both role displays without a reload.",
-        "properties": {
-          "utubID": {
-            "description": "ID of the UTub whose ownership was transferred",
-            "type": "integer"
-          },
-          "newOwner": {
-            "$ref": "#/components/schemas/UtubMemberSchema",
-            "description": "The promoted member, now CREATOR"
-          },
-          "previousOwner": {
-            "$ref": "#/components/schemas/UtubMemberSchema",
-            "description": "The demoted member, now CO_CREATOR"
-          }
-        },
-        "required": ["utubID", "newOwner", "previousOwner"],
-        "type": "object"
       },
       "MetricsIngestEvent": {
         "additionalProperties": false,

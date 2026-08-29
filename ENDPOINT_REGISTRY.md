@@ -1755,6 +1755,19 @@ auto-coverage only (no DOMAIN events).
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                        |
 | **Tests**      | `tests/integration/mobile_api/test_members_endpoints.py` (marker: `mobile_api`)                                                                                                                                                     |
 
+### PATCH /api/v1/utubs/\<utub_id\>/owner
+
+| Layer          | Location                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/api_v1/utub_member_routes.py:api_v1_transfer_utub_ownership` (bearer-token twin of `backend/members/routes.py:transfer_utub_ownership` — same service, no logic duplication)                                                |
+| **Decorators** | `@api_utub_owner_required`, `@api_route(request_schema=TransferOwnershipRequest, response_schema=OwnershipTransferredResponseSchema, error_message=MEMBER_FAILURE.UNABLE_TO_TRANSFER_OWNERSHIP, error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})` |
+| **Service**    | `backend/members/services/transfer_ownership.py:transfer_ownership` (same service as the web route — no logic duplication; reassign `utub_creator` BEFORE demoting old owner (mandatory ordering) → commit + `record_event(OWNERSHIP_TRANSFERRED)`) |
+| **Schema**     | `backend/schemas/requests/members.py:TransferOwnershipRequest` (`new_owner_id: int`) → `backend/schemas/users.py:OwnershipTransferredResponseSchema` (`utubID`, `newOwner`, `previousOwner`)                                         |
+| **Metrics**    | `OWNERSHIP_TRANSFERRED` (DOMAIN, `Resource.MEMBER`, dimensionless; not emitted on a rejected transfer)                                                                                                                              |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                             |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                        |
+| **Tests**      | `tests/integration/mobile_api/test_members_endpoints.py` (marker: `mobile_api`)                                                                                                                                                     |
+
 ### GET /api/v1/utubs/\<utub_id\>/co-members
 
 | Layer          | Location                                                                                                                                                                                                                             |

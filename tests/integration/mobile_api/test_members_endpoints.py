@@ -2,6 +2,8 @@
 Integration tests for the bearer-token Member endpoints:
   POST   /api/v1/utubs/<utub_id>/members
   DELETE /api/v1/utubs/<utub_id>/members/<user_id>
+  PATCH  /api/v1/utubs/<utub_id>/members/<user_id>  (grant/revoke co-owner)
+  PATCH  /api/v1/utubs/<utub_id>/owner              (transfer ownership)
 
 Conventions:
   - Uses api_client (plain FlaskClient, no session/CSRF).
@@ -25,7 +27,7 @@ from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
-from backend.utils.strings.utub_strs import UTUB_FAILURE
+from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID
 from tests.models_for_test import valid_users
 from tests.utils_for_test import set_member_role
 
@@ -59,6 +61,11 @@ def _modify_member_role_url(app: Flask, utub_id: int, user_id: int) -> str:
         return url_for(
             ROUTES.API_V1.MODIFY_MEMBER_ROLE, utub_id=utub_id, user_id=user_id
         )
+
+
+def _transfer_ownership_url(app: Flask, utub_id: int) -> str:
+    with app.test_request_context():
+        return url_for(ROUTES.API_V1.TRANSFER_UTUB_OWNERSHIP, utub_id=utub_id)
 
 
 def _bearer(token: str) -> dict[str, str]:
@@ -774,6 +781,267 @@ def test_remove_member_nonexistent_member_is_404(
     assert response.status_code == 404
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+# ===========================================================================
+# PATCH /api/v1/utubs/<utub_id>/owner — transfer UTub ownership
+# ===========================================================================
+
+_NEW_OWNER_ID_FIELD = "new_owner_id"
+
+
+def test_transfer_ownership_happy_path(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN UTub id=1 with creator (user 1) and plain members (users 2, 3)
+    WHEN the owner PATCHes /owner with new_owner_id=2
+    THEN 200; user 2 becomes CREATOR (and the utub_creator), the outgoing owner
+        (user 1) is demoted to CO_CREATOR, and the newOwner/previousOwner payload
+        reflects the swap
+    """
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 2},
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.OWNERSHIP_TRANSFERRED
+
+    with app.app_context():
+        assert Utubs.query.get(1).utub_creator == 2
+    assert _member_role(app, utub_id=1, user_id=2) == Member_Role.CREATOR
+    assert _member_role(app, utub_id=1, user_id=1) == Member_Role.CO_CREATOR
+
+    assert response_json[UTUB_ID] == 1
+    assert (
+        response_json[MODELS.NEW_OWNER][MODELS.MEMBER_ROLE] == Member_Role.CREATOR.value
+    )
+    assert response_json[MODELS.NEW_OWNER][MODELS.ID] == 2
+    assert (
+        response_json[MODELS.PREVIOUS_OWNER][MODELS.MEMBER_ROLE]
+        == Member_Role.CO_CREATOR.value
+    )
+    assert response_json[MODELS.PREVIOUS_OWNER][MODELS.ID] == 1
+
+
+def test_transfer_ownership_to_existing_co_owner_happy_path(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN UTub id=1 where user 2 has already been promoted to CO_CREATOR
+    WHEN the owner PATCHes /owner with new_owner_id=2
+    THEN 200; the same three-way invariant holds (target→CREATOR + utub_creator,
+        outgoing owner→CO_CREATOR)
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 2},
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.OWNERSHIP_TRANSFERRED
+
+    with app.app_context():
+        assert Utubs.query.get(1).utub_creator == 2
+    assert _member_role(app, utub_id=1, user_id=2) == Member_Role.CREATOR
+    assert _member_role(app, utub_id=1, user_id=1) == Member_Role.CO_CREATOR
+
+
+def test_transfer_ownership_no_token_is_401(app: Flask, api_client: FlaskClient):
+    """No Authorization header → 401 JSON failure."""
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 2},
+    )
+
+    assert response.status_code == 401
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == API_AUTH_FAILURE.AUTHENTICATION_REQUIRED
+
+
+def test_transfer_ownership_co_creator_actor_is_403(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """A co-creator (not the literal owner) cannot transfer ownership → 403, and
+    utub_creator is unchanged."""
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 3},
+        headers=user_2_headers,
+    )
+
+    assert response.status_code == 403
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+    with app.app_context():
+        assert Utubs.query.get(1).utub_creator == 1
+
+
+def test_transfer_ownership_plain_member_actor_is_403(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """A plain member cannot transfer ownership → 403, and utub_creator is
+    unchanged."""
+    user_3_headers = make_bearer_headers(_token_for_user(app, user_id=3))
+
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 2},
+        headers=user_3_headers,
+    )
+
+    assert response.status_code == 403
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+    with app.app_context():
+        assert Utubs.query.get(1).utub_creator == 1
+
+
+def test_transfer_ownership_target_not_a_member_is_404(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """Transferring to a user who is not a member of the UTub → 404 with
+    TARGET_NOT_A_MEMBER error code."""
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 9999},
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 404
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_NOT_IN_UTUB
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE])
+        == UTubMembersErrorCodes.TARGET_NOT_A_MEMBER
+    )
+
+
+def test_transfer_ownership_target_already_owner_is_400(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """Transferring to the current owner (themself) → 400 with TARGET_ALREADY_OWNER
+    error code, and utub_creator unchanged."""
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 1},
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.TARGET_ALREADY_OWNER
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE])
+        == UTubMembersErrorCodes.TARGET_ALREADY_OWNER
+    )
+    with app.app_context():
+        assert Utubs.query.get(1).utub_creator == 1
+
+
+def test_transfer_ownership_locked_utub_is_403(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """A locked UTub rejects the transfer → 403 with UTUB_IS_LOCKED."""
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(1)
+        utub.is_locked = True
+        db.session.commit()
+
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 2},
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 403
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE]) == UTubMembersErrorCodes.UTUB_IS_LOCKED
+    )
+    with app.app_context():
+        assert Utubs.query.get(1).utub_creator == 1
+
+
+@pytest.mark.parametrize(
+    "bad_body",
+    [
+        {},
+        {_NEW_OWNER_ID_FIELD: "bogus"},
+    ],
+)
+def test_transfer_ownership_missing_or_invalid_new_owner_id_is_400(
+    bad_body: dict,
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """Missing or invalid `new_owner_id` → 400 with the generic invalid-input
+    envelope."""
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json=bad_body,
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_TRANSFER_OWNERSHIP
+    )
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE])
+        == UTubMembersErrorCodes.INVALID_FORM_INPUT
+    )
 
 
 # ===========================================================================
