@@ -63,7 +63,7 @@ def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskRespon
 
     # The literal owner is always a member (the utub_owner_required guard's
     # membership check resolves it), so this lookup never returns None.
-    outgoing_owner_membership: Utub_Members = Utub_Members.query.get(
+    outgoing_owner_membership: Utub_Members | None = Utub_Members.query.get(
         (current_utub.id, outgoing_owner_id)
     )
 
