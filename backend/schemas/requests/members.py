@@ -28,3 +28,9 @@ class ModifyMemberRoleRequest(BaseModel):
             "`member` revokes it"
         ),
     )
+
+
+class TransferOwnershipRequest(BaseModel):
+    new_owner_id: int = Field(
+        description="User ID of the member to promote to UTub owner"
+    )

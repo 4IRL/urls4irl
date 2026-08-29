@@ -5,15 +5,18 @@ from backend.schemas.users import (
     EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
+    OwnershipTransferredResponseSchema,
     RegisterResponseSchema,
     ResetPasswordResponseSchema,
     UserSchema,
+    UtubMemberSchema,
     UtubSummaryItemSchema,
     UtubSummaryListSchema,
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS as M
 from backend.utils.strings.user_strs import REDIRECT_URL
+from backend.utils.strings.utub_strs import UTUB_ID
 
 pytestmark = pytest.mark.unit
 
@@ -99,6 +102,25 @@ def test_login_redirect_response_schema_model_validate_round_trip():
     data = {REDIRECT_URL: "/home"}
     schema = LoginRedirectResponseSchema.model_validate(data)
     assert schema.redirect_url == "/home"
+
+
+def test_ownership_transferred_response_schema_dump():
+    schema = OwnershipTransferredResponseSchema(
+        utub_id=7,
+        new_owner=UtubMemberSchema(id=2, username="alice", member_role="creator"),
+        previous_owner=UtubMemberSchema(id=1, username="bob", member_role="cocreator"),
+    )
+    dumped = schema.model_dump(by_alias=True)
+    assert dumped == {
+        UTUB_ID: 7,
+        M.NEW_OWNER: {M.ID: 2, M.USERNAME: "alice", M.MEMBER_ROLE: "creator"},
+        M.PREVIOUS_OWNER: {M.ID: 1, M.USERNAME: "bob", M.MEMBER_ROLE: "cocreator"},
+    }
+
+
+def test_ownership_transferred_response_schema_missing_required_fields():
+    with pytest.raises(ValidationError):
+        OwnershipTransferredResponseSchema()
 
 
 # --- Parametrized tests for status+message response schemas ---

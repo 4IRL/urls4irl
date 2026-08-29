@@ -506,6 +506,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.MEMBER_ROLE_CHANGED: _DimMemberRoleChanged,
     EventName.OAUTH_IDENTITY_LINKED: _DimOAuthIdentityLinkChange,
     EventName.OAUTH_IDENTITY_UNLINKED: _DimOAuthIdentityLinkChange,
+    EventName.OWNERSHIP_TRANSFERRED: _DimDeviceOnly,
     EventName.PASSWORD_RESET_COMPLETED: _DimDeviceOnly,
     EventName.PASSWORD_RESET_REQUESTED: _DimDeviceOnly,
     EventName.REGISTER_REJECTED: _DimRegisterRejected,

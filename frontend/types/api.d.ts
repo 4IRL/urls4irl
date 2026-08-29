@@ -670,6 +670,23 @@ export interface paths {
     patch: operations["apiV1ModifyMemberRole"];
     trace?: never;
   };
+  "/api/v1/utubs/{utub_id}/owner": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Transfer UTub ownership to a chosen member (owner only) */
+    patch: operations["apiV1TransferUtubOwnership"];
+    trace?: never;
+  };
   "/api/v1/utubs/{utub_id}/co-members": {
     parameters: {
       query?: never;
@@ -790,6 +807,23 @@ export interface paths {
     head?: never;
     /** @description Grant or revoke the co-owner role for a UTub member (owner only) */
     patch: operations["modifyMemberRole"];
+    trace?: never;
+  };
+  "/utubs/{utub_id}/owner": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Transfer UTub ownership to a chosen member (owner only) */
+    patch: operations["transferUtubOwnership"];
     trace?: never;
   };
   "/utubs/{utub_id}/members": {
@@ -1994,7 +2028,7 @@ export interface components {
      * @description Error codes for UTubMembersErrorCodes
      * @enum {integer}
      */
-    UTubMembersErrorCodes: 1 | 2 | 3 | 4;
+    UTubMembersErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
     /**
      * @description Target role carried by the grant/revoke co-owner endpoint's request body.
      *
@@ -2007,6 +2041,40 @@ export interface components {
     ModifyMemberRoleRequest: {
       /** @description Target role for the member: `cocreator` grants co-owner, `member` revokes it */
       member_role: components["schemas"]["MemberRoleTarget"];
+    };
+    TransferOwnershipRequest: {
+      /** @description User ID of the member to promote to UTub owner */
+      new_owner_id: number;
+    };
+    /**
+     * @description A member of a UTub, carrying their role, for the open-UTub detail response.
+     *
+     *     Distinct from the shared ``UserSchema``/``MemberSchema`` (reused by the
+     *     add/remove-member responses where a role isn't naturally present) so that
+     *     role exposure is scoped to the detail response only.
+     */
+    UtubMemberSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Role of the member in the UTub */
+      memberRole: string;
+    };
+    /**
+     * @description Response for the transfer-ownership endpoint (web + /api/v1 twin).
+     *
+     *     Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
+     *     (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
+     *     the client can update both role displays without a reload.
+     */
+    OwnershipTransferredResponseSchema: {
+      /** @description ID of the UTub whose ownership was transferred */
+      utubID: number;
+      /** @description The promoted member, now CREATOR */
+      newOwner: components["schemas"]["UtubMemberSchema"];
+      /** @description The demoted member, now CO_CREATOR */
+      previousOwner: components["schemas"]["UtubMemberSchema"];
     };
     /**
      * @description A co-member add candidate: a user who shares >=1 other UTub with the
@@ -2071,21 +2139,6 @@ export interface components {
     UtubSummaryListSchema: {
       /** @description List of UTubs the user is a member of */
       utubs: components["schemas"]["UtubSummaryItemSchema"][];
-    };
-    /**
-     * @description A member of a UTub, carrying their role, for the open-UTub detail response.
-     *
-     *     Distinct from the shared ``UserSchema``/``MemberSchema`` (reused by the
-     *     add/remove-member responses where a role isn't naturally present) so that
-     *     role exposure is scoped to the detail response only.
-     */
-    UtubMemberSchema: {
-      /** @description Unique user ID */
-      id: number;
-      /** @description Username of the user */
-      username: string;
-      /** @description Role of the member in the UTub */
-      memberRole: string;
     };
     UtubUrlSchema: {
       /** @description Unique ID of the URL within the UTub */
@@ -5896,6 +5949,75 @@ export interface operations {
       };
     };
   };
+  apiV1TransferUtubOwnership: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["TransferOwnershipRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the transfer-ownership endpoint (web + /api/v1 twin).
+       *
+       *         Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
+       *         (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
+       *         the client can update both role displays without a reload.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["OwnershipTransferredResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubMembersErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   apiV1GetCoMemberCandidates: {
     parameters: {
       query?: never;
@@ -6407,6 +6529,66 @@ export interface operations {
       };
     };
   };
+  transferUtubOwnership: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["TransferOwnershipRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the transfer-ownership endpoint (web + /api/v1 twin).
+       *
+       *         Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
+       *         (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
+       *         the client can update both role displays without a reload.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["OwnershipTransferredResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubMembersErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   createMember: {
     parameters: {
       query?: never;
@@ -6656,6 +6838,7 @@ export interface operations {
           | "member_role_changed"
           | "oauth_identity_linked"
           | "oauth_identity_unlinked"
+          | "ownership_transferred"
           | "password_reset_completed"
           | "password_reset_requested"
           | "register_rejected"
@@ -6888,6 +7071,7 @@ export interface operations {
           | "member_role_changed"
           | "oauth_identity_linked"
           | "oauth_identity_unlinked"
+          | "ownership_transferred"
           | "password_reset_completed"
           | "password_reset_requested"
           | "register_rejected"

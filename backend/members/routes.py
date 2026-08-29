@@ -16,10 +16,19 @@ from backend.members.services.delete_members import remove_member_or_self_from_u
 from backend.members.services.modify_member_role import (
     modify_member_role as modify_member_role_service,
 )
+from backend.members.services.transfer_ownership import transfer_ownership
 from backend.models.utubs import Utubs
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.members import AddMemberRequest, ModifyMemberRoleRequest
-from backend.schemas.users import CoMemberListSchema, MemberModifiedResponseSchema
+from backend.schemas.requests.members import (
+    AddMemberRequest,
+    ModifyMemberRoleRequest,
+    TransferOwnershipRequest,
+)
+from backend.schemas.users import (
+    CoMemberListSchema,
+    MemberModifiedResponseSchema,
+    OwnershipTransferredResponseSchema,
+)
 from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.user_strs import MEMBER_FAILURE
 
@@ -83,6 +92,40 @@ def modify_member_role(
     return modify_member_role_service(
         user_id_to_modify=user_id,
         target_role=modify_member_role_request.member_role,
+        current_utub=current_utub,
+    )
+
+
+@members.route("/utubs/<int:utub_id>/owner", methods=["PATCH"])
+@utub_owner_required
+@api_route(
+    request_schema=TransferOwnershipRequest,
+    response_schema=OwnershipTransferredResponseSchema,
+    error_message=MEMBER_FAILURE.UNABLE_TO_TRANSFER_OWNERSHIP,
+    error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.MEMBERS],
+    description="Transfer UTub ownership to a chosen member (owner only)",
+    status_codes={
+        200: OwnershipTransferredResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def transfer_utub_ownership(
+    utub_id: int,
+    current_utub: Utubs,
+    transfer_ownership_request: TransferOwnershipRequest,
+) -> FlaskResponse:
+    """
+    UTub owner transfers ownership to a chosen member: the target is promoted to
+    creator and the outgoing owner is demoted to co-owner (kept in the UTub).
+
+    Args:
+        utub_id (int): The UTub whose ownership is being transferred
+    """
+    return transfer_ownership(
+        new_owner_id=transfer_ownership_request.new_owner_id,
         current_utub=current_utub,
     )
 

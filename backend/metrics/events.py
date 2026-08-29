@@ -43,6 +43,7 @@ class EventName(StrEnum):
     MEMBER_ROLE_CHANGED = "member_role_changed"
     OAUTH_IDENTITY_LINKED = "oauth_identity_linked"
     OAUTH_IDENTITY_UNLINKED = "oauth_identity_unlinked"
+    OWNERSHIP_TRANSFERRED = "ownership_transferred"
     PASSWORD_RESET_COMPLETED = "password_reset_completed"
     PASSWORD_RESET_REQUESTED = "password_reset_requested"
     REGISTER_REJECTED = "register_rejected"
