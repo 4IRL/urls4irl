@@ -395,6 +395,18 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_ROW_KEBAB = ".memberRowKebab"
     MEMBER_ROW_MENU = ".memberRowMenu"
     MEMBER_ROW_MENU_REMOVE = ".memberRowMenuItem.danger"
+    # The "Make/Revoke co-owner" role-toggle menu item. Targeted by its dedicated
+    # class (NOT by text) because its label alternates between "Make co-owner" and
+    # "Revoke co-owner" as the row's role is swapped (DD-8) — a text-based selector
+    # would break precisely on the swap this test exercises.
+    MEMBER_ROW_MENU_ROLE = ".memberRowMenuItemRole"
+
+    # Per-row role icon rendered on every member deck row. Deck-scoped variants of
+    # the generic CO_CREATOR_ICON/CREATOR_ICON/MEMBER_ICON above so a members-panel
+    # assertion never matches a UTub-deck selector icon. Per-member assertions scope
+    # these glyphs under a `.member[memberid=...]` prefix instead.
+    MEMBER_ROW_ROLE_ICON = ".member .memberRole"
+    MEMBER_ROW_CO_CREATOR_ICON = ".member svg.bi-diamond-half"
 
     # Add-member combobox (built in TS by member-combobox.ts; mounted into
     # #createMemberWrap on open). The legacy single #memberCreate input,

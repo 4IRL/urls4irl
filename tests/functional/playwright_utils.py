@@ -629,6 +629,41 @@ def force_next_delete_ajax_failure_no_navigate(*, page: Page) -> None:
     }""")
 
 
+def force_next_patch_ajax_failure_no_navigate(*, page: Page) -> None:
+    """Monkey-patches $.ajax so the next PATCH request fails with a fake 500
+    whose _429Handled getter always reads true — the member-role-change failure
+    handler (role.ts modifyMemberRoleFail) then re-enables #modalSubmit and
+    returns early after the is429Handled short-circuit, without attempting any
+    page navigation. Mirrors force_next_delete_ajax_failure_no_navigate but
+    scoped to the PATCH the grant/revoke flow issues to
+    /utubs/<id>/members/<id>."""
+    page.evaluate("""() => {
+        var originalAjax = $.ajax;
+        $.ajax = function(options) {
+            if (options && options.type && options.type.toLowerCase() === 'patch') {
+                $.ajax = originalAjax;
+                var deferred = $.Deferred();
+                var fakeXhr = {
+                    status: 500,
+                    getResponseHeader: function() { return 'application/json'; },
+                    responseText: '{"error": "forced test failure"}'
+                };
+                Object.defineProperty(fakeXhr, '_429Handled', {
+                    get: function() { return true; },
+                    set: function() { /* no-op: ignore writes from ajaxCall */ },
+                    configurable: true
+                });
+                setTimeout(function() {
+                    deferred.reject(fakeXhr, 'error', 'Internal Server Error');
+                }, 0);
+                deferred.promise(fakeXhr);
+                return fakeXhr;
+            }
+            return originalAjax.apply(this, arguments);
+        };
+    }""")
+
+
 def force_next_bulk_delete_ajax_failure_no_navigate(*, page: Page) -> None:
     """Monkey-patches $.ajax so the next POST to the bulk-delete route
     (``/urls/delete``) fails with a fake 500 whose _429Handled getter always
