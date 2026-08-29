@@ -105,13 +105,13 @@ export function createOwnerBadge(
 
   $(memberSpan)
     .attr({ memberid: utubOwnerUserID })
-    .addClass("member full-width flex-row jc-sb align-center")
-    .html(
-      "<b>" +
-        utubMemberUsername +
-        "</b>" +
-        roleIconWithLabel(APP_CONFIG.constants.MEMBER_ROLES.CREATOR),
-    );
+    .addClass("member full-width flex-row jc-sb align-center");
+  // Set the username via .text() (a text node) rather than interpolating it into
+  // an HTML sink, so a `<`/`>`/`"` in the name can never reach HTML parsing. The
+  // role icon+label markup is static/trusted, so it stays an HTML append.
+  $(memberSpan)
+    .append($(document.createElement("b")).text(utubMemberUsername))
+    .append(roleIconWithLabel(APP_CONFIG.constants.MEMBER_ROLES.CREATOR));
 
   return memberSpan;
 }
@@ -133,8 +133,11 @@ export function createMemberBadge({
 
   $(memberSpan)
     .attr({ memberid: memberID })
-    .addClass("member full-width flex-row jc-sb align-center flex-start")
-    .html("<b>" + username + "</b>");
+    .addClass("member full-width flex-row jc-sb align-center flex-start");
+  // Build the bold username node and set the name via .text() (a text node),
+  // never string-interpolated into an HTML sink. This keeps a username containing
+  // `<`/`>`/`"` from ever reaching HTML parsing regardless of backend filtering.
+  $(memberSpan).append($(document.createElement("b")).text(username));
 
   // Right-side affordance cluster: role icon first, then any action controls.
   // jc-sb on the row keeps the name separated from this cluster.
@@ -152,8 +155,11 @@ export function createMemberBadge({
     ) as JQuery<HTMLButtonElement>;
     // Set the member-naming aria-label via the attr-setter (not interpolated into
     // the HTML string above) so a username containing a double-quote cannot break
-    // out of the attribute and inject markup — usernames are not HTML-escaped and
-    // the backend only rejects angle brackets, so `"` reaches the client intact.
+    // out of the attribute and inject markup. Backend filtering is not a guarantee
+    // at this sink: usernames are not HTML-escaped, the nh3 filter rejects
+    // well-formed tags but a bare `"` still reaches the client, and the OAuth/CLI
+    // registration paths bypass the Pydantic username schema entirely. So every
+    // user-controlled value is set through .attr()/.text(), never an HTML string.
     kebabBtn.attr("aria-label", `Actions for ${username}`);
     kebabBtn.enableTab();
 
