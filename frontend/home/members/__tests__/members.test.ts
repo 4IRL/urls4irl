@@ -67,6 +67,16 @@ describe("createOwnerBadge", () => {
     expect($el.find("svg.bi-diamond-fill.memberRole").length).toBe(1);
   });
 
+  it("sets the username via .text() so adversarial markup is never parsed (XSS regression)", () => {
+    // A regression to `.html("<b>" + username + "</b>")` would render identically
+    // for benign names but parse this payload into a live <img>. Set via .text()
+    // (a text node), the raw string is the <b> textContent and nothing is parsed.
+    const payload = '<img src=x onerror="alert(1)">';
+    const $el = $(createOwnerBadge(1, payload));
+    expect($el.find("b").text()).toBe(payload);
+    expect($el.find("img").length).toBe(0);
+  });
+
   it("renders a visually-hidden 'Owner' role label alongside the icon", () => {
     const $el = $(createOwnerBadge(1, "Alice"));
     expect($el.find(".member-role-wrap .visually-hidden").text()).toBe("Owner");
@@ -113,6 +123,41 @@ describe("createMemberBadge", () => {
         utubID: 10,
       });
       expect(el.find("b").text()).toBe("Bob");
+    });
+
+    it("sets the username via .text() so adversarial markup is never parsed (XSS regression)", () => {
+      // A regression to `.html("<b>" + username + "</b>")` would render identically
+      // for benign names but parse this payload into a live <img>. Set via .text()
+      // (a text node), the raw string is the <b> textContent and nothing is parsed.
+      const payload = '<img src=x onerror="alert(1)">';
+      const el = createMemberBadge({
+        memberID: 1,
+        username: payload,
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find("b").text()).toBe(payload);
+      expect(el.find("img").length).toBe(0);
+    });
+
+    it("sets the kebab aria-label via .attr() so a double-quote cannot break out (XSS regression)", () => {
+      // A regression to interpolating the username into the aria-label's HTML
+      // string would let this double-quote close the attribute and inject markup.
+      // Set via .attr() + .replace(), the label is the literal resolved string and
+      // the username never reaches HTML parsing (so no injected <img> appears).
+      const payload = 'Bob" onmouseover="x';
+      const el = createMemberBadge({
+        memberID: 5,
+        username: payload,
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      expect(el.find(".memberRowKebab").attr("aria-label")).toBe(
+        `Actions for ${payload}`,
+      );
+      expect(el.find("img").length).toBe(0);
     });
   });
 
