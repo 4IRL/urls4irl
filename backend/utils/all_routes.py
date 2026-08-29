@@ -247,6 +247,9 @@ def generate_routes_js() -> dict[str, str]:
         "modifyMemberRole": url_for(
             MEMBER_ROUTES.MODIFY_MEMBER_ROLE, utub_id=-1, user_id=-4
         ),
+        "transferUtubOwnership": url_for(
+            MEMBER_ROUTES.TRANSFER_UTUB_OWNERSHIP, utub_id=-1
+        ),
         # Splash routes
         "login": url_for(SPLASH_ROUTES.LOGIN),
         "register": url_for(SPLASH_ROUTES.REGISTER),

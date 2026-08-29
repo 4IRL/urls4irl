@@ -792,6 +792,23 @@ export interface paths {
     patch: operations["modifyMemberRole"];
     trace?: never;
   };
+  "/utubs/{utub_id}/owner": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Transfer UTub ownership to a chosen member (owner only) */
+    patch: operations["transferUtubOwnership"];
+    trace?: never;
+  };
   "/utubs/{utub_id}/members": {
     parameters: {
       query?: never;
@@ -1994,7 +2011,7 @@ export interface components {
      * @description Error codes for UTubMembersErrorCodes
      * @enum {integer}
      */
-    UTubMembersErrorCodes: 1 | 2 | 3 | 4;
+    UTubMembersErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
     /**
      * @description Target role carried by the grant/revoke co-owner endpoint's request body.
      *
@@ -2194,6 +2211,25 @@ export interface components {
      * @enum {integer}
      */
     ContactErrorCodes: 1;
+    TransferOwnershipRequest: {
+      /** @description User ID of the member to promote to UTub owner */
+      new_owner_id: number;
+    };
+    /**
+     * @description Response for the transfer-ownership endpoint (web + /api/v1 twin).
+     *
+     *     Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
+     *     (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
+     *     the client can update both role displays without a reload.
+     */
+    OwnershipTransferredResponseSchema: {
+      /** @description ID of the UTub whose ownership was transferred */
+      utubID: number;
+      /** @description The promoted member, now CREATOR */
+      newOwner: components["schemas"]["UtubMemberSchema"];
+      /** @description The demoted member, now CO_CREATOR */
+      previousOwner: components["schemas"]["UtubMemberSchema"];
+    };
     /**
      * @description One UI metrics event submitted by the browser.
      *
@@ -6376,6 +6412,66 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["MemberModifiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubMembersErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  transferUtubOwnership: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["TransferOwnershipRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for the transfer-ownership endpoint (web + /api/v1 twin).
+       *
+       *         Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
+       *         (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
+       *         the client can update both role displays without a reload.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["OwnershipTransferredResponseSchema"];
         };
       };
       /** @description Bad request */

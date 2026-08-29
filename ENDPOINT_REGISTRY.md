@@ -465,6 +465,21 @@ Grant/revoke the co-owner (`CO_CREATOR`) role. Shares the path with the DELETE (
 | **CSRF**       | Meta tag                                                                                                                                                                                                                                                           |
 | **Tests**      | `tests/integration/utubmembers/test_modify_member_role_route.py` (marker: `members`; grant/revoke, no-op-no-emit, authz matrix, locked, 400/404 branches)                                                                                                          |
 
+### PATCH /utubs/\<utub_id\>/owner
+
+Transfer UTub ownership to a chosen member: reassign `Utubs.utub_creator`, promote the target to `CREATOR`, and demote the outgoing owner to `CO_CREATOR` (kept in the UTub — DD-3). Owner-only. The transfer target rides the request body (not the path). Frontend/transfer UI lands in Phase 4.
+
+| Layer          | Location                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/members/routes.py:transfer_utub_ownership`                                                                                                                                                                                                                |
+| **Decorators** | `@utub_owner_required` (literal-owner-only, owner ≠ co-owner), `@api_route(request_schema=TransferOwnershipRequest, response_schema=OwnershipTransferredResponseSchema, error_message=MEMBER_FAILURE.UNABLE_TO_TRANSFER_OWNERSHIP, error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT, tags=["members"], status_codes={200: OwnershipTransferredResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
+| **Service**    | `backend/members/services/transfer_ownership.py:transfer_ownership` (lock guard → 404 target-not-member → 400 target-already-owner → reassign `utub_creator` BEFORE demoting old owner (mandatory ordering) → commit + `record_event(OWNERSHIP_TRANSFERRED)`) |
+| **Schema**     | `backend/schemas/requests/members.py:TransferOwnershipRequest` (`new_owner_id: int`) → `backend/schemas/users.py:OwnershipTransferredResponseSchema` (`utubID`, `newOwner`, `previousOwner` — both `UtubMemberSchema`)                                              |
+| **Metrics**    | `OWNERSHIP_TRANSFERRED` (DOMAIN, `Resource.MEMBER`, dimensionless; not emitted on a rejected transfer)                                                                                                                                                             |
+| **JS Module**  | Phase 4 (route `transferUtubOwnership(utubID)` bridged in `generate_routes_js()`; transfer UI lands in a later phase)                                                                                                                                              |
+| **CSRF**       | Meta tag                                                                                                                                                                                                                                                          |
+| **Tests**      | `tests/integration/utubmembers/test_transfer_ownership_route.py` (marker: `members`; happy promote plain/co-owner, metric emit + no-emit-on-reject, authz matrix, locked, 400/404 branches, guard-follows-ownership)                                               |
+
 ### DELETE /utubs/\<utub_id\>/members/\<user_id\>
 
 | Layer          | Location                                                                                                                                                                                                                                                           |

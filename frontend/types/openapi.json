@@ -4387,6 +4387,92 @@
         }
       }
     },
+    "/utubs/{utub_id}/owner": {
+      "patch": {
+        "operationId": "transferUtubOwnership",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Transfer UTub ownership to a chosen member (owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferOwnershipRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\n    Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n    (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\n    the client can update both role displays without a reload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnershipTransferredResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubMembersErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubMembersErrorCodes": {
+            "$ref": "#/components/schemas/UTubMembersErrorCodes"
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/members": {
       "post": {
         "operationId": "createMember",
@@ -9506,12 +9592,14 @@
       },
       "UTubMembersErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4],
+        "enum": [1, 2, 3, 4, 5, 6],
         "x-enum-varnames": [
           "UNKNOWN_EXCEPTION",
           "INVALID_FORM_INPUT",
           "UTUB_IS_LOCKED",
-          "CANNOT_MODIFY_OWNER"
+          "CANNOT_MODIFY_OWNER",
+          "TARGET_NOT_A_MEMBER",
+          "TARGET_ALREADY_OWNER"
         ],
         "description": "Error codes for UTubMembersErrorCodes"
       },
@@ -9963,6 +10051,35 @@
         "enum": [1],
         "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for ContactErrorCodes"
+      },
+      "TransferOwnershipRequest": {
+        "properties": {
+          "new_owner_id": {
+            "description": "User ID of the member to promote to UTub owner",
+            "type": "integer"
+          }
+        },
+        "required": ["new_owner_id"],
+        "type": "object"
+      },
+      "OwnershipTransferredResponseSchema": {
+        "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\nReuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n(now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\nthe client can update both role displays without a reload.",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub whose ownership was transferred",
+            "type": "integer"
+          },
+          "newOwner": {
+            "$ref": "#/components/schemas/UtubMemberSchema",
+            "description": "The promoted member, now CREATOR"
+          },
+          "previousOwner": {
+            "$ref": "#/components/schemas/UtubMemberSchema",
+            "description": "The demoted member, now CO_CREATOR"
+          }
+        },
+        "required": ["utubID", "newOwner", "previousOwner"],
+        "type": "object"
       },
       "MetricsIngestEvent": {
         "additionalProperties": false,
