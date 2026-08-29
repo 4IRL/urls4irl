@@ -145,6 +145,46 @@ describe("modifyMemberRole — grant/revoke co-owner", () => {
     expect($("#MemberRowActionAnnouncement").attr("aria-live")).toBe("polite");
   });
 
+  it("a second toggle on the SAME row revokes — the click handler reads the post-swap store role, not the stale creation-time role", () => {
+    // Regression guard for the stale-closure critical: createMemberBadge binds
+    // the .memberRowMenuItemRole click ONCE at row creation. swapMemberRoleInRow
+    // re-renders the row in place (no full deck rebuild), so the handler is never
+    // rebound. Driving the REAL click wiring twice proves the handler sources the
+    // current role from the store at click time — a stale closure would recompute
+    // a grant on the second click and PATCH member_role: CO_CREATOR again.
+    seedMemberRow(5, "u5", MEMBER);
+    const roleItem = $(`.member[memberid="5"] .memberRowMenuItemRole`);
+
+    // (1) First toggle via the real click wiring: grant (member → co-owner).
+    mockAjaxSuccess();
+    roleItem.trigger("click");
+    $("#modalSubmit").trigger("click");
+
+    expect(vi.mocked(ajaxCall)).toHaveBeenLastCalledWith(
+      "patch",
+      "/utubs/1/members/5",
+      { member_role: CO_CREATOR },
+    );
+    // Store now reflects the post-swap role the second click must read.
+    expect(
+      getState().members.find((member) => member.id === 5)?.memberRole,
+    ).toBe(CO_CREATOR);
+
+    // (2) Second toggle on the SAME row (handler never rebound): revoke.
+    mockAjaxSuccess();
+    roleItem.trigger("click");
+    $("#modalSubmit").trigger("click");
+
+    expect(vi.mocked(ajaxCall)).toHaveBeenLastCalledWith(
+      "patch",
+      "/utubs/1/members/5",
+      { member_role: MEMBER },
+    );
+    expect(
+      getState().members.find((member) => member.id === 5)?.memberRole,
+    ).toBe(MEMBER);
+  });
+
   it("revokes a co-owner: patches member, swaps to people-fill + Make label, revoke announcement", () => {
     seedMemberRow(7, "coOwner", CO_CREATOR);
     mockAjaxSuccess();
