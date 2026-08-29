@@ -273,6 +273,8 @@ const appConfig = {
     MEMBER_ROLE_CHANGE_GRANT_SUCCESS: "{{ username }} is now a co-owner.",
     MEMBER_ROLE_CHANGE_REVOKE_SUCCESS:
       "{{ username }} is no longer a co-owner.",
+    MEMBER_REMOVE_ACTION: "Remove member",
+    MEMBER_ROW_ACTIONS_ARIA_LABEL: "Actions for {{ username }}",
     MEMBER_ADD_LABEL: "Add member",
     MEMBER_ADD_PLACEHOLDER: "Add a member by username",
     MEMBER_ADD_SUBMIT: "Add",

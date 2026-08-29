@@ -167,7 +167,13 @@ export function createMemberBadge({
     // well-formed tags but a bare `"` still reaches the client, and the OAuth/CLI
     // registration paths bypass the Pydantic username schema entirely. So every
     // user-controlled value is set through .attr()/.text(), never an HTML string.
-    kebabBtn.attr("aria-label", `Actions for ${username}`);
+    kebabBtn.attr(
+      "aria-label",
+      APP_CONFIG.strings.MEMBER_ROW_ACTIONS_ARIA_LABEL.replace(
+        "{{ username }}",
+        username,
+      ),
+    );
     kebabBtn.enableTab();
 
     // Role-toggle label reflects the row's CURRENT role (Revoke if already a
@@ -175,6 +181,9 @@ export function createMemberBadge({
     // .danger) lets swapMemberRoleInRow re-target this button after its own text
     // has changed (DD-8) — a text-based selector would break on the swap.
     const roleActionLabel = roleActionLabelFor(memberRole);
+    // Trusted static label from the string bridge (no user-controlled data), so
+    // it stays interpolated into the menu HTML like roleActionLabel above.
+    const removeMemberLabel = APP_CONFIG.strings.MEMBER_REMOVE_ACTION;
 
     const rowMenu = $(
       `<div class="memberRowMenu" role="menu" hidden>` +
@@ -183,7 +192,7 @@ export function createMemberBadge({
         `</button>` +
         `<hr class="memberRowMenuDivider" aria-hidden="true" />` +
         `<button type="button" role="menuitem" class="memberRowMenuItem danger">` +
-        `${REMOVE_MEMBER_ICON_SVG}<span>Remove member</span>` +
+        `${REMOVE_MEMBER_ICON_SVG}<span>${removeMemberLabel}</span>` +
         `</button>` +
         `</div>`,
     ) as JQuery<HTMLDivElement>;

@@ -182,8 +182,24 @@ describe("createMemberBadge", () => {
       });
       // The standalone remove button is folded into the kebab menu.
       expect(el.find(".memberOtherBtnDelete").length).toBe(0);
-      expect(el.find(".memberRowMenu .memberRowMenuItem.danger").length).toBe(
-        1,
+      const removeItem = el.find(".memberRowMenu .memberRowMenuItem.danger");
+      expect(removeItem.length).toBe(1);
+      // The item text is sourced from the string bridge, not hardcoded.
+      expect(removeItem.find("span").text()).toBe("Remove member");
+    });
+
+    it("builds the kebab aria-label from the bridged {{ username }} template", () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      // MEMBER_ROW_ACTIONS_ARIA_LABEL ("Actions for {{ username }}") is resolved
+      // client-side via .replace(), so the row's username lands in the label.
+      expect(el.find(".memberRowKebab").attr("aria-label")).toBe(
+        "Actions for Bob",
       );
     });
 
