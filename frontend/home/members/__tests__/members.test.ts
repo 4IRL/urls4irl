@@ -186,6 +186,33 @@ describe("createMemberBadge", () => {
         1,
       );
     });
+
+    it('labels the role item "Make co-owner" for a plain member', () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      const roleItem = el.find(".memberRowMenuItemRole");
+      expect(roleItem.length).toBe(1);
+      expect(roleItem.find("span").text()).toBe("Make co-owner");
+      expect(roleItem.attr("aria-label")).toBe("Make co-owner");
+    });
+
+    it('labels the role item "Revoke co-owner" for an existing co-owner', () => {
+      const el = createMemberBadge({
+        memberID: 6,
+        username: "Cara",
+        memberRole: "cocreator",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      const roleItem = el.find(".memberRowMenuItemRole");
+      expect(roleItem.find("span").text()).toBe("Revoke co-owner");
+      expect(roleItem.attr("aria-label")).toBe("Revoke co-owner");
+    });
   });
 
   describe("when the current user is a member (isCurrentUserOwner=false)", () => {

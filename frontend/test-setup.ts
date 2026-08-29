@@ -262,6 +262,17 @@ const appConfig = {
     MEMBER_SEARCH_NO_RESULTS: "No members found",
     MEMBER_SEARCH_PLACEHOLDER: "Filter members",
     MEMBER_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} members shown",
+    MAKE_CO_OWNER_ACTION: "Make co-owner",
+    REVOKE_CO_OWNER_ACTION: "Revoke co-owner",
+    MAKE_CO_OWNER_TITLE: "Make this member a co-owner?",
+    MAKE_CO_OWNER_WARNING:
+      "Co-owners can add and remove members and manage this UTub's URLs.",
+    REVOKE_CO_OWNER_TITLE: "Revoke this member's co-owner status?",
+    REVOKE_CO_OWNER_WARNING:
+      "This member will return to a regular member with no management access.",
+    MEMBER_ROLE_CHANGE_GRANT_SUCCESS: "{{ username }} is now a co-owner.",
+    MEMBER_ROLE_CHANGE_REVOKE_SUCCESS:
+      "{{ username }} is no longer a co-owner.",
     MEMBER_ADD_LABEL: "Add member",
     MEMBER_ADD_PLACEHOLDER: "Add a member by username",
     MEMBER_ADD_SUBMIT: "Add",

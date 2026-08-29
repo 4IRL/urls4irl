@@ -51,6 +51,8 @@ export const UI_EVENTS = {
   UI_MEMBER_LEAVE_OPEN: "ui_member_leave_open",
   UI_MEMBER_LEAVE_CONFIRM: "ui_member_leave_confirm",
   UI_MEMBER_LEAVE_CANCEL: "ui_member_leave_cancel",
+  UI_MEMBER_ROLE_CHANGE_SHOWN: "ui_member_role_change_shown",
+  UI_MEMBER_ROLE_CHANGE_CONFIRMED: "ui_member_role_change_confirmed",
   UI_FORM_SUBMIT: "ui_form_submit",
   UI_FORM_CANCEL: "ui_form_cancel",
   UI_VALIDATION_ERROR: "ui_validation_error",

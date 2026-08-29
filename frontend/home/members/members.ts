@@ -1,6 +1,7 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { removeMemberShowModal } from "./delete.js";
+import { modifyMemberRoleShowModal } from "./role.js";
 import {
   bindMemberRowMenu,
   bindMemberRowModalFocusRestore,
@@ -20,6 +21,12 @@ const KEBAB_ICON_SVG =
 const REMOVE_MEMBER_ICON_SVG =
   `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-x-fill" viewBox="0 0 16 16" aria-hidden="true">` +
   `<path fill-rule="evenodd" d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m6.146-2.854a.5.5 0 0 1 .708 0L14 6.293l1.146-1.147a.5.5 0 0 1 .708.708L14.707 7l1.147 1.146a.5.5 0 0 1-.708.708L14 7.707l-1.146 1.147a.5.5 0 0 1-.708-.708L13.293 7l-1.147-1.146a.5.5 0 0 1 0-.708"/>` +
+  `</svg>`;
+// Role-toggle menu item glyph (neutral person — the label swaps Make/Revoke, so
+// the icon must not carry a make-or-revoke meaning that would need swapping too).
+const ROLE_MEMBER_ICON_SVG =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-fill" viewBox="0 0 16 16" aria-hidden="true">` +
+  `<path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>` +
   `</svg>`;
 
 // Human-readable role label for the visually-hidden text that accompanies the
@@ -54,6 +61,38 @@ function roleIconWithLabel(memberRole: string): string {
     `<span class="visually-hidden">${roleLabelFor(memberRole)}</span>` +
     `</span>`
   );
+}
+
+// DD-7/DD-8/DD-18: the single per-row role-swap helper, shared by role.ts's
+// grant/revoke success handler AND deck.ts's updateMemberDeck diff. Swaps ONLY
+// the row's inner pieces in place (icon, visually-hidden label, role menu-item
+// text) — never rebuilds or replaces the `.member` row node itself.
+export function swapMemberRoleInRow({
+  memberID,
+  targetRole,
+}: {
+  memberID: number;
+  targetRole: string;
+}): void {
+  const row = $(`.member[memberid=${memberID}]`);
+  // Swap the decorative role icon (aria-hidden) via replaceWith — never the row.
+  row
+    .find(".memberRole")
+    .replaceWith(makeUTubRoleIcon({ memberRole: targetRole, isLocked: false }));
+  // DD-18: keep the visually-hidden role label in sync (a stale "Member"/
+  // "Co-owner" would otherwise be announced after the swap). Located via the
+  // .member-role-wrap ancestor, not .visually-hidden (which is shared/generic).
+  row.find(".member-role-wrap .visually-hidden").text(roleLabelFor(targetRole));
+  // Flip the role menu-item's label + aria-label (Make ↔ Revoke). Located by its
+  // dedicated class, not text — the text is exactly what is being swapped (DD-8).
+  const label =
+    targetRole === APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR
+      ? APP_CONFIG.strings.REVOKE_CO_OWNER_ACTION
+      : APP_CONFIG.strings.MAKE_CO_OWNER_ACTION;
+  const roleItem = row.find(".memberRowMenuItemRole");
+  // Swap only the label <span> so the item's leading icon is preserved.
+  roleItem.find("span").text(label);
+  roleItem.attr("aria-label", label);
 }
 
 // Creates member list item
@@ -117,18 +156,48 @@ export function createMemberBadge({
     kebabBtn.attr("aria-label", `Actions for ${username}`);
     kebabBtn.enableTab();
 
+    // Role-toggle label reflects the row's CURRENT role (Revoke if already a
+    // co-owner, otherwise Make). The dedicated .memberRowMenuItemRole class (not
+    // .danger) lets swapMemberRoleInRow re-target this button after its own text
+    // has changed (DD-8) — a text-based selector would break on the swap.
+    const roleActionLabel =
+      memberRole === APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR
+        ? APP_CONFIG.strings.REVOKE_CO_OWNER_ACTION
+        : APP_CONFIG.strings.MAKE_CO_OWNER_ACTION;
+
     const rowMenu = $(
       `<div class="memberRowMenu" role="menu" hidden>` +
+        `<button type="button" role="menuitem" class="memberRowMenuItem memberRowMenuItemRole">` +
+        `${ROLE_MEMBER_ICON_SVG}<span>${roleActionLabel}</span>` +
+        `</button>` +
+        `<hr class="memberRowMenuDivider" aria-hidden="true" />` +
         `<button type="button" role="menuitem" class="memberRowMenuItem danger">` +
         `${REMOVE_MEMBER_ICON_SVG}<span>Remove member</span>` +
         `</button>` +
         `</div>`,
     ) as JQuery<HTMLDivElement>;
+    // Name the role button for screen readers (its text alone omits the member).
+    rowMenu.find(".memberRowMenuItemRole").attr("aria-label", roleActionLabel);
 
     memberRight.append(kebabBtn).append(rowMenu);
 
     // DD-13: bind the shared open/close/keyboard wiring on the freshly-built pair.
     bindMemberRowMenu({ kebab: kebabBtn, menu: rowMenu, memberID });
+
+    // Wire "Make/Revoke co-owner": DD-16 close the menu first, DD-25 arm the
+    // focus restore, THEN open the modal — never show it while the menu is open.
+    // DD-22: no username param; the confirm copy is static per-role.
+    rowMenu
+      .find(".memberRowMenuItemRole")
+      .offAndOnExact("click.memberRowMenuRole", function () {
+        closeAllMemberRowMenus();
+        bindMemberRowModalFocusRestore(memberID);
+        modifyMemberRoleShowModal({
+          memberID,
+          currentRole: memberRole,
+          utubID,
+        });
+      });
 
     // Wire "Remove member": DD-16 close the menu first, DD-25 arm the focus
     // restore, THEN open the modal — never show the modal while the menu is open.

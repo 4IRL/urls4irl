@@ -7,7 +7,11 @@ import { getState } from "../../store/app-store.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { cancelCoMemberCandidatesFetch } from "./co-member-fetch.js";
 import { hideAndResetMemberCombobox } from "./member-combobox.js";
-import { createMemberBadge, createOwnerBadge } from "./members.js";
+import {
+  createMemberBadge,
+  createOwnerBadge,
+  swapMemberRoleInRow,
+} from "./members.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
 import {
@@ -53,8 +57,19 @@ export function updateMemberDeck(
     newCount: newMembers.length,
     isCurrentUserOwner,
   });
+  // DD-20: capture the pre-diff members once (nothing mutates state between this
+  // read and applyDeckDiff, so one read is safe to reuse for oldItems + the
+  // role map). Build an id→role map so the updateElement callback can skip rows
+  // whose role did not actually change — applyDeckDiff's toUpdate set is
+  // id-membership-based, not field-diffed, so every id present in both snapshots
+  // would otherwise trigger a needless swap.
+  const oldMembers = getState().members;
+  const oldRoleByID = new Map(
+    oldMembers.map((member) => [member.id, member.memberRole]),
+  );
+
   applyDeckDiff<MemberItem>({
-    oldItems: getState().members,
+    oldItems: oldMembers,
     newItems: newMembers,
     getID: (member) => member.id,
     removeElement: (memberID) =>
@@ -69,6 +84,13 @@ export function updateMemberDeck(
           utubID,
         }),
       );
+    },
+    // DD-7: a role flip arriving via STALE_DATA_DETECTED/refresh (not just the
+    // local grant/revoke success path) gets the same targeted swap. Uses the
+    // exact helper the Step-4 success handler uses so the paths never drift.
+    updateElement: (id, member) => {
+      if (oldRoleByID.get(id) === member.memberRole) return;
+      swapMemberRoleInRow({ memberID: id, targetRole: member.memberRole });
     },
   });
 

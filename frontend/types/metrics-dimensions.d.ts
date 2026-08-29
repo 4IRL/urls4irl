@@ -258,6 +258,8 @@ export type UIEventDimensions = {
   ui_member_leave_open: DimDeviceOnly;
   ui_member_leave_confirm: DimDeviceOnly;
   ui_member_leave_cancel: DimDeviceOnly;
+  ui_member_role_change_shown: DimDeviceOnly;
+  ui_member_role_change_confirmed: DimDeviceOnly;
   ui_form_submit: DimFormSubmit;
   ui_form_cancel: DimFormCancel;
   ui_validation_error: DimValidationError;

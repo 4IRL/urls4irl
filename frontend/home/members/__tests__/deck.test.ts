@@ -3,8 +3,12 @@ import {
   setMemberDeckForUTub,
   setMemberDeckOnUTubSelected,
   setMemberDeckWhenNoUTubSelected,
+  updateMemberDeck,
 } from "../deck.js";
-import { resetStore, setState } from "../../../store/app-store.js";
+import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
+import { swapMemberRoleInRow } from "../members.js";
+import { makeUTubRoleIcon } from "../../utubs/selectors.js";
+import { getState, resetStore, setState } from "../../../store/app-store.js";
 
 vi.mock("../../../logic/apply-deck-diff.js", () => ({
   applyDeckDiff: vi.fn(),
@@ -17,6 +21,7 @@ vi.mock("../members.js", () => ({
   createOwnerBadge: vi.fn(() =>
     window.jQuery(`<span class="member">owner</span>`),
   ),
+  swapMemberRoleInRow: vi.fn(),
 }));
 
 vi.mock("../create.js", () => ({
@@ -25,6 +30,10 @@ vi.mock("../create.js", () => ({
 
 vi.mock("../delete.js", () => ({
   createLeaveUTubAsMemberIcon: vi.fn(),
+  // The DD-17 case un-mocks members.js, whose real module imports
+  // removeMemberShowModal from delete.js (used only inside a click handler the
+  // test never fires) — stub it so the named import resolves.
+  removeMemberShowModal: vi.fn(),
 }));
 
 const MEMBER_DECK_HTML = `
@@ -140,6 +149,89 @@ describe("Member deck visibility on UTub selection", () => {
     );
 
     expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(true);
+  });
+});
+
+describe("updateMemberDeck — targeted role swap via real applyDeckDiff (DD-17/DD-24)", () => {
+  beforeEach(() => {
+    document.body.innerHTML = MEMBER_DECK_HTML;
+    resetStore();
+  });
+
+  afterEach(() => {
+    // Restore the module-level mocks so later tests keep their vi.fn() stubs.
+    vi.mocked(applyDeckDiff).mockReset();
+    vi.mocked(swapMemberRoleInRow).mockReset();
+    resetStore();
+  });
+
+  function seedRow(
+    memberID: number,
+    memberRole: string,
+    label: string,
+  ): string {
+    return (
+      `<span class="member" memberid="${memberID}"><b>u${memberID}</b>` +
+      `<span class="member-right"><span class="member-role-wrap">` +
+      `<span aria-hidden="true">${makeUTubRoleIcon({ memberRole, isLocked: false })}</span>` +
+      `<span class="visually-hidden">${label}</span></span></span></span>`
+    );
+  }
+
+  it("swaps only the row whose role changed and skips the unchanged distractor (real diff + real swap)", async () => {
+    const { applyDeckDiff: realApplyDeckDiff } = await vi.importActual<
+      typeof import("../../../logic/apply-deck-diff.js")
+    >("../../../logic/apply-deck-diff.js");
+    const { swapMemberRoleInRow: realSwap } =
+      await vi.importActual<typeof import("../members.js")>("../members.js");
+    vi.mocked(applyDeckDiff).mockImplementation(realApplyDeckDiff);
+    vi.mocked(swapMemberRoleInRow).mockImplementation(realSwap);
+
+    // Member A: plain member (will flip). Member B: co-creator (unchanged distractor).
+    window.jQuery("#listMembers").append(seedRow(101, "member", "Member"));
+    window.jQuery("#listMembers").append(seedRow(202, "cocreator", "Co-owner"));
+
+    setState({
+      members: [
+        { id: 101, username: "u101", memberRole: "member" },
+        { id: 202, username: "u202", memberRole: "cocreator" },
+      ],
+    });
+
+    updateMemberDeck(
+      [
+        { id: 101, username: "u101", memberRole: "cocreator" },
+        { id: 202, username: "u202", memberRole: "cocreator" },
+      ],
+      true,
+      42,
+    );
+
+    // Member A now shows the co-owner icon + updated screen-reader label.
+    expect(
+      window.jQuery(`.member[memberid="101"] svg.bi-diamond-half.memberRole`)
+        .length,
+    ).toBe(1);
+    expect(
+      window
+        .jQuery(`.member[memberid="101"] .member-role-wrap .visually-hidden`)
+        .text(),
+    ).toBe("Co-owner");
+    // Member B untouched (still co-owner) — proves the unchanged-role skip fired.
+    expect(
+      window.jQuery(`.member[memberid="202"] svg.bi-diamond-half.memberRole`)
+        .length,
+    ).toBe(1);
+
+    // DD-24: the helper fired exactly once, for member A only.
+    expect(vi.mocked(swapMemberRoleInRow)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(swapMemberRoleInRow)).toHaveBeenCalledWith({
+      memberID: 101,
+      targetRole: "cocreator",
+    });
+    expect(
+      getState().members.find((member) => member.id === 101)?.memberRole,
+    ).toBe("member");
   });
 });
 

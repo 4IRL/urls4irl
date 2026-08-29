@@ -146,6 +146,15 @@
     color: var(--removeIconColor);
 }
 
+/* Thin separator between the role-toggle item and the destructive remove item. */
+.memberRowMenuDivider {
+    width: 100%;
+    height: 0;
+    margin: 4px 0;
+    border: none;
+    border-top: 1px solid var(--borderColor);
+}
+
 @media not all and (any-pointer: coarse) {
 
     .member:hover .memberRowKebab,
