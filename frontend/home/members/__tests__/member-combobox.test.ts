@@ -450,6 +450,42 @@ describe("member-combobox — sibling-control suppression (Step 7)", () => {
   });
 });
 
+describe("member-combobox — add-button gate on close (DD-1)", () => {
+  it("keeps #memberBtnCreate visible for a non-owner co-owner after hideAndResetMemberCombobox (DD-1)", () => {
+    // A co-owner (isCurrentUserOwner: false, isCoCreator: true) can add members,
+    // so the close/reset OR-gate at member-combobox.ts:892 must NOT re-hide the
+    // add button when the deck reverts to its display state.
+    document.body.innerHTML = MEMBER_DECK_HTML;
+    setState({
+      activeUTubID: 7,
+      isCurrentUserOwner: false,
+      isCoCreator: true,
+    });
+    $("#memberBtnCreate").removeClass("hidden");
+
+    hideAndResetMemberCombobox();
+
+    expect($("#memberBtnCreate").hasClass("hidden")).toBe(false);
+  });
+
+  it("hides #memberBtnCreate for a plain non-owner member after hideAndResetMemberCombobox (DD-1 sad path)", () => {
+    // Neither owner nor co-owner: the OR-gate is false, so the add button is
+    // re-hidden on close. Guards against a regression that would leak the add
+    // affordance to plain members.
+    document.body.innerHTML = MEMBER_DECK_HTML;
+    setState({
+      activeUTubID: 7,
+      isCurrentUserOwner: false,
+      isCoCreator: false,
+    });
+    $("#memberBtnCreate").removeClass("hidden");
+
+    hideAndResetMemberCombobox();
+
+    expect($("#memberBtnCreate").hasClass("hidden")).toBe(true);
+  });
+});
+
 describe("member-combobox — UTub-switch reset (DD-8)", () => {
   it("resetMemberDeck tears down the combobox and clears combobox store state", () => {
     seed({ candidates: [BOB], members: [] });
