@@ -45,6 +45,16 @@ export function roleLabelFor(memberRole: string): string {
   }
 }
 
+// Make/Revoke action label for the role-toggle menu item + confirm-modal submit
+// button: Revoke if the member is already a co-owner, otherwise Make. Extracted so
+// the three sites (createMemberBadge, swapMemberRoleInRow, role.ts's confirm modal)
+// share one source of truth — mirrors the roleLabelFor extraction above.
+export function roleActionLabelFor(memberRole: string): string {
+  return memberRole === APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR
+    ? APP_CONFIG.strings.REVOKE_CO_OWNER_ACTION
+    : APP_CONFIG.strings.MAKE_CO_OWNER_ACTION;
+}
+
 // Wraps the decorative role SVG (marked aria-hidden) alongside a visually-hidden
 // text label so the role is announced to screen readers without duplicating the
 // icon. makeUTubRoleIcon's own output is untouched (DD-2).
@@ -86,10 +96,7 @@ export function swapMemberRoleInRow({
   row.find(".member-role-wrap .visually-hidden").text(roleLabelFor(targetRole));
   // Flip the role menu-item's label + aria-label (Make ↔ Revoke). Located by its
   // dedicated class, not text — the text is exactly what is being swapped (DD-8).
-  const label =
-    targetRole === APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR
-      ? APP_CONFIG.strings.REVOKE_CO_OWNER_ACTION
-      : APP_CONFIG.strings.MAKE_CO_OWNER_ACTION;
+  const label = roleActionLabelFor(targetRole);
   const roleItem = row.find(".memberRowMenuItemRole");
   // Swap only the label <span> so the item's leading icon is preserved.
   roleItem.find("span").text(label);
@@ -167,10 +174,7 @@ export function createMemberBadge({
     // co-owner, otherwise Make). The dedicated .memberRowMenuItemRole class (not
     // .danger) lets swapMemberRoleInRow re-target this button after its own text
     // has changed (DD-8) — a text-based selector would break on the swap.
-    const roleActionLabel =
-      memberRole === APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR
-        ? APP_CONFIG.strings.REVOKE_CO_OWNER_ACTION
-        : APP_CONFIG.strings.MAKE_CO_OWNER_ACTION;
+    const roleActionLabel = roleActionLabelFor(memberRole);
 
     const rowMenu = $(
       `<div class="memberRowMenu" role="menu" hidden>` +

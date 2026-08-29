@@ -8,7 +8,7 @@ import { isUtubLockedHandled } from "../utub-locked.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
-import { swapMemberRoleInRow } from "./members.js";
+import { roleActionLabelFor, swapMemberRoleInRow } from "./members.js";
 
 const log = debug("members");
 
@@ -52,9 +52,7 @@ export function modifyMemberRoleShowModal({
   const modalBody = isRevoke
     ? APP_CONFIG.strings.REVOKE_CO_OWNER_WARNING
     : APP_CONFIG.strings.MAKE_CO_OWNER_WARNING;
-  const buttonTextSubmit = isRevoke
-    ? APP_CONFIG.strings.REVOKE_CO_OWNER_ACTION
-    : APP_CONFIG.strings.MAKE_CO_OWNER_ACTION;
+  const buttonTextSubmit = roleActionLabelFor(currentRole);
 
   $("#confirmModalTitle").text(modalTitle);
   $("#confirmModalBody").text(modalBody);
