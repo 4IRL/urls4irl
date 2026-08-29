@@ -19,6 +19,7 @@ from flask.testing import FlaskClient
 import pytest
 
 from backend.api_v1.services.tokens import create_access_token
+from backend.models.utub_members import Member_Role
 from backend.models.utubs import Utubs
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
@@ -283,7 +284,7 @@ def test_get_single_utub_happy_path(
     """
     GIVEN a validated user who is a member of UTub with id=1
     WHEN GET /api/v1/utubs/1
-    THEN 200 with members, urls, tags, isCreator fields
+    THEN 200 with members, urls, tags, isCreator, isCoCreator fields
     """
     response = api_client.get(
         _get_single_utub_url(app, utub_id=1),
@@ -297,7 +298,62 @@ def test_get_single_utub_happy_path(
     assert MODELS.URLS in response_json
     assert MODELS.TAGS in response_json
     assert MODELS.IS_CREATOR in response_json
+    # The viewer is the literal creator, so the co-creator signal is False.
+    assert response_json[MODELS.IS_CO_CREATOR] is False
     assert response_json[MODELS.NAME] == valid_empty_utub_1[MODELS.NAME]
+
+    # The sole member (the creator) carries the CREATOR memberRole.
+    member_entry = next(
+        member for member in response_json[MODELS.MEMBERS] if member[MODELS.ID] == 1
+    )
+    assert member_entry[MODELS.MEMBER_ROLE] == Member_Role.CREATOR.value
+
+
+def test_get_single_utub_as_co_creator(
+    app: Flask,
+    api_client: FlaskClient,
+    add_co_creator_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN user id=2 seeded as a CO_CREATOR (co-owner) of UTub id=1
+    WHEN the co-creator GETs /api/v1/utubs/1 with a valid bearer token
+    THEN 200 with isCreator False, isCoCreator True, and each member entry
+        carries the correct memberRole (creator for the owner, cocreator for
+        the co-owner viewer) — mirroring the web-route co-creator coverage.
+    """
+    user_2_token = _token_for_user(app, user_id=2)
+
+    with app.app_context():
+        co_creator: Users = Users.query.get(2)
+        co_creator_id = co_creator.id
+        co_creator_username = co_creator.username
+        creator_id = Utubs.query.get(1).utub_creator
+
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=1),
+        headers=make_bearer_headers(user_2_token),
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[MODELS.IS_CREATOR] is False
+    assert response_json[MODELS.IS_CO_CREATOR] is True
+
+    co_creator_dict: dict[str, int | str] = {
+        MODELS.ID: co_creator_id,
+        MODELS.USERNAME: co_creator_username,
+        MODELS.MEMBER_ROLE: Member_Role.CO_CREATOR.value,
+    }
+    assert co_creator_dict in response_json[MODELS.MEMBERS]
+
+    creator_entry = next(
+        member
+        for member in response_json[MODELS.MEMBERS]
+        if member[MODELS.ID] == creator_id
+    )
+    assert creator_entry[MODELS.MEMBER_ROLE] == Member_Role.CREATOR.value
 
 
 def test_get_single_utub_no_token_is_401(app: Flask, api_client: FlaskClient):
@@ -568,6 +624,36 @@ def test_delete_utub_not_creator_is_403(
     assert response.status_code == 403
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_delete_utub_as_co_creator_is_403(
+    app: Flask,
+    api_client: FlaskClient,
+    add_co_creator_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN a UTub created by user id=1 with user id=2 seeded as a CO_CREATOR (co-owner)
+    WHEN the co-creator DELETEs /api/v1/utubs/1 with a valid bearer token
+    THEN the literal-owner-only guard rejects it: 403 JSON failure envelope, and the
+        UTub still exists (co-creators are not literal owners — DD-1/DD-2).
+    """
+    user_2_token = _token_for_user(app, user_id=2)
+
+    with app.app_context():
+        initial_count = Utubs.query.count()
+
+    response = api_client.delete(
+        _delete_utub_url(app, utub_id=1),
+        headers=make_bearer_headers(user_2_token),
+    )
+
+    assert response.status_code == 403
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+    with app.app_context():
+        assert Utubs.query.count() == initial_count
 
 
 def test_delete_utub_nonexistent_is_404(

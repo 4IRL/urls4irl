@@ -2,6 +2,7 @@ import re
 from logging import LogRecord
 from typing import NamedTuple
 
+from flask import Flask
 import sqlalchemy
 
 from backend import db
@@ -140,6 +141,29 @@ def seed_distinct_stats_for_user_one(
         user_one_utub_urls=user_one_utub_urls,
         user_one_tags=user_one_tags,
     )
+
+
+def set_member_role(app: Flask, utub_id: int, user_id: int, role: Member_Role) -> None:
+    """Promote/demote an existing UTub member to the given role, in place.
+
+    Loads the ``Utub_Members`` row by its composite primary key
+    ``(utub_id, user_id)`` and sets its ``member_role``. Use this to change the
+    role of a member already seeded onto a UTub (e.g. promoting a plain member
+    to ``Member_Role.CO_CREATOR`` mid-test), as distinct from the
+    ``add_co_creator_to_utub_without_logging_in`` fixture, which seeds a fresh
+    UTub with a CO_CREATOR member from the start. The member row must already
+    exist for the given ``(utub_id, user_id)``.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub the member belongs to
+        user_id (int): The ID of the member User to update
+        role (Member_Role): The role to assign to the member
+    """
+    with app.app_context():
+        member: Utub_Members = Utub_Members.query.get((utub_id, user_id))
+        member.member_role = role
+        db.session.commit()
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:

@@ -8,7 +8,7 @@ from pydantic import Field, field_serializer
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
-from backend.schemas.users import UserSchema
+from backend.schemas.users import UtubMemberSchema
 from backend.utils.strings.model_strs import MODELS as M, UTUB_DESCRIPTION
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME, UTUB_CREATOR_ID
 
@@ -40,7 +40,7 @@ class UtubDetailSchema(BaseSchema):
         alias=M.DESCRIPTION,
         description="Description of the UTub",
     )
-    members: list[UserSchema] = Field(
+    members: list[UtubMemberSchema] = Field(
         alias=M.MEMBERS,
         description="List of members in the UTub",
     )
@@ -55,6 +55,10 @@ class UtubDetailSchema(BaseSchema):
     is_creator: bool = Field(
         alias=M.IS_CREATOR,
         description="Whether the current user is the creator of the UTub",
+    )
+    is_co_creator: bool = Field(
+        alias=M.IS_CO_CREATOR,
+        description="Whether the current user is a co-creator (co-owner) of the UTub",
     )
     is_locked: bool = Field(
         alias=M.IS_LOCKED,
@@ -76,12 +80,32 @@ class UtubDetailSchema(BaseSchema):
         current_user_id: int,
         ordered_utub_urls: list[Utub_Urls],
     ) -> UtubDetailSchema:
+        # ``Member_Role`` is imported locally to avoid a circular import: this
+        # schema module is loaded during ``backend`` package init (via
+        # ``backend.schemas.__init__``), before ``db.Model`` is ready, so a
+        # top-level ``backend.models`` import would fail. Computed before the
+        # ``urls`` comprehension so a later step (URL-delete widening) can reuse
+        # ``is_co_creator`` to derive the viewer's manager rights ahead of that
+        # same line.
+        from backend.models.utub_members import Member_Role
+
+        is_co_creator = any(
+            member.to_user.id == current_user_id
+            and member.member_role == Member_Role.CO_CREATOR
+            for member in utub.members
+        )
+        # A "manager" (literal owner OR co-owner) may delete any URL in the UTub.
+        # This must stay in lockstep with the server-side delete predicate in
+        # ``delete_urls_in_utub`` (``backend/urls/services/delete_urls.py``) and the
+        # single-URL delete guard, so the client's ``canDelete`` snapshot matches
+        # server enforcement. Computed before ``urls`` so the comprehension can read it.
+        viewer_is_manager = (utub.utub_creator == current_user_id) or is_co_creator
         # ``ordered_utub_urls`` is the UTub's URL rows pre-ordered by the viewing
         # user's ``default_sort`` preference (server-authoritative, resolved by
         # ``get_single_utub_for_user``) — the serialized ``urls`` list is emitted
         # in exactly this order.
         urls = [
-            UtubUrlSchema.from_orm_url(u, current_user_id, utub.utub_creator)
+            UtubUrlSchema.from_orm_url(u, current_user_id, viewer_is_manager)
             for u in ordered_utub_urls
         ]
         tags = [UtubTagSchema(id=t.id, tag_string=t.tag_string) for t in utub.utub_tags]
@@ -100,12 +124,17 @@ class UtubDetailSchema(BaseSchema):
                 utub.utub_description if utub.utub_description is not None else ""
             ),
             members=[
-                UserSchema(id=m.to_user.id, username=m.to_user.username)
-                for m in utub.members
+                UtubMemberSchema(
+                    id=member.to_user.id,
+                    username=member.to_user.username,
+                    member_role=member.member_role.value,
+                )
+                for member in utub.members
             ],
             urls=urls,
             tags=tags,
             is_creator=utub.utub_creator == current_user_id,
+            is_co_creator=is_co_creator,
             is_locked=utub.is_locked,
             current_user=current_user_id,
         )

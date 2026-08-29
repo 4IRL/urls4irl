@@ -7,6 +7,7 @@ from backend.app_logger import safe_add_many_logs, warning_log
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.metrics.tag_batch import bucket_bulk_tag_url_count
+from backend.models.utub_members import Member_Role
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -220,12 +221,12 @@ def delete_urls_in_utub(
     Bulk-delete selected URLs from a single UTub in one transaction, skipping and
     reporting any URL the acting user may not delete (partial-with-report).
 
-    Per-URL permission is the *literal*-creator predicate
-    ``current_user_id == utub_url.user_id or current_user_id == utub.utub_creator`` —
-    the exact predicate ``UtubUrlSchema.from_orm_url`` computes as ``can_delete`` — and
-    deliberately NOT the broader, co-creator-inclusive ``g.is_creator``. This keeps
-    server enforcement aligned with the client's ``canDelete``-derived deletable
-    snapshot, so a co-creator's request never contains an id the server would reject.
+    Per-URL permission is the *manager* predicate
+    ``current_user_id == utub_url.user_id or current_user_is_manager`` — where a
+    "manager" is the literal owner OR a co-owner (``Member_Role.CO_CREATOR``) — and is
+    the exact predicate ``UtubUrlSchema.from_orm_url`` computes as ``can_delete``. This
+    keeps server enforcement aligned with the client's ``canDelete``-derived deletable
+    snapshot, so a manager's request never contains an id the server would reject.
 
     The whole batch is one transaction with a single terminal commit: unknown or
     cross-UTub ids reject the entire request as a 400 before any write (a foreign id is
@@ -238,8 +239,8 @@ def delete_urls_in_utub(
         utub_url_ids (list[int]): The UTub-URL ids to delete (already deduped by the
             request schema; deduped again defensively).
         utub (Utubs): The UTub the URLs belong to (membership already proved by
-            ``@utub_membership_required``). Its ``utub_creator`` drives the per-URL
-            permission check directly.
+            ``@utub_membership_required``). Its ``utub_creator`` and co-owner
+            membership drive the per-URL permission check directly.
         current_user_id (int): The acting user.
 
     Returns:
@@ -274,15 +275,19 @@ def delete_urls_in_utub(
             status_code=400,
         )
 
-    # Partition by the literal-creator permission predicate (matches can_delete on
-    # UtubUrlSchema; deliberately narrower than g.is_creator).
+    # Partition by the manager permission predicate (matches can_delete on
+    # UtubUrlSchema): the adder of a URL, or a manager (literal owner or co-owner),
+    # may delete it.
+    current_user_is_manager = current_user_id == utub.utub_creator or any(
+        member.user_id == current_user_id
+        and member.member_role == Member_Role.CO_CREATOR
+        for member in utub.members
+    )
     deletable_rows: list[Utub_Urls] = []
     skipped: list[dict] = []
     for utub_url_id in utub_url_ids:
         row = rows_by_id[utub_url_id]
-        can_delete = (
-            row.user_id == current_user_id or current_user_id == utub.utub_creator
-        )
+        can_delete = row.user_id == current_user_id or current_user_is_manager
         if can_delete:
             deletable_rows.append(row)
         else:

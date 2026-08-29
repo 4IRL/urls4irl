@@ -305,9 +305,8 @@ def add_co_creator_and_mixed_delete_permission_urls(
 ):
     """
     Seed the FIRST UTub (id 1, created by user 1) with user 2 promoted to a
-    ``Member_Role.CO_CREATOR`` membership plus a mix of URLs, to distinguish the
-    literal-creator delete predicate from the broader ``g.is_creator`` (co-creator
-    inclusive) one.
+    ``Member_Role.CO_CREATOR`` membership plus a mix of URLs, to exercise the co-owner
+    URL-delete right (a co-creator is a manager and may delete any URL in the UTub).
 
     Starting from every user being a member of every UTub with UTub 1 holding URL 1
     (added by creator user 1), this fixture:
@@ -316,11 +315,9 @@ def add_co_creator_and_mixed_delete_permission_urls(
     - Adds URL 2 into UTub 1, added by the CO_CREATOR (user 2).
     - Adds URL 3 into UTub 1, added by a THIRD member (user 3).
 
-    Acting as the co-creator (user 2, NOT the literal ``utub.utub_creator``):
-
-    - URL 2 (co-creator's own) is deletable.
-    - URL 1 (creator's) and URL 3 (third member's) must be FORBIDDEN-skipped — a case
-      that would incorrectly succeed under the co-creator-inclusive ``g.is_creator``.
+    Acting as the co-creator (user 2, NOT the literal ``utub.utub_creator``): URL 1
+    (creator's), URL 2 (co-creator's own), and URL 3 (third member's) are ALL deletable,
+    because a co-owner holds the manager delete right.
 
     Args:
         app (Flask): The Flask client providing an app context

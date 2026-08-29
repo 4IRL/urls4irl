@@ -22,7 +22,7 @@ from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from backend.schemas.users import UserSchema
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, set_member_role
 
 pytestmark = pytest.mark.members
 
@@ -1244,6 +1244,281 @@ def test_remove_user_from_utub_as_member_log(
         f"User={user.id} tried removing another member from UTub.id={utub.id}",
         caplog.records,
     )
+
+
+def test_co_creator_can_remove_self_from_utub(
+    add_co_creator_to_utub_without_logging_in, login_second_user_without_register
+):
+    """
+    GIVEN a UTub created by user 1 with user 2 seeded as a CO_CREATOR (co-owner)
+    WHEN the co-creator (user 2) tries to leave the UTub by DELETE to
+        "/utubs/<int:utub_id>/members/<int:user_id>" removing themselves, with a valid CSRF token
+    THEN the co-creator is allowed to leave: the server responds 200 with the success envelope
+        and the co-creator's membership row is removed (DD-5 self-leave fix).
+    """
+    client, csrf_token_string, _, app = login_second_user_without_register
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.first()
+        current_utub_id = current_utub.id
+        initial_num_users_in_utub = len(current_utub.members)
+        initial_num_user_utubs = Utub_Members.query.count()
+
+        current_user_id = current_user.id
+        current_user_username = current_user.username
+
+        # Confirm the actor is seeded as a co-creator (not the literal owner)
+        actor_membership: Utub_Members = Utub_Members.query.get(
+            (current_utub_id, current_user_id)
+        )
+        assert actor_membership.member_role == Member_Role.CO_CREATOR
+        assert current_utub.utub_creator != current_user_id
+
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub_id,
+            user_id=current_user_id,
+        ),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert remove_user_response.status_code == 200
+    remove_user_response_json = remove_user_response.json
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
+    UserSchema.model_validate(remove_user_response_json[MEMBER_SUCCESS.MEMBER])
+    assert (
+        int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
+        == current_user_id
+    )
+    assert (
+        remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME]
+        == current_user_username
+    )
+    assert int(remove_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == current_utub_id
+
+    with app.app_context():
+        current_utub = Utubs.query.get(current_utub_id)
+        assert len(current_utub.members) == initial_num_users_in_utub - 1
+        assert Utub_Members.query.get((current_utub_id, current_user_id)) is None
+        assert Utub_Members.query.count() == initial_num_user_utubs - 1
+
+
+def test_creator_cannot_remove_self_with_co_creator_present(
+    add_co_creator_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN a UTub created by user 1 with user 2 seeded as a CO_CREATOR (co-owner)
+    WHEN the literal creator (user 1) tries to remove themselves by DELETE to
+        "/utubs/<int:utub_id>/members/<int:user_id>" with a valid CSRF token
+    THEN the literal owner is still blocked from leaving even though a co-creator exists: the
+        server responds 400 with MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF and the creator
+        remains in the UTub.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.first()
+        current_utub_id = current_utub.id
+        current_number_of_users_in_utub = len(current_utub.members)
+        initial_num_user_utubs = Utub_Members.query.count()
+
+        # Confirm the actor is the literal owner
+        assert current_utub.utub_creator == current_user.id
+
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub_id,
+            user_id=current_user.id,
+        ),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert remove_user_response.status_code == 400
+    remove_user_response_json = remove_user_response.json
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF
+    )
+
+    with app.app_context():
+        current_utub = Utubs.query.get(current_utub_id)
+        assert len(current_utub.members) == current_number_of_users_in_utub
+        assert current_user.id == current_utub.utub_creator
+        assert Utub_Members.query.get((current_utub_id, current_user.id)) is not None
+        assert Utub_Members.query.count() == initial_num_user_utubs
+
+
+def test_co_creator_can_remove_another_member(
+    add_multiple_users_to_utub_without_logging_in, login_second_user_without_register
+):
+    """
+    GIVEN a UTub created by user 1 containing plain members user 2 and user 3, where user 2 is
+        then promoted to CO_CREATOR (co-owner)
+    WHEN the co-creator (user 2) removes another member (user 3) by DELETE to
+        "/utubs/<int:utub_id>/members/<int:user_id>" with a valid CSRF token
+    THEN the co-creator's right to remove other members is preserved (DD-1): the server responds
+        200 with the success envelope and user 3's membership row is removed.
+    """
+    client, csrf_token_string, _, app = login_second_user_without_register
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.first()
+        current_utub_id = current_utub.id
+
+    # Promote the logged-in second user (user 2) to co-creator
+    set_member_role(
+        app, utub_id=current_utub_id, user_id=2, role=Member_Role.CO_CREATOR
+    )
+
+    with app.app_context():
+        current_utub = Utubs.query.get(current_utub_id)
+        initial_num_users_in_utub = len(current_utub.members)
+        initial_num_user_utubs = Utub_Members.query.count()
+
+        # The bystander member (user 3) to be removed
+        other_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.utub_id == current_utub_id,
+            Utub_Members.member_role == Member_Role.MEMBER,
+        ).first()
+        other_member_id = other_member.user_id
+
+        # Confirm the actor is a co-creator, not the literal owner
+        actor_membership: Utub_Members = Utub_Members.query.get(
+            (current_utub_id, current_user.id)
+        )
+        assert actor_membership.member_role == Member_Role.CO_CREATOR
+        assert current_utub.utub_creator != current_user.id
+
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub_id,
+            user_id=other_member_id,
+        ),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert remove_user_response.status_code == 200
+    remove_user_response_json = remove_user_response.json
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
+    assert (
+        int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
+        == other_member_id
+    )
+
+    with app.app_context():
+        current_utub = Utubs.query.get(current_utub_id)
+        assert len(current_utub.members) == initial_num_users_in_utub - 1
+        assert Utub_Members.query.get((current_utub_id, other_member_id)) is None
+        assert Utub_Members.query.count() == initial_num_user_utubs - 1
+
+
+def test_co_creator_cannot_remove_literal_owner(
+    add_co_creator_to_utub_without_logging_in, login_second_user_without_register
+):
+    """
+    GIVEN a UTub created by user 1 (the literal owner) with user 2 seeded as a CO_CREATOR (co-owner)
+    WHEN the co-creator (user 2) tries to remove the literal owner (user 1) by DELETE to
+        "/utubs/<int:utub_id>/members/<int:user_id>" with a valid CSRF token
+    THEN the co-creator is blocked from removing the owner (integrity guard preventing an
+        ownerless UTub): the server responds 403 with MEMBER_FAILURE.CANNOT_REMOVE_OWNER and the
+        owner's membership row remains intact.
+    """
+    client, csrf_token_string, _, app = login_second_user_without_register
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.first()
+        current_utub_id = current_utub.id
+        owner_id = current_utub.utub_creator
+        initial_num_users_in_utub = len(current_utub.members)
+        initial_num_user_utubs = Utub_Members.query.count()
+
+        # Confirm the actor is a co-creator, not the literal owner
+        actor_membership: Utub_Members = Utub_Members.query.get(
+            (current_utub_id, current_user.id)
+        )
+        assert actor_membership.member_role == Member_Role.CO_CREATOR
+        assert owner_id != current_user.id
+
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub_id,
+            user_id=owner_id,
+        ),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert remove_user_response.status_code == 403
+    remove_user_response_json = remove_user_response.json
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == MEMBER_FAILURE.CANNOT_REMOVE_OWNER
+    )
+
+    with app.app_context():
+        current_utub = Utubs.query.get(current_utub_id)
+        assert len(current_utub.members) == initial_num_users_in_utub
+        assert Utub_Members.query.get((current_utub_id, owner_id)) is not None
+        assert Utub_Members.query.count() == initial_num_user_utubs
+
+
+def test_plain_member_cannot_remove_literal_owner(
+    add_multiple_users_to_utub_without_logging_in, login_second_user_without_register
+):
+    """
+    GIVEN a UTub created by user 1 (the literal owner) with plain members user 2 and user 3
+    WHEN a plain member (user 2) tries to remove the literal owner (user 1) by DELETE to
+        "/utubs/<int:utub_id>/members/<int:user_id>" with a valid CSRF token
+    THEN the plain member is blocked with the specific owner-protection error rather than the
+        generic permission error: the server responds 403 with MEMBER_FAILURE.CANNOT_REMOVE_OWNER
+        (the integrity guard runs before the generic "remove another member" check) and the
+        owner's membership row remains intact.
+    """
+    client, csrf_token_string, _, app = login_second_user_without_register
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.first()
+        current_utub_id = current_utub.id
+        owner_id = current_utub.utub_creator
+        initial_num_users_in_utub = len(current_utub.members)
+        initial_num_user_utubs = Utub_Members.query.count()
+
+        # Confirm the actor is a plain member, not the literal owner
+        actor_membership: Utub_Members = Utub_Members.query.get(
+            (current_utub_id, current_user.id)
+        )
+        assert actor_membership.member_role == Member_Role.MEMBER
+        assert owner_id != current_user.id
+
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub_id,
+            user_id=owner_id,
+        ),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert remove_user_response.status_code == 403
+    remove_user_response_json = remove_user_response.json
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == MEMBER_FAILURE.CANNOT_REMOVE_OWNER
+    )
+
+    with app.app_context():
+        current_utub = Utubs.query.get(current_utub_id)
+        assert len(current_utub.members) == initial_num_users_in_utub
+        assert Utub_Members.query.get((current_utub_id, owner_id)) is not None
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_remove_self_from_utub_as_creator_log(

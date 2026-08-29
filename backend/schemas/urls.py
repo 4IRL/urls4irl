@@ -39,15 +39,14 @@ class UtubUrlSchema(BaseSchema):
 
     @classmethod
     def from_orm_url(
-        cls, utub_url: Utub_Urls, current_user_id: int, utub_creator: int
+        cls, utub_url: Utub_Urls, current_user_id: int, viewer_is_manager: bool
     ) -> UtubUrlSchema:
         return cls(
             utub_url_id=utub_url.id,
             url_string=utub_url.standalone_url.url_string,
             utub_url_tag_ids=utub_url.associated_tag_ids,
             url_title=utub_url.url_title,
-            can_delete=current_user_id == utub_url.user_id
-            or current_user_id == utub_creator,
+            can_delete=current_user_id == utub_url.user_id or viewer_is_manager,
             added_at=utub_url.added_at,
             added_by_user_id=utub_url.user_id,
         )

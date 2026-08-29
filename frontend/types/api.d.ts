@@ -666,7 +666,8 @@ export interface paths {
     delete: operations["apiV1RemoveMember"];
     options?: never;
     head?: never;
-    patch?: never;
+    /** @description Grant or revoke the co-owner role for a UTub member (owner only) */
+    patch: operations["apiV1ModifyMemberRole"];
     trace?: never;
   };
   "/api/v1/utubs/{utub_id}/co-members": {
@@ -787,7 +788,8 @@ export interface paths {
     delete: operations["removeMember"];
     options?: never;
     head?: never;
-    patch?: never;
+    /** @description Grant or revoke the co-owner role for a UTub member (owner only) */
+    patch: operations["modifyMemberRole"];
     trace?: never;
   };
   "/utubs/{utub_id}/members": {
@@ -1992,7 +1994,20 @@ export interface components {
      * @description Error codes for UTubMembersErrorCodes
      * @enum {integer}
      */
-    UTubMembersErrorCodes: 1 | 2 | 3;
+    UTubMembersErrorCodes: 1 | 2 | 3 | 4;
+    /**
+     * @description Target role carried by the grant/revoke co-owner endpoint's request body.
+     *
+     *     ``CO_CREATOR`` promotes a plain member to co-owner; ``MEMBER`` revokes the
+     *     co-owner role. The values MUST equal ``Member_Role.CO_CREATOR.value`` /
+     *     ``Member_Role.MEMBER.value`` (mirrors ``MemberAddSource``).
+     * @enum {string}
+     */
+    MemberRoleTarget: "cocreator" | "member";
+    ModifyMemberRoleRequest: {
+      /** @description Target role for the member: `cocreator` grants co-owner, `member` revokes it */
+      member_role: components["schemas"]["MemberRoleTarget"];
+    };
     /**
      * @description A co-member add candidate: a user who shares >=1 other UTub with the
      *     requester and is not already a member of the target UTub.
@@ -2057,6 +2072,21 @@ export interface components {
       /** @description List of UTubs the user is a member of */
       utubs: components["schemas"]["UtubSummaryItemSchema"][];
     };
+    /**
+     * @description A member of a UTub, carrying their role, for the open-UTub detail response.
+     *
+     *     Distinct from the shared ``UserSchema``/``MemberSchema`` (reused by the
+     *     add/remove-member responses where a role isn't naturally present) so that
+     *     role exposure is scoped to the detail response only.
+     */
+    UtubMemberSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Role of the member in the UTub */
+      memberRole: string;
+    };
     UtubUrlSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -2092,13 +2122,15 @@ export interface components {
       /** @description Description of the UTub */
       description: string;
       /** @description List of members in the UTub */
-      members: components["schemas"]["UserSchema"][];
+      members: components["schemas"]["UtubMemberSchema"][];
       /** @description List of URLs in the UTub */
       urls: components["schemas"]["UtubUrlSchema"][];
       /** @description List of tags used in the UTub */
       tags: components["schemas"]["UtubTagSchema"][];
       /** @description Whether the current user is the creator of the UTub */
       isCreator: boolean;
+      /** @description Whether the current user is a co-creator (co-owner) of the UTub */
+      isCoCreator: boolean;
       /** @description Whether the UTub is locked (frozen to all user mutations) */
       isLocked: boolean;
       /** @description ID of the currently authenticated user */
@@ -5800,6 +5832,70 @@ export interface operations {
       };
     };
   };
+  apiV1ModifyMemberRole: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ModifyMemberRoleRequest"];
+      };
+    };
+    responses: {
+      /** @description Member modified */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["MemberModifiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubMembersErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   apiV1GetCoMemberCandidates: {
     parameters: {
       query?: never;
@@ -6256,6 +6352,61 @@ export interface operations {
       };
     };
   };
+  modifyMemberRole: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ModifyMemberRoleRequest"];
+      };
+    };
+    responses: {
+      /** @description Member modified */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["MemberModifiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubMembersErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   createMember: {
     parameters: {
       query?: never;
@@ -6502,6 +6653,7 @@ export interface operations {
           | "member_added"
           | "member_add_candidates_loaded"
           | "member_removed"
+          | "member_role_changed"
           | "oauth_identity_linked"
           | "oauth_identity_unlinked"
           | "password_reset_completed"
@@ -6733,6 +6885,7 @@ export interface operations {
           | "member_added"
           | "member_add_candidates_loaded"
           | "member_removed"
+          | "member_role_changed"
           | "oauth_identity_linked"
           | "oauth_identity_unlinked"
           | "password_reset_completed"

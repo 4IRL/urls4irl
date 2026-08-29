@@ -1,3 +1,4 @@
+from backend.models.utub_members import Member_Role
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
@@ -208,6 +209,7 @@ for utub, user in zip(all_empty_utubs, valid_users):
                 {
                     MODEL_STRS.ID: user[MODEL_STRS.ID],
                     REGISTER_FORM.USERNAME: user[REGISTER_FORM.USERNAME],
+                    MODEL_STRS.MEMBER_ROLE: Member_Role.CREATOR.value,
                 }
             ],
             MODEL_STRS.URLS: [],
@@ -229,6 +231,11 @@ for utub, user in zip(all_empty_utubs, valid_users):
                 {
                     MODEL_STRS.ID: all_user[MODEL_STRS.ID],
                     REGISTER_FORM.USERNAME: all_user[REGISTER_FORM.USERNAME],
+                    MODEL_STRS.MEMBER_ROLE: (
+                        Member_Role.CREATOR.value
+                        if all_user[MODEL_STRS.ID] == utub[MODEL_STRS.ID]
+                        else Member_Role.MEMBER.value
+                    ),
                 }
                 for all_user in valid_users
             ],
@@ -251,6 +258,11 @@ for utub, user, url in zip(all_empty_utubs, valid_users, all_urls_no_tags):
                 {
                     MODEL_STRS.ID: all_user[MODEL_STRS.ID],
                     REGISTER_FORM.USERNAME: all_user[REGISTER_FORM.USERNAME],
+                    MODEL_STRS.MEMBER_ROLE: (
+                        Member_Role.CREATOR.value
+                        if all_user[MODEL_STRS.ID] == utub[MODEL_STRS.ID]
+                        else Member_Role.MEMBER.value
+                    ),
                 }
                 for all_user in valid_users
             ],
@@ -282,6 +294,11 @@ for idx, utub in enumerate(all_empty_utubs):
                 {
                     MODEL_STRS.ID: all_user[MODEL_STRS.ID],
                     REGISTER_FORM.USERNAME: all_user[REGISTER_FORM.USERNAME],
+                    MODEL_STRS.MEMBER_ROLE: (
+                        Member_Role.CREATOR.value
+                        if all_user[MODEL_STRS.ID] == utub[MODEL_STRS.ID]
+                        else Member_Role.MEMBER.value
+                    ),
                 }
                 for all_user in valid_users
             ],
@@ -306,5 +323,6 @@ for idx, utub in enumerate(all_empty_utubs):
                 for tag in all_tags
             ],
             MODEL_STRS.IS_CREATOR: True,
+            MODEL_STRS.IS_CO_CREATOR: False,
         }
     )

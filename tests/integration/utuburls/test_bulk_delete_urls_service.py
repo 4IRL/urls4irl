@@ -466,7 +466,7 @@ def test_service_mid_loop_exception_rolls_back_all(
     assert is_string_in_logs("error_type=RuntimeError", caplog.records)
 
 
-def test_service_co_creator_skips_third_members_url(
+def test_service_co_creator_can_delete_third_members_url(
     add_co_creator_and_mixed_delete_permission_urls,
     login_first_user_without_register,
 ):
@@ -474,9 +474,9 @@ def test_service_co_creator_skips_third_members_url(
     GIVEN a co-creator (user 2, NOT the literal utub.utub_creator) of a UTub holding a
         URL added by a THIRD member
     WHEN the co-creator bulk-deletes their own URL plus the third member's URL
-    THEN their own URL is deleted but the third member's URL is FORBIDDEN-skipped (not
-        deleted) — a case that would incorrectly succeed under the broader
-        g.is_creator-inclusive predicate.
+    THEN BOTH URLs are deleted with nothing skipped — a co-owner (co-creator) is a
+        manager and may delete any URL in the UTub (DD-1), so the third member's URL is
+        no longer FORBIDDEN-skipped.
     """
     _, _, _, app = login_first_user_without_register
 
@@ -493,18 +493,12 @@ def test_service_co_creator_skips_third_members_url(
         body = response.get_json()
 
         assert status_code == 200
-        assert body[MODEL_STRS.TOTAL_DELETED] == 1
-        assert body[MODEL_STRS.TOTAL_SKIPPED] == 1
-        assert [
+        assert body[MODEL_STRS.TOTAL_DELETED] == 2
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+        assert body[MODEL_STRS.SKIPPED] == []
+        assert {
             entry[MODEL_STRS.UTUB_URL_ID] for entry in body[MODEL_STRS.DELETED]
-        ] == ([co_creators_own_id])
-
-        skipped = body[MODEL_STRS.SKIPPED]
-        assert len(skipped) == 1
-        assert skipped[0][MODEL_STRS.UTUB_URL_ID] == third_members_id
-        assert (
-            skipped[0][MODEL_STRS.SKIP_REASON] == BulkDeleteSkipReason.FORBIDDEN.value
-        )
+        } == {co_creators_own_id, third_members_id}
 
         assert Utub_Urls.query.get(co_creators_own_id) is None
-        assert Utub_Urls.query.get(third_members_id) is not None
+        assert Utub_Urls.query.get(third_members_id) is None

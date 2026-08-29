@@ -565,7 +565,7 @@ def test_route_no_metric_when_all_skipped(
 
 
 # Co-creator distinguishing route case
-def test_route_co_creator_skips_third_members_url(
+def test_route_co_creator_can_delete_third_members_url(
     add_co_creator_and_mixed_delete_permission_urls,
     login_second_user_without_register,
 ):
@@ -574,9 +574,8 @@ def test_route_co_creator_skips_third_members_url(
         URL added by a THIRD member
     WHEN the co-creator bulk-deletes their own URL plus the third member's URL via the
         endpoint
-    THEN their own URL is deleted but the third member's URL is FORBIDDEN-skipped (not
-        deleted) — a case that would incorrectly succeed under the broader
-        g.is_creator-inclusive predicate.
+    THEN BOTH URLs are deleted with nothing skipped — a co-owner (co-creator) is a
+        manager and may delete any URL in the UTub (DD-1).
     """
     client, csrf_token, _, app = login_second_user_without_register
 
@@ -593,20 +592,17 @@ def test_route_co_creator_skips_third_members_url(
 
     assert response.status_code == 200
     body = response.json
-    assert body[MODEL_STRS.TOTAL_DELETED] == 1
-    assert body[MODEL_STRS.TOTAL_SKIPPED] == 1
-    assert [entry[MODEL_STRS.UTUB_URL_ID] for entry in body[MODEL_STRS.DELETED]] == [
-        co_creators_own_id
-    ]
-
-    skipped = body[MODEL_STRS.SKIPPED]
-    assert len(skipped) == 1
-    assert skipped[0][MODEL_STRS.UTUB_URL_ID] == third_members_id
-    assert skipped[0][MODEL_STRS.SKIP_REASON] == BulkDeleteSkipReason.FORBIDDEN.value
+    assert body[MODEL_STRS.TOTAL_DELETED] == 2
+    assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+    assert body[MODEL_STRS.SKIPPED] == []
+    assert {entry[MODEL_STRS.UTUB_URL_ID] for entry in body[MODEL_STRS.DELETED]} == {
+        co_creators_own_id,
+        third_members_id,
+    }
 
     with app.app_context():
         assert Utub_Urls.query.get(co_creators_own_id) is None
-        assert Utub_Urls.query.get(third_members_id) is not None
+        assert Utub_Urls.query.get(third_members_id) is None
 
 
 # Route Disambiguation Smoke Test

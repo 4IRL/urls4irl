@@ -3,7 +3,10 @@ from flask import abort, g, redirect, session, url_for
 from flask_login import login_required, current_user
 from functools import wraps
 
-from backend.api_common.request_utils import is_current_utub_creator
+from backend.api_common.request_utils import (
+    is_current_utub_manager,
+    is_current_utub_owner,
+)
 from backend.schemas.errors import build_message_error_response
 from backend.app_logger import critical_log, warning_log
 from backend.models.users import User_Role
@@ -87,7 +90,7 @@ def utub_membership_required(func: Callable) -> Callable:
             abort(404)
 
         member: Utub_Members = Utub_Members.query.get_or_404((utub_id, current_user.id))
-        g.is_creator = member.member_role in (
+        g.is_manager = member.member_role in (
             Member_Role.CREATOR,
             Member_Role.CO_CREATOR,
         )
@@ -101,15 +104,15 @@ def utub_membership_required(func: Callable) -> Callable:
     return decorated_view
 
 
-def utub_creator_required(func: Callable) -> Callable:
+def utub_manager_required(func: Callable) -> Callable:
     @wraps(func)
     @utub_membership_required
     def decorated_view(*args, **kwargs):
-        if not is_current_utub_creator():
+        if not is_current_utub_manager():
             utub_id: int = kwargs["utub_id"]
             current_utub: Utubs = kwargs["current_utub"]
             critical_log(
-                f"User={current_user.id} not creator: UTub.id={utub_id} | UTub.name={current_utub.name}"
+                f"User={current_user.id} not manager: UTub.id={utub_id} | UTub.name={current_utub.name}"
             )
 
             return build_message_error_response(
@@ -119,7 +122,29 @@ def utub_creator_required(func: Callable) -> Callable:
 
         return func(*args, **kwargs)
 
-    decorated_view._auth_decorator = utub_creator_required.__name__
+    decorated_view._auth_decorator = utub_manager_required.__name__
+    return decorated_view
+
+
+def utub_owner_required(func: Callable) -> Callable:
+    @wraps(func)
+    @utub_membership_required
+    def decorated_view(*args, **kwargs):
+        current_utub: Utubs = kwargs["current_utub"]
+        if not is_current_utub_owner(current_utub):
+            utub_id: int = kwargs["utub_id"]
+            critical_log(
+                f"User={current_user.id} not owner: UTub.id={utub_id} | UTub.name={current_utub.name}"
+            )
+
+            return build_message_error_response(
+                message=UTUB_FAILURE.NOT_AUTHORIZED,
+                status_code=403,
+            )
+
+        return func(*args, **kwargs)
+
+    decorated_view._auth_decorator = utub_owner_required.__name__
     return decorated_view
 
 
@@ -149,20 +174,20 @@ def utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
     return decorated_view
 
 
-def url_adder_or_creator_required(message: str) -> Callable:
+def url_adder_or_manager_required(message: str) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         @utub_membership_with_valid_url_in_utub_required
         def decorated_view(*args, **kwargs):
-            if not (g.user_added_url or g.is_creator):
+            if not (g.user_added_url or g.is_manager):
                 critical_log(
-                    f"User={current_user.id} not URL adder or UTub creator: "
+                    f"User={current_user.id} not URL adder or UTub manager: "
                     f"UTubURL.id={kwargs['utub_url_id']} in UTub.id={kwargs['utub_id']}"
                 )
                 return build_message_error_response(message=message, status_code=403)
             return func(*args, **kwargs)
 
-        decorated_view._auth_decorator = url_adder_or_creator_required.__name__
+        decorated_view._auth_decorator = url_adder_or_manager_required.__name__
         return decorated_view
 
     return decorator
@@ -228,8 +253,9 @@ SESSION_AUTH_DECORATORS: frozenset[str] = frozenset(
     {
         email_validation_required.__name__,
         session_required.__name__,
-        url_adder_or_creator_required.__name__,
-        utub_creator_required.__name__,
+        url_adder_or_manager_required.__name__,
+        utub_manager_required.__name__,
+        utub_owner_required.__name__,
         utub_membership_required.__name__,
         utub_membership_with_valid_url_in_utub_required.__name__,
         utub_membership_with_valid_url_tag.__name__,
@@ -370,7 +396,7 @@ def api_utub_membership_required(func: Callable) -> Callable:
             abort(404)
 
         member: Utub_Members = Utub_Members.query.get_or_404((utub_id, current_user.id))
-        g.is_creator = member.member_role in (
+        g.is_manager = member.member_role in (
             Member_Role.CREATOR,
             Member_Role.CO_CREATOR,
         )
@@ -384,15 +410,15 @@ def api_utub_membership_required(func: Callable) -> Callable:
     return decorated_view
 
 
-def api_utub_creator_required(func: Callable) -> Callable:
+def api_utub_manager_required(func: Callable) -> Callable:
     @wraps(func)
     @api_utub_membership_required
     def decorated_view(*args, **kwargs):
-        if not is_current_utub_creator():
+        if not is_current_utub_manager():
             utub_id: int = kwargs["utub_id"]
             current_utub: Utubs = kwargs["current_utub"]
             critical_log(
-                f"User={current_user.id} not creator: UTub.id={utub_id} | UTub.name={current_utub.name}"
+                f"User={current_user.id} not manager: UTub.id={utub_id} | UTub.name={current_utub.name}"
             )
 
             return build_message_error_response(
@@ -402,7 +428,29 @@ def api_utub_creator_required(func: Callable) -> Callable:
 
         return func(*args, **kwargs)
 
-    decorated_view._auth_decorator = api_utub_creator_required.__name__
+    decorated_view._auth_decorator = api_utub_manager_required.__name__
+    return decorated_view
+
+
+def api_utub_owner_required(func: Callable) -> Callable:
+    @wraps(func)
+    @api_utub_membership_required
+    def decorated_view(*args, **kwargs):
+        current_utub: Utubs = kwargs["current_utub"]
+        if not is_current_utub_owner(current_utub):
+            utub_id: int = kwargs["utub_id"]
+            critical_log(
+                f"User={current_user.id} not owner: UTub.id={utub_id} | UTub.name={current_utub.name}"
+            )
+
+            return build_message_error_response(
+                message=UTUB_FAILURE.NOT_AUTHORIZED,
+                status_code=403,
+            )
+
+        return func(*args, **kwargs)
+
+    decorated_view._auth_decorator = api_utub_owner_required.__name__
     return decorated_view
 
 
@@ -432,20 +480,20 @@ def api_utub_membership_with_valid_url_in_utub_required(func: Callable) -> Calla
     return decorated_view
 
 
-def api_url_adder_or_creator_required(message: str) -> Callable:
+def api_url_adder_or_manager_required(message: str) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         @api_utub_membership_with_valid_url_in_utub_required
         def decorated_view(*args, **kwargs):
-            if not (g.user_added_url or g.is_creator):
+            if not (g.user_added_url or g.is_manager):
                 critical_log(
-                    f"User={current_user.id} not URL adder or UTub creator: "
+                    f"User={current_user.id} not URL adder or UTub manager: "
                     f"UTubURL.id={kwargs['utub_url_id']} in UTub.id={kwargs['utub_id']}"
                 )
                 return build_message_error_response(message=message, status_code=403)
             return func(*args, **kwargs)
 
-        decorated_view._auth_decorator = api_url_adder_or_creator_required.__name__
+        decorated_view._auth_decorator = api_url_adder_or_manager_required.__name__
         return decorated_view
 
     return decorator
@@ -498,8 +546,9 @@ API_AUTH_DECORATORS: frozenset[str] = frozenset(
     {
         api_authentication_required.__name__,
         api_email_validation_required.__name__,
-        api_url_adder_or_creator_required.__name__,
-        api_utub_creator_required.__name__,
+        api_url_adder_or_manager_required.__name__,
+        api_utub_manager_required.__name__,
+        api_utub_owner_required.__name__,
         api_utub_membership_required.__name__,
         api_utub_membership_with_valid_url_in_utub_required.__name__,
         api_utub_membership_with_valid_url_tag.__name__,

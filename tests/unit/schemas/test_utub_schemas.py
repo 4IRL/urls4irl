@@ -8,7 +8,7 @@ from backend.utils.strings.model_strs import MODELS as M
 
 pytestmark = pytest.mark.unit
 
-_MEMBER = {M.ID: 1, M.USERNAME: "alice"}
+_MEMBER = {M.ID: 1, M.USERNAME: "alice", M.MEMBER_ROLE: "creator"}
 _TAG = {M.ID: 10, M.TAG_STRING: "python", M.TAG_APPLIED: 3}
 _URL = {
     M.UTUB_URL_ID: 5,
@@ -29,6 +29,7 @@ _UTUB_DICT = {
     M.URLS: [_URL],
     M.TAGS: [_TAG],
     M.IS_CREATOR: True,
+    M.IS_CO_CREATOR: False,
     M.IS_LOCKED: False,
     M.CURRENT_USER: 1,
 }
@@ -43,6 +44,7 @@ def test_utub_detail_schema_dump():
     assert dumped[M.CREATED_AT] == "2025-01-01T00:00:00"
     assert dumped[M.DESCRIPTION] == "A test UTub"
     assert dumped[M.IS_CREATOR] is True
+    assert dumped[M.IS_CO_CREATOR] is False
     assert dumped[M.CURRENT_USER] == 1
 
 
@@ -50,7 +52,11 @@ def test_utub_detail_schema_nested_members():
     schema = UtubDetailSchema.model_validate(_UTUB_DICT)
     dumped = schema.model_dump(by_alias=True)
     assert len(dumped[M.MEMBERS]) == 1
-    assert dumped[M.MEMBERS][0] == {M.ID: 1, M.USERNAME: "alice"}
+    assert dumped[M.MEMBERS][0] == {
+        M.ID: 1,
+        M.USERNAME: "alice",
+        M.MEMBER_ROLE: "creator",
+    }
 
 
 def test_utub_detail_schema_nested_urls():

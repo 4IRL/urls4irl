@@ -10,6 +10,7 @@ class MEMBER_ROUTES:
     REMOVE_MEMBER = _MEMBERS + "remove_member"
     CREATE_MEMBER = _MEMBERS + "create_member"
     CO_MEMBER_CANDIDATES = _MEMBERS + "get_co_member_candidates_route"
+    MODIFY_MEMBER_ROLE = _MEMBERS + "modify_member_role"
 
 
 class SPLASH_ROUTES:
@@ -164,6 +165,7 @@ class API_V1_ROUTES:
     CREATE_MEMBER = _API_V1 + "api_v1_create_member"
     REMOVE_MEMBER = _API_V1 + "api_v1_remove_member"
     CO_MEMBER_CANDIDATES = _API_V1 + "api_v1_get_co_member_candidates"
+    MODIFY_MEMBER_ROLE = _API_V1 + "api_v1_modify_member_role"
     # URL routes
     CREATE_URL = _API_V1 + "api_v1_create_url"
     GET_URL = _API_V1 + "api_v1_get_url"
@@ -240,6 +242,9 @@ def generate_routes_js() -> dict[str, str]:
         "createMember": url_for(MEMBER_ROUTES.CREATE_MEMBER, utub_id=-1),
         "coMemberCandidates": url_for(MEMBER_ROUTES.CO_MEMBER_CANDIDATES, utub_id=-1),
         "removeMember": url_for(MEMBER_ROUTES.REMOVE_MEMBER, utub_id=-1, user_id=-4),
+        "modifyMemberRole": url_for(
+            MEMBER_ROUTES.MODIFY_MEMBER_ROLE, utub_id=-1, user_id=-4
+        ),
         # Splash routes
         "login": url_for(SPLASH_ROUTES.LOGIN),
         "register": url_for(SPLASH_ROUTES.REGISTER),

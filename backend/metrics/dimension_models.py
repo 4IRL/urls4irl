@@ -7,6 +7,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from backend.members.constants import (
     MEMBER_ADD_HAS_RESULTS_VALUES,
     MEMBER_ADD_SOURCE_VALUES,
+    MEMBER_ROLE_CHANGE_VALUES,
 )
 from backend.metrics.events import (
     EVENT_CATEGORY,
@@ -470,6 +471,15 @@ class _DimMemberAddCandidatesLoaded(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimMemberRoleChanged(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Closed set sourced from the same `MEMBER_ROLE_CHANGE_VALUES` constant fed to
+    # the registry, so the audit set-compare between this Literal and the
+    # registry tuple can never drift.
+    new_role: Literal[MEMBER_ROLE_CHANGE_VALUES]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 # ---------------------------------------------------------------------------
 # DIMENSION_MODELS — every member of EventName keyed. `None` for events
 # without dimensions. Order mirrors `EventName` for review-friendliness.
@@ -493,6 +503,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.MEMBER_ADDED: _DimMemberAdded,
     EventName.MEMBER_ADD_CANDIDATES_LOADED: _DimMemberAddCandidatesLoaded,
     EventName.MEMBER_REMOVED: _DimDeviceOnly,
+    EventName.MEMBER_ROLE_CHANGED: _DimMemberRoleChanged,
     EventName.OAUTH_IDENTITY_LINKED: _DimOAuthIdentityLinkChange,
     EventName.OAUTH_IDENTITY_UNLINKED: _DimOAuthIdentityLinkChange,
     EventName.PASSWORD_RESET_COMPLETED: _DimDeviceOnly,

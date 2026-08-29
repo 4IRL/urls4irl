@@ -1423,7 +1423,7 @@ def test_update_url_title_user_not_allowed_log(
 
     assert update_url_string_title_form.status_code == 403
     assert is_string_in_logs(
-        f"User={user.id} not URL adder or UTub creator: UTubURL.id={current_url_id} in UTub.id={utub_member_of.id}",
+        f"User={user.id} not URL adder or UTub manager: UTubURL.id={current_url_id} in UTub.id={utub_member_of.id}",
         caplog.records,
     )
 

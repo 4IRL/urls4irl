@@ -1316,5 +1316,5 @@ def test_update_utub_description_invalid_permissions_logs(
 
     # Ensure valid reponse
     assert update_utub_desc_response.status_code == 403
-    assert is_string_in_logs(f"User={user.id} not creator: ", caplog.records)
+    assert is_string_in_logs(f"User={user.id} not manager: ", caplog.records)
     assert is_string_in_logs(f"UTub.id={current_utub_id}", caplog.records)

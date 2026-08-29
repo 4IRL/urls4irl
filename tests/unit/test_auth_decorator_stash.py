@@ -7,12 +7,13 @@ from backend.api_common.auth_decorators import (
     email_validation_required,
     no_authenticated_users_allowed,
     session_required,
-    url_adder_or_creator_required,
-    utub_creator_required,
+    url_adder_or_manager_required,
+    utub_manager_required,
     utub_membership_required,
     utub_membership_with_valid_url_in_utub_required,
     utub_membership_with_valid_url_tag,
     utub_membership_with_valid_utub_tag,
+    utub_owner_required,
 )
 from backend.api_common.parse_request import api_route
 
@@ -49,10 +50,15 @@ class TestAuthDecoratorStashAttribute:
         assert hasattr(wrapped, AUTH_DECORATOR_ATTR)
         assert wrapped._auth_decorator == "utub_membership_required"
 
-    def test_utub_creator_required_stashes_name(self):
-        wrapped = utub_creator_required(_dummy_fn)
+    def test_utub_manager_required_stashes_name(self):
+        wrapped = utub_manager_required(_dummy_fn)
         assert hasattr(wrapped, AUTH_DECORATOR_ATTR)
-        assert wrapped._auth_decorator == "utub_creator_required"
+        assert wrapped._auth_decorator == "utub_manager_required"
+
+    def test_utub_owner_required_stashes_name(self):
+        wrapped = utub_owner_required(_dummy_fn)
+        assert hasattr(wrapped, AUTH_DECORATOR_ATTR)
+        assert wrapped._auth_decorator == "utub_owner_required"
 
     def test_utub_membership_with_valid_url_in_utub_required_stashes_name(self):
         wrapped = utub_membership_with_valid_url_in_utub_required(_dummy_fn)
@@ -61,11 +67,11 @@ class TestAuthDecoratorStashAttribute:
             wrapped._auth_decorator == "utub_membership_with_valid_url_in_utub_required"
         )
 
-    def test_url_adder_or_creator_required_stashes_name(self):
-        decorator = url_adder_or_creator_required("test message")
+    def test_url_adder_or_manager_required_stashes_name(self):
+        decorator = url_adder_or_manager_required("test message")
         wrapped = decorator(_dummy_fn)
         assert hasattr(wrapped, AUTH_DECORATOR_ATTR)
-        assert wrapped._auth_decorator == "url_adder_or_creator_required"
+        assert wrapped._auth_decorator == "url_adder_or_manager_required"
 
     def test_utub_membership_with_valid_utub_tag_stashes_name(self):
         wrapped = utub_membership_with_valid_utub_tag(_dummy_fn)
@@ -81,11 +87,11 @@ class TestAuthDecoratorStashAttribute:
 class TestChainedDecoratorStashesOutermost:
     """Verify chained decorators preserve the outermost _auth_decorator value."""
 
-    def test_utub_creator_required_chains_preserve_outermost(self):
-        """utub_creator_required chains email_validation_required -> utub_membership_required -> creator check.
+    def test_utub_manager_required_chains_preserve_outermost(self):
+        """utub_manager_required chains email_validation_required -> utub_membership_required -> manager check.
         The outermost decorator name should be the one stashed."""
-        wrapped = utub_creator_required(_dummy_fn)
-        assert wrapped._auth_decorator == "utub_creator_required"
+        wrapped = utub_manager_required(_dummy_fn)
+        assert wrapped._auth_decorator == "utub_manager_required"
 
 
 class TestNonAuthDecoratorLacksAttribute:
@@ -110,13 +116,14 @@ class TestSessionAuthDecoratorRegistry:
             email_validation_required.__name__,
             session_required.__name__,
             utub_membership_required.__name__,
-            utub_creator_required.__name__,
+            utub_manager_required.__name__,
+            utub_owner_required.__name__,
             utub_membership_with_valid_url_in_utub_required.__name__,
             utub_membership_with_valid_utub_tag.__name__,
             utub_membership_with_valid_url_tag.__name__,
-            url_adder_or_creator_required.__name__,
+            url_adder_or_manager_required.__name__,
         }
         assert SESSION_AUTH_DECORATORS == expected
 
     def test_registry_size(self):
-        assert len(SESSION_AUTH_DECORATORS) == 8
+        assert len(SESSION_AUTH_DECORATORS) == 9

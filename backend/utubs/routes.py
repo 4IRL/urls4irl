@@ -9,8 +9,9 @@ from werkzeug.wrappers import Response as WerkzeugResponse
 
 from backend.api_common.auth_decorators import (
     email_validation_required,
-    utub_creator_required,
+    utub_manager_required,
     utub_membership_required,
+    utub_owner_required,
 )
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
@@ -176,7 +177,7 @@ def get_utubs() -> FlaskResponse:
 
 
 @utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])
-@utub_creator_required
+@utub_manager_required
 @api_route(
     request_schema=UpdateUTubNameRequest,
     response_schema=UtubNameUpdatedResponseSchema,
@@ -205,7 +206,7 @@ def update_utub_name(
 
 
 @utubs.route("/utubs/<int:utub_id>/description", methods=["PATCH"])
-@utub_creator_required
+@utub_manager_required
 @api_route(
     request_schema=UpdateUTubDescriptionRequest,
     response_schema=UtubDescUpdatedResponseSchema,
@@ -238,7 +239,7 @@ def update_utub_desc(
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])
-@utub_creator_required
+@utub_owner_required
 @api_route(
     response_schema=UtubDeletedResponseSchema,
     tags=[OPEN_API.UTUBS],

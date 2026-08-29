@@ -660,6 +660,43 @@ def test_delete_utub_as_member_only(
         assert Utubs.query.count() == initial_num_utubs
 
 
+def test_delete_utub_as_co_creator_is_rejected(
+    add_co_creator_to_utub_without_logging_in,
+    login_second_user_without_register,
+):
+    """
+    GIVEN a UTub created by user id=1 with user id=2 seeded as a CO_CREATOR (co-owner),
+        and the co-creator logged in
+    WHEN the co-creator requests to delete the UTub via a DELETE to "/utubs/<int:utub_id>"
+    THEN the literal-owner-only guard rejects it: 403 with a FAILURE JSON envelope
+        (message UTUB_FAILURE.NOT_AUTHORIZED) and the UTub still exists afterward.
+
+    A co-creator can manage members/URLs but is NOT the literal owner, so deleting
+    the whole UTub remains owner-only (DD-1/DD-2).
+    """
+    client, csrf_token, _, app = login_second_user_without_register
+
+    with app.app_context():
+        utub_to_delete: Utubs = Utubs.query.first()
+        utub_id = utub_to_delete.id
+        initial_num_utubs = Utubs.query.count()
+
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_utub_response.status_code == 403
+    delete_utub_json_response = delete_utub_response.json
+    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+
+    with app.app_context():
+        # The UTub still exists — the co-creator's delete did not happen
+        assert Utubs.query.count() == initial_num_utubs
+        assert Utubs.query.get(utub_id) is not None
+
+
 def test_delete_success_logs(add_single_utub_as_user_after_logging_in, caplog):
     """
     GIVEN a valid existing user and a UTub they have created
@@ -707,6 +744,6 @@ def test_delete_utub_as_member_logs(
 
     assert delete_utub_response.status_code == 403
     assert is_string_in_logs(
-        f"User={user.id} not creator: UTub.id={utub_id_member_of} | UTub.name={utub_name}",
+        f"User={user.id} not owner: UTub.id={utub_id_member_of} | UTub.name={utub_name}",
         caplog.records,
     )
