@@ -210,6 +210,41 @@ describe("member row kebab menu (row-menu.ts)", () => {
     expect(document.activeElement).toBe(kebab.get(0));
   });
 
+  it("ArrowUp from the first menu item wraps focus to the last item", () => {
+    const row = buildOwnerRow(5);
+    $("#listMembers").append(row);
+    const kebab = row.find(".memberRowKebab");
+    const menu = row.find(".memberRowMenu");
+
+    // Opening lands focus on the first item (DD-15).
+    kebab.trigger("click");
+    const items = menu.find(".memberRowMenuItem");
+    expect(document.activeElement).toBe(items.first().get(0));
+
+    menu.trigger($.Event("keydown", { key: "ArrowUp" }));
+
+    // ARROW_UP from index 0 wraps to items.length - 1 (the last item).
+    expect(document.activeElement).toBe(items.last().get(0));
+  });
+
+  it("ArrowDown from the last menu item wraps focus back to the first item", () => {
+    const row = buildOwnerRow(5);
+    $("#listMembers").append(row);
+    const kebab = row.find(".memberRowKebab");
+    const menu = row.find(".memberRowMenu");
+
+    kebab.trigger("click");
+    const items = menu.find(".memberRowMenuItem");
+    // Land focus on the last item first.
+    (items.last().get(0) as HTMLElement).focus();
+    expect(document.activeElement).toBe(items.last().get(0));
+
+    menu.trigger($.Event("keydown", { key: "ArrowDown" }));
+
+    // ARROW_DOWN from the last index wraps modulo items.length back to 0.
+    expect(document.activeElement).toBe(items.first().get(0));
+  });
+
   it("MEMBER_ADD_OPENED closes the open menu (DD-14/DD-6)", () => {
     const row = buildOwnerRow(5);
     $("#listMembers").append(row);
