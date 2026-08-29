@@ -11,6 +11,7 @@ class MEMBER_ROUTES:
     CREATE_MEMBER = _MEMBERS + "create_member"
     CO_MEMBER_CANDIDATES = _MEMBERS + "get_co_member_candidates_route"
     MODIFY_MEMBER_ROLE = _MEMBERS + "modify_member_role"
+    TRANSFER_UTUB_OWNERSHIP = _MEMBERS + "transfer_utub_ownership"
 
 
 class SPLASH_ROUTES:
@@ -166,6 +167,7 @@ class API_V1_ROUTES:
     REMOVE_MEMBER = _API_V1 + "api_v1_remove_member"
     CO_MEMBER_CANDIDATES = _API_V1 + "api_v1_get_co_member_candidates"
     MODIFY_MEMBER_ROLE = _API_V1 + "api_v1_modify_member_role"
+    TRANSFER_UTUB_OWNERSHIP = _API_V1 + "api_v1_transfer_utub_ownership"
     # URL routes
     CREATE_URL = _API_V1 + "api_v1_create_url"
     GET_URL = _API_V1 + "api_v1_get_url"

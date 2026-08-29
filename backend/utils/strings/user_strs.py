@@ -16,6 +16,7 @@ SESSION_ISSUED_AT_KEY = "session_issued_at"
 MEMBER_REMOVED = "Member removed."
 MEMBER_ADDED = "Member added."
 MEMBER_ROLE_MODIFIED = "Member role updated."
+OWNERSHIP_TRANSFERRED = "UTub ownership transferred."
 MEMBER_ID_ADDED = "userID"
 MEMBER_ID_REMOVED = MEMBER_ID_ADDED
 USER_REGISTERED = "User registered."
@@ -130,6 +131,7 @@ class MEMBER_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     MEMBER_REMOVED = MEMBER_REMOVED
     MEMBER_ADDED = MEMBER_ADDED
     MEMBER_ROLE_MODIFIED = MEMBER_ROLE_MODIFIED
+    OWNERSHIP_TRANSFERRED = OWNERSHIP_TRANSFERRED
     MEMBER_ID_REMOVED = MEMBER_ID_REMOVED
     MEMBER_ID_ADDED = MEMBER_ID_ADDED
     USER_REGISTERED = USER_REGISTERED
@@ -159,6 +161,12 @@ CANNOT_MODIFY_OWNER_ROLE = "Cannot change the UTub owner's role."
 # orphaning UTub ownership (Utubs.utub_creator pointing at a deleted membership).
 # Distinct from CREATOR_CANNOT_REMOVE_THEMSELF (400, owner removing self).
 CANNOT_REMOVE_OWNER = "The UTub owner cannot be removed."
+# Generic 400 error_message for the transfer-ownership endpoint (invalid/missing
+# `new_owner_id` body). Mirrors the UNABLE_TO_MODIFY_MEMBER_ROLE pattern.
+UNABLE_TO_TRANSFER_OWNERSHIP = "Unable to transfer ownership of this UTub."
+# Guard copy (400) returned by the transfer-ownership endpoint when the target
+# member is already the UTub owner (a no-op transfer to self).
+TARGET_ALREADY_OWNER = "That member is already the UTub owner."
 # Per-user per-day add-member cap copy. Fail-open anti-abuse counter that bounds
 # username-oracle probing; not a security boundary. Mirrors
 # USERNAME_CHANGE_RATE_LIMITED.
@@ -265,4 +273,6 @@ class MEMBER_FAILURE(FAILURE_GENERAL):
     UNABLE_TO_MODIFY_MEMBER_ROLE = UNABLE_TO_MODIFY_MEMBER_ROLE
     CANNOT_MODIFY_OWNER_ROLE = CANNOT_MODIFY_OWNER_ROLE
     CANNOT_REMOVE_OWNER = CANNOT_REMOVE_OWNER
+    UNABLE_TO_TRANSFER_OWNERSHIP = UNABLE_TO_TRANSFER_OWNERSHIP
+    TARGET_ALREADY_OWNER = TARGET_ALREADY_OWNER
     MEMBER_ADD_RATE_LIMITED = MEMBER_ADD_RATE_LIMITED

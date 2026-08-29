@@ -13,6 +13,8 @@ IS_CO_CREATOR = "isCoCreator"
 IS_LOCKED = "isLocked"
 MEMBERS = "members"
 MEMBER_ROLE = "memberRole"
+NEW_OWNER = "newOwner"
+PREVIOUS_OWNER = "previousOwner"
 SHARED_UTUB_COUNT = "sharedUtubCount"
 NAME = "name"
 PASSWORD = "password"
@@ -79,6 +81,8 @@ class MODELS:
     DESCRIPTION = DESCRIPTION
     MEMBERS = MEMBERS
     MEMBER_ROLE = MEMBER_ROLE
+    NEW_OWNER = NEW_OWNER
+    PREVIOUS_OWNER = PREVIOUS_OWNER
     SHARED_UTUB_COUNT = SHARED_UTUB_COUNT
     URLS = URLS
     TAGS = TAGS

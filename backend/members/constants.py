@@ -55,3 +55,5 @@ class UTubMembersErrorCodes(IntEnum):
     INVALID_FORM_INPUT = 2
     UTUB_IS_LOCKED = 3
     CANNOT_MODIFY_OWNER = 4
+    TARGET_NOT_A_MEMBER = 5
+    TARGET_ALREADY_OWNER = 6

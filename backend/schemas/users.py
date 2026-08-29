@@ -128,6 +128,28 @@ class MemberModifiedResponseSchema(BaseSchema):
     )
 
 
+class OwnershipTransferredResponseSchema(BaseSchema):
+    """Response for the transfer-ownership endpoint (web + /api/v1 twin).
+
+    Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
+    (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
+    the client can update both role displays without a reload.
+    """
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub whose ownership was transferred",
+    )
+    new_owner: UtubMemberSchema = Field(
+        alias=M.NEW_OWNER,
+        description="The promoted member, now CREATOR",
+    )
+    previous_owner: UtubMemberSchema = Field(
+        alias=M.PREVIOUS_OWNER,
+        description="The demoted member, now CO_CREATOR",
+    )
+
+
 class ChangeUsernameResponseSchema(BaseSchema):
     """Response for the authenticated change-username endpoint.
 
