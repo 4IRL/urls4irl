@@ -12,7 +12,7 @@ import { isUtubLockedHandled } from "../../utub-locked.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { getUTubInfo } from "../../utubs/selectors.js";
 import { getAllUTubs } from "../../utubs/utils.js";
-import { transferOwnershipShowModal } from "../transfer.js";
+import { beginTransferFlow, showTransferConfirmView } from "../transfer.js";
 
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -83,13 +83,26 @@ vi.mock("../../../lib/event-bus.js", async () => {
 
 const $ = window.jQuery;
 
+// The dedicated transfer modal skeleton (mirrors modals/transferOwnerModal.html)
+// plus the left-deck / header targets the reconciliation + focus paths touch.
 const TRANSFER_HTML = `
-  <div id="confirmModal">
-    <div id="confirmModalTitle"></div>
-    <div id="confirmModalBody"></div>
-    <button id="modalDismiss"></button>
-    <button id="modalSubmit"></button>
-    <div id="modalRedirect"></div>
+  <div class="modal fade" id="transferOwnerModal">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 id="transferOwnerModalTitle" class="modal-title"></h4>
+        </div>
+        <div class="modal-body">
+          <div id="transferOwnerPickView"></div>
+          <div id="transferOwnerConfirmView" class="hidden"></div>
+        </div>
+        <div class="modal-footer">
+          <div id="transferOwnerFooterMsg" class="transferPickerMsg"></div>
+          <button id="transferOwnerCancel" type="button" class="btn btn-secondary"></button>
+          <button id="transferOwnerSubmit" type="button" class="btn btn-success" disabled></button>
+        </div>
+      </div>
+    </div>
   </div>
   <h2 id="MemberDeckHeader" tabindex="-1">Members</h2>
   <button id="memberBtnTransferOwner"></button>
@@ -111,6 +124,20 @@ function installModalStub(): void {
   ($.fn as unknown as Record<string, unknown>).modal = function (this: JQuery) {
     return this;
   };
+}
+
+// Open the modal flow (pick view is rendered by transfer-picker.ts in real use;
+// here we drive transfer.ts directly) then advance it to the confirm view for
+// user id 5.
+function openConfirm(
+  opener: HTMLElement | string = "#memberBtnTransferOwner",
+): void {
+  beginTransferFlow(opener);
+  showTransferConfirmView({
+    newOwnerId: 5,
+    newOwnerUsername: "newowner",
+    utubID: 1,
+  });
 }
 
 // The acting user (id 1) after handing ownership to user 5: demoted to
@@ -180,7 +207,7 @@ function mockAjaxFailure(props: Record<string, unknown>): void {
 const flush = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0));
 
-describe("transferOwnership — confirm + PATCH + reconciliation", () => {
+describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
   beforeEach(() => {
     document.body.innerHTML = TRANSFER_HTML;
     vi.clearAllMocks();
@@ -194,16 +221,40 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
     vi.mocked(getAllUTubs).mockResolvedValue(transferredSummaryList() as never);
   });
 
-  it("PATCHes the endpoint, reconciles both decks in order, announces, then focuses the header on modal close", async () => {
-    mockAjaxSuccess(SUCCESS_RESPONSE);
-
-    transferOwnershipShowModal({
+  it("showTransferConfirmView swaps the pick view for the warning confirm view + retitles + wires submit", () => {
+    beginTransferFlow("#memberBtnTransferOwner");
+    showTransferConfirmView({
       newOwnerId: 5,
       newOwnerUsername: "newowner",
       utubID: 1,
-      opener: "#memberBtnTransferOwner",
     });
-    $("#modalSubmit").trigger("click");
+
+    expect($("#transferOwnerPickView").hasClass("hidden")).toBe(true);
+    expect($("#transferOwnerConfirmView").hasClass("hidden")).toBe(false);
+    expect($("#transferOwnerConfirmView").text()).toBe(
+      APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_WARNING.replace(
+        "{{ username }}",
+        "newowner",
+      ),
+    );
+    expect($("#transferOwnerModalTitle").text()).toBe(
+      APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_TITLE,
+    );
+    expect($("#transferOwnerSubmit").text()).toBe(
+      APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_SUBMIT.replace(
+        "{{ username }}",
+        "newowner",
+      ),
+    );
+    expect($("#transferOwnerSubmit").prop("disabled")).toBe(false);
+    expect($("#transferOwnerFooterMsg").text()).toBe("");
+  });
+
+  it("PATCHes the endpoint, reconciles both decks in order, announces, then focuses the header on modal close", async () => {
+    mockAjaxSuccess(SUCCESS_RESPONSE);
+
+    openConfirm();
+    $("#transferOwnerSubmit").trigger("click");
 
     // PATCH shape (sync).
     expect(vi.mocked(ajaxCall)).toHaveBeenLastCalledWith(
@@ -223,7 +274,7 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
     // Let the sequenced reconciliation promises resolve.
     await flush();
 
-    // DD-13 sequencing: the select-rebuild fetch resolves strictly BEFORE the
+    // Sequencing: the select-rebuild fetch resolves strictly BEFORE the
     // left-deck summary refetch is invoked.
     expect(vi.mocked(getUTubInfo).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(getAllUTubs).mock.invocationCallOrder[0],
@@ -232,18 +283,18 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
     // Left UTub-deck selector rebuilt from the summary list — its role icon now
     // reflects the demoted (co-owner) role at the rendered-DOM level.
     expect($(`.UTubSelector[utubid="1"] svg.bi-diamond-half`).length).toBe(1);
-    // DD-9: the .active class re-add survives buildUTubDeck's rebuild.
+    // The .active class re-add survives buildUTubDeck's rebuild.
     expect($(`.UTubSelector[utubid="1"]`).hasClass("active")).toBe(true);
 
-    // DD-13: the final setUTubDeckOnUTubSelected re-call ran last with the new
+    // The final setUTubDeckOnUTubSelected re-call ran last with the new
     // (demoted) role — owner Delete gone, member Leave shown.
     expect($("#utubBtnDelete").hasClass("hidden")).toBe(true);
     expect($("#memberSelfBtnDelete").hasClass("visible")).toBe(true);
     expect(getState().isCurrentUserOwner).toBe(false);
 
-    // Deferred focus (DD-12): only on the modal's own close event, branching on
+    // Deferred focus: only on the modal's own close event, branching on
     // _transferSucceeded — not _transferConfirmed.
-    $("#confirmModal").trigger("hidden.bs.modal");
+    $("#transferOwnerModal").trigger("hidden.bs.modal");
     expect(document.activeElement).toBe(
       document.getElementById("MemberDeckHeader"),
     );
@@ -257,13 +308,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
       mockAjaxSuccess(SUCCESS_RESPONSE);
       vi.mocked(getUTubInfo).mockRejectedValueOnce(new Error("boom"));
 
-      transferOwnershipShowModal({
-        newOwnerId: 5,
-        newOwnerUsername: "newowner",
-        utubID: 1,
-        opener: "#memberBtnTransferOwner",
-      });
-      $("#modalSubmit").trigger("click");
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
       await flush();
 
       expect(assignSpy).toHaveBeenCalledWith(APP_CONFIG.routes.errorPage);
@@ -280,13 +326,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
       mockAjaxSuccess(SUCCESS_RESPONSE);
       vi.mocked(getAllUTubs).mockRejectedValueOnce(new Error("boom") as never);
 
-      transferOwnershipShowModal({
-        newOwnerId: 5,
-        newOwnerUsername: "newowner",
-        utubID: 1,
-        opener: "#memberBtnTransferOwner",
-      });
-      $("#modalSubmit").trigger("click");
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
       await flush();
 
       expect(assignSpy).toHaveBeenCalledWith(APP_CONFIG.routes.errorPage);
@@ -295,21 +336,21 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
     }
   });
 
-  it("emits the shown + confirmed UI metrics", async () => {
+  it("emits the shown (on begin) + confirmed (on submit) UI metrics", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
     mockAjaxSuccess(SUCCESS_RESPONSE);
 
-    transferOwnershipShowModal({
-      newOwnerId: 5,
-      newOwnerUsername: "newowner",
-      utubID: 1,
-      opener: "#memberBtnTransferOwner",
-    });
+    beginTransferFlow("#memberBtnTransferOwner");
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_SHOWN,
     });
 
-    $("#modalSubmit").trigger("click");
+    showTransferConfirmView({
+      newOwnerId: 5,
+      newOwnerUsername: "newowner",
+      utubID: 1,
+    });
+    $("#transferOwnerSubmit").trigger("click");
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CONFIRMED,
     });
@@ -321,14 +362,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
       "memberBtnTransferOwner",
     ) as HTMLElement;
 
-    transferOwnershipShowModal({
-      newOwnerId: 5,
-      newOwnerUsername: "newowner",
-      utubID: 1,
-      opener: openerEl,
-    });
-    $("#modalDismiss").trigger("click");
-    $("#confirmModal").trigger("hidden.bs.modal");
+    beginTransferFlow(openerEl);
+    $("#transferOwnerModal").trigger("hidden.bs.modal");
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL,
@@ -337,46 +372,29 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
   });
 
   it("on a plain dismiss: restores focus to a selector-string opener", () => {
-    transferOwnershipShowModal({
-      newOwnerId: 5,
-      newOwnerUsername: "newowner",
-      utubID: 1,
-      opener: "#memberBtnTransferOwner",
-    });
-    $("#confirmModal").trigger("hidden.bs.modal");
+    beginTransferFlow("#memberBtnTransferOwner");
+    $("#transferOwnerModal").trigger("hidden.bs.modal");
 
     expect(document.activeElement).toBe(
       document.getElementById("memberBtnTransferOwner"),
     );
   });
 
-  it("DD-14: a later unrelated close of the shared modal is inert (flags reset + handler unbound)", async () => {
+  it("a close AFTER a confirmed submit does not fire a spurious CANCEL", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
+    mockAjaxSuccess(SUCCESS_RESPONSE);
 
-    // First: a genuine cancel of the transfer modal fires exactly one CANCEL.
-    transferOwnershipShowModal({
-      newOwnerId: 5,
-      newOwnerUsername: "newowner",
-      utubID: 1,
-      opener: "#memberBtnTransferOwner",
-    });
-    $("#confirmModal").trigger("hidden.bs.modal");
-    expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL,
-    });
+    openConfirm();
+    $("#transferOwnerSubmit").trigger("click");
+    await flush();
 
-    // Simulate an unrelated later close (role.ts/delete.ts) of the shared modal.
     vi.mocked(emit).mockClear();
-    (document.getElementById("sentinelFocus") as HTMLElement).focus();
-    $("#confirmModal").trigger("hidden.bs.modal");
+    // The success path already hid the modal; simulate the close completing.
+    $("#transferOwnerModal").trigger("hidden.bs.modal");
 
-    // No second CANCEL, no header focus grab — the handler unbound itself.
     expect(emit).not.toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL,
     });
-    expect(document.activeElement).toBe(
-      document.getElementById("sentinelFocus"),
-    );
   });
 
   it("surfaces a 400 TARGET_ALREADY_OWNER message assertively without redirecting", () => {
@@ -389,13 +407,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
         responseJSON: { message: "That member already owns this UTub." },
       });
 
-      transferOwnershipShowModal({
-        newOwnerId: 5,
-        newOwnerUsername: "newowner",
-        utubID: 1,
-        opener: "#memberBtnTransferOwner",
-      });
-      $("#modalSubmit").trigger("click");
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
 
       expect($("#MemberRowActionAnnouncement").attr("aria-live")).toBe(
         "assertive",
@@ -404,7 +417,7 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
         "That member already owns this UTub.",
       );
       expect(assignSpy).not.toHaveBeenCalled();
-      expect($("#modalSubmit").prop("disabled")).toBe(false);
+      expect($("#transferOwnerSubmit").prop("disabled")).toBe(false);
     } finally {
       assignSpy.mockRestore();
     }
@@ -420,13 +433,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
         responseJSON: { message: "That member is not in this UTub." },
       });
 
-      transferOwnershipShowModal({
-        newOwnerId: 5,
-        newOwnerUsername: "newowner",
-        utubID: 1,
-        opener: "#memberBtnTransferOwner",
-      });
-      $("#modalSubmit").trigger("click");
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
 
       expect($("#MemberRowActionAnnouncement").text()).toBe(
         "That member is not in this UTub.",
@@ -444,13 +452,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
       responseText: `<div id="csrfReload">reload</div>`,
     });
 
-    transferOwnershipShowModal({
-      newOwnerId: 5,
-      newOwnerUsername: "newowner",
-      utubID: 1,
-      opener: "#memberBtnTransferOwner",
-    });
-    $("#modalSubmit").trigger("click");
+    openConfirm();
+    $("#transferOwnerSubmit").trigger("click");
 
     expect($("#csrfReload").length).toBe(1);
   });
@@ -463,13 +466,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
       vi.mocked(is429Handled).mockReturnValue(true);
       mockAjaxFailure({ status: 429 });
 
-      transferOwnershipShowModal({
-        newOwnerId: 5,
-        newOwnerUsername: "newowner",
-        utubID: 1,
-        opener: "#memberBtnTransferOwner",
-      });
-      $("#modalSubmit").trigger("click");
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
 
       expect($("#MemberRowActionAnnouncement").text()).toBe("");
       expect(assignSpy).not.toHaveBeenCalled();
@@ -486,13 +484,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
       vi.mocked(isUtubLockedHandled).mockReturnValue(true);
       mockAjaxFailure({ status: 403 });
 
-      transferOwnershipShowModal({
-        newOwnerId: 5,
-        newOwnerUsername: "newowner",
-        utubID: 1,
-        opener: "#memberBtnTransferOwner",
-      });
-      $("#modalSubmit").trigger("click");
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
 
       expect($("#MemberRowActionAnnouncement").text()).toBe("");
       expect(assignSpy).not.toHaveBeenCalled();
@@ -508,13 +501,8 @@ describe("transferOwnership — confirm + PATCH + reconciliation", () => {
     try {
       mockAjaxFailure({ status: 500 });
 
-      transferOwnershipShowModal({
-        newOwnerId: 5,
-        newOwnerUsername: "newowner",
-        utubID: 1,
-        opener: "#memberBtnTransferOwner",
-      });
-      $("#modalSubmit").trigger("click");
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
 
       expect(assignSpy).toHaveBeenCalledWith(APP_CONFIG.routes.errorPage);
     } finally {

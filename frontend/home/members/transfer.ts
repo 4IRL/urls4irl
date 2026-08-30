@@ -11,120 +11,125 @@ import { debug } from "../../lib/debug.js";
 import { buildSelectedUTub, getUTubInfo } from "../utubs/selectors.js";
 import { buildUTubDeck, setUTubDeckOnUTubSelected } from "../utubs/deck.js";
 import { getAllUTubs } from "../utubs/utils.js";
-import { closeTransferPicker } from "./transfer-picker.js";
 
 const log = debug("members");
+
+const MODAL_SELECTOR = "#transferOwnerModal";
+const PICK_VIEW_SELECTOR = "#transferOwnerPickView";
+const CONFIRM_VIEW_SELECTOR = "#transferOwnerConfirmView";
+const TITLE_SELECTOR = "#transferOwnerModalTitle";
+const FOOTER_MSG_SELECTOR = "#transferOwnerFooterMsg";
+const CANCEL_BTN_SELECTOR = "#transferOwnerCancel";
+const SUBMIT_BTN_SELECTOR = "#transferOwnerSubmit";
 
 export type OwnershipTransferredResponse =
   SuccessResponse<"transferUtubOwnership">;
 
-// Ownership hand-off confirm-and-commit core. Mirrors role.ts's confirm-modal +
-// AJAX shape, targeting PATCH /utubs/<id>/owner with { new_owner_id }. A transfer
-// flips owner-gated flags across the whole app plus moves the owner/member badge,
-// which no in-place diff helper expresses, so the success path re-runs the full
-// UTub-select build + left-deck summary refetch rather than a local patch.
+// Ownership hand-off lifecycle + confirm view + commit core. The transfer now
+// lives in a DEDICATED modal (#transferOwnerModal) with an inline pick→confirm
+// transition: transfer-picker.ts renders the pick view + calls beginTransferFlow
+// to open the modal; onContinue → showTransferConfirmView swaps the same modal to
+// the confirm view; the confirm submit commits. Targets PATCH /utubs/<id>/owner
+// with { new_owner_id }. A transfer flips owner-gated flags across the whole app
+// plus moves the owner/member badge, which no in-place diff helper expresses, so
+// the success path re-runs the full UTub-select build + left-deck summary refetch
+// rather than a local patch.
 
-// "Was submit clicked" — used only to suppress the cancel metric after a real
-// confirm-click (mirrors delete.ts:32); never drives focus.
+// "Was the confirm submit clicked" — used only to suppress the cancel metric
+// after a real confirm-click (mirrors delete.ts); never drives focus.
 let _transferConfirmed: boolean = false;
-// "The PATCH actually succeeded" (DD-12) — the accurate signal the deferred
+// "The PATCH actually succeeded" — the accurate signal the deferred
 // hidden.bs.modal handler branches on for the focus-to-#MemberDeckHeader move.
 let _transferSucceeded: boolean = false;
 // The element/selector focus returns to if the modal is dismissed without
-// confirming (DD-15).
+// confirming (returns to the trigger that opened the flow).
 let _transferOpener: HTMLElement | string | null = null;
 
-// Show the confirm modal for transferring ownership to the chosen member. The
-// picker (Step 3) supplies the target at runtime; called directly with a fixed
-// target in tests.
-export function transferOwnershipShowModal({
-  newOwnerId,
-  newOwnerUsername,
-  utubID,
-  opener,
-}: {
-  newOwnerId: number;
-  newOwnerUsername: string;
-  utubID: number;
-  opener: HTMLElement | string;
-}): void {
+/**
+ * Open the dedicated transfer modal (already rendered in its PICK view by
+ * transfer-picker.ts). Resets the confirm/success flags, records the opener for
+ * focus-return-on-cancel, emits the SHOWN metric, arms the single close handler,
+ * and shows the modal. The modal is DEDICATED to this flow, so the close handler
+ * is rebound cleanly on every open (offAndOn) with no shared-modal / self-off
+ * complexity.
+ */
+export function beginTransferFlow(opener: HTMLElement | string): void {
   _transferConfirmed = false;
   _transferSucceeded = false;
   _transferOpener = opener;
 
   emit({ event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_SHOWN });
 
-  $("#confirmModalTitle").text(APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_TITLE);
-  $("#confirmModalBody").text(
-    APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_WARNING.replace(
-      "{{ username }}",
-      newOwnerUsername,
-    ),
-  );
+  // Close handler (fires for any dismissal path). Branches on the accurate
+  // PATCH-succeeded signal — not the raw confirm-click flag — so a confirm that
+  // then FAILED still restores focus to the opener rather than the deck header.
+  $(MODAL_SELECTOR).offAndOn("hidden.bs.modal.transferOwner", function () {
+    if (_transferSucceeded) {
+      $("#MemberDeckHeader").attr("tabindex", "-1").trigger("focus");
+    } else if (!_transferConfirmed) {
+      emit({ event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL });
+      // A union of string | HTMLElement matches no single jQuery `$()` overload,
+      // so narrow before selecting (behavior identical — jQuery accepts either).
+      if (typeof _transferOpener === "string") {
+        $(_transferOpener).trigger("focus");
+      } else if (_transferOpener) {
+        $(_transferOpener).trigger("focus");
+      }
+    }
+    _transferConfirmed = false;
+    _transferSucceeded = false;
+  });
 
-  $("#modalDismiss")
-    .removeClass()
-    .addClass("btn btn-secondary")
-    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
-      event.preventDefault();
-      $("#confirmModal").modal("hide");
-    })
-    .text("Cancel");
+  $(MODAL_SELECTOR).modal("show");
+}
 
-  $("#modalSubmit")
-    .removeClass()
-    .addClass("btn btn-success")
+/**
+ * Swap the SAME modal from the pick view to the confirm view for the chosen
+ * member: show the warning body, retitle, clear the pick hint, and rebind the
+ * footer Cancel / Transfer buttons for the commit. The modal is NOT closed —
+ * this is the inline pick→confirm transition.
+ */
+export function showTransferConfirmView({
+  newOwnerId,
+  newOwnerUsername,
+  utubID,
+}: {
+  newOwnerId: number;
+  newOwnerUsername: string;
+  utubID: number;
+}): void {
+  $(PICK_VIEW_SELECTOR).addClass("hidden");
+  $(CONFIRM_VIEW_SELECTOR)
+    .removeClass("hidden")
+    .text(
+      APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_WARNING.replace(
+        "{{ username }}",
+        newOwnerUsername,
+      ),
+    );
+
+  $(TITLE_SELECTOR).text(APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_TITLE);
+  $(FOOTER_MSG_SELECTOR).text("");
+
+  $(CANCEL_BTN_SELECTOR)
+    .text("Cancel")
+    .offAndOn("click", function () {
+      $(MODAL_SELECTOR).modal("hide");
+    });
+
+  $(SUBMIT_BTN_SELECTOR)
+    .prop("disabled", false)
     .text(
       APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_SUBMIT.replace(
         "{{ username }}",
         newOwnerUsername,
       ),
     )
-    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
-      event.preventDefault();
+    .offAndOn("click", function () {
       _transferConfirmed = true;
       emit({ event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CONFIRMED });
       transferOwnership({ newOwnerId, utubID });
     });
-
-  $("#modalSubmit").prop("disabled", false);
-  $("#confirmModal").modal("show");
-  $("#modalRedirect").hide();
-
-  // Deferred focus/cancel-metric handling (DD-12/DD-13/DD-14/DD-15). Bound via
-  // offAndOnExact (re-bound cleanly on every reopen, never stacked) under the
-  // distinct .transferOwner namespace so it can't clobber role.ts's/delete.ts's
-  // own handlers on this shared modal.
-  //
-  // DD-14: this handler must act EXACTLY ONCE per transfer open — for this
-  // flow's own close — and be inert for any later close of the shared
-  // #confirmModal driven by an unrelated flow (role.ts/delete.ts). Resetting the
-  // flags alone is insufficient: after a reset both flags are `false`, which
-  // re-arms the `!_transferConfirmed` cancel branch and would emit a spurious
-  // transfer-cancel (and steal focus to the stale opener) on the next unrelated
-  // close. So after handling this flow's close, we both reset the flags AND
-  // unbind our own namespace; the next transferOwnershipShowModal re-binds it.
-  $("#confirmModal").offAndOnExact(
-    "hidden.bs.modal.transferOwner",
-    function () {
-      if (_transferSucceeded) {
-        $("#MemberDeckHeader").attr("tabindex", "-1").trigger("focus");
-      } else if (!_transferConfirmed) {
-        emit({ event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL });
-        // A union of string | HTMLElement matches no single jQuery `$()`
-        // overload, so narrow before selecting (behavior identical — jQuery
-        // accepts either a selector string or an element).
-        if (typeof _transferOpener === "string") {
-          $(_transferOpener).trigger("focus");
-        } else if (_transferOpener) {
-          $(_transferOpener).trigger("focus");
-        }
-      }
-      _transferConfirmed = false;
-      _transferSucceeded = false;
-      $("#confirmModal").off("hidden.bs.modal.transferOwner");
-    },
-  );
 }
 
 // Handle the PATCH request/response after confirmation. CSRF is auto-attached to
@@ -137,7 +142,7 @@ export function transferOwnership({
   utubID: number;
 }): void {
   // Double-submit guard (mirrors role/remove).
-  $("#modalSubmit").prop("disabled", true);
+  $(SUBMIT_BTN_SELECTOR).prop("disabled", true);
 
   log("transferOwnership submitted", { newOwnerId, utubID });
 
@@ -165,17 +170,16 @@ export function transferOwnership({
 function transferOwnershipSuccess(
   response: OwnershipTransferredResponse,
 ): void {
-  // (1) Mark the PATCH as succeeded (DD-12) so the already-armed
-  // hidden.bs.modal.transferOwner handler takes the focus-to-header branch once
-  // the close transition completes. Then hide the modal + tear down the picker
-  // (safe no-op if already closed).
+  // (1) Mark the PATCH as succeeded so the already-armed hidden.bs.modal
+  // .transferOwner handler takes the focus-to-header branch once the close
+  // transition completes. Then hide the modal (its own hidden.bs.modal
+  // .transferPicker handler tears the picker state down — no explicit call needed).
   _transferSucceeded = true;
-  $("#confirmModal").modal("hide");
-  closeTransferPicker();
+  $(MODAL_SELECTOR).modal("hide");
 
   const newOwnerUsername = response.newOwner.username;
 
-  // (2) Sequenced full reconciliation (DD-13): resolve the select-rebuild FIRST
+  // (2) Sequenced full reconciliation: resolve the select-rebuild FIRST
   // (re-derives every owner-gated flag + moves the owner badge + re-emits
   // UTUB_SELECTED), then chain the left-deck summary refetch (the only source
   // that re-renders the demoted user's left-deck role icon — buildSelectedUTub
@@ -215,11 +219,11 @@ function transferOwnershipSuccess(
     );
 
   // (4) Focus management is deferred to hidden.bs.modal.transferOwner (armed in
-  // …ShowModal); do NOT trigger focus here synchronously (DD-12/DD-13).
+  // beginTransferFlow); do NOT trigger focus here synchronously.
 }
 
 function transferOwnershipFail(xhr: JQuery.jqXHR): void {
-  $("#modalSubmit").prop("disabled", false);
+  $(SUBMIT_BTN_SELECTOR).prop("disabled", false);
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
 

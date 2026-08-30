@@ -39,6 +39,7 @@
     {% elif current_user.is_authenticated and current_user.email_validated %}
 
     {% include 'modals/homeModalBase.html' %}
+    {% include 'modals/transferOwnerModal.html' %}
 
     {% else %}
 

@@ -17,6 +17,7 @@ from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
@@ -426,44 +427,75 @@ def force_role_change_400_response(*, page: Page, message: str) -> None:
 
 
 def open_transfer_ownership_picker(*, page: Page) -> None:
-    """Open the standalone ownership-transfer picker via the members-deck header.
+    """Open the dedicated ownership-transfer modal via the members-deck header.
 
-    Clicks the owner-only #memberBtnTransferOwner trigger, then waits for the
-    single-select picker's listbox to render. Only a literal owner of a UTub with
-    >= 1 other member sees the trigger, so callers must seed that state first.
+    Clicks the owner-only #memberBtnTransferOwner trigger, waits for
+    #transferOwnerModal to be visible, gates on its fade-in settling (opacity==1)
+    so a subsequent click can't be dropped mid show-transition (mirrors
+    `_submit_confirm_modal`/`wait_until_css_property`), then waits for the PICK
+    view's listbox to render. Only a literal owner of a UTub with >= 1 other member
+    sees the trigger, so callers must seed that state first.
 
     Args:
         page: Playwright Page open to a UTub the current user owns, with the
             members deck showing at least one other member.
     """
     wait_then_click_element(page=page, css_selector=HPL.MEMBER_BTN_TRANSFER_OWNER)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.TRANSFER_OWNER_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
 
 
-def pick_new_owner(*, page: Page, member_id: int) -> None:
-    """Select a member in the open transfer picker and confirm to open the modal.
+def stage_transfer_confirm_view(*, page: Page, member_id: int) -> None:
+    """Pick a member in the open modal's PICK view and advance to the CONFIRM view.
 
-    Clicks the picker option whose `memberid` matches `member_id` (single-select
-    stages exactly that row and enables the footer confirm button), then clicks
-    the footer "Transfer ownership" confirm button, which hands the chosen member
-    to `transferOwnershipShowModal` and opens the shared #confirmModal. The caller
-    then submits that modal (e.g. via the opacity-gated `_submit_confirm_modal`).
+    Clicks the pick option whose `memberid` matches `member_id` (single-select
+    stages exactly that row and enables the footer #transferOwnerSubmit button),
+    then clicks Submit once — the "Continue" action that swaps the SAME modal to
+    its confirm view (it does NOT commit the PATCH). Waits for the confirm view to
+    be visible and the pick view to be hidden. Callers that want to intercept the
+    PATCH (429/CSRF/500/400 sad paths) install their route here, then click
+    #transferOwnerSubmit again themselves to commit.
 
     Args:
-        page: Playwright Page with the transfer picker already open.
+        page: Playwright Page with the transfer modal already open (PICK view).
         member_id: The user id of the member to transfer ownership to.
     """
     option = page.locator(f'{HPL.TRANSFER_PICKER_OPTION}[memberid="{member_id}"]')
     expect(option).to_be_visible()
     option.click()
 
-    confirm_btn = page.locator(HPL.TRANSFER_PICKER_CONFIRM_BTN)
-    expect(confirm_btn).to_be_enabled()
-    confirm_btn.click()
+    submit_btn = page.locator(HPL.TRANSFER_OWNER_SUBMIT)
+    expect(submit_btn).to_be_enabled()
+    submit_btn.click()
 
-    # The picker's confirm button hands off to transferOwnershipShowModal, which
-    # opens the shared confirm modal — wait for it before the caller submits.
-    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+    # The inline pick→confirm transition swaps views in place (no modal close).
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.TRANSFER_OWNER_CONFIRM_VIEW
+    )
+    wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_PICK_VIEW)
+
+
+def pick_new_owner(*, page: Page, member_id: int) -> None:
+    """Full transfer: pick → Continue → commit the ownership PATCH.
+
+    Advances the modal to the confirm view via `stage_transfer_confirm_view`, then
+    clicks the relabeled #transferOwnerSubmit ("Transfer to <username>") a second
+    time to commit the PATCH (with the double-submit disable). Use this for the
+    happy path / delete-flow completion; use `stage_transfer_confirm_view` when the
+    test needs to intercept the PATCH before it fires.
+
+    Args:
+        page: Playwright Page with the transfer modal already open (PICK view).
+        member_id: The user id of the member to transfer ownership to.
+    """
+    stage_transfer_confirm_view(page=page, member_id=member_id)
+    wait_then_click_element(page=page, css_selector=HPL.TRANSFER_OWNER_SUBMIT)
 
 
 def force_transfer_400_response(*, page: Page, message: str) -> None:

@@ -410,20 +410,32 @@ class HomePageLocators(GenericPageLocator):
 
     # Standalone owner-only "Transfer ownership" trigger in the members-deck
     # header cluster (beside #memberBtnCreate). Starts hidden; shown by JS only
-    # for a literal owner with >= 1 other member. Opens the single-select
-    # transfer picker (built in members/deck.ts's setMemberDeckTransferOwnerBtn).
+    # for a literal owner with >= 1 other member. Opens the dedicated transfer
+    # modal (#transferOwnerModal) via the TRANSFER_PICKER_REQUESTED event bus
+    # (wired in members/deck.ts's setMemberDeckTransferOwnerBtn).
     MEMBER_BTN_TRANSFER_OWNER = "#memberBtnTransferOwner"
 
-    # Inline single-select ownership-transfer picker (transfer-picker.ts), mounted
-    # into #transferOwnerPickerMount below the members-deck header band. Modeled on
-    # the bulk-copy destination picker but single-select: each .transferPickerOption
-    # row carries a `memberid` attribute for id-scoped targeting.
-    TRANSFER_OWNER_PICKER_MOUNT = "#transferOwnerPickerMount"
+    # Dedicated Bootstrap ownership-transfer modal (#transferOwnerModal) with an
+    # inline pick→confirm transition (transfer.ts + transfer-picker.ts). The PICK
+    # view holds the filter input + a role=listbox of member options; the CONFIRM
+    # view holds the warning text (starts .hidden, shown after Continue). One shared
+    # footer: #transferOwnerCancel dismisses in BOTH views; #transferOwnerSubmit
+    # advances pick→confirm (Continue) then commits the PATCH (relabeled per view).
+    TRANSFER_OWNER_MODAL = "#transferOwnerModal"
+    TRANSFER_OWNER_MODAL_TITLE = "#transferOwnerModalTitle"
+    TRANSFER_OWNER_PICK_VIEW = "#transferOwnerPickView"
+    TRANSFER_OWNER_CONFIRM_VIEW = "#transferOwnerConfirmView"
+    TRANSFER_OWNER_SUBMIT = "#transferOwnerSubmit"
+    TRANSFER_OWNER_CANCEL = "#transferOwnerCancel"
+    TRANSFER_OWNER_FOOTER_MSG = "#transferOwnerFooterMsg"
+    # Bootstrap's shared modal backdrop element (appended to <body> on show). Used
+    # to assert the transfer modal inherently covers/blocks the deck behind it.
+    MODAL_BACKDROP = ".modal-backdrop"
+    # Pick-view listbox internals: each .transferPickerOption row carries a
+    # `memberid` attribute (id="transferPickerOption-<id>") for id-scoped targeting.
     TRANSFER_PICKER_LISTBOX = ".transferPickerListbox"
     TRANSFER_PICKER_OPTION = ".transferPickerOption"
     TRANSFER_PICKER_FILTER_INPUT = ".transferPickerFilterInput"
-    TRANSFER_PICKER_CONFIRM_BTN = ".transferPickerConfirmBtn"
-    TRANSFER_PICKER_CANCEL_BTN = ".transferPickerCancelBtn"
 
     # Add-member combobox (built in TS by member-combobox.ts; mounted into
     # #createMemberWrap on open). The legacy single #memberCreate input,

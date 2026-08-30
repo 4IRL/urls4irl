@@ -8,22 +8,27 @@ import { AppEvents, on } from "../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { HOME_FORM } from "../../types/metrics-dim-values.js";
 import { getState } from "../../store/app-store.js";
-import { isMobile } from "../mobile.js";
 import { makeUTubRoleIcon } from "../utubs/selectors.js";
-import { hideAndResetMemberCombobox } from "./member-combobox.js";
 import { roleLabelFor } from "./members.js";
 import { closeAllMemberRowMenus } from "./row-menu.js";
-import { closeMemberNameFilter } from "./search.js";
-import { transferOwnershipShowModal } from "./transfer.js";
+import { beginTransferFlow, showTransferConfirmView } from "./transfer.js";
 
 const log = debug("members");
 
-const PICKER_MOUNT_SELECTOR = "#transferOwnerPickerMount";
-const DECK_SELECTOR = "#MemberDeck";
-const PICKER_OPEN_CLASS = "transfer-picker-open";
-// The role="listbox" element is an INNER child of the mount (not the mount
-// itself) so the title, filter input, and footer can live inside the picker
-// without being invalid children of a listbox (mirrors bulk-copy.ts).
+// The transfer flow now lives in a DEDICATED Bootstrap modal (#transferOwnerModal)
+// with an inline pick→confirm transition. This module owns the OPEN trigger, the
+// PICK view rendering, and the single-select/roving/filter interaction; transfer.ts
+// owns the modal lifecycle, the CONFIRM view, and the PATCH commit.
+const MODAL_SELECTOR = "#transferOwnerModal";
+const PICK_VIEW_SELECTOR = "#transferOwnerPickView";
+const CONFIRM_VIEW_SELECTOR = "#transferOwnerConfirmView";
+const TITLE_SELECTOR = "#transferOwnerModalTitle";
+const FOOTER_MSG_SELECTOR = "#transferOwnerFooterMsg";
+const CANCEL_BTN_SELECTOR = "#transferOwnerCancel";
+const SUBMIT_BTN_SELECTOR = "#transferOwnerSubmit";
+// The role="listbox" element is an INNER child of the pick view (not the view
+// itself) so the filter input can live in the same view without being an invalid
+// child of the listbox (mirrors bulk-copy.ts).
 const LISTBOX_SELECTOR = ".transferPickerListbox";
 const NO_MATCHES_SELECTOR = ".transferPickerNoMatches";
 const OPTION_SELECTOR = '.transferPickerOption[role="option"]';
@@ -32,12 +37,6 @@ const OPTION_SELECTOR = '.transferPickerOption[role="option"]';
 // the filter's .hidden gate excludes a row.
 const ENABLED_OPTION_SELECTOR =
   '.transferPickerOption[role="option"]:not(.hidden)';
-const CONFIRM_BTN_SELECTOR = ".transferPickerConfirmBtn";
-const MESSAGE_SELECTOR = ".transferPickerMsg";
-// Namespaced document-level tap-outside listener (MOBILE ONLY). On mobile the
-// picker is a bottom-docked drawer, so a tap anywhere outside its mount closes
-// it. Namespaced so teardown removes exactly this listener.
-const OUTSIDE_TAP_NAMESPACE = "click.transferPickerOutside";
 
 // Funnel prefix icon for the filter — the SAME markup the app's deck search bars
 // use (and the bulk-copy filter), so the box reads as the same control. Trusted
@@ -53,13 +52,8 @@ const FILTER_ICON_HTML =
 // Single-select: the staged target member id (contrast bulk-copy's Set).
 let selectedMemberId: number | null = null;
 let transferPickerOpen = false;
-// The element/selector focus returns to when the picker closes (the trigger that
-// opened it — #memberBtnTransferOwner or, from the delete flow, #utubBtnDelete).
-let _openerRef: HTMLElement | string | null = null;
 let keydownListener: ((event: KeyboardEvent) => void) | null = null;
 let keyupListener: ((event: KeyboardEvent) => void) | null = null;
-// Pending deferred bind of the mobile tap-outside listener (see openTransferPicker).
-let outsideTapBindTimeoutID: ReturnType<typeof setTimeout> | null = null;
 // Bus subscriptions are process-wide (no rebind); guard against a repeat init.
 let _transferPickerInitialized = false;
 
@@ -67,7 +61,7 @@ function setTransferPickerOpen(open: boolean): void {
   transferPickerOpen = open;
 }
 
-/** Whether the transfer picker is currently mounted/open. */
+/** Whether the transfer picker is currently open. */
 export function isTransferPickerOpen(): boolean {
   return transferPickerOpen;
 }
@@ -76,122 +70,112 @@ export function isTransferPickerOpen(): boolean {
 
 /**
  * Wire the picker's event-bus subscriptions at home bootstrap: teardown on UTub
- * switch/delete, the delete-flow open trigger (TRANSFER_PICKER_REQUESTED), and
- * the reverse mutual-exclusion (DD-6) close when the add-member combobox or the
- * member-name filter opens. Idempotent — safe to call once from main.ts.
+ * switch/delete and the delete-flow open trigger (TRANSFER_PICKER_REQUESTED).
+ * Idempotent — safe to call once from main.ts.
  */
 export function initTransferPicker(): void {
   if (_transferPickerInitialized) return;
   _transferPickerInitialized = true;
 
-  // UTub switch / delete tears the picker down even if the user never closed it.
+  // UTub switch / delete tears the modal down even if the user never closed it.
   on(AppEvents.UTUB_SELECTED, () => closeTransferPicker());
   on(AppEvents.UTUB_DELETED, () => closeTransferPicker());
 
-  // Delete-flow entry point (Step 5): the "Transfer instead" button emits this
-  // with the delete trigger as the opener, so a cancel returns focus there.
+  // Delete-flow entry point: the "Transfer instead" button emits this with the
+  // delete trigger as the opener, so a cancel returns focus there.
   on(AppEvents.TRANSFER_PICKER_REQUESTED, ({ opener }) =>
     openTransferPicker(opener),
   );
-
-  // Mutual exclusion (DD-6), reverse direction: opening the add-member combobox
-  // or the member-name filter tears down an open picker (safe no-op if closed).
-  on(AppEvents.MEMBER_ADD_OPENED, () => closeTransferPicker());
-  on(AppEvents.MEMBER_FILTER_OPENED, () => closeTransferPicker());
 }
 
 // --- Open / close lifecycle ---------------------------------------------------
 
 /**
- * Open the single-select transfer picker for the active UTub: tear down any
- * conflicting deck surface (row menus, add-member combobox, member-name filter),
- * mark the deck open (suppresses the other member controls via CSS), render the
- * eligible-member listbox into the stable mount, and focus the first row. Stores
- * the opener so close/Escape/cancel returns focus to it. Re-entrant open is a
- * defined no-op.
+ * Open the transfer modal for the active UTub in its PICK state: render the
+ * eligible-member listbox into #transferOwnerPickView, wire the footer Cancel /
+ * Transfer buttons, arm a one-shot shown-focus handler, then hand off to
+ * transfer.ts's beginTransferFlow (which resets the confirm/success flags, emits
+ * the SHOWN metric, arms the hidden-close handler, and shows the modal). The
+ * modal backdrop inherently suppresses the deck — no cross-surface CSS is needed.
+ * Re-entrant open is a defined no-op.
  */
 export function openTransferPicker(opener: HTMLElement | string): void {
   if (transferPickerOpen) return;
 
   log("open transfer picker", { opener });
 
-  _openerRef = opener;
-  // A stray open kebab must not float over the picker.
+  // A stray open kebab must not linger under the modal.
   closeAllMemberRowMenus();
-  // Mutual exclusion (DD-6): tear down an open add-member combobox / member-name
-  // filter before the picker renders (mirrors showMemberCombobox's own forward
-  // closeMemberNameFilter() call).
-  hideAndResetMemberCombobox();
-  closeMemberNameFilter();
-
-  $(DECK_SELECTOR).addClass(PICKER_OPEN_CLASS);
 
   selectedMemberId = null;
+
+  // Render the pick view; ensure the confirm view is hidden + empty and the pick
+  // view is shown (a prior confirm-state leftover cannot survive a reopen).
+  $(CONFIRM_VIEW_SELECTOR).addClass("hidden").empty();
+  $(PICK_VIEW_SELECTOR).removeClass("hidden");
+  renderPickView();
+
+  $(TITLE_SELECTOR).text(APP_CONFIG.strings.TRANSFER_OWNER_PICKER_TITLE);
+  // Footer starts empty — the modal title already says "Transfer ownership to…",
+  // so a "select a member" hint here would be redundant. The footer only speaks
+  // up once a member is staged ("{username} will become the owner.").
+  $(FOOTER_MSG_SELECTOR).text("");
+
+  // Footer buttons (the modal's own, not rendered per-view). Cancel dismisses;
+  // Transfer stays disabled until a member is staged, then advances to confirm.
+  $(CANCEL_BTN_SELECTOR)
+    .text("Cancel")
+    .offAndOn("click", function () {
+      $(MODAL_SELECTOR).modal("hide");
+    });
+  $(SUBMIT_BTN_SELECTOR)
+    .text(APP_CONFIG.strings.TRANSFER_OWNER_SUBMIT)
+    .prop("disabled", true)
+    .offAndOn("click", function () {
+      onContinue();
+    });
+
   setTransferPickerOpen(true);
   setOpenForm(HOME_FORM.TRANSFER_OWNER);
 
-  $(PICKER_MOUNT_SELECTOR).removeClass("hidden");
-  renderPicker();
+  // Reset module state + tear down listeners/views when the modal closes (any
+  // path: Cancel, Escape, backdrop, or a successful transfer). Namespaced so it
+  // removes exactly this handler and the shown-focus one-shot on teardown.
+  $(MODAL_SELECTOR).on("hidden.bs.modal.transferPicker", function () {
+    setTransferPickerOpen(false);
+    selectedMemberId = null;
+    clearOpenForm();
+    detachKeyListeners();
+    $(PICK_VIEW_SELECTOR).empty();
+    $(CONFIRM_VIEW_SELECTOR).addClass("hidden").empty();
+    $(MODAL_SELECTOR).off(
+      "shown.bs.modal.transferOwnerFocus hidden.bs.modal.transferPicker",
+    );
+  });
 
-  // MOBILE ONLY: bottom-drawer, so a tap OUTSIDE the mount dismisses it. The bind
-  // is DEFERRED one tick so the click that opened the picker finishes bubbling to
-  // `document` BEFORE the listener attaches (otherwise it closes on open).
-  if (isMobile()) {
-    outsideTapBindTimeoutID = setTimeout(() => {
-      outsideTapBindTimeoutID = null;
-      $(document).on(OUTSIDE_TAP_NAMESPACE, handleOutsideTap);
-    }, 0);
-  }
+  // Focus the first enabled row (or the empty-state message) once the modal has
+  // finished its show transition — Bootstrap's own focus trap otherwise steals it.
+  $(MODAL_SELECTOR).offAndOn("shown.bs.modal.transferOwnerFocus", function () {
+    const firstRow = $(PICK_VIEW_SELECTOR).find(ENABLED_OPTION_SELECTOR)[0];
+    if (firstRow) {
+      setActiveRow(firstRow);
+    } else {
+      $(PICK_VIEW_SELECTOR).find(".transferPickerAllLocked")[0]?.focus();
+    }
+  });
+
+  // transfer.ts owns showing the modal + the flags + the SHOWN metric + the
+  // close (cancel-metric / focus-return) handler.
+  beginTransferFlow(opener);
 }
 
 /**
- * Tear down the picker: detach listeners, empty + hide the mount, drop the
- * deck-open class + open-form token + open flag, reset module state, and return
- * focus to the tracked opener (a selector string is resolved via jQuery, an
- * element is focused directly). Safe no-op when already closed.
+ * Close the transfer modal. State reset happens in the hidden.bs.modal.transferPicker
+ * handler armed in openTransferPicker. Safe no-op when already closed.
  */
 export function closeTransferPicker(): void {
   if (!transferPickerOpen) return;
-
-  detachKeyListeners();
-  // Tear down the mobile tap-outside listener: cancel a still-pending deferred
-  // bind AND remove any already-bound listener (idempotent on desktop).
-  if (outsideTapBindTimeoutID !== null) {
-    clearTimeout(outsideTapBindTimeoutID);
-    outsideTapBindTimeoutID = null;
-  }
-  $(document).off(OUTSIDE_TAP_NAMESPACE);
-
-  $(PICKER_MOUNT_SELECTOR)
-    .empty()
-    .addClass("hidden")
-    .removeAttr("role")
-    .removeAttr("aria-label");
-  $(DECK_SELECTOR).removeClass(PICKER_OPEN_CLASS);
-
-  clearOpenForm();
-  setTransferPickerOpen(false);
-  selectedMemberId = null;
-
-  const opener = _openerRef;
-  _openerRef = null;
-  if (typeof opener === "string") {
-    $(opener).trigger("focus");
-  } else if (opener) {
-    $(opener).trigger("focus");
-  }
-}
-
-/**
- * Document-level tap handler (MOBILE): a tap whose target is OUTSIDE the picker
- * mount closes the picker. A tap INSIDE the mount is ignored.
- */
-function handleOutsideTap(event: JQuery.TriggeredEvent): void {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) return;
-  if ($(target).closest(PICKER_MOUNT_SELECTOR).length === 0) {
-    closeTransferPicker();
-  }
+  $(MODAL_SELECTOR).modal("hide");
 }
 
 // --- Rendering ----------------------------------------------------------------
@@ -203,19 +187,15 @@ function eligibleMembers(): MemberItem[] {
 }
 
 /**
- * Build and mount the picker markup: a title, a filter input, an inner
- * role="listbox" of the eligible-member option rows (roving tabindex), a
- * no-matches message, and a footer (live-region hint, Cancel, Transfer). When
- * there are zero eligible members, an accessible empty-state message replaces the
- * rows (and the filter) and Transfer stays disabled.
+ * Build and mount the PICK view markup into #transferOwnerPickView: a filter
+ * input and an inner role="listbox" of the eligible-member option rows (roving
+ * tabindex) plus a no-matches message. When there are zero eligible members, an
+ * accessible empty-state message replaces the rows (and the filter) and Transfer
+ * stays disabled.
  */
-function renderPicker(): void {
-  const mount = $(PICKER_MOUNT_SELECTOR);
-  mount.empty().removeAttr("role").removeAttr("aria-label");
-
-  const title = $(document.createElement("div"))
-    .addClass("transferPickerTitle")
-    .text(APP_CONFIG.strings.TRANSFER_OWNER_PICKER_TITLE);
+function renderPickView(): void {
+  const view = $(PICK_VIEW_SELECTOR);
+  view.empty();
 
   const listbox = $(document.createElement("div")).addClass(
     "transferPickerListbox",
@@ -230,15 +210,13 @@ function renderPicker(): void {
   if (members.length === 0) {
     // No other members — nothing to transfer to. Announced message, no filter,
     // Transfer stays disabled (mirror bulk-copy's all-locked path).
-    mount.append(title);
     const empty = $(document.createElement("div"))
       .addClass("transferPickerAllLocked")
       .attr({ role: "status", "aria-live": "polite", tabindex: "-1" })
       .text(APP_CONFIG.strings.TRANSFER_OWNER_NO_ELIGIBLE);
     listbox.append(empty);
-    mount.append(listbox).append(buildFooter());
+    view.append(listbox);
     attachKeyListeners();
-    empty[0]?.focus();
     return;
   }
 
@@ -301,20 +279,10 @@ function renderPicker(): void {
     .text(APP_CONFIG.strings.TRANSFER_OWNER_NO_MATCHES);
   listbox.append(noMatches);
 
-  mount
-    .append(title)
-    .append(buildFilterInput())
-    .append(listbox)
-    .append(buildFooter());
+  view.append(buildFilterInput()).append(listbox);
   // Seed the footer hint + disabled Transfer button (nothing chosen yet).
   updateConfirmState();
   attachKeyListeners();
-
-  // Focus the FIRST row on open (never the filter input — avoids a mobile
-  // soft-keyboard popup). setActiveRow moves the roving tabindex AND real focus
-  // atomically so they never drift.
-  const firstRow = mount.find(ENABLED_OPTION_SELECTOR)[0];
-  if (firstRow) setActiveRow(firstRow);
 }
 
 /**
@@ -332,7 +300,7 @@ function buildFilterInput(): JQuery {
   );
   inner.append(FILTER_ICON_HTML);
   const input = $(document.createElement("input"))
-    .addClass("text-input search-input transferPickerFilterInput")
+    .addClass("text-input transferPickerFilterInput")
     .attr({
       type: "search",
       autocomplete: "off",
@@ -358,7 +326,7 @@ function buildFilterInput(): JQuery {
  */
 function applyFilter(rawQuery: string): void {
   const query = rawQuery.trim().toLowerCase();
-  const listbox = $(PICKER_MOUNT_SELECTOR).find(LISTBOX_SELECTOR);
+  const listbox = $(PICK_VIEW_SELECTOR).find(LISTBOX_SELECTOR);
 
   let visibleCount = 0;
   listbox.find(OPTION_SELECTOR).each((_, element) => {
@@ -379,36 +347,9 @@ function applyFilter(rawQuery: string): void {
  * not moved (it stays in the filter input while the user types).
  */
 function resetRovingEntry(): void {
-  const mount = $(PICKER_MOUNT_SELECTOR);
-  mount.find(OPTION_SELECTOR).attr("tabindex", "-1");
-  mount.find(ENABLED_OPTION_SELECTOR).first().attr("tabindex", "0");
-}
-
-/** Build the picker footer: a live-region message + Cancel + Transfer buttons. */
-function buildFooter(): JQuery {
-  const footer = $(document.createElement("div")).addClass(
-    "transferPickerFooter flex-row align-center",
-  );
-
-  const message = $(document.createElement("div"))
-    .addClass("transferPickerMsg")
-    .attr({ role: "status", "aria-live": "polite" });
-
-  const cancelBtn = $(document.createElement("button"))
-    .addClass("transferPickerCancelBtn tabbable")
-    .attr({ type: "button" })
-    .text("Cancel");
-  cancelBtn.on("click.transferPickerCancel", () => closeTransferPicker());
-
-  const confirmBtn = $(document.createElement("button"))
-    .addClass("transferPickerConfirmBtn tabbable")
-    .attr({ type: "button" })
-    .prop("disabled", true)
-    .text(APP_CONFIG.strings.TRANSFER_OWNER_SUBMIT);
-  confirmBtn.on("click.transferPickerConfirm", () => handleConfirm());
-
-  footer.append(message).append(cancelBtn).append(confirmBtn);
-  return footer;
+  const view = $(PICK_VIEW_SELECTOR);
+  view.find(OPTION_SELECTOR).attr("tabindex", "-1");
+  view.find(ENABLED_OPTION_SELECTOR).first().attr("tabindex", "0");
 }
 
 // --- Single-select + roving tabindex ------------------------------------------
@@ -427,7 +368,7 @@ function selectRow(row: JQuery): void {
   if (Number.isNaN(id)) return;
 
   // Clear every other row, then select this one (single-select).
-  $(PICKER_MOUNT_SELECTOR)
+  $(PICK_VIEW_SELECTOR)
     .find(OPTION_SELECTOR)
     .attr("aria-selected", "false")
     .removeClass("active");
@@ -444,15 +385,15 @@ function selectRow(row: JQuery): void {
  * receives focus. Both arrow navigation and selection call this one helper.
  */
 function setActiveRow(rowEl: HTMLElement): void {
-  const mount = $(PICKER_MOUNT_SELECTOR);
-  mount.find(OPTION_SELECTOR).attr("tabindex", "-1");
+  const view = $(PICK_VIEW_SELECTOR);
+  view.find(OPTION_SELECTOR).attr("tabindex", "-1");
   $(rowEl).attr("tabindex", "0");
   rowEl.focus();
 }
 
 /** The visible (non-filtered) option rows, in DOM order, as elements. */
 function enabledRowElements(): HTMLElement[] {
-  return $(PICKER_MOUNT_SELECTOR).find(ENABLED_OPTION_SELECTOR).toArray();
+  return $(PICK_VIEW_SELECTOR).find(ENABLED_OPTION_SELECTOR).toArray();
 }
 
 /**
@@ -481,47 +422,43 @@ function moveRoving({ direction }: { direction: 1 | -1 }): void {
  * member is staged. XSS-safe (`.text()`).
  */
 function updateConfirmState(): void {
-  const mount = $(PICKER_MOUNT_SELECTOR);
   const chosen =
     selectedMemberId === null
       ? undefined
       : getState().members.find((member) => member.id === selectedMemberId);
 
-  mount.find(CONFIRM_BTN_SELECTOR).prop("disabled", chosen === undefined);
+  $(SUBMIT_BTN_SELECTOR).prop("disabled", chosen === undefined);
 
-  const message =
-    chosen === undefined
-      ? APP_CONFIG.strings.TRANSFER_OWNER_PICK_HINT
-      : APP_CONFIG.strings.TRANSFER_OWNER_PICK_CHOSEN.replace(
-          "{{ username }}",
-          chosen.username,
-        );
-  mount.find(MESSAGE_SELECTOR).text(message);
+  // No footer message: the modal title states the task and the highlighted row
+  // (aria-selected) makes the choice obvious, so a "{username} will become the
+  // owner." line is just noise. Footer stays empty in every pick state.
+  $(FOOTER_MSG_SELECTOR).text("");
 }
 
-// --- Keyboard handling (capture-phase keydown + keyup on the mount) -----------
+// --- Keyboard handling (capture-phase keydown + keyup on the pick view) --------
 
 function attachKeyListeners(): void {
-  const mountElement = $(PICKER_MOUNT_SELECTOR)[0];
-  if (!mountElement) return;
-  keydownListener = handleMountKeydown;
-  keyupListener = handleMountKeyup;
-  // Capture phase for keydown so Escape is swallowed before it reaches any
-  // document-level handler (mirrors bulk-copy.ts).
-  mountElement.addEventListener("keydown", keydownListener, { capture: true });
-  mountElement.addEventListener("keyup", keyupListener);
+  const viewElement = $(PICK_VIEW_SELECTOR)[0];
+  if (!viewElement) return;
+  detachKeyListeners();
+  keydownListener = handleViewKeydown;
+  keyupListener = handleViewKeyup;
+  // Capture phase for keydown so ArrowUp/Down are handled before any nested
+  // handler (mirrors bulk-copy.ts). Escape is left to Bootstrap's data-bs-keyboard.
+  viewElement.addEventListener("keydown", keydownListener, { capture: true });
+  viewElement.addEventListener("keyup", keyupListener);
 }
 
 function detachKeyListeners(): void {
-  const mountElement = $(PICKER_MOUNT_SELECTOR)[0];
-  if (mountElement) {
+  const viewElement = $(PICK_VIEW_SELECTOR)[0];
+  if (viewElement) {
     if (keydownListener) {
-      mountElement.removeEventListener("keydown", keydownListener, {
+      viewElement.removeEventListener("keydown", keydownListener, {
         capture: true,
       });
     }
     if (keyupListener) {
-      mountElement.removeEventListener("keyup", keyupListener);
+      viewElement.removeEventListener("keyup", keyupListener);
     }
   }
   keydownListener = null;
@@ -529,19 +466,13 @@ function detachKeyListeners(): void {
 }
 
 /**
- * Keydown: Escape closes the picker; ArrowUp/ArrowDown rove focus across visible
- * rows; Space is prevent-defaulted on a focused row (keydown is where the
- * page-scroll-on-Space happens — keyup alone cannot suppress it). Selection
- * itself happens on keyup.
+ * Keydown: ArrowUp/ArrowDown rove focus across visible rows; Space is
+ * prevent-defaulted on a focused row (keydown is where the page-scroll-on-Space
+ * happens — keyup alone cannot suppress it). Selection itself happens on keyup.
+ * Escape is handled by Bootstrap's own data-bs-keyboard modal dismissal.
  */
-function handleMountKeydown(event: KeyboardEvent): void {
+function handleViewKeydown(event: KeyboardEvent): void {
   switch (event.key) {
-    case KEYS.ESCAPE: {
-      event.stopPropagation();
-      event.preventDefault();
-      closeTransferPicker();
-      return;
-    }
     case KEYS.ARROW_DOWN: {
       event.preventDefault();
       moveRoving({ direction: 1 });
@@ -554,8 +485,7 @@ function handleMountKeydown(event: KeyboardEvent): void {
     }
     case KEYS.SPACE: {
       // Suppress page scroll-on-Space ONLY when an option row is focused (the
-      // paired keyup selects it). Space on the footer buttons keeps its native
-      // button-activation behaviour.
+      // paired keyup selects it).
       const target = event.target as HTMLElement | null;
       if (target && $(target).closest(OPTION_SELECTOR).length > 0) {
         event.preventDefault();
@@ -570,7 +500,7 @@ function handleMountKeydown(event: KeyboardEvent): void {
 /**
  * Keyup: Enter or Space on the currently-focused row selects it (single-select).
  */
-function handleMountKeyup(event: KeyboardEvent): void {
+function handleViewKeyup(event: KeyboardEvent): void {
   if (event.key !== KEYS.ENTER && event.key !== KEYS.SPACE) return;
   const target = event.target as HTMLElement | null;
   if (target === null) return;
@@ -579,45 +509,35 @@ function handleMountKeyup(event: KeyboardEvent): void {
   selectRow(row);
 }
 
-// --- Confirm (hand off to the confirm modal, Step 2) --------------------------
+// --- Continue (advance the SAME modal to the confirm view) ---------------------
 
 /**
- * Read the staged member live from the store, close the picker, and hand the
- * target to transferOwnershipShowModal. Defensive: if the staged member has
- * vanished (removed mid-pick), reset to the empty-selection state instead of
- * proceeding. The opener is captured BEFORE closeTransferPicker() (which clears
- * `_openerRef`) so it can be threaded through to the confirm modal (DD-15).
+ * Read the staged member live from the store and advance the modal to the
+ * confirm view (transfer.ts owns that view + the commit). Defensive: if the
+ * staged member has vanished (removed mid-pick), reset to the empty-selection
+ * state instead of proceeding. The modal is NOT closed — it swaps in place.
  */
-function handleConfirm(): void {
+function onContinue(): void {
   if (selectedMemberId === null) return;
 
   const chosen = getState().members.find(
     (member) => member.id === selectedMemberId,
   );
   if (chosen === undefined) {
-    // The staged member vanished — treat as nothing chosen.
+    // The staged member vanished — treat as nothing chosen; stay on the pick view.
     selectedMemberId = null;
-    renderPicker();
+    renderPickView();
+    $(SUBMIT_BTN_SELECTOR).prop("disabled", true);
+    $(FOOTER_MSG_SELECTOR).text("");
     return;
   }
 
   const utubID = getState().activeUTubID;
   if (utubID === null) return;
 
-  // Capture the opener BEFORE closeTransferPicker() clears _openerRef so the
-  // confirm modal can return focus to the original trigger on cancel (DD-15).
-  const opener = _openerRef;
-  const newOwnerId = chosen.id;
-  const newOwnerUsername = chosen.username;
-
-  closeTransferPicker();
-
-  transferOwnershipShowModal({
-    newOwnerId,
-    newOwnerUsername,
+  showTransferConfirmView({
+    newOwnerId: chosen.id,
+    newOwnerUsername: chosen.username,
     utubID,
-    // closeTransferPicker() nulled _openerRef; fall back to the standalone
-    // trigger if the picker was somehow opened without one.
-    opener: opener ?? "#memberBtnTransferOwner",
   });
 }

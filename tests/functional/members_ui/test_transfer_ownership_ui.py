@@ -5,7 +5,12 @@ from playwright.sync_api import Page, expect
 import pytest
 
 from backend.models.users import Users
-from backend.utils.strings.user_strs import TRANSFER_OWNER_SUCCESS
+from backend.utils.strings.user_strs import (
+    TRANSFER_OWNER_CONFIRM_SUBMIT,
+    TRANSFER_OWNER_CONFIRM_TITLE,
+    TRANSFER_OWNER_CONFIRM_WARNING,
+    TRANSFER_OWNER_SUCCESS,
+)
 from tests.functional.db_utils import (
     get_other_member_in_utub,
     get_utub_this_user_created,
@@ -15,8 +20,8 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import (
     force_transfer_400_response,
     open_transfer_ownership_picker,
-    pick_new_owner,
     seed_co_creator_in_utub,
+    stage_transfer_confirm_view,
 )
 from tests.functional.playwright_assert_utils import (
     assert_on_429_page,
@@ -46,22 +51,6 @@ _ALREADY_OWNER_MESSAGE = "That member is already the owner of this UTub."
 def _username_for_user_id(*, app: Flask, user_id: int) -> str:
     with app.app_context():
         return Users.query.get(user_id).username
-
-
-def _submit_confirm_modal(*, page: Page) -> None:
-    """Gate on the modal fade-in settling (opacity==1) before clicking submit.
-
-    Clicking while Bootstrap's show-transition is still running causes the
-    subsequent modal("hide") to be dropped as an overlapping transition, leaving
-    the modal visible and racing wait_until_hidden (mirrors the delete/role tests).
-    """
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
 
 # --------------------------------------------------------------------------- #
@@ -174,11 +163,12 @@ def test_transfer_ownership_happy_path(
 ):
     """
     GIVEN a user owns a UTub with at least one other member
-    WHEN they open the transfer picker, filter, pick a member, confirm, and submit
-    THEN the submit button disables (double-submit guard), the chosen member becomes
-        owner (diamond-fill), the acting user is demoted to co-owner (diamond-half)
-        in the member list AND on the left UTub-deck selector (which stays .active),
-        and the owner-only affordances give way to the Leave button
+    WHEN they open the modal, filter, pick a member, Continue, and commit
+    THEN the confirm view shows the warning + retitles + relabels Submit, the commit
+        submit disables (double-submit guard), the chosen member becomes owner
+        (diamond-fill), the acting user is demoted to co-owner (diamond-half) in the
+        member list AND on the left UTub-deck selector (which stays .active), and the
+        owner-only affordances give way to the Leave button
     """
     app = provide_app
 
@@ -196,16 +186,30 @@ def test_transfer_ownership_happy_path(
 
     open_transfer_ownership_picker(page=page)
 
-    # Filter the picker to the target member, then pick + confirm to open the modal.
+    # Filter the pick view to the target member, then pick + Continue to advance the
+    # SAME modal to its confirm view (no commit yet).
     page.locator(HPL.TRANSFER_PICKER_FILTER_INPUT).fill(new_owner_username)
-    pick_new_owner(page=page, member_id=new_owner_id)
+    stage_transfer_confirm_view(page=page, member_id=new_owner_id)
 
-    _submit_confirm_modal(page=page)
+    # The confirm view shows the warning naming the new owner, the title flips to
+    # the confirm prompt, and Submit is relabeled "Transfer to <username>".
+    expect(page.locator(HPL.TRANSFER_OWNER_CONFIRM_VIEW)).to_have_text(
+        TRANSFER_OWNER_CONFIRM_WARNING.replace("{{ username }}", new_owner_username)
+    )
+    expect(page.locator(HPL.TRANSFER_OWNER_MODAL_TITLE)).to_have_text(
+        TRANSFER_OWNER_CONFIRM_TITLE
+    )
+    expect(page.locator(HPL.TRANSFER_OWNER_SUBMIT)).to_have_text(
+        TRANSFER_OWNER_CONFIRM_SUBMIT.replace("{{ username }}", new_owner_username)
+    )
+
+    # Commit the transfer.
+    page.locator(HPL.TRANSFER_OWNER_SUBMIT).click()
 
     # DD-11 parity: submit disables immediately after click (double-submit guard).
-    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_disabled()
+    expect(page.locator(HPL.TRANSFER_OWNER_SUBMIT)).to_be_disabled()
 
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
 
     # Chosen member is now the owner (diamond-fill). Re-query rather than reusing a
     # captured Locator — the full refetch rebuilds the member deck.
@@ -251,8 +255,9 @@ def test_transfer_picker_keyboard_open_navigate_escape(
     """
     GIVEN a user owns a UTub with at least one other member
     WHEN they focus the Transfer trigger, press Enter, ArrowDown, Enter, then Escape
-    THEN Enter opens the picker, ArrowDown/Enter stages a member (confirm enabled),
-        and Escape closes the picker and returns focus to the trigger
+    THEN Enter opens the modal, ArrowDown/Enter stages a member (Submit enabled),
+        and Escape closes the modal (Bootstrap data-bs-keyboard) and returns focus
+        to the trigger
     """
     app = provide_app
 
@@ -267,18 +272,32 @@ def test_transfer_picker_keyboard_open_navigate_escape(
     trigger.focus()
     expect(trigger).to_be_focused()
 
-    # Enter fires the trigger's click handler, opening the picker (first row focused).
+    # Enter fires the trigger's click handler, opening the modal. Gate on the
+    # fade-in settling (opacity==1) so the shown-focus handler has moved focus onto
+    # the first row before roving.
     page.keyboard.press("Enter")
+    wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.TRANSFER_OWNER_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
 
-    # ArrowDown roves, Enter (on keyup) stages the focused member — confirm enables.
+    # The modal's shown.bs.modal handler moves DOM focus onto the first option row;
+    # wait for it before roving so the ArrowDown/Enter keydown/keyup actually reach
+    # the pick-view listeners (pressing before focus lands is a lost-keys race).
+    expect(page.locator(HPL.TRANSFER_PICKER_OPTION).first).to_be_focused()
+
+    # ArrowDown roves, Enter (on keyup) stages the focused member — Submit enables.
     page.keyboard.press("ArrowDown")
     page.keyboard.press("Enter")
-    expect(page.locator(HPL.TRANSFER_PICKER_CONFIRM_BTN)).to_be_enabled()
+    expect(page.locator(HPL.TRANSFER_OWNER_SUBMIT)).to_be_enabled()
 
-    # Escape closes the picker and returns focus to the trigger.
+    # Escape closes the modal and returns focus to the trigger.
     page.keyboard.press("Escape")
-    wait_until_hidden(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
+    wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
     expect(trigger).to_be_focused()
 
 
@@ -293,9 +312,9 @@ def test_transfer_ownership_rate_limits(
     provide_app: Flask,
 ):
     """
-    GIVEN an owner has staged a transfer and the confirm modal is open but they are
+    GIVEN an owner has staged a transfer and the confirm view is shown but they are
         rate limited
-    WHEN they submit the confirm modal
+    WHEN they commit the transfer
     THEN the 429 error page is shown
     """
     app = provide_app
@@ -310,10 +329,10 @@ def test_transfer_ownership_rate_limits(
     )
 
     open_transfer_ownership_picker(page=page)
-    pick_new_owner(page=page, member_id=new_owner_id)
+    stage_transfer_confirm_view(page=page, member_id=new_owner_id)
 
     add_forced_rate_limit_header(page=page)
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.TRANSFER_OWNER_SUBMIT)
     assert_on_429_page(page=page)
 
 
@@ -323,8 +342,8 @@ def test_transfer_ownership_invalid_csrf_token(
     provide_app: Flask,
 ):
     """
-    GIVEN an owner has staged a transfer and the confirm modal is open
-    WHEN they submit with an invalid CSRF token
+    GIVEN an owner has staged a transfer and the confirm view is shown
+    WHEN they commit with an invalid CSRF token
     THEN U4I responds with the 403 body-swap and reload
     """
     app = provide_app
@@ -339,10 +358,10 @@ def test_transfer_ownership_invalid_csrf_token(
     )
 
     open_transfer_ownership_picker(page=page)
-    pick_new_owner(page=page, member_id=new_owner_id)
+    stage_transfer_confirm_view(page=page, member_id=new_owner_id)
 
     invalidate_csrf_token_on_page(page=page)
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.TRANSFER_OWNER_SUBMIT)
     assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
 
@@ -352,9 +371,9 @@ def test_transfer_ownership_submit_button_reenables_on_server_error(
     provide_app: Flask,
 ):
     """
-    GIVEN an owner has staged a transfer and the confirm modal is open
+    GIVEN an owner has staged a transfer and the confirm view is shown
     WHEN the PATCH request fails with a 500 server error
-    THEN the #modalSubmit button is re-enabled so the user can retry
+    THEN the #transferOwnerSubmit button is re-enabled so the user can retry
     """
     app = provide_app
 
@@ -368,12 +387,12 @@ def test_transfer_ownership_submit_button_reenables_on_server_error(
     )
 
     open_transfer_ownership_picker(page=page)
-    pick_new_owner(page=page, member_id=new_owner_id)
+    stage_transfer_confirm_view(page=page, member_id=new_owner_id)
 
     force_next_patch_ajax_failure_no_navigate(page=page)
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.TRANSFER_OWNER_SUBMIT)
 
-    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
+    expect(page.locator(HPL.TRANSFER_OWNER_SUBMIT)).to_be_enabled()
 
 
 def test_transfer_ownership_target_already_owner_surfaces_message(
@@ -382,7 +401,7 @@ def test_transfer_ownership_target_already_owner_surfaces_message(
     provide_app: Flask,
 ):
     """
-    GIVEN an owner has staged a transfer and the confirm modal is open
+    GIVEN an owner has staged a transfer and the confirm view is shown
     WHEN the PATCH is rejected 400 (target-already-owner / already-transferred guard)
     THEN the panel surfaces the server message in the row-action live region and
         does NOT redirect away
@@ -399,10 +418,10 @@ def test_transfer_ownership_target_already_owner_surfaces_message(
     )
 
     open_transfer_ownership_picker(page=page)
-    pick_new_owner(page=page, member_id=new_owner_id)
+    stage_transfer_confirm_view(page=page, member_id=new_owner_id)
 
     force_transfer_400_response(page=page, message=_ALREADY_OWNER_MESSAGE)
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.TRANSFER_OWNER_SUBMIT)
 
     # The server message is surfaced via the members-panel row-action live region,
     # not a redirect — the members deck stays put.
@@ -413,21 +432,21 @@ def test_transfer_ownership_target_already_owner_surfaces_message(
 
 
 # --------------------------------------------------------------------------- #
-# Cross-surface suppression (DD-6 / DD-7 / DD-11)
+# Modal-open coverage of the deck (replaces the DD-11 pointer-events kebab test)
 # --------------------------------------------------------------------------- #
 
 
-def test_transfer_picker_open_suppresses_member_row_kebab(
+def test_transfer_modal_open_covers_deck_with_backdrop(
     page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
     """
-    GIVEN a user owns a UTub with members and opens the transfer picker
-    WHEN a background member row's kebab would be clicked
-    THEN the #MemberDeck.transfer-picker-open CSS suppression makes the kebab inert
-        (pointer-events: none) in a real browser — the gap Vitest's class-toggle
-        assertions alone leave open
+    GIVEN a user owns a UTub with members and opens the transfer modal
+    WHEN the modal is shown
+    THEN #transferOwnerModal is visible AND a .modal-backdrop is present — the
+        Bootstrap backdrop inherently blocks the deck behind it (the modal-based
+        equivalent of the retired DD-11 cross-surface pointer-events suppression)
     """
     app = provide_app
 
@@ -439,26 +458,20 @@ def test_transfer_picker_open_suppresses_member_row_kebab(
 
     open_transfer_ownership_picker(page=page)
 
-    # The background member-row kebabs are visually dimmed AND click-inert while the
-    # picker is open — assert the computed pointer-events using the repo's idiom
-    # (test_locked_utub_ui.py's pointer-events assertion helper).
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.MEMBER_ROW_KEBAB,
-        css_property="pointer-events",
-        expected_value="none",
-    )
+    expect(page.locator(HPL.TRANSFER_OWNER_MODAL)).to_be_visible()
+    # The shared modal backdrop is appended to <body> on show and covers the deck.
+    expect(page.locator(HPL.MODAL_BACKDROP).first).to_be_visible()
 
 
-def test_transfer_picker_cancel_closes_and_restores_focus(
+def test_transfer_modal_cancel_closes_and_restores_focus(
     page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
     """
-    GIVEN a user owns a UTub with at least one other member and opens the picker
-    WHEN they click the picker's Cancel button
-    THEN the picker's listbox and mount close AND focus returns to the trigger
+    GIVEN a user owns a UTub with at least one other member and opens the modal
+    WHEN they click the footer Cancel button
+    THEN the transfer modal hides AND focus returns to the trigger
     """
     app = provide_app
 
@@ -469,13 +482,12 @@ def test_transfer_picker_cancel_closes_and_restores_focus(
     )
 
     open_transfer_ownership_picker(page=page)
-    expect(page.locator(HPL.TRANSFER_OWNER_PICKER_MOUNT)).to_be_visible()
+    expect(page.locator(HPL.TRANSFER_OWNER_MODAL)).to_be_visible()
 
-    # Cancel closes the picker without staging any transfer.
-    wait_then_click_element(page=page, css_selector=HPL.TRANSFER_PICKER_CANCEL_BTN)
+    # Cancel dismisses the modal without staging any transfer.
+    wait_then_click_element(page=page, css_selector=HPL.TRANSFER_OWNER_CANCEL)
 
-    wait_until_hidden(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
-    expect(page.locator(HPL.TRANSFER_OWNER_PICKER_MOUNT)).to_be_hidden()
+    wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
 
-    # Focus returns to the owner-only trigger that opened the picker.
+    # Focus returns to the owner-only trigger that opened the modal.
     expect(page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)).to_be_focused()

@@ -36,17 +36,6 @@ def _open_delete_modal_settled(*, page: Page) -> None:
     )
 
 
-def _submit_confirm_modal(*, page: Page) -> None:
-    """Gate on the modal fade-in settling (opacity==1) before clicking submit."""
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
-
-
 def test_delete_modal_shows_transfer_instead_for_owner_with_members(
     page: Page,
     create_test_utubmembers,
@@ -103,7 +92,8 @@ def test_transfer_instead_opens_picker_and_hides_delete_modal(
     """
     GIVEN an owner has the delete-UTub modal open with "Transfer instead" available
     WHEN they click "Transfer instead"
-    THEN the delete modal hides and the transfer picker opens in the members deck
+    THEN the delete #confirmModal hides and the dedicated #transferOwnerModal opens
+        (the sequential modal transition)
     """
     app = provide_app
 
@@ -116,8 +106,10 @@ def test_transfer_instead_opens_picker_and_hides_delete_modal(
     _open_delete_modal_settled(page=page)
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_REDIRECT)
 
-    # The delete confirm modal hides, and the transfer picker renders its listbox.
+    # The delete confirm modal hides, and the dedicated transfer modal opens with
+    # its pick-view listbox rendered.
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
 
 
@@ -149,13 +141,21 @@ def test_transfer_instead_completes_transfer_utub_intact(
     _open_delete_modal_settled(page=page)
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_REDIRECT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
+    # Gate on the transfer modal's fade-in settling so the pick + commit clicks
+    # can't be dropped mid show-transition (the sequential-modal handoff).
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.TRANSFER_OWNER_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
 
-    # Pick the member + confirm (reopens the shared modal as the transfer confirm),
-    # then submit.
+    # Pick the member + Continue (advances the modal to its confirm view), then
+    # commit the transfer.
     pick_new_owner(page=page, member_id=new_owner_id)
-    _submit_confirm_modal(page=page)
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
 
     # The UTub was NOT deleted — its selector is still present after the transfer.
     utub_selector = page.locator(f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]')
