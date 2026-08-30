@@ -408,6 +408,23 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_ROW_ROLE_ICON = ".member .memberRole"
     MEMBER_ROW_CO_CREATOR_ICON = ".member svg.bi-diamond-half"
 
+    # Standalone owner-only "Transfer ownership" trigger in the members-deck
+    # header cluster (beside #memberBtnCreate). Starts hidden; shown by JS only
+    # for a literal owner with >= 1 other member. Opens the single-select
+    # transfer picker (built in members/deck.ts's setMemberDeckTransferOwnerBtn).
+    MEMBER_BTN_TRANSFER_OWNER = "#memberBtnTransferOwner"
+
+    # Inline single-select ownership-transfer picker (transfer-picker.ts), mounted
+    # into #transferOwnerPickerMount below the members-deck header band. Modeled on
+    # the bulk-copy destination picker but single-select: each .transferPickerOption
+    # row carries a `memberid` attribute for id-scoped targeting.
+    TRANSFER_OWNER_PICKER_MOUNT = "#transferOwnerPickerMount"
+    TRANSFER_PICKER_LISTBOX = ".transferPickerListbox"
+    TRANSFER_PICKER_OPTION = ".transferPickerOption"
+    TRANSFER_PICKER_FILTER_INPUT = ".transferPickerFilterInput"
+    TRANSFER_PICKER_CONFIRM_BTN = ".transferPickerConfirmBtn"
+    TRANSFER_PICKER_CANCEL_BTN = ".transferPickerCancelBtn"
+
     # Add-member combobox (built in TS by member-combobox.ts; mounted into
     # #createMemberWrap on open). The legacy single #memberCreate input,
     # #memberCancelBtnCreate, and #memberSubmitBtnCreate were removed in the

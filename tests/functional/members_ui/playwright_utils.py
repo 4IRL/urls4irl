@@ -32,6 +32,11 @@ _MEMBER_ADD_POST_URL_RE = re.compile(r"/utubs/\d+/members$")
 # to fulfil a forced 400 for the owner-targets-self / non-member guarded case.
 _MEMBER_ROLE_PATCH_URL_RE = re.compile(r"/utubs/\d+/members/\d+$")
 
+# Matches ONLY the ownership-transfer PATCH (`/utubs/<id>/owner`), used to fulfil
+# a forced 400 for the target-already-owner / already-transferred guarded case.
+# Distinct from the per-member role PATCH regex above (no trailing `/members/id`).
+_TRANSFER_OWNER_PATCH_URL_RE = re.compile(r"/utubs/\d+/owner$")
+
 
 def open_member_name_filter(*, page: Page) -> Locator:
     """Open the member name filter input and return the ready input locator.
@@ -418,6 +423,72 @@ def force_role_change_400_response(*, page: Page, message: str) -> None:
     # real endpoint and we never call `page.unroute` from inside the handler
     # (which errors mid-handling and lets the request fall through to the server).
     page.route(_MEMBER_ROLE_PATCH_URL_RE, _handler, times=1)
+
+
+def open_transfer_ownership_picker(*, page: Page) -> None:
+    """Open the standalone ownership-transfer picker via the members-deck header.
+
+    Clicks the owner-only #memberBtnTransferOwner trigger, then waits for the
+    single-select picker's listbox to render. Only a literal owner of a UTub with
+    >= 1 other member sees the trigger, so callers must seed that state first.
+
+    Args:
+        page: Playwright Page open to a UTub the current user owns, with the
+            members deck showing at least one other member.
+    """
+    wait_then_click_element(page=page, css_selector=HPL.MEMBER_BTN_TRANSFER_OWNER)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
+
+
+def pick_new_owner(*, page: Page, member_id: int) -> None:
+    """Select a member in the open transfer picker and confirm to open the modal.
+
+    Clicks the picker option whose `memberid` matches `member_id` (single-select
+    stages exactly that row and enables the footer confirm button), then clicks
+    the footer "Transfer ownership" confirm button, which hands the chosen member
+    to `transferOwnershipShowModal` and opens the shared #confirmModal. The caller
+    then submits that modal (e.g. via the opacity-gated `_submit_confirm_modal`).
+
+    Args:
+        page: Playwright Page with the transfer picker already open.
+        member_id: The user id of the member to transfer ownership to.
+    """
+    option = page.locator(f'{HPL.TRANSFER_PICKER_OPTION}[memberid="{member_id}"]')
+    expect(option).to_be_visible()
+    option.click()
+
+    confirm_btn = page.locator(HPL.TRANSFER_PICKER_CONFIRM_BTN)
+    expect(confirm_btn).to_be_enabled()
+    confirm_btn.click()
+
+    # The picker's confirm button hands off to transferOwnershipShowModal, which
+    # opens the shared confirm modal — wait for it before the caller submits.
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+
+
+def force_transfer_400_response(*, page: Page, message: str) -> None:
+    """Intercept the next ownership-transfer PATCH and fulfil it with a real 400.
+
+    Reproduces the server-side transfer guards (`TARGET_ALREADY_OWNER` errorCode 6
+    / `UNABLE_TO_TRANSFER_OWNERSHIP` / `MEMBER_NOT_IN_UTUB`) deterministically: the
+    response carries `{ "message": ... }` so `transfer.ts transferOwnershipFail`
+    surfaces it via `#MemberRowActionAnnouncement` (assertive) rather than
+    redirecting. Only the `/utubs/<id>/owner` PATCH is matched; the route is
+    retired after the first fulfil (`times=1`) so a retry hits the real endpoint.
+
+    Args:
+        page: Playwright Page under test.
+        message: The server message the members panel should surface.
+    """
+
+    def _handler(route: Route) -> None:
+        route.fulfill(
+            status=400,
+            content_type="application/json",
+            body=json.dumps({"message": message, "errorCode": 6}),
+        )
+
+    page.route(_TRANSFER_OWNER_PATCH_URL_RE, _handler, times=1)
 
 
 def leave_utub_as_member(*, page: Page, utub_to_leave: Utubs) -> None:
