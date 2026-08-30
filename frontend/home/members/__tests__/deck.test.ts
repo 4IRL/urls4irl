@@ -6,6 +6,7 @@ import {
   updateMemberDeck,
 } from "../deck.js";
 import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
+import { emit, AppEvents } from "../../../lib/event-bus.js";
 import { swapMemberRoleInRow } from "../members.js";
 import { makeUTubRoleIcon } from "../../utubs/selectors.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
@@ -13,6 +14,16 @@ import { getState, resetStore, setState } from "../../../store/app-store.js";
 vi.mock("../../../logic/apply-deck-diff.js", () => ({
   applyDeckDiff: vi.fn(),
 }));
+
+// Spy on the event-bus emit (the transfer trigger opens the picker via the
+// TRANSFER_PICKER_REQUESTED event) while keeping `on`/`AppEvents` real so
+// deck.ts's own module-level subscriptions still register.
+vi.mock("../../../lib/event-bus.js", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../../lib/event-bus.js")
+  >("../../../lib/event-bus.js");
+  return { ...actual, emit: vi.fn() };
+});
 
 vi.mock("../members.js", () => ({
   createMemberBadge: vi.fn(() =>
@@ -43,6 +54,7 @@ const MEMBER_DECK_HTML = `
     </div>
     <button id="memberNameFilterBtn" class="hidden" aria-expanded="false"></button>
     <button id="memberNameFilterBtnClose" class="hidden"></button>
+    <button id="memberBtnTransferOwner" class="hidden"></button>
     <button id="memberBtnCreate" class="hidden"></button>
     <button id="memberSelfBtnDelete" class="hidden"></button>
     <div id="SearchMemberWrap">
@@ -149,6 +161,141 @@ describe("Member deck visibility on UTub selection", () => {
     );
 
     expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(true);
+  });
+});
+
+describe("Standalone transfer-ownership trigger visibility (Step 4)", () => {
+  const OWNER = { id: 1, username: "owner", memberRole: "creator" };
+  const MEMBER = { id: 2, username: "devin", memberRole: "member" };
+
+  beforeEach(() => {
+    document.body.innerHTML = MEMBER_DECK_HTML;
+    resetStore();
+    vi.mocked(emit).mockClear();
+  });
+
+  afterEach(() => {
+    resetStore();
+  });
+
+  // The trigger's visibility reads live state (isCurrentUserOwner, members,
+  // utubOwnerID), which buildSelectedUTub sets before UTUB_SELECTED fires, so
+  // seed state to match the members being rendered.
+  function selectUTub(
+    members: { id: number; username: string; memberRole: string }[],
+    {
+      isCurrentUserOwner,
+      isCurrentUTubLocked = false,
+    }: { isCurrentUserOwner: boolean; isCurrentUTubLocked?: boolean },
+  ): void {
+    setState({
+      members,
+      isCurrentUserOwner,
+      utubOwnerID: OWNER.id,
+      isCurrentUTubLocked,
+    });
+    setMemberDeckOnUTubSelected(
+      members,
+      OWNER.id,
+      isCurrentUserOwner,
+      OWNER.id,
+      42,
+    );
+  }
+
+  it("shows the transfer button for the owner with at least one other member", () => {
+    selectUTub([OWNER, MEMBER], { isCurrentUserOwner: true });
+
+    const btn = window.jQuery("#memberBtnTransferOwner");
+    expect(btn.hasClass("hidden")).toBe(false);
+    expect(btn.attr("aria-label")).toBe("Transfer ownership");
+  });
+
+  it("shows the transfer button for the owner even when the UTub is locked (no client lock gate; DD-2/DD-11)", () => {
+    selectUTub([OWNER, MEMBER], {
+      isCurrentUserOwner: true,
+      isCurrentUTubLocked: true,
+    });
+
+    expect(window.jQuery("#memberBtnTransferOwner").hasClass("hidden")).toBe(
+      false,
+    );
+  });
+
+  it("hides the transfer button for a non-owner (co-owner or plain member)", () => {
+    selectUTub([OWNER, MEMBER], { isCurrentUserOwner: false });
+
+    expect(window.jQuery("#memberBtnTransferOwner").hasClass("hidden")).toBe(
+      true,
+    );
+  });
+
+  it("hides the transfer button for a sole-owner UTub (no transfer target)", () => {
+    selectUTub([OWNER], { isCurrentUserOwner: true });
+
+    expect(window.jQuery("#memberBtnTransferOwner").hasClass("hidden")).toBe(
+      true,
+    );
+  });
+
+  it("hides the transfer button when no UTub is selected", () => {
+    selectUTub([OWNER, MEMBER], { isCurrentUserOwner: true });
+    expect(window.jQuery("#memberBtnTransferOwner").hasClass("hidden")).toBe(
+      false,
+    );
+
+    setMemberDeckWhenNoUTubSelected();
+
+    expect(window.jQuery("#memberBtnTransferOwner").hasClass("hidden")).toBe(
+      true,
+    );
+  });
+
+  it("requests the transfer picker (with its own selector as the opener) when clicked", () => {
+    selectUTub([OWNER, MEMBER], { isCurrentUserOwner: true });
+
+    // The deck build above emits its own unrelated events; clear so the
+    // assertion isolates the click's TRANSFER_PICKER_REQUESTED emit.
+    vi.mocked(emit).mockClear();
+    window.jQuery("#memberBtnTransferOwner").trigger("click");
+
+    expect(vi.mocked(emit)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(emit)).toHaveBeenCalledWith(
+      AppEvents.TRANSFER_PICKER_REQUESTED,
+      { opener: "#memberBtnTransferOwner" },
+    );
+  });
+
+  it("does not double-bind the click handler across repeated UTub selections", () => {
+    selectUTub([OWNER, MEMBER], { isCurrentUserOwner: true });
+    selectUTub([OWNER, MEMBER], { isCurrentUserOwner: true });
+
+    // Isolate the click: a single trigger must fire exactly one emit even after
+    // two selections (the off("click") clears any prior handler before re-bind).
+    vi.mocked(emit).mockClear();
+    window.jQuery("#memberBtnTransferOwner").trigger("click");
+
+    expect(vi.mocked(emit)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(emit)).toHaveBeenCalledWith(
+      AppEvents.TRANSFER_PICKER_REQUESTED,
+      { opener: "#memberBtnTransferOwner" },
+    );
+  });
+
+  it("re-hides the transfer button on a stale-data update when the last non-owner member leaves", () => {
+    selectUTub([OWNER, MEMBER], { isCurrentUserOwner: true });
+    expect(window.jQuery("#memberBtnTransferOwner").hasClass("hidden")).toBe(
+      false,
+    );
+
+    // Background membership change (STALE_DATA_DETECTED): the only other member
+    // left, dropping the non-owner count to 0 — the trigger must hide without
+    // waiting for the next full UTUB_SELECTED.
+    updateMemberDeck([OWNER], true, 42);
+
+    expect(window.jQuery("#memberBtnTransferOwner").hasClass("hidden")).toBe(
+      true,
+    );
   });
 });
 
