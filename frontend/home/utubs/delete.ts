@@ -30,6 +30,7 @@ const log = debug("utubs");
 type DeleteUtubResponse = SuccessResponse<"deleteUtub">;
 
 let _utubDeleteConfirmed: boolean = false;
+let _utubDeleteRedirectedToTransfer: boolean = false;
 
 export function setDeleteEventListeners(utubID: number): void {
   const utubBtnDelete = $("#utubBtnDelete");
@@ -49,6 +50,7 @@ function deleteUTubHideModal(): void {
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal(utubID: number): void {
   _utubDeleteConfirmed = false;
+  _utubDeleteRedirectedToTransfer = false;
   recordUIEvent({ event: UI_EVENTS.UI_UTUB_DELETE_OPEN });
 
   const modalTitle = "Are you sure you want to delete this UTub?";
@@ -82,14 +84,45 @@ function deleteUTubShowModal(utubID: number): void {
     });
 
   $("#confirmModal").offAndOnExact("hidden.bs.modal.utubDelete", function () {
-    if (!_utubDeleteConfirmed) {
+    // Suppress the delete-cancel metric on the "Transfer instead" redirect path:
+    // that click hides #confirmModal (firing this handler) without setting
+    // _utubDeleteConfirmed, so without this second guard a successful transfer
+    // redirect would wrongly record a delete cancel.
+    if (!_utubDeleteConfirmed && !_utubDeleteRedirectedToTransfer) {
       recordUIEvent({ event: UI_EVENTS.UI_UTUB_DELETE_CANCEL });
     }
   });
 
   $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");
-  $("#modalRedirect").hide();
+
+  // Owner of a UTub with ≥1 other member can transfer ownership instead of
+  // deleting — surface the shared #confirmModal's third #modalRedirect button.
+  // Sole-owner (no other members) → keep it hidden (today's behavior).
+  const state = getState();
+  const otherMembers = state.members.filter(
+    (member) => member.id !== state.utubOwnerID,
+  ).length;
+  if (state.isCurrentUserOwner && otherMembers >= 1) {
+    $("#modalRedirect")
+      .removeClass()
+      .addClass("btn btn-primary")
+      .text(APP_CONFIG.strings.TRANSFER_INSTEAD_ACTION)
+      .show()
+      .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+        event.preventDefault();
+        _utubDeleteRedirectedToTransfer = true;
+        $("#confirmModal").modal("hide");
+        emit(AppEvents.TRANSFER_PICKER_REQUESTED, {
+          opener: "#utubBtnDelete",
+        });
+      });
+  } else {
+    // Tear down any redirect handler bound on a prior owner-open so the shared
+    // #modalRedirect can never fire a stale TRANSFER_PICKER_REQUESTED if another
+    // #confirmModal flow later shows it without rebinding.
+    $("#modalRedirect").off("click").hide();
+  }
 }
 
 // Handles deletion of a current UTub
