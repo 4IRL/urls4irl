@@ -25,6 +25,7 @@ describe("APP_CONFIG shape", () => {
     const SINGLE_PARAM_ROUTE_KEYS = [
       "getUTub",
       "deleteUTub",
+      "transferUtubOwnership",
       "updateUTubName",
       "updateUTubDescription",
       "createURL",
@@ -43,6 +44,12 @@ describe("APP_CONFIG shape", () => {
         expect(typeof route(42)).toBe("string");
       },
     );
+
+    it("routes.transferUtubOwnership substitutes the utub id", () => {
+      expect(APP_CONFIG.routes.transferUtubOwnership(10)).toBe(
+        "/utubs/10/owner",
+      );
+    });
   });
 
   describe("two-param dynamic routes", () => {

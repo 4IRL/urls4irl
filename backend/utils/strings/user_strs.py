@@ -118,6 +118,31 @@ REVOKE_CO_OWNER_WARNING = (
 MEMBER_ROLE_CHANGE_GRANT_SUCCESS = "{{ username }} is now a co-owner."
 MEMBER_ROLE_CHANGE_REVOKE_SUCCESS = "{{ username }} is no longer a co-owner."
 
+# Ownership-transfer UI (transfer.ts / transfer-picker.ts). Client-authored
+# picker + confirm-modal copy + row-action announcements + the delete-flow
+# "Transfer instead" redirect label, so they take the full 5-file string bridge
+# like the co-owner action labels above. Templated tokens use {{ username }},
+# client-substituted via .replace("{{ username }}", …) exactly like role.ts.
+TRANSFER_OWNER_ACTION = "Transfer ownership"
+TRANSFER_OWNER_PICKER_TITLE = "Transfer ownership to…"
+TRANSFER_OWNER_FILTER_PLACEHOLDER = "Filter members…"
+TRANSFER_OWNER_NO_MATCHES = "No members match your search."
+TRANSFER_OWNER_NO_ELIGIBLE = (
+    "This UTub has no other members to transfer to. Add a member first."
+)
+TRANSFER_OWNER_PICK_HINT = "Select a member to transfer to."
+TRANSFER_OWNER_PICK_CHOSEN = "{{ username }} will become the owner."
+TRANSFER_OWNER_SUBMIT = "Transfer ownership"
+TRANSFER_OWNER_LISTBOX_ARIA = "Choose a member to transfer ownership to"
+TRANSFER_OWNER_CONFIRM_TITLE = "Transfer ownership of this UTub?"
+TRANSFER_OWNER_CONFIRM_WARNING = (
+    "You'll hand ownership to {{ username }} and stay on as a co-owner. Only "
+    "the new owner can transfer it back."
+)
+TRANSFER_OWNER_CONFIRM_SUBMIT = "Transfer to {{ username }}"
+TRANSFER_OWNER_SUCCESS = "{{ username }} is now the owner. You're a co-owner."
+TRANSFER_INSTEAD_ACTION = "Transfer instead"
+
 # Kebab (overflow) row-action strings (members.ts). Client-authored: the
 # "Remove member" menu-item text and the per-row kebab aria-label (a
 # {{ username }} template resolved client-side), so they take the full 5-file

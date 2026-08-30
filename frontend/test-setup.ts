@@ -63,6 +63,7 @@ const appConfig = {
     logout: "/logout",
     getUTub: "/utubs/-1",
     deleteUTub: "/utubs/-1",
+    transferUtubOwnership: "/utubs/-1/owner",
     updateUTubName: "/utubs/-1/name",
     updateUTubDescription: "/utubs/-1/description",
     getURL: "/utubs/-1/urls/-2",
@@ -273,6 +274,23 @@ const appConfig = {
     MEMBER_ROLE_CHANGE_GRANT_SUCCESS: "{{ username }} is now a co-owner.",
     MEMBER_ROLE_CHANGE_REVOKE_SUCCESS:
       "{{ username }} is no longer a co-owner.",
+    TRANSFER_OWNER_ACTION: "Transfer ownership",
+    TRANSFER_OWNER_PICKER_TITLE: "Transfer ownership to…",
+    TRANSFER_OWNER_FILTER_PLACEHOLDER: "Filter members…",
+    TRANSFER_OWNER_NO_MATCHES: "No members match your search.",
+    TRANSFER_OWNER_NO_ELIGIBLE:
+      "This UTub has no other members to transfer to. Add a member first.",
+    TRANSFER_OWNER_PICK_HINT: "Select a member to transfer to.",
+    TRANSFER_OWNER_PICK_CHOSEN: "{{ username }} will become the owner.",
+    TRANSFER_OWNER_SUBMIT: "Transfer ownership",
+    TRANSFER_OWNER_LISTBOX_ARIA: "Choose a member to transfer ownership to",
+    TRANSFER_OWNER_CONFIRM_TITLE: "Transfer ownership of this UTub?",
+    TRANSFER_OWNER_CONFIRM_WARNING:
+      "You'll hand ownership to {{ username }} and stay on as a co-owner. Only the new owner can transfer it back.",
+    TRANSFER_OWNER_CONFIRM_SUBMIT: "Transfer to {{ username }}",
+    TRANSFER_OWNER_SUCCESS:
+      "{{ username }} is now the owner. You're a co-owner.",
+    TRANSFER_INSTEAD_ACTION: "Transfer instead",
     MEMBER_REMOVE_ACTION: "Remove member",
     MEMBER_ROW_ACTIONS_ARIA_LABEL: "Actions for {{ username }}",
     MEMBER_ADD_LABEL: "Add member",
