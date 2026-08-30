@@ -75,7 +75,7 @@
     -webkit-appearance: none;
     appearance: none;
     background: transparent;
-    opacity: 0;
+    opacity: 1;
     color: var(--grayBadgeSelection);
     transition: color 0.2s, opacity 0.2s;
 }
@@ -156,22 +156,15 @@
 }
 
 @media not all and (any-pointer: coarse) {
-
-    .member:hover .memberRowKebab,
-    .member:focus-within .memberRowKebab {
-        opacity: 1;
-    }
-
     .memberRowMenuItem:hover {
         background: var(--cardBackgroundColorHover);
     }
 }
 
-/* Touch devices have no hover — reveal the kebab unconditionally with a 44px
-   target (mirrors the .memberOtherBtnDelete coarse-pointer treatment). */
+/* The kebab is shown by default (opacity:1 at rest, above). On coarse/touch
+   pointers it additionally gets a 44px min touch target (WCAG 2.5.5). */
 @media (any-pointer: coarse) {
     .memberRowKebab {
-        opacity: 1;
         min-height: 2.75rem;
         min-width: 2.75rem;
         justify-content: flex-end;

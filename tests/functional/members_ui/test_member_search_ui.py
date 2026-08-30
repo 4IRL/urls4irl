@@ -194,7 +194,7 @@ def test_owner_sees_member_remove_button_on_touch_viewport(
     page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN the UTub owner is on a coarse-pointer / touch mobile viewport (no hover)
+    GIVEN the UTub owner is on a coarse-pointer / touch mobile viewport
     WHEN the member deck renders for a UTub that has other members
     THEN each non-owner member row's kebab trigger (.memberRowKebab) — which now
          holds the "Remove member" action — has a computed ``opacity`` of ``1``
@@ -202,23 +202,21 @@ def test_owner_sees_member_remove_button_on_touch_viewport(
          "Remove member" item opens the shared confirm modal, which is dismissed
          with "Keep member" WITHOUT removing the member (seeded state stays intact).
 
-    Regression guard for the touch-visibility fix: the owner's per-row actions now
-    live behind a kebab (overflow) menu (the standalone .memberOtherBtnDelete no
-    longer renders on the owner view). Like the old remove button, the kebab is
-    ``opacity: 0`` and only revealed by ``.member:hover`` inside the fine-pointer
-    ``@media not all and (any-pointer: coarse)`` block (or ``:focus``). On a touch
-    device (coarse pointer, no hover) the owner could never see or tap it without
-    the coarse-pointer rule that forces ``opacity: 1`` plus a 44px min touch target.
+    Regression guard for the touch touch-target fix: the owner's per-row actions
+    now live behind a kebab (overflow) menu (the standalone .memberOtherBtnDelete
+    no longer renders on the owner view). The kebab is shown by default
+    (``opacity: 1`` at rest on all pointers); the coarse-pointer
+    ``@media (any-pointer: coarse)`` block ADDITIONALLY pins it to a >=44px min
+    touch target (WCAG 2.5.5). This test uniquely guards that coarse-pointer 44px
+    target — the other delete-member tests run at a desktop/fine-pointer viewport
+    and never assert the touch-target dimensions.
 
     NOTE ON THE GUARD: Playwright's ``to_be_visible()`` does NOT treat
     ``opacity: 0`` as hidden (only ``display:none`` / ``visibility:hidden`` / a
-    zero-size box count as not-visible), so ``to_be_visible()`` alone would still
-    pass under the fine-pointer cascade. The real regression guard here is the
-    computed-style assertion below: ``opacity == "1"`` reads ``"0"`` under the
-    fine-pointer cascade and fails, and the fine-pointer kebab also lacks the 44px
-    min touch target. The other delete-member tests run at a desktop/fine-pointer
-    viewport, where the fine-pointer hover rule applies, so they never exercise the
-    coarse-pointer cascade and would miss this bug.
+    zero-size box count as not-visible), so ``to_be_visible()`` alone is not a
+    strict guard. The computed-style assertions below are: ``opacity == "1"``
+    (would catch a regression back to hover-reveal) plus the >=44px height/width,
+    which only the coarse-pointer rule supplies.
     """
     app = provide_app
     user_id = 1
@@ -256,13 +254,14 @@ def test_owner_sees_member_remove_button_on_touch_viewport(
     kebab_btn = other_badge.locator(HPL.MEMBER_ROW_KEBAB)
 
     # The element is present/laid-out (a precondition for the computed-style read
-    # below). Note: this passes even under a fine-pointer opacity:0 — Playwright
+    # below). Note: this would pass even under an opacity:0 regression — Playwright
     # does not treat opacity:0 as hidden — so it is a precondition, not the guard.
     expect(kebab_btn).to_be_visible()
 
-    # THE regression guard: in the coarse-pointer context the kebab is forced to
-    # opacity:1 with a >=44px touch target (WCAG 2.5.5). The fine-pointer cascade
-    # leaves opacity:0 with no min touch target, so these assertions fail there.
+    # THE regression guard: the kebab is opacity:1 by default (all pointers), and
+    # in the coarse-pointer context it additionally gets a >=44px touch target
+    # (WCAG 2.5.5) — the fine-pointer cascade supplies no min touch target, so the
+    # height/width assertions uniquely exercise the coarse-pointer rule here.
     button_metrics = kebab_btn.evaluate(
         "el => {"
         "  const rect = el.getBoundingClientRect();"

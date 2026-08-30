@@ -77,8 +77,9 @@ def test_owner_sees_kebab_on_non_owner_rows(
 ):
     """
     GIVEN a user owns a UTub with members
-    WHEN they hover a non-owner member row
-    THEN the row's kebab is revealed (opacity 1) and the owner's own row has none
+    WHEN they view a non-owner member row
+    THEN the row's kebab is shown by default (opacity 1, no hover needed) and the
+         owner's own row has none
     """
     app = provide_app
 
@@ -91,10 +92,9 @@ def test_owner_sees_kebab_on_non_owner_rows(
 
     badge = page.locator(f'{HPL.BADGES_MEMBERS}[memberid="{other_member.id}"]')
     expect(badge).to_be_visible()
-    badge.hover()
-    # Hover-reveal: the kebab is opacity:0 until :hover on fine pointers, so assert
-    # the computed opacity rather than a bare visibility check (Playwright treats
-    # opacity:0 as visible).
+    # The kebab is shown by default (opacity:1 at rest, no hover). Assert the
+    # computed opacity rather than a bare visibility check (Playwright treats
+    # opacity:0 as visible, so this catches a regression back to hover-reveal).
     wait_until_css_property(
         page=page,
         css_selector=f'{HPL.BADGES_MEMBERS}[memberid="{other_member.id}"] '
