@@ -190,7 +190,11 @@ function applyPostSettleSideEffects({
     const addedMembers = fulfilled
       .map((result) => result.member)
       .filter((member): member is NonNullable<typeof member> => Boolean(member))
-      .filter((member) => !existingMemberIds.has(member.id));
+      .filter((member) => !existingMemberIds.has(member.id))
+      .map((member) => ({
+        ...member,
+        memberRole: APP_CONFIG.constants.MEMBER_ROLES.MEMBER,
+      }));
     if (addedMembers.length > 0) {
       // Store push + deck badge append are unified under this single
       // UTub-relevance check so getState().members and the deck DOM stay in sync
@@ -200,7 +204,13 @@ function applyPostSettleSideEffects({
       const listMembers = $("#listMembers");
       addedMembers.forEach((member) => {
         listMembers.append(
-          createMemberBadge(member.id, member.username, isOwner, batchUtubID),
+          createMemberBadge({
+            memberID: member.id,
+            username: member.username,
+            memberRole: member.memberRole,
+            isCurrentUserOwner: isOwner,
+            utubID: batchUtubID,
+          }),
         );
       });
       // Deck subheader count + filter re-stripe run ONCE total, after the appends.

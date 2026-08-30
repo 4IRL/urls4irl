@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Callable
 
@@ -26,6 +27,10 @@ from tests.functional.playwright_utils import (
 # (`/utubs/<id>/members/<user_id>`), so a forced response delay isolates the
 # batch-add request.
 _MEMBER_ADD_POST_URL_RE = re.compile(r"/utubs/\d+/members$")
+
+# Matches ONLY the per-member role PATCH (`/utubs/<id>/members/<user_id>`), used
+# to fulfil a forced 400 for the owner-targets-self / non-member guarded case.
+_MEMBER_ROLE_PATCH_URL_RE = re.compile(r"/utubs/\d+/members/\d+$")
 
 
 def open_member_name_filter(*, page: Page) -> Locator:
@@ -64,7 +69,14 @@ def get_all_member_badges(*, page: Page) -> list[Locator]:
 
 
 def get_all_member_usernames(*, page: Page) -> list[str]:
-    """Return the inner-text of every visible member badge as a list.
+    """Return the bare username of every visible member badge as a list.
+
+    Each ``.member`` badge concatenates the username with a role annotation
+    ("Owner"/"Member"/"Co-owner"), so the badge's full text content is
+    ``"<username>\\n<Role>"``. The username itself lives in the row's direct-child
+    ``<b>`` element (``createMemberBadge``/``createOwnerBadge`` build
+    ``.html("<b>" + username + "</b>")`` plus the separate role wrap), so read the
+    ``<b>`` text to return bare usernames rather than the role-suffixed row text.
 
     Args:
         page: Playwright Page open to a selected UTub
@@ -74,7 +86,7 @@ def get_all_member_usernames(*, page: Page) -> list[str]:
     """
     badges_locator = page.locator(HPL.BADGES_MEMBERS)
     expect(badges_locator.first).to_be_visible()
-    return badges_locator.all_inner_texts()
+    return page.locator(f"{HPL.BADGES_MEMBERS} > b").all_inner_texts()
 
 
 def member_badge_by_username(*, page: Page, username: str) -> Locator:
@@ -308,10 +320,13 @@ def add_existing_user_as_member_of_utub(
 
 
 def delete_member_active_utub(*, page: Page, member_name: str) -> None:
-    """Hover over the named member badge and click the delete button.
+    """Open the named member row's kebab menu and click "Remove member".
 
-    Playwright's click auto-waits for the delete button to be actionable
-    (visible, stable, enabled) after the hover reveals it — no pause needed.
+    The owner's per-row actions now live behind a kebab (overflow) menu instead
+    of a standalone remove button. Hovering the row reveals the kebab (opacity:0
+    until :hover on fine pointers), clicking it toggles the menu open (`.open` +
+    unset `hidden`), and the menu's "Remove member" item opens the confirm modal.
+    Playwright auto-waits for each target to be actionable — no pauses needed.
 
     Args:
         page: Playwright Page open to a selected UTub owned by the current user
@@ -320,7 +335,89 @@ def delete_member_active_utub(*, page: Page, member_name: str) -> None:
     badge = page.locator(HPL.BADGES_MEMBERS).filter(has_text=member_name).first
     expect(badge).to_be_visible()
     badge.hover()
-    badge.locator(HPL.BUTTON_MEMBER_DELETE).click()
+    badge.locator(HPL.MEMBER_ROW_KEBAB).click()
+    remove_item = badge.locator(HPL.MEMBER_ROW_MENU_REMOVE)
+    expect(remove_item).to_be_visible()
+    remove_item.click()
+
+
+def seed_co_creator_in_utub(*, app: Flask, utub_id: int, username: str) -> int:
+    """Promote an existing member of `utub_id` to CO_CREATOR (co-owner) in place.
+
+    Mirrors `add_existing_user_as_member_of_utub` but sets
+    `member_role=Member_Role.CO_CREATOR`. Because `create_test_utubmembers`
+    already seeds every user as a plain member of every UTub, this promotes the
+    existing `(utub_id, user_id)` membership row rather than inserting a
+    duplicate — the analogue of `tests/utils_for_test.py::set_member_role`, kept
+    members_ui-local so the co-owner-panel suites read as a self-contained set.
+    Used by the revoke, gating, and role-icon tests so they do not depend on the
+    grant flow existing.
+
+    Args:
+        app: The Flask app under test
+        utub_id: The UTub whose member is being promoted
+        username: The exact username of the existing member to promote
+
+    Returns:
+        The promoted member's user id (for `.member[memberid=...]` targeting).
+    """
+    with app.app_context():
+        user: Users = Users.query.filter(Users.username == username).first()
+        membership: Utub_Members = Utub_Members.query.get((utub_id, user.id))
+        membership.member_role = Member_Role.CO_CREATOR
+        db.session.commit()
+        return user.id
+
+
+def open_member_row_role_action(*, page: Page, member_id: int) -> None:
+    """Open the named member row's kebab menu and click the role-toggle item.
+
+    Hovers the row (the kebab is opacity:0 until :hover on fine pointers),
+    clicks the kebab to open the menu (`.open` + unset `hidden`), then clicks the
+    "Make/Revoke co-owner" item (targeted by its dedicated `.memberRowMenuItemRole`
+    class, since its label alternates with the row's role). The item opens the
+    shared confirm modal. Playwright auto-waits for each target to be actionable.
+
+    Args:
+        page: Playwright Page open to a selected UTub owned by the current user
+        member_id: The user id of the member row to act on
+    """
+    badge = page.locator(f'{HPL.BADGES_MEMBERS}[memberid="{member_id}"]')
+    expect(badge).to_be_visible()
+    badge.hover()
+    badge.locator(HPL.MEMBER_ROW_KEBAB).click()
+    role_item = badge.locator(HPL.MEMBER_ROW_MENU_ROLE)
+    expect(role_item).to_be_visible()
+    role_item.click()
+
+
+def force_role_change_400_response(*, page: Page, message: str) -> None:
+    """Intercept the next member-role PATCH and fulfil it with a real 400.
+
+    Reproduces the server-side owner-targets-self / non-member guard
+    (`CANNOT_MODIFY_OWNER_ROLE` errorCode 4 / `MEMBER_NOT_IN_UTUB`) without
+    needing a UI path to target the owner's own (kebab-less) row: the response
+    carries `{ "message": ... }` so `role.ts modifyMemberRoleFail` surfaces it via
+    `#MemberRowActionAnnouncement` (assertive) rather than redirecting. Only the
+    PATCH is matched; the route is removed after the first fulfil so a retry hits
+    the real endpoint.
+
+    Args:
+        page: Playwright Page under test
+        message: The server message the panel should surface
+    """
+
+    def _handler(route: Route) -> None:
+        route.fulfill(
+            status=400,
+            content_type="application/json",
+            body=json.dumps({"message": message, "errorCode": 4}),
+        )
+
+    # `times=1` retires the route after the first match, so a later retry hits the
+    # real endpoint and we never call `page.unroute` from inside the handler
+    # (which errors mid-handling and lets the request fall through to the server).
+    page.route(_MEMBER_ROLE_PATCH_URL_RE, _handler, times=1)
 
 
 def leave_utub_as_member(*, page: Page, utub_to_leave: Utubs) -> None:

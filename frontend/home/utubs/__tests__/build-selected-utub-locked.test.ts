@@ -59,6 +59,7 @@ function makeUtubDetail(overrides: Partial<UtubDetail> = {}): UtubDetail {
     name: "Sample UTub",
     description: "",
     isCreator: false,
+    isCoCreator: false,
     isLocked: false,
     currentUser: 1,
     createdByUserID: 2,
@@ -115,6 +116,35 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
 
       expect(getState().multiSelectMode).toBe(false);
       expect(getState().selectedURLCardIDs).toEqual([]);
+    });
+  });
+
+  describe("co-creator signal and member roles are threaded into the store", () => {
+    it("writes isCoCreator from the response and preserves each member's memberRole", () => {
+      buildSelectedUTub(
+        makeUtubDetail({
+          id: 61,
+          isCoCreator: true,
+          members: [
+            { id: 2, username: "owner", memberRole: "creator" },
+            { id: 3, username: "cofriend", memberRole: "cocreator" },
+            { id: 4, username: "regular", memberRole: "member" },
+          ],
+        }),
+      );
+
+      expect(getState().isCoCreator).toBe(true);
+      expect(getState().members.map((member) => member.memberRole)).toEqual([
+        "creator",
+        "cocreator",
+        "member",
+      ]);
+    });
+
+    it("keeps isCoCreator false when the response is not co-creator", () => {
+      buildSelectedUTub(makeUtubDetail({ id: 62, isCoCreator: false }));
+
+      expect(getState().isCoCreator).toBe(false);
     });
   });
 

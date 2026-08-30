@@ -3,7 +3,7 @@ import {
   createMockXhr,
 } from "../../../__tests__/helpers/mock-jquery.js";
 import { createOwnerBadge, createMemberBadge } from "../members.js";
-import { createMemberRemoveBtn, removeMemberShowModal } from "../delete.js";
+import { removeMemberShowModal } from "../delete.js";
 import { createMemberHideInput } from "../create.js";
 import { updateMemberDeck } from "../deck.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
@@ -15,16 +15,6 @@ import {
   resetUTubDeckIfNoUTubs,
 } from "../../utubs/deck.js";
 
-vi.mock("../delete.js", async () => {
-  const actual =
-    await vi.importActual<typeof import("../delete.js")>("../delete.js");
-  return {
-    ...actual,
-    createMemberRemoveBtn: vi.fn(() =>
-      window.jQuery('<button class="memberOtherBtnDelete"></button>'),
-    ),
-  };
-});
 vi.mock("../../btns-forms.js", () => ({ hideInputs: vi.fn() }));
 vi.mock("../../urls/cards/selection.js", () => ({ deselectAllURLs: vi.fn() }));
 vi.mock("../../../lib/ajax.js", () => ({
@@ -76,6 +66,21 @@ describe("createOwnerBadge", () => {
     const $el = $(createOwnerBadge(1, "Alice"));
     expect($el.find("svg.bi-diamond-fill.memberRole").length).toBe(1);
   });
+
+  it("sets the username via .text() so adversarial markup is never parsed (XSS regression)", () => {
+    // A regression to `.html("<b>" + username + "</b>")` would render identically
+    // for benign names but parse this payload into a live <img>. Set via .text()
+    // (a text node), the raw string is the <b> textContent and nothing is parsed.
+    const payload = '<img src=x onerror="alert(1)">';
+    const $el = $(createOwnerBadge(1, payload));
+    expect($el.find("b").text()).toBe(payload);
+    expect($el.find("img").length).toBe(0);
+  });
+
+  it("renders a visually-hidden 'Owner' role label alongside the icon", () => {
+    const $el = $(createOwnerBadge(1, "Alice"));
+    expect($el.find(".member-role-wrap .visually-hidden").text()).toBe("Owner");
+  });
 });
 
 describe("createMemberBadge", () => {
@@ -83,12 +88,24 @@ describe("createMemberBadge", () => {
 
   describe("element structure", () => {
     it("sets memberid attribute to the member user ID", () => {
-      const el = createMemberBadge(42, "Bob", false, 10);
+      const el = createMemberBadge({
+        memberID: 42,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
       expect(el.attr("memberid")).toBe("42");
     });
 
     it("has member, full-width, flex-row, jc-sb, align-center, flex-start classes", () => {
-      const el = createMemberBadge(1, "Bob", false, 10);
+      const el = createMemberBadge({
+        memberID: 1,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
       expect(el.hasClass("member")).toBe(true);
       expect(el.hasClass("full-width")).toBe(true);
       expect(el.hasClass("flex-row")).toBe(true);
@@ -98,32 +115,188 @@ describe("createMemberBadge", () => {
     });
 
     it("renders the username inside a bold element", () => {
-      const el = createMemberBadge(1, "Bob", false, 10);
+      const el = createMemberBadge({
+        memberID: 1,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
       expect(el.find("b").text()).toBe("Bob");
+    });
+
+    it("sets the username via .text() so adversarial markup is never parsed (XSS regression)", () => {
+      // A regression to `.html("<b>" + username + "</b>")` would render identically
+      // for benign names but parse this payload into a live <img>. Set via .text()
+      // (a text node), the raw string is the <b> textContent and nothing is parsed.
+      const payload = '<img src=x onerror="alert(1)">';
+      const el = createMemberBadge({
+        memberID: 1,
+        username: payload,
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find("b").text()).toBe(payload);
+      expect(el.find("img").length).toBe(0);
+    });
+
+    it("sets the kebab aria-label via .attr() so a double-quote cannot break out (XSS regression)", () => {
+      // A regression to interpolating the username into the aria-label's HTML
+      // string would let this double-quote close the attribute and inject markup.
+      // Set via .attr() + .replace(), the label is the literal resolved string and
+      // the username never reaches HTML parsing (so no injected <img> appears).
+      const payload = 'Bob" onmouseover="x';
+      const el = createMemberBadge({
+        memberID: 5,
+        username: payload,
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      expect(el.find(".memberRowKebab").attr("aria-label")).toBe(
+        `Actions for ${payload}`,
+      );
+      expect(el.find("img").length).toBe(0);
+    });
+  });
+
+  describe("per-row role icon (DD-2/DD-10/DD-18)", () => {
+    it("renders the co-creator diamond-half icon + 'Co-owner' label", () => {
+      const el = createMemberBadge({
+        memberID: 3,
+        username: "Bob",
+        memberRole: "cocreator",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find("svg.bi-diamond-half.memberRole").length).toBe(1);
+      expect(el.find(".member-role-wrap .visually-hidden").text()).toBe(
+        "Co-owner",
+      );
+    });
+
+    it("renders the creator diamond-fill icon + 'Owner' label", () => {
+      const el = createMemberBadge({
+        memberID: 3,
+        username: "Bob",
+        memberRole: "creator",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find("svg.bi-diamond-fill.memberRole").length).toBe(1);
+      expect(el.find(".member-role-wrap .visually-hidden").text()).toBe(
+        "Owner",
+      );
+    });
+
+    it("renders the plain-member people-fill icon + 'Member' label", () => {
+      const el = createMemberBadge({
+        memberID: 3,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find("svg.bi-people-fill.memberRole").length).toBe(1);
+      expect(el.find(".member-role-wrap .visually-hidden").text()).toBe(
+        "Member",
+      );
     });
   });
 
   describe("when the current user is the UTub owner (isCurrentUserOwner=true)", () => {
-    it("calls createMemberRemoveBtn to create a remove button", () => {
-      createMemberBadge(5, "Bob", true, 10);
-      expect(vi.mocked(createMemberRemoveBtn)).toHaveBeenCalledOnce();
+    it("renders exactly one kebab (overflow) menu trigger", () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      expect(el.find(".memberRowKebab").length).toBe(1);
     });
 
-    it("appends the remove button to the member span", () => {
-      const el = createMemberBadge(5, "Bob", true, 10);
-      expect(el.find(".memberOtherBtnDelete").length).toBe(1);
+    it("folds the remove action into the menu and renders no bare remove button", () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      // The standalone remove button is folded into the kebab menu.
+      expect(el.find(".memberOtherBtnDelete").length).toBe(0);
+      const removeItem = el.find(".memberRowMenu .memberRowMenuItem.danger");
+      expect(removeItem.length).toBe(1);
+      // The item text is sourced from the string bridge, not hardcoded.
+      expect(removeItem.find("span").text()).toBe("Remove member");
+    });
+
+    it("builds the kebab aria-label from the bridged {{ username }} template", () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      // MEMBER_ROW_ACTIONS_ARIA_LABEL ("Actions for {{ username }}") is resolved
+      // client-side via .replace(), so the row's username lands in the label.
+      expect(el.find(".memberRowKebab").attr("aria-label")).toBe(
+        "Actions for Bob",
+      );
+    });
+
+    it('labels the role item "Make co-owner" for a plain member', () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      const roleItem = el.find(".memberRowMenuItemRole");
+      expect(roleItem.length).toBe(1);
+      expect(roleItem.find("span").text()).toBe("Make co-owner");
+      expect(roleItem.attr("aria-label")).toBe("Make co-owner");
+    });
+
+    it('labels the role item "Revoke co-owner" for an existing co-owner', () => {
+      const el = createMemberBadge({
+        memberID: 6,
+        username: "Cara",
+        memberRole: "cocreator",
+        isCurrentUserOwner: true,
+        utubID: 10,
+      });
+      const roleItem = el.find(".memberRowMenuItemRole");
+      expect(roleItem.find("span").text()).toBe("Revoke co-owner");
+      expect(roleItem.attr("aria-label")).toBe("Revoke co-owner");
     });
   });
 
   describe("when the current user is a member (isCurrentUserOwner=false)", () => {
-    it("does not call createMemberRemoveBtn", () => {
-      createMemberBadge(5, "Bob", false, 10);
-      expect(vi.mocked(createMemberRemoveBtn)).not.toHaveBeenCalled();
+    it("does not render a kebab menu trigger", () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find(".memberRowKebab").length).toBe(0);
     });
 
-    it("does not append a remove button to the span", () => {
-      const el = createMemberBadge(5, "Bob", false, 10);
-      expect(el.find(".memberOtherBtnDelete").length).toBe(0);
+    it("does not render a row menu", () => {
+      const el = createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole: "member",
+        isCurrentUserOwner: false,
+        utubID: 10,
+      });
+      expect(el.find(".memberRowMenu").length).toBe(0);
     });
   });
 });
@@ -205,14 +378,14 @@ describe("updateMemberDeck - applyDeckDiff config", () => {
     document.body.innerHTML = `<div id="listMembers"></div>`;
     vi.clearAllMocks();
     vi.mocked(getState).mockReturnValue({
-      members: [{ id: 1, username: "Alice" }],
+      members: [{ id: 1, username: "Alice", memberRole: "member" }],
       isCurrentUserOwner: true,
     } as unknown as ReturnType<typeof getState>);
   });
 
   it("calls applyDeckDiff once with oldItems matching getState().members and newItems matching newMembers", () => {
-    const existingMember = { id: 1, username: "Alice" };
-    const newMember = { id: 2, username: "Bob" };
+    const existingMember = { id: 1, username: "Alice", memberRole: "member" };
+    const newMember = { id: 2, username: "Bob", memberRole: "member" };
     const newMembers = [existingMember, newMember];
 
     updateMemberDeck(newMembers, true, 42);
@@ -243,7 +416,7 @@ describe("updateMemberDeck - applyDeckDiff config", () => {
   });
 
   it("addElement callback appends a new member badge to #listMembers", () => {
-    const newMember = { id: 9, username: "Dana" };
+    const newMember = { id: 9, username: "Dana", memberRole: "member" };
 
     updateMemberDeck([newMember], true, 42);
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];

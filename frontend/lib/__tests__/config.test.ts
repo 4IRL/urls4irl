@@ -54,6 +54,7 @@ describe("APP_CONFIG shape", () => {
       "createURLTag",
       "deleteUTubTag",
       "removeMember",
+      "modifyMemberRole",
     ] as const;
 
     it.each(TWO_PARAM_ROUTE_KEYS)("routes.%s is a function", (key) => {
@@ -70,6 +71,16 @@ describe("APP_CONFIG shape", () => {
         expect(typeof route(1, 2)).toBe("string");
       },
     );
+
+    it("routes.modifyMemberRole substitutes both the utub and user ids", () => {
+      expect(APP_CONFIG.routes.modifyMemberRole(10, 5)).toBe(
+        "/utubs/10/members/5",
+      );
+    });
+
+    it("routes.removeMember substitutes both the utub and user ids", () => {
+      expect(APP_CONFIG.routes.removeMember(10, 5)).toBe("/utubs/10/members/5");
+    });
   });
 
   describe("three-param dynamic routes", () => {

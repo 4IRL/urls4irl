@@ -58,7 +58,9 @@ describe("updateUTubOnFindingStaleData", () => {
       },
     ];
     const mockTags = [{ id: 100, tagString: "tag-a", tagApplied: 1 }];
-    const mockMembers = [{ id: 1000, username: "alice" }];
+    const mockMembers = [
+      { id: 1000, username: "alice", memberRole: "creator" },
+    ];
     const mockUtubDetail: UtubDetail = {
       status: "Success",
       id: mockUtubID,
@@ -70,6 +72,7 @@ describe("updateUTubOnFindingStaleData", () => {
       urls: mockUrls,
       tags: mockTags,
       isCreator: true,
+      isCoCreator: false,
       isLocked: false,
       currentUser: 1000,
     };

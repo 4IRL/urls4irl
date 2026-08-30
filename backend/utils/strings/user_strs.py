@@ -102,6 +102,29 @@ MEMBER_SEARCH_NO_RESULTS = "No members found"
 MEMBER_SEARCH_PLACEHOLDER = "Filter members"
 MEMBER_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} members shown"
 
+# Grant/revoke co-owner (role.ts). Client-authored confirm-modal copy + menu-item
+# labels + row-action announcements, so they take the full 5-file string bridge.
+# Two complete-sentence success templates (DD-19) — never a {{role}} ternary.
+MAKE_CO_OWNER_ACTION = "Make co-owner"
+REVOKE_CO_OWNER_ACTION = "Revoke co-owner"
+MAKE_CO_OWNER_TITLE = "Make this member a co-owner?"
+MAKE_CO_OWNER_WARNING = (
+    "Co-owners can add and remove members and manage this UTub's URLs."
+)
+REVOKE_CO_OWNER_TITLE = "Revoke this member's co-owner status?"
+REVOKE_CO_OWNER_WARNING = (
+    "This member will return to a regular member with no management access."
+)
+MEMBER_ROLE_CHANGE_GRANT_SUCCESS = "{{ username }} is now a co-owner."
+MEMBER_ROLE_CHANGE_REVOKE_SUCCESS = "{{ username }} is no longer a co-owner."
+
+# Kebab (overflow) row-action strings (members.ts). Client-authored: the
+# "Remove member" menu-item text and the per-row kebab aria-label (a
+# {{ username }} template resolved client-side), so they take the full 5-file
+# string bridge like the co-owner action labels above.
+MEMBER_REMOVE_ACTION = "Remove member"
+MEMBER_ROW_ACTIONS_ARIA_LABEL = "Actions for {{ username }}"
+
 # Add-member combobox (member-combobox.ts). Distinct from the MEMBER_SEARCH_*
 # strings above, which belong to the client-side member-list FILTER, not this
 # add-member typeahead.

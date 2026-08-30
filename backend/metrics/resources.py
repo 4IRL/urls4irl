@@ -143,6 +143,8 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_MEMBER_LEAVE_OPEN: Resource.MEMBER,
     EventName.UI_MEMBER_LEAVE_CONFIRM: Resource.MEMBER,
     EventName.UI_MEMBER_LEAVE_CANCEL: Resource.MEMBER,
+    EventName.UI_MEMBER_ROLE_CHANGE_SHOWN: Resource.MEMBER,
+    EventName.UI_MEMBER_ROLE_CHANGE_CONFIRMED: Resource.MEMBER,
     # UI — Forms
     EventName.UI_FORM_SUBMIT: Resource.FORM,
     EventName.UI_FORM_CANCEL: Resource.FORM,

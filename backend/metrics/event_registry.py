@@ -533,6 +533,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Self-leave confirm modal dismissed",
         category=EventCategory.UI,
     ),
+    EventName.UI_MEMBER_ROLE_CHANGE_SHOWN: EventRegistryEntry(
+        description="Grant/revoke co-owner confirm modal opened",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_MEMBER_ROLE_CHANGE_CONFIRMED: EventRegistryEntry(
+        description="Grant/revoke co-owner change confirmed",
+        category=EventCategory.UI,
+    ),
     EventName.UI_FORM_SUBMIT: EventRegistryEntry(
         description="Form submitted",
         category=EventCategory.UI,

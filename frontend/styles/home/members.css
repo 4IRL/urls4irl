@@ -5,13 +5,37 @@
     padding-inline: 0;
 }
 
-/* Owner row's diamond marker — mirrors the UTub creator icon color. */
+/* Owner row's diamond marker — mirrors the UTub creator icon color. Rendered
+   `display:block` so the inline-SVG baseline descender gap doesn't push the glyph
+   slightly above the row's centerline (which left it misaligned with the kebab). */
 .member .memberRole {
+    display: block;
     flex-shrink: 0;
     color: var(--memberRoleIconColor);
 }
 
+/* Center the role icon inside its label wrapper so it shares the row centerline
+   with the username text and the kebab (the wrapper's inner spans are otherwise
+   inline, reintroducing the baseline gap). */
+.member-role-wrap {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Right-side affordance cluster: breathing room between the role icon and the
+   kebab so they don't feel cramped against each other. */
+.member-right {
+    gap: 0.5rem;
+}
+
 .member {
+    /* Positioning context for the absolutely-positioned per-row kebab menu
+       (.memberRowMenu), which anchors to the row's right/bottom edge. */
+    position: relative;
+    /* Vertically center the row's children (username, role icon, kebab). The
+       badge markup carries both `align-center` and a stray `flex-start` utility
+       class which conflict; pin center here deterministically. */
+    align-items: center;
     color: var(--grayBadgeSelection);
     border-color: var(--grayBadgeSelection);
     border-radius: 0;
@@ -57,6 +81,141 @@
     color: red;
     outline: 2px solid red;
     outline-offset: 2px;
+}
+
+/* ============================================================================
+   Per-row kebab (overflow) menu (row-menu.ts) — owner viewer only.
+
+   Trigger mirrors .memberOtherBtnDelete: appearance-none (strip iOS Safari's
+   native button chrome so no opaque box paints over the row divider), opacity-0
+   hover-reveal on fine pointers, always-visible 44px target on coarse pointers,
+   and a :focus-visible ring for keyboard users. The menu itself is a floating
+   card anchored to the row's bottom-right.
+   ========================================================================== */
+.memberRowKebab {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* No horizontal padding: the glyph must sit flush at the row's right edge so
+       it lines up vertically with the owner row's flush-right role diamond (both
+       are the right-most element on their row). Padding here insets the glyph and
+       breaks that column. */
+    padding: 0;
+    background: transparent;
+    opacity: 1;
+    color: var(--grayBadgeSelection);
+    cursor: pointer;
+    transition: color 0.15s, opacity 0.2s;
+}
+
+/* `display:block` removes the inline-SVG baseline gap so the glyph sits on the
+   row centerline, aligned with the role icon and username text. */
+.memberRowKebab svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+/* Hover feedback: shift the glyph to the brand green. The hue shift (gray ->
+   green) reads clearly in BOTH themes — a straight darken-to-textPrimary was
+   near-invisible in light mode, where the resting gray is already dark. (No
+   background pill: it would need padding, which insets the glyph and breaks its
+   alignment with the owner row's flush-right diamond.) */
+.memberRowKebab:hover {
+    color: var(--deckSelectionGreen);
+}
+
+.memberRowKebab:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* Floating menu card, anchored to the row's bottom-right (the row is
+   position:relative). Hidden at rest; .open reveals it as a vertical stack. */
+.memberRowMenu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 20;
+    background: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    padding: 4px;
+    display: none;
+}
+
+.memberRowMenu.open {
+    display: flex;
+    flex-direction: column;
+}
+
+.memberRowMenuItem {
+    -webkit-appearance: none;
+    appearance: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--textPrimary);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.memberRowMenuItem svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Ring drawn INSIDE the item (negative offset) so it never clips against the
+   card's own border. */
+.memberRowMenuItem:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+.memberRowMenuItem.danger {
+    color: var(--removeIconColor);
+}
+
+/* Thin separator between the role-toggle item and the destructive remove item. */
+.memberRowMenuDivider {
+    width: 100%;
+    height: 0;
+    margin: 4px 0;
+    border: none;
+    border-top: 1px solid var(--borderColor);
+}
+
+@media not all and (any-pointer: coarse) {
+    .memberRowMenuItem:hover {
+        background: var(--cardBackgroundColorHover);
+    }
+}
+
+/* The kebab is shown by default (opacity:1 at rest, above). On coarse/touch
+   pointers it additionally gets a 44px min touch target (WCAG 2.5.5). */
+@media (any-pointer: coarse) {
+    .memberRowKebab {
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+        justify-content: flex-end;
+        padding-right: 0;
+    }
+
+    .memberRowMenuItem {
+        min-height: 2.75rem;
+    }
 }
 
 #listMembers {
@@ -304,6 +463,7 @@
    reinforces the non-interactive state visually). This class is independent of
    `.member-search-open` (the filter's own gate) — the two never collide. */
 #MemberDeck.member-add-open .memberOtherBtnDelete,
+#MemberDeck.member-add-open .memberRowKebab,
 #MemberDeck.member-add-open #memberNameFilterBtn {
     pointer-events: none;
     opacity: 0.5;

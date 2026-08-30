@@ -269,7 +269,9 @@ describe("createURLBlock", () => {
     it("renders a terse date-only inline badge (no adder), independent of the member list", () => {
       // Even with the adder present as a member, the inline badge stays
       // date-only — the attribution lives on the expanded stacked badge.
-      setState({ members: [{ id: 7, username: "alice" }] });
+      setState({
+        members: [{ id: 7, username: "alice", memberRole: "member" }],
+      });
       const el = createURLBlock(
         { ...baseURL, addedByUserID: 7, addedAt: "2024-03-09T12:00:00+00:00" },
         [],
@@ -309,7 +311,9 @@ describe("createURLBlock", () => {
     });
 
     it("renders the expanded stacked badge attributing the adder: 'Added by <user> · <date>', last row after the buttons", () => {
-      setState({ members: [{ id: 7, username: "alice" }] });
+      setState({
+        members: [{ id: 7, username: "alice", memberRole: "member" }],
+      });
       const el = createURLBlock(
         { ...baseURL, addedByUserID: 7, addedAt: "2024-03-09T12:00:00+00:00" },
         [],

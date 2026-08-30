@@ -1,7 +1,7 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
-import { AppEvents, on } from "../../lib/event-bus.js";
+import { AppEvents, on, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { emit } from "../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { enableTabbableChildElements } from "../../lib/jquery-plugins.js";
@@ -778,6 +778,9 @@ export function showMemberCombobox(utubID: number): void {
   closeMemberNameFilter();
   setOpenForm(HOME_FORM.MEMBER_INVITE);
   emit({ event: UI_EVENTS.UI_MEMBER_INVITE_OPEN });
+  // Opening the add-member combobox closes any open per-row kebab menu (DD-6);
+  // row-menu.ts subscribes to this via the event bus.
+  emitAppEvent(AppEvents.MEMBER_ADD_OPENED);
 
   const wrap = createMemberComboboxBlock(utubID);
   const createMemberWrap = $("#createMemberWrap");
@@ -885,8 +888,8 @@ export function hideAndResetMemberCombobox(): void {
       showMemberCombobox(activeUTubID),
     );
     $("#displayMemberWrap").showClassFlex();
-    // Only the UTub owner may add members.
-    if (!getState().isCurrentUserOwner) {
+    // The UTub owner and co-owners may add members (DD-1).
+    if (!(getState().isCurrentUserOwner || getState().isCoCreator)) {
       memberBtnCreate.hideClass();
     }
   }

@@ -7,7 +7,11 @@ import { getState } from "../../store/app-store.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { cancelCoMemberCandidatesFetch } from "./co-member-fetch.js";
 import { hideAndResetMemberCombobox } from "./member-combobox.js";
-import { createMemberBadge, createOwnerBadge } from "./members.js";
+import {
+  createMemberBadge,
+  createOwnerBadge,
+  swapMemberRoleInRow,
+} from "./members.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
 import {
@@ -53,21 +57,40 @@ export function updateMemberDeck(
     newCount: newMembers.length,
     isCurrentUserOwner,
   });
+  // DD-20: capture the pre-diff members once (nothing mutates state between this
+  // read and applyDeckDiff, so one read is safe to reuse for oldItems + the
+  // role map). Build an id→role map so the updateElement callback can skip rows
+  // whose role did not actually change — applyDeckDiff's toUpdate set is
+  // id-membership-based, not field-diffed, so every id present in both snapshots
+  // would otherwise trigger a needless swap.
+  const oldMembers = getState().members;
+  const oldRoleByID = new Map(
+    oldMembers.map((member) => [member.id, member.memberRole]),
+  );
+
   applyDeckDiff<MemberItem>({
-    oldItems: getState().members,
+    oldItems: oldMembers,
     newItems: newMembers,
     getID: (member) => member.id,
     removeElement: (memberID) =>
       $(".member[memberid=" + memberID + "]").remove(),
     addElement: (member) => {
       $("#listMembers").append(
-        createMemberBadge(
-          member.id,
-          member.username,
+        createMemberBadge({
+          memberID: member.id,
+          username: member.username,
+          memberRole: member.memberRole,
           isCurrentUserOwner,
           utubID,
-        ),
+        }),
       );
+    },
+    // DD-7: a role flip arriving via STALE_DATA_DETECTED/refresh (not just the
+    // local grant/revoke success path) gets the same targeted swap. Uses the
+    // exact helper the Step-4 success handler uses so the paths never drift.
+    updateElement: (id, member) => {
+      if (oldRoleByID.get(id) === member.memberRole) return;
+      swapMemberRoleInRow({ memberID: id, targetRole: member.memberRole });
     },
   });
 
@@ -86,7 +109,11 @@ export function setMemberDeckOnUTubSelected(
   $("#displayMemberWrap").showClassFlex();
   const parent = $("#listMembers");
 
-  if (isCurrentUserOwner) setupShowCreateMemberFormEventListeners(utubID);
+  // Co-owners can add members too (DD-1), so gate the add affordance on
+  // owner-OR-co-creator rather than the literal owner flag alone.
+  const canManageMembers = isCurrentUserOwner || getState().isCoCreator;
+
+  if (canManageMembers) setupShowCreateMemberFormEventListeners(utubID);
 
   // Instantiate deck with list of members with access to current UTub
   for (const utubMember of dictMembers) {
@@ -99,12 +126,13 @@ export function setMemberDeckOnUTubSelected(
       );
     } else {
       parent.append(
-        createMemberBadge(
-          utubMemberUserID,
-          utubMemberUsername,
+        createMemberBadge({
+          memberID: utubMemberUserID,
+          username: utubMemberUsername,
+          memberRole: utubMember.memberRole,
           isCurrentUserOwner,
           utubID,
-        ),
+        }),
       );
     }
   }
@@ -123,7 +151,7 @@ export function setMemberDeckOnUTubSelected(
   showMemberFilterBar();
 
   // Subheader prompt
-  setMemberDeckForUTub(isCurrentUserOwner);
+  setMemberDeckForUTub(canManageMembers);
 }
 
 export function setMemberDeckWhenNoUTubSelected(): void {
@@ -140,19 +168,19 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   $("#MemberDeckCount").text("");
 }
 
-export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {
+export function setMemberDeckForUTub(canManageMembers: boolean = true): void {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
 
   log("setMemberDeckForUTub — permission-gated UI", {
-    isCurrentUserOwner,
+    canManageMembers,
     numOfMembers,
-    showingAddButton: isCurrentUserOwner,
-    showingLeaveButton: !isCurrentUserOwner,
+    showingAddButton: canManageMembers,
   });
 
-  // Ability to add members is restricted to UTub owner. The leave/delete actions
-  // live in the UTub deck (setUTubDeckOnUTubSelected) and are not managed here.
-  if (isCurrentUserOwner) {
+  // Ability to add members is limited to the UTub owner and co-owners (DD-1). The
+  // leave/delete actions live in the UTub deck (setUTubDeckOnUTubSelected) and are
+  // not managed here.
+  if (canManageMembers) {
     $("#memberBtnCreate").showClassNormal();
   } else {
     $("#memberBtnCreate").hideClass();

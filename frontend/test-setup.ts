@@ -81,6 +81,7 @@ const appConfig = {
     createMember: "/utubs/-1/members",
     coMemberCandidates: "/utubs/-1/co-members",
     removeMember: "/utubs/-1/members/-4",
+    modifyMemberRole: "/utubs/-1/members/-4",
     contactUs: "/contact",
     crossUtubSearch: "/search",
   },
@@ -94,8 +95,9 @@ const appConfig = {
     TAGS_MAX_LENGTH: 30,
     TAGS_MAX_ON_URLS: 20,
     MEMBER_ROLES: {
-      CREATOR: "CREATOR",
-      CO_CREATOR: "CO_CREATOR",
+      MEMBER: "member",
+      CREATOR: "creator",
+      CO_CREATOR: "cocreator",
     },
     // Source of truth: backend/metrics/dimension_models.py (DIMENSION_MODELS registry).
     // — keep this array in sync when DIMENSION_MODELS changes.
@@ -260,6 +262,19 @@ const appConfig = {
     MEMBER_SEARCH_NO_RESULTS: "No members found",
     MEMBER_SEARCH_PLACEHOLDER: "Filter members",
     MEMBER_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} members shown",
+    MAKE_CO_OWNER_ACTION: "Make co-owner",
+    REVOKE_CO_OWNER_ACTION: "Revoke co-owner",
+    MAKE_CO_OWNER_TITLE: "Make this member a co-owner?",
+    MAKE_CO_OWNER_WARNING:
+      "Co-owners can add and remove members and manage this UTub's URLs.",
+    REVOKE_CO_OWNER_TITLE: "Revoke this member's co-owner status?",
+    REVOKE_CO_OWNER_WARNING:
+      "This member will return to a regular member with no management access.",
+    MEMBER_ROLE_CHANGE_GRANT_SUCCESS: "{{ username }} is now a co-owner.",
+    MEMBER_ROLE_CHANGE_REVOKE_SUCCESS:
+      "{{ username }} is no longer a co-owner.",
+    MEMBER_REMOVE_ACTION: "Remove member",
+    MEMBER_ROW_ACTIONS_ARIA_LABEL: "Actions for {{ username }}",
     MEMBER_ADD_LABEL: "Add member",
     MEMBER_ADD_PLACEHOLDER: "Add a member by username",
     MEMBER_ADD_SUBMIT: "Add",

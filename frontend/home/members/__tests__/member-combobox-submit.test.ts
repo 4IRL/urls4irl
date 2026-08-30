@@ -33,10 +33,11 @@ vi.mock("../search.js", () => ({
 }));
 
 vi.mock("../members.js", () => ({
-  createMemberBadge: vi.fn((id: number, username: string) =>
-    window.jQuery(
-      `<span class="member" memberid="${id}"><b>${username}</b></span>`,
-    ),
+  createMemberBadge: vi.fn(
+    ({ memberID, username }: { memberID: number; username: string }) =>
+      window.jQuery(
+        `<span class="member" memberid="${memberID}"><b>${username}</b></span>`,
+      ),
   ),
 }));
 
@@ -261,6 +262,12 @@ describe("member-combobox-submit — mixed outcomes", () => {
       "Bob",
       "Ghost",
     ]);
+    // Freshly-added members are pushed with the plain-member role so the widened
+    // MemberItem is satisfied and the correct role icon renders downstream (DD-1).
+    expect(getState().members.map((member) => member.memberRole)).toEqual([
+      "member",
+      "member",
+    ]);
     // Deck sync runs ONCE total, from the resolved results array.
     expect(vi.mocked(createMemberBadge)).toHaveBeenCalledTimes(2);
     expect(vi.mocked(setMemberDeckForUTub)).toHaveBeenCalledTimes(1);
@@ -451,7 +458,7 @@ describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
     // is still the batch's UTub 7). That select flow re-fetched `members` fresh —
     // already including Bob (id 1), whose independent POST had completed. This
     // stale batch must NOT append Bob a second time.
-    setState({ members: [{ id: 1, username: "Bob" }] });
+    setState({ members: [{ id: 1, username: "Bob", memberRole: "member" }] });
 
     firstDeferred.resolve(
       { utubID: 7, member: { id: 1, username: "Bob" } },
@@ -470,11 +477,12 @@ describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
     // pushed into the store and badged into the deck.
     expect(getState().members.map((member) => member.id)).toEqual([1, 2]);
     expect(vi.mocked(createMemberBadge)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(createMemberBadge)).toHaveBeenCalledWith(
-      2,
-      "Ghost",
-      true,
-      7,
-    );
+    expect(vi.mocked(createMemberBadge)).toHaveBeenCalledWith({
+      memberID: 2,
+      username: "Ghost",
+      memberRole: "member",
+      isCurrentUserOwner: true,
+      utubID: 7,
+    });
   });
 });

@@ -581,6 +581,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_MEMBER_LEAVE_OPEN: _DimDeviceOnly,
     EventName.UI_MEMBER_LEAVE_CONFIRM: _DimDeviceOnly,
     EventName.UI_MEMBER_LEAVE_CANCEL: _DimDeviceOnly,
+    EventName.UI_MEMBER_ROLE_CHANGE_SHOWN: _DimDeviceOnly,
+    EventName.UI_MEMBER_ROLE_CHANGE_CONFIRMED: _DimDeviceOnly,
     # UI — Forms
     EventName.UI_FORM_SUBMIT: _DimFormSubmit,
     EventName.UI_FORM_CANCEL: _DimFormCancel,

@@ -34,6 +34,10 @@
 
 		<p id="MemberSearchNoResults" class="hidden"></p>
 		<span id="MemberSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
+		<!-- Row-action live region (grant/revoke co-owner success + failure). One
+		     region for both outcomes; aria-live is toggled dynamically in TS —
+		     polite on success, assertive on failure (DD-9/DD-10/DD-21). -->
+		<span id="MemberRowActionAnnouncement" class="visually-hidden" aria-live="polite"></span>
 
 		<!-- Member Deck Content. The owner sits at the top (#UTubOwner) marked with
 		     a diamond icon; remaining members follow in #listMembers. No section

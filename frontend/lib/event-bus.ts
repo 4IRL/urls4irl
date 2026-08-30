@@ -36,6 +36,8 @@ export interface AppEventMap {
   "url:multiselect-mode-changed": { active: boolean };
   "url:multiselect-changed": { selectedURLCardIDs: number[] };
   "member-filter:opened": void;
+  "member-filter:changed": void;
+  "member-add:opened": void;
 }
 
 export const AppEvents = Object.freeze({
@@ -53,6 +55,8 @@ export const AppEvents = Object.freeze({
   URL_MULTISELECT_MODE_CHANGED: "url:multiselect-mode-changed",
   URL_MULTISELECT_CHANGED: "url:multiselect-changed",
   MEMBER_FILTER_OPENED: "member-filter:opened",
+  MEMBER_FILTER_CHANGED: "member-filter:changed",
+  MEMBER_ADD_OPENED: "member-add:opened",
 } as const);
 
 const _handlers = new Map<string, Set<(payload: unknown) => void>>();

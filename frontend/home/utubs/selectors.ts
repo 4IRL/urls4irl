@@ -90,6 +90,7 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
     activeUTubName: selectedUTub.name,
     activeUTubDescription: selectedUTub.description,
     isCurrentUserOwner: selectedUTub.isCreator,
+    isCoCreator: selectedUTub.isCoCreator,
     isCurrentUTubLocked: selectedUTub.isLocked,
     currentUserID: selectedUTub.currentUser,
     utubOwnerID: selectedUTub.createdByUserID,
@@ -288,7 +289,7 @@ export function setUTubSelectorEventListeners(utub: HTMLElement): void {
     });
 }
 
-function makeUTubRoleIcon({
+export function makeUTubRoleIcon({
   memberRole,
   isLocked,
 }: {
