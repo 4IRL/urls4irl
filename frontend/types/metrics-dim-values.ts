@@ -31,6 +31,7 @@ export const HOME_FORM = {
   TAG_CREATE: "tag_create",
   MEMBER_INVITE: "member_invite",
   BULK_COPY: "bulk_copy",
+  TRANSFER_OWNER: "transfer_owner",
 } as const;
 
 export type HomeForm = (typeof HOME_FORM)[keyof typeof HOME_FORM];

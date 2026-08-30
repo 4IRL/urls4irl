@@ -49,6 +49,7 @@ HomeForm = Literal[
     "tag_create",
     "member_invite",
     "bulk_copy",
+    "transfer_owner",
 ]
 
 # All forms that can surface a client-side validation error — home forms

@@ -469,6 +469,21 @@
     opacity: 0.5;
 }
 
+/* Cross-surface suppression while the ownership-transfer picker is open
+   (co-owner-transfer-ui, DD-6/DD-7). The picker joins the deck's mutual-exclusion
+   mesh as a 4th participant: while it is open, the remove-member buttons, per-row
+   kebabs, member-name-filter trigger, and add-member trigger are all inert. This
+   also closes DD-7's live window — a kebab cannot be freshly opened WHILE the
+   picker stays open (openTransferPicker()'s closeAllMemberRowMenus() only closes
+   menus already open at picker-open time). */
+#MemberDeck.transfer-picker-open .memberOtherBtnDelete,
+#MemberDeck.transfer-picker-open .memberRowKebab,
+#MemberDeck.transfer-picker-open #memberNameFilterBtn,
+#MemberDeck.transfer-picker-open #memberBtnCreate {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
 /* Keyboard focus rings (WCAG 2.4.7) — the reused `.urlTag*` shell has none on the
    chip-remove or the "Add N" submit. `:focus-visible` only (keyboard), never
    `:focus`, so a mouse click leaves no lingering ring. */
@@ -494,6 +509,261 @@
    tags.css's reduced-motion block). */
 @media (prefers-reduced-motion: reduce) {
     .memberAddStagedChip {
+        transition: none;
+    }
+}
+
+/* ==========================================================================
+   Ownership-transfer single-select picker (co-owner-transfer-ui, Phase 4).
+   Mirrors the bulk-copy destination picker's real token values (see
+   styles/home/bulk-actions.css .bulkCopy*), single-select variant. The mount is
+   the container in the open state; reveal it as a column flexbox holding
+   [title] [filter wrap] [inner listbox] [footer].
+   ========================================================================== */
+.transferOwnerPickerMount {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--pageBackgroundColor);
+    border: 1px solid var(--deckSelectionGreen);
+    border-radius: var(--radius-sm);
+}
+
+.transferOwnerPickerMount:not(.hidden) {
+    display: flex;
+}
+
+.transferPickerTitle {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--textPrimary);
+}
+
+/* Inner role="listbox": holds ONLY the option rows + no-results message (the
+   title, filter input, and footer are siblings, not listbox children — correct
+   ARIA). */
+.transferPickerListbox {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Filter box: reuses the app's canonical deck-search styling (.text-input
+   .search-input pill + prefix funnel icon). The base .search-input ships
+   collapsed — reveal ours and inset the text for the prefix icon. */
+.transferPickerFilterInput.search-input.text-input[type="search"] {
+    width: 100%;
+    opacity: 1;
+    transition: none;
+    padding-left: 32px;
+}
+
+.transferPickerFilterInput::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.transferPickerFilterInput::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.transferPickerNoMatches {
+    padding: 10px 4px;
+    font-size: 0.85rem;
+    color: var(--grayBadgeSelection);
+}
+
+/* Member rows — comfortable target + clear staged (green) highlight. `.active`
+   and `[aria-selected="true"]` always toggle together per the single-select
+   logic; both are listed defensively. */
+.transferOwnerPickerMount .transferPickerOption[role="option"] {
+    min-height: 2.25rem;
+    padding: 8px 12px;
+    gap: 12px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    color: var(--textPrimary);
+}
+
+/* Left-justify the username; the role badge stays pinned right. */
+.transferOwnerPickerMount .transferPickerOption[role="option"] .transferPickerName {
+    flex: 1 1 auto;
+    text-align: left;
+}
+
+.transferOwnerPickerMount .transferPickerOption[role="option"]:hover {
+    background: var(--cardBackgroundColorHover);
+}
+
+.transferOwnerPickerMount .transferPickerOption[role="option"].active,
+.transferOwnerPickerMount .transferPickerOption[role="option"][aria-selected="true"] {
+    background: var(--selectedUTubColorBackground);
+    border-color: var(--deckSelectionGreen);
+    color: var(--deckSelectionGreen);
+}
+
+/* Decorative single-select check ring (aria-hidden) — empty ring that fills teal
+   with a ✓ when the row is selected. Single-select — at most one filled. */
+.transferPickerCheck {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--grayBadgeSelection);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1;
+    transition:
+        background 0.1s ease,
+        border-color 0.1s ease;
+}
+
+.transferOwnerPickerMount .transferPickerOption[role="option"].active .transferPickerCheck,
+.transferOwnerPickerMount
+    .transferPickerOption[role="option"][aria-selected="true"]
+    .transferPickerCheck {
+    background: var(--deckSelectionGreen);
+    border-color: var(--deckSelectionGreen);
+    color: #06231a;
+}
+
+.transferOwnerPickerMount
+    .transferPickerOption[role="option"].active
+    .transferPickerCheck::after,
+.transferOwnerPickerMount
+    .transferPickerOption[role="option"][aria-selected="true"]
+    .transferPickerCheck::after {
+    content: "✓";
+}
+
+/* Per-row role badge (mint role icon + SR-only role label). */
+.transferPickerRoleBadge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    color: var(--memberRoleIconColor);
+    font-size: 0.78rem;
+}
+
+/* Focus-visible must fire as DOM focus roves between rows, not just on mount. */
+.transferOwnerPickerMount .transferPickerOption[role="option"]:focus-visible,
+.transferPickerCancelBtn:focus-visible,
+.transferPickerConfirmBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* No-eligible-members empty state (single announced message, focusable). */
+.transferPickerAllLocked {
+    padding: 10px 4px;
+    font-size: 0.85rem;
+    color: var(--grayBadgeSelection);
+}
+
+.transferPickerFooter {
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.transferPickerMsg {
+    flex: 1 1 auto;
+    font-size: 0.8rem;
+    color: var(--grayBadgeSelection);
+}
+
+/* Cancel — outlined danger (mirrors .bulkCopyCancelBtn). */
+.transferPickerCancelBtn {
+    border: 1px solid var(--removeIconColor);
+    border-radius: 6px;
+    padding: 6px 14px;
+    background: transparent;
+    color: var(--removeIconColor);
+    font-weight: 700;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.transferPickerCancelBtn:disabled,
+.transferPickerConfirmBtn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* Transfer — green accent commit button. Never wrap the label. */
+.transferPickerConfirmBtn {
+    flex: 0 0 auto;
+    border: 1px solid var(--deckSelectionGreen);
+    border-radius: 6px;
+    padding: 6px 14px;
+    background: var(--deckSelectionGreen);
+    color: #06231a;
+    font-weight: 700;
+    font-size: 0.85rem;
+    font-family: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+/* Mobile (<=991.98px): bottom-docked drawer, one z-step above the members deck
+   controls, mirroring the bulk-copy picker's drawer chrome (grabber lip +
+   safe-area padding). */
+@media (max-width: 991.98px) {
+    .transferOwnerPickerMount {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1036;
+        margin-top: 0;
+        background: var(--panelBackgroundColor);
+        border: none;
+        border-top: 2px solid var(--contentTopBorder);
+        border-radius: 1.25rem 1.25rem 0 0;
+        box-shadow: var(--shadow-lg);
+        padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    }
+
+    .transferOwnerPickerMount::before {
+        content: "";
+        display: block;
+        width: 38px;
+        height: 4px;
+        border-radius: 2px;
+        background: #5a6565;
+        margin: 4px auto 8px;
+    }
+
+    /* 44px coarse-pointer touch targets for the rows + footer buttons. */
+    .transferOwnerPickerMount .transferPickerOption[role="option"] {
+        min-height: 2.75rem;
+    }
+
+    .transferPickerCancelBtn,
+    .transferPickerConfirmBtn {
+        min-height: 2.75rem;
+        padding: 0 16px;
+        font-size: 0.9rem;
+    }
+
+    /* Bound the drawer height by scrolling ONLY the option rows. */
+    .transferOwnerPickerMount .transferPickerListbox {
+        max-height: 45dvh;
+        overflow-y: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .transferPickerCheck {
         transition: none;
     }
 }

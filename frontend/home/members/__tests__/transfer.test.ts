@@ -117,9 +117,11 @@ function installModalStub(): void {
 // co-owner (isCreator false / isCoCreator true), UTub now owned by 5.
 function transferredUtubDetail(): UtubDetail {
   return {
+    status: "Success",
     id: 1,
     name: "MyUTub",
     description: "",
+    createdAt: "2026-01-01T00:00:00Z",
     isCreator: false,
     isCoCreator: true,
     isLocked: false,
