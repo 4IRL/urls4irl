@@ -537,6 +537,9 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_UTUB_DELETE_OPEN: _DimDeviceOnly,
     EventName.UI_UTUB_DELETE_CONFIRM: _DimDeviceOnly,
     EventName.UI_UTUB_DELETE_CANCEL: _DimDeviceOnly,
+    EventName.UI_UTUB_TRANSFER_OWNER_SHOWN: _DimDeviceOnly,
+    EventName.UI_UTUB_TRANSFER_OWNER_CONFIRMED: _DimDeviceOnly,
+    EventName.UI_UTUB_TRANSFER_OWNER_CANCEL: _DimDeviceOnly,
     EventName.UI_UTUB_NAME_EDIT_OPEN: _DimUtubNameEditOpen,
     EventName.UI_UTUB_DESC_EDIT_OPEN: _DimUtubDescEditOpen,
     # UI — URLs

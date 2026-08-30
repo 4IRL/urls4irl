@@ -99,6 +99,9 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_UTUB_DELETE_OPEN: Resource.UTUB,
     EventName.UI_UTUB_DELETE_CONFIRM: Resource.UTUB,
     EventName.UI_UTUB_DELETE_CANCEL: Resource.UTUB,
+    EventName.UI_UTUB_TRANSFER_OWNER_SHOWN: Resource.UTUB,
+    EventName.UI_UTUB_TRANSFER_OWNER_CONFIRMED: Resource.UTUB,
+    EventName.UI_UTUB_TRANSFER_OWNER_CANCEL: Resource.UTUB,
     EventName.UI_UTUB_NAME_EDIT_OPEN: Resource.UTUB,
     EventName.UI_UTUB_DESC_EDIT_OPEN: Resource.UTUB,
     # UI — URLs

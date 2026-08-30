@@ -218,6 +218,9 @@ export type UIEventDimensions = {
   ui_utub_delete_open: DimDeviceOnly;
   ui_utub_delete_confirm: DimDeviceOnly;
   ui_utub_delete_cancel: DimDeviceOnly;
+  ui_utub_transfer_owner_shown: DimDeviceOnly;
+  ui_utub_transfer_owner_confirmed: DimDeviceOnly;
+  ui_utub_transfer_owner_cancel: DimDeviceOnly;
   ui_utub_name_edit_open: DimUtubNameEditOpen;
   ui_utub_desc_edit_open: DimUtubDescEditOpen;
   ui_url_access: DimUrlAccess;
