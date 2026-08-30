@@ -22,6 +22,12 @@
     align-items: center;
 }
 
+/* Right-side affordance cluster: breathing room between the role icon and the
+   kebab so they don't feel cramped against each other. */
+.member-right {
+    gap: 0.5rem;
+}
+
 .member {
     /* Positioning context for the absolutely-positioned per-row kebab menu
        (.memberRowMenu), which anchors to the row's right/bottom edge. */
@@ -92,12 +98,16 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    /* No horizontal padding: the glyph must sit flush at the row's right edge so
+       it lines up vertically with the owner row's flush-right role diamond (both
+       are the right-most element on their row). Padding here insets the glyph and
+       breaks that column. */
     padding: 0;
     background: transparent;
     opacity: 1;
     color: var(--grayBadgeSelection);
     cursor: pointer;
-    transition: color 0.2s, opacity 0.2s;
+    transition: color 0.15s, opacity 0.2s;
 }
 
 /* `display:block` removes the inline-SVG baseline gap so the glyph sits on the
@@ -108,10 +118,13 @@
     height: 16px;
 }
 
-/* Hover feedback: darken toward the primary text color (lightens in dark mode —
-   i.e. becomes more prominent) so the kebab responds to pointer hover. */
+/* Hover feedback: shift the glyph to the brand green. The hue shift (gray ->
+   green) reads clearly in BOTH themes — a straight darken-to-textPrimary was
+   near-invisible in light mode, where the resting gray is already dark. (No
+   background pill: it would need padding, which insets the glyph and breaks its
+   alignment with the owner row's flush-right diamond.) */
 .memberRowKebab:hover {
-    color: var(--textPrimary);
+    color: var(--deckSelectionGreen);
 }
 
 .memberRowKebab:focus-visible {
