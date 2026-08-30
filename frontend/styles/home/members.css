@@ -5,16 +5,31 @@
     padding-inline: 0;
 }
 
-/* Owner row's diamond marker — mirrors the UTub creator icon color. */
+/* Owner row's diamond marker — mirrors the UTub creator icon color. Rendered
+   `display:block` so the inline-SVG baseline descender gap doesn't push the glyph
+   slightly above the row's centerline (which left it misaligned with the kebab). */
 .member .memberRole {
+    display: block;
     flex-shrink: 0;
     color: var(--memberRoleIconColor);
+}
+
+/* Center the role icon inside its label wrapper so it shares the row centerline
+   with the username text and the kebab (the wrapper's inner spans are otherwise
+   inline, reintroducing the baseline gap). */
+.member-role-wrap {
+    display: inline-flex;
+    align-items: center;
 }
 
 .member {
     /* Positioning context for the absolutely-positioned per-row kebab menu
        (.memberRowMenu), which anchors to the row's right/bottom edge. */
     position: relative;
+    /* Vertically center the row's children (username, role icon, kebab). The
+       badge markup carries both `align-center` and a stray `flex-start` utility
+       class which conflict; pin center here deterministically. */
+    align-items: center;
     color: var(--grayBadgeSelection);
     border-color: var(--grayBadgeSelection);
     border-radius: 0;
@@ -74,15 +89,29 @@
 .memberRowKebab {
     -webkit-appearance: none;
     appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     background: transparent;
     opacity: 1;
     color: var(--grayBadgeSelection);
+    cursor: pointer;
     transition: color 0.2s, opacity 0.2s;
 }
 
+/* `display:block` removes the inline-SVG baseline gap so the glyph sits on the
+   row centerline, aligned with the role icon and username text. */
 .memberRowKebab svg {
+    display: block;
     width: 16px;
     height: 16px;
+}
+
+/* Hover feedback: darken toward the primary text color (lightens in dark mode —
+   i.e. becomes more prominent) so the kebab responds to pointer hover. */
+.memberRowKebab:hover {
+    color: var(--textPrimary);
 }
 
 .memberRowKebab:focus-visible {
