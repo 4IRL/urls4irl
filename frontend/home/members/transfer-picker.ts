@@ -2,11 +2,11 @@ import type { MemberItem } from "../../types/member.js";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
-import { KEYS } from "../../lib/constants.js";
 import { debug } from "../../lib/debug.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { HOME_FORM } from "../../types/metrics-dim-values.js";
+import { createRovingListbox } from "../../lib/roving-listbox.js";
 import { getState } from "../../store/app-store.js";
 import { makeUTubRoleIcon } from "../utubs/selectors.js";
 import { roleLabelFor } from "./members.js";
@@ -56,10 +56,22 @@ const FILTER_ICON_HTML =
 // Single-select: the staged target member id (contrast bulk-copy's Set).
 let selectedMemberId: number | null = null;
 let transferPickerOpen = false;
-let keydownListener: ((event: KeyboardEvent) => void) | null = null;
-let keyupListener: ((event: KeyboardEvent) => void) | null = null;
 // Bus subscriptions are process-wide (no rebind); guard against a repeat init.
 let _transferPickerInitialized = false;
+
+// Shared roving-tabindex + keyboard + substring-filter listbox behaviour. This
+// picker is SINGLE-select with no per-row disabled state and leaves Escape to
+// Bootstrap's data-bs-keyboard (so no onEscape hook). Enter/Space keyup activates
+// via selectRow (single-select clears others + stages one id).
+const roving = createRovingListbox({
+  container: () => $(PICK_VIEW_SELECTOR),
+  optionSelector: OPTION_SELECTOR,
+  enabledOptionSelector: ENABLED_OPTION_SELECTOR,
+  listboxSelector: LISTBOX_SELECTOR,
+  noMatchesSelector: NO_MATCHES_SELECTOR,
+  filterText: (row) => row.find(".transferPickerName").text(),
+  onActivateRow: (row) => selectRow(row),
+});
 
 function setTransferPickerOpen(open: boolean): void {
   transferPickerOpen = open;
@@ -145,7 +157,7 @@ export function openTransferPicker(opener: HTMLElement | string): void {
     setTransferPickerOpen(false);
     selectedMemberId = null;
     clearOpenForm();
-    detachKeyListeners();
+    roving.detachKeyListeners();
     $(PICK_VIEW_SELECTOR).empty();
     $(CONFIRM_VIEW_SELECTOR).addClass("hidden").empty();
     $(MODAL_SELECTOR).off(
@@ -158,7 +170,7 @@ export function openTransferPicker(opener: HTMLElement | string): void {
   $(MODAL_SELECTOR).offAndOn("shown.bs.modal.transferOwnerFocus", function () {
     const firstRow = $(PICK_VIEW_SELECTOR).find(ENABLED_OPTION_SELECTOR)[0];
     if (firstRow) {
-      setActiveRow(firstRow);
+      roving.setActiveRow(firstRow);
     } else {
       $(PICK_VIEW_SELECTOR).find(".transferPickerAllLocked")[0]?.focus();
     }
@@ -216,7 +228,7 @@ function renderPickView(): void {
       .text(APP_CONFIG.strings.TRANSFER_OWNER_NO_ELIGIBLE);
     listbox.append(empty);
     view.append(listbox);
-    attachKeyListeners();
+    roving.attachKeyListeners();
     return;
   }
 
@@ -282,7 +294,7 @@ function renderPickView(): void {
   view.append(buildFilterInput()).append(listbox);
   // Seed the footer hint + disabled Transfer button (nothing chosen yet).
   updateConfirmState();
-  attachKeyListeners();
+  roving.attachKeyListeners();
 }
 
 /**
@@ -310,49 +322,14 @@ function buildFilterInput(): JQuery {
       placeholder: APP_CONFIG.strings.TRANSFER_OWNER_FILTER_PLACEHOLDER,
     });
   input.on("input.transferPickerFilter", () =>
-    applyFilter(String(input.val() ?? "")),
+    roving.applyFilter(String(input.val() ?? "")),
   );
   inner.append(input);
   wrap.append(inner);
   return wrap;
 }
 
-/**
- * Filter the option rows by the typed query (case-insensitive substring on the
- * username). Non-matching rows get `.hidden` (excluded from roving via
- * ENABLED_OPTION_SELECTOR); the no-results message shows when nothing matches. A
- * currently-staged row stays staged even if filtered out — `selectedMemberId`,
- * not row visibility, is what Transfer commits.
- */
-function applyFilter(rawQuery: string): void {
-  const query = rawQuery.trim().toLowerCase();
-  const listbox = $(PICK_VIEW_SELECTOR).find(LISTBOX_SELECTOR);
-
-  let visibleCount = 0;
-  listbox.find(OPTION_SELECTOR).each((_, element) => {
-    const row = $(element);
-    const name = row.find(".transferPickerName").text().toLowerCase();
-    const matches = query === "" || name.includes(query);
-    row.toggleClass("hidden", !matches);
-    if (matches) visibleCount += 1;
-  });
-
-  listbox.find(NO_MATCHES_SELECTOR).toggleClass("hidden", visibleCount > 0);
-  resetRovingEntry();
-}
-
-/**
- * Reset the roving tabindex entry point after a filter change: clear tabindex on
- * every option row, then set the FIRST still-visible row to tabindex 0. Focus is
- * not moved (it stays in the filter input while the user types).
- */
-function resetRovingEntry(): void {
-  const view = $(PICK_VIEW_SELECTOR);
-  view.find(OPTION_SELECTOR).attr("tabindex", "-1");
-  view.find(ENABLED_OPTION_SELECTOR).first().attr("tabindex", "0");
-}
-
-// --- Single-select + roving tabindex ------------------------------------------
+// --- Single-select (roving/keyboard/filter live in the shared roving-listbox) --
 
 /**
  * Single-select a row (contrast bulk-copy's Set toggle): move roving focus to it
@@ -362,7 +339,7 @@ function resetRovingEntry(): void {
 function selectRow(row: JQuery): void {
   const rowEl = row[0];
   if (!rowEl) return;
-  setActiveRow(rowEl);
+  roving.setActiveRow(rowEl);
 
   const id = parseInt(row.attr("memberid") ?? "", 10);
   if (Number.isNaN(id)) return;
@@ -377,42 +354,6 @@ function selectRow(row: JQuery): void {
 
   updateConfirmState();
   log("select transfer target", { id });
-}
-
-/**
- * Move the roving tabindex AND real DOM focus onto `rowEl` atomically: the
- * previously-active row's tabindex goes back to -1, `rowEl`'s becomes 0, then it
- * receives focus. Both arrow navigation and selection call this one helper.
- */
-function setActiveRow(rowEl: HTMLElement): void {
-  const view = $(PICK_VIEW_SELECTOR);
-  view.find(OPTION_SELECTOR).attr("tabindex", "-1");
-  $(rowEl).attr("tabindex", "0");
-  rowEl.focus();
-}
-
-/** The visible (non-filtered) option rows, in DOM order, as elements. */
-function enabledRowElements(): HTMLElement[] {
-  return $(PICK_VIEW_SELECTOR).find(ENABLED_OPTION_SELECTOR).toArray();
-}
-
-/**
- * Move roving focus to the next/previous visible row (wrapping at the ends).
- * Pure navigation — it does NOT select a row. `direction` is +1 (ArrowDown) or
- * -1 (ArrowUp).
- */
-function moveRoving({ direction }: { direction: 1 | -1 }): void {
-  const rows = enabledRowElements();
-  if (rows.length === 0) return;
-  const active = document.activeElement as HTMLElement | null;
-  const currentIndex = active ? rows.indexOf(active) : -1;
-  const nextIndex =
-    currentIndex === -1
-      ? direction === 1
-        ? 0
-        : rows.length - 1
-      : (currentIndex + direction + rows.length) % rows.length;
-  setActiveRow(rows[nextIndex]);
 }
 
 /**
@@ -433,80 +374,6 @@ function updateConfirmState(): void {
   // (aria-selected) makes the choice obvious, so a "{username} will become the
   // owner." line is just noise. Footer stays empty in every pick state.
   $(FOOTER_MSG_SELECTOR).text("");
-}
-
-// --- Keyboard handling (capture-phase keydown + keyup on the pick view) --------
-
-function attachKeyListeners(): void {
-  const viewElement = $(PICK_VIEW_SELECTOR)[0];
-  if (!viewElement) return;
-  detachKeyListeners();
-  keydownListener = handleViewKeydown;
-  keyupListener = handleViewKeyup;
-  // Capture phase for keydown so ArrowUp/Down are handled before any nested
-  // handler (mirrors bulk-copy.ts). Escape is left to Bootstrap's data-bs-keyboard.
-  viewElement.addEventListener("keydown", keydownListener, { capture: true });
-  viewElement.addEventListener("keyup", keyupListener);
-}
-
-function detachKeyListeners(): void {
-  const viewElement = $(PICK_VIEW_SELECTOR)[0];
-  if (viewElement) {
-    if (keydownListener) {
-      viewElement.removeEventListener("keydown", keydownListener, {
-        capture: true,
-      });
-    }
-    if (keyupListener) {
-      viewElement.removeEventListener("keyup", keyupListener);
-    }
-  }
-  keydownListener = null;
-  keyupListener = null;
-}
-
-/**
- * Keydown: ArrowUp/ArrowDown rove focus across visible rows; Space is
- * prevent-defaulted on a focused row (keydown is where the page-scroll-on-Space
- * happens — keyup alone cannot suppress it). Selection itself happens on keyup.
- * Escape is handled by Bootstrap's own data-bs-keyboard modal dismissal.
- */
-function handleViewKeydown(event: KeyboardEvent): void {
-  switch (event.key) {
-    case KEYS.ARROW_DOWN: {
-      event.preventDefault();
-      moveRoving({ direction: 1 });
-      return;
-    }
-    case KEYS.ARROW_UP: {
-      event.preventDefault();
-      moveRoving({ direction: -1 });
-      return;
-    }
-    case KEYS.SPACE: {
-      // Suppress page scroll-on-Space ONLY when an option row is focused (the
-      // paired keyup selects it).
-      const target = event.target as HTMLElement | null;
-      if (target && $(target).closest(OPTION_SELECTOR).length > 0) {
-        event.preventDefault();
-      }
-      return;
-    }
-    default:
-      return;
-  }
-}
-
-/**
- * Keyup: Enter or Space on the currently-focused row selects it (single-select).
- */
-function handleViewKeyup(event: KeyboardEvent): void {
-  if (event.key !== KEYS.ENTER && event.key !== KEYS.SPACE) return;
-  const target = event.target as HTMLElement | null;
-  if (target === null) return;
-  const row = $(target).closest(OPTION_SELECTOR);
-  if (row.length === 0) return;
-  selectRow(row);
 }
 
 // --- Continue (advance the SAME modal to the confirm view) ---------------------
