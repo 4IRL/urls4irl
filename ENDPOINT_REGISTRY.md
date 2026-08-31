@@ -467,7 +467,7 @@ Grant/revoke the co-owner (`CO_CREATOR`) role. Shares the path with the DELETE (
 
 ### PATCH /utubs/\<utub_id\>/owner
 
-Transfer UTub ownership to a chosen member: reassign `Utubs.utub_creator`, promote the target to `CREATOR`, and demote the outgoing owner to `CO_CREATOR` (kept in the UTub — DD-3). Owner-only. The transfer target rides the request body (not the path). Frontend/transfer UI lands in Phase 4.
+Transfer UTub ownership to a chosen member: reassign `Utubs.utub_creator`, promote the target to `CREATOR`, and demote the outgoing owner to `CO_CREATOR` (kept in the UTub — DD-3). Owner-only. The transfer target rides the request body (not the path).
 
 | Layer          | Location                                                                                                                                                                                                                                                           |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -476,9 +476,9 @@ Transfer UTub ownership to a chosen member: reassign `Utubs.utub_creator`, promo
 | **Service**    | `backend/members/services/transfer_ownership.py:transfer_ownership` (lock guard → 404 target-not-member → 400 target-already-owner → reassign `utub_creator` BEFORE demoting old owner (mandatory ordering) → commit + `record_event(OWNERSHIP_TRANSFERRED)`) |
 | **Schema**     | `backend/schemas/requests/members.py:TransferOwnershipRequest` (`new_owner_id: int`) → `backend/schemas/users.py:OwnershipTransferredResponseSchema` (`utubID`, `newOwner`, `previousOwner` — both `UtubMemberSchema`)                                              |
 | **Metrics**    | `OWNERSHIP_TRANSFERRED` (DOMAIN, `Resource.MEMBER`, dimensionless; not emitted on a rejected transfer)                                                                                                                                                             |
-| **JS Module**  | Phase 4 (route `transferUtubOwnership(utubID)` bridged in `generate_routes_js()`; transfer UI lands in a later phase)                                                                                                                                              |
+| **JS Module**  | `frontend/home/members/transfer.ts` (transfer AJAX + confirm submit), `frontend/home/members/transfer-picker.ts` (picker modal open/populate), `frontend/home/members/transfer-selectors.ts` (shared selectors), template `backend/templates/modals/transferOwnerModal.html`; route `transferUtubOwnership(utubID)` bridged in `generate_routes_js()` |
 | **CSRF**       | Meta tag                                                                                                                                                                                                                                                          |
-| **Tests**      | `tests/integration/utubmembers/test_transfer_ownership_route.py` (marker: `members`; happy promote plain/co-owner, metric emit + no-emit-on-reject, authz matrix, locked, 400/404 branches, guard-follows-ownership)                                               |
+| **Tests**      | `tests/integration/utubmembers/test_transfer_ownership_route.py` (marker: `members`; happy promote plain/co-owner, metric emit + no-emit-on-reject, authz matrix, locked, 400/404 branches, guard-follows-ownership), `tests/functional/members_ui/test_transfer_ownership_ui.py` (marker: `members_ui`), `tests/functional/utubs_ui/test_delete_utub_transfer_ui.py` (marker: `utubs_ui`) |
 
 ### DELETE /utubs/\<utub_id\>/members/\<user_id\>
 
