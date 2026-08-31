@@ -130,8 +130,6 @@ TRANSFER_OWNER_NO_MATCHES = "No members match your search."
 TRANSFER_OWNER_NO_ELIGIBLE = (
     "This UTub has no other members to transfer to. Add a member first."
 )
-TRANSFER_OWNER_PICK_HINT = "Select a member to transfer to."
-TRANSFER_OWNER_PICK_CHOSEN = "{{ username }} will become the owner."
 TRANSFER_OWNER_SUBMIT = "Transfer ownership"
 TRANSFER_OWNER_LISTBOX_ARIA = "Choose a member to transfer ownership to"
 TRANSFER_OWNER_CONFIRM_TITLE = "Transfer ownership of this UTub?"
