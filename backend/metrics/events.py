@@ -76,6 +76,9 @@ class EventName(StrEnum):
     UI_UTUB_DELETE_OPEN = "ui_utub_delete_open"
     UI_UTUB_DELETE_CONFIRM = "ui_utub_delete_confirm"
     UI_UTUB_DELETE_CANCEL = "ui_utub_delete_cancel"
+    UI_UTUB_TRANSFER_OWNER_SHOWN = "ui_utub_transfer_owner_shown"
+    UI_UTUB_TRANSFER_OWNER_CONFIRMED = "ui_utub_transfer_owner_confirmed"
+    UI_UTUB_TRANSFER_OWNER_CANCEL = "ui_utub_transfer_owner_cancel"
     UI_UTUB_NAME_EDIT_OPEN = "ui_utub_name_edit_open"
     UI_UTUB_DESC_EDIT_OPEN = "ui_utub_desc_edit_open"
     # — URLs

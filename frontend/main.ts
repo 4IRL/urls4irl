@@ -37,6 +37,7 @@ import {
 } from "./home/urls/cards/filtering.js";
 import "./home/members/deck.js";
 import "./home/tags/deck.js";
+import { initTransferPicker } from "./home/members/transfer-picker.js";
 
 // Register jQuery plugins and setup CSRF before DOM ready
 registerJQueryPlugins();
@@ -63,6 +64,7 @@ $(document).ready(() => {
   initUpdateAllTags();
   initURLDeck();
   initBulkActions();
+  initTransferPicker();
   initSwipe();
   initURLDeckHeaderFit();
   initCookieBanner();

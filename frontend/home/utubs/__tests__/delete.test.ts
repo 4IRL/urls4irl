@@ -12,6 +12,9 @@ import { getState, setState } from "../../../store/app-store.js";
 import { applyAlternatingUTubSelectorBackground } from "../search.js";
 import { closeTagSheet, isTagSheetOpen } from "../../tags/sheet.js";
 import { TAG_SHEET_TOGGLE_TRIGGER } from "../../../types/metrics-dim-values.js";
+import { emit, AppEvents } from "../../../lib/event-bus.js";
+import { emit as recordUIEvent } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { setDeleteEventListeners } from "../delete.js";
 
 vi.mock("../../../lib/ajax.js", () => ({
@@ -49,8 +52,14 @@ vi.mock("../../../lib/event-bus.js", async () => {
     emit: vi.fn(),
   };
 });
+vi.mock("../../../lib/metrics-client.js", () => ({ emit: vi.fn() }));
 vi.mock("../../../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ utubs: [] })),
+  getState: vi.fn(() => ({
+    utubs: [],
+    members: [],
+    utubOwnerID: null,
+    isCurrentUserOwner: false,
+  })),
   setState: vi.fn(),
 }));
 
@@ -92,6 +101,9 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
     vi.mocked(is429Handled).mockReturnValue(false);
     vi.mocked(getState).mockReturnValue({
       utubs: [{ id: 42 }],
+      members: [],
+      utubOwnerID: null,
+      isCurrentUserOwner: false,
     } as unknown as ReturnType<typeof getState>);
   });
 
@@ -213,5 +225,114 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
       pushStateSpy.mockRestore();
       replaceStateSpy.mockRestore();
     }
+  });
+});
+
+describe("deleteUTubShowModal - #modalRedirect 'Transfer instead' entry point", () => {
+  function setOwnerState({
+    isCurrentUserOwner,
+    members,
+    utubOwnerID,
+  }: {
+    isCurrentUserOwner: boolean;
+    members: Array<{ id: number }>;
+    utubOwnerID: number;
+  }): void {
+    vi.mocked(getState).mockReturnValue({
+      utubs: [{ id: 42 }],
+      isCurrentUserOwner,
+      members,
+      utubOwnerID,
+    } as unknown as ReturnType<typeof getState>);
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = DELETE_UTUB_HTML;
+    vi.clearAllMocks();
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
+      return this;
+    };
+    vi.mocked(is429Handled).mockReturnValue(false);
+    // Owner of a UTub with one other member (id 7); owner is id 1.
+    setOwnerState({
+      isCurrentUserOwner: true,
+      members: [{ id: 1 }, { id: 7 }],
+      utubOwnerID: 1,
+    });
+  });
+
+  function showDeleteModal(utubID: number): void {
+    setDeleteEventListeners(utubID);
+    $("#utubBtnDelete").trigger("click.deleteUTub");
+  }
+
+  it("shows #modalRedirect labeled 'Transfer instead' when owner has >=1 other member", () => {
+    showDeleteModal(42);
+
+    const redirect = $("#modalRedirect");
+    expect(redirect.css("display")).not.toBe("none");
+    expect(redirect.text()).toBe("Transfer instead");
+    expect(redirect.hasClass("btn-primary")).toBe(true);
+  });
+
+  it("keeps #modalRedirect hidden for a sole-owner UTub (no other members)", () => {
+    setOwnerState({
+      isCurrentUserOwner: true,
+      members: [{ id: 1 }],
+      utubOwnerID: 1,
+    });
+
+    showDeleteModal(42);
+
+    const redirect = $("#modalRedirect");
+    expect(redirect.css("display")).toBe("none");
+    expect(redirect.hasClass("btn-primary")).toBe(false);
+  });
+
+  it("keeps #modalRedirect hidden when the current user is not the owner", () => {
+    setOwnerState({
+      isCurrentUserOwner: false,
+      members: [{ id: 1 }, { id: 7 }],
+      utubOwnerID: 1,
+    });
+
+    showDeleteModal(42);
+
+    expect($("#modalRedirect").css("display")).toBe("none");
+  });
+
+  it("clicking 'Transfer instead' hides the modal, emits TRANSFER_PICKER_REQUESTED, and does not delete", () => {
+    showDeleteModal(42);
+    $("#modalRedirect").trigger("click");
+
+    expect(vi.mocked(emit)).toHaveBeenCalledWith(
+      AppEvents.TRANSFER_PICKER_REQUESTED,
+      { opener: "#utubBtnDelete" },
+    );
+    // Never issues the delete PATCH/DELETE — this is a redirect, not a delete.
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+  });
+
+  it("does NOT emit UI_UTUB_DELETE_CANCEL after a 'Transfer instead' redirect (false-cancel guard)", () => {
+    showDeleteModal(42);
+    $("#modalRedirect").trigger("click");
+    // Bootstrap fires this once the modal finishes hiding; the jsdom stub does not.
+    $("#confirmModal").trigger("hidden.bs.modal");
+
+    expect(vi.mocked(recordUIEvent)).not.toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DELETE_CANCEL,
+    });
+  });
+
+  it("still emits UI_UTUB_DELETE_CANCEL on a plain cancel (no transfer redirect)", () => {
+    showDeleteModal(42);
+    $("#modalDismiss").trigger("click");
+    $("#confirmModal").trigger("hidden.bs.modal");
+
+    expect(vi.mocked(recordUIEvent)).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DELETE_CANCEL,
+    });
   });
 });

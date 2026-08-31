@@ -408,6 +408,35 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_ROW_ROLE_ICON = ".member .memberRole"
     MEMBER_ROW_CO_CREATOR_ICON = ".member svg.bi-diamond-half"
 
+    # Standalone owner-only "Transfer ownership" trigger in the members-deck
+    # header cluster (beside #memberBtnCreate). Starts hidden; shown by JS only
+    # for a literal owner with >= 1 other member. Opens the dedicated transfer
+    # modal (#transferOwnerModal) via the TRANSFER_PICKER_REQUESTED event bus
+    # (wired in members/deck.ts's setMemberDeckTransferOwnerBtn).
+    MEMBER_BTN_TRANSFER_OWNER = "#memberBtnTransferOwner"
+
+    # Dedicated Bootstrap ownership-transfer modal (#transferOwnerModal) with an
+    # inline pick→confirm transition (transfer.ts + transfer-picker.ts). The PICK
+    # view holds the filter input + a role=listbox of member options; the CONFIRM
+    # view holds the warning text (starts .hidden, shown after Continue). One shared
+    # footer: #transferOwnerCancel dismisses in BOTH views; #transferOwnerSubmit
+    # advances pick→confirm (Continue) then commits the PATCH (relabeled per view).
+    TRANSFER_OWNER_MODAL = "#transferOwnerModal"
+    TRANSFER_OWNER_MODAL_TITLE = "#transferOwnerModalTitle"
+    TRANSFER_OWNER_PICK_VIEW = "#transferOwnerPickView"
+    TRANSFER_OWNER_CONFIRM_VIEW = "#transferOwnerConfirmView"
+    TRANSFER_OWNER_SUBMIT = "#transferOwnerSubmit"
+    TRANSFER_OWNER_CANCEL = "#transferOwnerCancel"
+    TRANSFER_OWNER_FOOTER_MSG = "#transferOwnerFooterMsg"
+    # Bootstrap's shared modal backdrop element (appended to <body> on show). Used
+    # to assert the transfer modal inherently covers/blocks the deck behind it.
+    MODAL_BACKDROP = ".modal-backdrop"
+    # Pick-view listbox internals: each .transferPickerOption row carries a
+    # `memberid` attribute (id="transferPickerOption-<id>") for id-scoped targeting.
+    TRANSFER_PICKER_LISTBOX = ".transferPickerListbox"
+    TRANSFER_PICKER_OPTION = ".transferPickerOption"
+    TRANSFER_PICKER_FILTER_INPUT = ".transferPickerFilterInput"
+
     # Add-member combobox (built in TS by member-combobox.ts; mounted into
     # #createMemberWrap on open). The legacy single #memberCreate input,
     # #memberCancelBtnCreate, and #memberSubmitBtnCreate were removed in the

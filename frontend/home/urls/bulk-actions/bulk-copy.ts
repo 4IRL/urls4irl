@@ -4,10 +4,11 @@ import type { UtubSummaryItem } from "../../../types/utub.js";
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
-import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
+import { SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { debug } from "../../../lib/debug.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
+import { createRovingListbox } from "../../../lib/roving-listbox.js";
 import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { getState } from "../../../store/app-store.js";
 import { isMobile } from "../../mobile.js";
@@ -103,10 +104,27 @@ let currentSourceUtubID: number | null = null;
 const stagedDestUtubIDs = new Set<number>();
 let submitInFlight = false;
 let loadingTimeoutID: number | null = null;
-let keydownListener: ((event: KeyboardEvent) => void) | null = null;
-let keyupListener: ((event: KeyboardEvent) => void) | null = null;
 // Pending deferred bind of the mobile tap-outside listener (see openBulkCopyPicker).
 let outsideTapBindTimeoutID: ReturnType<typeof setTimeout> | null = null;
+
+// Shared roving-tabindex + keyboard + substring-filter listbox behaviour. This
+// picker is MULTI-select with disabled (locked) rows, and it handles Escape
+// itself (swallowed before the document-level multi-select-exit handler, unlike
+// the transfer picker which leaves Escape to Bootstrap). Enter/Space keyup
+// activates via toggleRow (toggles the staged Set); disabled rows never toggle.
+const roving = createRovingListbox({
+  container: () => $(PICKER_MOUNT_SELECTOR),
+  optionSelector: OPTION_SELECTOR,
+  enabledOptionSelector: ENABLED_OPTION_SELECTOR,
+  listboxSelector: LISTBOX_SELECTOR,
+  noMatchesSelector: NO_MATCHES_SELECTOR,
+  filterText: (row) => row.find(".UTubName").text(),
+  onActivateRow: (row) => toggleRow(row),
+  onEscape: () => {
+    if (submitInFlight) return;
+    closeAndResetPicker({ returnFocus: true });
+  },
+});
 
 // --- Action registration ------------------------------------------------------
 
@@ -262,7 +280,7 @@ function renderPicker({
       .text(APP_CONFIG.strings.URL_BULK_COPY_ALL_LOCKED);
     listbox.append(allLocked);
     mount.append(listbox).append(buildFooter());
-    attachKeyListeners();
+    roving.attachKeyListeners();
     mount.removeClass("hidden");
     allLocked[0]?.focus();
     return;
@@ -342,7 +360,7 @@ function renderPicker({
   // Seed the footer live-region + disabled Copy button so the picker opens
   // already showing the "select at least one" hint (nothing staged yet).
   updateConfirmEnabled();
-  attachKeyListeners();
+  roving.attachKeyListeners();
   mount.removeClass("hidden");
 
   // Focus the FIRST ENABLED destination row on open (never the filter input):
@@ -353,7 +371,7 @@ function renderPicker({
   // The all-locked case returns earlier, so there is normally ≥1 enabled row
   // here; guard defensively in case the lookup is empty.
   const firstEnabledRow = mount.find(ENABLED_OPTION_SELECTOR)[0];
-  if (firstEnabledRow) setActiveRow(firstEnabledRow);
+  if (firstEnabledRow) roving.setActiveRow(firstEnabledRow);
 }
 
 /**
@@ -384,48 +402,11 @@ function buildFilterInput(): JQuery {
       placeholder: APP_CONFIG.strings.URL_BULK_COPY_FILTER_PLACEHOLDER,
     });
   input.on("input.bulkCopyFilter", () =>
-    applyFilter(String(input.val() ?? "")),
+    roving.applyFilter(String(input.val() ?? "")),
   );
   inner.append(input);
   wrap.append(inner);
   return wrap;
-}
-
-/**
- * Filter the destination rows by the typed query (case-insensitive substring on
- * the UTub name). Non-matching rows get `.hidden` (excluded from roving/focus via
- * ENABLED_OPTION_SELECTOR); the no-results message shows when nothing matches. A
- * currently-staged row stays staged even if filtered out — the staged id, not the
- * row's visibility, is what Copy commits.
- */
-function applyFilter(rawQuery: string): void {
-  const query = rawQuery.trim().toLowerCase();
-  const listbox = $(PICKER_MOUNT_SELECTOR).find(LISTBOX_SELECTOR);
-
-  let visibleCount = 0;
-  listbox.find(OPTION_SELECTOR).each((_, element) => {
-    const row = $(element);
-    const name = row.find(".UTubName").text().toLowerCase();
-    const matches = query === "" || name.includes(query);
-    row.toggleClass("hidden", !matches);
-    if (matches) visibleCount += 1;
-  });
-
-  listbox.find(NO_MATCHES_SELECTOR).toggleClass("hidden", visibleCount > 0);
-  // Keep a single visible enabled row as the roving entry point (tabindex 0) so
-  // ArrowDown / Tab from the input always lands on a shown row.
-  resetRovingEntry();
-}
-
-/**
- * Reset the roving tabindex entry point after a filter change: clear tabindex on
- * every option row, then set the FIRST still-visible enabled row to tabindex 0.
- * Focus is not moved (it stays in the filter input while the user types).
- */
-function resetRovingEntry(): void {
-  const mount = $(PICKER_MOUNT_SELECTOR);
-  mount.find(OPTION_SELECTOR).attr("tabindex", "-1");
-  mount.find(ENABLED_OPTION_SELECTOR).first().attr("tabindex", "0");
 }
 
 /** Build the picker footer: a live-region message + Cancel + Copy buttons. */
@@ -469,7 +450,7 @@ function closeAndResetPicker({
 }: {
   returnFocus?: boolean;
 } = {}): void {
-  detachKeyListeners();
+  roving.detachKeyListeners();
   // Tear down the mobile tap-outside listener: cancel a still-pending deferred
   // bind AND remove any already-bound listener (idempotent on desktop, where
   // neither was ever set up).
@@ -503,47 +484,7 @@ function closeAndResetPicker({
   }
 }
 
-// --- Roving tabindex + staging ------------------------------------------------
-
-/**
- * Move the roving tabindex AND real DOM focus onto `rowEl` atomically (DD-20):
- * the previously-active row's tabindex goes back to "-1", `rowEl`'s becomes "0",
- * then `rowEl` receives focus. BOTH arrow-key navigation and the Stage path call
- * this single helper, so tabindex, DOM focus, and the staged selection can never
- * drift apart.
- */
-function setActiveRow(rowEl: HTMLElement): void {
-  const mount = $(PICKER_MOUNT_SELECTOR);
-  mount.find(OPTION_SELECTOR).attr("tabindex", "-1");
-  const row = $(rowEl);
-  row.attr("tabindex", "0");
-  rowEl.focus();
-}
-
-/** The enabled option rows, in DOM order, as an array of elements. */
-function enabledRowElements(): HTMLElement[] {
-  return $(PICKER_MOUNT_SELECTOR).find(ENABLED_OPTION_SELECTOR).toArray();
-}
-
-/**
- * Move roving focus to the next/previous enabled row (wrapping at the ends),
- * skipping disabled rows. Pure navigation — it does NOT stage a row. `direction`
- * is +1 (ArrowDown/next) or -1 (ArrowUp/previous).
- */
-function moveRoving({ direction }: { direction: 1 | -1 }): void {
-  const rows = enabledRowElements();
-  if (rows.length === 0) return;
-  const active = document.activeElement as HTMLElement | null;
-  const currentIndex = active ? rows.indexOf(active) : -1;
-  // From -1 (focus elsewhere) ArrowDown lands on 0, ArrowUp on the last row.
-  const nextIndex =
-    currentIndex === -1
-      ? direction === 1
-        ? 0
-        : rows.length - 1
-      : (currentIndex + direction + rows.length) % rows.length;
-  setActiveRow(rows[nextIndex]);
-}
+// --- Staging (roving/keyboard/filter live in the shared roving-listbox) --------
 
 /**
  * Toggle a destination row's staged state (multi-select, DD-7): move roving
@@ -555,7 +496,7 @@ function moveRoving({ direction }: { direction: 1 | -1 }): void {
 function toggleRow(row: JQuery): void {
   const rowEl = row[0];
   if (!rowEl) return;
-  setActiveRow(rowEl);
+  roving.setActiveRow(rowEl);
 
   const id = parseInt(row.attr("utubid") ?? "", 10);
   if (Number.isNaN(id)) return;
@@ -598,91 +539,6 @@ function updateConfirmEnabled(): void {
     );
   }
   mount.find(MESSAGE_SELECTOR).text(message);
-}
-
-// --- Keyboard handling (capture-phase keydown + keyup on the mount) -----------
-
-function attachKeyListeners(): void {
-  const mountElement = $(PICKER_MOUNT_SELECTOR)[0];
-  if (!mountElement) return;
-  keydownListener = handleMountKeydown;
-  keyupListener = handleMountKeyup;
-  // Capture phase for keydown so Escape is swallowed before it reaches the
-  // document-level multi-select-exit handler (mirrors bulk-tag.ts).
-  mountElement.addEventListener("keydown", keydownListener, { capture: true });
-  mountElement.addEventListener("keyup", keyupListener);
-}
-
-function detachKeyListeners(): void {
-  const mountElement = $(PICKER_MOUNT_SELECTOR)[0];
-  if (mountElement) {
-    if (keydownListener) {
-      mountElement.removeEventListener("keydown", keydownListener, {
-        capture: true,
-      });
-    }
-    if (keyupListener) {
-      mountElement.removeEventListener("keyup", keyupListener);
-    }
-  }
-  keydownListener = null;
-  keyupListener = null;
-}
-
-/**
- * Keydown: Escape closes the picker (single-stage — no inner dropdown to close
- * first, unlike the tag combobox); ArrowUp/ArrowDown rove focus across enabled
- * rows; Space is prevent-defaulted here (keydown is where the page-scroll-on-
- * Space happens — keyup alone cannot suppress it). Staging itself happens on
- * keyup, never here.
- */
-function handleMountKeydown(event: KeyboardEvent): void {
-  switch (event.key) {
-    case KEYS.ESCAPE: {
-      event.stopPropagation();
-      event.preventDefault();
-      if (submitInFlight) return;
-      closeAndResetPicker({ returnFocus: true });
-      return;
-    }
-    case KEYS.ARROW_DOWN: {
-      event.preventDefault();
-      moveRoving({ direction: 1 });
-      return;
-    }
-    case KEYS.ARROW_UP: {
-      event.preventDefault();
-      moveRoving({ direction: -1 });
-      return;
-    }
-    case KEYS.SPACE: {
-      // Suppress the page's default scroll-on-Space ONLY when a destination
-      // option row is focused (the paired keyup stages it). Space on the footer
-      // Cancel/Copy buttons must keep its native button-activation behaviour, so
-      // never preventDefault there.
-      const target = event.target as HTMLElement | null;
-      if (target && $(target).closest(OPTION_SELECTOR).length > 0) {
-        event.preventDefault();
-      }
-      return;
-    }
-    default:
-      return;
-  }
-}
-
-/**
- * Keyup: Enter or Space on the currently-focused enabled row toggles its staged
- * state (mirrors the .UTubSelector keyup-stage idiom, extended to Space since
- * toggling here is an action, not navigation). Disabled rows never toggle.
- */
-function handleMountKeyup(event: KeyboardEvent): void {
-  if (event.key !== KEYS.ENTER && event.key !== KEYS.SPACE) return;
-  const target = event.target as HTMLElement | null;
-  if (target === null) return;
-  const row = $(target).closest(OPTION_SELECTOR);
-  if (row.length === 0 || row.hasClass("disabled")) return;
-  toggleRow(row);
 }
 
 // --- Confirm (Copy) -----------------------------------------------------------

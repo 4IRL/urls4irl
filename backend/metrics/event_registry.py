@@ -332,6 +332,18 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="UTub delete-confirm modal dismissed",
         category=EventCategory.UI,
     ),
+    EventName.UI_UTUB_TRANSFER_OWNER_SHOWN: EventRegistryEntry(
+        description="UTub ownership-transfer confirm modal opened",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_UTUB_TRANSFER_OWNER_CONFIRMED: EventRegistryEntry(
+        description="UTub ownership transfer confirmed",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_UTUB_TRANSFER_OWNER_CANCEL: EventRegistryEntry(
+        description="UTub ownership-transfer confirm modal dismissed",
+        category=EventCategory.UI,
+    ),
     EventName.UI_UTUB_NAME_EDIT_OPEN: EventRegistryEntry(
         description="UTub name edit form opened",
         category=EventCategory.UI,
@@ -556,6 +568,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
                 "tag_create",
                 "member_invite",
                 "bulk_copy",
+                "transfer_owner",
             ),
         },
     ),
@@ -574,6 +587,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
                 "tag_create",
                 "member_invite",
                 "bulk_copy",
+                "transfer_owner",
             ),
         },
     ),

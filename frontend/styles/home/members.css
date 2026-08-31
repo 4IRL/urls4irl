@@ -283,7 +283,8 @@
 @media (any-pointer: coarse) {
 
     #memberNameFilterBtn,
-    #memberNameFilterBtnClose {
+    #memberNameFilterBtnClose,
+    #memberBtnTransferOwner {
         min-height: 2.75rem;
     }
 
@@ -464,7 +465,8 @@
    `.member-search-open` (the filter's own gate) — the two never collide. */
 #MemberDeck.member-add-open .memberOtherBtnDelete,
 #MemberDeck.member-add-open .memberRowKebab,
-#MemberDeck.member-add-open #memberNameFilterBtn {
+#MemberDeck.member-add-open #memberNameFilterBtn,
+#MemberDeck.member-add-open #memberBtnTransferOwner {
     pointer-events: none;
     opacity: 0.5;
 }
@@ -494,6 +496,248 @@
    tags.css's reduced-motion block). */
 @media (prefers-reduced-motion: reduce) {
     .memberAddStagedChip {
+        transition: none;
+    }
+}
+
+/* ==========================================================================
+   Ownership-transfer modal (co-owner-transfer-ui). A DEDICATED Bootstrap modal
+   (#transferOwnerModal) with an inline pick→confirm transition: the pick view
+   (#transferOwnerPickView) holds [filter wrap] [inner listbox]; the confirm view
+   (#transferOwnerConfirmView) holds the warning text; the shared modal footer
+   holds the live-region message + Cancel + Transfer buttons. The modal backdrop
+   inherently suppresses the deck, so no cross-surface CSS is needed.
+   Styles mirror the bulk-copy destination picker's token values, single-select
+   variant, scoped under #transferOwnerModal / #transferOwnerPickView.
+   ========================================================================== */
+#transferOwnerModal .modal-dialog {
+    max-width: 480px;
+}
+
+/* Theme the modal SURFACE so it's legible in BOTH themes: a dark card with light
+   text in dark mode, a white card with dark ink in light mode. Other app modals
+   keep Bootstrap's default light surface by design; this one opts in (like
+   #crossUtubSearchSettingsModal) but uses fully theme-aware tokens so light mode
+   is correct too. Without this, the option text (var(--textPrimary), white in
+   dark mode) rendered white-on-white on Bootstrap's default white modal. */
+#transferOwnerModal .modal-content {
+    background: var(--panelBackgroundColor);
+    color: var(--textPrimary);
+    border: 1px solid var(--borderColor);
+}
+
+#transferOwnerModal .modal-header,
+#transferOwnerModal .modal-footer {
+    border-color: var(--borderColor);
+}
+
+#transferOwnerModal .modal-title {
+    color: var(--textPrimary);
+}
+
+/* Bootstrap's close glyph is a dark SVG — invert it on the dark surface so the
+   × stays visible (covers both explicit dark and system-resolved dark). */
+:root[data-theme="dark"] #transferOwnerModal .btn-close {
+    filter: invert(1) grayscale(1) brightness(1.6);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root[data-theme="system"] #transferOwnerModal .btn-close {
+        filter: invert(1) grayscale(1) brightness(1.6);
+    }
+}
+
+/* Pick view: filter box sits above the list with a comfortable gap. */
+#transferOwnerPickView {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Confirm-view warning text — readable, comfortable line length. */
+#transferOwnerConfirmView {
+    font-size: 0.95rem;
+    color: var(--textPrimary);
+    line-height: 1.5;
+}
+
+/* Inner role="listbox": holds ONLY the option rows + no-results message (the
+   filter input is a sibling, not a listbox child — correct ARIA). Bounded height
+   so a long member list scrolls inside the modal body rather than growing it. */
+#transferOwnerPickView .transferPickerListbox {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 45vh;
+    overflow-y: auto;
+}
+
+/* Filter box: the clean base .text-input[type="search"] (theme-aware bg/border/
+   text + green focus ring) — NOT the collapsible grey .search-input pill, which
+   renders as a washed grey blob with a near-invisible placeholder in light mode.
+   A rounder radius + left inset for the funnel prefix icon. */
+#transferOwnerPickView .transferPickerFilterInput[type="search"] {
+    width: 100%;
+    padding: 9px 12px 9px 34px;
+    border-radius: 8px;
+}
+
+#transferOwnerPickView .transferPickerFilterInput::placeholder {
+    color: var(--grayBadgeSelection);
+    opacity: 1;
+}
+
+#transferOwnerPickView .transferPickerFilterInput::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Funnel prefix icon — theme-aware. The base .utub-search-prefix-icon rule
+   hardcodes translucent white, which disappears on the light modal surface. */
+#transferOwnerPickView .utub-search-prefix-icon {
+    color: var(--grayBadgeSelection);
+}
+
+.transferPickerNoMatches {
+    padding: 10px 4px;
+    font-size: 0.85rem;
+    color: var(--grayBadgeSelection);
+}
+
+/* Member rows — comfortable target + clear staged (green) highlight. `.active`
+   and `[aria-selected="true"]` always toggle together per the single-select
+   logic; both are listed defensively. */
+#transferOwnerPickView .transferPickerOption[role="option"] {
+    min-height: 0;
+    padding: 6px 10px;
+    gap: 10px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    color: var(--textPrimary);
+}
+
+/* Left-justify the username; the role badge stays pinned right. */
+#transferOwnerPickView .transferPickerOption[role="option"] .transferPickerName {
+    flex: 1 1 auto;
+    text-align: left;
+}
+
+#transferOwnerPickView .transferPickerOption[role="option"]:hover {
+    background: var(--cardBackgroundColorHover);
+}
+
+#transferOwnerPickView .transferPickerOption[role="option"].active,
+#transferOwnerPickView .transferPickerOption[role="option"][aria-selected="true"] {
+    background: var(--selectedUTubColorBackground);
+    border-color: var(--deckSelectionGreen);
+    color: var(--deckSelectionGreen);
+}
+
+/* Decorative single-select check ring (aria-hidden) — empty ring that fills teal
+   with a ✓ when the row is selected. Single-select — at most one filled. */
+.transferPickerCheck {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--grayBadgeSelection);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1;
+    transition:
+        background 0.1s ease,
+        border-color 0.1s ease;
+}
+
+#transferOwnerPickView .transferPickerOption[role="option"].active .transferPickerCheck,
+#transferOwnerPickView
+    .transferPickerOption[role="option"][aria-selected="true"]
+    .transferPickerCheck {
+    background: var(--deckSelectionGreen);
+    border-color: var(--deckSelectionGreen);
+    color: #06231a;
+}
+
+#transferOwnerPickView
+    .transferPickerOption[role="option"].active
+    .transferPickerCheck::after,
+#transferOwnerPickView
+    .transferPickerOption[role="option"][aria-selected="true"]
+    .transferPickerCheck::after {
+    content: "✓";
+}
+
+/* Per-row role badge (mint role icon + SR-only role label). */
+.transferPickerRoleBadge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    color: var(--memberRoleIconColor);
+    font-size: 0.78rem;
+}
+
+/* Focus-visible must fire as DOM focus roves between rows, not just on open. */
+#transferOwnerPickView .transferPickerOption[role="option"]:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* No-eligible-members empty state (single announced message, focusable). */
+.transferPickerAllLocked {
+    padding: 10px 4px;
+    font-size: 0.85rem;
+    color: var(--grayBadgeSelection);
+}
+
+/* Footer: keep the message + both buttons on ONE row. nowrap stops the wide
+   "Transfer ownership" button from dropping to its own line; the message
+   truncates with an ellipsis rather than shoving a button down. */
+#transferOwnerModal .modal-footer {
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+/* Live-region message sits LEFT (margin-right:auto), buttons stay pinned right. */
+#transferOwnerFooterMsg {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: auto;
+    text-align: left;
+    font-size: 0.8rem;
+    color: var(--grayBadgeSelection);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Buttons never shrink or wrap; the Transfer label grows to "Transfer to X". */
+#transferOwnerCancel,
+#transferOwnerSubmit {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* Coarse-pointer 44px touch targets for the option rows + footer buttons. */
+@media (any-pointer: coarse) {
+    #transferOwnerPickView .transferPickerOption[role="option"] {
+        min-height: 2.75rem;
+    }
+
+    #transferOwnerCancel,
+    #transferOwnerSubmit {
+        min-height: 2.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .transferPickerCheck {
         transition: none;
     }
 }

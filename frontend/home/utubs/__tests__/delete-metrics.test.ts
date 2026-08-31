@@ -39,7 +39,12 @@ vi.mock("../../../lib/event-bus.js", async () => {
 });
 
 vi.mock("../../../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ utubs: [] })),
+  getState: vi.fn(() => ({
+    utubs: [],
+    members: [],
+    utubOwnerID: null,
+    isCurrentUserOwner: false,
+  })),
   setState: vi.fn(),
 }));
 
