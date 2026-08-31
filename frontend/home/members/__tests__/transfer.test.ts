@@ -250,6 +250,29 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     expect($("#transferOwnerFooterMsg").text()).toBe("");
   });
 
+  it("Cancel is wired once in beginTransferFlow and dismisses the modal in BOTH the pick and confirm views", () => {
+    const modalSpy = vi.fn(function (this: JQuery) {
+      return this;
+    });
+    ($.fn as unknown as Record<string, unknown>).modal = modalSpy;
+
+    // Pick view: Cancel dismisses.
+    beginTransferFlow("#memberBtnTransferOwner");
+    $("#transferOwnerCancel").trigger("click");
+    expect(modalSpy).toHaveBeenCalledWith("hide");
+
+    // Advance to the confirm view — the SAME single bind still dismisses (no
+    // per-view re-bind), so Cancel keeps working after the pick→confirm swap.
+    modalSpy.mockClear();
+    showTransferConfirmView({
+      newOwnerId: 5,
+      newOwnerUsername: "newowner",
+      utubID: 1,
+    });
+    $("#transferOwnerCancel").trigger("click");
+    expect(modalSpy).toHaveBeenCalledWith("hide");
+  });
+
   it("PATCHes the endpoint, reconciles both decks in order, announces, then focuses the header on modal close", async () => {
     mockAjaxSuccess(SUCCESS_RESPONSE);
 

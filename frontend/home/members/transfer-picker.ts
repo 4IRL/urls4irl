@@ -24,7 +24,8 @@ const PICK_VIEW_SELECTOR = "#transferOwnerPickView";
 const CONFIRM_VIEW_SELECTOR = "#transferOwnerConfirmView";
 const TITLE_SELECTOR = "#transferOwnerModalTitle";
 const FOOTER_MSG_SELECTOR = "#transferOwnerFooterMsg";
-const CANCEL_BTN_SELECTOR = "#transferOwnerCancel";
+// The Cancel button is wired once in transfer.ts beginTransferFlow (shared modal),
+// so this module no longer references CANCEL_BTN_SELECTOR.
 const SUBMIT_BTN_SELECTOR = "#transferOwnerSubmit";
 // The role="listbox" element is an INNER child of the pick view (not the view
 // itself) so the filter input can live in the same view without being an invalid
@@ -121,13 +122,9 @@ export function openTransferPicker(opener: HTMLElement | string): void {
   // up once a member is staged ("{username} will become the owner.").
   $(FOOTER_MSG_SELECTOR).text("");
 
-  // Footer buttons (the modal's own, not rendered per-view). Cancel dismisses;
-  // Transfer stays disabled until a member is staged, then advances to confirm.
-  $(CANCEL_BTN_SELECTOR)
-    .text("Cancel")
-    .offAndOn("click", function () {
-      $(MODAL_SELECTOR).modal("hide");
-    });
+  // Footer Transfer button (the modal's own, not rendered per-view). Cancel is
+  // bound once in beginTransferFlow (dismisses in both views). Transfer stays
+  // disabled until a member is staged, then advances to confirm.
   $(SUBMIT_BTN_SELECTOR)
     .text(APP_CONFIG.strings.TRANSFER_OWNER_SUBMIT)
     .prop("disabled", true)

@@ -121,9 +121,6 @@ function filterInput(): JQuery {
 function submitBtn(): JQuery {
   return $("#transferOwnerSubmit");
 }
-function cancelBtn(): JQuery {
-  return $("#transferOwnerCancel");
-}
 function footerMsg(): JQuery {
   return $("#transferOwnerFooterMsg");
 }
@@ -312,13 +309,14 @@ describe("keyboard", () => {
 });
 
 describe("cancel / close", () => {
-  it("Cancel click hides the modal (Bootstrap teardown resets picker state on hidden)", () => {
+  it("the modal's hidden event tears down picker state (open flag + pick view cleared)", () => {
     openTransferPicker("#memberBtnTransferOwner");
 
-    cancelBtn().trigger("click");
-    expect(modalSpy).toHaveBeenCalledWith("hide");
-
-    // The hidden handler completes teardown.
+    // The Cancel button is now wired once in transfer.ts's beginTransferFlow
+    // (mocked out in this suite), so the Cancel-dismisses-modal behavior is
+    // covered in transfer.test.ts. What this module still owns is the
+    // hidden.bs.modal.transferPicker teardown handler armed in openTransferPicker
+    // — assert that firing the modal's own hidden event resets picker state.
     fireHidden();
     expect(isTransferPickerOpen()).toBe(false);
     expect(pickView().children().length).toBe(0);

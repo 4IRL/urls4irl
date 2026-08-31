@@ -66,19 +66,31 @@ export function beginTransferFlow(opener: HTMLElement | string): void {
   $(MODAL_SELECTOR).offAndOn("hidden.bs.modal.transferOwner", function () {
     if (_transferSucceeded) {
       $("#MemberDeckHeader").attr("tabindex", "-1").trigger("focus");
-    } else if (!_transferConfirmed) {
-      emit({ event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL });
-      // A union of string | HTMLElement matches no single jQuery `$()` overload,
-      // so narrow before selecting (behavior identical — jQuery accepts either).
-      if (typeof _transferOpener === "string") {
-        $(_transferOpener).trigger("focus");
-      } else if (_transferOpener) {
-        $(_transferOpener).trigger("focus");
+    } else {
+      // Any non-success dismissal — a plain cancel/Escape/backdrop OR a
+      // confirmed-but-FAILED submit the user then backed out of — restores focus
+      // to the opener. A union of string | HTMLElement matches no single jQuery
+      // `$()` overload, so narrow with a safe cast (behavior identical — jQuery
+      // accepts either a selector string or an element).
+      if (_transferOpener) $(_transferOpener as string).trigger("focus");
+      // Emit CANCEL only when no real confirm-click happened (mirrors delete.ts);
+      // a confirmed-but-failed transfer already emitted CONFIRMED, not CANCEL.
+      if (!_transferConfirmed) {
+        emit({ event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL });
       }
     }
     _transferConfirmed = false;
     _transferSucceeded = false;
   });
+
+  // Cancel dismisses the modal in BOTH the pick and confirm views — bind it once
+  // here (the modal is dedicated to this flow) rather than re-binding the same
+  // handler on every view swap / picker open.
+  $(CANCEL_BTN_SELECTOR)
+    .text("Cancel")
+    .offAndOn("click", function () {
+      $(MODAL_SELECTOR).modal("hide");
+    });
 
   $(MODAL_SELECTOR).modal("show");
 }
@@ -111,11 +123,8 @@ export function showTransferConfirmView({
   $(TITLE_SELECTOR).text(APP_CONFIG.strings.TRANSFER_OWNER_CONFIRM_TITLE);
   $(FOOTER_MSG_SELECTOR).text("");
 
-  $(CANCEL_BTN_SELECTOR)
-    .text("Cancel")
-    .offAndOn("click", function () {
-      $(MODAL_SELECTOR).modal("hide");
-    });
+  // Cancel is bound once in beginTransferFlow (dismisses in both views) — no
+  // per-view re-bind needed here.
 
   $(SUBMIT_BTN_SELECTOR)
     .prop("disabled", false)
@@ -196,13 +205,17 @@ function transferOwnershipSuccess(
     } catch {
       // A select-rebuild OR post-transfer summary refetch failure is equally
       // fatal to a coherent UI — redirect deterministically rather than leaving
-      // a stale deck + swallowing the rejection.
+      // a stale deck + swallowing the rejection. Return so the trailing success
+      // re-render below does NOT run with now-stale owner state (isCurrentUserOwner
+      // still true), which would flash the owner-only Delete affordance before the
+      // error-page redirect completes.
       window.location.assign(APP_CONFIG.routes.errorPage);
+      return;
     }
     // buildUTubDeck's rebuild never sets .active on any row — re-add it.
-    // Runs LAST, unconditionally (matches the prior chain's final .then).
+    // Runs LAST on the SUCCESS path only (the catch above returns early).
     $(`.UTubSelector[utubid="${response.utubID}"]`).addClass("active");
-    // Re-assert the Delete/Leave + owner affordances LAST, unconditionally.
+    // Re-assert the Delete/Leave + owner affordances LAST (success path only).
     setUTubDeckOnUTubSelected(response.utubID, getState().isCurrentUserOwner);
   })();
 
