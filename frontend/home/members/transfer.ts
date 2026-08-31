@@ -11,16 +11,17 @@ import { debug } from "../../lib/debug.js";
 import { buildSelectedUTub, getUTubInfo } from "../utubs/selectors.js";
 import { buildUTubDeck, setUTubDeckOnUTubSelected } from "../utubs/deck.js";
 import { getAllUTubs } from "../utubs/utils.js";
+import {
+  CANCEL_BTN_SELECTOR,
+  CONFIRM_VIEW_SELECTOR,
+  FOOTER_MSG_SELECTOR,
+  MODAL_SELECTOR,
+  PICK_VIEW_SELECTOR,
+  SUBMIT_BTN_SELECTOR,
+  TITLE_SELECTOR,
+} from "./transfer-selectors.js";
 
 const log = debug("members");
-
-const MODAL_SELECTOR = "#transferOwnerModal";
-const PICK_VIEW_SELECTOR = "#transferOwnerPickView";
-const CONFIRM_VIEW_SELECTOR = "#transferOwnerConfirmView";
-const TITLE_SELECTOR = "#transferOwnerModalTitle";
-const FOOTER_MSG_SELECTOR = "#transferOwnerFooterMsg";
-const CANCEL_BTN_SELECTOR = "#transferOwnerCancel";
-const SUBMIT_BTN_SELECTOR = "#transferOwnerSubmit";
 
 export type OwnershipTransferredResponse =
   SuccessResponse<"transferUtubOwnership">;

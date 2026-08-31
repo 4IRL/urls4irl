@@ -12,21 +12,24 @@ import { makeUTubRoleIcon } from "../utubs/selectors.js";
 import { roleLabelFor } from "./members.js";
 import { closeAllMemberRowMenus } from "./row-menu.js";
 import { beginTransferFlow, showTransferConfirmView } from "./transfer.js";
+import {
+  CONFIRM_VIEW_SELECTOR,
+  FOOTER_MSG_SELECTOR,
+  MODAL_SELECTOR,
+  PICK_VIEW_SELECTOR,
+  SUBMIT_BTN_SELECTOR,
+  TITLE_SELECTOR,
+} from "./transfer-selectors.js";
 
 const log = debug("members");
 
 // The transfer flow now lives in a DEDICATED Bootstrap modal (#transferOwnerModal)
 // with an inline pick→confirm transition. This module owns the OPEN trigger, the
 // PICK view rendering, and the single-select/roving/filter interaction; transfer.ts
-// owns the modal lifecycle, the CONFIRM view, and the PATCH commit.
-const MODAL_SELECTOR = "#transferOwnerModal";
-const PICK_VIEW_SELECTOR = "#transferOwnerPickView";
-const CONFIRM_VIEW_SELECTOR = "#transferOwnerConfirmView";
-const TITLE_SELECTOR = "#transferOwnerModalTitle";
-const FOOTER_MSG_SELECTOR = "#transferOwnerFooterMsg";
-// The Cancel button is wired once in transfer.ts beginTransferFlow (shared modal),
-// so this module no longer references CANCEL_BTN_SELECTOR.
-const SUBMIT_BTN_SELECTOR = "#transferOwnerSubmit";
+// owns the modal lifecycle, the CONFIRM view, and the PATCH commit. The shared
+// modal selectors are imported from ./transfer-selectors.js; the Cancel button is
+// wired once in transfer.ts beginTransferFlow, so this module never imports
+// CANCEL_BTN_SELECTOR.
 // The role="listbox" element is an INNER child of the pick view (not the view
 // itself) so the filter input can live in the same view without being an invalid
 // child of the listbox (mirrors bulk-copy.ts).
