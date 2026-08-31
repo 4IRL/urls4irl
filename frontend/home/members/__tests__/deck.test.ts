@@ -297,6 +297,24 @@ describe("Standalone transfer-ownership trigger visibility (Step 4)", () => {
       true,
     );
   });
+
+  it("reveals the transfer button on a stale-data update when a non-owner member joins a sole-owner UTub (0→1 show)", () => {
+    // Sole-owner UTub: no eligible transfer target, so the trigger starts hidden.
+    selectUTub([OWNER], { isCurrentUserOwner: true });
+    expect(window.jQuery("#memberBtnTransferOwner").hasClass("hidden")).toBe(
+      true,
+    );
+
+    // Background membership change (STALE_DATA_DETECTED): a non-owner member joins,
+    // lifting the non-owner count 0→1 — the trigger must reveal without waiting
+    // for the next full UTUB_SELECTED (the show side of the 0↔1 threshold, the
+    // mirror of the re-hide test above).
+    updateMemberDeck([OWNER, MEMBER], true, 42);
+
+    const btn = window.jQuery("#memberBtnTransferOwner");
+    expect(btn.hasClass("hidden")).toBe(false);
+    expect(btn.attr("aria-label")).toBe("Transfer ownership");
+  });
 });
 
 describe("updateMemberDeck — targeted role swap via real applyDeckDiff (DD-17/DD-24)", () => {

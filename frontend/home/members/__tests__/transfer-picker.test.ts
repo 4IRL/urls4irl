@@ -306,6 +306,61 @@ describe("keyboard", () => {
     keydown(optionFor(2)[0], "ArrowUp");
     expect(document.activeElement).toBe(optionFor(3)[0]);
   });
+
+  it("roving navigation skips filtered-out rows and never gives them the tabindex-0 entry", () => {
+    // Three eligible members so a filter can leave a 2-of-3 visible subset with a
+    // hidden row in the MIDDLE — proving roving skips it in both directions.
+    storeState.members = [
+      { id: 1, username: "owner_u", memberRole: "creator" },
+      { id: 2, username: "alice", memberRole: "member" },
+      { id: 3, username: "bob", memberRole: "cocreator" },
+      { id: 4, username: "alan", memberRole: "member" },
+    ];
+    openTransferPicker("#memberBtnTransferOwner");
+
+    // Filter to the "al*" subset — alice (id 2) + alan (id 4) match; bob (id 3),
+    // between them in DOM order, is hidden.
+    filterInput().val("al").trigger("input");
+    expect(optionFor(2).hasClass("hidden")).toBe(false);
+    expect(optionFor(4).hasClass("hidden")).toBe(false);
+    expect(optionFor(3).hasClass("hidden")).toBe(true);
+    // The filtered-out row is never the roving entry point.
+    expect(optionFor(3).attr("tabindex")).not.toBe("0");
+
+    fireShown(); // focuses the first VISIBLE enabled row (alice)
+    expect(document.activeElement).toBe(optionFor(2)[0]);
+
+    // ArrowDown lands on alan — bob (hidden, between them) is skipped, never focused.
+    keydown(optionFor(2)[0], "ArrowDown");
+    expect(document.activeElement).toBe(optionFor(4)[0]);
+
+    // ArrowDown from the last visible row wraps back to alice (still skipping bob).
+    keydown(optionFor(4)[0], "ArrowDown");
+    expect(document.activeElement).toBe(optionFor(2)[0]);
+
+    // ArrowUp wraps to the last visible row (alan), again skipping the hidden bob.
+    keydown(optionFor(2)[0], "ArrowUp");
+    expect(document.activeElement).toBe(optionFor(4)[0]);
+
+    // The hidden row still carries the non-entry tabindex throughout.
+    expect(optionFor(3).attr("tabindex")).toBe("-1");
+  });
+
+  it("Space (keydown+keyup) selects the focused row identically to Enter", () => {
+    openTransferPicker("#memberBtnTransferOwner");
+    fireShown(); // focus the first row (id 2)
+
+    // Space's keydown is prevent-defaulted on an option row (page-scroll guard);
+    // the keyup is what activates — identical to the Enter selection path.
+    keydown(optionFor(2)[0], " ");
+    keyup(optionFor(2)[0], " ");
+
+    expect(optionFor(2).attr("aria-selected")).toBe("true");
+    expect(optionFor(2).hasClass("active")).toBe(true);
+    expect(submitBtn().prop("disabled")).toBe(false);
+    // Single-select: exactly one row staged (same end state as Enter).
+    expect(pickView().find('[aria-selected="true"]').length).toBe(1);
+  });
 });
 
 describe("cancel / close", () => {
@@ -380,6 +435,19 @@ describe("event-bus wiring", () => {
       currentUserID: 1,
     });
     expect(modalSpy).toHaveBeenCalledWith("hide");
+    fireHidden();
+    expect(isTransferPickerOpen()).toBe(false);
+  });
+
+  it("UTUB_DELETED tears down an open modal (symmetric to UTUB_SELECTED)", () => {
+    openTransferPicker("#memberBtnTransferOwner");
+    expect(isTransferPickerOpen()).toBe(true);
+
+    // A UTub deletion tears the picker down even if the user never closed it —
+    // the same teardown subscription as UTUB_SELECTED, on the sibling event.
+    emit(AppEvents.UTUB_DELETED, { utubID: 1 });
+    expect(modalSpy).toHaveBeenCalledWith("hide");
+
     fireHidden();
     expect(isTransferPickerOpen()).toBe(false);
   });

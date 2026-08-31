@@ -273,6 +273,34 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     expect(modalSpy).toHaveBeenCalledWith("hide");
   });
 
+  it("Cancel from the CONFIRM view dismisses without PATCHing, then restores focus + emits CANCEL on close", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const modalSpy = vi.fn(function (this: JQuery) {
+      return this;
+    });
+    ($.fn as unknown as Record<string, unknown>).modal = modalSpy;
+
+    // Advance all the way to the confirm view, then Cancel from THERE (not the
+    // pick view). The single bind in beginTransferFlow dismisses in both views.
+    openConfirm();
+    $("#transferOwnerCancel").trigger("click");
+
+    // Dismissed, and — crucially — no confirm-submit fired, so no PATCH.
+    expect(modalSpy).toHaveBeenCalledWith("hide");
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+
+    // Firing the close event resets state exactly like the pick-view cancel case:
+    // focus returns to the opener and CANCEL is emitted (since _transferConfirmed
+    // is false — no confirm-click happened).
+    $("#transferOwnerModal").trigger("hidden.bs.modal");
+    expect(document.activeElement).toBe(
+      document.getElementById("memberBtnTransferOwner"),
+    );
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL,
+    });
+  });
+
   it("PATCHes the endpoint, reconciles both decks in order, announces, then focuses the header on modal close", async () => {
     mockAjaxSuccess(SUCCESS_RESPONSE);
 
@@ -354,6 +382,38 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
       await flush();
 
       expect(assignSpy).toHaveBeenCalledWith(APP_CONFIG.routes.errorPage);
+    } finally {
+      assignSpy.mockRestore();
+    }
+  });
+
+  it("skips the deck rebuild WITHOUT redirecting when getUTubInfo resolves a falsy UTub after a 200 PATCH", async () => {
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    try {
+      mockAjaxSuccess(SUCCESS_RESPONSE);
+      // The select-rebuild source resolves nothing (e.g. the UTub vanished under
+      // the acting user). The `if (selectedUTub)` guard then short-circuits the
+      // whole rebuild — buildSelectedUTub, getAllUTubs, and buildUTubDeck are all
+      // skipped — and, because it is not a thrown rejection, there is NO redirect.
+      vi.mocked(getUTubInfo).mockResolvedValueOnce(null);
+
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
+      await flush();
+
+      // getUTubInfo was consulted, but its falsy result short-circuits the rest.
+      expect(vi.mocked(getUTubInfo)).toHaveBeenCalledTimes(1);
+      // The left-deck summary refetch is never reached.
+      expect(vi.mocked(getAllUTubs)).not.toHaveBeenCalled();
+      // buildUTubDeck never ran, so no UTub-selector rows were rebuilt.
+      expect($(".UTubSelector").length).toBe(0);
+      // buildSelectedUTub never ran, so its real setState never flipped the role
+      // off the seeded owner state.
+      expect(getState().isCurrentUserOwner).toBe(true);
+      // The falsy branch is not an error condition — no error-page redirect.
+      expect(assignSpy).not.toHaveBeenCalled();
     } finally {
       assignSpy.mockRestore();
     }
