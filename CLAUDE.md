@@ -20,7 +20,7 @@ Reference plan may have files in the @plans directory - please reference these i
 - **Plans store (central):** `~/code/plans/urls4irl/{open,completed,research}/<topic>/` — plans now live in the central stronghold store, not this repo (bucket = this repo's slug basename `urls4irl`). Reviews/research/mocks are co-located per plan under its `<topic>/`; finished topics move `open/`→`completed/` as a unit. See `~/code/CLAUDE.md` "Central Plans Store". (Legacy in-repo `plans/` migrated 07-2026; the leftover `plans/tmp/` is gitignored scratch.)
 - **Bot identity:** `gpropersi-claude[bot]` `141576524+gpropersi-claude[bot]@users.noreply.github.com`  <!-- renamed from u4i-claude-code; same App, same bot user id -->
 - **Bot push script:** `~/code/.claude/scripts/gh-app-push.sh` (central, repo-agnostic; derives the repo from `origin`, pushes as the shared bot)
-- **Token generator:** `~/.claude/generate-gh-token.sh` (shared consolidated `gpropersi-claude` GitHub App; one generator serves every repo — auto-resolves the installation from the repo's owner. Key at `~/.claude/u4i-app.pem`, outside every repo)
+- **Token generator:** `~/code/.claude/scripts/generate-gh-token.sh` (tracked in the stronghold — the shared consolidated `gpropersi-claude` App; one generator serves every repo, auto-resolves the installation from the repo's owner. Only the private key `~/.claude/u4i-app.pem` lives outside git)
 - **Container runtime:** `docker compose --project-directory . -f docker/compose.local.yaml`
 - **App URL (Playwright MCP):** `http://127.0.0.1:8659/`
 - **Test login:** username `u4i_test1` (default) / password `<username>@urls4irl.app` (seeded local test creds; see `login-with-playright` skill)
