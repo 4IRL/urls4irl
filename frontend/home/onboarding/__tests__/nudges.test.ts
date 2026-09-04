@@ -358,7 +358,7 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     resetBus();
     resetStore();
     installStorageStub();
-    // Default to the non-prod path (the ?resetNudges hook enabled); the prod
+    // Default to the non-prod path (the #resetNudges hook enabled); the prod
     // invariant test flips this to true. Reset here so it never leaks across
     // tests (clearAllMocks does not touch this plain object).
     mockAppConfig.isProduction = false;
@@ -378,7 +378,7 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     document.body.innerHTML = "";
-    // Restore a clean URL so a lingering ?resetNudges query never bleeds into
+    // Restore a clean URL so a lingering #resetNudges hash never bleeds into
     // the next test.
     window.history.replaceState({}, "", "/");
   });
@@ -547,16 +547,16 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     expect(nudgeStorage.hasSeenTip("createUtub")).toBe(false);
   });
 
-  it("(resetNudges, non-prod) ?resetNudges clears seen flags, re-shows the eligible tip, and strips the param", async () => {
+  it("(resetNudges, non-prod) #resetNudges clears seen flags, re-shows the eligible tip, and strips the hash", async () => {
     const { initOnboardingNudges } = await import("../nudges.js");
     const { bootstrap } = await import("../../../lib/globals.js");
     const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
     const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
 
-    // Pre-seed the Create tip as already seen, then load with ?resetNudges.
+    // Pre-seed the Create tip as already seen, then load with #resetNudges.
     nudgeStorage.markTipSeen("createUtub");
     expect(nudgeStorage.hasSeenTip("createUtub")).toBe(true);
-    window.history.replaceState({}, "", "/?resetNudges=1");
+    window.history.replaceState({}, "", "/#resetNudges");
     const replaceStateSpy = vi.spyOn(window.history, "replaceState");
 
     initOnboardingNudges();
@@ -568,12 +568,12 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
       .calls[0][0] as Record<string, string>;
     expect(contentArg[".tooltip-inner"]).toContain("Start here");
 
-    // The param is stripped from the URL so a reload does not re-reset.
+    // The hash is stripped from the URL so a reload does not re-reset.
     expect(replaceStateSpy).toHaveBeenCalledTimes(1);
-    expect(window.location.search).not.toContain("resetNudges");
+    expect(window.location.hash).toBe("");
   });
 
-  it("(resetNudges, prod invariant) ?resetNudges is inert in production", async () => {
+  it("(resetNudges, prod invariant) #resetNudges is inert in production", async () => {
     const { initOnboardingNudges } = await import("../nudges.js");
     const { bootstrap } = await import("../../../lib/globals.js");
     const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
@@ -581,7 +581,7 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
 
     mockAppConfig.isProduction = true;
     nudgeStorage.markTipSeen("createUtub");
-    window.history.replaceState({}, "", "/?resetNudges=1");
+    window.history.replaceState({}, "", "/#resetNudges");
 
     initOnboardingNudges();
 
@@ -591,7 +591,7 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     expect(tip.show).not.toHaveBeenCalled();
   });
 
-  it("(resetNudges, no-op) without the param the seen flag is preserved", async () => {
+  it("(resetNudges, no-op) without the hash the seen flag is preserved", async () => {
     const { initOnboardingNudges } = await import("../nudges.js");
 
     nudgeStorage.markTipSeen("createUtub");

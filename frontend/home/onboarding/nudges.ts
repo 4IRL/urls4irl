@@ -283,30 +283,36 @@ export function maybeShowNextTip(): void {
 }
 
 /**
- * Dev-only convenience: when the page URL carries `?resetNudges`, clear all
- * persisted "seen" flags so the onboarding sequence replays — the reset path for
- * testing nudges on a device with no DevTools console (e.g. mobile). Disabled in
- * production so it can never fire for real users; active in local + dev/staging.
- * After clearing, the param is stripped from the URL via `history.replaceState`
- * so a subsequent reload does not repeatedly reset.
+ * Dev-only convenience: when the page URL carries the `#resetNudges` hash
+ * fragment, clear all persisted "seen" flags so the onboarding sequence replays
+ * — the reset path for testing nudges on a device with no DevTools console
+ * (e.g. mobile). Disabled in production so it can never fire for real users;
+ * active in local + dev/staging.
+ *
+ * A hash fragment (not a query param) is used deliberately: the `/home` route
+ * rejects unknown query params with a 404 "Invalid Request" BEFORE any JS runs,
+ * so a `?resetNudges` param could never reach this code. The URL hash is never
+ * sent to the server, so `#resetNudges` reaches the browser untouched. After
+ * clearing, the hash is stripped from the URL via `history.replaceState` (the
+ * query string, if any, is preserved) so a subsequent reload does not
+ * repeatedly reset.
  */
-function maybeHandleNudgeResetParam(): void {
+function maybeHandleNudgeReset(): void {
   if (APP_CONFIG.isProduction) return;
 
-  const params = new URLSearchParams(window.location.search);
-  if (!params.has("resetNudges")) return;
+  const hash = window.location.hash.replace(/^#/, "");
+  if (hash !== "resetNudges") return;
 
   clearAllSeenTips();
 
-  params.delete("resetNudges");
-  const remainingQuery = params.toString();
-  const newUrl =
-    window.location.pathname +
-    (remainingQuery ? `?${remainingQuery}` : "") +
-    window.location.hash;
-  window.history.replaceState({}, "", newUrl);
+  // Strip only the hash, preserving any existing query string.
+  window.history.replaceState(
+    {},
+    "",
+    window.location.pathname + window.location.search,
+  );
 
-  log("reset via ?resetNudges");
+  log("reset via #resetNudges");
 }
 
 /**
@@ -328,9 +334,9 @@ export function initOnboardingNudges(): void {
   _onboardingInitialized = true;
 
   // Dev-only reset hook (non-production): clear seen flags before the initial
-  // evaluation so a fresh load with `?resetNudges` immediately re-shows the
+  // evaluation so a fresh load with `#resetNudges` immediately re-shows the
   // eligible tip without a manual second reload.
-  maybeHandleNudgeResetParam();
+  maybeHandleNudgeReset();
 
   on(AppEvents.UTUB_SELECTED, () => maybeShowNextTip());
   on(AppEvents.MOBILE_DECK_SWITCHED, () => {
