@@ -116,6 +116,10 @@ describe("APP_CONFIG shape", () => {
     it("debugEnabled is a boolean", () => {
       expect(typeof APP_CONFIG.debugEnabled).toBe("boolean");
     });
+
+    it("isProduction is a boolean", () => {
+      expect(typeof APP_CONFIG.isProduction).toBe("boolean");
+    });
   });
 
   describe("immutability", () => {

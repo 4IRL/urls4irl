@@ -49,6 +49,9 @@ window.bootstrap = {
 // Inject app-config script element for lib/config.js
 const appConfig = {
   debugEnabled: true,
+  // Default to the non-prod path so tests exercise the ?resetNudges hook
+  // (which is disabled in production).
+  isProduction: false,
   routes: {
     home: "/",
     createUTub: "/utubs",

@@ -46,6 +46,27 @@ vi.mock("../../../lib/event-bus.js", () => ({
   }),
 }));
 
+// Config mock: expose a mutable APP_CONFIG so the `?resetNudges` tests can flip
+// `isProduction` between the enabled (non-prod) and disabled (prod) paths.
+// nudges.ts is the only module in this test's graph that reads config; the
+// onboarding string keys read by showTip() are mirrored from test-setup.ts.
+const { mockAppConfig } = vi.hoisted(() => ({
+  mockAppConfig: {
+    debugEnabled: true,
+    isProduction: false,
+    strings: {
+      ONBOARDING_CREATE_UTUB_TIP_TITLE: "Start here",
+      ONBOARDING_CREATE_UTUB_TIP_BODY:
+        "Create your first UTub to begin collecting URLs.",
+      ONBOARDING_ADD_URL_TIP_TITLE: "Add a URL",
+      ONBOARDING_ADD_URL_TIP_BODY:
+        "Tap here to save your first link to this UTub.",
+    } as Record<string, string>,
+  },
+}));
+
+vi.mock("../../../lib/config.js", () => ({ APP_CONFIG: mockAppConfig }));
+
 // Form/search suppression predicates mocked so Step 6 tests toggle them
 // deterministically; default to "not suppressing" so tips can show.
 vi.mock("../../../lib/modal-tracking.js", () => ({
@@ -337,6 +358,10 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     resetBus();
     resetStore();
     installStorageStub();
+    // Default to the non-prod path (the ?resetNudges hook enabled); the prod
+    // invariant test flips this to true. Reset here so it never leaks across
+    // tests (clearAllMocks does not touch this plain object).
+    mockAppConfig.isProduction = false;
     document.body.innerHTML = `<button id="utubBtnCreate"></button><button id="urlBtnCreate"></button>`;
     // Re-assert the default "not suppressing" return values: clearAllMocks wipes
     // call history but preserves implementations, so a prior test's
@@ -353,6 +378,9 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     document.body.innerHTML = "";
+    // Restore a clean URL so a lingering ?resetNudges query never bleeds into
+    // the next test.
+    window.history.replaceState({}, "", "/");
   });
 
   it("(Red 1) initOnboardingNudges shows the Create-UTub tip in the zero-UTub state, gated on anchor visibility", async () => {
@@ -517,5 +545,60 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     expect(tip.dispose).toHaveBeenCalledTimes(1);
     expect(markTipSeenSpy).not.toHaveBeenCalled();
     expect(nudgeStorage.hasSeenTip("createUtub")).toBe(false);
+  });
+
+  it("(resetNudges, non-prod) ?resetNudges clears seen flags, re-shows the eligible tip, and strips the param", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // Pre-seed the Create tip as already seen, then load with ?resetNudges.
+    nudgeStorage.markTipSeen("createUtub");
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(true);
+    window.history.replaceState({}, "", "/?resetNudges=1");
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+    initOnboardingNudges();
+
+    // The seen flag was cleared, so the zero-UTub Create tip re-shows.
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(false);
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Start here");
+
+    // The param is stripped from the URL so a reload does not re-reset.
+    expect(replaceStateSpy).toHaveBeenCalledTimes(1);
+    expect(window.location.search).not.toContain("resetNudges");
+  });
+
+  it("(resetNudges, prod invariant) ?resetNudges is inert in production", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    mockAppConfig.isProduction = true;
+    nudgeStorage.markTipSeen("createUtub");
+    window.history.replaceState({}, "", "/?resetNudges=1");
+
+    initOnboardingNudges();
+
+    // In production the hook no-ops: the seen flag survives and the (still-seen)
+    // Create tip is not re-shown.
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(true);
+    expect(tip.show).not.toHaveBeenCalled();
+  });
+
+  it("(resetNudges, no-op) without the param the seen flag is preserved", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+
+    nudgeStorage.markTipSeen("createUtub");
+    window.history.replaceState({}, "", "/");
+
+    initOnboardingNudges();
+
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(true);
   });
 });

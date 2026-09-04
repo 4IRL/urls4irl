@@ -62,14 +62,27 @@ export function markTipSeen(tipId: string): void {
 }
 
 /**
- * Test-only helper: clears the persisted seen-tips object so a test never leaks
- * seen state into the next test (mirrors `swipe.ts`'s
- * `_resetURLSwipeGestureForTests`).
+ * Clears the persisted seen-tips object so every onboarding nudge becomes
+ * eligible to re-show. This is the dev-reset entry point behind the
+ * `?resetNudges` URL hook (see `nudges.ts`), letting a nudge sequence be
+ * replayed on a device with no DevTools console (e.g. mobile). Silently no-ops
+ * if localStorage is unavailable (private mode / quota), matching the other
+ * accessors in this module.
  */
-export function _resetOnboardingStorageForTests(): void {
+export function clearAllSeenTips(): void {
   try {
     window.localStorage.removeItem(STORAGE_KEY);
   } catch {
     // localStorage may be disabled (private mode, quota) — silently ignore.
   }
+}
+
+/**
+ * Test-only helper: clears the persisted seen-tips object so a test never leaks
+ * seen state into the next test (mirrors `swipe.ts`'s
+ * `_resetURLSwipeGestureForTests`). Delegates to `clearAllSeenTips` so there is
+ * a single `removeItem` site.
+ */
+export function _resetOnboardingStorageForTests(): void {
+  clearAllSeenTips();
 }

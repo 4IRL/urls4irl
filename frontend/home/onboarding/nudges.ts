@@ -29,6 +29,7 @@ import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
 import { isUTubSearchActive } from "../utubs/search.js";
 import {
   _resetOnboardingStorageForTests,
+  clearAllSeenTips,
   hasSeenTip,
   markTipSeen,
 } from "./nudge-storage.js";
@@ -282,6 +283,33 @@ export function maybeShowNextTip(): void {
 }
 
 /**
+ * Dev-only convenience: when the page URL carries `?resetNudges`, clear all
+ * persisted "seen" flags so the onboarding sequence replays — the reset path for
+ * testing nudges on a device with no DevTools console (e.g. mobile). Disabled in
+ * production so it can never fire for real users; active in local + dev/staging.
+ * After clearing, the param is stripped from the URL via `history.replaceState`
+ * so a subsequent reload does not repeatedly reset.
+ */
+function maybeHandleNudgeResetParam(): void {
+  if (APP_CONFIG.isProduction) return;
+
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("resetNudges")) return;
+
+  clearAllSeenTips();
+
+  params.delete("resetNudges");
+  const remainingQuery = params.toString();
+  const newUrl =
+    window.location.pathname +
+    (remainingQuery ? `?${remainingQuery}` : "") +
+    window.location.hash;
+  window.history.replaceState({}, "", newUrl);
+
+  log("reset via ?resetNudges");
+}
+
+/**
  * Initialize the onboarding-nudge system exactly once. Wires the event-bus
  * subscriptions that drive contextual sequencing and mobile-panel teardown,
  * then evaluates the initial (server-rendered) page state so the zero-UTub
@@ -298,6 +326,11 @@ export function maybeShowNextTip(): void {
 export function initOnboardingNudges(): void {
   if (_onboardingInitialized) return;
   _onboardingInitialized = true;
+
+  // Dev-only reset hook (non-production): clear seen flags before the initial
+  // evaluation so a fresh load with `?resetNudges` immediately re-shows the
+  // eligible tip without a manual second reload.
+  maybeHandleNudgeResetParam();
 
   on(AppEvents.UTUB_SELECTED, () => maybeShowNextTip());
   on(AppEvents.MOBILE_DECK_SWITCHED, () => {

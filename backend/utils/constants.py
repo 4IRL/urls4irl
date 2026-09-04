@@ -1418,6 +1418,7 @@ def provide_config_for_constants() -> dict:
             constants=generate_constants_js(),
             strings=generate_strings_js(),
             debugEnabled=debug_enabled,
+            isProduction=current_app.config["PRODUCTION"],
         ),
         current_year=utc_now().year,
         google_oauth_enabled=should_register_google_oauth(
