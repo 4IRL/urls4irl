@@ -38,6 +38,7 @@ import {
 import "./home/members/deck.js";
 import "./home/tags/deck.js";
 import { initTransferPicker } from "./home/members/transfer-picker.js";
+import { initOnboardingNudges } from "./home/onboarding/nudges.js";
 
 // Register jQuery plugins and setup CSRF before DOM ready
 registerJQueryPlugins();
@@ -69,6 +70,7 @@ $(document).ready(() => {
   initURLDeckHeaderFit();
   initCookieBanner();
   initMetricsClient();
+  initOnboardingNudges();
 });
 
 // Initialize window events (must be outside DOM ready)

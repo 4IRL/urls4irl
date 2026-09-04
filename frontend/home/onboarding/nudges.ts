@@ -20,10 +20,16 @@
 import { $, bootstrap } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
+import { on, AppEvents } from "../../lib/event-bus.js";
 import { emit as emitMetric } from "../../lib/metrics-client.js";
+import { getOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
+import { getState } from "../../store/app-store.js";
+import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
+import { isUTubSearchActive } from "../utubs/search.js";
 import {
   _resetOnboardingStorageForTests,
+  hasSeenTip,
   markTipSeen,
 } from "./nudge-storage.js";
 
@@ -48,6 +54,10 @@ let _activeTipId: TipId | null = null;
 // Id of the one-tick deferred listener-bind timer, so a dismiss fired before
 // the bind executes can cancel it outright (no orphaned document handlers).
 let _pendingBindTimer: ReturnType<typeof setTimeout> | null = null;
+// Guards initOnboardingNudges against double-binding its event-bus
+// subscriptions on a repeated call (subscriptions accumulate otherwise),
+// mirroring swipe.ts's `_swipeInitialized` idempotency guard.
+let _onboardingInitialized = false;
 
 /**
  * Dismiss the currently-active tip, if any: hide + dispose the tooltip, remove
@@ -169,11 +179,132 @@ export function showTip({
   }, 0);
 }
 
+// A single curated tip: its identity, the anchor button it points at, the
+// bridged title/body string keys, and an eligibility predicate over app-store
+// state. Walked in priority order by `maybeShowNextTip`.
+interface NudgeConfig {
+  tipId: TipId;
+  anchorSelector: string;
+  titleKey: string;
+  bodyKey: string;
+  isEligible(): boolean;
+}
+
+// The curated, contextually-sequenced tip set. Order is priority order: the
+// Create-UTub tip precedes the Add-URL tip, so a brand-new user is guided to
+// create their first UTub before being nudged to add a URL to it. Each nudge
+// anchors to its deck's header "+" button (never the empty-state CTA) for
+// anchor-consistency across the set.
+const NUDGE_REGISTRY: readonly NudgeConfig[] = [
+  {
+    tipId: "createUtub",
+    anchorSelector: "#utubBtnCreate",
+    titleKey: "ONBOARDING_CREATE_UTUB_TIP_TITLE",
+    bodyKey: "ONBOARDING_CREATE_UTUB_TIP_BODY",
+    isEligible: (): boolean => getState().utubs.length === 0,
+  },
+  {
+    tipId: "addUrl",
+    anchorSelector: "#urlBtnCreate",
+    titleKey: "ONBOARDING_ADD_URL_TIP_TITLE",
+    bodyKey: "ONBOARDING_ADD_URL_TIP_BODY",
+    isEligible: (): boolean =>
+      getState().activeUTubID !== null &&
+      getState().urls.length === 0 &&
+      !getState().multiSelectMode,
+  },
+];
+
+/**
+ * A tip is only worth showing when its anchor is actually rendered-visible.
+ * `offsetParent === null` is true for an element inside a `.hidden` ancestor
+ * (e.g. a mobile panel that is not the current deck), matching the same
+ * opener-visibility check `tags/sheet.ts` uses. Inherently correct on both
+ * desktop (both panels visible) and mobile (off-panel anchors are hidden).
+ */
+function isAnchorVisible(anchorSelector: string): boolean {
+  const anchor = document.querySelector<HTMLElement>(anchorSelector);
+  return anchor !== null && anchor.offsetParent !== null;
+}
+
+/**
+ * Show the highest-priority eligible tip, or nothing. Suppressed entirely while
+ * a conflicting home UI owns the space the bubble would occupy (an open form,
+ * an active UTub-name/cross-UTub search, or multi-select mode) — in which case
+ * any currently-active tip is also torn down WITHOUT marking it seen, so it can
+ * re-show once the conflicting UI closes. Otherwise walks the registry in
+ * priority order and shows the first tip that is unseen, eligible, and whose
+ * anchor is visible. At most one tip is ever shown.
+ */
+export function maybeShowNextTip(): void {
+  const suppressed =
+    getOpenForm() !== null ||
+    getState().multiSelectMode ||
+    isUTubSearchActive() ||
+    isCrossUtubSearchActive();
+  if (suppressed) {
+    if (_activeTip !== null) dismissActiveTip({ markSeen: false });
+    return;
+  }
+
+  // A tip is already visible — never stack a second one.
+  if (_activeTip !== null) return;
+
+  for (const nudge of NUDGE_REGISTRY) {
+    if (hasSeenTip(nudge.tipId)) continue;
+    if (!nudge.isEligible()) continue;
+    if (!isAnchorVisible(nudge.anchorSelector)) continue;
+    showTip({
+      tipId: nudge.tipId,
+      anchorSelector: nudge.anchorSelector,
+      titleKey: nudge.titleKey,
+      bodyKey: nudge.bodyKey,
+    });
+    return;
+  }
+}
+
+/**
+ * Initialize the onboarding-nudge system exactly once. Wires the event-bus
+ * subscriptions that drive contextual sequencing and mobile-panel teardown,
+ * then evaluates the initial (server-rendered) page state so the zero-UTub
+ * Create tip fires on first load when applicable.
+ *
+ * - `UTUB_SELECTED`: after the first UTub is created and auto-selected, advance
+ *   from the (now-seen/ineligible) Create-UTub tip to the Add-URL tip.
+ * - `MOBILE_DECK_SWITCHED`: tear down an active tip whose anchor is no longer
+ *   visible (environment-driven, `markSeen: false`), THEN re-evaluate so an
+ *   eligible tip can (re)show on the now-current panel. Teardown must precede
+ *   re-evaluation, else `maybeShowNextTip`'s single-active-tip guard would skip
+ *   the new panel's eligible tip.
+ */
+export function initOnboardingNudges(): void {
+  if (_onboardingInitialized) return;
+  _onboardingInitialized = true;
+
+  on(AppEvents.UTUB_SELECTED, () => maybeShowNextTip());
+  on(AppEvents.MOBILE_DECK_SWITCHED, () => {
+    if (_activeTipId !== null) {
+      const activeConfig = NUDGE_REGISTRY.find(
+        (nudge) => nudge.tipId === _activeTipId,
+      );
+      if (
+        activeConfig !== undefined &&
+        !isAnchorVisible(activeConfig.anchorSelector)
+      ) {
+        dismissActiveTip({ markSeen: false });
+      }
+    }
+    maybeShowNextTip();
+  });
+
+  maybeShowNextTip();
+}
+
 /**
  * Test-only reset: clear the active tip, cancel any pending bind, remove the
- * document handlers, and reset persisted seen state (mirrors `swipe.ts`'s
- * `_resetURLSwipeGestureForTests`). Step 6's `_onboardingInitialized` idempotency
- * guard will be added to this reset when that step lands.
+ * document handlers, reset the init guard, and reset persisted seen state
+ * (mirrors `swipe.ts`'s `_resetURLSwipeGestureForTests`).
  */
 export function _resetOnboardingNudgesForTests(): void {
   if (_pendingBindTimer !== null) {
@@ -182,6 +313,7 @@ export function _resetOnboardingNudgesForTests(): void {
   }
   _activeTip = null;
   _activeTipId = null;
+  _onboardingInitialized = false;
   $(document).off(CLICK_NAMESPACE);
   $(document).off(KEYDOWN_NAMESPACE);
   _resetOnboardingStorageForTests();

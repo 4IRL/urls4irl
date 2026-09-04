@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppEvents, emit as emitBusEvent } from "../../../lib/event-bus.js";
+import type { UtubSelectedPayload } from "../../../lib/event-bus.js";
+import { getOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
+import { resetStore, setState } from "../../../store/app-store.js";
+import type { UtubSummaryItem } from "../../../types/utub.js";
+import { isCrossUtubSearchActive } from "../../search/cross-utub-search.js";
+import { isUTubSearchActive } from "../../utubs/search.js";
 import * as nudgeStorage from "../nudge-storage.js";
 
 // Canonical metrics-client mock (copied verbatim from `copy-metrics.test.ts`):
@@ -10,6 +17,46 @@ const { mockMetricsClient } = await vi.hoisted(
 );
 
 vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
+
+// Resettable in-memory event-bus mock (mirrors swipe.test.ts): `on`/`emit`
+// operate against a registry the Step 6 suite clears in beforeEach, so
+// initOnboardingNudges() subscriptions never accumulate across tests and
+// emitting drives the real registry/sequencing logic. `AppEvents` mirrors the
+// real event-bus.ts values so emit(UTUB_SELECTED)/emit(MOBILE_DECK_SWITCHED)
+// reach the subscribers.
+const { busHandlers, resetBus } = vi.hoisted(() => {
+  const handlers = new Map<string, Set<(payload: unknown) => void>>();
+  return { busHandlers: handlers, resetBus: (): void => handlers.clear() };
+});
+
+vi.mock("../../../lib/event-bus.js", () => ({
+  AppEvents: {
+    UTUB_SELECTED: "utub:selected",
+    MOBILE_DECK_SWITCHED: "mobile:deck-switched",
+  },
+  on: vi.fn((event: string, handler: (payload: unknown) => void) => {
+    if (!busHandlers.has(event)) busHandlers.set(event, new Set());
+    busHandlers.get(event)!.add(handler);
+    return (): void => {
+      busHandlers.get(event)?.delete(handler);
+    };
+  }),
+  emit: vi.fn((event: string, payload: unknown) => {
+    busHandlers.get(event)?.forEach((handler) => handler(payload));
+  }),
+}));
+
+// Form/search suppression predicates mocked so Step 6 tests toggle them
+// deterministically; default to "not suppressing" so tips can show.
+vi.mock("../../../lib/modal-tracking.js", () => ({
+  getOpenForm: vi.fn(() => null),
+}));
+vi.mock("../../utubs/search.js", () => ({
+  isUTubSearchActive: vi.fn(() => false),
+}));
+vi.mock("../../search/cross-utub-search.js", () => ({
+  isCrossUtubSearchActive: vi.fn(() => false),
+}));
 
 // Per-file globals mock: a single shared Tooltip spy instance returned by
 // getOrCreateInstance so every showTip() call operates on the same spy. Copied
@@ -274,5 +321,201 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
         event: UI_EVENTS.UI_ONBOARDING_TIP_DISMISSED,
       }),
     );
+  });
+});
+
+describe("onboarding nudges — registry, eligibility, sequencing & init wiring", () => {
+  const A_UTUB: UtubSummaryItem = {
+    id: 1,
+    name: "My UTub",
+    memberRole: "member",
+    isLocked: false,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetBus();
+    resetStore();
+    installStorageStub();
+    document.body.innerHTML = `<button id="utubBtnCreate"></button><button id="urlBtnCreate"></button>`;
+    // Re-assert the default "not suppressing" return values: clearAllMocks wipes
+    // call history but preserves implementations, so a prior test's
+    // mockReturnValue override would otherwise leak into this test.
+    vi.mocked(getOpenForm).mockReturnValue(null);
+    vi.mocked(isUTubSearchActive).mockReturnValue(false);
+    vi.mocked(isCrossUtubSearchActive).mockReturnValue(false);
+  });
+
+  afterEach(async () => {
+    const { _resetOnboardingNudgesForTests } = await import("../nudges.js");
+    _resetOnboardingNudgesForTests();
+    resetStore();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("(Red 1) initOnboardingNudges shows the Create-UTub tip in the zero-UTub state, gated on anchor visibility", async () => {
+    const { initOnboardingNudges, _resetOnboardingNudgesForTests } =
+      await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // (a) Visible anchor (happy-dom default offsetParent) → the tip shows.
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Start here");
+
+    // (b) Same anchor with offsetParent forced null → not visible → no show.
+    _resetOnboardingNudgesForTests();
+    vi.clearAllMocks();
+    Object.defineProperty(anchor, "offsetParent", {
+      value: null,
+      configurable: true,
+    });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+  });
+
+  it("(Red 2) selecting a URL-less UTub advances to the Add-URL tip via UTUB_SELECTED", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#urlBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // A UTub already exists (Create tip not eligible) but none is selected yet,
+    // so init shows nothing.
+    setState({ utubs: [A_UTUB], activeUTubID: null });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Selecting the (URL-less) UTub advances to the Add-URL tip.
+    nudgeStorage.markTipSeen("createUtub");
+    setState({ activeUTubID: 1, urls: [] });
+    // The sequencing subscriber ignores the event payload (it re-reads
+    // app-store state), so the payload content is irrelevant here — cast an
+    // empty object to satisfy the real typed `emit` signature.
+    emitBusEvent(AppEvents.UTUB_SELECTED, {} as UtubSelectedPayload);
+
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Add a URL");
+  });
+
+  it("(Red 3, regression) with both tips already seen, init shows nothing", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    initOnboardingNudges();
+
+    expect(tip.show).not.toHaveBeenCalled();
+  });
+
+  it("(Red 4) multi-select mode or an open form suppresses the Add-URL tip", async () => {
+    const { initOnboardingNudges, _resetOnboardingNudgesForTests } =
+      await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#urlBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // Add-URL-eligible baseline (Create tip already seen).
+    nudgeStorage.markTipSeen("createUtub");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [],
+      multiSelectMode: true,
+    });
+
+    // Multi-select on → suppressed.
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Multi-select off but a home form open → still suppressed.
+    _resetOnboardingNudgesForTests();
+    nudgeStorage.markTipSeen("createUtub"); // _reset cleared seen state
+    setState({ multiSelectMode: false });
+    vi.mocked(getOpenForm).mockReturnValue("url_create");
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+  });
+
+  it("(Red 5) an active UTub-name or cross-UTub search suppresses the Add-URL tip", async () => {
+    const { initOnboardingNudges, _resetOnboardingNudgesForTests } =
+      await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#urlBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    nudgeStorage.markTipSeen("createUtub");
+    setState({ utubs: [A_UTUB], activeUTubID: 1, urls: [] });
+
+    // UTub-name search active → suppressed.
+    vi.mocked(isUTubSearchActive).mockReturnValue(true);
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Cross-UTub search active → suppressed.
+    _resetOnboardingNudgesForTests();
+    nudgeStorage.markTipSeen("createUtub");
+    vi.mocked(isUTubSearchActive).mockReturnValue(false);
+    vi.mocked(isCrossUtubSearchActive).mockReturnValue(true);
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+  });
+
+  it("(Red 6) MOBILE_DECK_SWITCHED away from the active tip's anchor tears it down WITHOUT marking it seen", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    const markTipSeenSpy = vi.spyOn(nudgeStorage, "markTipSeen");
+
+    // Zero-UTub state shows the Create tip on init.
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+
+    // The Create anchor goes off-panel (offsetParent null) and a deck switch
+    // fires: the tip is torn down, but NOT marked seen, so it can re-show later.
+    Object.defineProperty(anchor, "offsetParent", {
+      value: null,
+      configurable: true,
+    });
+    emitBusEvent(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
+
+    expect(tip.dispose).toHaveBeenCalledTimes(1);
+    expect(markTipSeenSpy).not.toHaveBeenCalled();
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(false);
+  });
+
+  it("(Green 3 teardown) a suppression condition arising while a tip is active tears it down WITHOUT marking it seen", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    const markTipSeenSpy = vi.spyOn(nudgeStorage, "markTipSeen");
+
+    // Zero-UTub state shows the Create tip on init.
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+
+    // A home form opens, then a re-evaluation fires (its anchor is still on the
+    // current panel, so the off-panel teardown branch does not apply). The
+    // suppression guard must tear the active tip down WITHOUT marking it seen,
+    // so it can re-show once the form closes.
+    vi.mocked(getOpenForm).mockReturnValue("url_create");
+    emitBusEvent(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+
+    expect(tip.dispose).toHaveBeenCalledTimes(1);
+    expect(markTipSeenSpy).not.toHaveBeenCalled();
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(false);
   });
 });
