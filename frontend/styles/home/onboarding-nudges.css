@@ -1,0 +1,81 @@
+/* Onboarding nudge tooltip
+ * -------------------------
+ * Real, visible styling for the first-time onboarding nudge bubble. The bubble
+ * is a programmatic Bootstrap tooltip (see frontend/home/onboarding/nudges.ts)
+ * created with data-bs-custom-class="onboarding-nudge-tooltip". Bootstrap's own
+ * -tooltip custom classes ship with ZERO css, so without this rule set the
+ * bubble renders with Bootstrap defaults only (and the intended on-brand card
+ * styling would be invisible). All values are frontend/styles/tokens.css custom
+ * properties, so light/dark theming flips automatically via
+ * :root[data-theme=...] / prefers-color-scheme — never hardcode hex here.
+ */
+
+.onboarding-nudge-tooltip {
+    /* Bootstrap 5.2 tooltips are driven by --bs-tooltip-* custom properties.
+     * Overriding --bs-tooltip-bg recolors the caret (Bootstrap's own
+     * .tooltip-arrow::before border rule references it) to the brand green for
+     * whatever placement Popper resolves to — including an auto-flip from
+     * bottom to top — so the caret always matches the 2px green border below.
+     * The .tooltip-inner background is re-set to the card color explicitly, so
+     * only the arrow inherits the green. --bs-tooltip-opacity keeps the shown
+     * bubble fully opaque (Bootstrap defaults it to 0.9). */
+    --bs-tooltip-bg: var(--splashGreen);
+    --bs-tooltip-opacity: 1;
+    --bs-tooltip-max-width: 230px;
+}
+
+.onboarding-nudge-tooltip .tooltip-inner {
+    /* max-width comes from --bs-tooltip-max-width (set above); Bootstrap's own
+     * .tooltip-inner rule consumes it, so it is not repeated here. */
+    padding: var(--space-2) var(--space-3);
+    background: var(--cardBackgroundColor);
+    border: 2px solid var(--splashGreen);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md), var(--shadow-glow-green);
+    color: var(--textPrimary);
+    font-family: var(--font-display);
+    text-align: left;
+    line-height: 1.35;
+    /* Subtle entrance: slide-and-fade down from the anchor. Disabled under
+     * reduced-motion below. */
+    animation: onboardingNudgeIn 0.22s ease-out;
+}
+
+.onboarding-nudge-tooltip .onboarding-nudge-title {
+    font-weight: var(--fw-bold);
+    color: var(--textPrimary);
+    margin-bottom: 2px;
+}
+
+.onboarding-nudge-tooltip .onboarding-nudge-body {
+    font-size: var(--fs-xs);
+    color: var(--cardURLTextColor);
+}
+
+/* The caret. --bs-tooltip-bg (set above) already colors Bootstrap's
+ * .tooltip-arrow::before to green for every placement Popper resolves (top,
+ * bottom, and left/right). This explicit rule additionally pins the top/bottom
+ * caret green (the tooltip's configured placement is bottom, which flips to top)
+ * so it stays matched regardless of --bs-tooltip-bg. Bootstrap positions the
+ * arrow per data-bs-placement, so we only need to color it. */
+.onboarding-nudge-tooltip .tooltip-arrow::before {
+    border-top-color: var(--splashGreen);
+    border-bottom-color: var(--splashGreen);
+}
+
+@keyframes onboardingNudgeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .onboarding-nudge-tooltip .tooltip-inner {
+        animation: none;
+    }
+}
