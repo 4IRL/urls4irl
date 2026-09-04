@@ -20,6 +20,8 @@
 import { $, bootstrap } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
+import { emit as emitMetric } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
   _resetOnboardingStorageForTests,
   markTipSeen,
@@ -64,6 +66,15 @@ export function dismissActiveTip({ markSeen }: { markSeen: boolean }): void {
   _activeTip.hide();
   _activeTip.dispose();
   log("tip dismissed", { tipId, markSeen });
+
+  // Emit the dismissed metric ONLY on user-driven dismissal (markSeen: true —
+  // act / tap-away / Escape). Environment-driven teardown (markSeen: false)
+  // intentionally does not emit, keeping this a pure user-outcome signal. The
+  // narrowed local `tipId` (TipId, not TipId | null) type-checks against the
+  // matching Literal `tip_id` dimension with no cast.
+  if (markSeen) {
+    emitMetric({ event: UI_EVENTS.UI_ONBOARDING_TIP_DISMISSED, tip_id: tipId });
+  }
 
   _activeTip = null;
   _activeTipId = null;
@@ -144,6 +155,10 @@ export function showTip({
   $(ANNOUNCER_SELECTOR).text(`${title}. ${body}`);
 
   log("tip shown", { tipId });
+
+  // `tipId` is typed `TipId`, which matches the codegen's UI_ONBOARDING_TIP_SHOWN
+  // `tip_id` Literal dimension, so this emit type-checks with no cast.
+  emitMetric({ event: UI_EVENTS.UI_ONBOARDING_TIP_SHOWN, tip_id: tipId });
 
   // Defer the act-or-tap-away bind one tick so the triggering click does not
   // self-dismiss. dismissActiveTip clears this timer if it fires first.

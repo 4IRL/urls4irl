@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import * as nudgeStorage from "../nudge-storage.js";
+
+// Canonical metrics-client mock (copied verbatim from `copy-metrics.test.ts`):
+// hoist the helper above the ESM imports so the `vi.mock` factory can use it.
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
 
 // Per-file globals mock: a single shared Tooltip spy instance returned by
 // getOrCreateInstance so every showTip() call operates on the same spy. Copied
@@ -208,5 +217,62 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
     showTip(CREATE_UTUB_TIP);
 
     expect(markTipSeenSpy).not.toHaveBeenCalled();
+  });
+
+  it("(metrics) showTip emits UI_ONBOARDING_TIP_SHOWN with the tip_id", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+
+    showTip(CREATE_UTUB_TIP);
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_ONBOARDING_TIP_SHOWN,
+      tip_id: "createUtub",
+    });
+  });
+
+  it("(metrics) showTip carries the addUrl tip_id through to the SHOWN event", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+
+    // Cover the second closed-set tip_id value (the createUtub anchor is reused;
+    // only the emitted dimension value matters here).
+    showTip({ ...CREATE_UTUB_TIP, tipId: "addUrl" });
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_ONBOARDING_TIP_SHOWN,
+      tip_id: "addUrl",
+    });
+  });
+
+  it("(metrics) a user-driven dismiss emits UI_ONBOARDING_TIP_DISMISSED with the tip_id", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+
+    showTip(CREATE_UTUB_TIP);
+    await flushDeferredBind();
+    window.jQuery(anchor).trigger("click");
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_ONBOARDING_TIP_DISMISSED,
+      tip_id: "createUtub",
+    });
+  });
+
+  it("(metrics, invariant) an environment-driven dismiss does NOT emit UI_ONBOARDING_TIP_DISMISSED", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+
+    showTip(CREATE_UTUB_TIP);
+    // A second show before any user dismiss tears down the prior tip with
+    // markSeen:false (environment-style teardown) — it must NOT emit dismissed.
+    showTip({ ...CREATE_UTUB_TIP, tipId: "addUrl" });
+
+    expect(emit).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: UI_EVENTS.UI_ONBOARDING_TIP_DISMISSED,
+      }),
+    );
   });
 });

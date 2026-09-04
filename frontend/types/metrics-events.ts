@@ -84,6 +84,8 @@ export const UI_EVENTS = {
   UI_ACCOUNT_DELETE_CONFIRM: "ui_account_delete_confirm",
   UI_ACCOUNT_DELETE_CANCEL: "ui_account_delete_cancel",
   UI_DATA_EXPORT_TRIGGERED: "ui_data_export_triggered",
+  UI_ONBOARDING_TIP_SHOWN: "ui_onboarding_tip_shown",
+  UI_ONBOARDING_TIP_DISMISSED: "ui_onboarding_tip_dismissed",
 } as const;
 
 export type UIEventName = (typeof UI_EVENTS)[keyof typeof UI_EVENTS];

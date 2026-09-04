@@ -50,6 +50,7 @@ class ADMIN_METRICS_STRINGS:
     METRICS_TOP_RESOURCE_ERROR: str = "Errors"
     METRICS_TOP_RESOURCE_CONTACT: str = "Contact"
     METRICS_TOP_RESOURCE_ADMIN: str = "Admin"
+    METRICS_TOP_RESOURCE_ONBOARDING: str = "Onboarding"
     METRICS_TOP_RESOURCE_OTHER: str = "Other"
     METRICS_TOP_DEVICE_ALL: str = "All devices"
     METRICS_TOP_DEVICE_MOBILE: str = "Mobile"
