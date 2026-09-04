@@ -83,6 +83,13 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
     BUTTON_UTUB_CANCEL_CREATE = "#utubCancelBtnCreate"
 
+    # Onboarding nudges (first-time tooltips). The bubble is a programmatic
+    # Bootstrap tooltip skinned via data-bs-custom-class="onboarding-nudge-tooltip"
+    # (see frontend/home/onboarding/nudges.ts + styles/home/onboarding-nudges.css).
+    ONBOARDING_NUDGE_TOOLTIP = ".onboarding-nudge-tooltip"
+    ONBOARDING_NUDGE_TITLE = ".onboarding-nudge-tooltip .onboarding-nudge-title"
+    ONBOARDING_NUDGE_BODY = ".onboarding-nudge-tooltip .onboarding-nudge-body"
+
     MEMBER_ICON = ".bi-people-fill"
     CO_CREATOR_ICON = ".bi-diamond-half"
     CREATOR_ICON = ".bi-diamond-fill"

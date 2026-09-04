@@ -133,6 +133,17 @@ export function showTip({
   const anchor = document.querySelector<HTMLElement>(anchorSelector);
   if (anchor === null) return;
 
+  const title = APP_CONFIG.strings[titleKey];
+  const body = APP_CONFIG.strings[bodyKey];
+  // Defensive: `APP_CONFIG.strings` is a `Record<string, string>`, so a
+  // mis-bridged/typo'd key resolves to runtime-`undefined` without a compile
+  // error. Skip loudly rather than seed `data-bs-title="undefined"` (which would
+  // still satisfy the gate below and surface literal "undefined" copy to users).
+  if (!title || !body) {
+    log("tip skipped: missing bridged copy", { tipId, titleKey, bodyKey });
+    return;
+  }
+
   // Self-enforce the single-active-tip invariant: if a tip is somehow already
   // live (defensive — Step 6's maybeShowNextTip is the caller-side gate), tear
   // it down first WITHOUT marking it seen so it can re-show later when eligible.
@@ -148,8 +159,14 @@ export function showTip({
   // developer-authored bridged constants, so this stays XSS-safe.
   anchor.setAttribute("data-bs-html", "true");
 
-  const title = APP_CONFIG.strings[titleKey];
-  const body = APP_CONFIG.strings[bodyKey];
+  // Bootstrap 5's `Tooltip.show()` early-returns unless the instance has
+  // non-empty title content (`_isWithContent()`), so a tooltip configured ONLY
+  // via `setContent()` never renders. Seed a real title (read from the data
+  // attribute at instance creation) purely to satisfy that gate; `setContent`
+  // below then overrides `.tooltip-inner` with the title+body markup that is
+  // actually displayed. (The mocked Vitest Bootstrap in Step 4 lacks this gate,
+  // so this only surfaces against the real library.)
+  anchor.setAttribute("data-bs-title", title);
 
   const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
   tip.setContent({
