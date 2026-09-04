@@ -233,6 +233,12 @@ const appConfig = {
     URL_BULK_N_HIDDEN: "{n} hidden by filter",
     UTUB_NO_URLS: "No URLs yet",
     ADD_URL_BUTTON: "Add URL",
+    ONBOARDING_CREATE_UTUB_TIP_TITLE: "Start here",
+    ONBOARDING_CREATE_UTUB_TIP_BODY:
+      "Create your first UTub to begin collecting URLs.",
+    ONBOARDING_ADD_URL_TIP_TITLE: "Add a URL",
+    ONBOARDING_ADD_URL_TIP_BODY:
+      "Tap here to save your first link to this UTub.",
     URL_ADDED_BY: "Added by",
     URL_ADDED_ON: "on",
     URL_DATE_ADDED_LABEL: "Added:",
