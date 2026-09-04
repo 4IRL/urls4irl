@@ -46,6 +46,11 @@
          hidden by the sheet's open/close class toggles or refreshTagSheetAvailability. -->
     <span id="TagSheetAnnouncement" class="visually-hidden" aria-live="polite"></span>
 
+    <!-- Screen-reader announcement for the first-time onboarding nudges. Shared
+         across decks (not deck-specific), so it lives here alongside
+         #TagSheetAnnouncement rather than inside any single deck. -->
+    <span id="onboardingNudgeAnnouncement" class="visually-hidden" aria-live="polite"></span>
+
     <!-- Mobile Tag filter bottom sheet (mobile-only; #TagDeck relocated into the body by JS) -->
     <div id="tagSheetBackdrop" class="tag-sheet-backdrop"></div>
     <!-- Clipping viewport: spans navbar-bottom to footer-top so the sheet sliding
