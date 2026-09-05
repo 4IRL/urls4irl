@@ -22,6 +22,14 @@
     --bs-tooltip-bg: var(--splashGreen);
     --bs-tooltip-opacity: 1;
     --bs-tooltip-max-width: 230px;
+    /* Enlarge the caret beyond Bootstrap's default (~0.8rem x 0.4rem). Popper
+     * always places the caret's apex AT the anchor, so a bigger caret reaches
+     * further out of the bubble toward the button and reads as visibly
+     * "connected" — important on mobile, where Popper resolves a left/right
+     * placement and the thin default caret sat in the white header, looking
+     * detached from the target button. */
+    --bs-tooltip-arrow-width: 18px;
+    --bs-tooltip-arrow-height: 9px;
 }
 
 .onboarding-nudge-tooltip .tooltip-inner {
