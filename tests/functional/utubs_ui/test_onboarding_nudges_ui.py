@@ -288,8 +288,9 @@ def test_add_url_nudge_rearms_after_adding_first_url_via_form(
 
     This isolates the create.ts emit site (the sibling of the single-delete emit
     already covered above). ``rearmCompletedTips`` runs on every re-evaluation
-    BEFORE the suppression check, so the re-arm fires even though the create form
-    is momentarily open when the event lands. The seen flag is seeded with a
+    UNCONDITIONALLY, before the suppression check, so the re-arm fires regardless
+    of form state (in practice the create form is already cleared before the
+    post-ajax ``URL_DECK_CHANGED`` fires). The seen flag is seeded with a
     ONE-TIME ``page.evaluate`` (NOT ``add_init_script``) so it is not re-applied
     on any later navigation.
     """
