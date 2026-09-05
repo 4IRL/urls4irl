@@ -50,6 +50,7 @@ class Resource(StrEnum):
     ERROR = "error"
     CONTACT = "contact"
     ADMIN = "admin"
+    ONBOARDING = "onboarding"
     OTHER = "other"
 
 
@@ -182,6 +183,9 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_ACCOUNT_DELETE_CANCEL: Resource.AUTH,
     # UI — Privacy & Data (settings tab)
     EventName.UI_DATA_EXPORT_TRIGGERED: Resource.AUTH,
+    # UI — Onboarding
+    EventName.UI_ONBOARDING_TIP_SHOWN: Resource.ONBOARDING,
+    EventName.UI_ONBOARDING_TIP_DISMISSED: Resource.ONBOARDING,
 }
 
 

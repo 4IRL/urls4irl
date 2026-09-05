@@ -183,15 +183,16 @@ All inter-module communication uses typed events:
 
 | Event | Payload | Emitted by | Consumed by |
 |---|---|---|---|
-| `UTUB_SELECTED` | `{utubID, utubName, urls[], tags[], members[], utubOwnerID, isCurrentUserOwner, currentUserID}` | utubs/selectors | All decks, mobile, search |
-| `UTUB_DELETED` | `{utubID}` | utubs/delete | URL/tag/member decks |
+| `UTUB_SELECTED` | `{utubID, utubName, urls[], tags[], members[], utubOwnerID, isCurrentUserOwner, currentUserID}` | utubs/selectors | All decks, mobile, search, onboarding |
+| `UTUB_DELETED` | `{utubID}` | utubs/delete | URL/tag/member decks, onboarding |
 | `TRANSFER_PICKER_REQUESTED` | `{opener: HTMLElement \| string}` | utubs/delete, members/deck | members/transfer-picker |
 | `TAG_FILTER_CHANGED` | `{selectedTagIDs[]}` | tags/tags | urls/cards/filtering |
 | `TAG_DELETED` | `{utubTagID}` | tags/delete | urls/cards/filtering |
 | `STALE_DATA_DETECTED` | `{utubID, urls[], tags[], members[]}` | utubs/stale-data | All decks |
 | `URL_SEARCH_VISIBILITY_CHANGED` | void | urls/search | urls/cards/filtering |
 | `URL_TAG_FILTER_APPLIED` | void | urls/cards/filtering | urls/search |
-| `MOBILE_DECK_SWITCHED` | `{target: "desktop" \| "url-deck" \| "utub-deck" \| "member-deck" \| "no-utub"}` | home/mobile.ts (each mutator) | tags/sheet.ts |
+| `URL_DECK_CHANGED` | void | url create / single delete / bulk delete | onboarding |
+| `MOBILE_DECK_SWITCHED` | `{target: "desktop" \| "url-deck" \| "utub-deck" \| "member-deck" \| "no-utub"}` | home/mobile.ts (each mutator) | tags/sheet.ts, onboarding |
 | `CROSS_UTUB_SEARCH_VISIBILITY_CHANGED` | `{active: boolean}` | search/cross-utub-search.ts | tags/sheet.ts |
 
 ### Established TypeScript Patterns

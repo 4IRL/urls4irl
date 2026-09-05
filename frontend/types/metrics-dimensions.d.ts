@@ -212,6 +212,16 @@ export type DimEmailValidationSubmit = {
   trigger: "manual_click" | "auto_after_register";
 };
 
+export type DimOnboardingTipShown = {
+  device_type: DeviceType;
+  tip_id: "createUtub" | "addUrl";
+};
+
+export type DimOnboardingTipDismissed = {
+  device_type: DeviceType;
+  tip_id: "createUtub" | "addUrl";
+};
+
 export type UIEventDimensions = {
   ui_utub_select: DimUtubSelect;
   ui_utub_create_open: DimDeviceOnly;
@@ -291,4 +301,6 @@ export type UIEventDimensions = {
   ui_account_delete_confirm: DimDeviceOnly;
   ui_account_delete_cancel: DimDeviceOnly;
   ui_data_export_triggered: DimDeviceOnly;
+  ui_onboarding_tip_shown: DimOnboardingTipShown;
+  ui_onboarding_tip_dismissed: DimOnboardingTipDismissed;
 };

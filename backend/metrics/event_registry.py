@@ -737,6 +737,22 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Data export triggered from the Privacy & Data panel",
         category=EventCategory.UI,
     ),
+    # UI — Onboarding
+    EventName.UI_ONBOARDING_TIP_SHOWN: EventRegistryEntry(
+        description="Onboarding nudge tooltip auto-shown to a first-time user",
+        category=EventCategory.UI,
+        dimensions={"tip_id": ("createUtub", "addUrl")},
+    ),
+    EventName.UI_ONBOARDING_TIP_DISMISSED: EventRegistryEntry(
+        description=(
+            "Onboarding nudge tooltip dismissed by a user-driven action (act, "
+            "tap-away, or Escape — the `markSeen: true` paths; environment "
+            "teardown does not mark seen and intentionally does NOT emit this "
+            "event, keeping it a pure user-outcome signal)"
+        ),
+        category=EventCategory.UI,
+        dimensions={"tip_id": ("createUtub", "addUrl")},
+    ),
 }
 
 

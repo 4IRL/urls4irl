@@ -159,6 +159,9 @@ class EventName(StrEnum):
     UI_ACCOUNT_DELETE_CANCEL = "ui_account_delete_cancel"
     # — Privacy & Data (settings tab)
     UI_DATA_EXPORT_TRIGGERED = "ui_data_export_triggered"
+    # — Onboarding
+    UI_ONBOARDING_TIP_SHOWN = "ui_onboarding_tip_shown"
+    UI_ONBOARDING_TIP_DISMISSED = "ui_onboarding_tip_dismissed"
 
 
 # EVENT_CATEGORY and EVENT_DESCRIPTIONS are derived from the single source of

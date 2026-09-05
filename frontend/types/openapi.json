@@ -4861,6 +4861,7 @@
                 "error",
                 "contact",
                 "admin",
+                "onboarding",
                 "other"
               ],
               "type": "string"
@@ -5074,7 +5075,9 @@
                 "ui_account_delete_open",
                 "ui_account_delete_confirm",
                 "ui_account_delete_cancel",
-                "ui_data_export_triggered"
+                "ui_data_export_triggered",
+                "ui_onboarding_tip_shown",
+                "ui_onboarding_tip_dismissed"
               ],
               "type": "string"
             },
@@ -5428,7 +5431,9 @@
                 "ui_account_delete_open",
                 "ui_account_delete_confirm",
                 "ui_account_delete_cancel",
-                "ui_data_export_triggered"
+                "ui_data_export_triggered",
+                "ui_onboarding_tip_shown",
+                "ui_onboarding_tip_dismissed"
               ],
               "type": "string"
             },
@@ -10270,7 +10275,9 @@
               "ui_account_delete_open",
               "ui_account_delete_confirm",
               "ui_account_delete_cancel",
-              "ui_data_export_triggered"
+              "ui_data_export_triggered",
+              "ui_onboarding_tip_shown",
+              "ui_onboarding_tip_dismissed"
             ],
             "type": "string"
           },

@@ -299,6 +299,19 @@ class _DimEmailValidationSubmit(UIBaseDimensions):
     trigger: Literal["manual_click", "auto_after_register"]
 
 
+# `_DimOnboardingTipShown` and `_DimOnboardingTipDismissed` share the same field
+# shape today, but are deliberately defined as separate classes (one per
+# `EventName`) so each event has a 1:1 grep-able dim model. The literal is
+# inlined (matching the `_DimUrlCopy`-style precedent for small closed sets with
+# no dedicated external constants module).
+class _DimOnboardingTipShown(UIBaseDimensions):
+    tip_id: Literal["createUtub", "addUrl"]
+
+
+class _DimOnboardingTipDismissed(UIBaseDimensions):
+    tip_id: Literal["createUtub", "addUrl"]
+
+
 # ---------------------------------------------------------------------------
 # API dimension model — `API_HIT` keeps endpoint/method/status_code in dims so
 # the `(bucketStart, eventName, dimensions)` unique constraint can distinguish
@@ -621,6 +634,9 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_ACCOUNT_DELETE_CANCEL: _DimDeviceOnly,
     # UI — Privacy & Data (settings tab)
     EventName.UI_DATA_EXPORT_TRIGGERED: _DimDeviceOnly,
+    # UI — Onboarding
+    EventName.UI_ONBOARDING_TIP_SHOWN: _DimOnboardingTipShown,
+    EventName.UI_ONBOARDING_TIP_DISMISSED: _DimOnboardingTipDismissed,
 }
 
 

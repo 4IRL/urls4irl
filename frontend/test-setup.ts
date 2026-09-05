@@ -49,6 +49,9 @@ window.bootstrap = {
 // Inject app-config script element for lib/config.js
 const appConfig = {
   debugEnabled: true,
+  // Default to the non-prod path so tests exercise the ?resetNudges hook
+  // (which is disabled in production).
+  isProduction: false,
   routes: {
     home: "/",
     createUTub: "/utubs",
@@ -233,6 +236,12 @@ const appConfig = {
     URL_BULK_N_HIDDEN: "{n} hidden by filter",
     UTUB_NO_URLS: "No URLs yet",
     ADD_URL_BUTTON: "Add URL",
+    ONBOARDING_CREATE_UTUB_TIP_TITLE: "Start here",
+    ONBOARDING_CREATE_UTUB_TIP_BODY:
+      "Create your first UTub to begin collecting URLs.",
+    ONBOARDING_ADD_URL_TIP_TITLE: "Add a URL",
+    ONBOARDING_ADD_URL_TIP_BODY:
+      "Tap here to save your first link to this UTub.",
     URL_ADDED_BY: "Added by",
     URL_ADDED_ON: "on",
     URL_DATE_ADDED_LABEL: "Added:",
@@ -359,6 +368,7 @@ const appConfig = {
     METRICS_TOP_RESOURCE_ERROR: "Errors",
     METRICS_TOP_RESOURCE_CONTACT: "Contact",
     METRICS_TOP_RESOURCE_ADMIN: "Admin",
+    METRICS_TOP_RESOURCE_ONBOARDING: "Onboarding",
     METRICS_TOP_RESOURCE_OTHER: "Other",
     METRICS_TOP_DEVICE_ALL: "All devices",
     METRICS_TOP_DEVICE_MOBILE: "Mobile",

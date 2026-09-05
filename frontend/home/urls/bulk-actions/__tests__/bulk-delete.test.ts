@@ -20,6 +20,19 @@ vi.mock("../../../../lib/ajax.js", () => ({
   is429Handled: vi.fn(() => false),
 }));
 
+// Partial mock: keep the real AppEvents enum AND the real `on` wiring that
+// initBulkDelete relies on (URL_MULTISELECT_MODE_CHANGED subscription) functional,
+// spying only `emit` so the URL_DECK_CHANGED notification fired on a successful
+// bulk delete can be asserted.
+vi.mock("../../../../lib/event-bus.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../../lib/event-bus.js")>();
+  return {
+    ...actual,
+    emit: vi.fn(),
+  };
+});
+
 // Partial mock: keep the real writeTagChipDenominator (the DD-2 assertion below
 // checks the actual "X / Y" chip DOM write) while stubbing the numerator
 // recompute (its call count is asserted in isolation) and the tag-filter refresh
@@ -461,6 +474,21 @@ describe("confirm submit + success (active-deck mutation)", () => {
     });
     expect(vi.mocked(hideURLSearchIcon)).toHaveBeenCalled();
     expect(vi.mocked(exitMultiSelectMode)).toHaveBeenCalled();
+  });
+
+  it("emits AppEvents.URL_DECK_CHANGED after a successful bulk delete", async () => {
+    const { emit, AppEvents } = await import("../../../../lib/event-bus.js");
+    seedUrlRows([10, 20]);
+    storeState.urls = [url(10, true), url(20, true)];
+    const deferred = openAndSubmit([10, 20], [url(10, true), url(20, true)]);
+
+    deferred.resolve(deleteResponse({ deletedIds: [10, 20] }), "success", {
+      status: 200,
+    });
+
+    // The store-mutating bulk-delete site notifies the onboarding nudge system
+    // (and any future url-deck consumer) that the deck's URL set changed.
+    expect(emit).toHaveBeenCalledWith(AppEvents.URL_DECK_CHANGED);
   });
 
   it("stale activeUTubID race → nothing rendered when the active UTub changes mid-flight", () => {

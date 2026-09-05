@@ -22,6 +22,7 @@ export const RESOURCES = {
   ERROR: "error",
   CONTACT: "contact",
   ADMIN: "admin",
+  ONBOARDING: "onboarding",
   OTHER: "other",
 } as const;
 
@@ -51,5 +52,6 @@ export const RESOURCES_BY_CATEGORY = {
     "nav",
     "auth",
     "contact",
+    "onboarding",
   ] as const,
 } as const;

@@ -2339,7 +2339,9 @@ export interface components {
         | "ui_account_delete_open"
         | "ui_account_delete_confirm"
         | "ui_account_delete_cancel"
-        | "ui_data_export_triggered";
+        | "ui_data_export_triggered"
+        | "ui_onboarding_tip_shown"
+        | "ui_onboarding_tip_dismissed";
       /** @description Per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model. Auto-injected with `device_type` by the metrics-client for all UI events, so the dict is always non-empty when sent from the browser. */
       dimensions: {
         [key: string]: string | number | boolean;
@@ -6772,6 +6774,7 @@ export interface operations {
           | "error"
           | "contact"
           | "admin"
+          | "onboarding"
           | "other";
         /** @description Optional device-type filter (1=mobile, 2=desktop). */
         device_type?: components["schemas"]["DeviceType"];
@@ -6945,7 +6948,9 @@ export interface operations {
           | "ui_account_delete_open"
           | "ui_account_delete_confirm"
           | "ui_account_delete_cancel"
-          | "ui_data_export_triggered";
+          | "ui_data_export_triggered"
+          | "ui_onboarding_tip_shown"
+          | "ui_onboarding_tip_dismissed";
         /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
         window?: string;
         /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
@@ -7183,7 +7188,9 @@ export interface operations {
           | "ui_account_delete_open"
           | "ui_account_delete_confirm"
           | "ui_account_delete_cancel"
-          | "ui_data_export_triggered";
+          | "ui_data_export_triggered"
+          | "ui_onboarding_tip_shown"
+          | "ui_onboarding_tip_dismissed";
         /** @description List of dimension field names to group the timeseries by. Each entry must be a field of `DIMENSION_MODELS[event_name]` (validated at the route layer); shape is bounded at the schema layer to 1-3 non-empty entries ≤64 chars each. */
         group_by: string[];
         /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */

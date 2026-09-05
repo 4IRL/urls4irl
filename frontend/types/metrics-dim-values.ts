@@ -160,6 +160,13 @@ export const MOBILE_NAV_TRIGGER = {
   HISTORY_NAV: "history_nav",
 } as const;
 
+export const ONBOARDING_TIP_DISMISSED_TIP_ID = {
+  CREATEUTUB: "createUtub",
+  ADDURL: "addUrl",
+} as const;
+
+export const ONBOARDING_TIP_SHOWN_TIP_ID = ONBOARDING_TIP_DISMISSED_TIP_ID;
+
 export const TAG_SEARCH_CLOSE_TARGET = {
   TAGS: "tags",
 } as const;
