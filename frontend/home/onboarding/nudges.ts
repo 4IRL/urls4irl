@@ -154,14 +154,26 @@ export function showTip({
   anchor.setAttribute("data-bs-custom-class", NUDGE_CUSTOM_CLASS);
   anchor.setAttribute("data-bs-placement", "bottom");
   anchor.setAttribute("data-bs-trigger", "manual");
-  // Negative main-axis offset pulls the bubble (and its caret) toward the anchor
-  // so the caret reliably meets the target button. Popper positions the caret
-  // apex exactly at the anchor edge, which reads as "touching" in Chromium but
-  // leaves a visible ~caret-width gap on iOS Safari (subpixel/viewport rounding
-  // differs). Over-pulling by a few px guarantees the caret overlaps onto the
-  // button on every device rather than floating in the gap. Applies to whatever
-  // placement Popper resolves (bottom on desktop, left/right at a screen edge).
-  anchor.setAttribute("data-bs-offset", "0,-10");
+  // Point the caret at the anchor's visible ICON, not its box edge. The nudge
+  // anchors (#utubBtnCreate/#urlBtnCreate) are icon <button>s that, on touch
+  // devices, get a 44px tap-target box (buttons.css `@media (any-pointer:coarse)`)
+  // with the ~30px icon centred — a symmetric inset. Popper aims the caret at the
+  // box edge, so on a coarse-pointer device the caret lands ~7px short of the
+  // visible icon and reads as a gap (invisible on desktop, where the box hugs the
+  // icon so the inset is 0). Pull the caret in along the main axis by exactly that
+  // measured inset via a negative Popper offset distance — self-adjusting: 0 on
+  // desktop, ~7px on touch, and resilient if the tap-target size ever changes.
+  const iconEl = anchor.querySelector<SVGElement>("svg");
+  let caretInset = 0;
+  if (iconEl !== null) {
+    const anchorRect = anchor.getBoundingClientRect();
+    const iconRect = iconEl.getBoundingClientRect();
+    caretInset = Math.max(
+      0,
+      Math.round((anchorRect.width - iconRect.width) / 2),
+    );
+  }
+  anchor.setAttribute("data-bs-offset", `0,${-caretInset}`);
   // Render the title/body markup as real elements so Step 3's
   // `.onboarding-nudge-title`/`.onboarding-nudge-body` rules apply. Bootstrap's
   // default sanitizer (sanitize:true) permits `div`/`class`, and the strings are
