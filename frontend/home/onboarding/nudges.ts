@@ -154,6 +154,14 @@ export function showTip({
   anchor.setAttribute("data-bs-custom-class", NUDGE_CUSTOM_CLASS);
   anchor.setAttribute("data-bs-placement", "bottom");
   anchor.setAttribute("data-bs-trigger", "manual");
+  // Negative main-axis offset pulls the bubble (and its caret) toward the anchor
+  // so the caret reliably meets the target button. Popper positions the caret
+  // apex exactly at the anchor edge, which reads as "touching" in Chromium but
+  // leaves a visible ~caret-width gap on iOS Safari (subpixel/viewport rounding
+  // differs). Over-pulling by a few px guarantees the caret overlaps onto the
+  // button on every device rather than floating in the gap. Applies to whatever
+  // placement Popper resolves (bottom on desktop, left/right at a screen edge).
+  anchor.setAttribute("data-bs-offset", "0,-10");
   // Render the title/body markup as real elements so Step 3's
   // `.onboarding-nudge-title`/`.onboarding-nudge-body` rules apply. Bootstrap's
   // default sanitizer (sanitize:true) permits `div`/`class`, and the strings are
