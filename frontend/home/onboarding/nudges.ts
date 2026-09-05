@@ -377,6 +377,10 @@ function maybeHandleNudgeReset(): void {
  *   from the (now-seen/ineligible) Create-UTub tip to the Add-URL tip.
  * - `UTUB_DELETED`: deleting the last UTub returns to the zero-UTub empty state;
  *   re-evaluate so the re-armed Create-UTub tip re-shows.
+ * - `URL_DECK_CHANGED`: emitted on URL create / single delete / bulk delete so
+ *   the Add-URL tip re-arms and re-shows INSTANTLY — the moment a user empties a
+ *   UTub the tip reappears, and the moment they add a URL its seen flag clears —
+ *   instead of only on the next UTub selection or full reload.
  * - `MOBILE_DECK_SWITCHED`: tear down an active tip whose anchor is no longer
  *   visible (environment-driven, `markSeen: false`), THEN re-evaluate so an
  *   eligible tip can (re)show on the now-current panel. Teardown must precede
@@ -400,6 +404,11 @@ export function initOnboardingNudges(): void {
   // and UTUB_SELECTED likewise setStates before emitting (utubs/selectors.ts),
   // so maybeShowNextTip/rearmCompletedTips read the already-updated getState().
   on(AppEvents.UTUB_DELETED, () => maybeShowNextTip());
+  // Emptying the active UTub (single/bulk delete) or adding its first URL fires
+  // URL_DECK_CHANGED from the store-mutating sites (emit-after-setState), so the
+  // Add-URL tip re-shows / re-arms instantly instead of waiting for the next
+  // UTub selection or reload.
+  on(AppEvents.URL_DECK_CHANGED, () => maybeShowNextTip());
   on(AppEvents.MOBILE_DECK_SWITCHED, () => {
     if (_activeTipId !== null) {
       const activeConfig = NUDGE_REGISTRY.find(

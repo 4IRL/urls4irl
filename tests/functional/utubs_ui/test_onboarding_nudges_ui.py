@@ -21,7 +21,6 @@ from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from tests.functional.db_utils import (
     add_mock_urls,
     get_url_in_utub,
@@ -34,7 +33,6 @@ from tests.functional.playwright_assert_utils import (
     assert_visible_css_selector,
 )
 from tests.functional.playwright_utils import (
-    current_base_url,
     login_user_to_home_page,
     select_utub_by_id,
     select_utub_by_name,
@@ -284,9 +282,9 @@ def test_add_url_nudge_rearms_after_deleting_last_url(
     """
     GIVEN a returning user (Add-URL tip already marked seen) whose one UTub holds
           exactly one URL — i.e. the Add-URL deck holds content
-    WHEN they delete that last URL and evaluation re-runs on the now-empty UTub
-    THEN the Add-URL nudge RE-SHOWS, proving the re-arm mechanic for the Add-URL
-         tip via the ``UTUB_SELECTED`` (cold-load pre-selection) path.
+    WHEN they delete that last URL, emptying the UTub
+    THEN the Add-URL nudge RE-SHOWS IMMEDIATELY — no re-navigation or reload —
+         proving the ``URL_DECK_CHANGED`` event drives the re-arm/re-show live.
 
     Re-arm mechanic (nudges.ts::rearmCompletedTips): on every re-evaluation the
     engine CLEARS a tip's persisted seen flag when that tip's deck holds content
@@ -298,18 +296,14 @@ def test_add_url_nudge_rearms_after_deleting_last_url(
          ``UTUB_SELECTED`` with ``urls.length > 0``, a re-eval that clears
          (re-arms) the seeded ``addUrl`` seen flag. The tip is not eligible (deck
          has a URL) so it does NOT show yet.
-      2. Empty: deleting the last URL empties the UTub. Re-selecting the same,
-         already-active UTub does NOT re-emit ``UTUB_SELECTED``
-         (selectors.ts::selectUTub short-circuits a re-selection), so evaluation
-         is re-triggered by navigating to the pre-selected-UTub URL
-         (``/home?<UTUB_ID_QUERY_PARAM>=<id>``). On that cold load the pageshow
-         handler pre-selects the UTub and emits ``UTUB_SELECTED`` with
-         ``urls: []`` — with the flag already cleared and the deck now empty, the
-         Add-URL tip is eligible again and re-shows.
+      2. Empty: deleting the last URL empties the UTub. The single-delete store
+         mutation emits ``URL_DECK_CHANGED`` (emit-after-setState), which the
+         onboarding engine subscribes to — with the flag already cleared and the
+         deck now empty, the Add-URL tip is eligible again and re-shows on the
+         spot, with no ``page.goto`` / reload workaround.
 
     The seen flag is seeded with a ONE-TIME ``page.evaluate`` (NOT
-    ``add_init_script``): this test reloads after the re-arm, and an init script
-    would re-seed ``addUrl: true`` on that reload and mask the fix.
+    ``add_init_script``) so it is not re-applied on any later navigation.
     """
     _, cli_runner = runner
     app = provide_app
@@ -364,15 +358,10 @@ def test_add_url_nudge_rearms_after_deleting_last_url(
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_selector_to_be_removed(page=page, css_selector=url_row_selector)
 
-    # Re-trigger evaluation while the UTub is empty. Re-clicking the already-active
-    # UTub would be a no-op (selectUTub short-circuits), so navigate to the
-    # pre-selected-UTub URL: the cold-load pageshow handler pre-selects the UTub
-    # and emits UTUB_SELECTED with urls: [], re-evaluating the onboarding engine.
-    base_url = current_base_url(page=page)
-    page.goto(f"{base_url}/home?{UTUB_ID_QUERY_PARAM}={utub_id}")
-
-    # With the flag cleared during the content load and the deck now empty, the
-    # Add-URL tip is eligible again and re-shows with its bridged copy.
+    # Deleting the last URL emitted URL_DECK_CHANGED from the single-delete store
+    # mutation, re-evaluating the onboarding engine LIVE. With the flag cleared
+    # during the content load and the deck now empty, the Add-URL tip is eligible
+    # again and re-shows immediately with its bridged copy — no reload needed.
     assert_active_utub(page=page, utub_name=utub_user_created.name)
     assert_visible_css_selector(page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP)
     expect(page.locator(HPL.ONBOARDING_NUDGE_TITLE)).to_have_text(

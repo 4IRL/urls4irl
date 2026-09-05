@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
@@ -133,6 +134,9 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
       (url: UtubUrlItem) => url.utubUrlID !== response.URL.utubUrlID,
     ),
   });
+  // Notify the onboarding nudge system (and any future url-deck consumer) that
+  // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
+  emitAppEvent(AppEvents.URL_DECK_CHANGED);
   const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
   if (currentURLTagIDs.trim()) {
     const tagIDs = currentURLTagIDs.split(",").map((part) => part.trim());

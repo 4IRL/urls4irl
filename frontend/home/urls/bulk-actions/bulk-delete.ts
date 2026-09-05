@@ -6,7 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { debug } from "../../../lib/debug.js";
-import { AppEvents, on } from "../../../lib/event-bus.js";
+import { AppEvents, emit as emitAppEvent, on } from "../../../lib/event-bus.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
@@ -464,6 +464,9 @@ function handleDeleteSuccess({
       (url: UtubUrlItem) => !deletedIds.includes(url.utubUrlID),
     ),
   });
+  // Notify the onboarding nudge system (and any future url-deck consumer) that
+  // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
+  emitAppEvent(AppEvents.URL_DECK_CHANGED);
   pruneRemovedFromSelection(deletedIds);
 
   // Apply the aggregate per-tag applied count (the denominator half of each "X /

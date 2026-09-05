@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
@@ -286,6 +287,9 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
   setState({
     urls: [...getState().urls, newUrl],
   });
+  // Notify the onboarding nudge system (and any future url-deck consumer) that
+  // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
+  emitAppEvent(AppEvents.URL_DECK_CHANGED);
 
   const newUrlCard = createURLBlock(
     newUrl,

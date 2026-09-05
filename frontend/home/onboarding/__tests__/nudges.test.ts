@@ -34,6 +34,7 @@ vi.mock("../../../lib/event-bus.js", () => ({
   AppEvents: {
     UTUB_SELECTED: "utub:selected",
     UTUB_DELETED: "utub:deleted",
+    URL_DECK_CHANGED: "url:deck-changed",
     MOBILE_DECK_SWITCHED: "mobile:deck-switched",
   },
   on: vi.fn((event: string, handler: (payload: unknown) => void) => {
@@ -619,6 +620,52 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
       .calls[0][0] as Record<string, string>;
     expect(contentArg[".tooltip-inner"]).toContain("Add a URL");
+  });
+
+  it("(URL_DECK_CHANGED re-show instant) deleting the last URL re-shows the Add-URL tip immediately", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#urlBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    const A_URL = { utubUrlID: 1 } as unknown as UtubUrlItem;
+
+    // Add-URL tip re-armed (flag cleared) and the active UTub currently holds a
+    // URL, so init shows nothing (not eligible while the deck is non-empty).
+    nudgeStorage.markTipSeen("createUtub");
+    setState({ utubs: [A_UTUB], activeUTubID: 1, urls: [A_URL] });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Deleting the last URL empties the deck; the store-mutating site emits
+    // URL_DECK_CHANGED (emit-after-setState), so the Add-URL tip re-shows live —
+    // no UTub re-selection or reload needed.
+    setState({ urls: [] });
+    emitBusEvent(AppEvents.URL_DECK_CHANGED);
+
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Add a URL");
+  });
+
+  it("(URL_DECK_CHANGED re-arm instant) adding a URL clears the Add-URL seen flag immediately", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const A_URL = { utubUrlID: 1 } as unknown as UtubUrlItem;
+
+    // Both tips previously dismissed; init in the empty-URL-deck state shows
+    // nothing and (empty deck) re-arms nothing — the seen flag stays set.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({ utubs: [A_UTUB], activeUTubID: 1, urls: [] });
+    initOnboardingNudges();
+    expect(nudgeStorage.hasSeenTip("addUrl")).toBe(true);
+
+    // Adding the first URL fills the deck; the store-mutating site emits
+    // URL_DECK_CHANGED, so rearmCompletedTips clears the Add-URL seen flag live.
+    setState({ urls: [A_URL] });
+    emitBusEvent(AppEvents.URL_DECK_CHANGED);
+
+    expect(nudgeStorage.hasSeenTip("addUrl")).toBe(false);
   });
 
   it("(no-nag invariant) an empty deck never clears the seen flag or re-shows", async () => {

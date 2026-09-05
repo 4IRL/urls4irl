@@ -23,6 +23,7 @@ export interface AppEventMap {
   "utub:selected": UtubSelectedPayload;
   "utub:deleted": { utubID: number };
   "url:card-selected": { urlID: number };
+  "url:deck-changed": void;
   "tag:filter-changed": { selectedTagIDs: number[] };
   "tag:deleted": { utubTagID: number };
   "stale-data:detected": StaleDataDetectedPayload;
@@ -45,6 +46,7 @@ export const AppEvents = Object.freeze({
   UTUB_SELECTED: "utub:selected",
   UTUB_DELETED: "utub:deleted",
   URL_CARD_SELECTED: "url:card-selected",
+  URL_DECK_CHANGED: "url:deck-changed",
   TAG_FILTER_CHANGED: "tag:filter-changed",
   TAG_DELETED: "tag:deleted",
   STALE_DATA_DETECTED: "stale-data:detected",
