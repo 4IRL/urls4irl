@@ -184,7 +184,7 @@ All inter-module communication uses typed events:
 | Event | Payload | Emitted by | Consumed by |
 |---|---|---|---|
 | `UTUB_SELECTED` | `{utubID, utubName, urls[], tags[], members[], utubOwnerID, isCurrentUserOwner, currentUserID}` | utubs/selectors | All decks, mobile, search, onboarding |
-| `UTUB_DELETED` | `{utubID}` | utubs/delete | URL/tag/member decks |
+| `UTUB_DELETED` | `{utubID}` | utubs/delete | URL/tag/member decks, onboarding |
 | `TRANSFER_PICKER_REQUESTED` | `{opener: HTMLElement \| string}` | utubs/delete, members/deck | members/transfer-picker |
 | `TAG_FILTER_CHANGED` | `{selectedTagIDs[]}` | tags/tags | urls/cards/filtering |
 | `TAG_DELETED` | `{utubTagID}` | tags/delete | urls/cards/filtering |

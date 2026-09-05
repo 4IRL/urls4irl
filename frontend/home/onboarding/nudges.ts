@@ -30,6 +30,7 @@ import { isUTubSearchActive } from "../utubs/search.js";
 import {
   _resetOnboardingStorageForTests,
   clearAllSeenTips,
+  clearTipSeen,
   hasSeenTip,
   markTipSeen,
 } from "./nudge-storage.js";
@@ -226,6 +227,12 @@ interface NudgeConfig {
   titleKey: string;
   bodyKey: string;
   isEligible(): boolean;
+  // "Left the empty state" predicate: true once this tip's deck holds content.
+  // Drives `rearmCompletedTips` — the seen flag is cleared (re-armed) only when
+  // the deck is non-empty, so a user who dismisses while empty and stays empty
+  // is never re-nagged. Inverse-ish of `isEligible` but deliberately independent
+  // (isEligible layers on additional suppression like multiSelectMode).
+  hasContent(): boolean;
 }
 
 // The curated, contextually-sequenced tip set. Order is priority order: the
@@ -240,6 +247,7 @@ const NUDGE_REGISTRY: readonly NudgeConfig[] = [
     titleKey: "ONBOARDING_CREATE_UTUB_TIP_TITLE",
     bodyKey: "ONBOARDING_CREATE_UTUB_TIP_BODY",
     isEligible: (): boolean => getState().utubs.length === 0,
+    hasContent: (): boolean => getState().utubs.length > 0,
   },
   {
     tipId: "addUrl",
@@ -250,8 +258,25 @@ const NUDGE_REGISTRY: readonly NudgeConfig[] = [
       getState().activeUTubID !== null &&
       getState().urls.length === 0 &&
       !getState().multiSelectMode,
+    hasContent: (): boolean =>
+      getState().activeUTubID !== null && getState().urls.length > 0,
   },
 ];
+
+/**
+ * Re-arm any tip whose deck now holds content (the user has left the empty
+ * state): clear that tip's persisted seen flag so it becomes eligible to show
+ * again if the user later re-empties the deck (deletes all UTubs, or all URLs in
+ * a UTub). The clear is gated on `hasContent()`, so a user who dismissed a tip
+ * while empty and remained empty is never re-nagged — nothing gets cleared while
+ * the deck stays empty. Only touches tips that are actually marked seen, to
+ * avoid needless read-merge-write churn.
+ */
+function rearmCompletedTips(): void {
+  for (const tip of NUDGE_REGISTRY) {
+    if (tip.hasContent() && hasSeenTip(tip.tipId)) clearTipSeen(tip.tipId);
+  }
+}
 
 /**
  * A tip is only worth showing when its anchor is actually rendered-visible.
@@ -266,7 +291,10 @@ function isAnchorVisible(anchorSelector: string): boolean {
 }
 
 /**
- * Show the highest-priority eligible tip, or nothing. Suppressed entirely while
+ * Re-arm completed tips (clear the seen flag of any tip whose deck now has
+ * content) first, so a tip re-shows if the user later returns to that empty
+ * state. Then show the highest-priority eligible tip, or nothing. Suppressed
+ * entirely while
  * a conflicting home UI owns the space the bubble would occupy (an open form,
  * an active UTub-name/cross-UTub search, or multi-select mode) — in which case
  * any currently-active tip is also torn down WITHOUT marking it seen, so it can
@@ -275,6 +303,10 @@ function isAnchorVisible(anchorSelector: string): boolean {
  * anchor is visible. At most one tip is ever shown.
  */
 export function maybeShowNextTip(): void {
+  // Re-arm first: every re-evaluation clears the seen flag of any tip whose deck
+  // now has content, so a tip re-shows if the user returns to that empty state.
+  rearmCompletedTips();
+
   const suppressed =
     getOpenForm() !== null ||
     getState().multiSelectMode ||
@@ -343,6 +375,8 @@ function maybeHandleNudgeReset(): void {
  *
  * - `UTUB_SELECTED`: after the first UTub is created and auto-selected, advance
  *   from the (now-seen/ineligible) Create-UTub tip to the Add-URL tip.
+ * - `UTUB_DELETED`: deleting the last UTub returns to the zero-UTub empty state;
+ *   re-evaluate so the re-armed Create-UTub tip re-shows.
  * - `MOBILE_DECK_SWITCHED`: tear down an active tip whose anchor is no longer
  *   visible (environment-driven, `markSeen: false`), THEN re-evaluate so an
  *   eligible tip can (re)show on the now-current panel. Teardown must precede
@@ -359,6 +393,13 @@ export function initOnboardingNudges(): void {
   maybeHandleNudgeReset();
 
   on(AppEvents.UTUB_SELECTED, () => maybeShowNextTip());
+  // Deleting the last UTub returns the user to the zero-UTub empty state. The
+  // re-eval re-arms the (now content-less) Create-UTub tip and re-shows it.
+  // No defer needed: the UTUB_DELETED emit site (utubs/delete.ts) calls
+  // setState({ utubs: filtered, activeUTubID: null, urls: [] }) BEFORE emitting,
+  // and UTUB_SELECTED likewise setStates before emitting (utubs/selectors.ts),
+  // so maybeShowNextTip/rearmCompletedTips read the already-updated getState().
+  on(AppEvents.UTUB_DELETED, () => maybeShowNextTip());
   on(AppEvents.MOBILE_DECK_SWITCHED, () => {
     if (_activeTipId !== null) {
       const activeConfig = NUDGE_REGISTRY.find(

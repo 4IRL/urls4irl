@@ -62,6 +62,28 @@ export function markTipSeen(tipId: string): void {
 }
 
 /**
+ * Clears the "seen" flag for a single tip (read-merge-write), preserving every
+ * other tip's flag. Used by the "re-arm" logic in `nudges.ts`: when a tip's deck
+ * regains content (the user left the empty state), its seen flag is cleared so
+ * the tip becomes eligible again if the user later re-empties that deck. Reading
+ * a missing/malformed value yields `{}` (via `readSeenTips`), so clearing a
+ * never-seen tip is a safe no-op. Silently no-ops if localStorage is unavailable
+ * (private mode / quota), matching the other accessors in this module.
+ *
+ * @param tipId - the tip's stable identifier.
+ */
+export function clearTipSeen(tipId: string): void {
+  const seenTips = readSeenTips();
+  delete seenTips[tipId];
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(seenTips));
+  } catch {
+    // localStorage may be disabled (private mode, quota) — silently ignore.
+  }
+}
+
+/**
  * Clears the persisted seen-tips object so every onboarding nudge becomes
  * eligible to re-show. This is the dev-reset entry point behind the
  * `?resetNudges` URL hook (see `nudges.ts`), letting a nudge sequence be

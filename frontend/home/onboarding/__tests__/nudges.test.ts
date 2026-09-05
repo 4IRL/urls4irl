@@ -5,6 +5,7 @@ import type { UtubSelectedPayload } from "../../../lib/event-bus.js";
 import { getOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { resetStore, setState } from "../../../store/app-store.js";
+import type { UtubUrlItem } from "../../../types/url.js";
 import type { UtubSummaryItem } from "../../../types/utub.js";
 import { isCrossUtubSearchActive } from "../../search/cross-utub-search.js";
 import { isUTubSearchActive } from "../../utubs/search.js";
@@ -32,6 +33,7 @@ const { busHandlers, resetBus } = vi.hoisted(() => {
 vi.mock("../../../lib/event-bus.js", () => ({
   AppEvents: {
     UTUB_SELECTED: "utub:selected",
+    UTUB_DELETED: "utub:deleted",
     MOBILE_DECK_SWITCHED: "mobile:deck-switched",
   },
   on: vi.fn((event: string, handler: (payload: unknown) => void) => {
@@ -545,6 +547,95 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     expect(tip.dispose).toHaveBeenCalledTimes(1);
     expect(markTipSeenSpy).not.toHaveBeenCalled();
     expect(nudgeStorage.hasSeenTip("createUtub")).toBe(false);
+  });
+
+  it("(re-arm) leaving the empty state clears a seen tip's flag", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+
+    // Create-UTub tip already dismissed; init while still empty must NOT re-arm.
+    nudgeStorage.markTipSeen("createUtub");
+    initOnboardingNudges();
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(true);
+
+    // The user creates + selects a UTub (leaves the zero-UTub empty state). The
+    // re-eval re-arms the now-content-bearing Create-UTub tip.
+    setState({ utubs: [A_UTUB], activeUTubID: 1, urls: [] });
+    emitBusEvent(AppEvents.UTUB_SELECTED, {} as UtubSelectedPayload);
+
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(false);
+  });
+
+  it("(re-show after emptying) deleting the last UTub re-shows the Create-UTub tip", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // A UTub exists (none selected), Create tip previously dismissed. Init
+    // re-arms it (deck has content) but shows nothing (no eligible tip here).
+    nudgeStorage.markTipSeen("createUtub");
+    setState({ utubs: [A_UTUB], activeUTubID: null, urls: [] });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(false);
+
+    // Deleting the last UTub returns to the zero-UTub empty state: the re-armed
+    // (now unseen) Create tip becomes eligible again and re-shows.
+    setState({ utubs: [], activeUTubID: null, urls: [] });
+    emitBusEvent(AppEvents.UTUB_DELETED, { utubID: 1 });
+
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Start here");
+  });
+
+  it("(addUrl re-arm) leaving then re-emptying the URL deck re-shows the Add-URL tip", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#urlBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    const A_URL = { utubUrlID: 1 } as unknown as UtubUrlItem;
+
+    // Both tips previously dismissed; init in the zero-UTub state shows nothing
+    // and (empty decks) re-arms nothing.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // The user opens a UTub that has a URL (leaves the empty URL deck): the
+    // Add-URL tip is re-armed.
+    setState({ utubs: [A_UTUB], activeUTubID: 1, urls: [A_URL] });
+    emitBusEvent(AppEvents.UTUB_SELECTED, {} as UtubSelectedPayload);
+    expect(nudgeStorage.hasSeenTip("addUrl")).toBe(false);
+
+    // Emptying that UTub's URLs re-enters the empty state → the re-armed Add-URL
+    // tip re-shows.
+    setState({ urls: [] });
+    emitBusEvent(AppEvents.UTUB_SELECTED, {} as UtubSelectedPayload);
+
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Add a URL");
+  });
+
+  it("(no-nag invariant) an empty deck never clears the seen flag or re-shows", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // Dismissed while empty and staying empty: re-eval must NOT clear the flag
+    // (deck has no content) and must NOT re-show the tip.
+    nudgeStorage.markTipSeen("createUtub");
+    setState({ utubs: [] });
+    initOnboardingNudges();
+    emitBusEvent(AppEvents.UTUB_SELECTED, {} as UtubSelectedPayload);
+
+    expect(nudgeStorage.hasSeenTip("createUtub")).toBe(true);
+    expect(tip.show).not.toHaveBeenCalled();
   });
 
   it("(resetNudges, non-prod) #resetNudges clears seen flags, re-shows the eligible tip, and strips the hash", async () => {

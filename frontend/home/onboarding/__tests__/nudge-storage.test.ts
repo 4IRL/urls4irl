@@ -92,6 +92,50 @@ describe("nudge-storage — seen-once persistence helpers", () => {
     expect(() => markTipSeen("createUtub")).not.toThrow();
   });
 
+  it("(f) clearTipSeen clears one tip's flag while preserving the others", async () => {
+    const { clearTipSeen, hasSeenTip, markTipSeen } = await import(
+      "../nudge-storage.js"
+    );
+
+    markTipSeen("createUtub");
+    markTipSeen("addUrl");
+    expect(hasSeenTip("createUtub")).toBe(true);
+    expect(hasSeenTip("addUrl")).toBe(true);
+
+    clearTipSeen("createUtub");
+    expect(hasSeenTip("createUtub")).toBe(false);
+    // The other tip's flag must survive the read-merge-write.
+    expect(hasSeenTip("addUrl")).toBe(true);
+  });
+
+  it("(f2) clearTipSeen on a never-seen tip is a safe no-op", async () => {
+    const { clearTipSeen, hasSeenTip } = await import("../nudge-storage.js");
+
+    expect(() => clearTipSeen("createUtub")).not.toThrow();
+    expect(hasSeenTip("createUtub")).toBe(false);
+  });
+
+  it("(f3) clearTipSeen does not throw when setItem throws QuotaExceededError", async () => {
+    const { clearTipSeen } = await import("../nudge-storage.js");
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException("quota", "QuotaExceededError");
+      },
+      removeItem: () => {},
+    });
+
+    expect(() => clearTipSeen("createUtub")).not.toThrow();
+  });
+
+  it("(f4) clearTipSeen tolerates a malformed stored value (silent no-op)", async () => {
+    const { clearTipSeen } = await import("../nudge-storage.js");
+
+    window.localStorage.setItem(STORAGE_KEY, "{not-valid-json");
+
+    expect(() => clearTipSeen("createUtub")).not.toThrow();
+  });
+
   it("(e) _resetOnboardingStorageForTests clears persisted seen state", async () => {
     const { hasSeenTip, markTipSeen, _resetOnboardingStorageForTests } =
       await import("../nudge-storage.js");
