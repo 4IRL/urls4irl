@@ -52,16 +52,17 @@
     color: var(--cardURLTextColor);
 }
 
-/* The caret. --bs-tooltip-bg (set above) already colors Bootstrap's
- * .tooltip-arrow::before to green for every placement Popper resolves (top,
- * bottom, and left/right). This explicit rule additionally pins the top/bottom
- * caret green (the tooltip's configured placement is bottom, which flips to top)
- * so it stays matched regardless of --bs-tooltip-bg. Bootstrap positions the
- * arrow per data-bs-placement, so we only need to color it. */
-.onboarding-nudge-tooltip .tooltip-arrow::before {
-    border-top-color: var(--splashGreen);
-    border-bottom-color: var(--splashGreen);
-}
+/* The caret is colored entirely by --bs-tooltip-bg (set above): Bootstrap's own
+ * per-placement rules set the SINGLE pointing border to var(--bs-tooltip-bg) —
+ * border-top-color for a top placement, border-left-color for a left placement,
+ * etc. — while leaving the other three borders transparent so the triangle
+ * notches read as a clean caret. We deliberately do NOT add our own
+ * border-*-color override here: a blanket border-top/bottom-color rule colors
+ * the transparent notch borders on a left/right placement (which Popper resolves
+ * on mobile, where the anchor button sits at the screen edge), filling the caret
+ * into a solid green nub that merges into the bubble border and reads as "no
+ * arrow." Relying on --bs-tooltip-bg alone yields a correct green caret for
+ * every placement. */
 
 @keyframes onboardingNudgeIn {
     from {
