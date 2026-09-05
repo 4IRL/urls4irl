@@ -43,6 +43,7 @@ from tests.functional.playwright_utils import (
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
+from tests.functional.urls_ui.playwright_utils import create_url
 from tests.functional.utubs_ui.playwright_utils import (
     create_utub,
     delete_utub_as_creator,
@@ -270,6 +271,75 @@ def test_create_utub_nudge_rearms_after_deleting_last_utub(
     assert_visible_css_selector(page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP)
     expect(page.locator(HPL.ONBOARDING_NUDGE_TITLE)).to_have_text(
         UTS.ONBOARDING_CREATE_UTUB_TIP_TITLE
+    )
+
+
+def test_add_url_nudge_rearms_after_adding_first_url_via_form(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a returning user (Add-URL tip already marked seen) whose one UTub is
+          empty of URLs — the Add-URL deck holds no content
+    WHEN they add the first URL through the real create-URL form
+    THEN the ``URL_DECK_CHANGED`` event emitted by the create success path
+         re-arms the Add-URL tip LIVE — its persisted seen flag is cleared the
+         moment the deck gains content, with no reload — so the tip becomes
+         eligible again if the user later re-empties that deck.
+
+    This isolates the create.ts emit site (the sibling of the single-delete emit
+    already covered above). ``rearmCompletedTips`` runs on every re-evaluation
+    BEFORE the suppression check, so the re-arm fires even though the create form
+    is momentarily open when the event lands. The seen flag is seeded with a
+    ONE-TIME ``page.evaluate`` (NOT ``add_init_script``) so it is not re-applied
+    on any later navigation.
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    utub_id = utub_user_created.id
+
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
+
+    # Seed BOTH tips as already seen via a ONE-TIME evaluate (persisted to
+    # localStorage, not re-applied on later navigations).
+    page.evaluate(
+        "localStorage.setItem('u4i:onboardingSeen',"
+        " JSON.stringify({addUrl: true, createUtub: true}))"
+    )
+
+    # Select the empty UTub: UTUB_SELECTED with urls.length === 0 → no re-arm
+    # (empty deck) and the already-seen Add-URL tip stays hidden.
+    select_utub_by_id(page=page, utub_id=utub_id)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP
+    )
+    # Precondition: the Add-URL seen flag is still set going into the create.
+    assert (
+        page.evaluate(
+            "() => { const raw = localStorage.getItem('u4i:onboardingSeen');"
+            " return raw ? JSON.parse(raw).addUrl === true : false; }"
+        )
+        is True
+    )
+
+    # Add the first URL through the real create form. On success create.ts emits
+    # URL_DECK_CHANGED (emit-after-setState), whose live re-eval clears (re-arms)
+    # the Add-URL seen flag now that the deck holds content.
+    create_url(
+        page=page,
+        url_title="Onboarding re-arm URL",
+        url_string=MOCK_URL_STRINGS[0],
+    )
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_URL_STRING_CREATE)
+
+    # The Add-URL seen flag was cleared LIVE by the create's URL_DECK_CHANGED — no
+    # reload, no re-selection — proving the create emit site drives the re-arm.
+    assert (
+        page.evaluate(
+            "() => { const raw = localStorage.getItem('u4i:onboardingSeen');"
+            " return raw ? JSON.parse(raw).addUrl === true : false; }"
+        )
+        is False
     )
 
 

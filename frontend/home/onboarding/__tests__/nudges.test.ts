@@ -146,7 +146,9 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
     // factory's single tooltipInstance persists across the whole file).
     vi.clearAllMocks();
     installStorageStub();
-    document.body.innerHTML = `<button id="utubBtnCreate"></button>`;
+    // Include the shared visually-hidden aria-live region (mirrors
+    // `pages/home.html`) so showTip()'s announcer write has a real target.
+    document.body.innerHTML = `<button id="utubBtnCreate"></button><span id="onboardingNudgeAnnouncement"></span>`;
     // Keep the real read/write behavior intact (no mockImplementation) so the
     // seen-flag is genuinely persisted; assertions use the spy's call record.
     markTipSeenSpy = vi.spyOn(nudgeStorage, "markTipSeen");
@@ -345,6 +347,59 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
         event: UI_EVENTS.UI_ONBOARDING_TIP_DISMISSED,
       }),
     );
+  });
+
+  it("(a11y) showTip announces the tip title+body via the visually-hidden live region", async () => {
+    const { showTip } = await import("../nudges.js");
+
+    showTip(CREATE_UTUB_TIP);
+
+    // showTip writes `${title}. ${body}` into #onboardingNudgeAnnouncement for
+    // screen readers (without moving focus). Assert the announced text directly.
+    expect(
+      document.querySelector("#onboardingNudgeAnnouncement")?.textContent,
+    ).toBe("Start here. Create your first UTub to begin collecting URLs.");
+  });
+
+  it("(missing copy guard) showTip skips (no show, no metric) when a bridged string resolves falsy", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+
+    // `APP_CONFIG.strings` is a `Record<string, string>`, so a mis-bridged/typo'd
+    // key resolves to runtime-undefined/blank with no compile error. Blank one
+    // key and assert showTip bails loudly instead of seeding "undefined" copy.
+    const originalTitle =
+      mockAppConfig.strings.ONBOARDING_CREATE_UTUB_TIP_TITLE;
+    mockAppConfig.strings.ONBOARDING_CREATE_UTUB_TIP_TITLE = "";
+    try {
+      showTip(CREATE_UTUB_TIP);
+    } finally {
+      mockAppConfig.strings.ONBOARDING_CREATE_UTUB_TIP_TITLE = originalTitle;
+    }
+
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    expect(tip.show).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalledWith(
+      expect.objectContaining({ event: UI_EVENTS.UI_ONBOARDING_TIP_SHOWN }),
+    );
+  });
+
+  it("(caret inset) showTip pulls the caret in by half the box/icon width gap", async () => {
+    const { showTip } = await import("../nudges.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+
+    // Simulate a coarse-pointer tap target: a 44px box with a 30px centred icon.
+    // The caret should pull in along the main axis by round((44 - 30) / 2) = 7.
+    anchor.innerHTML = "<svg></svg>";
+    const icon = anchor.querySelector("svg") as SVGElement;
+    anchor.getBoundingClientRect = vi.fn(() => ({ width: 44 }) as DOMRect);
+    icon.getBoundingClientRect = vi.fn(() => ({ width: 30 }) as DOMRect);
+
+    showTip(CREATE_UTUB_TIP);
+
+    expect(anchor.getAttribute("data-bs-offset")).toBe("0,-7");
   });
 });
 

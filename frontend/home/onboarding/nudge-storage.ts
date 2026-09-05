@@ -86,7 +86,7 @@ export function clearTipSeen(tipId: string): void {
 /**
  * Clears the persisted seen-tips object so every onboarding nudge becomes
  * eligible to re-show. This is the dev-reset entry point behind the
- * `?resetNudges` URL hook (see `nudges.ts`), letting a nudge sequence be
+ * `#resetNudges` URL hook (see `nudges.ts`), letting a nudge sequence be
  * replayed on a device with no DevTools console (e.g. mobile). Silently no-ops
  * if localStorage is unavailable (private mode / quota), matching the other
  * accessors in this module.

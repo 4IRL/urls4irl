@@ -22,6 +22,18 @@ vi.mock("../../../../lib/ajax.js", () => ({
   is429Handled: vi.fn(() => false),
 }));
 
+// Partial mock: keep the real AppEvents enum (and any other exports) but spy
+// `emit` so the URL_DECK_CHANGED notification fired on a successful create can be
+// asserted without a real bus subscriber.
+vi.mock("../../../../lib/event-bus.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../../lib/event-bus.js")>();
+  return {
+    ...actual,
+    emit: vi.fn(),
+  };
+});
+
 vi.mock("../cards.js", () => ({
   createURLBlock: vi.fn(() => window.jQuery('<div class="urlRow"></div>')),
   newURLInputAddEventListeners: vi.fn(),
@@ -368,6 +380,40 @@ describe("createURL - client-side validation", () => {
       expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledWith({
         urlRow: createdRow,
       });
+    });
+  });
+
+  describe("createURLSuccess - notifies the onboarding nudge system", () => {
+    it("emits AppEvents.URL_DECK_CHANGED after a successful create", async () => {
+      const { emit, AppEvents } = await import("../../../../lib/event-bus.js");
+      urlStringInput.val("https://example.com");
+      urlTitleInput.val("Example");
+
+      const response = {
+        utubID: 1,
+        addedByUserID: 1,
+        URL: {
+          utubUrlID: 42,
+          urlString: "https://example.com",
+          urlTitle: "Example",
+          utubUrlTagIDs: [],
+        },
+        appliedTags: [],
+      };
+      const xhr = { status: 200 } as JQuery.jqXHR;
+      const chainable = createMockJqXHRChainable({
+        done: (callback: unknown) =>
+          (callback as (r: unknown, t: unknown, x: unknown) => void)(
+            response,
+            "success",
+            xhr,
+          ),
+      });
+      vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+      createURL(urlTitleInput, urlStringInput, 1);
+
+      expect(emit).toHaveBeenCalledWith(AppEvents.URL_DECK_CHANGED);
     });
   });
 

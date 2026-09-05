@@ -23,6 +23,7 @@ import { debug } from "../../lib/debug.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { emit as emitMetric } from "../../lib/metrics-client.js";
 import { getOpenForm } from "../../lib/modal-tracking.js";
+import { ONBOARDING_TIP_SHOWN_TIP_ID } from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState } from "../../store/app-store.js";
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
@@ -38,8 +39,17 @@ import {
 const log = debug("onboarding");
 
 // The single source of truth for tip identifiers, threaded through showTip's
-// `tipId`, `_activeTipId`, and (Step 6) `NUDGE_REGISTRY`.
-export type TipId = "createUtub" | "addUrl";
+// `tipId`, `_activeTipId`, and `NUDGE_REGISTRY`. Derived from the generated
+// `ONBOARDING_TIP_SHOWN_TIP_ID` dim-value constant (codegen'd from the Pydantic
+// metrics registry; `ONBOARDING_TIP_DISMISSED_TIP_ID` aliases the same object)
+// so the metrics registry — not a hand-maintained union — is the SSOT, and the
+// two `emitMetric` `tip_id` values below stay locked to the generated dimension.
+// The emit sites pass the dynamic `tipId` directly rather than re-deriving a
+// per-site value→constant lookup (which would only re-list these same literals);
+// deriving the type here is the meaningful, non-redundant consumption of the
+// generated constant while preserving the exact compile-time `tip_id` guarantee.
+export type TipId =
+  (typeof ONBOARDING_TIP_SHOWN_TIP_ID)[keyof typeof ONBOARDING_TIP_SHOWN_TIP_ID];
 
 // Real, styled tooltip skin defined in `styles/home/onboarding-nudges.css`.
 const NUDGE_CUSTOM_CLASS = "onboarding-nudge-tooltip";

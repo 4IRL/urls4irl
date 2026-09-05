@@ -41,6 +41,18 @@ def _debug_enabled_from_response(response_data: bytes) -> bool:
     return debug_enabled
 
 
+def _is_production_from_response(response_data: bytes) -> bool:
+    """Extract APP_CONFIG.isProduction from the rendered `app-config` script tag."""
+    match = _APP_CONFIG_PATTERN.search(response_data)
+    assert match is not None, "Page did not render an app-config script tag"
+    payload = json.loads(match.group(1).decode("utf-8"))
+    is_production = payload.get("isProduction")
+    assert isinstance(
+        is_production, bool
+    ), "APP_CONFIG.isProduction missing or wrong shape"
+    return is_production
+
+
 def test_admin_user_sees_admin_metrics_route_in_app_config(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
@@ -169,3 +181,38 @@ def test_debug_flag_forces_debug_enabled_regardless_of_auth(
         assert _debug_enabled_from_response(response.data) is True
     finally:
         app.config["DEBUG"] = original_debug
+
+
+def test_production_flag_true_bridges_is_production_true_in_app_config(
+    client: FlaskClient,
+) -> None:
+    """`app.config["PRODUCTION"] = True` renders `isProduction: true` into the
+    `#app-config` blob — the one-line passthrough that gates the `#resetNudges`
+    dev hook off in production. Mirrors the `debugEnabled` gating coverage.
+    """
+    app = client.application
+    original_production = app.config["PRODUCTION"]
+    app.config["PRODUCTION"] = True
+    try:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert _is_production_from_response(response.data) is True
+    finally:
+        app.config["PRODUCTION"] = original_production
+
+
+def test_production_flag_false_bridges_is_production_false_in_app_config(
+    client: FlaskClient,
+) -> None:
+    """`app.config["PRODUCTION"] = False` renders `isProduction: false` into the
+    `#app-config` blob, so the `#resetNudges` dev hook stays active in local/dev.
+    """
+    app = client.application
+    original_production = app.config["PRODUCTION"]
+    app.config["PRODUCTION"] = False
+    try:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert _is_production_from_response(response.data) is False
+    finally:
+        app.config["PRODUCTION"] = original_production
