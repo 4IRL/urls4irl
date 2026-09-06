@@ -537,11 +537,15 @@ export function initOnboardingNudges(): void {
   // Mobile only: the addTag anchor sits inside the tag bottom sheet, which is
   // visibility:hidden while collapsed — so it is skipped until the sheet opens.
   // Opening emits { active: true }; a single deferred tick is not enough because
-  // the open slide transitions the tag-deck button container's inherited
-  // visibility over ~0.3s, so re-evaluate across a few short intervals
-  // (SHEET_OPEN_SHOW_RETRY_*) until the anchor resolves visible and the tip shows,
-  // or the cap is hit. { active: false } is never emitted (sheet close is an
-  // ordinary tap-away dismissal), so the !active branch is a type-symmetry no-op.
+  // the open slide transforms the sheet over ~0.3s while emitting no
+  // scroll/resize event, so re-evaluate across a few short intervals
+  // (SHEET_OPEN_SHOW_RETRY_*): show the tip once the anchor resolves visible,
+  // then keep calling the Tooltip's `.update()` across the remaining window so
+  // Popper repositions it as the sheet finishes sliding (a CSS transform never
+  // triggers Popper's own recompute). Runs the full window rather than stopping
+  // at first show, else the tip locks at the early, still-low anchor position.
+  // { active: false } is never emitted (sheet close is an ordinary tap-away
+  // dismissal), so the !active branch is a type-symmetry no-op.
   on(AppEvents.TAG_SHEET_TOGGLED, ({ active }) => {
     if (!active) return;
     // Cancel any stale retry loop from a prior open so a fresh open restarts
@@ -553,10 +557,27 @@ export function initOnboardingNudges(): void {
     let attemptsLeft = SHEET_OPEN_SHOW_RETRY_MAX;
     const attemptShow = (): void => {
       _sheetOpenShowTimer = null;
-      maybeShowNextTip();
-      // Stop as soon as a tip is showing, or once the cap is exhausted (the
-      // anchor never resolved visible / addTag is not eligible).
-      if (_activeTip !== null || attemptsLeft <= 0) return;
+      // Until a tip is up, keep trying to show it (the anchor may still be
+      // resolving rendered-visible as the sheet slides open). Once a tip IS up,
+      // keep REPOSITIONING it on every remaining tick rather than stopping: the
+      // sheet opens via a CSS `transform` slide (~0.3s) that emits no
+      // scroll/resize event, so `#tagSheetBody`'s visibility flips visible EARLY
+      // in the slide while the anchor is still low on screen. Popper positions
+      // the tip at that early anchor position and never recomputes on its own —
+      // leaving the bubble stranded ~hundreds of px below the tag "+" button.
+      // Calling the Tooltip's `.update()` forces Popper to recompute against the
+      // anchor's current position; by the final ticks the slide has settled and
+      // the tip lands on the button. On desktop / addMember-mobile the anchor
+      // doesn't animate, so repositioning an already-correct tip is a no-op.
+      if (_activeTip === null) {
+        maybeShowNextTip();
+      } else {
+        _activeTip.update();
+      }
+      // Run the FULL retry window (12×40ms = 480ms, comfortably longer than the
+      // ~0.3s slide) instead of exiting the instant a tip first shows, so the
+      // reposition ticks span the whole transition. Stop only at the cap.
+      if (attemptsLeft <= 0) return;
       attemptsLeft -= 1;
       _sheetOpenShowTimer = setTimeout(
         attemptShow,

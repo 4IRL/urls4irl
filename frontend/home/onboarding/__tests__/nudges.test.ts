@@ -103,6 +103,10 @@ vi.mock("../../../lib/globals.js", async () => {
     show: vi.fn(),
     hide: vi.fn(),
     dispose: vi.fn(),
+    // Popper reposition hook: the TAG_SHEET_TOGGLED retry loop calls this on each
+    // tick after the tip is shown so the bubble tracks the still-sliding sheet
+    // anchor. A no-op spy here (the real Bootstrap Tooltip.update drives Popper).
+    update: vi.fn(),
   };
   return {
     $: jquery,
