@@ -214,12 +214,12 @@ export type DimEmailValidationSubmit = {
 
 export type DimOnboardingTipShown = {
   device_type: DeviceType;
-  tip_id: "createUtub" | "addUrl";
+  tip_id: "createUtub" | "addUrl" | "addMember" | "addTag";
 };
 
 export type DimOnboardingTipDismissed = {
   device_type: DeviceType;
-  tip_id: "createUtub" | "addUrl";
+  tip_id: "createUtub" | "addUrl" | "addMember" | "addTag";
 };
 
 export type UIEventDimensions = {
