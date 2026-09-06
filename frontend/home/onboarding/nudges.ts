@@ -271,6 +271,36 @@ const NUDGE_REGISTRY: readonly NudgeConfig[] = [
     hasContent: (): boolean =>
       getState().activeUTubID !== null && getState().urls.length > 0,
   },
+  {
+    // Organize: once a UTub holds URLs but no tags, nudge to add the first tag.
+    // Not owner-gated — any member can add tags.
+    tipId: "addTag",
+    anchorSelector: "#utubTagBtnCreate",
+    titleKey: "ONBOARDING_ADD_TAG_TIP_TITLE",
+    bodyKey: "ONBOARDING_ADD_TAG_TIP_BODY",
+    isEligible: (): boolean =>
+      getState().activeUTubID !== null &&
+      getState().urls.length > 0 &&
+      getState().tags.length === 0 &&
+      !getState().multiSelectMode,
+    hasContent: (): boolean =>
+      getState().activeUTubID !== null && getState().tags.length > 0,
+  },
+  {
+    // Collaborate: a lone owner/co-creator (only member is themselves) is nudged
+    // to invite. `members` includes the owner, so `<= 1` means "only you".
+    tipId: "addMember",
+    anchorSelector: "#memberBtnCreate",
+    titleKey: "ONBOARDING_ADD_MEMBER_TIP_TITLE",
+    bodyKey: "ONBOARDING_ADD_MEMBER_TIP_BODY",
+    isEligible: (): boolean =>
+      (getState().isCurrentUserOwner || getState().isCoCreator) &&
+      getState().activeUTubID !== null &&
+      getState().members.length <= 1 &&
+      !getState().multiSelectMode,
+    hasContent: (): boolean =>
+      getState().activeUTubID !== null && getState().members.length > 1,
+  },
 ];
 
 /**
@@ -289,15 +319,45 @@ function rearmCompletedTips(): void {
 }
 
 /**
+ * True only when `anchor` is rendered-visible with respect to the CSS
+ * `visibility` property (itself and every ancestor). `offsetParent` does NOT
+ * catch this: it stays non-null through a `visibility:hidden` ancestor (only
+ * `display:none`/detachment nulls it), which is exactly how the collapsed
+ * mobile tag sheet hides its body (`#tagSheetBody { visibility: hidden; }`,
+ * `tag-sheet.css:262-268`). Prefer the native
+ * `checkVisibility({ visibilityProperty: true })` when available; otherwise walk
+ * the anchor and its ancestors (up to `document.body`) rejecting any
+ * `visibility:hidden` element — the fallback for environments (e.g. happy-dom)
+ * that lack `checkVisibility`.
+ */
+function isRenderedVisible(anchor: HTMLElement): boolean {
+  if (typeof anchor.checkVisibility === "function") {
+    return anchor.checkVisibility({ visibilityProperty: true });
+  }
+  let element: HTMLElement | null = anchor;
+  while (element !== null) {
+    if (getComputedStyle(element).visibility === "hidden") return false;
+    if (element === document.body) break;
+    element = element.parentElement;
+  }
+  return true;
+}
+
+/**
  * A tip is only worth showing when its anchor is actually rendered-visible.
  * `offsetParent === null` is true for an element inside a `.hidden` ancestor
  * (e.g. a mobile panel that is not the current deck), matching the same
  * opener-visibility check `tags/sheet.ts` uses. Inherently correct on both
- * desktop (both panels visible) and mobile (off-panel anchors are hidden).
+ * desktop (both panels visible) and mobile (off-panel anchors are hidden). The
+ * additional `isRenderedVisible` check also rejects a `visibility:hidden`
+ * ancestor (which `offsetParent` misses) so a tip never shows over the collapsed
+ * mobile tag sheet on initial load — BOTH checks must pass.
  */
 function isAnchorVisible(anchorSelector: string): boolean {
   const anchor = document.querySelector<HTMLElement>(anchorSelector);
-  return anchor !== null && anchor.offsetParent !== null;
+  return (
+    anchor !== null && anchor.offsetParent !== null && isRenderedVisible(anchor)
+  );
 }
 
 /**
@@ -320,6 +380,7 @@ export function maybeShowNextTip(): void {
   const suppressed =
     getOpenForm() !== null ||
     getState().multiSelectMode ||
+    getState().isCurrentUTubLocked ||
     isUTubSearchActive() ||
     isCrossUtubSearchActive();
   if (suppressed) {
@@ -396,6 +457,19 @@ function maybeHandleNudgeReset(): void {
  *   eligible tip can (re)show on the now-current panel. Teardown must precede
  *   re-evaluation, else `maybeShowNextTip`'s single-active-tip guard would skip
  *   the new panel's eligible tip.
+ * - `MEMBER_DECK_CHANGED` / `TAG_DECK_CHANGED`: emitted (emit-after-setState) on
+ *   member add/remove and tag create/delete, so the addMember / addTag tips
+ *   hide/re-arm/re-show INSTANTLY — exactly as `URL_DECK_CHANGED` does for
+ *   addUrl. `TAG_DECK_CHANGED` covers both tag create and delete; do NOT also
+ *   subscribe `TAG_DELETED` (that would double-fire).
+ * - `TAG_SHEET_TOGGLED`: on mobile the addTag anchor lives inside the tag bottom
+ *   sheet, `visibility:hidden` while collapsed, so the registry walk skips it and
+ *   shows addMember first. Opening the sheet emits `{ active: true }`; defer one
+ *   tick (`setTimeout(…, 0)`) so the sheet's layout settles and the anchor's
+ *   `offsetParent`/`visibility` resolve before re-evaluating and showing addTag.
+ *   Only `{ active: true }` is ever emitted (Step 3); the `!active` branch is a
+ *   type-symmetry no-op — sheet close is handled by the shipped document
+ *   tap-away handler, not a bespoke event.
  */
 export function initOnboardingNudges(): void {
   if (_onboardingInitialized) return;
@@ -432,6 +506,22 @@ export function initOnboardingNudges(): void {
       }
     }
     maybeShowNextTip();
+  });
+  // Member add/remove and tag create/delete emit these (emit-after-setState) so
+  // the addMember / addTag tips re-arm and re-show instantly, exactly like
+  // URL_DECK_CHANGED drives addUrl. TAG_DECK_CHANGED covers tag create AND
+  // delete (Step 3), so TAG_DELETED is deliberately NOT subscribed here.
+  on(AppEvents.MEMBER_DECK_CHANGED, () => maybeShowNextTip());
+  on(AppEvents.TAG_DECK_CHANGED, () => maybeShowNextTip());
+  // Mobile only: the addTag anchor sits inside the tag bottom sheet, which is
+  // visibility:hidden while collapsed — so it is skipped until the sheet opens.
+  // Opening emits { active: true }; defer one tick so the sheet's layout settles
+  // and the anchor's offsetParent/visibility resolve before we re-evaluate.
+  // { active: false } is never emitted (sheet close is an ordinary tap-away
+  // dismissal), so the !active branch is a type-symmetry no-op.
+  on(AppEvents.TAG_SHEET_TOGGLED, ({ active }) => {
+    if (!active) return;
+    setTimeout(() => maybeShowNextTip(), 0);
   });
 
   maybeShowNextTip();

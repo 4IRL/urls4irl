@@ -5,7 +5,8 @@ import type { UtubSelectedPayload } from "../../../lib/event-bus.js";
 import { getOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { resetStore, setState } from "../../../store/app-store.js";
-import type { UtubUrlItem } from "../../../types/url.js";
+import type { MemberItem } from "../../../types/member.js";
+import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import type { UtubSummaryItem } from "../../../types/utub.js";
 import { isCrossUtubSearchActive } from "../../search/cross-utub-search.js";
 import { isUTubSearchActive } from "../../utubs/search.js";
@@ -36,6 +37,9 @@ vi.mock("../../../lib/event-bus.js", () => ({
     UTUB_DELETED: "utub:deleted",
     URL_DECK_CHANGED: "url:deck-changed",
     MOBILE_DECK_SWITCHED: "mobile:deck-switched",
+    MEMBER_DECK_CHANGED: "member:deck-changed",
+    TAG_DECK_CHANGED: "tag:deck-changed",
+    TAG_SHEET_TOGGLED: "tag-sheet:toggled",
   },
   on: vi.fn((event: string, handler: (payload: unknown) => void) => {
     if (!busHandlers.has(event)) busHandlers.set(event, new Set());
@@ -144,6 +148,20 @@ const CREATE_UTUB_TIP = {
   bodyKey: "ONBOARDING_CREATE_UTUB_TIP_BODY",
 };
 
+const ADD_TAG_TIP = {
+  tipId: "addTag" as const,
+  anchorSelector: "#utubTagBtnCreate",
+  titleKey: "ONBOARDING_ADD_TAG_TIP_TITLE",
+  bodyKey: "ONBOARDING_ADD_TAG_TIP_BODY",
+};
+
+const ADD_MEMBER_TIP = {
+  tipId: "addMember" as const,
+  anchorSelector: "#memberBtnCreate",
+  titleKey: "ONBOARDING_ADD_MEMBER_TIP_TITLE",
+  bodyKey: "ONBOARDING_ADD_MEMBER_TIP_BODY",
+};
+
 describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
   let markTipSeenSpy: ReturnType<typeof vi.spyOn>;
 
@@ -154,7 +172,7 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
     installStorageStub();
     // Include the shared visually-hidden aria-live region (mirrors
     // `pages/home.html`) so showTip()'s announcer write has a real target.
-    document.body.innerHTML = `<button id="utubBtnCreate"></button><span id="onboardingNudgeAnnouncement"></span>`;
+    document.body.innerHTML = `<button id="utubBtnCreate"></button><button id="utubTagBtnCreate"></button><button id="memberBtnCreate"></button><span id="onboardingNudgeAnnouncement"></span>`;
     // Keep the real read/write behavior intact (no mockImplementation) so the
     // seen-flag is genuinely persisted; assertions use the spy's call record.
     markTipSeenSpy = vi.spyOn(nudgeStorage, "markTipSeen");
@@ -407,6 +425,80 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
 
     expect(anchor.getAttribute("data-bs-offset")).toBe("0,-7");
   });
+
+  it("(addTag primitive) showTip sets the addTag copy, shows, and emits SHOWN with tip_id addTag", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+
+    showTip(ADD_TAG_TIP);
+
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Tag your links");
+    expect(contentArg[".tooltip-inner"]).toContain(
+      "Add a tag to group and find URLs in this UTub.",
+    );
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_ONBOARDING_TIP_SHOWN,
+      tip_id: "addTag",
+    });
+  });
+
+  it("(addMember primitive) showTip sets the addMember copy, shows, and emits SHOWN with tip_id addMember", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const anchor = document.querySelector("#memberBtnCreate") as HTMLElement;
+
+    showTip(ADD_MEMBER_TIP);
+
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Invite a member");
+    expect(contentArg[".tooltip-inner"]).toContain(
+      "Add a member to share this UTub and gather links together.",
+    );
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_ONBOARDING_TIP_SHOWN,
+      tip_id: "addMember",
+    });
+  });
+
+  it("(addTag primitive) a user-driven dismiss emits DISMISSED with tip_id addTag", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+
+    showTip(ADD_TAG_TIP);
+    await flushDeferredBind();
+    window.jQuery(anchor).trigger("click");
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_ONBOARDING_TIP_DISMISSED,
+      tip_id: "addTag",
+    });
+  });
+
+  it("(addMember primitive) a user-driven dismiss emits DISMISSED with tip_id addMember", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const anchor = document.querySelector("#memberBtnCreate") as HTMLElement;
+
+    showTip(ADD_MEMBER_TIP);
+    await flushDeferredBind();
+    window.jQuery(anchor).trigger("click");
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_ONBOARDING_TIP_DISMISSED,
+      tip_id: "addMember",
+    });
+  });
 });
 
 describe("onboarding nudges — registry, eligibility, sequencing & init wiring", () => {
@@ -426,7 +518,7 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     // invariant test flips this to true. Reset here so it never leaks across
     // tests (clearAllMocks does not touch this plain object).
     mockAppConfig.isProduction = false;
-    document.body.innerHTML = `<button id="utubBtnCreate"></button><button id="urlBtnCreate"></button>`;
+    document.body.innerHTML = `<button id="utubBtnCreate"></button><button id="urlBtnCreate"></button><button id="utubTagBtnCreate"></button><button id="memberBtnCreate"></button>`;
     // Re-assert the default "not suppressing" return values: clearAllMocks wipes
     // call history but preserves implementations, so a prior test's
     // mockReturnValue override would otherwise leak into this test.
@@ -660,9 +752,13 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     const A_URL = { utubUrlID: 1 } as unknown as UtubUrlItem;
 
     // Both tips previously dismissed; init in the zero-UTub state shows nothing
-    // and (empty decks) re-arms nothing.
+    // and (empty decks) re-arms nothing. addTag is also marked seen to isolate
+    // the Add-URL tip: a UTub with a URL but no tags is now addTag-eligible, so
+    // without this the higher-priority-consumed slot would show addTag instead.
+    // addTag never re-arms here (its deck stays tag-empty → hasContent false).
     nudgeStorage.markTipSeen("createUtub");
     nudgeStorage.markTipSeen("addUrl");
+    nudgeStorage.markTipSeen("addTag");
     initOnboardingNudges();
     expect(tip.show).not.toHaveBeenCalled();
 
@@ -692,7 +788,10 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
 
     // Add-URL tip re-armed (flag cleared) and the active UTub currently holds a
     // URL, so init shows nothing (not eligible while the deck is non-empty).
+    // addTag is marked seen to isolate Add-URL: a URL-bearing, tag-empty UTub is
+    // now addTag-eligible, which would otherwise show on init.
     nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addTag");
     setState({ utubs: [A_UTUB], activeUTubID: 1, urls: [A_URL] });
     initOnboardingNudges();
     expect(tip.show).not.toHaveBeenCalled();
@@ -799,5 +898,448 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     initOnboardingNudges();
 
     expect(nudgeStorage.hasSeenTip("createUtub")).toBe(true);
+  });
+
+  // ── addTag / addMember: eligibility, sequencing, re-arm, suppression ──────
+  const A_URL = { utubUrlID: 1 } as unknown as UtubUrlItem;
+  const A_TAG = { id: 1 } as unknown as UtubTag;
+  const M_SELF = { id: 1 } as unknown as MemberItem;
+  const M_OTHER = { id: 2 } as unknown as MemberItem;
+
+  it("(addTag eligibility) shows only when the UTub has URLs and no tags", async () => {
+    const { initOnboardingNudges, _resetOnboardingNudgesForTests } =
+      await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // createUtub + addUrl seen; a second member keeps addMember ineligible so
+    // addTag is the only candidate the walk can reach.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+
+    // 0 URLs → addTag NOT eligible.
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [],
+      tags: [],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // A tag already present → addTag NOT eligible.
+    _resetOnboardingNudgesForTests();
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({ urls: [A_URL], tags: [A_TAG] });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // URLs present, no tags → addTag shows.
+    _resetOnboardingNudgesForTests();
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({ urls: [A_URL], tags: [] });
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Tag your links");
+  });
+
+  it("(addMember eligibility) shows only for a lone owner/co-creator, not a plain member or with a second member", async () => {
+    const { initOnboardingNudges, _resetOnboardingNudgesForTests } =
+      await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#memberBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // A tag present keeps addTag ineligible so addMember is the only candidate.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+
+    // Plain member (not owner, not co-creator) → NOT eligible.
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [A_TAG],
+      members: [M_SELF],
+      isCurrentUserOwner: false,
+      isCoCreator: false,
+    });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Owner but a second member already present → NOT eligible.
+    _resetOnboardingNudgesForTests();
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({ members: [M_SELF, M_OTHER], isCurrentUserOwner: true });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Lone owner → addMember shows.
+    _resetOnboardingNudgesForTests();
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({ members: [M_SELF], isCurrentUserOwner: true });
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Invite a member");
+  });
+
+  it("(sequencing) addTag precedes addMember; once addTag is seen the next re-eval shows addMember", async () => {
+    const { initOnboardingNudges, dismissActiveTip } = await import(
+      "../nudges.js"
+    );
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // Lone-owner UTub with 1 URL + 0 tags: BOTH addTag and addMember are
+    // eligible, but addTag has priority (organize before collaborate).
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF],
+      isCurrentUserOwner: true,
+    });
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    let contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Tag your links");
+
+    // User taps away (dismiss addTag, marks it seen). tags stays empty so the
+    // addTag flag is NOT re-armed. The next re-eval advances to addMember.
+    dismissActiveTip({ markSeen: true });
+    expect(nudgeStorage.hasSeenTip("addTag")).toBe(true);
+    emitBusEvent(AppEvents.MEMBER_DECK_CHANGED);
+
+    expect(tip.show).toHaveBeenCalledTimes(2);
+    contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[1][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Invite a member");
+  });
+
+  it("(TAG_DECK_CHANGED re-arm instant) adding a tag clears the addTag seen flag immediately", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+
+    // addTag seen; the UTub has URLs but an empty tag deck → rearm is a no-op on
+    // init (nothing to re-arm while the deck is empty). Second member keeps
+    // addMember out of the way.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    nudgeStorage.markTipSeen("addTag");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+    initOnboardingNudges();
+    expect(nudgeStorage.hasSeenTip("addTag")).toBe(true);
+
+    // Adding the first tag fills the deck; TAG_DECK_CHANGED clears the flag live.
+    setState({ tags: [A_TAG] });
+    emitBusEvent(AppEvents.TAG_DECK_CHANGED);
+    expect(nudgeStorage.hasSeenTip("addTag")).toBe(false);
+  });
+
+  it("(TAG_DECK_CHANGED re-show instant) deleting the last tag re-shows the addTag tip", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // addTag re-armed; the UTub currently holds a tag → not eligible, so init
+    // shows nothing. Second member keeps addMember ineligible.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [A_TAG],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Deleting the last tag empties the deck; TAG_DECK_CHANGED re-shows addTag.
+    setState({ tags: [] });
+    emitBusEvent(AppEvents.TAG_DECK_CHANGED);
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Tag your links");
+  });
+
+  it("(MEMBER_DECK_CHANGED re-arm instant) adding a member clears the addMember seen flag immediately", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+
+    // addMember seen; lone owner (members.length === 1) → hasContent false, so
+    // init does not re-arm. A tag present keeps addTag out of the way.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    nudgeStorage.markTipSeen("addMember");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [A_TAG],
+      members: [M_SELF],
+      isCurrentUserOwner: true,
+    });
+    initOnboardingNudges();
+    expect(nudgeStorage.hasSeenTip("addMember")).toBe(true);
+
+    // Adding a member makes members.length > 1 → MEMBER_DECK_CHANGED clears it.
+    setState({ members: [M_SELF, M_OTHER] });
+    emitBusEvent(AppEvents.MEMBER_DECK_CHANGED);
+    expect(nudgeStorage.hasSeenTip("addMember")).toBe(false);
+  });
+
+  it("(MEMBER_DECK_CHANGED re-show instant) removing the last added member re-shows the addMember tip", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#memberBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // Owner with a second member present → addMember not eligible; a tag keeps
+    // addTag out. Init shows nothing.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [A_TAG],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Removing the added member returns to a lone owner; MEMBER_DECK_CHANGED
+    // re-shows addMember live.
+    setState({ members: [M_SELF] });
+    emitBusEvent(AppEvents.MEMBER_DECK_CHANGED);
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Invite a member");
+  });
+
+  it("(suppression) isCurrentUTubLocked suppresses the new tips and tears down an active one WITHOUT marking it seen", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // addTag-eligible baseline, but the UTub is locked → suppressed on init.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF],
+      isCurrentUserOwner: true,
+      isCurrentUTubLocked: true,
+    });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Unlock and re-eval → addTag shows.
+    setState({ isCurrentUTubLocked: false });
+    emitBusEvent(AppEvents.TAG_DECK_CHANGED);
+    expect(tip.show).toHaveBeenCalledTimes(1);
+
+    // Locking again while the tip is active tears it down WITHOUT marking seen.
+    const markTipSeenSpy = vi.spyOn(nudgeStorage, "markTipSeen");
+    setState({ isCurrentUTubLocked: true });
+    emitBusEvent(AppEvents.TAG_DECK_CHANGED);
+    expect(tip.dispose).toHaveBeenCalledTimes(1);
+    expect(markTipSeenSpy).not.toHaveBeenCalled();
+    expect(nudgeStorage.hasSeenTip("addTag")).toBe(false);
+  });
+
+  it("(mobile sheet hook) TAG_SHEET_TOGGLED {active:true} defers a re-eval that shows addTag inside the opened sheet", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // addTag-eligible, but the collapsed sheet renders the anchor
+    // visibility:hidden (happy-dom lacks checkVisibility, so the isRenderedVisible
+    // fallback reads getComputedStyle). Second member keeps addMember out.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+
+    const realGetComputedStyle = window.getComputedStyle.bind(window);
+    const getComputedStyleSpy = vi
+      .spyOn(window, "getComputedStyle")
+      .mockImplementation((element: Element, pseudoElement?: string | null) => {
+        const computed = realGetComputedStyle(element, pseudoElement);
+        if (element === anchor) {
+          return { ...computed, visibility: "hidden" } as CSSStyleDeclaration;
+        }
+        return computed;
+      });
+    try {
+      // Collapsed sheet → the walk skips the hidden anchor → nothing shows.
+      initOnboardingNudges();
+      expect(tip.show).not.toHaveBeenCalled();
+
+      // The sheet opens: the anchor is now visible and TAG_SHEET_TOGGLED fires.
+      getComputedStyleSpy.mockImplementation(
+        (element: Element, pseudoElement?: string | null) =>
+          realGetComputedStyle(element, pseudoElement),
+      );
+      emitBusEvent(AppEvents.TAG_SHEET_TOGGLED, { active: true });
+      await flushDeferredBind(); // flush the deferred setTimeout(…, 0)
+
+      expect(tip.show).toHaveBeenCalledTimes(1);
+      const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as Record<string, string>;
+      expect(contentArg[".tooltip-inner"]).toContain("Tag your links");
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  it("(mobile priority inversion) addMember shows while the tag sheet is collapsed; addTag shows once it opens", async () => {
+    const { initOnboardingNudges, dismissActiveTip } = await import(
+      "../nudges.js"
+    );
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // Lone-owner UTub, 1 URL, 0 tags: BOTH addTag and addMember eligible, but the
+    // tag anchor is visibility:hidden (collapsed sheet), so the walk skips addTag
+    // and shows addMember first — the accepted mobile inversion.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF],
+      isCurrentUserOwner: true,
+    });
+
+    const realGetComputedStyle = window.getComputedStyle.bind(window);
+    const getComputedStyleSpy = vi
+      .spyOn(window, "getComputedStyle")
+      .mockImplementation((element: Element, pseudoElement?: string | null) => {
+        const computed = realGetComputedStyle(element, pseudoElement);
+        if (element === anchor) {
+          return { ...computed, visibility: "hidden" } as CSSStyleDeclaration;
+        }
+        return computed;
+      });
+    try {
+      initOnboardingNudges();
+      expect(tip.show).toHaveBeenCalledTimes(1);
+      let contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as Record<string, string>;
+      expect(contentArg[".tooltip-inner"]).toContain("Invite a member");
+
+      // Opening the tag sheet is a tap-away: dismiss addMember (markSeen:true).
+      // Then the sheet finishes opening (anchor visible) and emits {active:true}.
+      dismissActiveTip({ markSeen: true });
+      getComputedStyleSpy.mockImplementation(
+        (element: Element, pseudoElement?: string | null) =>
+          realGetComputedStyle(element, pseudoElement),
+      );
+      emitBusEvent(AppEvents.TAG_SHEET_TOGGLED, { active: true });
+      await flushDeferredBind();
+
+      expect(tip.show).toHaveBeenCalledTimes(2);
+      contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+        .calls[1][0] as Record<string, string>;
+      expect(contentArg[".tooltip-inner"]).toContain("Tag your links");
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  it("(show-gate) a visibility:hidden addTag anchor blocks the show; clearing it lets addTag show (positive control)", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // addTag-eligible; a second member keeps addMember ineligible, so addTag is
+    // the ONLY candidate — proving the block is the visibility gate itself, not
+    // another tip winning the walk.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+
+    const realGetComputedStyle = window.getComputedStyle.bind(window);
+    const getComputedStyleSpy = vi
+      .spyOn(window, "getComputedStyle")
+      .mockImplementation((element: Element, pseudoElement?: string | null) => {
+        const computed = realGetComputedStyle(element, pseudoElement);
+        if (element === anchor) {
+          return { ...computed, visibility: "hidden" } as CSSStyleDeclaration;
+        }
+        return computed;
+      });
+    try {
+      // Negative: the hidden anchor blocks addTag at the registry walk — via a
+      // non-sheet event, so this exercises the visibility:hidden half of
+      // isAnchorVisible directly (not the TAG_SHEET_TOGGLED path).
+      initOnboardingNudges();
+      expect(tip.show).not.toHaveBeenCalled();
+
+      // Positive control: the anchor now reports visible; the SAME re-eval event
+      // now shows addTag — proving the harness can detect a show, so the negative
+      // assertion above is falsifiable.
+      getComputedStyleSpy.mockImplementation(
+        (element: Element, pseudoElement?: string | null) =>
+          realGetComputedStyle(element, pseudoElement),
+      );
+      emitBusEvent(AppEvents.TAG_DECK_CHANGED);
+      expect(tip.show).toHaveBeenCalledTimes(1);
+      const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as Record<string, string>;
+      expect(contentArg[".tooltip-inner"]).toContain("Tag your links");
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
   });
 });
