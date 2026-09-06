@@ -1,7 +1,7 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
-import { AppEvents, on } from "../../lib/event-bus.js";
+import { AppEvents, emit, on } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { clamp, shouldCommitSheetGesture } from "../../logic/tag-sheet-snap.js";
 import { getState } from "../../store/app-store.js";
@@ -107,8 +107,11 @@ const TAP_SLOP_PX = 8;
 const GESTURE_BOUND_ATTR = "data-tag-sheet-gesture-bound";
 // #mainPanel children other than these are made inert while the sheet is open.
 // The sheet's clipping viewport (which contains the sheet) and the backdrop are
-// excluded so they remain interactive.
-const INERT_EXCLUDE_SELECTOR = `${SHEET_VIEWPORT_SELECTOR}, ${BACKDROP_SELECTOR}`;
+// excluded so they remain interactive. The onboarding aria-live announcement
+// region (#onboardingNudgeAnnouncement) is also excluded so it can still announce
+// to screen readers while the sheet is open — an inert element is removed from the
+// accessibility tree.
+const INERT_EXCLUDE_SELECTOR = `${SHEET_VIEWPORT_SELECTOR}, ${BACKDROP_SELECTOR}, #onboardingNudgeAnnouncement`;
 
 /**
  * Toggle the inline empty-state message based on the current `#listTags` child
@@ -202,6 +205,12 @@ export function openTagSheet({
   }, 0);
   $(HANDLE_SELECTOR).attr("aria-expanded", "true");
   sheetOpen = true;
+
+  // The onboarding engine re-evaluates on sheet open so the addTag tip can show
+  // anchored to #utubTagBtnCreate (relocated into the now-visible sheet). Only
+  // { active: true } is ever emitted — sheet close is an ordinary tap-away that
+  // the shipped document-click handler already dismisses.
+  emit(AppEvents.TAG_SHEET_TOGGLED, { active: true });
 
   // Trap focus: mark every #mainPanel direct child inert except the sheet and
   // its backdrop. Native inert focus containment needs no custom Tab interceptor

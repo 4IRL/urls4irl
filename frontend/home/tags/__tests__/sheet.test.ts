@@ -46,6 +46,7 @@ vi.mock("../../../lib/event-bus.js", () => ({
     CROSS_UTUB_SEARCH_VISIBILITY_CHANGED:
       "cross-utub-search:visibility-changed",
     MOBILE_DECK_SWITCHED: "mobile:deck-switched",
+    TAG_SHEET_TOGGLED: "tag-sheet:toggled",
   },
   on: vi.fn((event: string, handler: (payload: unknown) => void) => {
     if (!busHandlers.has(event)) busHandlers.set(event, new Set());
@@ -120,6 +121,7 @@ const SHEET_HTML = `
     <button id="${OPENER_ID}" type="button"></button>
     <button class="navbar-toggler" type="button"></button>
     <span id="TagSheetAnnouncement" class="visually-hidden" aria-live="polite"></span>
+    <span id="onboardingNudgeAnnouncement" class="visually-hidden" aria-live="polite"></span>
   </main>
 `;
 
@@ -239,6 +241,29 @@ describe("Tag Sheet Controller", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it("emits TAG_SHEET_TOGGLED with { active: true } so onboarding re-evaluates", async () => {
+      await setIsMobile(true);
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      expect(emit).toHaveBeenCalledWith(AppEvents.TAG_SHEET_TOGGLED, {
+        active: true,
+      });
+    });
+
+    it("keeps #onboardingNudgeAnnouncement non-inert while inerting other #mainPanel children", async () => {
+      await setIsMobile(true);
+
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      // The onboarding aria-live region is excluded from inerting so it can still
+      // announce to screen readers while the sheet is open (an inert element is
+      // removed from the accessibility tree); a normal #mainPanel child is inert.
+      expect($("#onboardingNudgeAnnouncement").prop("inert")).toBe(false);
+      expect($("#centerPanel").prop("inert")).toBe(true);
     });
   });
 

@@ -194,6 +194,9 @@ All inter-module communication uses typed events:
 | `URL_DECK_CHANGED` | void | url create / single delete / bulk delete | onboarding |
 | `MOBILE_DECK_SWITCHED` | `{target: "desktop" \| "url-deck" \| "utub-deck" \| "member-deck" \| "no-utub"}` | home/mobile.ts (each mutator) | tags/sheet.ts, onboarding |
 | `CROSS_UTUB_SEARCH_VISIBILITY_CHANGED` | `{active: boolean}` | search/cross-utub-search.ts | tags/sheet.ts |
+| `MEMBER_DECK_CHANGED` | void | members/member-combobox-submit, members/delete | onboarding |
+| `TAG_DECK_CHANGED` | void | tags/create, tags/delete | onboarding |
+| `TAG_SHEET_TOGGLED` | `{active: boolean}` | tags/sheet.ts | onboarding |
 
 ### Established TypeScript Patterns
 

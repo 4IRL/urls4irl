@@ -2,6 +2,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { SHOW_LOADING_ICON_AFTER_MS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, setState } from "../../store/app-store.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
@@ -200,6 +201,7 @@ function applyPostSettleSideEffects({
       // UTub-relevance check so getState().members and the deck DOM stay in sync
       // (never one without the other).
       setState({ members: [...getState().members, ...addedMembers] });
+      emitAppEvent(AppEvents.MEMBER_DECK_CHANGED);
       const isOwner = getState().isCurrentUserOwner;
       const listMembers = $("#listMembers");
       addedMembers.forEach((member) => {

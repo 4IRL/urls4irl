@@ -136,6 +136,7 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
     urls: updatedUrls,
     selectedTagIDs: filteredSelected,
   });
+  emit(AppEvents.TAG_DECK_CHANGED);
 
   const utubTagSelector = $(
     ".tagFilter[data-utub-tag-id=" + deletedTagID + "]",
