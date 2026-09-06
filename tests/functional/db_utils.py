@@ -23,6 +23,26 @@ def get_utub_this_user_did_not_create(app: Flask, user_id: int) -> Utubs:
         return Utubs.query.filter(Utubs.utub_creator != user_id).first()
 
 
+def add_user_as_plain_member_of_utub(app: Flask, user_id: int, utub_id: int) -> None:
+    """Insert a single ``Utub_Members`` row making ``user_id`` a plain MEMBER of
+    ``utub_id`` (never a creator/co-creator).
+
+    Used by the addMember onboarding-nudge UI tests to exercise the non-owner
+    negative case: the acting user must be a member to select the UTub, but must
+    stay a plain ``MEMBER`` so the ``isCurrentUserOwner || isCoCreator`` gating
+    genuinely fails. Deliberately narrower than ``create_test_utubmembers`` (which
+    blanket-adds every user to every UTub) so it scopes exactly the one membership
+    the test needs without polluting other UTubs.
+    """
+    with app.app_context():
+        membership = Utub_Members()
+        membership.utub_id = utub_id
+        membership.user_id = user_id
+        membership.member_role = Member_Role.MEMBER
+        db.session.add(membership)
+        db.session.commit()
+
+
 def set_utub_locked_state(app: Flask, utub_id: int, is_locked: bool) -> None:
     """Set a UTub's ``is_locked`` flag and commit so the running Flask server
     renders and enforces the locked state on the next request."""
