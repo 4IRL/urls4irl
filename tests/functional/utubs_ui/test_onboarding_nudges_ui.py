@@ -301,15 +301,20 @@ def test_add_url_nudge_rearms_after_adding_first_url_via_form(
 
     login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
-    # Seed BOTH tips as already seen via a ONE-TIME evaluate (persisted to
-    # localStorage, not re-applied on later navigations).
+    # Seed ALL tips as already seen via a ONE-TIME evaluate (persisted to
+    # localStorage, not re-applied on later navigations). This UTub is a lone-owner
+    # UTub, so addMember is eligible the instant it is selected — seeding it (and
+    # addTag) seen isolates the Add-URL re-arm behavior under test from the other
+    # nudges that would otherwise show first.
     page.evaluate(
         "localStorage.setItem('u4i:onboardingSeen',"
-        " JSON.stringify({addUrl: true, createUtub: true}))"
+        " JSON.stringify({addUrl: true, createUtub: true,"
+        " addTag: true, addMember: true}))"
     )
 
     # Select the empty UTub: UTUB_SELECTED with urls.length === 0 → no re-arm
-    # (empty deck) and the already-seen Add-URL tip stays hidden.
+    # (empty deck) and the already-seen Add-URL tip stays hidden. addMember is
+    # eligible here (lone owner) but seeded seen, so no tip shows.
     select_utub_by_id(page=page, utub_id=utub_id)
     assert_not_visible_css_selector(
         page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP
@@ -392,16 +397,21 @@ def test_add_url_nudge_rearms_after_deleting_last_url(
 
     login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
-    # Seed BOTH tips as already seen via a ONE-TIME evaluate (persisted to
-    # localStorage, not re-applied on later navigations).
+    # Seed ALL tips as already seen via a ONE-TIME evaluate (persisted to
+    # localStorage, not re-applied on later navigations). This lone-owner UTub
+    # holds a URL and no tags, so addTag (urls > 0, tags == 0) and addMember (lone
+    # owner) are both eligible on selection — seeding them seen isolates the
+    # Add-URL re-arm behavior under test from the other nudges.
     page.evaluate(
         "localStorage.setItem('u4i:onboardingSeen',"
-        " JSON.stringify({addUrl: true, createUtub: true}))"
+        " JSON.stringify({addUrl: true, createUtub: true,"
+        " addTag: true, addMember: true}))"
     )
 
     # Content load: select the UTub while its URL is present -> UTUB_SELECTED with
     # urls.length > 0 -> the addUrl seen flag is cleared (re-armed). The Add-URL
-    # tip is not eligible (deck has a URL), so it must NOT be visible.
+    # tip is not eligible (deck has a URL), and addTag/addMember are seeded seen,
+    # so no tip must be visible.
     select_utub_by_id(page=page, utub_id=utub_id)
     assert_not_visible_css_selector(
         page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP
