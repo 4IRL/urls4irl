@@ -114,7 +114,6 @@ const SHEET_HTML = `
           <span id="tagSheetHandleCount" class="tag-sheet-handle-count hidden"></span>
         </button>
         <div id="tagSheetBody" class="tag-sheet-body" inert aria-hidden="true">
-          <p id="tagSheetEmpty" class="hidden">No tags in this UTub.</p>
         </div>
       </section>
     </div>
@@ -1032,21 +1031,6 @@ describe("Tag Sheet Controller", () => {
       (getState as ReturnType<typeof vi.fn>).mockReturnValue({
         activeUTubID: 5,
       });
-    });
-  });
-
-  describe("empty-state message", () => {
-    it("shows the empty state when #listTags has no tags and hides it once a tag exists", async () => {
-      await setIsMobile(true);
-      // No .tagFilter children seeded.
-      expect($("#tagSheetEmpty").hasClass(HIDDEN_CLASS)).toBe(true);
-
-      relocateTagDeckForViewport();
-      expect($("#tagSheetEmpty").hasClass(HIDDEN_CLASS)).toBe(false);
-
-      seedTagFilter();
-      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
-      expect($("#tagSheetEmpty").hasClass(HIDDEN_CLASS)).toBe(true);
     });
   });
 

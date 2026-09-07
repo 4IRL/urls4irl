@@ -264,6 +264,16 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        /* Clear the drag handle. The tag-deck header (and its #utubTagBtnCreate)
+           is flush under #tagSheetHandle now that the empty-state <p> was removed
+           — that paragraph had accidentally supplied this top spacing. Without it
+           the addTag onboarding nudge (shown on a 0-tag UTub, Popper-flipped to
+           "left" and vertically centered on the button, ~91px tall) overlaps the
+           handle by ~23px, covering the interactive close affordance and breaking
+           the tap-to-close. 1.5rem drops the header below the handle so the
+           flipped tooltip's top edge clears it (measured: 1.5rem leaves the edges
+           exactly flush at 0px, so 2rem gives a small, robust gap). */
+        padding-top: 2rem;
         visibility: hidden;
         transition: visibility 0s linear 0.3s;
     }
