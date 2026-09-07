@@ -40,6 +40,9 @@ export interface AppEventMap {
   "member-filter:changed": void;
   "member-add:opened": void;
   "transfer-picker:requested": { opener: HTMLElement | string };
+  "member:deck-changed": void;
+  "tag:deck-changed": void;
+  "tag-sheet:toggled": { active: boolean };
 }
 
 export const AppEvents = Object.freeze({
@@ -61,6 +64,9 @@ export const AppEvents = Object.freeze({
   MEMBER_FILTER_CHANGED: "member-filter:changed",
   MEMBER_ADD_OPENED: "member-add:opened",
   TRANSFER_PICKER_REQUESTED: "transfer-picker:requested",
+  MEMBER_DECK_CHANGED: "member:deck-changed",
+  TAG_DECK_CHANGED: "tag:deck-changed",
+  TAG_SHEET_TOGGLED: "tag-sheet:toggled",
 } as const);
 
 const _handlers = new Map<string, Set<(payload: unknown) => void>>();

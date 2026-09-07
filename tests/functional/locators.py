@@ -175,7 +175,6 @@ class HomePageLocators(GenericPageLocator):
     TAG_SHEET_HANDLE = "#tagSheetHandle"
     TAG_SHEET_BACKDROP = "#tagSheetBackdrop"
     TAG_SHEET_HANDLE_COUNT = "#tagSheetHandleCount"
-    TAG_SHEET_EMPTY = "#tagSheetEmpty"
     TAG_SHEET_OPEN_CLASS = "tag-sheet-open"
 
     # URL Deck

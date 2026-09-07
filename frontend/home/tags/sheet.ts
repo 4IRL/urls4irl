@@ -1,7 +1,7 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
-import { AppEvents, on } from "../../lib/event-bus.js";
+import { AppEvents, emit, on } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { clamp, shouldCommitSheetGesture } from "../../logic/tag-sheet-snap.js";
 import { getState } from "../../store/app-store.js";
@@ -91,11 +91,8 @@ const HANDLE_COUNT_SELECTOR = "#tagSheetHandleCount";
 // (the header lip alone is an awkward touch target). Sized to 50% width in
 // tag-sheet.css so the action buttons on the right half stay tappable.
 const TITLE_GROUP_SELECTOR = "#TagDeckTitleGroup";
-const EMPTY_STATE_SELECTOR = "#tagSheetEmpty";
 const MAIN_PANEL_SELECTOR = "#mainPanel";
 const TAG_DECK_SELECTOR = "#TagDeck";
-const LIST_TAGS_SELECTOR = "#listTags";
-const TAG_FILTER_SELECTOR = ".tagFilter";
 const SHEET_OPEN_CLASS = "tag-sheet-open";
 const SHEET_DRAGGING_CLASS = "tag-sheet-dragging";
 const BACKDROP_SHOW_CLASS = "tag-sheet-backdrop-show";
@@ -107,20 +104,11 @@ const TAP_SLOP_PX = 8;
 const GESTURE_BOUND_ATTR = "data-tag-sheet-gesture-bound";
 // #mainPanel children other than these are made inert while the sheet is open.
 // The sheet's clipping viewport (which contains the sheet) and the backdrop are
-// excluded so they remain interactive.
-const INERT_EXCLUDE_SELECTOR = `${SHEET_VIEWPORT_SELECTOR}, ${BACKDROP_SELECTOR}`;
-
-/**
- * Toggle the inline empty-state message based on the current `#listTags` child
- * count. Reads only the DOM; independent of `sheetOpen`. The "No tags in this
- * UTub." literal lives in the Jinja template (TS only toggles `.hidden`), so no
- * APP_CONFIG bridge is warranted.
- */
-function _updateEmptyState(): void {
-  const hasTags =
-    $(LIST_TAGS_SELECTOR).children(TAG_FILTER_SELECTOR).length > 0;
-  $(EMPTY_STATE_SELECTOR).toggleClass(HIDDEN_CLASS, hasTags);
-}
+// excluded so they remain interactive. The onboarding aria-live announcement
+// region (#onboardingNudgeAnnouncement) is also excluded so it can still announce
+// to screen readers while the sheet is open — an inert element is removed from the
+// accessibility tree.
+const INERT_EXCLUDE_SELECTOR = `${SHEET_VIEWPORT_SELECTOR}, ${BACKDROP_SELECTOR}, #onboardingNudgeAnnouncement`;
 
 /**
  * The whole sheet (its peeking header included) is present only when mobile + a
@@ -158,7 +146,6 @@ export function relocateTagDeckForViewport(): void {
     if (!tagDeckInSheet) {
       $(TAG_DECK_SELECTOR).appendTo(SHEET_BODY_SELECTOR);
     }
-    _updateEmptyState();
     return;
   }
 
@@ -203,6 +190,12 @@ export function openTagSheet({
   $(HANDLE_SELECTOR).attr("aria-expanded", "true");
   sheetOpen = true;
 
+  // The onboarding engine re-evaluates on sheet open so the addTag tip can show
+  // anchored to #utubTagBtnCreate (relocated into the now-visible sheet). Only
+  // { active: true } is ever emitted — sheet close is an ordinary tap-away that
+  // the shipped document-click handler already dismisses.
+  emit(AppEvents.TAG_SHEET_TOGGLED, { active: true });
+
   // Trap focus: mark every #mainPanel direct child inert except the sheet and
   // its backdrop. Native inert focus containment needs no custom Tab interceptor
   // (Chrome 120+, Firefox 121+, Safari 16+).
@@ -217,8 +210,6 @@ export function openTagSheet({
     if (event.key !== KEYS.ESCAPE) return;
     closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
   });
-
-  _updateEmptyState();
 
   recordUIEvent({
     event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
@@ -746,7 +737,6 @@ export function initTagSheet(): void {
         trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
       });
     refreshTagSheetAvailability();
-    _updateEmptyState();
   });
 
   on(AppEvents.UTUB_DELETED, () => {

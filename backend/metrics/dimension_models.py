@@ -305,11 +305,11 @@ class _DimEmailValidationSubmit(UIBaseDimensions):
 # inlined (matching the `_DimUrlCopy`-style precedent for small closed sets with
 # no dedicated external constants module).
 class _DimOnboardingTipShown(UIBaseDimensions):
-    tip_id: Literal["createUtub", "addUrl"]
+    tip_id: Literal["createUtub", "addUrl", "addMember", "addTag"]
 
 
 class _DimOnboardingTipDismissed(UIBaseDimensions):
-    tip_id: Literal["createUtub", "addUrl"]
+    tip_id: Literal["createUtub", "addUrl", "addMember", "addTag"]
 
 
 # ---------------------------------------------------------------------------

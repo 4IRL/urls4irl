@@ -4,6 +4,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { emit as emitAppEvent, AppEvents } from "../../lib/event-bus.js";
 import { isUtubLockedHandled } from "../utub-locked.js";
 import { emit } from "../../lib/metrics-client.js";
 import { TAG_SHEET_TOGGLE_TRIGGER } from "../../types/metrics-dim-values.js";
@@ -149,6 +150,7 @@ function removeMemberSuccess(memberID: number): void {
   setState({
     members: getState().members.filter((member) => member.id !== memberID),
   });
+  emitAppEvent(AppEvents.MEMBER_DECK_CHANGED);
 
   const memberListItem = $("span[memberid=" + memberID + "]");
   memberListItem.fadeOut("slow", function () {

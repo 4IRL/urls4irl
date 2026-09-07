@@ -66,6 +66,18 @@ let _activeTipId: TipId | null = null;
 // Id of the one-tick deferred listener-bind timer, so a dismiss fired before
 // the bind executes can cancel it outright (no orphaned document handlers).
 let _pendingBindTimer: ReturnType<typeof setTimeout> | null = null;
+// Id of the in-flight tag-sheet-open show-retry timer (see the TAG_SHEET_TOGGLED
+// subscription), so a fresh open cancels a stale retry loop and test teardown can
+// clear it.
+let _sheetOpenShowTimer: ReturnType<typeof setTimeout> | null = null;
+// The tag sheet's open slide transitions the tag-deck button container's
+// (inherited) `visibility` over ~0.3s, so the addTag anchor (#utubTagBtnCreate)
+// is NOT yet rendered-visible on the first tick after TAG_SHEET_TOGGLED fires.
+// Re-evaluate across a few short intervals until the anchor resolves visible (a
+// tip becomes active) or the cap is reached (addTag genuinely ineligible), rather
+// than a single too-early tick that silently skips the not-yet-visible anchor.
+const SHEET_OPEN_SHOW_RETRY_MAX = 12;
+const SHEET_OPEN_SHOW_RETRY_INTERVAL_MS = 40;
 // Guards initOnboardingNudges against double-binding its event-bus
 // subscriptions on a repeated call (subscriptions accumulate otherwise),
 // mirroring swipe.ts's `_swipeInitialized` idempotency guard.
@@ -271,6 +283,36 @@ const NUDGE_REGISTRY: readonly NudgeConfig[] = [
     hasContent: (): boolean =>
       getState().activeUTubID !== null && getState().urls.length > 0,
   },
+  {
+    // Organize: once a UTub holds URLs but no tags, nudge to add the first tag.
+    // Not owner-gated — any member can add tags.
+    tipId: "addTag",
+    anchorSelector: "#utubTagBtnCreate",
+    titleKey: "ONBOARDING_ADD_TAG_TIP_TITLE",
+    bodyKey: "ONBOARDING_ADD_TAG_TIP_BODY",
+    isEligible: (): boolean =>
+      getState().activeUTubID !== null &&
+      getState().urls.length > 0 &&
+      getState().tags.length === 0 &&
+      !getState().multiSelectMode,
+    hasContent: (): boolean =>
+      getState().activeUTubID !== null && getState().tags.length > 0,
+  },
+  {
+    // Collaborate: a lone owner/co-creator (only member is themselves) is nudged
+    // to invite. `members` includes the owner, so `<= 1` means "only you".
+    tipId: "addMember",
+    anchorSelector: "#memberBtnCreate",
+    titleKey: "ONBOARDING_ADD_MEMBER_TIP_TITLE",
+    bodyKey: "ONBOARDING_ADD_MEMBER_TIP_BODY",
+    isEligible: (): boolean =>
+      (getState().isCurrentUserOwner || getState().isCoCreator) &&
+      getState().activeUTubID !== null &&
+      getState().members.length <= 1 &&
+      !getState().multiSelectMode,
+    hasContent: (): boolean =>
+      getState().activeUTubID !== null && getState().members.length > 1,
+  },
 ];
 
 /**
@@ -289,15 +331,51 @@ function rearmCompletedTips(): void {
 }
 
 /**
+ * True only when `anchor` is rendered-visible with respect to the CSS
+ * `visibility` property of itself AND every ancestor. `offsetParent` does NOT
+ * catch this: it stays non-null through a `visibility:hidden` ancestor (only
+ * `display:none`/detachment nulls it), which is exactly how the collapsed
+ * mobile tag sheet hides its body (`#tagSheetBody { visibility: hidden; }`,
+ * `tag-sheet.css:262-268`).
+ *
+ * We deliberately do NOT use the native `checkVisibility({ visibilityProperty:
+ * true })`: it only inspects the element's OWN computed `visibility`, so it
+ * MISSES a `visibility:hidden` ancestor whenever the anchor re-asserts
+ * `visibility:visible` on itself — which is precisely the collapsed-tag-sheet
+ * case, where `buildTagDeck` calls `showClassNormal()` on `#utubTagBtnCreate`
+ * (adding the `.visible` class → `visibility:visible`) inside the still
+ * `visibility:hidden` `#tagSheetBody`. `checkVisibility` then reports the button
+ * as visible and the tip wrongly shows over the collapsed sheet. Walking the
+ * ancestor chain and rejecting any element whose OWN computed `visibility` is
+ * `hidden` correctly catches the hidden `#tagSheetBody` ancestor regardless of
+ * the anchor's self-override. The walk also works in environments (e.g.
+ * happy-dom) that lack `checkVisibility`.
+ */
+function isRenderedVisible(anchor: HTMLElement): boolean {
+  let element: HTMLElement | null = anchor;
+  while (element !== null) {
+    if (getComputedStyle(element).visibility === "hidden") return false;
+    if (element === document.body) break;
+    element = element.parentElement;
+  }
+  return true;
+}
+
+/**
  * A tip is only worth showing when its anchor is actually rendered-visible.
  * `offsetParent === null` is true for an element inside a `.hidden` ancestor
  * (e.g. a mobile panel that is not the current deck), matching the same
  * opener-visibility check `tags/sheet.ts` uses. Inherently correct on both
- * desktop (both panels visible) and mobile (off-panel anchors are hidden).
+ * desktop (both panels visible) and mobile (off-panel anchors are hidden). The
+ * additional `isRenderedVisible` check also rejects a `visibility:hidden`
+ * ancestor (which `offsetParent` misses) so a tip never shows over the collapsed
+ * mobile tag sheet on initial load — BOTH checks must pass.
  */
 function isAnchorVisible(anchorSelector: string): boolean {
   const anchor = document.querySelector<HTMLElement>(anchorSelector);
-  return anchor !== null && anchor.offsetParent !== null;
+  return (
+    anchor !== null && anchor.offsetParent !== null && isRenderedVisible(anchor)
+  );
 }
 
 /**
@@ -320,6 +398,7 @@ export function maybeShowNextTip(): void {
   const suppressed =
     getOpenForm() !== null ||
     getState().multiSelectMode ||
+    getState().isCurrentUTubLocked ||
     isUTubSearchActive() ||
     isCrossUtubSearchActive();
   if (suppressed) {
@@ -396,6 +475,22 @@ function maybeHandleNudgeReset(): void {
  *   eligible tip can (re)show on the now-current panel. Teardown must precede
  *   re-evaluation, else `maybeShowNextTip`'s single-active-tip guard would skip
  *   the new panel's eligible tip.
+ * - `MEMBER_DECK_CHANGED` / `TAG_DECK_CHANGED`: emitted (emit-after-setState) on
+ *   member add/remove and tag create/delete, so the addMember / addTag tips
+ *   hide/re-arm/re-show INSTANTLY — exactly as `URL_DECK_CHANGED` does for
+ *   addUrl. `TAG_DECK_CHANGED` covers both tag create and delete; do NOT also
+ *   subscribe `TAG_DELETED` (that would double-fire).
+ * - `TAG_SHEET_TOGGLED`: on mobile the addTag anchor lives inside the tag bottom
+ *   sheet, `visibility:hidden` while collapsed, so the registry walk skips it and
+ *   shows addMember first. Opening the sheet emits `{ active: true }`; re-evaluate
+ *   so addTag can show anchored inside the now-open sheet. A single deferred tick
+ *   is NOT enough: the open slide transitions the tag-deck button container's
+ *   inherited `visibility` over ~0.3s, so the anchor is still not rendered-visible
+ *   on the next tick — re-evaluate across a few short intervals
+ *   (`SHEET_OPEN_SHOW_RETRY_*`) until the anchor resolves visible and the tip
+ *   shows, or the cap is hit. Only `{ active: true }` is ever emitted (Step 3);
+ *   the `!active` branch is a type-symmetry no-op — sheet close is handled by the
+ *   shipped document tap-away handler, not a bespoke event.
  */
 export function initOnboardingNudges(): void {
   if (_onboardingInitialized) return;
@@ -433,6 +528,66 @@ export function initOnboardingNudges(): void {
     }
     maybeShowNextTip();
   });
+  // Member add/remove and tag create/delete emit these (emit-after-setState) so
+  // the addMember / addTag tips re-arm and re-show instantly, exactly like
+  // URL_DECK_CHANGED drives addUrl. TAG_DECK_CHANGED covers tag create AND
+  // delete (Step 3), so TAG_DELETED is deliberately NOT subscribed here.
+  on(AppEvents.MEMBER_DECK_CHANGED, () => maybeShowNextTip());
+  on(AppEvents.TAG_DECK_CHANGED, () => maybeShowNextTip());
+  // Mobile only: the addTag anchor sits inside the tag bottom sheet, which is
+  // visibility:hidden while collapsed — so it is skipped until the sheet opens.
+  // Opening emits { active: true }; a single deferred tick is not enough because
+  // the open slide transforms the sheet over ~0.3s while emitting no
+  // scroll/resize event, so re-evaluate across a few short intervals
+  // (SHEET_OPEN_SHOW_RETRY_*): show the tip once the anchor resolves visible,
+  // then keep calling the Tooltip's `.update()` across the remaining window so
+  // Popper repositions it as the sheet finishes sliding (a CSS transform never
+  // triggers Popper's own recompute). Runs the full window rather than stopping
+  // at first show, else the tip locks at the early, still-low anchor position.
+  // { active: false } is never emitted (sheet close is an ordinary tap-away
+  // dismissal), so the !active branch is a type-symmetry no-op.
+  on(AppEvents.TAG_SHEET_TOGGLED, ({ active }) => {
+    if (!active) return;
+    // Cancel any stale retry loop from a prior open so a fresh open restarts
+    // cleanly (opens are user-paced, but this keeps at most one loop in flight).
+    if (_sheetOpenShowTimer !== null) {
+      clearTimeout(_sheetOpenShowTimer);
+      _sheetOpenShowTimer = null;
+    }
+    let attemptsLeft = SHEET_OPEN_SHOW_RETRY_MAX;
+    const attemptShow = (): void => {
+      _sheetOpenShowTimer = null;
+      // Until a tip is up, keep trying to show it (the anchor may still be
+      // resolving rendered-visible as the sheet slides open). Once a tip IS up,
+      // keep REPOSITIONING it on every remaining tick rather than stopping: the
+      // sheet opens via a CSS `transform` slide (~0.3s) that emits no
+      // scroll/resize event, so `#tagSheetBody`'s visibility flips visible EARLY
+      // in the slide while the anchor is still low on screen. Popper positions
+      // the tip at that early anchor position and never recomputes on its own —
+      // leaving the bubble stranded ~hundreds of px below the tag "+" button.
+      // Calling the Tooltip's `.update()` forces Popper to recompute against the
+      // anchor's current position; by the final ticks the slide has settled and
+      // the tip lands on the button. On desktop / addMember-mobile the anchor
+      // doesn't animate, so repositioning an already-correct tip is a no-op.
+      if (_activeTip === null) {
+        maybeShowNextTip();
+      } else {
+        _activeTip.update();
+      }
+      // Run the FULL retry window (12×40ms = 480ms, comfortably longer than the
+      // ~0.3s slide) instead of exiting the instant a tip first shows, so the
+      // reposition ticks span the whole transition. Stop only at the cap.
+      if (attemptsLeft <= 0) return;
+      attemptsLeft -= 1;
+      _sheetOpenShowTimer = setTimeout(
+        attemptShow,
+        SHEET_OPEN_SHOW_RETRY_INTERVAL_MS,
+      );
+    };
+    // First attempt on the next tick (parity with the shipped one-tick defer);
+    // subsequent attempts space out to cover the sheet's open transition.
+    _sheetOpenShowTimer = setTimeout(attemptShow, 0);
+  });
 
   maybeShowNextTip();
 }
@@ -446,6 +601,10 @@ export function _resetOnboardingNudgesForTests(): void {
   if (_pendingBindTimer !== null) {
     clearTimeout(_pendingBindTimer);
     _pendingBindTimer = null;
+  }
+  if (_sheetOpenShowTimer !== null) {
+    clearTimeout(_sheetOpenShowTimer);
+    _sheetOpenShowTimer = null;
   }
   _activeTip = null;
   _activeTipId = null;

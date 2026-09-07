@@ -163,6 +163,8 @@ export const MOBILE_NAV_TRIGGER = {
 export const ONBOARDING_TIP_DISMISSED_TIP_ID = {
   CREATEUTUB: "createUtub",
   ADDURL: "addUrl",
+  ADDMEMBER: "addMember",
+  ADDTAG: "addTag",
 } as const;
 
 export const ONBOARDING_TIP_SHOWN_TIP_ID = ONBOARDING_TIP_DISMISSED_TIP_ID;

@@ -5,6 +5,7 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { debug } from "../../lib/debug.js";
+import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { $, getInputValue } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
@@ -192,6 +193,7 @@ function createUTubTagSuccess(
     tagApplied: response.tagCountsInUtub,
   };
   setState({ tags: [...getState().tags, newTag] });
+  emitAppEvent(AppEvents.TAG_DECK_CHANGED);
 
   // Create and append the new tag in the tag deck
   $("#listTags").append(

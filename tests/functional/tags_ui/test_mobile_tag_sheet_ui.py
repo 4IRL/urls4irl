@@ -359,7 +359,7 @@ def test_tag_sheet_empty_state_no_tags(
     """
     GIVEN a logged-in mobile user on a UTub that has URLs but no tags
     WHEN they open the tag sheet
-    THEN the inline empty-state message is shown
+    THEN the relocated tag deck's empty-state message (#noTagsEmptyState) is shown
     """
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
@@ -375,7 +375,7 @@ def test_tag_sheet_empty_state_no_tags(
     wait_until_tag_sheet_open(page=page_mobile_portrait)
 
     assert_visible_css_selector(
-        page=page_mobile_portrait, css_selector=HPL.TAG_SHEET_EMPTY
+        page=page_mobile_portrait, css_selector=HPL.TAG_DECK_EMPTY_STATE
     )
 
 

@@ -741,7 +741,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.UI_ONBOARDING_TIP_SHOWN: EventRegistryEntry(
         description="Onboarding nudge tooltip auto-shown to a first-time user",
         category=EventCategory.UI,
-        dimensions={"tip_id": ("createUtub", "addUrl")},
+        dimensions={"tip_id": ("createUtub", "addUrl", "addMember", "addTag")},
     ),
     EventName.UI_ONBOARDING_TIP_DISMISSED: EventRegistryEntry(
         description=(
@@ -751,7 +751,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
             "event, keeping it a pure user-outcome signal)"
         ),
         category=EventCategory.UI,
-        dimensions={"tip_id": ("createUtub", "addUrl")},
+        dimensions={"tip_id": ("createUtub", "addUrl", "addMember", "addTag")},
     ),
 }
 
