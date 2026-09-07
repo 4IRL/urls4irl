@@ -1346,4 +1346,124 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
       getComputedStyleSpy.mockRestore();
     }
   });
+
+  it("(sheet reposition, fake timers) the TAG_SHEET_TOGGLED retry loop repositions the shown tip across the open slide (tip.update called >1×)", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // addTag-eligible; a second member keeps addMember ineligible so addTag is
+    // the only candidate the walk can reach.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+
+    // Start with the anchor visibility:hidden (collapsed sheet), so init shows
+    // nothing and the tip is first shown BY the retry loop's tick 0 — matching
+    // the real "sheet opens, then finishes sliding" sequence.
+    const realGetComputedStyle = window.getComputedStyle.bind(window);
+    const getComputedStyleSpy = vi
+      .spyOn(window, "getComputedStyle")
+      .mockImplementation((element: Element, pseudoElement?: string | null) => {
+        const computed = realGetComputedStyle(element, pseudoElement);
+        if (element === anchor) {
+          return { ...computed, visibility: "hidden" } as CSSStyleDeclaration;
+        }
+        return computed;
+      });
+
+    vi.useFakeTimers();
+    try {
+      initOnboardingNudges(); // collapsed sheet → nothing shows on init
+      expect(tip.show).not.toHaveBeenCalled();
+
+      // The sheet opens (anchor now reports visible) and the toggle event fires.
+      // The retry loop schedules attemptShow on the next tick, shows the tip at
+      // tick 0, then repositions it via `.update()` on each subsequent 40ms tick
+      // so Popper tracks the still-sliding anchor.
+      getComputedStyleSpy.mockImplementation(
+        (element: Element, pseudoElement?: string | null) =>
+          realGetComputedStyle(element, pseudoElement),
+      );
+      emitBusEvent(AppEvents.TAG_SHEET_TOGGLED, { active: true });
+
+      // Advance several 40ms ticks past the initial show (tick 0 shows; ticks at
+      // 40/80/120/160/200ms each reposition).
+      vi.advanceTimersByTime(200);
+
+      expect(tip.show).toHaveBeenCalledTimes(1);
+      const updateSpy = tip.update as ReturnType<typeof vi.fn>;
+      expect(updateSpy.mock.calls.length).toBeGreaterThan(1);
+    } finally {
+      getComputedStyleSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("(sheet reposition, stale-timer guard) a second TAG_SHEET_TOGGLED cancels the prior loop so only one loop's ticks land", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+
+    const realGetComputedStyle = window.getComputedStyle.bind(window);
+    const getComputedStyleSpy = vi
+      .spyOn(window, "getComputedStyle")
+      .mockImplementation((element: Element, pseudoElement?: string | null) => {
+        const computed = realGetComputedStyle(element, pseudoElement);
+        if (element === anchor) {
+          return { ...computed, visibility: "hidden" } as CSSStyleDeclaration;
+        }
+        return computed;
+      });
+
+    vi.useFakeTimers();
+    try {
+      initOnboardingNudges(); // collapsed sheet → nothing shows on init
+      expect(tip.show).not.toHaveBeenCalled();
+
+      // Two opens in quick succession (a jittery toggle): the second emit's guard
+      // clears the first loop's still-pending timer, so only ONE retry loop stays
+      // in flight. Both emitted synchronously before any timer advances.
+      getComputedStyleSpy.mockImplementation(
+        (element: Element, pseudoElement?: string | null) =>
+          realGetComputedStyle(element, pseudoElement),
+      );
+      emitBusEvent(AppEvents.TAG_SHEET_TOGGLED, { active: true });
+      emitBusEvent(AppEvents.TAG_SHEET_TOGGLED, { active: true });
+
+      // Run the full retry window (12 × 40ms = 480ms, plus slack).
+      vi.advanceTimersByTime(600);
+
+      // A single surviving loop shows the tip once (tick 0) and repositions it on
+      // each of the remaining ticks — exactly SHEET_OPEN_SHOW_RETRY_MAX (12)
+      // `.update()` calls. Two overlapping loops (guard absent) would roughly
+      // double this, so an exact count of 12 proves the prior loop was cancelled.
+      expect(tip.show).toHaveBeenCalledTimes(1);
+      const updateSpy = tip.update as ReturnType<typeof vi.fn>;
+      expect(updateSpy.mock.calls.length).toBe(12);
+    } finally {
+      getComputedStyleSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
 });
