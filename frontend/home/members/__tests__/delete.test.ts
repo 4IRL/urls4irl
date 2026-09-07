@@ -34,6 +34,15 @@ vi.mock("../../tags/sheet.js", () => ({
   isTagSheetOpen: vi.fn(() => false),
   closeTagSheet: vi.fn(),
 }));
+vi.mock("../../../lib/event-bus.js", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../../lib/event-bus.js")
+  >("../../../lib/event-bus.js");
+  return {
+    ...actual,
+    emit: vi.fn(),
+  };
+});
 vi.mock("../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ members: [] })),
   setState: vi.fn(),
@@ -206,5 +215,44 @@ describe("leaveUTubSuccess — direct call (DD-25): tag-sheet reconciliation + o
       pushStateSpy.mockRestore();
       replaceStateSpy.mockRestore();
     }
+  });
+});
+
+describe("removeMemberSuccess — creator-removes-member success branch", () => {
+  beforeEach(() => {
+    document.body.innerHTML = LEAVE_UTUB_HTML;
+    vi.clearAllMocks();
+    installJqueryOverrides();
+    vi.mocked(is429Handled).mockReturnValue(false);
+    vi.mocked(getState).mockReturnValue({
+      members: [{ id: 9, username: "Bob", memberRole: "member" }],
+    } as unknown as ReturnType<typeof getState>);
+  });
+
+  // Drives the full creator-removes-member confirm flow with a mocked ajax
+  // success so removeMemberSuccess fires (isCreator=true routes there rather
+  // than leaveUTubSuccess). Mirrors the leave-path indirect pattern above and
+  // the URL_DECK_CHANGED precedent in
+  // frontend/home/urls/cards/__tests__/create.test.ts:416.
+  it("emits AppEvents.MEMBER_DECK_CHANGED after a creator successfully removes a member", async () => {
+    const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+    const successXhr = createMockXhr({ status: 200 });
+    const chainable = createMockJqXHRChainable({
+      done: (cb: unknown) => {
+        (
+          cb as (
+            _response: unknown,
+            _textStatus: unknown,
+            xhr: JQuery.jqXHR,
+          ) => void
+        )({}, "success", successXhr);
+      },
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+    removeMemberShowModal(9, true, 42);
+    $("#modalSubmit").trigger("click");
+
+    expect(emit).toHaveBeenCalledWith(AppEvents.MEMBER_DECK_CHANGED);
   });
 });

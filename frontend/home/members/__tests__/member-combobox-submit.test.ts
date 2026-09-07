@@ -50,6 +50,16 @@ vi.mock("../../mobile.js", () => ({
   isMobile: vi.fn(() => false),
 }));
 
+vi.mock("../../../lib/event-bus.js", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../../lib/event-bus.js")
+  >("../../../lib/event-bus.js");
+  return {
+    ...actual,
+    emit: vi.fn(),
+  };
+});
+
 const $ = window.jQuery;
 
 const MEMBER_DECK_HTML = `
@@ -242,6 +252,7 @@ describe("member-combobox-submit — mixed outcomes", () => {
     const { createMemberBadge } = await import("../members.js");
     const { setMemberDeckForUTub } = await import("../deck.js");
     const { reapplyMemberFilter } = await import("../search.js");
+    const { emit, AppEvents } = await import("../../../lib/event-bus.js");
 
     const settle = submitStagedMembers({ utubID: 7, wrap });
 
@@ -262,6 +273,10 @@ describe("member-combobox-submit — mixed outcomes", () => {
       "Bob",
       "Ghost",
     ]);
+    // The store-mutating add site notifies the onboarding nudge system (and any
+    // future member-deck consumer) that the deck's member set changed —
+    // mirroring the URL_DECK_CHANGED precedent.
+    expect(emit).toHaveBeenCalledWith(AppEvents.MEMBER_DECK_CHANGED);
     // Freshly-added members are pushed with the plain-member role so the widened
     // MemberItem is satisfied and the correct role icon renders downstream (DD-1).
     expect(getState().members.map((member) => member.memberRole)).toEqual([
