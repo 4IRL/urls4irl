@@ -1,4 +1,4 @@
-import { $ } from "../../../lib/globals.js";
+import { $, bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ICON_SIZE_LG, KEYS, METHOD_TYPES } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
@@ -184,36 +184,59 @@ function createUpdateURLTitleInput(
   });
 
   // Update Url Title submit button
-  const urlTitleSubmitBtnUpdate = makeSubmitButton(ICON_SIZE_LG).addClass(
-    "urlTitleSubmitBtnUpdate",
-  );
+  const urlTitleSubmitBtnUpdate = makeSubmitButton({
+    sizePx: ICON_SIZE_LG,
+    tooltip: {
+      title: `${APP_CONFIG.strings.CONFIRM_URL_TITLE_EDIT_TOOLTIP}`,
+      customClass: "urlTitleSubmitBtnUpdate-tooltip",
+    },
+  }).addClass("urlTitleSubmitBtnUpdate");
 
-  urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function () {
-    // Block an overlapping submit while a kept-open submit is in flight.
-    if (isURLTitleSubmitInFlight()) return;
-    emit({
-      event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: HOME_FORM.URL_TITLE_EDIT,
-      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
-    });
-    clearOpenForm();
-    updateURLTitle(urlTitleTextInput, urlCard, utubID);
-  });
+  urlTitleSubmitBtnUpdate.onExact(
+    "click.updateUrlTitle",
+    function (this: HTMLElement) {
+      // The edit form is hidden only after the AJAX call resolves, so hide the
+      // hover tooltip here — synchronously, regardless of the request's outcome —
+      // rather than in updateURLTitleSuccess(), which has no `this` bound to the
+      // button. Runs before the in-flight guard so a blocked double-click still
+      // clears the bubble.
+      bootstrap.Tooltip.getInstance(this)?.hide();
+      // Block an overlapping submit while a kept-open submit is in flight.
+      if (isURLTitleSubmitInFlight()) return;
+      emit({
+        event: UI_EVENTS.UI_FORM_SUBMIT,
+        form: HOME_FORM.URL_TITLE_EDIT,
+        trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+      });
+      clearOpenForm();
+      updateURLTitle(urlTitleTextInput, urlCard, utubID);
+    },
+  );
 
   // Update Url Title cancel button
-  const urlTitleCancelBtnUpdate = makeCancelButton(ICON_SIZE_LG).addClass(
-    "urlTitleCancelBtnUpdate tabbable",
-  );
+  const urlTitleCancelBtnUpdate = makeCancelButton({
+    sizePx: ICON_SIZE_LG,
+    tooltip: {
+      title: `${APP_CONFIG.strings.CANCEL_URL_TITLE_EDIT_TOOLTIP}`,
+      customClass: "urlTitleCancelBtnUpdate-tooltip",
+    },
+  }).addClass("urlTitleCancelBtnUpdate tabbable");
 
-  urlTitleCancelBtnUpdate.onExact("click.updateUrlTitle", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_CANCEL,
-      form: HOME_FORM.URL_TITLE_EDIT,
-      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
-    });
-    clearOpenForm();
-    hideAndResetUpdateURLTitleForm({ urlCard });
-  });
+  urlTitleCancelBtnUpdate.onExact(
+    "click.updateUrlTitle",
+    function (this: HTMLElement) {
+      // Cancelling hides the form synchronously in this handler, so the tooltip
+      // must be hidden here or its bubble lingers over the hidden button.
+      bootstrap.Tooltip.getInstance(this)?.hide();
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.URL_TITLE_EDIT,
+        trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+      });
+      clearOpenForm();
+      hideAndResetUpdateURLTitleForm({ urlCard });
+    },
+  );
 
   // Two-level restructure (mirrors the UTub Jinja template's shape): nest the
   // input container + submit/cancel buttons in an inner row, then hang the

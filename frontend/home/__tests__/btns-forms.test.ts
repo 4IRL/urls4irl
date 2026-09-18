@@ -85,6 +85,13 @@ describe("btns-forms", () => {
     mockGetState.mockReturnValue({ activeUTubID: 7 });
   });
 
+  afterEach(() => {
+    // The tooltip tests below vi.spyOn(window.bootstrap.Tooltip, ...); without
+    // this the spy wrapper accumulates on the shared ambient Bootstrap mock for
+    // the rest of the file (clearAllMocks only wipes call history, not the spy).
+    vi.restoreAllMocks();
+  });
+
   describe("highlightInput", () => {
     it("focuses and selects text in an input with a value", () => {
       const input = $<HTMLInputElement>(".text-input").first();
@@ -216,21 +223,131 @@ describe("btns-forms", () => {
 
   describe("makeSubmitButton", () => {
     it("creates a button with green-clickable class", () => {
-      const btn = makeSubmitButton(ICON_SIZE_LG);
+      const btn = makeSubmitButton({ sizePx: ICON_SIZE_LG });
 
       expect(btn.is("button")).toBe(true);
       expect(btn.hasClass("green-clickable")).toBe(true);
       expect(btn.find("svg").attr("width")).toBe(String(ICON_SIZE_LG));
     });
+
+    it("adds no tooltip attributes when no tooltip title is supplied", () => {
+      const btn = makeSubmitButton({ sizePx: ICON_SIZE_LG });
+
+      expect(btn.attr("data-bs-toggle")).toBeUndefined();
+      expect(btn.attr("data-bs-title")).toBeUndefined();
+      expect(btn.attr("aria-label")).toBeUndefined();
+    });
+
+    it("adds the hover tooltip attribute block and an aria-label when a title is supplied", () => {
+      const getOrCreateInstance = vi.spyOn(
+        window.bootstrap.Tooltip,
+        "getOrCreateInstance",
+      );
+
+      const btn = makeSubmitButton({
+        sizePx: ICON_SIZE_LG,
+        tooltip: {
+          title: "Confirm title edit",
+          customClass: "urlTitleSubmitBtnUpdate-tooltip",
+        },
+      });
+
+      expect(btn.attr("data-bs-toggle")).toBe("tooltip");
+      expect(btn.attr("data-bs-custom-class")).toBe(
+        "urlTitleSubmitBtnUpdate-tooltip",
+      );
+      expect(btn.attr("data-bs-placement")).toBe("top");
+      expect(btn.attr("data-bs-trigger")).toBe("hover");
+      expect(btn.attr("data-bs-title")).toBe("Confirm title edit");
+      expect(btn.attr("aria-label")).toBe("Confirm title edit");
+      // The instance must be created on the button itself, after its markup.
+      expect(getOrCreateInstance).toHaveBeenCalledWith(btn[0]);
+      expect(btn.find("svg").length).toBe(1);
+    });
+
+    it("skips the tooltip attributes and instance on a coarse pointer, keeping the aria-label", () => {
+      mockIsCoarsePointer.mockReturnValue(true);
+      const getOrCreateInstance = vi.spyOn(
+        window.bootstrap.Tooltip,
+        "getOrCreateInstance",
+      );
+
+      const btn = makeSubmitButton({
+        sizePx: ICON_SIZE_LG,
+        tooltip: {
+          title: "Confirm title edit",
+          customClass: "urlTitleSubmitBtnUpdate-tooltip",
+        },
+      });
+
+      expect(btn.attr("data-bs-toggle")).toBeUndefined();
+      expect(btn.attr("data-bs-title")).toBeUndefined();
+      expect(getOrCreateInstance).not.toHaveBeenCalled();
+      // The accessible name is not a tooltip — touch screen readers still need it.
+      expect(btn.attr("aria-label")).toBe("Confirm title edit");
+    });
   });
 
   describe("makeCancelButton", () => {
     it("creates a button with cancel SVG", () => {
-      const btn = makeCancelButton(ICON_SIZE_LG);
+      const btn = makeCancelButton({ sizePx: ICON_SIZE_LG });
 
       expect(btn.is("button")).toBe(true);
       expect(btn.find("svg.cancelButton").length).toBe(1);
       expect(btn.find("svg").attr("width")).toBe(String(ICON_SIZE_LG));
+    });
+
+    it("adds no tooltip attributes when no tooltip title is supplied", () => {
+      const btn = makeCancelButton({ sizePx: ICON_SIZE_LG });
+
+      expect(btn.attr("data-bs-toggle")).toBeUndefined();
+      expect(btn.attr("aria-label")).toBeUndefined();
+    });
+
+    it("adds the hover tooltip attribute block and an aria-label when a title is supplied", () => {
+      const getOrCreateInstance = vi.spyOn(
+        window.bootstrap.Tooltip,
+        "getOrCreateInstance",
+      );
+
+      const btn = makeCancelButton({
+        sizePx: ICON_SIZE_LG,
+        tooltip: {
+          title: "Cancel title edit",
+          customClass: "urlTitleCancelBtnUpdate-tooltip",
+        },
+      });
+
+      expect(btn.attr("data-bs-toggle")).toBe("tooltip");
+      expect(btn.attr("data-bs-custom-class")).toBe(
+        "urlTitleCancelBtnUpdate-tooltip",
+      );
+      expect(btn.attr("data-bs-placement")).toBe("top");
+      expect(btn.attr("data-bs-trigger")).toBe("hover");
+      expect(btn.attr("data-bs-title")).toBe("Cancel title edit");
+      expect(btn.attr("aria-label")).toBe("Cancel title edit");
+      expect(getOrCreateInstance).toHaveBeenCalledWith(btn[0]);
+      expect(btn.find("svg.cancelButton").length).toBe(1);
+    });
+
+    it("skips the tooltip attributes and instance on a coarse pointer, keeping the aria-label", () => {
+      mockIsCoarsePointer.mockReturnValue(true);
+      const getOrCreateInstance = vi.spyOn(
+        window.bootstrap.Tooltip,
+        "getOrCreateInstance",
+      );
+
+      const btn = makeCancelButton({
+        sizePx: ICON_SIZE_LG,
+        tooltip: {
+          title: "Cancel title edit",
+          customClass: "urlTitleCancelBtnUpdate-tooltip",
+        },
+      });
+
+      expect(btn.attr("data-bs-toggle")).toBeUndefined();
+      expect(getOrCreateInstance).not.toHaveBeenCalled();
+      expect(btn.attr("aria-label")).toBe("Cancel title edit");
     });
   });
 

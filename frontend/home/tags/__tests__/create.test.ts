@@ -6,6 +6,7 @@ import {
 } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { bootstrap } from "../../../lib/globals.js";
+import { restoreTooltipIfHovered } from "../../../lib/tooltips.js";
 import { setupOpenCreateUTubTagEventListeners } from "../create.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -17,6 +18,13 @@ vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),
+}));
+
+// The restore-on-failure path delegates to lib/tooltips.js's
+// restoreTooltipIfHovered, which owns both the `:hover` guard and the deferral
+// past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts).
+vi.mock("../../../lib/tooltips.js", () => ({
+  restoreTooltipIfHovered: vi.fn(),
 }));
 
 // The ambient test-setup Bootstrap mock returns null from getInstance(), which
@@ -198,46 +206,40 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
     expect(tooltipInstance.hide).not.toHaveBeenCalled();
   });
 
-  it("restores the submit button tooltip on a 400 with field errors while the cursor is still on the button", () => {
+  it("routes the restore through restoreTooltipIfHovered on a 400 with field errors", () => {
     mockCreateUTubTagFailure({
       errors: { tagString: ["Tag already exists in UTub"] },
     });
     openCreateUTubTagForm();
     const submitBtn = document.getElementById("utubTagSubmitBtnCreate")!;
-    // jsdom has no pointer, so `:hover` never matches on its own.
-    vi.spyOn(submitBtn, "matches").mockReturnValue(true);
 
     $("#utubTagSubmitBtnCreate").trigger("click");
 
     expect(tooltipInstance.hide).toHaveBeenCalled();
-    expect(tooltipInstance.show).toHaveBeenCalled();
-    expect(vi.mocked(bootstrap.Tooltip.getInstance)).toHaveBeenCalledWith(
-      submitBtn,
-    );
+    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
   });
 
-  it("restores the submit button tooltip on a 400 carrying only a message", () => {
+  it("routes the restore through restoreTooltipIfHovered on a 400 carrying only a message", () => {
     mockCreateUTubTagFailure({ message: "Tag already exists in UTub" });
     openCreateUTubTagForm();
     const submitBtn = document.getElementById("utubTagSubmitBtnCreate")!;
-    vi.spyOn(submitBtn, "matches").mockReturnValue(true);
 
     $("#utubTagSubmitBtnCreate").trigger("click");
 
-    expect(tooltipInstance.show).toHaveBeenCalled();
+    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
   });
 
-  it("does not restore the submit button tooltip when the cursor has left the button", () => {
-    // The same 400 is reachable from the Enter-key submit path, where re-showing
-    // would strand a bubble with no mouseleave to come.
-    mockCreateUTubTagFailure({
-      errors: { tagString: ["Tag already exists in UTub"] },
-    });
+  it("does not attempt a restore on a successful submit", () => {
+    // Nothing to restore: success closes the form, so the hidden tooltip should
+    // stay hidden rather than be re-shown over a button that is going away.
+    vi.mocked(ajaxCall).mockReturnValue(createMockJqXHRChainable());
     openCreateUTubTagForm();
 
     $("#utubTagSubmitBtnCreate").trigger("click");
 
     expect(tooltipInstance.hide).toHaveBeenCalled();
-    expect(tooltipInstance.show).not.toHaveBeenCalled();
+    expect(vi.mocked(restoreTooltipIfHovered)).not.toHaveBeenCalled();
   });
 });

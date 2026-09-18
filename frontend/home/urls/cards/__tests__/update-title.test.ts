@@ -1,4 +1,5 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
+import { restoreTooltipIfHovered } from "../../../../lib/tooltips.js";
 import {
   hideAndResetUpdateURLTitleForm,
   isURLTitleSubmitInFlight,
@@ -18,6 +19,15 @@ const { mockMetricsClient } = await vi.hoisted(
 );
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
+
+// The restore-on-failure path delegates to lib/tooltips.js's
+// restoreTooltipIfHovered, which owns both the `:hover` guard and the deferral
+// past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts). Mock it
+// here so these tests assert WHICH element the fail branch restores, without
+// fighting timers or the ambient Bootstrap mock.
+vi.mock("../../../../lib/tooltips.js", () => ({
+  restoreTooltipIfHovered: vi.fn(),
+}));
 
 vi.mock("../selection.js", () => ({
   disableClickOnSelectedURLCardToHide: vi.fn(),
@@ -613,5 +623,78 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
 
     expect(isURLTitleSubmitInFlight()).toBe(false);
     expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+  });
+});
+
+describe("updateURLTitle - restores the submit button tooltip on a keep-open 400", () => {
+  const RESTORE_URL_CARD_HTML = `
+  <div class="urlRow" utuburlid="1" urlSelected="false">
+    <div class="updateUrlTitleWrap">
+      <input class="urlTitleUpdate" value="My Title" />
+      <div class="urlTitleUpdate-error"></div>
+      <button class="urlTitleSubmitBtnUpdate"></button>
+      <button class="urlTitleCancelBtnUpdate"></button>
+    </div>
+    <div class="urlTitleAndUpdateIconWrap">
+      <span class="urlTitle">My Title</span>
+    </div>
+    <div class="urlCardDualLoadingRing"></div>
+  </div>
+`;
+
+  let urlCard: JQuery;
+  let urlTitleInput: JQuery;
+
+  beforeEach(() => {
+    document.body.innerHTML = RESTORE_URL_CARD_HTML;
+    urlCard = $(".urlRow");
+    urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("A Brand New Title");
+    vi.clearAllMocks();
+    vi.mocked(is429Handled).mockReturnValue(false);
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: "https://example.com",
+          urlTitle: "My Title",
+          utubUrlTagIDs: [],
+        },
+      ],
+    } as unknown as AppState);
+  });
+
+  function mockTitle400(): void {
+    const xhr = {
+      status: 400,
+      responseJSON: { errors: { urlTitle: ["Too long"] } },
+    } as unknown as JQuery.jqXHR;
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        fail: (callback: unknown) =>
+          (callback as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      }),
+    );
+  }
+
+  it("routes the restore through restoreTooltipIfHovered with this card's submit button", async () => {
+    mockTitle400();
+    const submitBtn = urlCard.find(".urlTitleSubmitBtnUpdate")[0];
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
+  });
+
+  it("does not attempt a restore when the failure is swallowed as a handled 429", async () => {
+    // A rate-limited response is handled by its own banner and returns before
+    // the keep-open branch, so no tooltip restore should be scheduled.
+    mockTitle400();
+    vi.mocked(is429Handled).mockReturnValue(true);
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(vi.mocked(restoreTooltipIfHovered)).not.toHaveBeenCalled();
   });
 });

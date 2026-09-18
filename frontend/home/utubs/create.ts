@@ -29,6 +29,7 @@ import {
   HOME_FORM,
 } from "../../types/metrics-dim-values.js";
 import { debug } from "../../lib/debug.js";
+import { restoreTooltipIfHovered } from "../../lib/tooltips.js";
 
 const log = debug("utubs");
 
@@ -314,14 +315,10 @@ function createUTubSuccess(response: CreateUtubResponse): void {
 }
 
 // A 400 keeps the create form open, so the tooltip the submit click handler hid
-// should come back — but only while the cursor is still on the button. The same
-// 400 is reachable from the Enter-key and same-name-modal submit paths, where no
-// mouseenter ever fired and Bootstrap would therefore never fire the matching
-// mouseleave to dismiss a force-shown bubble.
+// should come back. restoreTooltipIfHovered owns both guards (cursor still on
+// the button, and deferred past Bootstrap's fade) — see lib/tooltips.ts.
 function restoreCreateUTubSubmitTooltip(): void {
-  const utubSubmitBtnCreate = $("#utubSubmitBtnCreate")[0];
-  if (!utubSubmitBtnCreate?.matches(":hover")) return;
-  bootstrap.Tooltip.getInstance(utubSubmitBtnCreate)?.show();
+  restoreTooltipIfHovered($("#utubSubmitBtnCreate")[0]);
 }
 
 // Handle error response display to user

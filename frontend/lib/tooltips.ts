@@ -53,6 +53,56 @@ export function disposeTooltipsWithin(container: JQuery<HTMLElement>): void {
   });
 }
 
+// Bootstrap's `$tooltip-transition` fade is 150ms; pad it so the restore below
+// lands after `hide()`'s queued teardown has run.
+export const TOOLTIP_RESTORE_DELAY_MS = 200;
+
+// Per-button pending restore timer, so a resubmit can cancel the previous one.
+// WeakMap keeps no reference to a card that has since been torn down.
+const _pendingRestoreTimers = new WeakMap<HTMLElement, number>();
+
+/**
+ * Re-show the hover tooltip on a submit button whose click handler hid it, after
+ * the request failed in a way that keeps the form (and the button) on screen.
+ *
+ * Two guards, both load-bearing and both measured live against Bootstrap 5.2.3:
+ *
+ * 1. `:hover` — the same failure is reachable from the Enter-key/modal submit
+ *    paths, where no `mouseenter` ever fired. Bootstrap only fires the matching
+ *    `_leave()` after a real `mouseenter`, so a force-shown bubble there has
+ *    nothing to dismiss it and strands over the deck (the tip is a
+ *    `document.body` child, so it outlives the form closing). Checked twice:
+ *    once now, to skip scheduling at all, and again when the timer fires,
+ *    because the pointer may have moved on during the delay.
+ * 2. The delay — `hide()` clears every `_activeTrigger` flag and queues a
+ *    `complete()` that disposes the popper after the fade. A `show()` inside
+ *    that window builds a tip the queued `complete()` immediately tears back
+ *    down. This is not theoretical: a real backend 400 measured ~75ms end to
+ *    end, well inside the 150ms fade, and an undeferred restore left no bubble
+ *    at all with the cursor still on the button.
+ */
+export function restoreTooltipIfHovered(
+  element: HTMLElement | undefined,
+): void {
+  if (!element?.matches(":hover")) return;
+
+  // One pending restore per button. A resubmit hides the tooltip again and
+  // schedules its own restore; without this, the earlier timer could still fire
+  // mid-flight of the second request and force the bubble back while it is
+  // deliberately hidden.
+  const pendingRestore = _pendingRestoreTimers.get(element);
+  if (pendingRestore !== undefined) window.clearTimeout(pendingRestore);
+
+  _pendingRestoreTimers.set(
+    element,
+    window.setTimeout(() => {
+      _pendingRestoreTimers.delete(element);
+      if (!element.matches(":hover")) return;
+      bootstrap.Tooltip.getInstance(element)?.show();
+    }, TOOLTIP_RESTORE_DELAY_MS),
+  );
+}
+
 /**
  * Test-only: clear the one-shot guard so each test starts from an uninitialized
  * module (mirrors `_resetOnboardingNudgesForTests`).
