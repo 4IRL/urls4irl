@@ -14,7 +14,10 @@
         <!-- Filter UTub names (desktop-only reveal; mirrors the URL deck filter).
              Funnel reads as "filter this list" and stays distinct from the
              navbar's cross-UTub search magnifying glass. -->
-        <button id="utubNameFilterBtn" class="ms-1{% if utubs_for_this_user|length == 0 %} hidden{% endif %}" tabindex="0" aria-label="Filter UTub names" aria-expanded="false">
+        <button id="utubNameFilterBtn" class="ms-1{% if utubs_for_this_user|length == 0 %} hidden{% endif %}" tabindex="0"
+            aria-label="{{ CONSTANTS.STRINGS.FILTER_UTUB_NAMES_TOOLTIP }}" aria-expanded="false"
+            data-bs-toggle="tooltip" data-bs-custom-class="utubNameFilterBtn-tooltip" data-bs-placement="bottom"
+            data-bs-trigger="hover" data-bs-title="{{ CONSTANTS.STRINGS.FILTER_UTUB_NAMES_TOOLTIP }}">
             <svg xmlns="http://www.w3.org/2000/svg" height="30" width="30" viewBox="0 0 16 16">
                 <path
                     d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z" />
@@ -37,7 +40,10 @@
 
 
         <!-- Delete UTub button (UTub owner) -->
-        <button id="utubBtnDelete" class="ms-1 hidden" tabindex="0">
+        <button id="utubBtnDelete" class="ms-1 hidden" tabindex="0"
+            aria-label="{{ CONSTANTS.STRINGS.DELETE_UTUB_TOOLTIP }}"
+            data-bs-toggle="tooltip" data-bs-custom-class="utubBtnDelete-tooltip" data-bs-placement="bottom"
+            data-bs-trigger="hover" data-bs-title="{{ CONSTANTS.STRINGS.DELETE_UTUB_TOOLTIP }}">
             <svg xmlns="http://www.w3.org/2000/svg" height="30" viewBox="0 -960 960 960" width="30" fill="black"
                 class="bi trash-fill text-danger">
                 <path
@@ -47,7 +53,10 @@
 
         <!-- Leave UTub button (non-owner member) — mutually exclusive with the
              delete button above; the UTub deck owns both role-dependent actions. -->
-        <button id="memberSelfBtnDelete" class="ms-1 hidden" tabindex="0">
+        <button id="memberSelfBtnDelete" class="ms-1 hidden" tabindex="0"
+            aria-label="{{ CONSTANTS.STRINGS.LEAVE_UTUB_TOOLTIP }}"
+            data-bs-toggle="tooltip" data-bs-custom-class="memberSelfBtnDelete-tooltip" data-bs-placement="bottom"
+            data-bs-trigger="hover" data-bs-title="{{ CONSTANTS.STRINGS.LEAVE_UTUB_TOOLTIP }}">
             <svg xmlns="http://www.w3.org/2000/svg" fill="black" class="trash-fill" height="30px"
                 width="30px" viewBox="0 -960 960 960">
                 <path

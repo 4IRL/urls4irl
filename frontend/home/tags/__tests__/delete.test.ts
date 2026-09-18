@@ -3,12 +3,40 @@ import type { SuccessResponse } from "../../../types/api-helpers.d.ts";
 import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { deleteUTubTagShowModal } from "../delete.js";
+import { bootstrap } from "../../../lib/globals.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
 );
 
 vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
+
+// The ambient test-setup Bootstrap mock returns null from getInstance(), which
+// would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
+// a shared tooltip instance so the guard can be asserted on.
+const { tooltipInstance } = vi.hoisted(() => ({
+  tooltipInstance: {
+    setContent: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+  },
+}));
+
+vi.mock("../../../lib/globals.js", async () => {
+  const jquery = (await import("jquery")).default;
+  return {
+    $: jquery,
+    jQuery: jquery,
+    getInputValue: (input: string | JQuery) =>
+      (typeof input === "string" ? jquery(input) : input).val() as string,
+    bootstrap: {
+      Tooltip: {
+        getInstance: vi.fn(() => tooltipInstance),
+        getOrCreateInstance: vi.fn(() => tooltipInstance),
+      },
+    },
+  };
+});
 
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -82,5 +110,94 @@ describe("tags/delete — notifies the onboarding nudge system", () => {
     $("#modalSubmit").trigger("click");
 
     expect(emit).toHaveBeenCalledWith(AppEvents.TAG_DECK_CHANGED);
+  });
+});
+
+describe("tags/delete — hides the #unselectAllTagFilters hover tooltip", () => {
+  const originalFadeOut = ($.fn as unknown as Record<string, unknown>).fadeOut;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      ${DELETE_TAG_HTML}
+      <div id="listTags">
+        <div class="tagFilter" data-utub-tag-id="7">important</div>
+      </div>
+      <button id="utubTagBtnUpdateAllOpen"></button>
+      <button id="unselectAllTagFilters" data-bs-toggle="tooltip"></button>
+      <div id="utubTagCloseUpdateTagBtnContainer"></div>
+      <div id="utubTagStandardBtns"></div>
+    `;
+    vi.clearAllMocks();
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
+      return this;
+    };
+    // Fire the post-fade callback synchronously so the "no tags left" branch runs
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+  });
+
+  afterEach(() => {
+    ($.fn as unknown as Record<string, unknown>).fadeOut = originalFadeOut;
+    document.body.innerHTML = "";
+  });
+
+  it("hides the tooltip before hiding the button when the last tag is deleted", () => {
+    const response = {
+      utubTag: { utubTagID: 7 },
+      utubUrlIDs: [],
+    } as unknown as SuccessResponse<"deleteUtubTag">;
+    const xhr = { status: 200 } as JQuery.jqXHR;
+    const chainable = createMockJqXHRChainable({
+      done: (callback: unknown) =>
+        (callback as (r: unknown, t: unknown, x: unknown) => void)(
+          response,
+          "success",
+          xhr,
+        ),
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+    deleteUTubTagShowModal(1, 7, "important");
+    $("#modalSubmit").trigger("click");
+
+    expect($(".tagFilter").length).toBe(0);
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+  });
+
+  it("still hides the button and does not throw when no tooltip instance exists", () => {
+    // Touch devices never construct a Tooltip, so getInstance() returns null and
+    // the `?.` guard must no-op without breaking the last-tag cleanup.
+    vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
+
+    const response = {
+      utubTag: { utubTagID: 7 },
+      utubUrlIDs: [],
+    } as unknown as SuccessResponse<"deleteUtubTag">;
+    const xhr = { status: 200 } as JQuery.jqXHR;
+    const chainable = createMockJqXHRChainable({
+      done: (callback: unknown) =>
+        (callback as (r: unknown, t: unknown, x: unknown) => void)(
+          response,
+          "success",
+          xhr,
+        ),
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+    deleteUTubTagShowModal(1, 7, "important");
+
+    expect(() => $("#modalSubmit").trigger("click")).not.toThrow();
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+    expect($(".tagFilter").length).toBe(0);
+    expect($("#unselectAllTagFilters").hasClass("hidden")).toBe(true);
   });
 });

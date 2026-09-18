@@ -4,12 +4,6 @@ import jquery from "jquery";
 window.jQuery = jquery;
 window.$ = jquery;
 
-// Approved exception to top-level-imports rule: window.jQuery must be assigned
-// before jquery-plugins evaluates, requiring deferred loading that cannot be
-// moved to module scope.
-const { registerJQueryPlugins } = await import("./lib/jquery-plugins.js");
-registerJQueryPlugins();
-
 // Factory for Bootstrap component mocks — each component shares the same
 // constructor/show/hide/dispose/getInstance/getOrCreateInstance shape.
 function makeBootstrapClass(
@@ -45,6 +39,15 @@ window.bootstrap = {
   Collapse: makeBootstrapClass("Collapse", { toggle() {} }),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock; full bootstrap typing not needed
 } as any;
+
+// Approved exception to top-level-imports rule: window.jQuery AND window.bootstrap
+// must both be assigned before jquery-plugins evaluates, requiring deferred loading
+// that cannot be moved to module scope. jquery-plugins statically imports
+// lib/globals.js, which snapshots `window.bootstrap` into its `bootstrap` export at
+// evaluation time — so loading it before the assignment above would permanently
+// leave that export `undefined` for every test that does not mock lib/globals.js.
+const { registerJQueryPlugins } = await import("./lib/jquery-plugins.js");
+registerJQueryPlugins();
 
 // Inject app-config script element for lib/config.js
 const appConfig = {

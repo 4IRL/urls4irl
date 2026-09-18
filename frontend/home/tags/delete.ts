@@ -4,7 +4,7 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
-import { $ } from "../../lib/globals.js";
+import { $, bootstrap } from "../../lib/globals.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -156,6 +156,9 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
     // If no tags are left then reset back to only showing Create UTub Tag Button
     if ($(".tagFilter").length === 0) {
       $("#utubTagBtnUpdateAllOpen").hideClass();
+      // This button is hidden by this caller rather than by its own click, so
+      // hide any open hover tooltip or the bubble lingers detached.
+      bootstrap.Tooltip.getInstance($("#unselectAllTagFilters")[0])?.hide();
       $("#unselectAllTagFilters").hideClass();
       $("#utubTagCloseUpdateTagBtnContainer").hideClass();
       $("#utubTagStandardBtns").showClassFlex();

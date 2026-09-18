@@ -11,7 +11,39 @@ import {
 import { getState, setState } from "../../../store/app-store.js";
 import { closeTagSheet, isTagSheetOpen } from "../../tags/sheet.js";
 import { TAG_SHEET_TOGGLE_TRIGGER } from "../../../types/metrics-dim-values.js";
-import { leaveUTubSuccess, removeMemberShowModal } from "../delete.js";
+import {
+  createLeaveUTubAsMemberIcon,
+  leaveUTubSuccess,
+  removeMemberShowModal,
+} from "../delete.js";
+import { bootstrap } from "../../../lib/globals.js";
+
+// The ambient test-setup Bootstrap mock returns null from getInstance(), which
+// would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
+// a shared tooltip instance so the guard can be asserted on.
+const { tooltipInstance } = vi.hoisted(() => ({
+  tooltipInstance: {
+    setContent: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+  },
+}));
+
+vi.mock("../../../lib/globals.js", async () => {
+  const jquery = (await import("jquery")).default;
+  return {
+    $: jquery,
+    jQuery: jquery,
+    getInputValue: (input: string | JQuery) =>
+      (typeof input === "string" ? jquery(input) : input).val() as string,
+    bootstrap: {
+      Tooltip: {
+        getInstance: vi.fn(() => tooltipInstance),
+        getOrCreateInstance: vi.fn(() => tooltipInstance),
+      },
+    },
+  };
+});
 
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -254,5 +286,39 @@ describe("removeMemberSuccess — creator-removes-member success branch", () => 
     $("#modalSubmit").trigger("click");
 
     expect(emit).toHaveBeenCalledWith(AppEvents.MEMBER_DECK_CHANGED);
+  });
+});
+
+describe("createLeaveUTubAsMemberIcon — hides the #memberSelfBtnDelete tooltip", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      ${LEAVE_UTUB_HTML}
+      <button id="memberSelfBtnDelete" data-bs-toggle="tooltip"></button>
+    `;
+    vi.clearAllMocks();
+    installJqueryOverrides();
+  });
+
+  it("hides the tooltip when the leave-UTub button is clicked", () => {
+    createLeaveUTubAsMemberIcon(false, 9, 42);
+    $("#memberSelfBtnDelete").trigger("click.removeMember");
+
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+  });
+
+  it("still opens the leave modal and does not throw when no tooltip instance exists", () => {
+    // Touch devices never construct a Tooltip, so getInstance() returns null and
+    // the `?.` guard must no-op without breaking the leave-modal flow.
+    vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
+    createLeaveUTubAsMemberIcon(false, 9, 42);
+
+    expect(() =>
+      $("#memberSelfBtnDelete").trigger("click.removeMember"),
+    ).not.toThrow();
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+    expect($("#confirmModalTitle").text()).toBe(
+      "Are you sure you want to leave this UTub?",
+    );
   });
 });

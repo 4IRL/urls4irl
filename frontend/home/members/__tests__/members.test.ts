@@ -14,6 +14,34 @@ import {
   hideInputsAndUpdateUTubDeck,
   resetUTubDeckIfNoUTubs,
 } from "../../utubs/deck.js";
+import { bootstrap } from "../../../lib/globals.js";
+
+// The ambient test-setup Bootstrap mock returns null from getInstance(), which
+// would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
+// a shared tooltip instance so the guard can be asserted on.
+const { tooltipInstance } = vi.hoisted(() => ({
+  tooltipInstance: {
+    setContent: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+  },
+}));
+
+vi.mock("../../../lib/globals.js", async () => {
+  const jquery = (await import("jquery")).default;
+  return {
+    $: jquery,
+    jQuery: jquery,
+    getInputValue: (input: string | JQuery) =>
+      (typeof input === "string" ? jquery(input) : input).val() as string,
+    bootstrap: {
+      Tooltip: {
+        getInstance: vi.fn(() => tooltipInstance),
+        getOrCreateInstance: vi.fn(() => tooltipInstance),
+      },
+    },
+  };
+});
 
 vi.mock("../../btns-forms.js", () => ({ hideInputs: vi.fn() }));
 vi.mock("../../urls/cards/selection.js", () => ({ deselectAllURLs: vi.fn() }));
@@ -502,5 +530,56 @@ describe("leaveUTubSuccess - UTub deck dispatch on successful leave", () => {
 
     expect(vi.mocked(hideInputsAndUpdateUTubDeck)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(resetUTubDeckIfNoUTubs)).not.toHaveBeenCalled();
+  });
+});
+
+describe("createMemberBadge - hides the #memberSelfBtnDelete hover tooltip", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      ${REMOVE_MODAL_HTML}
+      <button id="memberSelfBtnDelete" data-bs-toggle="tooltip"></button>
+    `;
+    vi.clearAllMocks();
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
+      return this;
+    };
+  });
+
+  it("hides the tooltip when the leave-UTub button bound by the member branch is clicked", () => {
+    createMemberBadge({
+      memberID: 5,
+      username: "Bob",
+      memberRole: "member",
+      isCurrentUserOwner: false,
+      utubID: 10,
+    });
+
+    $("#memberSelfBtnDelete").trigger("click.removeMember");
+
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+  });
+
+  it("still opens the leave modal and does not throw when no tooltip instance exists", () => {
+    // Touch devices never construct a Tooltip, so getInstance() returns null and
+    // the `?.` guard must no-op without breaking the leave-modal flow.
+    vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
+    createMemberBadge({
+      memberID: 5,
+      username: "Bob",
+      memberRole: "member",
+      isCurrentUserOwner: false,
+      utubID: 10,
+    });
+
+    expect(() =>
+      $("#memberSelfBtnDelete").trigger("click.removeMember"),
+    ).not.toThrow();
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+    expect($("#confirmModalTitle").text()).toBe(
+      "Are you sure you want to leave this UTub?",
+    );
   });
 });
