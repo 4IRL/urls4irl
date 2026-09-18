@@ -16,6 +16,21 @@ PREVIOUS_TAG = "previousTag"
 URL_IDS = "urlIDs"
 UTUB_URL_IDS = "utubUrlIDs"
 ADD_URL_TAG_TOOLTIP = "Add Tag"
+# Desktop hover-tooltip titles (and matching aria-labels) for the Jinja-rendered
+# tag deck-header "clear filters" button and the tag create-form submit/cancel
+# buttons. CREATE_UTUB_TAG_TOOLTIP targets the create-form submit button
+# #utubTagSubmitBtnCreate — NOT the deck-header #utubTagBtnCreate, which is an
+# excluded onboarding-nudge anchor and must get no tooltip at all (a shared
+# Bootstrap Tooltip instance there would break the nudge sequence).
+# REMOVE_URL_TAG_TOOLTIP is separate: the TS-rendered per-tag delete button
+# (.urlTagBtnDelete) on a URL card, whose aria-label deliberately diverges from
+# this title by interpolating the tag name ("Remove tag work") so screen-reader
+# users can tell badges apart. Being read from TypeScript, it must also be added
+# to generate_strings_js() and frontend/test-setup.ts — plan Steps 5/6.
+CLEAR_TAG_FILTERS_TOOLTIP = "Clear all tag filters"
+CREATE_UTUB_TAG_TOOLTIP = "Create tag"
+CREATE_UTUB_TAG_CANCEL_TOOLTIP = "Cancel"
+REMOVE_URL_TAG_TOOLTIP = "Remove tag"
 DELETE_UTUB_TAG_WARNING = (
     "This will remove {{ tag_string }} from all associated URLs in this UTub!"
 )

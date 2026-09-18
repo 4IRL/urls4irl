@@ -35,6 +35,17 @@ FIELD_SAVED_LABEL_URL = "URL"
 # newly-created URL card is re-sorted away from its top-of-list insertion point
 # (create-time default-sort visual exception) so assistive tech states the add.
 URL_ADDED_ANNOUNCEMENT = "URL added"
+# Desktop hover-tooltip titles (and matching aria-labels) for the icon-only UTub
+# deck-header and create-form buttons. Jinja-rendered, so these are backend
+# constants only — they are never bridged through generate_strings_js().
+DELETE_UTUB_TOOLTIP = "Delete UTub"
+LEAVE_UTUB_TOOLTIP = "Leave UTub"
+FILTER_UTUB_NAMES_TOOLTIP = "Filter UTub names"
+CREATE_UTUB_TOOLTIP = "Create UTub"
+CREATE_UTUB_CANCEL_TOOLTIP = "Cancel"
+# aria-label only — #utubBtnCreate is an onboarding-nudge anchor and deliberately
+# gets NO tooltip (a shared Bootstrap instance would break the nudge sequence).
+CREATE_UTUB_ARIA_LABEL = "Create UTub"
 
 
 class UTUB_GENERAL:

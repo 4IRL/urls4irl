@@ -30,6 +30,13 @@ ACCESS_URL_TOOLTIP = "Access URL"
 EDIT_URL_TOOLTIP = "Edit URL"
 EDIT_URL_TITLE_TOOLTIP = "Edit URL title"
 DELETE_URL_TOOLTIP = "Delete URL"
+# Desktop hover-tooltip titles (and matching aria-labels) for the TS-rendered
+# URL-card confirm/cancel buttons. Read from TypeScript, so they must also be
+# added to generate_strings_js() and frontend/test-setup.ts — plan Steps 5/6.
+CONFIRM_URL_TITLE_EDIT_TOOLTIP = "Confirm title edit"
+CANCEL_URL_TITLE_EDIT_TOOLTIP = "Cancel title edit"
+CONFIRM_URL_EDIT_TOOLTIP = "Confirm URL edit"
+CANCEL_URL_EDIT_TOOLTIP = "Cancel URL edit"
 ACCESS_URL_WARNING = "This URL is a bit unusual — it could launch an app, not a webpage. Still want to access?"
 URL_SEARCH_NO_RESULTS = "No URLs found"
 UTUB_NO_URLS = "No URLs yet"
