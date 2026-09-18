@@ -376,6 +376,25 @@ def get_tag_on_url_in_utub(app: Flask, utub_id: int, utub_url_id: int) -> Utub_U
         ).first()
 
 
+def get_url_tag_id_and_tag_string_on_url_in_utub(
+    app: Flask, utub_id: int, utub_url_id: int
+) -> tuple[int, str]:
+    """Return ``(Utub_Url_Tags.id, tag_string)`` for the first tag on a URL.
+
+    Both values are read inside a single app context because ``tag_string``
+    lives behind the lazy ``utub_tag_item`` relationship — once the row is
+    detached (the context that queried it has popped) that relationship can no
+    longer be loaded. Same shape as
+    ``get_tag_string_already_on_url_in_utub_and_delete`` above, minus the delete.
+    """
+    with app.app_context():
+        url_tag: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_url_id == utub_url_id
+        ).first()
+        assert url_tag is not None
+        return url_tag.id, url_tag.utub_tag_item.tag_string
+
+
 def get_tag_in_utub_by_tag_string(
     app: Flask, utub_id: int, tag_string: str
 ) -> Utub_Tags:

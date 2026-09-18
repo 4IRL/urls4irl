@@ -20,6 +20,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
+from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import (
     add_mock_urls,
@@ -73,6 +74,17 @@ def test_create_utub_nudge_shows_with_bridged_copy(
         UTS.ONBOARDING_CREATE_UTUB_TIP_BODY
     )
 
+    # The nudge anchor is deliberately excluded from the hover-tooltip set (one
+    # shared Bootstrap instance would deadlock the nudge sequence — see issue
+    # #502 / PR #767), so an aria-label is its only accessible name. That the
+    # template ships no data-bs-* is asserted in
+    # test_onboarding_nudge_hidden_for_returning_user, where no tip is showing —
+    # showTip() stamps those attributes itself while a tip IS up.
+    assert (
+        page.locator(HPL.BUTTON_UTUB_CREATE).get_attribute("aria-label")
+        == STRINGS.CREATE_UTUB_ARIA_LABEL
+    )
+
 
 def test_onboarding_nudge_hidden_for_returning_user(
     page: Page, create_test_users, provide_app: Flask
@@ -107,6 +119,28 @@ def test_onboarding_nudge_hidden_for_returning_user(
     assert_not_visible_css_selector(
         page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP
     )
+
+    # With no tip showing, the four nudge anchors are exactly as Jinja rendered
+    # them — which is where the #502 exclusion is observable. nudges.ts owns the
+    # one Bootstrap Tooltip instance each of these may ever have; a static hover
+    # tooltip would share it and deadlock the onboarding sequence (PR #767), so
+    # none of them may ship a data-bs-* attribute or a ready-time instance.
+    # (showTip() stamps those attributes itself, so this can only be asserted
+    # while every tip is suppressed.)
+    for nudge_anchor_selector in (
+        HPL.BUTTON_UTUB_CREATE,
+        HPL.BUTTON_CORNER_URL_CREATE,
+        HPL.BUTTON_UTUB_TAG_CREATE,
+        HPL.BUTTON_MEMBER_CREATE,
+    ):
+        nudge_anchor = page.locator(nudge_anchor_selector).first
+        assert nudge_anchor.get_attribute("data-bs-toggle") is None
+        assert (
+            nudge_anchor.evaluate(
+                "element => !!window.bootstrap.Tooltip.getInstance(element)"
+            )
+            is False
+        )
 
 
 def test_create_utub_nudge_act_dismiss_opens_form_and_persists(
@@ -203,6 +237,12 @@ def test_add_url_nudge_shows_after_creating_first_utub(
     )
     expect(page.locator(HPL.ONBOARDING_NUDGE_BODY)).to_have_text(
         UTS.ONBOARDING_ADD_URL_TIP_BODY
+    )
+
+    # Same exclusion as the Create-UTub anchor above — aria-label only.
+    assert (
+        page.locator(HPL.BUTTON_CORNER_URL_CREATE).get_attribute("aria-label")
+        == STRINGS.ADD_URL_BUTTON
     )
 
 

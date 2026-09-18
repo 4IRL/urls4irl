@@ -5,6 +5,7 @@ from playwright.sync_api import Page
 from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
+from backend.utils.constants import STRINGS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.tag_strs import TAGS_FAILURE
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -17,6 +18,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_on_429_page,
+    assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.playwright_login_utils import (
@@ -429,3 +431,75 @@ def test_create_utub_tag_invalid_csrf(page: Page, create_test_tags, provide_app:
     assert_visited_403_on_invalid_csrf_and_reload(page=page)
     wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_TAG_CREATE)
     assert_login_with_username(page=page, username=user.username)
+
+
+def test_create_utub_tag_submit_btn_tooltip_animates(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    Tests the hover tooltip on the createUTubTag form's submit (check) button.
+
+    GIVEN a user has selected a UTub and opened the createUTubTag form
+    WHEN the user hovers over the submit button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
+        tooltip_parent_class=HPL.TOOLTIP_CLASS_STEM_UTUB_TAG_SUBMIT_CREATE,
+        tooltip_text=STRINGS.CREATE_UTUB_TAG_TOOLTIP,
+    )
+
+    create_utub_tag_submit_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE
+    )
+    assert create_utub_tag_submit_btn is not None
+    assert (
+        create_utub_tag_submit_btn.get_attribute("aria-label")
+        == STRINGS.CREATE_UTUB_TAG_TOOLTIP
+    )
+
+
+def test_create_utub_tag_cancel_btn_tooltip_animates(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    Tests the hover tooltip on the createUTubTag form's cancel (x) button.
+
+    GIVEN a user has selected a UTub and opened the createUTubTag form
+    WHEN the user hovers over the cancel button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
+        tooltip_parent_class=HPL.TOOLTIP_CLASS_STEM_UTUB_TAG_CANCEL_CREATE,
+        tooltip_text=STRINGS.CREATE_UTUB_TAG_CANCEL_TOOLTIP,
+    )
+
+    create_utub_tag_cancel_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_TAG_CANCEL_CREATE
+    )
+    assert create_utub_tag_cancel_btn is not None
+    assert (
+        create_utub_tag_cancel_btn.get_attribute("aria-label")
+        == STRINGS.CREATE_UTUB_TAG_CANCEL_TOOLTIP
+    )

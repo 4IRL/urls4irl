@@ -8,6 +8,7 @@ from backend import db
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
+from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import (
     add_tag_to_utub_user_created,
@@ -16,6 +17,7 @@ from tests.functional.db_utils import (
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as ML
+from tests.functional.playwright_assert_utils import assert_tooltip_animates
 from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid,
     login_user_select_utub_by_id_and_url_by_id,
@@ -604,3 +606,51 @@ def test_filtered_url_count_increments_for_another_tag_while_filtered_when_added
     )
     assert final_vis == init_vis + 1
     assert final_total == init_total + 1
+
+
+def test_unselect_all_tag_filters_btn_tooltip_animates(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    Tests the hover tooltip on the clear-all-tag-filters funnel-x button.
+
+    GIVEN a user has selected a UTub and applied a tag filter (the button is
+          pointer-events: none while no filter is applied)
+    WHEN the user hovers over the unselect-all-tag-filters button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
+    )
+
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+
+    # Real reveal path: apply a tag filter so the button leaves its disabled
+    # (red-icon-disabled -> pointer-events: none) state and can be hovered.
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
+    expect(page.locator(HPL.BUTTON_UNSELECT_ALL).first).not_to_have_class(
+        re.compile(r"red-icon-disabled")
+    )
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=HPL.BUTTON_UNSELECT_ALL,
+        tooltip_parent_class=HPL.TOOLTIP_CLASS_STEM_UNSELECT_ALL,
+        tooltip_text=STRINGS.CLEAR_TAG_FILTERS_TOOLTIP,
+    )
+
+    unselect_all_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UNSELECT_ALL
+    )
+    assert unselect_all_btn is not None
+    assert (
+        unselect_all_btn.get_attribute("aria-label")
+        == STRINGS.CLEAR_TAG_FILTERS_TOOLTIP
+    )

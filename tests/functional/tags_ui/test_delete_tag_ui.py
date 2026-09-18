@@ -3,15 +3,18 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from backend.models.users import Users
+from backend.utils.constants import STRINGS
 from tests.functional.db_utils import (
     get_tag_on_url_in_utub,
     get_url_in_utub,
+    get_url_tag_id_and_tag_string_on_url_in_utub,
     get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_on_429_page,
+    assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.playwright_login_utils import (
@@ -309,3 +312,54 @@ def test_delete_tag_invalid_csrf(page: Page, create_test_tags, provide_app: Flas
     assert_login_with_username(page=page, username=user.username)
 
     assert page.locator(tag_badge_selector).count() == 0
+
+
+def test_url_tag_btn_delete_tooltip_animates(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    Tests the hover tooltip on a URL card's per-tag delete "x" button.
+
+    GIVEN a user has selected a URL carrying a tag
+    WHEN the user hovers the tag badge (the real reveal path for the "x") and
+         then the "x" itself
+    THEN ensure the tooltip animates in with the shared "Remove tag" copy, while
+         the accessible name stays tag-specific so a card full of badges does not
+         announce the same name repeatedly
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    url_in_utub = get_url_in_utub(app, utub_user_created.id)
+    url_tag_id, tag_string = get_url_tag_id_and_tag_string_on_url_in_utub(
+        app, utub_user_created.id, url_in_utub.id
+    )
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
+    )
+
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_tag_id
+    )
+    # The "x" is width: 0 / opacity: 0 until its .tagBadgeHoverable parent is
+    # hovered — drive that real reveal path rather than force-showing it.
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector
+    )
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=f"{tag_badge_selector} {HPL.BUTTON_TAG_DELETE}",
+        tooltip_parent_class=HPL.BUTTON_TAG_DELETE,
+        tooltip_text=STRINGS.REMOVE_URL_TAG_TOOLTIP,
+    )
+
+    assert (
+        delete_tag_button.get_attribute("aria-label")
+        == f"{STRINGS.REMOVE_URL_TAG_TOOLTIP} {tag_string}"
+    )

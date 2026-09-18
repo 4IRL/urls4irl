@@ -6,6 +6,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
+from backend.utils.constants import STRINGS
 from backend.utils.strings.user_strs import MEMBER_LEAVE_WARNING
 from tests.functional.db_utils import (
     get_utub_this_user_created,
@@ -15,6 +16,7 @@ from tests.functional.members_ui.playwright_utils import leave_utub_as_member
 from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_on_429_page,
+    assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.playwright_login_utils import login_user_and_select_utub_by_name
@@ -450,3 +452,41 @@ def test_leave_utub_submit_button_enabled_on_second_modal_open(
 
     # Assert the submit button is NOT disabled when the modal opens for the second UTub
     expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
+
+
+def test_leave_utub_btn_tooltip_animates(
+    page: Page,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    Tests the hover tooltip on the leave-UTub deck-header button.
+
+    GIVEN a user has selected a UTub they are a member of but did not create
+          (the only state in which #memberSelfBtnDelete is shown)
+    WHEN the user hovers over the leave UTub button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_member_of = get_utub_this_user_did_not_create(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=utub_user_member_of.name,
+    )
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=HPL.BUTTON_UTUB_LEAVE,
+        tooltip_parent_class=HPL.TOOLTIP_CLASS_STEM_UTUB_LEAVE,
+        tooltip_text=STRINGS.LEAVE_UTUB_TOOLTIP,
+    )
+
+    leave_utub_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_LEAVE
+    )
+    assert leave_utub_btn is not None
+    assert leave_utub_btn.get_attribute("aria-label") == STRINGS.LEAVE_UTUB_TOOLTIP
