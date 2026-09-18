@@ -1,6 +1,6 @@
 import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
-import { $, getInputValue } from "../../lib/globals.js";
+import { $, bootstrap, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
@@ -65,25 +65,38 @@ export function setCreateUTubEventListeners(): void {
 function createNewUTubEventListeners(): void {
   const utubSubmitBtnCreate = $("#utubSubmitBtnCreate");
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
-  utubSubmitBtnCreate.offAndOnExact("click.createUTub", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: HOME_FORM.UTUB_CREATE,
-      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
-    });
-    clearOpenForm();
-    checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
-  });
+  utubSubmitBtnCreate.offAndOnExact(
+    "click.createUTub",
+    function (this: HTMLElement) {
+      // The create form is hidden only after the AJAX call resolves, so hide the
+      // hover tooltip here — synchronously, regardless of the request's outcome —
+      // rather than in createUTubSuccess(), which has no `this` bound to the button.
+      bootstrap.Tooltip.getInstance(this)?.hide();
+      emit({
+        event: UI_EVENTS.UI_FORM_SUBMIT,
+        form: HOME_FORM.UTUB_CREATE,
+        trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+      });
+      clearOpenForm();
+      checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
+    },
+  );
 
-  utubCancelBtnCreate.offAndOnExact("click.createUTub", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_CANCEL,
-      form: HOME_FORM.UTUB_CREATE,
-      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
-    });
-    clearOpenForm();
-    createUTubHideInput();
-  });
+  utubCancelBtnCreate.offAndOnExact(
+    "click.createUTub",
+    function (this: HTMLElement) {
+      // Cancelling hides the form synchronously in this handler, so the tooltip
+      // must be hidden here or its bubble lingers over the hidden button.
+      bootstrap.Tooltip.getInstance(this)?.hide();
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.UTUB_CREATE,
+        trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+      });
+      clearOpenForm();
+      createUTubHideInput();
+    },
+  );
 
   const utubNameInput = $("#utubNameCreate");
   const utubDescriptionInput = $("#utubDescriptionCreate");
@@ -300,6 +313,17 @@ function createUTubSuccess(response: CreateUtubResponse): void {
   selectUTub(utubID, newUTubSelector);
 }
 
+// A 400 keeps the create form open, so the tooltip the submit click handler hid
+// should come back — but only while the cursor is still on the button. The same
+// 400 is reachable from the Enter-key and same-name-modal submit paths, where no
+// mouseenter ever fired and Bootstrap would therefore never fire the matching
+// mouseleave to dismiss a force-shown bubble.
+function restoreCreateUTubSubmitTooltip(): void {
+  const utubSubmitBtnCreate = $("#utubSubmitBtnCreate")[0];
+  if (!utubSubmitBtnCreate?.matches(":hover")) return;
+  bootstrap.Tooltip.getInstance(utubSubmitBtnCreate)?.show();
+}
+
 // Handle error response display to user
 function createUTubFail(xhr: JQuery.jqXHR): void {
   if ((xhr as RateLimitedXHR)._429Handled) return;
@@ -334,6 +358,7 @@ function createUTubFail(xhr: JQuery.jqXHR): void {
             >,
           );
         }
+        restoreCreateUTubSubmitTooltip();
         break;
       }
     }

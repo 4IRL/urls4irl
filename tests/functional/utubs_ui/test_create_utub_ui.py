@@ -19,6 +19,7 @@ from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     invalidate_csrf_token_on_page,
     login_user_to_home_page,
+    wait_for_element_presence,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -66,6 +67,39 @@ def test_open_create_utub_input(page: Page, create_test_users, provide_app: Flas
         page=page, css_selector=HPL.BUTTON_UTUB_CANCEL_CREATE
     )
     assert create_utub_cancel_btn is not None
+
+
+def test_utub_submit_btn_tooltip_instance_before_form_opened(
+    page: Page, create_test_users, provide_app: Flask
+):
+    """
+    Tests that the createUTub submit button's hover tooltip is instantiated by
+    the one-shot initTooltips() loop at $(document).ready, even though the
+    create form itself is still hidden.
+
+    GIVEN a fresh load of the U4I Home page
+    WHEN the user has NOT opened the createUTub form
+    THEN ensure #utubSubmitBtnCreate already has a live Bootstrap Tooltip instance
+    """
+    app = provide_app
+    USER_ID = 1
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID)
+
+    # Pin the premise: the create form is still closed at this point.
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_CREATE)
+
+    # The button is in the DOM but inside the still-hidden #createUTubWrap, so
+    # assert attachment rather than visibility.
+    create_utub_submit_btn = wait_for_element_presence(
+        page=page, css_selector=HPL.BUTTON_UTUB_SUBMIT_CREATE
+    )
+
+    assert (
+        create_utub_submit_btn.evaluate(
+            "element => !!window.bootstrap.Tooltip.getInstance(element)"
+        )
+        is True
+    )
 
 
 def test_close_create_utub_input_btn(page: Page, create_test_users, provide_app: Flask):

@@ -6,7 +6,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { debug } from "../../lib/debug.js";
 import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
-import { $, getInputValue } from "../../lib/globals.js";
+import { $, bootstrap, getInputValue } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
@@ -46,7 +46,11 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
 
   utubTagSubmitBtnCreate.offAndOnExact(
     "click.createUTubTagSubmit",
-    function () {
+    function (this: HTMLElement) {
+      // The create form is hidden only after the AJAX call resolves, so hide the
+      // hover tooltip here — synchronously, regardless of the request's outcome —
+      // rather than in createUTubTagSuccess(), which has no `this` bound to the button.
+      bootstrap.Tooltip.getInstance(this)?.hide();
       emit({
         event: UI_EVENTS.UI_FORM_SUBMIT,
         form: HOME_FORM.TAG_CREATE,
@@ -59,7 +63,10 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
 
   utubTagCancelBtnCreate.offAndOnExact(
     "click.createUTubTagEscape",
-    function () {
+    function (this: HTMLElement) {
+      // Cancelling hides the form synchronously in this handler, so the tooltip
+      // must be hidden here or its bubble lingers over the hidden button.
+      bootstrap.Tooltip.getInstance(this)?.hide();
       emit({
         event: UI_EVENTS.UI_FORM_CANCEL,
         form: HOME_FORM.TAG_CREATE,
@@ -212,6 +219,16 @@ function createUTubTagSuccess(
   createUTubTagHideInput();
 }
 
+// A 400 keeps the create-tag form open, so the tooltip the submit click handler
+// hid should come back — but only while the cursor is still on the button. The
+// same 400 is reachable from the Enter-key submit path, where no mouseenter ever
+// fired and Bootstrap would never fire the matching mouseleave to dismiss it.
+function restoreCreateUTubTagSubmitTooltip(): void {
+  const utubTagSubmitBtnCreate = $("#utubTagSubmitBtnCreate")[0];
+  if (!utubTagSubmitBtnCreate?.matches(":hover")) return;
+  bootstrap.Tooltip.getInstance(utubTagSubmitBtnCreate)?.show();
+}
+
 function createUTubTagFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
 
@@ -241,10 +258,12 @@ function createUTubTagFail(xhr: JQuery.jqXHR): void {
       if (errors) {
         // Show form errors
         createUTubTagFailErrors(errors);
+        restoreCreateUTubTagSubmitTooltip();
         break;
       } else if (message) {
         // Show message
         displayCreateUTubTagFailErrors("utubTag", message);
+        restoreCreateUTubTagSubmitTooltip();
         break;
       }
       // Intentional fall-through: an unexpected 400 body shape (neither
