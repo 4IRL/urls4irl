@@ -1,5 +1,9 @@
-import { $, bootstrap } from "../lib/globals.js";
+import { $ } from "../lib/globals.js";
 import { INPUT_TYPES, type IconSize } from "../lib/constants.js";
+import {
+  applyHoverTooltip,
+  type HoverTooltipOptions,
+} from "../lib/tooltips.js";
 import { getState } from "../store/app-store.js";
 import { isHidden } from "./visibility.js";
 import { isCoarsePointer } from "./mobile.js";
@@ -105,49 +109,11 @@ function hideInput(handle: string): void {
   $(inputDiv).hideClass();
 }
 
-// Title and custom class travel together — a tooltip is never half-configured,
-// so the pair is one optional object rather than two independent optionals.
-interface HoverTooltipOptions {
-  title: string;
-  customClass: string;
-}
-
 interface FormActionButtonOptions {
   sizePx: IconSize;
-  // When supplied, the button gets the desktop hover-tooltip attribute block and
-  // a live Bootstrap Tooltip instance. These buttons are re-created per URL card,
-  // so they can never be reached by lib/tooltips.ts's ready-time initTooltips()
-  // loop — attachment has to happen here, at creation time.
+  // When supplied, the button gets a desktop hover tooltip (see
+  // `applyHoverTooltip`'s JSDoc in lib/tooltips.ts for the rationale).
   tooltip?: HoverTooltipOptions;
-}
-
-// Applies the shared desktop hover-tooltip contract to a freshly built icon-only
-// form button. The aria-label is set regardless of pointer type (an icon-only
-// button needs an accessible name on touch too — mirroring the Jinja-rendered
-// deck buttons, which render theirs unconditionally); only the visual tooltip and
-// its Bootstrap instance are gated behind isCoarsePointer(), matching
-// initTooltips()'s own coarse-pointer early return.
-function applyHoverTooltip({
-  btn,
-  tooltip,
-}: {
-  btn: JQuery<HTMLElement>;
-  tooltip: HoverTooltipOptions | undefined;
-}): void {
-  if (!tooltip) return;
-
-  btn.attr("aria-label", tooltip.title);
-
-  if (isCoarsePointer()) return;
-
-  btn.attr({
-    "data-bs-toggle": "tooltip",
-    "data-bs-custom-class": tooltip.customClass,
-    "data-bs-placement": "top",
-    "data-bs-trigger": "hover",
-    "data-bs-title": tooltip.title,
-  });
-  bootstrap.Tooltip.getOrCreateInstance(btn[0]);
 }
 
 // Creates submit button

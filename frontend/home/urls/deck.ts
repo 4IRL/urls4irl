@@ -40,6 +40,7 @@ import {
   reapplyURLSearchFilter,
 } from "./search.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
+import { disposeTooltipsWithin } from "../../lib/tooltips.js";
 import { debug } from "../../lib/debug.js";
 import type { UtubUrlItem, UtubTag } from "../../types/url.js";
 
@@ -51,7 +52,12 @@ export function resetURLDeck(): void {
   // Detach NO URLs text and reattach after emptying
   resetNewURLForm();
   newURLInputRemoveEventListeners();
-  $(".urlRow").remove();
+  // The per-card/per-tag tooltips are created at render time, so removing the
+  // rows alone would leave their Bootstrap instances (and listeners) orphaned
+  // on detached nodes.
+  const urlRows = $(".urlRow");
+  disposeTooltipsWithin(urlRows);
+  urlRows.remove();
   updateUTubDescriptionHideInput();
   // resetUTubEditPanelState() closes the name form via updateUTubNameHideInput(),
   // which re-shows #urlBtnCreate as a side effect — so hide the create button
@@ -107,6 +113,7 @@ export function updateURLDeck(
       if (getState().multiSelectMode) pruneRemovedFromSelection([urlID]);
       const urlToRemove = $(".urlRow[utuburlid=" + urlID + "]");
       urlToRemove.fadeOut("fast", function () {
+        disposeTooltipsWithin(urlToRemove);
         urlToRemove.remove();
         // A remote/collaborative stale-data diff can empty the UTub while the
         // user has multi-select mode active — fall back to the empty state,
@@ -204,7 +211,9 @@ export function setURLDeckOnUTubSelected(
 }
 
 export function setURLDeckWhenNoUTubSelected(): void {
-  $(".urlRow").remove();
+  const urlRows = $(".urlRow");
+  disposeTooltipsWithin(urlRows);
+  urlRows.remove();
   $("#URLDeckHeader").text("URLs");
   $(".updateUTubBtn").hideClass();
   $("#urlBtnCreate").hideClass();

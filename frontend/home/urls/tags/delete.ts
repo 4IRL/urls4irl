@@ -4,6 +4,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { disposeTooltipsWithinAfterHide } from "../../../lib/tooltips.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
@@ -128,7 +129,17 @@ function deleteURLTagSuccess(
     urlCard.attr("data-utub-url-tag-ids", tagIDs.join(","));
   }
 
-  // Remove the tag badge from the URL card
+  // Remove the tag badge from the URL card. Its delete button carries a
+  // creation-time tooltip, and Bootstrap holds instances in a strong Map keyed
+  // by element — detaching without disposing leaks badge, instance and
+  // listeners. Only on success: a failed request keeps the badge (and its
+  // tooltip) alive.
+  //
+  // Deferred, because this same click already called `hide()` on that tooltip:
+  // a synchronous dispose lands inside Bootstrap's 150ms fade and makes the
+  // hide's queued callback throw. Measured live — see
+  // `disposeTooltipsWithinAfterHide`.
+  disposeTooltipsWithinAfterHide(tagBadge);
   tagBadge.remove();
 
   // Hide the URL if selected tag is filtering

@@ -7,6 +7,7 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { debug } from "../../../lib/debug.js";
 import { AppEvents, emit as emitAppEvent, on } from "../../../lib/event-bus.js";
+import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
@@ -511,6 +512,9 @@ function handleDeleteSuccess({
       .fadeOut("slow")
       .promise()
       .done(function () {
+        // A bulk delete drops many cards at once, so the per-card/per-badge
+        // tooltip leak scales with the selection — dispose before detaching.
+        disposeTooltipsWithin(deletedRows);
         deletedRows.remove();
         finishDeckAfterRemoval({ deckEmpties });
       });

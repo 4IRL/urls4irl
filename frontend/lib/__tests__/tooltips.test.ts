@@ -172,6 +172,189 @@ describe("disposeTooltipsWithin", () => {
       getInstance.mock.calls.map((call) => (call[0] as HTMLElement).id),
     ).toEqual(["urlBtnAccess", "urlBtnDelete"]);
   });
+
+  it("disposes the container itself when it is the tooltip trigger", async () => {
+    // Call sites pass a single trigger as often as a subtree (a tag badge being
+    // removed on its own), so a descendants-only sweep would leak it.
+    const { disposeTooltipsWithin } = await import("../tooltips.js");
+    const { $, bootstrap } = await import("../globals.js");
+    document.body.innerHTML = `
+      <button id="urlTagBtnDelete" data-bs-toggle="tooltip"></button>
+    `;
+    const liveInstance = bootstrap.Tooltip.getOrCreateInstance(
+      document.querySelector("#urlTagBtnDelete") as HTMLElement,
+    );
+    const getInstance = bootstrap.Tooltip.getInstance as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    getInstance.mockImplementation((element: HTMLElement) =>
+      element.id === "urlTagBtnDelete" ? liveInstance : null,
+    );
+
+    disposeTooltipsWithin($("#urlTagBtnDelete"));
+
+    expect(liveInstance.dispose).toHaveBeenCalledTimes(1);
+    expect(
+      getInstance.mock.calls.map((call) => (call[0] as HTMLElement).id),
+    ).toEqual(["urlTagBtnDelete"]);
+  });
+});
+
+describe("disposeTooltipsWithinAfterHide", () => {
+  // Guards the measured race: the tag-delete click hides the tooltip, then the
+  // AJAX success tears the badge down ~60ms later — inside Bootstrap's 150ms
+  // fade — and a synchronous dispose there makes the hide's queued callback
+  // throw. The deferral is the whole point, so assert it, not just the dispose.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    stubCoarsePointer(false);
+    document.body.innerHTML = `
+      <span id="tagBadge">
+        <button id="urlTagBtnDelete" data-bs-toggle="tooltip"></button>
+      </span>
+    `;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("does not dispose until Bootstrap's hide transition has run", async () => {
+    const { disposeTooltipsWithinAfterHide, TOOLTIP_DISPOSE_DELAY_MS } =
+      await import("../tooltips.js");
+    const { $, bootstrap } = await import("../globals.js");
+    const liveInstance = bootstrap.Tooltip.getOrCreateInstance(
+      document.querySelector("#urlTagBtnDelete") as HTMLElement,
+    );
+    const getInstance = bootstrap.Tooltip.getInstance as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    getInstance.mockImplementation((element: HTMLElement) =>
+      element.id === "urlTagBtnDelete" ? liveInstance : null,
+    );
+
+    disposeTooltipsWithinAfterHide($("#tagBadge"));
+
+    expect(liveInstance.dispose).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(TOOLTIP_DISPOSE_DELAY_MS - 50);
+    expect(liveInstance.dispose).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(TOOLTIP_DISPOSE_DELAY_MS);
+
+    expect(liveInstance.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("still disposes a subtree that was already detached", async () => {
+    // The caller removes the badge immediately and only the dispose is deferred;
+    // Bootstrap keys its instance map by element, not by attachment.
+    const { disposeTooltipsWithinAfterHide, TOOLTIP_DISPOSE_DELAY_MS } =
+      await import("../tooltips.js");
+    const { $, bootstrap } = await import("../globals.js");
+    const liveInstance = bootstrap.Tooltip.getOrCreateInstance(
+      document.querySelector("#urlTagBtnDelete") as HTMLElement,
+    );
+    const getInstance = bootstrap.Tooltip.getInstance as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    getInstance.mockImplementation((element: HTMLElement) =>
+      element.id === "urlTagBtnDelete" ? liveInstance : null,
+    );
+    const tagBadge = $("#tagBadge");
+
+    disposeTooltipsWithinAfterHide(tagBadge);
+    tagBadge.remove();
+    vi.advanceTimersByTime(TOOLTIP_DISPOSE_DELAY_MS);
+
+    expect(document.querySelector("#tagBadge")).toBeNull();
+    expect(liveInstance.dispose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("applyHoverTooltip", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stubCoarsePointer(false);
+    document.body.innerHTML = `<button id="target"></button>`;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("stamps the attribute block, defaults the aria-label to the title, and instantiates", async () => {
+    const { applyHoverTooltip } = await import("../tooltips.js");
+    const { $, bootstrap } = await import("../globals.js");
+    const btn = $("#target");
+
+    applyHoverTooltip({
+      btn,
+      tooltip: { title: "Remove tag", customClass: "urlTagBtnDelete-tooltip" },
+    });
+
+    expect(btn.attr("data-bs-toggle")).toBe("tooltip");
+    expect(btn.attr("data-bs-custom-class")).toBe("urlTagBtnDelete-tooltip");
+    expect(btn.attr("data-bs-placement")).toBe("top");
+    expect(btn.attr("data-bs-trigger")).toBe("hover");
+    expect(btn.attr("data-bs-title")).toBe("Remove tag");
+    expect(btn.attr("aria-label")).toBe("Remove tag");
+    expect(bootstrap.Tooltip.getOrCreateInstance).toHaveBeenCalledWith(btn[0]);
+  });
+
+  it("uses an explicit ariaLabel override without changing the bubble text", async () => {
+    const { applyHoverTooltip } = await import("../tooltips.js");
+    const { $ } = await import("../globals.js");
+    const btn = $("#target");
+
+    applyHoverTooltip({
+      btn,
+      tooltip: {
+        title: "Remove tag",
+        customClass: "urlTagBtnDelete-tooltip",
+        ariaLabel: "Remove tag work",
+      },
+    });
+
+    expect(btn.attr("data-bs-title")).toBe("Remove tag");
+    expect(btn.attr("aria-label")).toBe("Remove tag work");
+  });
+
+  it("skips the attributes and the instance on a coarse pointer, keeping the aria-label", async () => {
+    stubCoarsePointer(true);
+    const { applyHoverTooltip } = await import("../tooltips.js");
+    const { $, bootstrap } = await import("../globals.js");
+    const btn = $("#target");
+
+    applyHoverTooltip({
+      btn,
+      tooltip: {
+        title: "Remove tag",
+        customClass: "urlTagBtnDelete-tooltip",
+        ariaLabel: "Remove tag work",
+      },
+    });
+
+    expect(btn.attr("data-bs-toggle")).toBeUndefined();
+    expect(btn.attr("data-bs-title")).toBeUndefined();
+    expect(bootstrap.Tooltip.getOrCreateInstance).not.toHaveBeenCalled();
+    // The accessible name is not a tooltip — touch screen readers still need it.
+    expect(btn.attr("aria-label")).toBe("Remove tag work");
+  });
+
+  it("is a no-op when no tooltip is configured", async () => {
+    const { applyHoverTooltip } = await import("../tooltips.js");
+    const { $, bootstrap } = await import("../globals.js");
+    const btn = $("#target");
+
+    applyHoverTooltip({ btn, tooltip: undefined });
+
+    expect(btn.attr("aria-label")).toBeUndefined();
+    expect(btn.attr("data-bs-toggle")).toBeUndefined();
+    expect(bootstrap.Tooltip.getOrCreateInstance).not.toHaveBeenCalled();
+  });
 });
 
 describe("restoreTooltipIfHovered", () => {

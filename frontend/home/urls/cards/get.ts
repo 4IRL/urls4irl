@@ -4,6 +4,7 @@ import type { UtubUrlDetail, UtubTagOnAddDelete } from "../../../types/url.js";
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../../lib/page-utils.js";
+import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { modifyURLStringForDisplay } from "./url-string.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
@@ -86,6 +87,9 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
   currentTags.each(function () {
     const utubTagID = parseInt($(this).attr("data-utub-tag-id") as string);
     if (!receivedTagIDs.includes(utubTagID)) {
+      // Reconciling against the server drops badges the URL no longer has; each
+      // one owns a tooltip instance that must go with it.
+      disposeTooltipsWithin($(this));
       $(this).remove();
       removedTagIDs.push(utubTagID);
     }
@@ -202,6 +206,9 @@ function deleteURLOnStale(urlCard: JQuery): void {
   // Close modal in case URL was found stale while it's shown
   $("#confirmModal").modal("hide");
   urlCard.fadeOut("slow", function () {
+    // The card and every tag badge inside it carry render-time tooltips; drop
+    // them before the card leaves the DOM for good.
+    disposeTooltipsWithin(urlCard);
     urlCard.remove();
     if ($("#listURLs .urlRow").length > 0) {
       updateTagFilteringOnURLOrURLTagDeletion();

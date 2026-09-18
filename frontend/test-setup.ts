@@ -150,6 +150,7 @@ const appConfig = {
     CANCEL_URL_TITLE_EDIT_TOOLTIP: "Cancel title edit",
     CONFIRM_URL_EDIT_TOOLTIP: "Confirm URL edit",
     CANCEL_URL_EDIT_TOOLTIP: "Cancel URL edit",
+    REMOVE_URL_TAG_TOOLTIP: "Remove tag",
     INVALID_URL: "This is not a valid URL.",
     TAG_FILTER_NO_RESULTS: "No URLs match selected tags",
     TAG_SEARCH_NO_RESULTS: "No tags found",

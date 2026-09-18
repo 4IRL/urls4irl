@@ -1,12 +1,19 @@
 /**
- * One-shot initializer for the static, Jinja-rendered hover tooltips, plus the
- * teardown helper for TS-rendered ones.
+ * The whole desktop hover-tooltip lifecycle lives here:
+ *
+ * - `initTooltips()` — the one-shot, ready-time sweep that instantiates every
+ *   trigger the server (Jinja) rendered.
+ * - `applyHoverTooltip()` — creation-time attachment for the TS-rendered
+ *   icon-only buttons, which are built and rebuilt long after `ready` and so can
+ *   never be reached by that sweep.
+ * - `disposeTooltipsWithin()` / `restoreTooltipIfHovered()` — teardown before a
+ *   card/badge is detached, and the restore after a failure that keeps the
+ *   button on screen.
  *
  * Desktop-only by design: hover tooltips are meaningless on a touch device (and
  * Bootstrap falls back to showing them on tap, which steals the first tap), so
- * nothing is instantiated when `isCoarsePointer()` is true. Tooltips attached at
- * creation time by the TS card/badge renderers are not this module's concern —
- * it only sweeps what the server rendered.
+ * nothing is instantiated when `isCoarsePointer()` is true — both entry points
+ * honour that gate.
  */
 import { bootstrap } from "./globals.js";
 import { isCoarsePointer } from "../home/mobile.js";
@@ -43,14 +50,103 @@ export function initTooltips(): void {
 }
 
 /**
- * Dispose every live tooltip instance inside `container`. Used before a subtree
- * of TS-rendered cards/badges is torn down (UTub switch, deck reset) so their
- * per-element instances and listeners do not leak.
+ * Dispose every live tooltip instance on `container` itself AND on its
+ * descendants. Used before TS-rendered cards/badges are torn down (UTub switch,
+ * deck reset, a single tag badge removed) so their per-element instances and
+ * listeners do not leak.
+ *
+ * `addBack` is load-bearing: call sites pass either a subtree (a `.urlRow`,
+ * whose triggers are descendants) or a single trigger (a `.urlTagBtnDelete`
+ * badge wrapper, or the button itself). A descendants-only sweep would silently
+ * dispose nothing for the latter.
  */
 export function disposeTooltipsWithin(container: JQuery<HTMLElement>): void {
-  container.find(TOOLTIP_SELECTOR).each((_index, tooltipElement) => {
-    bootstrap.Tooltip.getInstance(tooltipElement)?.dispose();
+  container
+    .find(TOOLTIP_SELECTOR)
+    .addBack(TOOLTIP_SELECTOR)
+    .each((_index, tooltipElement) => {
+      bootstrap.Tooltip.getInstance(tooltipElement)?.dispose();
+    });
+}
+
+// Bootstrap's `$tooltip-transition` fade is 150ms; pad it so a teardown queued
+// behind a `hide()` lands after that hide's own callback has run.
+export const TOOLTIP_DISPOSE_DELAY_MS = 200;
+
+/**
+ * `disposeTooltipsWithin`, deferred past Bootstrap's hide transition. Use this —
+ * never the bare version — when the same interaction that tears the element down
+ * ALSO called `hide()` on its tooltip.
+ *
+ * Why: `hide()` queues its teardown through `executeAfterTransition`, and
+ * `BaseComponent.dispose()` synchronously nulls every own property on the
+ * instance. A dispose landing inside the fade window leaves the queued callback
+ * to reach `_isWithActiveTrigger()` → `Object.values(this._activeTrigger)` with
+ * `_activeTrigger` already `null`, throwing "Cannot convert undefined or null to
+ * object". Measured live on the tag-delete path (click-hide, then dispose on a
+ * ~60ms AJAX success) — the same race Step 2 diagnosed in `nudges.ts`, which
+ * fixes it the same way.
+ *
+ * Disposing after the element has already been detached is fine: Bootstrap keys
+ * its instance map by element, not by attachment.
+ */
+export function disposeTooltipsWithinAfterHide(
+  container: JQuery<HTMLElement>,
+): void {
+  window.setTimeout(
+    () => disposeTooltipsWithin(container),
+    TOOLTIP_DISPOSE_DELAY_MS,
+  );
+}
+
+// Title and custom class travel together — a tooltip is never half-configured,
+// so the pair is one object rather than independent optionals. `ariaLabel`
+// defaults to the title and is only worth passing when the accessible name must
+// be more specific than the shared bubble text (e.g. a per-tag delete button,
+// where every badge would otherwise announce the identical "Remove tag").
+export interface HoverTooltipOptions {
+  title: string;
+  customClass: string;
+  ariaLabel?: string;
+}
+
+/**
+ * Apply the shared desktop hover-tooltip contract to a TS-rendered icon-only
+ * button. These buttons are re-created per card/badge, so they can never be
+ * reached by `initTooltips()`'s ready-time sweep — attachment has to happen at
+ * creation time, here.
+ *
+ * The `aria-label` is set regardless of pointer type (an icon-only button needs
+ * an accessible name on touch too, mirroring the Jinja-rendered deck buttons,
+ * which render theirs unconditionally); only the visual tooltip and its
+ * Bootstrap instance are gated behind `isCoarsePointer()`, matching
+ * `initTooltips()`'s own coarse-pointer early return.
+ *
+ * Call it AFTER the button's markup is in place, so the instance is created on a
+ * fully-built element — the invariant every existing call site already follows.
+ */
+export function applyHoverTooltip({
+  btn,
+  tooltip,
+}: {
+  btn: JQuery<HTMLElement>;
+  tooltip: HoverTooltipOptions | undefined;
+}): void {
+  if (!tooltip) return;
+
+  btn.attr("aria-label", tooltip.ariaLabel ?? tooltip.title);
+
+  if (isCoarsePointer()) return;
+
+  btn.attr({
+    "data-bs-toggle": "tooltip",
+    "data-bs-custom-class": tooltip.customClass,
+    "data-bs-placement": "top",
+    "data-bs-trigger": "hover",
+    "data-bs-title": tooltip.title,
   });
+  // `getOrCreateInstance`, never `new bootstrap.Tooltip(el)` — see initTooltips().
+  bootstrap.Tooltip.getOrCreateInstance(btn[0]);
 }
 
 // Bootstrap's `$tooltip-transition` fade is 150ms; pad it so the restore below

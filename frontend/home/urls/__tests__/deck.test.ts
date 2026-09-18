@@ -9,9 +9,11 @@ import { triggerURLSwipeNudgeIfEligible } from "../cards/swipe.js";
 import {
   updateURLDeck,
   setURLDeckOnUTubSelected,
+  setURLDeckWhenNoUTubSelected,
   resetURLDeck,
   resetURLDeckOnDeleteUTub,
 } from "../deck.js";
+import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { reapplyURLSearchFilter } from "../search.js";
 import { updateUTubNameHideInput } from "../update-name.js";
 import { getNumOfURLs } from "../utils.js";
@@ -103,6 +105,12 @@ vi.mock("../cards/swipe.js", () => ({
   triggerURLSwipeNudgeIfEligible: vi.fn(),
 }));
 
+// Mocked rather than asserted through the ambient Bootstrap mock: that mock's
+// getInstance() returns null, so a real dispose() call would be a silent no-op.
+vi.mock("../../../lib/tooltips.js", () => ({
+  disposeTooltipsWithin: vi.fn(),
+}));
+
 const $ = window.jQuery;
 
 const SAMPLE_URL_1: UtubUrlItem = {
@@ -137,6 +145,12 @@ describe("updateURLDeck", () => {
     vi.mocked(getState).mockReturnValue({
       urls: [SAMPLE_URL_1],
     } as unknown as ReturnType<typeof getState>);
+  });
+
+  afterEach(() => {
+    // clearAllMocks() does not reset implementations — drop the ordering-probe
+    // impl installed below so it cannot bleed into later tests.
+    vi.mocked(disposeTooltipsWithin).mockReset();
   });
 
   it("calls applyDeckDiff once with correct URL deck config", () => {
@@ -177,6 +191,45 @@ describe("updateURLDeck", () => {
     config.removeElement(1);
 
     expect(document.querySelector('.urlRow[utuburlid="1"]')).toBeNull();
+  });
+
+  it("disposes only the removed row's tooltips before removeElement detaches it", () => {
+    document.body.innerHTML = `
+      <div id="SearchURLWrap"></div>
+      <div id="listURLs">
+        <div class="urlRow" utuburlid="1"></div>
+        <div class="urlRow" utuburlid="2"></div>
+      </div>
+    `;
+    const rowToRemove = document.querySelector('.urlRow[utuburlid="1"]');
+    // Override fadeOut so the post-fade callback fires synchronously
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+
+    // Pin the ORDER, not just the call: a jQuery set still holds its nodes
+    // after .remove(), so the argument assertion below would pass even if the
+    // dispose ran after the detach. Assert the row is still in the document
+    // when dispose is invoked.
+    vi.mocked(disposeTooltipsWithin).mockImplementation(() => {
+      expect(document.contains(rowToRemove)).toBe(true);
+    });
+
+    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.removeElement(1);
+
+    expect(vi.mocked(disposeTooltipsWithin)).toHaveBeenCalledTimes(1);
+    // Scoped to the single row being removed, not the whole .urlRow set.
+    expect(vi.mocked(disposeTooltipsWithin).mock.calls[0][0].get(0)).toBe(
+      rowToRemove,
+    );
   });
 
   it("prunes the removed id from the multi-select selection synchronously in removeElement when in mode", () => {
@@ -550,5 +603,61 @@ describe("reset ordering: #urlBtnCreate ends hidden", () => {
     expect(vi.mocked(updateUTubNameHideInput)).toHaveBeenCalled();
     expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
     expect($("#urlBtnCreate").hasClass("visible")).toBe(false);
+  });
+});
+
+describe("URL deck teardown disposes per-card tooltip instances", () => {
+  // The Group C/D tooltips are created per card/tag at render time, so tearing
+  // the deck down without disposing them leaks detached Bootstrap Data entries
+  // and their listeners on every UTub switch.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = `
+      <div id="lhsToggleHeader"></div>
+      <div id="URLDeckHeader"></div>
+      <div id="URLDeckSubheader"></div>
+      <div id="UTubDescriptionSubheaderWrap"></div>
+      <button id="urlBtnCreate"></button>
+      <button id="urlBtnMultiSelect"></button>
+      <div id="listURLs">
+        <div class="urlRow" utuburlid="1"></div>
+        <div class="urlRow" utuburlid="2"></div>
+      </div>
+    `;
+  });
+
+  afterEach(() => {
+    // clearAllMocks() does not reset implementations — drop the ordering-probe
+    // impl so it cannot bleed into any describe block added below this one.
+    vi.mocked(disposeTooltipsWithin).mockReset();
+  });
+
+  it("resetURLDeck disposes the rows' tooltips before removing them", () => {
+    const firstRow = document.querySelector(".urlRow");
+    // Pin the ORDER: the jQuery set still holds both rows after .remove(), so
+    // the argument assertion alone would pass on an inverted implementation.
+    vi.mocked(disposeTooltipsWithin).mockImplementation(() => {
+      expect(document.querySelectorAll(".urlRow").length).toBe(2);
+    });
+
+    resetURLDeck();
+
+    expect(vi.mocked(disposeTooltipsWithin)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(disposeTooltipsWithin).mock.calls[0][0].get(0)).toBe(
+      firstRow,
+    );
+    expect(document.querySelectorAll(".urlRow").length).toBe(0);
+  });
+
+  it("setURLDeckWhenNoUTubSelected disposes the rows' tooltips before removing them", () => {
+    const firstRow = document.querySelector(".urlRow");
+
+    setURLDeckWhenNoUTubSelected();
+
+    expect(vi.mocked(disposeTooltipsWithin)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(disposeTooltipsWithin).mock.calls[0][0].get(0)).toBe(
+      firstRow,
+    );
+    expect(document.querySelectorAll(".urlRow").length).toBe(0);
   });
 });
