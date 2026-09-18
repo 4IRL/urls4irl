@@ -34,6 +34,9 @@
 			</svg>
 		</button>
 		<!-- Add user button -->
+		{# ONBOARDING-NUDGE ANCHOR: nudges.ts (NUDGE_REGISTRY) owns this element's Bootstrap
+		   Tooltip instance — aria-label ONLY here, never data-bs-*. A static hover tooltip
+		   would share that one instance and break the nudge. See issue #502 / PR #767. #}
 		<button id="memberBtnCreate" class="green-clickable ms-1 hidden" tabindex="0" aria-label="Add member">
 			<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
 				width="30" height="30" viewBox="0 0 16 16">
