@@ -8,7 +8,7 @@
  * `urls/cards/copy.ts` (`getOrCreateInstance` + `setContent` + `show`/`hide`)
  * but drops the auto-hide timer. Because `showTip()` rebuilds a fresh, enabled
  * instance via `getOrCreateInstance(anchor)` on every call, teardown is
- * `hide(); dispose();` (a one-shot) rather than the `hide(); disable();`
+ * `hide()` + a deferred `dispose()` (a one-shot) rather than the `hide(); disable();`
  * precedent in the edit flows (`update-string.ts`, `tags/create.ts`,
  * `tags/combobox.ts`), which reuse one persistent instance across repeated
  * edit-toggle cycles and therefore must stay re-enable-able.
@@ -63,9 +63,26 @@ let _activeTip: ReturnType<
   typeof bootstrap.Tooltip.getOrCreateInstance
 > | null = null;
 let _activeTipId: TipId | null = null;
+// The anchor element the active tip is attached to. `_activeTip` is the Tooltip
+// instance, not its element, and dismissal needs the element to clear the
+// `aria-describedby` Bootstrap leaves behind (see `dismissActiveTip`). Captured
+// here rather than re-queried by selector so dismissal can never race a DOM swap.
+let _activeAnchor: HTMLElement | null = null;
 // Id of the one-tick deferred listener-bind timer, so a dismiss fired before
 // the bind executes can cancel it outright (no orphaned document handlers).
 let _pendingBindTimer: ReturnType<typeof setTimeout> | null = null;
+// Bootstrap's tooltip fade is 150ms; `dismissActiveTip` defers its `dispose()`
+// past that window so `hide()`'s transition-queued cleanup callback can complete
+// first (see the comment in `dismissActiveTip`).
+const TIP_DISPOSE_DELAY_MS = 200;
+// The tip whose `dispose()` is deferred, its anchor, and its timer id — so a
+// re-show ON THAT SAME ANCHOR can flush it early. Same "deferred work a later
+// action must cancel" shape as `_pendingBindTimer` above.
+let _pendingDisposeTip: ReturnType<
+  typeof bootstrap.Tooltip.getOrCreateInstance
+> | null = null;
+let _pendingDisposeAnchor: HTMLElement | null = null;
+let _pendingDisposeTimer: ReturnType<typeof setTimeout> | null = null;
 // Id of the in-flight tag-sheet-open show-retry timer (see the TAG_SHEET_TOGGLED
 // subscription), so a fresh open cancels a stale retry loop and test teardown can
 // clear it.
@@ -84,10 +101,12 @@ const SHEET_OPEN_SHOW_RETRY_INTERVAL_MS = 40;
 let _onboardingInitialized = false;
 
 /**
- * Dismiss the currently-active tip, if any: hide + dispose the tooltip, remove
- * the document click/Escape handlers, cancel a still-pending listener bind, and
- * — only when `markSeen` is true (user-driven act / tap-away / Escape) — persist
- * the seen flag. Environment-driven teardown (Step 6) passes `markSeen: false`.
+ * Dismiss the currently-active tip, if any: clear the anchor's
+ * `aria-describedby`, hide the tooltip (disposing it once the hide transition
+ * has run — see below), remove the document click/Escape handlers, cancel a
+ * still-pending listener bind, and — only when `markSeen` is true (user-driven
+ * act / tap-away / Escape) — persist the seen flag. Environment-driven teardown
+ * passes `markSeen: false`.
  *
  * The `tipId` capture-and-guard at the top narrows `_activeTipId` from
  * `TipId | null` to `TipId` for the rest of the function (guard-clause idiom,
@@ -97,8 +116,31 @@ export function dismissActiveTip({ markSeen }: { markSeen: boolean }): void {
   const tipId = _activeTipId;
   if (_activeTip === null || tipId === null) return;
 
-  _activeTip.hide();
-  _activeTip.dispose();
+  const dismissedTip = _activeTip;
+  const dismissedAnchor = _activeAnchor;
+
+  // Bootstrap 5.2.3 only clears the anchor's `aria-describedby` inside the
+  // callback `hide()` queues behind the fade transition. Two things go wrong if
+  // we then `dispose()` synchronously: `dispose()` nulls every own property on
+  // the instance, so the queued callback throws in `_isWithActiveTrigger()`
+  // (`_activeTrigger` is null by then) *before* it reaches `removeAttribute`,
+  // leaving the anchor permanently pointing at a removed element. Verified
+  // empirically against the live app. Belt and braces, because each half fixes a
+  // different symptom:
+  //   (a) clear `aria-describedby` up front — the accessibility contract holds
+  //       even if (b) is ever reverted or its timing changes;
+  //   (b) defer `dispose()` past the hide transition — lets the queued callback
+  //       run to completion, which is what silences the uncaught TypeError.
+  dismissedAnchor?.removeAttribute("aria-describedby");
+  dismissedTip.hide();
+  _pendingDisposeTip = dismissedTip;
+  _pendingDisposeAnchor = dismissedAnchor;
+  _pendingDisposeTimer = setTimeout(() => {
+    _pendingDisposeTimer = null;
+    _pendingDisposeTip = null;
+    _pendingDisposeAnchor = null;
+    dismissedTip.dispose();
+  }, TIP_DISPOSE_DELAY_MS);
   log("tip dismissed", { tipId, markSeen });
 
   // Emit the dismissed metric ONLY on user-driven dismissal (markSeen: true —
@@ -112,6 +154,7 @@ export function dismissActiveTip({ markSeen }: { markSeen: boolean }): void {
 
   _activeTip = null;
   _activeTipId = null;
+  _activeAnchor = null;
 
   if (_pendingBindTimer !== null) {
     clearTimeout(_pendingBindTimer);
@@ -122,6 +165,38 @@ export function dismissActiveTip({ markSeen }: { markSeen: boolean }): void {
 
   // Mark seen ONLY here (on dismissal), never on show.
   if (markSeen) markTipSeen(tipId);
+}
+
+/**
+ * Run a still-pending deferred `dispose()` immediately, but ONLY when the tip
+ * about to be shown reuses the very anchor that dispose is pending on. Bootstrap
+ * keys one instance per element, so a re-show on that anchor would otherwise be
+ * handed back the still-hiding instance instead of a fresh, enabled one. A
+ * re-show on any OTHER anchor needs no flush — `getOrCreateInstance` builds a
+ * separate instance there, and the pending one disposes safely on its own timer
+ * once its hide transition has completed.
+ *
+ * Narrowing the flush to the same anchor matters: an early dispose is exactly
+ * what makes Bootstrap's queued hide callback throw, so the reachable multi-tip
+ * paths (e.g. the MOBILE_DECK_SWITCHED handler's `dismissActiveTip()` followed
+ * synchronously by `maybeShowNextTip()`, which lands on a different anchor) never
+ * take it.
+ *
+ * The residual same-anchor case is a deliberate, measured trade-off. Both
+ * alternatives were tested live against Bootstrap 5.2.3: disposing early logs an
+ * uncaught TypeError but renders the new bubble correctly with a correct
+ * `aria-describedby`; reusing the still-hiding instance silences the TypeError
+ * but lets the stale queued callback tear the freshly-shown bubble back down
+ * ~150ms later — a visible bug, so the console noise is the lesser evil here.
+ */
+function flushPendingTipDispose(anchor: HTMLElement): void {
+  if (_pendingDisposeTimer === null || _pendingDisposeAnchor !== anchor) return;
+  clearTimeout(_pendingDisposeTimer);
+  _pendingDisposeTimer = null;
+  const pendingTip = _pendingDisposeTip;
+  _pendingDisposeTip = null;
+  _pendingDisposeAnchor = null;
+  pendingTip?.dispose();
 }
 
 // Any click that survives the one-tick deferral is a real user interaction:
@@ -212,6 +287,9 @@ export function showTip({
   // so this only surfaces against the real library.)
   anchor.setAttribute("data-bs-title", title);
 
+  // Never hand back an instance on THIS anchor that is still mid-deferred-dispose.
+  flushPendingTipDispose(anchor);
+
   const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
   tip.setContent({
     ".tooltip-inner": `<div class="onboarding-nudge-title">${title}</div><div class="onboarding-nudge-body">${body}</div>`,
@@ -220,6 +298,7 @@ export function showTip({
 
   _activeTip = tip;
   _activeTipId = tipId;
+  _activeAnchor = anchor;
 
   // Announce for screen readers via the shared visually-hidden live region.
   // Do NOT move focus to the bubble (non-modal informational tip).
@@ -606,8 +685,18 @@ export function _resetOnboardingNudgesForTests(): void {
     clearTimeout(_sheetOpenShowTimer);
     _sheetOpenShowTimer = null;
   }
+  if (_pendingDisposeTimer !== null) {
+    clearTimeout(_pendingDisposeTimer);
+    _pendingDisposeTimer = null;
+  }
+  // Dispose rather than drop: teardown ends the test, so there is no transition
+  // left to race and an undisposed instance would leak onto the next test's DOM.
+  _pendingDisposeTip?.dispose();
+  _pendingDisposeTip = null;
+  _pendingDisposeAnchor = null;
   _activeTip = null;
   _activeTipId = null;
+  _activeAnchor = null;
   _onboardingInitialized = false;
   $(document).off(CLICK_NAMESPACE);
   $(document).off(KEYDOWN_NAMESPACE);
