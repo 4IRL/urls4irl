@@ -1275,6 +1275,7 @@ def test_update_url_string_invalid_csrf_token(
 
     assert_login_with_username(page=page, username=user.username)
 
+
 def test_update_url_title_submit_btn_tooltip_animates(
     page: Page,
     create_test_urls,
