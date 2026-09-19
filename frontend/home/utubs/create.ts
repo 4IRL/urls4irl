@@ -29,6 +29,10 @@ import {
   HOME_FORM,
 } from "../../types/metrics-dim-values.js";
 import { debug } from "../../lib/debug.js";
+import {
+  hideTooltip,
+  restoreTooltipIfStillTargeted,
+} from "../../lib/tooltips.js";
 
 const log = debug("utubs");
 
@@ -65,25 +69,38 @@ export function setCreateUTubEventListeners(): void {
 function createNewUTubEventListeners(): void {
   const utubSubmitBtnCreate = $("#utubSubmitBtnCreate");
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
-  utubSubmitBtnCreate.offAndOnExact("click.createUTub", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: HOME_FORM.UTUB_CREATE,
-      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
-    });
-    clearOpenForm();
-    checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
-  });
+  utubSubmitBtnCreate.offAndOnExact(
+    "click.createUTub",
+    function (this: HTMLElement) {
+      // The create form is hidden only after the AJAX call resolves, so hide the
+      // hover tooltip here — synchronously, regardless of the request's outcome —
+      // rather than in createUTubSuccess(), which has no `this` bound to the button.
+      hideTooltip(this);
+      emit({
+        event: UI_EVENTS.UI_FORM_SUBMIT,
+        form: HOME_FORM.UTUB_CREATE,
+        trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+      });
+      clearOpenForm();
+      checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
+    },
+  );
 
-  utubCancelBtnCreate.offAndOnExact("click.createUTub", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_CANCEL,
-      form: HOME_FORM.UTUB_CREATE,
-      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
-    });
-    clearOpenForm();
-    createUTubHideInput();
-  });
+  utubCancelBtnCreate.offAndOnExact(
+    "click.createUTub",
+    function (this: HTMLElement) {
+      // Cancelling hides the form synchronously in this handler, so the tooltip
+      // must be hidden here or its bubble lingers over the hidden button.
+      hideTooltip(this);
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.UTUB_CREATE,
+        trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+      });
+      clearOpenForm();
+      createUTubHideInput();
+    },
+  );
 
   const utubNameInput = $("#utubNameCreate");
   const utubDescriptionInput = $("#utubDescriptionCreate");
@@ -300,6 +317,14 @@ function createUTubSuccess(response: CreateUtubResponse): void {
   selectUTub(utubID, newUTubSelector);
 }
 
+// A 400 keeps the create form open, so the tooltip the submit click handler hid
+// should come back. restoreTooltipIfStillTargeted owns both guards (the button is
+// still hovered or keyboard-focused, and the show is deferred past Bootstrap's
+// fade) — see lib/tooltips.ts.
+function restoreCreateUTubSubmitTooltip(): void {
+  restoreTooltipIfStillTargeted($("#utubSubmitBtnCreate")[0]);
+}
+
 // Handle error response display to user
 function createUTubFail(xhr: JQuery.jqXHR): void {
   if ((xhr as RateLimitedXHR)._429Handled) return;
@@ -334,6 +359,7 @@ function createUTubFail(xhr: JQuery.jqXHR): void {
             >,
           );
         }
+        restoreCreateUTubSubmitTooltip();
         break;
       }
     }

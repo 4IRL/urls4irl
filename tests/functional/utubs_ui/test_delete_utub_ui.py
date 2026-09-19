@@ -6,6 +6,7 @@ from backend import db
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
+from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.utub_strs import (
     UTUB_CREATE_MSG,
@@ -18,6 +19,7 @@ from tests.functional.playwright_assert_utils import (
     assert_active_utub,
     assert_login_with_username,
     assert_on_429_page,
+    assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import get_utub_this_user_created
@@ -485,3 +487,38 @@ def test_delete_utub_submit_button_enabled_on_second_modal_open(
 
     # Assert the submit button is NOT disabled when the modal opens for the second UTub
     expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
+
+
+def test_delete_utub_btn_tooltip_animates(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests the hover tooltip on the delete-UTub deck-header button.
+
+    GIVEN a user has selected a UTub they created
+    WHEN the user hovers over the delete UTub button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=utub_user_created.name,
+    )
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=HPL.BUTTON_UTUB_DELETE,
+        tooltip_parent_class=HPL.TOOLTIP_CLASS_STEM_UTUB_DELETE,
+        tooltip_text=STRINGS.DELETE_UTUB_TOOLTIP,
+    )
+
+    delete_utub_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DELETE
+    )
+    assert delete_utub_btn is not None
+    assert delete_utub_btn.get_attribute("aria-label") == STRINGS.DELETE_UTUB_TOOLTIP

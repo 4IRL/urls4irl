@@ -1,5 +1,6 @@
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
+import { hideTooltip } from "../../../lib/tooltips.js";
 import {
   ICON_SIZE_LG,
   INPUT_TYPES,
@@ -107,36 +108,59 @@ function createUpdateURLStringInput(
   );
 
   // Update Url Title submit button
-  const urlStringSubmitBtnUpdate = makeSubmitButton(ICON_SIZE_LG).addClass(
-    "urlStringSubmitBtnUpdate",
-  );
+  const urlStringSubmitBtnUpdate = makeSubmitButton({
+    sizePx: ICON_SIZE_LG,
+    tooltip: {
+      title: `${APP_CONFIG.strings.CONFIRM_URL_EDIT_TOOLTIP}`,
+      customClass: "urlStringSubmitBtnUpdate-tooltip",
+    },
+  }).addClass("urlStringSubmitBtnUpdate");
 
-  urlStringSubmitBtnUpdate.onExact("click.updateUrlString", function () {
-    // Block an overlapping submit while a kept-open submit is in flight.
-    if (isURLStringSubmitInFlight()) return;
-    emit({
-      event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: HOME_FORM.URL_STRING_EDIT,
-      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
-    });
-    clearOpenForm();
-    updateURL(urlStringTextInput, urlCard, utubID);
-  });
+  urlStringSubmitBtnUpdate.onExact(
+    "click.updateUrlString",
+    function (this: HTMLElement) {
+      // The edit form is hidden only after the AJAX call resolves, so hide the
+      // hover tooltip here — synchronously, regardless of the request's outcome —
+      // rather than in updateURLSuccess(), which has no `this` bound to the
+      // button. Runs before the in-flight guard so a blocked double-click still
+      // clears the bubble.
+      hideTooltip(this);
+      // Block an overlapping submit while a kept-open submit is in flight.
+      if (isURLStringSubmitInFlight()) return;
+      emit({
+        event: UI_EVENTS.UI_FORM_SUBMIT,
+        form: HOME_FORM.URL_STRING_EDIT,
+        trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+      });
+      clearOpenForm();
+      updateURL(urlStringTextInput, urlCard, utubID);
+    },
+  );
 
   // Update Url Title cancel button
-  const urlStringCancelBtnUpdate = makeCancelButton(ICON_SIZE_LG).addClass(
-    "urlStringCancelBtnUpdate",
-  );
+  const urlStringCancelBtnUpdate = makeCancelButton({
+    sizePx: ICON_SIZE_LG,
+    tooltip: {
+      title: `${APP_CONFIG.strings.CANCEL_URL_EDIT_TOOLTIP}`,
+      customClass: "urlStringCancelBtnUpdate-tooltip",
+    },
+  }).addClass("urlStringCancelBtnUpdate");
 
-  urlStringCancelBtnUpdate.onExact("click.updateUrlString", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_CANCEL,
-      form: HOME_FORM.URL_STRING_EDIT,
-      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
-    });
-    clearOpenForm();
-    hideAndResetUpdateURLStringForm({ urlCard });
-  });
+  urlStringCancelBtnUpdate.onExact(
+    "click.updateUrlString",
+    function (this: HTMLElement) {
+      // Cancelling hides the form synchronously in this handler, so the tooltip
+      // must be hidden here or its bubble lingers over the hidden button.
+      hideTooltip(this);
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.URL_STRING_EDIT,
+        trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+      });
+      clearOpenForm();
+      hideAndResetUpdateURLStringForm({ urlCard });
+    },
+  );
 
   // Two-level restructure (mirrors the UTub Jinja template's shape): nest the
   // input container + submit/cancel buttons in an inner row, then hang the

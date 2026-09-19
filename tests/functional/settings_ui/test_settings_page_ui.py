@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from flask import Flask
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from backend import db
 from backend.cli.mock_constants import EMAIL_SUFFIX
@@ -813,6 +813,38 @@ def _current_username(page: Page) -> str:
     return page.locator(SPL.ACCOUNT_INFO_USERNAME_VALUE).inner_text().strip()
 
 
+def _recompute_delete_gate(confirm_username_input: Locator) -> None:
+    """Fire the `keyup` the DD-8 delete gate recomputes on (account-removal.ts
+    binds `refreshDeleteGate` to keyup only, so `fill` alone never reaches it).
+
+    Dispatched straight at the input rather than pressed, because `press`
+    focuses first and sends the key afterwards: Bootstrap focuses the modal
+    itself when its fade transition ends, and under full-suite parallel load
+    that transfer lands between the two, sending the keyup to the modal where
+    the delegated handler's selector no longer matches. `dispatch_event` is
+    focus-independent, and the synthetic event carries no `key`, so the
+    handler's Enter-to-submit branch stays a no-op.
+    """
+    confirm_username_input.dispatch_event("keyup")
+
+
+def _fill_delete_modal_and_recompute_gate(
+    confirm_username_input: Locator,
+    current_password_input: Locator,
+    username: str,
+    password: str,
+) -> None:
+    """Populate the delete modal's two fields and recompute its submit gate.
+
+    `fill` sets each value in a single atomic DOM operation, so — unlike
+    character-by-character typing — a mid-interaction focus steal cannot drop
+    part of the text and silently leave the gate closed.
+    """
+    confirm_username_input.fill(username)
+    current_password_input.fill(password)
+    _recompute_delete_gate(confirm_username_input)
+
+
 def test_logout_everywhere_happy_path_redirects_to_splash(
     page: Page,
     provide_app: Flask,
@@ -930,12 +962,12 @@ def test_delete_happy_path_redirects_to_splash(
     expect(page.locator(SPL.DELETE_MODAL)).to_be_visible()
 
     username = _current_username(page)
-    # press_sequentially fires the keyup the DD-8 gate listens on (fill() does
-    # not), so the disabled submit re-enables once username matches AND password
-    # is non-empty.
-    page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT).press_sequentially(username)
-    page.locator(SPL.DELETE_CURRENT_PASSWORD_INPUT).press_sequentially(
-        _NON_ADMIN_PASSWORD
+    confirm_username_input = page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT)
+    _fill_delete_modal_and_recompute_gate(
+        confirm_username_input=confirm_username_input,
+        current_password_input=page.locator(SPL.DELETE_CURRENT_PASSWORD_INPUT),
+        username=username,
+        password=_NON_ADMIN_PASSWORD,
     )
 
     submit = page.locator(SPL.DELETE_SUBMIT_BTN)
@@ -974,19 +1006,41 @@ def test_delete_typed_confirmation_gates_submit(
     # Disabled on open (no confirmation typed yet).
     expect(submit).to_be_disabled()
 
-    # A wrong username keeps it disabled even with a password present.
     username = _current_username(page)
-    page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT).press_sequentially(
-        username + "-nope"
+    confirm_username_input = page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT)
+    current_password_input = page.locator(SPL.DELETE_CURRENT_PASSWORD_INPUT)
+
+    # The exact username plus a password opens the gate.
+    _fill_delete_modal_and_recompute_gate(
+        confirm_username_input=confirm_username_input,
+        current_password_input=current_password_input,
+        username=username,
+        password=UI_TEST_STRINGS.TEST_PASSWORD_1,
     )
-    page.locator(SPL.DELETE_CURRENT_PASSWORD_INPUT).press_sequentially(
-        UI_TEST_STRINGS.TEST_PASSWORD_1
-    )
+    expect(submit).to_be_enabled()
+
+    # Corrupting the username closes it again — asserted as a transition away
+    # from enabled, so a gate that never recomputed at all cannot pass by
+    # leaving the button in its already-disabled opening state.
+    confirm_username_input.fill(username + "-nope")
+    _recompute_delete_gate(confirm_username_input)
     expect(submit).to_be_disabled()
 
-    # Correcting the username to the exact match enables the submit.
-    page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT).fill("")
-    page.locator(SPL.DELETE_CONFIRM_USERNAME_INPUT).press_sequentially(username)
+    # A prefix of the username is not a match either — the gate compares the
+    # whole value, not a leading substring.
+    confirm_username_input.fill(username[:-1])
+    _recompute_delete_gate(confirm_username_input)
+    expect(submit).to_be_disabled()
+
+    # Emptying the password with the exact username typed keeps it closed.
+    confirm_username_input.fill(username)
+    current_password_input.fill("")
+    _recompute_delete_gate(confirm_username_input)
+    expect(submit).to_be_disabled()
+
+    # Restoring the password re-opens it.
+    current_password_input.fill(UI_TEST_STRINGS.TEST_PASSWORD_1)
+    _recompute_delete_gate(confirm_username_input)
     expect(submit).to_be_enabled()
 
 

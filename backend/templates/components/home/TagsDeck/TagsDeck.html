@@ -30,6 +30,9 @@
 				</svg>
 			</button>
 			<!-- Add tag button -->
+			{# ONBOARDING-NUDGE ANCHOR: nudges.ts (NUDGE_REGISTRY) owns this element's Bootstrap
+			   Tooltip instance — aria-label ONLY here, never data-bs-*. A static hover tooltip
+			   would share that one instance and break the nudge. See issue #502 / PR #767. #}
 			<button id="utubTagBtnCreate" class="green-clickable ms-1 hidden" tabindex="0" aria-label="Add tag">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill" width="30"
 					height="30" viewBox="0 0 16 16">
@@ -46,7 +49,10 @@
 			</button>
 
 			<!-- Unselect all applied tag filters button -->
-			<button id="unselectAllTagFilters" class="ms-1 hidden" tabindex="0">
+			<button id="unselectAllTagFilters" class="ms-1 hidden" tabindex="0"
+				aria-label="{{ CONSTANTS.STRINGS.CLEAR_TAG_FILTERS_TOOLTIP }}"
+				data-bs-toggle="tooltip" data-bs-custom-class="unselectAllTagFilters-tooltip" data-bs-placement="bottom"
+				data-bs-trigger="hover" data-bs-title="{{ CONSTANTS.STRINGS.CLEAR_TAG_FILTERS_TOOLTIP }}">
 				<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 -1 16 17" fill="black" class="bi funnel-x">
 					<!-- Funnel outline (shifted downward for more padding) -->
 					<path fill="none" stroke="black" stroke-width="1.5" d="M1.5 2A.5.5 0 0 1 2 1.5h12a.5.5 0 0 1 .5.5v2.5a.5.5 0 0 1-.146.354L10 9.793V14a.5.5 0 0 1-.757.429L6 13V9.793L1.646 5.354A.5.5 0 0 1 1.5 5V2z"/>

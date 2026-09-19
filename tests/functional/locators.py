@@ -37,6 +37,12 @@ class HomePageLocators(GenericPageLocator):
     INVALID_FIELD_SUFFIX = "-error"
     EDITABLE_CLASS = "editable"
     TOOLTIP_SUFFIX = "-tooltip"
+    # Bootstrap's shown-state class on a tooltip bubble. It is added when the
+    # fade-in starts and removed synchronously by `hide()`, so appending it to a
+    # bubble selector distinguishes "shown" from "mid-fade-out but still in the
+    # DOM" -- which Playwright would otherwise still count as visible, since a
+    # fading tip keeps its bounding box until Bootstrap removes it.
+    TOOLTIP_SHOWN_SUFFIX = ".show"
 
     # Change-email confirm-outcome banner (Phase 3, DD-9/DD-14). Net-new here:
     # HomePageLocators carried no banner locator before. Same CSS id as the
@@ -89,6 +95,24 @@ class HomePageLocators(GenericPageLocator):
     ONBOARDING_NUDGE_TOOLTIP = ".onboarding-nudge-tooltip"
     ONBOARDING_NUDGE_TITLE = ".onboarding-nudge-tooltip .onboarding-nudge-title"
     ONBOARDING_NUDGE_BODY = ".onboarding-nudge-tooltip .onboarding-nudge-body"
+
+    # Tooltip custom-class STEMS -- NOT element locators. assert_tooltip_animates
+    # builds the bubble selector by raw concatenation,
+    # f"{tooltip_parent_class}{TOOLTIP_SUFFIX}", so the Jinja-static deck-header
+    # and create-form buttons -- whose own locators in this class are `#id`-form
+    # -- need a class-form twin to feed that helper. Each value below matches a
+    # template's data-bs-custom-class minus the "-tooltip" suffix and matches NO
+    # element on the page; never use one as a selector. The TS-rendered URL-card
+    # buttons already carry real class locators (BUTTON_URL_TITLE_SUBMIT_UPDATE,
+    # BUTTON_TAG_DELETE, ...) and are passed to that same parameter directly.
+    TOOLTIP_CLASS_STEM_UTUB_DELETE = ".utubBtnDelete"
+    TOOLTIP_CLASS_STEM_UTUB_LEAVE = ".memberSelfBtnDelete"
+    TOOLTIP_CLASS_STEM_UTUB_NAME_FILTER = ".utubNameFilterBtn"
+    TOOLTIP_CLASS_STEM_UNSELECT_ALL = ".unselectAllTagFilters"
+    TOOLTIP_CLASS_STEM_UTUB_SUBMIT_CREATE = ".utubSubmitBtnCreate"
+    TOOLTIP_CLASS_STEM_UTUB_CANCEL_CREATE = ".utubCancelBtnCreate"
+    TOOLTIP_CLASS_STEM_UTUB_TAG_SUBMIT_CREATE = ".utubTagSubmitBtnCreate"
+    TOOLTIP_CLASS_STEM_UTUB_TAG_CANCEL_CREATE = ".utubTagCancelBtnCreate"
 
     MEMBER_ICON = ".bi-people-fill"
     CO_CREATOR_ICON = ".bi-diamond-half"

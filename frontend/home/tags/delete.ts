@@ -6,6 +6,7 @@ import { debug } from "../../lib/debug.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
+import { disposeTooltipsWithin, hideTooltip } from "../../lib/tooltips.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { applyAlternatingTagBackground } from "./search.js";
@@ -145,6 +146,9 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
   utubTagSelector.fadeOut("fast", () => {
     // Remove the tag from associated URLs
     const urlTagBadges = $(".tagBadge[data-utub-tag-id=" + deletedTagID + "]");
+    // Deleting a UTub tag sweeps its badge off every URL card at once — dispose
+    // each badge's delete-button tooltip first, or every card leaks one.
+    disposeTooltipsWithin(urlTagBadges);
     urlTagBadges.remove();
 
     utubTagSelector.remove();
@@ -156,6 +160,9 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
     // If no tags are left then reset back to only showing Create UTub Tag Button
     if ($(".tagFilter").length === 0) {
       $("#utubTagBtnUpdateAllOpen").hideClass();
+      // This button is hidden by this caller rather than by its own click, so
+      // hide any open hover tooltip or the bubble lingers detached.
+      hideTooltip($("#unselectAllTagFilters")[0]);
       $("#unselectAllTagFilters").hideClass();
       $("#utubTagCloseUpdateTagBtnContainer").hideClass();
       $("#utubTagStandardBtns").showClassFlex();

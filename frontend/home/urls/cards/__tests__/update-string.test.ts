@@ -1,5 +1,6 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
-import { ajaxCall } from "../../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
+import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
   updateURL,
@@ -22,30 +23,24 @@ const { mockMetricsClient } = await vi.hoisted(
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
-vi.mock("../../../../lib/globals.js", async () => {
-  const jquery = (await import("jquery")).default;
-  const tooltipInstance = {
-    setContent: vi.fn(),
-    show: vi.fn(),
-    hide: vi.fn(),
-    enable: vi.fn(),
-    disable: vi.fn(),
-  };
-  return {
-    $: jquery,
-    jQuery: jquery,
-    bootstrap: {
-      Tooltip: {
-        getInstance: vi.fn(() => tooltipInstance),
-        getOrCreateInstance: vi.fn(() => tooltipInstance),
-      },
-    },
-    getInputValue: (input: string | JQuery) => {
-      const element = typeof input === "string" ? jquery(input) : input;
-      return element.val() as string;
-    },
-  };
+const { globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
 });
+
+vi.mock("../../../../lib/globals.js", () => globalsMock);
+
+// The restore-on-failure path delegates to lib/tooltips.js's
+// restoreTooltipIfStillTargeted, which owns the still-targeted guard (`:hover`
+// or `:focus-visible`) and the deferral
+// past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts). Mock it
+// here so these tests assert WHICH element each keep-open branch restores.
+vi.mock("../../../../lib/tooltips.js", () => ({
+  hideTooltip: vi.fn(),
+  restoreTooltipIfStillTargeted: vi.fn(),
+}));
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -816,5 +811,84 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
 
     expect(isURLStringSubmitInFlight()).toBe(false);
     expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+  });
+});
+
+describe("updateURL - restores the submit button tooltip on a keep-open failure", () => {
+  const RESTORE_URL_CARD_HTML = `
+  <div class="urlRow" utuburlid="1" urlSelected="false">
+    <a class="urlString" href="https://example.com">https://example.com</a>
+    <div class="updateUrlStringWrap">
+      <input class="urlStringUpdate" value="https://example.com" />
+      <div class="urlStringUpdate-error"></div>
+      <button class="urlStringSubmitBtnUpdate"></button>
+      <button class="urlStringCancelBtnUpdate"></button>
+    </div>
+    <div class="urlCardDualLoadingRing"></div>
+  </div>
+`;
+
+  let urlCard: JQuery;
+  let urlStringInput: JQuery;
+
+  beforeEach(() => {
+    document.body.innerHTML = RESTORE_URL_CARD_HTML;
+    urlCard = $(".urlRow");
+    urlStringInput = urlCard.find(".urlStringUpdate");
+    urlStringInput.val("https://duplicate.example.com");
+    vi.clearAllMocks();
+    vi.mocked(is429Handled).mockReturnValue(false);
+  });
+
+  function mockFailure(status: number, responseJSON: unknown): void {
+    const xhr = { status, responseJSON } as unknown as JQuery.jqXHR;
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        fail: (callback: unknown) =>
+          (callback as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      }),
+    );
+  }
+
+  it("restores this card's submit button on a 400 with field errors", async () => {
+    mockFailure(400, { errors: { urlString: ["Invalid URL"] } });
+    const submitBtn = urlCard.find(".urlStringSubmitBtnUpdate")[0];
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+  });
+
+  it("restores the submit button on a 400 carrying only a message", async () => {
+    mockFailure(400, { message: "URL already in UTub" });
+    const submitBtn = urlCard.find(".urlStringSubmitBtnUpdate")[0];
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+  });
+
+  it("restores the submit button on a 409 stale conflict", async () => {
+    mockFailure(409, { message: "URL already in UTub" });
+    const submitBtn = urlCard.find(".urlStringSubmitBtnUpdate")[0];
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+  });
+
+  it("does not attempt a restore when the failure is swallowed as a handled 429", async () => {
+    // A rate-limited response is handled by its own banner and returns before
+    // the keep-open branch, so no tooltip restore should be scheduled.
+    mockFailure(400, { errors: { urlString: ["Invalid URL"] } });
+    vi.mocked(is429Handled).mockReturnValue(true);
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).not.toHaveBeenCalled();
   });
 });

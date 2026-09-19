@@ -221,6 +221,24 @@ def wait_for_page_complete_and_dom_stable(*, page: Page) -> None:
     )
 
 
+def collect_page_errors(*, page: Page) -> list[str]:
+    """Start collecting uncaught JS exceptions raised in the page, and return
+    the (initially empty) list they accumulate into.
+
+    Playwright's `pageerror` event fires for exceptions that escape to
+    `window.onerror` — the shape a broken tooltip teardown takes, since it
+    throws inside a Bootstrap transition callback rather than inside the
+    handler the test drives. Call this BEFORE the action under test, then
+    assert with `assert_no_page_errors()` afterwards.
+
+    The listener lives as long as the page, which the `page` fixture rebuilds
+    per test, so no teardown is needed.
+    """
+    page_errors: list[str] = []
+    page.on("pageerror", lambda exception: page_errors.append(str(exception)))
+    return page_errors
+
+
 # Splash footer pages
 def scroll_footer_link_into_view(*, page: Page, css_selector: str) -> Locator:
     """Scroll a below-the-fold footer link into the viewport before clicking.

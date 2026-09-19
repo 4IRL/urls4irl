@@ -48,6 +48,10 @@ export function createCopyURLBtn(url: UtubUrlItem): JQuery<HTMLElement> {
       "data-bs-custom-class": "urlBtnCopy-tooltip",
       "data-bs-placement": "top",
       "data-bs-title": `${APP_CONFIG.strings.COPY_URL_TOOLTIP}`,
+      // Accessible name for this icon-only button. The trigger is deliberately
+      // left at Bootstrap's default (hover+focus) — test_copy_url_btn_key asserts
+      // a focus-triggered tooltip.
+      "aria-label": `${APP_CONFIG.strings.COPY_URL_TOOLTIP}`,
     })
     .disableTab()
     // Native `<button>`s already fire click on Enter/Space, so no separate

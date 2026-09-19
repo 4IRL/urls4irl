@@ -3,6 +3,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm } from "../../../lib/modal-tracking.js";
+import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { getState } from "../../../store/app-store.js";
@@ -88,6 +89,9 @@ export function updateURLAfterFindingStaleData(
           parseInt($(tag).attr("data-utub-tag-id")!) ===
           currentURLTagIDs[currentTagIndex]
         ) {
+          // A stale-data diff drops the badge silently — dispose its
+          // delete-button tooltip so the instance goes with it.
+          disposeTooltipsWithin($(tag));
           $(tag).remove();
           return false;
         }

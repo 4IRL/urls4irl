@@ -13,6 +13,7 @@ import { registerJQueryPlugins } from "./lib/jquery-plugins.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
 import { initMetricsClient } from "./lib/metrics-client.js";
+import { initTooltips } from "./lib/tooltips.js";
 
 import { initBtnsForms } from "./home/btns-forms.js";
 import { initVisibilityHandlers } from "./home/visibility.js";
@@ -70,6 +71,11 @@ $(document).ready(() => {
   initURLDeckHeaderFit();
   initCookieBanner();
   initMetricsClient();
+  // Before initOnboardingNudges(): the nudge anchors are deliberately excluded
+  // from the tooltip sweep, so ordering is not a correctness lever here — but
+  // keeping nudge init last preserves the "nudges evaluate against fully
+  // initialised state" invariant.
+  initTooltips();
   initOnboardingNudges();
 });
 

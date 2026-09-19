@@ -1,10 +1,11 @@
 from flask import Flask
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
+from backend.utils.constants import STRINGS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.tag_strs import TAGS_FAILURE
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -16,7 +17,9 @@ from tests.functional.db_utils import (
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
+    assert_no_page_errors,
     assert_on_429_page,
+    assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.playwright_login_utils import (
@@ -25,12 +28,14 @@ from tests.functional.playwright_login_utils import (
 )
 from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
+    collect_page_errors,
     invalidate_csrf_token_on_page,
     set_focus_on_element,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_in_focus,
+    wait_until_visible_css_selector,
 )
 from tests.functional.tags_ui.playwright_assert_utils import (
     assert_create_utub_tag_input_form_is_hidden,
@@ -429,3 +434,151 @@ def test_create_utub_tag_invalid_csrf(page: Page, create_test_tags, provide_app:
     assert_visited_403_on_invalid_csrf_and_reload(page=page)
     wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_TAG_CREATE)
     assert_login_with_username(page=page, username=user.username)
+
+
+def test_create_utub_tag_submit_btn_tooltip_animates(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    Tests the hover tooltip on the createUTubTag form's submit (check) button.
+
+    GIVEN a user has selected a UTub and opened the createUTubTag form
+    WHEN the user hovers over the submit button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
+        tooltip_parent_class=HPL.TOOLTIP_CLASS_STEM_UTUB_TAG_SUBMIT_CREATE,
+        tooltip_text=STRINGS.CREATE_UTUB_TAG_TOOLTIP,
+    )
+
+    create_utub_tag_submit_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE
+    )
+    assert create_utub_tag_submit_btn is not None
+    assert (
+        create_utub_tag_submit_btn.get_attribute("aria-label")
+        == STRINGS.CREATE_UTUB_TAG_TOOLTIP
+    )
+
+
+def test_create_utub_tag_submit_btn_tooltip_restores_after_400(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    Tests that the createUTubTag submit button's hover tooltip comes back after a
+    real backend 400 that leaves the form open.
+
+    The submit click handler hides the tooltip synchronously, and the 400 lands
+    inside Bootstrap's 150ms fade, so only restoreTooltipIfStillTargeted's
+    deferred re-show can put the bubble back. This is the live-browser counterpart
+    to the fake-timer unit tests, which cannot exercise that race.
+
+    GIVEN a user has selected a UTub, opened the createUTubTag form, typed a tag
+          already present in the UTub, and hovers the submit button with its
+          tooltip shown
+    WHEN the user clicks submit without moving the pointer off the button and the
+         server answers 400
+    THEN ensure the tooltip is shown again once the restore delay elapses, and no
+         uncaught page error fires
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    with app.app_context():
+        utub_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_created.id
+        ).first()
+        utub_tag_duplicate = utub_tag.tag_string
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+
+    page_errors = collect_page_errors(page=page)
+
+    wait_until_in_focus(page=page, css_selector=HPL.INPUT_UTUB_TAG_CREATE)
+    page.keyboard.type(utub_tag_duplicate)
+
+    # The bubble has to be up before the click, or the hide -> 400 -> restore
+    # sequence this test guards never happens.
+    shown_tooltip_selector = (
+        HPL.TOOLTIP_CLASS_STEM_UTUB_TAG_SUBMIT_CREATE
+        + HPL.TOOLTIP_SUFFIX
+        + HPL.TOOLTIP_SHOWN_SUFFIX
+    )
+    create_utub_tag_submit_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE
+    )
+    create_utub_tag_submit_btn.hover()
+    wait_until_visible_css_selector(page=page, css_selector=shown_tooltip_selector)
+
+    # Click the locator already under the pointer -- Playwright clicks the
+    # element's center, so the pointer stays on the button and the still-targeted
+    # guard is satisfied. The click handler hides the tooltip synchronously,
+    # dropping the `.show` class before this call returns, so any later `.show`
+    # can only come from the restore.
+    create_utub_tag_submit_btn.click()
+
+    # Prove the 400 is a genuine backend response, not a client-side short-circuit.
+    invalid_utub_tag_error = wait_then_get_element(
+        page=page,
+        css_selector=HPL.INPUT_UTUB_TAG_CREATE + HPL.INVALID_FIELD_SUFFIX,
+    )
+    assert invalid_utub_tag_error is not None
+    assert invalid_utub_tag_error.inner_text() == TAGS_FAILURE.TAG_ALREADY_IN_UTUB
+
+    # The restore itself. Playwright's auto-retrying assertion absorbs
+    # TOOLTIP_RESTORE_DELAY_MS, so no manual sleep is needed.
+    wait_until_visible_css_selector(page=page, css_selector=shown_tooltip_selector)
+    expect(page.locator(shown_tooltip_selector).first).to_have_text(
+        STRINGS.CREATE_UTUB_TAG_TOOLTIP
+    )
+
+    assert_no_page_errors(page_errors=page_errors)
+
+
+def test_create_utub_tag_cancel_btn_tooltip_animates(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    Tests the hover tooltip on the createUTubTag form's cancel (x) button.
+
+    GIVEN a user has selected a UTub and opened the createUTubTag form
+    WHEN the user hovers over the cancel button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
+        tooltip_parent_class=HPL.TOOLTIP_CLASS_STEM_UTUB_TAG_CANCEL_CREATE,
+        tooltip_text=STRINGS.CREATE_UTUB_TAG_CANCEL_TOOLTIP,
+    )
+
+    create_utub_tag_cancel_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_TAG_CANCEL_CREATE
+    )
+    assert create_utub_tag_cancel_btn is not None
+    assert (
+        create_utub_tag_cancel_btn.get_attribute("aria-label")
+        == STRINGS.CREATE_UTUB_TAG_CANCEL_TOOLTIP
+    )

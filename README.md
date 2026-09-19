@@ -31,6 +31,36 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 
 **Without Docker:** Python 3.11, PostgreSQL, Redis, Node.js
 
+### First-time clone setup
+
+Run this **once per clone**, before your first commit:
+
+```bash
+make hooks
+```
+
+This creates a local `venv/` (gitignored), installs the `pre-commit` version pinned in
+`requirements/requirements-dev.txt`, and installs the git pre-commit hook. `make hooks-check`
+reports whether the hook is present in the current clone.
+
+**Why it matters:** the app itself is fully containerized — the Python venv is baked into the
+image, so nothing is installed on the host by default. Git hooks, however, run *on the host*.
+Skip this step and `black`, `flake8`, `eslint` and `shellcheck` silently never run on your
+commits, and CI (`Check Formatting` / `Linting`) becomes the first thing that catches a
+formatting error — after you've already pushed.
+
+Two known rough edges once the hook is installed:
+
+- **`TypeScript typecheck` hook needs the `vite` service running.** It shells into the container
+  (`docker compose exec -T vite npx tsc`). If you're on the pre-built stack (`make up-built`),
+  `vite` isn't running and the hook fails with `service "vite" is not running`. Bring the normal
+  stack up (`make up d=1`) before committing `.ts` changes, or use `git commit --no-verify` and
+  run `make typecheck-built` yourself.
+- **`eslint` hooks can fail to resolve `@typescript-eslint/parser`.** pre-commit runs eslint in
+  an isolated environment while `frontend/eslint.config.js` resolves plugins from the repo, so
+  the hook can report `ERR_MODULE_NOT_FOUND` even though CI's eslint (which runs `npm ci` in the
+  repo) passes. CI is authoritative here.
+
 ### Environment Variables
 
 | Variable | Required | Default | Description |

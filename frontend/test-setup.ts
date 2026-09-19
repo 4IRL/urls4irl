@@ -4,12 +4,6 @@ import jquery from "jquery";
 window.jQuery = jquery;
 window.$ = jquery;
 
-// Approved exception to top-level-imports rule: window.jQuery must be assigned
-// before jquery-plugins evaluates, requiring deferred loading that cannot be
-// moved to module scope.
-const { registerJQueryPlugins } = await import("./lib/jquery-plugins.js");
-registerJQueryPlugins();
-
 // Factory for Bootstrap component mocks — each component shares the same
 // constructor/show/hide/dispose/getInstance/getOrCreateInstance shape.
 function makeBootstrapClass(
@@ -45,6 +39,15 @@ window.bootstrap = {
   Collapse: makeBootstrapClass("Collapse", { toggle() {} }),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock; full bootstrap typing not needed
 } as any;
+
+// Approved exception to top-level-imports rule: window.jQuery AND window.bootstrap
+// must both be assigned before jquery-plugins evaluates, requiring deferred loading
+// that cannot be moved to module scope. jquery-plugins statically imports
+// lib/globals.js, which snapshots `window.bootstrap` into its `bootstrap` export at
+// evaluation time — so loading it before the assignment above would permanently
+// leave that export `undefined` for every test that does not mock lib/globals.js.
+const { registerJQueryPlugins } = await import("./lib/jquery-plugins.js");
+registerJQueryPlugins();
 
 // Inject app-config script element for lib/config.js
 const appConfig = {
@@ -142,6 +145,12 @@ const appConfig = {
     ADMIN_ACTION_SUCCESS_DEFAULT: "Action completed.",
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",
     EDIT_URL_TITLE_TOOLTIP: "Edit URL title",
+    COPY_URL_TOOLTIP: "Copy URL",
+    CONFIRM_URL_TITLE_EDIT_TOOLTIP: "Confirm title edit",
+    CANCEL_URL_TITLE_EDIT_TOOLTIP: "Cancel title edit",
+    CONFIRM_URL_EDIT_TOOLTIP: "Confirm URL edit",
+    CANCEL_URL_EDIT_TOOLTIP: "Cancel URL edit",
+    REMOVE_URL_TAG_TOOLTIP: "Remove tag",
     INVALID_URL: "This is not a valid URL.",
     TAG_FILTER_NO_RESULTS: "No URLs match selected tags",
     TAG_SEARCH_NO_RESULTS: "No tags found",

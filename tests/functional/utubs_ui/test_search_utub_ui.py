@@ -4,12 +4,14 @@ from playwright.sync_api import Page
 
 from backend import db
 from backend.models.utub_members import Utub_Members
+from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.utub_strs import UTUB_CREATE_MSG
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_active_utub,
     assert_not_visible_css_selector,
+    assert_tooltip_animates,
     assert_visible_css_selector,
 )
 from tests.functional.db_utils import create_test_searchable_utubs
@@ -393,3 +395,36 @@ def test_no_results_message_hidden_when_search_has_matches(
     clear_then_send_keys(locator=input_elem, input_text="1")
     wait_until_visible_css_selector(page=page, css_selector=HPL.SELECTORS_UTUB)
     assert_not_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_NO_RESULTS)
+
+
+def test_utub_name_filter_btn_tooltip_animates(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests the hover tooltip on the UTub-name filter funnel button.
+
+    GIVEN a user on the home page with at least one UTub (the funnel is hidden
+          at zero UTubs)
+    WHEN the user hovers over the UTub name filter button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
+
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=HPL.BUTTON_UTUB_NAME_FILTER,
+        tooltip_parent_class=HPL.TOOLTIP_CLASS_STEM_UTUB_NAME_FILTER,
+        tooltip_text=STRINGS.FILTER_UTUB_NAMES_TOOLTIP,
+    )
+
+    utub_name_filter_btn = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_NAME_FILTER
+    )
+    assert utub_name_filter_btn is not None
+    assert (
+        utub_name_filter_btn.get_attribute("aria-label")
+        == STRINGS.FILTER_UTUB_NAMES_TOOLTIP
+    )

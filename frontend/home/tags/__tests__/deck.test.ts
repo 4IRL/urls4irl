@@ -1,4 +1,6 @@
 import {
+  resetTagDeck,
+  resetTagDeckIfNoUTubSelected,
   setTagDeckSubheaderWhenNoUTubSelected,
   updateCountOfTagFiltersApplied,
   updateTagDeck,
@@ -6,6 +8,19 @@ import {
 import { APP_CONFIG } from "../../../lib/config.js";
 import { resetStore, setState } from "../../../store/app-store.js";
 import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
+import { bootstrap } from "../../../lib/globals.js";
+
+// The ambient test-setup Bootstrap mock returns null from getInstance(), which
+// would make the tooltip-hide guards silent no-ops. Override lib/globals.js with
+// a shared tooltip instance so the guards can be asserted on.
+const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
+});
+
+vi.mock("../../../lib/globals.js", () => globalsMock);
 
 vi.mock("../../../logic/apply-deck-diff.js", () => ({
   applyDeckDiff: vi.fn(),
@@ -77,6 +92,74 @@ describe("updateTagDeck - applyDeckDiff config", () => {
     config.removeElement(7);
 
     expect(document.querySelector('[data-utub-tag-id="7"]')).toBeNull();
+  });
+});
+
+describe("Tag deck reset - hides the #unselectAllTagFilters hover tooltip", () => {
+  const TAG_DECK_RESET_HTML = `
+    <div id="TagDeck">
+      <div id="listTags"></div>
+      <div id="createUTubTagWrap" class="hidden"></div>
+      <button id="utubTagBtnCreate"></button>
+      <button id="unselectAllTagFilters" data-bs-toggle="tooltip"></button>
+      <button id="utubTagBtnUpdateAllOpen"></button>
+    </div>
+  `;
+
+  // Records whether #unselectAllTagFilters already carried the `hidden` class at
+  // the moment hide() ran. Asserting it is false proves the tooltip is hidden
+  // BEFORE the button — swapping the two production lines flips it to true.
+  let buttonHiddenWhenTooltipHidden: boolean | null = null;
+
+  beforeEach(() => {
+    resetStore();
+    document.body.innerHTML = TAG_DECK_RESET_HTML;
+    buttonHiddenWhenTooltipHidden = null;
+    tooltipInstance.hide.mockReset();
+    tooltipInstance.hide.mockImplementation(() => {
+      buttonHiddenWhenTooltipHidden = window
+        .jQuery("#unselectAllTagFilters")
+        .hasClass("hidden");
+    });
+  });
+
+  afterEach(() => {
+    // Drop the recording implementation so it cannot leak into other describes
+    // that share this hoisted tooltipInstance.
+    tooltipInstance.hide.mockReset();
+  });
+
+  it("hides the tooltip before resetTagDeck() hides the button", () => {
+    resetTagDeck();
+
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+    expect(buttonHiddenWhenTooltipHidden).toBe(false);
+    expect(window.jQuery("#unselectAllTagFilters").hasClass("hidden")).toBe(
+      true,
+    );
+  });
+
+  it("hides the tooltip before resetTagDeckIfNoUTubSelected() hides the button", () => {
+    resetTagDeckIfNoUTubSelected();
+
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+    expect(buttonHiddenWhenTooltipHidden).toBe(false);
+    expect(window.jQuery("#unselectAllTagFilters").hasClass("hidden")).toBe(
+      true,
+    );
+  });
+
+  it("still hides the button and does not throw when no tooltip instance exists", () => {
+    // Touch devices never construct a Tooltip, so getInstance() returns null and
+    // the `?.` guard must no-op without breaking the reset.
+    vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
+
+    expect(() => resetTagDeck()).not.toThrow();
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+    expect(window.jQuery("#unselectAllTagFilters").hasClass("hidden")).toBe(
+      true,
+    );
   });
 });
 

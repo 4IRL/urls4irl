@@ -9,6 +9,10 @@ import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { $, getInputValue } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
+import {
+  hideTooltip,
+  restoreTooltipIfStillTargeted,
+} from "../../lib/tooltips.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
@@ -46,7 +50,11 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
 
   utubTagSubmitBtnCreate.offAndOnExact(
     "click.createUTubTagSubmit",
-    function () {
+    function (this: HTMLElement) {
+      // The create form is hidden only after the AJAX call resolves, so hide the
+      // hover tooltip here — synchronously, regardless of the request's outcome —
+      // rather than in createUTubTagSuccess(), which has no `this` bound to the button.
+      hideTooltip(this);
       emit({
         event: UI_EVENTS.UI_FORM_SUBMIT,
         form: HOME_FORM.TAG_CREATE,
@@ -59,7 +67,10 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
 
   utubTagCancelBtnCreate.offAndOnExact(
     "click.createUTubTagEscape",
-    function () {
+    function (this: HTMLElement) {
+      // Cancelling hides the form synchronously in this handler, so the tooltip
+      // must be hidden here or its bubble lingers over the hidden button.
+      hideTooltip(this);
       emit({
         event: UI_EVENTS.UI_FORM_CANCEL,
         form: HOME_FORM.TAG_CREATE,
@@ -212,6 +223,14 @@ function createUTubTagSuccess(
   createUTubTagHideInput();
 }
 
+// A 400 keeps the create-tag form open, so the tooltip the submit click handler
+// hid should come back. restoreTooltipIfStillTargeted owns both guards (the button
+// is still hovered or keyboard-focused, and the show is deferred past
+// Bootstrap's fade) — see lib/tooltips.ts.
+function restoreCreateUTubTagSubmitTooltip(): void {
+  restoreTooltipIfStillTargeted($("#utubTagSubmitBtnCreate")[0]);
+}
+
 function createUTubTagFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
 
@@ -241,10 +260,12 @@ function createUTubTagFail(xhr: JQuery.jqXHR): void {
       if (errors) {
         // Show form errors
         createUTubTagFailErrors(errors);
+        restoreCreateUTubTagSubmitTooltip();
         break;
       } else if (message) {
         // Show message
         displayCreateUTubTagFailErrors("utubTag", message);
+        restoreCreateUTubTagSubmitTooltip();
         break;
       }
       // Intentional fall-through: an unexpected 400 body shape (neither

@@ -118,7 +118,12 @@
 				<path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
 			</svg>
 		</button>
-		<button id="urlBtnCreate" class="green-clickable hidden" tabindex="0">
+		{# Add URL button.
+		   ONBOARDING-NUDGE ANCHOR: nudges.ts (NUDGE_REGISTRY) owns this element's Bootstrap
+		   Tooltip instance — aria-label ONLY here, never data-bs-*. A static hover tooltip
+		   would share that one instance and break the nudge. See issue #502 / PR #767. #}
+		<button id="urlBtnCreate" class="green-clickable hidden" tabindex="0"
+			aria-label="{{ CONSTANTS.STRINGS.ADD_URL_BUTTON }}">
 			<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
 				class="bi bi-plus-square-fill" viewBox="0 0 16 16">
 				<path

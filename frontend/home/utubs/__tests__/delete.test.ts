@@ -16,6 +16,19 @@ import { emit, AppEvents } from "../../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { setDeleteEventListeners } from "../delete.js";
+import { bootstrap } from "../../../lib/globals.js";
+
+// The ambient test-setup Bootstrap mock returns null from getInstance(), which
+// would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
+// a shared tooltip instance so the guard can be asserted on.
+const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
+});
+
+vi.mock("../../../lib/globals.js", () => globalsMock);
 
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -334,5 +347,38 @@ describe("deleteUTubShowModal - #modalRedirect 'Transfer instead' entry point", 
     expect(vi.mocked(recordUIEvent)).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_DELETE_CANCEL,
     });
+  });
+});
+
+describe("setDeleteEventListeners - hides the #utubBtnDelete hover tooltip", () => {
+  beforeEach(() => {
+    document.body.innerHTML = DELETE_UTUB_HTML;
+    vi.clearAllMocks();
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
+      return this;
+    };
+  });
+
+  it("hides the tooltip when the delete button is clicked", () => {
+    setDeleteEventListeners(42);
+    $("#utubBtnDelete").trigger("click.deleteUTub");
+
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+  });
+
+  it("still opens the confirm modal and does not throw when no tooltip instance exists", () => {
+    // Touch devices never construct a Tooltip, so getInstance() returns null and
+    // the `?.` guard must no-op without breaking the delete-modal flow.
+    vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
+    setDeleteEventListeners(42);
+
+    expect(() => $("#utubBtnDelete").trigger("click.deleteUTub")).not.toThrow();
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+    expect($("#confirmModalTitle").text()).toBe(
+      "Are you sure you want to delete this UTub?",
+    );
   });
 });

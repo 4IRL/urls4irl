@@ -3,6 +3,7 @@ import type { MemberModifiedResponse } from "../../types/member.js";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
+import { hideTooltip } from "../../lib/tooltips.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit as emitAppEvent, AppEvents } from "../../lib/event-bus.js";
 import { isUtubLockedHandled } from "../utub-locked.js";
@@ -31,11 +32,17 @@ export function createLeaveUTubAsMemberIcon(
   currentUserID: number,
   utubID: number,
 ): void {
-  $("#memberSelfBtnDelete").offAndOnExact("click.removeMember", function () {
-    hideInputs();
-    deselectAllURLs();
-    removeMemberShowModal(currentUserID, isCurrentUserOwner, utubID);
-  });
+  $("#memberSelfBtnDelete").offAndOnExact(
+    "click.removeMember",
+    function (this: HTMLElement) {
+      // The confirmation modal covers this button while a hover tooltip may
+      // still be open — hide it first so the bubble cannot linger detached.
+      hideTooltip(this);
+      hideInputs();
+      deselectAllURLs();
+      removeMemberShowModal(currentUserID, isCurrentUserOwner, utubID);
+    },
+  );
 }
 
 // Hide confirmation modal for removal of the selected member

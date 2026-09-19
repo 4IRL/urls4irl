@@ -145,6 +145,14 @@ async function flushDeferredBind(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+// Flush the deferred `dispose()` that dismissActiveTip() schedules past
+// Bootstrap's ~150ms hide transition (TIP_DISPOSE_DELAY_MS in nudges.ts). A
+// re-show flushes it early, but a dismissal with no follow-up show only disposes
+// once this window elapses.
+async function flushDeferredDispose(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 250));
+}
+
 const CREATE_UTUB_TIP = {
   tipId: "createUtub" as const,
   anchorSelector: "#utubBtnCreate",
@@ -243,6 +251,7 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
     showTip(CREATE_UTUB_TIP);
     await flushDeferredBind();
     window.jQuery(anchor).trigger("click");
+    await flushDeferredDispose();
 
     const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
     expect(tip.hide).toHaveBeenCalledTimes(1);
@@ -258,6 +267,7 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
     showTip(CREATE_UTUB_TIP);
     await flushDeferredBind();
     window.jQuery(document.body).trigger("click");
+    await flushDeferredDispose();
 
     const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
     expect(tip.dispose).toHaveBeenCalledTimes(1);
@@ -274,6 +284,7 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
     window
       .jQuery(document)
       .trigger(window.jQuery.Event("keydown", { key: "Escape" }));
+    await flushDeferredDispose();
 
     const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
     expect(tip.dispose).toHaveBeenCalledTimes(1);
@@ -310,6 +321,64 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
     expect(tip.dispose).toHaveBeenCalledTimes(1);
     expect(markTipSeenSpy).not.toHaveBeenCalled();
     expect(tip.show).toHaveBeenCalledTimes(2);
+  });
+
+  it("(a11y) dismissal clears the anchor's aria-describedby", async () => {
+    const { showTip, dismissActiveTip } = await import("../nudges.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+
+    showTip(CREATE_UTUB_TIP);
+    // The mocked Bootstrap Tooltip renders no real bubble, so stand in for the
+    // attribute the library's own `show()` writes onto the anchor. Against the
+    // real library this attribute survives `hide(); dispose();` permanently —
+    // the queued hide callback throws before it can remove it.
+    anchor.setAttribute("aria-describedby", "tooltip123456");
+
+    dismissActiveTip({ markSeen: true });
+
+    expect(anchor.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("(a11y) a same-anchor re-show inside the dispose window flushes the pending dispose and shows a fresh tip", async () => {
+    const { showTip, dismissActiveTip } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    showTip(CREATE_UTUB_TIP);
+    anchor.setAttribute("aria-describedby", "tooltip123456");
+    dismissActiveTip({ markSeen: true });
+    // Dispose is deferred past the hide transition, so it has NOT run yet.
+    expect(tip.dispose).not.toHaveBeenCalled();
+
+    // Re-showing on the same anchor must flush that pending dispose first, so
+    // getOrCreateInstance returns a fresh, enabled instance rather than the
+    // still-hiding one.
+    showTip(CREATE_UTUB_TIP);
+
+    expect(tip.dispose).toHaveBeenCalledTimes(1);
+    expect(tip.show).toHaveBeenCalledTimes(2);
+    expect(anchor.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("(a11y) a re-show on a DIFFERENT anchor leaves the pending dispose on its own timer", async () => {
+    const { showTip, dismissActiveTip } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const createAnchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(createAnchor);
+
+    showTip(CREATE_UTUB_TIP);
+    dismissActiveTip({ markSeen: true });
+
+    // The tag anchor is a different element, so Bootstrap builds it a separate
+    // instance — nothing needs flushing, and disposing the outgoing tip early is
+    // precisely what makes its queued hide callback throw. It must stay deferred.
+    showTip(ADD_TAG_TIP);
+    expect(tip.dispose).not.toHaveBeenCalled();
+
+    // It still disposes once its own transition window elapses.
+    await flushDeferredDispose();
+    expect(tip.dispose).toHaveBeenCalledTimes(1);
   });
 
   it("(Red 6, invariant) the seen flag is NOT written on show, only on dismiss", async () => {
@@ -678,6 +747,7 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
       configurable: true,
     });
     emitBusEvent(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
+    await flushDeferredDispose();
 
     expect(tip.dispose).toHaveBeenCalledTimes(1);
     expect(markTipSeenSpy).not.toHaveBeenCalled();
@@ -701,6 +771,7 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     // so it can re-show once the form closes.
     vi.mocked(getOpenForm).mockReturnValue("url_create");
     emitBusEvent(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+    await flushDeferredDispose();
 
     expect(tip.dispose).toHaveBeenCalledTimes(1);
     expect(markTipSeenSpy).not.toHaveBeenCalled();
@@ -1178,6 +1249,7 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     const markTipSeenSpy = vi.spyOn(nudgeStorage, "markTipSeen");
     setState({ isCurrentUTubLocked: true });
     emitBusEvent(AppEvents.TAG_DECK_CHANGED);
+    await flushDeferredDispose();
     expect(tip.dispose).toHaveBeenCalledTimes(1);
     expect(markTipSeenSpy).not.toHaveBeenCalled();
     expect(nudgeStorage.hasSeenTip("addTag")).toBe(false);

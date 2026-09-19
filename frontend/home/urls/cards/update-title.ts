@@ -2,6 +2,7 @@ import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $, getInputValue } from "../../../lib/globals.js";
+import { restoreTooltipIfStillTargeted } from "../../../lib/tooltips.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
@@ -306,6 +307,14 @@ function updateURLTitleSuccess(
   }
 }
 
+// A 400 keeps the title edit form open, so the tooltip the submit click handler
+// hid should come back. restoreTooltipIfStillTargeted owns both guards (the button
+// is still hovered or keyboard-focused, and the show is deferred past
+// Bootstrap's fade) — see lib/tooltips.ts.
+function restoreUpdateURLTitleSubmitTooltip(urlCard: JQuery): void {
+  restoreTooltipIfStillTargeted(urlCard.find(".urlTitleSubmitBtnUpdate")[0]);
+}
+
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   if (is429Handled(xhr)) return;
@@ -334,6 +343,7 @@ function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
           >,
           urlCard,
         );
+        restoreUpdateURLTitleSubmitTooltip(urlCard);
         break;
       }
     }

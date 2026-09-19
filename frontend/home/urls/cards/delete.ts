@@ -7,6 +7,7 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
+import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
@@ -159,6 +160,9 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
   }
 
   urlCard.fadeOut("slow", function () {
+    // Tear down the card's own tooltips (and its tag badges') before detaching —
+    // Bootstrap's instance map would otherwise pin the whole subtree.
+    disposeTooltipsWithin(urlCard);
     urlCard.remove();
     if ($("#listURLs .urlRow").length === 0) {
       showURLsEmptyState();

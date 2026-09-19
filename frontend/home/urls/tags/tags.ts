@@ -1,13 +1,23 @@
 import type { UtubTag } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
+import { APP_CONFIG } from "../../../lib/config.js";
+import { applyHoverTooltip, hideTooltip } from "../../../lib/tooltips.js";
 import { deleteURLTag } from "./delete.js";
 
 /**
  * Hide tag deletion button when needed
  */
 export function disableTagRemovalInURLCard(urlCard: JQuery): void {
-  urlCard.find(".urlTagBtnDelete").addClass("hidden");
+  const tagDeleteButtons = urlCard.find(".urlTagBtnDelete");
+  // Hiding an element the cursor is still over never fires `mouseleave`, so an
+  // open hover bubble would be stranded detached over the card. Doing it here
+  // covers all three disable/enable caller pairs at once; `enable` needs no
+  // counterpart, since re-showing a button cannot strand anything.
+  tagDeleteButtons.each(function () {
+    hideTooltip(this);
+  });
+  tagDeleteButtons.addClass("hidden");
 }
 
 /**
@@ -75,11 +85,37 @@ export function createTagBadgeInURL(
 
   removeButton
     .addClass("urlTagBtnDelete flex-row align-center pointerable tabbable")
-    .onExact("click", function () {
+    .onExact("click", function (this: HTMLElement) {
+      // A single-tag delete removes this badge from the DOM outright — it never
+      // routes through disableTagRemovalInURLCard(), so hide the bubble here too.
+      //
+      // Deliberate divergence from the Group C submit buttons in url-title.ts /
+      // url-string.ts: those call restoreTooltipIfStillTargeted() on non-navigating
+      // failures, this one does not. On the paths where the badge survives
+      // (is429Handled, isUtubLockedHandled, the !isTagInURL early return) it is
+      // left with its bubble suppressed until the pointer leaves and re-enters.
+      // Accepted: the button is only revealed while its .tagBadgeHoverable
+      // parent is hovered, so a leave/re-enter — which restores the bubble — is
+      // the normal next interaction on a target this small, and these are
+      // rate-limit/lock edge cases.
+      hideTooltip(this);
       deleteURLTag(utubTagID, tagSpan, urlCard, utubID);
     });
 
   removeButton.append(createTagDeleteIcon());
+
+  // Attached at creation: tag badges are built and torn down continuously and
+  // never exist at $(document).ready, so initTooltips() can never reach them.
+  // The aria-label deliberately diverges from the shared bubble text — every
+  // badge on a card would otherwise announce the identical "Remove tag".
+  applyHoverTooltip({
+    btn: removeButton,
+    tooltip: {
+      title: APP_CONFIG.strings.REMOVE_URL_TAG_TOOLTIP,
+      customClass: "urlTagBtnDelete-tooltip",
+      ariaLabel: `${APP_CONFIG.strings.REMOVE_URL_TAG_TOOLTIP} ${tagString}`,
+    },
+  });
 
   $(tagSpan).append(removeButton).append(tagText);
 

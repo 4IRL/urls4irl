@@ -106,12 +106,17 @@ if [ "$DB_READY" != 1 ]; then
 fi
 
 # --- MinIO (S3-compatible) sidecar + buckets for the real-upload legs ---
+# Pulled from Quay, MinIO's canonical registry — the Docker Hub mirror
+# (minio/minio) now refuses anonymous pulls with "denied: requested access to
+# the resource is denied", which failed this job on every PR and on main.
+# Pinned to a release tag (not :latest) so an upstream move can't break CI again
+# with no code change, matching the pinned postgres sidecar above.
 echo "🪣 Starting MinIO sidecar (alias minio)"
 MINIO_STARTED=$(docker run -d \
   --network "$NET" --network-alias minio \
   -e MINIO_ROOT_USER="$MINIO_USER" -e MINIO_ROOT_PASSWORD="$MINIO_PASS" \
   --name "$MINIO" \
-  minio/minio server /data)
+  quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data)
 
 # Wait for MinIO and create the two buckets using the workflow image's own rclone
 # (--s3-no-check-bucket in the prod script means the buckets must pre-exist).

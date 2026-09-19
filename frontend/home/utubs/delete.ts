@@ -2,6 +2,7 @@ import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { hideTooltip } from "../../lib/tooltips.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { isUtubLockedHandled } from "../utub-locked.js";
@@ -37,7 +38,10 @@ export function setDeleteEventListeners(utubID: number): void {
 
   // Delete UTub. Native `<button>`s already fire click on Enter/Space, so no
   // separate keyboard handler is needed.
-  utubBtnDelete.offAndOn("click.deleteUTub", function () {
+  utubBtnDelete.offAndOn("click.deleteUTub", function (this: HTMLElement) {
+    // The confirmation modal covers this button while a hover tooltip may still
+    // be open — hide it first so the bubble cannot linger detached over the modal.
+    hideTooltip(this);
     deleteUTubShowModal(utubID);
   });
 }

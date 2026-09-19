@@ -42,6 +42,7 @@ from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     get_selected_url,
     invalidate_csrf_token_on_page,
+    open_update_url_title,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -57,6 +58,33 @@ from tests.functional.urls_ui.playwright_utils import (
 )
 
 pytestmark = pytest.mark.update_urls_ui
+
+
+def _login_and_select_first_url(*, app: Flask, page: Page, user_id: int) -> None:
+    """Log in and select the first URL of a UTub this user created — the shared
+    setup for the URL-card update-form tooltip tests below."""
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    utub_url = get_url_in_utub(app, utub_id=utub_user_created.id)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app=app,
+        page=page,
+        user_id=user_id,
+        utub_id=utub_user_created.id,
+        utub_url_id=utub_url.id,
+    )
+
+
+def _open_update_url_string_form(*, page: Page) -> None:
+    """Drive the real reveal path for the URL-string update form."""
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}",
+    )
+    wait_until_visible_css_selector(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+    )
 
 
 def test_update_url_string_tooltip_animates(
@@ -1246,3 +1274,139 @@ def test_update_url_string_invalid_csrf_token(
     expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(0)
 
     assert_login_with_username(page=page, username=user.username)
+
+
+def test_update_url_title_submit_btn_tooltip_animates(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+):
+    """
+    Tests a tooltip showing when a user hovers the confirm URL-title edit button.
+
+    GIVEN a user has opened the update-URL-title form on a selected URL
+    WHEN the user hovers over the confirm (check) button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    _login_and_select_first_url(app=app, page=page, user_id=user_id_for_test)
+
+    url_row = get_selected_url(page=page)
+    open_update_url_title(page=page, selected_url_row=url_row)
+
+    parent_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}"
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=parent_css_selector,
+        tooltip_parent_class=HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE,
+        tooltip_text=STRINGS.CONFIRM_URL_TITLE_EDIT_TOOLTIP,
+    )
+
+    submit_btn = wait_then_get_element(page=page, css_selector=parent_css_selector)
+    assert submit_btn is not None
+    assert (
+        submit_btn.get_attribute("aria-label") == STRINGS.CONFIRM_URL_TITLE_EDIT_TOOLTIP
+    )
+
+
+def test_update_url_title_cancel_btn_tooltip_animates(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+):
+    """
+    Tests a tooltip showing when a user hovers the cancel URL-title edit button.
+
+    GIVEN a user has opened the update-URL-title form on a selected URL
+    WHEN the user hovers over the cancel (x) button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    _login_and_select_first_url(app=app, page=page, user_id=user_id_for_test)
+
+    url_row = get_selected_url(page=page)
+    open_update_url_title(page=page, selected_url_row=url_row)
+
+    parent_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_CANCEL_UPDATE}"
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=parent_css_selector,
+        tooltip_parent_class=HPL.BUTTON_URL_TITLE_CANCEL_UPDATE,
+        tooltip_text=STRINGS.CANCEL_URL_TITLE_EDIT_TOOLTIP,
+    )
+
+    cancel_btn = wait_then_get_element(page=page, css_selector=parent_css_selector)
+    assert cancel_btn is not None
+    assert (
+        cancel_btn.get_attribute("aria-label") == STRINGS.CANCEL_URL_TITLE_EDIT_TOOLTIP
+    )
+
+
+def test_update_url_string_submit_btn_tooltip_animates(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+):
+    """
+    Tests a tooltip showing when a user hovers the confirm URL edit button.
+
+    GIVEN a user has opened the update-URL-string form on a selected URL
+    WHEN the user hovers over the confirm (check) button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    _login_and_select_first_url(app=app, page=page, user_id=user_id_for_test)
+    _open_update_url_string_form(page=page)
+
+    parent_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=parent_css_selector,
+        tooltip_parent_class=HPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
+        tooltip_text=STRINGS.CONFIRM_URL_EDIT_TOOLTIP,
+    )
+
+    submit_btn = wait_then_get_element(page=page, css_selector=parent_css_selector)
+    assert submit_btn is not None
+    assert submit_btn.get_attribute("aria-label") == STRINGS.CONFIRM_URL_EDIT_TOOLTIP
+
+
+def test_update_url_string_cancel_btn_tooltip_animates(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+):
+    """
+    Tests a tooltip showing when a user hovers the cancel URL edit button.
+
+    GIVEN a user has opened the update-URL-string form on a selected URL
+    WHEN the user hovers over the cancel (x) button
+    THEN ensure the tooltip animates in with the expected copy, and the button
+         carries the matching accessible name
+    """
+    app = provide_app
+    user_id_for_test = 1
+    _login_and_select_first_url(app=app, page=page, user_id=user_id_for_test)
+    _open_update_url_string_form(page=page)
+
+    parent_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_CANCEL_UPDATE}"
+    )
+    assert_tooltip_animates(
+        page=page,
+        parent_css_selector=parent_css_selector,
+        tooltip_parent_class=HPL.BUTTON_URL_STRING_CANCEL_UPDATE,
+        tooltip_text=STRINGS.CANCEL_URL_EDIT_TOOLTIP,
+    )
+
+    cancel_btn = wait_then_get_element(page=page, css_selector=parent_css_selector)
+    assert cancel_btn is not None
+    assert cancel_btn.get_attribute("aria-label") == STRINGS.CANCEL_URL_EDIT_TOOLTIP

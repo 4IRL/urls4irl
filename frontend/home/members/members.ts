@@ -1,5 +1,6 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { hideTooltip } from "../../lib/tooltips.js";
 import { getState } from "../../store/app-store.js";
 import { removeMemberShowModal } from "./delete.js";
 import { modifyMemberRoleShowModal } from "./role.js";
@@ -237,11 +238,17 @@ export function createMemberBadge({
       });
   } else {
     // Leave UTub if member
-    $("#memberSelfBtnDelete").offAndOnExact("click.removeMember", function () {
-      hideInputs();
-      deselectAllURLs();
-      removeMemberShowModal(memberID, isCurrentUserOwner, utubID);
-    });
+    $("#memberSelfBtnDelete").offAndOnExact(
+      "click.removeMember",
+      function (this: HTMLElement) {
+        // The confirmation modal covers this button while a hover tooltip may
+        // still be open — hide it first so the bubble cannot linger detached.
+        hideTooltip(this);
+        hideInputs();
+        deselectAllURLs();
+        removeMemberShowModal(memberID, isCurrentUserOwner, utubID);
+      },
+    );
   }
 
   return memberSpan;

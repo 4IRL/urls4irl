@@ -1,3 +1,5 @@
+import { APP_CONFIG } from "../../../../lib/config.js";
+import { bootstrap } from "../../../../lib/globals.js";
 import {
   createURLStringAndUpdateBlock,
   modifyURLStringForDisplay,
@@ -14,6 +16,20 @@ const { mockMetricsClient } = await vi.hoisted(
 );
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
+
+// The ambient test-setup Bootstrap mock returns null from getInstance(), which
+// would make the tooltip-hide guards on the submit/cancel buttons silent no-ops.
+// Override lib/globals.js with a shared tooltip instance so they can be asserted
+// on. This file leaves ../../btns-forms.js unmocked, so the real
+// makeSubmitButton/makeCancelButton factory runs against this same mock.
+const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
+});
+
+vi.mock("../../../../lib/globals.js", () => globalsMock);
 
 vi.mock("../update-string.js", () => ({
   updateURL: vi.fn(),
@@ -230,5 +246,127 @@ describe("createUpdateURLStringInput - in-flight submit guard blocks a second ov
       { status: 500 },
     );
     expect(isURLStringSubmitInFlight()).toBe(false);
+  });
+});
+
+describe("URL string edit buttons - tooltip attributes and hover-tooltip hide", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+    vi.mocked(isURLStringSubmitInFlight).mockReturnValue(false);
+  });
+
+  function mountStringBlock(): JQuery {
+    document.body.innerHTML = `<div class="urlRow" utuburlid="1" urlSelected="true" filterable="true"></div>`;
+    const urlCard = $(".urlRow");
+    urlCard.append(
+      createURLStringAndUpdateBlock("https://example.com", urlCard, 1),
+    );
+    return urlCard;
+  }
+
+  it("renders the submit/cancel buttons with the hover tooltip block and aria-labels", () => {
+    const urlCard = mountStringBlock();
+    const submitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
+    const cancelBtn = urlCard.find(".urlStringCancelBtnUpdate");
+
+    expect(submitBtn.attr("data-bs-toggle")).toBe("tooltip");
+    expect(submitBtn.attr("data-bs-custom-class")).toBe(
+      "urlStringSubmitBtnUpdate-tooltip",
+    );
+    expect(submitBtn.attr("data-bs-trigger")).toBe("hover");
+    expect(submitBtn.attr("data-bs-title")).toBe(
+      APP_CONFIG.strings.CONFIRM_URL_EDIT_TOOLTIP,
+    );
+    expect(submitBtn.attr("aria-label")).toBe(
+      APP_CONFIG.strings.CONFIRM_URL_EDIT_TOOLTIP,
+    );
+
+    expect(cancelBtn.attr("data-bs-toggle")).toBe("tooltip");
+    expect(cancelBtn.attr("data-bs-custom-class")).toBe(
+      "urlStringCancelBtnUpdate-tooltip",
+    );
+    expect(cancelBtn.attr("data-bs-title")).toBe(
+      APP_CONFIG.strings.CANCEL_URL_EDIT_TOOLTIP,
+    );
+    expect(cancelBtn.attr("aria-label")).toBe(
+      APP_CONFIG.strings.CANCEL_URL_EDIT_TOOLTIP,
+    );
+  });
+
+  it("hides the tooltip when the submit button is clicked", () => {
+    const urlCard = mountStringBlock();
+    const submitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
+
+    submitBtn.trigger("click.updateUrlString");
+
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+    // Pins the jQuery `this` binding — the handler must target its own button.
+    expect(vi.mocked(bootstrap.Tooltip.getInstance)).toHaveBeenCalledWith(
+      submitBtn[0],
+    );
+  });
+
+  it("hides the tooltip even when an in-flight submit blocks the click", () => {
+    vi.mocked(isURLStringSubmitInFlight).mockReturnValue(true);
+    const urlCard = mountStringBlock();
+
+    urlCard.find(".urlStringSubmitBtnUpdate").trigger("click.updateUrlString");
+
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+    expect(vi.mocked(updateURL)).not.toHaveBeenCalled();
+  });
+
+  it("hides the tooltip when the cancel button is clicked", () => {
+    const urlCard = mountStringBlock();
+    const cancelBtn = urlCard.find(".urlStringCancelBtnUpdate");
+
+    cancelBtn.trigger("click.updateUrlString");
+
+    expect(tooltipInstance.hide).toHaveBeenCalled();
+    expect(vi.mocked(bootstrap.Tooltip.getInstance)).toHaveBeenCalledWith(
+      cancelBtn[0],
+    );
+  });
+
+  it("does not throw on submit or cancel when no tooltip instance exists", () => {
+    // Touch devices never construct a Tooltip, so getInstance() returns null and
+    // the optional-chaining guard must no-op without breaking the edit flow.
+    const urlCard = mountStringBlock();
+    vi.mocked(bootstrap.Tooltip.getInstance)
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce(null);
+
+    expect(() =>
+      urlCard
+        .find(".urlStringSubmitBtnUpdate")
+        .trigger("click.updateUrlString"),
+    ).not.toThrow();
+    expect(() =>
+      urlCard
+        .find(".urlStringCancelBtnUpdate")
+        .trigger("click.updateUrlString"),
+    ).not.toThrow();
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("adds no tooltip attributes or instance on a coarse pointer, keeping the aria-labels", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+
+    const urlCard = mountStringBlock();
+    const submitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
+    const cancelBtn = urlCard.find(".urlStringCancelBtnUpdate");
+
+    expect(submitBtn.attr("data-bs-toggle")).toBeUndefined();
+    expect(cancelBtn.attr("data-bs-toggle")).toBeUndefined();
+    expect(
+      vi.mocked(bootstrap.Tooltip.getOrCreateInstance),
+    ).not.toHaveBeenCalled();
+    expect(submitBtn.attr("aria-label")).toBe(
+      APP_CONFIG.strings.CONFIRM_URL_EDIT_TOOLTIP,
+    );
+    expect(cancelBtn.attr("aria-label")).toBe(
+      APP_CONFIG.strings.CANCEL_URL_EDIT_TOOLTIP,
+    );
   });
 });

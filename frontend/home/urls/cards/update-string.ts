@@ -2,6 +2,7 @@ import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
+import { restoreTooltipIfStillTargeted } from "../../../lib/tooltips.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
@@ -459,6 +460,14 @@ function updateURLSuccess(
   }
 }
 
+// A 400 or 409 keeps the URL edit form open, so the tooltip the submit click
+// handler hid should come back. restoreTooltipIfStillTargeted owns both guards
+// (the button is still hovered or keyboard-focused, and the show is deferred
+// past Bootstrap's fade) — see lib/tooltips.ts.
+function restoreUpdateURLStringSubmitTooltip(urlCard: JQuery): void {
+  restoreTooltipIfStillTargeted(urlCard.find(".urlStringSubmitBtnUpdate")[0]);
+}
+
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLFail(
   xhr: JQuery.jqXHR,
@@ -499,6 +508,7 @@ function updateURLFail(
           >,
           urlCard,
         );
+        restoreUpdateURLStringSubmitTooltip(urlCard);
         break;
       }
       if (responseJSON.message) {
@@ -507,6 +517,7 @@ function updateURLFail(
           responseJSON.message as string,
           urlCard,
         );
+        restoreUpdateURLStringSubmitTooltip(urlCard);
         break;
       }
     case 409:
@@ -516,6 +527,7 @@ function updateURLFail(
         responseJSON.message as string,
         urlCard,
       );
+      restoreUpdateURLStringSubmitTooltip(urlCard);
       break;
     case 403:
     case 404:

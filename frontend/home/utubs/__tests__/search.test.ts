@@ -14,9 +14,23 @@ import { APP_CONFIG } from "../../../lib/config.js";
 
 import { filterUTubsByName } from "../../../logic/utub-search.js";
 
+import { bootstrap } from "../../../lib/globals.js";
+
 vi.mock("../../../logic/utub-search.js", () => ({
   filterUTubsByName: vi.fn(() => []),
 }));
+
+// The ambient test-setup Bootstrap mock returns null from getInstance(), which
+// would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
+// a shared tooltip instance so the guard can be asserted on.
+const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
+});
+
+vi.mock("../../../lib/globals.js", () => globalsMock);
 
 const $ = window.jQuery;
 
@@ -294,6 +308,26 @@ describe("UTub Search", () => {
   });
 
   describe("UTub name filter toggle", () => {
+    // Records whether #utubNameFilterBtn already carried the `hidden` class at
+    // the moment hide() ran. Asserting it is false proves the tooltip is hidden
+    // BEFORE the button — swapping the two production lines flips it to true.
+    let buttonHiddenWhenTooltipHidden: boolean | null = null;
+
+    beforeEach(() => {
+      buttonHiddenWhenTooltipHidden = null;
+      tooltipInstance.hide.mockClear();
+      tooltipInstance.hide.mockImplementation(() => {
+        buttonHiddenWhenTooltipHidden =
+          $("#utubNameFilterBtn").hasClass("hidden");
+      });
+    });
+
+    afterEach(() => {
+      // Drop the recording implementation so it cannot leak into other describes
+      // that share this hoisted tooltipInstance.
+      tooltipInstance.hide.mockReset();
+    });
+
     it("openUTubNameFilter opens the filter and swaps the toggle buttons", () => {
       openUTubNameFilter();
 
@@ -329,6 +363,30 @@ describe("UTub Search", () => {
 
       $("#utubNameFilterBtnClose").trigger("click");
       expect($("#UTubDeck").hasClass("utub-search-open")).toBe(false);
+    });
+
+    it("hides the funnel button's hover tooltip before the click hides the button", () => {
+      setUTubNameFilterToggleListeners();
+
+      $("#utubNameFilterBtn").trigger("click.utubNameFilterShow");
+
+      expect(tooltipInstance.hide).toHaveBeenCalled();
+      expect(buttonHiddenWhenTooltipHidden).toBe(false);
+      expect($("#utubNameFilterBtn").hasClass("hidden")).toBe(true);
+    });
+
+    it("still hides the funnel button and does not throw when no tooltip instance exists", () => {
+      // Touch devices never construct a Tooltip, so getInstance() returns null
+      // and the `?.` guard must no-op without breaking the toggle.
+      vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
+      setUTubNameFilterToggleListeners();
+
+      expect(() =>
+        $("#utubNameFilterBtn").trigger("click.utubNameFilterShow"),
+      ).not.toThrow();
+
+      expect(tooltipInstance.hide).not.toHaveBeenCalled();
+      expect($("#utubNameFilterBtn").hasClass("hidden")).toBe(true);
     });
   });
 });

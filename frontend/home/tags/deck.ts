@@ -4,6 +4,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
+import { hideTooltip } from "../../lib/tooltips.js";
 import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
 import { getState } from "../../store/app-store.js";
 import {
@@ -103,6 +104,9 @@ export function resetTagDeck(): void {
   resetCountOfTagFiltersApplied();
   disableUnselectAllButtonAfterTagFilterRemoved();
   $("#utubTagBtnCreate").hideClass();
+  // This button is hidden by callers rather than by its own click, so hide any
+  // open hover tooltip here or the bubble lingers detached over the deck.
+  hideTooltip($("#unselectAllTagFilters")[0]);
   $("#unselectAllTagFilters").hideClass();
   $("#utubTagBtnUpdateAllOpen").hideClass();
   createUTubTagHideInput();
@@ -117,6 +121,8 @@ export function resetTagDeckIfNoUTubSelected(): void {
   $("#listTags").empty();
   $("#createUTubTagWrap").hideClass();
   $("#utubTagBtnCreate").hideClass();
+  // Same detached-bubble guard as resetTagDeck() above.
+  hideTooltip($("#unselectAllTagFilters")[0]);
   $("#unselectAllTagFilters").hideClass();
   setTagDeckBtnsOnUpdateAllUTubTagsClosed();
   $("#utubTagBtnUpdateAllOpen").hideClass();

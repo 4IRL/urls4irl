@@ -57,6 +57,14 @@ def test_copy_url_btn_tooltip_animates_hvr(
         tooltip_text=STRINGS.COPY_URL_TOOLTIP,
     )
 
+    # The copy button is icon-only: its tooltip was always there, but the
+    # accessible name was not until #502.
+    copy_btn = wait_then_get_element(
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_COPY}"
+    )
+    assert copy_btn is not None
+    assert copy_btn.get_attribute("aria-label") == STRINGS.COPY_URL_TOOLTIP
+
 
 def test_copy_url_btn_click_fail(
     page: Page,

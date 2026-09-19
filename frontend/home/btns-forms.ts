@@ -1,5 +1,9 @@
 import { $ } from "../lib/globals.js";
 import { INPUT_TYPES, type IconSize } from "../lib/constants.js";
+import {
+  applyHoverTooltip,
+  type HoverTooltipOptions,
+} from "../lib/tooltips.js";
 import { getState } from "../store/app-store.js";
 import { isHidden } from "./visibility.js";
 import { isCoarsePointer } from "./mobile.js";
@@ -105,8 +109,18 @@ function hideInput(handle: string): void {
   $(inputDiv).hideClass();
 }
 
+interface FormActionButtonOptions {
+  sizePx: IconSize;
+  // When supplied, the button gets a desktop hover tooltip (see
+  // `applyHoverTooltip`'s JSDoc in lib/tooltips.ts for the rationale).
+  tooltip?: HoverTooltipOptions;
+}
+
 // Creates submit button
-export function makeSubmitButton(sizePx: IconSize): JQuery<HTMLElement> {
+export function makeSubmitButton({
+  sizePx,
+  tooltip,
+}: FormActionButtonOptions): JQuery<HTMLElement> {
   const submitBtn = $(document.createElement("button"));
 
   // Submit checkbox
@@ -121,11 +135,16 @@ export function makeSubmitButton(sizePx: IconSize): JQuery<HTMLElement> {
 
   submitBtn.addClass("px-1 my-2 green-clickable").html(htmlString).enableTab();
 
+  applyHoverTooltip({ btn: submitBtn, tooltip });
+
   return submitBtn;
 }
 
 // Creates cancel button
-export function makeCancelButton(sizePx: IconSize): JQuery<HTMLElement> {
+export function makeCancelButton({
+  sizePx,
+  tooltip,
+}: FormActionButtonOptions): JQuery<HTMLElement> {
   const cancelBtn = $(document.createElement("button"));
 
   // Cancel x-box
@@ -139,6 +158,8 @@ export function makeCancelButton(sizePx: IconSize): JQuery<HTMLElement> {
     "</svg>";
 
   cancelBtn.addClass("my-2 px-1").html(htmlString).enableTab();
+
+  applyHoverTooltip({ btn: cancelBtn, tooltip });
 
   return cancelBtn;
 }

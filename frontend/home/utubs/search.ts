@@ -1,5 +1,6 @@
 import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { hideTooltip } from "../../lib/tooltips.js";
 import { KEYS } from "../../lib/constants.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
@@ -173,6 +174,9 @@ export function resetUTubSearch(): void {
 // practice. Focus emits UI_UTUB_SEARCH_OPEN via the input's focus handler.
 export function openUTubNameFilter(): void {
   $("#UTubDeck").addClass("utub-search-open");
+  // This click hides the funnel button itself — hide any open hover tooltip
+  // first so the bubble cannot linger detached over the revealed input.
+  hideTooltip($("#utubNameFilterBtn")[0]);
   $("#utubNameFilterBtn").addClass("hidden").attr("aria-expanded", "true");
   $("#utubNameFilterBtnClose").removeClass("hidden");
   $("#UTubNameSearch").trigger("focus");
