@@ -23,33 +23,14 @@ const { mockMetricsClient } = await vi.hoisted(
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
-const { tooltipInstance } = vi.hoisted(() => ({
-  tooltipInstance: {
-    setContent: vi.fn(),
-    show: vi.fn(),
-    hide: vi.fn(),
-    enable: vi.fn(),
-    disable: vi.fn(),
-  },
-}));
-
-vi.mock("../../../../lib/globals.js", async () => {
-  const jquery = (await import("jquery")).default;
-  return {
-    $: jquery,
-    jQuery: jquery,
-    bootstrap: {
-      Tooltip: {
-        getInstance: vi.fn(() => tooltipInstance),
-        getOrCreateInstance: vi.fn(() => tooltipInstance),
-      },
-    },
-    getInputValue: (input: string | JQuery) => {
-      const element = typeof input === "string" ? jquery(input) : input;
-      return element.val() as string;
-    },
-  };
+const { globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
 });
+
+vi.mock("../../../../lib/globals.js", () => globalsMock);
 
 // The restore-on-failure path delegates to lib/tooltips.js's
 // restoreTooltipIfStillTargeted, which owns the still-targeted guard (`:hover`

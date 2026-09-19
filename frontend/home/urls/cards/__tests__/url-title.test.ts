@@ -23,29 +23,14 @@ vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 // Override lib/globals.js with a shared tooltip instance so they can be asserted
 // on. This file leaves ../../btns-forms.js unmocked, so the real
 // makeSubmitButton/makeCancelButton factory runs against this same mock.
-const { tooltipInstance } = vi.hoisted(() => ({
-  tooltipInstance: {
-    setContent: vi.fn(),
-    show: vi.fn(),
-    hide: vi.fn(),
-  },
-}));
-
-vi.mock("../../../../lib/globals.js", async () => {
-  const jquery = (await import("jquery")).default;
-  return {
-    $: jquery,
-    jQuery: jquery,
-    getInputValue: (input: string | JQuery) =>
-      (typeof input === "string" ? jquery(input) : input).val() as string,
-    bootstrap: {
-      Tooltip: {
-        getInstance: vi.fn(() => tooltipInstance),
-        getOrCreateInstance: vi.fn(() => tooltipInstance),
-      },
-    },
-  };
+const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
 });
+
+vi.mock("../../../../lib/globals.js", () => globalsMock);
 
 vi.mock("../update-title.js", () => ({
   showUpdateURLTitleForm: vi.fn(),

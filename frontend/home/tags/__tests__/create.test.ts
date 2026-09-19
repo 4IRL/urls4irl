@@ -45,29 +45,14 @@ vi.mock("../../../lib/tooltips.js", () => ({
 // the Bootstrap stub has to hand back a usable Tooltip instance rather than the
 // ambient test-setup mock's null — anything in this module's graph that still
 // reaches Bootstrap directly would otherwise silently no-op.
-const { tooltipInstance } = vi.hoisted(() => ({
-  tooltipInstance: {
-    setContent: vi.fn(),
-    show: vi.fn(),
-    hide: vi.fn(),
-  },
-}));
-
-vi.mock("../../../lib/globals.js", async () => {
-  const jquery = (await import("jquery")).default;
-  return {
-    $: jquery,
-    jQuery: jquery,
-    getInputValue: (input: string | JQuery) =>
-      (typeof input === "string" ? jquery(input) : input).val() as string,
-    bootstrap: {
-      Tooltip: {
-        getInstance: vi.fn(() => tooltipInstance),
-        getOrCreateInstance: vi.fn(() => tooltipInstance),
-      },
-    },
-  };
+const { globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
 });
+
+vi.mock("../../../lib/globals.js", () => globalsMock);
 
 vi.mock("../../../lib/event-bus.js", async () => {
   const actual = await vi.importActual<

@@ -22,27 +22,14 @@ vi.mock("../delete.js", () => ({
 // would make the tooltip-hide guards on the per-tag delete button silent no-ops.
 // Override lib/globals.js with a shared tooltip instance so they can be asserted
 // on. lib/tooltips.js is left unmocked so the real attribute stamp runs here.
-const { tooltipInstance } = vi.hoisted(() => ({
-  tooltipInstance: {
-    setContent: vi.fn(),
-    show: vi.fn(),
-    hide: vi.fn(),
-  },
-}));
-
-vi.mock("../../../../lib/globals.js", async () => {
-  const jquery = (await import("jquery")).default;
-  return {
-    $: jquery,
-    jQuery: jquery,
-    bootstrap: {
-      Tooltip: {
-        getInstance: vi.fn(() => tooltipInstance),
-        getOrCreateInstance: vi.fn(() => tooltipInstance),
-      },
-    },
-  };
+const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
+  const { mockGlobalsWithTooltipInstance } = await import(
+    "../../../../__tests__/helpers/mock-globals.js"
+  );
+  return await mockGlobalsWithTooltipInstance();
 });
+
+vi.mock("../../../../lib/globals.js", () => globalsMock);
 
 vi.mock("../../../mobile.js", () => ({
   isCoarsePointer: vi.fn(() => false),
