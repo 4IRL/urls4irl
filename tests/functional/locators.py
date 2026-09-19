@@ -37,6 +37,12 @@ class HomePageLocators(GenericPageLocator):
     INVALID_FIELD_SUFFIX = "-error"
     EDITABLE_CLASS = "editable"
     TOOLTIP_SUFFIX = "-tooltip"
+    # Bootstrap's shown-state class on a tooltip bubble. It is added when the
+    # fade-in starts and removed synchronously by `hide()`, so appending it to a
+    # bubble selector distinguishes "shown" from "mid-fade-out but still in the
+    # DOM" -- which Playwright would otherwise still count as visible, since a
+    # fading tip keeps its bounding box until Bootstrap removes it.
+    TOOLTIP_SHOWN_SUFFIX = ".show"
 
     # Change-email confirm-outcome banner (Phase 3, DD-9/DD-14). Net-new here:
     # HomePageLocators carried no banner locator before. Same CSS id as the

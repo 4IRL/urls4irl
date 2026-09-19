@@ -67,6 +67,14 @@ def assert_tooltip_animates(
     assert_not_visible_css_selector(page=page, css_selector=tooltip_selector)
 
 
+def assert_no_page_errors(*, page_errors: list[str]) -> None:
+    """Assert no uncaught JS exception surfaced in the page.
+
+    Pair with `collect_page_errors()`, which must be called before the action
+    under test."""
+    assert not page_errors, f"Uncaught page error(s): {page_errors}"
+
+
 def assert_on_404_page(*, page: Page) -> None:
     error_header = page.locator("h2").first
     expect(error_header).to_be_visible()
