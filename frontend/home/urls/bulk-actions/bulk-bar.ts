@@ -194,9 +194,18 @@ function syncRangeButtonStates(): void {
  *    exactly as authored — so a desktop user in mode sees no change.
  *
  * The bar's jQuery handlers travel with the node (offAndOnExact + global $(id)
- * lookups), so moving it is safe. Idempotent: re-inserting an already-correct
- * node is a no-op reorder. Guards for element existence so a partial DOM (tests,
- * early init) never throws.
+ * lookups), so moving it is safe. Guards for element existence so a partial DOM
+ * (tests, early init) never throws.
+ *
+ * Each branch NO-OPS when the bar already occupies its slot. This is not a
+ * micro-optimization — it is the fix for a focus bug. `appendTo`/`insertAfter`
+ * on an already-correct node is a no-op for LAYOUT but not for FOCUS: the DOM
+ * insert steps remove and re-insert the node, which blurs whatever is focused
+ * inside it. The bar hosts #bulkTagPickerMount and #bulkCopyPickerMount, whose
+ * pickers each carry a filter input, and Android Chrome fires `resize` when the
+ * soft keyboard opens (iOS moves only visualViewport, so it never did). An
+ * unconditional re-slot therefore dismissed the keyboard ~RESIZE_DEBOUNCE_MS
+ * after the user tapped the filter box — the keyboard flashed open and shut.
  */
 function relocateBulkBarForViewport(): void {
   const bar = $(BAR_SELECTOR);
@@ -204,10 +213,15 @@ function relocateBulkBarForViewport(): void {
   if (isMobile()) {
     const deck = $(DECK_SELECTOR);
     if (deck.length === 0) return;
+    // Last-child (not merely same-parent) is the mobile invariant: the bar is
+    // in-flow AFTER the scroll container, and that order is what keeps the last
+    // URL row reachable.
+    if (deck.children().last().is(bar)) return;
     bar.appendTo(deck);
   } else {
     const anchor = $(HEADER_ANCHOR_SELECTOR);
     if (anchor.length === 0) return;
+    if (anchor.next().is(bar)) return;
     bar.insertAfter(anchor);
   }
 }

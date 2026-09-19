@@ -561,6 +561,65 @@ describe("bulk-bar", () => {
         }, 200);
       });
     });
+
+    // Regression (Android soft keyboard). The bar hosts #bulkTagPickerMount and
+    // #bulkCopyPickerMount, each of whose pickers carries a filter input. Android
+    // Chrome fires `resize` when the soft keyboard opens (iOS moves only
+    // visualViewport, so it never showed this), and the handler used to re-append
+    // the bar unconditionally — a no-op for layout, but the DOM insert steps
+    // detach and re-insert the node, blurring the input and dismissing the
+    // keyboard the user had just summoned by tapping the filter box.
+    it("leaves a focused picker input focused on a mobile resize that does not cross the breakpoint", () => {
+      vi.mocked(isMobile).mockReturnValue(true);
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+
+      const deck = document.querySelector("#URLDeck");
+      const bar = document.querySelector("#bulkActionBar") as HTMLElement;
+      expect(deck?.lastElementChild).toBe(bar);
+
+      // Stand in for a mounted picker's filter input.
+      const input = document.createElement("input");
+      input.id = "bulkCopyFilterInput";
+      bar.appendChild(input);
+      input.focus();
+      expect(document.activeElement).toBe(input);
+
+      // Keyboard opens: a resize with the breakpoint unchanged (still mobile).
+      window.dispatchEvent(new Event("resize"));
+
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          expect(deck?.lastElementChild).toBe(bar);
+          expect(document.activeElement).toBe(input);
+          resolve();
+        }, 200);
+      });
+    });
+
+    it("leaves a focused picker input focused on a desktop resize that does not cross the breakpoint", () => {
+      // isMobile defaults to false (desktop) in beforeEach.
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+
+      const context = document.querySelector("#bulkSelectContext");
+      const bar = document.querySelector("#bulkActionBar") as HTMLElement;
+      expect(context?.nextElementSibling).toBe(bar);
+
+      const input = document.createElement("input");
+      input.id = "bulkCopyFilterInput";
+      bar.appendChild(input);
+      input.focus();
+      expect(document.activeElement).toBe(input);
+
+      window.dispatchEvent(new Event("resize"));
+
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          expect(context?.nextElementSibling).toBe(bar);
+          expect(document.activeElement).toBe(input);
+          resolve();
+        }, 200);
+      });
+    });
   });
 
   describe("action registry rendering", () => {
