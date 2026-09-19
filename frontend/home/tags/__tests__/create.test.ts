@@ -6,7 +6,7 @@ import {
 } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { bootstrap } from "../../../lib/globals.js";
-import { restoreTooltipIfHovered } from "../../../lib/tooltips.js";
+import { restoreTooltipIfStillTargeted } from "../../../lib/tooltips.js";
 import { setupOpenCreateUTubTagEventListeners } from "../create.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -21,10 +21,11 @@ vi.mock("../../../lib/ajax.js", () => ({
 }));
 
 // The restore-on-failure path delegates to lib/tooltips.js's
-// restoreTooltipIfHovered, which owns both the `:hover` guard and the deferral
+// restoreTooltipIfStillTargeted, which owns the still-targeted guard (`:hover`
+// or `:focus-visible`) and the deferral
 // past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts).
 vi.mock("../../../lib/tooltips.js", () => ({
-  restoreTooltipIfHovered: vi.fn(),
+  restoreTooltipIfStillTargeted: vi.fn(),
 }));
 
 // The ambient test-setup Bootstrap mock returns null from getInstance(), which
@@ -206,7 +207,7 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
     expect(tooltipInstance.hide).not.toHaveBeenCalled();
   });
 
-  it("routes the restore through restoreTooltipIfHovered on a 400 with field errors", () => {
+  it("routes the restore through restoreTooltipIfStillTargeted on a 400 with field errors", () => {
     mockCreateUTubTagFailure({
       errors: { tagString: ["Tag already exists in UTub"] },
     });
@@ -216,19 +217,19 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
     $("#utubTagSubmitBtnCreate").trigger("click");
 
     expect(tooltipInstance.hide).toHaveBeenCalled();
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
   });
 
-  it("routes the restore through restoreTooltipIfHovered on a 400 carrying only a message", () => {
+  it("routes the restore through restoreTooltipIfStillTargeted on a 400 carrying only a message", () => {
     mockCreateUTubTagFailure({ message: "Tag already exists in UTub" });
     openCreateUTubTagForm();
     const submitBtn = document.getElementById("utubTagSubmitBtnCreate")!;
 
     $("#utubTagSubmitBtnCreate").trigger("click");
 
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
   });
 
   it("does not attempt a restore on a successful submit", () => {
@@ -240,6 +241,6 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
     $("#utubTagSubmitBtnCreate").trigger("click");
 
     expect(tooltipInstance.hide).toHaveBeenCalled();
-    expect(vi.mocked(restoreTooltipIfHovered)).not.toHaveBeenCalled();
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).not.toHaveBeenCalled();
   });
 });

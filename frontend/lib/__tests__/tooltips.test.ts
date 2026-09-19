@@ -107,6 +107,25 @@ describe("initTooltips", () => {
     );
   });
 
+  it("stamps the managed marker on every trigger it instantiates", async () => {
+    const { initTooltips } = await import("../tooltips.js");
+
+    initTooltips();
+
+    expect(
+      document.querySelector("#utubBtnDelete")?.hasAttribute(
+        "data-hover-tooltip",
+      ),
+    ).toBe(true);
+    // The nudge anchors carry no `data-bs-toggle` at ready time, so the sweep
+    // never reaches them and they never get the marker the a11y handlers use.
+    expect(
+      document.querySelector("#utubBtnCreate")?.hasAttribute(
+        "data-hover-tooltip",
+      ),
+    ).toBe(false);
+  });
+
   it("is one-shot — a second call creates no duplicate instances", async () => {
     const { initTooltips } = await import("../tooltips.js");
     const { bootstrap } = await import("../globals.js");
@@ -274,7 +293,9 @@ describe("disposeTooltipsWithinAfterHide", () => {
 });
 
 describe("applyHoverTooltip", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    const { _resetTooltipsForTests } = await import("../tooltips.js");
+    _resetTooltipsForTests();
     vi.clearAllMocks();
     stubCoarsePointer(false);
     document.body.innerHTML = `<button id="target"></button>`;
@@ -301,6 +322,9 @@ describe("applyHoverTooltip", () => {
     expect(btn.attr("data-bs-trigger")).toBe("hover");
     expect(btn.attr("data-bs-title")).toBe("Remove tag");
     expect(btn.attr("aria-label")).toBe("Remove tag");
+    // The marker the a11y handlers delegate through — an onboarding-nudge
+    // anchor never gets it, which is what keeps Escape away from the nudge.
+    expect(btn.attr("data-hover-tooltip")).toBe("");
     expect(bootstrap.Tooltip.getOrCreateInstance).toHaveBeenCalledWith(btn[0]);
   });
 
@@ -357,7 +381,7 @@ describe("applyHoverTooltip", () => {
   });
 });
 
-describe("restoreTooltipIfHovered", () => {
+describe("restoreTooltipIfStillTargeted", () => {
   // The disposeTooltipsWithin suite above installs its own getInstance
   // implementation, and vi.clearAllMocks() clears call history but NOT
   // implementations — so pin a known instance for every test here.
@@ -386,34 +410,37 @@ describe("restoreTooltipIfHovered", () => {
   }
 
   it("does nothing when the element is undefined", async () => {
-    const { restoreTooltipIfHovered } = await import("../tooltips.js");
+    const { restoreTooltipIfStillTargeted } = await import("../tooltips.js");
     const { bootstrap } = await import("../globals.js");
 
-    expect(() => restoreTooltipIfHovered(undefined)).not.toThrow();
+    expect(() => restoreTooltipIfStillTargeted(undefined)).not.toThrow();
     vi.advanceTimersByTime(1000);
 
     expect(vi.mocked(bootstrap.Tooltip.getInstance)).not.toHaveBeenCalled();
   });
 
-  it("does nothing when the cursor is not on the element", async () => {
-    const { restoreTooltipIfHovered } = await import("../tooltips.js");
+  it("does nothing when the button is neither hovered nor keyboard-focused", async () => {
+    // The Enter-key submit (focus on the text input) and the same-name
+    // confirmation modal (focus on #modalSubmit) both reach the same 400 without
+    // ever targeting the button — a forced bubble there would strand.
+    const { restoreTooltipIfStillTargeted } = await import("../tooltips.js");
     const { bootstrap } = await import("../globals.js");
     // happy-dom has no pointer, so `:hover` never matches on its own.
     vi.spyOn(submitBtn(), "matches").mockReturnValue(false);
 
-    restoreTooltipIfHovered(submitBtn());
+    restoreTooltipIfStillTargeted(submitBtn());
     vi.advanceTimersByTime(1000);
 
     expect(vi.mocked(bootstrap.Tooltip.getInstance)).not.toHaveBeenCalled();
   });
 
   it("defers the show past Bootstrap's fade rather than showing synchronously", async () => {
-    const { restoreTooltipIfHovered, TOOLTIP_RESTORE_DELAY_MS } =
+    const { restoreTooltipIfStillTargeted, TOOLTIP_RESTORE_DELAY_MS } =
       await import("../tooltips.js");
     const { bootstrap } = await import("../globals.js");
     vi.spyOn(submitBtn(), "matches").mockReturnValue(true);
 
-    restoreTooltipIfHovered(submitBtn());
+    restoreTooltipIfStillTargeted(submitBtn());
 
     // A show() inside hide()'s fade window builds a tip that hide()'s queued
     // teardown immediately disposes — a real backend 400 lands in ~75ms, well
@@ -429,11 +456,11 @@ describe("restoreTooltipIfHovered", () => {
   });
 
   it("re-checks hover when the timer fires and skips the show if the cursor left", async () => {
-    const { restoreTooltipIfHovered, TOOLTIP_RESTORE_DELAY_MS } =
+    const { restoreTooltipIfStillTargeted, TOOLTIP_RESTORE_DELAY_MS } =
       await import("../tooltips.js");
     const matches = vi.spyOn(submitBtn(), "matches").mockReturnValue(true);
 
-    restoreTooltipIfHovered(submitBtn());
+    restoreTooltipIfStillTargeted(submitBtn());
     // The pointer moves away during the deferral window.
     matches.mockReturnValue(false);
     vi.advanceTimersByTime(TOOLTIP_RESTORE_DELAY_MS);
@@ -445,29 +472,407 @@ describe("restoreTooltipIfHovered", () => {
     // A second failure schedules its own restore; the first timer must be
     // cancelled or the bubble would come back twice (and once mid-flight of the
     // second request, while it is deliberately hidden).
-    const { restoreTooltipIfHovered, TOOLTIP_RESTORE_DELAY_MS } =
+    const { restoreTooltipIfStillTargeted, TOOLTIP_RESTORE_DELAY_MS } =
       await import("../tooltips.js");
     vi.spyOn(submitBtn(), "matches").mockReturnValue(true);
 
-    restoreTooltipIfHovered(submitBtn());
+    restoreTooltipIfStillTargeted(submitBtn());
     vi.advanceTimersByTime(TOOLTIP_RESTORE_DELAY_MS - 50);
-    restoreTooltipIfHovered(submitBtn());
+    restoreTooltipIfStillTargeted(submitBtn());
     vi.advanceTimersByTime(TOOLTIP_RESTORE_DELAY_MS);
 
     expect(restoreInstance.show).toHaveBeenCalledTimes(1);
   });
 
   it("does not throw when the instance was disposed during the deferral", async () => {
-    const { restoreTooltipIfHovered, TOOLTIP_RESTORE_DELAY_MS } =
+    const { restoreTooltipIfStillTargeted, TOOLTIP_RESTORE_DELAY_MS } =
       await import("../tooltips.js");
     const { bootstrap } = await import("../globals.js");
     vi.spyOn(submitBtn(), "matches").mockReturnValue(true);
     vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValue(null);
 
-    restoreTooltipIfHovered(submitBtn());
+    restoreTooltipIfStillTargeted(submitBtn());
 
     expect(() =>
       vi.advanceTimersByTime(TOOLTIP_RESTORE_DELAY_MS),
     ).not.toThrow();
+  });
+
+  it("restores for a keyboard-focused button the cursor never touched", async () => {
+    // Symmetry with the pointer path: once a bubble can be raised by keyboard
+    // focus, a keyboard user who presses Enter and gets a keep-open 400 would
+    // otherwise be left with the label silently gone and no `focusin` left to
+    // fire while the button is still focused.
+    const { restoreTooltipIfStillTargeted, TOOLTIP_RESTORE_DELAY_MS } =
+      await import("../tooltips.js");
+    vi.spyOn(submitBtn(), "matches").mockImplementation(
+      (selector: string) => selector === ":focus-visible",
+    );
+
+    restoreTooltipIfStillTargeted(submitBtn());
+    vi.advanceTimersByTime(TOOLTIP_RESTORE_DELAY_MS);
+
+    expect(restoreInstance.show).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-checks keyboard focus when the timer fires and skips the show if focus left", async () => {
+    const { restoreTooltipIfStillTargeted, TOOLTIP_RESTORE_DELAY_MS } =
+      await import("../tooltips.js");
+    const matches = vi
+      .spyOn(submitBtn(), "matches")
+      .mockImplementation((selector: string) => selector === ":focus-visible");
+
+    restoreTooltipIfStillTargeted(submitBtn());
+    // The user tabs onward during the deferral window.
+    matches.mockReturnValue(false);
+    vi.advanceTimersByTime(TOOLTIP_RESTORE_DELAY_MS);
+
+    expect(restoreInstance.show).not.toHaveBeenCalled();
+  });
+});
+
+describe("managed tooltip accessibility handlers", () => {
+  // `#utubBtnDelete` is a real Jinja trigger the sweep picks up and marks.
+  // `#utubBtnCreate` is an onboarding-nudge anchor: NO `data-bs-toggle` at ready
+  // time, so the sweep never marks it — `showTip()` stamps that attribute on it
+  // at runtime, which `simulateNudgeShowTip()` below replays. Every assertion
+  // about the nudge exists to prove the marker, not the Bootstrap attribute, is
+  // what these handlers key off.
+  const A11Y_DECK_HTML = `
+    <button id="utubBtnDelete" data-bs-toggle="tooltip"
+            aria-label="Delete UTub" data-bs-title="Delete UTub"></button>
+    <button id="utubBtnCreate"></button>
+    <div id="tooltipBubble" role="tooltip"></div>
+  `;
+
+  const tooltipInstance = { show: vi.fn(), hide: vi.fn(), dispose: vi.fn() };
+
+  function managedTrigger(): HTMLElement {
+    return document.querySelector("#utubBtnDelete") as HTMLElement;
+  }
+
+  function nudgeAnchor(): HTMLElement {
+    return document.querySelector("#utubBtnCreate") as HTMLElement;
+  }
+
+  // The Escape handler is a NATIVE capture-phase listener (so a widget that
+  // stops Escape propagating cannot starve it), which jQuery's synthetic
+  // `.trigger()` would never reach — dispatch a real KeyboardEvent.
+  function pressKey(key: string): void {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  }
+
+  function simulateNudgeShowTip(): void {
+    nudgeAnchor().setAttribute("data-bs-toggle", "tooltip");
+    nudgeAnchor().setAttribute(
+      "data-bs-custom-class",
+      "onboarding-nudge-tooltip",
+    );
+  }
+
+  beforeEach(async () => {
+    const { _resetTooltipsForTests, initTooltips } =
+      await import("../tooltips.js");
+    const { bootstrap } = await import("../globals.js");
+    _resetTooltipsForTests();
+    vi.clearAllMocks();
+    // `clearAllMocks` drops call history but keeps implementations, and one case
+    // below gives `show` a real one — reset so no test inherits it.
+    tooltipInstance.show.mockReset();
+    tooltipInstance.hide.mockReset();
+    tooltipInstance.dispose.mockReset();
+    stubCoarsePointer(false);
+    document.body.innerHTML = A11Y_DECK_HTML;
+    // Pin the instance for this suite: earlier suites install their own
+    // `getInstance` implementations and `vi.clearAllMocks()` clears call history
+    // but not implementations.
+    vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValue(
+      tooltipInstance as unknown as ReturnType<
+        typeof bootstrap.Tooltip.getInstance
+      >,
+    );
+    initTooltips();
+  });
+
+  afterEach(async () => {
+    const { _resetTooltipsForTests } = await import("../tooltips.js");
+    _resetTooltipsForTests();
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("hides the visible managed tooltip on Escape (WCAG 1.4.13 dismissible)", async () => {
+    const { $ } = await import("../globals.js");
+
+    $(managedTrigger()).trigger("show.bs.tooltip");
+    $(managedTrigger()).trigger("shown.bs.tooltip");
+    pressKey("Escape");
+
+    expect(tooltipInstance.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("dismisses on an Escape pressed during Bootstrap's fade-in", async () => {
+    // `shown.bs.tooltip` only fires once the 150ms fade has finished. Tracking
+    // the trigger from `show` instead is what stops an Escape inside that window
+    // from finding nothing to dismiss and stranding the bubble for good.
+    const { $ } = await import("../globals.js");
+
+    $(managedTrigger()).trigger("show.bs.tooltip");
+    pressKey("Escape");
+
+    expect(tooltipInstance.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores Escape for a nudge anchor stamped with data-bs-toggle at runtime", async () => {
+    // A sweep keyed on `data-bs-toggle` would dismiss the live nudge behind
+    // `nudges.ts`'s back, leaving `_activeTip` non-null and suppressing every
+    // remaining tip for the session.
+    const { $ } = await import("../globals.js");
+    simulateNudgeShowTip();
+
+    $(nudgeAnchor()).trigger("show.bs.tooltip");
+    $(nudgeAnchor()).trigger("shown.bs.tooltip");
+    pressKey("Escape");
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("ignores a non-Escape key", async () => {
+    const { $ } = await import("../globals.js");
+
+    $(managedTrigger()).trigger("show.bs.tooltip");
+    pressKey("Enter");
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("hides nothing on Escape once the bubble is already hiding", async () => {
+    const { $ } = await import("../globals.js");
+
+    $(managedTrigger()).trigger("show.bs.tooltip");
+    $(managedTrigger()).trigger("hide.bs.tooltip");
+    pressKey("Escape");
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("forgets a tracked trigger that disposeTooltipsWithin tore down", async () => {
+    // Disposal fires no `hide.bs.tooltip`, so without the explicit clear the
+    // Escape handler would reach into a nulled-out instance.
+    const { $ } = await import("../globals.js");
+    const { disposeTooltipsWithin } = await import("../tooltips.js");
+
+    $(managedTrigger()).trigger("show.bs.tooltip");
+    disposeTooltipsWithin($("#utubBtnDelete"));
+    tooltipInstance.hide.mockClear();
+    pressKey("Escape");
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("drops the duplicate aria-describedby and hides the bubble from assistive tech", async () => {
+    // Bubble text == aria-label, so leaving Bootstrap's wiring in place makes a
+    // screen reader announce "Delete UTub, Delete UTub".
+    const { $ } = await import("../globals.js");
+    managedTrigger().setAttribute("aria-describedby", "tooltipBubble");
+
+    $(managedTrigger()).trigger("shown.bs.tooltip");
+
+    expect(managedTrigger().hasAttribute("aria-describedby")).toBe(false);
+    expect(managedTrigger().getAttribute("aria-label")).toBe("Delete UTub");
+    expect(
+      document.querySelector("#tooltipBubble")?.getAttribute("aria-hidden"),
+    ).toBe("true");
+  });
+
+  it("leaves a nudge anchor's aria-describedby alone", async () => {
+    const { $ } = await import("../globals.js");
+    simulateNudgeShowTip();
+    nudgeAnchor().setAttribute("aria-describedby", "tooltipBubble");
+
+    $(nudgeAnchor()).trigger("shown.bs.tooltip");
+
+    expect(nudgeAnchor().getAttribute("aria-describedby")).toBe("tooltipBubble");
+    expect(
+      document.querySelector("#tooltipBubble")?.hasAttribute("aria-hidden"),
+    ).toBe(false);
+  });
+
+  it("shows the tooltip when the button takes keyboard focus", async () => {
+    const { $ } = await import("../globals.js");
+    vi.spyOn(managedTrigger(), "matches").mockImplementation(
+      (selector: string) => selector === ":focus-visible",
+    );
+
+    $(managedTrigger()).trigger("focusin");
+
+    expect(tooltipInstance.show).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows nothing for click-focus, which is what a 'hover focus' trigger got wrong", async () => {
+    const { $ } = await import("../globals.js");
+    vi.spyOn(managedTrigger(), "matches").mockReturnValue(false);
+
+    $(managedTrigger()).trigger("focusin");
+
+    expect(tooltipInstance.show).not.toHaveBeenCalled();
+  });
+
+  it("hides the tooltip when focus leaves the button", async () => {
+    const { $ } = await import("../globals.js");
+
+    $(managedTrigger()).trigger("focusout");
+
+    expect(tooltipInstance.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("never shows or hides a nudge anchor on focus", async () => {
+    const { $ } = await import("../globals.js");
+    simulateNudgeShowTip();
+    vi.spyOn(nudgeAnchor(), "matches").mockImplementation(
+      (selector: string) => selector === ":focus-visible",
+    );
+
+    $(nudgeAnchor()).trigger("focusin");
+    $(nudgeAnchor()).trigger("focusout");
+
+    expect(tooltipInstance.show).not.toHaveBeenCalled();
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("binds nothing on a coarse-pointer device", async () => {
+    const { _resetTooltipsForTests, initTooltips } =
+      await import("../tooltips.js");
+    const { $ } = await import("../globals.js");
+    _resetTooltipsForTests();
+    stubCoarsePointer(true);
+    initTooltips();
+
+    $(managedTrigger()).trigger("show.bs.tooltip");
+    pressKey("Escape");
+    $(managedTrigger()).trigger("focusout");
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("still dismisses a bubble whose trigger was detached without being disposed", async () => {
+    // The bubble is a `document.body` child, so it outlives its trigger. Escape
+    // is the only thing left that can clear it.
+    const { $ } = await import("../globals.js");
+    const trigger = managedTrigger();
+
+    $(trigger).trigger("show.bs.tooltip");
+    trigger.remove();
+    pressKey("Escape");
+
+    expect(tooltipInstance.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the bubble up on focusout while the pointer is still on the button", async () => {
+    // Tab in (bubble up), move the pointer onto the button, tab away: the hover
+    // still owns the bubble and Bootstrap's own mouseleave will hide it later.
+    const { $ } = await import("../globals.js");
+    vi.spyOn(managedTrigger(), "matches").mockImplementation(
+      (selector: string) => selector === ":hover",
+    );
+
+    $(managedTrigger()).trigger("focusout");
+
+    expect(tooltipInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("suppresses the duplicate description synchronously on keyboard focus", async () => {
+    // `show()` writes `aria-describedby` immediately but `shown` does not fire
+    // until the 150ms fade ends — a screen reader announcing the newly-focused
+    // button inside that window would otherwise still hear the name twice.
+    const { $ } = await import("../globals.js");
+    vi.spyOn(managedTrigger(), "matches").mockImplementation(
+      (selector: string) => selector === ":focus-visible",
+    );
+    tooltipInstance.show.mockImplementation(() => {
+      managedTrigger().setAttribute("aria-describedby", "tooltipBubble");
+    });
+
+    $(managedTrigger()).trigger("focusin");
+
+    expect(managedTrigger().hasAttribute("aria-describedby")).toBe(false);
+    expect(
+      document.querySelector("#tooltipBubble")?.getAttribute("aria-hidden"),
+    ).toBe("true");
+  });
+
+  it("keeps aria-describedby on a trigger that has no aria-label", async () => {
+    // Without a label the description is the button's ONLY accessible name, so
+    // stripping it would leave it anonymous.
+    const { $ } = await import("../globals.js");
+    managedTrigger().removeAttribute("aria-label");
+    managedTrigger().setAttribute("aria-describedby", "tooltipBubble");
+
+    $(managedTrigger()).trigger("shown.bs.tooltip");
+
+    expect(managedTrigger().getAttribute("aria-describedby")).toBe(
+      "tooltipBubble",
+    );
+  });
+
+  it("does nothing when Bootstrap set no aria-describedby", async () => {
+    const { $ } = await import("../globals.js");
+
+    expect(() =>
+      $(managedTrigger()).trigger("shown.bs.tooltip"),
+    ).not.toThrow();
+    expect(
+      document.querySelector("#tooltipBubble")?.hasAttribute("aria-hidden"),
+    ).toBe(false);
+  });
+
+  it("treats an unsupported :focus-visible selector as no match instead of throwing", async () => {
+    // Older engines (and happy-dom) can reject the pseudo-class outright; a11y
+    // sugar must never take the page down with it.
+    const { $ } = await import("../globals.js");
+    vi.spyOn(managedTrigger(), "matches").mockImplementation(() => {
+      throw new SyntaxError("unknown pseudo-class :focus-visible");
+    });
+
+    expect(() => $(managedTrigger()).trigger("focusin")).not.toThrow();
+    expect(tooltipInstance.show).not.toHaveBeenCalled();
+  });
+
+  it("does not re-show after a keyboard activation hid the bubble", async () => {
+    // Enter/Space fires the trigger's own click-hide guard while focus STAYS on
+    // the button and `:focus-visible` stays true — nothing may fight the guard
+    // by re-showing, because no fresh `focusin` ever arrives.
+    const { $ } = await import("../globals.js");
+    vi.spyOn(managedTrigger(), "matches").mockImplementation(
+      (selector: string) => selector === ":focus-visible",
+    );
+
+    $(managedTrigger()).trigger("focusin");
+    expect(tooltipInstance.show).toHaveBeenCalledTimes(1);
+
+    // The click-hide guard fires, Bootstrap hides, focus never left.
+    $(managedTrigger()).trigger("hide.bs.tooltip");
+
+    expect(tooltipInstance.show).toHaveBeenCalledTimes(1);
+  });
+
+  it("binds the handlers on a page where only applyHoverTooltip ran", async () => {
+    // The reason the handler guard is separate from the sweep guard: a page can
+    // have nothing for `initTooltips()` to instantiate and still build
+    // per-card triggers later.
+    const { _resetTooltipsForTests, applyHoverTooltip } =
+      await import("../tooltips.js");
+    const { $ } = await import("../globals.js");
+    _resetTooltipsForTests();
+    document.body.innerHTML = `<button id="urlTagBtnDelete"></button>`;
+
+    applyHoverTooltip({
+      btn: $("#urlTagBtnDelete"),
+      tooltip: { title: "Remove tag", customClass: "urlTagBtnDelete-tooltip" },
+    });
+    $("#urlTagBtnDelete").trigger("show.bs.tooltip");
+    pressKey("Escape");
+
+    expect(tooltipInstance.hide).toHaveBeenCalledTimes(1);
   });
 });

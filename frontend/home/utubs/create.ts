@@ -29,7 +29,7 @@ import {
   HOME_FORM,
 } from "../../types/metrics-dim-values.js";
 import { debug } from "../../lib/debug.js";
-import { restoreTooltipIfHovered } from "../../lib/tooltips.js";
+import { restoreTooltipIfStillTargeted } from "../../lib/tooltips.js";
 
 const log = debug("utubs");
 
@@ -315,10 +315,11 @@ function createUTubSuccess(response: CreateUtubResponse): void {
 }
 
 // A 400 keeps the create form open, so the tooltip the submit click handler hid
-// should come back. restoreTooltipIfHovered owns both guards (cursor still on
-// the button, and deferred past Bootstrap's fade) — see lib/tooltips.ts.
+// should come back. restoreTooltipIfStillTargeted owns both guards (the button is
+// still hovered or keyboard-focused, and the show is deferred past Bootstrap's
+// fade) — see lib/tooltips.ts.
 function restoreCreateUTubSubmitTooltip(): void {
-  restoreTooltipIfHovered($("#utubSubmitBtnCreate")[0]);
+  restoreTooltipIfStillTargeted($("#utubSubmitBtnCreate")[0]);
 }
 
 // Handle error response display to user

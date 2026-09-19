@@ -9,7 +9,7 @@ import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { $, bootstrap, getInputValue } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
-import { restoreTooltipIfHovered } from "../../lib/tooltips.js";
+import { restoreTooltipIfStillTargeted } from "../../lib/tooltips.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
@@ -221,10 +221,11 @@ function createUTubTagSuccess(
 }
 
 // A 400 keeps the create-tag form open, so the tooltip the submit click handler
-// hid should come back. restoreTooltipIfHovered owns both guards (cursor still
-// on the button, and deferred past Bootstrap's fade) — see lib/tooltips.ts.
+// hid should come back. restoreTooltipIfStillTargeted owns both guards (the button
+// is still hovered or keyboard-focused, and the show is deferred past
+// Bootstrap's fade) — see lib/tooltips.ts.
 function restoreCreateUTubTagSubmitTooltip(): void {
-  restoreTooltipIfHovered($("#utubTagSubmitBtnCreate")[0]);
+  restoreTooltipIfStillTargeted($("#utubTagSubmitBtnCreate")[0]);
 }
 
 function createUTubTagFail(xhr: JQuery.jqXHR): void {

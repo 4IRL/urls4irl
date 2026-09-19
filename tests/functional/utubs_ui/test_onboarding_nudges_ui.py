@@ -202,6 +202,39 @@ def test_create_utub_nudge_tap_away_dismisses_and_persists(
     )
 
 
+def test_create_utub_nudge_escape_dismisses_and_persists(
+    page: Page, create_test_users, provide_app: Flask
+):
+    """
+    GIVEN the Create-UTub nudge is showing
+    WHEN the user presses Escape
+    THEN the nudge dismisses through its own handler, and reloading afterward
+         shows no tip (the seen flag was persisted on dismissal).
+
+    This is the regression bar for the desktop hover-tooltip Escape handler in
+    `lib/tooltips.ts`. `showTip()` stamps `data-bs-toggle="tooltip"` onto its
+    anchor at runtime, so an Escape sweep keyed on that attribute would hide the
+    nudge behind `nudges.ts`'s back — leaving its `_activeTip` non-null, which
+    suppresses every remaining tip for the session, and skipping the seen-flag
+    write this test asserts. The tooltip handler keys off its own marker
+    attribute instead, so the nudge's own Escape handling is all that runs here.
+    """
+    app = provide_app
+    user_id_for_test = 1
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
+
+    assert_visible_css_selector(page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP)
+
+    page.keyboard.press("Escape")
+    wait_until_hidden(page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP)
+
+    page.reload()
+    assert_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_UTUB_DECK)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP
+    )
+
+
 def test_add_url_nudge_shows_after_creating_first_utub(
     page: Page, create_test_users, provide_app: Flask
 ):

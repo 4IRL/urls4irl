@@ -1,6 +1,6 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
-import { restoreTooltipIfHovered } from "../../../../lib/tooltips.js";
+import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
   updateURL,
@@ -52,11 +52,12 @@ vi.mock("../../../../lib/globals.js", async () => {
 });
 
 // The restore-on-failure path delegates to lib/tooltips.js's
-// restoreTooltipIfHovered, which owns both the `:hover` guard and the deferral
+// restoreTooltipIfStillTargeted, which owns the still-targeted guard (`:hover`
+// or `:focus-visible`) and the deferral
 // past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts). Mock it
 // here so these tests assert WHICH element each keep-open branch restores.
 vi.mock("../../../../lib/tooltips.js", () => ({
-  restoreTooltipIfHovered: vi.fn(),
+  restoreTooltipIfStillTargeted: vi.fn(),
 }));
 
 vi.mock("../../../../lib/ajax.js", () => ({
@@ -873,8 +874,8 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
 
     await updateURL(urlStringInput, urlCard, 99);
 
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
   });
 
   it("restores the submit button on a 400 carrying only a message", async () => {
@@ -883,8 +884,8 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
 
     await updateURL(urlStringInput, urlCard, 99);
 
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
   });
 
   it("restores the submit button on a 409 stale conflict", async () => {
@@ -894,8 +895,8 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
     await updateURL(urlStringInput, urlCard, 99);
 
     expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
   });
 
   it("does not attempt a restore when the failure is swallowed as a handled 429", async () => {
@@ -906,6 +907,6 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
 
     await updateURL(urlStringInput, urlCard, 99);
 
-    expect(vi.mocked(restoreTooltipIfHovered)).not.toHaveBeenCalled();
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).not.toHaveBeenCalled();
   });
 });

@@ -4,7 +4,7 @@ import {
 } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { bootstrap } from "../../../lib/globals.js";
-import { restoreTooltipIfHovered } from "../../../lib/tooltips.js";
+import { restoreTooltipIfStillTargeted } from "../../../lib/tooltips.js";
 import { createUTubSelector, selectUTub } from "../selectors.js";
 import { getNumOfUTubs } from "../utils.js";
 import { getState, setState } from "../../../store/app-store.js";
@@ -21,10 +21,11 @@ const { mockMetricsClient } = await vi.hoisted(
 vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
 
 // The restore-on-failure path delegates to lib/tooltips.js's
-// restoreTooltipIfHovered, which owns both the `:hover` guard and the deferral
-// past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts).
+// restoreTooltipIfStillTargeted, which owns the still-targeted guard (`:hover`
+// or `:focus-visible`) and the deferral past Bootstrap's fade (covered by
+// lib/__tests__/tooltips.test.ts).
 vi.mock("../../../lib/tooltips.js", () => ({
-  restoreTooltipIfHovered: vi.fn(),
+  restoreTooltipIfStillTargeted: vi.fn(),
 }));
 
 // The ambient test-setup Bootstrap mock returns null from getInstance(), which
@@ -242,7 +243,7 @@ describe("createUTub form buttons - hover tooltip hide/restore", () => {
     expect(tooltipInstance.hide).not.toHaveBeenCalled();
   });
 
-  it("routes the restore through restoreTooltipIfHovered when a 400 keeps the form open", () => {
+  it("routes the restore through restoreTooltipIfStillTargeted when a 400 keeps the form open", () => {
     mockCreateUTubFailure({ message: "UTub with that name already exists" });
     openCreateUTubForm();
     const submitBtn = document.getElementById("utubSubmitBtnCreate")!;
@@ -250,8 +251,8 @@ describe("createUTub form buttons - hover tooltip hide/restore", () => {
     $("#utubSubmitBtnCreate").trigger("click.createUTub");
 
     expect(tooltipInstance.hide).toHaveBeenCalled();
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
   });
 
   it("does not attempt a restore on a successful submit", () => {
@@ -263,6 +264,6 @@ describe("createUTub form buttons - hover tooltip hide/restore", () => {
     $("#utubSubmitBtnCreate").trigger("click.createUTub");
 
     expect(tooltipInstance.hide).toHaveBeenCalled();
-    expect(vi.mocked(restoreTooltipIfHovered)).not.toHaveBeenCalled();
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).not.toHaveBeenCalled();
   });
 });

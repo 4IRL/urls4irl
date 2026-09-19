@@ -90,7 +90,7 @@ export function createTagBadgeInURL(
       // routes through disableTagRemovalInURLCard(), so hide the bubble here too.
       //
       // Deliberate divergence from the Group C submit buttons in url-title.ts /
-      // url-string.ts: those call restoreTooltipIfHovered() on non-navigating
+      // url-string.ts: those call restoreTooltipIfStillTargeted() on non-navigating
       // failures, this one does not. On the paths where the badge survives
       // (is429Handled, isUtubLockedHandled, the !isTagInURL early return) it is
       // left with its bubble suppressed until the pointer leaves and re-enters.

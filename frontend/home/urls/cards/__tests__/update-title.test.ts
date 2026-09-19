@@ -1,5 +1,5 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
-import { restoreTooltipIfHovered } from "../../../../lib/tooltips.js";
+import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import {
   hideAndResetUpdateURLTitleForm,
   isURLTitleSubmitInFlight,
@@ -21,12 +21,13 @@ const { mockMetricsClient } = await vi.hoisted(
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
 // The restore-on-failure path delegates to lib/tooltips.js's
-// restoreTooltipIfHovered, which owns both the `:hover` guard and the deferral
+// restoreTooltipIfStillTargeted, which owns the still-targeted guard (`:hover`
+// or `:focus-visible`) and the deferral
 // past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts). Mock it
 // here so these tests assert WHICH element the fail branch restores, without
 // fighting timers or the ambient Bootstrap mock.
 vi.mock("../../../../lib/tooltips.js", () => ({
-  restoreTooltipIfHovered: vi.fn(),
+  restoreTooltipIfStillTargeted: vi.fn(),
 }));
 
 vi.mock("../selection.js", () => ({
@@ -677,14 +678,14 @@ describe("updateURLTitle - restores the submit button tooltip on a keep-open 400
     );
   }
 
-  it("routes the restore through restoreTooltipIfHovered with this card's submit button", async () => {
+  it("routes the restore through restoreTooltipIfStillTargeted with this card's submit button", async () => {
     mockTitle400();
     const submitBtn = urlCard.find(".urlTitleSubmitBtnUpdate")[0];
 
     await updateURLTitle(urlTitleInput, urlCard, 1);
 
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfHovered)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
   });
 
   it("does not attempt a restore when the failure is swallowed as a handled 429", async () => {
@@ -695,6 +696,6 @@ describe("updateURLTitle - restores the submit button tooltip on a keep-open 400
 
     await updateURLTitle(urlTitleInput, urlCard, 1);
 
-    expect(vi.mocked(restoreTooltipIfHovered)).not.toHaveBeenCalled();
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).not.toHaveBeenCalled();
   });
 });
