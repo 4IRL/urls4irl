@@ -151,6 +151,73 @@ describe("initTooltips", () => {
   });
 });
 
+describe("hideTooltip", () => {
+  beforeEach(async () => {
+    const { _resetTooltipsForTests } = await import("../tooltips.js");
+    _resetTooltipsForTests();
+    vi.clearAllMocks();
+    stubCoarsePointer(false);
+    document.body.innerHTML = TOOLTIP_DECK_HTML;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("hides the live instance of the element it is given", async () => {
+    const { hideTooltip } = await import("../tooltips.js");
+    const { bootstrap } = await import("../globals.js");
+    const trigger = document.querySelector("#utubBtnDelete") as HTMLElement;
+    const liveInstance = bootstrap.Tooltip.getOrCreateInstance(trigger);
+
+    hideTooltip(trigger);
+
+    expect(vi.mocked(bootstrap.Tooltip.getInstance)).toHaveBeenCalledWith(
+      trigger,
+    );
+    expect(liveInstance.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("is a no-op when the element has no live instance", async () => {
+    // Coarse pointers instantiate nothing, so a hide site can legitimately run
+    // against a trigger Bootstrap has never seen.
+    const { hideTooltip } = await import("../tooltips.js");
+    const { bootstrap } = await import("../globals.js");
+    const trigger = document.querySelector("#utubBtnDelete") as HTMLElement;
+    const sharedInstance = bootstrap.Tooltip.getOrCreateInstance(trigger);
+    vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
+
+    expect(() => hideTooltip(trigger)).not.toThrow();
+    expect(sharedInstance.hide).not.toHaveBeenCalled();
+  });
+
+  it("does not reach for an instance when the selector matched nothing", async () => {
+    // Call sites pass `$(selector)[0]` / `.get(0)`, which is `undefined` on an
+    // empty match — Bootstrap's `getInstance` must never be handed that.
+    const { hideTooltip } = await import("../tooltips.js");
+    const { $, bootstrap } = await import("../globals.js");
+
+    hideTooltip($("#noSuchButton")[0]);
+
+    expect(vi.mocked(bootstrap.Tooltip.getInstance)).not.toHaveBeenCalled();
+  });
+
+  it("still hides an instance whose element has been detached", async () => {
+    // Bootstrap keys its instance map by element, not by attachment, so a
+    // trigger torn down by its own click is still hideable.
+    const { hideTooltip } = await import("../tooltips.js");
+    const { bootstrap } = await import("../globals.js");
+    const trigger = document.querySelector("#utubBtnDelete") as HTMLElement;
+    const liveInstance = bootstrap.Tooltip.getOrCreateInstance(trigger);
+    trigger.remove();
+
+    hideTooltip(trigger);
+
+    expect(liveInstance.hide).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("disposeTooltipsWithin", () => {
   beforeEach(async () => {
     const { _resetTooltipsForTests } = await import("../tooltips.js");

@@ -57,6 +57,7 @@ vi.mock("../../../../lib/globals.js", async () => {
 // past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts). Mock it
 // here so these tests assert WHICH element each keep-open branch restores.
 vi.mock("../../../../lib/tooltips.js", () => ({
+  hideTooltip: vi.fn(),
   restoreTooltipIfStillTargeted: vi.fn(),
 }));
 

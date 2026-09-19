@@ -5,8 +5,10 @@ import {
   createMockXhr,
 } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
-import { bootstrap } from "../../../lib/globals.js";
-import { restoreTooltipIfStillTargeted } from "../../../lib/tooltips.js";
+import {
+  hideTooltip,
+  restoreTooltipIfStillTargeted,
+} from "../../../lib/tooltips.js";
 import { setupOpenCreateUTubTagEventListeners } from "../create.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -20,17 +22,29 @@ vi.mock("../../../lib/ajax.js", () => ({
   is429Handled: vi.fn(() => false),
 }));
 
-// The restore-on-failure path delegates to lib/tooltips.js's
-// restoreTooltipIfStillTargeted, which owns the still-targeted guard (`:hover`
-// or `:focus-visible`) and the deferral
-// past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts).
+// Both tooltip helpers this module reaches for are stubbed, so these tests
+// assert the delegation (which element each handler acts on) rather than
+// Bootstrap's internals. Their own behaviour — the still-targeted guard
+// (`:hover` or `:focus-visible`) and the deferral past Bootstrap's fade for
+// restoreTooltipIfStillTargeted, the null-instance no-op for hideTooltip — is
+// covered in lib/__tests__/tooltips.test.ts.
+//
+// Deliberately a full stub, not a partial mock. Measured here: a factory that
+// pulls the real module in via importOriginal()/importActual() leaves the
+// CONSUMING module bound to the actual tooltips module, so the
+// restoreTooltipIfStillTargeted override silently stops taking effect (the real
+// one then early-returns on its `:hover` guard and the assertions below see
+// zero calls). Unlike the event-bus partial mock further down, lib/tooltips.js
+// imports the lib/globals.js this file also mocks.
 vi.mock("../../../lib/tooltips.js", () => ({
+  hideTooltip: vi.fn(),
   restoreTooltipIfStillTargeted: vi.fn(),
 }));
 
-// The ambient test-setup Bootstrap mock returns null from getInstance(), which
-// would make the tooltip-hide/show guards silent no-ops. Override lib/globals.js
-// with a shared tooltip instance so those guards can be asserted on.
+// lib/globals.js is replaced wholesale (jQuery + getInputValue + Bootstrap), so
+// the Bootstrap stub has to hand back a usable Tooltip instance rather than the
+// ambient test-setup mock's null — anything in this module's graph that still
+// reaches Bootstrap directly would otherwise silently no-op.
 const { tooltipInstance } = vi.hoisted(() => ({
   tooltipInstance: {
     setContent: vi.fn(),
@@ -174,9 +188,8 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
     openCreateUTubTagForm();
     $("#utubTagSubmitBtnCreate").trigger("click");
 
-    expect(tooltipInstance.hide).toHaveBeenCalled();
     // Pins the `this` binding — the handler must target its own button.
-    expect(vi.mocked(bootstrap.Tooltip.getInstance)).toHaveBeenCalledWith(
+    expect(vi.mocked(hideTooltip)).toHaveBeenCalledWith(
       document.getElementById("utubTagSubmitBtnCreate"),
     );
   });
@@ -185,26 +198,10 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
     openCreateUTubTagForm();
     $("#utubTagCancelBtnCreate").trigger("click");
 
-    expect(tooltipInstance.hide).toHaveBeenCalled();
-    expect(vi.mocked(bootstrap.Tooltip.getInstance)).toHaveBeenCalledWith(
+    expect(vi.mocked(hideTooltip)).toHaveBeenCalledWith(
       document.getElementById("utubTagCancelBtnCreate"),
     );
     expect($("#createUTubTagWrap").hasClass("hidden")).toBe(true);
-  });
-
-  it("does not throw on submit or cancel when no tooltip instance exists", () => {
-    // Touch devices never construct a Tooltip, so getInstance() returns null and
-    // the `?.` guard must no-op without breaking the tag-create flow.
-    vi.mocked(bootstrap.Tooltip.getInstance)
-      .mockReturnValueOnce(null)
-      .mockReturnValueOnce(null);
-    vi.mocked(ajaxCall).mockReturnValue(createMockJqXHRChainable());
-
-    openCreateUTubTagForm();
-
-    expect(() => $("#utubTagSubmitBtnCreate").trigger("click")).not.toThrow();
-    expect(() => $("#utubTagCancelBtnCreate").trigger("click")).not.toThrow();
-    expect(tooltipInstance.hide).not.toHaveBeenCalled();
   });
 
   it("routes the restore through restoreTooltipIfStillTargeted on a 400 with field errors", () => {
@@ -216,7 +213,7 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
 
     $("#utubTagSubmitBtnCreate").trigger("click");
 
-    expect(tooltipInstance.hide).toHaveBeenCalled();
+    expect(vi.mocked(hideTooltip)).toHaveBeenCalled();
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
   });
@@ -240,7 +237,7 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
 
     $("#utubTagSubmitBtnCreate").trigger("click");
 
-    expect(tooltipInstance.hide).toHaveBeenCalled();
+    expect(vi.mocked(hideTooltip)).toHaveBeenCalled();
     expect(vi.mocked(restoreTooltipIfStillTargeted)).not.toHaveBeenCalled();
   });
 });

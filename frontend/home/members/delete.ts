@@ -1,8 +1,9 @@
 import type { MemberModifiedResponse } from "../../types/member.js";
 
-import { $, bootstrap } from "../../lib/globals.js";
+import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
+import { hideTooltip } from "../../lib/tooltips.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit as emitAppEvent, AppEvents } from "../../lib/event-bus.js";
 import { isUtubLockedHandled } from "../utub-locked.js";
@@ -36,7 +37,7 @@ export function createLeaveUTubAsMemberIcon(
     function (this: HTMLElement) {
       // The confirmation modal covers this button while a hover tooltip may
       // still be open — hide it first so the bubble cannot linger detached.
-      bootstrap.Tooltip.getInstance(this)?.hide();
+      hideTooltip(this);
       hideInputs();
       deselectAllURLs();
       removeMemberShowModal(currentUserID, isCurrentUserOwner, utubID);

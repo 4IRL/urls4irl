@@ -1,8 +1,8 @@
 import type { UtubTag } from "../../../types/url.js";
 
-import { $, bootstrap } from "../../../lib/globals.js";
+import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { applyHoverTooltip } from "../../../lib/tooltips.js";
+import { applyHoverTooltip, hideTooltip } from "../../../lib/tooltips.js";
 import { deleteURLTag } from "./delete.js";
 
 /**
@@ -15,7 +15,7 @@ export function disableTagRemovalInURLCard(urlCard: JQuery): void {
   // covers all three disable/enable caller pairs at once; `enable` needs no
   // counterpart, since re-showing a button cannot strand anything.
   tagDeleteButtons.each(function () {
-    bootstrap.Tooltip.getInstance(this)?.hide();
+    hideTooltip(this);
   });
   tagDeleteButtons.addClass("hidden");
 }
@@ -98,7 +98,7 @@ export function createTagBadgeInURL(
       // parent is hovered, so a leave/re-enter — which restores the bubble — is
       // the normal next interaction on a target this small, and these are
       // rate-limit/lock edge cases.
-      bootstrap.Tooltip.getInstance(this)?.hide();
+      hideTooltip(this);
       deleteURLTag(utubTagID, tagSpan, urlCard, utubID);
     });
 

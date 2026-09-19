@@ -1,6 +1,6 @@
 import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
-import { $, bootstrap, getInputValue } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
@@ -29,7 +29,10 @@ import {
   HOME_FORM,
 } from "../../types/metrics-dim-values.js";
 import { debug } from "../../lib/debug.js";
-import { restoreTooltipIfStillTargeted } from "../../lib/tooltips.js";
+import {
+  hideTooltip,
+  restoreTooltipIfStillTargeted,
+} from "../../lib/tooltips.js";
 
 const log = debug("utubs");
 
@@ -72,7 +75,7 @@ function createNewUTubEventListeners(): void {
       // The create form is hidden only after the AJAX call resolves, so hide the
       // hover tooltip here — synchronously, regardless of the request's outcome —
       // rather than in createUTubSuccess(), which has no `this` bound to the button.
-      bootstrap.Tooltip.getInstance(this)?.hide();
+      hideTooltip(this);
       emit({
         event: UI_EVENTS.UI_FORM_SUBMIT,
         form: HOME_FORM.UTUB_CREATE,
@@ -88,7 +91,7 @@ function createNewUTubEventListeners(): void {
     function (this: HTMLElement) {
       // Cancelling hides the form synchronously in this handler, so the tooltip
       // must be hidden here or its bubble lingers over the hidden button.
-      bootstrap.Tooltip.getInstance(this)?.hide();
+      hideTooltip(this);
       emit({
         event: UI_EVENTS.UI_FORM_CANCEL,
         form: HOME_FORM.UTUB_CREATE,

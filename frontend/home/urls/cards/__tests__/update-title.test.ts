@@ -27,6 +27,7 @@ vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 // here so these tests assert WHICH element the fail branch restores, without
 // fighting timers or the ambient Bootstrap mock.
 vi.mock("../../../../lib/tooltips.js", () => ({
+  hideTooltip: vi.fn(),
   restoreTooltipIfStillTargeted: vi.fn(),
 }));
 

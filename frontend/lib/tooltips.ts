@@ -6,6 +6,8 @@
  * - `applyHoverTooltip()` — creation-time attachment for the TS-rendered
  *   icon-only buttons, which are built and rebuilt long after `ready` and so can
  *   never be reached by that sweep.
+ * - `hideTooltip()` — the null-safe hide every "this interaction hides its own
+ *   trigger" handler reaches for.
  * - `disposeTooltipsWithin()` / `restoreTooltipIfStillTargeted()` — teardown
  *   before a card/badge is detached, and the restore after a failure that keeps
  *   the button on screen.
@@ -187,7 +189,7 @@ function handleManagedTooltipFocusIn(event: JQuery.TriggeredEvent): void {
 function handleManagedTooltipFocusOut(event: JQuery.TriggeredEvent): void {
   const trigger = event.currentTarget as HTMLElement;
   if (matchesSelector({ element: trigger, selector: HOVER_SELECTOR })) return;
-  bootstrap.Tooltip.getInstance(trigger)?.hide();
+  hideTooltip(trigger);
 }
 
 /**
@@ -219,7 +221,7 @@ function handleManagedTooltipKeydown(event: KeyboardEvent): void {
   const trigger = _visibleTooltipTrigger;
   if (trigger === null) return;
   _visibleTooltipTrigger = null;
-  bootstrap.Tooltip.getInstance(trigger)?.hide();
+  hideTooltip(trigger);
 }
 
 /**
@@ -273,6 +275,28 @@ export function initTooltips(): void {
     });
 
   bindManagedTooltipA11yHandlers();
+}
+
+/**
+ * Hide the hover tooltip on `element`, if it has a live instance.
+ *
+ * The one-liner every "this interaction hides/covers/detaches its own trigger"
+ * call site needs: hiding an element the cursor is still over never fires the
+ * `mouseleave` Bootstrap waits for, so the bubble — a `document.body` child —
+ * would linger on screen with nothing left to dismiss it.
+ *
+ * The loose parameter type is load-bearing, not defensive noise: call sites
+ * reach for their element through `$(selector)[0]` / `.get(0)`, which yields
+ * `undefined` when the selector matched nothing. The optional chain covers the
+ * other half — a trigger can legitimately have no instance, since coarse
+ * pointers instantiate none at all.
+ *
+ * Safe on an element that has already been detached — Bootstrap keys its
+ * instance map by element, not by attachment.
+ */
+export function hideTooltip(element: HTMLElement | undefined | null): void {
+  if (!element) return;
+  bootstrap.Tooltip.getInstance(element)?.hide();
 }
 
 /**

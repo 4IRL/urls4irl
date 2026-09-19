@@ -1,5 +1,6 @@
-import { $, bootstrap } from "../../../lib/globals.js";
+import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
+import { hideTooltip } from "../../../lib/tooltips.js";
 import { ICON_SIZE_LG, KEYS, METHOD_TYPES } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm } from "../../../lib/modal-tracking.js";
@@ -200,7 +201,7 @@ function createUpdateURLTitleInput(
       // rather than in updateURLTitleSuccess(), which has no `this` bound to the
       // button. Runs before the in-flight guard so a blocked double-click still
       // clears the bubble.
-      bootstrap.Tooltip.getInstance(this)?.hide();
+      hideTooltip(this);
       // Block an overlapping submit while a kept-open submit is in flight.
       if (isURLTitleSubmitInFlight()) return;
       emit({
@@ -227,7 +228,7 @@ function createUpdateURLTitleInput(
     function (this: HTMLElement) {
       // Cancelling hides the form synchronously in this handler, so the tooltip
       // must be hidden here or its bubble lingers over the hidden button.
-      bootstrap.Tooltip.getInstance(this)?.hide();
+      hideTooltip(this);
       emit({
         event: UI_EVENTS.UI_FORM_CANCEL,
         form: HOME_FORM.URL_TITLE_EDIT,

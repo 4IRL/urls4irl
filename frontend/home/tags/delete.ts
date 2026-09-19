@@ -4,9 +4,9 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
-import { $, bootstrap } from "../../lib/globals.js";
+import { $ } from "../../lib/globals.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
-import { disposeTooltipsWithin } from "../../lib/tooltips.js";
+import { disposeTooltipsWithin, hideTooltip } from "../../lib/tooltips.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { applyAlternatingTagBackground } from "./search.js";
@@ -162,7 +162,7 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
       $("#utubTagBtnUpdateAllOpen").hideClass();
       // This button is hidden by this caller rather than by its own click, so
       // hide any open hover tooltip or the bubble lingers detached.
-      bootstrap.Tooltip.getInstance($("#unselectAllTagFilters")[0])?.hide();
+      hideTooltip($("#unselectAllTagFilters")[0]);
       $("#unselectAllTagFilters").hideClass();
       $("#utubTagCloseUpdateTagBtnContainer").hideClass();
       $("#utubTagStandardBtns").showClassFlex();

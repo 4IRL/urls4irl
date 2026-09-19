@@ -1,5 +1,6 @@
-import { $, bootstrap } from "../../lib/globals.js";
+import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { hideTooltip } from "../../lib/tooltips.js";
 import { getState } from "../../store/app-store.js";
 import { removeMemberShowModal } from "./delete.js";
 import { modifyMemberRoleShowModal } from "./role.js";
@@ -242,7 +243,7 @@ export function createMemberBadge({
       function (this: HTMLElement) {
         // The confirmation modal covers this button while a hover tooltip may
         // still be open — hide it first so the bubble cannot linger detached.
-        bootstrap.Tooltip.getInstance(this)?.hide();
+        hideTooltip(this);
         hideInputs();
         deselectAllURLs();
         removeMemberShowModal(memberID, isCurrentUserOwner, utubID);

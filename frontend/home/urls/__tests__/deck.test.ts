@@ -109,6 +109,7 @@ vi.mock("../cards/swipe.js", () => ({
 // getInstance() returns null, so a real dispose() call would be a silent no-op.
 vi.mock("../../../lib/tooltips.js", () => ({
   disposeTooltipsWithin: vi.fn(),
+  hideTooltip: vi.fn(),
 }));
 
 const $ = window.jQuery;
