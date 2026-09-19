@@ -7,7 +7,7 @@ PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck typecheck-built prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: hooks hooks-check up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck typecheck-built prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
@@ -139,6 +139,18 @@ plan-list: ## List every plan (masters + sub-plans) under plans/ with finished/o
 
 playwright-unlock: ## Kill orphaned Playwright-MCP Chrome holding the profile lock and clear stale Singleton* files
 	@.claude/scripts/playwright-unlock.sh
+
+hooks: ## Install the pre-commit git hook (one-time per clone; creates ./venv with the pinned pre-commit)
+	@test -x venv/bin/pre-commit || python3.11 -m venv venv
+	@venv/bin/pip install --quiet --disable-pip-version-check \
+		$$(grep -E '^pre-commit==' requirements/requirements-dev.txt)
+	@venv/bin/pre-commit install
+	@venv/bin/pre-commit --version
+
+hooks-check: ## Report whether the pre-commit hook is installed in this clone
+	@test -f .git/hooks/pre-commit \
+		&& echo "pre-commit hook: INSTALLED" \
+		|| echo "pre-commit hook: MISSING — run 'make hooks'"
 
 prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker image prune -f
