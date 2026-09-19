@@ -95,7 +95,9 @@ def test_escape_dismisses_a_hover_tooltip(
     _login_and_select_own_utub(app=app, page=page)
 
     page.locator(HPL.BUTTON_UTUB_DELETE).first.hover()
-    wait_until_visible_css_selector(page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR)
+    wait_until_visible_css_selector(
+        page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR
+    )
 
     page.keyboard.press("Escape")
 
@@ -119,7 +121,9 @@ def test_keyboard_focus_shows_tooltip_without_a_duplicate_announcement(
 
     _tab_until_focused(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
 
-    wait_until_visible_css_selector(page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR)
+    wait_until_visible_css_selector(
+        page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR
+    )
     tooltip = page.locator(DELETE_UTUB_TOOLTIP_SELECTOR).first
     expect(tooltip).to_have_text(STRINGS.DELETE_UTUB_TOOLTIP)
     expect(tooltip).to_have_attribute("aria-hidden", "true")
@@ -146,7 +150,9 @@ def test_keyboard_focus_leaving_the_button_hides_the_tooltip(
     _login_and_select_own_utub(app=app, page=page)
 
     _tab_until_focused(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
-    wait_until_visible_css_selector(page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR)
+    wait_until_visible_css_selector(
+        page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR
+    )
 
     page.keyboard.press("Tab")
 
@@ -168,7 +174,9 @@ def test_escape_dismisses_a_keyboard_focused_tooltip(
     _login_and_select_own_utub(app=app, page=page)
 
     _tab_until_focused(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
-    wait_until_visible_css_selector(page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR)
+    wait_until_visible_css_selector(
+        page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR
+    )
 
     page.keyboard.press("Escape")
 
@@ -192,7 +200,9 @@ def test_keyboard_activation_leaves_no_tooltip_bubble(
     _login_and_select_own_utub(app=app, page=page)
 
     _tab_until_focused(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
-    wait_until_visible_css_selector(page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR)
+    wait_until_visible_css_selector(
+        page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR
+    )
 
     page.keyboard.press("Enter")
 
@@ -219,7 +229,9 @@ def test_mouse_click_leaves_no_tooltip_bubble(
 
     delete_utub_btn = page.locator(HPL.BUTTON_UTUB_DELETE).first
     delete_utub_btn.hover()
-    wait_until_visible_css_selector(page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR)
+    wait_until_visible_css_selector(
+        page=page, css_selector=DELETE_UTUB_TOOLTIP_SELECTOR
+    )
 
     delete_utub_btn.click()
 
