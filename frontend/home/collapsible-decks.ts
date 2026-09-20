@@ -12,12 +12,21 @@ import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
 import { maybeShowNextTip } from "./onboarding/nudges.js";
 import {
+  PERSISTABLE_DECK,
+  setDeckMinimizedPreference,
+} from "./deck-layout-storage.js";
+import {
   DECK_COLLAPSE_DECK,
   DECK_EXPAND_DECK,
 } from "../types/metrics-dim-values.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("home-shell");
+
+// Locally-derived alias for the closed set of persistable decks —
+// `deck-layout-storage.ts` keeps its own copy file-local, so this mirrors the
+// consumer-side derivation left-panel-toggle.ts and tags/sheet.ts already use.
+type PersistableDeck = (typeof PERSISTABLE_DECK)[keyof typeof PERSISTABLE_DECK];
 
 const UTUB_DECK_CSS_SELECTOR = ".deck#UTubDeck";
 const MEMBER_DECK_CSS_SELECTOR = ".deck#MemberDeck";
@@ -197,6 +206,33 @@ function setupCollapsibleLeftDecks() {
   setupTagHeaderForMaximizeMinimize();
 }
 
+/**
+ * Persist one deck's collapsed state as the user's standing preference.
+ *
+ * Every write funnels through here so the `!isMobile()` guard lives on the
+ * write path itself rather than being re-derived at each call site.
+ * `isMobile()` is a live viewport-width read: a desktop user who narrows the
+ * window crosses into the mobile layout, which force-expands the decks — that
+ * layout-driven expand must never be written back as a chosen preference.
+ *
+ * Only the Member and Tag decks are ever persisted (Design Decision 1): a
+ * persisted UTubs collapse would compose with the no-UTub auto-lock into an
+ * all-inert left panel.
+ *
+ * @param deck - which persistable deck the preference is for.
+ * @param minimized - `true` when the deck ends up collapsed, `false` expanded.
+ */
+function persistDeckMinimized({
+  deck,
+  minimized,
+}: {
+  deck: PersistableDeck;
+  minimized: boolean;
+}): void {
+  if (isMobile()) return;
+  setDeckMinimizedPreference({ deck, minimized });
+}
+
 // Expand every collapsed deck. All three branches must run: a Members-collapsed
 // state used to short-circuit before the Tag branch, stranding #TagDeck.collapsed
 // — which the desktop -> mobile crossing then relocates into the bottom sheet,
@@ -327,6 +363,10 @@ function setupMemberHeaderForMaximizeMinimize() {
       if (!isUTubSelected()) {
         $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
       }
+      persistDeckMinimized({
+        deck: PERSISTABLE_DECK.MEMBERS,
+        minimized: false,
+      });
       // A nudge whose anchor sat inside this deck was skipped while collapsed
       // (visibility:hidden). Re-evaluate now the deck is open — deferred one
       // tick so the class removal is committed and the deck's style/layout has
@@ -348,6 +388,14 @@ function setupMemberHeaderForMaximizeMinimize() {
     closeMemberNameFilter();
     if (isUTubSelected()) createMemberHideInput();
     $("#MemberDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
+
+    // Written BEFORE the 2-collapsed cap runs, deliberately: the cap can evict
+    // this very deck (it expands whichever deck carries the stale
+    // data-last-collapsed marker, which a programmatic minimize/restore cycle
+    // can leave pointing at an expanded Member deck). Persisting first lets the
+    // cap's own `minimized: false` write land last and win, so storage always
+    // ends up matching the deck's final on-screen state.
+    persistDeckMinimized({ deck: PERSISTABLE_DECK.MEMBERS, minimized: true });
 
     if (numDecksAlreadyCollapsed >= 2) {
       log(
@@ -389,6 +437,7 @@ function setupTagHeaderForMaximizeMinimize() {
       if (!isUTubSelected()) {
         $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
       }
+      persistDeckMinimized({ deck: PERSISTABLE_DECK.TAGS, minimized: false });
       // See the Member-deck expand branch above: deferred one tick so the class
       // removal is committed and the deck has settled before re-evaluating.
       setTimeout(() => maybeShowNextTip(), 0);
@@ -406,6 +455,10 @@ function setupTagHeaderForMaximizeMinimize() {
     closeTagNameFilter();
     if (isUTubSelected()) createUTubTagHideInput();
     $("#TagDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
+
+    // Before the cap, for the same reason as the Member collapse branch above:
+    // an eviction that re-expands this deck must be the last write to land.
+    persistDeckMinimized({ deck: PERSISTABLE_DECK.TAGS, minimized: true });
 
     if (numDecksAlreadyCollapsed >= 2) {
       log(
@@ -481,6 +534,25 @@ function ensureOnlyTwoDecksCollapsedAtOnce(): void {
     headerSelector: DECK_HEADER_SELECTOR_BY_DECK[deckToExpandSelector],
     expanded: true,
   });
+
+  // The eviction is the user's effective layout from here on, so persist it
+  // like any other expand — otherwise the next UTub selection would restore the
+  // deck the cap just forced open back to collapsed. Handled inside this
+  // function so no call site has to care which deck was evicted. The UTubs deck
+  // is never persisted (Design Decision 1), so the fallback case writes nothing.
+  if (deckToExpandSelector === MEMBER_DECK_CSS_SELECTOR) {
+    persistDeckMinimized({ deck: PERSISTABLE_DECK.MEMBERS, minimized: false });
+  } else if (deckToExpandSelector === UTUB_TAG_DECK_CSS_SELECTOR) {
+    persistDeckMinimized({ deck: PERSISTABLE_DECK.TAGS, minimized: false });
+  }
+
+  // An eviction opens a deck just like a caret click does, so a nudge whose
+  // anchor sat inside it has to be re-evaluated too. Deferred one tick for the
+  // same reason as the expand branches (the visibility/opacity transition is
+  // still in flight in this task). Fired for ALL three outcomes, including the
+  // UTubs fallback: NUDGE_REGISTRY anchors a tip in every deck (#utubBtnCreate,
+  // #memberBtnCreate, #utubTagBtnCreate), not only the two persistable ones.
+  setTimeout(() => maybeShowNextTip(), 0);
 }
 
 function setLastCollapsed(collapsingDeck: string): void {

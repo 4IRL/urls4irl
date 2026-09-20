@@ -21,6 +21,40 @@ vi.mock("../onboarding/nudges.js", () => ({ maybeShowNextTip: vi.fn() }));
 
 const $ = window.jQuery;
 
+const DECK_LAYOUT_STORAGE_KEY = "u4i:deckLayout";
+
+// Map-backed localStorage stub, copied from `deck-layout-storage.test.ts`:
+// happy-dom has no ambient localStorage, so without it every persistence write
+// the caret handlers make would hit the module's try/catch and silently vanish,
+// making the assertions below unfalsifiable.
+function installStorageStub(): void {
+  const data = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string): string | null => data.get(key) ?? null,
+    setItem: (key: string, value: string): void => {
+      data.set(key, String(value));
+    },
+    removeItem: (key: string): void => {
+      data.delete(key);
+    },
+    clear: (): void => {
+      data.clear();
+    },
+    key: (index: number): string | null =>
+      Array.from(data.keys())[index] ?? null,
+    get length(): number {
+      return data.size;
+    },
+  });
+}
+
+// The raw persisted layout, or `null` when nothing was ever written — the
+// difference between "saved as expanded" and "never saved at all".
+function readPersistedLayout(): unknown {
+  const raw = window.localStorage.getItem(DECK_LAYOUT_STORAGE_KEY);
+  return raw === null ? null : JSON.parse(raw);
+}
+
 // data-last-collapsed="false" mirrors the Jinja default every deck is rendered
 // with (UTubDeck.html:1, MemberDeck.html:1, TagsDeck.html:1); the Member/Tag
 // `.sidePanelTitle.pad-b-0-25rem` wrappers mirror MemberDeckHeaders.html:1 and
@@ -70,8 +104,13 @@ const DECK_HEADER_SELECTORS = [
 
 describe("Collapsible Decks", () => {
   beforeEach(() => {
+    installStorageStub();
     document.body.innerHTML = DECK_HTML;
     initCollapsibleDecks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe("addCollapsibleClickableHeaderClass", () => {
@@ -327,6 +366,154 @@ describe("Collapsible Decks", () => {
     });
   });
 
+  // The user's chosen Member/Tag layout is persisted so it survives UTub
+  // switches and reloads. The write lives ONLY on the user-click path (and on
+  // the cap's forced expand, which is the user's effective layout from then on)
+  // — never on the app-forced programmatic paths.
+  describe("deck layout persistence", () => {
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    });
+
+    it("persists a Member collapse and the expand that follows it", () => {
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: true,
+        tagsMinimized: false,
+      });
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: false,
+        tagsMinimized: false,
+      });
+    });
+
+    it("persists a Tag collapse and the expand that follows it", () => {
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: false,
+        tagsMinimized: true,
+      });
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: false,
+        tagsMinimized: false,
+      });
+    });
+
+    // The UTubs deck is deliberately out of scope (Design Decision 1).
+    it("persists nothing for a UTubs deck collapse", () => {
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(true);
+      expect(readPersistedLayout()).toBeNull();
+    });
+
+    // With no UTub selected the Member/Tag headers are inert, so the synthetic
+    // clicks the Selenium suite fires at a locked deck must not write a bogus
+    // preference — the write sits after the isUTubSelected() guard.
+    it("persists nothing for a click while no UTub is selected", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect(readPersistedLayout()).toBeNull();
+    });
+
+    // isMobile() is a live viewport read: a desktop user who narrows the window
+    // must not have the mobile layout's forced expand saved as their choice.
+    it("persists nothing for a click while mobile", async () => {
+      const { isMobile } = await import("../mobile.js");
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      expect(readPersistedLayout()).toBeNull();
+    });
+
+    // Without this, a regression that poisons the saved value to "both
+    // collapsed" on every UTub leave/delete would ship green.
+    it("persists nothing when the app force-minimizes the decks with no UTub selected", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+      minimizeMemberAndTagDecksWhenNoUTub();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(readPersistedLayout()).toBeNull();
+    });
+
+    it("persists the Member deck's forced expand when the two-collapsed cap evicts it", () => {
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: true,
+        tagsMinimized: false,
+      });
+
+      // Collapsing a third deck evicts the Member deck (data-last-collapsed),
+      // so the saved preference has to follow it back open.
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: false,
+        tagsMinimized: true,
+      });
+    });
+
+    it("persists the Tag deck's forced expand when the two-collapsed cap evicts it", () => {
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: false,
+        tagsMinimized: true,
+      });
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: true,
+        tagsMinimized: false,
+      });
+    });
+
+    // The marker-free fallback expands the UTubs deck, which is never
+    // persisted — only the Tag collapse that triggered the cap is saved.
+    it("persists nothing extra when the cap's fallback evicts the UTubs deck", () => {
+      $(".deck#UTubDeck").addClass("collapsed");
+      $("#UTubDeckHeaderAndCaret .title-caret").addClass("closed");
+      $(".deck#MemberDeck").addClass("collapsed");
+      $("#MemberDeckHeaderAndCaret .title-caret").addClass("closed");
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: false,
+        tagsMinimized: true,
+      });
+    });
+  });
+
   describe("onboarding nudge re-evaluation on expand", () => {
     // Expanding a Member/Tag deck re-evaluates the onboarding nudges, so a tip
     // whose anchor was hidden inside the collapsed deck can finally show. The
@@ -384,6 +571,55 @@ describe("Collapsible Decks", () => {
       expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
       expect(maybeShowNextTip).not.toHaveBeenCalled();
+    });
+
+    // The two-collapsed cap opens a deck exactly like a caret click does, so a
+    // nudge anchored inside the evicted deck has to be re-evaluated too. Fired
+    // for all three eviction targets: NUDGE_REGISTRY anchors a tip in every
+    // deck, not only the two persistable ones.
+    it("re-evaluates the nudges when the cap evicts the Member deck", async () => {
+      const { maybeShowNextTip } = await import("../onboarding/nudges.js");
+
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+      vi.clearAllMocks();
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect(maybeShowNextTip).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-evaluates the nudges when the cap evicts the Tag deck", async () => {
+      const { maybeShowNextTip } = await import("../onboarding/nudges.js");
+
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+      vi.clearAllMocks();
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect(maybeShowNextTip).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-evaluates the nudges when the cap's marker-free fallback evicts the UTubs deck", async () => {
+      const { maybeShowNextTip } = await import("../onboarding/nudges.js");
+
+      $(".deck#UTubDeck").addClass("collapsed");
+      $("#UTubDeckHeaderAndCaret .title-caret").addClass("closed");
+      $(".deck#MemberDeck").addClass("collapsed");
+      $("#MemberDeckHeaderAndCaret .title-caret").addClass("closed");
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      expect(maybeShowNextTip).toHaveBeenCalledTimes(1);
     });
   });
 
