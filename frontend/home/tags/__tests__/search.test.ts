@@ -22,6 +22,10 @@ const $ = window.jQuery;
 
 const FILTER_HTML = `
   <div id="TagDeck">
+    <!-- The deck's own disclosure button — the Escape handler's fallback focus
+         target when the funnel toggle is unfocusable. Without it the fallback
+         branch cannot be exercised at all. -->
+    <button type="button" id="TagDeckHeaderAndCaret" aria-expanded="true" aria-controls="TagDeckContent"></button>
     <button id="tagNameFilterBtn" aria-expanded="false"></button>
     <button id="tagNameFilterBtnClose" class="hidden"></button>
     <div id="SearchTagWrap">
@@ -214,6 +218,37 @@ describe("Tag Filter", () => {
         expect($(this).hasClass("hidden")).toBe(false);
       });
       expect($("#TagSearchNoResults").hasClass("hidden")).toBe(true);
+    });
+
+    it("returns focus to the funnel toggle while the Tag deck is expanded", () => {
+      $("#TagNameSearch").trigger("focus");
+      $("#TagNameSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(document.activeElement).toBe(
+        document.getElementById("tagNameFilterBtn"),
+      );
+    });
+
+    // #tagNameFilterBtn sits in the Tag deck's .button-container, which is
+    // visibility:hidden while the deck is collapsed — focusing it there is a
+    // silent no-op that drops focus to <body>. (Edit-all-tags mode reaches the
+    // same fallback by a different mechanism, `.hidden`/display:none.) The
+    // fallback is the deck's own header button, which is never hidden.
+    it("falls back to the deck header button when the deck is collapsed", () => {
+      $("#TagDeck").addClass("collapsed");
+      const filterBtn = document.getElementById(
+        "tagNameFilterBtn",
+      ) as HTMLElement;
+      // decks.css is never loaded into the test DOM, so stand the collapsed
+      // deck's inherited visibility:hidden up directly on the button.
+      filterBtn.style.visibility = "hidden";
+
+      $("#TagNameSearch").trigger("focus");
+      $("#TagNameSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(document.activeElement).toBe(
+        document.getElementById("TagDeckHeaderAndCaret"),
+      );
     });
   });
 

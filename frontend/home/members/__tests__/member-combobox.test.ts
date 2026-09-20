@@ -75,6 +75,10 @@ const $ = window.jQuery;
 
 const MEMBER_DECK_HTML = `
   <div id="MemberDeck">
+    <!-- The deck's own disclosure button — the Escape handler's fallback focus
+         target when #memberBtnCreate is unfocusable. Without it the fallback
+         branch cannot be exercised at all. -->
+    <button type="button" id="MemberDeckHeaderAndCaret" aria-expanded="true" aria-controls="MemberDeckContent"></button>
     <button id="memberNameFilterBtn" class="hidden"></button>
     <button id="memberNameFilterBtnClose" class="hidden"></button>
     <button id="memberBtnCreate" class="green-clickable hidden"></button>
@@ -306,6 +310,53 @@ describe("member-combobox — keyboard", () => {
 
     expect($("#createMemberWrap").find(".memberAddComboboxWrap").length).toBe(
       0,
+    );
+  });
+});
+
+// Where the second Escape leaves focus. The cancel itself is covered above;
+// these two assert only the focus target, the half that silently breaks when a
+// collapsed deck makes the opener unfocusable.
+describe("member-combobox — Escape focus target", () => {
+  it("second Escape returns focus to #memberBtnCreate while the Member deck is expanded", () => {
+    seed({ candidates: [BOB], members: [] });
+    const wrap = mount();
+    typeIn(wrap, "bo");
+    const input = wrap.find(".memberAddComboboxInput");
+    // The opener is on screen whenever the deck is expanded and the combobox is
+    // closing back to it.
+    $("#memberBtnCreate").removeClass("hidden");
+
+    input.trigger($.Event("keydown", { key: "Escape" }));
+    input.trigger($.Event("keydown", { key: "Escape" }));
+
+    expect(document.activeElement).toBe(
+      document.getElementById("memberBtnCreate"),
+    );
+  });
+
+  // #memberBtnCreate sits in the Member deck's .button-container, which is
+  // visibility:hidden while the deck is collapsed — focusing it there is a
+  // silent no-op that drops focus to <body>. The fallback is the deck's own
+  // header button, which is never hidden.
+  it("second Escape falls back to the deck header when #memberBtnCreate is unfocusable", () => {
+    seed({ candidates: [BOB], members: [] });
+    const wrap = mount();
+    typeIn(wrap, "bo");
+    const input = wrap.find(".memberAddComboboxInput");
+    $("#MemberDeck").addClass("collapsed");
+    const memberBtnCreate = document.getElementById(
+      "memberBtnCreate",
+    ) as HTMLElement;
+    // decks.css is never loaded into the test DOM, so stand the collapsed
+    // deck's inherited visibility:hidden up directly on the button.
+    memberBtnCreate.style.visibility = "hidden";
+
+    input.trigger($.Event("keydown", { key: "Escape" }));
+    input.trigger($.Event("keydown", { key: "Escape" }));
+
+    expect(document.activeElement).toBe(
+      document.getElementById("MemberDeckHeaderAndCaret"),
     );
   });
 });

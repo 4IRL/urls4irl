@@ -291,7 +291,7 @@ export function createURLTagSuccess(
     }
     $("#listTags").append(newTag);
     // This tag is new to the UTub, so the deck's total grew — keep the inline
-    // "(n)" beside the Tags title in step.
+    // "(n)" beside the Tags title in sync.
     refreshTagDeckTagCount();
     reapplyTagFilter();
     $("#utubTagBtnUpdateAllOpen").showClassNormal();

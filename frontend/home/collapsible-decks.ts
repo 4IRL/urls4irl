@@ -311,6 +311,7 @@ function setupUTubHeaderForMaximizeMinimize() {
         headerSelector: UTUB_DECK_HEADER_SELECTOR,
         expanded: true,
       });
+      clearLastCollapsed(UTUB_DECK_CSS_SELECTOR);
       // Same as the Member/Tag expand branches below: #utubBtnCreate sits in
       // this deck's .button-container, so a nudge anchored to it was skipped
       // while collapsed. Deferred one tick so the class removal has settled.
@@ -373,6 +374,7 @@ function setupMemberHeaderForMaximizeMinimize() {
         deck: PERSISTABLE_DECK.MEMBERS,
         minimized: false,
       });
+      clearLastCollapsed(MEMBER_DECK_CSS_SELECTOR);
       // A nudge whose anchor sat inside this deck was skipped while collapsed
       // (visibility:hidden). Re-evaluate now the deck is open — deferred one
       // tick so the class removal is committed and the deck's style/layout has
@@ -444,6 +446,7 @@ function setupTagHeaderForMaximizeMinimize() {
         $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
       }
       persistDeckMinimized({ deck: PERSISTABLE_DECK.TAGS, minimized: false });
+      clearLastCollapsed(UTUB_TAG_DECK_CSS_SELECTOR);
       // See the Member-deck expand branch above: deferred one tick so the class
       // removal is committed and the deck has settled before re-evaluating.
       setTimeout(() => maybeShowNextTip(), 0);
@@ -498,9 +501,24 @@ function getNumDecksAlreadyCollapsed(): number {
   return collapsedDecksCount;
 }
 
+/**
+ * The deck the LRU marker names, or `undefined` when no LIVE marker exists.
+ *
+ * A marker on a deck that is NOT currently `.collapsed` is stale and treated as
+ * absent: it describes a collapse that has since been undone, so trusting it
+ * would make the cap "evict" an already-expanded deck — including, in the
+ * reachable no-UTub sequence, the very deck the user just clicked. Every expand
+ * path clears its own marker (clearLastCollapsed), so this check is the
+ * belt-and-braces half: a future expand path that forgets to clear leaves a
+ * harmless marker rather than a mis-directed eviction.
+ */
 function findDeckMarkedLastCollapsed(): string | undefined {
   for (let i = 0; i < LHS_DECKS.length; i++) {
-    if ($(LHS_DECKS[i]).attr("data-last-collapsed") === "true") {
+    const deck = $(LHS_DECKS[i]);
+    if (
+      deck.attr("data-last-collapsed") === "true" &&
+      deck.hasClass("collapsed")
+    ) {
       return LHS_DECKS[i];
     }
   }
@@ -569,6 +587,22 @@ function ensureOnlyTwoDecksCollapsedAtOnce(): void {
   setTimeout(() => maybeShowNextTip(), 0);
 }
 
+/**
+ * Drop the LRU marker from a deck that is being expanded.
+ *
+ * Called from every expand path — the three caret branches and the programmatic
+ * setDeckMinimized({ minimized: false }) — so the marker can never outlive the
+ * collapse it described. Without it, "collapse X, expand X, let something else
+ * collapse two decks programmatically" leaves X marked while expanded, and the
+ * next cap firing re-expands X instead of evicting a genuinely collapsed deck.
+ *
+ * Only the expanding deck is touched: any other deck's marker is still valid if
+ * that deck is collapsed, and findDeckMarkedLastCollapsed() discards it if not.
+ */
+function clearLastCollapsed(expandingDeck: string): void {
+  $(expandingDeck).attr("data-last-collapsed", "false");
+}
+
 function setLastCollapsed(collapsingDeck: string): void {
   for (let i = 0; i < LHS_DECKS.length; i++) {
     if (collapsingDeck === LHS_DECKS[i]) {
@@ -629,6 +663,8 @@ function setDeckMinimized({
     // UTub-selected state, where nothing puts it today.
     $(`${deckSelector} > .sidePanelTitle`).removeClass("pad-b-0-25rem");
     rescueFocusFromCollapsedDeck({ deckElement, headerSelector });
+  } else {
+    clearLastCollapsed(deckSelector);
   }
   setDeckHeaderExpanded({
     headerSelector,

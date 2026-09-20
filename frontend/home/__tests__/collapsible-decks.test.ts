@@ -458,6 +458,121 @@ describe("Collapsible Decks", () => {
     });
   });
 
+  // data-last-collapsed is the 2-collapsed cap's LRU anchor, and it used to be
+  // written on collapse but never cleared on expand — so it could name a deck
+  // that is wide open. Two independent guards keep such a marker from
+  // misdirecting an eviction: every expand path clears its own marker, and the
+  // cap discards a marker naming a deck that is not actually `.collapsed`.
+  describe("stale data-last-collapsed marker", () => {
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    });
+
+    it("clears the marker when the UTubs caret expands the deck again", () => {
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      expect($(".deck#UTubDeck").attr("data-last-collapsed")).toBe("true");
+
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#UTubDeck").attr("data-last-collapsed")).toBe("false");
+    });
+
+    it("clears the marker when the Member caret expands the deck again", () => {
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      expect($(".deck#MemberDeck").attr("data-last-collapsed")).toBe("true");
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#MemberDeck").attr("data-last-collapsed")).toBe("false");
+    });
+
+    it("clears the marker when the Tag caret expands the deck again", () => {
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      expect($(".deck#TagDeck").attr("data-last-collapsed")).toBe("true");
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#TagDeck").attr("data-last-collapsed")).toBe("false");
+    });
+
+    // The fourth writer is the programmatic expand: a UTub selection whose saved
+    // layout has the deck open must not leave the marker an earlier caret
+    // collapse wrote. Nothing re-seeds it here — seedLastCollapsedFromRestoredLayout()
+    // returns early when neither deck came back collapsed.
+    it("clears the marker when the persisted-layout restore expands the deck", () => {
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      expect($(".deck#TagDeck").attr("data-last-collapsed")).toBe("true");
+      seedPersistedLayout({ membersMinimized: false, tagsMinimized: false });
+
+      selectUTub();
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#TagDeck").attr("data-last-collapsed")).toBe("false");
+    });
+
+    // The cap's own half of the fix, asserted against a marker written straight
+    // into the DOM: every expand path already clears its own, so this is the
+    // safety net that keeps a marker left behind by some FUTURE expand path
+    // harmless. Without it the stale marker is non-undefined, the
+    // would-be-reverted guard lets the click through, and the collapse runs its
+    // side effects (wiping an in-progress UTub search) for a collapse the cap
+    // undoes in the same tick.
+    it("treats a marker on an expanded deck as absent, keeping the UTubs click inert", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      const { resetUTubSearch } = await import("../utubs/search.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      // Marked, yet wide open — exactly what an expand path that forgot to
+      // clear would leave behind.
+      $(".deck#UTubDeck").attr("data-last-collapsed", "true");
+      vi.clearAllMocks();
+
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      expect($("#UTubDeckHeaderAndCaret .title-caret").hasClass("closed")).toBe(
+        false,
+      );
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(resetUTubSearch).not.toHaveBeenCalled();
+    });
+
+    // The end-to-end sequence the two guards were added for, driven entirely
+    // through real clicks and the real programmatic minimize: collapse the
+    // UTubs deck, expand it again, then deselect the UTub so Members + Tags are
+    // minimized programmatically (that path writes no marker of its own).
+    // Re-clicking the UTubs caret from there must stay inert — the cap could
+    // only ever "evict" the UTubs deck itself, silently undoing the user's own
+    // click — and must leave the saved layout untouched.
+    it("keeps the UTubs click inert after a collapse/expand cycle, with the saved layout untouched", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      const { resetUTubSearch } = await import("../utubs/search.js");
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      const layoutBeforeClick = readPersistedLayout();
+      vi.clearAllMocks();
+
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      expect($("#UTubDeckHeaderAndCaret .title-caret").hasClass("closed")).toBe(
+        false,
+      );
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(resetUTubSearch).not.toHaveBeenCalled();
+      expect(readPersistedLayout()).toEqual(layoutBeforeClick);
+    });
+  });
+
   // The user's chosen Member/Tag layout is persisted so it survives UTub
   // switches and reloads. The write lives ONLY on the user-click path (and on
   // the cap's forced expand, which is the user's effective layout from then on)
