@@ -561,6 +561,84 @@ describe("bulk-bar", () => {
         }, 200);
       });
     });
+
+    it("re-slots the bar back to the header slot on a resize that crosses into desktop", () => {
+      // Enter mode on mobile first (bar moves to the deck bottom).
+      vi.mocked(isMobile).mockReturnValue(true);
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+      const deck = document.querySelector("#URLDeck");
+      const bar = document.querySelector("#bulkActionBar");
+      expect(deck?.lastElementChild).toBe(bar);
+
+      // A rotation/resize crosses the breakpoint into desktop; the debounced
+      // resize handler re-inserts the bar after #bulkSelectContext.
+      vi.mocked(isMobile).mockReturnValue(false);
+      window.dispatchEvent(new Event("resize"));
+
+      // The resize handler is debounced (RESIZE_DEBOUNCE_MS); flush it.
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          const context = document.querySelector("#bulkSelectContext");
+          expect(context?.nextElementSibling).toBe(bar);
+          resolve();
+        }, 200);
+      });
+    });
+
+    // Regression (Android soft keyboard) — see relocateBulkBarForViewport()'s
+    // docblock for the mechanism. Both tests assert that a resize which does NOT
+    // cross the breakpoint leaves a focused picker filter input still focused.
+    it("leaves a focused picker input focused on a mobile resize that does not cross the breakpoint", () => {
+      vi.mocked(isMobile).mockReturnValue(true);
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+
+      const deck = document.querySelector("#URLDeck");
+      const bar = document.querySelector("#bulkActionBar") as HTMLElement;
+      expect(deck?.lastElementChild).toBe(bar);
+
+      // Stand in for a mounted picker's filter input.
+      const input = document.createElement("input");
+      input.id = "bulkCopyFilterInput";
+      bar.appendChild(input);
+      input.focus();
+      expect(document.activeElement).toBe(input);
+
+      // Keyboard opens: a resize with the breakpoint unchanged (still mobile).
+      window.dispatchEvent(new Event("resize"));
+
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          expect(deck?.lastElementChild).toBe(bar);
+          expect(document.activeElement).toBe(input);
+          resolve();
+        }, 200);
+      });
+    });
+
+    it("leaves a focused picker input focused on a desktop resize that does not cross the breakpoint", () => {
+      // isMobile defaults to false (desktop) in beforeEach.
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+
+      const context = document.querySelector("#bulkSelectContext");
+      const bar = document.querySelector("#bulkActionBar") as HTMLElement;
+      expect(context?.nextElementSibling).toBe(bar);
+
+      const input = document.createElement("input");
+      input.id = "bulkCopyFilterInput";
+      bar.appendChild(input);
+      input.focus();
+      expect(document.activeElement).toBe(input);
+
+      window.dispatchEvent(new Event("resize"));
+
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          expect(context?.nextElementSibling).toBe(bar);
+          expect(document.activeElement).toBe(input);
+          resolve();
+        }, 200);
+      });
+    });
   });
 
   describe("action registry rendering", () => {

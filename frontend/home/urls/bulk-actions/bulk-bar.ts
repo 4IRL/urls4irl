@@ -194,9 +194,15 @@ function syncRangeButtonStates(): void {
  *    exactly as authored — so a desktop user in mode sees no change.
  *
  * The bar's jQuery handlers travel with the node (offAndOnExact + global $(id)
- * lookups), so moving it is safe. Idempotent: re-inserting an already-correct
- * node is a no-op reorder. Guards for element existence so a partial DOM (tests,
- * early init) never throws.
+ * lookups), so moving it is safe. Guards for element existence so a partial DOM
+ * (tests, early init) never throws.
+ *
+ * Each branch NO-OPS when the bar already sits in its slot — a focus fix, not a
+ * micro-optimization: re-inserting an already-correct node is a no-op for LAYOUT
+ * but not for FOCUS (the DOM insert steps detach and re-insert it, blurring
+ * anything focused inside). Android Chrome fires `resize` on soft-keyboard open,
+ * so an unconditional re-slot dismissed the keyboard a tap on a bulk picker's
+ * filter input had just summoned.
  */
 function relocateBulkBarForViewport(): void {
   const bar = $(BAR_SELECTOR);
@@ -204,10 +210,13 @@ function relocateBulkBarForViewport(): void {
   if (isMobile()) {
     const deck = $(DECK_SELECTOR);
     if (deck.length === 0) return;
+    // Last-child, not same-parent: the bar must follow the scroll container.
+    if (deck.children().last().is(bar)) return;
     bar.appendTo(deck);
   } else {
     const anchor = $(HEADER_ANCHOR_SELECTOR);
     if (anchor.length === 0) return;
+    if (anchor.next().is(bar)) return;
     bar.insertAfter(anchor);
   }
 }
