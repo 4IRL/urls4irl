@@ -56,6 +56,11 @@ function setupCollapsibleLeftDecks() {
   setupTagHeaderForMaximizeMinimize();
 }
 
+// Expand every collapsed deck. All three branches must run: a Members-collapsed
+// state used to short-circuit before the Tag branch, stranding #TagDeck.collapsed
+// — which the desktop -> mobile crossing then relocates into the bottom sheet,
+// where `.deck.collapsed .content { height: 0 }` renders an empty sheet the user
+// cannot reopen (the caret handlers early-return on mobile).
 export function resetAllDecksIfCollapsed(): void {
   const caretUTubDeck = $("#UTubDeckHeaderAndCaret .title-caret");
   if (caretUTubDeck.hasClass("closed")) {
@@ -70,7 +75,6 @@ export function resetAllDecksIfCollapsed(): void {
     if (!isUTubSelected()) {
       $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
     }
-    return;
   }
 
   const caretTagDeck = $("#TagDeckHeaderAndCaret .title-caret");
@@ -80,7 +84,6 @@ export function resetAllDecksIfCollapsed(): void {
     if (!isUTubSelected()) {
       $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
     }
-    return;
   }
 }
 
@@ -93,6 +96,15 @@ function setupUTubHeaderForMaximizeMinimize() {
     if (isMobile()) return;
     const caret = $("#UTubDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
+    // The 2-collapsed cap would re-expand this deck the moment it collapsed
+    // (Members + Tags are already collapsed and locked with no UTub selected),
+    // so treat the click as inert rather than running side effects for a
+    // collapse that cannot stick.
+    if (
+      !willExpand &&
+      wouldCollapseBeImmediatelyReverted(UTUB_DECK_CSS_SELECTOR)
+    )
+      return;
     emit({
       event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
       deck: willExpand ? DECK_EXPAND_DECK.UTUBS : DECK_COLLAPSE_DECK.UTUBS,
@@ -228,16 +240,49 @@ function getNumDecksAlreadyCollapsed(): number {
   return collapsedDecksCount;
 }
 
-function ensureOnlyTwoDecksCollapsedAtOnce(): void {
-  let deckToExpandSelector: string | undefined;
+function findDeckMarkedLastCollapsed(): string | undefined {
   for (let i = 0; i < LHS_DECKS.length; i++) {
     if ($(LHS_DECKS[i]).attr("data-last-collapsed") === "true") {
-      deckToExpandSelector = LHS_DECKS[i];
-      break;
+      return LHS_DECKS[i];
     }
   }
+  return undefined;
+}
 
-  if (!deckToExpandSelector) return;
+// True when collapsing `deckSelector` would be undone the instant it happened:
+// two decks are already collapsed and no deck carries the LRU marker, so the
+// cap's fallback below would expand this very deck. Only the UTubs deck can
+// reach this — the marker-free 2-collapsed state is Members+Tags minimized by
+// minimizeMemberAndTagDecksWhenNoUTub(), whose headers are inert with no UTub
+// selected. The caller returns early instead, so a click that cannot stick does
+// not still run the collapse side effects (resetUTubSearch() would wipe an
+// in-progress UTub filter) or emit a UI_DECK_COLLAPSE that never happened.
+function wouldCollapseBeImmediatelyReverted(deckSelector: string): boolean {
+  return (
+    deckSelector === UTUB_DECK_CSS_SELECTOR &&
+    getNumDecksAlreadyCollapsed() >= 2 &&
+    findDeckMarkedLastCollapsed() === undefined
+  );
+}
+
+function ensureOnlyTwoDecksCollapsedAtOnce(): void {
+  let deckToExpandSelector = findDeckMarkedLastCollapsed();
+
+  if (!deckToExpandSelector) {
+    // No deck carries the LRU marker — the state of every freshly-loaded page,
+    // since Jinja seeds data-last-collapsed="false" on all three and only a
+    // caret click ever flips one to "true". Returning here would leave all
+    // three decks collapsed, so fall back to expanding the UTubs deck: it is
+    // the one deck that is never auto-locked, so expanding it always leaves a
+    // usable left panel.
+    deckToExpandSelector = UTUB_DECK_CSS_SELECTOR;
+    log(
+      "collapsible decks: no data-last-collapsed marker set, falling back to expanding the UTubs deck",
+      {
+        deckToExpand: UTUB_DECK_CSS_SELECTOR,
+      },
+    );
+  }
   const deckToExpand = $(deckToExpandSelector);
   deckToExpand.find(".title-caret").first().removeClass("closed");
   deckToExpand.removeClass("collapsed");

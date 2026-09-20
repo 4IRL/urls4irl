@@ -2,6 +2,7 @@ import {
   initCollapsibleDecks,
   addCollapsibleClickableHeaderClass,
   removeCollapsibleClickableHeaderClass,
+  minimizeMemberAndTagDecksWhenNoUTub,
   resetAllDecksIfCollapsed,
 } from "../collapsible-decks.js";
 
@@ -18,21 +19,29 @@ vi.mock("../tags/search.js", () => ({ closeTagNameFilter: vi.fn() }));
 
 const $ = window.jQuery;
 
+// data-last-collapsed="false" mirrors the Jinja default every deck is rendered
+// with (UTubDeck.html:1, MemberDeck.html:1, TagsDeck.html:1); the Member/Tag
+// `.sidePanelTitle.pad-b-0-25rem` wrappers mirror MemberDeckHeaders.html:1 and
+// TagsDeck.html:2, which the collapse/reset paths add and remove that class on.
 const DECK_HTML = `
-  <div class="deck" id="UTubDeck">
+  <div class="deck" id="UTubDeck" data-last-collapsed="false">
     <div id="UTubDeckHeaderAndCaret">
       <span class="title-caret"></span>
     </div>
     <div id="SearchUTubWrap"></div>
   </div>
-  <div class="deck" id="MemberDeck">
-    <div id="MemberDeckHeaderAndCaret">
-      <span class="title-caret"></span>
+  <div class="deck" id="MemberDeck" data-last-collapsed="false">
+    <div class="titleElement sidePanelTitle pad-b-0-25rem">
+      <div id="MemberDeckHeaderAndCaret">
+        <span class="title-caret"></span>
+      </div>
     </div>
   </div>
-  <div class="deck" id="TagDeck">
-    <div id="TagDeckHeaderAndCaret">
-      <span class="title-caret"></span>
+  <div class="deck" id="TagDeck" data-last-collapsed="false">
+    <div class="titleElement sidePanelTitle pad-b-0-25rem">
+      <div id="TagDeckHeaderAndCaret">
+        <span class="title-caret"></span>
+      </div>
     </div>
   </div>
 `;
@@ -106,6 +115,62 @@ describe("Collapsible Decks", () => {
       expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
       expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+    });
+
+    // The Member branch used to `return` before the Tag branch ever ran, so a
+    // Members-collapsed state stranded #TagDeck.collapsed — which the desktop ->
+    // mobile crossing then relocates into the bottom sheet as an empty, unopenable
+    // panel.
+    it("expands all three decks, including the Tag deck the Member branch used to short-circuit past", () => {
+      const deckSelectors = [
+        ".deck#UTubDeck",
+        ".deck#MemberDeck",
+        ".deck#TagDeck",
+      ];
+      const caretSelectors = [
+        "#UTubDeckHeaderAndCaret .title-caret",
+        "#MemberDeckHeaderAndCaret .title-caret",
+        "#TagDeckHeaderAndCaret .title-caret",
+      ];
+      deckSelectors.forEach((deckSelector) =>
+        $(deckSelector).addClass("collapsed"),
+      );
+      caretSelectors.forEach((caretSelector) =>
+        $(caretSelector).addClass("closed"),
+      );
+
+      resetAllDecksIfCollapsed();
+
+      deckSelectors.forEach((deckSelector) =>
+        expect($(deckSelector).hasClass("collapsed")).toBe(false),
+      );
+      caretSelectors.forEach((caretSelector) =>
+        expect($(caretSelector).hasClass("closed")).toBe(false),
+      );
+    });
+
+    // isUTubSelected() is false by default in this spec, so both guarded
+    // pad-b-0-25rem re-adds fire — the Tag one only became reachable once the
+    // Member branch stopped returning.
+    it("re-adds pad-b-0-25rem to both the Member and Tag titles when no UTub is selected", () => {
+      const titleSelectors = [
+        "#MemberDeck > .sidePanelTitle",
+        "#TagDeck > .sidePanelTitle",
+      ];
+      $(".deck#MemberDeck").addClass("collapsed");
+      $("#MemberDeckHeaderAndCaret .title-caret").addClass("closed");
+      $(".deck#TagDeck").addClass("collapsed");
+      $("#TagDeckHeaderAndCaret .title-caret").addClass("closed");
+      // The collapse handlers strip this class; the reset path restores it.
+      titleSelectors.forEach((titleSelector) =>
+        $(titleSelector).removeClass("pad-b-0-25rem"),
+      );
+
+      resetAllDecksIfCollapsed();
+
+      titleSelectors.forEach((titleSelector) =>
+        expect($(titleSelector).hasClass("pad-b-0-25rem")).toBe(true),
+      );
     });
   });
 
@@ -194,27 +259,49 @@ describe("Collapsible Decks", () => {
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
     });
 
-    it("does not mutate DOM when no deck has data-last-collapsed=true", () => {
-      // Manually collapse all three decks without setting data-last-collapsed
+    // No deck carries data-last-collapsed="true" on a freshly-loaded page —
+    // Jinja seeds "false" on all three and only a caret click ever flips one to
+    // "true". Collapsing a third deck from that state must still evict one, and
+    // the UTubs deck is the deterministic choice: it is the only deck that is
+    // never auto-locked, so expanding it always leaves a usable left panel.
+    //
+    // The production route into that marker-free pair is the no-UTub state, where
+    // minimizeMemberAndTagDecksWhenNoUTub() collapses and locks Members + Tags
+    // without ever writing a marker. Collapsing the UTubs deck there would be
+    // reverted by the cap immediately, so the click is inert instead — it must
+    // not wipe the UTub search on a collapse that cannot stick.
+    it("makes the UTubs caret click inert when Members and Tags are locked collapsed with no UTub selected", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      const { resetUTubSearch } = await import("../utubs/search.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      vi.clearAllMocks();
+
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      expect($("#UTubDeckHeaderAndCaret .title-caret").hasClass("closed")).toBe(
+        false,
+      );
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(resetUTubSearch).not.toHaveBeenCalled();
+    });
+
+    it("expands the UTubs deck when the Tag deck is collapsed third with no data-last-collapsed marker", () => {
       $(".deck#UTubDeck").addClass("collapsed");
       $("#UTubDeckHeaderAndCaret .title-caret").addClass("closed");
       $(".deck#MemberDeck").addClass("collapsed");
       $("#MemberDeckHeaderAndCaret .title-caret").addClass("closed");
-      $(".deck#TagDeck").addClass("collapsed");
-      $("#TagDeckHeaderAndCaret .title-caret").addClass("closed");
 
-      const htmlBefore = document.body.innerHTML;
+      $("#TagDeckHeaderAndCaret").trigger("click");
 
-      // Trigger a collapse via click — ensureOnlyTwoDecksCollapsedAtOnce runs
-      // but the early-return fires because no deck has data-last-collapsed=true
-      // Instead we directly invoke initCollapsibleDecks again and click
-      // Since all 3 are already collapsed and none have data-last-collapsed,
-      // the auto-expand guard should be a no-op beyond the new collapse itself.
-      // Verify that all three remain collapsed (no auto-expand occurred).
-      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      expect($("#UTubDeckHeaderAndCaret .title-caret").hasClass("closed")).toBe(
+        false,
+      );
       expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
-      expect(document.body.innerHTML).toBe(htmlBefore);
     });
   });
 });
