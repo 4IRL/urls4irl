@@ -10,6 +10,7 @@ import { closeTagNameFilter } from "./tags/search.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
+import { maybeShowNextTip } from "./onboarding/nudges.js";
 import {
   DECK_COLLAPSE_DECK,
   DECK_EXPAND_DECK,
@@ -112,6 +113,10 @@ function setupUTubHeaderForMaximizeMinimize() {
     if (willExpand) {
       caret.removeClass("closed");
       $(UTUB_DECK_CSS_SELECTOR).removeClass("collapsed");
+      // Same as the Member/Tag expand branches below: #utubBtnCreate sits in
+      // this deck's .button-container, so a nudge anchored to it was skipped
+      // while collapsed. Deferred one tick so the class removal has settled.
+      setTimeout(() => maybeShowNextTip(), 0);
       return;
     }
 
@@ -158,6 +163,13 @@ function setupMemberHeaderForMaximizeMinimize() {
       if (!isUTubSelected()) {
         $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
       }
+      // A nudge whose anchor sat inside this deck was skipped while collapsed
+      // (visibility:hidden). Re-evaluate now the deck is open — deferred one
+      // tick so the class removal is committed and the deck's style/layout has
+      // settled before isAnchorVisible() reads the anchor. Mirrors nudges.ts's
+      // own TAG_SHEET_TOGGLED first deferred tick (its repeat loop is not
+      // needed: nothing here animates a position to reposition against).
+      setTimeout(() => maybeShowNextTip(), 0);
       return;
     }
 
@@ -205,6 +217,9 @@ function setupTagHeaderForMaximizeMinimize() {
       if (!isUTubSelected()) {
         $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
       }
+      // See the Member-deck expand branch above: deferred one tick so the class
+      // removal is committed and the deck has settled before re-evaluating.
+      setTimeout(() => maybeShowNextTip(), 0);
       return;
     }
 

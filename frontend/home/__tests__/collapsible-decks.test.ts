@@ -16,6 +16,7 @@ vi.mock("../members/create.js", () => ({ createMemberHideInput: vi.fn() }));
 vi.mock("../members/search.js", () => ({ closeMemberNameFilter: vi.fn() }));
 vi.mock("../tags/create.js", () => ({ createUTubTagHideInput: vi.fn() }));
 vi.mock("../tags/search.js", () => ({ closeTagNameFilter: vi.fn() }));
+vi.mock("../onboarding/nudges.js", () => ({ maybeShowNextTip: vi.fn() }));
 
 const $ = window.jQuery;
 
@@ -302,6 +303,66 @@ describe("Collapsible Decks", () => {
       );
       expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+    });
+  });
+
+  describe("onboarding nudge re-evaluation on expand", () => {
+    // Expanding a Member/Tag deck re-evaluates the onboarding nudges, so a tip
+    // whose anchor was hidden inside the collapsed deck can finally show. The
+    // call is deferred one tick (the visibility transition is still in flight in
+    // the click's own task), so fake timers make it deterministic.
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      vi.useFakeTimers();
+      vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("expanding the Member deck re-evaluates the onboarding nudges on the next tick", async () => {
+      const { maybeShowNextTip } = await import("../onboarding/nudges.js");
+
+      // Collapse first, then clear mocks so only the expand call is observed.
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+      vi.clearAllMocks();
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect(maybeShowNextTip).toHaveBeenCalledTimes(1);
+    });
+
+    it("expanding the Tag deck re-evaluates the onboarding nudges on the next tick", async () => {
+      const { maybeShowNextTip } = await import("../onboarding/nudges.js");
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+      vi.clearAllMocks();
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      vi.runAllTimers();
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect(maybeShowNextTip).toHaveBeenCalledTimes(1);
+    });
+
+    it("collapsing the Member or Tag deck queues no nudge re-evaluation", async () => {
+      const { maybeShowNextTip } = await import("../onboarding/nudges.js");
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      // Run the timers through to prove no deferred call was ever queued, not
+      // just that none has fired yet.
+      vi.runAllTimers();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(maybeShowNextTip).not.toHaveBeenCalled();
     });
   });
 });

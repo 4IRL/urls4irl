@@ -17,6 +17,10 @@ vi.mock("../utubs/search.js", () => ({ resetUTubSearch: vi.fn() }));
 vi.mock("../utubs/create.js", () => ({ createUTubHideInput: vi.fn() }));
 vi.mock("../members/create.js", () => ({ createMemberHideInput: vi.fn() }));
 vi.mock("../tags/create.js", () => ({ createUTubTagHideInput: vi.fn() }));
+// collapsible-decks.ts defers a maybeShowNextTip() re-eval on every Member/Tag
+// expand. Mocked here so the real nudges.ts (which imports isUTubSearchActive
+// from the partially-mocked ../utubs/search.js above) never enters the graph.
+vi.mock("../onboarding/nudges.js", () => ({ maybeShowNextTip: vi.fn() }));
 
 const $ = window.jQuery;
 

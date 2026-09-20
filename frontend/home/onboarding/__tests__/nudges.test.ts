@@ -364,7 +364,9 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
   it("(a11y) a re-show on a DIFFERENT anchor leaves the pending dispose on its own timer", async () => {
     const { showTip, dismissActiveTip } = await import("../nudges.js");
     const { bootstrap } = await import("../../../lib/globals.js");
-    const createAnchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const createAnchor = document.querySelector(
+      "#utubBtnCreate",
+    ) as HTMLElement;
     const tip = bootstrap.Tooltip.getOrCreateInstance(createAnchor);
 
     showTip(CREATE_UTUB_TIP);
@@ -1070,9 +1072,8 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
   });
 
   it("(sequencing) addTag precedes addMember; once addTag is seen the next re-eval shows addMember", async () => {
-    const { initOnboardingNudges, dismissActiveTip } = await import(
-      "../nudges.js"
-    );
+    const { initOnboardingNudges, dismissActiveTip } =
+      await import("../nudges.js");
     const { bootstrap } = await import("../../../lib/globals.js");
     const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
     const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
@@ -1308,9 +1309,8 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
   });
 
   it("(mobile priority inversion) addMember shows while the tag sheet is collapsed; addTag shows once it opens", async () => {
-    const { initOnboardingNudges, dismissActiveTip } = await import(
-      "../nudges.js"
-    );
+    const { initOnboardingNudges, dismissActiveTip } =
+      await import("../nudges.js");
     const { bootstrap } = await import("../../../lib/globals.js");
     const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
     const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
@@ -1417,6 +1417,52 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     } finally {
       getComputedStyleSpy.mockRestore();
     }
+  });
+
+  it("(collapsed deck) an anchor inside a visibility:hidden .button-container blocks the show; un-hiding it lets addMember show (positive control)", async () => {
+    const { initOnboardingNudges } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+
+    // Mirror the desktop collapsed-deck DOM: `.deck.collapsed .button-container`
+    // is `visibility: hidden` (decks.css), which takes #memberBtnCreate out of
+    // the a11y tree — so a nudge anchored to it must not show. Setting the style
+    // inline on the container works here because isRenderedVisible() walks the
+    // ancestor chain checking each element's OWN computed visibility, and
+    // happy-dom's real getComputedStyle reflects inline styles.
+    document.body.innerHTML = `<button id="utubBtnCreate"></button><button id="utubTagBtnCreate"></button><div class="deck collapsed" id="MemberDeck"><div class="button-container"><button id="memberBtnCreate"></button></div></div><span id="onboardingNudgeAnnouncement"></span>`;
+    const buttonContainer = document.querySelector(
+      "#MemberDeck .button-container",
+    ) as HTMLElement;
+    buttonContainer.style.visibility = "hidden";
+    const anchor = document.querySelector("#memberBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // Lone owner with a tag present: addMember is the ONLY eligible candidate,
+    // so a blocked show can only be the visibility gate.
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [A_TAG],
+      members: [M_SELF],
+      isCurrentUserOwner: true,
+    });
+
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    // Positive control: the user expands the deck, the container is visible
+    // again, and the same re-eval now shows addMember — proving the harness can
+    // detect a show, so the negative assertion above is falsifiable.
+    document.querySelector("#MemberDeck")!.classList.remove("collapsed");
+    buttonContainer.style.visibility = "";
+    emitBusEvent(AppEvents.MEMBER_DECK_CHANGED);
+    expect(tip.show).toHaveBeenCalledTimes(1);
+    const contentArg = (tip.setContent as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, string>;
+    expect(contentArg[".tooltip-inner"]).toContain("Invite a member");
   });
 
   it("(sheet reposition, fake timers) the TAG_SHEET_TOGGLED retry loop repositions the shown tip across the open slide (tip.update called >1×)", async () => {

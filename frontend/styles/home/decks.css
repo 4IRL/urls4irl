@@ -68,8 +68,16 @@
     min-height: 0;
 }
 
+/* `visibility` joins the transition list so the hide is deferred to the end of
+   the fade (the spec special-cases visibility among discrete-animatable
+   properties: visible→hidden holds `visible` until the transition ends, while
+   hidden→visible flips at 0%), exactly what `.titleElement`'s `transition: all`
+   below already gets for free. `.deck-snap`'s `transition: none !important`
+   override still wins for the programmatic restore path. */
 .content {
-    transition: opacity 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease;
 }
 
 .titleElement {
@@ -79,6 +87,12 @@
 .deck.collapsed .content,
 .deck.collapsed .titleElement:nth-of-type(2) {
     opacity: 0;
+    /* `opacity: 0` alone leaves collapsed content focusable and readable by
+       screen readers — every member row, tag chip and filter input stayed in
+       the tab order and the a11y tree. `visibility: hidden` removes it from
+       both, inherits to every descendant, and still composes with the
+       height/opacity transitions above (unlike `display: none`). */
+    visibility: hidden;
     height: 0;
     min-height: 0;
     overflow: hidden;
@@ -88,6 +102,15 @@
     flex: 0 0 0;
     border-top-width: 0;
     padding-block: 0;
+}
+
+/* The decks' aria-live announcement regions sit inside `.content`, so the
+   collapse above would pull them out of the a11y tree and silence anything
+   written to them while the deck is collapsed. They already carry
+   `.visually-hidden` (clipped to 1px), so re-asserting `visibility: visible`
+   renders nothing — it only keeps them announceable. */
+.deck.collapsed .content .visually-hidden[aria-live] {
+    visibility: visible;
 }
 
 /* Suppress the collapse/expand animation for programmatic (auto) minimize and
@@ -101,9 +124,19 @@
     transition: none !important;
 }
 
+/* `pointer-events: none` blocks the mouse but NOT Enter/Space on a focused
+   button, so an invisible `#memberBtnCreate` was still keyboard-activatable.
+   `visibility: hidden` takes the whole container out of the tab order and the
+   a11y tree. Same `opacity + visibility` transition shape as `.content` above,
+   so the two rules stay consistent; here the whole transition lives inside the
+   `.collapsed` selector (this rule has no base-rule counterpart), which makes
+   the collapse fade out and the expand show instantly — the desired behavior. */
 .deck.collapsed .button-container {
-    transition: opacity 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
 }
 
