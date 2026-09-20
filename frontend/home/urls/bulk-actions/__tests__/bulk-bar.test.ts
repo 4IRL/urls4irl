@@ -562,13 +562,32 @@ describe("bulk-bar", () => {
       });
     });
 
-    // Regression (Android soft keyboard). The bar hosts #bulkTagPickerMount and
-    // #bulkCopyPickerMount, each of whose pickers carries a filter input. Android
-    // Chrome fires `resize` when the soft keyboard opens (iOS moves only
-    // visualViewport, so it never showed this), and the handler used to re-append
-    // the bar unconditionally — a no-op for layout, but the DOM insert steps
-    // detach and re-insert the node, blurring the input and dismissing the
-    // keyboard the user had just summoned by tapping the filter box.
+    it("re-slots the bar back to the header slot on a resize that crosses into desktop", () => {
+      // Enter mode on mobile first (bar moves to the deck bottom).
+      vi.mocked(isMobile).mockReturnValue(true);
+      emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
+      const deck = document.querySelector("#URLDeck");
+      const bar = document.querySelector("#bulkActionBar");
+      expect(deck?.lastElementChild).toBe(bar);
+
+      // A rotation/resize crosses the breakpoint into desktop; the debounced
+      // resize handler re-inserts the bar after #bulkSelectContext.
+      vi.mocked(isMobile).mockReturnValue(false);
+      window.dispatchEvent(new Event("resize"));
+
+      // The resize handler is debounced (RESIZE_DEBOUNCE_MS); flush it.
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          const context = document.querySelector("#bulkSelectContext");
+          expect(context?.nextElementSibling).toBe(bar);
+          resolve();
+        }, 200);
+      });
+    });
+
+    // Regression (Android soft keyboard) — see relocateBulkBarForViewport()'s
+    // docblock for the mechanism. Both tests assert that a resize which does NOT
+    // cross the breakpoint leaves a focused picker filter input still focused.
     it("leaves a focused picker input focused on a mobile resize that does not cross the breakpoint", () => {
       vi.mocked(isMobile).mockReturnValue(true);
       emit(AppEvents.URL_MULTISELECT_MODE_CHANGED, { active: true });
