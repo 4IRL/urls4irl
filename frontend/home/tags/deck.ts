@@ -1,6 +1,5 @@
 import type { UtubTag } from "../../types/url.js";
 
-import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
@@ -30,13 +29,7 @@ import {
   setTagDeckBtnsOnUpdateAllUTubTagsClosed,
   setUnselectUpdateUTubTagEventListeners,
 } from "./update-all.js";
-import {
-  disableUnselectAllButtonAfterTagFilterRemoved,
-  resetCountOfTagFiltersApplied,
-} from "./unselect-all.js";
-
-// Tracks the off-function for the per-UTub TAG_FILTER_CHANGED listener
-let _tagFilterChangedOff: (() => void) | null = null;
+import { disableUnselectAllButtonAfterTagFilterRemoved } from "./unselect-all.js";
 
 const log = debug("tags");
 
@@ -47,7 +40,6 @@ export function setTagDeckOnUTubSelected(
   log("setTagDeckOnUTubSelected — rebuilding tag deck", {
     utubID,
     tagCount: dictTags.length,
-    hadPriorListener: _tagFilterChangedOff !== null,
   });
   resetTagDeck();
   setupOpenCreateUTubTagEventListeners(utubID);
@@ -77,6 +69,8 @@ export function setTagDeckOnUTubSelected(
     );
   }
 
+  refreshTagDeckTagCount();
+
   // Stripe the freshly-built rows (mirrors the member deck build).
   applyAlternatingTagBackground();
 
@@ -84,24 +78,12 @@ export function setTagDeckOnUTubSelected(
   setTagNameFilterToggleListeners();
   showTagFilterBar();
 
-  _tagFilterChangedOff = on(
-    AppEvents.TAG_FILTER_CHANGED,
-    ({ selectedTagIDs }) => {
-      updateCountOfTagFiltersApplied(selectedTagIDs.length);
-    },
-  );
-
   $("#utubTagBtnCreate").showClassNormal();
 }
 
 export function resetTagDeck(): void {
-  if (_tagFilterChangedOff) {
-    _tagFilterChangedOff();
-    _tagFilterChangedOff = null;
-  }
-
   $("#listTags").empty();
-  resetCountOfTagFiltersApplied();
+  refreshTagDeckTagCount();
   disableUnselectAllButtonAfterTagFilterRemoved();
   $("#utubTagBtnCreate").hideClass();
   // This button is hidden by callers rather than by its own click, so hide any
@@ -154,6 +136,9 @@ export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
     },
   });
 
+  // Covers both halves of the diff — rows added and rows removed.
+  refreshTagDeckTagCount();
+
   reapplyTagFilter();
   if (updatedTags.length === 0) {
     showTagDeckEmptyState();
@@ -166,15 +151,17 @@ export function setTagDeckSubheaderWhenNoUTubSelected(): void {
   $("#TagDeckCount").text("");
 }
 
-export function updateCountOfTagFiltersApplied(selectedTagCount: number): void {
-  // Inline "(applied/max-applicable)" total next to the deck title.
-  $("#TagDeckCount").text(
-    "(" + selectedTagCount + "/" + APP_CONFIG.constants.TAGS_MAX_ON_URLS + ")",
-  );
+// Inline "(n)" total of the UTub's tags, next to the deck title. Derived from
+// the rendered rows rather than from the store so it can never drift from what
+// the user is actually looking at — and so a collapsed Tag deck, whose "no tags
+// yet" empty state lives inside the hidden .content, still reads as empty.
+export function refreshTagDeckTagCount(): void {
+  $("#TagDeckCount").text("(" + $("#listTags > .tagFilter").length + ")");
 }
 
 export function removeTagFromTagDeckGivenTagID(tagID: number): void {
   $(".tagFilter[data-utub-tag-id=" + tagID + "]").remove();
+  refreshTagDeckTagCount();
 }
 
 on(AppEvents.UTUB_SELECTED, ({ tags, utubID }) =>

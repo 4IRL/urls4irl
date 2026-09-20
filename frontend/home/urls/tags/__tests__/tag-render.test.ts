@@ -38,6 +38,7 @@ vi.mock("../../cards/filtering.js", () => ({
 const $ = window.jQuery;
 
 const PAGE_HTML = `
+  <span id="TagDeckCount"></span>
   <div id="listTags"></div>
   <div id="unselectAllTagFilters" class="hidden"></div>
   <div id="utubTagBtnUpdateAllOpen" class="hidden"></div>
@@ -187,6 +188,39 @@ describe("renderAppliedTagsForUrl", () => {
     });
 
     expect($("#utubTagBtnUpdateAllOpen").hasClass("hidden")).toBe(false);
+  });
+
+  it("refreshes #TagDeckCount when a new deck filter was built", () => {
+    // A tag applied to a URL can be new to the UTub, which grows the Tag deck's
+    // total — the inline "(n)" beside the Tags title has to follow it.
+    vi.mocked(isTagInUTubTagDeck).mockReturnValue(false);
+    $("#listTags").append('<div class="tagFilter"></div>');
+
+    renderAppliedTagsForUrl({
+      appliedTags: [makeTag(5, "fresh")],
+      utubUrlTagIDs: [5],
+      urlCard,
+      utubID: 99,
+    });
+
+    expect($("#listTags > .tagFilter").length).toBe(2);
+    expect($("#TagDeckCount").text()).toBe("(2)");
+  });
+
+  it("leaves #TagDeckCount untouched when no new deck filter was built", () => {
+    // An already-in-deck tag only bumps that row's applied count; the UTub's
+    // total is unchanged, so the title count must not be rewritten.
+    vi.mocked(isTagInUTubTagDeck).mockReturnValue(true);
+    $("#TagDeckCount").text("(4)");
+
+    renderAppliedTagsForUrl({
+      appliedTags: [makeTag(3, "existing", 4)],
+      utubUrlTagIDs: [3],
+      urlCard,
+      utubID: 99,
+    });
+
+    expect($("#TagDeckCount").text()).toBe("(4)");
   });
 
   it("does NOT show #utubTagBtnUpdateAllOpen when no new deck filter was built", () => {

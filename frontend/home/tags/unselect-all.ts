@@ -1,4 +1,3 @@
-import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { debug } from "../../lib/debug.js";
 import { $ } from "../../lib/globals.js";
@@ -32,10 +31,6 @@ export function disableUnselectAllButtonAfterTagFilterRemoved(): void {
     .addClass("red-icon-disabled")
     .off(".unselectAllTags")
     .attr({ tabindex: -1 });
-}
-
-export function resetCountOfTagFiltersApplied(): void {
-  $("#TagDeckCount").text("(0/" + APP_CONFIG.constants.TAGS_MAX_ON_URLS + ")");
 }
 
 function unselectAllTags(): void {

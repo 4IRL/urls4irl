@@ -7,6 +7,7 @@ import { createTagBadgeInURL } from "./tags.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { reapplyTagFilter } from "../../tags/search.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
+import { refreshTagDeckTagCount } from "../../tags/deck.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 
 /**
@@ -88,5 +89,8 @@ export function renderAppliedTagsForUrl({
 
   if (builtNewDeckFilter) {
     $("#utubTagBtnUpdateAllOpen").showClassNormal();
+    // At least one applied tag was new to the UTub, so the deck's total grew —
+    // refresh once here rather than per row inside the loop above.
+    refreshTagDeckTagCount();
   }
 }

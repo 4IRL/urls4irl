@@ -15,9 +15,8 @@ vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
 // would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
 // a shared tooltip instance so the guard can be asserted on.
 const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
-  const { mockGlobalsWithTooltipInstance } = await import(
-    "../../../__tests__/helpers/mock-globals.js"
-  );
+  const { mockGlobalsWithTooltipInstance } =
+    await import("../../../__tests__/helpers/mock-globals.js");
   return await mockGlobalsWithTooltipInstance();
 });
 
@@ -184,5 +183,69 @@ describe("tags/delete — hides the #unselectAllTagFilters hover tooltip", () =>
     expect(tooltipInstance.hide).not.toHaveBeenCalled();
     expect($(".tagFilter").length).toBe(0);
     expect($("#unselectAllTagFilters").hasClass("hidden")).toBe(true);
+  });
+});
+
+describe("tags/delete — keeps the #TagDeckCount tag total in sync", () => {
+  const originalFadeOut = ($.fn as unknown as Record<string, unknown>).fadeOut;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      ${DELETE_TAG_HTML}
+      <span id="TagDeckCount">(2)</span>
+      <div id="listTags">
+        <div class="tagFilter" data-utub-tag-id="7">important</div>
+        <div class="tagFilter" data-utub-tag-id="8">urgent</div>
+      </div>
+      <button id="utubTagBtnUpdateAllOpen"></button>
+      <button id="unselectAllTagFilters" data-bs-toggle="tooltip"></button>
+      <div id="utubTagCloseUpdateTagBtnContainer"></div>
+      <div id="utubTagStandardBtns"></div>
+    `;
+    vi.clearAllMocks();
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
+      return this;
+    };
+    // Fire the post-fade callback synchronously — the row removal (and the
+    // count refresh that follows it) lives inside fadeOut's callback.
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+  });
+
+  afterEach(() => {
+    ($.fn as unknown as Record<string, unknown>).fadeOut = originalFadeOut;
+    document.body.innerHTML = "";
+  });
+
+  it("drops the count to the surviving tag total after a delete", () => {
+    const response = {
+      utubTag: { utubTagID: 7 },
+      utubUrlIDs: [],
+    } as unknown as SuccessResponse<"deleteUtubTag">;
+    const xhr = { status: 200 } as JQuery.jqXHR;
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (callback: unknown) =>
+          (callback as (r: unknown, t: unknown, x: unknown) => void)(
+            response,
+            "success",
+            xhr,
+          ),
+      }),
+    );
+
+    deleteUTubTagShowModal(1, 7, "important");
+    $("#modalSubmit").trigger("click");
+
+    expect($("#listTags > .tagFilter").length).toBe(1);
+    expect($("#TagDeckCount").text()).toBe("(1)");
   });
 });
