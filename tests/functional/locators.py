@@ -76,6 +76,7 @@ class HomePageLocators(GenericPageLocator):
 
     # UTub Deck
     HEADER_UTUB_DECK = "#UTubDeckHeader"
+    HEADER_AND_CARET_UTUB_DECK = "#UTubDeckHeaderAndCaret"
     SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
     LIST_UTUB = "#listUTubs"
     SELECTORS_UTUB = ".UTubSelector"
@@ -524,6 +525,8 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_DECK = ".deck#MemberDeck"
     TAG_DECK = ".deck#TagDeck"
     URL_DECK = ".deck#URLDeck"
+    TAG_DECK_FILTER_PILL = "#TagDeckFilterPill"
+    TAG_DECK_COLLAPSED_FILTER_ANNOUNCEMENT = "#TagDeckCollapsedFilterAnnouncement"
 
     # Panels
     MAIN_PANEL = "main#mainPanel"

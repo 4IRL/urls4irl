@@ -16,6 +16,7 @@ import {
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
+import { refreshTagDeckTagCount } from "./deck.js";
 import { closeTagNameFilter, reapplyTagFilter } from "./search.js";
 import { buildTagFilterInDeck } from "./tags.js";
 import {
@@ -214,6 +215,7 @@ function createUTubTagSuccess(
       response.utubTag.tagString,
     ),
   );
+  refreshTagDeckTagCount();
   reapplyTagFilter();
 
   // Show unselect all and update buttons if not already shown
@@ -253,8 +255,7 @@ function createUTubTagFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as
-        | { errors?: Record<string, string[]>; message?: string }
-        | undefined;
+        { errors?: Record<string, string[]>; message?: string } | undefined;
       const errors = responseJSON?.errors;
       const message = responseJSON?.message;
       if (errors) {

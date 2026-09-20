@@ -22,6 +22,7 @@ import {
   writeTagChipDenominator,
 } from "../cards/filtering.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
+import { refreshTagDeckTagCount } from "../../tags/deck.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { reapplyTagFilter } from "../../tags/search.js";
 import {
@@ -221,8 +222,7 @@ function closeAndResetPicker({
 } = {}): void {
   if (currentWrap !== null) {
     const resetBulk = currentWrap.data(BULK_RESET_KEY) as
-      | (() => void)
-      | undefined;
+      (() => void) | undefined;
     if (resetBulk) resetBulk();
     // Strip the in-flight submit affordance + re-enable the buttons so a wrap
     // closed mid-flight (e.g. mode-exit teardown) never keeps a stale spinner /
@@ -587,6 +587,9 @@ function renderBulkAppliedTags({
   $("#unselectAllTagFilters").showClassNormal();
   if (builtNewDeckFilter) {
     $("#utubTagBtnUpdateAllOpen").showClassNormal();
+    // At least one tag in the batch was new to the UTub, so the deck's total
+    // grew — refresh once here rather than per row inside the loop above.
+    refreshTagDeckTagCount();
   }
 }
 

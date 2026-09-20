@@ -210,9 +210,20 @@ export function isURLCurrentlyVisibleInURLDeck(urlString: string): boolean {
 export function updateTagFilteringOnURLOrURLTagDeletion(): void {
   if (isATagSelected()) {
     updateURLsAndTagSubheaderWhenTagSelected();
-  } else {
-    reapplyAlternatingURLCardBackgroundAfterFilter();
+    return;
   }
+  reapplyAlternatingURLCardBackgroundAfterFilter();
+  // The no-tag-selected branch is reachable *from* a filtered state: the
+  // STALE_DATA_DETECTED handler below prunes selectedTagIDs of tags another
+  // session deleted, and pruning the last one lands here. Only
+  // updateURLsAndTagSubheaderWhenTagSelected() emits TAG_FILTER_CHANGED, so
+  // without this every filter-state indicator — the collapsed Tag deck's pill
+  // and its SR announcement, the mobile sheet handle's count badge — would keep
+  // showing the pre-prune count until the user touched a filter again. Emitting
+  // the (now empty) set here is idempotent for every subscriber.
+  emit(AppEvents.TAG_FILTER_CHANGED, {
+    selectedTagIDs: getState().selectedTagIDs,
+  });
 }
 
 // Pure sort of a URL list by the stored default-sort preference. Returns a NEW

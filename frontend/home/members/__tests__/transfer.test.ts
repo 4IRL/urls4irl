@@ -104,14 +104,21 @@ const TRANSFER_HTML = `
       </div>
     </div>
   </div>
-  <h2 id="MemberDeckHeader" tabindex="-1">Members</h2>
-  <button id="memberBtnTransferOwner"></button>
+  <div class="deck" id="MemberDeck">
+    <button type="button" id="MemberDeckHeaderAndCaret"><span id="MemberDeckHeader">Members</span></button>
+    <h2 id="MemberDeckHeaderA11y" class="visually-hidden">Members</h2>
+    <button id="memberBtnTransferOwner"></button>
+  </div>
   <button id="sentinelFocus"></button>
   <span id="MemberRowActionAnnouncement" class="visually-hidden" aria-live="polite"></span>
-  <span id="UTubDeckCount"></span>
-  <div id="listUTubs"></div>
-  <button id="utubBtnDelete" class="visible"></button>
-  <button id="memberSelfBtnDelete" class="hidden"></button>
+  <div class="deck" id="UTubDeck">
+    <button type="button" id="UTubDeckHeaderAndCaret"><span id="UTubDeckHeader">UTubs</span></button>
+    <h2 id="UTubDeckHeaderA11y" class="visually-hidden">UTubs</h2>
+    <span id="UTubDeckCount"></span>
+    <div id="listUTubs"></div>
+    <button id="utubBtnDelete" class="visible"></button>
+    <button id="memberSelfBtnDelete" class="hidden"></button>
+  </div>
   <span id="URLDeckLockIcon" class="hidden"></span>
   <h2 id="URLDeckSubheader"></h2>
   <div id="UTubDescriptionSubheaderWrap"></div>
@@ -301,6 +308,59 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     });
   });
 
+  // Sad path for the focusable-check added alongside the header retarget: an
+  // opener inside a collapsed deck's `.button-container` is visibility:hidden,
+  // so focusing it is a silent no-op that drops focus to <body>.
+  it("falls back to the opener's own deck header when the opener is not focusable", () => {
+    const opener = document.getElementById(
+      "memberBtnTransferOwner",
+    ) as HTMLElement;
+    // decks.css never loads into happy-dom — stand the collapsed deck's
+    // inherited visibility:hidden up directly on the opener.
+    opener.style.visibility = "hidden";
+
+    openConfirm();
+    $("#transferOwnerCancel").trigger("click");
+    $("#transferOwnerModal").trigger("hidden.bs.modal");
+
+    expect(document.activeElement).toBe(
+      document.getElementById("MemberDeckHeaderAndCaret"),
+    );
+  });
+
+  // The fallback is derived from the opener's ancestor deck, not hardcoded —
+  // #utubBtnDelete opens this same flow from the UTubs deck ("transfer
+  // instead"), and must not strand focus in the Member deck.
+  it("resolves the fallback header per deck, so a UTubs-deck opener lands on the UTubs header", () => {
+    const opener = document.getElementById("utubBtnDelete") as HTMLElement;
+    opener.style.visibility = "hidden";
+
+    openConfirm("#utubBtnDelete");
+    $("#transferOwnerCancel").trigger("click");
+    $("#transferOwnerModal").trigger("hidden.bs.modal");
+
+    expect(document.activeElement).toBe(
+      document.getElementById("UTubDeckHeaderAndCaret"),
+    );
+  });
+
+  // The opener type is `HTMLElement | string`; the element shape must get the
+  // same focusable-check as the selector shape.
+  it("applies the same fallback to an HTMLElement opener, not only a selector string", () => {
+    const opener = document.getElementById(
+      "memberBtnTransferOwner",
+    ) as HTMLElement;
+    opener.style.visibility = "hidden";
+
+    openConfirm(opener);
+    $("#transferOwnerCancel").trigger("click");
+    $("#transferOwnerModal").trigger("hidden.bs.modal");
+
+    expect(document.activeElement).toBe(
+      document.getElementById("MemberDeckHeaderAndCaret"),
+    );
+  });
+
   it("PATCHes the endpoint, reconciles both decks in order, announces, then focuses the header on modal close", async () => {
     mockAjaxSuccess(SUCCESS_RESPONSE);
 
@@ -347,7 +407,7 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     // _transferSucceeded — not _transferConfirmed.
     $("#transferOwnerModal").trigger("hidden.bs.modal");
     expect(document.activeElement).toBe(
-      document.getElementById("MemberDeckHeader"),
+      document.getElementById("MemberDeckHeaderAndCaret"),
     );
   });
 

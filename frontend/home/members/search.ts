@@ -114,6 +114,25 @@ function applyMemberFilterForTerm(searchTerm: string): void {
   }
 }
 
+/**
+ * True when the element is present, rendered, and not `visibility: hidden`.
+ * Both mechanisms are covered: `offsetParent === null` catches a `display: none`
+ * element or ancestor (the repo's `.hidden` class), and the `visibility` read
+ * catches a `.deck.collapsed .button-container` ancestor — CSS `visibility` is
+ * an inherited property, so no ancestor walk is needed for that half. Mirrors
+ * the pairing in nudges.ts's `isAnchorVisible()`. Duplicated (rather than
+ * shared) across the few Escape-handler call sites that need it, keeping these
+ * modules decoupled.
+ */
+function isFocusable(elementId: string): boolean {
+  const element = document.getElementById(elementId);
+  return (
+    element !== null &&
+    element.offsetParent !== null &&
+    getComputedStyle(element).visibility !== "hidden"
+  );
+}
+
 export function setMemberSelectorSearchEventListener(): void {
   const searchInput = $("#MemberNameSearch");
 
@@ -136,8 +155,17 @@ export function setMemberSelectorSearchEventListener(): void {
             closeMemberNameFilter();
             searchInput.blur();
             // closeMemberNameFilter() always un-hides #memberNameFilterBtn
-            // before returning, so the focus-return target is always ready.
-            $("#memberNameFilterBtn").trigger("focus");
+            // before returning, so the focus-return target is always ready —
+            // unless the Member deck is collapsed, which makes its whole
+            // .button-container visibility:hidden and the button unfocusable.
+            // Fall back to the deck header, a real <button> that stays visible
+            // when the deck collapses, so focus lands on the control that can
+            // re-expand it.
+            if (isFocusable("memberNameFilterBtn")) {
+              $("#memberNameFilterBtn").trigger("focus");
+            } else {
+              $("#MemberDeckHeaderAndCaret").trigger("focus");
+            }
           }
         },
       );

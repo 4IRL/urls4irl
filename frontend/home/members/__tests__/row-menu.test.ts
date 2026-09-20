@@ -210,6 +210,40 @@ describe("member row kebab menu (row-menu.ts)", () => {
     expect(document.activeElement).toBe(kebab.get(0));
   });
 
+  // Sad path: the kebab lives inside the Member deck's `.content`, which is
+  // visibility:hidden while the deck is collapsed — the row still exists, so
+  // the old length-only guard would have focused an unfocusable button and
+  // dropped focus to <body>.
+  it("falls back to the deck header button when the row's kebab is not focusable", () => {
+    document.body.innerHTML = `<div id="listMembers"></div><div id="confirmModal"></div><button type="button" id="MemberDeckHeaderAndCaret"></button>`;
+    const row = buildOwnerRow(5);
+    $("#listMembers").append(row);
+    // decks.css never loads into happy-dom — stand the collapsed deck's
+    // inherited visibility:hidden up directly on the kebab.
+    (row.find(".memberRowKebab").get(0) as HTMLElement).style.visibility =
+      "hidden";
+
+    bindMemberRowModalFocusRestore(5);
+    $("#confirmModal").trigger("hidden.bs.modal");
+
+    expect(document.activeElement).toBe(
+      document.getElementById("MemberDeckHeaderAndCaret"),
+    );
+  });
+
+  // The same fallback covers a row removed by a successful removal, which the
+  // old guard left focus-less.
+  it("falls back to the deck header button when the row is gone entirely", () => {
+    document.body.innerHTML = `<div id="listMembers"></div><div id="confirmModal"></div><button type="button" id="MemberDeckHeaderAndCaret"></button>`;
+
+    bindMemberRowModalFocusRestore(5);
+    $("#confirmModal").trigger("hidden.bs.modal");
+
+    expect(document.activeElement).toBe(
+      document.getElementById("MemberDeckHeaderAndCaret"),
+    );
+  });
+
   it("ArrowUp from the first menu item wraps focus to the last item", () => {
     const row = buildOwnerRow(5);
     $("#listMembers").append(row);

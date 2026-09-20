@@ -164,6 +164,7 @@ const BASE_HTML = `
       <div id="bulkTagPickerMount" class="hidden"></div>
       <div id="bulkTagResultBanner" class="hidden" role="status"></div>
     </div>
+    <span id="TagDeckCount"></span>
     <div id="listTags"></div>
     <div id="unselectAllTagFilters" class="hidden"></div>
     <div id="utubTagBtnUpdateAllOpen" class="hidden"></div>
@@ -1040,5 +1041,47 @@ describe("once-per-distinct-tag deck sync (DD-23)", () => {
     // Already-in-deck → no new deck filter built; a single visible-count recompute.
     expect(vi.mocked(buildTagFilterInDeck)).not.toHaveBeenCalled();
     expect(vi.mocked(updateVisibleURLsForTagCount)).toHaveBeenCalledTimes(1);
+    // Already-in-deck → the UTub's tag TOTAL did not change, so the inline
+    // "(n)" beside the Tags title must stay as it was.
+    expect($("#TagDeckCount").text()).toBe("");
+  });
+
+  it("refreshes #TagDeckCount once when a bulk apply introduces a tag new to the UTub", () => {
+    seedUrlRows([10, 20]);
+    storeState.urls = [
+      { utubUrlID: 10, utubUrlTagIDs: [], urlTitle: "Alpha" },
+      { utubUrlID: 20, utubUrlTagIDs: [], urlTitle: "Beta" },
+    ];
+    $("#listTags").html('<div class="tagFilter" data-utub-tag-id="1"></div>');
+    vi.mocked(isTagInUTubTagDeck).mockReturnValue(false);
+
+    openPickerFor([10, 20]);
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValue(deferred);
+    comboboxState.lastOnSubmit!(["brand-new"]);
+    // Tag 7 is named on BOTH applied entries but is ONE distinct new tag, so the
+    // deck gains exactly one row and the total goes 1 -> 2, never 1 -> 3.
+    deferred.resolve(
+      {
+        applied: [
+          {
+            utubUrlID: 10,
+            utubUrlTagIDs: [7],
+            appliedTags: [{ id: 7, tagString: "brand-new", tagApplied: 2 }],
+          },
+          {
+            utubUrlID: 20,
+            utubUrlTagIDs: [7],
+            appliedTags: [{ id: 7, tagString: "brand-new", tagApplied: 2 }],
+          },
+        ],
+        skipped: [],
+      },
+      "success",
+      { status: 200 },
+    );
+
+    expect($("#listTags > .tagFilter").length).toBe(2);
+    expect($("#TagDeckCount").text()).toBe("(2)");
   });
 });

@@ -27,7 +27,6 @@ vi.mock("../update-all.js", () => ({
 
 vi.mock("../unselect-all.js", () => ({
   disableUnselectAllButtonAfterTagFilterRemoved: vi.fn(),
-  resetCountOfTagFiltersApplied: vi.fn(),
 }));
 
 vi.mock("../search.js", () => ({

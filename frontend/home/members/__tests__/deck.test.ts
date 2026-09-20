@@ -50,7 +50,10 @@ vi.mock("../delete.js", () => ({
 const MEMBER_DECK_HTML = `
   <div id="MemberDeck">
     <div class="titleElement">
-      <h2 id="MemberDeckHeader">Members<span id="MemberDeckCount" class="deck-title-count"></span></h2>
+      <button type="button" id="MemberDeckHeaderAndCaret">
+        <span id="MemberDeckHeader">Members<span id="MemberDeckCount" class="deck-title-count"></span></span>
+      </button>
+      <h2 id="MemberDeckHeaderA11y" class="visually-hidden">Members</h2>
     </div>
     <button id="memberNameFilterBtn" class="hidden" aria-expanded="false"></button>
     <button id="memberNameFilterBtnClose" class="hidden"></button>

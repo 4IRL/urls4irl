@@ -98,6 +98,25 @@ function applyTagFilterForTerm(searchTerm: string): void {
   }
 }
 
+/**
+ * True when the element is present, rendered, and not `visibility: hidden`.
+ * Both mechanisms are covered: `offsetParent === null` catches a `display: none`
+ * element or ancestor (the repo's `.hidden` class), and the `visibility` read
+ * catches a `.deck.collapsed .button-container` ancestor — CSS `visibility` is
+ * an inherited property, so no ancestor walk is needed for that half. Mirrors
+ * the pairing in nudges.ts's `isAnchorVisible()`. Duplicated (rather than
+ * shared) across the few Escape-handler call sites that need it, keeping these
+ * modules decoupled.
+ */
+function isFocusable(elementId: string): boolean {
+  const element = document.getElementById(elementId);
+  return (
+    element !== null &&
+    element.offsetParent !== null &&
+    getComputedStyle(element).visibility !== "hidden"
+  );
+}
+
 export function setTagSelectorSearchEventListener(): void {
   const searchInput = $("#TagNameSearch");
 
@@ -119,14 +138,24 @@ export function setTagSelectorSearchEventListener(): void {
           if (event.key === KEYS.ESCAPE) {
             closeTagNameFilter();
             searchInput.blur();
-            // Return focus to the funnel toggle, but only if it is visible.
+            // Return focus to the funnel toggle, but only if it is focusable.
+            // It can be unfocusable two ways: edit-all-tags mode (
             // openUTubTagBtnMenuOnUTubTags() calls closeTagNameFilter() while
-            // #TagNameSearch has focus in edit-all-tags mode, where the funnel
-            // button is hidden; focusing a display:none element is a browser
-            // no-op that silently loses keyboard focus, so skip it.
+            // #TagNameSearch has focus, and there the button carries `.hidden`,
+            // i.e. display:none), and a collapsed Tag deck, whose
+            // .button-container is visibility:hidden — a different mechanism
+            // `.hidden` misses. Either way focus is redirected to the deck
+            // header rather than left to fall to <body>. That header is a real
+            // <button> that stays visible when the deck collapses, so focus
+            // lands on the control that can re-expand it.
             const filterBtn = $("#tagNameFilterBtn");
-            if (!filterBtn.hasClass("hidden")) {
+            if (
+              !filterBtn.hasClass("hidden") &&
+              isFocusable("tagNameFilterBtn")
+            ) {
               filterBtn.trigger("focus");
+            } else {
+              $("#TagDeckHeaderAndCaret").trigger("focus");
             }
           }
         },

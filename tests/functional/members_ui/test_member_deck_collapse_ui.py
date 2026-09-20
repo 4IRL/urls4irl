@@ -32,9 +32,15 @@ def test_add_member_button_stays_hidden_for_non_owner_after_deck_collapse(
     provide_app: Flask,
 ):
     """
-    GIVEN a non-owner member of a UTub has it selected
+    GIVEN a non-owner member of a UTub has it selected, with nothing persisted
+          in `u4i:deckLayout` (fresh browser context per test)
     WHEN they collapse and then re-expand the Member deck
     THEN the add-member button must remain hidden (only the owner may add members)
+
+    The deck starts expanded because that is the DEFAULT saved layout, not
+    because UTub selection force-expands it. The collapse/expand round trip
+    also writes and then clears the Member deck's persisted preference, so this
+    doubles as a check that the ownership gating survives that write path.
     """
     app = provide_app
     user_id_for_test = 1

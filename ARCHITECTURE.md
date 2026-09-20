@@ -112,7 +112,8 @@ All app-owned `localStorage` keys are prefixed `u4i:` to avoid collisions with t
 - **btns-forms.ts** — `makeTextInput()`, `makeUpdateButton()`, `makeSubmitButton()`, `makeCancelButton()` with SVG icons; `initBtnsForms()` prevents form submission
 - **visibility.ts** — `isHidden()`, `initVisibilityHandlers()` (tab focus, URL card focus styling)
 - **navbar.ts** — `initNavbar()` sets up mobile nav buttons and toggler
-- **collapsible-decks.ts** — Click-to-collapse/expand UTub/Member/Tag decks (desktop only, max 2 collapsed)
+- **collapsible-decks.ts** — Click-to-collapse/expand UTub/Member/Tag decks (desktop only, max 2 collapsed); `applyPersistedDeckLayout()` re-applies the saved Member/Tag layout on UTub selection and on the crossing back to desktop
+- **deck-layout-storage.ts** — `getDeckLayout()` / `setDeckMinimizedPreference()` over the `u4i:deckLayout` key; a dependency-free leaf module (imports nothing from `frontend/home/**`)
 - **mobile.ts** — `isMobile()`, `initMobileLayout()`, mobile panel show/hide functions
 - **window-events.ts** — Browser history (popstate) and page load (pageshow) for UTub selection state
 

@@ -36,6 +36,7 @@ import {
 import { createAddTagIcon } from "../cards/options/tag-btn.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
+import { refreshTagDeckTagCount } from "../../tags/deck.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { HOME_FORM, TAG_SCOPE } from "../../../types/metrics-dim-values.js";
@@ -289,6 +290,9 @@ export function createURLTagSuccess(
       newTag.addClass("disabled").off(".tagFilterSelected");
     }
     $("#listTags").append(newTag);
+    // This tag is new to the UTub, so the deck's total grew — keep the inline
+    // "(n)" beside the Tags title in sync.
+    refreshTagDeckTagCount();
     reapplyTagFilter();
     $("#utubTagBtnUpdateAllOpen").showClassNormal();
   } else {

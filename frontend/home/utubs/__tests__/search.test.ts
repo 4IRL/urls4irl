@@ -24,9 +24,8 @@ vi.mock("../../../logic/utub-search.js", () => ({
 // would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
 // a shared tooltip instance so the guard can be asserted on.
 const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
-  const { mockGlobalsWithTooltipInstance } = await import(
-    "../../../__tests__/helpers/mock-globals.js"
-  );
+  const { mockGlobalsWithTooltipInstance } =
+    await import("../../../__tests__/helpers/mock-globals.js");
   return await mockGlobalsWithTooltipInstance();
 });
 
@@ -49,6 +48,11 @@ const SEARCH_HTML = `
     <p id="UTubSearchNoResults" class="hidden"></p>
     <span id="UTubSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
     <button id="memberBtnCreate"></button>
+    <!-- The Member deck's own disclosure button. It lives in the sibling
+         #MemberDeck in production; it is mounted here because the Escape
+         handler's last-resort focus target is this button, and without it the
+         fallback branch cannot be exercised at all. -->
+    <button type="button" id="MemberDeckHeaderAndCaret" aria-expanded="true" aria-controls="MemberDeckContent"></button>
     <div id="listUTubs">
       <div class="UTubSelector" utubid="1"><span class="UTubName">Alpha</span></div>
       <div class="UTubSelector" utubid="2"><span class="UTubName">Beta</span></div>
@@ -211,6 +215,41 @@ describe("UTub Search", () => {
         expect($(this).hasClass("hidden")).toBe(false);
       });
       expect($("#UTubSearchNoResults").hasClass("hidden")).toBe(true);
+    });
+
+    // Focus is handed to the first visible UTub row when there is one. With no
+    // rows at all (a brand-new account, or the last UTub just deleted) the next
+    // target is #memberBtnCreate in the deck below — the closest live control.
+    it("returns focus to #memberBtnCreate when there is no UTub row to return to", () => {
+      $("#listUTubs").empty();
+
+      $("#UTubNameSearch").trigger("focus");
+      $("#UTubNameSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(document.activeElement).toBe(
+        document.getElementById("memberBtnCreate"),
+      );
+    });
+
+    // #memberBtnCreate sits in the Member deck's .button-container, which is
+    // visibility:hidden while that deck is collapsed — focusing it there is a
+    // silent no-op that drops focus to <body>. The fallback is the Member
+    // deck's own header button, which is never hidden.
+    it("falls back to the Member deck header when #memberBtnCreate is unfocusable", () => {
+      $("#listUTubs").empty();
+      const memberBtnCreate = document.getElementById(
+        "memberBtnCreate",
+      ) as HTMLElement;
+      // decks.css is never loaded into the test DOM, so stand the collapsed
+      // deck's inherited visibility:hidden up directly on the button.
+      memberBtnCreate.style.visibility = "hidden";
+
+      $("#UTubNameSearch").trigger("focus");
+      $("#UTubNameSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(document.activeElement).toBe(
+        document.getElementById("MemberDeckHeaderAndCaret"),
+      );
     });
   });
 

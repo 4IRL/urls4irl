@@ -10,6 +10,7 @@ import {
   restoreTooltipIfStillTargeted,
 } from "../../../lib/tooltips.js";
 import { setupOpenCreateUTubTagEventListeners } from "../create.js";
+import { buildTagFilterInDeck } from "../tags.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -46,9 +47,8 @@ vi.mock("../../../lib/tooltips.js", () => ({
 // ambient test-setup mock's null — anything in this module's graph that still
 // reaches Bootstrap directly would otherwise silently no-op.
 const { globalsMock } = await vi.hoisted(async () => {
-  const { mockGlobalsWithTooltipInstance } = await import(
-    "../../../__tests__/helpers/mock-globals.js"
-  );
+  const { mockGlobalsWithTooltipInstance } =
+    await import("../../../__tests__/helpers/mock-globals.js");
   return await mockGlobalsWithTooltipInstance();
 });
 
@@ -95,6 +95,7 @@ const CREATE_UTUB_TAG_HTML = `
   <div id="utubTagCreate-error"></div>
   <button id="unselectAllTagFilters"></button>
   <button id="utubTagBtnUpdateAllOpen"></button>
+  <span id="TagDeckCount"></span>
 `;
 
 describe("tags/create — notifies the onboarding nudge system", () => {
@@ -136,6 +137,54 @@ describe("tags/create — notifies the onboarding nudge system", () => {
     $("#utubTagSubmitBtnCreate").trigger("click");
 
     expect(emit).toHaveBeenCalledWith(AppEvents.TAG_DECK_CHANGED);
+  });
+});
+
+describe("tags/create — keeps the #TagDeckCount tag total in sync", () => {
+  beforeEach(() => {
+    document.body.innerHTML = CREATE_UTUB_TAG_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("bumps the deck's tag count when a new UTub tag is appended", () => {
+    // The shared ../tags.js mock returns a bare <div>; the count selector is
+    // scoped to #listTags > .tagFilter, so hand back a real row for this test.
+    vi.mocked(buildTagFilterInDeck).mockReturnValueOnce(
+      window.jQuery(
+        '<div class="tagFilter" data-utub-tag-id="5">important</div>',
+      ) as JQuery<HTMLDivElement>,
+    );
+    $("#listTags").append(
+      '<div class="tagFilter" data-utub-tag-id="1">existing</div>',
+    );
+
+    const response = {
+      utubTag: { utubTagID: 5, tagString: "important" },
+      tagCountsInUtub: 1,
+    } as unknown as SuccessResponse<"createUtubTag">;
+    const xhr = { status: 200 } as JQuery.jqXHR;
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (callback: unknown) =>
+          (callback as (r: unknown, t: unknown, x: unknown) => void)(
+            response,
+            "success",
+            xhr,
+          ),
+      }),
+    );
+
+    setupOpenCreateUTubTagEventListeners(1);
+    $("#utubTagBtnCreate").trigger("click.createUTubTag");
+    $("#utubTagCreate").val("important");
+    $("#utubTagSubmitBtnCreate").trigger("click");
+
+    expect($("#listTags > .tagFilter").length).toBe(2);
+    expect($("#TagDeckCount").text()).toBe("(2)");
   });
 });
 
@@ -200,7 +249,9 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
 
     expect(vi.mocked(hideTooltip)).toHaveBeenCalled();
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(
+      submitBtn,
+    );
   });
 
   it("routes the restore through restoreTooltipIfStillTargeted on a 400 carrying only a message", () => {
@@ -211,7 +262,9 @@ describe("createUTubTag form buttons - hover tooltip hide/restore", () => {
     $("#utubTagSubmitBtnCreate").trigger("click");
 
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(
+      submitBtn,
+    );
   });
 
   it("does not attempt a restore on a successful submit", () => {

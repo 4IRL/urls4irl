@@ -4,6 +4,7 @@ import {
 } from "../create.js";
 import { enableClickOnSelectedURLCardToHide } from "../../cards/selection.js";
 import { buildTagFilterInDeck } from "../../../tags/tags.js";
+import { isTagInUTubTagDeck } from "../../../tags/utils.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -125,6 +126,9 @@ describe("createURLTagSuccess — at-cap branch", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // vi.clearAllMocks() clears calls but not implementations, so re-assert the
+    // default here rather than letting a per-test override leak forward.
+    vi.mocked(isTagInUTubTagDeck).mockReturnValue(false);
   });
 
   it("does NOT disable the newly-built tag filter when below the cap", () => {
@@ -154,5 +158,46 @@ describe("createURLTagSuccess — at-cap branch", () => {
     createURLTagSuccess(response, $(".urlRow"), 1);
 
     expect(capTag.hasClass("disabled")).toBe(true);
+  });
+
+  it("refreshes #TagDeckCount when the tag is new to the UTub deck", () => {
+    // Tagging a URL with a tag the UTub has never seen grows the Tag deck's
+    // total, so the inline "(n)" beside the Tags title has to follow it.
+    document.body.innerHTML =
+      URL_CARD_HTML +
+      '<span id="TagDeckCount"></span>' +
+      '<div id="listTags"><div class="tagFilter" data-utub-tag-id="1"></div></div>';
+    vi.mocked(buildTagFilterInDeck).mockReturnValue(
+      $(
+        '<div class="tagFilter" data-utub-tag-id="99"></div>',
+      ) as JQuery<HTMLDivElement>,
+    );
+
+    createURLTagSuccess(response, $(".urlRow"), 1);
+
+    expect($("#listTags > .tagFilter").length).toBe(2);
+    expect($("#TagDeckCount").text()).toBe("(2)");
+  });
+
+  it("leaves #TagDeckCount untouched when the tag is already in the UTub deck", () => {
+    // Gating case for the bullet above: an already-in-deck tag only bumps that
+    // row's applied count, so the UTub's total is unchanged and the title count
+    // must not be rewritten. Without this, dropping the `if` gate around the
+    // refresh would go undetected (the file's mock defaults isTagInUTubTagDeck
+    // to false, so nothing else here exercises the else branch).
+    document.body.innerHTML =
+      URL_CARD_HTML +
+      '<span id="TagDeckCount">(4)</span>' +
+      '<div id="listTags"><div class="tagFilter" data-utub-tag-id="1"></div></div>';
+    // Not mockReturnValueOnce: createURLTagSuccess reads isTagInUTubTagDeck
+    // twice per call (once inside its log(...) payload, once for the branch), so
+    // a single queued value would be consumed by the log and leave the branch on
+    // the default. The describe's beforeEach resets this to false.
+    vi.mocked(isTagInUTubTagDeck).mockReturnValue(true);
+
+    createURLTagSuccess(response, $(".urlRow"), 1);
+
+    expect(buildTagFilterInDeck).not.toHaveBeenCalled();
+    expect($("#TagDeckCount").text()).toBe("(4)");
   });
 });

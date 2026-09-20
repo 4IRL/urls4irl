@@ -40,11 +40,50 @@ export type OwnershipTransferredResponse =
 // after a real confirm-click (mirrors delete.ts); never drives focus.
 let _transferConfirmed: boolean = false;
 // "The PATCH actually succeeded" — the accurate signal the deferred
-// hidden.bs.modal handler branches on for the focus-to-#MemberDeckHeader move.
+// hidden.bs.modal handler branches on for the focus-to-#MemberDeckHeaderAndCaret
+// move.
 let _transferSucceeded: boolean = false;
 // The element/selector focus returns to if the modal is dismissed without
 // confirming (returns to the trigger that opened the flow).
 let _transferOpener: HTMLElement | string | null = null;
+
+/**
+ * True when the element is present, rendered, and not `visibility: hidden`.
+ * Both mechanisms are covered: `offsetParent === null` catches a `display: none`
+ * element or ancestor (the repo's `.hidden` class), and the `visibility` read
+ * catches a `.deck.collapsed .button-container` ancestor — CSS `visibility` is
+ * an inherited property, so no ancestor walk is needed for that half. Mirrors
+ * the pairing in nudges.ts's `isAnchorVisible()`. Duplicated (rather than
+ * shared) across the few focus-restore call sites that need it, keeping these
+ * modules decoupled.
+ *
+ * Element-based, not id-based: `_transferOpener` is typed `HTMLElement | string`,
+ * so resolving it to an element first covers both shapes with one check and
+ * avoids narrowing the selector contract to `#id` strings.
+ * `instanceof HTMLElement` rather than a cast — `offsetParent` is `undefined`
+ * (not `null`) on an SVGElement, which a cast would read as focusable.
+ */
+function isFocusable(element: Element | null): boolean {
+  return (
+    element instanceof HTMLElement &&
+    element.offsetParent !== null &&
+    getComputedStyle(element).visibility !== "hidden"
+  );
+}
+
+/**
+ * The deck-header disclosure button to fall back to when the opener itself is
+ * not focusable. Derived from the opener's ancestor deck rather than hardcoded:
+ * the transfer flow is opened from BOTH #memberBtnTransferOwner (Member deck)
+ * and #utubBtnDelete (UTubs deck, the "transfer instead" redirect), so a fixed
+ * #MemberDeckHeaderAndCaret would strand focus in the wrong deck for the second
+ * opener. Falls back to the Member deck header only when the opener has no
+ * `.deck` ancestor at all.
+ */
+function fallbackHeaderFor(openerElement: Element): string {
+  const deckId = $(openerElement).closest(".deck").attr("id");
+  return deckId ? `#${deckId}HeaderAndCaret` : "#MemberDeckHeaderAndCaret";
+}
 
 /**
  * Open the dedicated transfer modal (already rendered in its PICK view by
@@ -66,14 +105,34 @@ export function beginTransferFlow(opener: HTMLElement | string): void {
   // then FAILED still restores focus to the opener rather than the deck header.
   $(MODAL_SELECTOR).offAndOn("hidden.bs.modal.transferOwner", function () {
     if (_transferSucceeded) {
-      $("#MemberDeckHeader").attr("tabindex", "-1").trigger("focus");
+      // The header BUTTON, not the #MemberDeckHeader span it wraps: the span is
+      // a plain, non-interactive title, while the button is a real disclosure
+      // control that is already in the tab order (so no tabindex is forced onto
+      // it — that would pull it back OUT) and carries the focus ring.
+      $("#MemberDeckHeaderAndCaret").trigger("focus");
     } else {
       // Any non-success dismissal — a plain cancel/Escape/backdrop OR a
       // confirmed-but-FAILED submit the user then backed out of — restores focus
       // to the opener. A union of string | HTMLElement matches no single jQuery
       // `$()` overload, so narrow with a safe cast (behavior identical — jQuery
       // accepts either a selector string or an element).
-      if (_transferOpener) $(_transferOpener as string).trigger("focus");
+      // The opener can itself be unfocusable: both #memberBtnTransferOwner and
+      // #utubBtnDelete sit in a deck's `.button-container`, which is
+      // visibility:hidden while that deck is collapsed — focusing it there is a
+      // silent no-op that drops focus to <body>. Fall back to that deck's own
+      // header button, which is never hidden. Resolved to an element first so
+      // the check covers an HTMLElement opener as well as a selector string.
+      if (_transferOpener) {
+        const openerElement =
+          typeof _transferOpener === "string"
+            ? document.querySelector(_transferOpener)
+            : _transferOpener;
+        if (openerElement !== null && !isFocusable(openerElement)) {
+          $(fallbackHeaderFor(openerElement)).trigger("focus");
+        } else {
+          $(_transferOpener as string).trigger("focus");
+        }
+      }
       // Emit CANCEL only when no real confirm-click happened (mirrors delete.ts);
       // a confirmed-but-failed transfer already emitted CONFIRMED, not CANCEL.
       if (!_transferConfirmed) {

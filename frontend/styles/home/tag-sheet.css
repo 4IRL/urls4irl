@@ -294,6 +294,15 @@
         flex: 1 1 auto;
     }
 
+    /* decks.css gives `.content` a 0.3s visibility transition for the desktop
+       collapse animation. Inherited here, it would hold the relocated tag list
+       `visible` 0.3s past #tagSheetBody's own calibrated close timing, leaving
+       the closed sheet's tags briefly in the a11y tree. The deck is not
+       collapsible on mobile, so drop the visibility half. */
+    #tagSheetBody #TagDeck .content {
+        transition: opacity 0.3s ease;
+    }
+
     /* Keep the last URL card clear of the peeking header lip when scrolled. */
     #URLDeck .flex-column.content {
         padding-bottom: var(--tag-sheet-peek);

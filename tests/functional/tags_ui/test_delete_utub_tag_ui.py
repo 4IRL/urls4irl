@@ -7,7 +7,6 @@ from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
-from backend.utils.constants import TAG_CONSTANTS
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
@@ -318,8 +317,10 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
     tag_deck_count = wait_then_get_element(page=page, css_selector=HPL.TAG_DECK_COUNT)
     assert tag_deck_count
 
+    # #TagDeckCount is the UTub's total tag count, not the applied-filter count:
+    # this test seeds two tags, so it reads "(2)" regardless of the filter above.
     tag_deck_count_txt = tag_deck_count.inner_text()
-    assert f"(1/{TAG_CONSTANTS.MAX_URL_TAGS})" in tag_deck_count_txt
+    assert "(2)" in tag_deck_count_txt
 
     delete_utub_tag_elem(page=page, tag_id=tag_id, app=app)
 
@@ -331,8 +332,9 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
     tag_deck_count = wait_then_get_element(page=page, css_selector=HPL.TAG_DECK_COUNT)
     assert tag_deck_count
 
+    # One of the two seeded tags was deleted, so the total drops 2 -> 1.
     tag_deck_count_txt = tag_deck_count.inner_text()
-    assert f"(0/{TAG_CONSTANTS.MAX_URL_TAGS})" in tag_deck_count_txt
+    assert "(1)" in tag_deck_count_txt
 
 
 def test_delete_utub_tag_rate_limits(page: Page, create_test_tags, provide_app: Flask):

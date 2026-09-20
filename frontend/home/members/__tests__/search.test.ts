@@ -21,7 +21,11 @@ vi.mock("../../../logic/member-search.js", () => ({
 const $ = window.jQuery;
 
 const FILTER_HTML = `
-  <div id="MemberDeck">
+  <div id="MemberDeck" class="deck">
+    <button type="button" id="MemberDeckHeaderAndCaret" aria-expanded="true" aria-controls="MemberDeckContent">
+      <span id="MemberDeckHeader">Members</span>
+    </button>
+    <h2 id="MemberDeckHeaderA11y" class="visually-hidden">Members</h2>
     <button id="memberNameFilterBtn" aria-expanded="false"></button>
     <button id="memberNameFilterBtnClose" class="hidden"></button>
     <div id="SearchMemberWrap">
@@ -201,6 +205,44 @@ describe("Member Filter", () => {
         expect($(this).hasClass("hidden")).toBe(false);
       });
       expect($("#MemberSearchNoResults").hasClass("hidden")).toBe(true);
+    });
+
+    it("returns focus to the funnel toggle while the Member deck is expanded", () => {
+      $("#MemberNameSearch").trigger("focus");
+      $("#MemberNameSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(document.activeElement).toBe(
+        document.getElementById("memberNameFilterBtn"),
+      );
+    });
+
+    // #memberNameFilterBtn sits in the Member deck's .button-container, which is
+    // visibility:hidden while the deck is collapsed — focusing it there is a
+    // silent no-op that drops focus to <body>. The fallback is the deck's own
+    // header button, which is never hidden.
+    //
+    // This spec asserts only the focus target. That the header simultaneously
+    // reads `aria-expanded="false"` is owned by collapsible-decks.ts and proven
+    // where it is actually produced: collapsible-decks.test.ts's sync cases and
+    // the real-browser `test_deck_header_aria_expanded_tracks_the_collapsed_state`.
+    // Setting the attribute here to then assert it would be vacuous, and
+    // importing collapsible-decks.js into this leaf spec would drag its whole
+    // module graph (nudges, metrics, the create/search modules) in for no signal.
+    it("falls back to the deck header button when the deck is collapsed", () => {
+      $("#MemberDeck").addClass("collapsed");
+      const filterBtn = document.getElementById(
+        "memberNameFilterBtn",
+      ) as HTMLElement;
+      // decks.css is never loaded into happy-dom, so stand the collapsed deck's
+      // inherited visibility:hidden up directly on the button.
+      filterBtn.style.visibility = "hidden";
+
+      $("#MemberNameSearch").trigger("focus");
+      $("#MemberNameSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(document.activeElement).toBe(
+        document.getElementById("MemberDeckHeaderAndCaret"),
+      );
     });
   });
 

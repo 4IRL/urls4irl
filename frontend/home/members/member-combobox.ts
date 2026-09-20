@@ -606,6 +606,25 @@ function closeDropdown(refs: MemberComboboxRefs): void {
 }
 
 /**
+ * True when the element is present, rendered, and not `visibility: hidden`.
+ * Both mechanisms are covered: `offsetParent === null` catches a `display: none`
+ * element or ancestor (the repo's `.hidden` class), and the `visibility` read
+ * catches a `.deck.collapsed .button-container` ancestor — CSS `visibility` is
+ * an inherited property, so no ancestor walk is needed for that half. Mirrors
+ * the pairing in nudges.ts's `isAnchorVisible()`. Duplicated (rather than
+ * shared) across the few Escape-handler call sites that need it, keeping these
+ * modules decoupled.
+ */
+function isFocusable(elementId: string): boolean {
+  const element = document.getElementById(elementId);
+  return (
+    element !== null &&
+    element.offsetParent !== null &&
+    getComputedStyle(element).visibility !== "hidden"
+  );
+}
+
+/**
  * Keydown dispatch for the combobox input. All handlers bound to `keydown`
  * (never `keyup`) so ESC is not subject to a stale-event race and the combobox
  * beats deck-level listeners.
@@ -666,7 +685,17 @@ function handleInputKeydown(
         // Second Escape (dropdown already closed): cancel the whole combobox and
         // return focus to the opener button.
         cancelMemberCombobox(FORM_CANCEL_TRIGGER.ESCAPE_KEY);
-        $("#memberBtnCreate").trigger("focus");
+        // #memberBtnCreate sits in the Member deck's .button-container, which is
+        // visibility:hidden while the deck is collapsed — focusing it there is a
+        // silent no-op that drops focus to <body>. #MemberDeckHeaderAndCaret is
+        // a real <button> that is never hidden, so focusing (not activating) it
+        // keeps the user's place in the deck and leaves them on the control
+        // that can re-expand it.
+        if (isFocusable("memberBtnCreate")) {
+          $("#memberBtnCreate").trigger("focus");
+        } else {
+          $("#MemberDeckHeaderAndCaret").trigger("focus");
+        }
       }
       break;
     default:

@@ -8,7 +8,10 @@ import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { modifyURLStringForDisplay } from "./url-string.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
-import { removeTagFromTagDeckGivenTagID } from "../../tags/deck.js";
+import {
+  refreshTagDeckTagCount,
+  removeTagFromTagDeckGivenTagID,
+} from "../../tags/deck.js";
 import { reapplyTagFilter } from "../../tags/search.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { createTagBadgeInURL } from "../tags/tags.js";
@@ -152,6 +155,9 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
             receivedTag.tagString,
           ),
         );
+        // A tag new to this URL can also be new to the UTub, growing the deck's
+        // total — keep the inline "(n)" beside the Tags title in step.
+        refreshTagDeckTagCount();
         reapplyTagFilter();
       }
     }

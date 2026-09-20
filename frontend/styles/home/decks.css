@@ -29,13 +29,44 @@
 }
 
 /* Small muted total rendered inline INSIDE the deck title, e.g. "Members (5)".
-   Being inline text in the <h2>, it sits on the title's baseline automatically
-   (inline vertical-align: baseline), so their text bottoms line up. */
+   Being inline text in the title span, it sits on the title's baseline
+   automatically (inline vertical-align: baseline), so their text bottoms line
+   up. */
 .deck-title-count {
     font-size: 1rem;
     font-weight: var(--fw-regular);
     color: var(--cardURLTextColor);
     margin-left: 0.3rem;
+}
+
+/* Deck title typography. These three titles used to be real <h2>s; they are now
+   plain <span>s inside the header <button> (a <button>'s content model permits
+   only phrasing content, so an <h2> cannot nest inside one — the semantic
+   heading is the visually-hidden #<X>DeckHeaderA11y sibling instead). Nothing
+   an <h2> got by element type reaches a <span>, so the rendered look is
+   restated here, measured from the pre-conversion markup rather than assumed:
+
+     - font-weight 500 / line-height 1.2 / margin-top 0 come from Bootstrap
+       Reboot's `h1-h6` rule (Bootstrap IS loaded on the home page — `main.ts`
+       imports `bootstrap/dist/css/bootstrap.min.css`). Omitting line-height
+       would inherit body's 1.5 and grow the 38.4px header band to 48px.
+     - font-size mirrors Bootstrap's responsive `h2` ramp exactly: it ramps with
+       the viewport below 1200px and caps at 2rem from there up, which `min()`
+       expresses in one declaration (the two curves meet exactly at 1200px).
+       The cap matters because these titles render below 1200px too — the decks
+       stay collapsible all the way down to 992px.
+     - color comes from base.css's `h2 { color: var(--deckHeaderGreen) }`.
+     - margin-bottom was already zeroed for these ids by layout.css; restated
+       here so this rule is self-contained. */
+#UTubDeckHeader,
+#MemberDeckHeader,
+#TagDeckHeader {
+    font-size: min(calc(1.325rem + 0.9vw), 2rem);
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--deckHeaderGreen);
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 .deck#UTubDeck.collapsed,
@@ -68,8 +99,16 @@
     min-height: 0;
 }
 
+/* `visibility` joins the transition list so the hide is deferred to the end of
+   the fade (the spec special-cases visibility among discrete-animatable
+   properties: visible→hidden holds `visible` until the transition ends, while
+   hidden→visible flips at 0%), exactly what `.titleElement`'s `transition: all`
+   below already gets for free. `.deck-snap`'s `transition: none !important`
+   override still wins for the programmatic restore path. */
 .content {
-    transition: opacity 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease;
 }
 
 .titleElement {
@@ -79,6 +118,12 @@
 .deck.collapsed .content,
 .deck.collapsed .titleElement:nth-of-type(2) {
     opacity: 0;
+    /* `opacity: 0` alone leaves collapsed content focusable and readable by
+       screen readers — every member row, tag chip and filter input stayed in
+       the tab order and the a11y tree. `visibility: hidden` removes it from
+       both, inherits to every descendant, and still composes with the
+       height/opacity transitions above (unlike `display: none`). */
+    visibility: hidden;
     height: 0;
     min-height: 0;
     overflow: hidden;
@@ -88,6 +133,15 @@
     flex: 0 0 0;
     border-top-width: 0;
     padding-block: 0;
+}
+
+/* The decks' aria-live announcement regions sit inside `.content`, so the
+   collapse above would pull them out of the a11y tree and silence anything
+   written to them while the deck is collapsed. They already carry
+   `.visually-hidden` (clipped to 1px), so re-asserting `visibility: visible`
+   renders nothing — it only keeps them announceable. */
+.deck.collapsed .content .visually-hidden[aria-live] {
+    visibility: visible;
 }
 
 /* Suppress the collapse/expand animation for programmatic (auto) minimize and
@@ -101,10 +155,46 @@
     transition: none !important;
 }
 
+/* `pointer-events: none` blocks the mouse but NOT Enter/Space on a focused
+   button, so an invisible `#memberBtnCreate` was still keyboard-activatable.
+   `visibility: hidden` takes the whole container out of the tab order and the
+   a11y tree. Same `opacity + visibility` transition shape as `.content` above,
+   so the two rules stay consistent; here the whole transition lives inside the
+   `.collapsed` selector (this rule has no base-rule counterpart), which makes
+   the collapse fade out and the expand show instantly — the desired behavior. */
 .deck.collapsed .button-container {
-    transition: opacity 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
+}
+
+/* Collapsed-state tag-filter indicator (#TagDeckFilterPill, TagsDeck.html). A
+   collapsed Tag deck hides the chips and #unselectAllTagFilters that otherwise
+   carry "a filter is applied", so this pill replaces exactly that signal in the
+   header band — and only there: expanded, the chips say it better, so the pill
+   is `display: none` and the button container keeps the right edge it has today.
+   Shape mirrors `#bulkSelectCount.countPill` (bulk-actions.css). No cursor,
+   hover, or focus styles — it is an indicator, not a control (Design Decision 4).
+   `--tagCountBackgroundSelectedColor` is not overridden in light mode, so the
+   pill is theme-independent by construction. */
+#TagDeckFilterPill {
+    display: none;
+    background: var(--tagCountBackgroundSelectedColor);
+    color: #06231a;
+    font-weight: 800;
+    font-size: 0.8rem;
+    border-radius: 5rem;
+    padding: 2px 11px;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.deck#TagDeck.collapsed #TagDeckFilterPill.filtering {
+    display: inline-flex;
+    align-items: center;
 }
 
 /* Locked-minimized state (desktop, no UTub selected): the Member/Tag decks can't
@@ -180,16 +270,36 @@
     transform: rotate(-90deg);
 }
 
+/* The three deck headers are real <button> disclosure controls. Strip the UA
+   button chrome so the header band renders exactly as the former <div> did —
+   the `.flex-row flex-center gap-2p` classes it kept still drive the
+   caret + title layout, so no width/text-align override is needed. (The global
+   `button` rule in layout.css already clears border/padding/margin; background
+   and font are restated here so this block stands on its own.) The transition
+   drives the hover darkening set up below. */
+#UTubDeckHeaderAndCaret,
+#MemberDeckHeaderAndCaret,
+#TagDeckHeaderAndCaret {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    transition: filter 0.15s ease;
+}
+
+/* Keyboard focus ring. Negative outline-offset draws the ring inside the button
+   so the `overflow: hidden` deck cannot clip it. */
+#UTubDeckHeaderAndCaret:focus-visible,
+#MemberDeckHeaderAndCaret:focus-visible,
+#TagDeckHeaderAndCaret:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
 /* Darken the caret + title on hover of a collapsible deck header so it reads as
    interactable. Gated to the desktop breakpoint where the decks are actually
    collapsible (>=992px) and to hover-capable pointers so it never sticks on
    touch. Anchored to the three header IDs, not the shared .clickable utility. */
-#UTubDeckHeaderAndCaret,
-#MemberDeckHeaderAndCaret,
-#TagDeckHeaderAndCaret {
-    transition: filter 0.15s ease;
-}
-
 @media (min-width: 992px) and (hover: hover) {
     #UTubDeckHeaderAndCaret:hover,
     #MemberDeckHeaderAndCaret:hover,
