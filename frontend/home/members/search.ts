@@ -158,10 +158,9 @@ export function setMemberSelectorSearchEventListener(): void {
             // before returning, so the focus-return target is always ready —
             // unless the Member deck is collapsed, which makes its whole
             // .button-container visibility:hidden and the button unfocusable.
-            // Fall back to the deck header, which is never hidden — though it
-            // is still a plain non-focusable <div> today, so the fallback is
-            // inert until Step 3 of this plan converts it to a real <button>
-            // in this same PR.
+            // Fall back to the deck header, a real <button> that stays visible
+            // when the deck collapses, so focus lands on the control that can
+            // re-expand it.
             if (isFocusable("memberNameFilterBtn")) {
               $("#memberNameFilterBtn").trigger("focus");
             } else {

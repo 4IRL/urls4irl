@@ -145,10 +145,9 @@ export function setTagSelectorSearchEventListener(): void {
             // i.e. display:none), and a collapsed Tag deck, whose
             // .button-container is visibility:hidden — a different mechanism
             // `.hidden` misses. Either way focus is redirected to the deck
-            // header rather than left to fall to <body>. That header is still a
-            // plain non-focusable <div> today, so the redirect is inert until
-            // Step 3 of this plan converts it to a real <button> in this same
-            // PR.
+            // header rather than left to fall to <body>. That header is a real
+            // <button> that stays visible when the deck collapses, so focus
+            // lands on the control that can re-expand it.
             const filterBtn = $("#tagNameFilterBtn");
             if (
               !filterBtn.hasClass("hidden") &&

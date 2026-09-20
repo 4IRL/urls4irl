@@ -127,9 +127,9 @@ export function setUTubSelectorSearchEventListener(): void {
             } else {
               // #memberBtnCreate is visibility:hidden while the Member deck is
               // collapsed; focusing it would silently drop focus to <body>.
-              // #MemberDeckHeaderAndCaret is still a plain non-focusable <div>
-              // today, so this fallback is inert until Step 3 of this plan
-              // converts it to a real <button> in this same PR.
+              // #MemberDeckHeaderAndCaret is a real <button> that stays visible
+              // when the deck collapses, so focus lands on the control that can
+              // re-expand the deck.
               $("#MemberDeckHeaderAndCaret").trigger("focus");
             }
           }

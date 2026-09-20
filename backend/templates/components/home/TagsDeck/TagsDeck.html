@@ -1,12 +1,21 @@
 <div id="TagDeck" class="deck flex-column" data-last-collapsed="false">
 	<div class="titleElement pad-in-15p sidePanelTitle jc-sb pad-b-0-25rem">
 		<div id="TagDeckTitleGroup" class="flex-row gap-10p">
-			<div id="TagDeckHeaderAndCaret" class="flex-row flex-center gap-2p clickable">
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-caret-down-fill title-caret" viewBox="0 0 16 16">
+			{# Disclosure control for the Tag deck. A real <button> so keyboard and
+			   screen-reader users can collapse/expand it; the visible title is a
+			   plain <span> because a <button> may only contain phrasing content.
+			   The semantic heading lives in the visually-hidden <h2> sibling below
+			   (ARIA prunes descendant roles inside a button, so it cannot nest). #}
+			<button type="button" id="TagDeckHeaderAndCaret" class="flex-row flex-center gap-2p clickable"
+				aria-expanded="true" aria-controls="TagDeckContent">
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-caret-down-fill title-caret" viewBox="0 0 16 16" aria-hidden="true">
 				<path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
 				</svg>
-				<h2 id="TagDeckHeader">Tags<span id="TagDeckCount" class="deck-title-count"></span></h2>
-			</div>
+				<span id="TagDeckHeader">Tags<span id="TagDeckCount" class="deck-title-count"></span></span>
+			</button>
+			{# Static, never toggled: keeps "Tags" in the document's heading outline
+			   now that the visible title is a non-heading <span>. #}
+			<h2 id="TagDeckHeaderA11y" class="visually-hidden">Tags</h2>
 		</div>
 		<div id="utubTagCloseUpdateTagBtnContainer" class="flex-row button-container gap-2p hidden">
 			<!-- Unselect all applied tag filters button -->
@@ -90,7 +99,7 @@
 		</div>
 	</div>
 
-	<div class="flex-column content">
+	<div id="TagDeckContent" class="flex-column content">
 		<!-- Create UTub Tag Form -->
 		{% include 'components/home/TagsDeck/CreateUTubTagForm.html' %}
 

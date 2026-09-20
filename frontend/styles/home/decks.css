@@ -29,13 +29,44 @@
 }
 
 /* Small muted total rendered inline INSIDE the deck title, e.g. "Members (5)".
-   Being inline text in the <h2>, it sits on the title's baseline automatically
-   (inline vertical-align: baseline), so their text bottoms line up. */
+   Being inline text in the title span, it sits on the title's baseline
+   automatically (inline vertical-align: baseline), so their text bottoms line
+   up. */
 .deck-title-count {
     font-size: 1rem;
     font-weight: var(--fw-regular);
     color: var(--cardURLTextColor);
     margin-left: 0.3rem;
+}
+
+/* Deck title typography. These three titles used to be real <h2>s; they are now
+   plain <span>s inside the header <button> (a <button>'s content model permits
+   only phrasing content, so an <h2> cannot nest inside one — the semantic
+   heading is the visually-hidden #<X>DeckHeaderA11y sibling instead). Nothing
+   an <h2> got by element type reaches a <span>, so the rendered look is
+   restated here, measured from the pre-conversion markup rather than assumed:
+
+     - font-weight 500 / line-height 1.2 / margin-top 0 come from Bootstrap
+       Reboot's `h1-h6` rule (Bootstrap IS loaded on the home page — `main.ts`
+       imports `bootstrap/dist/css/bootstrap.min.css`). Omitting line-height
+       would inherit body's 1.5 and grow the 38.4px header band to 48px.
+     - font-size mirrors Bootstrap's responsive `h2` ramp exactly: it ramps with
+       the viewport below 1200px and caps at 2rem from there up, which `min()`
+       expresses in one declaration (the two curves meet exactly at 1200px).
+       The cap matters because these titles render below 1200px too — the decks
+       stay collapsible all the way down to 992px.
+     - color comes from base.css's `h2 { color: var(--deckHeaderGreen) }`.
+     - margin-bottom was already zeroed for these ids by layout.css; restated
+       here so this rule is self-contained. */
+#UTubDeckHeader,
+#MemberDeckHeader,
+#TagDeckHeader {
+    font-size: min(calc(1.325rem + 0.9vw), 2rem);
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--deckHeaderGreen);
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 .deck#UTubDeck.collapsed,
@@ -213,16 +244,36 @@
     transform: rotate(-90deg);
 }
 
+/* The three deck headers are real <button> disclosure controls. Strip the UA
+   button chrome so the header band renders exactly as the former <div> did —
+   the `.flex-row flex-center gap-2p` classes it kept still drive the
+   caret + title layout, so no width/text-align override is needed. (The global
+   `button` rule in layout.css already clears border/padding/margin; background
+   and font are restated here so this block stands on its own.) The transition
+   drives the hover darkening set up below. */
+#UTubDeckHeaderAndCaret,
+#MemberDeckHeaderAndCaret,
+#TagDeckHeaderAndCaret {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    transition: filter 0.15s ease;
+}
+
+/* Keyboard focus ring. Negative outline-offset draws the ring inside the button
+   so the `overflow: hidden` deck cannot clip it. */
+#UTubDeckHeaderAndCaret:focus-visible,
+#MemberDeckHeaderAndCaret:focus-visible,
+#TagDeckHeaderAndCaret:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
 /* Darken the caret + title on hover of a collapsible deck header so it reads as
    interactable. Gated to the desktop breakpoint where the decks are actually
    collapsible (>=992px) and to hover-capable pointers so it never sticks on
    touch. Anchored to the three header IDs, not the shared .clickable utility. */
-#UTubDeckHeaderAndCaret,
-#MemberDeckHeaderAndCaret,
-#TagDeckHeaderAndCaret {
-    transition: filter 0.15s ease;
-}
-
 @media (min-width: 992px) and (hover: hover) {
     #UTubDeckHeaderAndCaret:hover,
     #MemberDeckHeaderAndCaret:hover,

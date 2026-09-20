@@ -688,10 +688,9 @@ function handleInputKeydown(
         // #memberBtnCreate sits in the Member deck's .button-container, which is
         // visibility:hidden while the deck is collapsed — focusing it there is a
         // silent no-op that drops focus to <body>. #MemberDeckHeaderAndCaret is
-        // never hidden, but today it is still a plain non-focusable <div>, so
-        // this fallback is inert for now; Step 3 of this plan converts it to a
-        // real <button> in this same PR, at which point focusing (not
-        // activating) it keeps the user's place in the deck.
+        // a real <button> that is never hidden, so focusing (not activating) it
+        // keeps the user's place in the deck and leaves them on the control
+        // that can re-expand it.
         if (isFocusable("memberBtnCreate")) {
           $("#memberBtnCreate").trigger("focus");
         } else {
