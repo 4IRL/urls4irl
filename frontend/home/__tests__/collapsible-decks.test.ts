@@ -907,6 +907,68 @@ describe("Collapsible Decks", () => {
     });
   });
 
+  // A programmatic collapse can fire while focus sits inside the deck (nothing
+  // in the deck initiated it), and `.deck.collapsed .content` is
+  // `visibility: hidden`, which prunes the focused node and drops focus to
+  // <body>. Real-browser proof lives in
+  // test_deck_minimize_ui.py::test_programmatic_collapse_moves_focus_to_the_deck_header;
+  // these cases pin the JS contract itself (happy-dom loads no CSS, so the
+  // pruning cannot be reproduced here — only the retarget it exists to avoid).
+  describe("focus rescue on a programmatic collapse", () => {
+    afterEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    });
+
+    function focusableInside(containerId: string): HTMLButtonElement {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.id = `${containerId}Control`;
+      document.getElementById(containerId)!.appendChild(button);
+      button.focus();
+      expect(document.activeElement).toBe(button);
+      return button;
+    }
+
+    it("moves focus to the deck header when the restore collapses the focused deck", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: false });
+      focusableInside("MemberDeckContent");
+
+      selectUTub();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect(document.activeElement).toBe(
+        document.getElementById("MemberDeckHeaderAndCaret"),
+      );
+    });
+
+    it("leaves focus alone when it sits outside the deck being collapsed", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: false });
+      const outsideControl = focusableInside("UTubDeckContent");
+
+      selectUTub();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect(document.activeElement).toBe(outsideControl);
+    });
+
+    it("does not disturb focus already parked on the collapsing deck's own header", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: false });
+      const header = document.getElementById("MemberDeckHeaderAndCaret")!;
+      header.focus();
+
+      selectUTub();
+
+      expect(document.activeElement).toBe(header);
+    });
+  });
+
   describe("onboarding nudge re-evaluation on expand", () => {
     // Expanding a Member/Tag deck re-evaluates the onboarding nudges, so a tip
     // whose anchor was hidden inside the collapsed deck can finally show. The

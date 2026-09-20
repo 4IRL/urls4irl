@@ -595,6 +595,7 @@ function setDeckMinimized({
   minimized: boolean;
 }): void {
   const deck = $(deckSelector);
+  const headerSelector = DECK_HEADER_SELECTOR_BY_DECK[deckSelector];
   // Toggle WITHOUT animation: an animating expand briefly slides member/tag rows
   // over the header buttons, intercepting clicks (and it is jarring on every UTub
   // switch). .deck-snap suppresses the transition; the forced reflow commits the
@@ -627,11 +628,50 @@ function setDeckMinimized({
     // guarded on `!isUTubSelected()`. Re-adding it here would put it back in the
     // UTub-selected state, where nothing puts it today.
     $(`${deckSelector} > .sidePanelTitle`).removeClass("pad-b-0-25rem");
+    rescueFocusFromCollapsedDeck({ deckElement, headerSelector });
   }
   setDeckHeaderExpanded({
-    headerSelector: DECK_HEADER_SELECTOR_BY_DECK[deckSelector],
+    headerSelector,
     expanded: !minimized,
   });
+}
+
+/**
+ * Keep focus inside the page when a deck is collapsed out from under it.
+ *
+ * A collapsed deck's `.content` / `.button-container` are `visibility: hidden`
+ * (decks.css), which prunes any focused descendant from the focus tree and
+ * drops `document.activeElement` to `<body>` — a WCAG 2.4.3 focus-order break
+ * with no visible indicator and nothing to Shift+Tab back to.
+ *
+ * The caret-click path is already safe: focus sits on the header button, which
+ * lives in `.titleElement:first-child` and is never hidden. Every PROGRAMMATIC
+ * collapse can fire while focus is inside the deck, though, because none of
+ * them is initiated from within it — `minimizeMemberAndTagDecksWhenNoUTub()`
+ * (Back to /home leaves focus wherever it was), the persisted-layout restore on
+ * a history-nav UTub selection, and the mobile->desktop crossing, which
+ * re-collapses a deck `resetAllDecksIfCollapsed()` had expanded.
+ *
+ * Retargeting to that deck's own header button mirrors the contract
+ * `closeTagSheet({ returnFocus })` already uses: when a region goes away, hand
+ * focus to the control that owns it. Only fires when focus is genuinely inside
+ * the deck (and not already on its header), so it can never steal focus from
+ * elsewhere on the page — at init, `document.activeElement` is `<body>`, which
+ * no deck contains.
+ */
+function rescueFocusFromCollapsedDeck({
+  deckElement,
+  headerSelector,
+}: {
+  deckElement: HTMLElement | undefined;
+  headerSelector: string;
+}): void {
+  if (!deckElement) return;
+  const activeElement = document.activeElement;
+  if (!(activeElement instanceof HTMLElement)) return;
+  if (activeElement === $(headerSelector).get(0)) return;
+  if (!deckElement.contains(activeElement)) return;
+  $(headerSelector).trigger("focus");
 }
 
 // Minimize the Member + Tag decks when no UTub is selected (they have nothing to

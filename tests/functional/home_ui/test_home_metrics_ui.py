@@ -86,6 +86,14 @@ def test_deck_collapse_emits_to_anonymous_metrics(
     locked minimized (see
     `frontend/home/collapsible-decks.ts::minimizeMemberAndTagDecksWhenNoUTub`),
     so the collapse gesture is only available once a UTub is open.
+
+    The deck starts EXPANDED here because the `page` fixture builds a fresh
+    browser context per test, so `u4i:deckLayout` is empty and the restore
+    applies the both-expanded default — not because the selection force-expands
+    it. That distinction matters for the `count == 1` assertion below: the
+    saved-layout restore deliberately emits NO metric (Design Decision 6), so
+    the one row here is the user's click and nothing else. If the restore ever
+    started emitting, this count would inflate on every UTub switch.
     """
     user_id_for_test = 1
     with provide_app.app_context():
