@@ -676,39 +676,41 @@ function seedLastCollapsedFromRestoredLayout({
 }
 
 /**
- * Apply the user's saved Member/Tag layout when a UTub is selected, instead of
- * force-expanding both decks and erasing the choice on every UTub switch.
+ * Apply the user's saved Member/Tag layout to the left panel, instead of
+ * force-expanding both decks and erasing the choice.
+ *
+ * Exported because two callers need it: the UTUB_SELECTED subscriber below, and
+ * mobile.ts's crossing back to desktop — the mobile viewport resets both decks
+ * expanded (`resetAllDecksIfCollapsed`), so without re-applying here a user who
+ * narrows and re-widens the window loses the layout they saved.
  *
  * Deliberately emits NO metric (Design Decision 6): UI_DECK_COLLAPSE /
  * UI_DECK_EXPAND mean "a user clicked a caret", and emitting here would inflate
  * them on every UTub switch and could swallow a genuine click via the metrics
- * dedupe map. It also runs none of the deck-reset side effects
+ * dedupe map.
+ *
+ * It also runs none of the deck-reset side effects a caret collapse runs
  * (closeMemberNameFilter / closeTagNameFilter / createMemberHideInput /
- * createUTubTagHideInput): setMemberDeckOnUTubSelected and
+ * createUTubTagHideInput), for a different reason per caller. On the
+ * UTUB_SELECTED path it is required: setMemberDeckOnUTubSelected and
  * setTagDeckOnUTubSelected are subscribed AFTER this and already do exactly
  * that — a duplicate createMemberHideInput would clear the co-member candidate
- * cache.
+ * cache. On the viewport-crossing path nothing else resets them, and that is
+ * deliberate too: a resize is not a UTub switch, so an in-progress member/tag
+ * name filter is preserved across it rather than silently wiped.
  */
-function restoreMemberAndTagDecksForUTub(): void {
-  // Unconditional, and ahead of the mobile early-return: the lock is what makes
-  // these decks inert with no UTub selected, so a selection must always clear
-  // it (test_member_and_tag_decks_unlocked_when_utub_selected asserts this).
-  $(MEMBER_DECK_CSS_SELECTOR).removeClass("deck-locked");
-  $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("deck-locked");
-  setDeckHeaderLocked({
-    headerSelector: MEMBER_DECK_HEADER_SELECTOR,
-    locked: false,
-  });
-  setDeckHeaderLocked({
-    headerSelector: UTUB_TAG_DECK_HEADER_SELECTOR,
-    locked: false,
-  });
-
+export function applyPersistedDeckLayout(): void {
   // Below the tablet breakpoint the decks are not collapsible at all (single-
   // deck nav, and the Tag deck is relocated into the bottom sheet), so there is
   // no saved layout to apply — and applying one would strand a sheet the user
   // cannot reopen. mobile.ts re-applies it on the crossing back to desktop.
   if (isMobile()) return;
+
+  // With no UTub selected both decks are already collapsed AND `.deck-locked`
+  // by minimizeMemberAndTagDecksWhenNoUTub(). Applying a saved-expanded value
+  // here would open an inert deck whose caret is hidden, so the user could not
+  // shut it again. The next UTub selection applies the layout anyway.
+  if (!isUTubSelected()) return;
 
   const layout = getDeckLayout();
   setDeckMinimized({
@@ -739,6 +741,30 @@ function restoreMemberAndTagDecksForUTub(): void {
       },
     );
   }
+}
+
+/**
+ * Unlock the Member and Tag decks for the newly-selected UTub, then hand off to
+ * applyPersistedDeckLayout() for the layout itself.
+ *
+ * The unlock is unconditional and runs ahead of the handoff (whose own guards
+ * early-return on mobile and with no UTub selected): the lock is what makes
+ * these decks inert with no UTub selected, so a selection must always clear it
+ * (test_member_and_tag_decks_unlocked_when_utub_selected asserts this).
+ */
+function restoreMemberAndTagDecksForUTub(): void {
+  $(MEMBER_DECK_CSS_SELECTOR).removeClass("deck-locked");
+  $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("deck-locked");
+  setDeckHeaderLocked({
+    headerSelector: MEMBER_DECK_HEADER_SELECTOR,
+    locked: false,
+  });
+  setDeckHeaderLocked({
+    headerSelector: UTUB_TAG_DECK_HEADER_SELECTOR,
+    locked: false,
+  });
+
+  applyPersistedDeckLayout();
 }
 
 on(AppEvents.UTUB_SELECTED, restoreMemberAndTagDecksForUTub);

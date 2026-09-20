@@ -4,6 +4,7 @@ import {
   removeCollapsibleClickableHeaderClass,
   minimizeMemberAndTagDecksWhenNoUTub,
   resetAllDecksIfCollapsed,
+  applyPersistedDeckLayout,
 } from "../collapsible-decks.js";
 import { AppEvents, emit } from "../../lib/event-bus.js";
 
@@ -779,6 +780,65 @@ describe("Collapsible Decks", () => {
         tagsMinimized: false,
       });
       setItem.mockRestore();
+    });
+  });
+
+  // mobile.ts calls the exported entry point directly on the crossing back to
+  // desktop, bypassing the UTUB_SELECTED unlock, so its own guards are what
+  // keep that call safe.
+  describe("applyPersistedDeckLayout called directly", () => {
+    // These cases flip isMobile() and isUTubSelected(); reset BOTH here rather
+    // than inline so a failing assertion cannot leak either one into every test
+    // that follows.
+    afterEach(async () => {
+      const { isMobile } = await import("../mobile.js");
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    });
+
+    it("re-applies a saved collapse after the mobile crossing expanded the decks", async () => {
+      const { isMobile } = await import("../mobile.js");
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: false });
+      // Land in the real desktop state first — Member genuinely collapsed — so
+      // the mobile reset below has something to undo and this cannot pass
+      // vacuously against a fixture that was never collapsed.
+      selectUTub();
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+
+      // Exactly what the crossing into mobile does: expand every deck.
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      resetAllDecksIfCollapsed();
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      applyPersistedDeckLayout();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe(
+        "false",
+      );
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+    });
+
+    // With no UTub selected both decks are locked collapsed and their carets
+    // are hidden, so honouring a saved-expanded value would open a deck the
+    // user has no way to shut again.
+    it("leaves the locked no-UTub decks collapsed instead of applying a saved-expanded layout", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      seedPersistedLayout({ membersMinimized: false, tagsMinimized: false });
+      minimizeMemberAndTagDecksWhenNoUTub();
+
+      applyPersistedDeckLayout();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe(
+        "false",
+      );
     });
   });
 

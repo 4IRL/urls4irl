@@ -7,6 +7,7 @@ import {
   resetAllDecksIfCollapsed,
   removeCollapsibleClickableHeaderClass,
   addCollapsibleClickableHeaderClass,
+  applyPersistedDeckLayout,
 } from "./collapsible-decks.js";
 import { getState } from "../store/app-store.js";
 import { reapplyLeftPanelVisibilityForViewport } from "./left-panel-toggle.js";
@@ -160,6 +161,13 @@ export function initMobileLayout(): void {
       // Show all panels and decks
       revertMobileUIToFullScreenUI();
       addCollapsibleClickableHeaderClass();
+      // The crossing INTO mobile ran resetAllDecksIfCollapsed(), which expands
+      // every deck — so without this the user's saved Member/Tag layout is lost
+      // by merely narrowing and re-widening the window. It must run after
+      // revertMobileUIToFullScreenUI() above, which synchronously drives the
+      // Tags sheet to move #TagDeck out of #tagSheetBody back into #leftPanel:
+      // collapsing it while still parented in the sheet would be wrong.
+      applyPersistedDeckLayout();
       reapplyLeftPanelVisibilityForViewport();
     }
   });

@@ -37,10 +37,14 @@ vi.mock("../../lib/event-bus.js", () => ({
 vi.mock("../navbar.js", () => ({
   NAVBAR_TOGGLER: { toggler: { hide: vi.fn() } },
 }));
+// vi.mock() replaces the WHOLE module, so every export mobile.ts imports has to
+// be listed here — a missing one breaks import resolution for this entire file,
+// not just the test that exercises it.
 vi.mock("../collapsible-decks.js", () => ({
   resetAllDecksIfCollapsed: vi.fn(),
   removeCollapsibleClickableHeaderClass: vi.fn(),
   addCollapsibleClickableHeaderClass: vi.fn(),
+  applyPersistedDeckLayout: vi.fn(),
 }));
 vi.mock("../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ activeUTubID: null })),
@@ -358,6 +362,49 @@ describe("initMobileLayout viewport-crossing reconciliation", () => {
     breakpointChangeHandler();
 
     expect($("#mainPanel").hasClass("lhs-collapsed")).toBe(false);
+  });
+
+  // The mobile crossing runs resetAllDecksIfCollapsed(), which expands every
+  // deck — so the saved Member/Tag layout has to be re-applied on the way back
+  // or merely narrowing and re-widening the window silently discards it.
+  it("re-applies the persisted deck layout on the crossing back to desktop", async () => {
+    const { applyPersistedDeckLayout } =
+      await import("../collapsible-decks.js");
+    widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+    breakpointChangeHandler();
+
+    expect(applyPersistedDeckLayout).toHaveBeenCalledTimes(1);
+    // The load-bearing order is against revertMobileUIToFullScreenUI(), whose
+    // synchronous MOBILE_DECK_SWITCHED{target:"desktop"} emit is what drives
+    // tags/sheet.ts to move #TagDeck out of #tagSheetBody back into #leftPanel.
+    // Applying `.collapsed` while the deck is still parented in the sheet would
+    // be wrong, so pin the layout call as strictly later than that emit.
+    expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "desktop",
+    });
+    expect(
+      (applyPersistedDeckLayout as ReturnType<typeof vi.fn>).mock
+        .invocationCallOrder[0],
+    ).toBeGreaterThan(
+      (emit as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0],
+    );
+  });
+
+  // On the way INTO mobile the decks are force-expanded on purpose (single-deck
+  // nav, Tag deck relocated into the bottom sheet); applying a collapsed layout
+  // there would strand a sheet the user cannot reopen.
+  it("does not apply the persisted deck layout on the crossing into mobile", async () => {
+    const { applyPersistedDeckLayout, resetAllDecksIfCollapsed } =
+      await import("../collapsible-decks.js");
+    widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+    breakpointChangeHandler();
+
+    // Pin the mobile branch's own behavior in the same test: it force-expands
+    // every deck, which is precisely why the desktop crossing has to re-apply.
+    expect(resetAllDecksIfCollapsed).toHaveBeenCalledTimes(1);
+    expect(applyPersistedDeckLayout).not.toHaveBeenCalled();
   });
 });
 
