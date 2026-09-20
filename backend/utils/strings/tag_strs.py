@@ -44,6 +44,15 @@ TAG_SHEET_ANNOUNCEMENT_CLOSE = "Tag filter sheet closed"
 TAG_SEARCH_PLACEHOLDER = "Filter tags"
 TAG_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} tags shown"
 TAG_DECK_NO_TAGS = "This UTub has no tags yet"
+# Collapsed Tag-deck filter indicator (#TagDeckFilterPill) and the aria-live
+# sentence that accompanies it. Both are composed dynamically by production
+# TypeScript (tags/deck.ts, collapsible-decks.ts) and written into the live DOM,
+# so they go through the full bridge. The _ONE variant exists because "1 tags
+# filtered" is what a screen reader would otherwise speak; the pill label needs
+# no such variant ("1 filtered" already reads correctly).
+TAG_FILTER_PILL_COUNT = "{n} filtered"
+TAG_FILTER_ANNOUNCEMENT_COUNT = "{n} tags filtered"
+TAG_FILTER_ANNOUNCEMENT_COUNT_ONE = "1 tag filtered"
 
 # Combobox (multi-tag apply) strings — read dynamically by production TypeScript
 # via APP_CONFIG.strings, so they go through the full APP_CONFIG bridge

@@ -11,6 +11,8 @@ import { createUTubHideInput } from "./utubs/create.js";
 import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
 import { maybeShowNextTip } from "./onboarding/nudges.js";
+import { getState } from "../store/app-store.js";
+import { collapsedTagFilterAnnouncement } from "./tags/utils.js";
 import {
   getDeckLayout,
   PERSISTABLE_DECK,
@@ -42,6 +44,8 @@ const LHS_DECKS: readonly string[] = [
 const UTUB_DECK_HEADER_SELECTOR = "#UTubDeckHeaderAndCaret";
 const MEMBER_DECK_HEADER_SELECTOR = "#MemberDeckHeaderAndCaret";
 const UTUB_TAG_DECK_HEADER_SELECTOR = "#TagDeckHeaderAndCaret";
+const COLLAPSED_TAG_FILTER_ANNOUNCEMENT_SELECTOR =
+  "#TagDeckCollapsedFilterAnnouncement";
 
 // Each deck's disclosure button and the `.content` element that button owns.
 // Keyed by deck selector so the shared programmatic paths (setDeckMinimized,
@@ -457,6 +461,14 @@ function setupTagHeaderForMaximizeMinimize() {
     closeTagNameFilter();
     if (isUTubSelected()) createUTubTagHideInput();
     $("#TagDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
+
+    // [DD-19] Announce the standing filter state at the moment of collapse.
+    // The collapse click emits no TAG_FILTER_CHANGED, so without this write a
+    // user who collapses an already-filtered deck hears nothing about the
+    // filters the deck just hid until they next change one.
+    $(COLLAPSED_TAG_FILTER_ANNOUNCEMENT_SELECTOR).text(
+      collapsedTagFilterAnnouncement(getState().selectedTagIDs.length),
+    );
 
     // Before the cap, for the same reason as the Member collapse branch above:
     // an eviction that re-expands this deck must be the last write to land.

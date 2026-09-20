@@ -7,6 +7,7 @@ import {
   applyPersistedDeckLayout,
 } from "../collapsible-decks.js";
 import { AppEvents, emit } from "../../lib/event-bus.js";
+import { resetStore, setState } from "../../store/app-store.js";
 
 vi.mock("../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
 vi.mock("../utubs/utils.js", () => ({ isUTubSelected: vi.fn(() => false) }));
@@ -118,6 +119,8 @@ const DECK_HTML = `
         <span id="TagDeckHeader">Tags</span>
       </button>
       <h2 id="TagDeckHeaderA11y" class="visually-hidden">Tags</h2>
+      <span id="TagDeckFilterPill"><span id="TagDeckFilterPillLabel"></span></span>
+      <span id="TagDeckCollapsedFilterAnnouncement" class="visually-hidden" aria-live="polite"></span>
     </div>
     <div id="TagDeckContent" class="content"></div>
   </div>
@@ -291,6 +294,68 @@ describe("Collapsible Decks", () => {
 
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
       expect(closeTagNameFilter).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("collapsed tag-filter announcement", () => {
+    // [DD-19] The collapse click emits no TAG_FILTER_CHANGED, so the handler
+    // writes the announcement itself — otherwise a user who collapses an
+    // already-filtered deck hears nothing until they next change a filter.
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      resetStore();
+    });
+
+    afterEach(() => {
+      resetStore();
+    });
+
+    const announcement = (): string =>
+      $("#TagDeckCollapsedFilterAnnouncement").text();
+
+    it("announces the applied filter count when the Tag deck is collapsed", () => {
+      setState({ selectedTagIDs: [1, 2, 3] });
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(announcement()).toBe("3 tags filtered");
+    });
+
+    it("announces a single filter in the singular", () => {
+      setState({ selectedTagIDs: [7] });
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect(announcement()).toBe("1 tag filtered");
+    });
+
+    it("clears a prior announcement when collapsed with no tag filter applied", () => {
+      // Reached from a NON-default state on purpose: the fixture renders this
+      // span empty, so asserting "" against a fresh fixture would survive
+      // deleting the collapse-branch write outright. Collapsing once with a
+      // filter applied puts a real sentence in the span; the second collapse,
+      // with the filter gone, is what must clear it.
+      setState({ selectedTagIDs: [1, 2] });
+      $("#TagDeckHeaderAndCaret").trigger("click");
+      expect(announcement()).toBe("2 tags filtered");
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      setState({ selectedTagIDs: [] });
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(announcement()).toBe("");
+    });
+
+    it("does not announce when the Member deck is collapsed", () => {
+      setState({ selectedTagIDs: [1, 2] });
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect(announcement()).toBe("");
     });
   });
 

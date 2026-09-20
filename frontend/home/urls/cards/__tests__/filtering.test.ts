@@ -2,10 +2,11 @@ import {
   applyDefaultDensity,
   applyDefaultUrlSort,
   applyDefaultViewMode,
+  updateTagFilteringOnURLOrURLTagDeletion,
   updateURLsAndTagSubheaderWhenTagSelected,
 } from "../filtering.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
-import { AppEvents, emit } from "../../../../lib/event-bus.js";
+import { AppEvents, emit, on } from "../../../../lib/event-bus.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
 vi.mock("../../../../logic/tag-filtering.js", () => ({
@@ -212,6 +213,59 @@ describe("Tag Filter Empty State", () => {
 
     expect($("#URLTagFilterNoResults").hasClass("hidden")).toBe(true);
     expect($("#URLTagFilterAnnouncement").text()).toBe("");
+  });
+});
+
+describe("updateTagFilteringOnURLOrURLTagDeletion - TAG_FILTER_CHANGED", () => {
+  // Every filter-state indicator (the collapsed Tag deck's pill + its SR
+  // announcement, the mobile sheet handle's count badge) is driven purely by
+  // TAG_FILTER_CHANGED, and only updateURLsAndTagSubheaderWhenTagSelected()
+  // emits it — which this function calls ONLY while a tag is still selected.
+  // The no-tag-selected branch is reachable *from* a filtered state: the
+  // STALE_DATA_DETECTED handler prunes selectedTagIDs of tags another session
+  // deleted, and pruning the last one lands here. Without an emit on that
+  // branch every indicator strands on the pre-prune count.
+  let seen: number[][];
+  let unsubscribe: () => void;
+
+  const seedSelected = (selectedTagIDs: number[]): void => {
+    vi.mocked(getState).mockReturnValue({
+      selectedTagIDs,
+      tags: [],
+      urls: [],
+    } as unknown as ReturnType<typeof getState>);
+  };
+
+  beforeEach(() => {
+    document.body.innerHTML = FIXTURE_HTML;
+    vi.clearAllMocks();
+    vi.mocked(computeURLVisibility).mockReturnValue([]);
+    seen = [];
+    unsubscribe = on(AppEvents.TAG_FILTER_CHANGED, ({ selectedTagIDs }) => {
+      seen.push(selectedTagIDs);
+    });
+  });
+
+  afterEach(() => {
+    unsubscribe();
+  });
+
+  it("emits the now-empty set when no tag is selected any more", () => {
+    seedSelected([]);
+
+    updateTagFilteringOnURLOrURLTagDeletion();
+
+    expect(seen).toEqual([[]]);
+  });
+
+  it("emits exactly once — not twice — while a tag is still selected", () => {
+    // That path routes through updateURLsAndTagSubheaderWhenTagSelected(),
+    // which emits on its own; the new branch must not double up.
+    seedSelected([99]);
+
+    updateTagFilteringOnURLOrURLTagDeletion();
+
+    expect(seen).toEqual([[99]]);
   });
 });
 

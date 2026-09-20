@@ -30,8 +30,27 @@ import {
   setUnselectUpdateUTubTagEventListeners,
 } from "./update-all.js";
 import { disableUnselectAllButtonAfterTagFilterRemoved } from "./unselect-all.js";
+import { collapsedTagFilterAnnouncement, tagFilterPillLabel } from "./utils.js";
 
 const log = debug("tags");
+
+const TAG_DECK_SELECTOR = "#TagDeck";
+const TAG_FILTER_PILL_SELECTOR = "#TagDeckFilterPill";
+const TAG_FILTER_PILL_LABEL_SELECTOR = "#TagDeckFilterPillLabel";
+const COLLAPSED_FILTER_ANNOUNCEMENT_SELECTOR =
+  "#TagDeckCollapsedFilterAnnouncement";
+const FILTERING_CLASS = "filtering";
+
+// A collapsed Tag deck hides the chips that carry "a filter is applied", so the
+// header-band pill carries it instead. Cleared wholesale rather than toggled:
+// TAG_FILTER_CHANGED is never emitted on a UTub switch (its only emit site is
+// `urls/cards/filtering.ts`), so without an explicit reset a stale count — and a
+// stale announcement — would survive into the next UTub's collapsed state.
+function resetTagFilterPill(): void {
+  $(TAG_FILTER_PILL_SELECTOR).removeClass(FILTERING_CLASS);
+  $(TAG_FILTER_PILL_LABEL_SELECTOR).text("");
+  $(COLLAPSED_FILTER_ANNOUNCEMENT_SELECTOR).text("");
+}
 
 export function setTagDeckOnUTubSelected(
   dictTags: UtubTag[],
@@ -96,6 +115,7 @@ export function resetTagDeck(): void {
   setTagDeckBtnsOnUpdateAllUTubTagsClosed();
   hideTagDeckEmptyState();
   resetTagFilter();
+  resetTagFilterPill();
   hideTagFilterBar();
 }
 
@@ -113,6 +133,10 @@ export function resetTagDeckIfNoUTubSelected(): void {
   resetNewUTubTagForm();
   hideTagDeckEmptyState();
   resetTagFilter();
+  // Reached from setUIWhenNoUTubSelected(), which is how a user leaves a
+  // filtered UTub (deleting it, or backing out). The Tag deck is locked
+  // minimized in that state, so a stale pill would be the only thing visible.
+  resetTagFilterPill();
   hideTagFilterBar();
 }
 
@@ -170,3 +194,21 @@ on(AppEvents.UTUB_SELECTED, ({ tags, utubID }) =>
 on(AppEvents.STALE_DATA_DETECTED, ({ tags, utubID }) =>
   updateTagDeck(tags, utubID),
 );
+
+// Collapsed-state tag-filter indicator. Registered once here at module scope —
+// never inside a per-UTub builder — so it can never accumulate duplicate
+// handlers across UTub switches (same reasoning as `tags/sheet.ts`'s
+// handle-count badge subscriber).
+on(AppEvents.TAG_FILTER_CHANGED, ({ selectedTagIDs }) => {
+  const count = selectedTagIDs.length;
+  $(TAG_FILTER_PILL_SELECTOR).toggleClass(FILTERING_CLASS, count > 0);
+  $(TAG_FILTER_PILL_LABEL_SELECTOR).text(tagFilterPillLabel(count));
+  // The pill only exists to be seen while collapsed (Design Decision 4), so the
+  // announcement fires on the same condition: an expanded deck already exposes
+  // filter state through the chips themselves, and re-announcing it there on
+  // every filter change would be redundant screen-reader chatter.
+  const isCollapsed = $(TAG_DECK_SELECTOR).hasClass("collapsed");
+  $(COLLAPSED_FILTER_ANNOUNCEMENT_SELECTOR).text(
+    isCollapsed ? collapsedTagFilterAnnouncement(count) : "",
+  );
+});

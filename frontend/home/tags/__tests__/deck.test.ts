@@ -345,3 +345,151 @@ describe("Tag deck inline tag count", () => {
     expect(count()).toBe("(1)");
   });
 });
+
+describe("Collapsed-state tag-filter pill", () => {
+  // Mirrors the production header band landed in TagsDeck.html: the pill and its
+  // aria-live announcement are siblings of `.button-container`, inside the
+  // header `.titleElement` (not inside `.content`, which a collapsed deck hides).
+  const TAG_DECK_HTML = `
+    <div id="TagDeck" class="deck" data-last-collapsed="false">
+      <div class="titleElement">
+        <div id="TagDeckTitleGroup">
+          <button type="button" id="TagDeckHeaderAndCaret">
+            <span class="title-caret"></span>
+            <span id="TagDeckHeader">Tags<span id="TagDeckCount" class="deck-title-count"></span></span>
+          </button>
+          <h2 id="TagDeckHeaderA11y" class="visually-hidden">Tags</h2>
+        </div>
+        <div id="utubTagStandardBtns" class="button-container">
+          <button id="utubTagBtnCreate" class="hidden"></button>
+          <button id="utubTagBtnUpdateAllOpen" class="hidden"></button>
+          <button id="unselectAllTagFilters" class="hidden"></button>
+        </div>
+        <span id="TagDeckFilterPill"><span id="TagDeckFilterPillLabel"></span></span>
+        <span id="TagDeckCollapsedFilterAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      </div>
+      <div id="TagDeckContent" class="content">
+        <div id="listTags"></div>
+      </div>
+    </div>
+  `;
+
+  const isFiltering = (): boolean =>
+    window.jQuery("#TagDeckFilterPill").hasClass("filtering");
+  const pillLabel = (): string =>
+    window.jQuery("#TagDeckFilterPillLabel").text();
+  const announcement = (): string =>
+    window.jQuery("#TagDeckCollapsedFilterAnnouncement").text();
+  const collapseDeck = (): void => {
+    window.jQuery("#TagDeck").addClass("collapsed");
+  };
+
+  beforeEach(() => {
+    resetStore();
+    document.body.innerHTML = TAG_DECK_HTML;
+  });
+
+  // The pill's actual visibility is CSS-gated on `.deck#TagDeck.collapsed
+  // #TagDeckFilterPill.filtering` and `decks.css` is never loaded into
+  // happy-dom, so these assert the class/text contract only. The rendered
+  // display is verified in a real browser by the Playwright test in Step 12.
+  // NOTE: there is deliberately no standalone "unmarked at zero filters" case.
+  // The fixture renders the pill unmarked and unlabeled, so emitting an empty
+  // selection asserts nothing the fixture did not already guarantee — it stays
+  // green with the whole subscriber deleted. The zero state is pinned instead by
+  // "unmarks and unlabels the pill when the last filter is cleared" below, which
+  // reaches zero from a marked pill and so actually dies under that mutation.
+  it("marks and labels the pill with the applied filter count", () => {
+    collapseDeck();
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2, 3] });
+
+    expect(isFiltering()).toBe(true);
+    expect(pillLabel()).toBe("3 filtered");
+    expect(window.jQuery("#TagDeck").hasClass("collapsed")).toBe(true);
+  });
+
+  it("labels a single applied filter", () => {
+    collapseDeck();
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [9] });
+
+    expect(isFiltering()).toBe(true);
+    expect(pillLabel()).toBe("1 filtered");
+  });
+
+  it("unmarks and unlabels the pill when the last filter is cleared", () => {
+    collapseDeck();
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2] });
+    expect(isFiltering()).toBe(true);
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [] });
+
+    expect(isFiltering()).toBe(false);
+    expect(pillLabel()).toBe("");
+  });
+
+  it("announces the filter count while the deck is collapsed", () => {
+    collapseDeck();
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2, 3] });
+
+    expect(announcement()).toBe("3 tags filtered");
+  });
+
+  it("announces a single filter in the singular", () => {
+    collapseDeck();
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [4] });
+
+    expect(announcement()).toBe("1 tag filtered");
+  });
+
+  it("does not announce while the deck is expanded, even with filters applied", () => {
+    // The expanded deck shows the selected chips themselves, so re-announcing
+    // the count here would be redundant screen-reader chatter. The pill is still
+    // marked — CSS, not JS, is what hides it outside the collapsed band.
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2, 3] });
+
+    expect(window.jQuery("#TagDeck").hasClass("collapsed")).toBe(false);
+    expect(isFiltering()).toBe(true);
+    expect(announcement()).toBe("");
+  });
+
+  it("clears an announcement made while collapsed once the filters are dropped", () => {
+    collapseDeck();
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2] });
+    expect(announcement()).toBe("2 tags filtered");
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [] });
+
+    expect(announcement()).toBe("");
+  });
+
+  it("clears the pill and its announcement on a UTub switch", () => {
+    // TAG_FILTER_CHANGED is never emitted on a UTub switch, so without
+    // resetTagDeck()'s explicit reset the previous UTub's count would linger.
+    collapseDeck();
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2, 3] });
+
+    setTagDeckOnUTubSelected(
+      [{ id: 8, tagString: "alpha", tagApplied: 0 }],
+      43,
+    );
+
+    expect(isFiltering()).toBe(false);
+    expect(pillLabel()).toBe("");
+    expect(announcement()).toBe("");
+  });
+
+  it("clears the pill and its announcement when no UTub is selected", () => {
+    collapseDeck();
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2, 3] });
+
+    resetTagDeckIfNoUTubSelected();
+
+    expect(isFiltering()).toBe(false);
+    expect(pillLabel()).toBe("");
+    expect(announcement()).toBe("");
+  });
+});

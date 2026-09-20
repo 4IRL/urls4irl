@@ -171,6 +171,32 @@
     pointer-events: none;
 }
 
+/* Collapsed-state tag-filter indicator (#TagDeckFilterPill, TagsDeck.html). A
+   collapsed Tag deck hides the chips and #unselectAllTagFilters that otherwise
+   carry "a filter is applied", so this pill replaces exactly that signal in the
+   header band — and only there: expanded, the chips say it better, so the pill
+   is `display: none` and the button container keeps the right edge it has today.
+   Shape mirrors `#bulkSelectCount.countPill` (bulk-actions.css). No cursor,
+   hover, or focus styles — it is an indicator, not a control (Design Decision 4).
+   `--tagCountBackgroundSelectedColor` is not overridden in light mode, so the
+   pill is theme-independent by construction. */
+#TagDeckFilterPill {
+    display: none;
+    background: var(--tagCountBackgroundSelectedColor);
+    color: #06231a;
+    font-weight: 800;
+    font-size: 0.8rem;
+    border-radius: 5rem;
+    padding: 2px 11px;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.deck#TagDeck.collapsed #TagDeckFilterPill.filtering {
+    display: inline-flex;
+    align-items: center;
+}
+
 /* Locked-minimized state (desktop, no UTub selected): the Member/Tag decks can't
    be expanded, so the header reads as non-interactable — caret hidden, title
    dimmed, no hover affordance or pointer cursor. Applied only by JS when no UTub
