@@ -5,6 +5,7 @@ import {
   minimizeMemberAndTagDecksWhenNoUTub,
   resetAllDecksIfCollapsed,
 } from "../collapsible-decks.js";
+import { AppEvents, emit } from "../../lib/event-bus.js";
 
 vi.mock("../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
 vi.mock("../utubs/utils.js", () => ({ isUTubSelected: vi.fn(() => false) }));
@@ -24,28 +25,48 @@ const $ = window.jQuery;
 // with (UTubDeck.html:1, MemberDeck.html:1, TagsDeck.html:1); the Member/Tag
 // `.sidePanelTitle.pad-b-0-25rem` wrappers mirror MemberDeckHeaders.html:1 and
 // TagsDeck.html:2, which the collapse/reset paths add and remove that class on.
+// Each header mirrors the production disclosure markup: a real <button> holding
+// the caret AND the visible, unroled title <span>, with the semantic heading as
+// a visually-hidden <h2> SIBLING after the button (ARIA prunes descendant roles
+// inside a button, so the heading cannot nest). `aria-expanded="true"` is the
+// static Jinja default the code then keeps in sync.
 const DECK_HTML = `
   <div class="deck" id="UTubDeck" data-last-collapsed="false">
-    <div id="UTubDeckHeaderAndCaret">
+    <button type="button" id="UTubDeckHeaderAndCaret" aria-expanded="true" aria-controls="UTubDeckContent">
       <span class="title-caret"></span>
-    </div>
+      <span id="UTubDeckHeader">UTubs</span>
+    </button>
+    <h2 id="UTubDeckHeaderA11y" class="visually-hidden">UTubs</h2>
     <div id="SearchUTubWrap"></div>
+    <div id="UTubDeckContent" class="content"></div>
   </div>
   <div class="deck" id="MemberDeck" data-last-collapsed="false">
     <div class="titleElement sidePanelTitle pad-b-0-25rem">
-      <div id="MemberDeckHeaderAndCaret">
+      <button type="button" id="MemberDeckHeaderAndCaret" aria-expanded="true" aria-controls="MemberDeckContent">
         <span class="title-caret"></span>
-      </div>
+        <span id="MemberDeckHeader">Members</span>
+      </button>
+      <h2 id="MemberDeckHeaderA11y" class="visually-hidden">Members</h2>
     </div>
+    <div id="MemberDeckContent" class="content"></div>
   </div>
   <div class="deck" id="TagDeck" data-last-collapsed="false">
     <div class="titleElement sidePanelTitle pad-b-0-25rem">
-      <div id="TagDeckHeaderAndCaret">
+      <button type="button" id="TagDeckHeaderAndCaret" aria-expanded="true" aria-controls="TagDeckContent">
         <span class="title-caret"></span>
-      </div>
+        <span id="TagDeckHeader">Tags</span>
+      </button>
+      <h2 id="TagDeckHeaderA11y" class="visually-hidden">Tags</h2>
     </div>
+    <div id="TagDeckContent" class="content"></div>
   </div>
 `;
+
+const DECK_HEADER_SELECTORS = [
+  "#UTubDeckHeaderAndCaret",
+  "#MemberDeckHeaderAndCaret",
+  "#TagDeckHeaderAndCaret",
+];
 
 describe("Collapsible Decks", () => {
   beforeEach(() => {
@@ -363,6 +384,261 @@ describe("Collapsible Decks", () => {
       expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
       expect(maybeShowNextTip).not.toHaveBeenCalled();
+    });
+  });
+
+  // The headers are real <button> disclosure controls, so aria-expanded has to
+  // track .collapsed on EVERY path — the Jinja templates render a static
+  // aria-expanded="true" that is already wrong on first paint, since Members and
+  // Tags are minimized at init when no UTub is selected.
+  describe("deck header disclosure ARIA", () => {
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    });
+
+    it("seeds aria-expanded and aria-controls from the live deck state on init", () => {
+      // Strip the attributes the fixture inherits from Jinja and pre-collapse
+      // one deck FIRST, so these assertions can only pass if init actually
+      // wrote them — asserting the fixture's own static values would pass even
+      // with enableDeckHeaderDisclosureForDesktop() deleted.
+      document.body.innerHTML = DECK_HTML;
+      for (const headerSelector of DECK_HEADER_SELECTORS) {
+        $(headerSelector)
+          .removeAttr("aria-expanded")
+          .removeAttr("aria-controls");
+      }
+      $(".deck#TagDeck").addClass("collapsed");
+
+      initCollapsibleDecks();
+
+      expect($("#UTubDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      expect($("#TagDeckHeaderAndCaret").attr("aria-expanded")).toBe("false");
+      expect($("#UTubDeckHeaderAndCaret").attr("aria-controls")).toBe(
+        "UTubDeckContent",
+      );
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-controls")).toBe(
+        "MemberDeckContent",
+      );
+      expect($("#TagDeckHeaderAndCaret").attr("aria-controls")).toBe(
+        "TagDeckContent",
+      );
+    });
+
+    it.each(DECK_HEADER_SELECTORS)(
+      "aria-expanded flips on every %s click",
+      (headerSelector) => {
+        $(headerSelector).trigger("click");
+        expect($(headerSelector).attr("aria-expanded")).toBe("false");
+
+        $(headerSelector).trigger("click");
+        expect($(headerSelector).attr("aria-expanded")).toBe("true");
+      },
+    );
+
+    it("aria-expanded follows the deck the two-collapsed cap force-expands", () => {
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe(
+        "false",
+      );
+
+      // Collapsing a third deck evicts the one marked data-last-collapsed —
+      // the Member deck here — so its header must re-announce itself expanded.
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      expect($("#UTubDeckHeaderAndCaret").attr("aria-expanded")).toBe("false");
+      expect($("#TagDeckHeaderAndCaret").attr("aria-expanded")).toBe("false");
+    });
+
+    it("resetAllDecksIfCollapsed restores aria-expanded on all three headers", () => {
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      resetAllDecksIfCollapsed();
+
+      expect($("#UTubDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      expect($("#TagDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+    });
+
+    // minimizeMemberAndTagDecksWhenNoUTub() is the only caller of the
+    // programmatic setDeckMinimized() path, so it stands in for it here.
+    it("a programmatic minimize sets aria-expanded=false, aria-disabled and tabindex=-1", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+      minimizeMemberAndTagDecksWhenNoUTub();
+
+      for (const headerSelector of [
+        "#MemberDeckHeaderAndCaret",
+        "#TagDeckHeaderAndCaret",
+      ]) {
+        expect($(headerSelector).attr("aria-expanded")).toBe("false");
+        // aria-disabled alone does NOT remove an element from the tab order —
+        // the pairing with tabindex="-1" is the whole point.
+        expect($(headerSelector).attr("aria-disabled")).toBe("true");
+        expect($(headerSelector).attr("tabindex")).toBe("-1");
+      }
+      // The UTubs deck is never auto-locked.
+      expect(
+        $("#UTubDeckHeaderAndCaret").attr("aria-disabled"),
+      ).toBeUndefined();
+    });
+
+    it("selecting a UTub clears aria-disabled/tabindex and re-expands the headers", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      // restoreMemberAndTagDecksForUTub() is private, reached via the bus.
+      emit(AppEvents.UTUB_SELECTED, {
+        utubID: 1,
+        utubName: "MyUTub",
+        urls: [],
+        tags: [],
+        members: [],
+        utubOwnerID: 1,
+        isCurrentUserOwner: true,
+        currentUserID: 1,
+      });
+
+      for (const headerSelector of [
+        "#MemberDeckHeaderAndCaret",
+        "#TagDeckHeaderAndCaret",
+      ]) {
+        expect($(headerSelector).attr("aria-expanded")).toBe("true");
+        expect($(headerSelector).attr("aria-disabled")).toBeUndefined();
+        expect($(headerSelector).attr("tabindex")).toBeUndefined();
+      }
+    });
+  });
+
+  // Below 992px initCollapsibleDecks() binds NO click handler and .title-caret
+  // is display:none, so the three <button>s would be dead tab stops announcing a
+  // disclosure that does nothing. Worse for the Tag deck: sheet.ts relocates it
+  // into the bottom sheet, where activating the button bubbles to
+  // #TagDeckTitleGroup and closes the whole sheet.
+  describe("mobile disclosure guard", () => {
+    afterEach(async () => {
+      const { isMobile } = await import("../mobile.js");
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    });
+
+    it("takes the headers out of the tab order and strips the disclosure ARIA on mobile init", async () => {
+      const { isMobile } = await import("../mobile.js");
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      document.body.innerHTML = DECK_HTML;
+      initCollapsibleDecks();
+
+      for (const headerSelector of DECK_HEADER_SELECTORS) {
+        expect($(headerSelector).attr("tabindex")).toBe("-1");
+        expect($(headerSelector).attr("aria-expanded")).toBeUndefined();
+        expect($(headerSelector).attr("aria-controls")).toBeUndefined();
+      }
+    });
+
+    // setDeckHeaderLocked() no-ops on mobile, so a lock written on desktop can
+    // only be cleared by the mobile strip itself — otherwise it sticks for the
+    // whole mobile session, including after a UTub is selected.
+    it("also clears a desktop-written aria-disabled on the crossing to mobile", async () => {
+      const { isMobile } = await import("../mobile.js");
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-disabled")).toBe("true");
+
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      removeCollapsibleClickableHeaderClass();
+
+      for (const headerSelector of DECK_HEADER_SELECTORS) {
+        expect($(headerSelector).attr("aria-disabled")).toBeUndefined();
+      }
+    });
+
+    it("restores the tab order and re-derives aria-expanded on the crossing back to desktop", async () => {
+      const { isMobile } = await import("../mobile.js");
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      removeCollapsibleClickableHeaderClass();
+      // A deck left collapsed must come back as aria-expanded="false", not the
+      // template's static "true".
+      $(".deck#MemberDeck").addClass("collapsed");
+
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      addCollapsibleClickableHeaderClass();
+
+      for (const headerSelector of DECK_HEADER_SELECTORS) {
+        expect($(headerSelector).attr("tabindex")).toBeUndefined();
+      }
+      expect($("#UTubDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe(
+        "false",
+      );
+      expect($("#TagDeckHeaderAndCaret").attr("aria-controls")).toBe(
+        "TagDeckContent",
+      );
+    });
+
+    // initCollapsibleDecks() runs once, at DOM-ready. A page first loaded on
+    // mobile therefore has NO click handlers bound, so the desktop crossing has
+    // to bind them — otherwise it hands back focusable buttons that announce a
+    // disclosure and do nothing.
+    it("binds the collapse handlers on a mobile-first load that later crosses to desktop", async () => {
+      const { isMobile } = await import("../mobile.js");
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      document.body.innerHTML = DECK_HTML;
+      initCollapsibleDecks();
+      // Nothing is bound yet: a click on mobile must be inert.
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      addCollapsibleClickableHeaderClass();
+
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(true);
+      expect($("#UTubDeckHeaderAndCaret").attr("aria-expanded")).toBe("false");
+    });
+
+    // The real crossing runs resetAllDecksIfCollapsed() on the way to mobile,
+    // which drops `.collapsed` but never `.deck-locked` — so without re-asserting
+    // the no-UTub state the decks would come back visually expanded yet inert,
+    // and aria-expanded="true" would contradict a locked, unusable deck.
+    it("re-asserts the no-UTub lock on the desktop crossing instead of announcing a stale expanded state", async () => {
+      const { isMobile } = await import("../mobile.js");
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      resetAllDecksIfCollapsed();
+      removeCollapsibleClickableHeaderClass();
+      // Exactly the stale state the crossing leaves behind.
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#MemberDeck").hasClass("deck-locked")).toBe(true);
+
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      addCollapsibleClickableHeaderClass();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe(
+        "false",
+      );
+      expect($("#MemberDeckHeaderAndCaret").attr("tabindex")).toBe("-1");
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-disabled")).toBe("true");
+      // The UTubs deck is never auto-locked, so it stays a live tab stop.
+      expect($("#UTubDeckHeaderAndCaret").attr("tabindex")).toBeUndefined();
     });
   });
 });

@@ -173,18 +173,50 @@ export function bindMemberRowMenu({
   );
 }
 
+/**
+ * True when the element is present, rendered, and not `visibility: hidden`.
+ * Element-based (not id-based) because `.memberRowKebab` is rendered without an
+ * id — it is only ever matched by class. `offsetParent === null` catches a
+ * `display: none` element or ancestor (the repo's `.hidden` class); the
+ * `visibility` read catches a `.deck.collapsed .content` ancestor, since CSS
+ * `visibility` is inherited and needs no ancestor walk. Duplicated (rather than
+ * shared) across the few focus-restore call sites that need it, keeping these
+ * modules decoupled. `instanceof HTMLElement` rather than a cast — `offsetParent`
+ * is `undefined` (not `null`) on an SVGElement, which a cast would read as
+ * focusable.
+ */
+function isFocusable(element: Element | null | undefined): boolean {
+  return (
+    element instanceof HTMLElement &&
+    element.offsetParent !== null &&
+    getComputedStyle(element).visibility !== "hidden"
+  );
+}
+
 // DD-25: after the shared #confirmModal opened by a row action closes, return
 // focus to that row's kebab trigger. Re-armed on every action (not bound once)
 // because the row whose trigger should regain focus differs per open. Namespaced
 // distinctly from delete.ts's own .memberAction handler so the two coexist on
-// #confirmModal without clobbering each other. The length guard no-ops once the
-// row (and its kebab) has been removed from the DOM by a successful removal.
+// #confirmModal without clobbering each other. A row removed by a successful
+// removal — or one whose kebab is unfocusable inside a collapsed deck — falls
+// back to the Member deck header button rather than dropping focus to <body>.
 export function bindMemberRowModalFocusRestore(memberID: number): void {
   $("#confirmModal").offAndOnExact(
     "hidden.bs.modal.memberRowFocusRestore",
     function () {
-      const trigger = $(`.member[memberid=${memberID}] .memberRowKebab`);
-      if (trigger.length > 0) trigger.trigger("focus");
+      // Attribute value quoted: a bare numeric value is not a valid CSS
+      // identifier, so an unquoted selector only matched via jQuery's Sizzle
+      // fallback after querySelectorAll threw.
+      const trigger = $(`.member[memberid="${memberID}"] .memberRowKebab`);
+      // The kebab lives inside the Member deck's `.content`, which is
+      // visibility:hidden while the deck is collapsed — the row can still exist
+      // (length > 0) without being focusable, so focusing it would silently
+      // drop focus to <body>. Fall back to the deck's own header button.
+      if (trigger.length > 0 && isFocusable(trigger[0])) {
+        trigger.trigger("focus");
+      } else {
+        $("#MemberDeckHeaderAndCaret").trigger("focus");
+      }
     },
   );
 }

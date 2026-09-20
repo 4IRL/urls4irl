@@ -92,9 +92,10 @@ const SHEET_HTML = `
       <div id="TagDeck" class="deck">
         <div class="titleElement">
           <div id="TagDeckTitleGroup" class="flex-row gap-10p">
-            <div id="TagDeckHeaderAndCaret" class="clickable">
-              <h2 id="TagDeckHeader">Tags</h2>
-            </div>
+            <button type="button" id="TagDeckHeaderAndCaret" class="flex-row flex-center gap-2p clickable">
+              <span id="TagDeckHeader">Tags</span>
+            </button>
+            <h2 id="TagDeckHeaderA11y" class="visually-hidden">Tags</h2>
           </div>
           <div class="button-container">
             <button id="utubTagBtnCreate" type="button"></button>
@@ -134,9 +135,8 @@ async function setIsMobile(value: boolean): Promise<void> {
 }
 
 async function setCrossSearchActive(value: boolean): Promise<void> {
-  const { isCrossUtubSearchActive } = await import(
-    "../../search/cross-utub-search.js"
-  );
+  const { isCrossUtubSearchActive } =
+    await import("../../search/cross-utub-search.js");
   (isCrossUtubSearchActive as ReturnType<typeof vi.fn>).mockReturnValue(value);
 }
 

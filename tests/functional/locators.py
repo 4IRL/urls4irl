@@ -76,6 +76,7 @@ class HomePageLocators(GenericPageLocator):
 
     # UTub Deck
     HEADER_UTUB_DECK = "#UTubDeckHeader"
+    HEADER_AND_CARET_UTUB_DECK = "#UTubDeckHeaderAndCaret"
     SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
     LIST_UTUB = "#listUTubs"
     SELECTORS_UTUB = ".UTubSelector"

@@ -24,21 +24,34 @@ vi.mock("../onboarding/nudges.js", () => ({ maybeShowNextTip: vi.fn() }));
 
 const $ = window.jQuery;
 
+// Mirrors the production disclosure markup: a real <button> holding the caret
+// AND the visible, unroled title <span>, with the semantic heading as a
+// visually-hidden <h2> SIBLING after the button (ARIA prunes descendant roles
+// inside a button, so the heading cannot nest).
 const DECK_HTML = `
   <div class="deck" id="UTubDeck">
-    <div id="UTubDeckHeaderAndCaret">
+    <button type="button" id="UTubDeckHeaderAndCaret" aria-expanded="true" aria-controls="UTubDeckContent">
       <span class="title-caret"></span>
-    </div>
+      <span id="UTubDeckHeader">UTubs</span>
+    </button>
+    <h2 id="UTubDeckHeaderA11y" class="visually-hidden">UTubs</h2>
+    <div id="UTubDeckContent" class="content"></div>
   </div>
   <div class="deck" id="MemberDeck">
-    <div id="MemberDeckHeaderAndCaret">
+    <button type="button" id="MemberDeckHeaderAndCaret" aria-expanded="true" aria-controls="MemberDeckContent">
       <span class="title-caret"></span>
-    </div>
+      <span id="MemberDeckHeader">Members</span>
+    </button>
+    <h2 id="MemberDeckHeaderA11y" class="visually-hidden">Members</h2>
+    <div id="MemberDeckContent" class="content"></div>
   </div>
   <div class="deck" id="TagDeck">
-    <div id="TagDeckHeaderAndCaret">
+    <button type="button" id="TagDeckHeaderAndCaret" aria-expanded="true" aria-controls="TagDeckContent">
       <span class="title-caret"></span>
-    </div>
+      <span id="TagDeckHeader">Tags</span>
+    </button>
+    <h2 id="TagDeckHeaderA11y" class="visually-hidden">Tags</h2>
+    <div id="TagDeckContent" class="content"></div>
   </div>
 `;
 
