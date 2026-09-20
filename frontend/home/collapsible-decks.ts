@@ -12,9 +12,11 @@ import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
 import { maybeShowNextTip } from "./onboarding/nudges.js";
 import {
+  getDeckLayout,
   PERSISTABLE_DECK,
   setDeckMinimizedPreference,
 } from "./deck-layout-storage.js";
+import type { DeckLayout } from "./deck-layout-storage.js";
 import {
   DECK_COLLAPSE_DECK,
   DECK_EXPAND_DECK,
@@ -565,7 +567,21 @@ function setLastCollapsed(collapsingDeck: string): void {
   }
 }
 
-function setDeckMinimized(deckSelector: string, minimized: boolean): void {
+/**
+ * Collapse or expand a deck programmatically (no user click involved), so it
+ * deliberately emits no metric and writes no preference — the callers are the
+ * app-forced no-UTub minimize and the persisted-layout restore.
+ *
+ * @param deckSelector - the `.deck#<X>` selector of the deck to toggle.
+ * @param minimized - `true` to collapse the deck, `false` to expand it.
+ */
+function setDeckMinimized({
+  deckSelector,
+  minimized,
+}: {
+  deckSelector: string;
+  minimized: boolean;
+}): void {
   const deck = $(deckSelector);
   // Toggle WITHOUT animation: an animating expand briefly slides member/tag rows
   // over the header buttons, intercepting clicks (and it is jarring on every UTub
@@ -579,6 +595,27 @@ function setDeckMinimized(deckSelector: string, minimized: boolean): void {
   const deckElement = deck.get(0);
   if (deckElement) void deckElement.offsetHeight;
   deck.removeClass("deck-snap");
+  if (minimized) {
+    // Mirror the click-collapse path (:394 / :461), which strips this class so
+    // a collapsed header band carries no expanded-state padding. Nothing
+    // stripped it on the programmatic path, so a deck collapsed here (the
+    // no-UTub minimize, or a restored-collapsed layout) ended up in a different
+    // DOM state than the identical deck collapsed by a caret click.
+    //
+    // DOM-state bookkeeping, not a visual change: decks.css:207-211 sets
+    // `padding-block: 0` on `#MemberDeck/#TagDeck .titleElement:first-child`,
+    // an id selector that outranks this single class, so the pad it names is
+    // already suppressed on both decks this function is ever called with. Kept
+    // in sync anyway so the two collapse paths cannot diverge if that override
+    // is ever scoped or removed.
+    //
+    // No symmetric re-add on expand, deliberately: the class belongs to the
+    // NO-UTub state. init.ts:37 adds it from setUIWhenNoUTubSelected(), and the
+    // only re-adds (resetAllDecksIfCollapsed, the caret expand branches) are all
+    // guarded on `!isUTubSelected()`. Re-adding it here would put it back in the
+    // UTub-selected state, where nothing puts it today.
+    $(`${deckSelector} > .sidePanelTitle`).removeClass("pad-b-0-25rem");
+  }
   setDeckHeaderExpanded({
     headerSelector: DECK_HEADER_SELECTOR_BY_DECK[deckSelector],
     expanded: !minimized,
@@ -590,8 +627,11 @@ function setDeckMinimized(deckSelector: string, minimized: boolean): void {
 // collapsible on mobile (single-deck nav).
 export function minimizeMemberAndTagDecksWhenNoUTub(): void {
   if (isMobile()) return;
-  setDeckMinimized(MEMBER_DECK_CSS_SELECTOR, true);
-  setDeckMinimized(UTUB_TAG_DECK_CSS_SELECTOR, true);
+  setDeckMinimized({ deckSelector: MEMBER_DECK_CSS_SELECTOR, minimized: true });
+  setDeckMinimized({
+    deckSelector: UTUB_TAG_DECK_CSS_SELECTOR,
+    minimized: true,
+  });
   // Lock them: the header reads as non-interactable (hidden caret, dimmed title,
   // no hover/cursor) so it's clear they can't be expanded with no UTub selected.
   $(MEMBER_DECK_CSS_SELECTOR).addClass("deck-locked");
@@ -607,8 +647,52 @@ export function minimizeMemberAndTagDecksWhenNoUTub(): void {
   });
 }
 
-// Restore the Member + Tag decks when a UTub is selected.
+/**
+ * Give the 2-collapsed LRU an anchor after a restore.
+ *
+ * Without this, a restored-collapsed deck leaves every deck at the Jinja
+ * default `data-last-collapsed="false"`, so the next collapse that trips the
+ * cap hits ensureOnlyTwoDecksCollapsedAtOnce()'s marker-free UTubs fallback
+ * instead of evicting the deck the user actually left shut.
+ *
+ * Nothing is seeded when neither deck was restored collapsed: reaching the cap
+ * from there takes two further user collapses, and each one writes the marker
+ * itself, so a stale marker can never be the value the cap reads.
+ *
+ * @param membersMinimized - whether the Member deck was restored collapsed.
+ * @param tagsMinimized - whether the Tag deck was restored collapsed.
+ */
+function seedLastCollapsedFromRestoredLayout({
+  membersMinimized,
+  tagsMinimized,
+}: DeckLayout): void {
+  if (!membersMinimized && !tagsMinimized) return;
+  // Whichever single deck came back collapsed is the anchor; when BOTH did, the
+  // Tag deck wins because it is the later-restored of the two, so it stands in
+  // as the most-recently-collapsed and the next user collapse evicts it.
+  setLastCollapsed(
+    tagsMinimized ? UTUB_TAG_DECK_CSS_SELECTOR : MEMBER_DECK_CSS_SELECTOR,
+  );
+}
+
+/**
+ * Apply the user's saved Member/Tag layout when a UTub is selected, instead of
+ * force-expanding both decks and erasing the choice on every UTub switch.
+ *
+ * Deliberately emits NO metric (Design Decision 6): UI_DECK_COLLAPSE /
+ * UI_DECK_EXPAND mean "a user clicked a caret", and emitting here would inflate
+ * them on every UTub switch and could swallow a genuine click via the metrics
+ * dedupe map. It also runs none of the deck-reset side effects
+ * (closeMemberNameFilter / closeTagNameFilter / createMemberHideInput /
+ * createUTubTagHideInput): setMemberDeckOnUTubSelected and
+ * setTagDeckOnUTubSelected are subscribed AFTER this and already do exactly
+ * that — a duplicate createMemberHideInput would clear the co-member candidate
+ * cache.
+ */
 function restoreMemberAndTagDecksForUTub(): void {
+  // Unconditional, and ahead of the mobile early-return: the lock is what makes
+  // these decks inert with no UTub selected, so a selection must always clear
+  // it (test_member_and_tag_decks_unlocked_when_utub_selected asserts this).
   $(MEMBER_DECK_CSS_SELECTOR).removeClass("deck-locked");
   $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("deck-locked");
   setDeckHeaderLocked({
@@ -619,8 +703,42 @@ function restoreMemberAndTagDecksForUTub(): void {
     headerSelector: UTUB_TAG_DECK_HEADER_SELECTOR,
     locked: false,
   });
-  setDeckMinimized(MEMBER_DECK_CSS_SELECTOR, false);
-  setDeckMinimized(UTUB_TAG_DECK_CSS_SELECTOR, false);
+
+  // Below the tablet breakpoint the decks are not collapsible at all (single-
+  // deck nav, and the Tag deck is relocated into the bottom sheet), so there is
+  // no saved layout to apply — and applying one would strand a sheet the user
+  // cannot reopen. mobile.ts re-applies it on the crossing back to desktop.
+  if (isMobile()) return;
+
+  const layout = getDeckLayout();
+  setDeckMinimized({
+    deckSelector: MEMBER_DECK_CSS_SELECTOR,
+    minimized: layout.membersMinimized,
+  });
+  setDeckMinimized({
+    deckSelector: UTUB_TAG_DECK_CSS_SELECTOR,
+    minimized: layout.tagsMinimized,
+  });
+
+  seedLastCollapsedFromRestoredLayout(layout);
+
+  // The saved layout composes with a deck this path never touches: a user who
+  // left the UTubs deck collapsed and both persisted decks collapsed would land
+  // on three header-only decks. Expand the UTubs deck — the one deck that is
+  // never persisted, so re-opening it discards no saved intent.
+  if (getNumDecksAlreadyCollapsed() >= 3) {
+    setDeckMinimized({
+      deckSelector: UTUB_DECK_CSS_SELECTOR,
+      minimized: false,
+    });
+    log(
+      "collapsible decks: restored layout would collapse all three decks, forcing the UTubs deck open",
+      {
+        membersMinimized: layout.membersMinimized,
+        tagsMinimized: layout.tagsMinimized,
+      },
+    );
+  }
 }
 
 on(AppEvents.UTUB_SELECTED, restoreMemberAndTagDecksForUTub);

@@ -1,4 +1,5 @@
 import { UI_EVENTS } from "../../types/metrics-events.js";
+import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { initCollapsibleDecks } from "../collapsible-decks.js";
 import {
   DECK_COLLAPSE_DECK,
@@ -200,6 +201,68 @@ describe("collapsible-decks metrics emitters", () => {
 
       $("#TagDeckHeaderAndCaret").trigger("click");
 
+      expect(emit).not.toHaveBeenCalled();
+    });
+  });
+
+  // UI_DECK_COLLAPSE / UI_DECK_EXPAND mean "a user clicked a caret". Applying
+  // the saved layout on a UTub selection is not a click, so it must stay silent
+  // (Design Decision 6): emitting here would inflate both dimensions on every
+  // UTub switch, and the metrics client's dedupe map could then swallow a
+  // genuine click that followed.
+  describe("persisted layout restore", () => {
+    // Map-backed localStorage stub, same shape as `installStorageStub()` in
+    // `collapsible-decks.test.ts` / `deck-layout-storage.test.ts`: happy-dom has
+    // no ambient localStorage, so without it `getDeckLayout()` hits its own
+    // try/catch, returns the default, and the restore below would never collapse
+    // anything — making "emits no metric" vacuous.
+    beforeEach(() => {
+      const data = new Map<string, string>();
+      vi.stubGlobal("localStorage", {
+        getItem: (key: string): string | null => data.get(key) ?? null,
+        setItem: (key: string, value: string): void => {
+          data.set(key, String(value));
+        },
+        removeItem: (key: string): void => {
+          data.delete(key);
+        },
+        clear: (): void => {
+          data.clear();
+        },
+        key: (index: number): string | null =>
+          Array.from(data.keys())[index] ?? null,
+        get length(): number {
+          return data.size;
+        },
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("emits nothing when a UTub selection applies a saved collapsed layout", async () => {
+      const { emit } = await import("../../lib/metrics-client.js");
+      initCollapsibleDecks();
+      window.localStorage.setItem(
+        "u4i:deckLayout",
+        JSON.stringify({ membersMinimized: true, tagsMinimized: true }),
+      );
+
+      emitAppEvent(AppEvents.UTUB_SELECTED, {
+        utubID: 1,
+        utubName: "MyUTub",
+        urls: [],
+        tags: [],
+        members: [],
+        utubOwnerID: 1,
+        isCurrentUserOwner: true,
+        currentUserID: 1,
+      });
+
+      // The restore really ran — otherwise "no metric" would be vacuous.
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
       expect(emit).not.toHaveBeenCalled();
     });
   });

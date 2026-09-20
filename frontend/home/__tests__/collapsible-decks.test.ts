@@ -55,6 +55,32 @@ function readPersistedLayout(): unknown {
   return raw === null ? null : JSON.parse(raw);
 }
 
+// Seed a saved layout the way a previous session's caret clicks would have,
+// writing the raw key rather than calling the module so the restore path is
+// exercised against real stored bytes.
+function seedPersistedLayout(layout: {
+  membersMinimized: boolean;
+  tagsMinimized: boolean;
+}): void {
+  window.localStorage.setItem(DECK_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+}
+
+// restoreMemberAndTagDecksForUTub() is private and subscribed at module-eval
+// scope, so it is reached the way production does: a real UTUB_SELECTED on the
+// real event bus.
+function selectUTub(): void {
+  emit(AppEvents.UTUB_SELECTED, {
+    utubID: 1,
+    utubName: "MyUTub",
+    urls: [],
+    tags: [],
+    members: [],
+    utubOwnerID: 1,
+    isCurrentUserOwner: true,
+    currentUserID: 1,
+  });
+}
+
 // data-last-collapsed="false" mirrors the Jinja default every deck is rendered
 // with (UTubDeck.html:1, MemberDeck.html:1, TagsDeck.html:1); the Member/Tag
 // `.sidePanelTitle.pad-b-0-25rem` wrappers mirror MemberDeckHeaders.html:1 and
@@ -511,6 +537,248 @@ describe("Collapsible Decks", () => {
         membersMinimized: false,
         tagsMinimized: true,
       });
+    });
+  });
+
+  // Selecting a UTub used to force-expand the Member + Tag decks, erasing the
+  // user's chosen layout on every switch. It now applies the saved layout
+  // instead — unlocking the decks either way.
+  describe("persisted layout restore on UTub selection", () => {
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    });
+
+    // The mobile case below flips isMobile(); reset it here rather than at the
+    // end of that test so a failing assertion cannot leak the viewport into
+    // every test that follows.
+    afterEach(async () => {
+      const { isMobile } = await import("../mobile.js");
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    });
+
+    it("restores only the deck the saved layout marks minimized", () => {
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: false });
+
+      selectUTub();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect(
+        $("#MemberDeckHeaderAndCaret .title-caret").hasClass("closed"),
+      ).toBe(true);
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe(
+        "false",
+      );
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect($("#TagDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+    });
+
+    it("restores the Tag deck collapsed on its own", () => {
+      seedPersistedLayout({ membersMinimized: false, tagsMinimized: true });
+
+      selectUTub();
+
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      // Tags-only takes the same seeding branch as both-collapsed, so assert it
+      // here rather than leaving that branch proven only by the "both" case.
+      expect($(".deck#TagDeck").attr("data-last-collapsed")).toBe("true");
+      expect($(".deck#MemberDeck").attr("data-last-collapsed")).toBe("false");
+    });
+
+    // A first-time user must get the original both-expanded layout. The decks
+    // are locked collapsed FIRST (the real no-UTub state every cold load starts
+    // in) so this cannot pass vacuously against a fixture that was never
+    // collapsed — deleting the restore subscriber has to fail it.
+    it("expands both decks when nothing was ever saved", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      expect(readPersistedLayout()).toBeNull();
+
+      selectUTub();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect($("#MemberDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      expect($("#TagDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      // Neither deck came back collapsed, so there is nothing to anchor the LRU
+      // to and every marker stays at the Jinja default.
+      for (const deckSelector of [
+        ".deck#UTubDeck",
+        ".deck#MemberDeck",
+        ".deck#TagDeck",
+      ]) {
+        expect($(deckSelector).attr("data-last-collapsed")).toBe("false");
+      }
+    });
+
+    // getDeckLayout() falls back to both-expanded on a corrupt value too, so a
+    // poisoned key can never leave a user staring at two shut decks.
+    it("expands both decks when the stored layout is malformed", () => {
+      window.localStorage.setItem(DECK_LAYOUT_STORAGE_KEY, "{not-valid-json");
+
+      selectUTub();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+    });
+
+    // The unlock is unconditional and runs ahead of every early return —
+    // test_member_and_tag_decks_unlocked_when_utub_selected asserts it, and a
+    // restored-collapsed deck that stayed locked could never be reopened.
+    it("clears deck-locked and aria-disabled even when both decks restore collapsed", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      expect($(".deck#MemberDeck").hasClass("deck-locked")).toBe(true);
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: true });
+
+      selectUTub();
+
+      for (const deckSelector of [".deck#MemberDeck", ".deck#TagDeck"]) {
+        expect($(deckSelector).hasClass("collapsed")).toBe(true);
+        expect($(deckSelector).hasClass("deck-locked")).toBe(false);
+      }
+      for (const headerSelector of [
+        "#MemberDeckHeaderAndCaret",
+        "#TagDeckHeaderAndCaret",
+      ]) {
+        expect($(headerSelector).attr("aria-disabled")).toBeUndefined();
+        expect($(headerSelector).attr("tabindex")).toBeUndefined();
+      }
+    });
+
+    // Both persisted decks collapsed composes with a UTubs deck the user left
+    // collapsed into three header-only decks. The UTubs deck is the one that is
+    // never persisted, so forcing it open discards no saved intent.
+    it("force-expands the UTubs deck when the restored layout would collapse all three", () => {
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(true);
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: true });
+
+      selectUTub();
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(false);
+      expect($("#UTubDeckHeaderAndCaret .title-caret").hasClass("closed")).toBe(
+        false,
+      );
+      expect($("#UTubDeckHeaderAndCaret").attr("aria-expanded")).toBe("true");
+      // The user's own choice for the two persisted decks is left intact.
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+    });
+
+    // Without a seeded marker every deck stays at the Jinja default "false",
+    // so the next cap trip would hit the marker-free UTubs fallback instead of
+    // evicting the deck the user actually left shut.
+    it("seeds data-last-collapsed on the single deck restored collapsed", () => {
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: false });
+
+      selectUTub();
+
+      expect($(".deck#MemberDeck").attr("data-last-collapsed")).toBe("true");
+      expect($(".deck#TagDeck").attr("data-last-collapsed")).toBe("false");
+      expect($(".deck#UTubDeck").attr("data-last-collapsed")).toBe("false");
+    });
+
+    // Both collapsed: the Tag deck is the later-restored of the two, so it is
+    // the one the next collapse evicts.
+    it("seeds the Tag deck as last-collapsed when both restore collapsed, and the cap then evicts it", () => {
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: true });
+
+      selectUTub();
+
+      expect($(".deck#TagDeck").attr("data-last-collapsed")).toBe("true");
+      expect($(".deck#MemberDeck").attr("data-last-collapsed")).toBe("false");
+
+      // Collapsing the UTubs deck now trips the cap, which evicts the marked
+      // deck rather than falling back to expanding the UTubs deck itself.
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+    });
+
+    // The bottom pad belongs to an expanded header band; the click-collapse
+    // path already strips it, and the programmatic restore now matches.
+    it("strips pad-b-0-25rem from a deck it restores collapsed and leaves it on an expanded one", () => {
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: false });
+
+      selectUTub();
+
+      expect($("#MemberDeck > .sidePanelTitle").hasClass("pad-b-0-25rem")).toBe(
+        false,
+      );
+      expect($("#TagDeck > .sidePanelTitle").hasClass("pad-b-0-25rem")).toBe(
+        true,
+      );
+    });
+
+    // The strip has no symmetric re-add, deliberately: the class belongs to the
+    // no-UTub state (init.ts adds it from setUIWhenNoUTubSelected(), and every
+    // re-add is guarded on !isUTubSelected()). Pinned so a future "fix" that
+    // re-adds it on expand has to change this assertion consciously.
+    it("does not re-add pad-b-0-25rem when it restores a previously-minimized deck expanded", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      expect($("#MemberDeck > .sidePanelTitle").hasClass("pad-b-0-25rem")).toBe(
+        false,
+      );
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      selectUTub();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect($("#MemberDeck > .sidePanelTitle").hasClass("pad-b-0-25rem")).toBe(
+        false,
+      );
+    });
+
+    // Below the breakpoint the decks are not collapsible at all (the Tag deck
+    // lives in the bottom sheet), so a saved collapse must not be applied —
+    // but the unlock still has to run.
+    it("unlocks the decks but applies no layout on mobile", async () => {
+      const { isMobile } = await import("../mobile.js");
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      minimizeMemberAndTagDecksWhenNoUTub();
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: true });
+      // The decks come back expanded on the crossing to mobile.
+      (isMobile as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      resetAllDecksIfCollapsed();
+
+      selectUTub();
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
+      expect($(".deck#MemberDeck").hasClass("deck-locked")).toBe(false);
+      expect($(".deck#TagDeck").hasClass("deck-locked")).toBe(false);
+    });
+
+    // Reading the layout must never write one back: restore is not a user
+    // choice, so it cannot overwrite the preference it just read. Asserted on
+    // setItem rather than on the stored value, so a write that happens to
+    // reproduce the seeded value is still caught.
+    it("persists nothing of its own", () => {
+      seedPersistedLayout({ membersMinimized: true, tagsMinimized: false });
+      const setItem = vi.spyOn(window.localStorage, "setItem");
+
+      selectUTub();
+
+      expect(setItem).not.toHaveBeenCalled();
+      expect(readPersistedLayout()).toEqual({
+        membersMinimized: true,
+        tagsMinimized: false,
+      });
+      setItem.mockRestore();
     });
   });
 
