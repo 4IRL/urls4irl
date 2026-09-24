@@ -1,9 +1,9 @@
 ---
-name: login-with-playright
+name: login-with-playwright
 description: When needing to login to URLS4IRL, or go to the homepage, then we need to do these tasks.
 ---
 
-The website is available for development at https://127.0.0.1:8659/.
+The website is available for development at http://127.0.0.1:8659/.
 
 If needing to login, the username may be passed in as **$0**.
 

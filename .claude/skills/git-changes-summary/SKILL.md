@@ -50,7 +50,7 @@ This skill analyzes ALL changes on the current branch (vs `main`) plus any uncom
    - Tests (test files)
    - Build/Config (docker, package.json, requirements.txt, etc.)
 
-6. **Generate markdown report** and save to `/Users/ggpropersi/code/urls4irl/tmp/git-changes-summary-{timestamp}.md`
+6. **Generate markdown report** and save to `./tmp/git-changes-summary-{timestamp}.md`
 
 ## Report Format
 
@@ -136,5 +136,5 @@ All relevant test suites were run locally and passed:
 - Always diff against `main` (use `git diff main...HEAD`) to capture the full branch scope
 - Include both committed and uncommitted changes in the report
 - Focus on WHAT changed and WHY it matters, not line-by-line details
-- Save the report to `/Users/ggpropersi/code/urls4irl/tmp/` with timestamp
+- Save the report to `./tmp/` (repo-relative) with timestamp
 - After generating the report, inform the user of the file location

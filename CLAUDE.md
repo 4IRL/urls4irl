@@ -23,7 +23,7 @@ Reference plan may have files in the @plans directory - please reference these i
 - **Token generator:** `~/code/.claude/scripts/generate-gh-token.sh` (tracked in the stronghold — the shared consolidated `gpropersi-claude` App; one generator serves every repo, auto-resolves the installation from the repo's owner. Only the private key `~/.claude/u4i-app.pem` lives outside git)
 - **Container runtime:** `docker compose --project-directory . -f docker/compose.local.yaml`
 - **App URL (Playwright MCP):** `http://127.0.0.1:8659/`
-- **Test login:** username `u4i_test1` (default) / password `<username>@urls4irl.app` (seeded local test creds; see `login-with-playright` skill)
+- **Test login:** username `u4i_test1` (default) / password `<username>@urls4irl.app` (seeded local test creds; see `login-with-playwright` skill)
 - **Commands:**
   | Purpose | Command |
   |---|---|
@@ -228,7 +228,7 @@ After editing JavaScript files, always run the Vite build (`make vite-build`) to
 **At the end of any UI-affecting change — whether done manually or via `/run-plan` — capture and provide a Playwright screenshot of the actual built feature before reporting the work complete.** A green test suite proves behavior; a screenshot proves the rendered result looks right (and catches things tests miss, e.g. CSS that compiles and passes assertions but renders invisibly).
 
 - **Source matters:** the image must be of the **implemented** feature captured via Playwright MCP against the running app (`http://127.0.0.1:8659/`), NOT the upfront design mock. Reusing a pre-implementation mock does not satisfy this rule.
-- Use the `login-with-playright` skill to reach the home page; for mobile features, set the viewport to a mobile width (e.g. 420px) before capturing. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
+- Use the `login-with-playwright` skill to reach the home page; for mobile features, set the viewport to a mobile width (e.g. 420px) before capturing. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
 - Surface the image to the user with `SendUserFile` (not just a saved path). Save screenshots under `plans/<topic>/screenshots/` (gitignored, like the rest of `plans/`).
 - If the app cannot be brought up to capture the screenshot, say so explicitly rather than silently skipping this step.
 - **Design mocks and screenshots must NEVER be checked into source control.** Keep them under gitignored paths only (`plans/**`). Before committing, confirm no image artifact landed in a tracked location (e.g. project root, `backend/static/`); if one did, move it under `plans/<topic>/` rather than committing it.
@@ -305,7 +305,7 @@ make up d=1    # never omit d=1 — see the CRITICAL note above
 # Set ENABLE_SSL=true and VITE_URL=https://localhost:5173 in docker/compose.local.yaml
 ```
 
-#### Playright
+#### Playwright
 
 Use the following URL to access the website with Playwright MCP: `http://127.0.0.1:8659/`
 

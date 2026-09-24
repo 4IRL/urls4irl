@@ -32,8 +32,10 @@ make test-ui-parallel-built > "$UI_OUTPUT" 2>&1
 **Fallback (sequential):** Only if the parallel run produces unexplained errors unrelated to test logic. Run each marker in order, appending output:
 
 ```bash
-docker exec u4i-local-web /bin/bash -c "source /code/venv/bin/activate && pytest -m 'MARKER'" >> "$UI_OUTPUT" 2>&1
+make test-marker-parallel m=MARKER >> "$UI_OUTPUT" 2>&1
 ```
+
+This execs into the built stack that `test-ui-parallel-built` already started, so markers still run against built assets without a rebuild or `prune`.
 
 Wait for each to complete before starting the next; continue regardless of pass/fail.
 
@@ -48,7 +50,7 @@ Runs all non-UI markers (`unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `
 **Fallback (sequential):** Only if parallel run produces unexplained errors unrelated to test logic. Run each marker in order, appending output:
 
 ```bash
-docker compose --project-directory . -f docker/compose.local.yaml exec web bash -c "source /code/venv/bin/activate && python -m pytest -m 'MARKER'" >> "$INT_OUTPUT" 2>&1
+make test-marker-parallel m=MARKER >> "$INT_OUTPUT" 2>&1
 ```
 
 Wait for each to complete before starting the next; continue regardless of pass/fail.
