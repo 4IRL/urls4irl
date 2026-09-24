@@ -150,9 +150,11 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 #### Test Infrastructure Quick Reference
 
 - **Locators**: `tests/functional/locators.py` — `HomePageLocators`, `SplashPageLocators`, `GenericPageLocator`, `ModalLocators`
-- **Shared Selenium helpers**: `tests/functional/selenium_utils.py` (40+ helpers: `wait_then_click_element`, `wait_for_element_presence`, `clear_then_send_keys`)
+- **Shared Playwright helpers**: `tests/functional/playwright_utils.py` (68 helpers: `wait_then_click_element`, `wait_for_element_presence`, `clear_then_send_keys`)
+- **Shared Playwright assertions**: `tests/functional/playwright_assert_utils.py` (23 helpers: `assert_visible_css_selector`, `assert_no_page_errors`)
+- **Shared Playwright login helpers**: `tests/functional/playwright_login_utils.py` (8 helpers: `login_user_and_select_utub_by_utubid`)
 - **Shared DB helpers**: `tests/functional/db_utils.py` (20+ helpers: `get_utub_this_user_created`, `create_test_searchable_utubs`, `add_mock_urls`)
-- **Feature-specific helpers**: Each `tests/functional/<feature>_ui/` has its own `selenium_utils.py` with domain helpers (e.g., `urls_ui/selenium_utils.py` has `create_url()`, `open_url_search_box()`)
+- **Feature-specific helpers**: Each `tests/functional/<feature>_ui/` has its own `playwright_utils.py` (plus `playwright_assert_utils.py` / `playwright_login_utils.py` / `db_utils.py` where applicable) with domain helpers, e.g. `urls_ui/playwright_utils.py` has `create_url()`, `open_url_search_box()`
 - **Test constants**: `backend/utils/strings/ui_testing_strs.py` (`UI_TEST_STRINGS` class), `tests/models_for_test.py` (typed test data objects)
 - **Frontend test mocks**: `frontend/__tests__/helpers/mock-jquery.ts` — `createMockJqXHRChainable()`, `createMockModal()`
 - **Full details**: See ARCHITECTURE.md Testing section
@@ -162,9 +164,9 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 1. **Use HTTP for all development tests** - Local development uses HTTP by default (`http://127.0.0.1:8659`), not HTTPS
 2. **Run all tests in Docker, never on host** - Always use the Docker containers for running tests
 3. **Debug UI test failures with Playwright before changing code** - When a UI test fails and the root cause isn't clear from code inspection, use Playwright MCP to manually reproduce the issue and observe actual behavior BEFORE making code changes
-4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`InvalidSessionIdException`, `SessionNotCreatedException`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "Selenium session exhaustion" as a dismissible category — if sessions are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
-5. **Check Selenium container health when sessions repeatedly fail** - If `SessionNotCreatedException` or `InvalidSessionIdException` persist across multiple test runs, check the Selenium container health (`docker compose ps selenium`) and restart it if needed (`docker compose restart selenium`), but still record and investigate the root cause.
-6. **`TimeoutException` in Selenium tests always requires investigation** - never pre-existing or dismissible as "flaky" (see central Test Failures policy). Indicates either a UI logic bug or a genuine timing/stability issue.
+4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`playwright.sync_api.Error` (e.g. a `chromium.connect()` failure against the shared browser-server), `playwright.sync_api.TimeoutError`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "browser connection exhaustion" as a dismissible category — if browser connections are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
+5. **Check Playwright browser-server health when connections repeatedly fail** - If `chromium.connect()` failures against the shared browser-server persist across test runs, check it with `docker compose --project-directory . -f docker/compose.local.yaml ps playwright` and, only when no UI test run is in progress, restart it with `make restart c=playwright` (the one container serves every UI worker gw0-gw7, so a restart kills all in-flight workers). Still record and investigate the root cause. A `RuntimeError: PLAYWRIGHT_WS_URL env var is not set ...` (raised by `build_page_browser` in `tests/functional/conftest.py`) means the `web` service env is misconfigured (see `docker/compose.local.yaml`), not an unhealthy browser-server, so a restart won't fix it.
+6. **`playwright.sync_api.TimeoutError` in UI tests always requires investigation** - never pre-existing or dismissible as "flaky" (see central Test Failures policy). Indicates either a UI logic bug or a genuine timing/stability issue.
 7. **Prefer parallel make targets** - Use `make test-marker-parallel m=<marker>` (integration) or `make test-ui-parallel` (UI, default n=8) by default. Sequential targets are fallbacks only. Never run two separate make test commands simultaneously — "parallel" means `-n` workers within a single invocation, not two concurrent terminal commands.
    - **CRITICAL: Never run integration and UI test suites at the same time** — even as background processes. They share a single test DB and Redis instance; concurrent `db.drop_all()` calls corrupt the DB. Always finish one suite completely before starting the other.
    - **UI parallelism cap: n=8 max** — Each UI worker needs a dedicated Flask server, Chrome session, and Postgres DB. Running n=12 saturates host CPU/RAM during concurrent startup, causing 120+ second fixture setup times that exceed Selenium wait timeouts and produce spurious login assertion failures. Individual markers pass at n=4; the full suite is stable at n=8.
@@ -260,8 +262,8 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make restart c=<service>` | Restart a specific compose service |
 | `make test-integration-parallel [n=4]` | All non-UI integration tests in parallel (**preferred**) |
 | `make test-integration` | All non-UI integration tests (sequential fallback) |
-| `make test-ui-parallel [n=8]` | All UI/Selenium tests in parallel (**preferred**, max n=8) |
-| `make test-functional` | All UI/Selenium functional tests (sequential fallback) |
+| `make test-ui-parallel [n=8]` | All UI/Playwright tests in parallel (**preferred**, max n=8) |
+| `make test-functional` | All UI/Playwright functional tests (sequential fallback) |
 | `make test-js` | All JS unit tests (vitest) |
 | `make test-marker-parallel m=<marker> [n=4]` | Tests for a specific marker in parallel (**preferred**) |
 | `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
@@ -293,7 +295,7 @@ All `make`/`docker`/`docker compose` targets used by this repo are already liste
 ### Running the App (Docker - recommended)
 
 ```bash
-# Local development with Vite hot reload, Selenium, PostgreSQL, Redis
+# Local development with Vite hot reload, Playwright, PostgreSQL, Redis
 docker-compose --project-directory . -f docker/compose.local.yaml up --build --remove-orphans
 
 # OR, if docker-compose is not in use
@@ -352,9 +354,9 @@ Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`
 
 **Prefer parallel make targets** (`test-marker-parallel`, `test-integration-parallel`, `test-ui-parallel`) over sequential ones. "Parallel" means `-n` workers within a single invocation — never run two separate `make test-*` commands simultaneously, as they share a single test DB and Redis instance.
 
-**Always minimize wall-clock time**: use the highest safe `n` value (n=8 for UI per the cap above; n=8+ for integration). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., Selenium session idle-timeout reaps) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
+**Always minimize wall-clock time**: use the highest safe `n` value (n=8 for UI per the cap above; n=8+ for integration). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., shared Playwright browser-server connection idle-timeouts) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
 
-UI/functional tests require Selenium (`SELENIUM_URL` env var pointing to a Selenium grid).
+UI/functional tests require the shared Playwright browser-server: the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it).
 
 ### Linting & Formatting
 
