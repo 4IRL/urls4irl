@@ -1,6 +1,6 @@
 ---
 name: run-all-ui-tests
-description: Run ALL UI tests for URLS4IRL in parallel against the built assets. Use when asked to run all UI tests, run the full UI test suite, or verify all functional/Selenium tests pass. Records failures to /tmp/claude/ with timestamped files; cleans up on full success.
+description: Run ALL UI tests for URLS4IRL in parallel against the built assets. Use when asked to run all UI tests, run the full UI test suite, or verify all functional/Playwright tests pass. Records failures to /tmp/claude/ with timestamped files; cleans up on full success.
 ---
 
 # Run All UI Tests
@@ -24,15 +24,17 @@ Capture all output to the raw output file:
 make test-ui-parallel-built > "$OUTPUT_FILE" 2>&1
 ```
 
-`test-ui-parallel-built` calls `start-built` which stops any running stack and brings up the built stack before running tests. It runs all UI markers (`splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`) in parallel within a single pytest invocation. Default `-n 12` workers.
+`test-ui-parallel-built` calls `start-built` which stops any running stack and brings up the built stack before running tests. It runs the UI marker set hardcoded in the target's `-m` expression in the `Makefile`, in parallel within a single pytest invocation, using the target's default worker count. **Before running**, compare the `_ui` markers in `pytest.ini`'s `markers =` list against that expression; if any is missing from the `Makefile`, report the mismatch to the user first (it would be silently skipped).
 
-**Fallback (sequential):** Only use if the parallel run produces unexplained errors unrelated to test logic (e.g., Selenium session conflicts, container instability). Run each marker one at a time, appending to the output file:
+**Fallback (sequential):** Only use if the parallel run produces unexplained errors unrelated to test logic (e.g., repeated `chromium.connect()` failures against the shared Playwright browser-server, container instability). Run each marker one at a time, appending to the output file:
 
-Markers in order: `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`
+Markers: read the `markers =` list in `pytest.ini` at runtime and run every marker ending in `_ui`, in the order listed there. Do not rely on a remembered list; markers are added over time.
 
 ```bash
-docker exec u4i-local-web /bin/bash -c "source /code/venv/bin/activate && pytest -m 'MARKER'" >> "$OUTPUT_FILE" 2>&1
+make test-marker-parallel m=MARKER >> "$OUTPUT_FILE" 2>&1
 ```
+
+This execs into the built stack that `test-ui-parallel-built` already started, so markers still run against built assets without a rebuild or `prune`.
 
 - Wait for each suite to complete before starting the next
 - Continue to the next marker regardless of pass/fail

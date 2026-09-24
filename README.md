@@ -20,7 +20,7 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 | **Frontend** | Jinja2, Vite, ES6 modules, jQuery |
 | **Auth** | Flask-Login, Flask-WTF (CSRF), Mailjet (transactional email) |
 | **Infrastructure** | Docker, Docker Compose, Gunicorn, Nginx |
-| **Testing** | pytest, Selenium, Vitest |
+| **Testing** | pytest, Playwright, Vitest |
 | **Code Quality** | Black, Flake8, Prettier, ESLint, pre-commit |
 
 ## Getting Started
@@ -74,7 +74,6 @@ Two known rough edges once the hook is installed:
 | `POSTGRES_TEST_DB` | No | - | Test database name for pytest |
 | `REDIS_URI` | No | `memory://` | Redis connection URI |
 | `METRICS_REDIS_URI` | No | `memory://` | Redis URI for the dedicated metrics counter buffer (separate from `REDIS_URI`) |
-| `SELENIUM_URL` | No | - | Selenium Grid URL for UI tests |
 | `ENABLE_SSL` | No | `false` | Enable HTTPS in local dev (Flask + Vite) |
 | `VITE_URL` | No | `http://localhost:5173` | Vite dev server URL (use `https://` when `ENABLE_SSL=true`) |
 
@@ -91,11 +90,11 @@ A `Makefile` is provided for common development tasks:
 | `make build` | Rebuild images without starting |
 | `make restart c=<service>` | Restart a specific compose service (e.g. `make restart c=web`) |
 | `make test-integration` | Run all non-UI integration tests |
-| `make test-functional` | Run all UI/Selenium functional tests |
+| `make test-functional` | Run all UI/Playwright functional tests |
 | `make test-js` | Run all JS unit tests (vitest) |
 | `make test-marker m=<marker>` | Run tests for a specific pytest marker (e.g. `make test-marker m=utubs`) |
 | `make test-integration-parallel [n=4]` | Run all non-UI integration tests in parallel (preferred) |
-| `make test-ui-parallel [n=8]` | Run all UI/Selenium tests in parallel (preferred, max n=8) |
+| `make test-ui-parallel [n=8]` | Run all UI/Playwright tests in parallel (preferred, max n=8) |
 | `make test-marker-parallel m=<marker> [n=4]` | Run tests for a specific marker in parallel (preferred) |
 | `make vite-build` | Build Vite to verify no import/syntax errors |
 | `make help` | List all available make commands |
@@ -162,7 +161,7 @@ pytest -m splash         # auth integration tests
 pytest -k "test_name"    # specific test
 ```
 
-UI tests require Selenium (`SELENIUM_URL` env var). See [`pytest.ini`](pytest.ini) for the full list of test markers.
+UI tests require the shared Playwright browser-server: the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it). See [`pytest.ini`](pytest.ini) for the full list of test markers.
 
 ## Project Structure
 

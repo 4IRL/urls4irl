@@ -16,14 +16,14 @@ Reference plan may have files in the @plans directory - please reference these i
 
 - **Repo slug:** `4IRL/urls4irl`  (always pass `--repo 4IRL/urls4irl` to `gh`; `GPropersi/urls4irl` redirects but is not canonical)
 - **Default branch:** `main`
-- **Stack:** `flask-jinja-vanillajs-vite` (drives which opt-in plan-creator/plan-reviewer protocol reference files load — Python/Flask backend, SQLAlchemy, Jinja templates, vanilla-JS→Vite/ES6 frontend, Vitest + Selenium tests, pip/`requirements-*.txt` pinning)
+- **Stack:** `flask-jinja-vanillajs-vite` (drives which opt-in plan-creator/plan-reviewer protocol reference files load — Python/Flask backend, SQLAlchemy, Jinja templates, vanilla-JS→Vite/ES6 frontend, Vitest + Playwright tests, pip/`requirements-*.txt` pinning)
 - **Plans store (central):** `~/code/plans/urls4irl/{open,completed,research}/<topic>/` — plans now live in the central stronghold store, not this repo (bucket = this repo's slug basename `urls4irl`). Reviews/research/mocks are co-located per plan under its `<topic>/`; finished topics move `open/`→`completed/` as a unit. See `~/code/CLAUDE.md` "Central Plans Store". (Legacy in-repo `plans/` migrated 07-2026; the leftover `plans/tmp/` is gitignored scratch.)
 - **Bot identity:** `gpropersi-claude[bot]` `141576524+gpropersi-claude[bot]@users.noreply.github.com`  <!-- renamed from u4i-claude-code; same App, same bot user id -->
 - **Bot push script:** `~/code/.claude/scripts/gh-app-push.sh` (central, repo-agnostic; derives the repo from `origin`, pushes as the shared bot)
 - **Token generator:** `~/code/.claude/scripts/generate-gh-token.sh` (tracked in the stronghold — the shared consolidated `gpropersi-claude` App; one generator serves every repo, auto-resolves the installation from the repo's owner. Only the private key `~/.claude/u4i-app.pem` lives outside git)
 - **Container runtime:** `docker compose --project-directory . -f docker/compose.local.yaml`
 - **App URL (Playwright MCP):** `http://127.0.0.1:8659/`
-- **Test login:** username `u4i_test1` (default) / password `<username>@urls4irl.app` (seeded local test creds; see `login-with-playright` skill)
+- **Test login:** username `u4i_test1` (default) / password `<username>@urls4irl.app` (seeded local test creds; see `login-with-playwright` skill)
 - **Commands:**
   | Purpose | Command |
   |---|---|
@@ -150,9 +150,11 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 #### Test Infrastructure Quick Reference
 
 - **Locators**: `tests/functional/locators.py` — `HomePageLocators`, `SplashPageLocators`, `GenericPageLocator`, `ModalLocators`
-- **Shared Selenium helpers**: `tests/functional/selenium_utils.py` (40+ helpers: `wait_then_click_element`, `wait_for_element_presence`, `clear_then_send_keys`)
+- **Shared Playwright helpers**: `tests/functional/playwright_utils.py` (68 helpers: `wait_then_click_element`, `wait_for_element_presence`, `clear_then_send_keys`)
+- **Shared Playwright assertions**: `tests/functional/playwright_assert_utils.py` (23 helpers: `assert_visible_css_selector`, `assert_no_page_errors`)
+- **Shared Playwright login helpers**: `tests/functional/playwright_login_utils.py` (8 helpers: `login_user_and_select_utub_by_utubid`)
 - **Shared DB helpers**: `tests/functional/db_utils.py` (20+ helpers: `get_utub_this_user_created`, `create_test_searchable_utubs`, `add_mock_urls`)
-- **Feature-specific helpers**: Each `tests/functional/<feature>_ui/` has its own `selenium_utils.py` with domain helpers (e.g., `urls_ui/selenium_utils.py` has `create_url()`, `open_url_search_box()`)
+- **Feature-specific helpers**: Each `tests/functional/<feature>_ui/` has its own `playwright_utils.py` (plus `playwright_assert_utils.py` / `playwright_login_utils.py` / `db_utils.py` where applicable) with domain helpers, e.g. `urls_ui/playwright_utils.py` has `create_url()`, `open_url_search_box()`
 - **Test constants**: `backend/utils/strings/ui_testing_strs.py` (`UI_TEST_STRINGS` class), `tests/models_for_test.py` (typed test data objects)
 - **Frontend test mocks**: `frontend/__tests__/helpers/mock-jquery.ts` — `createMockJqXHRChainable()`, `createMockModal()`
 - **Full details**: See ARCHITECTURE.md Testing section
@@ -162,15 +164,15 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 1. **Use HTTP for all development tests** - Local development uses HTTP by default (`http://127.0.0.1:8659`), not HTTPS
 2. **Run all tests in Docker, never on host** - Always use the Docker containers for running tests
 3. **Debug UI test failures with Playwright before changing code** - When a UI test fails and the root cause isn't clear from code inspection, use Playwright MCP to manually reproduce the issue and observe actual behavior BEFORE making code changes
-4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`InvalidSessionIdException`, `SessionNotCreatedException`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "Selenium session exhaustion" as a dismissible category — if sessions are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
-5. **Check Selenium container health when sessions repeatedly fail** - If `SessionNotCreatedException` or `InvalidSessionIdException` persist across multiple test runs, check the Selenium container health (`docker compose ps selenium`) and restart it if needed (`docker compose restart selenium`), but still record and investigate the root cause.
-6. **`TimeoutException` in Selenium tests always requires investigation** - never pre-existing or dismissible as "flaky" (see central Test Failures policy). Indicates either a UI logic bug or a genuine timing/stability issue.
+4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`playwright.sync_api.Error` (e.g. a `chromium.connect()` failure against the shared browser-server), `playwright.sync_api.TimeoutError`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "browser connection exhaustion" as a dismissible category — if browser connections are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
+5. **Check Playwright browser-server health when connections repeatedly fail** - If `chromium.connect()` failures against the shared browser-server persist across test runs, check it with `docker compose --project-directory . -f docker/compose.local.yaml ps playwright` and, only when no UI test run is in progress, restart it with `make restart c=playwright` (the one container serves every UI worker gw0-gw7, so a restart kills all in-flight workers). Still record and investigate the root cause. A `RuntimeError: PLAYWRIGHT_WS_URL env var is not set ...` (raised by `build_page_browser` in `tests/functional/conftest.py`) means the `web` service env is misconfigured (see `docker/compose.local.yaml`), not an unhealthy browser-server, so a restart won't fix it.
+6. **`playwright.sync_api.TimeoutError` in UI tests always requires investigation** - never pre-existing or dismissible as "flaky" (see central Test Failures policy). Indicates either a UI logic bug or a genuine timing/stability issue.
 7. **Prefer parallel make targets** - Use `make test-marker-parallel m=<marker>` (integration) or `make test-ui-parallel` (UI, default n=8) by default. Sequential targets are fallbacks only. Never run two separate make test commands simultaneously — "parallel" means `-n` workers within a single invocation, not two concurrent terminal commands.
    - **CRITICAL: Never run integration and UI test suites at the same time** — even as background processes. They share a single test DB and Redis instance; concurrent `db.drop_all()` calls corrupt the DB. Always finish one suite completely before starting the other.
-   - **UI parallelism cap: n=8 max** — Each UI worker needs a dedicated Flask server, Chrome session, and Postgres DB. Running n=12 saturates host CPU/RAM during concurrent startup, causing 120+ second fixture setup times that exceed Selenium wait timeouts and produce spurious login assertion failures. Individual markers pass at n=4; the full suite is stable at n=8.
+   - **Parallelism cap: n=8 max (every suite, not just UI)** — the hard cause is a Redis database-count limit. Each worker's metrics-Redis DB is `_METRICS_REDIS_DB_BASE` (8, `tests/conftest.py`) + its worker number, so gw0-gw7 use indices 8-15 and gw8 computes 16. `docker/compose.local.yaml` gives `redis` `--databases 32` but gives `redis-metrics` no `--databases` flag, so it keeps Redis's default of 16. gw8 therefore raises `ValueError: Metrics Redis DB index 16 is out of range for worker 'gw8'. redis-metrics only has 16 databases (0-15).` The session-scoped `build_app` requests `worker_metrics_redis_uri`, so any Docker/CI run at n≥9, whatever the marker, fails once gw8 gets an app-backed test (e.g. `make test-marker-parallel m=unit n=9`). The `memory://` fallback skips the check. To go past n=8, raise `--databases` on `redis-metrics` in `docker/compose.local.yaml` and on the CI service in `.github/workflows/test.yml` (never in prod `docker/compose.yaml`), or lower the base. Soft, secondary cause: host CPU/RAM load during concurrent startup. Each UI worker has its own Flask server and Postgres DB, plus its own `chromium.connect()` browser on the **one shared** Playwright browser-server container. That load can slow setup, but it is not the deterministic failure.
 8. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
 
-Flaky-test hardening and the never-dismiss-without-investigation protocol are covered centrally (see `~/code/CLAUDE.md` → Test Failures: Investigate, Don't Dismiss); the parallelism cap (`n=8`) above is this repo's specific instantiation of "harden to the suite's normal parallelism."
+Flaky-test hardening and the never-dismiss-without-investigation protocol are covered centrally (see `~/code/CLAUDE.md` → Test Failures: Investigate, Don't Dismiss); the `n=8` cap above is a hard metrics-Redis limit, not a flake threshold. At or below it, flaky tests must be hardened to pass at the suite's normal parallelism.
 
 ### Code Style
 
@@ -219,14 +221,14 @@ All `make test-*` invocations — integration, UI, single-marker, parallel, full
 
 ## Build Verification
 
-After editing JavaScript files, always run the Vite build (`docker compose exec vite npx vite build`) to verify no import path errors, missing exports, or syntax issues before reporting success.
+After editing JavaScript files, always run the Vite build (`make vite-build`) to verify no import path errors, missing exports, or syntax issues before reporting success.
 
 ## UI Verification Screenshot
 
 **At the end of any UI-affecting change — whether done manually or via `/run-plan` — capture and provide a Playwright screenshot of the actual built feature before reporting the work complete.** A green test suite proves behavior; a screenshot proves the rendered result looks right (and catches things tests miss, e.g. CSS that compiles and passes assertions but renders invisibly).
 
 - **Source matters:** the image must be of the **implemented** feature captured via Playwright MCP against the running app (`http://127.0.0.1:8659/`), NOT the upfront design mock. Reusing a pre-implementation mock does not satisfy this rule.
-- Use the `login-with-playright` skill to reach the home page; for mobile features, set the viewport to a mobile width (e.g. 420px) before capturing. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
+- Use the `login-with-playwright` skill to reach the home page; for mobile features, set the viewport to a mobile width (e.g. 420px) before capturing. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
 - Surface the image to the user with `SendUserFile` (not just a saved path). Save screenshots under `plans/<topic>/screenshots/` (gitignored, like the rest of `plans/`).
 - If the app cannot be brought up to capture the screenshot, say so explicitly rather than silently skipping this step.
 - **Design mocks and screenshots must NEVER be checked into source control.** Keep them under gitignored paths only (`plans/**`). Before committing, confirm no image artifact landed in a tracked location (e.g. project root, `backend/static/`); if one did, move it under `plans/<topic>/` rather than committing it.
@@ -260,12 +262,14 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make restart c=<service>` | Restart a specific compose service |
 | `make test-integration-parallel [n=4]` | All non-UI integration tests in parallel (**preferred**) |
 | `make test-integration` | All non-UI integration tests (sequential fallback) |
-| `make test-ui-parallel [n=8]` | All UI/Selenium tests in parallel (**preferred**, max n=8) |
-| `make test-functional` | All UI/Selenium functional tests (sequential fallback) |
+| `make test-ui-parallel [n=8]` | All UI/Playwright tests in parallel (**preferred**, max n=8) |
+| `make test-functional` | All UI/Playwright functional tests (sequential fallback) |
 | `make test-js` | All JS unit tests (vitest) |
 | `make test-marker-parallel m=<marker> [n=4]` | Tests for a specific marker in parallel (**preferred**) |
 | `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
+| `make test-file f=<path> [args=...]` | Single test file/path |
 | `make vite-build` | Vite build verification |
+| `make addmock` | Seed dev DB with all mock data |
 | `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
 | `make help` | List all available make commands |
 
@@ -293,18 +297,15 @@ All `make`/`docker`/`docker compose` targets used by this repo are already liste
 ### Running the App (Docker - recommended)
 
 ```bash
-# Local development with Vite hot reload, Selenium, PostgreSQL, Redis
-docker-compose --project-directory . -f docker/compose.local.yaml up --build --remove-orphans
-
-# OR, if docker-compose is not in use
-docker compose --project-directory . -f docker/compose.local.yaml up --build --remove-orphans
+# Local development with Vite hot reload, Playwright, PostgreSQL, Redis
+make up d=1    # never omit d=1 — see the CRITICAL note above
 
 # Flask available at http://localhost:8659, Vite at http://localhost:5173
 # SSL is disabled by default. To enable HTTPS in local development:
 # Set ENABLE_SSL=true and VITE_URL=https://localhost:5173 in docker/compose.local.yaml
 ```
 
-#### Playright
+#### Playwright
 
 Use the following URL to access the website with Playwright MCP: `http://127.0.0.1:8659/`
 
@@ -320,21 +321,22 @@ flask run --host=0.0.0.0 --port=5000
 ### Frontend (Vite)
 
 ```bash
-docker exec u4i-local-vite npm run build  # production/dev build to backend/static/dist/
-docker compose exec vite npm test          # run JS unit tests (vitest) from repo root
+make vite-build  # build to backend/static/dist/ (= npm run build)
+make test-js     # run JS unit tests (vitest)
 ```
+
+These and the Testing targets below `exec` into the running local stack, so it must be up (`make up d=1`); on the built stack (`make up-built`) use the `-built` variants (`vite-build-built`, `test-js-built`, `test-file-parallel-built`).
 
 ### Testing
 
-**CRITICAL: When running tests in Docker containers, the virtual environment must be activated first:**
+Run tests in Docker via the `make` targets (they activate the container's venv for you):
 
 ```bash
-# Running tests in Docker (web container)
-docker compose --project-directory . -f docker/compose.local.yaml exec web bash -c "source /code/venv/bin/activate && python -m pytest [test-path]"
+make test-file f=<test-path>              # single file or path (pass extra pytest args via args=...)
 
 # Examples:
-docker compose exec web bash -c "source /code/venv/bin/activate && python -m pytest tests/functional/splash_ui/test_reset_password_ui.py -v"
-docker compose exec web bash -c "source /code/venv/bin/activate && python -m pytest -m unit"
+make test-file f=tests/functional/splash_ui/test_reset_password_ui.py
+make test-marker-parallel m=unit
 ```
 
 **Running tests outside Docker (if virtual environment is already activated):**
@@ -352,9 +354,9 @@ Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`
 
 **Prefer parallel make targets** (`test-marker-parallel`, `test-integration-parallel`, `test-ui-parallel`) over sequential ones. "Parallel" means `-n` workers within a single invocation — never run two separate `make test-*` commands simultaneously, as they share a single test DB and Redis instance.
 
-**Always minimize wall-clock time**: use the highest safe `n` value (n=8 for UI per the cap above; n=8+ for integration). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., Selenium session idle-timeout reaps) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
+**Always minimize wall-clock time**: use the highest safe `n` value (n=8 for UI and integration alike — n≥9 hits the metrics-Redis DB cap above). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., shared Playwright browser-server connection idle-timeouts) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
 
-UI/functional tests require Selenium (`SELENIUM_URL` env var pointing to a Selenium grid).
+UI/functional tests require the shared Playwright browser-server: the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it).
 
 ### Linting & Formatting
 
@@ -402,7 +404,7 @@ Known rough edges, so these aren't mistaken for code problems:
 ### Flask CLI Commands
 
 ```bash
-flask addmock all             # populate DB with test data
+flask addmock all             # populate DB with test data (Docker: `make addmock`)
 flask managedb clear          # clear test data
 flask managedb drop           # drop database tables
 flask shorturls add           # register short URL routes

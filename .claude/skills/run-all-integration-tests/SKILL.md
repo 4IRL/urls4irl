@@ -24,14 +24,14 @@ Capture all output to the raw output file:
 make test-integration-parallel > "$OUTPUT_FILE" 2>&1
 ```
 
-This runs all non-UI markers (`unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`) in parallel within a single pytest invocation. Default `-n 4` workers.
+This runs every marker not excluded by the target's hardcoded `not <marker>_ui …` expression in the `Makefile`, in parallel within a single pytest invocation, using the target's default worker count. **Before running**, compare the `_ui` markers in `pytest.ini`'s `markers =` list against that exclusion list; if any is missing from the `Makefile`, report the mismatch to the user first (that UI marker would otherwise run here, against the dev stack).
 
 **Fallback (sequential):** Only use if the parallel run produces unexplained errors unrelated to test logic (e.g., port conflicts, DB corruption). Run each marker one at a time, appending to the output file:
 
-Markers in order: `unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`
+Markers: read the `markers =` list in `pytest.ini` at runtime and run every marker that does not end in `_ui`, in the order listed there. Do not rely on a remembered list; markers are added over time.
 
 ```bash
-docker compose --project-directory . -f docker/compose.local.yaml exec web bash -c "source /code/venv/bin/activate && python -m pytest -m 'MARKER'" >> "$OUTPUT_FILE" 2>&1
+make test-marker-parallel m=MARKER >> "$OUTPUT_FILE" 2>&1
 ```
 
 - Wait for each suite to complete before starting the next
