@@ -50,7 +50,7 @@ tunnel-stop: ## Stop and remove the Cloudflare tunnel (leaves the rest of the st
 test-integration: ## Run all integration (non-UI) tests
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -v"
 
-test-integration-parallel: ## Run integration tests in parallel: make test-integration-parallel [n=4]
+test-integration-parallel: ## Run integration tests in parallel: make test-integration-parallel [n=4, max n=8]
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -n $(or $(n),4) --dist=loadscope -v"
 
 test-functional: prune ## Run all functional (UI/Playwright) tests
@@ -59,10 +59,10 @@ test-functional: prune ## Run all functional (UI/Playwright) tests
 test-functional-built: start-built ## Run all functional (UI/Playwright) tests against built assets
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
 
-test-ui-parallel: prune ## Run UI tests in parallel: make test-ui-parallel [n=8] (n=8 avoids host resource saturation)
+test-ui-parallel: prune ## Run UI tests in parallel: make test-ui-parallel [n=8] (max n=8: redis-metrics has 16 DBs, so gw8 errors on app-backed tests; see CLAUDE.md)
 	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),8) --dist=loadscope"
 
-test-ui-parallel-built: start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=8]
+test-ui-parallel-built: start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=8] (max n=8, see CLAUDE.md)
 	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),8) --dist=loadscope"
 
 test-js: ## Run all JS unit tests (vitest)
@@ -83,10 +83,10 @@ test-marker: ## Run tests for a specific marker: make test-marker m=<marker>
 test-marker-built: start-built ## Run tests for a specific marker against built assets: make test-marker-built m=<marker>
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -v"
 
-test-marker-parallel: ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=4]
+test-marker-parallel: ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=4, max n=8]
 	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),4) --dist=loadscope -v"
 
-test-marker-parallel-built: start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=4]
+test-marker-parallel-built: start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=4, max n=8]
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),4) --dist=loadscope -v"
 
 test-last-failed: ## Run tests for a specific marker: make test-marker m=<marker>
@@ -95,10 +95,10 @@ test-last-failed: ## Run tests for a specific marker: make test-marker m=<marker
 test-file: ## Run pytest against a specific file or path: make test-file f=<path> [args=<extra-pytest-args>]
 	$(EXEC_WEB) "$(PYTEST) $(f) -v $(args)"
 
-test-file-parallel: ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=4] [args=<extra-pytest-args>]
+test-file-parallel: ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=4, max n=8] [args=<extra-pytest-args>]
 	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),4) --dist=loadscope -v $(args)"
 
-test-file-parallel-built: start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=4] [args=<extra-pytest-args>]
+test-file-parallel-built: start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=4, max n=8] [args=<extra-pytest-args>]
 	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),4) --dist=loadscope -v $(args)"
 
 vite-build: ## Build Vite to verify no import/syntax errors
