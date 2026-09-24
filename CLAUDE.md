@@ -221,7 +221,7 @@ All `make test-*` invocations — integration, UI, single-marker, parallel, full
 
 ## Build Verification
 
-After editing JavaScript files, always run the Vite build (`docker compose exec vite npx vite build`) to verify no import path errors, missing exports, or syntax issues before reporting success.
+After editing JavaScript files, always run the Vite build (`make vite-build`) to verify no import path errors, missing exports, or syntax issues before reporting success.
 
 ## UI Verification Screenshot
 
@@ -267,7 +267,9 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make test-js` | All JS unit tests (vitest) |
 | `make test-marker-parallel m=<marker> [n=4]` | Tests for a specific marker in parallel (**preferred**) |
 | `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
+| `make test-file f=<path> [args=...]` | Single test file/path |
 | `make vite-build` | Vite build verification |
+| `make addmock` | Seed dev DB with all mock data |
 | `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
 | `make help` | List all available make commands |
 
@@ -296,10 +298,7 @@ All `make`/`docker`/`docker compose` targets used by this repo are already liste
 
 ```bash
 # Local development with Vite hot reload, Playwright, PostgreSQL, Redis
-docker-compose --project-directory . -f docker/compose.local.yaml up --build --remove-orphans
-
-# OR, if docker-compose is not in use
-docker compose --project-directory . -f docker/compose.local.yaml up --build --remove-orphans
+make up d=1    # never omit d=1 — see the CRITICAL note above
 
 # Flask available at http://localhost:8659, Vite at http://localhost:5173
 # SSL is disabled by default. To enable HTTPS in local development:
@@ -322,21 +321,22 @@ flask run --host=0.0.0.0 --port=5000
 ### Frontend (Vite)
 
 ```bash
-docker exec u4i-local-vite npm run build  # production/dev build to backend/static/dist/
-docker compose exec vite npm test          # run JS unit tests (vitest) from repo root
+make vite-build  # build to backend/static/dist/ (= npm run build)
+make test-js     # run JS unit tests (vitest)
 ```
+
+These and the Testing targets below `exec` into the running local stack, so it must be up (`make up d=1`); on the built stack (`make up-built`) use the `-built` variants (`vite-build-built`, `test-js-built`, `test-file-parallel-built`).
 
 ### Testing
 
-**CRITICAL: When running tests in Docker containers, the virtual environment must be activated first:**
+Run tests in Docker via the `make` targets (they activate the container's venv for you):
 
 ```bash
-# Running tests in Docker (web container)
-docker compose --project-directory . -f docker/compose.local.yaml exec web bash -c "source /code/venv/bin/activate && python -m pytest [test-path]"
+make test-file f=<test-path>              # single file or path (pass extra pytest args via args=...)
 
 # Examples:
-docker compose exec web bash -c "source /code/venv/bin/activate && python -m pytest tests/functional/splash_ui/test_reset_password_ui.py -v"
-docker compose exec web bash -c "source /code/venv/bin/activate && python -m pytest -m unit"
+make test-file f=tests/functional/splash_ui/test_reset_password_ui.py
+make test-marker-parallel m=unit
 ```
 
 **Running tests outside Docker (if virtual environment is already activated):**
@@ -404,7 +404,7 @@ Known rough edges, so these aren't mistaken for code problems:
 ### Flask CLI Commands
 
 ```bash
-flask addmock all             # populate DB with test data
+flask addmock all             # populate DB with test data (Docker: `make addmock`)
 flask managedb clear          # clear test data
 flask managedb drop           # drop database tables
 flask shorturls add           # register short URL routes
