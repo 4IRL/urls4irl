@@ -27,9 +27,9 @@ INT_FAILURES="/tmp/claude/INTEGRATION_${TIMESTAMP}_failures.txt"
 make test-ui-parallel-built > "$UI_OUTPUT" 2>&1
 ```
 
-`test-ui-parallel-built` calls `start-built`, which stops any running stack and brings up the built stack before running. Runs all UI markers (`splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`) in parallel (default `-n 12` workers).
+`test-ui-parallel-built` calls `start-built`, which stops any running stack and brings up the built stack before running. Runs the UI marker set hardcoded in the target's `-m` expression in the `Makefile`, in parallel, using the target's default worker count. **Before running**, compare the `_ui` markers in `pytest.ini`'s `markers =` list against that expression; if any is missing from the `Makefile`, report the mismatch to the user first (a missing `_ui` marker is silently skipped here and picked up by the integration target instead).
 
-**Fallback (sequential):** Only if the parallel run produces unexplained errors unrelated to test logic. Run each marker in order, appending output:
+**Fallback (sequential):** Only if the parallel run produces unexplained errors unrelated to test logic. Read the `markers =` list in `pytest.ini` at runtime and run every marker ending in `_ui`, in the order listed there (do not rely on a remembered list; markers are added over time), appending output:
 
 ```bash
 make test-marker-parallel m=MARKER >> "$UI_OUTPUT" 2>&1
@@ -45,9 +45,9 @@ Wait for each to complete before starting the next; continue regardless of pass/
 make test-integration-parallel > "$INT_OUTPUT" 2>&1
 ```
 
-Runs all non-UI markers (`unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`) in parallel (default `-n 4` workers).
+Runs every marker not excluded by the target's hardcoded `not <marker>_ui …` expression in the `Makefile`, in parallel, using the target's default worker count (the `_ui` check in §2 covers this exclusion list too).
 
-**Fallback (sequential):** Only if parallel run produces unexplained errors unrelated to test logic. Run each marker in order, appending output:
+**Fallback (sequential):** Only if parallel run produces unexplained errors unrelated to test logic. Read the `markers =` list in `pytest.ini` at runtime and run every marker that does not end in `_ui`, in the order listed there, appending output:
 
 ```bash
 make test-marker-parallel m=MARKER >> "$INT_OUTPUT" 2>&1

@@ -24,7 +24,7 @@ Capture all output to the raw output file:
 make test-integration-parallel > "$OUTPUT_FILE" 2>&1
 ```
 
-This runs every non-UI marker (each marker in `pytest.ini` that does not end in `_ui`) in parallel within a single pytest invocation. Default `-n 4` workers.
+This runs every marker not excluded by the target's hardcoded `not <marker>_ui …` expression in the `Makefile`, in parallel within a single pytest invocation, using the target's default worker count. **Before running**, compare the `_ui` markers in `pytest.ini`'s `markers =` list against that exclusion list; if any is missing from the `Makefile`, report the mismatch to the user first (that UI marker would otherwise run here, against the dev stack).
 
 **Fallback (sequential):** Only use if the parallel run produces unexplained errors unrelated to test logic (e.g., port conflicts, DB corruption). Run each marker one at a time, appending to the output file:
 
