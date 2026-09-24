@@ -273,7 +273,7 @@ A *flow* is an ordered, variable-length list of steps (2..N) joining the three m
 
 ## Testing (`tests/`)
 
-Config: `ConfigTest` (integration) / `ConfigTestUI` (Selenium, `SESSION_COOKIE_SECURE=False`). CI runs 17 parallel test workers split by marker.
+Config: `ConfigTest` (integration) / `ConfigTestUI` (Playwright UI tests against the shared `playwright` browser-server, `SESSION_COOKIE_SECURE=False`). CI (`.github/workflows/test.yml`) runs 23 parallel matrix jobs split by marker (10 in `Tests-Integration`, 13 in `Tests-UI`).
 
 ### Root Test Files
 
@@ -281,9 +281,9 @@ Config: `ConfigTest` (integration) / `ConfigTestUI` (Selenium, `SESSION_COOKIE_S
 - `models_for_test.py` — Test data factories: `valid_user_1/2/3`, `valid_empty_utub_1`, `all_tags`, `maximum_tags`
 - `utils_for_test.py` — `clear_database()`, `get_csrf_token()`
 
-### tests/unit/ — Backend Unit Tests (13 files)
+### tests/unit/ — Backend Unit Tests (incl. `schemas/`)
 
-Covers: API response/route decorators, auth decorators, DB existence, error handlers, input sanitization, model serialization, URL validation, OpenAPI helpers. Marker: `unit`.
+Covers: API response/route decorators, auth decorators, DB existence, error handlers, input sanitization, model serialization, URL validation, OpenAPI helpers, schema validation (`schemas/`). Marker: `unit`.
 
 ### tests/integration/ — Backend Integration Tests
 
@@ -294,30 +294,41 @@ Organized by domain with per-feature conftest files:
 - `utuburls/` (marker: `urls`) — URL CRUD within UTubs
 - `utubtags/` (marker: `tags`) — Tag CRUD
 - `account_and_settings/` (marker: `account_and_support`) — Profile, password change
+- `admin/` (marker: `admin`) — Admin portal: audit log, health/DB browser, user & account moderation, backup triggers
+- `cli/` (marker: `cli`) — CLI commands: DB migrations, mock data seeding, DB management, CLI login
+- `mobile_api/` (marker: `mobile_api`) — `/api/v1` mobile bearer-token API: auth (login/refresh/logout/Google), UTubs/URLs/tags/members endpoints
+- `search/` (marker: `urls`, shared with `utuburls/`) — Cross-UTub search: query schema, route, metrics
+- `system/` (marker: `cli`, shared with `cli/`) — Metrics/latency pipeline, health checks, gauges, admin-route gating (ops/observability)
 
-### tests/functional/ — UI/Selenium Tests
+CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 10 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
+
+### tests/functional/ — UI/Playwright Tests
 
 **Shared infrastructure (tests/functional/ root):**
-- `conftest.py` — Session-scoped: `build_app`, `build_driver`, browser fixtures (`browser`, `browser_mobile_portrait`), mock data fixtures (`create_test_users`, `create_test_utubs`, etc.)
+- `conftest.py` — Session-scoped: `build_app`, `playwright_instance` (the shared Playwright process), `build_page_browser` (the browser-server connection via `chromium.connect()` in Docker, `chromium.launch()` outside it). Function-scoped page fixtures (a fresh, isolated context + page per test, closed afterwards): `page`, `page_mobile_portrait`, `page_without_cookie_banner_cookie`, `page_mobile_portrait_without_cookie_banner_cookie`. Function-scoped mock data fixtures: `create_test_users`, `create_test_utubs`, etc.
 - `locators.py` — Page object locator classes:
   - `GenericPageLocator` — Nav, footer, modals, error handlers
   - `HomePageLocators(GenericPageLocator)` — UTubs/URLs/Tags/Members decks, all modals (100+ selectors)
   - `SplashPageLocators(GenericPageLocator)` — Login/register/forgot-password modals (75+ selectors)
   - `ModalLocators` — Generic modal elements
-- `selenium_utils.py` — 40+ helpers: `wait_then_click_element`, `wait_for_element_presence`, `clear_then_send_keys`, `wait_until_visible`, `wait_for_class_to_be_removed`
+- `playwright_utils.py` — 68 helpers: `wait_then_click_element`, `wait_for_element_presence`, `clear_then_send_keys`, `wait_until_visible`, `wait_for_class_to_be_removed`
 - `db_utils.py` — 20+ DB helpers: `get_utub_this_user_created`, `create_test_searchable_utubs`, `add_mock_urls`, `get_tag_on_url_in_utub`
-- `assert_utils.py` — Common assertion utilities
-- `login_utils.py` — Login/authentication helpers
+- `playwright_assert_utils.py` — 23 common assertion utilities
+- `playwright_login_utils.py` — 8 login/authentication helpers
 - `ui_test_setup.py` — App initialization and server setup
 
-**Feature-specific test directories** (each has its own `selenium_utils.py`):
+**Feature-specific test directories** (each `*_ui/` has its own `playwright_utils.py`; some add `playwright_assert_utils.py` / `playwright_login_utils.py` / `db_utils.py`). The `mobile_ui` marker has no directory; its tests sit in `urls_ui/`, `utubs_ui/`, `tags_ui/`, `home_ui/`, and `splash_ui/`:
 - `splash_ui/` (marker: `splash_ui`) — Login, register, password reset, email validation
 - `home_ui/` (marker: `home_ui`) — Dashboard page
 - `utubs_ui/` (marker: `utubs_ui`) — UTub create/update/delete. Helpers: `create_utub()`, `update_utub_name()`, `update_utub_description()`
 - `urls_ui/` (markers: `urls_ui`, `create_urls_ui`, `update_urls_ui`) — URL CRUD, search, copy. Helpers: `create_url()`, `open_url_search_box()`, `ClipboardMockHelper`
 - `tags_ui/` (marker: `tags_ui`) — Tag/filter tests. Helpers: `add_tag_to_url()`, `get_utub_tag_filter_selector()`
 - `members_ui/` (marker: `members_ui`) — Member management
-- `mobile_ui/` (marker: `mobile_ui`) — Mobile viewport tests
+- `metrics_ui/` (marker: `metrics_ui`) — Metrics dashboard
+- `search_ui/` (marker: `search_ui`) — Cross-UTub search
+- `settings_ui/` (marker: `settings_ui`) — Settings page, display preferences, OAuth linking
+- `admin_ui/` (marker: `admin_ui`) — Admin portal: users, moderation, audit log, DB browser, health, ops actions
+- `metrics_helpers/` (no marker, no tests) — Shared metrics helpers: `db_utils.py` (metrics row polling/flush) and `conftest_fragment.py` (metrics fixtures)
 
 ### Frontend Tests (vitest)
 
@@ -337,7 +348,7 @@ Organized by domain with per-feature conftest files:
 - `docker/Dockerfile` - production multi-stage build (Python 3.11-slim)
 - `docker/Dockerfile.Local` - local dev
 - `docker/Dockerfile.Vite` - Vite dev server container
-- `docker/compose.local.yaml` - full local stack (web, vite, db, test-db, redis, redis-metrics, selenium, workflow)
+- `docker/compose.local.yaml` - full local stack (web, vite, db, test-db, redis, redis-metrics, playwright, workflow, plus `cloudflared` behind the opt-in `tunnel` profile)
 - `docker/compose.yaml` - production stack (web, db, redis, redis-metrics, workflow)
 - `docker/compose.dev.yaml` - dev server stack (web, db, redis, redis-metrics, workflow)
 
