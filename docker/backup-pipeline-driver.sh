@@ -215,19 +215,19 @@ leg_rclone_monthly() {
 }
 
 # ----------------------------------------------------------------------
-# Leg 6 — real rclone upload against a MinIO (S3-compatible) sidecar.
+# Leg 6 — real rclone upload against an S3-compatible sidecar.
 # Unlike Leg 4 (which stubs rclone), this runs the genuine upload code path —
 # config assembly, auth, copy, --header-upload — against a real S3 server, and
-# confirms the objects actually persisted. MinIO creds/endpoint come from the
-# orchestrator via the environment (MINIO_USER / MINIO_PASS / MINIO_ENDPOINT).
+# confirms the objects actually persisted. S3 creds/endpoint come from the
+# orchestrator via the environment (S3_USER / S3_PASS / S3_ENDPOINT).
 # ----------------------------------------------------------------------
-leg_rclone_minio() {
-  echo "── Leg 6: real rclone upload to MinIO (S3) ──"
+leg_rclone_s3() {
+  echo "── Leg 6: real rclone upload to S3 sidecar ──"
   (
     export PRODUCTION=true
-    export ACCESS_KEY="$MINIO_USER" SECRET_ACCESS_KEY="$MINIO_PASS" R2_ENDPOINT="$MINIO_ENDPOINT"
-    export COMPRESSED_DB_BACKUP_FILE=/tmp/minio_test_daily.sql.gz
-    export COMPRESSED_LOG_FILE=/tmp/minio_test_daily.log.gz
+    export ACCESS_KEY="$S3_USER" SECRET_ACCESS_KEY="$S3_PASS" R2_ENDPOINT="$S3_ENDPOINT"
+    export COMPRESSED_DB_BACKUP_FILE=/tmp/s3_test_daily.sql.gz
+    export COMPRESSED_LOG_FILE=/tmp/s3_test_daily.log.gz
     printf 'real db payload\n' | gzip >"$COMPRESSED_DB_BACKUP_FILE"
     printf 'real log payload\n' | gzip >"$COMPRESSED_LOG_FILE"
     notify_step() { :; }
@@ -242,24 +242,24 @@ leg_rclone_minio() {
     }
 
     # Re-establish a minimal rclone config (remote_backup unset it) and confirm
-    # the objects truly landed in MinIO.
+    # the objects truly landed in the S3 sidecar.
     export RCLONE_CONFIG_REMOTE_TYPE=s3
     export RCLONE_CONFIG_REMOTE_PROVIDER=Other
-    export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID="$MINIO_USER"
-    export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY="$MINIO_PASS"
-    export RCLONE_CONFIG_REMOTE_ENDPOINT="$MINIO_ENDPOINT"
-    rclone ls remote:u4i-backups/ | grep -q "minio_test_daily.sql.gz" ||
+    export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID="$S3_USER"
+    export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY="$S3_PASS"
+    export RCLONE_CONFIG_REMOTE_ENDPOINT="$S3_ENDPOINT"
+    rclone ls remote:u4i-backups/ | grep -q "s3_test_daily.sql.gz" ||
       {
-        echo "❌ Leg 6: db object not found in MinIO bucket"
+        echo "❌ Leg 6: db object not found in S3 bucket"
         exit 1
       }
-    rclone ls remote:u4i-logs/ | grep -q "minio_test_daily.log.gz" ||
+    rclone ls remote:u4i-logs/ | grep -q "s3_test_daily.log.gz" ||
       {
-        echo "❌ Leg 6: log object not found in MinIO bucket"
+        echo "❌ Leg 6: log object not found in S3 bucket"
         exit 1
       }
   ) || exit 1
-  ok "Leg 6 PASSED: real upload landed in both MinIO buckets"
+  ok "Leg 6 PASSED: real upload landed in both S3 buckets"
 }
 
 leg_db_backup_and_restore
@@ -267,6 +267,6 @@ leg_log_backup
 leg_prune
 leg_rclone_default
 leg_rclone_monthly
-leg_rclone_minio
+leg_rclone_s3
 
 echo "✅ ALL DRIVER LEGS PASSED"

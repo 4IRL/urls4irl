@@ -28,14 +28,14 @@ NET=backup_test_net
 DB=backup_test_db
 MAIN=backup_test_main
 GUARD=backup_test_guard
-MINIO=backup_test_minio
+S3=backup_test_s3
 PRODSIM=backup_test_prodsim
 
-# MinIO is S3-compatible (same API as Cloudflare R2), so pointing the real,
+# The S3 sidecar speaks the same API as Cloudflare R2, so pointing the real,
 # un-stubbed rclone at it exercises the production upload code path hermetically.
-MINIO_USER=minioadmin
-MINIO_PASS=minioadmin123
-MINIO_ENDPOINT=http://minio:9000
+S3_USER=s3admin
+S3_PASS=s3admin123
+S3_ENDPOINT=http://s3:9000
 
 SECRETS_VOL=backup_test_secrets
 
@@ -43,7 +43,7 @@ NETWORK_CREATED=0
 DB_STARTED=""
 MAIN_STARTED=""
 GUARD_STARTED=""
-MINIO_STARTED=""
+S3_STARTED=""
 PRODSIM_STARTED=""
 SECRETS_VOL_CREATED=""
 
@@ -52,7 +52,7 @@ cleanup() {
   [ -n "$MAIN_STARTED" ] && docker rm -f "$MAIN" >/dev/null 2>&1 || true
   [ -n "$GUARD_STARTED" ] && docker rm -f "$GUARD" >/dev/null 2>&1 || true
   [ -n "$PRODSIM_STARTED" ] && docker rm -f "$PRODSIM" >/dev/null 2>&1 || true
-  [ -n "$MINIO_STARTED" ] && docker rm -f "$MINIO" >/dev/null 2>&1 || true
+  [ -n "$S3_STARTED" ] && docker rm -f "$S3" >/dev/null 2>&1 || true
   [ -n "$DB_STARTED" ] && docker rm -f "$DB" >/dev/null 2>&1 || true
   [ "$NETWORK_CREATED" = "1" ] && docker network rm "$NET" >/dev/null 2>&1 || true
   [ -n "$SECRETS_VOL_CREATED" ] && docker volume rm "$SECRETS_VOL" >/dev/null 2>&1 || true
@@ -105,38 +105,39 @@ if [ "$DB_READY" != 1 ]; then
   exit 1
 fi
 
-# --- MinIO (S3-compatible) sidecar + buckets for the real-upload legs ---
-# Pulled from Quay, MinIO's canonical registry — the Docker Hub mirror
-# (minio/minio) now refuses anonymous pulls with "denied: requested access to
-# the resource is denied", which failed this job on every PR and on main.
-# Pinned to a release tag (not :latest) so an upstream move can't break CI again
-# with no code change, matching the pinned postgres sidecar above.
-echo "🪣 Starting MinIO sidecar (alias minio)"
-MINIO_STARTED=$(docker run -d \
-  --network "$NET" --network-alias minio \
-  -e MINIO_ROOT_USER="$MINIO_USER" -e MINIO_ROOT_PASSWORD="$MINIO_PASS" \
-  --name "$MINIO" \
-  quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data)
+# --- S3-compatible sidecar (Versity S3 Gateway) + buckets for the real-upload legs ---
+# versitygw replaced MinIO: MinIO archived its open-source edition and withdrew
+# its public images (Docker Hub on 2026-09-12, then quay.io began refusing
+# anonymous pulls with "unauthorized" on 2026-09-24), so no MinIO tag is pullable.
+# versitygw's posix backend serves a plain directory over the S3 API, with root
+# creds via env vars. Pinned to a release tag (not :latest) so an upstream move
+# can't break CI with no code change, matching the pinned postgres sidecar above.
+echo "🪣 Starting S3 sidecar (versitygw, alias s3)"
+S3_STARTED=$(docker run -d \
+  --network "$NET" --network-alias s3 \
+  -e ROOT_ACCESS_KEY="$S3_USER" -e ROOT_SECRET_KEY="$S3_PASS" \
+  --name "$S3" \
+  versity/versitygw:v1.8.0 --port :9000 posix /tmp)
 
-# Wait for MinIO and create the two buckets using the workflow image's own rclone
-# (--s3-no-check-bucket in the prod script means the buckets must pre-exist).
-echo "⏳ Waiting for MinIO and creating buckets..."
+# Wait for the S3 sidecar and create the two buckets using the workflow image's own
+# rclone (--s3-no-check-bucket in the prod script means the buckets must pre-exist).
+echo "⏳ Waiting for S3 sidecar and creating buckets..."
 docker run --rm --network "$NET" --entrypoint bash "$WORKFLOW_IMAGE" -c "
 export RCLONE_CONFIG_REMOTE_TYPE=s3
 export RCLONE_CONFIG_REMOTE_PROVIDER=Other
-export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID=$MINIO_USER
-export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY=$MINIO_PASS
-export RCLONE_CONFIG_REMOTE_ENDPOINT=$MINIO_ENDPOINT
+export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID=$S3_USER
+export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY=$S3_PASS
+export RCLONE_CONFIG_REMOTE_ENDPOINT=$S3_ENDPOINT
 for attempt in \$(seq 1 30); do rclone lsd remote: >/dev/null 2>&1 && break; sleep 1; done
 rclone mkdir remote:u4i-backups
 rclone mkdir remote:u4i-logs
 rclone lsd remote: | grep -q u4i-backups
 rclone lsd remote: | grep -q u4i-logs
 " || {
-  echo "❌ Could not provision MinIO buckets" >&2
+  echo "❌ Could not provision S3 buckets" >&2
   exit 1
 }
-echo "✅ MinIO ready with u4i-backups + u4i-logs buckets"
+echo "✅ S3 sidecar ready with u4i-backups + u4i-logs buckets"
 
 # --- Provision the REAL schema + seed data (drift-proof: uses migrations) ---
 # Non-prod mode: DOCKER=true → DB host resolves to `db`; REDIS_URI defaults to
@@ -173,10 +174,10 @@ wait_for_env_file "$MAIN" || {
 docker exec "$MAIN" mkdir -p /backups
 docker exec "$MAIN" chown 1001:1001 /backups
 
-echo "🧪 Running driver legs (DB round-trip, log, prune, rclone stub + MinIO) inside the workflow image..."
+echo "🧪 Running driver legs (DB round-trip, log, prune, rclone stub + S3 sidecar) inside the workflow image..."
 docker cp "$SCRIPT_DIR/backup-pipeline-driver.sh" "$MAIN":/tmp/driver.sh
 docker exec -u 1001 \
-  -e MINIO_USER="$MINIO_USER" -e MINIO_PASS="$MINIO_PASS" -e MINIO_ENDPOINT="$MINIO_ENDPOINT" \
+  -e S3_USER="$S3_USER" -e S3_PASS="$S3_PASS" -e S3_ENDPOINT="$S3_ENDPOINT" \
   "$MAIN" bash /tmp/driver.sh
 
 # --- Leg 5: missing-var guard (separate container, cron-like clean env) ---
@@ -229,7 +230,7 @@ echo "✅ Leg 5 PASSED: guard notified and aborted before any backup"
 
 # --- Leg 7: full PRODUCTION=true daily-docker.sh end-to-end ---
 # Exercises the real production flow as one run: build_container_env.py loading
-# /run/secrets → dump → verify → REAL rclone upload to MinIO → success
+# /run/secrets → dump → verify → REAL rclone upload to the S3 sidecar → success
 # notification. Only the Discord webhook is stubbed (no external network).
 echo "── Leg 7: prod-mode daily-docker.sh end-to-end ──"
 
@@ -244,9 +245,9 @@ printf '%s' 'bob'                                         > /s/POSTGRES_USER
 printf '%s' 'test'                                        > /s/POSTGRES_PASSWORD
 printf '%s' 'redispw'                                     > /s/REDIS_PASSWORD
 printf '%s' 'https://discord.com/api/webhooks/1/stubbed'  > /s/NOTIFICATION_URL
-printf '%s' '$MINIO_USER'                                 > /s/ACCESS_KEY
-printf '%s' '$MINIO_PASS'                                 > /s/SECRET_ACCESS_KEY
-printf '%s' '$MINIO_ENDPOINT'                             > /s/R2_ENDPOINT
+printf '%s' '$S3_USER'                                 > /s/ACCESS_KEY
+printf '%s' '$S3_PASS'                                 > /s/SECRET_ACCESS_KEY
+printf '%s' '$S3_ENDPOINT'                             > /s/R2_ENDPOINT
 "
 
 PRODSIM_STARTED=$(docker run -d \
@@ -300,20 +301,20 @@ if docker exec "$PRODSIM" cat /tmp/notify.log 2>/dev/null | grep -qE "DOCKER: [A
   exit 1
 fi
 
-# Confirm the objects actually persisted in MinIO (real end-to-end upload).
+# Confirm the objects actually persisted in the S3 sidecar (real end-to-end upload).
 docker run --rm --network "$NET" --entrypoint bash "$WORKFLOW_IMAGE" -c "
 export RCLONE_CONFIG_REMOTE_TYPE=s3
 export RCLONE_CONFIG_REMOTE_PROVIDER=Other
-export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID=$MINIO_USER
-export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY=$MINIO_PASS
-export RCLONE_CONFIG_REMOTE_ENDPOINT=$MINIO_ENDPOINT
+export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID=$S3_USER
+export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY=$S3_PASS
+export RCLONE_CONFIG_REMOTE_ENDPOINT=$S3_ENDPOINT
 rclone ls remote:u4i-backups/ | grep -q 'test_.*_daily.sql.gz'
 rclone ls remote:u4i-logs/ | grep -q '_daily.log.gz'
 " || {
-  echo "❌ Leg 7: expected objects not found in MinIO buckets" >&2
+  echo "❌ Leg 7: expected objects not found in S3 buckets" >&2
   exit 1
 }
-echo "✅ Leg 7 PASSED: prod-mode end-to-end (secrets → dump → verify → real MinIO upload → notification)"
+echo "✅ Leg 7 PASSED: prod-mode end-to-end (secrets → dump → verify → real S3 upload → notification)"
 
 echo "✅ ALL BACKUP PIPELINE LEGS PASSED"
 exit 0
