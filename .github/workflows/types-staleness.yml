@@ -59,7 +59,7 @@ jobs:
 
       - name: Format generated types with prettier
         working-directory: frontend
-        run: npx prettier --write types/api.d.ts types/openapi.json
+        run: npx --no-install prettier --write types/api.d.ts types/openapi.json
 
       - name: Check for uncommitted changes
         run: |

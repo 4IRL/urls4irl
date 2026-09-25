@@ -63,7 +63,7 @@ jobs:
 
       - name: Format metrics-flows.ts with prettier
         working-directory: frontend
-        run: npx prettier --write types/metrics-flows.ts
+        run: npx --no-install prettier --write types/metrics-flows.ts
 
       - name: Check metrics-flows.ts is not stale
         run: |

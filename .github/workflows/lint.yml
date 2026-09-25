@@ -10,48 +10,30 @@ jobs:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: frontend
+    env:
+      # `mise exec` would otherwise install every missing .mise.toml tool (pnpm, shfmt, ...) on
+      # first use, ignoring install_args below. Off, a tool this job doesn't need is only warned about.
+      MISE_EXEC_AUTO_INSTALL: "false"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      - name: Install pinned toolchain (.mise.toml)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          python-version: '3.11.14'
-          cache: 'pip'
-          cache-dependency-path: '**/requirements-test.txt'
+          version: "2026.6.14"
+          install_args: "node python ruff shellcheck"
 
-      - name: Verify Python with flake8 
-        uses: py-actions/flake8@84ec6726560b6d5bd68f2a5bed83d62b52bb50ba # v2.3.0
-        with:
-            exclude: ".git,migrations"
-            args: "--extend-ignore E501,E203"
-
-      - name: Setup node
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: "24"
+      - name: Check .mise.toml is pin-only
+        run: make mise-config-check
 
       - name: Install frontend dependencies
-        run: npm ci
+        working-directory: frontend
+        run: npm ci --ignore-scripts
 
-      - name: Verify JavaScript with ESLint
-        run: npx eslint "**/*.js" --no-config-lookup --ignore-pattern "node_modules"
+      - name: Lint (ruff, eslint, shellcheck)
+        run: make lint
 
-      - name: Verify TypeScript with ESLint
-        run: npx eslint "**/*.ts"
-
-      - name: Install shellcheck
-        working-directory: .
-        run: |
-          curl -sSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz | tar -xJ
-          sudo mv shellcheck-v0.11.0/shellcheck /usr/local/bin/shellcheck
-          shellcheck --version
-
-      - name: Verify shell scripts with ShellCheck
-        working-directory: .
-        run: shellcheck --severity=warning -x scripts/*.sh docker/*.sh frontend/setup-vendor.sh .claude/scripts/*.sh
+      - name: Typecheck (tsc, app + test tsconfigs)
+        run: make typecheck
