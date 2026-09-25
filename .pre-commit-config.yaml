@@ -65,6 +65,15 @@ repos:
       pass_filenames: false
       require_serial: true
 
+    - id: lint-actions
+      name: lint-actions
+      entry: make lint-actions
+      language: system
+      types: [yaml]
+      files: ^\.github/workflows/
+      pass_filenames: false
+      require_serial: true
+
     # Workspace-wide presence check (no types/files filter): runs on every commit.
     - id: lockfile-check
       name: lockfile-check

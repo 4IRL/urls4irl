@@ -22,6 +22,9 @@ jobs:
       MAILJET_API_KEY: 'dummy-not-used'
       MAILJET_SECRET_KEY: 'dummy-not-used'
       BASE_EMAIL: 'noreply@example.com'
+      # `mise exec` would otherwise install every missing .mise.toml tool (python, ruff, ...) on
+      # first use, ignoring install_args below. Off, a tool this job doesn't need is only warned about.
+      MISE_EXEC_AUTO_INSTALL: "false"
 
     steps:
       - name: Checkout code
@@ -42,24 +45,34 @@ jobs:
       - name: Generate OpenAPI spec
         run: flask openapi generate --output frontend/types/openapi.json --strict
 
-      - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      - name: Install pinned toolchain (.mise.toml)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: 'frontend/package-lock.json'
+          version: "2026.6.14"
+          install_args: "node pnpm"
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        working-directory: frontend
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Generate TypeScript types
         working-directory: frontend
-        run: npx openapi-typescript types/openapi.json -o types/api.d.ts
+        run: pnpm exec openapi-typescript types/openapi.json -o types/api.d.ts
 
       - name: Format generated types with prettier
         working-directory: frontend
-        run: npx --no-install prettier --write types/api.d.ts types/openapi.json
+        run: pnpm exec prettier --write types/api.d.ts types/openapi.json
 
       - name: Check for uncommitted changes
         run: |

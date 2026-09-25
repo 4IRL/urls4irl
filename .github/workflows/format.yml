@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # `mise exec` would otherwise install every missing .mise.toml tool (python, pnpm, ...) on
+      # `mise exec` would otherwise install every missing .mise.toml tool (shellcheck, actionlint, ...) on
       # first use, ignoring install_args below. Off, a tool this job doesn't need is only warned about.
       MISE_EXEC_AUTO_INSTALL: "false"
 
@@ -23,14 +23,14 @@ jobs:
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
           version: "2026.6.14"
-          install_args: "node python ruff shfmt"
+          install_args: "node pnpm python ruff shfmt"
 
       - name: Check .mise.toml is pin-only
         run: make mise-config-check
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Check formatting (ruff, prettier, shfmt)
         run: make format-check

@@ -11,7 +11,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check tools mise-config-check lockfile-check _require-tools _require-shell-files up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: hooks hooks-check tools mise-config-check lockfile-check _require-tools _require-shell-files up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
@@ -113,7 +113,7 @@ vite-build: ## Build Vite to verify no import/syntax errors
 vite-build-built: ## Rebuild Vite assets in the built stack (one-off vite build container; used when up-built is running and the long-lived dev vite service is absent)
 	$(COMPOSE_BUILT) run --rm --no-deps vite pnpm exec vite build
 
-lint: lint-python lint-frontend lint-shell lockfile-check ## Run all linters (same command CI and pre-commit run)
+lint: lint-python lint-frontend lint-shell lockfile-check lint-actions ## Run all linters (same command CI and pre-commit run)
 
 lint-python: _require-tools ## Lint Python with ruff
 	$(MISE) ruff check .
@@ -124,6 +124,10 @@ lint-frontend: _require-tools ## Lint JS and TS with eslint
 
 lint-shell: _require-tools _require-shell-files ## Lint shell scripts with shellcheck
 	$(MISE) shellcheck --severity=warning -x $(SHELL_FILES)
+
+# The -ignore is an actionlint schema gap, not a repo issue: `command:` under a workflow `services:` entry is valid GitHub Actions syntax (test.yml's redis-metrics) but missing from actionlint's schema.
+lint-actions: _require-tools ## Lint GitHub Actions workflows
+	$(MISE) actionlint -ignore 'unexpected key "command" for "services" section'
 
 format-check: format-check-python format-check-frontend format-check-shell ## Check formatting (no writes)
 

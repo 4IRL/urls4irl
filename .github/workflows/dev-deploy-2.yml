@@ -89,7 +89,8 @@ jobs:
           # Allow environment file to be defined by GitHub secrets
           - name: Generate Environment File
             run: |
-              export KEY="$(openssl rand 64 | base64 --wrap=0 | tr -d '+')";\
+              KEY="$(openssl rand 64 | base64 --wrap=0 | tr -d '+')"
+              export KEY
               cat <<EOF > ~/.env
               POSTGRES_USER=${{ secrets.DEV_DB_USER }}
               POSTGRES_DB=${{ secrets.DEV_DB_NAME }}
