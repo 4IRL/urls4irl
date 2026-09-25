@@ -1,6 +1,6 @@
 [tool.ruff]
 line-length = 88            # black 26.1.0 default
-target-version = "py311"    # matches the pinned python 3.11.9 in .mise.toml
+target-version = "py311"    # matches the pinned python 3.11.14 in .mise.toml
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]

@@ -5,9 +5,13 @@ EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
+MISE = mise exec --
+FRONTEND_BIN = frontend/node_modules/.bin
+# Recursive `=` so git only runs for the shell targets; `wildcard` drops tracked-but-deleted paths. Paths must not contain spaces.
+SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck typecheck-built prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: hooks hooks-check tools mise-config-check _require-tools _require-shell-files up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
@@ -107,11 +111,37 @@ vite-build: ## Build Vite to verify no import/syntax errors
 vite-build-built: ## Rebuild Vite assets in the built stack (one-off vite build container; used when up-built is running and the long-lived dev vite service is absent)
 	$(COMPOSE_BUILT) run --rm --no-deps vite npx vite build
 
-typecheck: ## Run TypeScript typecheck
-	$(EXEC_VITE) npm run typecheck
+lint: lint-python lint-frontend lint-shell ## Run all linters (same command CI and pre-commit run)
 
-typecheck-built: ## Run TypeScript typecheck in the built stack (one-off vite container; used when up-built is running and the long-lived dev vite service is absent)
-	$(COMPOSE_BUILT) run --rm --no-deps vite npm run typecheck
+lint-python: _require-tools ## Lint Python with ruff
+	$(MISE) ruff check .
+
+lint-frontend: _require-tools ## Lint JS and TS with eslint
+	cd frontend && $(MISE) ./node_modules/.bin/eslint "**/*.js" --no-config-lookup --ignore-pattern node_modules
+	cd frontend && $(MISE) ./node_modules/.bin/eslint "**/*.ts"
+
+lint-shell: _require-tools _require-shell-files ## Lint shell scripts with shellcheck
+	$(MISE) shellcheck --severity=warning -x $(SHELL_FILES)
+
+format-check: format-check-python format-check-frontend format-check-shell ## Check formatting (no writes)
+
+format-check-python: _require-tools ## Check Python formatting with ruff
+	$(MISE) ruff format --check .
+
+format-check-frontend: _require-tools ## Check JS and TS formatting with prettier
+	cd frontend && $(MISE) ./node_modules/.bin/prettier --check "**/*.{ts,js}"
+
+format-check-shell: _require-tools _require-shell-files ## Check shell formatting with shfmt
+	$(MISE) shfmt -i 2 -ci -d $(SHELL_FILES)
+
+format: _require-tools _require-shell-files ## Apply all formatters
+	$(MISE) ruff format .
+	cd frontend && $(MISE) ./node_modules/.bin/prettier --write "**/*.{ts,js}"
+	$(MISE) shfmt -i 2 -ci -w $(SHELL_FILES)
+
+typecheck: _require-tools ## Run TypeScript typecheck (app + test tsconfigs) on the host
+	$(MISE) $(FRONTEND_BIN)/tsc --noEmit --project frontend/tsconfig.json
+	$(MISE) $(FRONTEND_BIN)/tsc --noEmit --project frontend/tsconfig.test.json
 
 generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
 	$(EXEC_WEB) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
@@ -121,7 +151,7 @@ generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per
 	$(EXEC_WEB) "$(FLASK) metrics generate-events --output /code/u4i/frontend/types/metrics-events.ts"
 	$(EXEC_WEB) "$(FLASK) metrics generate-resources --output /code/u4i/frontend/types/metrics-resources.ts"
 	$(EXEC_WEB) "$(FLASK) metrics generate-flows --output /code/u4i/frontend/types/metrics-flows.ts"
-	$(EXEC_VITE) npx prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
+	$(EXEC_VITE) npx --no-install prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
 
 audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
 	$(EXEC_WEB) "$(FLASK) metrics audit --strict"
@@ -151,6 +181,28 @@ hooks-check: ## Report whether the pre-commit hook is installed in this clone
 	@test -f .git/hooks/pre-commit \
 		&& echo "pre-commit hook: INSTALLED" \
 		|| echo "pre-commit hook: MISSING — run 'make hooks'"
+
+# .mise.toml is deliberately never `mise trust`ed: a pin-only config (min_version + plain [tools] strings) loads untrusted, and mise's own trust check refuses anything more at runtime.
+# mise-config-check (run by `tools` after `mise install`, and by CI's Format and Lint jobs; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
+# It keeps .mise.toml to min_version + plain `[tools] name = "version"` pins; it checks .mise.toml only. In an untrusted clone, mise's trust error fires first.
+# `npm ci --ignore-scripts`: no dependency install/postinstall scripts run on the host.
+tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules; set git blame ignore-revs
+	@command -v mise >/dev/null || { echo "mise not installed — see https://mise.jdx.dev/installing-mise.html (Linux: curl https://mise.run | sh; macOS: brew install mise)"; exit 1; }
+	@mise install || { echo "make tools: mise install failed (see above). If it says .mise.toml is 'not trusted', the file has more than min_version + plain [tools] pins: remove that config instead of running 'mise trust'."; exit 1; }
+	@$(MAKE) --no-print-directory mise-config-check
+	cd frontend && $(MISE) npm ci --ignore-scripts
+	git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+mise-config-check: ## Fail unless .mise.toml is pin-only (min_version + plain [tools] version pins)
+	@mise exec python -- python -c 'import sys, tomllib; c = tomllib.load(open(".mise.toml", "rb")); t = c.get("tools", {}); bad = sorted(set(c) - {"min_version", "tools"}) + (sorted("tools." + k for k, v in t.items() if not isinstance(v, str)) if isinstance(t, dict) else ["tools"]); bad and sys.exit(".mise.toml has non-version-pin config (" + ", ".join(bad) + "); only min_version and plain [tools] version pins are allowed")'
+
+# Private prerequisite guards (_require-*) deliberately have no "## desc" so they stay out of 'make help'.
+_require-tools:
+	@command -v mise >/dev/null && test -x $(FRONTEND_BIN)/prettier || { echo "host lint toolchain missing — run 'make tools'"; exit 1; }
+
+# An empty list would make shfmt read stdin (hang, or pass silently in CI), so fail loudly instead.
+_require-shell-files:
+	@test -n "$(SHELL_FILES)" || { echo "no shell files found (not a git checkout, or git ls-files failed)"; exit 1; }
 
 prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker image prune -f

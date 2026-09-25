@@ -1,60 +1,66 @@
+# Every hook calls the same `make` check target that developers and CI run (host tools pinned in
+# .mise.toml; install once per machine with `make tools`). Hooks never call `make format`, so a
+# commit never rewrites files — run `make format` yourself to fix a failure. The targets check the
+# whole tree, so an untracked, non-ignored .py/.ts file with errors can also block a commit.
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.20
-    hooks:
-    - id: ruff-format
-
-  - repo: https://github.com/pycqa/flake8
-    rev: "7.1.2"
-    hooks:
-    - id: flake8
-      args: [--extend-ignore, "E501,E203"]
-      
   - repo: local
     hooks:
+    - id: ruff-lint
+      name: ruff-lint
+      entry: make lint-python
+      language: system
+      types_or: [python]
+      pass_filenames: false
+      require_serial: true
+
+    - id: ruff-format
+      name: ruff-format
+      entry: make format-check-python
+      language: system
+      types_or: [python]
+      pass_filenames: false
+      require_serial: true
+
+    - id: eslint
+      name: eslint
+      entry: make lint-frontend
+      language: system
+      types_or: [javascript, ts]
+      pass_filenames: false
+      require_serial: true
+
     - id: prettier
       name: prettier
-      entry: prettier --write --ignore-unknown
-      language: node
-      additional_dependencies: ["prettier@3.8.4"]
+      entry: make format-check-frontend
+      language: system
       types_or: [javascript, ts]
-      exclude: ^(backend/static/dist/|backend/static/vendor/|frontend/public/vendor/)
+      pass_filenames: false
+      require_serial: true
 
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: "v9.21.0"
-    hooks:
-    - id: eslint
-      name: eslint (js)
-      args: [--no-config-lookup]
-      types: [javascript]
-    - id: eslint
-      name: eslint (ts)
-      args: [--config, frontend/eslint.config.js]
-      types: [ts]
-      additional_dependencies:
-        - eslint@9.39.4
-        - "@typescript-eslint/parser@8.58.1"
-        - "@typescript-eslint/eslint-plugin@8.58.1"
-
-  - repo: local
-    hooks:
-    - id: tsc-typecheck
-      name: TypeScript typecheck
-      entry: docker compose --project-directory . -f docker/compose.local.yaml exec -T vite npx tsc --noEmit --project frontend/tsconfig.json
+    - id: typecheck
+      name: typecheck
+      entry: make typecheck
       language: system
       types: [ts]
       pass_filenames: false
+      require_serial: true
 
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: "v0.11.0.1"
-    hooks:
-    - id: shellcheck
-      args: [--severity=warning, -x]
+    - id: shell-lint
+      name: shell-lint
+      entry: make lint-shell
+      language: system
+      types: [shell]
+      files: \.sh$
       exclude: ^\.claude/(hooks|worktrees)/
+      pass_filenames: false
+      require_serial: true
 
-  - repo: https://github.com/scop/pre-commit-shfmt
-    rev: "v3.13.1-1"
-    hooks:
-    - id: shfmt
-      args: [-i, "2", -ci, --write]
+    - id: shell-format
+      name: shell-format
+      entry: make format-check-shell
+      language: system
+      types: [shell]
+      files: \.sh$
       exclude: ^\.claude/(hooks|worktrees)/
+      pass_filenames: false
+      require_serial: true

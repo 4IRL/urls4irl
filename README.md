@@ -21,7 +21,7 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 | **Auth** | Flask-Login, Flask-WTF (CSRF), Mailjet (transactional email) |
 | **Infrastructure** | Docker, Docker Compose, Gunicorn, Nginx |
 | **Testing** | pytest, Playwright, Vitest |
-| **Code Quality** | Black, Flake8, Prettier, ESLint, pre-commit |
+| **Code Quality** | ruff, Prettier, ESLint, shellcheck/shfmt, pre-commit (via make targets) |
 
 ## Getting Started
 
@@ -36,30 +36,30 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 Run this **once per clone**, before your first commit:
 
 ```bash
+make tools
 make hooks
 ```
 
-This creates a local `venv/` (gitignored), installs the `pre-commit` version pinned in
+`make tools` needs [mise](https://mise.jdx.dev/installing-mise.html). It installs the host lint
+toolchain pinned in `.mise.toml` (Python 3.11.14, node, ruff, shellcheck, shfmt), runs
+`npm ci --ignore-scripts` in `frontend/`, and points `git blame` at `.git-blame-ignore-revs`.
+Don't run `mise trust`: the config must stay pin-only, and `make mise-config-check` enforces that.
+
+`make hooks` creates a local `venv/` (gitignored), installs the `pre-commit` version pinned in
 `requirements/requirements-dev.txt`, and installs the git pre-commit hook. `make hooks-check`
 reports whether the hook is present in the current clone.
 
-**Why it matters:** the app itself is fully containerized — the Python venv is baked into the
-image, so nothing is installed on the host by default. Git hooks, however, run *on the host*.
-Skip this step and `black`, `flake8`, `eslint` and `shellcheck` silently never run on your
-commits, and CI (`Check Formatting` / `Linting`) becomes the first thing that catches a
-formatting error — after you've already pushed.
+**Why it matters:** the app itself is fully containerized, but git hooks run *on the host*.
+Skip this step and `ruff`, `eslint`, `prettier` and `shellcheck`/`shfmt` silently never run on
+your commits, and CI (`Check Formatting` / `Linting`) becomes the first thing that catches a
+formatting error — after you've already pushed. The hooks and CI run the same targets:
+`make lint`, `make format-check` and `make typecheck` (fix formatting with `make format`).
 
-Two known rough edges once the hook is installed:
+Two things to know once the hook is installed:
 
-- **`TypeScript typecheck` hook needs the `vite` service running.** It shells into the container
-  (`docker compose exec -T vite npx tsc`). If you're on the pre-built stack (`make up-built`),
-  `vite` isn't running and the hook fails with `service "vite" is not running`. Bring the normal
-  stack up (`make up d=1`) before committing `.ts` changes, or use `git commit --no-verify` and
-  run `make typecheck-built` yourself.
-- **`eslint` hooks can fail to resolve `@typescript-eslint/parser`.** pre-commit runs eslint in
-  an isolated environment while `frontend/eslint.config.js` resolves plugins from the repo, so
-  the hook can report `ERR_MODULE_NOT_FOUND` even though CI's eslint (which runs `npm ci` in the
-  repo) passes. CI is authoritative here.
+- **Hooks check the whole tree**, so untracked `.py`/`.ts` files with errors can block a commit.
+- **GUI/IDE git clients need `mise` on their non-interactive PATH** (`~/.local/bin`), or the
+  hooks fail with `host lint toolchain missing — run 'make tools'`.
 
 ### Environment Variables
 
@@ -183,9 +183,9 @@ See [`backend/API_DOCUMENTATION.md`](backend/API_DOCUMENTATION.md) for full endp
 ## Contributing
 
 1. Fork the repo and create a feature branch
-2. Run `pre-commit run --all-files` before submitting
+2. Run `make lint && make format-check` before submitting
 3. Run `pytest` to verify tests pass
-4. Follow existing style (Black for Python, Prettier for JS)
+4. Follow existing style (ruff for Python, Prettier for JS/TS)
 5. Open a pull request
 
 ## License

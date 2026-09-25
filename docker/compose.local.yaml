@@ -77,6 +77,7 @@ services:
       - ./frontend/package.json:/app/package.json
       - ./frontend/package-lock.json:/app/package-lock.json
       - /app/node_modules
+      - /app/frontend/node_modules
       - ./backend/static/dist:/app/backend/static/dist
     command: npm run dev
     healthcheck:

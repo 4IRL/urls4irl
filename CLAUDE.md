@@ -31,7 +31,7 @@ Reference plan may have files in the @plans directory - please reference these i
   | UI tests | `make test-ui-parallel-built` (max `n=8`) |
   | JS/unit tests | `make test-js` |
   | Build | `make vite-build` |
-  | Lint / format | `pre-commit run --all-files` (runs automatically on commit **only if `make hooks` has been run in this clone** — check with `make hooks-check`; do not run manually unless asked) |
+  | Lint / format | `make lint` · `make format-check` · `make typecheck` (fix: `make format`); host toolchain via `make tools`. The pre-commit hook runs these automatically **only if `make hooks` has been run in this clone** (check with `make hooks-check`) |
   | Regenerate types | `make generate-types` |
 - **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. The genericized `/git-push` performs the lookup; `.claude/skills/git-push/SKILL.md` documents the mutations.
 - **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
@@ -253,6 +253,7 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 
 | Command | Description |
 |---|---|
+| `make tools` | Install the pinned host toolchain + `frontend/node_modules` (one-time per machine, re-run after pin bumps) |
 | `make hooks` | Install the pre-commit git hook (one-time per clone — see "Pre-commit hooks" below) |
 | `make hooks-check` | Report whether the pre-commit hook is installed in this clone |
 | `make up d=1` | Build and start the full stack (detached) |
@@ -360,20 +361,19 @@ UI/functional tests require the shared Playwright browser-server: the `playwrigh
 
 ### Linting & Formatting
 
+One definition per check, run host-native. The pre-commit hook and CI call the same targets:
+
 ```bash
-# Python
-black .                       # format
-flake8                        # lint (E501 line length ignored)
-
-# JavaScript
-npx prettier --write .        # format
-npx eslint .                  # lint
-
-# All at once via pre-commit
-pre-commit run --all-files
+make tools          # once per machine: install the pinned toolchain, npm ci --ignore-scripts, set blame.ignoreRevsFile
+make lint           # ruff check + eslint + shellcheck
+make format-check   # ruff format --check + prettier --check + shfmt -d (no writes)
+make typecheck      # tsc on frontend/tsconfig.json + tsconfig.test.json (no stack needed)
+make format         # apply ruff format + prettier --write + shfmt -w
 ```
 
-**Note:** Never run `pre-commit`, `black`, or `flake8` manually unless explicitly asked — pre-commit runs all of these automatically as a git hook on commit.
+`.mise.toml` is the single pin location (python 3.11.14, node, ruff, shellcheck, shfmt); prettier is pinned in `frontend/package.json`; ruff config lives in `pyproject.toml`. Don't run `mise trust`: the config must stay pin-only, and `make mise-config-check` enforces that. `.git-blame-ignore-revs` hides the format-only pass from blame (GitHub honors it automatically).
+
+**Note:** Never run `pre-commit`, `ruff`, `eslint`, `prettier`, `make lint`, or `make format` manually unless explicitly asked — pre-commit runs all of these automatically as a git hook on commit.
 
 #### Pre-commit hooks (verify before trusting the note above)
 
@@ -381,25 +381,23 @@ The hook is **per-clone** and is **not** installed by cloning. Because this app 
 containerized (the venv is baked into the image, nothing installs on the host), a fresh clone has
 no host `pre-commit` and therefore **no hook runs on any commit** — silently. Verify with
 `make hooks-check`; install with `make hooks` (creates a gitignored `venv/`, installs the
-`pre-commit` pin from `requirements/requirements-dev.txt`, installs the hook).
+`pre-commit` pin from `requirements/requirements-dev.txt`, installs the hook). The hooks are
+`language: system` calls to the make targets above, so they also need `make tools` once per machine.
 
 **When committing here, confirm the hook actually ran.** A successful commit that printed no
-`black...Passed` / `flake8...Passed` lines means no hook was installed and nothing was checked —
-report that rather than assuming formatting is clean.
+`ruff-lint...Passed` / `ruff-format...Passed` (or `eslint`, `prettier`, `typecheck`, `shell-lint`,
+`shell-format`) lines means no hook was installed and nothing was checked — report that rather than
+assuming formatting is clean.
 
 Known rough edges, so these aren't mistaken for code problems:
-- **`TypeScript typecheck` hook requires the `vite` service.** It runs `docker compose exec -T vite npx tsc`.
-  On the pre-built stack (`make up-built`) `vite` is down and the hook fails with
-  `service "vite" is not running`. Bring up `make up d=1` before committing `.ts`, or `--no-verify`
-  and run `make typecheck-built` instead.
-- **`eslint` hooks may fail with `ERR_MODULE_NOT_FOUND: @typescript-eslint/parser`.** pre-commit runs
-  eslint in an isolated env while `frontend/eslint.config.js` resolves plugins from the repo. CI runs
-  `npm ci` in-repo and passes — CI is authoritative.
-- **Prettier is enforced inconsistently, by design gap.** It is *not* a dependency in
-  `frontend/package.json`. The pre-commit hook pins `mirrors-prettier v4.0.0-alpha.8`, while CI runs an
-  **unpinned** `npx prettier --check "**/*.js"` — which only covers `.js`, and this codebase is `.ts`.
-  The two versions disagree on `.ts` formatting. Do **not** mass-reformat `.ts` to satisfy the local
-  hook; that churn is enforced by nothing and the alpha pin may itself be the stale side.
+- **Hooks check the whole tree**, not just staged files, so untracked `.py`/`.ts` scratch files with
+  errors can block a commit.
+- **GUI/IDE git clients need `mise` on the non-interactive PATH** (`~/.local/bin`); otherwise the hooks
+  fail with `host lint toolchain missing — run 'make tools'`.
+- **Deleting host `frontend/node_modules` while `vite` runs detaches the container's anonymous-volume
+  mask**; recreate it afterwards
+  (`docker compose --project-directory . -f docker/compose.local.yaml up -d --force-recreate vite`)
+  before `make tools` / `make test-js`.
 
 ### Flask CLI Commands
 
