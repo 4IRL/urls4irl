@@ -41,8 +41,8 @@ make hooks
 ```
 
 `make tools` needs [mise](https://mise.jdx.dev/installing-mise.html). It installs the host lint
-toolchain pinned in `.mise.toml` (Python 3.11.14, node, ruff, shellcheck, shfmt), runs
-`npm ci --ignore-scripts` in `frontend/`, and points `git blame` at `.git-blame-ignore-revs`.
+toolchain pinned in `.mise.toml` (Python 3.11.14, node, pnpm, ruff, shellcheck, shfmt, actionlint), runs
+`pnpm install --frozen-lockfile --ignore-scripts` in `frontend/`, and points `git blame` at `.git-blame-ignore-revs`.
 Don't run `mise trust`: the config must stay pin-only, and `make mise-config-check` enforces that.
 
 `make hooks` creates a local `venv/` (gitignored), installs the `pre-commit` version pinned in
