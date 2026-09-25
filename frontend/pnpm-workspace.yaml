@@ -64,6 +64,12 @@ minimumReleaseAgeExclude:
   - js-yaml@4.3.1
   - ws@8.21.3
 
+# pnpm 11 defaults this to `install`: `pnpm run`/`pnpm exec` would silently
+# run a full install (registry fetch, build scripts, lockfile rewrite) when
+# node_modules is stale. `error` makes them fail closed instead; resync with
+# `make tools` on the host or `make build` for the containers.
+verifyDepsBeforeRun: error
+
 # Build-script allowlist. pnpm 11 fails the install on any unlisted build
 # script (strictDepBuilds). fsevents is a macOS-only optional dep via rollup.
 allowBuilds:
