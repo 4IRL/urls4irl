@@ -394,6 +394,10 @@ Known rough edges, so these aren't mistaken for code problems:
   errors can block a commit.
 - **GUI/IDE git clients need `mise` on the non-interactive PATH** (`~/.local/bin`); otherwise the hooks
   fail with `host lint toolchain missing — run 'make tools'`.
+- **Deleting host `frontend/node_modules` while `vite` runs detaches the container's anonymous-volume
+  mask**; recreate it afterwards
+  (`docker compose --project-directory . -f docker/compose.local.yaml up -d --force-recreate vite`)
+  before `make tools` / `make test-js`.
 
 ### Flask CLI Commands
 

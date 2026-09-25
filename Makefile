@@ -5,8 +5,8 @@ EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
-MISE := mise exec --
-FRONTEND_BIN := frontend/node_modules/.bin
+MISE = mise exec --
+FRONTEND_BIN = frontend/node_modules/.bin
 # Recursive `=` so git only runs for the shell targets; `wildcard` drops tracked-but-deleted paths. Paths must not contain spaces.
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
@@ -183,7 +183,7 @@ hooks-check: ## Report whether the pre-commit hook is installed in this clone
 		|| echo "pre-commit hook: MISSING — run 'make hooks'"
 
 # .mise.toml is deliberately never `mise trust`ed: a pin-only config (min_version + plain [tools] strings) loads untrusted, and mise's own trust check refuses anything more at runtime.
-# mise-config-check (run by `tools` after `mise install`, and by CI's Lint job; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
+# mise-config-check (run by `tools` after `mise install`, and by CI's Format and Lint jobs; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
 # It keeps .mise.toml to min_version + plain `[tools] name = "version"` pins; it checks .mise.toml only. In an untrusted clone, mise's trust error fires first.
 # `npm ci --ignore-scripts`: no dependency install/postinstall scripts run on the host.
 tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules; set git blame ignore-revs
@@ -196,6 +196,7 @@ tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules
 mise-config-check: ## Fail unless .mise.toml is pin-only (min_version + plain [tools] version pins)
 	@mise exec python -- python -c 'import sys, tomllib; c = tomllib.load(open(".mise.toml", "rb")); t = c.get("tools", {}); bad = sorted(set(c) - {"min_version", "tools"}) + (sorted("tools." + k for k, v in t.items() if not isinstance(v, str)) if isinstance(t, dict) else ["tools"]); bad and sys.exit(".mise.toml has non-version-pin config (" + ", ".join(bad) + "); only min_version and plain [tools] version pins are allowed")'
 
+# Private prerequisite guards (_require-*) deliberately have no "## desc" so they stay out of 'make help'.
 _require-tools:
 	@command -v mise >/dev/null && test -x $(FRONTEND_BIN)/prettier || { echo "host lint toolchain missing — run 'make tools'"; exit 1; }
 
