@@ -75,11 +75,13 @@ services:
       - ./frontend:/app/frontend
       - ./frontend/vite.config.ts:/app/vite.config.ts
       - ./frontend/package.json:/app/package.json
-      - ./frontend/package-lock.json:/app/package-lock.json
+      - ./frontend/pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./frontend/pnpm-workspace.yaml:/app/pnpm-workspace.yaml
       - /app/node_modules
+      # Masks host frontend/node_modules (pnpm symlinks into the host store, unresolvable here)
       - /app/frontend/node_modules
       - ./backend/static/dist:/app/backend/static/dist
-    command: npm run dev
+    command: pnpm run dev
     healthcheck:
       test: |
         if [ "$${ENABLE_SSL:-false}" = "true" ]; then

@@ -111,7 +111,7 @@ vite-build: ## Build Vite to verify no import/syntax errors
 vite-build-built: ## Rebuild Vite assets in the built stack (one-off vite build container; used when up-built is running and the long-lived dev vite service is absent)
 	$(COMPOSE_BUILT) run --rm --no-deps vite pnpm exec vite build
 
-lint: lint-python lint-frontend lint-shell ## Run all linters (same command CI and pre-commit run)
+lint: lint-python lint-frontend lint-shell lockfile-check ## Run all linters (same command CI and pre-commit run)
 
 lint-python: _require-tools ## Lint Python with ruff
 	$(MISE) ruff check .
@@ -184,7 +184,7 @@ hooks-check: ## Report whether the pre-commit hook is installed in this clone
 
 # .mise.toml is deliberately never `mise trust`ed: a pin-only config (min_version + plain [tools] strings) loads untrusted, and mise's own trust check refuses anything more at runtime.
 # mise-config-check (run by `tools` after `mise install`, and by CI's Format and Lint jobs; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
-# It keeps .mise.toml to min_version + plain `[tools] name = "version"` pins; it checks .mise.toml only. In an untrusted clone, mise's trust error fires first.
+# It keeps .mise.toml to min_version + plain `[tools] name = "version"` pins, and asserts both Dockerfiles' `ARG PNPM_VERSION=` equals the [tools] pnpm pin (one logical pin; images need their own literal). In an untrusted clone, mise's trust error fires first.
 # `pnpm install --frozen-lockfile --ignore-scripts`: no dependency install/postinstall scripts run on the host, and a lockfile out of sync with package.json fails instead of being rewritten.
 tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules; set git blame ignore-revs
 	@command -v mise >/dev/null || { echo "mise not installed — see https://mise.jdx.dev/installing-mise.html (Linux: curl https://mise.run | sh; macOS: brew install mise)"; exit 1; }
@@ -193,11 +193,12 @@ tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules
 	cd frontend && $(MISE) pnpm install --frozen-lockfile --ignore-scripts
 	git config blame.ignoreRevsFile .git-blame-ignore-revs
 
-mise-config-check: ## Fail unless .mise.toml is pin-only (min_version + plain [tools] version pins)
-	@mise exec python -- python -c 'import sys, tomllib; c = tomllib.load(open(".mise.toml", "rb")); t = c.get("tools", {}); bad = sorted(set(c) - {"min_version", "tools"}) + (sorted("tools." + k for k, v in t.items() if not isinstance(v, str)) if isinstance(t, dict) else ["tools"]); bad and sys.exit(".mise.toml has non-version-pin config (" + ", ".join(bad) + "); only min_version and plain [tools] version pins are allowed")'
+mise-config-check: ## Fail unless .mise.toml is pin-only and the Dockerfiles' ARG PNPM_VERSION matches its pnpm pin
+	@mise exec python -- python -c 'import sys, re, tomllib; c = tomllib.load(open(".mise.toml", "rb")); t = c.get("tools", {}); bad = sorted(set(c) - {"min_version", "tools"}) + (sorted("tools." + k for k, v in t.items() if not isinstance(v, str)) if isinstance(t, dict) else ["tools"]); bad and sys.exit(".mise.toml has non-version-pin config (" + ", ".join(bad) + "); only min_version and plain [tools] version pins are allowed"); pnpm_pin = t.get("pnpm"); pat = re.compile(r"^ARG PNPM_VERSION=(\S+)$$", re.M); found = {f: (m.group(1) if (m := pat.search(open(f).read())) else "MISSING") for f in ("docker/Dockerfile.Vite", "docker/Dockerfile")}; mism = {f: v for f, v in found.items() if v != pnpm_pin}; mism and sys.exit("ARG PNPM_VERSION mismatch (.mise.toml pnpm=" + str(pnpm_pin) + "): " + ", ".join(f + "=" + v for f, v in mism.items()))'
 
 lockfile-check: ## Fail if an npm lockfile/.npmrc reappears next to pnpm-lock.yaml
 	@test -f frontend/pnpm-lock.yaml || { echo "lockfile-check: frontend/pnpm-lock.yaml is missing"; exit 1; }
+	@test -f frontend/pnpm-workspace.yaml || { echo "lockfile-check: frontend/pnpm-workspace.yaml is missing"; exit 1; }
 	@for npm_file in frontend/package-lock.json frontend/.npmrc; do \
 		if test -e "$$npm_file" || test -L "$$npm_file"; then echo "lockfile-check: $$npm_file must not exist (frontend/ is pnpm-only; never run npm install there)"; exit 1; fi; \
 	done

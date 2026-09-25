@@ -6,7 +6,7 @@ services:
       - VITE_DEV_SERVER=false
 
   vite:
-    command: npx vite build
+    command: pnpm exec vite build
     restart: "no"
     healthcheck:
       disable: true

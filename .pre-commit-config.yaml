@@ -64,3 +64,11 @@ repos:
       exclude: ^\.claude/(hooks|worktrees)/
       pass_filenames: false
       require_serial: true
+
+    # Workspace-wide presence check (no types/files filter): runs on every commit.
+    - id: lockfile-check
+      name: lockfile-check
+      entry: make lockfile-check
+      language: system
+      pass_filenames: false
+      require_serial: true

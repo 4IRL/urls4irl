@@ -1,6 +1,13 @@
-# pnpm settings for the single-package frontend (no `packages:` key).
+# pnpm settings for the single-package frontend.
 # pnpm 11 reads these only from this file; the package.json "pnpm" field and
 # npm's top-level "overrides" are ignored.
+
+# Pin the workspace to the root package only. The vite container installs at
+# /app and bind-mounts frontend/ to /app/frontend; without this, that nested
+# package.json counts as a new workspace project and verifyDepsBeforeRun
+# rejects every `pnpm run`/`pnpm exec` ("workspace structure has changed").
+packages:
+  - "."
 
 overrides:
   # esbuild 0.28.2 deliberately exceeds vite 7.3.5's `^0.27.0` range to fix
