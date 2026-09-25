@@ -32,7 +32,7 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Lint (ruff, eslint, shellcheck)
+      - name: Lint (ruff, eslint, shellcheck, lockfile-check, lint-actions)
         run: make lint
 
       - name: Typecheck (tsc, app + test tsconfigs)
