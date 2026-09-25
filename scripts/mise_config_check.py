@@ -4,13 +4,15 @@ Fails unless .mise.toml is pin-only (min_version + plain `[tools] name = "versio
 pins) and both Dockerfiles' `ARG PNPM_VERSION=` equals the [tools] pnpm pin.
 """
 
+from __future__ import annotations
+
 import re
 import sys
 import tomllib
 
-MISE_CONFIG_PATH = ".mise.toml"
-DOCKERFILE_PATHS = ("docker/Dockerfile.Vite", "docker/Dockerfile")
-PNPM_ARG_PATTERN = re.compile(r"^ARG PNPM_VERSION=(\S+)$", re.M)
+MISE_CONFIG_PATH: str = ".mise.toml"
+DOCKERFILE_PATHS: tuple[str, ...] = ("docker/Dockerfile.Vite", "docker/Dockerfile")
+PNPM_ARG_PATTERN: re.Pattern[str] = re.compile(r"^ARG PNPM_VERSION=(\S+)$", re.M)
 
 
 def find_non_pin_config(mise_config: dict) -> list[str]:
