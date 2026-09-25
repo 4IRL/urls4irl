@@ -24,9 +24,8 @@ vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 // on. This file leaves ../../btns-forms.js unmocked, so the real
 // makeSubmitButton/makeCancelButton factory runs against this same mock.
 const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
-  const { mockGlobalsWithTooltipInstance } = await import(
-    "../../../../__tests__/helpers/mock-globals.js"
-  );
+  const { mockGlobalsWithTooltipInstance } =
+    await import("../../../../__tests__/helpers/mock-globals.js");
   return await mockGlobalsWithTooltipInstance();
 });
 

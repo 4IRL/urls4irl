@@ -2902,9 +2902,9 @@ def test_update_url_unknown_exception_sends_notification(
     )
 
     # Wait for notification to be sent (with timeout)
-    assert notification_sent.wait(
-        timeout=5.0
-    ), "Notification was not sent within timeout"
+    assert notification_sent.wait(timeout=5.0), (
+        "Notification was not sent within timeout"
+    )
 
     assert update_url_string_form.status_code == 400
 

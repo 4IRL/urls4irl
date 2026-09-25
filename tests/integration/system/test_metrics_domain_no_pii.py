@@ -33,8 +33,7 @@ _BASE_ALLOWED_DOMAIN_DIMS: frozenset[str] = frozenset({"device_type"})
 _SANCTIONED_CLOSED_SET_DOMAIN_DIMS: dict[EventName, frozenset[str]] = {
     # `source` is a closed-set match-type label ('search_result'/'exact_username'),
     # not the added member's username or id.
-    EventName.MEMBER_ADDED: _BASE_ALLOWED_DOMAIN_DIMS
-    | {"source"},
+    EventName.MEMBER_ADDED: _BASE_ALLOWED_DOMAIN_DIMS | {"source"},
 }
 
 

@@ -105,8 +105,7 @@ def test_onboarding_nudge_hidden_for_returning_user(
     login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
     page.context.add_init_script(
-        "localStorage.setItem('u4i:onboardingSeen',"
-        " JSON.stringify({createUtub: true}))"
+        "localStorage.setItem('u4i:onboardingSeen', JSON.stringify({createUtub: true}))"
     )
     # $(document).ready fires on DOMContentLoaded, which precedes the 'load'
     # event that reload() awaits — so once reload() returns, the onboarding init
@@ -318,8 +317,7 @@ def test_create_utub_nudge_rearms_after_deleting_last_utub(
     # is required so the seeded value is present when the onboarding init runs (see
     # test_onboarding_nudge_hidden_for_returning_user for the reload rationale).
     page.context.add_init_script(
-        "localStorage.setItem('u4i:onboardingSeen',"
-        " JSON.stringify({createUtub: true}))"
+        "localStorage.setItem('u4i:onboardingSeen', JSON.stringify({createUtub: true}))"
     )
     page.reload()
 

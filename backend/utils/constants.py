@@ -1011,9 +1011,9 @@ class CONSTANTS:
     SEARCH = SEARCH_CONSTANTS()
 
 
-def generate_constants_js() -> (
-    dict[str, int | list[str] | dict[str, str] | dict[str, int]]
-):
+def generate_constants_js() -> dict[
+    str, int | list[str] | dict[str, str] | dict[str, int]
+]:
     """
     Generate constants configuration for frontend JavaScript.
     Returns a dict that can be passed to Jinja and converted to JSON.

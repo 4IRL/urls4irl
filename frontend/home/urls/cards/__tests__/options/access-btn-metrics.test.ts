@@ -64,9 +64,8 @@ describe("access-btn metrics — UI_URL_ACCESS { trigger: main_button }", () => 
 
   it("emits ui_url_access with trigger 'main_button' on click", async () => {
     const { emit } = await import("../../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(false);
     vi.mocked(getActiveTagCount).mockReturnValue(0);
 
@@ -84,9 +83,8 @@ describe("access-btn metrics — UI_URL_ACCESS { trigger: main_button }", () => 
 
   it("emits with search_active 'true' and active_tag_count from helpers", async () => {
     const { emit } = await import("../../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(true);
     vi.mocked(getActiveTagCount).mockReturnValue(5);
 

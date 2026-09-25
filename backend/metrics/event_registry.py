@@ -251,8 +251,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     ),
     EventName.LOGIN_SUCCESS: EventRegistryEntry(
         description=(
-            "Login succeeded on the fully-validated path "
-            "(email_validated guard passed)"
+            "Login succeeded on the fully-validated path (email_validated guard passed)"
         ),
         category=EventCategory.DOMAIN,
         dimensions={"method": ("password", "google", "github")},
@@ -267,8 +266,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     ),
     EventName.OAUTH_IDENTITY_UNLINKED: EventRegistryEntry(
         description=(
-            "OAuth provider identity disconnected from an account via the "
-            "settings page"
+            "OAuth provider identity disconnected from an account via the settings page"
         ),
         category=EventCategory.DOMAIN,
         dimensions={"provider": ("google", "github")},
@@ -298,7 +296,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     ),
     EventName.PASSWORD_RESET_REQUESTED: EventRegistryEntry(
         description=(
-            "Forgot-password email delivery attempted within the rate-limit " "window"
+            "Forgot-password email delivery attempted within the rate-limit window"
         ),
         category=EventCategory.DOMAIN,
     ),

@@ -283,8 +283,9 @@ def test_change_email_wrong_password_returns_400_field_error_no_staging(
     response_json = response.get_json()
     assert response_json[STD_JSON.ERROR_CODE] == ChangeEmailErrorCodes.INVALID_PASSWORD
     assert response_json[STD_JSON.MESSAGE] == USER_FAILURE.CURRENT_PASSWORD_INCORRECT
-    assert USER_FAILURE.CURRENT_PASSWORD_INCORRECT in (
-        response_json[STD_JSON.ERRORS]["currentPassword"]
+    assert (
+        USER_FAILURE.CURRENT_PASSWORD_INCORRECT
+        in (response_json[STD_JSON.ERRORS]["currentPassword"])
     )
 
     with app.app_context():

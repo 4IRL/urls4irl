@@ -97,7 +97,7 @@ def create_utub_member(
                 redis_client.expire(rate_limit_key, _MEMBER_ADD_WINDOW_SECONDS)
         except Exception as redis_error:
             current_app.logger.exception(
-                "member-add daily-cap counter failed (failing open): " f"{redis_error}"
+                f"member-add daily-cap counter failed (failing open): {redis_error}"
             )
 
     new_user: Users | None = Users.query.filter(Users.username == username).first()

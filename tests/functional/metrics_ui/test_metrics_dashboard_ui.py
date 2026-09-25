@@ -414,9 +414,9 @@ def test_gauges_tab_is_default_and_renders_chart_on_row_click(
         css_selector=MDL.GAUGES_ROW,
         minimum_count=len(GaugeName),
     )
-    assert len(gauge_rows) >= len(
-        GaugeName
-    ), f"Expected at least {len(GaugeName)} gauge rows, got {len(gauge_rows)}."
+    assert len(gauge_rows) >= len(GaugeName), (
+        f"Expected at least {len(GaugeName)} gauge rows, got {len(gauge_rows)}."
+    )
 
     # The global event-totals summary is hidden on the Gauges tab.
     expect(page.locator(MDL.SUMMARY_SECTION)).to_be_hidden()
@@ -424,9 +424,9 @@ def test_gauges_tab_is_default_and_renders_chart_on_row_click(
     # No chart until a row is clicked — only the prompt is shown.
     prompt = wait_for_element_presence(page=page, css_selector=MDL.GAUGES_DETAIL_PROMPT)
     expect(prompt).to_have_text(ADMIN_METRICS_STRINGS.METRICS_GAUGE_SELECT_PROMPT)
-    assert (
-        page.locator(MDL.GAUGES_DETAIL_CHART).count() == 0
-    ), "No gauge chart should render before a row is clicked."
+    assert page.locator(MDL.GAUGES_DETAIL_CHART).count() == 0, (
+        "No gauge chart should render before a row is clicked."
+    )
 
     # Click a known volume gauge (total_users) that has multiple seeded
     # timestamps, so its chart must contain a plotted line.
@@ -436,12 +436,12 @@ def test_gauges_tab_is_default_and_renders_chart_on_row_click(
     wait_for_element_presence(
         page=page, css_selector="#gauge-chart-total_users polyline"
     )
-    assert (
-        page.locator(MDL.GAUGES_DETAIL_CHART).count() == 1
-    ), "Only the selected gauge's chart should render."
-    assert (
-        page.locator(MDL.GAUGES_DETAIL_PROMPT).count() == 0
-    ), "The prompt must be replaced by the chart once a row is selected."
+    assert page.locator(MDL.GAUGES_DETAIL_CHART).count() == 1, (
+        "Only the selected gauge's chart should render."
+    )
+    assert page.locator(MDL.GAUGES_DETAIL_PROMPT).count() == 0, (
+        "The prompt must be replaced by the chart once a row is selected."
+    )
 
 
 def test_gauges_tab_renders_empty_state_with_no_data(
@@ -476,9 +476,9 @@ def test_gauges_tab_renders_empty_state_with_no_data(
         page=page, css_selector=MDL.GAUGES_PANEL_EMPTY_STATE
     )
     expect(empty_state_element).to_have_text(ADMIN_METRICS_STRINGS.METRICS_GAUGES_EMPTY)
-    assert (
-        page.locator(MDL.GAUGES_ROW).count() == 0
-    ), "No gauge rows should render when the batched response is empty."
+    assert page.locator(MDL.GAUGES_ROW).count() == 0, (
+        "No gauge rows should render when the batched response is empty."
+    )
 
 
 def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
@@ -539,9 +539,9 @@ def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
         metric_cells = row.locator("td.metric").all()
         assert len(metric_cells) == 3, "Each row must have p50/p95/p99 cells."
         for metric_cell in metric_cells:
-            assert (
-                metric_cell.inner_text().strip()
-            ), "Percentile cell must not be empty."
+            assert metric_cell.inner_text().strip(), (
+                "Percentile cell must not be empty."
+            )
 
     # The global event-totals summary is hidden on the Latency tab.
     expect(page.locator(MDL.SUMMARY_SECTION)).to_be_hidden()
@@ -551,9 +551,9 @@ def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
         page=page, css_selector=MDL.LATENCY_DETAIL_PROMPT
     )
     expect(prompt).to_have_text(ADMIN_METRICS_STRINGS.METRICS_LATENCY_SELECT_PROMPT)
-    assert (
-        page.locator(MDL.LATENCY_DETAIL_CHART).count() == 0
-    ), "No latency chart should render before a row is clicked."
+    assert page.locator(MDL.LATENCY_DETAIL_CHART).count() == 0, (
+        "No latency chart should render before a row is clicked."
+    )
 
     # Click the first seeded endpoint row; its timeseries chart must render
     # with at least one plotted polyline segment.
@@ -563,12 +563,12 @@ def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
         css_selector=f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
     )
     wait_for_element_presence(page=page, css_selector=MDL.LATENCY_DETAIL_CHART_LINE)
-    assert (
-        page.locator(MDL.LATENCY_DETAIL_CHART).count() == 1
-    ), "Only the selected endpoint's chart should render."
-    assert (
-        page.locator(MDL.LATENCY_DETAIL_PROMPT).count() == 0
-    ), "The prompt must be replaced by the chart once a row is selected."
+    assert page.locator(MDL.LATENCY_DETAIL_CHART).count() == 1, (
+        "Only the selected endpoint's chart should render."
+    )
+    assert page.locator(MDL.LATENCY_DETAIL_PROMPT).count() == 0, (
+        "The prompt must be replaced by the chart once a row is selected."
+    )
 
 
 def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
@@ -637,9 +637,9 @@ def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
                 f"Endpoint cell '{endpoint_text}' must contain the full "
                 f"endpoint '{expected_endpoint}' at {width}px."
             )
-            assert (
-                "…" not in endpoint_text and "..." not in endpoint_text
-            ), f"Endpoint name must not be truncated at {width}px."
+            assert "…" not in endpoint_text and "..." not in endpoint_text, (
+                f"Endpoint name must not be truncated at {width}px."
+            )
             # The wrapping cell must not overflow its box (truncation produces
             # scrollWidth > clientWidth; a wrapping cell stays within its box).
             overflowed = endpoint_cell.evaluate(
@@ -769,9 +769,9 @@ def test_latency_tab_renders_empty_state_with_no_samples(
 
     empty_row = wait_for_element_presence(page=page, css_selector=MDL.LATENCY_EMPTY_ROW)
     expect(empty_row).to_have_text(ADMIN_METRICS_STRINGS.METRICS_LATENCY_EMPTY)
-    assert (
-        page.locator(MDL.LATENCY_ROW).count() == 0
-    ), "No per-endpoint latency rows should render when no samples exist."
+    assert page.locator(MDL.LATENCY_ROW).count() == 0, (
+        "No per-endpoint latency rows should render when no samples exist."
+    )
 
 
 def test_latency_tab_shows_approximate_note_for_long_window(
@@ -821,12 +821,12 @@ def test_latency_tab_shows_approximate_note_for_long_window(
     )
 
     # Day is inside the 35-day raw retention -> exact path, no notes.
-    assert (
-        page.locator(MDL.LATENCY_APPROXIMATE_NOTE).count() == 0
-    ), "The approximate note must be absent on the exact (Day) raw window."
-    assert (
-        page.locator(MDL.LATENCY_DAILY_RESOLUTION_NOTE).count() == 0
-    ), "The daily-resolution note must be absent on the exact (Day) raw window."
+    assert page.locator(MDL.LATENCY_APPROXIMATE_NOTE).count() == 0, (
+        "The approximate note must be absent on the exact (Day) raw window."
+    )
+    assert page.locator(MDL.LATENCY_DAILY_RESOLUTION_NOTE).count() == 0, (
+        "The daily-resolution note must be absent on the exact (Day) raw window."
+    )
 
     # Year crosses the 35-day boundary -> rollup tier: approximate summary
     # note + daily-resolution note appear, and per-endpoint rows still
@@ -846,9 +846,9 @@ def test_latency_tab_shows_approximate_note_for_long_window(
         css_selector=MDL.LATENCY_ROW,
         minimum_count=1,
     )
-    assert (
-        len(year_rows) >= 1
-    ), "Year window must still render per-endpoint rollup rows."
+    assert len(year_rows) >= 1, (
+        "Year window must still render per-endpoint rollup rows."
+    )
 
     # The daily-resolution note lives in the detail-chart container, which
     # is only rendered once an endpoint row is selected. Click a seeded

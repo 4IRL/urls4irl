@@ -131,8 +131,9 @@ def test_change_password_wrong_current_password_returns_400_field_error(
         response_json[STD_JSON.ERROR_CODE] == ChangePasswordErrorCodes.INVALID_PASSWORD
     )
     assert response_json[STD_JSON.MESSAGE] == USER_FAILURE.CURRENT_PASSWORD_INCORRECT
-    assert USER_FAILURE.CURRENT_PASSWORD_INCORRECT in (
-        response_json[STD_JSON.ERRORS]["currentPassword"]
+    assert (
+        USER_FAILURE.CURRENT_PASSWORD_INCORRECT
+        in (response_json[STD_JSON.ERRORS]["currentPassword"])
     )
 
     with app.app_context():
@@ -155,8 +156,9 @@ def test_change_password_mismatch_returns_400(
 
     assert response.status_code == 400
     response_json = response.get_json()
-    assert RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL in (
-        response_json[STD_JSON.ERRORS]["confirmNewPassword"]
+    assert (
+        RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL
+        in (response_json[STD_JSON.ERRORS]["confirmNewPassword"])
     )
 
 

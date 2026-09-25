@@ -75,9 +75,8 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
 
   it("emits ui_url_card_click on Enter key when card is focused", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(false);
     vi.mocked(getActiveTagCount).mockReturnValue(0);
 
@@ -110,9 +109,8 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
 
   it("emits with dimensions read at keypress time", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
 
     const urlCard = $(".urlRow");
     setFocusEventListenersOnURLCard(urlCard);

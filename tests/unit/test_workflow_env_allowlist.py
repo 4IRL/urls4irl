@@ -184,9 +184,9 @@ def test_allow_list_covers_flush_metrics_env_reads():
     THEN every read key is present in ALLOW_VARS.
     """
     reads = _walk_env_reads(_FLUSH_METRICS_SCRIPT.read_text())
-    assert (
-        reads <= _ALLOWED
-    ), f"flush_metrics.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    assert reads <= _ALLOWED, (
+        f"flush_metrics.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    )
 
 
 def test_allow_list_covers_sample_gauges_env_reads():
@@ -196,9 +196,9 @@ def test_allow_list_covers_sample_gauges_env_reads():
     THEN every read key is present in ALLOW_VARS.
     """
     reads = _walk_env_reads(_SAMPLE_GAUGES_SCRIPT.read_text())
-    assert (
-        reads <= _ALLOWED
-    ), f"sample_gauges.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    assert reads <= _ALLOWED, (
+        f"sample_gauges.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    )
 
 
 def test_allow_list_covers_purge_audit_log_env_reads():
@@ -208,9 +208,9 @@ def test_allow_list_covers_purge_audit_log_env_reads():
     THEN every read key is present in ALLOW_VARS.
     """
     reads = _walk_env_reads(_PURGE_AUDIT_LOG_SCRIPT.read_text())
-    assert (
-        reads <= _ALLOWED
-    ), f"purge_audit_log.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    assert reads <= _ALLOWED, (
+        f"purge_audit_log.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    )
 
 
 def test_allow_list_covers_notify_env_reads():
@@ -220,9 +220,9 @@ def test_allow_list_covers_notify_env_reads():
     THEN every read key is present in ALLOW_VARS.
     """
     reads = _walk_env_reads(_NOTIFY_SCRIPT.read_text())
-    assert (
-        reads <= _ALLOWED
-    ), f"notify.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    assert reads <= _ALLOWED, (
+        f"notify.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    )
 
 
 def test_allow_list_covers_backup_sentinel_env_reads():
@@ -232,9 +232,9 @@ def test_allow_list_covers_backup_sentinel_env_reads():
     THEN every read key is present in ALLOW_VARS.
     """
     reads = _walk_env_reads(_BACKUP_SENTINEL_SCRIPT.read_text())
-    assert (
-        reads <= _ALLOWED
-    ), f"backup_sentinel.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    assert reads <= _ALLOWED, (
+        f"backup_sentinel.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    )
 
 
 def test_allow_list_covers_run_backup_if_requested_env_reads():
@@ -245,8 +245,7 @@ def test_allow_list_covers_run_backup_if_requested_env_reads():
     """
     reads = _walk_env_reads(_RUN_BACKUP_IF_REQUESTED_SCRIPT.read_text())
     assert reads <= _ALLOWED, (
-        f"run_backup_if_requested.py reads {sorted(reads - _ALLOWED)} "
-        "not in ALLOW_VARS"
+        f"run_backup_if_requested.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
     )
 
 
@@ -257,9 +256,9 @@ def test_allow_list_covers_check_flush_liveness_env_reads():
     THEN every read key is present in ALLOW_VARS.
     """
     reads = _walk_env_reads(_CHECK_LIVENESS_SCRIPT.read_text())
-    assert (
-        reads <= _ALLOWED
-    ), f"check_flush_liveness.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    assert reads <= _ALLOWED, (
+        f"check_flush_liveness.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    )
 
 
 def test_allow_list_covers_bash_cron_env_reads():
@@ -269,9 +268,9 @@ def test_allow_list_covers_bash_cron_env_reads():
     THEN every externally-sourced var is present in ALLOW_VARS.
     """
     external = _bash_external_var_reads(_BASH_CRON_SCRIPTS)
-    assert (
-        external <= _ALLOWED
-    ), f"bash cron scripts read {sorted(external - _ALLOWED)} not in ALLOW_VARS"
+    assert external <= _ALLOWED, (
+        f"bash cron scripts read {sorted(external - _ALLOWED)} not in ALLOW_VARS"
+    )
 
 
 def test_walk_env_reads_captures_all_three_call_shapes():

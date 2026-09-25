@@ -405,8 +405,9 @@ def test_delete_confirmation_mismatch_returns_400_no_mutation(
         response_json[STD_JSON.ERROR_CODE]
         == DeleteAccountErrorCodes.CONFIRMATION_MISMATCH
     )
-    assert USER_FAILURE.DELETE_CONFIRMATION_MISMATCH in (
-        response_json[STD_JSON.ERRORS]["confirmUsername"]
+    assert (
+        USER_FAILURE.DELETE_CONFIRMATION_MISMATCH
+        in (response_json[STD_JSON.ERRORS]["confirmUsername"])
     )
 
     with app.app_context():
@@ -439,8 +440,9 @@ def test_delete_wrong_password_returns_400_field_error(
     assert (
         response_json[STD_JSON.ERROR_CODE] == DeleteAccountErrorCodes.INVALID_PASSWORD
     )
-    assert USER_FAILURE.CURRENT_PASSWORD_INCORRECT in (
-        response_json[STD_JSON.ERRORS]["currentPassword"]
+    assert (
+        USER_FAILURE.CURRENT_PASSWORD_INCORRECT
+        in (response_json[STD_JSON.ERRORS]["currentPassword"])
     )
 
     with app.app_context():

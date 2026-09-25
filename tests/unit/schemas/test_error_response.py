@@ -247,6 +247,6 @@ def test_error_response_status_is_required_in_json_schema():
     """
     schema = ErrorResponse.model_json_schema()
     assert "required" in schema, "ErrorResponse schema has no 'required' list"
-    assert (
-        "status" in schema["required"]
-    ), "Expected 'status' in required fields but got: " + str(schema["required"])
+    assert "status" in schema["required"], (
+        "Expected 'status' in required fields but got: " + str(schema["required"])
+    )

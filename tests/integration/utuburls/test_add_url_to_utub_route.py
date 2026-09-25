@@ -2880,9 +2880,9 @@ def test_add_invalid_url_sends_notification(
     )
 
     # Wait for notification to be sent (with timeout)
-    assert notification_sent.wait(
-        timeout=5.0
-    ), "Notification was not sent within timeout"
+    assert notification_sent.wait(timeout=5.0), (
+        "Notification was not sent within timeout"
+    )
 
     assert add_url_response.status_code == 400
 

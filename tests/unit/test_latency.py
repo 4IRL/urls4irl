@@ -65,8 +65,7 @@ def test_latency_module_is_flask_free() -> None:
     latency_file = Path(latency.__file__).resolve()
     project_root = latency_file.parents[2]
     preamble = (
-        f"PROJECT_ROOT = {str(project_root)!r}\n"
-        f"LATENCY_FILE = {str(latency_file)!r}\n"
+        f"PROJECT_ROOT = {str(project_root)!r}\nLATENCY_FILE = {str(latency_file)!r}\n"
     )
     result = subprocess.run(
         [sys.executable, "-c", preamble + probe],

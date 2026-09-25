@@ -242,8 +242,7 @@ CURRENT_PASSWORD_INCORRECT = "Current password is incorrect."
 # OAuth-only guard copy for the change-password endpoint (defense-in-depth:
 # the template hides the form for password-less accounts).
 PASSWORD_CHANGE_OAUTH_ONLY = (
-    "Password change isn't available for accounts that sign in with Google or "
-    "GitHub."
+    "Password change isn't available for accounts that sign in with Google or GitHub."
 )
 # OAuth-only guard copy for the change-email START endpoint (defense-in-depth:
 # the template hides the form for password-less accounts). A dedicated sibling
@@ -263,8 +262,7 @@ TOO_MANY_PASSWORD_ATTEMPTS = (
 # portal with zero admins. Mirrors the admin portal's last-admin-forbidden
 # invariant but self-scoped.
 SOLE_ADMIN_CANNOT_LEAVE = (
-    "You're the only active admin. Assign another admin before removing your "
-    "account."
+    "You're the only active admin. Assign another admin before removing your account."
 )
 # OAuth-proof round-trip 200 banner copy (DD-6) returned by the delete
 # endpoint's OAuth-only branch: a password-less account re-consents through an

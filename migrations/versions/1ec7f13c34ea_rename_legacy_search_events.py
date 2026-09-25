@@ -40,11 +40,17 @@ def upgrade():
     # a known target dim. The rename logic only handles target in {'utubs', 'urls'};
     # any other value would be skipped silently and remain as an orphan referencing
     # deleted EventRegistry rows after step 3, violating the FK.
-    _unknown_target_count = op.get_bind().execute(sa.text("""
+    _unknown_target_count = (
+        op.get_bind()
+        .execute(
+            sa.text("""
                 SELECT COUNT(*) FROM "AnonymousMetrics"
                 WHERE "eventName" IN ('ui_search_open', 'ui_search_close')
                   AND (dimensions->>'target' IS NULL OR dimensions->>'target' NOT IN ('utubs', 'urls'))
-                """)).scalar()
+                """)
+        )
+        .scalar()
+    )
     if _unknown_target_count:
         raise RuntimeError(
             f"Migration 1ec7f13c34ea cannot proceed: {_unknown_target_count} legacy "

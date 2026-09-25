@@ -696,7 +696,7 @@ def _seed_uniform_latency() -> int:
     except ProgrammingError:
         db.session.rollback()
         current_app.logger.warning(
-            "addmock: AnonymousLatencySamples table missing; " "skipped latency seeding"
+            "addmock: AnonymousLatencySamples table missing; skipped latency seeding"
         )
         return 0
     return rows_written

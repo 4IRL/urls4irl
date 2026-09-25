@@ -1312,9 +1312,7 @@ def test_flow_window_xor_enforced(
         validator rejects the combo at the schema layer.
     """
     logged_in_client, _, _, _ = login_admin_user_with_register
-    url = (
-        f"{_FLOW_URL}?flow_id={_ADD_URL_FLOW}&window=day" f"&start=2026-01-01T00:00:00Z"
-    )
+    url = f"{_FLOW_URL}?flow_id={_ADD_URL_FLOW}&window=day&start=2026-01-01T00:00:00Z"
 
     response = logged_in_client.get(url, headers=_AJAX_HEADERS)
 

@@ -583,9 +583,9 @@ def test_validate_invalid_urls(url_to_validate: str):
 def test_normalize_urls_valid(normalized_url: str, urls_to_validate: list[str]):
     url_validator = UrlValidator()
     for url in urls_to_validate:
-        assert (
-            normalized_url.lower() == url_validator.normalize_url(url).lower()
-        ), f"Normalized={normalized_url} | Tested={url}"
+        assert normalized_url.lower() == url_validator.normalize_url(url).lower(), (
+            f"Normalized={normalized_url} | Tested={url}"
+        )
 
 
 @pytest.mark.parametrize(

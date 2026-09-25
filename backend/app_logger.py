@@ -302,7 +302,9 @@ def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = Fa
         status_color = (
             f"{GREEN}"
             if status_code < 400
-            else f"{RED}" if status_code >= 500 else f"{YELLOW}"
+            else f"{RED}"
+            if status_code >= 500
+            else f"{YELLOW}"
         )
 
         additional_messages = safe_retrieve_logs()

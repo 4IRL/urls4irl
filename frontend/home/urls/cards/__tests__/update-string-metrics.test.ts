@@ -170,9 +170,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
   it("rebound .urlBtnAccess click emits ui_url_access with trigger 'main_button'", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(false);
     vi.mocked(getActiveTagCount).mockReturnValue(0);
 
@@ -191,9 +190,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
   it("rebound .goToUrlIcon click emits ui_url_access with trigger 'corner_button'", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(false);
     vi.mocked(getActiveTagCount).mockReturnValue(0);
 
@@ -212,9 +210,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
   it("rebound click dims are read AT CLICK TIME (not at updateURLSuccess time)", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
 
     // Dims at updateURLSuccess time are different from click time.
     vi.mocked(isURLSearchActive).mockReturnValue(false);

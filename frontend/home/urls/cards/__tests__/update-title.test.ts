@@ -686,7 +686,9 @@ describe("updateURLTitle - restores the submit button tooltip on a keep-open 400
     await updateURLTitle(urlTitleInput, urlCard, 1);
 
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(
+      submitBtn,
+    );
   });
 
   it("does not attempt a restore when the failure is swallowed as a handled 429", async () => {

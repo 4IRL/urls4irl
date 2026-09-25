@@ -21,10 +21,11 @@ jobs:
           cache: 'pip'
           cache-dependency-path: '**/requirements-test.txt'
 
-      - name: Verify Python with Black
-        uses: psf/black@6305bf1ae645ab7541be4f5028a86239316178eb # Uses black 26.1.0
-        with:
-          options: "--check --verbose"
+      - name: Install ruff
+        run: pip install ruff==0.15.20
+
+      - name: Verify Python formatting with ruff
+        run: ruff format --check .
 
       - name: Setup node
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0

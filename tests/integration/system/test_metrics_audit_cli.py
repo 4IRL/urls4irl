@@ -51,9 +51,7 @@ def test_audit_strict_exits_non_zero_when_orphan_present(tmp_path: Path) -> None
     probe_services_dir.mkdir(parents=True)
     probe_file = probe_services_dir / "probe.py"
     probe_file.write_text(
-        "from __future__ import annotations\n\n"
-        "def probe() -> None:\n"
-        "    return None\n",
+        "from __future__ import annotations\n\ndef probe() -> None:\n    return None\n",
         encoding="utf-8",
     )
 

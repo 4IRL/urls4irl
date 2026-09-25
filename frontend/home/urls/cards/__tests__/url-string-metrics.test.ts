@@ -59,9 +59,8 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
   it("emits ui_url_access when the URL anchor is clicked on a selected card", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(false);
     vi.mocked(getActiveTagCount).mockReturnValue(0);
 
@@ -140,9 +139,8 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
   it("passes search_active 'true' and active_tag_count from helpers on click", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(true);
     vi.mocked(getActiveTagCount).mockReturnValue(3);
 

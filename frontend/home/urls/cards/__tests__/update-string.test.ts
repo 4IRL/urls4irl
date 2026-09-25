@@ -24,9 +24,8 @@ const { mockMetricsClient } = await vi.hoisted(
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
 const { globalsMock } = await vi.hoisted(async () => {
-  const { mockGlobalsWithTooltipInstance } = await import(
-    "../../../../__tests__/helpers/mock-globals.js"
-  );
+  const { mockGlobalsWithTooltipInstance } =
+    await import("../../../../__tests__/helpers/mock-globals.js");
   return await mockGlobalsWithTooltipInstance();
 });
 
@@ -857,7 +856,9 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
     await updateURL(urlStringInput, urlCard, 99);
 
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(
+      submitBtn,
+    );
   });
 
   it("restores the submit button on a 400 carrying only a message", async () => {
@@ -867,7 +868,9 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
     await updateURL(urlStringInput, urlCard, 99);
 
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(
+      submitBtn,
+    );
   });
 
   it("restores the submit button on a 409 stale conflict", async () => {
@@ -878,7 +881,9 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
 
     expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(
+      submitBtn,
+    );
   });
 
   it("does not attempt a restore when the failure is swallowed as a handled 429", async () => {

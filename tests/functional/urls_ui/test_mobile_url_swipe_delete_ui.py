@@ -342,12 +342,12 @@ def test_url_swipe_inert_for_non_deletable_row(
     utub = get_utub_this_user_did_not_create(app, USER_ID_FOR_TEST)
     utub_url = get_url_in_utub(app, utub.id)
 
-    assert (
-        utub.utub_creator != USER_ID_FOR_TEST
-    ), "Test premise violated: seeded UTub is created by the test user"
-    assert (
-        utub_url.user_id != USER_ID_FOR_TEST
-    ), "Test premise violated: seeded URL was added by the test user"
+    assert utub.utub_creator != USER_ID_FOR_TEST, (
+        "Test premise violated: seeded UTub is created by the test user"
+    )
+    assert utub_url.user_id != USER_ID_FOR_TEST, (
+        "Test premise violated: seeded URL was added by the test user"
+    )
 
     login_user_and_select_utub_by_utubid_mobile(
         app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id

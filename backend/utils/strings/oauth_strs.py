@@ -51,7 +51,7 @@ LINK_PROOF_MISMATCH_MESSAGE = (
 UNLINK_SUCCESS_MESSAGE = "{provider} disconnected from your account."
 UNLINK_NOT_LINKED_MESSAGE = "{provider} is not connected to your account."
 UNLINK_LAST_METHOD_MESSAGE = (
-    "You can't remove your only sign-in method. Connect another provider " "first."
+    "You can't remove your only sign-in method. Connect another provider first."
 )
 
 # Collision confirm-link page copy (Jinja-rendered; UI tests assert these via

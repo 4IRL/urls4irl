@@ -191,9 +191,9 @@ def _reset_metrics_state_for_test(
         "metrics_writer singleton is disabled at test entry — fixture order"
         " regression: metrics_enabled_for_ui must run before any UI gesture."
     )
-    assert (
-        app_metrics_writer._redis is metrics_redis_client
-    ), "metrics_writer._redis is not pointed at the worker's test Redis DB"
+    assert app_metrics_writer._redis is metrics_redis_client, (
+        "metrics_writer._redis is not pointed at the worker's test Redis DB"
+    )
 
 
 @pytest.fixture

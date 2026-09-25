@@ -472,9 +472,9 @@ def test_deck_header_typography_matches_original(
     }
 
     for header_id in _DECK_HEADER_IDS:
-        assert (
-            _header_typography(page, header_id) == expected_typography
-        ), f"#{header_id} typography changed after the header button conversion"
+        assert _header_typography(page, header_id) == expected_typography, (
+            f"#{header_id} typography changed after the header button conversion"
+        )
 
 
 def test_deck_header_typography_tracks_the_heading_ramp_below_1200px(
@@ -510,9 +510,9 @@ def test_deck_header_typography_tracks_the_heading_ramp_below_1200px(
 
         # Guards against a vacuous pass: 1100px must land inside the fluid band,
         # not on the 2rem ceiling asserted by the test above.
-        assert (
-            title_span["fontSize"] != "32px"
-        ), f"#{header_id} did not ramp below 1200px — the ceiling is still applied"
+        assert title_span["fontSize"] != "32px", (
+            f"#{header_id} did not ramp below 1200px — the ceiling is still applied"
+        )
         assert {key: title_span[key] for key in _RAMPED_TYPE_KEYS} == {
             key: hidden_heading[key] for key in _RAMPED_TYPE_KEYS
         }, f"#{header_id} diverged from its <h2> sibling below 1200px"
@@ -647,9 +647,9 @@ def test_deck_header_button_takes_keyboard_focus_and_shows_its_ring(
     wait_then_click_element(page=page, css_selector=HPL.SELECTORS_UTUB)
     expect(page.locator(HPL.MEMBER_DECK)).not_to_have_class(_COLLAPSED_CLASS_RE)
 
-    assert _tab_until_focused(
-        page, "MemberDeckHeaderAndCaret"
-    ), "#MemberDeckHeaderAndCaret was never reached by tabbing — it is not a tab stop"
+    assert _tab_until_focused(page, "MemberDeckHeaderAndCaret"), (
+        "#MemberDeckHeaderAndCaret was never reached by tabbing — it is not a tab stop"
+    )
 
     focus_ring = page.evaluate("""() => {
             const header = document.getElementById('MemberDeckHeaderAndCaret');
@@ -886,9 +886,9 @@ def test_collapsing_a_deck_by_keyboard_removes_its_content_from_the_tab_order(
     )
     expect(page.locator(HPL.MEMBER_DECK)).not_to_have_class(_COLLAPSED_CLASS_RE)
 
-    assert _tab_until_focused(
-        page, "MemberDeckHeaderAndCaret"
-    ), "#MemberDeckHeaderAndCaret was never reached by tabbing — it is not a tab stop"
+    assert _tab_until_focused(page, "MemberDeckHeaderAndCaret"), (
+        "#MemberDeckHeaderAndCaret was never reached by tabbing — it is not a tab stop"
+    )
 
     presses_to_content = _tab_presses_until_inside(page, _MEMBER_DECK_CONTENT_ID)
     assert presses_to_content is not None, (

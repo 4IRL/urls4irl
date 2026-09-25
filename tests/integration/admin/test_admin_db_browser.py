@@ -288,9 +288,9 @@ def test_every_mapped_model_is_browsable(
 
     for table_name in table_names:
         response = client.get(f"/admin/db/{table_name}")
-        assert (
-            response.status_code == 200
-        ), f"DB-browser grid for table {table_name!r} did not return 200"
+        assert response.status_code == 200, (
+            f"DB-browser grid for table {table_name!r} did not return 200"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -12,8 +12,7 @@ class USER_SETTINGS_STRINGS:
     # password-confirm row is server-rendered hidden and only toggled by TS).
     CONNECTED_ACCOUNTS_TITLE = "Connected accounts"
     CONNECTED_ACCOUNTS_HINT = (
-        "Sign-in methods connected to your account. You can sign in with any "
-        "of them."
+        "Sign-in methods connected to your account. You can sign in with any of them."
     )
     CONNECTED_STATUS_CONNECTED = "Connected as {email}"
     CONNECTED_STATUS_NOT_CONNECTED = "Not connected"
@@ -21,7 +20,7 @@ class USER_SETTINGS_STRINGS:
         "Not connected — you'll confirm with {provider} first"
     )
     CONNECTED_LAST_METHOD_NOTE = (
-        "Your only sign-in method — connect another before disconnecting " "this one."
+        "Your only sign-in method — connect another before disconnecting this one."
     )
     CONNECT_BUTTON_TEXT = "Connect"
     DISCONNECT_BUTTON_TEXT = "Disconnect"
@@ -241,12 +240,10 @@ class USER_SETTINGS_STRINGS:
         "{count} solo UTub(s) (only you) will be permanently deleted."
     )
     DELETE_MODAL_NOTICE_ATTRIBUTION = (
-        "URLs and tags you added stay in shared UTubs, attributed to a "
-        "“deleted user”."
+        "URLs and tags you added stay in shared UTubs, attributed to a “deleted user”."
     )
     DELETE_MODAL_NOTICE_RETENTION = (
-        "Backups and audit logs retain some data for up to ~90 days, then "
-        "auto-purge."
+        "Backups and audit logs retain some data for up to ~90 days, then auto-purge."
     )
     DELETE_MODAL_CONFIRM_USERNAME_PREFIX = "Type your username"
     DELETE_MODAL_CONFIRM_USERNAME_SUFFIX = "to confirm"

@@ -55,9 +55,8 @@ describe("loadInitialPreferencesState", () => {
     script.textContent = JSON.stringify(context);
     document.body.appendChild(script);
 
-    const { loadInitialPreferencesState } = await import(
-      "../lib/initial-state.js"
-    );
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
     loadInitialPreferencesState();
 
     expect(vi.mocked(setState)).toHaveBeenCalledWith({
@@ -72,9 +71,8 @@ describe("loadInitialPreferencesState", () => {
   });
 
   it("does not call setState when #user-preferences-data is absent", async () => {
-    const { loadInitialPreferencesState } = await import(
-      "../lib/initial-state.js"
-    );
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
     loadInitialPreferencesState();
 
     expect(vi.mocked(setState)).not.toHaveBeenCalled();
@@ -87,9 +85,8 @@ describe("loadInitialPreferencesState", () => {
     script.textContent = "";
     document.body.appendChild(script);
 
-    const { loadInitialPreferencesState } = await import(
-      "../lib/initial-state.js"
-    );
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
     loadInitialPreferencesState();
 
     expect(vi.mocked(setState)).not.toHaveBeenCalled();
@@ -102,9 +99,8 @@ describe("loadInitialPreferencesState", () => {
     script.textContent = "null";
     document.body.appendChild(script);
 
-    const { loadInitialPreferencesState } = await import(
-      "../lib/initial-state.js"
-    );
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
     loadInitialPreferencesState();
 
     expect(vi.mocked(setState)).not.toHaveBeenCalled();

@@ -24,9 +24,9 @@ def promote_user_to_admin(*, app: Flask, user_id: int) -> None:
     """
     with app.app_context():
         user_to_promote: Users | None = Users.query.get(user_id)
-        assert (
-            user_to_promote is not None
-        ), f"promote_user_to_admin: no Users row found for user_id={user_id}"
+        assert user_to_promote is not None, (
+            f"promote_user_to_admin: no Users row found for user_id={user_id}"
+        )
         user_to_promote.role = User_Role.ADMIN
         db.session.commit()
 

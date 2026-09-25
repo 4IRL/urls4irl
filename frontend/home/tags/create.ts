@@ -255,7 +255,8 @@ function createUTubTagFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as
-        { errors?: Record<string, string[]>; message?: string } | undefined;
+        | { errors?: Record<string, string[]>; message?: string }
+        | undefined;
       const errors = responseJSON?.errors;
       const message = responseJSON?.message;
       if (errors) {

@@ -139,7 +139,9 @@ def test_writer_log_and_drop_on_invalid_dimensions(
         record.message == "metrics: record_event failed"
         and record.levelno == logging.ERROR
         for record in caplog.records
-    ), "Expected an ERROR log with message 'metrics: record_event failed' on validation failure"
+    ), (
+        "Expected an ERROR log with message 'metrics: record_event failed' on validation failure"
+    )
     assert provide_metrics_redis.dbsize() == 0
 
 
@@ -175,7 +177,9 @@ def test_writer_log_and_drop_on_redis_failure(
         record.message == "metrics: record_event failed"
         and record.levelno == logging.ERROR
         for record in caplog.records
-    ), "Expected an ERROR log with message 'metrics: record_event failed' on Redis failure"
+    ), (
+        "Expected an ERROR log with message 'metrics: record_event failed' on Redis failure"
+    )
 
 
 def test_writer_disabled_when_metrics_enabled_false(

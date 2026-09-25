@@ -28,9 +28,9 @@ def _seed_metrics_via_cli(runner: Tuple[Flask, FlaskCliRunner]) -> None:
     """
     _, cli_runner = runner
     result = cli_runner.invoke(args=["addmock", "seed-uniform-test-data"])
-    assert (
-        result.exit_code == 0
-    ), f"Metrics seed CLI failed: exit={result.exit_code} output={result.output}"
+    assert result.exit_code == 0, (
+        f"Metrics seed CLI failed: exit={result.exit_code} output={result.output}"
+    )
 
 
 @pytest.fixture(autouse=True)

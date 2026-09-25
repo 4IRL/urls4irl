@@ -258,9 +258,9 @@ def test_token_validates_user(
     )
 
     # Wait for notification to be sent (with timeout)
-    assert notification_sent.wait(
-        timeout=5.0
-    ), "Notification was not sent within timeout"
+    assert notification_sent.wait(timeout=5.0), (
+        "Notification was not sent within timeout"
+    )
 
     assert len(response.history) == 1
     assert response.history[0].status_code == 302

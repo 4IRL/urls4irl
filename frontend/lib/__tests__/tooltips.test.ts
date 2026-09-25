@@ -113,16 +113,16 @@ describe("initTooltips", () => {
     initTooltips();
 
     expect(
-      document.querySelector("#utubBtnDelete")?.hasAttribute(
-        "data-hover-tooltip",
-      ),
+      document
+        .querySelector("#utubBtnDelete")
+        ?.hasAttribute("data-hover-tooltip"),
     ).toBe(true);
     // The nudge anchors carry no `data-bs-toggle` at ready time, so the sweep
     // never reaches them and they never get the marker the a11y handlers use.
     expect(
-      document.querySelector("#utubBtnCreate")?.hasAttribute(
-        "data-hover-tooltip",
-      ),
+      document
+        .querySelector("#utubBtnCreate")
+        ?.hasAttribute("data-hover-tooltip"),
     ).toBe(false);
   });
 
@@ -626,7 +626,9 @@ describe("managed tooltip accessibility handlers", () => {
   // stops Escape propagating cannot starve it), which jQuery's synthetic
   // `.trigger()` would never reach — dispatch a real KeyboardEvent.
   function pressKey(key: string): void {
-    document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true }),
+    );
   }
 
   function simulateNudgeShowTip(): void {
@@ -759,7 +761,9 @@ describe("managed tooltip accessibility handlers", () => {
 
     $(nudgeAnchor()).trigger("shown.bs.tooltip");
 
-    expect(nudgeAnchor().getAttribute("aria-describedby")).toBe("tooltipBubble");
+    expect(nudgeAnchor().getAttribute("aria-describedby")).toBe(
+      "tooltipBubble",
+    );
     expect(
       document.querySelector("#tooltipBubble")?.hasAttribute("aria-hidden"),
     ).toBe(false);
@@ -885,9 +889,7 @@ describe("managed tooltip accessibility handlers", () => {
   it("does nothing when Bootstrap set no aria-describedby", async () => {
     const { $ } = await import("../globals.js");
 
-    expect(() =>
-      $(managedTrigger()).trigger("shown.bs.tooltip"),
-    ).not.toThrow();
+    expect(() => $(managedTrigger()).trigger("shown.bs.tooltip")).not.toThrow();
     expect(
       document.querySelector("#tooltipBubble")?.hasAttribute("aria-hidden"),
     ).toBe(false);
