@@ -3,7 +3,7 @@ min_version = "2026.6.14"
 [tools]
 python = "3.11.14"
 node = "24.18.0"
-pnpm = "11.9.0"      # unused until Phase 3 (pnpm migration) — Phase 3 re-confirms the major
+pnpm = "11.9.0"
 ruff = "0.15.20"
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
