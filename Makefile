@@ -186,11 +186,12 @@ hooks-check: ## Report whether the pre-commit hook is installed in this clone
 # mise-config-check (run by `tools` after `mise install`, and by CI's Lint job; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
 # It keeps .mise.toml to min_version + plain `[tools] name = "version"` pins; it checks .mise.toml only. In an untrusted clone, mise's trust error fires first.
 # `npm ci --ignore-scripts`: no dependency install/postinstall scripts run on the host.
-tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules
+tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules; set git blame ignore-revs
 	@command -v mise >/dev/null || { echo "mise not installed — see https://mise.jdx.dev/installing-mise.html (Linux: curl https://mise.run | sh; macOS: brew install mise)"; exit 1; }
 	@mise install || { echo "make tools: mise install failed (see above). If it says .mise.toml is 'not trusted', the file has more than min_version + plain [tools] pins: remove that config instead of running 'mise trust'."; exit 1; }
 	@$(MAKE) --no-print-directory mise-config-check
 	cd frontend && $(MISE) npm ci --ignore-scripts
+	git config blame.ignoreRevsFile .git-blame-ignore-revs
 
 mise-config-check: ## Fail unless .mise.toml is pin-only (min_version + plain [tools] version pins)
 	@mise exec python -- python -c 'import sys, tomllib; c = tomllib.load(open(".mise.toml", "rb")); t = c.get("tools", {}); bad = sorted(set(c) - {"min_version", "tools"}) + (sorted("tools." + k for k, v in t.items() if not isinstance(v, str)) if isinstance(t, dict) else ["tools"]); bad and sys.exit(".mise.toml has non-version-pin config (" + ", ".join(bad) + "); only min_version and plain [tools] version pins are allowed")'
