@@ -63,9 +63,9 @@ def _assert_all_properties_described(
             )
             continue
         # Standard scalar / list / etc. field
-        assert (
-            "description" in field_schema
-        ), f"{schema_label}.{field_name} is missing a 'description' in JSON Schema"
+        assert "description" in field_schema, (
+            f"{schema_label}.{field_name} is missing a 'description' in JSON Schema"
+        )
 
 
 @pytest.mark.parametrize(

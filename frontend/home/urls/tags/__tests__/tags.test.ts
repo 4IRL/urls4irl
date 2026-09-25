@@ -23,9 +23,8 @@ vi.mock("../delete.js", () => ({
 // Override lib/globals.js with a shared tooltip instance so they can be asserted
 // on. lib/tooltips.js is left unmocked so the real attribute stamp runs here.
 const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
-  const { mockGlobalsWithTooltipInstance } = await import(
-    "../../../../__tests__/helpers/mock-globals.js"
-  );
+  const { mockGlobalsWithTooltipInstance } =
+    await import("../../../../__tests__/helpers/mock-globals.js");
   return await mockGlobalsWithTooltipInstance();
 });
 

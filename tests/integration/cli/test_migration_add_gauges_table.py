@@ -163,8 +163,7 @@ def test_add_gauges_table_upgrade_and_downgrade(runner):
         with db.engine.connect() as connection:
             readback_value = connection.execute(
                 text(
-                    'SELECT "valueInt" FROM "AnonymousGauges" '
-                    'WHERE "gaugeName" = :name'
+                    'SELECT "valueInt" FROM "AnonymousGauges" WHERE "gaugeName" = :name'
                 ),
                 {"name": _SAMPLE_GAUGE_NAME},
             ).scalar_one()

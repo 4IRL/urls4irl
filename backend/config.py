@@ -159,9 +159,7 @@ class Config:
     # staging/dev-server, or local HTTPS via ENABLE_SSL). Disabled only for plaintext-HTTP
     # local dev, where browsers otherwise silently drop the session cookie.
     SESSION_COOKIE_SECURE = IS_PRODUCTION or IS_DEV_SERVER or ENABLE_SSL
-    WTF_CSRF_TIME_LIMIT = (
-        CONFIG_CONSTANTS.SESSION_LIFETIME
-    )  # Same as session lifetime to avoid CSRF token expiring in middle of user's session
+    WTF_CSRF_TIME_LIMIT = CONFIG_CONSTANTS.SESSION_LIFETIME  # Same as session lifetime to avoid CSRF token expiring in middle of user's session
     BASE_EMAIL = environ.get(ENV.BASE_EMAIL)
     MAILJET_API_KEY = environ.get(ENV.MAILJET_API_KEY)
     MAILJET_SECRET_KEY = environ.get(ENV.MAILJET_SECRET_KEY)

@@ -234,8 +234,7 @@ def test_admin_mod_url_purge_control_and_happy_path(
     # Scope the purge button to the seeded URL's row (multiple URL rows may
     # exist) via its action-url suffix.
     purge_selector = (
-        f"{APL.UTUB_DETAIL_MOD_URL_PURGE_BTN}"
-        f'[data-action-url$="/urls/{url_id}/purge"]'
+        f'{APL.UTUB_DETAIL_MOD_URL_PURGE_BTN}[data-action-url$="/urls/{url_id}/purge"]'
     )
     purge_result_selector = f"{purge_selector} + .admin-action-inline-result"
 
@@ -518,9 +517,9 @@ def test_admin_mod_member_remove_happy_path(
             .order_by(Utub_Members.utub_id.asc(), Utub_Members.user_id.asc())
             .first()
         )
-        assert (
-            non_creator_member is not None
-        ), "No non-creator members seeded — fixture may have failed"
+        assert non_creator_member is not None, (
+            "No non-creator members seeded — fixture may have failed"
+        )
         utub_id = non_creator_member.utub_id
         target_user_id = non_creator_member.user_id
 
@@ -598,9 +597,9 @@ def test_admin_mod_member_remove_reason_required(
             .order_by(Utub_Members.utub_id.asc(), Utub_Members.user_id.asc())
             .first()
         )
-        assert (
-            non_creator_member is not None
-        ), "No non-creator members seeded — fixture may have failed"
+        assert non_creator_member is not None, (
+            "No non-creator members seeded — fixture may have failed"
+        )
         utub_id = non_creator_member.utub_id
         target_user_id = non_creator_member.user_id
 

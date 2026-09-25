@@ -31,9 +31,8 @@ describe("corner-access metrics — UI_URL_ACCESS { trigger: corner_button }", (
 
   it("emits ui_url_access with trigger 'corner_button' on click", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(false);
     vi.mocked(getActiveTagCount).mockReturnValue(0);
 
@@ -51,9 +50,8 @@ describe("corner-access metrics — UI_URL_ACCESS { trigger: corner_button }", (
 
   it("emits search_active 'true' when URL search panel is open", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(true);
     vi.mocked(getActiveTagCount).mockReturnValue(2);
 

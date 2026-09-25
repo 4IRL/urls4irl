@@ -164,7 +164,9 @@ function handleManagedTooltipHide(event: JQuery.TriggeredEvent): void {
  */
 function handleManagedTooltipFocusIn(event: JQuery.TriggeredEvent): void {
   const trigger = event.currentTarget as HTMLElement;
-  if (!matchesSelector({ element: trigger, selector: FOCUS_VISIBLE_SELECTOR })) {
+  if (
+    !matchesSelector({ element: trigger, selector: FOCUS_VISIBLE_SELECTOR })
+  ) {
     return;
   }
   bootstrap.Tooltip.getInstance(trigger)?.show();

@@ -152,7 +152,6 @@ def load_user_from_request(incoming_request: Request) -> Users | None:
 @login_manager.unauthorized_handler
 def unauthorized():
     if not current_user.is_authenticated:
-
         if hasattr(current_user, "id"):
             warning_log(f"User={current_user.id} not authenticated")
         else:

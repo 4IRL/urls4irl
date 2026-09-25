@@ -463,9 +463,8 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     // UI_FORM_SUBMIT exactly once for the whole flow — one for the initial
     // duplicate-name attempt, none re-emitted on the modal confirm.
     async function setupDuplicateNameSubmit(): Promise<void> {
-      const { getAllAccessibleUTubNames } = await import(
-        "../../utubs/utils.js"
-      );
+      const { getAllAccessibleUTubNames } =
+        await import("../../utubs/utils.js");
       vi.mocked(getAllAccessibleUTubNames).mockReturnValue(["Existing UTub"]);
       vi.mocked(isCoarsePointer).mockReturnValue(true);
       vi.mocked(getState).mockReturnValue({

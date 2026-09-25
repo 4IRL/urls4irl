@@ -276,9 +276,9 @@ def test_settings_stats_populated_renders_distinct_counts(
     }
     for stat_name, expected_value in expected_card_values.items():
         card_slice = _slice_stat_card(resp.data, stat_name)
-        assert (
-            expected_value in card_slice
-        ), f"{stat_name} card missing {expected_value!r}: {card_slice!r}"
+        assert expected_value in card_slice, (
+            f"{stat_name} card missing {expected_value!r}: {card_slice!r}"
+        )
 
 
 def test_settings_page_redirects_anonymous_to_splash(client: FlaskClient) -> None:

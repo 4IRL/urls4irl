@@ -846,7 +846,7 @@ def expect_copy_cue_on_row(*, page: Page, utub_url_id: int, kind: str) -> None:
     amber) is visible on the given SOURCE-deck URL row. Assert before the ~3s
     fade removes it."""
     cue_selector = (
-        f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}'] " f".bulkCardResultCue--{kind}"
+        f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}'] .bulkCardResultCue--{kind}"
     )
     expect(page.locator(cue_selector)).to_be_visible()
 

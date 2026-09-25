@@ -155,9 +155,9 @@ def _epoch_bytes_to_datetime(epoch_bytes: bytes | None) -> datetime | None:
         return None
 
 
-def _probe_metrics_redis() -> (
-    tuple[str, datetime | None, datetime | None, datetime | None]
-):
+def _probe_metrics_redis() -> tuple[
+    str, datetime | None, datetime | None, datetime | None
+]:
     """Return (status, flush last-success, gauge last-sample, backup
     last-success) for the metrics Redis.
 

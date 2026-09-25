@@ -443,8 +443,7 @@ def test_register_new_user_mailjet_server_error_stays_opaque(
             Users.username == new_user[REGISTER_FORM.USERNAME]
         ).first()
         assert is_string_in_logs(
-            f"(4) Email failed to send: registration confirmation for "
-            f"User={user.id}",
+            f"(4) Email failed to send: registration confirmation for User={user.id}",
             caplog.records,
         )
 

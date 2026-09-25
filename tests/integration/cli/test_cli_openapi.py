@@ -56,13 +56,13 @@ def test_generate_openapi_spec_to_file(runner, tmp_path):
         # Each operation has operationId, tags, responses
         for method in method_keys:
             operation = path_item[method]
-            assert (
-                "operationId" in operation
-            ), f"{method.upper()} {path} missing operationId"
+            assert "operationId" in operation, (
+                f"{method.upper()} {path} missing operationId"
+            )
             assert "tags" in operation, f"{method.upper()} {path} missing tags"
-            assert (
-                "responses" in operation
-            ), f"{method.upper()} {path} missing responses"
+            assert "responses" in operation, (
+                f"{method.upper()} {path} missing responses"
+            )
 
     # Components has schemas
     assert "schemas" in spec["components"]
@@ -199,9 +199,9 @@ def test_error_responses_reference_error_response_schema(runner, tmp_path):
     resp_400 = post_op["responses"].get("400")
     assert resp_400 is not None, "POST /utubs missing 400 response"
     schema_ref = resp_400["content"]["application/json"]["schema"]["$ref"]
-    assert schema_ref.startswith(
-        "#/components/schemas/ErrorResponse"
-    ), f"Expected ErrorResponse or typed variant, got: {schema_ref}"
+    assert schema_ref.startswith("#/components/schemas/ErrorResponse"), (
+        f"Expected ErrorResponse or typed variant, got: {schema_ref}"
+    )
 
 
 def test_output_flag_writes_to_specified_path(runner, tmp_path):
@@ -387,9 +387,9 @@ def test_operations_with_error_codes_have_x_error_codes_extension(runner, tmp_pa
 
     # Every registered enum class must appear in the spec
     for enum_cls in registered_enums:
-        assert (
-            enum_cls.__name__ in found_enum_names
-        ), f"{enum_cls.__name__} is registered on a route but missing from x-error-codes"
+        assert enum_cls.__name__ in found_enum_names, (
+            f"{enum_cls.__name__} is registered on a route but missing from x-error-codes"
+        )
 
     # Spot-check: verify URLErrorCodes value format
     spot_check_operation = next(
@@ -462,9 +462,9 @@ def test_all_routes_with_request_schema_have_x_error_codes(runner, tmp_path):
             if not isinstance(operation, dict):
                 continue
             if "requestBody" in operation:
-                assert (
-                    "x-error-codes" in operation
-                ), f"{method.upper()} {path} has requestBody but no x-error-codes"
+                assert "x-error-codes" in operation, (
+                    f"{method.upper()} {path} has requestBody but no x-error-codes"
+                )
 
 
 def test_success_responses_include_envelope_fields(runner, tmp_path):
@@ -478,25 +478,24 @@ def test_success_responses_include_envelope_fields(runner, tmp_path):
     response_schema = post_utubs_200["content"]["application/json"]["schema"]
 
     # Should use allOf composition
-    assert (
-        "allOf" in response_schema
-    ), "Expected allOf composition for success response, got: " + json.dumps(
-        response_schema
+    assert "allOf" in response_schema, (
+        "Expected allOf composition for success response, got: "
+        + json.dumps(response_schema)
     )
 
     all_of_entries = response_schema["allOf"]
 
     # One entry should be the SuccessEnvelope ref
     envelope_ref = {"$ref": "#/components/schemas/SuccessEnvelope"}
-    assert (
-        envelope_ref in all_of_entries
-    ), f"SuccessEnvelope ref not found in allOf entries: {all_of_entries}"
+    assert envelope_ref in all_of_entries, (
+        f"SuccessEnvelope ref not found in allOf entries: {all_of_entries}"
+    )
 
     # Another entry should be the data schema ref (UtubCreatedResponseSchema)
     data_ref = {"$ref": "#/components/schemas/UtubCreatedResponseSchema"}
-    assert (
-        data_ref in all_of_entries
-    ), f"UtubCreatedResponseSchema ref not found in allOf entries: {all_of_entries}"
+    assert data_ref in all_of_entries, (
+        f"UtubCreatedResponseSchema ref not found in allOf entries: {all_of_entries}"
+    )
 
 
 def test_success_envelope_schema_exists_in_components(runner, tmp_path):
@@ -508,9 +507,9 @@ def test_success_envelope_schema_exists_in_components(runner, tmp_path):
     spec = _generate_spec(runner, tmp_path)
     schemas = spec["components"]["schemas"]
 
-    assert (
-        "SuccessEnvelope" in schemas
-    ), "SuccessEnvelope not found in components/schemas"
+    assert "SuccessEnvelope" in schemas, (
+        "SuccessEnvelope not found in components/schemas"
+    )
 
     envelope = schemas["SuccessEnvelope"]
 
@@ -546,9 +545,9 @@ def test_schemas_with_existing_status_not_double_wrapped(runner, tmp_path):
 
     # RegisterResponseSchema at 200 on POST /register
     register_responses = spec["paths"]["/register"]["post"]["responses"]
-    assert (
-        "200" in register_responses
-    ), "POST /register missing 200 response — key guard failed"
+    assert "200" in register_responses, (
+        "POST /register missing 200 response — key guard failed"
+    )
     register_200_schema = register_responses["200"]["content"]["application/json"][
         "schema"
     ]
@@ -556,20 +555,20 @@ def test_schemas_with_existing_status_not_double_wrapped(runner, tmp_path):
         "Expected direct $ref for RegisterResponseSchema (has status already), "
         f"got: {json.dumps(register_200_schema)}"
     )
-    assert (
-        "allOf" not in register_200_schema
-    ), "RegisterResponseSchema should not be wrapped with allOf"
+    assert "allOf" not in register_200_schema, (
+        "RegisterResponseSchema should not be wrapped with allOf"
+    )
 
     # ErrorResponse at 400 on POST /register
     register_400_schema = register_responses["400"]["content"]["application/json"][
         "schema"
     ]
-    assert (
-        "$ref" in register_400_schema
-    ), f"Expected direct $ref for ErrorResponse, got: {json.dumps(register_400_schema)}"
-    assert (
-        "allOf" not in register_400_schema
-    ), "ErrorResponse should not be wrapped with allOf"
+    assert "$ref" in register_400_schema, (
+        f"Expected direct $ref for ErrorResponse, got: {json.dumps(register_400_schema)}"
+    )
+    assert "allOf" not in register_400_schema, (
+        "ErrorResponse should not be wrapped with allOf"
+    )
 
 
 def test_error_responses_not_wrapped_with_envelope(runner, tmp_path):
@@ -707,9 +706,9 @@ def test_empty_schema_uses_direct_envelope_ref(tmp_path):
     ]["application/json"]["schema"]
 
     # Should be a direct $ref to SuccessEnvelope, not allOf
-    assert (
-        "$ref" in response_schema
-    ), f"Expected direct $ref for empty schema, got: {json.dumps(response_schema)}"
+    assert "$ref" in response_schema, (
+        f"Expected direct $ref for empty schema, got: {json.dumps(response_schema)}"
+    )
     assert response_schema["$ref"] == "#/components/schemas/SuccessEnvelope"
     assert "allOf" not in response_schema
 
@@ -723,9 +722,9 @@ def test_url_created_item_schema_is_distinct_component(runner, tmp_path):
     spec = _generate_spec(runner, tmp_path)
     schemas = spec["components"]["schemas"]
 
-    assert (
-        "UrlCreatedItemSchema" in schemas
-    ), "UrlCreatedItemSchema not found as a distinct component in schemas"
+    assert "UrlCreatedItemSchema" in schemas, (
+        "UrlCreatedItemSchema not found as a distinct component in schemas"
+    )
     assert "UtubUrlDeleteSchema" in schemas, "UtubUrlDeleteSchema not found in schemas"
     # They should be separate entries (not aliases)
     assert "UrlCreatedItemSchema" != "UtubUrlDeleteSchema"
@@ -741,9 +740,9 @@ def test_error_response_status_required_in_spec(runner, tmp_path):
     spec = _generate_spec(runner, tmp_path)
     error_schema = spec["components"]["schemas"]["ErrorResponse"]
     assert "required" in error_schema, "ErrorResponse schema has no 'required' list"
-    assert (
-        "status" in error_schema["required"]
-    ), "Expected 'status' in required fields but got: " + str(error_schema["required"])
+    assert "status" in error_schema["required"], (
+        "Expected 'status' in required fields but got: " + str(error_schema["required"])
+    )
 
 
 def test_error_code_enums_in_components_schemas(runner, tmp_path):
@@ -797,9 +796,9 @@ def test_x_error_codes_uses_ref(runner, tmp_path):
     )
     assert spot_check_operation is not None, "URLErrorCodes not found in any operation"
     url_error_ref = spot_check_operation["x-error-codes"]["URLErrorCodes"]
-    assert (
-        "$ref" in url_error_ref
-    ), f"Expected $ref pointer in x-error-codes, got: {url_error_ref}"
+    assert "$ref" in url_error_ref, (
+        f"Expected $ref pointer in x-error-codes, got: {url_error_ref}"
+    )
     assert url_error_ref["$ref"] == "#/components/schemas/URLErrorCodes"
 
 
@@ -927,9 +926,9 @@ def test_utub_detail_current_user_is_integer(runner, tmp_path):
     spec = _generate_spec(runner, tmp_path)
     utub_detail = spec["components"]["schemas"]["UtubDetailSchema"]
     current_user_prop = utub_detail["properties"]["currentUser"]
-    assert (
-        current_user_prop["type"] == "integer"
-    ), f"Expected currentUser type 'integer', got: {current_user_prop}"
+    assert current_user_prop["type"] == "integer", (
+        f"Expected currentUser type 'integer', got: {current_user_prop}"
+    )
 
 
 def test_typed_error_responses_narrow_error_code(runner, tmp_path):
@@ -948,9 +947,9 @@ def test_typed_error_responses_narrow_error_code(runner, tmp_path):
     schema_ref = resp_400["content"]["application/json"]["schema"]["$ref"]
 
     expected_typed_name = f"ErrorResponse_{UTubErrorCodes.__name__}"
-    assert (
-        schema_ref == f"#/components/schemas/{expected_typed_name}"
-    ), f"Expected typed error ref for POST /utubs 400, got: {schema_ref}"
+    assert schema_ref == f"#/components/schemas/{expected_typed_name}", (
+        f"Expected typed error ref for POST /utubs 400, got: {schema_ref}"
+    )
 
     typed_component = spec["components"]["schemas"][expected_typed_name]
     assert "allOf" in typed_component, (
@@ -959,16 +958,16 @@ def test_typed_error_responses_narrow_error_code(runner, tmp_path):
     )
 
     all_of = typed_component["allOf"]
-    assert all_of[0] == {
-        "$ref": "#/components/schemas/ErrorResponse"
-    }, f"First allOf entry should reference ErrorResponse, got: {all_of[0]}"
+    assert all_of[0] == {"$ref": "#/components/schemas/ErrorResponse"}, (
+        f"First allOf entry should reference ErrorResponse, got: {all_of[0]}"
+    )
 
     narrowed_props = all_of[1]
     assert narrowed_props["type"] == "object"
     error_code_ref = narrowed_props["properties"]["errorCode"]["$ref"]
-    assert (
-        error_code_ref == f"#/components/schemas/{UTubErrorCodes.__name__}"
-    ), f"Expected errorCode $ref to UTubErrorCodes, got: {error_code_ref}"
+    assert error_code_ref == f"#/components/schemas/{UTubErrorCodes.__name__}", (
+        f"Expected errorCode $ref to UTubErrorCodes, got: {error_code_ref}"
+    )
 
 
 def test_utub_detail_created_at_has_datetime_format(runner, tmp_path):
@@ -981,12 +980,12 @@ def test_utub_detail_created_at_has_datetime_format(runner, tmp_path):
 
     utub_detail = spec["components"]["schemas"]["UtubDetailSchema"]
     created_at_prop = utub_detail["properties"]["createdAt"]
-    assert (
-        created_at_prop["type"] == "string"
-    ), f"Expected createdAt type 'string', got: {created_at_prop.get('type')}"
-    assert (
-        created_at_prop["format"] == "date-time"
-    ), f"Expected createdAt format 'date-time', got: {created_at_prop.get('format')}"
+    assert created_at_prop["type"] == "string", (
+        f"Expected createdAt type 'string', got: {created_at_prop.get('type')}"
+    )
+    assert created_at_prop["format"] == "date-time", (
+        f"Expected createdAt format 'date-time', got: {created_at_prop.get('format')}"
+    )
 
 
 def test_error_responses_without_enum_still_use_plain_error_response(runner, tmp_path):
@@ -1001,9 +1000,9 @@ def test_error_responses_without_enum_still_use_plain_error_response(runner, tmp
     delete_op = spec["paths"]["/utubs/{utub_id}"]["delete"]
     for error_code in ("403", "404"):
         resp = delete_op["responses"].get(error_code)
-        assert (
-            resp is not None
-        ), f"DELETE /utubs/{{utub_id}} missing {error_code} response"
+        assert resp is not None, (
+            f"DELETE /utubs/{{utub_id}} missing {error_code} response"
+        )
         schema_ref = resp["content"]["application/json"]["schema"]["$ref"]
         assert schema_ref == "#/components/schemas/ErrorResponse", (
             f"Expected plain ErrorResponse for DELETE /utubs/{{utub_id}} "
@@ -1030,9 +1029,9 @@ def test_typed_error_response_scoped_to_400_and_409_only(runner, tmp_path):
         assert resp is not None, f"PATCH update_url missing {typed_code} response"
         resp_schema = resp["content"]["application/json"]["schema"]
         schema_ref = resp_schema["$ref"]
-        assert (
-            schema_ref == f"#/components/schemas/{expected_typed_name}"
-        ), f"Expected typed error ref for {typed_code}, got: {schema_ref}"
+        assert schema_ref == f"#/components/schemas/{expected_typed_name}", (
+            f"Expected typed error ref for {typed_code}, got: {schema_ref}"
+        )
 
     # 403 and 404 should use plain ErrorResponse
     for plain_code in ("403", "404"):
@@ -1040,9 +1039,9 @@ def test_typed_error_response_scoped_to_400_and_409_only(runner, tmp_path):
         assert resp is not None, f"PATCH update_url missing {plain_code} response"
         resp_schema = resp["content"]["application/json"]["schema"]
         schema_ref = resp_schema["$ref"]
-        assert (
-            schema_ref == "#/components/schemas/ErrorResponse"
-        ), f"Expected plain ErrorResponse for {plain_code}, got: {schema_ref}"
+        assert schema_ref == "#/components/schemas/ErrorResponse", (
+            f"Expected plain ErrorResponse for {plain_code}, got: {schema_ref}"
+        )
 
 
 def test_component_schemas_have_no_title_fields(runner, tmp_path):
@@ -1063,6 +1062,7 @@ def test_component_schemas_have_no_title_fields(runner, tmp_path):
             if isinstance(prop_obj, dict) and "title" in prop_obj:
                 violations.append(f"{schema_name}.{prop_name} has 'title'")
 
-    assert (
-        not violations
-    ), f"Found {len(violations)} schema(s) with 'title' keys:\n" + "\n".join(violations)
+    assert not violations, (
+        f"Found {len(violations)} schema(s) with 'title' keys:\n"
+        + "\n".join(violations)
+    )

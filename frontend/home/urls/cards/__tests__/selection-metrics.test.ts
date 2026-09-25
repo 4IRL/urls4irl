@@ -49,9 +49,8 @@ describe("selection metrics — UI_URL_CARD_CLICK", () => {
 
   it("emits ui_url_card_click when an unselected card is clicked", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(false);
     vi.mocked(getActiveTagCount).mockReturnValue(0);
 
@@ -79,9 +78,8 @@ describe("selection metrics — UI_URL_CARD_CLICK", () => {
 
   it("emits with dimensions read at click time (not at listener-bind time)", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
-    const { isURLSearchActive, getActiveTagCount } = await import(
-      "../../url-context.js"
-    );
+    const { isURLSearchActive, getActiveTagCount } =
+      await import("../../url-context.js");
     vi.mocked(isURLSearchActive).mockReturnValue(false);
     vi.mocked(getActiveTagCount).mockReturnValue(0);
 

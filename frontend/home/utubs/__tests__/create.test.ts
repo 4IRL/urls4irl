@@ -45,9 +45,8 @@ vi.mock("../../../lib/tooltips.js", () => ({
 // ambient test-setup mock's null — anything in this module's graph that still
 // reaches Bootstrap directly would otherwise silently no-op.
 const { globalsMock } = await vi.hoisted(async () => {
-  const { mockGlobalsWithTooltipInstance } = await import(
-    "../../../__tests__/helpers/mock-globals.js"
-  );
+  const { mockGlobalsWithTooltipInstance } =
+    await import("../../../__tests__/helpers/mock-globals.js");
   return await mockGlobalsWithTooltipInstance();
 });
 
@@ -229,7 +228,9 @@ describe("createUTub form buttons - hover tooltip hide/restore", () => {
 
     expect(vi.mocked(hideTooltip)).toHaveBeenCalled();
     expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(submitBtn);
+    expect(vi.mocked(restoreTooltipIfStillTargeted)).toHaveBeenCalledWith(
+      submitBtn,
+    );
   });
 
   it("does not attempt a restore on a successful submit", () => {

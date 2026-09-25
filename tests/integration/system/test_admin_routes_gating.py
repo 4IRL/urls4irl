@@ -35,9 +35,9 @@ def _debug_enabled_from_response(response_data: bytes) -> bool:
     assert match is not None, "Page did not render an app-config script tag"
     payload = json.loads(match.group(1).decode("utf-8"))
     debug_enabled = payload.get("debugEnabled")
-    assert isinstance(
-        debug_enabled, bool
-    ), "APP_CONFIG.debugEnabled missing or wrong shape"
+    assert isinstance(debug_enabled, bool), (
+        "APP_CONFIG.debugEnabled missing or wrong shape"
+    )
     return debug_enabled
 
 
@@ -47,9 +47,9 @@ def _is_production_from_response(response_data: bytes) -> bool:
     assert match is not None, "Page did not render an app-config script tag"
     payload = json.loads(match.group(1).decode("utf-8"))
     is_production = payload.get("isProduction")
-    assert isinstance(
-        is_production, bool
-    ), "APP_CONFIG.isProduction missing or wrong shape"
+    assert isinstance(is_production, bool), (
+        "APP_CONFIG.isProduction missing or wrong shape"
+    )
     return is_production
 
 

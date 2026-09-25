@@ -111,7 +111,9 @@ def _update_tag_counts_on_url_delete(
     )
 
     # Remove all tags associated with this URL in this UTub
-    db.session.query(Utub_Url_Tags).filter(Utub_Url_Tags.id.in_(utub_url_tag_ids)).delete()  # type: ignore
+    db.session.query(Utub_Url_Tags).filter(
+        Utub_Url_Tags.id.in_(utub_url_tag_ids)
+    ).delete()  # type: ignore
 
     # Update utub tag count after successful removal of all tags associated with deleted URL
     return {t[0]: t[1] - 1 for t in tag_ids_and_count}

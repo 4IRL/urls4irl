@@ -135,7 +135,7 @@ def test_gauges_module_is_flask_free() -> None:
     gauge_file = Path(gauges.__file__).resolve()
     project_root = gauge_file.parents[2]
     preamble = (
-        f"PROJECT_ROOT = {str(project_root)!r}\n" f"GAUGE_FILE = {str(gauge_file)!r}\n"
+        f"PROJECT_ROOT = {str(project_root)!r}\nGAUGE_FILE = {str(gauge_file)!r}\n"
     )
     result = subprocess.run(
         [sys.executable, "-c", preamble + probe],

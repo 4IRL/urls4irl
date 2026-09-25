@@ -443,8 +443,7 @@ def apply_email_change(
                 )
         except Exception as redis_error:
             current_app.logger.exception(
-                "email-change rate-limit precheck failed (failing open): "
-                f"{redis_error}"
+                f"email-change rate-limit precheck failed (failing open): {redis_error}"
             )
 
     # (7) Uniqueness (excluding the current user, so the no-op above cannot

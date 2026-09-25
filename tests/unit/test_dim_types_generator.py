@@ -44,12 +44,12 @@ def test_generate_ui_events_ts_only_emits_ui_prefixed_events() -> None:
         event for event in EventName if EVENT_CATEGORY[event] != EventCategory.UI
     ]
 
-    assert (
-        ui_event_members
-    ), "Expected at least one UI EventName for the test to be meaningful."
-    assert (
-        non_ui_event_members
-    ), "Expected at least one non-UI EventName for filtering to be testable."
+    assert ui_event_members, (
+        "Expected at least one UI EventName for the test to be meaningful."
+    )
+    assert non_ui_event_members, (
+        "Expected at least one non-UI EventName for filtering to be testable."
+    )
 
     for ui_event in ui_event_members:
         assert ui_event.name.startswith(UI_EVENT_NAME_PREFIX)
@@ -200,9 +200,9 @@ def test_generate_resources_ts_emits_resources_const_type_and_by_category() -> N
     assert 'UTUB: "utub",' in ts_source
 
     api_resources = RESOURCE_BY_CATEGORY[EventCategory.API]
-    assert (
-        api_resources
-    ), "Expected at least one API resource for the test to be meaningful."
+    assert api_resources, (
+        "Expected at least one API resource for the test to be meaningful."
+    )
     api_values_joined = ", ".join(f'"{resource.value}"' for resource in api_resources)
     assert f"  {EventCategory.API.value}: [{api_values_joined}] as const," in ts_source
 

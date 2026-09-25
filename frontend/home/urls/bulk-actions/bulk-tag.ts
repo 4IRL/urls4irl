@@ -222,7 +222,8 @@ function closeAndResetPicker({
 } = {}): void {
   if (currentWrap !== null) {
     const resetBulk = currentWrap.data(BULK_RESET_KEY) as
-      (() => void) | undefined;
+      | (() => void)
+      | undefined;
     if (resetBulk) resetBulk();
     // Strip the in-flight submit affordance + re-enable the buttons so a wrap
     // closed mid-flight (e.g. mode-exit teardown) never keeps a stale spinner /

@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 88            # black 26.1.0 default
+target-version = "py311"    # matches the pinned python 3.11.9 in .mise.toml
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501", "E203"]   # E203 is preview-only in ruff; kept to document flake8 parity
+exclude = ["migrations/**"] # lint-only exclude (flake8 parity); the formatter still formats migrations (black parity)
+
+[tool.ruff.format]
+quote-style = "double"            # black 26.1.0 default
+indent-style = "space"            # black 26.1.0 default
+skip-magic-trailing-comma = false # black 26.1.0 default (respect trailing commas)
+line-ending = "auto"              # black 26.1.0 default (detect from existing files)

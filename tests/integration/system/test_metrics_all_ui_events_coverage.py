@@ -176,9 +176,9 @@ def test_every_ui_event_flows_end_to_end_through_ingest_and_flush(
         },
     )
 
-    assert (
-        ingest_response.status_code == 200
-    ), f"Ingest failed: {ingest_response.status_code} {ingest_response.get_data(as_text=True)!r}"
+    assert ingest_response.status_code == 200, (
+        f"Ingest failed: {ingest_response.status_code} {ingest_response.get_data(as_text=True)!r}"
+    )
     assert ingest_response.get_json()["accepted"] == len(events_payload), (
         f"Accepted count mismatch: expected {len(events_payload)}, "
         f"got {ingest_response.get_json()['accepted']}"

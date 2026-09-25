@@ -37,9 +37,8 @@ describe("field-controls", () => {
   });
 
   it("(a) default state yields the default ordered fields and the caller omits &fields=", async () => {
-    const { initFieldControls, getSelectedFields } = await import(
-      "../field-controls.js"
-    );
+    const { initFieldControls, getSelectedFields } =
+      await import("../field-controls.js");
     const onChange = vi.fn();
     initFieldControls({ onChange });
 
@@ -47,9 +46,8 @@ describe("field-controls", () => {
   });
 
   it("(b) deselecting tag yields the remaining checked fields in order", async () => {
-    const { initFieldControls, getSelectedFields } = await import(
-      "../field-controls.js"
-    );
+    const { initFieldControls, getSelectedFields } =
+      await import("../field-controls.js");
     const onChange = vi.fn();
     initFieldControls({ onChange });
 
@@ -63,9 +61,8 @@ describe("field-controls", () => {
   });
 
   it("(c) reordering to title-first yields ['title','url','tag']", async () => {
-    const { initFieldControls, getSelectedFields } = await import(
-      "../field-controls.js"
-    );
+    const { initFieldControls, getSelectedFields } =
+      await import("../field-controls.js");
     const onChange = vi.fn();
     initFieldControls({ onChange });
 

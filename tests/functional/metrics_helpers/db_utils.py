@@ -77,8 +77,7 @@ def _trigger_metrics_flush_via_pagehide(browser: Page) -> None:
     dispatch_result = browser.evaluate(_DISPATCH_PAGEHIDE_JS)
     if dispatch_result != "dispatched":
         raise RuntimeError(
-            f"_trigger_metrics_flush_via_pagehide: dispatch failed: "
-            f"{dispatch_result!r}"
+            f"_trigger_metrics_flush_via_pagehide: dispatch failed: {dispatch_result!r}"
         )
     time.sleep(_BEACON_SETTLE_SECONDS)
 

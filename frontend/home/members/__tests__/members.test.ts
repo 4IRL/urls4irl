@@ -20,9 +20,8 @@ import { bootstrap } from "../../../lib/globals.js";
 // would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
 // a shared tooltip instance so the guard can be asserted on.
 const { tooltipInstance, globalsMock } = await vi.hoisted(async () => {
-  const { mockGlobalsWithTooltipInstance } = await import(
-    "../../../__tests__/helpers/mock-globals.js"
-  );
+  const { mockGlobalsWithTooltipInstance } =
+    await import("../../../__tests__/helpers/mock-globals.js");
   return await mockGlobalsWithTooltipInstance();
 });
 

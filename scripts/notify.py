@@ -294,8 +294,7 @@ def format_job_health(
 
     if age <= stale_after_seconds:
         row = (
-            f"{HEALTH_OK_GLYPH} {AREA_METRICS} {label} · "
-            f"{format_age(seconds=age)} ago"
+            f"{HEALTH_OK_GLYPH} {AREA_METRICS} {label} · {format_age(seconds=age)} ago"
         )
         return row, _HEALTH_STATE_HEALTHY
 

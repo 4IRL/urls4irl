@@ -71,9 +71,9 @@ def test_parse_counter_key_returns_none_for_malformed_keys(
     WHEN parse_counter_key is invoked
     THEN it returns None for the caller to skip.
     """
-    assert (
-        parse_counter_key(malformed_key) is None
-    ), f"parse_counter_key should return None for case={case_label!r}"
+    assert parse_counter_key(malformed_key) is None, (
+        f"parse_counter_key should return None for case={case_label!r}"
+    )
 
 
 def test_parse_counter_key_returns_none_for_too_many_parts():

@@ -1,10 +1,7 @@
 interface JQuery<TElement = HTMLElement> {
   enableTab(): this;
   disableTab(): this;
-  offAndOn(
-    eventName: string,
-    callback: JQuery.EventHandler<TElement>,
-  ): this;
+  offAndOn(eventName: string, callback: JQuery.EventHandler<TElement>): this;
   onExact(
     events: string,
     callback: JQuery.EventHandler<TElement>,

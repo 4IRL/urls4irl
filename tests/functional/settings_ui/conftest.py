@@ -52,9 +52,9 @@ def _seed_users_via_cli(runner: Tuple[Flask, FlaskCliRunner]) -> None:
     """
     _, cli_runner = runner
     result = cli_runner.invoke(args=["addmock", "users"])
-    assert (
-        result.exit_code == 0
-    ), f"addmock users failed: exit={result.exit_code} output={result.output}"
+    assert result.exit_code == 0, (
+        f"addmock users failed: exit={result.exit_code} output={result.output}"
+    )
 
 
 @pytest.fixture(autouse=True)

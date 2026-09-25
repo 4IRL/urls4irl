@@ -93,9 +93,8 @@ describe("nudge-storage — seen-once persistence helpers", () => {
   });
 
   it("(f) clearTipSeen clears one tip's flag while preserving the others", async () => {
-    const { clearTipSeen, hasSeenTip, markTipSeen } = await import(
-      "../nudge-storage.js"
-    );
+    const { clearTipSeen, hasSeenTip, markTipSeen } =
+      await import("../nudge-storage.js");
 
     markTipSeen("createUtub");
     markTipSeen("addUrl");

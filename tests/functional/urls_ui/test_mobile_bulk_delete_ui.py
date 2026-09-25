@@ -76,9 +76,9 @@ def _computed_z_index(*, page: Page, css_selector: str) -> int:
         }""",
         css_selector,
     )
-    assert (
-        value is not None and value != "auto"
-    ), f"Expected a numeric z-index on {css_selector}, got {value!r}"
+    assert value is not None and value != "auto", (
+        f"Expected a numeric z-index on {css_selector}, got {value!r}"
+    )
     return int(value)
 
 
@@ -167,15 +167,15 @@ def test_mobile_bulk_delete_bottom_drawer_confirm_stacks_and_deletes(
     # order, so the modal is on top.
     expect(page.locator(HPL.HOME_MODAL)).to_be_visible()
     modal_position = _computed_position(page=page, css_selector=HPL.HOME_MODAL)
-    assert (
-        modal_position == "fixed"
-    ), f"Confirm modal must be position:fixed to overlay the deck, got {modal_position!r}"
+    assert modal_position == "fixed", (
+        f"Confirm modal must be position:fixed to overlay the deck, got {modal_position!r}"
+    )
     # A numeric z-index confirms the modal participates in the positioned overlay layer.
     _computed_z_index(page=page, css_selector=HPL.HOME_MODAL)
     drawer_position = _computed_position(page=page, css_selector=HPL.BULK_ACTION_BAR)
-    assert (
-        drawer_position == "static"
-    ), f"Bottom drawer must be in-flow (position:static), got {drawer_position!r}"
+    assert drawer_position == "static", (
+        f"Bottom drawer must be in-flow (position:static), got {drawer_position!r}"
+    )
     # The Bootstrap backdrop covers the deck, confirming the modal layer sits over it.
     expect(page.locator(".modal-backdrop")).to_be_visible()
 

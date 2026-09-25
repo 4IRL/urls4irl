@@ -30,18 +30,17 @@ def test_metrics_redis_isolated_from_shared_redis(
         ), "metrics and shared redis must be distinct instances"
 
         assert int(shared_client.config_get("maxmemory")["maxmemory"]) == 0, (
-            "shared redis must remain uncapped; eviction belongs only on"
-            " redis-metrics"
+            "shared redis must remain uncapped; eviction belongs only on redis-metrics"
         )
 
         metrics_policy = provide_metrics_redis.config_get("maxmemory-policy")[
             "maxmemory-policy"
         ]
-        assert (
-            metrics_policy == "allkeys-lru"
-        ), f"redis-metrics must use allkeys-lru eviction; got {metrics_policy!r}"
-        assert (
-            int(provide_metrics_redis.config_get("maxmemory")["maxmemory"]) > 0
-        ), "redis-metrics must have a maxmemory cap so counters age out under load"
+        assert metrics_policy == "allkeys-lru", (
+            f"redis-metrics must use allkeys-lru eviction; got {metrics_policy!r}"
+        )
+        assert int(provide_metrics_redis.config_get("maxmemory")["maxmemory"]) > 0, (
+            "redis-metrics must have a maxmemory cap so counters age out under load"
+        )
     finally:
         shared_client.close()

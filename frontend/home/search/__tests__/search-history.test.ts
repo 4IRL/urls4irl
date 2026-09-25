@@ -100,9 +100,8 @@ describe("search-history — persistence helpers", () => {
   });
 
   it("(a) pushSearchHistory persists an entry that getSearchHistory returns", async () => {
-    const { pushSearchHistory, getSearchHistory } = await import(
-      "../search-history.js"
-    );
+    const { pushSearchHistory, getSearchHistory } =
+      await import("../search-history.js");
 
     expect(getSearchHistory()).toHaveLength(0);
 
@@ -116,9 +115,8 @@ describe("search-history — persistence helpers", () => {
   });
 
   it("(b) re-pushing the same query+fields dedupes (length stays 1, ts refreshed)", async () => {
-    const { pushSearchHistory, getSearchHistory } = await import(
-      "../search-history.js"
-    );
+    const { pushSearchHistory, getSearchHistory } =
+      await import("../search-history.js");
     const nowSpy = vi.spyOn(Date, "now");
 
     nowSpy.mockReturnValue(1000);
@@ -134,9 +132,8 @@ describe("search-history — persistence helpers", () => {
   });
 
   it("(b2) re-pushing the same query with different fields dedupes to one entry, keeping the latest fields", async () => {
-    const { pushSearchHistory, getSearchHistory } = await import(
-      "../search-history.js"
-    );
+    const { pushSearchHistory, getSearchHistory } =
+      await import("../search-history.js");
     const nowSpy = vi.spyOn(Date, "now");
 
     nowSpy.mockReturnValue(1000);
@@ -156,9 +153,8 @@ describe("search-history — persistence helpers", () => {
   });
 
   it("(b3) a typing chain whose fields change mid-stream still collapses to one entry", async () => {
-    const { pushSearchHistory, getSearchHistory } = await import(
-      "../search-history.js"
-    );
+    const { pushSearchHistory, getSearchHistory } =
+      await import("../search-history.js");
     const nowSpy = vi.spyOn(Date, "now");
 
     nowSpy.mockReturnValue(1000);
@@ -177,9 +173,8 @@ describe("search-history — persistence helpers", () => {
   });
 
   it("(c) pushing 9 distinct entries prunes to the cap of 8", async () => {
-    const { pushSearchHistory, getSearchHistory } = await import(
-      "../search-history.js"
-    );
+    const { pushSearchHistory, getSearchHistory } =
+      await import("../search-history.js");
 
     for (let index = 0; index < 9; index += 1) {
       pushSearchHistory({ query: `q${index}`, fields: DEFAULT_FIELDS });
@@ -192,9 +187,8 @@ describe("search-history — persistence helpers", () => {
   });
 
   it("(j) an incremental typing chain collapses into a single entry", async () => {
-    const { pushSearchHistory, getSearchHistory } = await import(
-      "../search-history.js"
-    );
+    const { pushSearchHistory, getSearchHistory } =
+      await import("../search-history.js");
     const nowSpy = vi.spyOn(Date, "now");
 
     // Each debounced keystroke pushes; the chain must leave only the final query.
@@ -211,9 +205,8 @@ describe("search-history — persistence helpers", () => {
   });
 
   it("(k) backspacing collapses, and a non-prefix query starts a new entry", async () => {
-    const { pushSearchHistory, getSearchHistory } = await import(
-      "../search-history.js"
-    );
+    const { pushSearchHistory, getSearchHistory } =
+      await import("../search-history.js");
     const nowSpy = vi.spyOn(Date, "now");
 
     nowSpy.mockReturnValue(1000);
@@ -236,9 +229,8 @@ describe("search-history — persistence helpers", () => {
   });
 
   it("(l) a prefix-extension after the collapse window is a separate entry", async () => {
-    const { pushSearchHistory, getSearchHistory } = await import(
-      "../search-history.js"
-    );
+    const { pushSearchHistory, getSearchHistory } =
+      await import("../search-history.js");
     const nowSpy = vi.spyOn(Date, "now");
 
     nowSpy.mockReturnValue(1000);
@@ -317,9 +309,8 @@ describe("search-history — render + re-run inside the overlay", () => {
       },
     ]);
 
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -347,9 +338,8 @@ describe("search-history — render + re-run inside the overlay", () => {
       { query: "second", fields: ["title"], ts: KNOWN_NOW - 2000 },
     ]);
 
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     const { getSearchHistory } = await import("../search-history.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
@@ -392,9 +382,8 @@ describe("search-history — render + re-run inside the overlay", () => {
       abort: vi.fn(),
     });
 
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -418,9 +407,8 @@ describe("search-history — render + re-run inside the overlay", () => {
     vi.spyOn(Date, "now").mockReturnValue(KNOWN_NOW);
     seedHistory([{ query: "alpha", fields: ["url"], ts: KNOWN_NOW - 1000 }]);
 
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     const { getSearchHistory } = await import("../search-history.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
@@ -444,9 +432,8 @@ describe("search-history — render + re-run inside the overlay", () => {
       abort: vi.fn(),
     });
 
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 

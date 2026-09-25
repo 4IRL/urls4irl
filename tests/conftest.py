@@ -194,9 +194,9 @@ def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
         yield TEST_DB_URI
         return
 
-    assert (
-        POSTGRES_TEST_DB
-    ), "POSTGRES_TEST_DB must be set for parallel integration tests"
+    assert POSTGRES_TEST_DB, (
+        "POSTGRES_TEST_DB must be set for parallel integration tests"
+    )
     worker_db_name = f"{POSTGRES_TEST_DB}_{worker_id}"
     db_host = "test-db" if IS_DOCKER else "localhost"
 

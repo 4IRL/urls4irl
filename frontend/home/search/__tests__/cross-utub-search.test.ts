@@ -155,9 +155,8 @@ describe("cross-utub-search — mode mechanics", () => {
       buildDoneXhr([{ utubID: 1, utubName: "A", urls: [] }]),
     );
     const { renderSearchResults } = await import("../render.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -182,9 +181,8 @@ describe("cross-utub-search — mode mechanics", () => {
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
       buildDoneXhr([]),
     );
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -207,9 +205,8 @@ describe("cross-utub-search — mode mechanics", () => {
       .mockReturnValueOnce(xhr1)
       .mockReturnValueOnce(xhr2)
       .mockReturnValueOnce(xhr3);
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -233,9 +230,8 @@ describe("cross-utub-search — mode mechanics", () => {
       buildFailXhr(0),
     );
     const { renderSearchResults } = await import("../render.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -297,9 +293,8 @@ describe("cross-utub-search — mode mechanics", () => {
     (ajaxCall as unknown as ReturnType<typeof vi.fn>)
       .mockReturnValueOnce(xhr1)
       .mockReturnValueOnce(xhr2);
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -339,9 +334,8 @@ describe("cross-utub-search — mode mechanics", () => {
     const { ajaxCall } = await import("../../../lib/ajax.js");
     const xhr = buildDoneXhr([]);
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(xhr);
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -358,9 +352,8 @@ describe("cross-utub-search — mode mechanics", () => {
 
   it("(b1f) entering search mode emits CROSS_UTUB_SEARCH_VISIBILITY_CHANGED with active:true", async () => {
     const { AppEvents, on } = await import("../../../lib/event-bus.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
 
     const handler = vi.fn();
@@ -410,9 +403,8 @@ describe("cross-utub-search — mode mechanics", () => {
     } as unknown as MediaQueryList);
 
     const { AppEvents, on } = await import("../../../lib/event-bus.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -457,9 +449,8 @@ describe("cross-utub-search — mode mechanics", () => {
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
       buildDoneXhr([]),
     );
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -479,9 +470,8 @@ describe("cross-utub-search — mode mechanics", () => {
       ajaxModule.ajaxCall as unknown as ReturnType<typeof vi.fn>
     ).mockReturnValue(buildFailXhr(429));
     const { renderSearchResults } = await import("../render.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -500,9 +490,8 @@ describe("cross-utub-search — mode mechanics", () => {
     (
       ajaxModule.ajaxCall as unknown as ReturnType<typeof vi.fn>
     ).mockReturnValue(buildFailXhr(400));
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -514,9 +503,8 @@ describe("cross-utub-search — mode mechanics", () => {
 
   it("(e) ESC closes the mode and emits CLOSE", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
     (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
@@ -535,9 +523,8 @@ describe("cross-utub-search — mode mechanics", () => {
   });
 
   it("(f) the navbar trigger morphs to its close glyph on open and back on close", async () => {
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
 
     // Closed: open glyph shown, close glyph hidden, open aria-label.
@@ -570,9 +557,8 @@ describe("cross-utub-search — mode mechanics", () => {
   });
 
   it("(f2) the submit button is disabled when empty and enabled once text is typed", async () => {
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -592,9 +578,8 @@ describe("cross-utub-search — mode mechanics", () => {
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
       buildDoneXhr([]),
     );
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -633,9 +618,8 @@ describe("cross-utub-search — mode mechanics", () => {
 
   it("(h) clicking the navbar trigger while open toggles the mode closed and emits CLOSE with the trigger_icon trigger", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
     (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
@@ -653,9 +637,8 @@ describe("cross-utub-search — mode mechanics", () => {
   });
 
   it("(h2) opening search reveals the hamburger Return Home item; closing hides it", async () => {
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
 
     expect($("#navReturnHome").hasClass("hidden")).toBe(true);
@@ -668,9 +651,8 @@ describe("cross-utub-search — mode mechanics", () => {
   });
 
   it("(i) typing shows the clear button; clicking it clears the input and re-hides the button", async () => {
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -695,9 +677,8 @@ describe("cross-utub-search — mode mechanics", () => {
     >("../../../lib/event-bus.js");
     const { selectUTub } = await import("../../utubs/selectors.js");
     const { selectURLCard } = await import("../../urls/cards/selection.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -748,9 +729,8 @@ describe("cross-utub-search — mode mechanics", () => {
     const { getState } = await import("../../../store/app-store.js");
     const { selectUTub } = await import("../../utubs/selectors.js");
     const { selectURLCard } = await import("../../urls/cards/selection.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -785,9 +765,8 @@ describe("cross-utub-search — mode mechanics", () => {
 
   it("(g3) clicking a result card records the search in browser history before navigating", async () => {
     const pushStateSpy = vi.spyOn(window.history, "pushState");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -819,9 +798,8 @@ describe("cross-utub-search — mode mechanics", () => {
     const pushStateSpy = vi.spyOn(window.history, "pushState");
     const { getState } = await import("../../../store/app-store.js");
     const { pushUTubHistoryState } = await import("../../utubs/selectors.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
@@ -890,9 +868,8 @@ describe("cross-utub-search — mode mechanics", () => {
   it("(j) clicking the result URL text emits RESULT_ACCESS with the url_text trigger and does not navigate", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
     const { selectUTub } = await import("../../utubs/selectors.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
     (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
@@ -913,9 +890,8 @@ describe("cross-utub-search — mode mechanics", () => {
   it("(k) clicking the corner go-to icon emits RESULT_ACCESS with the corner_button trigger and does not navigate", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
     const { selectUTub } = await import("../../utubs/selectors.js");
-    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
-      "../cross-utub-search.js"
-    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
     (emit as unknown as ReturnType<typeof vi.fn>).mockClear();

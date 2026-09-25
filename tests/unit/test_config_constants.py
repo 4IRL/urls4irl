@@ -18,9 +18,9 @@ def test_metrics_config_envs_exist():
         "METRICS_BATCH_NONCE_TTL_SECONDS",
     )
     for metrics_key in expected_metrics_keys:
-        assert hasattr(
-            CONFIG_ENVS, metrics_key
-        ), f"CONFIG_ENVS is missing metrics key: {metrics_key}"
+        assert hasattr(CONFIG_ENVS, metrics_key), (
+            f"CONFIG_ENVS is missing metrics key: {metrics_key}"
+        )
         assert getattr(CONFIG_ENVS, metrics_key) == metrics_key
 
 
