@@ -29,29 +29,15 @@ jobs:
 
     env:
       # `mise exec` would otherwise install every missing .mise.toml tool (python, ruff, ...) on
-      # first use, ignoring install_args below. Off, a tool this job doesn't need is only warned about.
+      # first use, ignoring the setup-pnpm action's install_args. Off, a tool this job doesn't need is only warned about.
       MISE_EXEC_AUTO_INSTALL: "false"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Install pinned toolchain (.mise.toml)
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          version: "2026.6.14"
-          install_args: "node pnpm"
-
-      - name: Get pnpm store path
-        id: pnpm-store
-        working-directory: frontend
-        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache pnpm store
-        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+      - name: Install pinned toolchain (.mise.toml) + cache pnpm store
+        uses: ./.github/actions/setup-pnpm
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -189,7 +175,7 @@ jobs:
       MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
       BASE_EMAIL: ${{ secrets.BASE_EMAIL }}
       # `mise exec` would otherwise install every missing .mise.toml tool (python, ruff, ...) on
-      # first use, ignoring install_args below. Off, a tool this job doesn't need is only warned about.
+      # first use, ignoring the setup-pnpm action's install_args. Off, a tool this job doesn't need is only warned about.
       MISE_EXEC_AUTO_INSTALL: "false"
 
     # Containers must run in Linux based operating systems
@@ -300,22 +286,8 @@ jobs:
       - name: Install Playwright browser
         run: python3.11 -m playwright install chromium --with-deps
 
-      - name: Install pinned toolchain (.mise.toml)
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          version: "2026.6.14"
-          install_args: "node pnpm"
-
-      - name: Get pnpm store path
-        id: pnpm-store
-        working-directory: frontend
-        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache pnpm store
-        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+      - name: Install pinned toolchain (.mise.toml) + cache pnpm store
+        uses: ./.github/actions/setup-pnpm
 
       # vite.config.ts resolves entries from a root-level __dirname, so the manifests are copied to
       # the repo root. pnpm-workspace.yaml must travel with the lockfile (overrides, release-age

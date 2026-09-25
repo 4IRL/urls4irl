@@ -24,7 +24,7 @@ jobs:
       BASE_EMAIL: 'noreply@example.com'
       METRICS_ENABLED: 'false'
       # `mise exec` would otherwise install every missing .mise.toml tool (python, ruff, ...) on
-      # first use, ignoring install_args below. Off, a tool this job doesn't need is only warned about.
+      # first use, ignoring the setup-pnpm action's install_args. Off, a tool this job doesn't need is only warned about.
       MISE_EXEC_AUTO_INSTALL: "false"
 
     steps:
@@ -50,22 +50,8 @@ jobs:
             exit 1
           fi
 
-      - name: Install pinned toolchain (.mise.toml)
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          version: "2026.6.14"
-          install_args: "node pnpm"
-
-      - name: Get pnpm store path
-        id: pnpm-store
-        working-directory: frontend
-        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache pnpm store
-        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+      - name: Install pinned toolchain (.mise.toml) + cache pnpm store
+        uses: ./.github/actions/setup-pnpm
 
       - name: Install frontend dependencies
         working-directory: frontend

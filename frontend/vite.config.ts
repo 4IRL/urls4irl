@@ -39,6 +39,7 @@ export default defineConfig(({ mode }) => ({
     // CSS url() in dependencies (e.g. font-awesome fonts) resolve to realpaths
     // under pnpm's virtual store (node_modules/.pnpm) beside this config, so
     // allow that dir too.
+    // The whole .pnpm store is allowed deliberately: dev-server-only tradeoff (versioned .pnpm/<pkg>@<ver> paths make per-package allows brittle; server.* is unused by `vite build`).
     fs: {
       allow: [
         resolve(__dirname, "frontend"),
