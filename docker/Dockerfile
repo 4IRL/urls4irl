@@ -26,7 +26,7 @@ RUN ./node_modules/.bin/vite build --config ./vite.config.ts
 # ============================================
 # Builder Stage - Install dependencies
 # ============================================
-FROM python:3.11-slim-bookworm AS builder
+FROM python:3.11.14-slim-bookworm AS builder
 
 WORKDIR /code/u4i
 
@@ -50,7 +50,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # ============================================
 # Runtime Stage - Final production image
 # ============================================
-FROM python:3.11-slim-bookworm
+FROM python:3.11.14-slim-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/4IRL/urls4irl"
 
