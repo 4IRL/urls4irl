@@ -375,11 +375,13 @@ def check_diagrams(filepath, lines, fix, new_lines):
     for start, end in reversed(diagrams):
         diagram_lines = [lines[i].rstrip() for i in range(start, end)]
 
-        nonempty_box = [(i, l) for i, l in enumerate(diagram_lines) if has_box_chars(l)]
+        nonempty_box = [
+            (i, line) for i, line in enumerate(diagram_lines) if has_box_chars(line)
+        ]
         if not nonempty_box:
             continue
 
-        widths = [len(l) for _, l in nonempty_box]
+        widths = [len(line) for _, line in nonempty_box]
         width_counts = Counter(widths)
         if len(set(widths)) > 1:
             target = width_counts.most_common(1)[0][0]
