@@ -18,11 +18,13 @@ NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ �
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+# -V (--renew-anon-volumes): recreate anonymous volumes (vite's /app/node_modules masks) on every up,
+# so a stale pre-bump node_modules never shadows the freshly built image's pnpm install. Named volumes are unaffected.
 up: ## Build and start the full stack (pass d=1 for detached mode)
-	$(COMPOSE) up --build --remove-orphans $(if $(d),-d,)
+	$(COMPOSE) up --build --remove-orphans -V $(if $(d),-d,)
 
 up-built: ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
-	$(COMPOSE_BUILT) up --build --remove-orphans $(if $(d),-d,)
+	$(COMPOSE_BUILT) up --build --remove-orphans -V $(if $(d),-d,)
 
 start-built: prune ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
 	$(COMPOSE) down
@@ -38,7 +40,7 @@ restart: ## Restart a specific container: make restart c=<service>
 	$(COMPOSE) restart $(c)
 
 tunnel: ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
-	$(COMPOSE_BUILT) up --build --remove-orphans -d --wait
+	$(COMPOSE_BUILT) up --build --remove-orphans -V -d --wait
 	$(COMPOSE_BUILT) --profile tunnel up -d --no-recreate cloudflared
 	@echo "Waiting for Cloudflare quick-tunnel URL (~5-10s)..."
 	@for i in $$(seq 1 30); do \
