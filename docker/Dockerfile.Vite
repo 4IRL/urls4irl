@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.5
 FROM node:24-bookworm-slim
 
 WORKDIR /app
@@ -5,14 +6,19 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Copy package files and npm config
-COPY ./frontend/package.json ./frontend/package-lock.json ./frontend/.npmrc ./
+# Pinned pnpm (must match .mise.toml; enforced by `make mise-config-check`). Installed via npm
+# rather than corepack, which Node 25 removes.
+ARG PNPM_VERSION=11.9.0
+RUN npm install -g --ignore-scripts pnpm@${PNPM_VERSION}
+
+# Copy package manifest, lockfile and pnpm config (overrides, allowBuilds, release-age excludes)
+COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml ./
 
 # Install dependencies
-RUN npm ci
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # Expose Vite port
 EXPOSE 5173
 
 # Start Vite dev server with host 0.0.0.0 to allow Docker networking
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["pnpm", "run", "dev", "--host", "0.0.0.0"]

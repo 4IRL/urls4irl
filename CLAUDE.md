@@ -185,10 +185,12 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 | Manifest                                       | Required form                                                                          | Forbidden forms                           |
 |------------------------------------------------|----------------------------------------------------------------------------------------|-------------------------------------------|
 | `requirements*.txt` (pip)                      | `package==X.Y.Z`                                                                       | `>=`, `~=`, `<=`, `*`, unpinned           |
-| `frontend/package.json` direct deps & devDeps  | `"pkg": "X.Y.Z"`                                                                       | `^X.Y.Z`, `~X.Y.Z`, `>=`, `*`, `latest`  |
-| `frontend/package.json` `overrides`            | `"pkg": "X.Y.Z"` (exact patch that satisfies all peer-deps and any open security alert) | `^`, `~`, ranges                          |
+| `frontend/package.json` direct deps & devDeps  | `"pkg": "X.Y.Z"`                                                                       | `^X.Y.Z`, `~X.Y.Z`, `>=`, `*`, `latest`   |
+| `frontend/pnpm-workspace.yaml` `overrides:`    | `pkg: X.Y.Z` (exact patch that satisfies all peer-deps and any open security alert)    | `^`, `~`, ranges                          |
 
-If an exact-pin override conflicts with a transitive consumer's peer-dep range (e.g., npm reports `invalid: "X.Y.Z" from node_modules/...`), bump the override to the **exact patch version npm naturally resolves to** rather than reverting to a caret. Document the choice in the commit body.
+Security pins go in `frontend/pnpm-workspace.yaml` `overrides:` at the exact patched version. If one conflicts with a transitive consumer's peer-dep range, use `pnpm why <pkg>` to find the resolved version and pin the override to that **exact patch** rather than reverting to a caret. A pinned version younger than 90 days (`minimumReleaseAge`) also needs an exact `name@version` entry in `minimumReleaseAgeExclude` (no wildcards), or every install fails. Document the choice in the commit body.
+
+pnpm is the only package manager: never run `npm install` in `frontend/`; `make lint` fails via `lockfile-check` if a `package-lock.json` appears. `verifyDepsBeforeRun: error` means pnpm never auto-installs, so after a `package.json`/lockfile change run `make tools` (host) and `make build` (containers). `make up`/`up-built`/`tunnel` pass `-V` so stale anonymous `node_modules` volumes are renewed.
 
 When adding or bumping a dependency, never introduce a range — if you only need a security fix, pin to the exact patched version listed by `gh api .../dependabot/alerts`. After editing, run `make build && make up d=1` and verify the full test suite passes before committing.
 
@@ -322,7 +324,7 @@ flask run --host=0.0.0.0 --port=5000
 ### Frontend (Vite)
 
 ```bash
-make vite-build  # build to backend/static/dist/ (= npm run build)
+make vite-build  # build to backend/static/dist/ (= pnpm run build)
 make test-js     # run JS unit tests (vitest)
 ```
 
@@ -364,14 +366,15 @@ UI/functional tests require the shared Playwright browser-server: the `playwrigh
 One definition per check, run host-native. The pre-commit hook and CI call the same targets:
 
 ```bash
-make tools          # once per machine: install the pinned toolchain, npm ci --ignore-scripts, set blame.ignoreRevsFile
-make lint           # ruff check + eslint + shellcheck
+make tools          # once per machine: install the pinned toolchain, pnpm install --frozen-lockfile --ignore-scripts, set blame.ignoreRevsFile
+make lint           # ruff check + eslint + shellcheck + lockfile-check + lint-actions
+make lint-actions   # actionlint on .github/workflows/ (also run by make lint)
 make format-check   # ruff format --check + prettier --check + shfmt -d (no writes)
 make typecheck      # tsc on frontend/tsconfig.json + tsconfig.test.json (no stack needed)
 make format         # apply ruff format + prettier --write + shfmt -w
 ```
 
-`.mise.toml` is the single pin location (python 3.11.14, node, ruff, shellcheck, shfmt); prettier is pinned in `frontend/package.json`; ruff config lives in `pyproject.toml`. Don't run `mise trust`: the config must stay pin-only, and `make mise-config-check` enforces that. `.git-blame-ignore-revs` hides the format-only pass from blame (GitHub honors it automatically).
+`.mise.toml` is the single pin location (python 3.11.14, node, pnpm, ruff, shellcheck, shfmt, actionlint); prettier is pinned in `frontend/package.json`; ruff config lives in `pyproject.toml`. Don't run `mise trust`: the config must stay pin-only, and `make mise-config-check` enforces that. `.git-blame-ignore-revs` hides the format-only pass from blame (GitHub honors it automatically).
 
 **Note:** Never run `pre-commit`, `ruff`, `eslint`, `prettier`, `make lint`, or `make format` manually unless explicitly asked — pre-commit runs all of these automatically as a git hook on commit.
 

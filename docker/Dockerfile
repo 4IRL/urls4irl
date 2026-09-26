@@ -7,14 +7,19 @@ FROM node:22-bookworm-slim AS frontend-builder
 
 WORKDIR /build
 
-# Copy package files to project root for installation
-COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+# Pinned pnpm (must match .mise.toml; enforced by `make mise-config-check`). Installed via npm
+# rather than corepack, which Node 25 removes. pnpm 11 needs node >=22.13, so node 22 stays.
+ARG PNPM_VERSION=11.9.0
+RUN npm install -g --ignore-scripts pnpm@${PNPM_VERSION}
+
+# Copy package manifest, lockfile and pnpm config to project root for installation
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 
 # Copy vite config from frontend/ to project root (required for proper __dirname resolution)
 COPY frontend/vite.config.ts ./
 
 # Install dependencies at project root (including devDependencies needed for build)
-RUN npm ci
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # Copy frontend source
 COPY frontend/ ./frontend/

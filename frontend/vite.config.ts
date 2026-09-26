@@ -6,7 +6,7 @@ import basicSsl from "@vitejs/plugin-basic-ssl";
 const useSSL = process.env.ENABLE_SSL === "true";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
-// "mode" defined through CLI options passed to vite, i.e. npm run _dev_ adds development as mode
+// "mode" defined through CLI options passed to vite, i.e. pnpm run _dev_ adds development as mode
 export default defineConfig(({ mode }) => ({
   plugins: useSSL ? [basicSsl()] : [],
   // Root directory for your frontend source
@@ -34,6 +34,17 @@ export default defineConfig(({ mode }) => ({
     watch: {
       usePolling: true,
       interval: 1000,
+    },
+    // The default allow list is only the root (./frontend). Assets referenced by
+    // CSS url() in dependencies (e.g. font-awesome fonts) resolve to realpaths
+    // under pnpm's virtual store (node_modules/.pnpm) beside this config, so
+    // allow that dir too.
+    // The whole .pnpm store is allowed deliberately: dev-server-only tradeoff (versioned .pnpm/<pkg>@<ver> paths make per-package allows brittle; server.* is unused by `vite build`).
+    fs: {
+      allow: [
+        resolve(__dirname, "frontend"),
+        resolve(__dirname, "node_modules/.pnpm"),
+      ],
     },
   },
 

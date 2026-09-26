@@ -11,18 +11,20 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check tools mise-config-check _require-tools _require-shell-files up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: hooks hooks-check tools mise-config-check lockfile-check _require-tools _require-shell-files up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+# -V (--renew-anon-volumes): recreate anonymous volumes (vite's /app/node_modules masks) on every up,
+# so a stale pre-bump node_modules never shadows the freshly built image's pnpm install. Named volumes are unaffected.
 up: ## Build and start the full stack (pass d=1 for detached mode)
-	$(COMPOSE) up --build --remove-orphans $(if $(d),-d,)
+	$(COMPOSE) up --build --remove-orphans -V $(if $(d),-d,)
 
 up-built: ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
-	$(COMPOSE_BUILT) up --build --remove-orphans $(if $(d),-d,)
+	$(COMPOSE_BUILT) up --build --remove-orphans -V $(if $(d),-d,)
 
 start-built: prune ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
 	$(COMPOSE) down
@@ -38,7 +40,7 @@ restart: ## Restart a specific container: make restart c=<service>
 	$(COMPOSE) restart $(c)
 
 tunnel: ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
-	$(COMPOSE_BUILT) up --build --remove-orphans -d --wait
+	$(COMPOSE_BUILT) up --build --remove-orphans -V -d --wait
 	$(COMPOSE_BUILT) --profile tunnel up -d --no-recreate cloudflared
 	@echo "Waiting for Cloudflare quick-tunnel URL (~5-10s)..."
 	@for i in $$(seq 1 30); do \
@@ -70,10 +72,10 @@ test-ui-parallel-built: start-built ## Run UI tests in parallel against built as
 	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),8) --dist=loadscope"
 
 test-js: ## Run all JS unit tests (vitest)
-	$(EXEC_VITE) npm test
+	$(EXEC_VITE) pnpm test
 
 test-js-built: ## Run all JS unit tests in the built stack (one-off vite container; used when up-built is running and the long-lived dev vite service is absent)
-	$(COMPOSE_BUILT) run --rm --no-deps vite npm test
+	$(COMPOSE_BUILT) run --rm --no-deps vite pnpm test
 
 test-backup-pipeline: ## Build web+workflow images and run the backup pipeline E2E harness locally
 	docker build -f docker/Dockerfile.Local    -t u4i-local-web:test .
@@ -106,12 +108,12 @@ test-file-parallel-built: start-built ## Run pytest against a specific file or p
 	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),4) --dist=loadscope -v $(args)"
 
 vite-build: ## Build Vite to verify no import/syntax errors
-	$(EXEC_VITE) npx vite build
+	$(EXEC_VITE) pnpm exec vite build
 
 vite-build-built: ## Rebuild Vite assets in the built stack (one-off vite build container; used when up-built is running and the long-lived dev vite service is absent)
-	$(COMPOSE_BUILT) run --rm --no-deps vite npx vite build
+	$(COMPOSE_BUILT) run --rm --no-deps vite pnpm exec vite build
 
-lint: lint-python lint-frontend lint-shell ## Run all linters (same command CI and pre-commit run)
+lint: lint-python lint-frontend lint-shell lockfile-check lint-actions ## Run all linters (same command CI and pre-commit run)
 
 lint-python: _require-tools ## Lint Python with ruff
 	$(MISE) ruff check .
@@ -122,6 +124,10 @@ lint-frontend: _require-tools ## Lint JS and TS with eslint
 
 lint-shell: _require-tools _require-shell-files ## Lint shell scripts with shellcheck
 	$(MISE) shellcheck --severity=warning -x $(SHELL_FILES)
+
+# The -ignore is an actionlint schema gap, not a repo issue: `command:` under a workflow `services:` entry is valid GitHub Actions syntax (test.yml's redis-metrics) but missing from actionlint's schema.
+lint-actions: _require-tools ## Lint GitHub Actions workflows
+	$(MISE) actionlint -ignore 'unexpected key "command" for "services" section'
 
 format-check: format-check-python format-check-frontend format-check-shell ## Check formatting (no writes)
 
@@ -145,13 +151,13 @@ typecheck: _require-tools ## Run TypeScript typecheck (app + test tsconfigs) on 
 
 generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
 	$(EXEC_WEB) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
-	$(EXEC_VITE) npx openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
+	$(EXEC_VITE) pnpm exec openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
 	$(EXEC_WEB) "$(FLASK) metrics generate-dim-types --output /code/u4i/frontend/types/metrics-dimensions.d.ts"
 	$(EXEC_WEB) "$(FLASK) metrics generate-dim-values --output /code/u4i/frontend/types/metrics-dim-values.ts"
 	$(EXEC_WEB) "$(FLASK) metrics generate-events --output /code/u4i/frontend/types/metrics-events.ts"
 	$(EXEC_WEB) "$(FLASK) metrics generate-resources --output /code/u4i/frontend/types/metrics-resources.ts"
 	$(EXEC_WEB) "$(FLASK) metrics generate-flows --output /code/u4i/frontend/types/metrics-flows.ts"
-	$(EXEC_VITE) npx --no-install prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
+	$(EXEC_VITE) pnpm exec prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
 
 audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
 	$(EXEC_WEB) "$(FLASK) metrics audit --strict"
@@ -183,18 +189,25 @@ hooks-check: ## Report whether the pre-commit hook is installed in this clone
 		|| echo "pre-commit hook: MISSING — run 'make hooks'"
 
 # .mise.toml is deliberately never `mise trust`ed: a pin-only config (min_version + plain [tools] strings) loads untrusted, and mise's own trust check refuses anything more at runtime.
-# mise-config-check (run by `tools` after `mise install`, and by CI's Format and Lint jobs; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
-# It keeps .mise.toml to min_version + plain `[tools] name = "version"` pins; it checks .mise.toml only. In an untrusted clone, mise's trust error fires first.
-# `npm ci --ignore-scripts`: no dependency install/postinstall scripts run on the host.
+# mise-config-check (scripts/mise_config_check.py; run by `tools` after `mise install`, and by CI's Format and Lint jobs; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
+# It keeps .mise.toml to min_version + plain `[tools] name = "version"` pins, and asserts both Dockerfiles' `ARG PNPM_VERSION=` equals the [tools] pnpm pin (one logical pin; images need their own literal). In an untrusted clone, mise's trust error fires first.
+# `pnpm install --frozen-lockfile --ignore-scripts`: no dependency install/postinstall scripts run on the host, and a lockfile out of sync with package.json fails instead of being rewritten.
 tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules; set git blame ignore-revs
 	@command -v mise >/dev/null || { echo "mise not installed — see https://mise.jdx.dev/installing-mise.html (Linux: curl https://mise.run | sh; macOS: brew install mise)"; exit 1; }
 	@mise install || { echo "make tools: mise install failed (see above). If it says .mise.toml is 'not trusted', the file has more than min_version + plain [tools] pins: remove that config instead of running 'mise trust'."; exit 1; }
 	@$(MAKE) --no-print-directory mise-config-check
-	cd frontend && $(MISE) npm ci --ignore-scripts
+	cd frontend && $(MISE) pnpm install --frozen-lockfile --ignore-scripts
 	git config blame.ignoreRevsFile .git-blame-ignore-revs
 
-mise-config-check: ## Fail unless .mise.toml is pin-only (min_version + plain [tools] version pins)
-	@mise exec python -- python -c 'import sys, tomllib; c = tomllib.load(open(".mise.toml", "rb")); t = c.get("tools", {}); bad = sorted(set(c) - {"min_version", "tools"}) + (sorted("tools." + k for k, v in t.items() if not isinstance(v, str)) if isinstance(t, dict) else ["tools"]); bad and sys.exit(".mise.toml has non-version-pin config (" + ", ".join(bad) + "); only min_version and plain [tools] version pins are allowed")'
+mise-config-check: ## Fail unless .mise.toml is pin-only and the Dockerfiles' ARG PNPM_VERSION matches its pnpm pin
+	@mise exec python -- python scripts/mise_config_check.py
+
+lockfile-check: ## Fail if an npm lockfile/.npmrc reappears next to pnpm-lock.yaml
+	@test -f frontend/pnpm-lock.yaml || { echo "lockfile-check: frontend/pnpm-lock.yaml is missing"; exit 1; }
+	@test -f frontend/pnpm-workspace.yaml || { echo "lockfile-check: frontend/pnpm-workspace.yaml is missing"; exit 1; }
+	@for npm_file in frontend/package-lock.json frontend/.npmrc; do \
+		if test -e "$$npm_file" || test -L "$$npm_file"; then echo "lockfile-check: $$npm_file must not exist (frontend/ is pnpm-only; never run npm install there)"; exit 1; fi; \
+	done
 
 # Private prerequisite guards (_require-*) deliberately have no "## desc" so they stay out of 'make help'.
 _require-tools:
