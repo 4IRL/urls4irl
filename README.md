@@ -36,18 +36,25 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 Run this **once per clone**, before your first commit:
 
 ```bash
-make tools
-make hooks
+make setup
 ```
 
-`make tools` needs [mise](https://mise.jdx.dev/installing-mise.html). It installs the host lint
-toolchain pinned in `.mise.toml` (Python 3.11.14, node, pnpm, ruff, shellcheck, shfmt, actionlint), runs
-`pnpm install --frozen-lockfile --ignore-scripts` in `frontend/`, and points `git blame` at `.git-blame-ignore-revs`.
-Don't run `mise trust`: the config must stay pin-only, and `make mise-config-check` enforces that.
+`make setup` is idempotent (safe to re-run, and safe in a git worktree) and runs three steps:
 
-`make hooks` creates a local `venv/` (gitignored), installs the `pre-commit` version pinned in
-`requirements/requirements-dev.txt`, and installs the git pre-commit hook. `make hooks-check`
-reports whether the hook is present in the current clone.
+1. `make tools` needs [mise](https://mise.jdx.dev/installing-mise.html). It installs the host lint
+   toolchain pinned in `.mise.toml` (Python 3.11.14, node, pnpm, ruff, shellcheck, shfmt,
+   actionlint), runs `pnpm install --frozen-lockfile --ignore-scripts` in `frontend/`, and points
+   `git blame` at `.git-blame-ignore-revs`. Don't run `mise trust`: the config must stay pin-only,
+   and `make mise-config-check` enforces that.
+2. `make hooks` creates a gitignored `venv/` in the main checkout with the mise-pinned Python,
+   installs the `pre-commit` version pinned in `requirements/requirements-dev.txt`, and installs
+   the git pre-commit hook. `make hooks-check` reports whether the hook is present (it exits 1
+   when it is missing).
+3. `make capacity` sizes the local stack for this machine: test worker counts, the Redis and
+   Postgres limits that depend on them, and the host UID/GID for the web image. It writes the
+   gitignored `docker/.capacity.generated.env`. If this step fails (for example, Docker isn't
+   running yet), `make setup` defers it instead of failing and `make up` generates the file
+   later; run `make capacity` to see the error.
 
 **Why it matters:** the app itself is fully containerized, but git hooks run *on the host*.
 Skip this step and `ruff`, `eslint`, `prettier` and `shellcheck`/`shfmt` silently never run on
@@ -85,6 +92,8 @@ A `Makefile` is provided for common development tasks:
 
 | Command | Description |
 |---|---|
+| `make setup` | One-time per clone/worktree: host toolchain, pre-commit hook, capacity file (idempotent) |
+| `make capacity` | Derive test worker counts + stack limits for this machine (overrides: `U4I_N_UI=`, `U4I_N_INT=`, `U4I_MEM_FRACTION=`) |
 | `make up` | Build and start the full stack |
 | `make down` | Stop the stack |
 | `make build` | Rebuild images without starting |
@@ -93,9 +102,9 @@ A `Makefile` is provided for common development tasks:
 | `make test-functional` | Run all UI/Playwright functional tests |
 | `make test-js` | Run all JS unit tests (vitest) |
 | `make test-marker m=<marker>` | Run tests for a specific pytest marker (e.g. `make test-marker m=utubs`) |
-| `make test-integration-parallel [n=4]` | Run all non-UI integration tests in parallel (preferred) |
-| `make test-ui-parallel [n=8]` | Run all UI/Playwright tests in parallel (preferred, max n=8) |
-| `make test-marker-parallel m=<marker> [n=4]` | Run tests for a specific marker in parallel (preferred) |
+| `make test-integration-parallel [n=<N>]` | Run all non-UI integration tests in parallel (preferred; default `n` from `make capacity`) |
+| `make test-ui-parallel [n=<N>]` | Run all UI/Playwright tests in parallel (preferred; default `n` from `make capacity`) |
+| `make test-marker-parallel m=<marker> [n=<N>]` | Run tests for a specific marker in parallel (preferred; default `n` from `make capacity`) |
 | `make vite-build` | Build Vite to verify no import/syntax errors |
 | `make help` | List all available make commands |
 

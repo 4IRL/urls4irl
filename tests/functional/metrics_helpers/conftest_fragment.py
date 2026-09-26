@@ -37,9 +37,9 @@ def metrics_redis_client(
     Per-worker isolation is inherited from the existing session-scoped
     `worker_metrics_redis_uri` fixture in `tests/conftest.py`, which assigns
     each xdist worker a dedicated DB index in the range
-    `_METRICS_REDIS_DB_BASE..(_METRICS_REDIS_DB_BASE + n_workers - 1)`. With the
-    documented UI parallelism cap of `n=8`, the highest assigned index is 15 —
-    inside the dedicated container's default 16-database limit (indices 0..15).
+    `_METRICS_REDIS_DB_BASE..(_METRICS_REDIS_DB_BASE + n_workers - 1)`. The
+    container's database count is the derived `REDIS_METRICS_DATABASES` from
+    `make capacity`, sized so the highest assigned index always fits.
 
     Skips the test session when the metrics Redis is unavailable
     (`memory://`), matching how `provide_metrics_redis` short-circuits in the

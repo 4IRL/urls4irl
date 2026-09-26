@@ -38,7 +38,7 @@ def register_user_ui(
         pass_confirm = password
 
     # Longer timeout: first click after page load is sensitive to resource
-    # contention at n=8.
+    # contention at the derived `U4I_N_UI` worker count.
     wait_then_click_element(page=page, css_selector=SPL.BUTTON_REGISTER)
     wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
 
@@ -82,7 +82,7 @@ def open_forgot_password_modal(*, page: Page) -> None:
         page: Playwright Page open to the U4I Splash page.
     """
     # Longer timeout: first click after page load is sensitive to resource
-    # contention at n=8.
+    # contention at the derived `U4I_N_UI` worker count.
     wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
     wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
     wait_then_click_element(page=page, css_selector=SPL.BUTTON_FORGOT_PASSWORD_MODAL)

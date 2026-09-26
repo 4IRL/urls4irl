@@ -157,9 +157,9 @@ Minimum coverage:
 ### 8. Verify
 
 ```bash
-make audit                                    # passes
-make test-marker-parallel m=<your-marker> n=8 # green
-make generate-types                           # no diff after second run
+make audit                                # passes
+make test-marker-parallel m=<your-marker> # green
+make generate-types                       # no diff after second run
 ```
 
 ---
@@ -242,13 +242,13 @@ rows (typically 90 days, check with whoever runs the analytics):
 
 ### Verification commands
 
-| Check                                | Command                                          |
-|--------------------------------------|--------------------------------------------------|
-| Structural wiring                    | `make audit`                                     |
-| Backend tests for your event         | `make test-marker-parallel m=<marker> n=8`       |
-| Frontend tests (UI events)           | `make test-js`                                   |
+| Check                                | Command                                             |
+|--------------------------------------|-----------------------------------------------------|
+| Structural wiring                    | `make audit`                                        |
+| Backend tests for your event         | `make test-marker-parallel m=<marker>`              |
+| Frontend tests (UI events)           | `make test-js`                                      |
 | Generated TS types are fresh         | `make generate-types && git status frontend/types/` |
-| Full integration suite               | `make test-integration-parallel n=8`             |
+| Full integration suite               | `make test-integration-parallel`                    |
 
 ### Common pitfalls
 

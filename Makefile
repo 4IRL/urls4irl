@@ -260,12 +260,17 @@ _capacity-fresh: _require-mise
 # workflow start left it owned by another uid, since web would otherwise crash on its log file. It uses docker run
 # against the existing web image, not compose run, so a missing volume is never created (and seeded by a stale image)
 # here. It skips quietly on a fresh machine (no volume/image/log dir yet). The project label must track compose's `name:`.
+# A 0 uid/gid (root host) maps to 1001, mirroring Dockerfile.Local's root fallback, so web's user still owns the logs.
 _logs-owner-fix: _capacity-fresh
 	@vol=$$(docker volume ls -q --filter label=com.docker.compose.project=u4i-local --filter label=com.docker.compose.volume=app_logs); \
 	img=$$(docker image ls -q u4i-local-web:latest); \
 	if [ -z "$$vol" ] || [ -z "$$img" ]; then exit 0; fi; \
 	want=$(call capacity_val,HOST_UID):$(call capacity_val,HOST_GID); \
 	case "$$want" in *[!0-9:]*|:*|*:) echo "HOST_UID/HOST_GID invalid in $(CAPACITY_ENV) — run 'make capacity'"; exit 1;; esac; \
+	uid=$${want%%:*}; gid=$${want#*:}; \
+	case "$$uid" in 0) uid=1001;; esac; \
+	case "$$gid" in 0) gid=1001;; esac; \
+	want=$$uid:$$gid; \
 	have=$$(docker run --rm --user root -v "$$vol":/app/volume "$$img" stat -c '%u:%g' /app/volume/logs 2>/dev/null) || exit 0; \
 	if [ "$$have" != "$$want" ]; then \
 		echo "repairing app_logs ownership (was $$have, now $$want)"; \

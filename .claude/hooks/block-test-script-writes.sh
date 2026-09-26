@@ -16,7 +16,7 @@ if echo "$file_path" | grep -qE '(\.claude/scripts/|/tmp/claude/).*(test|pytest)
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
-      permissionDecisionReason: "Refusing to write \($p) — the project Makefile already covers test-running and is auto-unsandboxed. Use `make test-file f=<path>`, `make test-file-parallel f=<path> [n=4]`, `make test-marker m=<marker>`, or `make test-marker-parallel m=<marker> [n=4]` instead. Wrapper scripts under .claude/scripts/ or /tmp/claude/ require per-call user approval on first invocation, adding friction without adding capability."
+      permissionDecisionReason: "Refusing to write \($p) — the project Makefile already covers test-running and is auto-unsandboxed. Use `make test-file f=<path>`, `make test-file-parallel f=<path> [n=<N>]`, `make test-marker m=<marker>`, or `make test-marker-parallel m=<marker> [n=<N>]` instead. Wrapper scripts under .claude/scripts/ or /tmp/claude/ require per-call user approval on first invocation, adding friction without adding capability."
     }
   }'
   exit 0

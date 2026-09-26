@@ -1,5 +1,5 @@
 # Every hook calls the same `make` check target that developers and CI run (host tools pinned in
-# .mise.toml; install once per machine with `make tools`). Hooks never call `make format`, so a
+# .mise.toml; install them and this hook with `make setup`). Hooks never call `make format`, so a
 # commit never rewrites files — run `make format` yourself to fix a failure. The targets check the
 # whole tree, so an untracked, non-ignored .py/.ts file with errors can also block a commit.
 repos:

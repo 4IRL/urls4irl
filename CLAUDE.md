@@ -28,11 +28,24 @@ Reference plan may have files in the @plans directory - please reference these i
   | Purpose | Command |
   |---|---|
   | Integration tests | `make test-integration-parallel` (single marker: `make test-marker-parallel m=<marker>`) |
-  | UI tests | `make test-ui-parallel-built` (max `n=8`) |
+  | UI tests | `make test-ui-parallel-built` (`n` defaults to the derived `U4I_N_UI`; see Configuration surface) |
   | JS/unit tests | `make test-js` |
   | Build | `make vite-build` |
-  | Lint / format | `make lint` · `make format-check` · `make typecheck` (fix: `make format`); host toolchain via `make tools`. The pre-commit hook runs these automatically **only if `make hooks` has been run in this clone** (check with `make hooks-check`) |
+  | Lint / format | `make lint` · `make format-check` · `make typecheck` (fix: `make format`); onboard a clone/worktree with `make setup` (toolchain + hook + capacity). The pre-commit hook runs these automatically **only if the hook is installed** (`make setup`, or `make hooks` alone; check with `make hooks-check`) |
   | Regenerate types | `make generate-types` |
+- **Configuration surface:** every local knob, by tier. Compose reads `--env-file .env` then `--env-file docker/.capacity.generated.env`; shell env beats both.
+  | Knob                                           | Tier                 | Default                                                            | Set by                                                                                                                                         |
+  | ---------------------------------------------- | -------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `.env` secrets (`POSTGRES_*`, `SECRET_KEY`, …) | secrets              | per machine                                                        | hand-edited `.env`, read first via `--env-file .env` (missing `.env` fails loudly)                                                             |
+  | `U4I_N_UI` / `U4I_N_INT`                       | host capacity        | `clamp(cores·2/3, 2, 12)` / `clamp(cores, 2, 16)`, memory-guarded  | `make capacity`; `U4I_N_UI=<n>` / `U4I_N_INT=<n>` overrides are sticky until `=auto`                                                           |
+  | `U4I_MEM_FRACTION`                             | host capacity        | `0.70` (lower it on shared boxes)                                  | `make capacity` input; sticky (also reused by the automatic refresh) until `=auto`                                                             |
+  | `REDIS_METRICS_DATABASES`                      | host capacity        | `max(16, pow2(8 + n_max))`, `n_max = max(n_ui, n_int)`             | emitted by `make capacity` → `redis-metrics --databases`                                                                                       |
+  | `U4I_TEST_MAX_CONN`                            | host capacity        | `n_max·15 + 50`                                                    | emitted by `make capacity` → test-db `max_connections`                                                                                         |
+  | `HOST_UID` / `HOST_GID`                        | host capacity        | `id -u` / `id -g` (image default 1001; a root host also gets 1001) | emitted by `make capacity` → web image build args                                                                                              |
+  | `METRICS_ENABLED`                              | tracked default      | `true` locally                                                     | opt a machine out with `METRICS_ENABLED=false` in `.env` (never a shell export)                                                                |
+  | `U4I_SLUG`                                     | worktree identity    | `$(notdir $(CURDIR))`                                              | computed + exported by the Makefile, never stored (reserved for per-worktree stack isolation)                                                  |
+  | `make setup`                                   | onboarding target    | n/a                                                                | once per clone/worktree: `tools` + `hooks` + `capacity` (idempotent; a failed capacity step, e.g. Docker down, is deferred)                    |
+  | `make capacity`                                | host capacity target | n/a                                                                | writes gitignored `docker/.capacity.generated.env`; stack-start and `-parallel` targets refresh it (`recreate required` = rerun `make up d=1`) |
 - **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. The genericized `/git-push` performs the lookup; `.claude/skills/git-push/SKILL.md` documents the mutations.
 - **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
 - **PR reviewer:** `GPropersi`
@@ -165,14 +178,14 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 2. **Run all tests in Docker, never on host** - Always use the Docker containers for running tests
 3. **Debug UI test failures with Playwright before changing code** - When a UI test fails and the root cause isn't clear from code inspection, use Playwright MCP to manually reproduce the issue and observe actual behavior BEFORE making code changes
 4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`playwright.sync_api.Error` (e.g. a `chromium.connect()` failure against the shared browser-server), `playwright.sync_api.TimeoutError`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "browser connection exhaustion" as a dismissible category — if browser connections are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
-5. **Check Playwright browser-server health when connections repeatedly fail** - If `chromium.connect()` failures against the shared browser-server persist across test runs, check it with `docker compose --project-directory . -f docker/compose.local.yaml ps playwright` and, only when no UI test run is in progress, restart it with `make restart c=playwright` (the one container serves every UI worker gw0-gw7, so a restart kills all in-flight workers). Still record and investigate the root cause. A `RuntimeError: PLAYWRIGHT_WS_URL env var is not set ...` (raised by `build_page_browser` in `tests/functional/conftest.py`) means the `web` service env is misconfigured (see `docker/compose.local.yaml`), not an unhealthy browser-server, so a restart won't fix it.
+5. **Check Playwright browser-server health when connections repeatedly fail** - If `chromium.connect()` failures against the shared browser-server persist across test runs, check it with `docker compose --project-directory . -f docker/compose.local.yaml ps playwright` and, only when no UI test run is in progress, restart it with `make restart c=playwright` (the one container serves every UI worker, so a restart kills all in-flight workers). Still record and investigate the root cause. A `RuntimeError: PLAYWRIGHT_WS_URL env var is not set ...` (raised by `build_page_browser` in `tests/functional/conftest.py`) means the `web` service env is misconfigured (see `docker/compose.local.yaml`), not an unhealthy browser-server, so a restart won't fix it.
 6. **`playwright.sync_api.TimeoutError` in UI tests always requires investigation** - never pre-existing or dismissible as "flaky" (see central Test Failures policy). Indicates either a UI logic bug or a genuine timing/stability issue.
-7. **Prefer parallel make targets** - Use `make test-marker-parallel m=<marker>` (integration) or `make test-ui-parallel` (UI, default n=8) by default. Sequential targets are fallbacks only. Never run two separate make test commands simultaneously — "parallel" means `-n` workers within a single invocation, not two concurrent terminal commands.
+7. **Prefer parallel make targets** - Use `make test-marker-parallel m=<marker>` (integration, default `n` = derived `U4I_N_INT`) or `make test-ui-parallel` (UI, default `n` = derived `U4I_N_UI`) by default. Sequential targets are fallbacks only. Never run two separate make test commands simultaneously — "parallel" means `-n` workers within a single invocation, not two concurrent terminal commands.
    - **CRITICAL: Never run integration and UI test suites at the same time** — even as background processes. They share a single test DB and Redis instance; concurrent `db.drop_all()` calls corrupt the DB. Always finish one suite completely before starting the other.
-   - **Parallelism cap: n=8 max (every suite, not just UI)** — the hard cause is a Redis database-count limit. Each worker's metrics-Redis DB is `_METRICS_REDIS_DB_BASE` (8, `tests/conftest.py`) + its worker number, so gw0-gw7 use indices 8-15 and gw8 computes 16. `docker/compose.local.yaml` gives `redis` `--databases 32` but gives `redis-metrics` no `--databases` flag, so it keeps Redis's default of 16. gw8 therefore raises `ValueError: Metrics Redis DB index 16 is out of range for worker 'gw8'. redis-metrics only has 16 databases (0-15).` The session-scoped `build_app` requests `worker_metrics_redis_uri`, so any Docker/CI run at n≥9, whatever the marker, fails once gw8 gets an app-backed test (e.g. `make test-marker-parallel m=unit n=9`). The `memory://` fallback skips the check. To go past n=8, raise `--databases` on `redis-metrics` in `docker/compose.local.yaml` and on the CI service in `.github/workflows/test.yml` (never in prod `docker/compose.yaml`), or lower the base. Soft, secondary cause: host CPU/RAM load during concurrent startup. Each UI worker has its own Flask server and Postgres DB, plus its own `chromium.connect()` browser on the **one shared** Playwright browser-server container. That load can slow setup, but it is not the deterministic failure.
+   - **Parallelism caps are derived per host (every suite, not just UI)** — `make capacity` sets the default worker counts (`U4I_N_UI` for UI targets, `U4I_N_INT` for integration/marker/file targets) from the host's cores and memory, and sizes the interlocks to the larger of the two: `redis-metrics --databases` (each worker's metrics-Redis DB is `_METRICS_REDIS_DB_BASE` 8 + its worker number) and test-db `max_connections`. An explicit `n=` above this host's `U4I_N_MAX` is refused by `_require-n-fits` before pytest starts. To go higher, run `make capacity U4I_N_UI=<n>` (UI targets) or `make capacity U4I_N_INT=<n>` (integration/marker/file targets), then `make up d=1` to recreate the stack with the new interlocks. Overrides above the memory guard are refused, and n ≤ 30 is a hard ceiling (the shared `redis` has `--databases 32`, and each worker uses index `gwN+2`). If a run still raises `ValueError: Metrics Redis DB index … is out of range`, the capacity file is stale or the stack wasn't recreated: run `make capacity`, then `make up d=1`. CI does not use `make capacity`; its `test.yml` matrix pins `XDIST_N`. Soft, secondary limit: host CPU/RAM load during concurrent startup. Each UI worker has its own Flask server and Postgres DB, plus its own `chromium.connect()` browser on the **one shared** Playwright browser-server container. The memory guard budgets for that, but heavy load can still slow setup.
 8. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
 
-Flaky-test hardening and the never-dismiss-without-investigation protocol are covered centrally (see `~/code/CLAUDE.md` → Test Failures: Investigate, Don't Dismiss); the `n=8` cap above is a hard metrics-Redis limit, not a flake threshold. At or below it, flaky tests must be hardened to pass at the suite's normal parallelism.
+Flaky-test hardening and the never-dismiss-without-investigation protocol are covered centrally (see `~/code/CLAUDE.md` → Test Failures: Investigate, Don't Dismiss); the derived caps above are capacity limits, not flake thresholds. At or below them, flaky tests must be hardened to pass at the suite's normal (derived) parallelism.
 
 ### Code Style
 
@@ -255,20 +268,22 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 
 | Command | Description |
 |---|---|
-| `make tools` | Install the pinned host toolchain + `frontend/node_modules` (one-time per machine, re-run after pin bumps) |
-| `make hooks` | Install the pre-commit git hook (one-time per clone — see "Pre-commit hooks" below) |
-| `make hooks-check` | Report whether the pre-commit hook is installed in this clone |
+| `make setup` | One-time per clone/worktree onboarding: `tools` + `hooks` + `capacity` (idempotent; a capacity failure, e.g. Docker down, is deferred — rerun `make capacity` to see the error) |
+| `make capacity [U4I_N_UI=<n\|auto>] [U4I_N_INT=<n\|auto>] [U4I_MEM_FRACTION=<f\|auto>]` | Derive test worker counts + interlocks for this host into `docker/.capacity.generated.env` (overrides are sticky; `=auto` clears) |
+| `make tools` | Install the pinned host toolchain + `frontend/node_modules` (run by `make setup`; re-run after pin bumps) |
+| `make hooks` | Install the pre-commit git hook in the main checkout (run by `make setup`; safe from any worktree — see "Pre-commit hooks" below) |
+| `make hooks-check` | Report whether the pre-commit hook is installed (exits 1 when missing; worktree-safe) |
 | `make up d=1` | Build and start the full stack (detached) |
 | `make up-built d=1` | Build and start with pre-built Vite assets (detached) |
 | `make down` | Stop the stack |
 | `make build` | Rebuild images without starting |
 | `make restart c=<service>` | Restart a specific compose service |
-| `make test-integration-parallel [n=4]` | All non-UI integration tests in parallel (**preferred**) |
+| `make test-integration-parallel [n=<N>]` | All non-UI integration tests in parallel (**preferred**; default `n` = derived `U4I_N_INT`) |
 | `make test-integration` | All non-UI integration tests (sequential fallback) |
-| `make test-ui-parallel [n=8]` | All UI/Playwright tests in parallel (**preferred**, max n=8) |
+| `make test-ui-parallel [n=<N>]` | All UI/Playwright tests in parallel (**preferred**; default `n` = derived `U4I_N_UI`) |
 | `make test-functional` | All UI/Playwright functional tests (sequential fallback) |
 | `make test-js` | All JS unit tests (vitest) |
-| `make test-marker-parallel m=<marker> [n=4]` | Tests for a specific marker in parallel (**preferred**) |
+| `make test-marker-parallel m=<marker> [n=<N>]` | Tests for a specific marker in parallel (**preferred**; default `n` = derived `U4I_N_INT`) |
 | `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
 | `make test-file f=<path> [args=...]` | Single test file/path |
 | `make vite-build` | Vite build verification |
@@ -278,7 +293,7 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 
 ### Metrics Verification (local stack)
 
-Bring the stack up with `make up d=1` to exercise the anonymous-metrics pipeline end-to-end. The local developer shell exports `METRICS_ENABLED=true`, so a bare `make up d=1` picks it up — **never prefix `METRICS_ENABLED=true` on local commands**. The compose file declares `METRICS_ENABLED=${METRICS_ENABLED:-false}`, but the shell export wins for this stack. To exercise the disabled path, set `METRICS_ENABLED=false` explicitly. Prod is hard-`false` by rollout strategy; dev is hard-`true`.
+Bring the stack up with `make up d=1` to exercise the anonymous-metrics pipeline end-to-end. Metrics are **on by default locally**: `docker/compose.local.yaml` declares the tracked default `METRICS_ENABLED=${METRICS_ENABLED:-true}`, so a bare `make up d=1` enables them on every host — **never prefix `METRICS_ENABLED=true` on local commands**. To opt a machine out (or exercise the disabled path), put `METRICS_ENABLED=false` in `.env`, which `make` passes via `--env-file .env`. **Remove any lingering `export METRICS_ENABLED=…` from your shell profile:** compose interpolation resolves the shell environment before `--env-file`, so a leftover export silently overrides the `.env` opt-out (check with `printenv METRICS_ENABLED`). Tests are unaffected (`ConfigTest.METRICS_ENABLED = False`). Prod (`docker/compose.yaml`) and dev (`docker/compose.dev.yaml`) both hard-set `METRICS_ENABLED=true`.
 
 | Command | Description |
 |---|---|
@@ -307,6 +322,8 @@ make up d=1    # never omit d=1 — see the CRITICAL note above
 # SSL is disabled by default. To enable HTTPS in local development:
 # Set ENABLE_SSL=true and VITE_URL=https://localhost:5173 in docker/compose.local.yaml
 ```
+
+**Host identity:** the local web image's `u4i-host` user is built with this host's `HOST_UID`/`HOST_GID` (from `make capacity`; build args in `docker/compose.local.yaml`, image default 1001), so files it writes into bind mounts are owned by you. An `app_logs` volume created by an older image, or re-owned by a previous workflow start, can leave `/app/volume/logs` owned by another uid, and web would crash on its log file. `make up`/`up-built`/`start-built`/`tunnel` repair that automatically through the private `_logs-owner-fix` prerequisite, which prints `repairing app_logs ownership (was X, now UID:GID)` once and is silent otherwise. The workflow container keeps write access through the log dir's group.
 
 #### Playwright
 
@@ -357,7 +374,7 @@ Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`
 
 **Prefer parallel make targets** (`test-marker-parallel`, `test-integration-parallel`, `test-ui-parallel`) over sequential ones. "Parallel" means `-n` workers within a single invocation — never run two separate `make test-*` commands simultaneously, as they share a single test DB and Redis instance.
 
-**Always minimize wall-clock time**: use the highest safe `n` value (n=8 for UI and integration alike — n≥9 hits the metrics-Redis DB cap above). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., shared Playwright browser-server connection idle-timeouts) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
+**Always minimize wall-clock time**: omit `n=` so each target uses this host's derived maximum (`U4I_N_UI` for UI, `U4I_N_INT` for integration/marker/file; see the parallelism-cap note above and `make capacity`). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., shared Playwright browser-server connection idle-timeouts) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
 
 UI/functional tests require the shared Playwright browser-server: the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it).
 
@@ -366,7 +383,8 @@ UI/functional tests require the shared Playwright browser-server: the `playwrigh
 One definition per check, run host-native. The pre-commit hook and CI call the same targets:
 
 ```bash
-make tools          # once per machine: install the pinned toolchain, pnpm install --frozen-lockfile --ignore-scripts, set blame.ignoreRevsFile
+make setup          # once per clone/worktree: tools + hooks + capacity (idempotent)
+make tools          # install the pinned toolchain, pnpm install --frozen-lockfile --ignore-scripts, set blame.ignoreRevsFile (run by setup)
 make lint           # ruff check + eslint + shellcheck + lockfile-check + lint-actions
 make lint-actions   # actionlint on .github/workflows/ (also run by make lint)
 make format-check   # ruff format --check + prettier --check + shfmt -d (no writes)
@@ -383,9 +401,11 @@ make format         # apply ruff format + prettier --write + shfmt -w
 The hook is **per-clone** and is **not** installed by cloning. Because this app is fully
 containerized (the venv is baked into the image, nothing installs on the host), a fresh clone has
 no host `pre-commit` and therefore **no hook runs on any commit** — silently. Verify with
-`make hooks-check`; install with `make hooks` (creates a gitignored `venv/`, installs the
-`pre-commit` pin from `requirements/requirements-dev.txt`, installs the hook). The hooks are
-`language: system` calls to the make targets above, so they also need `make tools` once per machine.
+`make hooks-check` (worktree-safe; exits 1 when missing); install with `make setup`, which runs
+`make tools` (the host toolchain the hooks need, since they are `language: system` calls to the
+make targets above), then `make hooks` (creates a gitignored `venv/` in the main checkout with the
+mise-pinned Python, installs the `pre-commit` pin from `requirements/requirements-dev.txt`, and
+installs the hook — safe to run from any worktree), then `make capacity`.
 
 **When committing here, confirm the hook actually ran.** A successful commit that printed no
 `ruff-lint...Passed` / `ruff-format...Passed` (or `eslint`, `prettier`, `typecheck`, `shell-lint`,

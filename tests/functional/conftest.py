@@ -239,7 +239,8 @@ def provide_app(worker_config: ConfigTestUI) -> Generator[Flask, None, None]:
 @pytest.fixture(scope="session")
 def playwright_instance():
     """Session-scoped Playwright process. Session scope is required — a new
-    Playwright driver process per test would exhaust ports under n=8 load."""
+    Playwright driver process per test would exhaust ports under
+    `U4I_N_UI`-worker load."""
     instance = sync_playwright().start()
     yield instance
     instance.stop()
