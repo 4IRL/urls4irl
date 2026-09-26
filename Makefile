@@ -2,6 +2,9 @@ COMPOSE = docker compose --project-directory . -f docker/compose.local.yaml
 COMPOSE_BUILT = docker compose --project-directory . -f docker/compose.local.yaml -f docker/compose.built.yaml
 EXEC_WEB = $(COMPOSE) exec web bash -c
 EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
+# For steps that write into bind-mounted host files (frontend/types): run as the host user so the
+# files keep host ownership, with LOG_DIR moved to /tmp since the image's log dir is only writable by the web user.
+EXEC_WEB_AS_HOST = $(COMPOSE) exec --user $(shell id -u):$(shell id -g) -e LOG_DIR=/tmp/u4i-cli-logs web bash -c
 EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
@@ -150,13 +153,13 @@ typecheck: _require-tools ## Run TypeScript typecheck (app + test tsconfigs) on 
 	$(MISE) $(FRONTEND_BIN)/tsc --noEmit --project frontend/tsconfig.test.json
 
 generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
-	$(EXEC_WEB) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
+	$(EXEC_WEB_AS_HOST) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
 	$(EXEC_VITE) pnpm exec openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
-	$(EXEC_WEB) "$(FLASK) metrics generate-dim-types --output /code/u4i/frontend/types/metrics-dimensions.d.ts"
-	$(EXEC_WEB) "$(FLASK) metrics generate-dim-values --output /code/u4i/frontend/types/metrics-dim-values.ts"
-	$(EXEC_WEB) "$(FLASK) metrics generate-events --output /code/u4i/frontend/types/metrics-events.ts"
-	$(EXEC_WEB) "$(FLASK) metrics generate-resources --output /code/u4i/frontend/types/metrics-resources.ts"
-	$(EXEC_WEB) "$(FLASK) metrics generate-flows --output /code/u4i/frontend/types/metrics-flows.ts"
+	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-dim-types --output /code/u4i/frontend/types/metrics-dimensions.d.ts"
+	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-dim-values --output /code/u4i/frontend/types/metrics-dim-values.ts"
+	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-events --output /code/u4i/frontend/types/metrics-events.ts"
+	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-resources --output /code/u4i/frontend/types/metrics-resources.ts"
+	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-flows --output /code/u4i/frontend/types/metrics-flows.ts"
 	$(EXEC_VITE) pnpm exec prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
 
 audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
