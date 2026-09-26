@@ -8,7 +8,7 @@ Run top-to-bottom. Each step has a pass criterion; deviations point to a specifi
 
 ```bash
 make down                       # ensure clean state — testing on stale state masks wiring bugs
-make up d=1                     # local shell exports METRICS_ENABLED=true; do not prefix
+make up d=1                     # METRICS_ENABLED defaults to true (compose); opt out via .env
 docker compose --project-directory . -f docker/compose.local.yaml ps
 ```
 
@@ -163,7 +163,7 @@ make down                       # stops the stack
 |----------------------------------------------------------|-------------------------------------------------------------------------------|
 | `redis-metrics` container missing from `ps`              | `compose.local.yaml` change not applied — `make down && make up d=1` again    |
 | `redis-metrics` unhealthy                                | `docker compose logs redis-metrics` — check `--maxmemory` value or port       |
-| `metrics-snapshot` prints nothing after a curl           | `METRICS_ENABLED` not set, or web container started before the env change     |
+| `metrics-snapshot` prints nothing after a curl           | `METRICS_ENABLED=false` in `.env`, or web container started before the change |
 | Counters appear on shared `redis` (`-n 2`)               | Web container env still points at old URI — `make restart c=web`              |
 | `metrics-flush-now` logs `another flush is in progress, skipping` | Workflow cron holds the lock — Step 7 expects you to `UNLINK metrics:flush:lock` first |
 | `metrics-flush-now` succeeds but `metrics-rows` is empty | Flush worker is hitting a different Postgres than expected — check workflow env       |

@@ -290,7 +290,7 @@ prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker volume prune -f
 	docker builder prune -f
 
-metrics-watch: ## Live tail Redis ops on dedicated redis-metrics container (requires METRICS_ENABLED=true on web)
+metrics-watch: ## Live tail Redis ops on dedicated redis-metrics container (metrics on by default; see CLAUDE.md)
 	$(COMPOSE) exec redis-metrics redis-cli MONITOR
 
 metrics-snapshot: ## Snapshot current metrics:counter:* keys with values

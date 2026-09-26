@@ -39,10 +39,10 @@ services:
       - VITE_URL=http://localhost:5173
       - VITE_INTERNAL_HOST=vite
       - ENABLE_SSL=false
-      # Anonymous metrics knobs. METRICS_ENABLED defaults off locally so unrelated
-      # dev work doesn't write counters; flip via `METRICS_ENABLED=true make up d=1`
-      # to exercise the live pipeline (see `make metrics-*` targets).
-      - METRICS_ENABLED=${METRICS_ENABLED:-false}
+      # Anonymous metrics knobs. METRICS_ENABLED is on by default locally (see the
+      # `make metrics-*` targets). Opt a machine out with METRICS_ENABLED=false in
+      # `.env`, which make reads via `--env-file .env`; never rely on a shell export.
+      - METRICS_ENABLED=${METRICS_ENABLED:-true}
       - METRICS_FLUSH_INTERVAL_SECONDS=60
       - METRICS_BUCKET_SECONDS=3600
       - METRICS_REDIS_URI=redis://redis-metrics:6379/0
