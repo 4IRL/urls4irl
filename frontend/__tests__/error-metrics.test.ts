@@ -3,12 +3,6 @@ import { initMetricsClient } from "../lib/metrics-client.js";
 
 vi.mock("../lib/security-check.js", () => ({}));
 
-vi.mock("../lib/globals.js", () => ({
-  $: window.jQuery,
-  jQuery: window.jQuery,
-  bootstrap: window.bootstrap,
-}));
-
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("./helpers/mock-metrics-client.js"),
 );
@@ -35,9 +29,6 @@ describe("error module — UI_ERROR_PAGE_REFRESH metric", () => {
 
   it("emits ui_error_page_refresh on refresh-button click", async () => {
     await import("../error.js");
-    // jQuery's ready callback may run in a microtask under happy-dom +
-    // vi.resetModules; flush the queue before triggering the click.
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     const { emit } = await import("../lib/metrics-client.js");
     document.getElementById("refreshBtn")!.click();
@@ -51,7 +42,6 @@ describe("error module — UI_ERROR_PAGE_REFRESH metric", () => {
     vi.mocked(initMetricsClient).mockClear();
     vi.resetModules();
     await import("../error.js");
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     expect(vi.mocked(initMetricsClient)).toHaveBeenCalled();
   });

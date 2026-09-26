@@ -1,11 +1,5 @@
 vi.mock("../lib/security-check.js", () => ({}));
 
-vi.mock("../lib/globals.js", () => ({
-  $: window.jQuery,
-  jQuery: window.jQuery,
-  bootstrap: window.bootstrap,
-}));
-
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("./helpers/mock-metrics-client.js"),
 );
@@ -26,12 +20,12 @@ describe("error entry point", () => {
 
   afterEach(() => {
     vi.resetModules();
+    vi.unstubAllGlobals();
     document.body.innerHTML = "";
   });
 
   it("sets location.href to hash-stripped value on refreshBtn click", async () => {
     await import("../error.js");
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     document.getElementById("refreshBtn")!.click();
 
@@ -42,6 +36,33 @@ describe("error entry point", () => {
     document.body.innerHTML = "";
 
     await expect(import("../error.js")).resolves.not.toThrow();
+  });
+
+  it("binds the refresh button on a standalone error page with no jQuery loaded", async () => {
+    // The error page ships no jQuery; a fresh load must not depend on it.
+    vi.stubGlobal("jQuery", undefined);
+    vi.stubGlobal("$", undefined);
+
+    await import("../error.js");
+    document.getElementById("refreshBtn")!.click();
+
+    expect(window.location.href).toBe("http://127.0.0.1:8659/error");
+  });
+
+  it("waits for DOMContentLoaded before binding while the document is still loading", async () => {
+    const readyStateSpy = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading");
+
+    await import("../error.js");
+    document.getElementById("refreshBtn")!.click();
+    expect(window.location.href).toBe(ORIGINAL_HREF);
+
+    readyStateSpy.mockRestore();
+    document.dispatchEvent(new Event("DOMContentLoaded"));
+    document.getElementById("refreshBtn")!.click();
+
+    expect(window.location.href).toBe("http://127.0.0.1:8659/error");
   });
 });
 
