@@ -138,6 +138,18 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
     expect($(".UTubSelector.active").attr("utubid")).toBe("2");
   });
 
+  it("renders the response when no UTub selector is active any more", async () => {
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+    $(".UTubSelector").removeClass("active");
+
+    firstRequest.resolve(makeUtubDetail({ id: 1 }));
+
+    await vi.waitFor(() => {
+      expect(getState().activeUTubID).toBe(1);
+    });
+    expect(utubSelectedEmits()).toHaveLength(1);
+  });
+
   it("does not redirect to the error page when a previously selected UTub's request fails", async () => {
     const assignSpy = vi
       .spyOn(window.location, "assign")

@@ -32,22 +32,20 @@ type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
 export function getUTubInfo(
   selectedUTubID: number,
 ): JQuery.Promise<UtubDetail | null> {
-  return fetchUTubInfo({
-    selectedUTubID,
-    shouldResetHistoryOnFailure: () => true,
-  });
+  const request = fetchUTubInfo(selectedUTubID);
+  request.fail(resetHistoryToHome);
+  return request;
 }
 
-// `shouldResetHistoryOnFailure` is consulted when the request fails, so a
-// caller can keep a stale failure from rewriting the URL of a UTub the user
-// has since moved to.
-function fetchUTubInfo({
-  selectedUTubID,
-  shouldResetHistoryOnFailure,
-}: {
-  selectedUTubID: number;
-  shouldResetHistoryOnFailure: () => boolean;
-}): JQuery.Promise<UtubDetail | null> {
+function resetHistoryToHome(): void {
+  window.history.replaceState(null, "", "/home");
+}
+
+// Leaves the history reset on failure to the caller, so a caller can keep a
+// stale failure from rewriting the URL of a UTub the user has since moved to.
+function fetchUTubInfo(
+  selectedUTubID: number,
+): JQuery.Promise<UtubDetail | null> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
   const deferred = $.Deferred<UtubDetail | null>();
 
@@ -58,15 +56,14 @@ function fetchUTubInfo({
     .fail((xhr: JQuery.jqXHR) => {
       switch (xhr.status) {
         case 429: {
+          // 429 is page-wide throttling rather than a per-UTub outcome, so the
+          // throttle page replaces the page even when this request is stale.
           showNewPageOnAJAXHTMLResponse(xhr.responseText);
           deferred.resolve(null);
           return;
         }
         default: {
           log("getUTubInfo failed", { selectedUTubID, status: xhr.status });
-          if (shouldResetHistoryOnFailure()) {
-            window.history.replaceState(null, "", "/home");
-          }
           deferred.reject(xhr);
         }
       }
@@ -239,10 +236,7 @@ function isStaleUTubResponse(requestedUTubID: number): boolean {
 }
 
 export function getSelectedUTubInfo(selectedUTubID: number): void {
-  fetchUTubInfo({
-    selectedUTubID,
-    shouldResetHistoryOnFailure: () => !isStaleUTubResponse(selectedUTubID),
-  }).then(
+  fetchUTubInfo(selectedUTubID).then(
     (selectedUTub) => {
       if (!selectedUTub) return;
       if (isStaleUTubResponse(selectedUTubID)) {
@@ -263,6 +257,7 @@ export function getSelectedUTubInfo(selectedUTubID: number): void {
         });
         return;
       }
+      resetHistoryToHome();
       window.location.assign(APP_CONFIG.routes.errorPage);
     },
   );
