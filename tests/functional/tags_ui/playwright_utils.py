@@ -12,6 +12,7 @@ from tests.functional.playwright_utils import (
     clear_then_send_keys,
     dispatch_pointer_drag,
     wait_for_animation_to_end_check_top_lhs_corner,
+    wait_for_css_transitions_to_finish,
     wait_for_element_presence,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -134,11 +135,31 @@ def open_url_tag_input(*, page: Page, selected_url_id: int) -> None:
 def get_delete_tag_button_on_hover(
     *, page: Page, tag_badge_selector: str, assert_visible: bool = True
 ) -> Locator:
+    """Reveal a URL tag badge's delete "x" by hovering the badge (its only
+    desktop reveal path) and return it once it has settled under the pointer.
+
+    The "x" only shows while the pointer is over its badge, so anything that
+    moves the badge after the hover collapses it again. Two things do:
+    - The just-selected URL card is still running its ~200ms expand transition
+      when selection helpers return. Its ease-in opening frames barely move, so
+      Playwright's two-frame stability check can pass and park the pointer where
+      the badge is about to leave.
+    - Revealing the "x" can make Playwright scroll #mainPanel when it later
+      hovers or clicks the "x", which slides the badge out from under the pointer.
+    So wait for the card's transitions to finish before hovering, then scroll the
+    revealed "x" into view and re-hover, so later actions on it need no scroll.
+    """
     tag_badge = page.locator(tag_badge_selector).first
+    wait_for_css_transitions_to_finish(locator=page.locator(HPL.ROW_SELECTED_URL).first)
     tag_badge.hover()
     delete_button = tag_badge.locator(HPL.BUTTON_TAG_DELETE)
     if assert_visible:
         expect(delete_button).to_be_visible()
+        wait_for_css_transitions_to_finish(locator=tag_badge)
+        delete_button.scroll_into_view_if_needed()
+        tag_badge.hover()
+        expect(delete_button).to_be_visible()
+        wait_for_css_transitions_to_finish(locator=tag_badge)
     return delete_button
 
 

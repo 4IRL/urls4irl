@@ -206,6 +206,22 @@ def wait_for_animation_to_end_check_top_lhs_corner(
     )
 
 
+def wait_for_css_transitions_to_finish(*, locator: Locator) -> None:
+    """Resolve once every finite CSS transition/animation on the element and its
+    subtree has finished.
+
+    Unlike a two-frame bounding-box poll, this cannot pass early on the
+    near-zero-movement opening frames of an ease-in transition."""
+    locator.evaluate(
+        """(element) => Promise.all(
+            element
+                .getAnimations({ subtree: true })
+                .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+                .map((animation) => animation.finished.catch(() => undefined)),
+        )"""
+    )
+
+
 def wait_for_page_complete_and_dom_stable(*, page: Page) -> None:
     """Twin of the Selenium page-complete + jQuery-idle + no-animation gate.
 
