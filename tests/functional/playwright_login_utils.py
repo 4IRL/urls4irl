@@ -14,6 +14,7 @@ from tests.functional.playwright_utils import (
     login_user_to_home_page,
     select_url_by_title,
     select_url_by_url_string,
+    select_utub_by_id,
     select_utub_by_name,
     wait_then_click_element,
     wait_until_visible_css_selector,
@@ -29,9 +30,9 @@ def login_user_and_select_utub_by_utubid(
         user: Users = Users.query.get(user_id)
 
     assert_login_with_username(page=page, username=user.username)
-    wait_then_click_element(
-        page=page, css_selector=f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-    )
+    # Wait for the selected UTub to render: a follow-up UTub click racing this
+    # load can be overwritten when this (older) response lands last.
+    select_utub_by_id(page=page, utub_id=utub_id)
 
 
 def login_user_and_visit_preselected_utub(
