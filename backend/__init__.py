@@ -14,6 +14,7 @@ from flask_session import Session
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# This project-import block is ordered to avoid a circular import, not alphabetically.
 from backend import app_logger
 from backend.db import db
 

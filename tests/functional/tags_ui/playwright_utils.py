@@ -150,16 +150,21 @@ def get_delete_tag_button_on_hover(
     revealed "x" into view and re-hover, so later actions on it need no scroll.
     """
     tag_badge = page.locator(tag_badge_selector).first
-    wait_for_css_transitions_to_finish(locator=page.locator(HPL.ROW_SELECTED_URL).first)
-    tag_badge.hover()
     delete_button = tag_badge.locator(HPL.BUTTON_TAG_DELETE)
-    if assert_visible:
-        expect(delete_button).to_be_visible()
-        wait_for_css_transitions_to_finish(locator=tag_badge)
-        delete_button.scroll_into_view_if_needed()
+
+    def hover_until_delete_button_settles() -> None:
         tag_badge.hover()
         expect(delete_button).to_be_visible()
         wait_for_css_transitions_to_finish(locator=tag_badge)
+
+    wait_for_css_transitions_to_finish(locator=page.locator(HPL.ROW_SELECTED_URL).first)
+    if not assert_visible:
+        tag_badge.hover()
+        return delete_button
+
+    hover_until_delete_button_settles()
+    delete_button.scroll_into_view_if_needed()
+    hover_until_delete_button_settles()
     return delete_button
 
 

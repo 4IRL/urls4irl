@@ -1,10 +1,11 @@
 import json
 import re
 
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
+from backend.api_common.error_handler import _is_reload_safe_request
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.splash_form_strs import LOGIN_FORM
@@ -125,6 +126,19 @@ def test_429_from_full_page_get_marks_refresh_reload_safe(load_login_page):
 
     assert response.status_code == 429
     assert RELOAD_SAFE_ATTRIBUTE in response.get_data(as_text=True)
+
+
+def test_full_page_head_request_is_reload_safe(app: Flask):
+    """
+    GIVEN a full-page (non-AJAX) HEAD request
+    WHEN its error page decides whether the refresh button can reload the URL
+    THEN ensure it is reload-safe, since a HEAD can be re-requested like a GET
+         (checked on the request directly: a HEAD response carries no body)
+    """
+    with app.test_request_context(
+        "/this-path-does-not-exist", method="HEAD", headers=NON_XHR_HEADERS
+    ):
+        assert _is_reload_safe_request()
 
 
 def test_404_error_page_on_unmatched_path_renders_app_config(client: FlaskClient):

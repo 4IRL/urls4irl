@@ -139,4 +139,15 @@ describe("getRefreshDestination", () => {
       }),
     ).toBe(APP_CONFIG.routes.home);
   });
+
+  it("falls back to the home route after a POST with a malformed referrer", () => {
+    expect(
+      getRefreshDestination({
+        isReloadSafe: false,
+        currentHref: `${ORIGIN}/login`,
+        referrer: "not a url",
+        origin: ORIGIN,
+      }),
+    ).toBe(APP_CONFIG.routes.home);
+  });
 });
