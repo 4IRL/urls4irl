@@ -154,6 +154,41 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
     assignSpy.mockRestore();
   });
 
+  it("leaves browser history alone when a previously selected UTub's request fails", async () => {
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+    selectUTub(2, $(".UTubSelector[utubid='2']"));
+
+    firstRequest.reject({ status: 404 });
+    await flushDeferredCallbacks();
+
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+
+    replaceStateSpy.mockRestore();
+    assignSpy.mockRestore();
+  });
+
+  it("resets browser history to /home when the currently selected UTub's request fails", async () => {
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+
+    firstRequest.reject({ status: 404 });
+    await flushDeferredCallbacks();
+
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/home");
+
+    replaceStateSpy.mockRestore();
+    assignSpy.mockRestore();
+  });
+
   it("redirects to the error page when the currently selected UTub's request fails", async () => {
     const assignSpy = vi
       .spyOn(window.location, "assign")

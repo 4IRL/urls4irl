@@ -32,6 +32,22 @@ type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
 export function getUTubInfo(
   selectedUTubID: number,
 ): JQuery.Promise<UtubDetail | null> {
+  return fetchUTubInfo({
+    selectedUTubID,
+    shouldResetHistoryOnFailure: () => true,
+  });
+}
+
+// `shouldResetHistoryOnFailure` is consulted when the request fails, so a
+// caller can keep a stale failure from rewriting the URL of a UTub the user
+// has since moved to.
+function fetchUTubInfo({
+  selectedUTubID,
+  shouldResetHistoryOnFailure,
+}: {
+  selectedUTubID: number;
+  shouldResetHistoryOnFailure: () => boolean;
+}): JQuery.Promise<UtubDetail | null> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
   const deferred = $.Deferred<UtubDetail | null>();
 
@@ -48,7 +64,9 @@ export function getUTubInfo(
         }
         default: {
           log("getUTubInfo failed", { selectedUTubID, status: xhr.status });
-          window.history.replaceState(null, "", "/home");
+          if (shouldResetHistoryOnFailure()) {
+            window.history.replaceState(null, "", "/home");
+          }
           deferred.reject(xhr);
         }
       }
@@ -221,7 +239,10 @@ function isStaleUTubResponse(requestedUTubID: number): boolean {
 }
 
 export function getSelectedUTubInfo(selectedUTubID: number): void {
-  getUTubInfo(selectedUTubID).then(
+  fetchUTubInfo({
+    selectedUTubID,
+    shouldResetHistoryOnFailure: () => !isStaleUTubResponse(selectedUTubID),
+  }).then(
     (selectedUTub) => {
       if (!selectedUTub) return;
       if (isStaleUTubResponse(selectedUTubID)) {
