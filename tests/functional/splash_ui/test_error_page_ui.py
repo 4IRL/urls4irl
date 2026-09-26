@@ -20,14 +20,23 @@ pytestmark = pytest.mark.splash_ui
 # URL, which hid a missing `#app-config` on the built stack.
 
 
-def _assert_refresh_leaves_error_page(*, page: Page) -> None:
-    """Call after the "load" event: on a fresh document error.ts is a module
-    script that runs before DOMContentLoaded, so its $(document).ready click
-    binding is in place by load (no retry needed, unlike the document.write
-    path handled in assert_visited_403_on_invalid_csrf_and_reload)."""
+def _assert_refresh_lands_on_splash(*, page: Page, splash_url: str) -> None:
+    """Click "Click to Refresh" and assert it navigates to a real (2xx) splash
+    page, not a 405 from re-requesting a POST-only route.
+
+    Call after the "load" event: on a fresh document error.ts is a module script
+    that binds the click handler on DOMContentLoaded (or immediately, if the DOM
+    is already parsed), so the binding is in place by load. No retry is needed,
+    unlike the document.write path in assert_visited_403_on_invalid_csrf_and_reload.
+    """
     error_page_subheader = page.locator(f"{SPL.ERROR_PAGE_HANDLER} h2").first
-    page.locator(SPL.ERROR_PAGE_REFRESH_BTN).first.click()
+    with page.expect_navigation() as navigation_info:
+        page.locator(SPL.ERROR_PAGE_REFRESH_BTN).first.click()
+    landing_response = navigation_info.value
+    assert landing_response is not None
+    assert landing_response.ok, f"Refresh landed on HTTP {landing_response.status}"
     expect(error_page_subheader).to_be_hidden()
+    expect(page).to_have_url(splash_url)
 
 
 def test_429_error_page_loaded_fresh_refreshes_without_page_errors(page: Page):
@@ -35,7 +44,7 @@ def test_429_error_page_loaded_fresh_refreshes_without_page_errors(page: Page):
     GIVEN a full-page navigation that is rate limited
     WHEN the 429 error page loads fresh and the user clicks its refresh button
     THEN ensure the page script initialized without errors and the refresh
-         navigates away from the error page
+         reloads the splash page
     """
     splash_url = page.url
     page_errors = collect_page_errors(page=page)
@@ -51,7 +60,8 @@ def test_429_error_page_loaded_fresh_refreshes_without_page_errors(page: Page):
     page.wait_for_load_state("load")
 
     page.unroute(splash_url, force_rate_limit)
-    _assert_refresh_leaves_error_page(page=page)
+    # Reached by GET, so refresh reloads the same (now un-limited) URL.
+    _assert_refresh_lands_on_splash(page=page, splash_url=splash_url)
     assert_no_page_errors(page_errors=page_errors)
 
 
@@ -62,10 +72,12 @@ def test_403_error_page_loaded_fresh_refreshes_without_page_errors(
     GIVEN a full-page form POST to the login route with an invalid CSRF token
     WHEN the 403 error page loads fresh and the user clicks its refresh button
     THEN ensure the page script initialized without errors and the refresh
-         navigates away from the error page
+         returns to the splash page that submitted the form, rather than
+         re-requesting the POST-only /login and landing on a 405
     """
     with provide_app.test_request_context():
         login_path = url_for(ROUTES.SPLASH.LOGIN)
+    splash_url = page.url
     page_errors = collect_page_errors(page=page)
 
     with page.expect_navigation():
@@ -87,5 +99,5 @@ def test_403_error_page_loaded_fresh_refreshes_without_page_errors(
     expect(error_page_subheader).to_have_text(IDENTIFIERS.HTML_403)
     page.wait_for_load_state("load")
 
-    _assert_refresh_leaves_error_page(page=page)
+    _assert_refresh_lands_on_splash(page=page, splash_url=splash_url)
     assert_no_page_errors(page_errors=page_errors)

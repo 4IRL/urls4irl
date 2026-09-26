@@ -36,8 +36,23 @@ def _render_error_page(*, error_code: int, header: str) -> tuple[str, int]:
             error_code=error_code,
             header=header,
             CONFIG=build_frontend_config(),
+            reload_safe=_is_reload_safe_request(),
         ),
         error_code,
+    )
+
+
+def _is_reload_safe_request() -> bool:
+    """Whether the error page's refresh button can simply reload the current URL.
+
+    A full-page GET/HEAD can be re-requested. An AJAX request's error page is
+    written over the GET-loaded page that issued it, so the browser URL is that
+    page and reloading it is safe too. Only a full-page non-GET navigation (e.g.
+    a form POST to /login) leaves the browser on a URL that would 405 on reload.
+    """
+    return request.method in ("GET", "HEAD") or (
+        request.headers.get(URL_VALIDATION.X_REQUESTED_WITH)
+        == URL_VALIDATION.XMLHTTPREQUEST
     )
 
 

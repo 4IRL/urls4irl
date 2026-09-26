@@ -7,7 +7,7 @@
     <p>If this keeps happening, refreshing the page or starting fresh might help. Otherwise, feel free to blame it on
         the internet gremlins. We certainly do.</p>
 
-    <button class="refresh-button" id="refreshBtn">Click to Refresh</button>
+    <button class="refresh-button" id="refreshBtn" data-reload-safe="{{ reload_safe | tojson }}">Click to Refresh</button>
 
     <!-- Initialized by frontend/error.ts -->
     <script nonce="{{ nonce }}" type="module" src="{{ vite_asset_static('error.ts') }}"></script>
