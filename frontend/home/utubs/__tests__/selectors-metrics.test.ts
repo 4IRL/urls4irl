@@ -1,6 +1,7 @@
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { makeUTubSelectableAgainIfMobile, selectUTub } from "../selectors.js";
 import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
+import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -33,6 +34,10 @@ vi.mock("../../../lib/event-bus.js", async () => {
 
 const $ = window.jQuery;
 
+// getUTubInfo lives in the module under test, so it cannot be vi.mock'd here;
+// stub its network edge instead so selecting a UTub never issues a real request.
+let getJSONSpy: ReturnType<typeof vi.spyOn>;
+
 const SELECTORS_HTML = `
   <input id="UTubNameSearch" value="" />
   <div id="listUTubs">
@@ -45,9 +50,13 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
   beforeEach(() => {
     document.body.innerHTML = SELECTORS_HTML;
     vi.clearAllMocks();
+    getJSONSpy = vi
+      .spyOn($, "getJSON")
+      .mockReturnValue(createMockJqXHRChainable());
   });
 
   afterEach(() => {
+    getJSONSpy.mockRestore();
     document.body.innerHTML = "";
   });
 
