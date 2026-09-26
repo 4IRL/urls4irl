@@ -26,7 +26,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _require-n-fits capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: hooks hooks-check tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
@@ -35,13 +35,13 @@ help: ## Show this help message
 
 # -V (--renew-anon-volumes): recreate anonymous volumes (vite's /app/node_modules masks) on every up,
 # so a stale pre-bump node_modules never shadows the freshly built image's pnpm install. Named volumes are unaffected.
-up: _capacity-fresh ## Build and start the full stack (pass d=1 for detached mode)
+up: _capacity-fresh _logs-owner-fix ## Build and start the full stack (pass d=1 for detached mode)
 	$(COMPOSE) up --build --remove-orphans -V $(if $(d),-d,)
 
-up-built: _capacity-fresh ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
+up-built: _capacity-fresh _logs-owner-fix ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
 	$(COMPOSE_BUILT) up --build --remove-orphans -V $(if $(d),-d,)
 
-start-built: _capacity-fresh prune ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
+start-built: _capacity-fresh _logs-owner-fix prune ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
 	$(COMPOSE) down
 	$(COMPOSE_BUILT) up --build --remove-orphans --wait
 
@@ -54,7 +54,7 @@ build: _capacity-fresh ## Rebuild images without starting
 restart: ## Restart a specific container: make restart c=<service>
 	$(COMPOSE) restart $(c)
 
-tunnel: _capacity-fresh ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
+tunnel: _capacity-fresh _logs-owner-fix ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
 	$(COMPOSE_BUILT) up --build --remove-orphans -V -d --wait
 	$(COMPOSE_BUILT) --profile tunnel up -d --no-recreate cloudflared
 	@echo "Waiting for Cloudflare quick-tunnel URL (~5-10s)..."
@@ -244,6 +244,22 @@ _require-mise:
 # Runs before every stack/test target: regenerates the capacity file only when missing or its host fingerprint changed.
 _capacity-fresh: _require-mise
 	@$(CAPACITY) ensure --output $(CAPACITY_ENV)
+
+# Runs before up/up-built/start-built/tunnel: re-owns the app_logs volume's log dir to HOST_UID:HOST_GID (mode 775, as web's image sets) when an older image or
+# workflow start left it owned by another uid, since web would otherwise crash on its log file. It uses docker run
+# against the existing web image, not compose run, so a missing volume is never created (and seeded by a stale image)
+# here. It skips quietly on a fresh machine (no volume/image/log dir yet). The project label must track compose's `name:`.
+_logs-owner-fix: _capacity-fresh
+	@vol=$$(docker volume ls -q --filter label=com.docker.compose.project=u4i-local --filter label=com.docker.compose.volume=app_logs); \
+	img=$$(docker image ls -q u4i-local-web:latest); \
+	if [ -z "$$vol" ] || [ -z "$$img" ]; then exit 0; fi; \
+	want=$(call capacity_val,HOST_UID):$(call capacity_val,HOST_GID); \
+	case "$$want" in *[!0-9:]*|:*|*:) echo "HOST_UID/HOST_GID invalid in $(CAPACITY_ENV) — run 'make capacity'"; exit 1;; esac; \
+	have=$$(docker run --rm --user root -v "$$vol":/app/volume "$$img" stat -c '%u:%g' /app/volume/logs 2>/dev/null) || exit 0; \
+	if [ "$$have" != "$$want" ]; then \
+		echo "repairing app_logs ownership (was $$have, now $$want)"; \
+		docker run --rm --user root -v "$$vol":/app/volume "$$img" sh -c "chown -R $$want /app/volume/logs && chmod 775 /app/volume/logs"; \
+	fi
 
 # Refuses a corrupt capacity file (the derived U4I_N_UI/U4I_N_INT defaults are spliced into pytest's -n) and an
 # explicit n that is not a positive integer or exceeds this host's ceiling, before any prune/rebuild/pytest. Depends

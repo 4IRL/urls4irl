@@ -12,10 +12,8 @@ ENV FLASK_APP=run \
 WORKDIR /code/u4i
 RUN chmod -R 775 /code
 
-# Create non-root user, update packages, clean up
+# Update packages, clean up
 RUN set -ex \
-	&& addgroup --system --gid 1001 u4i-host-group \
-	&& adduser --system --uid 1001 --gid 1001 u4i-host \
 	&& apt-get update \
 	&& apt-get -y install libpq-dev gcc wget unzip xvfb libglib2.0-dev libnss3-dev libdbus-1-dev  libatk1.0-0 libatk-bridge2.0-0 libcups2 libxkbcommon-dev libxcomposite-dev libxdamage-dev libgbm-dev libpangocairo-1.0-0 libasound2 \
 	&& apt-get upgrade -y \
@@ -24,13 +22,26 @@ RUN set -ex \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Copy requirements files install dependencies
-COPY --chown=u4i-host:u4i-host-group requirements/ ./requirements/
+COPY requirements/ ./requirements/
 
 # Install development level requirements
 RUN --mount=type=cache,target=/root/.cache/pip \
 	python3 -m venv /code/venv \
 	&& . /code/venv/bin/activate \
 	&& pip install -r requirements/requirements-dev.txt
+
+# Create the non-root user with the host's UID/GID (build args fed by compose from
+# docker/.capacity.generated.env) so bind-mounted files keep host ownership. Declared after pip so a
+# UID change keeps the pip layer cached. --non-unique tolerates an id the base image already uses
+# (e.g. macOS gid 20 = Debian's dialout). Home/shell mirror a Debian `adduser --system` user.
+# An id of 0 (host running as root) falls back to 1001 so u4i-host never aliases root.
+ARG HOST_UID=1001
+ARG HOST_GID=1001
+RUN if [ "$HOST_UID" = 0 ]; then echo "HOST_UID=0 (root): using 1001"; HOST_UID=1001; fi \
+	&& if [ "$HOST_GID" = 0 ]; then echo "HOST_GID=0 (root): using 1001"; HOST_GID=1001; fi \
+	&& groupadd --non-unique --gid "$HOST_GID" u4i-host-group \
+	&& useradd --non-unique --system --uid "$HOST_UID" --gid u4i-host-group \
+		--home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin u4i-host
 
 # Copy files needed
 COPY --chown=u4i-host:u4i-host-group docker/startup-flask.sh ./
