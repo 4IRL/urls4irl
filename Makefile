@@ -26,7 +26,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: hooks hooks-check setup tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
@@ -191,17 +191,28 @@ plan-list: ## List every plan (masters + sub-plans) under plans/ with finished/o
 playwright-unlock: ## Kill orphaned Playwright-MCP Chrome holding the profile lock and clear stale Singleton* files
 	@.claude/scripts/playwright-unlock.sh
 
-hooks: ## Install the pre-commit git hook (one-time per clone; creates ./venv with the pinned pre-commit)
-	@test -x venv/bin/pre-commit || python3.11 -m venv venv
-	@venv/bin/pip install --quiet --disable-pip-version-check \
-		$$(grep -E '^pre-commit==' requirements/requirements-dev.txt)
-	@venv/bin/pre-commit install
-	@venv/bin/pre-commit --version
+# hooks always targets the MAIN checkout (the git common dir's parent), so the shared hook's INSTALL_PYTHON never
+# points at a linked worktree's venv. In the main checkout, that is the repo root itself.
+# The venv uses the mise-pinned python (`make tools` installs it first).
+hooks: ## Install the shared pre-commit git hook (idempotent; venv + install always in the main checkout, safe to run from any worktree)
+	@common_dir=$$(git rev-parse --path-format=absolute --git-common-dir) || exit 1; \
+		main=$$(dirname "$$common_dir"); \
+		test -x "$$main/venv/bin/pre-commit" || (cd "$$main" && mise exec python -- python -m venv venv) || exit 1; \
+		"$$main/venv/bin/pip" install --quiet --disable-pip-version-check \
+			$$(grep -E '^pre-commit==' "$$main/requirements/requirements-dev.txt") || exit 1; \
+		(cd "$$main" && venv/bin/pre-commit install) || exit 1; \
+		"$$main/venv/bin/pre-commit" --version
 
-hooks-check: ## Report whether the pre-commit hook is installed in this clone
-	@test -f .git/hooks/pre-commit \
-		&& echo "pre-commit hook: INSTALLED" \
-		|| echo "pre-commit hook: MISSING — run 'make hooks'"
+# --git-path honors linked worktrees (where .git is a file) and core.hooksPath.
+hooks-check: ## Report whether the pre-commit hook is installed (exits 1 when missing; worktree-safe)
+	@hook_path=$$(git rev-parse --git-path hooks/pre-commit); \
+		if test -f "$$hook_path"; then echo "pre-commit hook: INSTALLED"; \
+		else echo "pre-commit hook: MISSING — run 'make hooks'"; exit 1; fi
+
+setup: ## One-time per clone/worktree: toolchain, pnpm deps, hooks, capacity (idempotent)
+	@$(MAKE) --no-print-directory tools
+	@$(MAKE) --no-print-directory hooks
+	@$(MAKE) --no-print-directory capacity || echo "⚠ capacity deferred: docker unavailable — 'make up' will generate it"
 
 # .mise.toml is deliberately never `mise trust`ed: a pin-only config (min_version + plain [tools] strings) loads untrusted, and mise's own trust check refuses anything more at runtime.
 # mise-config-check (scripts/mise_config_check.py; run by `tools` after `mise install`, and by CI's Format and Lint jobs; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
