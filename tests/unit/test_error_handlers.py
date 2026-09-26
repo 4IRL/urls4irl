@@ -12,8 +12,16 @@ XHR_HEADER = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
 
 
 @pytest.fixture()
-def error_handler_app():
-    """Minimal Flask app with the 404 handler and a route that aborts with 404."""
+def error_handler_app(monkeypatch: pytest.MonkeyPatch):
+    """Minimal Flask app with the 404 handler and a route that aborts with 404.
+
+    The HTML branch renders the real app's `#app-config`, which needs the full
+    app (login manager, routes); stub it so this unit app can render the page.
+    """
+    monkeypatch.setattr(
+        "backend.api_common.error_handler.build_frontend_config",
+        lambda: {"routes": {}, "constants": {}, "strings": {}},
+    )
     app = Flask(backend.__name__)
     app.config["TESTING"] = True
     app.register_error_handler(404, handle_404_response)

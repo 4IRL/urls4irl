@@ -1441,6 +1441,24 @@ def generate_strings_js() -> dict[str, str]:
     }
 
 
+def build_frontend_config() -> dict:
+    """JSON-serializable app config rendered into `#app-config` (`_config.html`)
+    and read by `frontend/lib/config.ts`."""
+    routes = generate_routes_js()
+    if current_user.is_authenticated and current_user.is_admin():
+        routes.update(generate_admin_routes_js())
+    debug_enabled = current_app.config["DEBUG"] or (
+        current_user.is_authenticated and current_user.is_admin()
+    )
+    return dict(
+        routes=routes,
+        constants=generate_constants_js(),
+        strings=generate_strings_js(),
+        debugEnabled=debug_enabled,
+        isProduction=current_app.config["PRODUCTION"],
+    )
+
+
 def provide_config_for_constants() -> dict:
     """
     Provides configuration to templates:
@@ -1450,12 +1468,6 @@ def provide_config_for_constants() -> dict:
       OAuth button/routes should be exposed to the user, per whether that
       provider's credentials are configured
     """
-    routes = generate_routes_js()
-    if current_user.is_authenticated and current_user.is_admin():
-        routes.update(generate_admin_routes_js())
-    debug_enabled = current_app.config["DEBUG"] or (
-        current_user.is_authenticated and current_user.is_admin()
-    )
     # Resolved theme for the app-wide pre-paint <html data-theme> stamp
     # (layout.html). Rendered into <head> — NOT the <body> CONFIG JSON blob —
     # so it lands before styles paint and avoids a light/dark flash. Anonymous
@@ -1468,13 +1480,7 @@ def provide_config_for_constants() -> dict:
     return dict(
         CONSTANTS=CONSTANTS(),
         user_theme=user_theme,
-        CONFIG=dict(
-            routes=routes,
-            constants=generate_constants_js(),
-            strings=generate_strings_js(),
-            debugEnabled=debug_enabled,
-            isProduction=current_app.config["PRODUCTION"],
-        ),
+        CONFIG=build_frontend_config(),
         current_year=utc_now().year,
         google_oauth_enabled=should_register_google_oauth(
             current_app.config.get("GOOGLE_OAUTH_CLIENT_ID"),

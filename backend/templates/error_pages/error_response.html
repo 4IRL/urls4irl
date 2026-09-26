@@ -68,6 +68,8 @@
 </head>
 
 <body>
+    <!-- Required by frontend/error.ts: lib/config.ts throws at import without #app-config -->
+    {% include '_config.html' %}
     <main>
         <article class="banner">
             <h1>URLS4IRL</h1>

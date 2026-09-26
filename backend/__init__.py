@@ -14,13 +14,17 @@ from flask_session import Session
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# This project-import block is ordered to avoid a circular import, not alphabetically.
 from backend import app_logger
+from backend.db import db
+
+# Must follow `backend.db`: error_handler imports backend.utils.constants, which
+# imports the models, and they need `backend.db` bound to the SQLAlchemy instance.
 from backend.api_common.error_handler import (
     handle_403_response_from_csrf,
     handle_404_response,
     handle_429_response_default_ratelimit,
 )
-from backend.db import db
 from backend.config import Config, ConfigProd
 from backend.extensions.email_sender.email_sender import EmailSender
 from backend.extensions.metrics.middleware import init_metrics_middleware

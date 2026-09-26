@@ -32,6 +32,20 @@ type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
 export function getUTubInfo(
   selectedUTubID: number,
 ): JQuery.Promise<UtubDetail | null> {
+  const request = fetchUTubInfo(selectedUTubID);
+  request.fail(resetHistoryToHome);
+  return request;
+}
+
+function resetHistoryToHome(): void {
+  window.history.replaceState(null, "", "/home");
+}
+
+// Leaves the history reset on failure to the caller, so a caller can keep a
+// stale failure from rewriting the URL of a UTub the user has since moved to.
+function fetchUTubInfo(
+  selectedUTubID: number,
+): JQuery.Promise<UtubDetail | null> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
   const deferred = $.Deferred<UtubDetail | null>();
 
@@ -42,13 +56,14 @@ export function getUTubInfo(
     .fail((xhr: JQuery.jqXHR) => {
       switch (xhr.status) {
         case 429: {
+          // 429 is page-wide throttling rather than a per-UTub outcome, so the
+          // throttle page replaces the page even when this request is stale.
           showNewPageOnAJAXHTMLResponse(xhr.responseText);
           deferred.resolve(null);
           return;
         }
         default: {
           log("getUTubInfo failed", { selectedUTubID, status: xhr.status });
-          window.history.replaceState(null, "", "/home");
           deferred.reject(xhr);
         }
       }
@@ -208,14 +223,41 @@ export function selectUTub(selectedUTubID: number, utubSelector: JQuery): void {
   getSelectedUTubInfo(selectedUTubID);
 }
 
+// A response is stale once a different UTub has been marked active since the
+// request went out: selectUTub moves `.UTubSelector.active` synchronously on
+// click, before the fetch resolves, so rapid A-then-B clicks can land A's
+// response after B's. With no active selector at all (e.g. the deck was rebuilt
+// mid-flight) the response is not treated as stale.
+function isStaleUTubResponse(requestedUTubID: number): boolean {
+  const activeUTubID = $(".UTubSelector.active").attr("utubid");
+  return (
+    activeUTubID !== undefined && parseInt(activeUTubID) !== requestedUTubID
+  );
+}
+
 export function getSelectedUTubInfo(selectedUTubID: number): void {
-  getUTubInfo(selectedUTubID).then(
+  fetchUTubInfo(selectedUTubID).then(
     (selectedUTub) => {
       if (!selectedUTub) return;
+      if (isStaleUTubResponse(selectedUTubID)) {
+        log("getSelectedUTubInfo: ignoring stale response", {
+          utubID: selectedUTubID,
+        });
+        return;
+      }
 
       buildSelectedUTub(selectedUTub);
     },
     () => {
+      // A failed fetch for a UTub the user already moved away from must not
+      // yank them off the UTub they are now viewing.
+      if (isStaleUTubResponse(selectedUTubID)) {
+        log("getSelectedUTubInfo: ignoring stale failure", {
+          utubID: selectedUTubID,
+        });
+        return;
+      }
+      resetHistoryToHome();
       window.location.assign(APP_CONFIG.routes.errorPage);
     },
   );
