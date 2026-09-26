@@ -1,5 +1,7 @@
 venv/
 .env
+# Generated per host by `make capacity` (worker counts + interlocks + host UID/GID)
+docker/.capacity.generated.env
 .flaskenv
 __pycache__/
 .vscode/
