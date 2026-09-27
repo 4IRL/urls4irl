@@ -30,9 +30,9 @@ from typing import TypeVar
 # Metrics-Redis indices no test run may lease; mirrors
 # len(scripts.testrun_resources.METRICS_RESERVED_INDICES) (a parity test pins it).
 METRICS_REDIS_RESERVED_DBS: int = 1
-# How many simultaneous pytest invocations the metrics lease pool must hold at n_max.
-# The shared-redis session pool is fixed (HARD_N_CEILING leasable indices), so two
-# concurrent runs only both fit there while n_max <= HARD_N_CEILING // 2.
+# How many simultaneous pytest invocations each Redis lease pool must hold: the
+# metrics pool at n_max (derived per host), and the shared-redis session pool at
+# HARD_N_CEILING (fixed, see SHARED_REDIS_DATABASES), so two runs always fit both.
 LEASE_CONCURRENT_RUNS: int = 2
 # Assumes SQLAlchemy's library-default QueuePool (pool_size=5 + max_overflow=10):
 # the app sets no explicit pool options (backend/__init__.py only defaults
@@ -49,9 +49,11 @@ PG_SHARED_BUFFERS_MIN_MB: int = 64
 PG_SHARED_BUFFERS_MAX_MB: int = 256
 PG_SHARED_BUFFERS_DIVISOR: int = 64
 MB_PER_GB: int = 1024
-# Shared redis `--databases 32` minus 2 reserved (dev DB 0 and the base session
-# DB) gives 30 leasable indices, one per worker of a single run.
+# The per-run worker cap: each worker leases one shared-redis session index.
 HARD_N_CEILING: int = 30
+# Shared-redis indices no test run may lease: dev DB 0 and the session pool's base DB.
+SESSION_REDIS_RESERVED_DBS: int = 2
+SHARED_REDIS_DATABASES_FLOOR: int = 32
 BASE_GB: float = 2.0
 WORKER_GB: float = 0.5
 DEFAULT_MEM_FRACTION: float = 0.70
@@ -179,6 +181,15 @@ def round_up_pow2(value: int) -> int:
     return 1 << max(value - 1, 0).bit_length()
 
 
+# The local shared `redis --databases` count (docker/compose.local.yaml hardcodes
+# it; a parity test pins the two together). Minus SESSION_REDIS_RESERVED_DBS, it
+# leaves a session index per worker for LEASE_CONCURRENT_RUNS runs at HARD_N_CEILING.
+SHARED_REDIS_DATABASES: int = max(
+    SHARED_REDIS_DATABASES_FLOOR,
+    round_up_pow2(SESSION_REDIS_RESERVED_DBS + LEASE_CONCURRENT_RUNS * HARD_N_CEILING),
+)
+
+
 def _usable_gb(probe: Probe, mem_fraction: float, mem_safety: float) -> float:
     total_gb = probe.mem_total_bytes / BYTES_PER_GB * mem_fraction
     known_available = [
@@ -218,10 +229,11 @@ def _resolve_workers(
         )
     if override > HARD_N_CEILING:
         raise InfeasibleCapacity(
-            f"{knob}={override} exceeds the hard ceiling of {HARD_N_CEILING} "
-            f"(shared redis runs --databases 32; minus 2 reserved gives "
-            f"{HARD_N_CEILING} leasable indices, one per worker); "
-            f"rerun with {knob}<={HARD_N_CEILING}"
+            f"{knob}={override} exceeds the per-run hard ceiling of "
+            f"{HARD_N_CEILING} (shared redis runs --databases "
+            f"{SHARED_REDIS_DATABASES}, sized so {LEASE_CONCURRENT_RUNS} "
+            f"concurrent runs of {HARD_N_CEILING} workers each lease one "
+            f"session index per worker); rerun with {knob}<={HARD_N_CEILING}"
         )
     if override > memory_guard:
         raise InfeasibleCapacity(

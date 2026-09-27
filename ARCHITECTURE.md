@@ -227,13 +227,13 @@ All inter-module communication uses typed events:
 
 Two separate Redis instances back the stack: a shared `redis` container for sessions and rate-limiting, and a dedicated `redis-metrics` container for the anonymous-metrics counter buffer.
 
-**Shared `redis` container:**
+**Shared `redis` container** (locally `--databases 64`, the `SHARED_REDIS_DATABASES` constant in `scripts/capacity.py`: 62 leasable indices hold 2 concurrent runs at the per-run ceiling of n = 30):
 
 | DB   | Env var          | Purpose                                                                                                                           |
 | ---- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | 0    | `REDIS_URI`      | Flask-Session sessions, Flask-Limiter rate limiting; also every test run's `u4i:test_lease:<pool>:<index>` lease keys (see below) |
 | 1    | `TEST_REDIS_URI` | Base URI for tests; never leased itself (reserved alongside DB 0)                                                                 |
-| 2-31 | leased           | `redis` pool: one per test worker (session + enforcement keys), flushed on acquire                                                |
+| 2-63 | leased           | `redis` pool: one per test worker (session + enforcement keys), flushed on acquire                                                |
 
 **Dedicated `redis-metrics` container:**
 

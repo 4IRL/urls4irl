@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Callable
@@ -31,6 +32,8 @@ from scripts.capacity import (
     METRICS_REDIS_RESERVED_DBS,
     PG_SHARED_BUFFERS_MAX_MB,
     PG_SHARED_BUFFERS_MIN_MB,
+    SESSION_REDIS_RESERVED_DBS,
+    SHARED_REDIS_DATABASES,
     SUPERUSER_RESERVED,
     Capacity,
     DockerInfoError,
@@ -60,6 +63,12 @@ pytestmark = pytest.mark.unit
 
 GIB: int = 1024**3
 AMPLE_MEMORY_BYTES: int = 256 * GIB
+LOCAL_COMPOSE_FILE: Path = (
+    Path(__file__).resolve().parents[2] / "docker" / "compose.local.yaml"
+)
+LITERAL_REDIS_DATABASES_PATTERN: re.Pattern[str] = re.compile(
+    r"redis-server --databases (\d+)\s*$", re.MULTILINE
+)
 
 
 def _probe(
@@ -201,6 +210,26 @@ def test_derive_interlocks_use_max_of_ui_and_int() -> None:
     result = _derive(_probe(ncpu=3))
     assert result.n_max == max(result.n_ui, result.n_int) == 3
     assert result.pg_test_conn_limit == 3 * CONN_PER_WORKER + CONN_BASE
+
+
+def test_shared_redis_databases_hold_concurrent_runs_at_hard_ceiling() -> None:
+    assert SHARED_REDIS_DATABASES == max(
+        32,
+        round_up_pow2(
+            SESSION_REDIS_RESERVED_DBS + LEASE_CONCURRENT_RUNS * HARD_N_CEILING
+        ),
+    )
+    assert SHARED_REDIS_DATABASES == 64
+    leasable_indices = SHARED_REDIS_DATABASES - SESSION_REDIS_RESERVED_DBS
+    assert leasable_indices >= LEASE_CONCURRENT_RUNS * HARD_N_CEILING
+
+
+def test_local_compose_shared_redis_databases_match_capacity() -> None:
+    """compose.local.yaml hardcodes the shared redis count; it must track capacity."""
+    literal_counts = LITERAL_REDIS_DATABASES_PATTERN.findall(
+        LOCAL_COMPOSE_FILE.read_text()
+    )
+    assert literal_counts == [str(SHARED_REDIS_DATABASES)]
 
 
 def test_redis_metrics_databases_floor_is_sixteen() -> None:
@@ -362,7 +391,7 @@ def test_override_above_hard_ceiling_raises_naming_shared_redis() -> None:
         _derive(_probe(ncpu=12), Overrides(n_ui=HARD_N_CEILING + 1))
     message = str(excinfo.value)
     assert "U4I_N_UI=31" in message
-    assert "--databases 32" in message
+    assert f"--databases {SHARED_REDIS_DATABASES}" in message
 
 
 @pytest.mark.parametrize("bad_value", [0, -3])
@@ -1091,7 +1120,7 @@ def test_infeasible_override_exits_non_zero_and_leaves_file_untouched(
     )
 
     assert exit_code != 0
-    assert "--databases 32" in capsys.readouterr().err
+    assert f"--databases {SHARED_REDIS_DATABASES}" in capsys.readouterr().err
     assert env_path.read_text() == original_content
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
 

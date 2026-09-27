@@ -207,7 +207,9 @@ services:
   redis:
     image: redis:6.2
     container_name: u4i-local-redis
-    command: redis-server --databases 32
+    # Session lease pool for 2 concurrent runs of 30 workers (DB 0 + base
+    # session DB reserved); must equal scripts/capacity.py SHARED_REDIS_DATABASES.
+    command: redis-server --databases 64
     volumes:
       - redisdata:/data
     healthcheck:
