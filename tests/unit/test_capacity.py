@@ -551,6 +551,7 @@ def test_fingerprint_ignores_mem_available() -> None:
     [
         (_probe(ncpu=8), Overrides()),
         (_probe(mem_total_bytes=64 * GIB), Overrides()),
+        (_probe(cgroup_max_bytes=4 * GIB), Overrides()),
         (
             Probe(
                 ncpu=12,
@@ -582,7 +583,7 @@ def test_fingerprint_is_sha256_hex() -> None:
 
 
 def test_fingerprint_hashes_the_documented_source_string() -> None:
-    source = f"12|{AMPLE_MEMORY_BYTES}|1000|1000|None|None|None"
+    source = f"12|{AMPLE_MEMORY_BYTES}|None|1000|1000|None|None|None"
     assert (
         fingerprint(_probe(), Overrides())
         == hashlib.sha256(source.encode()).hexdigest()

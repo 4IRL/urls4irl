@@ -340,7 +340,7 @@ def fingerprint(host_probe: Probe, overrides: Overrides) -> str:
     """Hash of the stable host inputs. Excludes mem_available (jitters per run)."""
     source = (
         f"{host_probe.ncpu}|{host_probe.mem_total_bytes}|"
-        f"{host_probe.host_uid}|{host_probe.host_gid}|"
+        f"{host_probe.cgroup_max_bytes}|{host_probe.host_uid}|{host_probe.host_gid}|"
         f"{overrides.n_ui}|{overrides.n_int}|{overrides.mem_fraction}"
     )
     return hashlib.sha256(source.encode()).hexdigest()
