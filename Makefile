@@ -195,8 +195,11 @@ reset-db: clear-db addmock ## Empty the dev database, then reseed all mock data 
 
 # ttl is spliced into a double-quoted `bash -c` string, so it is validated with make functions only (a shell
 # `case` over $(ttl) would itself expand it): stripping every digit must leave nothing, and it must be one word.
+# $(call remove_chars,<chars>,<text>) folds over the word list <chars>, deleting each one from <text> in turn
+# (plain $(foreach) cannot chain subst results). Recursive $(call) works on GNU make 3.81 (macOS).
+remove_chars = $(if $(1),$(call remove_chars,$(wordlist 2,$(words $(1)),$(1)),$(subst $(firstword $(1)),,$(2))),$(2))
 REAP_TTL = $(or $(ttl),10)
-REAP_TTL_NON_DIGITS = $(strip $(subst 0,,$(subst 1,,$(subst 2,,$(subst 3,,$(subst 4,,$(subst 5,,$(subst 6,,$(subst 7,,$(subst 8,,$(subst 9,,$(REAP_TTL))))))))))))
+REAP_TTL_NON_DIGITS = $(strip $(call remove_chars,0 1 2 3 4 5 6 7 8 9,$(REAP_TTL)))
 
 reset-test-dbs: ## Drop leaked per-run test databases and orphaned Redis leases (ttl=<minutes>, default 10)
 	$(if $(or $(REAP_TTL_NON_DIGITS),$(word 2,$(REAP_TTL))),$(error ttl must be a non-negative integer number of minutes))
