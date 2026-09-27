@@ -1047,3 +1047,27 @@ def test_malformed_recorded_override_exits_non_zero(
     assert override_key in capsys.readouterr().err
     assert env_path.read_text() == tampered_content
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
+
+
+def test_failed_replace_cleans_up_temp_file_and_keeps_original(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    original_content = env_path.read_text()
+    capsys.readouterr()
+
+    def failing_replace(
+        source: str | os.PathLike[str], target: str | os.PathLike[str]
+    ) -> None:
+        raise OSError("simulated replace failure")
+
+    monkeypatch.setattr(capacity.os, "replace", failing_replace)
+
+    # A changed probe forces a rewrite, so the temp file exists when replace fails.
+    exit_code = _run(["generate", "--output", str(env_path)], _probe(ncpu=4))
+
+    assert exit_code != 0
+    assert capsys.readouterr().err == "make capacity: simulated replace failure\n"
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["capacity.env"]
+    assert env_path.read_text() == original_content
