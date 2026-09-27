@@ -1,3 +1,9 @@
+# p (profile) and c (restart) are rejected when they contain a `$`, checked unexpanded via $(value …): expanding one
+# would run any embedded make function (e.g. $(shell …)). These must stay the first lines: make 4.4+ exports
+# command-line variables into every $(shell …) environment, so the first $(shell …) below would already expand them.
+$(if $(findstring $$,$(value p)),$(error p must not contain '$$'))
+$(if $(findstring $$,$(value c)),$(error c must not contain '$$'))
+
 # Host capacity (scripts/capacity.py, `make capacity`): derived worker counts + interlocks + host UID/GID.
 CAPACITY_ENV = docker/.capacity.generated.env
 CAPACITY = mise exec python -- python scripts/capacity.py
