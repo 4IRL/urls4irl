@@ -165,6 +165,8 @@ class Config:
     MAILJET_SECRET_KEY = environ.get(ENV.MAILJET_SECRET_KEY)
     TESTING = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # No SQLALCHEMY_ENGINE_OPTIONS pool settings here: scripts/capacity.py
+    # CONN_PER_WORKER assumes SQLAlchemy's default pool; update it if added.
     SQLALCHEMY_DATABASE_URI = DEV_DB_URI
     SQLALCHEMY_BINDS = {
         "dev": DEV_DB_URI if DEV_DB_URI else "sqlite://",

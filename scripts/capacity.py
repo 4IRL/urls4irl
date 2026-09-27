@@ -25,7 +25,11 @@ from pathlib import Path
 from typing import TypeVar
 
 METRICS_REDIS_DB_BASE: int = 8  # mirrors tests.conftest._METRICS_REDIS_DB_BASE
-CONN_PER_WORKER: int = 15  # SQLAlchemy QueuePool size 5 + max_overflow 10
+# Assumes SQLAlchemy's library-default QueuePool (pool_size=5 + max_overflow=10):
+# the app sets no explicit pool options (backend/__init__.py only defaults
+# SQLALCHEMY_ENGINE_OPTIONS to {}). Update this if pool settings are ever added
+# to SQLALCHEMY_ENGINE_OPTIONS in backend/config.py.
+CONN_PER_WORKER: int = 15
 CONN_BASE: int = 50
 # Shared redis runs `--databases 32`; each xdist worker uses index gwN + 2.
 HARD_N_CEILING: int = 30
