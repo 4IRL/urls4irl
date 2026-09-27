@@ -71,7 +71,7 @@ up: _capacity-fresh _logs-owner-fix _profile-narrow ## Build and start web + dat
 # A built stack always needs the vite one-shot build (else pages render with no assets), so p defaults to ui here.
 up-built: NARROW_PROFILE = $(or $(p),ui)
 up-built: _capacity-fresh _logs-owner-fix _profile-narrow ## Build and start with pre-built Vite assets: web + datastores + vite build + playwright; p=full also adds workflow (pass d=1 for detached mode)
-	$(COMPOSE_BUILT) --profile $(or $(p),ui) up --build --remove-orphans -V $(if $(d),-d,)
+	$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --build --remove-orphans -V $(if $(d),-d,)
 
 start-built: _capacity-fresh _logs-owner-fix prune ## Tear down stack, rebuild with pre-built assets (ui profile, no workflow), wait for healthy (used by built test targets)
 	$(COMPOSE) $(ALL_PROFILES) down
@@ -340,7 +340,7 @@ _require-n-fits: _capacity-fresh
 # Guards the workflow exec targets. Not an auto-start: workflow writes /app/container_environment during startup and
 # only reports healthy after a successful flush (200s start_period), so starting it here would race the recipes' own check.
 _require-workflow:
-	@$(COMPOSE) ps --status running --services | grep -qx workflow || { echo "workflow is not running — start it with: make up p=full d=1" >&2; exit 1; }
+	@$(COMPOSE) $(ALL_PROFILES) ps --status running --services | grep -qx workflow || { echo "workflow is not running — start it with: make up p=full d=1" >&2; exit 1; }
 
 # An empty list would make shfmt read stdin (hang, or pass silently in CI), so fail loudly instead.
 _require-shell-files:

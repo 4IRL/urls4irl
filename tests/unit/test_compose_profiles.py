@@ -114,6 +114,14 @@ def test_no_service_depends_on_a_less_available_service() -> None:
         ),
         pytest.param(
             {
+                "tunnel_client": {"profiles": ["ui", "tunnel"], "depends_on": ["vite"]},
+                "vite": {"profiles": ["ui", "full"]},
+            },
+            1,
+            id="overlapping-non-subset-profiles",
+        ),
+        pytest.param(
+            {
                 "playwright": {
                     "profiles": ["ui", "full"],
                     "depends_on": {"vite": {"condition": "service_healthy"}},
