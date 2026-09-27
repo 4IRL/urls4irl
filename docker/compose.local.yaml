@@ -68,6 +68,7 @@ services:
 
   vite:
     container_name: u4i-local-vite
+    profiles: ["ui", "full"]
     build:
       context: .
       dockerfile: docker/Dockerfile.Vite
@@ -106,6 +107,7 @@ services:
   playwright:
     image: mcr.microsoft.com/playwright:v1.60.0-noble
     container_name: u4i-playwright
+    profiles: ["ui", "full"]
     init: true
     user: pwuser
     working_dir: /home/pwuser
@@ -125,6 +127,7 @@ services:
 
   workflow:
     container_name: u4i-local-workflow
+    profiles: ["full"]
     build:
       context: .
       dockerfile: docker/Dockerfile.Workflow

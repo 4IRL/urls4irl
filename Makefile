@@ -22,7 +22,22 @@ EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 # For steps that write into bind-mounted host files (frontend/types): run as the host user so the
 # files keep host ownership, with LOG_DIR moved to /tmp since the image's log dir is only writable by the web user.
 EXEC_WEB_AS_HOST = $(COMPOSE) exec --user $(shell id -u):$(shell id -g) -e LOG_DIR=/tmp/u4i-cli-logs web bash -c
-EXEC_VITE = $(COMPOSE) exec vite
+# Compose profiles (docker/compose.local.yaml): p= picks the optional services layered on web + datastores.
+#   (unset) web, db, db-init, redis, redis-metrics   ·   ui: + vite, playwright   ·   full: + workflow
+PROFILES := ui full
+# The profiled services `up` stops when p narrows (cloudflared is left to tunnel/tunnel-stop).
+OPTIONAL_SERVICES := vite playwright workflow
+# p is spliced into command lines, so it is validated at parse time: an invalid p fails every target before any command runs.
+$(if $(word 2,$(p)),$(error p takes one profile: one of $(PROFILES)))
+$(if $(filter-out $(PROFILES),$(p)),$(error p must be one of: $(PROFILES) (got '$(p)')))
+PROFILE_FLAGS = $(if $(p),--profile $(p))
+# Lifecycle ops that must reach every service however it was started.
+ALL_PROFILES = --profile '*'
+# The profile _profile-narrow treats as "currently intended". Set per lifecycle target via a target-specific
+# variable below (never read raw $(p) directly), so up-built's own default (ui) and the narrowing check always agree.
+NARROW_PROFILE =
+# One-off vite container (no long-lived dev server needed): vite is profile-gated, so `exec vite` fails on a default stack.
+RUN_VITE = $(COMPOSE) run --rm --no-deps vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 MISE = mise exec --
@@ -31,36 +46,57 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-# -V (--renew-anon-volumes): recreate anonymous volumes (vite's /app/node_modules masks) on every up,
-# so a stale pre-bump node_modules never shadows the freshly built image's pnpm install. Named volumes are unaffected.
-up: _capacity-fresh _logs-owner-fix ## Build and start the full stack (pass d=1 for detached mode)
-	$(COMPOSE) up --build --remove-orphans -V $(if $(d),-d,)
+# Stops + removes every OPTIONAL_SERVICES member NARROW_PROFILE does not enable. `--remove-orphans` never touches a
+# profile-disabled service (it isn't an orphan), so without this a narrower `up` would leave them running. The enabled
+# set comes from compose itself; $(COMPOSE) is correct for up-built too, since compose.built.yaml declares no profiles.
+_profile-narrow:
+	@enabled="$$($(COMPOSE) $(if $(NARROW_PROFILE),--profile $(NARROW_PROFILE)) config --services)" || exit 1; \
+	stale=""; for service in $(OPTIONAL_SERVICES); do printf '%s\n' "$$enabled" | grep -qx "$$service" || stale="$$stale $$service"; done; \
+	if [ -n "$$stale" ]; then $(COMPOSE) $(ALL_PROFILES) rm -sfv $$stale; fi
 
-up-built: _capacity-fresh _logs-owner-fix ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
-	$(COMPOSE_BUILT) up --build --remove-orphans -V $(if $(d),-d,)
+# -V (--renew-anon-volumes): recreate anonymous volumes (vite's /app/node_modules masks, present only when the ui
+# profile is active) on every up, so a stale pre-bump node_modules never shadows the freshly built image's pnpm install.
+# Named volumes are unaffected.
+up: NARROW_PROFILE = $(p)
+up: _capacity-fresh _logs-owner-fix _profile-narrow ## Build and start web + datastores; p=ui adds vite + playwright, p=full also adds workflow (pass d=1 for detached mode)
+	$(COMPOSE) $(PROFILE_FLAGS) up --build --remove-orphans -V $(if $(d),-d,)
 
-start-built: _capacity-fresh _logs-owner-fix prune ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
-	$(COMPOSE) down
-	$(COMPOSE_BUILT) up --build --remove-orphans --wait
+# A built stack always needs the vite one-shot build (else pages render with no assets), so p defaults to ui here.
+up-built: NARROW_PROFILE = $(or $(p),ui)
+up-built: _capacity-fresh _logs-owner-fix _profile-narrow ## Build and start with pre-built Vite assets: web + datastores + vite build + playwright; p=full also adds workflow (pass d=1 for detached mode)
+	$(COMPOSE_BUILT) --profile $(or $(p),ui) up --build --remove-orphans -V $(if $(d),-d,)
 
-down: ## Stop the stack
-	$(COMPOSE) down
+start-built: _capacity-fresh _logs-owner-fix prune ## Tear down stack, rebuild with pre-built assets (ui profile, no workflow), wait for healthy (used by built test targets)
+	$(COMPOSE) $(ALL_PROFILES) down
+	$(COMPOSE_BUILT) --profile ui up --build --remove-orphans --wait
 
-build: _capacity-fresh ## Rebuild images without starting
-	$(COMPOSE) build
+down: ## Stop the stack (every profile)
+	$(COMPOSE) $(ALL_PROFILES) down
+
+build: _capacity-fresh ## Rebuild images without starting (every profile)
+	$(COMPOSE) $(ALL_PROFILES) build
 
 restart: ## Restart a specific container: make restart c=<service>
-	$(COMPOSE) restart $(c)
+	$(if $(c),,$(error c=<service> is required, e.g. make restart c=playwright))
+	$(COMPOSE) $(ALL_PROFILES) restart $(c)
 
+# Starts the dev UI-test dependencies (vite + playwright, plus web/datastores via depends_on); idempotent when already up.
+# Assumes a dev stack: on an up-built stack use the `-built` test targets instead, else this recreates vite as the dev server.
+_ui-up: _capacity-fresh _logs-owner-fix
+	$(COMPOSE) --profile ui up -d --wait vite playwright
+
+# Tunnel never needs playwright/workflow: drop any left from a wider session (profile narrowing can't drop playwright
+# without vite, and --remove-orphans ignores profile-disabled services). Naming vite on `up` enables its profile.
 tunnel: _capacity-fresh _logs-owner-fix ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
-	$(COMPOSE_BUILT) up --build --remove-orphans -V -d --wait
+	$(COMPOSE_BUILT) $(ALL_PROFILES) rm -sf playwright workflow
+	$(COMPOSE_BUILT) up --build --remove-orphans -V -d --wait web vite
 	$(COMPOSE_BUILT) --profile tunnel up -d --no-recreate cloudflared
 	@echo "Waiting for Cloudflare quick-tunnel URL (~5-10s)..."
 	@for i in $$(seq 1 30); do \
@@ -79,23 +115,22 @@ test-integration: ## Run all integration (non-UI) tests
 test-integration-parallel: _capacity-fresh _require-n-fits ## Run integration tests in parallel: make test-integration-parallel [n=derived: see make capacity]
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
 
-test-functional: prune ## Run all functional (UI/Playwright) tests
+test-functional: prune _ui-up ## Run all functional (UI/Playwright) tests
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
 
 test-functional-built: start-built ## Run all functional (UI/Playwright) tests against built assets
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
 
-test-ui-parallel: _capacity-fresh _require-n-fits prune ## Run UI tests in parallel: make test-ui-parallel [n=derived: see make capacity]
+test-ui-parallel: _capacity-fresh _require-n-fits prune _ui-up ## Run UI tests in parallel: make test-ui-parallel [n=derived: see make capacity]
 	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_UI)) --dist=loadscope"
 
 test-ui-parallel-built: _capacity-fresh _require-n-fits start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=derived: see make capacity]
 	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_UI)) --dist=loadscope"
 
-test-js: ## Run all JS unit tests (vitest)
-	$(EXEC_VITE) pnpm test
+test-js: _require-tools ## Run all JS unit tests (vitest) on the host — no stack needed
+	$(MISE) $(FRONTEND_BIN)/vitest run --config frontend/vitest.config.ts
 
-test-js-built: ## Run all JS unit tests in the built stack (one-off vite container; used when up-built is running and the long-lived dev vite service is absent)
-	$(COMPOSE_BUILT) run --rm --no-deps vite pnpm test
+test-js-built: test-js ## Alias of test-js (kept for skills/docs; vitest is host-native and mode-independent)
 
 test-backup-pipeline: ## Build web+workflow images and run the backup pipeline E2E harness locally
 	docker build -f docker/Dockerfile.Local    -t u4i-local-web:test .
@@ -130,8 +165,8 @@ test-file-parallel: _capacity-fresh _require-n-fits ## Run pytest against a spec
 test-file-parallel-built: _capacity-fresh _require-n-fits start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
 	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v $(args)"
 
-vite-build: ## Build Vite to verify no import/syntax errors
-	$(EXEC_VITE) pnpm exec vite build
+vite-build: ## Build Vite to verify no import/syntax errors (one-off vite container)
+	$(RUN_VITE) pnpm exec vite build
 
 vite-build-built: ## Rebuild Vite assets in the built stack (one-off vite build container; used when up-built is running and the long-lived dev vite service is absent)
 	$(COMPOSE_BUILT) run --rm --no-deps vite pnpm exec vite build
@@ -174,13 +209,13 @@ typecheck: _require-tools ## Run TypeScript typecheck (app + test tsconfigs) on 
 
 generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
 	$(EXEC_WEB_AS_HOST) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
-	$(EXEC_VITE) pnpm exec openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
+	$(RUN_VITE) pnpm exec openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-dim-types --output /code/u4i/frontend/types/metrics-dimensions.d.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-dim-values --output /code/u4i/frontend/types/metrics-dim-values.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-events --output /code/u4i/frontend/types/metrics-events.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-resources --output /code/u4i/frontend/types/metrics-resources.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-flows --output /code/u4i/frontend/types/metrics-flows.ts"
-	$(EXEC_VITE) pnpm exec prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
+	$(RUN_VITE) pnpm exec prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
 
 audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
 	$(EXEC_WEB) "$(FLASK) metrics audit --strict"
@@ -302,6 +337,11 @@ _require-n-fits: _capacity-fresh
 		fi; \
 	fi
 
+# Guards the workflow exec targets. Not an auto-start: workflow writes /app/container_environment during startup and
+# only reports healthy after a successful flush (200s start_period), so starting it here would race the recipes' own check.
+_require-workflow:
+	@$(COMPOSE) ps --status running --services | grep -qx workflow || { echo "workflow is not running — start it with: make up p=full d=1" >&2; exit 1; }
+
 # An empty list would make shfmt read stdin (hang, or pass silently in CI), so fail loudly instead.
 _require-shell-files:
 	@test -n "$(SHELL_FILES)" || { echo "no shell files found (not a git checkout, or git ls-files failed)"; exit 1; }
@@ -317,8 +357,8 @@ metrics-watch: ## Live tail Redis ops on dedicated redis-metrics container (metr
 metrics-snapshot: ## Snapshot current metrics:counter:* keys with values
 	$(COMPOSE) exec redis-metrics sh -c 'for k in $$(redis-cli --scan --pattern "metrics:counter:*"); do echo "$$k = $$(redis-cli GET $$k)"; done'
 
-metrics-flush-now: ## Trigger an immediate flush worker run (drains Redis -> Postgres)
-	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
+metrics-flush-now: _require-workflow ## Trigger an immediate flush worker run (drains Redis -> Postgres)
+	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up p=full d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
 
 metrics-rows: ## Show last 25 flushed rows from AnonymousMetrics
 	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
@@ -333,8 +373,8 @@ metrics-clear-rows: ## Truncate AnonymousMetrics in Postgres
 
 metrics-clear-all: metrics-clear-counters metrics-clear-rows gauge-clear-rows ## Wipe all metrics data (Redis pending + Postgres flushed + gauges)
 
-gauge-sample-now: ## Trigger an immediate gauge sampler run (writes one AnonymousGauges row per gauge)
-	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/sample_gauges.py'
+gauge-sample-now: _require-workflow ## Trigger an immediate gauge sampler run (writes one AnonymousGauges row per gauge)
+	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up p=full d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/sample_gauges.py'
 
 gauge-rows: ## Show last 25 sampled rows from AnonymousGauges
 	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"gaugeName\", \"sampledAt\", \"valueInt\", \"valueFloat\", dimensions FROM \"AnonymousGauges\" ORDER BY \"sampledAt\" DESC LIMIT 25;"'
@@ -342,7 +382,7 @@ gauge-rows: ## Show last 25 sampled rows from AnonymousGauges
 gauge-clear-rows: ## Truncate AnonymousGauges in Postgres
 	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousGauges\";"'
 
-notify-test: ## Post a message to the Discord webhook (NOTIFICATION_URL from the environment, else from .env) via restricted_curl in the workflow container (msg optional, defaults to a sample digest): make notify-test [msg="DOCKER: your message"]
+notify-test: _require-workflow ## Post a message to the Discord webhook (NOTIFICATION_URL from the environment, else from .env) via restricted_curl in the workflow container (msg optional, defaults to a sample digest): make notify-test [msg="DOCKER: your message"]
 	@url="$${NOTIFICATION_URL:-}"; \
 	if [ -z "$$url" ] && [ -f .env ]; then \
 	  line="$$(grep -E 'NOTIFICATION_URL[[:space:]]*=' .env | grep -v '^[[:space:]]*#' | tail -n1)"; \
