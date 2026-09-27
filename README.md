@@ -75,10 +75,11 @@ Two things to know once the hook is installed:
 | `SECRET_KEY` | Yes | - | Flask secret key for session encryption |
 | `POSTGRES_USER` | Yes | - | PostgreSQL username |
 | `POSTGRES_PASSWORD` | Yes | - | PostgreSQL password |
-| `POSTGRES_DB` | Yes | - | PostgreSQL database name |
+| `POSTGRES_DB` | Yes | - | PostgreSQL database name (locally, compose overrides it with the per-worktree `u4i_dev_<slug>`, and `db-init` renames a legacy database of this name once) |
 | `MAILJET_API_KEY` | Yes | - | Mailjet API key for transactional emails |
 | `MAILJET_SECRET_KEY` | Yes | - | Mailjet secret key |
-| `POSTGRES_TEST_DB` | No | - | Test database name for pytest |
+| `POSTGRES_TEST_DB` | No | - | Test database name prefix: each pytest run/worker gets `{POSTGRES_TEST_DB}_{uid8}_{worker}` (lowercase `[a-z0-9_]`; locally it must differ from `POSTGRES_DB`, or `db-init` refuses to provision) |
+| `POSTGRES_TEST_USER` | No | `POSTGRES_USER` | Role tests connect as; local compose sets the `u4i_test` role, which cannot connect to the dev database |
 | `REDIS_URI` | No | `memory://` | Redis connection URI |
 | `METRICS_REDIS_URI` | No | `memory://` | Redis URI for the dedicated metrics counter buffer (separate from `REDIS_URI`) |
 | `ENABLE_SSL` | No | `false` | Enable HTTPS in local dev (Flask + Vite) |
