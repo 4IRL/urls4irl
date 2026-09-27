@@ -29,7 +29,7 @@ Reference plan may have files in the @plans directory - please reference these i
   |---|---|
   | Integration tests | `make test-integration-parallel` (single marker: `make test-marker-parallel m=<marker>`) |
   | UI tests | `make test-ui-parallel-built` (`n` defaults to the derived `U4I_N_UI`; see Configuration surface) |
-  | JS/unit tests | `make test-js` |
+  | JS/unit tests | `make test-js` (host-native vitest — no stack needed) |
   | Build | `make vite-build` |
   | Lint / format | `make lint` · `make format-check` · `make typecheck` (fix: `make format`); onboard a clone/worktree with `make setup` (toolchain + hook + capacity). The pre-commit hook runs these automatically **only if the hook is installed** (`make setup`, or `make hooks` alone; check with `make hooks-check`) |
   | Regenerate types | `make generate-types` |
@@ -48,7 +48,7 @@ Reference plan may have files in the @plans directory - please reference these i
   | `U4I_SLUG`                                     | worktree identity    | `$(notdir $(CURDIR))`                                                | computed + exported by the Makefile, never stored; derives `U4I_DEV_DB` = `u4i_dev_<sanitized slug>`, the dev DB name                                 |
   | `POSTGRES_TEST_USER`                           | tracked default      | `u4i_test` locally; unset (CI) = `POSTGRES_USER`                     | compose sets `${U4I_TEST_ROLE:-u4i_test}`, the expression `db-init` creates the role from (password = `POSTGRES_PASSWORD`; no CONNECT on `u4i_dev_*`) |
   | `make setup`                                   | onboarding target    | n/a                                                                  | once per clone/worktree: `tools` + `hooks` + `capacity` (idempotent; a failed capacity step, e.g. Docker down, is deferred)                           |
-  | `make capacity`                                | host capacity target | n/a                                                                  | writes gitignored `docker/.capacity.generated.env`; stack-start and `-parallel` targets refresh it (`recreate required` = rerun `make up d=1`)        |
+  | `make capacity`                                | host capacity target | n/a                                                                  | writes gitignored `docker/.capacity.generated.env`; stack-start and `-parallel` targets refresh it (`recreate required` = rerun `make up [p=…] d=1`)  |
 - **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. The genericized `/git-push` performs the lookup; `.claude/skills/git-push/SKILL.md` documents the mutations.
 - **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
 - **PR reviewer:** `GPropersi`
@@ -178,14 +178,14 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 #### Testing Best Practices
 
 1. **Use HTTP for all development tests** - Local development uses HTTP by default (`http://127.0.0.1:8659`), not HTTPS
-2. **Run all tests in Docker, never on host** - Always use the Docker containers for running tests
+2. **Run all tests in Docker, never on host** - Always use the Docker containers for backend/integration/UI tests. The one exception is `make test-js` (vitest JS/unit tests), which runs host-native like CI and `make typecheck`, and needs no stack
 3. **Debug UI test failures with Playwright before changing code** - When a UI test fails and the root cause isn't clear from code inspection, use Playwright MCP to manually reproduce the issue and observe actual behavior BEFORE making code changes
 4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`playwright.sync_api.Error` (e.g. a `chromium.connect()` failure against the shared browser-server), `playwright.sync_api.TimeoutError`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "browser connection exhaustion" as a dismissible category — if browser connections are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
-5. **Check Playwright browser-server health when connections repeatedly fail** - If `chromium.connect()` failures against the shared browser-server persist across test runs, check it with `docker compose --project-directory . -f docker/compose.local.yaml ps playwright` and, only when no UI test run is in progress, restart it with `make restart c=playwright` (the one container serves every UI worker, so a restart kills all in-flight workers). Still record and investigate the root cause. A `RuntimeError: PLAYWRIGHT_WS_URL env var is not set ...` (raised by `build_page_browser` in `tests/functional/conftest.py`) means the `web` service env is misconfigured (see `docker/compose.local.yaml`), not an unhealthy browser-server, so a restart won't fix it.
+5. **Check Playwright browser-server health when connections repeatedly fail** - `playwright` is in the `ui` compose profile, so it runs only under `make up p=ui`/`p=full`, a `*-built` target, or after `test-functional`/`test-ui-parallel` start it themselves (never on a bare `make up d=1`). If `chromium.connect()` failures against the shared browser-server persist across test runs, check it with `docker compose --project-directory . -f docker/compose.local.yaml ps playwright` and, only when no UI test run is in progress, restart it with `make restart c=playwright` (the one container serves every UI worker, so a restart kills all in-flight workers). Still record and investigate the root cause. A `RuntimeError: PLAYWRIGHT_WS_URL env var is not set ...` (raised by `build_page_browser` in `tests/functional/conftest.py`) means the `web` service env is misconfigured (see `docker/compose.local.yaml`), not an unhealthy browser-server, so a restart won't fix it.
 6. **`playwright.sync_api.TimeoutError` in UI tests always requires investigation** - never pre-existing or dismissible as "flaky" (see central Test Failures policy). Indicates either a UI logic bug or a genuine timing/stability issue.
 7. **Prefer parallel make targets** - Use `make test-marker-parallel m=<marker>` (integration, default `n` = derived `U4I_N_INT`) or `make test-ui-parallel` (UI, default `n` = derived `U4I_N_UI`) by default. Sequential targets are fallbacks only. "Parallel" means `-n` workers within a single invocation.
    - **Concurrent runs are isolated; concurrency is bounded by capacity, not correctness.** Every pytest invocation gets its own databases (`{POSTGRES_TEST_DB}_{uid8}_{worker}`, keyed on xdist's `testrun_uid`) and leased Redis indices (self-expiring `u4i:test_lease:*` keys on shared-redis DB 0), so two runs never touch each other's state. Resource rule: at most **one pytest invocation per spoke** at a time.
-   - **Parallelism caps are derived per host (every suite, not just UI)** — `make capacity` sets the default worker counts (`U4I_N_UI` for UI targets, `U4I_N_INT` for integration/marker/file targets) from the host's cores and memory, and sizes the interlocks to the larger of the two: the metrics lease pool (`redis-metrics --databases`) and the `db` cluster's connection limits. An explicit `n=` above this host's `U4I_N_MAX` is refused by `_require-n-fits` before pytest starts. To go higher, run `make capacity U4I_N_UI=<n>` (UI targets) or `make capacity U4I_N_INT=<n>` (integration/marker/file targets), then `make up d=1` to recreate the stack with the new interlocks. Overrides above the memory guard are refused, and n ≤ 30 is a hard per-run ceiling (the shared `redis` has `--databases 64`, leaving 62 leasable session indices: room for 2 concurrent runs at n = 30). A `RuntimeError: Redis lease pool '…' is exhausted` means every index is held, usually by leases a killed run leaked: run `make reset-test-dbs`, lower `n`, or run `make capacity` then `make up d=1` to grow the pool. CI does not use `make capacity`; its `test.yml` matrix pins `XDIST_N`. Soft, secondary limit: host CPU/RAM load during concurrent startup. Each UI worker has its own Flask server and Postgres DB, plus its own `chromium.connect()` browser on the **one shared** Playwright browser-server container. The memory guard budgets for that, but heavy load can still slow setup.
+   - **Parallelism caps are derived per host (every suite, not just UI)** — `make capacity` sets the default worker counts (`U4I_N_UI` for UI targets, `U4I_N_INT` for integration/marker/file targets) from the host's cores and memory, and sizes the interlocks to the larger of the two: the metrics lease pool (`redis-metrics --databases`) and the `db` cluster's connection limits. An explicit `n=` above this host's `U4I_N_MAX` is refused by `_require-n-fits` before pytest starts. To go higher, run `make capacity U4I_N_UI=<n>` (UI targets) or `make capacity U4I_N_INT=<n>` (integration/marker/file targets), then `make up [p=…] d=1` (the same `p` the stack was started with) to recreate the stack with the new interlocks. Overrides above the memory guard are refused, and n ≤ 30 is a hard per-run ceiling (the shared `redis` has `--databases 64`, leaving 62 leasable session indices: room for 2 concurrent runs at n = 30). A `RuntimeError: Redis lease pool '…' is exhausted` means every index is held, usually by leases a killed run leaked: run `make reset-test-dbs`, lower `n`, or run `make capacity` then `make up [p=…] d=1` to grow the pool. CI does not use `make capacity`; its `test.yml` matrix pins `XDIST_N`. Soft, secondary limit: host CPU/RAM load during concurrent startup. Each UI worker has its own Flask server and Postgres DB, plus its own `chromium.connect()` browser on the **one shared** Playwright browser-server container. The memory guard budgets for that, but heavy load can still slow setup.
 8. **Reclaim leaked test resources** - An interrupted run leaves its per-run databases and Redis leases behind. `make reset-test-dbs` (`ttl=<minutes>`, default 10) drops idle, aged per-run test DBs and deletes the leases orphaned with them; it never drops a connected DB, never touches the dev DB, and never flushes Redis DB 0.
 
 Flaky-test hardening and the never-dismiss-without-investigation protocol are covered centrally (see `~/code/CLAUDE.md` → Test Failures: Investigate, Don't Dismiss); the derived caps above are capacity limits, not flake thresholds. At or below them, flaky tests must be hardened to pass at the suite's normal (derived) parallelism.
@@ -204,11 +204,21 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 | `frontend/package.json` direct deps & devDeps  | `"pkg": "X.Y.Z"`                                                                       | `^X.Y.Z`, `~X.Y.Z`, `>=`, `*`, `latest`   |
 | `frontend/pnpm-workspace.yaml` `overrides:`    | `pkg: X.Y.Z` (exact patch that satisfies all peer-deps and any open security alert)    | `^`, `~`, ranges                          |
 
+**Which `requirements/*.txt` file:** they nest dev ⊃ test ⊃ prod (`-r`), and each environment installs only its own file.
+
+| File | Put a package here when… | Installed by |
+|---|---|---|
+| `requirements-prod.txt` | the app imports it at runtime (`backend/`, `migrations/`, runtime `scripts/`) | prod image (`docker/Dockerfile`) |
+| `requirements-test.txt` | only `tests/`/conftest import it | **CI** (`test.yml`, `types-staleness.yml`, `event-coverage-staleness.yml`) |
+| `requirements-dev.txt` | nothing imports it — local tooling only (`pre-commit` and its deps) | local `web` image (`docker/Dockerfile.Local`) |
+
+The local container installs dev, so a misplaced pin passes every local test and only fails in CI, where it breaks collection for every pytest job at once. Before committing a new import, confirm the file CI installs has it. The workflow image pins its own venv in `docker/Dockerfile.Workflow` (versions match prod), so a new workflow dependency goes there too.
+
 Security pins go in `frontend/pnpm-workspace.yaml` `overrides:` at the exact patched version. If one conflicts with a transitive consumer's peer-dep range, use `pnpm why <pkg>` to find the resolved version and pin the override to that **exact patch** rather than reverting to a caret. A pinned version younger than 90 days (`minimumReleaseAge`) also needs an exact `name@version` entry in `minimumReleaseAgeExclude` (no wildcards), or every install fails. Document the choice in the commit body.
 
-pnpm is the only package manager: never run `npm install` in `frontend/`; `make lint` fails via `lockfile-check` if a `package-lock.json` appears. `verifyDepsBeforeRun: error` means pnpm never auto-installs, so after a `package.json`/lockfile change run `make tools` (host) and `make build` (containers). `make up`/`up-built`/`tunnel` pass `-V` so stale anonymous `node_modules` volumes are renewed.
+pnpm is the only package manager: never run `npm install` in `frontend/`; `make lint` fails via `lockfile-check` if a `package-lock.json` appears. `verifyDepsBeforeRun: error` means pnpm never auto-installs, so after a `package.json`/lockfile change run `make tools` (host) and `make build` (containers; it rebuilds every profile's image, including the inactive `vite`/`workflow` ones). `make up`/`up-built`/`tunnel` pass `-V` so stale anonymous `node_modules` volumes are renewed.
 
-When adding or bumping a dependency, never introduce a range — if you only need a security fix, pin to the exact patched version listed by `gh api .../dependabot/alerts`. After editing, run `make build && make up d=1` and verify the full test suite passes before committing.
+When adding or bumping a dependency, never introduce a range — if you only need a security fix, pin to the exact patched version listed by `gh api .../dependabot/alerts`. After editing, run `make build` (every profile's image) then `make up [p=…] d=1` (the same `p` your stack was running), and verify the full test suite passes before committing: `make test-integration-parallel`, `make test-js`, and the UI suite via `make test-ui-parallel-built` (which brings up the built `ui`-profile stack itself).
 
 ### Import Style
 
@@ -245,7 +255,7 @@ After editing JavaScript files, always run the Vite build (`make vite-build`) to
 
 **At the end of any UI-affecting change — whether done manually or via `/run-plan` — capture and provide a Playwright screenshot of the actual built feature before reporting the work complete.** A green test suite proves behavior; a screenshot proves the rendered result looks right (and catches things tests miss, e.g. CSS that compiles and passes assertions but renders invisibly).
 
-- **Source matters:** the image must be of the **implemented** feature captured via Playwright MCP against the running app (`http://127.0.0.1:8659/`), NOT the upfront design mock. Reusing a pre-implementation mock does not satisfy this rule.
+- **Source matters:** the image must be of the **implemented** feature captured via Playwright MCP against the running app (`http://127.0.0.1:8659/`), NOT the upfront design mock. The stack must serve assets (`make up p=ui d=1` or `make up-built d=1`; see Playwright below). Reusing a pre-implementation mock does not satisfy this rule.
 - Use the `login-with-playwright` skill to reach the home page; for mobile features, set the viewport to a mobile width (e.g. 420px) before capturing. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
 - Surface the image to the user with `SendUserFile` (not just a saved path). Save screenshots under `plans/<topic>/screenshots/` (gitignored, like the rest of `plans/`).
 - If the app cannot be brought up to capture the screenshot, say so explicitly rather than silently skipping this step.
@@ -276,16 +286,16 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make tools` | Install the pinned host toolchain + `frontend/node_modules` (run by `make setup`; re-run after pin bumps) |
 | `make hooks` | Install the pre-commit git hook in the main checkout (run by `make setup`; safe from any worktree — see "Pre-commit hooks" below) |
 | `make hooks-check` | Report whether the pre-commit hook is installed (exits 1 when missing; worktree-safe) |
-| `make up d=1` | Build and start the full stack (detached) |
-| `make up-built d=1` | Build and start with pre-built Vite assets (detached) |
-| `make down` | Stop the stack |
-| `make build` | Rebuild images without starting |
-| `make restart c=<service>` | Restart a specific compose service |
+| `make up [p=ui\|full] d=1` | Build and start web + datastores (detached); `p=ui` adds vite + playwright, `p=full` also adds workflow. A narrower `p` stops the services it no longer enables |
+| `make up-built [p=full] d=1` | Build and start with pre-built Vite assets (detached): web + datastores + vite one-shot build + playwright; `p=full` also adds workflow |
+| `make down` | Stop the stack (every profile) |
+| `make build` | Rebuild images without starting (every profile) |
+| `make restart c=<service>` | Restart a specific compose service (`c=` is required; reaches profiled services too) |
 | `make test-integration-parallel [n=<N>]` | All non-UI integration tests in parallel (**preferred**; default `n` = derived `U4I_N_INT`) |
 | `make test-integration` | All non-UI integration tests (sequential fallback) |
-| `make test-ui-parallel [n=<N>]` | All UI/Playwright tests in parallel (**preferred**; default `n` = derived `U4I_N_UI`) |
-| `make test-functional` | All UI/Playwright functional tests (sequential fallback) |
-| `make test-js` | All JS unit tests (vitest) |
+| `make test-ui-parallel [n=<N>]` | All UI/Playwright tests in parallel (**preferred**; default `n` = derived `U4I_N_UI`; starts vite + playwright itself) |
+| `make test-functional` | All UI/Playwright functional tests (sequential fallback; starts vite + playwright itself) |
+| `make test-js` | All JS unit tests (vitest, host-native — no stack needed) |
 | `make test-marker-parallel m=<marker> [n=<N>]` | Tests for a specific marker in parallel (**preferred**; default `n` = derived `U4I_N_INT`) |
 | `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
 | `make test-file f=<path> [args=...]` | Single test file/path |
@@ -296,7 +306,7 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 
 ### Metrics Verification (local stack)
 
-Bring the stack up with `make up d=1` to exercise the anonymous-metrics pipeline end-to-end. Metrics are **on by default locally**: `docker/compose.local.yaml` declares the tracked default `METRICS_ENABLED=${METRICS_ENABLED:-true}`, so a bare `make up d=1` enables them on every host — **never prefix `METRICS_ENABLED=true` on local commands**. To opt a machine out (or exercise the disabled path), put `METRICS_ENABLED=false` in `.env`, which `make` passes via `--env-file .env`. **Remove any lingering `export METRICS_ENABLED=…` from your shell profile:** compose interpolation resolves the shell environment before `--env-file`, so a leftover export silently overrides the `.env` opt-out (check with `printenv METRICS_ENABLED`). Tests are unaffected (`ConfigTest.METRICS_ENABLED = False`). Prod (`docker/compose.yaml`) and dev (`docker/compose.dev.yaml`) both hard-set `METRICS_ENABLED=true`.
+Bring the stack up with `make up p=full d=1` to exercise the anonymous-metrics pipeline end-to-end: the flush/gauge `workflow` container is only in the `full` profile, and `metrics-flush-now`/`gauge-sample-now`/`notify-test` refuse to run (`workflow is not running — start it with: make up p=full d=1`) without it. Metrics are **on by default locally**: `docker/compose.local.yaml` declares the tracked default `METRICS_ENABLED=${METRICS_ENABLED:-true}`, so every `make up` enables them on every host (the web app still records into Redis on the default stack; only the flush to Postgres needs `p=full`) — **never prefix `METRICS_ENABLED=true` on local commands**. To opt a machine out (or exercise the disabled path), put `METRICS_ENABLED=false` in `.env`, which `make` passes via `--env-file .env`. **Remove any lingering `export METRICS_ENABLED=…` from your shell profile:** compose interpolation resolves the shell environment before `--env-file`, so a leftover export silently overrides the `.env` opt-out (check with `printenv METRICS_ENABLED`). Tests are unaffected (`ConfigTest.METRICS_ENABLED = False`). Prod (`docker/compose.yaml`) and dev (`docker/compose.dev.yaml`) both hard-set `METRICS_ENABLED=true`.
 
 | Command | Description |
 |---|---|
@@ -313,17 +323,21 @@ Bring the stack up with `make up d=1` to exercise the anonymous-metrics pipeline
 
 All `make`/`docker`/`docker compose` targets used by this repo are already listed in `sandbox.excludedCommands` (`.claude/settings.local.json`) and run unsandboxed automatically — no `dangerouslyDisableSandbox` flag needed. Never compound them with another command (see central "Working inside a sub-repo" note on first-token-only matching) — run cleanup/setup as its own Bash call, then the `make`/`docker` call alone.
 
-**CRITICAL:** Never run `make up` or `make up-built` without `d=1`. Without the detached flag, these commands stream Docker logs to stdout indefinitely and never exit. Always use `make up d=1` (or `make up-built d=1`), then poll `docker compose ps` until services are healthy. Before starting containers, check if they're already running with `docker compose --project-directory . -f docker/compose.local.yaml ps`.
+**CRITICAL:** Never run `make up` or `make up-built` without `d=1`. Without the detached flag, these commands stream Docker logs to stdout indefinitely and never exit. Always use `make up [p=ui|full] d=1` (or `make up-built [p=full] d=1`), then poll `docker compose ps` until services are healthy. Before starting containers, check if they're already running with `docker compose --project-directory . -f docker/compose.local.yaml ps`.
 
 **Local Postgres:** one `db` cluster holds the dev DB (`U4I_DEV_DB`, provisioned by the one-shot `db-init`) and every per-run test DB. It runs `fsync=off`, so a host crash may corrupt `pgdata`. Recovery **deletes all dev data**: `make down`, `docker volume rm u4i-local_pgdata`, `make up d=1`, then `make reset-db` to reseed.
 
 ### Running the App (Docker - recommended)
 
-```bash
-# Local development with Vite hot reload, Playwright, PostgreSQL, Redis
-make up d=1    # never omit d=1 — see the CRITICAL note above
+Compose profiles pick the optional services layered on the always-on core (`web`, `db`, `db-init`, `redis`, `redis-metrics`):
 
-# Flask available at http://localhost:8659, Vite at http://localhost:5173
+```bash
+make up d=1          # web + datastores only — enough for integration tests, generate-types, vite-build
+make up p=ui d=1     # + vite (hot reload) + playwright — needed to browse the dev app with styled pages
+make up p=full d=1   # + workflow (metrics flush / gauge sampler / backups cron)
+# never omit d=1 — see the CRITICAL note above. A narrower p stops services the previous p started.
+
+# Flask available at http://localhost:8659; Vite at http://localhost:5173 only with p=ui / p=full
 # SSL is disabled by default. To enable HTTPS in local development:
 # Set ENABLE_SSL=true and VITE_URL=https://localhost:5173 in docker/compose.local.yaml
 ```
@@ -332,7 +346,7 @@ make up d=1    # never omit d=1 — see the CRITICAL note above
 
 #### Playwright
 
-Use the following URL to access the website with Playwright MCP: `http://127.0.0.1:8659/`
+Use the following URL to access the website with Playwright MCP: `http://127.0.0.1:8659/`. The stack must be up with `make up p=ui d=1` or `make up-built d=1`; on the default `make up d=1` stack there is no vite, so pages render unstyled.
 
 ### Running the App (without Docker)
 
@@ -346,11 +360,11 @@ flask run --host=0.0.0.0 --port=5000
 ### Frontend (Vite)
 
 ```bash
-make vite-build  # build to backend/static/dist/ (= pnpm run build)
-make test-js     # run JS unit tests (vitest)
+make vite-build  # build to backend/static/dist/ (= pnpm run build) in a one-off vite container
+make test-js     # run JS unit tests (vitest) on the host
 ```
 
-These and the Testing targets below `exec` into the running local stack, so it must be up (`make up d=1`); on the built stack (`make up-built`) use the `-built` variants (`vite-build-built`, `test-js-built`, `test-file-parallel-built`).
+`make vite-build` and `make generate-types` run vite in a one-off container (`run --rm --no-deps vite`), so they need no `p=` (`generate-types` still needs `web` up, which the default `make up d=1` provides). `make test-js` runs on the host and needs no stack at all (`test-js-built` is just an alias). The Testing targets below `exec` into the running local stack, so it must be up (`make up d=1`); on the built stack (`make up-built`) use the `-built` variants (`vite-build-built`, `test-file-parallel-built`).
 
 ### Testing
 
@@ -381,7 +395,7 @@ Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`
 
 **Always minimize wall-clock time**: omit `n=` so each target uses this host's derived maximum (`U4I_N_UI` for UI, `U4I_N_INT` for integration/marker/file; see the parallelism-cap note above and `make capacity`). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., shared Playwright browser-server connection idle-timeouts) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
 
-UI/functional tests require the shared Playwright browser-server: the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it).
+UI/functional tests require the shared Playwright browser-server: the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it). `playwright` (and `vite`, which it depends on) is in the `ui` compose profile: `make test-functional`/`make test-ui-parallel` start both themselves, and the `*-built` targets start them via `start-built`. Running a `*_ui` marker through `make test-marker*`/`make test-file*` in dev mode does **not** start them — bring the stack up with `make up p=ui d=1` first.
 
 ### Linting & Formatting
 

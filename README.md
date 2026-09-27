@@ -95,28 +95,33 @@ A `Makefile` is provided for common development tasks:
 |---|---|
 | `make setup` | One-time per clone/worktree: host toolchain, pre-commit hook, capacity file (idempotent) |
 | `make capacity` | Derive test worker counts + stack limits for this machine (overrides: `U4I_N_UI=`, `U4I_N_INT=`, `U4I_MEM_FRACTION=`) |
-| `make up` | Build and start the full stack |
-| `make down` | Stop the stack |
-| `make build` | Rebuild images without starting |
-| `make restart c=<service>` | Restart a specific compose service (e.g. `make restart c=web`) |
+| `make up [p=ui\|full] d=1` | Build and start `web` + datastores (`db`, `redis`, `redis-metrics`); `p=ui` adds `vite` + `playwright`, `p=full` also adds `workflow` |
+| `make up-built [p=full] d=1` | Same, with pre-built Vite assets (always includes the `ui` profile's vite build + `playwright`) |
+| `make down` | Stop the stack (every profile) |
+| `make build` | Rebuild images without starting (every profile) |
+| `make restart c=<service>` | Restart a specific compose service (e.g. `make restart c=web`; `c=` is required) |
 | `make test-integration` | Run all non-UI integration tests |
-| `make test-functional` | Run all UI/Playwright functional tests |
-| `make test-js` | Run all JS unit tests (vitest) |
+| `make test-functional` | Run all UI/Playwright functional tests (starts `vite` + `playwright` itself) |
+| `make test-js` | Run all JS unit tests (vitest) on the host — no stack needed |
 | `make test-marker m=<marker>` | Run tests for a specific pytest marker (e.g. `make test-marker m=utubs`) |
 | `make test-integration-parallel [n=<N>]` | Run all non-UI integration tests in parallel (preferred; default `n` from `make capacity`) |
-| `make test-ui-parallel [n=<N>]` | Run all UI/Playwright tests in parallel (preferred; default `n` from `make capacity`) |
+| `make test-ui-parallel [n=<N>]` | Run all UI/Playwright tests in parallel (preferred; default `n` from `make capacity`; starts `vite` + `playwright` itself) |
 | `make test-marker-parallel m=<marker> [n=<N>]` | Run tests for a specific marker in parallel (preferred; default `n` from `make capacity`) |
-| `make vite-build` | Build Vite to verify no import/syntax errors |
+| `make vite-build` | Build Vite to verify no import/syntax errors (one-off `vite` container; no `p=` needed) |
 | `make help` | List all available make commands |
 
-Or run directly:
+Always pass `d=1` to `make up`; without it the command streams logs and never exits. `make up d=1` alone is enough for integration tests; browsing the dev app with styled pages needs `p=ui` (the Vite dev server).
+
+Or run directly (the `ui` profile enables `vite` and `playwright`; add `--profile full` for `workflow`):
 
 ```bash
-docker compose --project-directory . -f docker/compose.local.yaml up --build --remove-orphans
+docker compose --project-directory . -f docker/compose.local.yaml --profile ui up --build --remove-orphans
 ```
 
+The raw command skips the Makefile's generated capacity env file (`docker/.capacity.generated.env`) and its `_logs-owner-fix` step, so `make up` (with the matching `p=`) is preferred.
+
 - Flask: `http://localhost:8659`
-- Vite: `http://localhost:5173`
+- Vite: `http://localhost:5173` (only with the `ui` or `full` profile)
 
 **Note:** SSL is disabled by default in local development. To enable HTTPS and avoid mixed content warnings:
 1. Set `ENABLE_SSL=true` for both `web` and `vite` services in `docker/compose.local.yaml`
@@ -171,7 +176,7 @@ pytest -m splash         # auth integration tests
 pytest -k "test_name"    # specific test
 ```
 
-UI tests require the shared Playwright browser-server: the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it). See [`pytest.ini`](pytest.ini) for the full list of test markers.
+UI tests require the shared Playwright browser-server, which is in the `ui` compose profile (`make test-functional`/`make test-ui-parallel` and the `*-built` targets start it themselves; for other dev-mode UI runs use `make up p=ui d=1`): the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it). See [`pytest.ini`](pytest.ini) for the full list of test markers.
 
 ## Project Structure
 

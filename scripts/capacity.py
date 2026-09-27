@@ -95,7 +95,7 @@ FINGERPRINT_KEY: str = "U4I_CAPACITY_FINGERPRINT"
 OVERRIDE_N_UI_KEY: str = "U4I_OVERRIDE_N_UI"
 OVERRIDE_N_INT_KEY: str = "U4I_OVERRIDE_N_INT"
 OVERRIDE_MEM_FRACTION_KEY: str = "U4I_OVERRIDE_MEM_FRACTION"
-# Values baked into running containers: a change needs `make up d=1`.
+# Values baked into running containers: a change needs `make up [p=…] d=1`.
 INTERLOCK_KEYS: tuple[str, ...] = (
     "REDIS_METRICS_DATABASES",
     "U4I_PG_TEST_CONN_LIMIT",
@@ -675,7 +675,9 @@ def _generate(
     # A first write has nothing to compare against; `make up` creates the stack.
     changed = changed_interlocks(existing, new_values) if existing else []
     if changed:
-        print(f"recreate required: run 'make up d=1' (changed: {', '.join(changed)})")
+        print(
+            f"recreate required: run 'make up [p=…] d=1' (changed: {', '.join(changed)})"
+        )
 
 
 def _ensure(output: Path, host_probe: Probe) -> None:

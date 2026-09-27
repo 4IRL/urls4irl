@@ -251,10 +251,14 @@ def worker_db_uri(worker_id: str, testrun_uid: str) -> Generator[str, None, None
     )
 
     def _drop_worker_db(conn) -> None:
+        # Client backends only: an autovacuum worker on the DB has no role, which
+        # Postgres treats as superuser, so the non-superuser test role gets
+        # InsufficientPrivilege terminating it. DROP DATABASE cancels autovacuum itself.
         conn.execute(
             text(
                 f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-                f"WHERE datname = '{worker_db_name}' AND pid <> pg_backend_pid()"
+                f"WHERE datname = '{worker_db_name}' AND pid <> pg_backend_pid() "
+                f"AND backend_type = 'client backend'"
             )
         )
         conn.execute(text(f'DROP DATABASE IF EXISTS "{worker_db_name}"'))
