@@ -1,6 +1,5 @@
 import os
 import logging
-import re
 import time
 from typing import Any, Awaitable, Generator, Optional, Tuple, Union
 
@@ -174,25 +173,10 @@ warnings.filterwarnings(
 
 REDIS_DEFAULT_MAX_DATABASES = 16
 MEMORY_REDIS_URI = "memory://"
-REDIS_URI_WITH_DB_PATTERN = re.compile(r"^(.+)/(\d+)$")
 
 
 def _is_real_redis_uri(redis_uri: Optional[str]) -> bool:
     return bool(redis_uri) and redis_uri != MEMORY_REDIS_URI
-
-
-def _split_redis_uri(redis_uri: str, env_name: str) -> tuple[str, int]:
-    """Split `redis://host:port/N` into its base URI and DB index.
-
-    Raises ValueError, naming `env_name`, when the URI lacks a trailing
-    `/<digits>` DB index (a query string is rejected too).
-    """
-    uri_match = REDIS_URI_WITH_DB_PATTERN.match(redis_uri)
-    if uri_match is None:
-        raise ValueError(
-            f"{env_name}={redis_uri!r} must have the form redis://host:port/N"
-        )
-    return uri_match.group(1), int(uri_match.group(2))
 
 
 def _redis_database_count(redis_base_uri: str) -> int:
@@ -306,7 +290,9 @@ def lease_redis_client() -> Generator[Optional[Redis], None, None]:
     if not _is_real_redis_uri(TEST_REDIS_URI):
         yield None
         return
-    redis_base_uri, _ = _split_redis_uri(TEST_REDIS_URI, "TEST_REDIS_URI")
+    redis_base_uri, _ = testrun_resources.split_redis_uri(
+        TEST_REDIS_URI, "TEST_REDIS_URI"
+    )
     client = Redis.from_url(f"{redis_base_uri}/0")
     try:
         yield client
@@ -326,7 +312,9 @@ def worker_redis_uri(
     if not _is_real_redis_uri(TEST_REDIS_URI) or lease_redis_client is None:
         yield TEST_REDIS_URI
         return
-    redis_base_uri, base_db = _split_redis_uri(TEST_REDIS_URI, "TEST_REDIS_URI")
+    redis_base_uri, base_db = testrun_resources.split_redis_uri(
+        TEST_REDIS_URI, "TEST_REDIS_URI"
+    )
     yield from _leased_redis_uri(
         lease_redis_client,
         testrun_resources.SESSION_POOL,
@@ -360,10 +348,12 @@ def worker_metrics_redis_uri(
             "there is no shared Redis to hold the metrics DB lease. Point "
             "TEST_REDIS_URI at the shared Redis instance."
         )
-    redis_base_uri, _ = _split_redis_uri(
+    redis_base_uri, _ = testrun_resources.split_redis_uri(
         TEST_METRICS_REDIS_URI, "TEST_METRICS_REDIS_URI"
     )
-    session_redis_base_uri, _ = _split_redis_uri(TEST_REDIS_URI, "TEST_REDIS_URI")
+    session_redis_base_uri, _ = testrun_resources.split_redis_uri(
+        TEST_REDIS_URI, "TEST_REDIS_URI"
+    )
     if redis_base_uri == session_redis_base_uri:
         # Two lease pools on one instance could hand out the same index, and
         # each holder would then FLUSHDB the other's data.
