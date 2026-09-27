@@ -99,7 +99,7 @@ PROD_DB_URI = (
 )
 
 
-TEST_DB_HOST = "test-db" if IS_DOCKER else "localhost"
+TEST_DB_HOST = "db" if IS_DOCKER else "localhost"
 
 TEST_DB_URI = build_db_uri(
     username=POSTGRES_TEST_USER,

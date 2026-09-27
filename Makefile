@@ -9,9 +9,14 @@ COMPOSE_BUILT = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f doc
 # Recipe-time shell read of one KEY from the capacity file. The keys are never exported into make, so a
 # value read back here is never mistaken for a command-line override.
 capacity_val = $$(sed -n 's/^$(1)=//p' $(CAPACITY_ENV))
-# Tier 3 worktree identity: computed from the checkout dir name, never stored; consumed by master Phase 7.
+# Tier 3 worktree identity: computed from the checkout dir name, never stored. First consumer is the
+# per-worktree dev DB name below (Phase 5); master Phase 7 extends it to full per-worktree stacks.
 U4I_SLUG ?= $(notdir $(CURDIR))
 export U4I_SLUG
+# Per-worktree dev DB: u4i_dev_<sanitized slug>. Must agree with scripts/testrun_resources.dev_db_name.
+$(if $(strip $(U4I_SLUG)),,$(error U4I_SLUG must be non-empty))
+U4I_DEV_DB := u4i_dev_$(shell printf '%s' '$(U4I_SLUG)' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_' '_' | cut -c1-55)
+export U4I_DEV_DB
 EXEC_WEB = $(COMPOSE) exec web bash -c
 EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 # For steps that write into bind-mounted host files (frontend/types): run as the host user so the
@@ -301,7 +306,7 @@ metrics-flush-now: ## Trigger an immediate flush worker run (drains Redis -> Pos
 	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
 
 metrics-rows: ## Show last 25 flushed rows from AnonymousMetrics
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
 
 metrics-smoke-test: metrics-snapshot metrics-flush-now metrics-rows ## E2E: snapshot Redis, force flush, dump Postgres rows
 
@@ -309,7 +314,7 @@ metrics-clear-counters: ## Delete pending Redis state (metrics:counter:* and met
 	$(COMPOSE) exec redis-metrics sh -c 'redis-cli --scan --pattern "metrics:counter:*" | xargs -r redis-cli UNLINK; redis-cli --scan --pattern "metrics:batch:*" | xargs -r redis-cli UNLINK'
 
 metrics-clear-rows: ## Truncate AnonymousMetrics in Postgres
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "TRUNCATE TABLE \"AnonymousMetrics\";"'
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousMetrics\";"'
 
 metrics-clear-all: metrics-clear-counters metrics-clear-rows gauge-clear-rows ## Wipe all metrics data (Redis pending + Postgres flushed + gauges)
 
@@ -317,10 +322,10 @@ gauge-sample-now: ## Trigger an immediate gauge sampler run (writes one Anonymou
 	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/sample_gauges.py'
 
 gauge-rows: ## Show last 25 sampled rows from AnonymousGauges
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "SELECT \"gaugeName\", \"sampledAt\", \"valueInt\", \"valueFloat\", dimensions FROM \"AnonymousGauges\" ORDER BY \"sampledAt\" DESC LIMIT 25;"'
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"gaugeName\", \"sampledAt\", \"valueInt\", \"valueFloat\", dimensions FROM \"AnonymousGauges\" ORDER BY \"sampledAt\" DESC LIMIT 25;"'
 
 gauge-clear-rows: ## Truncate AnonymousGauges in Postgres
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "TRUNCATE TABLE \"AnonymousGauges\";"'
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousGauges\";"'
 
 notify-test: ## Post a message to the Discord webhook (NOTIFICATION_URL from the environment, else from .env) via restricted_curl in the workflow container (msg optional, defaults to a sample digest): make notify-test [msg="DOCKER: your message"]
 	@url="$${NOTIFICATION_URL:-}"; \
