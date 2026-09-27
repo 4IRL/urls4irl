@@ -9,9 +9,14 @@ COMPOSE_BUILT = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f doc
 # Recipe-time shell read of one KEY from the capacity file. The keys are never exported into make, so a
 # value read back here is never mistaken for a command-line override.
 capacity_val = $$(sed -n 's/^$(1)=//p' $(CAPACITY_ENV))
-# Tier 3 worktree identity: computed from the checkout dir name, never stored; consumed by master Phase 7.
+# Tier 3 worktree identity: computed from the checkout dir name, never stored. First consumer is the
+# per-worktree dev DB name below (Phase 5); master Phase 7 extends it to full per-worktree stacks.
 U4I_SLUG ?= $(notdir $(CURDIR))
 export U4I_SLUG
+# Per-worktree dev DB: u4i_dev_<sanitized slug>. Must agree with scripts/testrun_resources.dev_db_name.
+$(if $(strip $(U4I_SLUG)),,$(error U4I_SLUG must be non-empty))
+U4I_DEV_DB := u4i_dev_$(shell printf '%s' '$(U4I_SLUG)' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_' '_' | cut -c1-55)
+export U4I_DEV_DB
 EXEC_WEB = $(COMPOSE) exec web bash -c
 EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 # For steps that write into bind-mounted host files (frontend/types): run as the host user so the
@@ -26,7 +31,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: hooks hooks-check setup tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -97,6 +102,9 @@ test-backup-pipeline: ## Build web+workflow images and run the backup pipeline E
 	docker build -f docker/Dockerfile.Workflow -t u4i-local-workflow:test .
 	chmod +x docker/backup-pipeline-test.sh docker/backup-pipeline-driver.sh
 	docker/backup-pipeline-test.sh u4i-local-web:test u4i-local-workflow:test
+
+test-db-provision: ## Run the db-provision.sh E2E harness against a throwaway Postgres container
+	docker/db-provision-test.sh
 
 test-marker: ## Run tests for a specific marker: make test-marker m=<marker>
 	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
@@ -184,6 +192,18 @@ clear-db: ## Empty every table in the dev database (same schema, no data) — fr
 	$(EXEC_WEB) "$(FLASK) managedb clear dev"
 
 reset-db: clear-db addmock ## Empty the dev database, then reseed all mock data (seeded users/UTubs restored)
+
+# ttl is spliced into a double-quoted `bash -c` string, so it is validated with make functions only (a shell
+# `case` over $(ttl) would itself expand it): stripping every digit must leave nothing, and it must be one word.
+# $(call remove_chars,<chars>,<text>) folds over the word list <chars>, deleting each one from <text> in turn
+# (plain $(foreach) cannot chain subst results). Recursive $(call) works on GNU make 3.81 (macOS).
+remove_chars = $(if $(1),$(call remove_chars,$(wordlist 2,$(words $(1)),$(1)),$(subst $(firstword $(1)),,$(2))),$(2))
+REAP_TTL = $(or $(ttl),10)
+REAP_TTL_NON_DIGITS = $(strip $(call remove_chars,0 1 2 3 4 5 6 7 8 9,$(REAP_TTL)))
+
+reset-test-dbs: ## Drop leaked per-run test databases and orphaned Redis leases (ttl=<minutes>, default 10)
+	$(if $(or $(REAP_TTL_NON_DIGITS),$(word 2,$(REAP_TTL))),$(error ttl must be a non-negative integer number of minutes))
+	$(EXEC_WEB) "source /code/venv/bin/activate && python -m scripts.testrun_resources reap --ttl-minutes $(REAP_TTL)"
 
 plan-list: ## List every plan (masters + sub-plans) under plans/ with finished/open status
 	@.claude/scripts/plan-list.sh
@@ -301,7 +321,7 @@ metrics-flush-now: ## Trigger an immediate flush worker run (drains Redis -> Pos
 	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
 
 metrics-rows: ## Show last 25 flushed rows from AnonymousMetrics
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
 
 metrics-smoke-test: metrics-snapshot metrics-flush-now metrics-rows ## E2E: snapshot Redis, force flush, dump Postgres rows
 
@@ -309,7 +329,7 @@ metrics-clear-counters: ## Delete pending Redis state (metrics:counter:* and met
 	$(COMPOSE) exec redis-metrics sh -c 'redis-cli --scan --pattern "metrics:counter:*" | xargs -r redis-cli UNLINK; redis-cli --scan --pattern "metrics:batch:*" | xargs -r redis-cli UNLINK'
 
 metrics-clear-rows: ## Truncate AnonymousMetrics in Postgres
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "TRUNCATE TABLE \"AnonymousMetrics\";"'
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousMetrics\";"'
 
 metrics-clear-all: metrics-clear-counters metrics-clear-rows gauge-clear-rows ## Wipe all metrics data (Redis pending + Postgres flushed + gauges)
 
@@ -317,10 +337,10 @@ gauge-sample-now: ## Trigger an immediate gauge sampler run (writes one Anonymou
 	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/sample_gauges.py'
 
 gauge-rows: ## Show last 25 sampled rows from AnonymousGauges
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "SELECT \"gaugeName\", \"sampledAt\", \"valueInt\", \"valueFloat\", dimensions FROM \"AnonymousGauges\" ORDER BY \"sampledAt\" DESC LIMIT 25;"'
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"gaugeName\", \"sampledAt\", \"valueInt\", \"valueFloat\", dimensions FROM \"AnonymousGauges\" ORDER BY \"sampledAt\" DESC LIMIT 25;"'
 
 gauge-clear-rows: ## Truncate AnonymousGauges in Postgres
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "TRUNCATE TABLE \"AnonymousGauges\";"'
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousGauges\";"'
 
 notify-test: ## Post a message to the Discord webhook (NOTIFICATION_URL from the environment, else from .env) via restricted_curl in the workflow container (msg optional, defaults to a sample digest): make notify-test [msg="DOCKER: your message"]
 	@url="$${NOTIFICATION_URL:-}"; \

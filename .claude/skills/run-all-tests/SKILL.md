@@ -7,7 +7,7 @@ description: Run ALL test suites for URLS4IRL — UI tests first, then integrati
 
 Run both test suites in sequence: UI tests first, then integration/unit tests. Each suite is independent — both complete regardless of failures in the other.
 
-**CRITICAL: Never run both suites simultaneously** — they share a single test DB and Redis instance. Concurrent `db.drop_all()` calls corrupt the DB.
+**One pytest invocation per spoke at a time.** Concurrent runs are isolated (each gets its own `testrun_uid`-keyed databases and leased Redis indices), so this is a capacity rule, not a correctness one: two full suites at the derived worker counts would oversubscribe the host. If an interrupted run leaked databases or leases (e.g. a `Redis lease pool '…' is exhausted` error), run `make reset-test-dbs` before retrying.
 
 ## Procedure
 

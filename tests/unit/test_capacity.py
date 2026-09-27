@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Callable
@@ -21,11 +22,19 @@ from scripts.capacity import (
     CONN_PER_WORKER,
     DEFAULT_MEM_FRACTION,
     DEFAULT_MEM_SAFETY,
+    DEV_CONN_BUDGET,
     DOCKER_INFO_TIMEOUT_SECONDS,
     DOCKER_RUN_TIMEOUT_SECONDS,
     ENV_KEYS,
     HARD_N_CEILING,
-    METRICS_REDIS_DB_BASE,
+    INTERLOCK_KEYS,
+    LEASE_CONCURRENT_RUNS,
+    METRICS_REDIS_RESERVED_DBS,
+    PG_SHARED_BUFFERS_MAX_MB,
+    PG_SHARED_BUFFERS_MIN_MB,
+    SESSION_REDIS_RESERVED_DBS,
+    SHARED_REDIS_DATABASES,
+    SUPERUSER_RESERVED,
     Capacity,
     DockerInfoError,
     DockerRunError,
@@ -49,12 +58,17 @@ from scripts.capacity import (
     run_docker,
     run_docker_info,
 )
-from tests.conftest import _METRICS_REDIS_DB_BASE
 
 pytestmark = pytest.mark.unit
 
 GIB: int = 1024**3
 AMPLE_MEMORY_BYTES: int = 256 * GIB
+LOCAL_COMPOSE_FILE: Path = (
+    Path(__file__).resolve().parents[2] / "docker" / "compose.local.yaml"
+)
+LITERAL_REDIS_DATABASES_PATTERN: re.Pattern[str] = re.compile(
+    r"redis-server --databases (\d+)\s*$", re.MULTILINE
+)
 
 
 def _probe(
@@ -130,15 +144,92 @@ def test_derive_interlocks_at_twelve_cores_with_ample_memory() -> None:
     assert result.n_int == 12
     assert result.n_max == 12
     assert result.redis_metrics_databases == 32
-    assert result.test_max_conn == 230
+    assert result.pg_test_conn_limit == 230
+    assert result.pg_max_conn == 263
+    assert result.pg_shared_buffers_mb == PG_SHARED_BUFFERS_MAX_MB
     assert result.binding_constraint == "cpu"
+
+
+def test_derive_interlocks_on_twelve_core_sixteen_gb_host() -> None:
+    """The reference dev host: 12 cores, 15.9 GiB, no availability signal."""
+    # usable = 15.9 * 0.7 = 11.13 GiB = 11397 MiB -> shared_buffers = 11397 // 64
+    result = _derive(_probe(ncpu=12, mem_total_bytes=int(15.9 * GIB)))
+    assert result.n_max == 12
+    assert result.pg_test_conn_limit == 230
+    assert result.pg_max_conn == 263
+    assert result.pg_shared_buffers_mb == 178
+    assert result.redis_metrics_databases == 32
+
+
+def test_derive_pg_max_conn_adds_dev_budget_and_superuser_reserve() -> None:
+    result = _derive(_probe(ncpu=3))
+    assert result.pg_max_conn == (
+        result.pg_test_conn_limit + DEV_CONN_BUDGET + SUPERUSER_RESERVED
+    )
+
+
+def test_derive_redis_metrics_databases_sizes_concurrent_run_leases() -> None:
+    result = _derive(_probe(ncpu=12), Overrides(n_int=16))
+    assert result.redis_metrics_databases == round_up_pow2(
+        METRICS_REDIS_RESERVED_DBS + LEASE_CONCURRENT_RUNS * 16
+    )
+    assert result.redis_metrics_databases == 64
+
+
+@pytest.mark.parametrize(
+    ("mem_total_bytes", "expected_shared_buffers_mb"),
+    [
+        (1 * GIB, PG_SHARED_BUFFERS_MIN_MB),
+        (8 * GIB, 89),
+        (AMPLE_MEMORY_BYTES, PG_SHARED_BUFFERS_MAX_MB),
+    ],
+)
+def test_derive_pg_shared_buffers_is_clamped_share_of_usable_memory(
+    mem_total_bytes: int, expected_shared_buffers_mb: int
+) -> None:
+    result = _derive(_probe(ncpu=12, mem_total_bytes=mem_total_bytes))
+    assert result.pg_shared_buffers_mb == expected_shared_buffers_mb
+
+
+def test_derive_pg_shared_buffers_ignores_mem_available_jitter() -> None:
+    """shared_buffers is an interlock, so it must not move with MemAvailable."""
+    low = _derive(_probe(mem_total_bytes=16 * GIB, mem_available_bytes=6 * GIB))
+    high = _derive(_probe(mem_total_bytes=16 * GIB, mem_available_bytes=7 * GIB))
+    assert low.usable_gb != high.usable_gb
+    assert low.pg_shared_buffers_mb == high.pg_shared_buffers_mb
+
+
+def test_derive_pg_shared_buffers_honors_cgroup_limit() -> None:
+    # usable = min(64 * 0.7, 6 * 0.9) = 5.4 GiB = 5529 MiB -> 5529 // 64 = 86
+    result = _derive(_probe(mem_total_bytes=64 * GIB, cgroup_max_bytes=6 * GIB))
+    assert result.pg_shared_buffers_mb == 86
 
 
 def test_derive_interlocks_use_max_of_ui_and_int() -> None:
     """n_int dominates n_ui at every core count, so interlocks follow n_int."""
     result = _derive(_probe(ncpu=3))
     assert result.n_max == max(result.n_ui, result.n_int) == 3
-    assert result.test_max_conn == 3 * CONN_PER_WORKER + CONN_BASE
+    assert result.pg_test_conn_limit == 3 * CONN_PER_WORKER + CONN_BASE
+
+
+def test_shared_redis_databases_hold_concurrent_runs_at_hard_ceiling() -> None:
+    assert SHARED_REDIS_DATABASES == max(
+        32,
+        round_up_pow2(
+            SESSION_REDIS_RESERVED_DBS + LEASE_CONCURRENT_RUNS * HARD_N_CEILING
+        ),
+    )
+    assert SHARED_REDIS_DATABASES == 64
+    leasable_indices = SHARED_REDIS_DATABASES - SESSION_REDIS_RESERVED_DBS
+    assert leasable_indices >= LEASE_CONCURRENT_RUNS * HARD_N_CEILING
+
+
+def test_local_compose_shared_redis_databases_match_capacity() -> None:
+    """compose.local.yaml hardcodes the shared redis count; it must track capacity."""
+    literal_counts = LITERAL_REDIS_DATABASES_PATTERN.findall(
+        LOCAL_COMPOSE_FILE.read_text()
+    )
+    assert literal_counts == [str(SHARED_REDIS_DATABASES)]
 
 
 def test_redis_metrics_databases_floor_is_sixteen() -> None:
@@ -250,7 +341,8 @@ def test_override_below_derived_is_accepted() -> None:
     assert result.n_int == 4
     assert result.n_max == 4
     assert result.redis_metrics_databases == 16
-    assert result.test_max_conn == 110
+    assert result.pg_test_conn_limit == 110
+    assert result.pg_max_conn == 143
 
 
 def test_override_above_derived_recomputes_interlocks() -> None:
@@ -258,8 +350,9 @@ def test_override_above_derived_recomputes_interlocks() -> None:
     assert result.n_ui == 16
     assert result.n_int == 12
     assert result.n_max == 16
-    assert result.redis_metrics_databases == 32
-    assert result.test_max_conn == 290
+    assert result.redis_metrics_databases == 64
+    assert result.pg_test_conn_limit == 290
+    assert result.pg_max_conn == 323
 
 
 def test_override_without_memory_pressure_reports_override_binding() -> None:
@@ -298,7 +391,7 @@ def test_override_above_hard_ceiling_raises_naming_shared_redis() -> None:
         _derive(_probe(ncpu=12), Overrides(n_ui=HARD_N_CEILING + 1))
     message = str(excinfo.value)
     assert "U4I_N_UI=31" in message
-    assert "--databases 32" in message
+    assert f"--databases {SHARED_REDIS_DATABASES}" in message
 
 
 @pytest.mark.parametrize("bad_value", [0, -3])
@@ -336,10 +429,6 @@ def test_override_mem_fraction_fed_by_caller_changes_guard() -> None:
 
 
 # --- contracts ---------------------------------------------------------------
-
-
-def test_metrics_redis_db_base_matches_conftest() -> None:
-    assert METRICS_REDIS_DB_BASE == _METRICS_REDIS_DB_BASE
 
 
 def test_capacity_module_is_stdlib_only() -> None:
@@ -600,7 +689,9 @@ RENDERED_KEYS: list[str] = [
     "U4I_N_INT",
     "U4I_N_MAX",
     "REDIS_METRICS_DATABASES",
-    "U4I_TEST_MAX_CONN",
+    "U4I_PG_TEST_CONN_LIMIT",
+    "U4I_PG_MAX_CONN",
+    "U4I_PG_SHARED_BUFFERS_MB",
     "HOST_UID",
     "HOST_GID",
     "U4I_CAPACITY_FINGERPRINT",
@@ -647,7 +738,9 @@ def test_render_env_values() -> None:
     assert "U4I_N_INT=12\n" in rendered
     assert "U4I_N_MAX=12\n" in rendered
     assert "REDIS_METRICS_DATABASES=32\n" in rendered
-    assert "U4I_TEST_MAX_CONN=230\n" in rendered
+    assert "U4I_PG_TEST_CONN_LIMIT=230\n" in rendered
+    assert "U4I_PG_MAX_CONN=263\n" in rendered
+    assert f"U4I_PG_SHARED_BUFFERS_MB={PG_SHARED_BUFFERS_MAX_MB}\n" in rendered
     assert "HOST_UID=1000\n" in rendered
     assert "HOST_GID=1000\n" in rendered
     assert (
@@ -684,7 +777,7 @@ def test_read_env_ignores_comments_and_blank_lines(tmp_path: Path) -> None:
 def test_changed_interlocks_names_only_differing_interlocks() -> None:
     old = {
         "REDIS_METRICS_DATABASES": "32",
-        "U4I_TEST_MAX_CONN": "230",
+        "U4I_PG_TEST_CONN_LIMIT": "230",
         "HOST_UID": "1000",
         "HOST_GID": "1000",
         "U4I_N_UI": "8",
@@ -692,16 +785,28 @@ def test_changed_interlocks_names_only_differing_interlocks() -> None:
     }
     new = {
         **old,
-        "U4I_TEST_MAX_CONN": "110",
+        "U4I_PG_TEST_CONN_LIMIT": "110",
         "HOST_GID": "20",
         "U4I_N_UI": "4",
         "U4I_CAPACITY_FINGERPRINT": "bbb",
     }
-    assert changed_interlocks(old, new) == ["U4I_TEST_MAX_CONN", "HOST_GID"]
+    assert changed_interlocks(old, new) == ["U4I_PG_TEST_CONN_LIMIT", "HOST_GID"]
+
+
+def test_interlock_keys_are_the_values_baked_into_containers() -> None:
+    assert INTERLOCK_KEYS == (
+        "REDIS_METRICS_DATABASES",
+        "U4I_PG_TEST_CONN_LIMIT",
+        "U4I_PG_MAX_CONN",
+        "U4I_PG_SHARED_BUFFERS_MB",
+        "HOST_UID",
+        "HOST_GID",
+    )
+    assert set(INTERLOCK_KEYS) <= set(ENV_KEYS)
 
 
 def test_changed_interlocks_empty_when_equal() -> None:
-    values = {"REDIS_METRICS_DATABASES": "32", "U4I_TEST_MAX_CONN": "230"}
+    values = {"REDIS_METRICS_DATABASES": "32", "U4I_PG_TEST_CONN_LIMIT": "230"}
     assert changed_interlocks(values, dict(values)) == []
 
 
@@ -844,9 +949,9 @@ def test_generate_reports_recreate_when_interlocks_change(
     assert lines[0] == f"capacity regenerated ({env_path})"
     assert lines[1] == (
         "recreate required: run 'make up d=1' "
-        "(changed: REDIS_METRICS_DATABASES, U4I_TEST_MAX_CONN)"
+        "(changed: REDIS_METRICS_DATABASES, U4I_PG_TEST_CONN_LIMIT, U4I_PG_MAX_CONN)"
     )
-    assert read_env(env_path)["U4I_TEST_MAX_CONN"] == "110"
+    assert read_env(env_path)["U4I_PG_TEST_CONN_LIMIT"] == "110"
 
 
 def test_ensure_with_matching_fingerprint_prints_nothing(
@@ -871,14 +976,41 @@ def test_ensure_restores_deleted_key_line(
     env_path = tmp_path / "capacity.env"
     _run(["generate", "--output", str(env_path)])
     original_content = env_path.read_text()
-    env_path.write_text(original_content.replace("U4I_TEST_MAX_CONN=230\n", ""))
-    assert "U4I_TEST_MAX_CONN" not in read_env(env_path)
+    env_path.write_text(original_content.replace("U4I_PG_TEST_CONN_LIMIT=230\n", ""))
+    assert "U4I_PG_TEST_CONN_LIMIT" not in read_env(env_path)
     capsys.readouterr()
 
     assert _run(["ensure", "--output", str(env_path)]) == 0
 
     assert capsys.readouterr().out.startswith(f"capacity regenerated ({env_path})\n")
     assert env_path.read_text() == original_content
+
+
+def test_ensure_migrates_legacy_test_max_conn_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A pre-rename file (U4I_TEST_MAX_CONN, no U4I_PG_*) heals on the next ensure."""
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    current_content = env_path.read_text()
+    shared_buffers_line = f"U4I_PG_SHARED_BUFFERS_MB={PG_SHARED_BUFFERS_MAX_MB}\n"
+    legacy_content = (
+        current_content.replace("U4I_PG_TEST_CONN_LIMIT=", "U4I_TEST_MAX_CONN=")
+        .replace("U4I_PG_MAX_CONN=263\n", "")
+        .replace(shared_buffers_line, "")
+    )
+    env_path.write_text(legacy_content)
+    capsys.readouterr()
+
+    assert _run(["ensure", "--output", str(env_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"capacity regenerated ({env_path})",
+        "recreate required: run 'make up d=1' (changed: U4I_PG_TEST_CONN_LIMIT, "
+        "U4I_PG_MAX_CONN, U4I_PG_SHARED_BUFFERS_MB)",
+    ]
+    assert env_path.read_text() == current_content
+    assert "U4I_TEST_MAX_CONN" not in read_env(env_path)
 
 
 def test_ensure_infeasible_recorded_override_exits_non_zero_untouched(
@@ -988,7 +1120,7 @@ def test_infeasible_override_exits_non_zero_and_leaves_file_untouched(
     )
 
     assert exit_code != 0
-    assert "--databases 32" in capsys.readouterr().err
+    assert f"--databases {SHARED_REDIS_DATABASES}" in capsys.readouterr().err
     assert env_path.read_text() == original_content
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
 

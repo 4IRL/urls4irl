@@ -24,6 +24,10 @@ POSTGRES_USER = environ.get(ENV.POSTGRES_USER)
 POSTGRES_PASSWORD = environ.get(ENV.POSTGRES_PASSWORD)
 POSTGRES_DB = environ.get(ENV.POSTGRES_DB)
 POSTGRES_TEST_DB = environ.get(ENV.POSTGRES_TEST_DB, default=None)
+# Role the test suites connect as. Unset (CI) falls back to POSTGRES_USER, the
+# superuser; locally compose sets it to the restricted test role. The test role
+# always authenticates with POSTGRES_PASSWORD — only the role name is configurable.
+POSTGRES_TEST_USER = environ.get(ENV.POSTGRES_TEST_USER) or POSTGRES_USER
 
 ASSET_VERSION = environ.get(ENV.ASSET_VERSION, default=str(int(time())))
 VITE_DEV_SERVER = environ.get(ENV.VITE_DEV_SERVER, default="false").lower() == "true"
@@ -95,11 +99,13 @@ PROD_DB_URI = (
 )
 
 
+TEST_DB_HOST = "db" if IS_DOCKER else "localhost"
+
 TEST_DB_URI = build_db_uri(
-    username=POSTGRES_USER,
+    username=POSTGRES_TEST_USER,
     password=POSTGRES_PASSWORD,
     database=POSTGRES_TEST_DB,
-    database_host="test-db" if IS_DOCKER else "localhost",
+    database_host=TEST_DB_HOST,
 )
 
 

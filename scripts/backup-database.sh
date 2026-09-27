@@ -8,7 +8,7 @@ echo -e "\n\n START LOCAL DATABASE BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 # ------- BACKUP DATABASE, STORE AND COMPRESS ON HOST ------- #
 
 echo "Generating backup and storing on the host..."
-if ! PGPASSWORD="$DB_PASS" pg_dump -h "db" -U "$DB_USER" -d "$DB_NAME" --clean --if-exists --create >"${DB_BACKUP_FILE}"; then
+if ! PGPASSWORD="$DB_PASS" pg_dump -h "${POSTGRES_HOST:-db}" -U "$DB_USER" -d "$DB_NAME" --clean --if-exists --create >"${DB_BACKUP_FILE}"; then
   echo "Error: Failure in generating backup in docker container"
   return 1
 fi

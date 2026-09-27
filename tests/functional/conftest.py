@@ -1,31 +1,21 @@
 import threading
 from time import sleep
-from typing import Generator, Optional, Tuple
+from typing import Generator, Tuple
 
 from flask import Flask
 from flask.testing import FlaskCliRunner
 from playwright.sync_api import Browser, Page, sync_playwright
 import pytest
 from redis import Redis
-from sqlalchemy import create_engine, text
 
 from backend import create_app, db
 from backend.cli.mock_constants import MOCK_TEST_URL_STRINGS
-from backend.config import (
-    ConfigTest,
-    ConfigTestUI,
-    IS_DOCKER,
-    POSTGRES_TEST_DB,
-    POSTGRES_USER,
-    POSTGRES_PASSWORD,
-    TEST_DB_URI,
-    TEST_REDIS_URI,
-)
+from backend.config import ConfigTest, ConfigTestUI
 from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
-from backend.utils.db_uri_builder import build_db_uri
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from scripts import testrun_resources
 from tests.functional.db_utils import add_mock_urls
 from tests.functional.playwright_utils import (
     PageBundle,
@@ -40,96 +30,12 @@ from tests.functional.ui_test_setup import (
 )
 from tests.functional.urls_ui.playwright_utils import ClipboardMockHelper
 
-# Redis ships with 16 databases (indices 0-15) by default per the default redis.conf
-REDIS_DEFAULT_MAX_DATABASES = 16
-
 # Canonical desktop viewport for Playwright desktop contexts.
 DESKTOP_VIEWPORT_WIDTH_PX = 1920
 DESKTOP_VIEWPORT_HEIGHT_PX = 1080
 
-
-def _get_worker_num(worker_id: str) -> Optional[int]:
-    """Returns None for 'master' (non-parallel), else the integer worker number."""
-    if worker_id == "master":
-        return None
-    return int(worker_id.replace("gw", ""))
-
-
-@pytest.fixture(scope="session")
-def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
-    """Provides a per-worker database URI, creating and dropping a worker-specific DB."""
-    if worker_id == "master":
-        yield TEST_DB_URI
-        return
-
-    assert POSTGRES_TEST_DB, "POSTGRES_TEST_DB must be set for parallel UI tests"
-    worker_db_name = f"{POSTGRES_TEST_DB}_{worker_id}"
-    db_host = "test-db" if IS_DOCKER else "localhost"
-
-    admin_uri = build_db_uri(
-        username=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        database="postgres",
-        database_host=db_host,
-    )
-    worker_uri = build_db_uri(
-        username=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        database=worker_db_name,
-        database_host=db_host,
-    )
-
-    def _drop_worker_db(conn) -> None:
-        conn.execute(
-            text(
-                f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-                f"WHERE datname = '{worker_db_name}' AND pid <> pg_backend_pid()"
-            )
-        )
-        conn.execute(text(f'DROP DATABASE IF EXISTS "{worker_db_name}"'))
-
-    engine = create_engine(admin_uri, isolation_level="AUTOCOMMIT")
-    with engine.connect() as conn:
-        _drop_worker_db(conn)
-        conn.execute(text(f'CREATE DATABASE "{worker_db_name}"'))
-    engine.dispose()
-
-    yield worker_uri
-
-    engine = create_engine(admin_uri, isolation_level="AUTOCOMMIT")
-    with engine.connect() as conn:
-        _drop_worker_db(conn)
-    engine.dispose()
-
-
-@pytest.fixture(scope="session")
-def worker_redis_uri(worker_id: str) -> str:
-    """Returns a per-worker Redis URI using a unique DB index."""
-    if not TEST_REDIS_URI or TEST_REDIS_URI == "memory://":
-        return TEST_REDIS_URI
-    if worker_id == "master":
-        return TEST_REDIS_URI
-    base, db_str = TEST_REDIS_URI.rsplit("/", 1)
-    base_db = int(db_str) if db_str.isdigit() else 0
-    db_index = base_db + 1 + _get_worker_num(worker_id)
-
-    probe = Redis.from_url(f"{base}/0")
-    try:
-        max_dbs = int(
-            probe.config_get("databases").get("databases", REDIS_DEFAULT_MAX_DATABASES)
-        )
-    finally:
-        probe.close()
-
-    if db_index >= max_dbs:
-        raise ValueError(
-            f"Redis DB index {db_index} is out of range for worker '{worker_id}'. "
-            f"Redis only has {max_dbs} databases (0-{max_dbs - 1}). "
-            f"TEST_REDIS_URI base DB is {base_db}. "
-            f"Either increase Redis 'databases' config or lower the base DB index."
-        )
-
-    return f"{base}/{db_index}"
+# `worker_db_uri` and `worker_redis_uri` are inherited from the root
+# `tests/conftest.py`: per-run databases and leased Redis indices.
 
 
 @pytest.fixture(scope="session")
@@ -153,6 +59,10 @@ def worker_config(
     if worker_redis_uri and worker_redis_uri != "memory://":
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
+        # Isolate the enforcement Redis too (rate-limit / lockout counters),
+        # matching integration `build_app`, so concurrent UI runs never share
+        # dev DB 0.
+        config.REDIS_URI = worker_redis_uri
     config.OAUTH_SELF_BASE_URL = f"http://127.0.0.1:{provide_port}"
     return config
 
@@ -200,8 +110,10 @@ def provide_config(worker_config: ConfigTestUI) -> Generator[ConfigTestUI, None,
 
 
 @pytest.fixture(scope="session")
-def provide_port(worker_id: str, flask_logs: bool) -> int:
-    start_port = 10000 + (_get_worker_num(worker_id) or 0) * 1000
+def provide_port(worker_id: str, testrun_uid: str, flask_logs: bool) -> int:
+    start_port = testrun_resources.port_probe_start(
+        testrun_uid, testrun_resources.worker_index(worker_id)
+    )
     open_port = find_open_port(start_port=start_port)
     if flask_logs:
         print(f"\nFound an open port: {open_port}")

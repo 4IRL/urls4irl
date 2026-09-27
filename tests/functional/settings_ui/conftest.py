@@ -23,11 +23,12 @@ from backend.utils.strings.config_strs import CONFIG_ENVS
 # change-email, and account delete services
 # (`account_service.apply_username_change` / `apply_email_change` /
 # `apply_account_deletion`, `reauth_throttle.record_reauth_failure`). All are
-# per-user Redis keys on the shared ENFORCEMENT Redis (`CONFIG_ENVS.REDIS_URI`,
-# DB 0 in the local `web` container) — NOT the per-worker session Redis DB the UI
-# tests otherwise isolate. See `_reset_rate_limit_state` for why they must be
-# cleared between UI tests. `email-change:*` is the per-day send cap the
-# change-email happy-path test would otherwise trip after 3 runs. Only
+# per-user keys on the ENFORCEMENT Redis (`CONFIG_ENVS.REDIS_URI`), which
+# `worker_config` points at the worker's leased Redis DB, the same DB as the
+# session store. That DB lives for the whole test session, so the counters
+# carry over between tests unless cleared; see `_reset_rate_limit_state` for
+# why they must be reset between UI tests. `email-change:*` is the per-day send
+# cap the change-email happy-path test would otherwise trip after 3 runs. Only
 # `apply_account_deletion`'s re-auth path remains relevant to the shared
 # `reauth-fail:*` prefix (via `record_reauth_failure`) — the logout-everywhere
 # flow has no re-auth (D-1) — so no new prefix is needed for the danger-zone tests.
@@ -83,16 +84,15 @@ def _reset_rate_limit_state(provide_app: Flask) -> None:
     per-day send cap, ``email-change:*``, would otherwise trip the happy-path
     test after 3 runs — same class of leak as the change-username counter below).
 
-    Why this is needed — the shared-live-Redis constraint:
+    Why this is needed — the counters outlive a single test:
 
-    UI tests run the Flask app **in-process** (``run_app(worker_config)``) and
-    isolate their *session* store to a per-worker Redis DB (``TEST_REDIS_URI``
-    base + worker index). But the change-username rate limiter and the
-    change-password re-auth lockout read the **enforcement** ``REDIS_URI``
-    (``Config.REDIS_URI`` — ``redis://redis:6379/0`` in the local ``web``
-    container), which ``ConfigTest``/``ConfigTestUI`` never override. That DB 0
-    keyspace is therefore shared by every parallel worker AND persists across
-    whole test-suite runs (the counters carry a 24h TTL).
+    UI tests run the Flask app **in-process** (``run_app(worker_config)``).
+    ``worker_config`` points both the session store and the **enforcement**
+    ``REDIS_URI`` (read by the change-username rate limiter and the
+    change-password re-auth lockout) at the worker's leased Redis DB, so these
+    counters are isolated per worker and per run. But the leased DB lives for
+    the whole test session and the counters carry a 24h TTL, so they carry
+    over from one test to the next.
 
     ``apply_username_change`` checks the per-user cap (3/24h) BEFORE the
     uniqueness check, so once user 1's ``username-change:1`` counter reaches the

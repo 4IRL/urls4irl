@@ -35,11 +35,11 @@ def metrics_redis_client(
     """Per-worker `redis-metrics` client.
 
     Per-worker isolation is inherited from the existing session-scoped
-    `worker_metrics_redis_uri` fixture in `tests/conftest.py`, which assigns
-    each xdist worker a dedicated DB index in the range
-    `_METRICS_REDIS_DB_BASE..(_METRICS_REDIS_DB_BASE + n_workers - 1)`. The
-    container's database count is the derived `REDIS_METRICS_DATABASES` from
-    `make capacity`, sized so the highest assigned index always fits.
+    `worker_metrics_redis_uri` fixture in `tests/conftest.py`, which gives
+    each xdist worker of each run a dedicated leased index on the container
+    (never DB 0). The container's database count is the derived
+    `REDIS_METRICS_DATABASES` from `make capacity`, sized so every worker of
+    the largest run can hold a lease.
 
     Skips the test session when the metrics Redis is unavailable
     (`memory://`), matching how `provide_metrics_redis` short-circuits in the

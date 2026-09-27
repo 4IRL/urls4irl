@@ -227,18 +227,22 @@ All inter-module communication uses typed events:
 
 Two separate Redis instances back the stack: a shared `redis` container for sessions and rate-limiting, and a dedicated `redis-metrics` container for the anonymous-metrics counter buffer.
 
-**Shared `redis` container:**
+**Shared `redis` container** (locally `--databases 64`, the `SHARED_REDIS_DATABASES` constant in `scripts/capacity.py`: 62 leasable indices hold 2 concurrent runs at the per-run ceiling of n = 30):
 
-| DB  | Env var          | Purpose                                                                          |
-| --- | ---------------- | -------------------------------------------------------------------------------- |
-| 0   | `REDIS_URI`      | Flask-Session sessions, Flask-Limiter rate limiting                              |
-| 1   | `TEST_REDIS_URI` | Integration test sessions (isolated from dev DB 0 so tests don't evict sessions) |
+| DB   | Env var          | Purpose                                                                                                                           |
+| ---- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | `REDIS_URI`      | Flask-Session sessions, Flask-Limiter rate limiting; also every test run's `u4i:test_lease:<pool>:<index>` lease keys (see below) |
+| 1    | `TEST_REDIS_URI` | Base URI for tests; never leased itself (reserved alongside DB 0)                                                                 |
+| 2-63 | leased           | `redis` pool: one per test worker (session + enforcement keys), flushed on acquire                                                |
 
 **Dedicated `redis-metrics` container:**
 
-| DB  | Env var             | Purpose                                                                                        |
-| --- | ------------------- | ---------------------------------------------------------------------------------------------- |
-| 0   | `METRICS_REDIS_URI` | Workflow metrics counters, batch IDs, and the `metrics:flush:*` flush lock + liveness sentinel |
+| DB                             | Env var             | Purpose                                                                                                                                         |
+| ------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0                              | `METRICS_REDIS_URI` | Workflow metrics counters, batch IDs, and the `metrics:flush:*` flush lock + liveness sentinel                                                  |
+| 1..`REDIS_METRICS_DATABASES`-1 | leased              | `metrics` pool: one per test worker, flushed on acquire. Count = `max(16, pow2(1 + 2·n_max))` from `make capacity` (room for 2 concurrent runs) |
+
+**Test leases:** each pytest worker leases its indices (`tests/conftest.py` → `scripts/testrun_resources.py`) with a `SET NX EX` owner key (`<testrun_uid>:<worker_id>`, 6h TTL) on the persistent shared-redis DB 0, never on `redis-metrics` (which is `allkeys-lru`, no persistence). Releases are an owner-checked compare-and-delete, and a killed run's leases expire on their own or are reclaimed by `make reset-test-dbs`, which only ever deletes `u4i:test_lease:*` keys and never runs `FLUSHDB` on DB 0. Pool sizes come from each instance's live `CONFIG GET databases`, so CI's 16-DB service containers work unchanged. A real `TEST_METRICS_REDIS_URI` with `TEST_REDIS_URI=memory://` raises, because the lease has nowhere to live.
 
 The `redis-metrics` container is bounded at `maxmemory 256mb` with `allkeys-lru` eviction and runs with no persistence (`--save ''`, `--appendonly no`) — the metrics buffer is intentionally ephemeral.
 
@@ -275,9 +279,11 @@ A *flow* is an ordered, variable-length list of steps (2..N) joining the three m
 
 Config: `ConfigTest` (integration) / `ConfigTestUI` (Playwright UI tests against the shared `playwright` browser-server, `SESSION_COOKIE_SECURE=False`). CI (`.github/workflows/test.yml`) runs 23 parallel matrix jobs split by marker (10 in `Tests-Integration`, 13 in `Tests-UI`).
 
+**Per-run isolation:** every test resource is keyed on xdist's `testrun_uid`, so concurrent pytest invocations never collide: databases are `{POSTGRES_TEST_DB}_{uid8}_{worker}` and Redis indices are leased (see Redis DB Allocation). Locally, tests connect as `POSTGRES_TEST_USER` (the `u4i_test` role); CI leaves it unset, so tests fall back to the `POSTGRES_USER` superuser. Leaks replace collisions, so `make reset-test-dbs` (`python -m scripts.testrun_resources reap`, `ttl=<minutes>`, default 10) reclaims them. It connects as `POSTGRES_TEST_USER`, not the superuser, so it structurally cannot drop `u4i_dev_*`. It drops only prefix-matching per-run DBs that have no connections and are older than the TTL (or have no creation epoch), and it requires two listings 1s apart to agree before dropping. It never uses `DROP DATABASE … WITH (FORCE)`. It then deletes only the `u4i:test_lease:*` keys whose run has no remaining DB.
+
 ### Root Test Files
 
-- `conftest.py` — Session fixtures (`build_app`, `worker_db_uri`, `worker_redis_uri`), per-test fixtures (`app`, `client`, `db_transaction`), auth flows (`register_first_user`, `login_first_user_with_register`, etc.), UTub/member setup fixtures
+- `conftest.py` — Session fixtures (`build_app`; `worker_db_uri`, which creates `{POSTGRES_TEST_DB}_{uid8}_{worker}` keyed on xdist's `testrun_uid`; `lease_redis_client`; `worker_redis_uri` / `worker_metrics_redis_uri`, which lease Redis indices — see Redis DB Allocation), per-test fixtures (`app`, `client`, `db_transaction`), auth flows (`register_first_user`, `login_first_user_with_register`, etc.), UTub/member setup fixtures
 - `models_for_test.py` — Test data factories: `valid_user_1/2/3`, `valid_empty_utub_1`, `all_tags`, `maximum_tags`
 - `utils_for_test.py` — `clear_database()`, `get_csrf_token()`
 
@@ -348,7 +354,7 @@ CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 10 parallel 
 - `docker/Dockerfile` - production multi-stage build (Python 3.11-slim)
 - `docker/Dockerfile.Local` - local dev
 - `docker/Dockerfile.Vite` - Vite dev server container
-- `docker/compose.local.yaml` - full local stack (web, vite, db, test-db, redis, redis-metrics, playwright, workflow, plus `cloudflared` behind the opt-in `tunnel` profile)
+- `docker/compose.local.yaml` - full local stack (web, vite, db, db-init, redis, redis-metrics, playwright, workflow, plus `cloudflared` behind the opt-in `tunnel` profile). One `db` cluster (sized by `make capacity`, `fsync=off`) holds the dev DB `u4i_dev_<slug>` and every per-run test DB. The one-shot `db-init` (`docker/db-provision.sh`) runs on every `up`. It idempotently creates the `u4i_test` role (`CREATEDB`, `NOSUPERUSER`, connection-limited, no CONNECT on `u4i_dev_*`), renames a legacy `POSTGRES_DB` dev database to `u4i_dev_<slug>` once, and creates the base `POSTGRES_TEST_DB`. It refuses to run when `.env` sets `POSTGRES_DB == POSTGRES_TEST_DB`, since that would hand the dev data to the test role. Locally, the admin health dashboard's connections-vs-`max_connections` metric (`backend/admin/health_service.py` `_probe_database`) therefore reflects the merged dev+test cluster and counts test-run connections while suites are active
 - `docker/compose.yaml` - production stack (web, db, redis, redis-metrics, workflow)
 - `docker/compose.dev.yaml` - dev server stack (web, db, redis, redis-metrics, workflow)
 

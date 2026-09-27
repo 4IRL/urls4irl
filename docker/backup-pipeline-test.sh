@@ -72,7 +72,7 @@ echo "🌐 Creating network $NET"
 docker network create "$NET" >/dev/null
 NETWORK_CREATED=1
 
-# --- Postgres sidecar (alias `db` — the backup scripts hardcode `-h "db"`) ---
+# --- Postgres sidecar (alias `db` — the backup scripts default to `-h "${POSTGRES_HOST:-db}"`) ---
 echo "🐘 Starting Postgres sidecar (alias db)"
 DB_STARTED=$(docker run -d \
   --network "$NET" --network-alias db \

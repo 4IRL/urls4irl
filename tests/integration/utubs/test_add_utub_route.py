@@ -2,15 +2,14 @@ from typing import Any, Awaitable, Union
 from unittest.mock import patch
 import time
 
-from flask import url_for
+from flask import g, url_for
 from flask_login import current_user
+from flask_session.redis import RedisSessionInterface
 from markupsafe import escape
 import pytest
-import redis
 from redis.client import Redis
 
 from backend.metrics.events import EventName
-from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utubs.constants import UTubErrorCodes
 from tests.integration.system.metrics_helpers import count_counter_keys
@@ -32,6 +31,13 @@ from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
+
+
+def _clear_flask_login_request_cache() -> None:
+    """Drop Flask-Login's per-request user cache (``g._login_user``) so the next
+    request consults the session (and user_loader) again."""
+    if hasattr(g, "_login_user"):
+        delattr(g, "_login_user")
 
 
 def test_add_utub_with_valid_form(login_first_user_with_register):
@@ -646,11 +652,10 @@ def test_session_expiration(
     """
     if provide_redis is None:
         return
-    redis_uri = app.config.get(CONFIG_ENVS.TEST_REDIS_URI, None)
-
-    if not redis_uri or redis_uri == "memory://":
+    if not isinstance(app.session_interface, RedisSessionInterface):
         return
-    redis_client: Any = redis.Redis.from_url(url=redis_uri)
+    # The worker's leased session DB, as configured by `build_app`.
+    redis_client: Any = app.session_interface.client
     assert isinstance(redis_client, Redis)
 
     client, csrf_token, _, _ = login_first_user_with_register
@@ -685,6 +690,11 @@ def test_session_expiration(
     redis_client.pexpire(single_session_key, 1)
     time.sleep(0.2)
     assert redis_client.get(single_session_key) is None
+
+    # `db_transaction` holds one app context open for the whole test, so `g`
+    # outlives each request and Flask-Login would keep serving the cached user
+    # even though the session backing it is gone.
+    _clear_flask_login_request_cache()
     response = client.get(url_for(ROUTES.UTUBS.HOME), follow_redirects=True)
 
     # Hits splash page due to session expiration

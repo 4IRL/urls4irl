@@ -3,6 +3,9 @@ name: u4i-local
 services:
   web:
     container_name: u4i-local-web
+    # PID 1 would otherwise be `flask run`, which never reaps orphans, so SIGKILLed pytest-xdist
+    # workers would linger as <defunct> zombies until web restarts; docker-init reaps them.
+    init: true
     stdin_open: true
     tty: true
     build:
@@ -17,8 +20,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      test-db:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       redis-metrics:
@@ -27,6 +30,10 @@ services:
       - .env
     environment:
       - PRODUCTION=false
+      # Per-worktree dev DB (beats .env's POSTGRES_DB, now only the cluster's bootstrap name) and the
+      # test role; both expressions are shared with db-init so each name has one source of truth.
+      - POSTGRES_DB=${U4I_DEV_DB:-u4i_dev_urls4irl}
+      - POSTGRES_TEST_USER=${U4I_TEST_ROLE:-u4i_test}
       - REDIS_URI=redis://redis:6379/0
       - TEST_REDIS_URI=redis://redis:6379/1
       - TEST_METRICS_REDIS_URI=redis://redis-metrics:6379/0
@@ -138,6 +145,8 @@ services:
       - METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
+      # Local backup/cron scripts target the per-worktree dev DB (same expression as web).
+      - POSTGRES_DB=${U4I_DEV_DB:-u4i_dev_urls4irl}
     volumes:
       - app_logs:/app/volume
       - pgdata:/var/lib/postgresql/data:ro
@@ -151,43 +160,56 @@ services:
       retries: 3
       start_period: 200s
 
+  # One cluster for the dev DB and every per-run test DB. Sized by `make capacity`; durability is
+  # traded for test speed (fsync=off), so a host crash can corrupt pgdata — recover with
+  # `docker volume rm` then `make up d=1 && make reset-db`.
   db:
     image: postgres:16.3-bookworm
     container_name: u4i-local-postgres
+    command: postgres -c max_connections=${U4I_PG_MAX_CONN:-263} -c shared_buffers=${U4I_PG_SHARED_BUFFERS_MB:-128}MB -c fsync=off -c synchronous_commit=off -c full_page_writes=off
     env_file:
       - .env
     environment:
+      # Bootstrap name only (fresh volume); db-init renames it to U4I_DEV_DB.
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+        # `postgres`, not $POSTGRES_DB: after db-init's rename the bootstrap DB no longer exists.
+        test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d postgres"]
         interval: 5s
         timeout: 5s
         retries: 5
 
-  test-db:
+  # One-shot, idempotent provisioning on every `up` (docker/db-provision.sh): test role, one-time
+  # legacy dev-DB rename, dev-DB isolation, base test DB. The `u4i_dev_urls4irl` default matches the
+  # Makefile's derived U4I_DEV_DB on the primary clone, so a raw `docker compose` stays consistent.
+  db-init:
     image: postgres:16.3-bookworm
-    container_name: u4i-local-postgres-test
-    command: postgres -c max_connections=${U4I_TEST_MAX_CONN:-500}
     env_file:
       - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    volumes:
+      - ./docker/db-provision.sh:/db-provision.sh:ro
+    entrypoint: ["bash", "/db-provision.sh"]
     environment:
-      - POSTGRES_DB=${POSTGRES_TEST_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_TEST_DB\""]
-        interval: 5s
-        timeout: 5s
-        retries: 5
+      - PGHOST=db
+      - U4I_DEV_DB=${U4I_DEV_DB:-u4i_dev_urls4irl}
+      - LEGACY_DEV_DB=${POSTGRES_DB}
+      - U4I_TEST_ROLE=${U4I_TEST_ROLE:-u4i_test}
+      - U4I_PG_TEST_CONN_LIMIT=${U4I_PG_TEST_CONN_LIMIT:-230}
 
   redis:
     image: redis:6.2
     container_name: u4i-local-redis
-    command: redis-server --databases 32
+    # Session lease pool for 2 concurrent runs of 30 workers (DB 0 + base
+    # session DB reserved); must equal scripts/capacity.py SHARED_REDIS_DATABASES.
+    command: redis-server --databases 64
     volumes:
       - redisdata:/data
     healthcheck:

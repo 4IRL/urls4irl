@@ -1,14 +1,14 @@
-import os
 import logging
+import os
+import time
 from typing import Any, Awaitable, Generator, Optional, Tuple, Union
+import warnings
 
 from flask import Flask
 from flask.testing import FlaskCliRunner, FlaskClient
 from flask_login import FlaskLoginClient
 from flask_session.redis import RedisSessionInterface
 import pytest
-import warnings
-
 import redis
 from redis import Redis
 from sqlalchemy import create_engine, event, inspect as sa_inspect, text
@@ -17,11 +17,10 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from backend import create_app, db
 from backend.config import (
     ConfigTest,
-    IS_DOCKER,
-    POSTGRES_TEST_DB,
-    POSTGRES_USER,
     POSTGRES_PASSWORD,
-    TEST_DB_URI,
+    POSTGRES_TEST_DB,
+    POSTGRES_TEST_USER,
+    TEST_DB_HOST,
     TEST_GITHUB_OAUTH_CLIENT_ID,
     TEST_GITHUB_OAUTH_CLIENT_SECRET,
     TEST_GOOGLE_OAUTH_CLIENT_ID,
@@ -29,17 +28,18 @@ from backend.config import (
     TEST_METRICS_REDIS_URI,
     TEST_REDIS_URI,
 )
-from backend.utils.db_uri_builder import build_db_uri
-from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.models.urls import Urls
+from backend.models.users import User_Role, Users
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
-from backend.models.users import User_Role, Users
-from backend.models.utubs import Utubs
-from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
-from backend.models.urls import Urls
+from backend.models.utubs import Utubs
+from backend.utils.db_uri_builder import build_db_uri
 from backend.utils.strings import model_strs
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from scripts import testrun_resources
 from tests.utils_for_test import clear_database, get_csrf_token
 from tests.models_for_test import (
     valid_user_1,
@@ -52,16 +52,16 @@ from tests.models_for_test import (
     maximum_tags,
 )
 
-# Per-worker metrics Redis DB index base on the dedicated `redis-metrics`
-# container. Each xdist worker is assigned `_METRICS_REDIS_DB_BASE + worker_num`
-# to keep counter keys isolated across parallel test runs. The constraint is the
-# dedicated container's `--databases` config, not contention with session DBs on
-# the shared Redis. Locally, `make capacity` (scripts/capacity.py, which mirrors
-# this base as METRICS_REDIS_DB_BASE) derives `REDIS_METRICS_DATABASES` from the
-# largest worker count, and compose passes it to `redis-metrics --databases`, so
-# every derived or overridden worker count fits. A hand-run compose without the
-# generated file falls back to Redis's default of 16 databases (workers gw0-gw7).
-_METRICS_REDIS_DB_BASE = 8
+# Per-run Redis isolation: every worker of every pytest invocation LEASES its
+# session and metrics Redis DB indices (scripts/testrun_resources.py) instead of
+# deriving them from the xdist worker number, which is unique only inside one
+# invocation. A lease is a self-expiring `SET NX EX` owner key under
+# `u4i:test_lease:*` on the persistent shared-redis DB 0, so concurrent runs on
+# one host never share an index, and a SIGKILLed run's leases lapse on their
+# own. The pool is every index the instance's live `CONFIG GET databases`
+# reports, minus the reserved ones (DB 0, which holds live dev state, and the
+# session pool's configured base DB). Locally, `make capacity` sizes
+# `redis-metrics --databases` so the metrics pool fits the largest worker count.
 
 # Make the shared metrics-UI fixtures (metrics_redis_client,
 # metrics_enabled_for_ui, metrics_registry_synced, clear_metrics_state(_mobile),
@@ -171,13 +171,50 @@ warnings.filterwarnings(
 
 
 REDIS_DEFAULT_MAX_DATABASES = 16
+MEMORY_REDIS_URI = "memory://"
 
 
-def _get_worker_num(worker_id: str) -> Optional[int]:
-    """Returns None for 'master' (non-parallel), else the integer worker number."""
-    if worker_id == "master":
-        return None
-    return int(worker_id.replace("gw", ""))
+def _is_real_redis_uri(redis_uri: Optional[str]) -> bool:
+    return bool(redis_uri) and redis_uri != MEMORY_REDIS_URI
+
+
+def _redis_database_count(redis_base_uri: str) -> int:
+    """Return the live `CONFIG GET databases` of the instance at `redis_base_uri`."""
+    probe = Redis.from_url(f"{redis_base_uri}/0")
+    try:
+        return int(
+            probe.config_get("databases").get("databases", REDIS_DEFAULT_MAX_DATABASES)
+        )
+    finally:
+        probe.close()
+
+
+def _leased_redis_uri(
+    lease_client: Redis,
+    pool: str,
+    redis_base_uri: str,
+    reserved: frozenset[int],
+    owner: str,
+) -> Generator[str, None, None]:
+    """Lease a DB index on `redis_base_uri` for `owner`, yield its URI, then release it.
+
+    The leased DB is flushed on acquire, because a crashed previous holder may
+    have left keys behind.
+    """
+    candidates = testrun_resources.lease_pool(
+        _redis_database_count(redis_base_uri), reserved
+    )
+    index = testrun_resources.acquire_lease(lease_client, pool, candidates, owner)
+    try:
+        leased_uri = f"{redis_base_uri}/{index}"
+        flush_client = Redis.from_url(leased_uri)
+        try:
+            flush_client.flushdb()
+        finally:
+            flush_client.close()
+        yield leased_uri
+    finally:
+        testrun_resources.release_lease(lease_client, pool, index, owner)
 
 
 @pytest.fixture(scope="session")
@@ -188,29 +225,29 @@ def ignore_deprecation_warning():
 
 
 @pytest.fixture(scope="session")
-def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
-    """Provides a per-worker database URI, creating and dropping a worker-specific DB."""
-    if worker_id == "master":
-        yield TEST_DB_URI
-        return
+def worker_db_uri(worker_id: str, testrun_uid: str) -> Generator[str, None, None]:
+    """Provides a per-run, per-worker database URI, creating and dropping its DB.
 
-    assert POSTGRES_TEST_DB, (
-        "POSTGRES_TEST_DB must be set for parallel integration tests"
+    The name is `{POSTGRES_TEST_DB}_{uid8}_{worker}`, keyed on xdist's
+    `testrun_uid`, so two concurrent pytest invocations never share a database
+    (`master` is treated like any other worker).
+    """
+    assert POSTGRES_TEST_DB, "POSTGRES_TEST_DB must be set for tests"
+    worker_db_name = testrun_resources.test_db_name(
+        POSTGRES_TEST_DB, testrun_uid, worker_id
     )
-    worker_db_name = f"{POSTGRES_TEST_DB}_{worker_id}"
-    db_host = "test-db" if IS_DOCKER else "localhost"
 
     admin_uri = build_db_uri(
-        username=POSTGRES_USER,
+        username=POSTGRES_TEST_USER,
         password=POSTGRES_PASSWORD,
         database="postgres",
-        database_host=db_host,
+        database_host=TEST_DB_HOST,
     )
     worker_uri = build_db_uri(
-        username=POSTGRES_USER,
+        username=POSTGRES_TEST_USER,
         password=POSTGRES_PASSWORD,
         database=worker_db_name,
-        database_host=db_host,
+        database_host=TEST_DB_HOST,
     )
 
     def _drop_worker_db(conn) -> None:
@@ -226,6 +263,13 @@ def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
     with engine.connect() as conn:
         _drop_worker_db(conn)
         conn.execute(text(f'CREATE DATABASE "{worker_db_name}"'))
+        # The creation epoch is the `make reset-test-dbs` reaper's age signal.
+        conn.execute(
+            text(
+                f'COMMENT ON DATABASE "{worker_db_name}" '
+                f"IS 'u4i-test created_epoch={int(time.time())}'"
+            )
+        )
     engine.dispose()
 
     yield worker_uri
@@ -237,71 +281,93 @@ def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
 
 
 @pytest.fixture(scope="session")
-def worker_redis_uri(worker_id: str) -> str:
-    """Returns a per-worker Redis URI using a unique DB index."""
-    if not TEST_REDIS_URI or TEST_REDIS_URI == "memory://":
-        return TEST_REDIS_URI
-    if worker_id == "master":
-        return TEST_REDIS_URI
-    base, db_str = TEST_REDIS_URI.rsplit("/", 1)
-    base_db = int(db_str) if db_str.isdigit() else 0
-    db_index = base_db + 1 + _get_worker_num(worker_id)
+def lease_redis_client() -> Generator[Optional[Redis], None, None]:
+    """Client on the persistent shared-redis DB 0, where every pool's leases live.
 
-    probe = Redis.from_url(f"{base}/0")
+    Yields None when the shared Redis is the in-memory stub (nothing to lease).
+    """
+    if not _is_real_redis_uri(TEST_REDIS_URI):
+        yield None
+        return
+    redis_base_uri, _ = testrun_resources.split_redis_uri(
+        TEST_REDIS_URI, "TEST_REDIS_URI"
+    )
+    client = Redis.from_url(f"{redis_base_uri}/0")
     try:
-        max_dbs = int(
-            probe.config_get("databases").get("databases", REDIS_DEFAULT_MAX_DATABASES)
-        )
+        yield client
     finally:
-        probe.close()
-
-    if db_index >= max_dbs:
-        raise ValueError(
-            f"Redis DB index {db_index} is out of range for worker '{worker_id}'. "
-            f"Redis only has {max_dbs} databases (0-{max_dbs - 1}). "
-            f"TEST_REDIS_URI base DB is {base_db}. "
-            f"Either increase Redis 'databases' config or lower the base DB index."
-        )
-
-    return f"{base}/{db_index}"
+        client.close()
 
 
 @pytest.fixture(scope="session")
-def worker_metrics_redis_uri(worker_id: str) -> str:
-    """Returns a per-worker metrics Redis URI on the dedicated redis-metrics container.
+def worker_redis_uri(
+    worker_id: str, testrun_uid: str, lease_redis_client: Optional[Redis]
+) -> Generator[str, None, None]:
+    """Yields this worker's leased session/enforcement DB URI on the shared Redis.
 
-    Master worker is intentionally mapped to ``_METRICS_REDIS_DB_BASE`` (DB 8 by
-    default) so tests never share DB 0 with the production-style runtime
-    `METRICS_REDIS_URI` (which is the only DB used in production on the
-    dedicated `redis-metrics` container). Parallel worker gwN maps to DB
-    `_METRICS_REDIS_DB_BASE + N`, which must be below the container's database
-    count: the derived `REDIS_METRICS_DATABASES` from `make capacity`.
+    The lease never hands out DB 0 (live dev state) or `TEST_REDIS_URI`'s own
+    base DB, and is released on teardown.
     """
-    if not TEST_METRICS_REDIS_URI or TEST_METRICS_REDIS_URI == "memory://":
-        return TEST_METRICS_REDIS_URI
-    base, _db_str = TEST_METRICS_REDIS_URI.rsplit("/", 1)
-    worker_num = _get_worker_num(worker_id) or 0
-    db_index = _METRICS_REDIS_DB_BASE + worker_num
+    if not _is_real_redis_uri(TEST_REDIS_URI) or lease_redis_client is None:
+        yield TEST_REDIS_URI
+        return
+    redis_base_uri, base_db = testrun_resources.split_redis_uri(
+        TEST_REDIS_URI, "TEST_REDIS_URI"
+    )
+    yield from _leased_redis_uri(
+        lease_redis_client,
+        testrun_resources.SESSION_POOL,
+        redis_base_uri,
+        frozenset({0, base_db}),
+        testrun_resources.lease_owner(testrun_uid, worker_id),
+    )
 
-    probe = Redis.from_url(f"{base}/0")
-    try:
-        max_dbs = int(
-            probe.config_get("databases").get("databases", REDIS_DEFAULT_MAX_DATABASES)
+
+@pytest.fixture(scope="session")
+def worker_metrics_redis_uri(
+    worker_id: str, testrun_uid: str, lease_redis_client: Optional[Redis]
+) -> Generator[str, None, None]:
+    """Yields this worker's leased DB URI on the dedicated redis-metrics container.
+
+    The index is leased from every DB the container reports minus
+    `METRICS_RESERVED_INDICES` (DB 0 is the runtime `METRICS_REDIS_URI`), so a
+    sequential `master` run and a parallel `gw0` run never share a metrics DB.
+    The lease key itself lives on the shared Redis (`lease_redis_client`),
+    because redis-metrics is `allkeys-lru` with no persistence. The container's
+    database count is the derived `REDIS_METRICS_DATABASES` from `make capacity`.
+    A real TEST_METRICS_REDIS_URI therefore requires a real TEST_REDIS_URI,
+    because that is where the lease lives.
+    """
+    if not _is_real_redis_uri(TEST_METRICS_REDIS_URI):
+        yield TEST_METRICS_REDIS_URI
+        return
+    if lease_redis_client is None:
+        raise RuntimeError(
+            "TEST_METRICS_REDIS_URI is a real Redis but TEST_REDIS_URI is not, so "
+            "there is no shared Redis to hold the metrics DB lease. Point "
+            "TEST_REDIS_URI at the shared Redis instance."
         )
-    finally:
-        probe.close()
-
-    if db_index >= max_dbs:
+    redis_base_uri, _ = testrun_resources.split_redis_uri(
+        TEST_METRICS_REDIS_URI, "TEST_METRICS_REDIS_URI"
+    )
+    session_redis_base_uri, _ = testrun_resources.split_redis_uri(
+        TEST_REDIS_URI, "TEST_REDIS_URI"
+    )
+    if redis_base_uri == session_redis_base_uri:
+        # Two lease pools on one instance could hand out the same index, and
+        # each holder would then FLUSHDB the other's data.
         raise ValueError(
-            f"Metrics Redis DB index {db_index} is out of range for worker '{worker_id}'. "
-            f"redis-metrics only has {max_dbs} databases (0-{max_dbs - 1}). "
-            f"_METRICS_REDIS_DB_BASE is {_METRICS_REDIS_DB_BASE}. "
-            "Locally: run 'make capacity' then 'make up d=1'. In CI: raise the "
-            "redis-metrics service's --databases in .github/workflows/test.yml "
-            "or lower -n."
+            f"TEST_METRICS_REDIS_URI and TEST_REDIS_URI both point at "
+            f"{redis_base_uri}; the metrics DBs must live on a separate Redis "
+            "instance (e.g. redis://redis-metrics:6379/0)."
         )
-
-    return f"{base}/{db_index}"
+    yield from _leased_redis_uri(
+        lease_redis_client,
+        testrun_resources.METRICS_POOL,
+        redis_base_uri,
+        testrun_resources.METRICS_RESERVED_INDICES,
+        testrun_resources.lease_owner(testrun_uid, worker_id),
+    )
 
 
 @pytest.fixture(scope="session")
@@ -318,9 +384,9 @@ def build_app(
     config.GITHUB_OAUTH_CLIENT_SECRET = TEST_GITHUB_OAUTH_CLIENT_SECRET
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
-    if worker_metrics_redis_uri and worker_metrics_redis_uri != "memory://":
+    if _is_real_redis_uri(worker_metrics_redis_uri):
         config.METRICS_REDIS_URI = worker_metrics_redis_uri
-    if worker_redis_uri and worker_redis_uri != "memory://":
+    if _is_real_redis_uri(worker_redis_uri):
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
         # Isolate the shared ENFORCEMENT Redis per xdist worker too — not just
