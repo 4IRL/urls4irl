@@ -332,7 +332,7 @@ _require-n-fits: _capacity-fresh
 		max_n=$(call capacity_val,U4I_N_MAX); \
 		case "$$max_n" in ''|*[!0-9]*) echo "U4I_N_MAX invalid in $(CAPACITY_ENV) — run 'make capacity'"; exit 1;; esac; \
 		if [ "$(n)" -gt "$$max_n" ]; then \
-			echo "n=$(n) exceeds this host's capacity ceiling (U4I_N_MAX=$$max_n); raise it with 'make capacity U4I_N_UI=$(n)' (UI targets) or 'make capacity U4I_N_INT=$(n)' (integration/marker/file targets), then 'make up d=1'"; \
+			echo "n=$(n) exceeds this host's capacity ceiling (U4I_N_MAX=$$max_n); raise it with 'make capacity U4I_N_UI=$(n)' (UI targets) or 'make capacity U4I_N_INT=$(n)' (integration/marker/file targets), then 'make up [p=…] d=1'"; \
 			exit 1; \
 		fi; \
 	fi

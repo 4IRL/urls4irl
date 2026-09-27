@@ -948,7 +948,7 @@ def test_generate_reports_recreate_when_interlocks_change(
     lines = capsys.readouterr().out.splitlines()
     assert lines[0] == f"capacity regenerated ({env_path})"
     assert lines[1] == (
-        "recreate required: run 'make up d=1' "
+        "recreate required: run 'make up [p=…] d=1' "
         "(changed: REDIS_METRICS_DATABASES, U4I_PG_TEST_CONN_LIMIT, U4I_PG_MAX_CONN)"
     )
     assert read_env(env_path)["U4I_PG_TEST_CONN_LIMIT"] == "110"
@@ -1006,7 +1006,7 @@ def test_ensure_migrates_legacy_test_max_conn_file(
 
     assert capsys.readouterr().out.splitlines() == [
         f"capacity regenerated ({env_path})",
-        "recreate required: run 'make up d=1' (changed: U4I_PG_TEST_CONN_LIMIT, "
+        "recreate required: run 'make up [p=…] d=1' (changed: U4I_PG_TEST_CONN_LIMIT, "
         "U4I_PG_MAX_CONN, U4I_PG_SHARED_BUFFERS_MB)",
     ]
     assert env_path.read_text() == current_content
