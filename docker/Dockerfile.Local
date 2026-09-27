@@ -62,7 +62,7 @@ RUN mkdir -p /app/volume/logs /code/u4i/backend/gen \
 RUN echo '#!/bin/bash\nsource /code/venv/bin/activate\nexec bash --rcfile <(echo "source /code/venv/bin/activate")' > /usr/local/bin/venvshell \
     && chmod +x /usr/local/bin/venvshell
 
-# Create a non-root user
+# Switch to the non-root user
 USER u4i-host
 
 # Expose a port to access the container
