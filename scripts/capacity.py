@@ -425,7 +425,11 @@ def changed_interlocks(old: dict[str, str], new: dict[str, str]) -> list[str]:
 
 
 def _write_atomically(path: Path, content: str) -> None:
-    """Write via a same-directory temp file + os.replace (no partial reads)."""
+    """Write via a same-directory temp file + os.replace (no partial reads).
+
+    The file keeps NamedTemporaryFile's owner-only 0600 mode: only host-side
+    make/compose (running as this user) read it.
+    """
     temp_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -437,7 +441,6 @@ def _write_atomically(path: Path, content: str) -> None:
         ) as temp_file:
             temp_path = Path(temp_file.name)
             temp_file.write(content)
-        os.chmod(temp_path, 0o644)
         os.replace(temp_path, path)
     except BaseException:
         if temp_path is not None:

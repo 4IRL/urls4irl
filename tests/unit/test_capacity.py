@@ -1076,6 +1076,16 @@ def test_failed_replace_cleans_up_temp_file_and_keeps_original(
     assert env_path.read_text() == original_content
 
 
+def test_generated_file_is_owner_only(tmp_path: Path) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    assert env_path.stat().st_mode & 0o777 == 0o600
+
+    # A rewrite keeps the owner-only mode.
+    _run(["generate", "--output", str(env_path)], _probe(ncpu=4))
+    assert env_path.stat().st_mode & 0o777 == 0o600
+
+
 # --- logs-owner-fix ----------------------------------------------------------
 
 LOGS_VOLUME: str = "u4i-local_app_logs"
