@@ -1026,15 +1026,24 @@ def test_generate_into_missing_directory_exits_non_zero_without_traceback(
     assert list(tmp_path.iterdir()) == []
 
 
+@pytest.mark.parametrize(
+    "override_key",
+    ["U4I_OVERRIDE_N_UI", "U4I_OVERRIDE_N_INT", "U4I_OVERRIDE_MEM_FRACTION"],
+)
 def test_malformed_recorded_override_exits_non_zero(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], override_key: str
 ) -> None:
     env_path = tmp_path / "capacity.env"
     _run(["generate", "--output", str(env_path)])
     env_path.write_text(
-        env_path.read_text().replace("U4I_OVERRIDE_N_UI=\n", "U4I_OVERRIDE_N_UI=x\n")
+        env_path.read_text().replace(f"{override_key}=\n", f"{override_key}=x\n")
     )
+    tampered_content = env_path.read_text()
+    assert read_env(env_path)[override_key] == "x"
+    _age(env_path)
     capsys.readouterr()
 
     assert _run(["generate", "--output", str(env_path)]) != 0
-    assert "U4I_OVERRIDE_N_UI" in capsys.readouterr().err
+    assert override_key in capsys.readouterr().err
+    assert env_path.read_text() == tampered_content
+    assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
