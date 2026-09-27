@@ -122,6 +122,12 @@ def _validate_test_db_prefix(prefix: str) -> None:
         )
 
 
+def _validate_worker_id(worker_id: str) -> None:
+    """Validate an xdist worker id, shared by test_db_name and worker_index."""
+    if not WORKER_ID_PATTERN.fullmatch(worker_id):
+        raise ValueError(f"worker_id {worker_id!r} must be gw<N> or master")
+
+
 def _uid_segment(testrun_uid: str) -> str:
     """Return the validated lowercase-hex first 8 characters of `testrun_uid`."""
     # Lowercase is required because xdist derives testrun_uid from uuid4().hex,
@@ -140,11 +146,7 @@ def _uid_segment(testrun_uid: str) -> str:
 def test_db_name(prefix: str, testrun_uid: str, worker_id: str) -> str:
     """Return the run-scoped database name for one xdist worker (`master` included)."""
     _validate_test_db_prefix(prefix)
-    if not WORKER_ID_PATTERN.fullmatch(worker_id):
-        raise ValueError(
-            f"worker_id {worker_id!r} must be gw<N> or master to build a "
-            "POSTGRES_TEST_DB worker database name"
-        )
+    _validate_worker_id(worker_id)
     uid_segment = _uid_segment(testrun_uid)
     worker_db_name = f"{prefix}_{uid_segment}_{worker_id}"
     if len(worker_db_name.encode()) > MAX_IDENTIFIER_BYTES:
@@ -218,8 +220,7 @@ def release_lease(lease_client: LeaseClient, pool: str, index: int, owner: str) 
 
 def worker_index(worker_id: str) -> int:
     """Return the xdist worker number (`master` is 0); never use it to pick a shared resource."""
-    if not WORKER_ID_PATTERN.fullmatch(worker_id):
-        raise ValueError(f"worker_id {worker_id!r} must be gw<N> or master")
+    _validate_worker_id(worker_id)
     if worker_id == "master":
         return 0
     return int(worker_id.removeprefix("gw"))
