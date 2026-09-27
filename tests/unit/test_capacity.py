@@ -25,7 +25,6 @@ from scripts.capacity import (
     DOCKER_RUN_TIMEOUT_SECONDS,
     ENV_KEYS,
     HARD_N_CEILING,
-    METRICS_REDIS_DB_BASE,
     Capacity,
     DockerInfoError,
     DockerRunError,
@@ -49,7 +48,6 @@ from scripts.capacity import (
     run_docker,
     run_docker_info,
 )
-from tests.conftest import _METRICS_REDIS_DB_BASE
 
 pytestmark = pytest.mark.unit
 
@@ -336,10 +334,6 @@ def test_override_mem_fraction_fed_by_caller_changes_guard() -> None:
 
 
 # --- contracts ---------------------------------------------------------------
-
-
-def test_metrics_redis_db_base_matches_conftest() -> None:
-    assert METRICS_REDIS_DB_BASE == _METRICS_REDIS_DB_BASE
 
 
 def test_capacity_module_is_stdlib_only() -> None:

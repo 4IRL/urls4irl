@@ -23,27 +23,26 @@ def _flush_member_add_lookup_counter(provide_app: Flask) -> Generator[None, None
     """Clear the per-user ``member-add-lookup:*`` daily-counter keys before and
     after every ``members_ui`` test in this folder.
 
-    Why this is needed — the shared-live-Redis constraint (same class of leak
+    Why this is needed — the counter outlives a single test (same class of leak
     the ``settings_ui`` conftest fixes for the change-username/email counters):
 
-    UI tests run the Flask app **in-process** (``run_app(worker_config)``) and
-    isolate their *session* store to a per-worker Redis DB. But the add-member
-    daily-cap counter (``create_utub_member``) writes to the shared
-    **enforcement** ``REDIS_URI`` (``redis://redis:6379/0`` in the local ``web``
-    container), which ``ConfigTestUI`` never overrides. That DB 0 keyspace is
-    shared by every parallel worker AND persists across whole test-suite runs
-    (the counter carries a 24h TTL). Without a flush, a full/repeated
-    ``members_ui`` run accumulates ``member-add-lookup:1`` past
-    ``MEMBER_ADD_DAILY_CAP`` (100) and trips the cap mid-suite, producing
-    spurious add-member UI failures.
+    UI tests run the Flask app **in-process** (``run_app(worker_config)``).
+    ``worker_config`` points both the session store and the **enforcement**
+    ``REDIS_URI`` at the worker's leased Redis DB, so the add-member daily-cap
+    counter (``create_utub_member``) is isolated per worker and per run. But
+    that leased DB lives for the whole session and the counter carries a 24h
+    TTL, so without a flush a full ``members_ui`` run accumulates
+    ``member-add-lookup:1`` past ``MEMBER_ADD_DAILY_CAP`` (100) and trips the
+    cap mid-suite, producing spurious add-member UI failures.
 
     Reuses ``flush_member_add_lookup_keys`` (the same helper the integration
     ``utubmembers``/``mobile_api`` conftests use), which deletes only matching
-    keys — never ``flushdb()`` — since that DB is shared with other enforcement
-    counters. ``provide_app`` carries the same enforcement ``REDIS_URI`` as the
-    in-process app under test, so flushing through it reaches the same keyspace
-    (identical mechanism to the ``settings_ui`` reset). Fails open (no-op) when
-    the enforcement Redis is the in-memory stub, exactly like the service does.
+    keys — never ``flushdb()`` — since the leased DB also holds the worker's
+    sessions and other enforcement counters. ``provide_app`` carries the same
+    enforcement ``REDIS_URI`` as the in-process app under test, so flushing
+    through it reaches the same keyspace (identical mechanism to the
+    ``settings_ui`` reset). Fails open (no-op) when the enforcement Redis is
+    the in-memory stub, exactly like the service does.
     """
     flush_member_add_lookup_keys(provide_app)
     yield
