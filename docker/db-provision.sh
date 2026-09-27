@@ -12,7 +12,8 @@
 #   4. isolate the dev DB: re-allow connections, revoke PUBLIC CONNECT (the test role must not reach it)
 #   5. revoke PUBLIC CONNECT on a legacy DB left orphaned (both it and U4I_DEV_DB exist), with a warning
 #   6. create the base POSTGRES_TEST_DB owned by the test role if missing
-# If any step fails, a recovery pass re-allows connections on the legacy DB (step 2 blocks them).
+# If any step fails, a best-effort recovery pass re-allows connections on the legacy DB and on
+# U4I_DEV_DB (step 2 blocks them before the rename, so a later failure would leave either locked).
 set -euo pipefail
 
 : "${PGHOST:?PGHOST is required}"
@@ -112,11 +113,16 @@ ALTER DATABASE :"test_db" OWNER TO :"role";
 
 \echo db-provision: role :role, dev database :dev, test database :test_db ready
 SQL
-  echo "db-provision: provisioning failed; re-allowing connections on legacy database '$LEGACY_DEV_DB' if present" >&2
-  "${PSQL[@]}" <<'SQL'
+  echo "db-provision: provisioning failed; re-allowing connections on legacy database '$LEGACY_DEV_DB' and dev database '$U4I_DEV_DB' if present" >&2
+  # Best-effort: ON_ERROR_STOP=0 lets each statement run even if the other fails (a failure after
+  # step 2's rename leaves U4I_DEV_DB blocked), and the script always exits 1 below.
+  "${PSQL[@]}" -v ON_ERROR_STOP=0 <<'SQL' || echo "db-provision: recovery pass failed" >&2
 \getenv legacy LEGACY_DEV_DB
+\getenv dev U4I_DEV_DB
 SELECT format('ALTER DATABASE %I ALLOW_CONNECTIONS true', :'legacy')
 WHERE :'legacy' <> '' AND EXISTS (SELECT FROM pg_database WHERE datname = :'legacy') \gexec
+SELECT format('ALTER DATABASE %I ALLOW_CONNECTIONS true', :'dev')
+WHERE EXISTS (SELECT FROM pg_database WHERE datname = :'dev') \gexec
 SQL
   exit 1
 fi
