@@ -1,3 +1,8 @@
+# Runtime dependencies of the app (backend/, migrations/, runtime scripts/). Installed by the prod image
+# (docker/Dockerfile) and, via `-r`, by test and dev. Files nest: dev includes test includes prod.
+# Test-only imports belong in requirements-test.txt; local-only tooling in requirements-dev.txt.
+# The workflow image pins its own venv in docker/Dockerfile.Workflow - mirror any version it shares.
+# See CLAUDE.md "Dependency Pinning". Exact pins only (package==X.Y.Z).
 ada-url==1.26.0
 alembic==1.13.2
 annotated-types==0.7.0

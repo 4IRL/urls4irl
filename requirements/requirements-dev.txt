@@ -1,3 +1,7 @@
+# Local-only tooling that no app code or test imports (pre-commit and its deps). Installed only by the
+# local web image (docker/Dockerfile.Local); CI never installs it. If tests/ or backend/ import a package,
+# it belongs in requirements-test.txt or requirements-prod.txt instead.
+# See CLAUDE.md "Dependency Pinning". Exact pins only (package==X.Y.Z).
 cfgv==3.4.0
 distlib==0.3.7
 filelock==3.20.3

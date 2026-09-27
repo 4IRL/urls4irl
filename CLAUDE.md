@@ -204,6 +204,16 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 | `frontend/package.json` direct deps & devDeps  | `"pkg": "X.Y.Z"`                                                                       | `^X.Y.Z`, `~X.Y.Z`, `>=`, `*`, `latest`   |
 | `frontend/pnpm-workspace.yaml` `overrides:`    | `pkg: X.Y.Z` (exact patch that satisfies all peer-deps and any open security alert)    | `^`, `~`, ranges                          |
 
+**Which `requirements/*.txt` file:** they nest dev ⊃ test ⊃ prod (`-r`), and each environment installs only its own file.
+
+| File | Put a package here when… | Installed by |
+|---|---|---|
+| `requirements-prod.txt` | the app imports it at runtime (`backend/`, `migrations/`, runtime `scripts/`) | prod image (`docker/Dockerfile`) |
+| `requirements-test.txt` | only `tests/`/conftest import it | **CI** (`test.yml`, `types-staleness.yml`, `event-coverage-staleness.yml`) |
+| `requirements-dev.txt` | nothing imports it — local tooling only (`pre-commit` and its deps) | local `web` image (`docker/Dockerfile.Local`) |
+
+The local container installs dev, so a misplaced pin passes every local test and only fails in CI, where it breaks collection for every pytest job at once. Before committing a new import, confirm the file CI installs has it. The workflow image pins its own venv in `docker/Dockerfile.Workflow` (versions match prod), so a new workflow dependency goes there too.
+
 Security pins go in `frontend/pnpm-workspace.yaml` `overrides:` at the exact patched version. If one conflicts with a transitive consumer's peer-dep range, use `pnpm why <pkg>` to find the resolved version and pin the override to that **exact patch** rather than reverting to a caret. A pinned version younger than 90 days (`minimumReleaseAge`) also needs an exact `name@version` entry in `minimumReleaseAgeExclude` (no wildcards), or every install fails. Document the choice in the commit body.
 
 pnpm is the only package manager: never run `npm install` in `frontend/`; `make lint` fails via `lockfile-check` if a `package-lock.json` appears. `verifyDepsBeforeRun: error` means pnpm never auto-installs, so after a `package.json`/lockfile change run `make tools` (host) and `make build` (containers; it rebuilds every profile's image, including the inactive `vite`/`workflow` ones). `make up`/`up-built`/`tunnel` pass `-V` so stale anonymous `node_modules` volumes are renewed.
