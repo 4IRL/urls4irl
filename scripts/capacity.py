@@ -2,8 +2,9 @@
 
 Derives the UI and integration pytest-xdist worker counts from the Docker
 host's cores and memory, plus the ceilings that must grow with them (the
-metrics-Redis database count and the test-db `max_connections`). Stdlib only:
-it runs on the host under bare mise python, before any container exists.
+metrics-Redis database count, and the shared Postgres cluster's
+`max_connections`, test-role connection limit and `shared_buffers`). Stdlib
+only: it runs on the host under bare mise python, before any container exists.
 
 Subcommands (see `main`): `generate` writes the gitignored env file,
 `ensure` regenerates it only when the host fingerprint changed (run before
@@ -22,18 +23,34 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TypeVar
 
-METRICS_REDIS_DB_BASE: int = 8  # mirrors tests.conftest._METRICS_REDIS_DB_BASE
+# Metrics-Redis indices no test run may lease; mirrors
+# len(scripts.testrun_resources.METRICS_RESERVED_INDICES) (a parity test pins it).
+METRICS_REDIS_RESERVED_DBS: int = 1
+# How many simultaneous pytest invocations the metrics lease pool must hold at n_max.
+# The shared-redis session pool is fixed (HARD_N_CEILING leasable indices), so two
+# concurrent runs only both fit there while n_max <= HARD_N_CEILING // 2.
+LEASE_CONCURRENT_RUNS: int = 2
 # Assumes SQLAlchemy's library-default QueuePool (pool_size=5 + max_overflow=10):
 # the app sets no explicit pool options (backend/__init__.py only defaults
 # SQLALCHEMY_ENGINE_OPTIONS to {}). Update this if pool settings are ever added
 # to SQLALCHEMY_ENGINE_OPTIONS in backend/config.py.
 CONN_PER_WORKER: int = 15
 CONN_BASE: int = 50
-# Shared redis runs `--databases 32`; each xdist worker uses index gwN + 2.
+# The cluster's max_connections = the test role's limit + dev app/workflow
+# headroom + Postgres's superuser_reserved_connections default.
+DEV_CONN_BUDGET: int = 30
+SUPERUSER_RESERVED: int = 3
+# shared_buffers = 1/64 of usable memory, clamped (a shared dev box, not prod).
+PG_SHARED_BUFFERS_MIN_MB: int = 64
+PG_SHARED_BUFFERS_MAX_MB: int = 256
+PG_SHARED_BUFFERS_DIVISOR: int = 64
+MB_PER_GB: int = 1024
+# Shared redis `--databases 32` minus 2 reserved (dev DB 0 and the base session
+# DB) gives 30 leasable indices, one per worker of a single run.
 HARD_N_CEILING: int = 30
 BASE_GB: float = 2.0
 WORKER_GB: float = 0.5
@@ -79,7 +96,9 @@ OVERRIDE_MEM_FRACTION_KEY: str = "U4I_OVERRIDE_MEM_FRACTION"
 # Values baked into running containers: a change needs `make up d=1`.
 INTERLOCK_KEYS: tuple[str, ...] = (
     "REDIS_METRICS_DATABASES",
-    "U4I_TEST_MAX_CONN",
+    "U4I_PG_TEST_CONN_LIMIT",
+    "U4I_PG_MAX_CONN",
+    "U4I_PG_SHARED_BUFFERS_MB",
     "HOST_UID",
     "HOST_GID",
 )
@@ -89,7 +108,9 @@ ENV_KEYS: tuple[str, ...] = (
     "U4I_N_INT",
     "U4I_N_MAX",
     "REDIS_METRICS_DATABASES",
-    "U4I_TEST_MAX_CONN",
+    "U4I_PG_TEST_CONN_LIMIT",
+    "U4I_PG_MAX_CONN",
+    "U4I_PG_SHARED_BUFFERS_MB",
     "HOST_UID",
     "HOST_GID",
     FINGERPRINT_KEY,
@@ -143,7 +164,9 @@ class Capacity:
     n_int: int
     n_max: int
     redis_metrics_databases: int
-    test_max_conn: int
+    pg_test_conn_limit: int
+    pg_max_conn: int
+    pg_shared_buffers_mb: int
     usable_gb: float
     binding_constraint: str
 
@@ -196,7 +219,8 @@ def _resolve_workers(
     if override > HARD_N_CEILING:
         raise InfeasibleCapacity(
             f"{knob}={override} exceeds the hard ceiling of {HARD_N_CEILING} "
-            f"(shared redis runs --databases 32, one database per worker at gwN+2); "
+            f"(shared redis runs --databases 32; minus 2 reserved gives "
+            f"{HARD_N_CEILING} leasable indices, one per worker); "
             f"rerun with {knob}<={HARD_N_CEILING}"
         )
     if override > memory_guard:
@@ -254,15 +278,27 @@ def derive(
         binding_constraint = BINDING_CPU
 
     n_max = max(n_ui, n_int)
+    pg_test_conn_limit = n_max * CONN_PER_WORKER + CONN_BASE
+    # Sized from the fingerprinted inputs only (no MemAvailable), because
+    # shared_buffers is an interlock and must not jitter between runs.
+    stable_usable_gb = _usable_gb(
+        replace(probe, mem_available_bytes=None), mem_fraction, mem_safety
+    )
     return Capacity(
         n_ui=n_ui,
         n_int=n_int,
         n_max=n_max,
         redis_metrics_databases=max(
             REDIS_METRICS_DATABASES_FLOOR,
-            round_up_pow2(METRICS_REDIS_DB_BASE + n_max),
+            round_up_pow2(METRICS_REDIS_RESERVED_DBS + LEASE_CONCURRENT_RUNS * n_max),
         ),
-        test_max_conn=n_max * CONN_PER_WORKER + CONN_BASE,
+        pg_test_conn_limit=pg_test_conn_limit,
+        pg_max_conn=pg_test_conn_limit + DEV_CONN_BUDGET + SUPERUSER_RESERVED,
+        pg_shared_buffers_mb=clamp(
+            int(stable_usable_gb * MB_PER_GB) // PG_SHARED_BUFFERS_DIVISOR,
+            PG_SHARED_BUFFERS_MIN_MB,
+            PG_SHARED_BUFFERS_MAX_MB,
+        ),
         usable_gb=usable_gb,
         binding_constraint=binding_constraint,
     )
@@ -388,7 +424,9 @@ def render_env(
         "U4I_N_INT": capacity.n_int,
         "U4I_N_MAX": capacity.n_max,
         "REDIS_METRICS_DATABASES": capacity.redis_metrics_databases,
-        "U4I_TEST_MAX_CONN": capacity.test_max_conn,
+        "U4I_PG_TEST_CONN_LIMIT": capacity.pg_test_conn_limit,
+        "U4I_PG_MAX_CONN": capacity.pg_max_conn,
+        "U4I_PG_SHARED_BUFFERS_MB": capacity.pg_shared_buffers_mb,
         "HOST_UID": host_probe.host_uid,
         "HOST_GID": host_probe.host_gid,
         FINGERPRINT_KEY: fp,

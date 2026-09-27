@@ -12,7 +12,7 @@ import fnmatch
 
 import pytest
 
-from scripts import testrun_resources
+from scripts import capacity, testrun_resources
 from scripts.testrun_resources import (
     DB_NAME_PATTERN,
     LEASE_KEY_PREFIX,
@@ -75,6 +75,11 @@ def test_constants_have_the_documented_values() -> None:
     assert SESSION_POOL == "redis"
     assert METRICS_POOL == "metrics"
     assert METRICS_RESERVED_INDICES == frozenset({0})
+
+
+def test_capacity_sizes_metrics_redis_for_the_reserved_indices() -> None:
+    """`capacity.py` is stdlib-only, so it mirrors this set's size as a constant."""
+    assert capacity.METRICS_REDIS_RESERVED_DBS == len(METRICS_RESERVED_INDICES)
 
 
 @pytest.mark.parametrize(
