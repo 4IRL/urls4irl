@@ -8,7 +8,7 @@ Run top-to-bottom. Each step has a pass criterion; deviations point to a specifi
 
 ```bash
 make down                       # ensure clean state — testing on stale state masks wiring bugs
-make up d=1                     # METRICS_ENABLED defaults to true (compose); opt out via .env
+make up p=full d=1              # p=full adds the workflow container Steps 2 and 7 use; METRICS_ENABLED defaults to true (compose); opt out via .env
 docker compose --project-directory . -f docker/compose.local.yaml ps
 ```
 
@@ -88,7 +88,7 @@ docker compose exec redis redis-cli -n 2 KEYS '*'
 
 ## Step 7 — Flush worker reads from `redis-metrics`, writes to Postgres
 
-The workflow container's cron runs `flush_metrics.py` every minute with a ~50s lock TTL, so on the local stack the lock is held for almost every second of every minute and a bare `make metrics-flush-now` will log `another flush is in progress, skipping`. To demonstrate the **manual** flush path (in addition to the cron path), drop the lock first:
+This step needs the `workflow` container, which only runs under the `full` profile (the Setup's `make up p=full d=1`); without it `make metrics-flush-now` stops with `workflow is not running — start it with: make up p=full d=1`. The workflow container's cron runs `flush_metrics.py` every minute with a ~50s lock TTL, so on the local stack the lock is held for almost every second of every minute and a bare `make metrics-flush-now` will log `another flush is in progress, skipping`. To demonstrate the **manual** flush path (in addition to the cron path), drop the lock first:
 
 ```bash
 docker compose exec redis-metrics redis-cli UNLINK metrics:flush:lock
@@ -161,7 +161,7 @@ make down                       # stops the stack
 
 | Symptom                                                  | Likely cause                                                                  |
 |----------------------------------------------------------|-------------------------------------------------------------------------------|
-| `redis-metrics` container missing from `ps`              | `compose.local.yaml` change not applied — `make down && make up d=1` again    |
+| `redis-metrics` container missing from `ps`              | `compose.local.yaml` not applied — `make down && make up p=full d=1` again    |
 | `redis-metrics` unhealthy                                | `docker compose logs redis-metrics` — check `--maxmemory` value or port       |
 | `metrics-snapshot` prints nothing after a curl           | `METRICS_ENABLED=false` in `.env`, or web container started before the change |
 | Counters appear on shared `redis` (`-n 2`)               | Web container env still points at old URI — `make restart c=web`              |
