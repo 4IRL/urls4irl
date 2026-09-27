@@ -22,11 +22,13 @@ from scripts.capacity import (
     DEFAULT_MEM_FRACTION,
     DEFAULT_MEM_SAFETY,
     DOCKER_INFO_TIMEOUT_SECONDS,
+    DOCKER_RUN_TIMEOUT_SECONDS,
     ENV_KEYS,
     HARD_N_CEILING,
     METRICS_REDIS_DB_BASE,
     Capacity,
     DockerInfoError,
+    DockerRunError,
     InfeasibleCapacity,
     Overrides,
     Probe,
@@ -44,6 +46,7 @@ from scripts.capacity import (
     read_env,
     render_env,
     round_up_pow2,
+    run_docker,
     run_docker_info,
 )
 from tests.conftest import _METRICS_REDIS_DB_BASE
@@ -1071,3 +1074,288 @@ def test_failed_replace_cleans_up_temp_file_and_keeps_original(
     assert capsys.readouterr().err == "make capacity: simulated replace failure\n"
     assert sorted(path.name for path in tmp_path.iterdir()) == ["capacity.env"]
     assert env_path.read_text() == original_content
+
+
+# --- logs-owner-fix ----------------------------------------------------------
+
+LOGS_VOLUME: str = "u4i-local_app_logs"
+WEB_IMAGE_ID: str = "0123456789ab"
+VOLUME_LOOKUP: list[str] = [
+    "volume",
+    "ls",
+    "-q",
+    "--filter",
+    "label=com.docker.compose.project=u4i-local",
+    "--filter",
+    "label=com.docker.compose.volume=app_logs",
+]
+IMAGE_LOOKUP: list[str] = ["image", "ls", "-q", "u4i-local-web:latest"]
+ROOT_RUN: list[str] = [
+    "run",
+    "--rm",
+    "--user",
+    "root",
+    "-v",
+    f"{LOGS_VOLUME}:/app/volume",
+    WEB_IMAGE_ID,
+]
+STAT_CALL: list[str] = [*ROOT_RUN, "stat", "-c", "%u:%g", "/app/volume/logs"]
+
+
+def _repair_call(owner: str) -> list[str]:
+    return [
+        *ROOT_RUN,
+        "sh",
+        "-c",
+        f"chown -R {owner} /app/volume/logs && chmod 775 /app/volume/logs",
+    ]
+
+
+class _FakeDocker:
+    """Scripted docker runner: answers each lookup and records every call."""
+
+    def __init__(
+        self,
+        volume: str = LOGS_VOLUME,
+        image: str = WEB_IMAGE_ID,
+        owner: str | None = "1000:1000",
+        lookup_returncode: int = 0,
+        repair_returncode: int = 0,
+    ) -> None:
+        self.volume = volume
+        self.image = image
+        self.owner = owner
+        self.lookup_returncode = lookup_returncode
+        self.repair_returncode = repair_returncode
+        self.calls: list[list[str]] = []
+
+    def __call__(self, args: list[str]) -> subprocess.CompletedProcess[str]:
+        self.calls.append(args)
+        if args in (VOLUME_LOOKUP, IMAGE_LOOKUP):
+            if self.lookup_returncode != 0:
+                return _completed(self.lookup_returncode, stderr="daemon down\n")
+            found = self.volume if args == VOLUME_LOOKUP else self.image
+            return _completed(0, stdout=f"{found}\n" if found else "")
+        if args == STAT_CALL:
+            if self.owner is None:
+                return _completed(1, stderr="stat: cannot stat '/app/volume/logs'\n")
+            return _completed(0, stdout=f"{self.owner}\n")
+        if self.repair_returncode != 0:
+            return _completed(self.repair_returncode, stderr="chown: denied\n")
+        return _completed(0)
+
+
+def _capacity_ids(
+    tmp_path: Path, host_uid: str = "1000", host_gid: str = "1000"
+) -> Path:
+    env_path = tmp_path / "capacity.env"
+    env_path.write_text(f"HOST_UID={host_uid}\nHOST_GID={host_gid}\n")
+    return env_path
+
+
+def _no_probe() -> Probe:
+    raise AssertionError("logs-owner-fix must not probe the host")
+
+
+def _fix(env_path: Path, docker: _FakeDocker) -> int:
+    return main(["logs-owner-fix", "--output", str(env_path)], _no_probe, docker)
+
+
+def test_logs_owner_fix_matching_owner_is_quiet_no_op(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakeDocker(owner="1000:1000")
+
+    assert _fix(_capacity_ids(tmp_path), docker) == 0
+
+    assert docker.calls == [VOLUME_LOOKUP, IMAGE_LOOKUP, STAT_CALL]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_logs_owner_fix_repairs_mismatched_owner(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakeDocker(owner="1001:1001")
+
+    assert _fix(_capacity_ids(tmp_path), docker) == 0
+
+    assert docker.calls == [
+        VOLUME_LOOKUP,
+        IMAGE_LOOKUP,
+        STAT_CALL,
+        _repair_call("1000:1000"),
+    ]
+    assert capsys.readouterr().out == (
+        "repairing app_logs ownership (was 1001:1001, now 1000:1000)\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("volume", "image"), [("", WEB_IMAGE_ID), (LOGS_VOLUME, ""), ("", "")]
+)
+def test_logs_owner_fix_skips_without_volume_or_image(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], volume: str, image: str
+) -> None:
+    """A fresh machine skips before reading the capacity file (it may not exist)."""
+    docker = _FakeDocker(volume=volume, image=image)
+
+    assert _fix(tmp_path / "missing.env", docker) == 0
+
+    assert docker.calls == [VOLUME_LOOKUP, IMAGE_LOOKUP]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_logs_owner_fix_skips_when_lookups_fail_and_forwards_stderr(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakeDocker(lookup_returncode=1)
+
+    assert _fix(_capacity_ids(tmp_path), docker) == 0
+
+    assert docker.calls == [VOLUME_LOOKUP, IMAGE_LOOKUP]
+    assert capsys.readouterr().err == "daemon down\ndaemon down\n"
+
+
+def test_logs_owner_fix_skips_quietly_without_log_dir(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakeDocker(owner=None)
+
+    assert _fix(_capacity_ids(tmp_path), docker) == 0
+
+    assert docker.calls == [VOLUME_LOOKUP, IMAGE_LOOKUP, STAT_CALL]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+@pytest.mark.parametrize(
+    ("host_uid", "host_gid", "expected_owner"),
+    [
+        ("0", "0", "1001:1001"),
+        ("0", "1000", "1001:1000"),
+        ("1000", "0", "1000:1001"),
+    ],
+)
+def test_logs_owner_fix_maps_root_ids_to_1001(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    host_uid: str,
+    host_gid: str,
+    expected_owner: str,
+) -> None:
+    docker = _FakeDocker(owner="1000:1000")
+
+    assert _fix(_capacity_ids(tmp_path, host_uid, host_gid), docker) == 0
+
+    assert docker.calls[-1] == _repair_call(expected_owner)
+    assert f"now {expected_owner})" in capsys.readouterr().out
+
+
+def test_logs_owner_fix_root_host_already_1001_is_no_op(tmp_path: Path) -> None:
+    docker = _FakeDocker(owner="1001:1001")
+    assert _fix(_capacity_ids(tmp_path, "0", "0"), docker) == 0
+    assert docker.calls == [VOLUME_LOOKUP, IMAGE_LOOKUP, STAT_CALL]
+
+
+@pytest.mark.parametrize(
+    ("host_uid", "host_gid"),
+    [("", "1000"), ("1000", ""), ("abc", "1000"), ("1000", "-1"), ("1.5", "1000")],
+)
+def test_logs_owner_fix_non_numeric_ids_exit_non_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], host_uid: str, host_gid: str
+) -> None:
+    env_path = _capacity_ids(tmp_path, host_uid, host_gid)
+    docker = _FakeDocker()
+
+    assert _fix(env_path, docker) != 0
+
+    assert docker.calls == [VOLUME_LOOKUP, IMAGE_LOOKUP]
+    assert capsys.readouterr().err == (
+        f"make capacity: HOST_UID/HOST_GID invalid in {env_path} — run 'make capacity'\n"
+    )
+
+
+def test_logs_owner_fix_missing_id_keys_exit_non_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    env_path.write_text("U4I_N_UI=8\n")
+
+    assert _fix(env_path, _FakeDocker()) != 0
+    assert "HOST_UID/HOST_GID invalid" in capsys.readouterr().err
+
+
+def test_logs_owner_fix_failed_repair_exits_non_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakeDocker(owner="1001:1001", repair_returncode=1)
+
+    assert _fix(_capacity_ids(tmp_path), docker) != 0
+
+    captured = capsys.readouterr()
+    assert captured.out.startswith("repairing app_logs ownership")
+    assert captured.err == "make capacity: docker failed — chown: denied\n"
+
+
+def test_logs_owner_fix_docker_launch_failure_exits_non_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def unlaunchable_docker(args: list[str]) -> subprocess.CompletedProcess[str]:
+        raise DockerRunError("No such file or directory: 'docker'")
+
+    exit_code = main(
+        ["logs-owner-fix", "--output", str(_capacity_ids(tmp_path))],
+        _no_probe,
+        unlaunchable_docker,
+    )
+
+    assert exit_code != 0
+    assert capsys.readouterr().err == (
+        "make capacity: docker failed — No such file or directory: 'docker'\n"
+    )
+
+
+def test_run_docker_prefixes_docker_and_sets_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorded: dict[str, object] = {}
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        recorded["command"] = command
+        recorded.update(kwargs)
+        return _completed(0, stdout="ok\n")
+
+    monkeypatch.setattr(capacity.subprocess, "run", fake_run)
+
+    assert run_docker(IMAGE_LOOKUP).stdout == "ok\n"
+    assert recorded["command"] == ["docker", *IMAGE_LOOKUP]
+    assert recorded["timeout"] == DOCKER_RUN_TIMEOUT_SECONDS
+    assert recorded["capture_output"] is True
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected_fragment"),
+    [
+        (FileNotFoundError("No such file or directory: 'docker'"), "docker"),
+        (
+            subprocess.TimeoutExpired(cmd="docker", timeout=DOCKER_RUN_TIMEOUT_SECONDS),
+            f"docker image timed out after {DOCKER_RUN_TIMEOUT_SECONDS}s",
+        ),
+    ],
+)
+def test_run_docker_launch_failures_raise_docker_run_error(
+    monkeypatch: pytest.MonkeyPatch, raised: Exception, expected_fragment: str
+) -> None:
+    def failing_run(*args: object, **kwargs: object) -> None:
+        raise raised
+
+    monkeypatch.setattr(capacity.subprocess, "run", failing_run)
+    with pytest.raises(DockerRunError, match=expected_fragment):
+        run_docker(IMAGE_LOOKUP)
