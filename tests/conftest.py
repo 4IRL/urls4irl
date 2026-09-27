@@ -54,13 +54,13 @@ from tests.models_for_test import (
 
 # Per-worker metrics Redis DB index base on the dedicated `redis-metrics`
 # container. Each xdist worker is assigned `_METRICS_REDIS_DB_BASE + worker_num`
-# to keep counter keys isolated across parallel test runs. With the n=8 worker
-# cap (per CLAUDE.md), the highest assigned metrics DB index is 15 — exactly at
-# the boundary of the dedicated container's default 16-database limit (indices
-# 0..15). The constraint is the dedicated container's `--databases` config, not
-# contention with session DBs on the shared Redis. Raising the worker count
-# above 8 (or the base above 8) requires either bumping `--databases` on the
-# `redis-metrics` service or rebasing the metrics DB block to a lower start.
+# to keep counter keys isolated across parallel test runs. The constraint is the
+# dedicated container's `--databases` config, not contention with session DBs on
+# the shared Redis. Locally, `make capacity` (scripts/capacity.py, which mirrors
+# this base as METRICS_REDIS_DB_BASE) derives `REDIS_METRICS_DATABASES` from the
+# largest worker count, and compose passes it to `redis-metrics --databases`, so
+# every derived or overridden worker count fits. A hand-run compose without the
+# generated file falls back to Redis's default of 16 databases (workers gw0-gw7).
 _METRICS_REDIS_DB_BASE = 8
 
 # Make the shared metrics-UI fixtures (metrics_redis_client,
@@ -273,8 +273,9 @@ def worker_metrics_redis_uri(worker_id: str) -> str:
     Master worker is intentionally mapped to ``_METRICS_REDIS_DB_BASE`` (DB 8 by
     default) so tests never share DB 0 with the production-style runtime
     `METRICS_REDIS_URI` (which is the only DB used in production on the
-    dedicated `redis-metrics` container). Parallel workers gw0..gw7 map to DBs
-    `_METRICS_REDIS_DB_BASE + worker_num` (8..15 by default).
+    dedicated `redis-metrics` container). Parallel worker gwN maps to DB
+    `_METRICS_REDIS_DB_BASE + N`, which must be below the container's database
+    count: the derived `REDIS_METRICS_DATABASES` from `make capacity`.
     """
     if not TEST_METRICS_REDIS_URI or TEST_METRICS_REDIS_URI == "memory://":
         return TEST_METRICS_REDIS_URI
@@ -295,7 +296,9 @@ def worker_metrics_redis_uri(worker_id: str) -> str:
             f"Metrics Redis DB index {db_index} is out of range for worker '{worker_id}'. "
             f"redis-metrics only has {max_dbs} databases (0-{max_dbs - 1}). "
             f"_METRICS_REDIS_DB_BASE is {_METRICS_REDIS_DB_BASE}. "
-            f"Either increase redis-metrics 'databases' config or lower _METRICS_REDIS_DB_BASE."
+            "Locally: run 'make capacity' then 'make up d=1'. In CI: raise the "
+            "redis-metrics service's --databases in .github/workflows/test.yml "
+            "or lower -n."
         )
 
     return f"{base}/{db_index}"

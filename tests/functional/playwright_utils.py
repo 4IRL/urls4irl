@@ -17,7 +17,8 @@ from tests.functional.locators import SplashPageLocators as SPL
 
 # Baseline auto-retrying assertion timeout for all Playwright `expect()` calls.
 # Matches the existing Selenium `wait_for_element_presence(timeout=10)` baseline
-# under n=8 parallel load — a documented suite-wide baseline, not a per-test pad.
+# under the derived/overridable UI worker count (`U4I_N_UI`, see `make capacity`)
+# — a documented suite-wide baseline, not a per-test pad.
 DEFAULT_EXPECT_TIMEOUT_MS = 10_000
 
 expect.set_options(timeout=DEFAULT_EXPECT_TIMEOUT_MS)

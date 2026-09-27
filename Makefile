@@ -1,5 +1,17 @@
-COMPOSE = docker compose --project-directory . -f docker/compose.local.yaml
-COMPOSE_BUILT = docker compose --project-directory . -f docker/compose.local.yaml -f docker/compose.built.yaml
+# Host capacity (scripts/capacity.py, `make capacity`): derived worker counts + interlocks + host UID/GID.
+CAPACITY_ENV = docker/.capacity.generated.env
+CAPACITY = mise exec python -- python scripts/capacity.py
+# Recursive `=` so `wildcard` is evaluated at recipe time, after _capacity-fresh has (re)generated the file.
+# `.env` goes first: passing any --env-file disables compose's implicit .env discovery, and a missing .env now errors loudly.
+COMPOSE_ENV_FILES = --env-file .env $(if $(wildcard $(CAPACITY_ENV)),--env-file $(CAPACITY_ENV))
+COMPOSE = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f docker/compose.local.yaml
+COMPOSE_BUILT = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f docker/compose.local.yaml -f docker/compose.built.yaml
+# Recipe-time shell read of one KEY from the capacity file. The keys are never exported into make, so a
+# value read back here is never mistaken for a command-line override.
+capacity_val = $$(sed -n 's/^$(1)=//p' $(CAPACITY_ENV))
+# Tier 3 worktree identity: computed from the checkout dir name, never stored; consumed by master Phase 7.
+U4I_SLUG ?= $(notdir $(CURDIR))
+export U4I_SLUG
 EXEC_WEB = $(COMPOSE) exec web bash -c
 EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 # For steps that write into bind-mounted host files (frontend/types): run as the host user so the
@@ -14,7 +26,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check tools mise-config-check lockfile-check _require-tools _require-shell-files up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: hooks hooks-check setup tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
@@ -23,26 +35,26 @@ help: ## Show this help message
 
 # -V (--renew-anon-volumes): recreate anonymous volumes (vite's /app/node_modules masks) on every up,
 # so a stale pre-bump node_modules never shadows the freshly built image's pnpm install. Named volumes are unaffected.
-up: ## Build and start the full stack (pass d=1 for detached mode)
+up: _capacity-fresh _logs-owner-fix ## Build and start the full stack (pass d=1 for detached mode)
 	$(COMPOSE) up --build --remove-orphans -V $(if $(d),-d,)
 
-up-built: ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
+up-built: _capacity-fresh _logs-owner-fix ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
 	$(COMPOSE_BUILT) up --build --remove-orphans -V $(if $(d),-d,)
 
-start-built: prune ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
+start-built: _capacity-fresh _logs-owner-fix prune ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
 	$(COMPOSE) down
 	$(COMPOSE_BUILT) up --build --remove-orphans --wait
 
 down: ## Stop the stack
 	$(COMPOSE) down
 
-build: ## Rebuild images without starting
+build: _capacity-fresh ## Rebuild images without starting
 	$(COMPOSE) build
 
 restart: ## Restart a specific container: make restart c=<service>
 	$(COMPOSE) restart $(c)
 
-tunnel: ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
+tunnel: _capacity-fresh _logs-owner-fix ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
 	$(COMPOSE_BUILT) up --build --remove-orphans -V -d --wait
 	$(COMPOSE_BUILT) --profile tunnel up -d --no-recreate cloudflared
 	@echo "Waiting for Cloudflare quick-tunnel URL (~5-10s)..."
@@ -59,8 +71,8 @@ tunnel-stop: ## Stop and remove the Cloudflare tunnel (leaves the rest of the st
 test-integration: ## Run all integration (non-UI) tests
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -v"
 
-test-integration-parallel: ## Run integration tests in parallel: make test-integration-parallel [n=4, max n=8]
-	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -n $(or $(n),4) --dist=loadscope -v"
+test-integration-parallel: _capacity-fresh _require-n-fits ## Run integration tests in parallel: make test-integration-parallel [n=derived: see make capacity]
+	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
 
 test-functional: prune ## Run all functional (UI/Playwright) tests
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
@@ -68,11 +80,11 @@ test-functional: prune ## Run all functional (UI/Playwright) tests
 test-functional-built: start-built ## Run all functional (UI/Playwright) tests against built assets
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
 
-test-ui-parallel: prune ## Run UI tests in parallel: make test-ui-parallel [n=8] (max n=8: redis-metrics has 16 DBs, so gw8 errors on app-backed tests; see CLAUDE.md)
-	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),8) --dist=loadscope"
+test-ui-parallel: _capacity-fresh _require-n-fits prune ## Run UI tests in parallel: make test-ui-parallel [n=derived: see make capacity]
+	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_UI)) --dist=loadscope"
 
-test-ui-parallel-built: start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=8] (max n=8, see CLAUDE.md)
-	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),8) --dist=loadscope"
+test-ui-parallel-built: _capacity-fresh _require-n-fits start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=derived: see make capacity]
+	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_UI)) --dist=loadscope"
 
 test-js: ## Run all JS unit tests (vitest)
 	$(EXEC_VITE) pnpm test
@@ -92,23 +104,23 @@ test-marker: ## Run tests for a specific marker: make test-marker m=<marker>
 test-marker-built: start-built ## Run tests for a specific marker against built assets: make test-marker-built m=<marker>
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -v"
 
-test-marker-parallel: ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=4, max n=8]
-	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),4) --dist=loadscope -v"
+test-marker-parallel: _capacity-fresh _require-n-fits ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=derived: see make capacity]
+	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
 
-test-marker-parallel-built: start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=4, max n=8]
-	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),4) --dist=loadscope -v"
+test-marker-parallel-built: _capacity-fresh _require-n-fits start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=derived: see make capacity]
+	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
 
-test-last-failed: ## Run tests for a specific marker: make test-marker m=<marker>
+test-last-failed: ## Re-run only the tests that failed last run (pytest --lf)
 	$(EXEC_WEB) "$(PYTEST) tests/ -v --lf"
 
 test-file: ## Run pytest against a specific file or path: make test-file f=<path> [args=<extra-pytest-args>]
 	$(EXEC_WEB) "$(PYTEST) $(f) -v $(args)"
 
-test-file-parallel: ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=4, max n=8] [args=<extra-pytest-args>]
-	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),4) --dist=loadscope -v $(args)"
+test-file-parallel: _capacity-fresh _require-n-fits ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
+	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v $(args)"
 
-test-file-parallel-built: start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=4, max n=8] [args=<extra-pytest-args>]
-	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),4) --dist=loadscope -v $(args)"
+test-file-parallel-built: _capacity-fresh _require-n-fits start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
+	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v $(args)"
 
 vite-build: ## Build Vite to verify no import/syntax errors
 	$(EXEC_VITE) pnpm exec vite build
@@ -179,17 +191,28 @@ plan-list: ## List every plan (masters + sub-plans) under plans/ with finished/o
 playwright-unlock: ## Kill orphaned Playwright-MCP Chrome holding the profile lock and clear stale Singleton* files
 	@.claude/scripts/playwright-unlock.sh
 
-hooks: ## Install the pre-commit git hook (one-time per clone; creates ./venv with the pinned pre-commit)
-	@test -x venv/bin/pre-commit || python3.11 -m venv venv
-	@venv/bin/pip install --quiet --disable-pip-version-check \
-		$$(grep -E '^pre-commit==' requirements/requirements-dev.txt)
-	@venv/bin/pre-commit install
-	@venv/bin/pre-commit --version
+# hooks always targets the MAIN checkout (the git common dir's parent), so the shared hook's INSTALL_PYTHON never
+# points at a linked worktree's venv. In the main checkout, that is the repo root itself.
+# The venv uses the mise-pinned python (`make tools` installs it first).
+hooks: ## Install the shared pre-commit git hook (idempotent; venv + install always in the main checkout, safe to run from any worktree)
+	@common_dir=$$(git rev-parse --path-format=absolute --git-common-dir) || exit 1; \
+		main=$$(dirname "$$common_dir"); \
+		test -x "$$main/venv/bin/pre-commit" || (cd "$$main" && mise exec python -- python -m venv venv) || exit 1; \
+		"$$main/venv/bin/pip" install --quiet --disable-pip-version-check \
+			$$(grep -E '^pre-commit==' "$$main/requirements/requirements-dev.txt") || exit 1; \
+		(cd "$$main" && venv/bin/pre-commit install) || exit 1; \
+		"$$main/venv/bin/pre-commit" --version
 
-hooks-check: ## Report whether the pre-commit hook is installed in this clone
-	@test -f .git/hooks/pre-commit \
-		&& echo "pre-commit hook: INSTALLED" \
-		|| echo "pre-commit hook: MISSING — run 'make hooks'"
+# --git-path honors linked worktrees (where .git is a file) and core.hooksPath.
+hooks-check: ## Report whether the pre-commit hook is installed (exits 1 when missing; worktree-safe)
+	@hook_path=$$(git rev-parse --git-path hooks/pre-commit); \
+		if test -f "$$hook_path"; then echo "pre-commit hook: INSTALLED"; \
+		else echo "pre-commit hook: MISSING — run 'make hooks'"; exit 1; fi
+
+setup: ## One-time per clone/worktree: toolchain, pnpm deps, hooks, capacity (idempotent)
+	@$(MAKE) --no-print-directory tools
+	@$(MAKE) --no-print-directory hooks
+	@$(MAKE) --no-print-directory capacity || echo "⚠ capacity deferred: docker unavailable — 'make up' will generate it"
 
 # .mise.toml is deliberately never `mise trust`ed: a pin-only config (min_version + plain [tools] strings) loads untrusted, and mise's own trust check refuses anything more at runtime.
 # mise-config-check (scripts/mise_config_check.py; run by `tools` after `mise install`, and by CI's Format and Lint jobs; uses mise's own python via `mise exec python --`, never a system one): a post-hoc policy lint for contexts where mise's trust check won't fire (CI / trusted clones).
@@ -201,6 +224,15 @@ tools: ## Install the pinned host toolchain (.mise.toml) + frontend node_modules
 	@$(MAKE) --no-print-directory mise-config-check
 	cd frontend && $(MISE) pnpm install --frozen-lockfile --ignore-scripts
 	git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Overrides pass through only when set on the command line or in the environment (never read back from the generated
+# file); an unset knob passes no flag, so the recorded (sticky) override is reused, and `=auto` clears it.
+capacity: _require-mise ## Derive worker counts + interlocks from docker info (overrides: U4I_N_UI=<n|auto> U4I_N_INT=<n|auto> U4I_MEM_FRACTION=<f|auto>)
+	@$(CAPACITY) generate --output $(CAPACITY_ENV) \
+		$(if $(and $(filter command line environment,$(origin U4I_N_UI)),$(U4I_N_UI)),--n-ui '$(U4I_N_UI)') \
+		$(if $(and $(filter command line environment,$(origin U4I_N_INT)),$(U4I_N_INT)),--n-int '$(U4I_N_INT)') \
+		$(if $(and $(filter command line environment,$(origin U4I_MEM_FRACTION)),$(U4I_MEM_FRACTION)),--mem-fraction '$(U4I_MEM_FRACTION)')
+	@$(CAPACITY) show --output $(CAPACITY_ENV)
 
 mise-config-check: ## Fail unless .mise.toml is pin-only and the Dockerfiles' ARG PNPM_VERSION matches its pnpm pin
 	@mise exec python -- python scripts/mise_config_check.py
@@ -216,6 +248,40 @@ lockfile-check: ## Fail if an npm lockfile/.npmrc reappears next to pnpm-lock.ya
 _require-tools:
 	@command -v mise >/dev/null && test -x $(FRONTEND_BIN)/prettier || { echo "host lint toolchain missing — run 'make tools'"; exit 1; }
 
+# Capacity only needs mise's python, not the frontend prettier binary _require-tools also demands.
+_require-mise:
+	@command -v mise >/dev/null || { echo "mise missing — run 'make tools' (or 'make setup')"; exit 1; }
+
+# Runs before every stack/test target: regenerates the capacity file only when missing or its host fingerprint changed.
+_capacity-fresh: _require-mise
+	@$(CAPACITY) ensure --output $(CAPACITY_ENV)
+
+# Runs before up/up-built/start-built/tunnel: re-owns the app_logs volume's log dir to HOST_UID:HOST_GID (mode 775) when an
+# older image or workflow start left it owned by another uid, since web would otherwise crash on its log file. Logic
+# (and its unit tests) lives in scripts/capacity.py `logs-owner-fix`; it prints once when it repairs, silent otherwise.
+_logs-owner-fix: _capacity-fresh
+	@$(CAPACITY) logs-owner-fix --output $(CAPACITY_ENV)
+
+# Refuses a corrupt capacity file (the derived U4I_N_UI/U4I_N_INT defaults are spliced into pytest's -n) and an
+# explicit n that is not a positive integer or exceeds this host's ceiling, before any prune/rebuild/pytest. Depends
+# on _capacity-fresh so the file is current before it is read, regardless of -j. Shared by UI and integration
+# targets, so it names both knobs.
+_require-n-fits: _capacity-fresh
+	@for key in U4I_N_UI U4I_N_INT; do \
+		val=$$(sed -n "s/^$$key=//p" $(CAPACITY_ENV)); \
+		case "$$val" in ''|*[!0-9]*) echo "$$key invalid in $(CAPACITY_ENV) — run 'make capacity'"; exit 1;; esac; \
+	done
+	@if [ -n "$(n)" ]; then \
+		case "$(n)" in *[!0-9]*) echo "n=$(n) is not a positive integer"; exit 1;; esac; \
+		if [ "$(n)" -lt 1 ]; then echo "n=$(n) is not a positive integer"; exit 1; fi; \
+		max_n=$(call capacity_val,U4I_N_MAX); \
+		case "$$max_n" in ''|*[!0-9]*) echo "U4I_N_MAX invalid in $(CAPACITY_ENV) — run 'make capacity'"; exit 1;; esac; \
+		if [ "$(n)" -gt "$$max_n" ]; then \
+			echo "n=$(n) exceeds this host's capacity ceiling (U4I_N_MAX=$$max_n); raise it with 'make capacity U4I_N_UI=$(n)' (UI targets) or 'make capacity U4I_N_INT=$(n)' (integration/marker/file targets), then 'make up d=1'"; \
+			exit 1; \
+		fi; \
+	fi
+
 # An empty list would make shfmt read stdin (hang, or pass silently in CI), so fail loudly instead.
 _require-shell-files:
 	@test -n "$(SHELL_FILES)" || { echo "no shell files found (not a git checkout, or git ls-files failed)"; exit 1; }
@@ -225,7 +291,7 @@ prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker volume prune -f
 	docker builder prune -f
 
-metrics-watch: ## Live tail Redis ops on dedicated redis-metrics container (requires METRICS_ENABLED=true on web)
+metrics-watch: ## Live tail Redis ops on dedicated redis-metrics container (metrics on by default; see CLAUDE.md)
 	$(COMPOSE) exec redis-metrics redis-cli MONITOR
 
 metrics-snapshot: ## Snapshot current metrics:counter:* keys with values

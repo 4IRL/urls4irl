@@ -8,6 +8,9 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.Local
+      args:
+        HOST_UID: "${HOST_UID:-1001}"
+        HOST_GID: "${HOST_GID:-1001}"
     ports:
       - "8659:5000"
     user: u4i-host:u4i-host-group
@@ -36,10 +39,10 @@ services:
       - VITE_URL=http://localhost:5173
       - VITE_INTERNAL_HOST=vite
       - ENABLE_SSL=false
-      # Anonymous metrics knobs. METRICS_ENABLED defaults off locally so unrelated
-      # dev work doesn't write counters; flip via `METRICS_ENABLED=true make up d=1`
-      # to exercise the live pipeline (see `make metrics-*` targets).
-      - METRICS_ENABLED=${METRICS_ENABLED:-false}
+      # Anonymous metrics knobs. METRICS_ENABLED is on by default locally (see the
+      # `make metrics-*` targets). Opt a machine out with METRICS_ENABLED=false in
+      # `.env`, which make reads via `--env-file .env`; never rely on a shell export.
+      - METRICS_ENABLED=${METRICS_ENABLED:-true}
       - METRICS_FLUSH_INTERVAL_SECONDS=60
       - METRICS_BUCKET_SECONDS=3600
       - METRICS_REDIS_URI=redis://redis-metrics:6379/0
@@ -168,7 +171,7 @@ services:
   test-db:
     image: postgres:16.3-bookworm
     container_name: u4i-local-postgres-test
-    command: postgres -c max_connections=500
+    command: postgres -c max_connections=${U4I_TEST_MAX_CONN:-500}
     env_file:
       - .env
     environment:
@@ -196,7 +199,7 @@ services:
   redis-metrics:
     image: redis:6.2
     container_name: u4i-local-redis-metrics
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no --databases ${REDIS_METRICS_DATABASES:-16}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

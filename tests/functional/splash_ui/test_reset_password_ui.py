@@ -143,11 +143,11 @@ def test_password_reset_successful_reset_btn(
 
     page.goto(reset_password_url)
 
-    # Under the n=8 UI parallelism cap, the splash.ts ES module can take
-    # 200-800ms+ between DOMContentLoaded and `initResetPasswordForm`
-    # finishing handler binding. Without this wait, the test can race that
-    # gap: it fills inputs and clicks submit before the JS handler is bound,
-    # triggering the default HTML form POST instead of the AJAX path.
+    # Under the derived `U4I_N_UI` UI parallelism cap, the splash.ts ES module can
+    # take 200-800ms+ between DOMContentLoaded and `initResetPasswordForm`
+    # finishing handler binding. Without this wait, the test can race that gap: it
+    # fills inputs and clicks submit before the JS handler is bound, triggering the
+    # default HTML form POST instead of the AJAX path.
     wait_for_element_presence(page=page, css_selector=SPL.RESET_PASSWORD_FORM_READY)
 
     new_password_input = wait_then_get_element(
