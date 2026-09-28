@@ -806,10 +806,10 @@ def test_interlock_keys_are_the_values_baked_into_containers() -> None:
     assert INTERLOCK_KEYS == (
         "REDIS_METRICS_DATABASES",
         "U4I_PG_TEST_CONN_LIMIT",
-        "U4I_PG_MAX_CONN",
-        "U4I_PG_SHARED_BUFFERS_MB",
         "HOST_UID",
         "HOST_GID",
+        "U4I_PG_MAX_CONN",
+        "U4I_PG_SHARED_BUFFERS_MB",
     )
     assert set(INTERLOCK_KEYS) <= set(ENV_KEYS)
 

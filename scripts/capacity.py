@@ -108,14 +108,7 @@ SPOKE_INTERLOCK_KEYS: tuple[str, ...] = (
     "HOST_GID",
 )
 HUB_INTERLOCK_KEYS: tuple[str, ...] = ("U4I_PG_MAX_CONN", "U4I_PG_SHARED_BUFFERS_MB")
-INTERLOCK_KEYS: tuple[str, ...] = (
-    "REDIS_METRICS_DATABASES",
-    "U4I_PG_TEST_CONN_LIMIT",
-    "U4I_PG_MAX_CONN",
-    "U4I_PG_SHARED_BUFFERS_MB",
-    "HOST_UID",
-    "HOST_GID",
-)
+INTERLOCK_KEYS: tuple[str, ...] = SPOKE_INTERLOCK_KEYS + HUB_INTERLOCK_KEYS
 SPOKE_RECREATE_MESSAGE: str = "recreate required: run 'make up [p=…] d=1'"
 HUB_RECREATE_MESSAGE: str = (
     "hub recreate required: run 'make down' in every spoke, "
