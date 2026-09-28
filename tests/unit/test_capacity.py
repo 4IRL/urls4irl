@@ -970,6 +970,22 @@ def test_generate_reports_recreate_when_interlocks_change(
     assert read_env(env_path)["U4I_PG_TEST_CONN_LIMIT"] == "110"
 
 
+def _drift_and_regenerate(
+    env_path: Path, changed_key: str, capsys: pytest.CaptureFixture[str]
+) -> list[str]:
+    """Generate, drift one recorded interlock, regenerate; return the second run's lines."""
+    _run(["generate", "--output", str(env_path)])
+    recorded_value = read_env(env_path)[changed_key]
+    env_path.write_text(
+        env_path.read_text().replace(
+            f"{changed_key}={recorded_value}\n", f"{changed_key}=1{recorded_value}\n"
+        )
+    )
+    capsys.readouterr()
+    assert _run(["generate", "--output", str(env_path)]) == 0
+    return capsys.readouterr().out.splitlines()
+
+
 @pytest.mark.parametrize(
     ("changed_key", "expected_line"),
     [
@@ -1006,37 +1022,10 @@ def test_generate_names_only_the_tier_an_interlock_lives_in(
 ) -> None:
     """One recorded interlock drifts; regenerating names only that key's tier."""
     env_path = tmp_path / "capacity.env"
-    _run(["generate", "--output", str(env_path)])
-    recorded_value = read_env(env_path)[changed_key]
-    env_path.write_text(
-        env_path.read_text().replace(
-            f"{changed_key}={recorded_value}\n", f"{changed_key}=1{recorded_value}\n"
-        )
-    )
-    capsys.readouterr()
 
-    assert _run(["generate", "--output", str(env_path)]) == 0
+    lines = _drift_and_regenerate(env_path, changed_key, capsys)
 
-    assert capsys.readouterr().out.splitlines() == [
-        f"capacity regenerated ({env_path})",
-        expected_line,
-    ]
-
-
-def _drift_and_regenerate(
-    env_path: Path, changed_key: str, capsys: pytest.CaptureFixture[str]
-) -> list[str]:
-    """Generate, drift one recorded interlock, regenerate; return the second run's lines."""
-    _run(["generate", "--output", str(env_path)])
-    recorded_value = read_env(env_path)[changed_key]
-    env_path.write_text(
-        env_path.read_text().replace(
-            f"{changed_key}={recorded_value}\n", f"{changed_key}=1{recorded_value}\n"
-        )
-    )
-    capsys.readouterr()
-    assert _run(["generate", "--output", str(env_path)]) == 0
-    return capsys.readouterr().out.splitlines()
+    assert lines == [f"capacity regenerated ({env_path})", expected_line]
 
 
 @pytest.mark.parametrize(
