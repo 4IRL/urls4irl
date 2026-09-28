@@ -314,6 +314,7 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make test-marker-parallel m=<marker> [n=<N>]` | Tests for a specific marker in parallel (**preferred**; default `n` = derived `U4I_N_INT`) |
 | `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
 | `make test-file f=<path> [args=...]` | Single test file/path |
+| `make test-host-static [f=<paths>] [args=...]` | Host-only static tests (Makefile dry runs, compose YAML, playwright entrypoint; they skip inside `web`) in the primary clone's `venv/`, installing the test pins on first use |
 | `make vite-build` | Vite build verification |
 | `make addmock` | Seed dev DB with all mock data |
 | `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |

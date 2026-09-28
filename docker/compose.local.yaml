@@ -69,6 +69,8 @@ services:
       - ./migrations/versions:/code/u4i/migrations/versions
       - ./scripts:/code/u4i/scripts
       - ./docker:/code/u4i/docker:ro
+      # Live pins, not the image's build-time copy (test_compose_hub.py checks the Playwright version triad).
+      - ./requirements:/code/u4i/requirements:ro
       - ./frontend/types:/code/u4i/frontend/types
       - app_logs:/app/volume
     networks:
