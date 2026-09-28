@@ -82,8 +82,14 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.Vite
+      args:
+        HOST_UID: "${HOST_UID:-1001}"
+        HOST_GID: "${HOST_GID:-1001}"
     ports:
       - "${U4I_VITE_PORT:-5173}:5173"
+    # Host identity, like web: the dev server, `make vite-build` and built mode's `vite build` (compose.built.yaml
+    # inherits this) write backend/static/dist into the checkout, which must stay owned by you, not root.
+    user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
     networks:
       default:
         aliases:
@@ -106,7 +112,9 @@ services:
       - /app/node_modules
       # Masks host frontend/node_modules (pnpm symlinks into the host store, unresolvable here)
       - /app/frontend/node_modules
-      - ./backend/static/dist:/app/backend/static/dist
+      # The parent dir, not dist itself: docker would create a missing bind-mount source (dist) as root, which the
+      # non-root vite could not write. Mounted this way, vite creates dist as the host user.
+      - ./backend/static:/app/backend/static
     command: pnpm run dev
     healthcheck:
       test: |

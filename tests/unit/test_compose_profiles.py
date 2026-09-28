@@ -275,6 +275,25 @@ def test_spoke_never_depends_on_a_service_outside_its_file() -> None:
             )
 
 
+def test_vite_runs_as_the_host_user() -> None:
+    """Built-mode `vite build` (and `make vite-build`) write dist into the checkout: root-owned files block
+    `git worktree remove`. The image re-owns /app to the same ids, so they must be its build args too."""
+    vite = _load_services(LOCAL_COMPOSE_FILE)["vite"]
+    assert vite["user"] == "${HOST_UID:-1001}:${HOST_GID:-1001}"
+    assert vite["build"]["args"] == {
+        "HOST_UID": "${HOST_UID:-1001}",
+        "HOST_GID": "${HOST_GID:-1001}",
+    }
+    assert "user" not in _load_services(BUILT_COMPOSE_FILE)["vite"]
+
+
+def test_vite_mounts_static_not_a_missing_dist() -> None:
+    """Docker creates a missing bind-mount source as root, which the non-root vite could not write into."""
+    vite_volumes = _load_services(LOCAL_COMPOSE_FILE)["vite"]["volumes"]
+    assert "./backend/static:/app/backend/static" in vite_volumes
+    assert not [volume for volume in vite_volumes if "static/dist" in volume]
+
+
 def test_web_reaches_hub_services_by_their_hub_names() -> None:
     web_environment = _load_services(LOCAL_COMPOSE_FILE)["web"]["environment"]
     assert "PLAYWRIGHT_WS_URL=ws://playwright:3000/" in web_environment

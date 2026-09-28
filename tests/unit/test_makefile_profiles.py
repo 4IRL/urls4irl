@@ -295,6 +295,18 @@ def test_worktree_init_links_env_and_secrets_from_the_primary() -> None:
     assert any("secrets" in line for line in link_lines), output
 
 
+@pytest.mark.parametrize("linked_path", [".env", "secrets"])
+def test_worktree_init_reports_each_link_it_creates(linked_path: str) -> None:
+    output = _successful_dry_run("worktree-init", "U4I_PRIMARY=")
+    link_line = _single_line_containing(output, f'/{linked_path}" {linked_path}')
+    link_message = re.search(
+        rf'echo "worktree-init: linked {re.escape(linked_path)} -> (\S+)"', link_line
+    )
+    assert link_message is not None, link_line
+    assert link_message.group(1).endswith(f"/{linked_path}"), link_line
+    assert f'ln -s "{link_message.group(1)}" {linked_path} && echo' in link_line
+
+
 def test_worktree_init_fails_on_missing_env_but_skips_missing_secrets() -> None:
     output = _successful_dry_run("worktree-init", "U4I_PRIMARY=")
     link_lines = [line for line in output.splitlines() if "ln -s" in line]

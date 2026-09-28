@@ -400,7 +400,7 @@ worktree_link = if [ -L $(1) ] && [ ! -e $(1) ]; then \
 		echo "worktree-init: $(1) is a broken symlink to $$(readlink $(1)); remove it (rm $(1)) and rerun 'make worktree-init'" >&2; $(3); \
 	elif [ -L $(1) ]; then echo "worktree-init: $(1) already linked"; \
 	elif [ -e $(1) ]; then echo "worktree-init: warning: $(1) is a real file or directory here; leaving it" >&2; \
-	elif [ -e "$(PRIMARY_ROOT)/$(1)" ]; then ln -s "$(PRIMARY_ROOT)/$(1)" $(1); \
+	elif [ -e "$(PRIMARY_ROOT)/$(1)" ]; then ln -s "$(PRIMARY_ROOT)/$(1)" $(1) && echo "worktree-init: linked $(1) -> $(PRIMARY_ROOT)/$(1)"; \
 	else $(2); fi
 
 # Held in a variable because its comma would otherwise split the $(if …) below. Dry-run tests match it verbatim.
