@@ -119,9 +119,13 @@ up: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up $(if $(p
 	$(COMPOSE) $(PROFILE_FLAGS) up --build --remove-orphans -V $(if $(d),-d,)
 
 # A built stack always needs the vite one-shot build (else pages render with no assets), so p defaults to ui here.
+# With d=1 it then waits like start-built/tunnel (VITE_BUILD_BARRIER, then a healthy web). Attached mode has no such
+# point: its `up` streams logs until Ctrl-C (which stops the stack), and the vite build output is visible in the stream.
 up-built: NARROW_PROFILE = $(or $(p),ui)
-up-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up playwright-up _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode)
+up-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up playwright-up _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode, which waits for the vite build + a healthy web)
 	$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --build --remove-orphans -V $(if $(d),-d,)
+	$(if $(d),@$(VITE_BUILD_BARRIER))
+	$(if $(d),$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --wait web)
 
 # Completion barrier for the built stack's one-shot vite (`vite build`). Nothing depends on it (hub playwright used to,
 # and web must not depend on the profiled vite), so `up --wait` cannot include it: once vite exits, even with 0, a

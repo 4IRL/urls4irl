@@ -568,11 +568,22 @@ def test_hub_up_ensures_the_primary_capacity_file_before_the_hub_db() -> None:
     assert lines.index(ensure_line) < lines.index(_hub_db_up_line(output))
 
 
-@pytest.mark.parametrize("make_target", ["start-built", "tunnel"])
-def test_built_stack_waits_for_the_vite_build_before_web(make_target: str) -> None:
+@pytest.mark.parametrize(
+    "make_args",
+    [
+        pytest.param(("start-built",), id="start-built"),
+        pytest.param(("tunnel",), id="tunnel"),
+        pytest.param(("up-built", "d=1"), id="up-built-detached"),
+        pytest.param(("up-built", "p=full", "d=1"), id="up-built-full-detached"),
+    ],
+)
+def test_built_stack_waits_for_the_vite_build_before_web(
+    make_args: tuple[str, ...],
+) -> None:
     # `up --wait` fails once the unreferenced one-shot vite exits, so the build starts detached, the vite
     # barrier blocks on it, and only then does a waiting `up` target web.
-    output = _successful_dry_run(make_target)
+    make_target = make_args[0]
+    output = _successful_dry_run(*make_args)
     lines = output.splitlines()
     build_up_line = _compose_up_line(output)
     assert " --wait" not in build_up_line
@@ -587,6 +598,14 @@ def test_built_stack_waits_for_the_vite_build_before_web(make_target: str) -> No
         < lines.index(barrier_line)
         < lines.index(web_wait_line)
     )
+
+
+def test_attached_up_built_streams_without_a_barrier() -> None:
+    # Without d=1 the `up` stays attached until Ctrl-C (which stops the stack), so there is no later point to wait at.
+    output = _successful_dry_run("up-built")
+    assert " -d" not in _compose_up_line(output)
+    assert "docker wait " not in output
+    assert " up --wait web" not in output
 
 
 def test_hub_named_spoke_slug_is_rejected() -> None:
