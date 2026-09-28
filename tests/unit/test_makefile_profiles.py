@@ -457,9 +457,9 @@ def test_bare_up_leaves_hub_playwright_alone() -> None:
     assert not [line for line in _hub_lines(output) if "playwright" in line]
 
 
-@pytest.mark.parametrize("make_target", ["up-built", "start-built"])
-def test_built_stack_starts_hub_playwright(make_target: str) -> None:
-    output = _successful_dry_run(make_target)
+def test_built_stack_starts_hub_playwright() -> None:
+    # Attached up-built streams logs until Ctrl-C and never reaches a trailing line, so playwright starts first.
+    output = _successful_dry_run("up-built")
     lines = output.splitlines()
     first_spoke_compose_index = next(
         index
@@ -467,6 +467,134 @@ def test_built_stack_starts_hub_playwright(make_target: str) -> None:
         if "docker compose" in line and HUB_FILE_MARKER not in line
     )
     assert lines.index(_hub_playwright_up_line(output)) < first_spoke_compose_index
+
+
+def _assert_hub_playwright_starts_after_web_is_healthy(output: str) -> None:
+    # The idle clock starts at container start, so a long rebuild must not eat it before pytest connects.
+    lines = output.splitlines()
+    web_wait_line = _single_line_containing(output, " up --wait web")
+    assert lines.index(_hub_playwright_up_line(output)) > lines.index(web_wait_line)
+    assert lines.index(_hub_db_up_line(output)) < lines.index(_compose_up_line(output))
+
+
+def test_up_built_d1_starts_hub_playwright_last() -> None:
+    _assert_hub_playwright_starts_after_web_is_healthy(
+        _successful_dry_run("up-built", "d=1")
+    )
+
+
+def test_start_built_starts_hub_playwright_last() -> None:
+    _assert_hub_playwright_starts_after_web_is_healthy(
+        _successful_dry_run("start-built")
+    )
+
+
+def _pytest_exec_line(output: str) -> str:
+    return _single_line_containing(output, "python -m pytest")
+
+
+@pytest.mark.parametrize("make_target", ["test-marker", "test-marker-parallel"])
+@pytest.mark.parametrize(
+    "marker",
+    ["splash_ui", "splash_ui or home_ui", "(splash_ui or home_ui) and not slow"],
+)
+def test_ui_marker_starts_hub_playwright(make_target: str, marker: str) -> None:
+    output = _successful_dry_run(make_target, f"m={marker}")
+    lines = output.splitlines()
+    assert lines.index(_hub_playwright_up_line(output)) < lines.index(
+        _pytest_exec_line(output)
+    )
+
+
+@pytest.mark.parametrize("make_target", ["test-marker", "test-marker-parallel"])
+@pytest.mark.parametrize("marker", ["unit", "tags"])
+def test_integration_marker_leaves_hub_playwright_alone(
+    make_target: str, marker: str
+) -> None:
+    output = _successful_dry_run(make_target, f"m={marker}")
+    assert not [line for line in _hub_lines(output) if "playwright" in line]
+
+
+@pytest.mark.parametrize("make_target", ["test-file", "test-file-parallel"])
+@pytest.mark.parametrize(
+    "path_args",
+    [
+        pytest.param(("f=tests/functional/splash_ui/test_x.py",), id="functional-file"),
+        pytest.param(("f=tests",), id="whole-tree"),
+        pytest.param((), id="no-path"),
+    ],
+)
+def test_functional_file_starts_hub_playwright(
+    make_target: str, path_args: tuple[str, ...]
+) -> None:
+    ui_output = _successful_dry_run(make_target, *path_args)
+    ui_lines = ui_output.splitlines()
+    assert ui_lines.index(_hub_playwright_up_line(ui_output)) < ui_lines.index(
+        _pytest_exec_line(ui_output)
+    )
+
+
+@pytest.mark.parametrize("make_target", ["test-file", "test-file-parallel"])
+def test_unit_file_leaves_hub_playwright_alone(make_target: str) -> None:
+    unit_output = _successful_dry_run(make_target, "f=tests/unit/test_capacity.py")
+    assert not [line for line in _hub_lines(unit_output) if "playwright" in line]
+
+
+def test_playwright_rebuild_builds_then_force_recreates() -> None:
+    output = _successful_dry_run("playwright-rebuild")
+    lines = output.splitlines()
+    hub_lines = _hub_lines(output)
+    build_line = next(line for line in hub_lines if line.endswith(" build playwright"))
+    recreate_line = _single_line_containing(
+        output, " up -d --wait --force-recreate playwright"
+    )
+    assert HUB_FILE_MARKER in recreate_line
+    assert lines.index(build_line) < lines.index(recreate_line)
+    assert not [line for line in hub_lines if "--build" in line]
+    assert not [
+        line
+        for line in lines
+        if "docker compose" in line and HUB_FILE_MARKER not in line
+    ]
+
+
+def test_playwright_rebuild_refuses_while_clients_are_connected() -> None:
+    output = _successful_dry_run("playwright-rebuild")
+    lines = output.splitlines()
+    # The guard is a backslash-continued recipe line, so make -n prints the count and the refusal on two lines.
+    count_line = _single_line_containing(
+        output, "exec -T playwright cat /proc/net/tcp /proc/net/tcp6"
+    )
+    assert "docker/playwright-entrypoint.sh --count -" in count_line
+    refusal_line = _single_line_containing(output, "UI client(s) connected")
+    assert '[ "${active:-0}" -gt 0 ]' in refusal_line
+    build_line = next(line for line in lines if line.endswith(" build playwright"))
+    assert lines.index(count_line) < lines.index(refusal_line) < lines.index(build_line)
+
+
+def test_stack_info_reports_hub_playwright() -> None:
+    output = _successful_dry_run("stack-info")
+    assert (
+        f"docker ps -a --filter label=com.docker.compose.project=u4i-hub-{os.getuid()} "
+        "--filter label=com.docker.compose.service=playwright"
+    ) in output
+    assert "hub playwright:" in output
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_host_static_reinstalls_when_pins_are_newer_than_the_stamp() -> None:
+    # A pin bump must reach an existing venv: reinstall when either pins file is newer than the stamp.
+    install_line = _single_line_containing(
+        _successful_dry_run("test-host-static"), '/venv/bin/pip" install'
+    )
+    stamp = f"{_primary_root()}/venv/.u4i-host-static.stamp"
+    assert f'[ ! -f "{stamp}" ]' in install_line
+    for requirements_file in ("requirements-test.txt", "requirements-prod.txt"):
+        assert (
+            f'[ "{_primary_root()}/requirements/{requirements_file}" -nt "{stamp}" ]'
+        ) in install_line
+    assert f'-r /dev/stdin && touch "{stamp}"' in install_line
+    assert "import pytest" not in install_line
 
 
 def test_tunnel_needs_no_hub_playwright() -> None:

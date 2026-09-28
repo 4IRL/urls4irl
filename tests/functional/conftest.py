@@ -23,6 +23,7 @@ from tests.functional.playwright_utils import (
 )
 from tests.functional.ui_test_setup import (
     clear_db,
+    connect_to_browser_server,
     find_open_port,
     hide_logs_for_app,
     ping_server,
@@ -178,7 +179,9 @@ def build_page_browser(
                 "PLAYWRIGHT_WS_URL env var is not set; cannot connect to the "
                 "Playwright browser server in Docker mode"
             )
-        browser = playwright_instance.chromium.connect(config.TEST_PLAYWRIGHT_URI)
+        browser = connect_to_browser_server(
+            playwright_instance.chromium, config.TEST_PLAYWRIGHT_URI
+        )
     else:
         browser = playwright_instance.chromium.launch(headless=not turn_off_headless)
 

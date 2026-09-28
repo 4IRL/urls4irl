@@ -6,9 +6,20 @@ from typing import Optional, Tuple
 
 from flask import Flask
 from flask.testing import FlaskCliRunner
+from playwright.sync_api import Browser, BrowserType, Error as PlaywrightError
 
 from backend import create_app, db
 from backend.config import ConfigTestUI
+
+# Bounded chromium.connect() retry against the shared hub browser-server: at most ~48 s in total. It only rides out
+# transient connect failures (e.g. the server launching a browser for a burst of workers at once). It cannot revive a
+# container the idle watchdog reaped: `web` has no Docker access, so nothing here can restart it. Residual window:
+# `make playwright-up` returns immediately for an already-healthy container, so one at the very end of its
+# U4I_PLAYWRIGHT_IDLE_MINUTES window (default 15) can still be reaped before the first connect; the gap is at most one
+# watchdog poll interval (U4I_PLAYWRIGHT_POLL_SECONDS, default 30). The final error then says to run `make playwright-up`.
+PLAYWRIGHT_CONNECT_ATTEMPTS = 3
+PLAYWRIGHT_CONNECT_TIMEOUT_MS = 15_000
+PLAYWRIGHT_CONNECT_BACKOFF_SECONDS = 1
 
 
 def run_app(port: int, show_flask_logs: bool, config: Optional[ConfigTestUI] = None):
@@ -76,6 +87,25 @@ def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
             except OSError:
                 continue
     raise RuntimeError("No available port found in the specified range.")
+
+
+def connect_to_browser_server(chromium: BrowserType, ws_url: str) -> Browser:
+    """Connects to the Playwright browser-server, retrying transient failures
+    with a linear backoff; raises a RuntimeError naming `make playwright-up`
+    once every attempt has failed."""
+    last_error: Optional[PlaywrightError] = None
+    for attempt in range(1, PLAYWRIGHT_CONNECT_ATTEMPTS + 1):
+        try:
+            return chromium.connect(ws_url, timeout=PLAYWRIGHT_CONNECT_TIMEOUT_MS)
+        except PlaywrightError as connect_error:
+            last_error = connect_error
+            if attempt < PLAYWRIGHT_CONNECT_ATTEMPTS:
+                sleep(PLAYWRIGHT_CONNECT_BACKOFF_SECONDS * attempt)
+    raise RuntimeError(
+        f"Could not connect to the Playwright browser server at {ws_url} after "
+        f"{PLAYWRIGHT_CONNECT_ATTEMPTS} attempts. The hub playwright may have been "
+        "idle-reaped: run `make playwright-up` on the host, then rerun the tests."
+    ) from last_error
 
 
 def ping_server(url: str, timeout: float = 2) -> bool:
