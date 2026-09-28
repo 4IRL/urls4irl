@@ -318,8 +318,9 @@ def test_show_with_partial_cache_points_at_make_up(
 
 
 def test_real_bind_probe_detects_a_listener() -> None:
+    # Loopback-only listener: also proves the all-interfaces probe catches a port held on just one interface.
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-        listener.bind(("0.0.0.0", 0))
+        listener.bind(("127.0.0.1", 0))
         listener.listen()
         assert port_is_bindable(listener.getsockname()[1]) is False
 
