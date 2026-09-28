@@ -14,8 +14,19 @@ RUN npm install -g --ignore-scripts pnpm@${PNPM_VERSION}
 # Copy package manifest, lockfile and pnpm config (overrides, allowBuilds, release-age excludes)
 COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml ./
 
-# Install dependencies
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+# Compose runs this container as the host's HOST_UID:HOST_GID (build args + `user:` in compose.local.yaml, image
+# default 1001), so the vite build writes backend/static/dist into the bind mount owned by you, not root (a root-owned
+# dist blocks `git worktree remove`). /app is re-owned in the install layer, so the non-root user can write vite's
+# config temp file (/app/node_modules/.vite-temp) and dev deps cache. /app/frontend/node_modules is pre-created so the
+# anonymous volume masking it starts out with that ownership (a new volume copies the image dir's owner).
+ARG HOST_UID=1001
+ARG HOST_GID=1001
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile \
+	&& mkdir -p /app/frontend/node_modules \
+	&& chown -R "$HOST_UID:$HOST_GID" /app
+
+# A HOST_UID with no passwd entry would get HOME=/, which it cannot write (pnpm keeps state under $HOME).
+ENV HOME=/tmp
 
 # Expose Vite port
 EXPOSE 5173

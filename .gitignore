@@ -2,6 +2,8 @@ venv/
 .env
 # Generated per host by `make capacity` (worker counts + interlocks + host UID/GID)
 docker/.capacity.generated.env
+# Generated per checkout by `make up` & co. (scripts/spoke_ports.py: this spoke's web/vite host ports)
+docker/.ports.generated.env
 .flaskenv
 __pycache__/
 .vscode/
@@ -18,6 +20,8 @@ bootstrap-[0-9]*.css*
 backend/static/styles/bootstrap.*.css*
 *.code-workspace
 secrets/
+# `make worktree-init` links secrets in as a symlink, which the dir-only pattern above does not match
+/secrets
 backups/
 *.gz*
 node_modules/

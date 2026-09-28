@@ -48,7 +48,7 @@ def login_admin_and_open_metrics_dashboard(
     so the Playwright context matches a logged-in browser exactly. The
     host portion of the URL is selected from the test config so the
     helper works both inside Docker (where the browser-server reaches Flask
-    via `http://web:<port>`) and on the host (`http://127.0.0.1:<port>`).
+    via `http://<U4I_WEB_HOST>:<port>`) and on the host (`http://127.0.0.1:<port>`).
     """
     promote_user_to_admin(app=app, user_id=user_id)
     session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)

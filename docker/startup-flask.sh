@@ -58,7 +58,7 @@ flask metrics sync-registry || {
 }
 
 if [[ "$PRODUCTION" != "true" && "$DEV_SERVER" != "true" ]]; then
-  echo 'Running on 127.0.0.1:8659!'
+  echo 'Running on port 5000 (host port: make stack-info)'
   flask utils start-log
   if [[ "$ENABLE_SSL" == "true" ]]; then
     exec flask run --host=0.0.0.0 --port=5000 --cert=adhoc

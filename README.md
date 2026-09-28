@@ -75,15 +75,15 @@ Two things to know once the hook is installed:
 | `SECRET_KEY` | Yes | - | Flask secret key for session encryption |
 | `POSTGRES_USER` | Yes | - | PostgreSQL username |
 | `POSTGRES_PASSWORD` | Yes | - | PostgreSQL password |
-| `POSTGRES_DB` | Yes | - | PostgreSQL database name (locally, compose overrides it with the per-worktree `u4i_dev_<slug>`, and `db-init` renames a legacy database of this name once) |
+| `POSTGRES_DB` | Yes | - | PostgreSQL database name (locally, compose overrides it with the per-worktree `u4i_dev_<slug>`, which each spoke's `db-init` creates in the shared hub cluster) |
 | `MAILJET_API_KEY` | Yes | - | Mailjet API key for transactional emails |
 | `MAILJET_SECRET_KEY` | Yes | - | Mailjet secret key |
-| `POSTGRES_TEST_DB` | No | - | Test database name prefix: each pytest run/worker gets `{POSTGRES_TEST_DB}_{uid8}_{worker}` (lowercase `[a-z0-9_]`; locally it must differ from `POSTGRES_DB`, or `db-init` refuses to provision) |
+| `POSTGRES_TEST_DB` | No | - | Test database name prefix: each pytest run/worker gets `{POSTGRES_TEST_DB}_{uid8}_{worker}` (lowercase `[a-z0-9_]`; locally it must differ from the dev DB name `u4i_dev_<slug>`, or `db-init` refuses to provision) |
 | `POSTGRES_TEST_USER` | No | `POSTGRES_USER` | Role tests connect as; local compose sets the `u4i_test` role, which cannot connect to the dev database |
 | `REDIS_URI` | No | `memory://` | Redis connection URI |
 | `METRICS_REDIS_URI` | No | `memory://` | Redis URI for the dedicated metrics counter buffer (separate from `REDIS_URI`) |
 | `ENABLE_SSL` | No | `false` | Enable HTTPS in local dev (Flask + Vite) |
-| `VITE_URL` | No | `http://localhost:5173` | Vite dev server URL (use `https://` when `ENABLE_SSL=true`) |
+| `VITE_URL` | No | `http://localhost:5173` | Vite dev server URL (use `https://` when `ENABLE_SSL=true`); local compose sets `http://localhost:<this checkout's vite port>` |
 
 See [`backend/config.py`](backend/config.py) for the full list.
 
@@ -93,13 +93,17 @@ A `Makefile` is provided for common development tasks:
 
 | Command | Description |
 |---|---|
-| `make setup` | One-time per clone/worktree: host toolchain, pre-commit hook, capacity file (idempotent) |
+| `make setup` | One-time per clone/worktree: `.env`/`secrets/` links (worktrees), host toolchain, pre-commit hook, capacity file (idempotent) |
 | `make capacity` | Derive test worker counts + stack limits for this machine (overrides: `U4I_N_UI=`, `U4I_N_INT=`, `U4I_MEM_FRACTION=`) |
-| `make up [p=ui\|full] d=1` | Build and start `web` + datastores (`db`, `redis`, `redis-metrics`); `p=ui` adds `vite` + `playwright`, `p=full` also adds `workflow` |
-| `make up-built [p=full] d=1` | Same, with pre-built Vite assets (always includes the `ui` profile's vite build + `playwright`) |
-| `make down` | Stop the stack (every profile) |
+| `make up [p=ui\|full] d=1` | Start the shared hub (`db`), then build and start this checkout's `web` + datastores (`redis`, `redis-metrics`); `p=ui` adds `vite` and starts the hub `playwright`, `p=full` also adds `workflow` |
+| `make up-built [p=full] d=1` | Same, with pre-built Vite assets (always includes the `ui` profile's vite build + hub `playwright`) |
+| `make down` | Stop this checkout's stack (every profile); the hub keeps running |
 | `make build` | Rebuild images without starting (every profile) |
-| `make restart c=<service>` | Restart a specific compose service (e.g. `make restart c=web`; `c=` is required) |
+| `make restart c=<service>` | Restart one of this checkout's services (e.g. `make restart c=web`; `c=` is required) |
+| `make logs c=<service>` | Show one of this checkout's service logs (e.g. `make logs c=cloudflared`) |
+| `make stack-info` | Print this checkout's compose project, URLs, and the shared hub's state |
+| `make hub-up` / `make hub-down` | Start / stop the shared hub (`hub-down` refuses while any checkout's stack is attached) |
+| `make hub-restart c=db\|playwright` | Restart a hub service: drops every checkout's connections / in-flight runs, so only when no test run is in progress in any checkout |
 | `make test-integration` | Run all non-UI integration tests |
 | `make test-functional` | Run all UI/Playwright functional tests (starts `vite` + `playwright` itself) |
 | `make test-js` | Run all JS unit tests (vitest) on the host — no stack needed |
@@ -112,20 +116,23 @@ A `Makefile` is provided for common development tasks:
 
 Always pass `d=1` to `make up`; without it the command streams logs and never exits. `make up d=1` alone is enough for integration tests; browsing the dev app with styled pages needs `p=ui` (the Vite dev server).
 
-Or run directly (the `ui` profile enables `vite` and `playwright`; add `--profile full` for `workflow`):
+To browse the dev app with styled pages (the `ui` profile enables `vite` and starts the hub `playwright`; `p=full` also adds `workflow`):
 
 ```bash
-docker compose --project-directory . -f docker/compose.local.yaml --profile ui up --build --remove-orphans
+make up p=ui d=1
 ```
 
-The raw command skips the Makefile's generated capacity env file (`docker/.capacity.generated.env`) and its `_logs-owner-fix` step, so `make up` (with the matching `p=`) is preferred.
+Always go through `make`: it computes the compose project and network names, resolves this checkout's host ports, generates the capacity env file, and starts the hub first. A raw `docker compose -f docker/compose.local.yaml …` fails fast on the unset `U4I_PROJECT`.
 
-- Flask: `http://localhost:8659`
-- Vite: `http://localhost:5173` (only with the `ui` or `full` profile)
+**Several checkouts at once.** Each checkout (the main clone or any `git worktree`) runs its own stack, compose project `u4i-<folder name>`, and all of them share one per-user hub (`docker/compose.hub.yaml`: the Postgres cluster and the Playwright browser server). A new worktree needs only `make setup` (or just `make up d=1`), which links `.env` from the main clone. Give each worktree a unique folder name. Each stack gets its own dev database and session cookie name.
+
+- Flask: `http://localhost:8659` in the main clone
+- Vite: `http://localhost:5173` in the main clone (only with the `ui` or `full` profile)
+- A worktree's ports are picked automatically (a free port near those); `make stack-info` prints its URLs.
 
 **Note:** SSL is disabled by default in local development. To enable HTTPS and avoid mixed content warnings:
 1. Set `ENABLE_SSL=true` for both `web` and `vite` services in `docker/compose.local.yaml`
-2. Change `VITE_URL=https://localhost:5173` in the `web` service environment
+2. Change `VITE_URL` in the `web` service environment to `https://localhost:${U4I_VITE_PORT:-5173}`
 
 ### Running without Docker
 
@@ -176,7 +183,7 @@ pytest -m splash         # auth integration tests
 pytest -k "test_name"    # specific test
 ```
 
-UI tests require the shared Playwright browser-server, which is in the `ui` compose profile (`make test-functional`/`make test-ui-parallel` and the `*-built` targets start it themselves; for other dev-mode UI runs use `make up p=ui d=1`): the `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, the `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it). See [`pytest.ini`](pytest.ini) for the full list of test markers.
+UI tests require the shared Playwright browser-server, which lives in the per-user hub and serves every checkout's stack (`make test-functional`/`make test-ui-parallel` and the `*-built` targets start it themselves; for other dev-mode UI runs use `make up p=ui d=1`): the hub `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, each checkout's `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, the browser reaches that checkout's app by its `web-<slug>` alias, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it). See [`pytest.ini`](pytest.ini) for the full list of test markers.
 
 ## Project Structure
 

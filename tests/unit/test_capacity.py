@@ -27,6 +27,7 @@ from scripts.capacity import (
     DOCKER_RUN_TIMEOUT_SECONDS,
     ENV_KEYS,
     HARD_N_CEILING,
+    HUB_INTERLOCK_KEYS,
     INTERLOCK_KEYS,
     LEASE_CONCURRENT_RUNS,
     METRICS_REDIS_RESERVED_DBS,
@@ -34,6 +35,7 @@ from scripts.capacity import (
     PG_SHARED_BUFFERS_MIN_MB,
     SESSION_REDIS_RESERVED_DBS,
     SHARED_REDIS_DATABASES,
+    SPOKE_INTERLOCK_KEYS,
     SUPERUSER_RESERVED,
     Capacity,
     DockerInfoError,
@@ -69,6 +71,13 @@ LOCAL_COMPOSE_FILE: Path = (
 LITERAL_REDIS_DATABASES_PATTERN: re.Pattern[str] = re.compile(
     r"redis-server --databases (\d+)\s*$", re.MULTILINE
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_inherited_primary_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PRIMARY_ROOT exported by an outer make (pytest launched from a recipe) must not
+    switch `_generate` into its linked-worktree messages; tests that need it set it."""
+    monkeypatch.delenv("PRIMARY_ROOT", raising=False)
 
 
 def _probe(
@@ -797,10 +806,10 @@ def test_interlock_keys_are_the_values_baked_into_containers() -> None:
     assert INTERLOCK_KEYS == (
         "REDIS_METRICS_DATABASES",
         "U4I_PG_TEST_CONN_LIMIT",
-        "U4I_PG_MAX_CONN",
-        "U4I_PG_SHARED_BUFFERS_MB",
         "HOST_UID",
         "HOST_GID",
+        "U4I_PG_MAX_CONN",
+        "U4I_PG_SHARED_BUFFERS_MB",
     )
     assert set(INTERLOCK_KEYS) <= set(ENV_KEYS)
 
@@ -936,6 +945,12 @@ def test_ensure_restores_tampered_fingerprint_without_recreate(
     assert env_path.read_text() == original_content
 
 
+HUB_RECREATE_LINE: str = (
+    "hub recreate required: run 'make down' in every spoke, "
+    "then 'make hub-down' and 'make hub-up'"
+)
+
+
 def test_generate_reports_recreate_when_interlocks_change(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -946,12 +961,157 @@ def test_generate_reports_recreate_when_interlocks_change(
     assert _run(["generate", "--output", str(env_path)], _probe(ncpu=4)) == 0
 
     lines = capsys.readouterr().out.splitlines()
-    assert lines[0] == f"capacity regenerated ({env_path})"
-    assert lines[1] == (
+    assert lines == [
+        f"capacity regenerated ({env_path})",
         "recreate required: run 'make up [p=…] d=1' "
-        "(changed: REDIS_METRICS_DATABASES, U4I_PG_TEST_CONN_LIMIT, U4I_PG_MAX_CONN)"
-    )
+        "(changed: REDIS_METRICS_DATABASES, U4I_PG_TEST_CONN_LIMIT)",
+        f"{HUB_RECREATE_LINE} (changed: U4I_PG_MAX_CONN)",
+    ]
     assert read_env(env_path)["U4I_PG_TEST_CONN_LIMIT"] == "110"
+
+
+def _drift_and_regenerate(
+    env_path: Path, changed_key: str, capsys: pytest.CaptureFixture[str]
+) -> list[str]:
+    """Generate, drift one recorded interlock, regenerate; return the second run's lines."""
+    _run(["generate", "--output", str(env_path)])
+    recorded_value = read_env(env_path)[changed_key]
+    env_path.write_text(
+        env_path.read_text().replace(
+            f"{changed_key}={recorded_value}\n", f"{changed_key}=1{recorded_value}\n"
+        )
+    )
+    capsys.readouterr()
+    assert _run(["generate", "--output", str(env_path)]) == 0
+    return capsys.readouterr().out.splitlines()
+
+
+@pytest.mark.parametrize(
+    ("changed_key", "expected_line"),
+    [
+        pytest.param(
+            "REDIS_METRICS_DATABASES",
+            "recreate required: run 'make up [p=…] d=1' "
+            "(changed: REDIS_METRICS_DATABASES)",
+            id="spoke-redis",
+        ),
+        # cluster-init re-applies the role's CONNECTION LIMIT on every `make up`: no hub teardown.
+        pytest.param(
+            "U4I_PG_TEST_CONN_LIMIT",
+            "recreate required: run 'make up [p=…] d=1' "
+            "(changed: U4I_PG_TEST_CONN_LIMIT)",
+            id="spoke-test-conn-limit",
+        ),
+        pytest.param(
+            "U4I_PG_MAX_CONN",
+            f"{HUB_RECREATE_LINE} (changed: U4I_PG_MAX_CONN)",
+            id="hub-max-conn",
+        ),
+        pytest.param(
+            "U4I_PG_SHARED_BUFFERS_MB",
+            f"{HUB_RECREATE_LINE} (changed: U4I_PG_SHARED_BUFFERS_MB)",
+            id="hub-shared-buffers",
+        ),
+    ],
+)
+def test_generate_names_only_the_tier_an_interlock_lives_in(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    changed_key: str,
+    expected_line: str,
+) -> None:
+    """One recorded interlock drifts; regenerating names only that key's tier."""
+    env_path = tmp_path / "capacity.env"
+
+    lines = _drift_and_regenerate(env_path, changed_key, capsys)
+
+    assert lines == [f"capacity regenerated ({env_path})", expected_line]
+
+
+@pytest.mark.parametrize(
+    "changed_key",
+    ["U4I_PG_MAX_CONN", "U4I_PG_SHARED_BUFFERS_MB", "U4I_PG_TEST_CONN_LIMIT"],
+)
+def test_worktree_capacity_file_notes_that_the_hub_reads_the_primary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    changed_key: str,
+) -> None:
+    """A linked worktree's own file never reaches the hub: note, no recreate guidance."""
+    primary_root = tmp_path / "primary"
+    monkeypatch.setenv("PRIMARY_ROOT", str(primary_root))
+    worktree_docker_dir = tmp_path / "worktree" / "docker"
+    worktree_docker_dir.mkdir(parents=True)
+
+    lines = _drift_and_regenerate(
+        worktree_docker_dir / ".capacity.generated.env", changed_key, capsys
+    )
+
+    assert lines == [
+        f"capacity regenerated ({worktree_docker_dir / '.capacity.generated.env'})",
+        "note: the hub reads the primary clone's capacity file, so these apply only "
+        f"after 'make capacity' in {primary_root} (changed: {changed_key})",
+    ]
+
+
+def test_worktree_capacity_file_keeps_spoke_guidance_for_spoke_keys(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("PRIMARY_ROOT", str(tmp_path / "primary"))
+    worktree_docker_dir = tmp_path / "worktree" / "docker"
+    worktree_docker_dir.mkdir(parents=True)
+
+    lines = _drift_and_regenerate(
+        worktree_docker_dir / ".capacity.generated.env",
+        "REDIS_METRICS_DATABASES",
+        capsys,
+    )
+
+    assert lines[1:] == [
+        "recreate required: run 'make up [p=…] d=1' (changed: REDIS_METRICS_DATABASES)"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("changed_key", "expected_line"),
+    [
+        pytest.param(
+            "U4I_PG_MAX_CONN",
+            f"{HUB_RECREATE_LINE} (changed: U4I_PG_MAX_CONN)",
+            id="hub-max-conn",
+        ),
+        pytest.param(
+            "U4I_PG_TEST_CONN_LIMIT",
+            "recreate required: run 'make up [p=…] d=1' "
+            "(changed: U4I_PG_TEST_CONN_LIMIT)",
+            id="test-conn-limit",
+        ),
+    ],
+)
+def test_primary_capacity_file_keeps_the_tier_guidance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    changed_key: str,
+    expected_line: str,
+) -> None:
+    primary_docker_dir = tmp_path / "primary" / "docker"
+    primary_docker_dir.mkdir(parents=True)
+    env_path = primary_docker_dir / ".capacity.generated.env"
+    monkeypatch.setenv("PRIMARY_ROOT", str(env_path.parent.parent))
+
+    lines = _drift_and_regenerate(env_path, changed_key, capsys)
+
+    assert lines == [f"capacity regenerated ({env_path})", expected_line]
+
+
+def test_interlock_tiers_partition_the_interlock_keys() -> None:
+    assert set(SPOKE_INTERLOCK_KEYS).isdisjoint(HUB_INTERLOCK_KEYS)
+    assert set(SPOKE_INTERLOCK_KEYS) | set(HUB_INTERLOCK_KEYS) == set(INTERLOCK_KEYS)
+    assert HUB_INTERLOCK_KEYS == ("U4I_PG_MAX_CONN", "U4I_PG_SHARED_BUFFERS_MB")
 
 
 def test_ensure_with_matching_fingerprint_prints_nothing(
@@ -1006,8 +1166,8 @@ def test_ensure_migrates_legacy_test_max_conn_file(
 
     assert capsys.readouterr().out.splitlines() == [
         f"capacity regenerated ({env_path})",
-        "recreate required: run 'make up [p=…] d=1' (changed: U4I_PG_TEST_CONN_LIMIT, "
-        "U4I_PG_MAX_CONN, U4I_PG_SHARED_BUFFERS_MB)",
+        "recreate required: run 'make up [p=…] d=1' (changed: U4I_PG_TEST_CONN_LIMIT)",
+        f"{HUB_RECREATE_LINE} (changed: U4I_PG_MAX_CONN, U4I_PG_SHARED_BUFFERS_MB)",
     ]
     assert env_path.read_text() == current_content
     assert "U4I_TEST_MAX_CONN" not in read_env(env_path)
@@ -1220,28 +1380,48 @@ def test_generated_file_is_owner_only(tmp_path: Path) -> None:
 
 # --- logs-owner-fix ----------------------------------------------------------
 
-LOGS_VOLUME: str = "u4i-local_app_logs"
+LOGS_PROJECT: str = "u4i-cap-test"
 WEB_IMAGE_ID: str = "0123456789ab"
-VOLUME_LOOKUP: list[str] = [
-    "volume",
-    "ls",
-    "-q",
-    "--filter",
-    "label=com.docker.compose.project=u4i-local",
-    "--filter",
-    "label=com.docker.compose.volume=app_logs",
-]
-IMAGE_LOOKUP: list[str] = ["image", "ls", "-q", "u4i-local-web:latest"]
-ROOT_RUN: list[str] = [
-    "run",
-    "--rm",
-    "--user",
-    "root",
-    "-v",
-    f"{LOGS_VOLUME}:/app/volume",
-    WEB_IMAGE_ID,
-]
+
+
+def _logs_names(project: str) -> tuple[str, list[str], list[str]]:
+    """The volume name, volume lookup and image lookup logs-owner-fix derives from `project`."""
+    volume_lookup = [
+        "volume",
+        "ls",
+        "-q",
+        "--filter",
+        f"label=com.docker.compose.project={project}",
+        "--filter",
+        "label=com.docker.compose.volume=app_logs",
+    ]
+    image_lookup = ["image", "ls", "-q", f"{project}-web:latest"]
+    return f"{project}_app_logs", volume_lookup, image_lookup
+
+
+LOGS_VOLUME, VOLUME_LOOKUP, IMAGE_LOOKUP = _logs_names(LOGS_PROJECT)
+
+
+def _root_run(volume: str = LOGS_VOLUME) -> list[str]:
+    return [
+        "run",
+        "--rm",
+        "--user",
+        "root",
+        "-v",
+        f"{volume}:/app/volume",
+        WEB_IMAGE_ID,
+    ]
+
+
+ROOT_RUN: list[str] = _root_run()
 STAT_CALL: list[str] = [*ROOT_RUN, "stat", "-c", "%u:%g", "/app/volume/logs"]
+
+
+@pytest.fixture
+def logs_project(monkeypatch: pytest.MonkeyPatch) -> None:
+    """logs-owner-fix reads the spoke's compose project from U4I_PROJECT (make exports it)."""
+    monkeypatch.setenv("U4I_PROJECT", LOGS_PROJECT)
 
 
 def _repair_call(owner: str) -> list[str]:
@@ -1263,22 +1443,31 @@ class _FakeDocker:
         owner: str | None = "1000:1000",
         lookup_returncode: int = 0,
         repair_returncode: int = 0,
+        project: str = LOGS_PROJECT,
     ) -> None:
         self.volume = volume
         self.image = image
         self.owner = owner
         self.lookup_returncode = lookup_returncode
         self.repair_returncode = repair_returncode
+        _, self.volume_lookup, self.image_lookup = _logs_names(project)
+        self.stat_call = [
+            *_root_run(volume),
+            "stat",
+            "-c",
+            "%u:%g",
+            "/app/volume/logs",
+        ]
         self.calls: list[list[str]] = []
 
     def __call__(self, args: list[str]) -> subprocess.CompletedProcess[str]:
         self.calls.append(args)
-        if args in (VOLUME_LOOKUP, IMAGE_LOOKUP):
+        if args in (self.volume_lookup, self.image_lookup):
             if self.lookup_returncode != 0:
                 return _completed(self.lookup_returncode, stderr="daemon down\n")
-            found = self.volume if args == VOLUME_LOOKUP else self.image
+            found = self.volume if args == self.volume_lookup else self.image
             return _completed(0, stdout=f"{found}\n" if found else "")
-        if args == STAT_CALL:
+        if args == self.stat_call:
             if self.owner is None:
                 return _completed(1, stderr="stat: cannot stat '/app/volume/logs'\n")
             return _completed(0, stdout=f"{self.owner}\n")
@@ -1303,6 +1492,7 @@ def _fix(env_path: Path, docker: _FakeDocker) -> int:
     return main(["logs-owner-fix", "--output", str(env_path)], _no_probe, docker)
 
 
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_matching_owner_is_quiet_no_op(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1311,11 +1501,15 @@ def test_logs_owner_fix_matching_owner_is_quiet_no_op(
     assert _fix(_capacity_ids(tmp_path), docker) == 0
 
     assert docker.calls == [VOLUME_LOOKUP, IMAGE_LOOKUP, STAT_CALL]
+    # Literal production names, independent of the _logs_names helper that builds the fakes.
+    assert "label=com.docker.compose.project=u4i-cap-test" in docker.calls[0]
+    assert docker.calls[1] == ["image", "ls", "-q", "u4i-cap-test-web:latest"]
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
 
 
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_repairs_mismatched_owner(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1337,6 +1531,7 @@ def test_logs_owner_fix_repairs_mismatched_owner(
 @pytest.mark.parametrize(
     ("volume", "image"), [("", WEB_IMAGE_ID), (LOGS_VOLUME, ""), ("", "")]
 )
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_skips_without_volume_or_image(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], volume: str, image: str
 ) -> None:
@@ -1351,6 +1546,7 @@ def test_logs_owner_fix_skips_without_volume_or_image(
     assert captured.err == ""
 
 
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_skips_when_lookups_fail_and_forwards_stderr(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1362,6 +1558,7 @@ def test_logs_owner_fix_skips_when_lookups_fail_and_forwards_stderr(
     assert capsys.readouterr().err == "daemon down\ndaemon down\n"
 
 
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_skips_quietly_without_log_dir(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1383,6 +1580,7 @@ def test_logs_owner_fix_skips_quietly_without_log_dir(
         ("1000", "0", "1000:1001"),
     ],
 )
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_maps_root_ids_to_1001(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -1398,6 +1596,7 @@ def test_logs_owner_fix_maps_root_ids_to_1001(
     assert f"now {expected_owner})" in capsys.readouterr().out
 
 
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_root_host_already_1001_is_no_op(tmp_path: Path) -> None:
     docker = _FakeDocker(owner="1001:1001")
     assert _fix(_capacity_ids(tmp_path, "0", "0"), docker) == 0
@@ -1408,6 +1607,7 @@ def test_logs_owner_fix_root_host_already_1001_is_no_op(tmp_path: Path) -> None:
     ("host_uid", "host_gid"),
     [("", "1000"), ("1000", ""), ("abc", "1000"), ("1000", "-1"), ("1.5", "1000")],
 )
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_non_numeric_ids_exit_non_zero(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], host_uid: str, host_gid: str
 ) -> None:
@@ -1422,6 +1622,7 @@ def test_logs_owner_fix_non_numeric_ids_exit_non_zero(
     )
 
 
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_missing_id_keys_exit_non_zero(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1432,6 +1633,7 @@ def test_logs_owner_fix_missing_id_keys_exit_non_zero(
     assert "HOST_UID/HOST_GID invalid" in capsys.readouterr().err
 
 
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_failed_repair_exits_non_zero(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1444,6 +1646,7 @@ def test_logs_owner_fix_failed_repair_exits_non_zero(
     assert captured.err == "make capacity: docker failed — chown: denied\n"
 
 
+@pytest.mark.usefixtures("logs_project")
 def test_logs_owner_fix_docker_launch_failure_exits_non_zero(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1460,6 +1663,39 @@ def test_logs_owner_fix_docker_launch_failure_exits_non_zero(
     assert capsys.readouterr().err == (
         "make capacity: docker failed — No such file or directory: 'docker'\n"
     )
+
+
+def test_logs_owner_fix_follows_another_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("U4I_PROJECT", "u4i-wt-a")
+    other_volume, other_volume_lookup, other_image_lookup = _logs_names("u4i-wt-a")
+    docker = _FakeDocker(volume=other_volume, owner="1000:1000", project="u4i-wt-a")
+
+    assert _fix(_capacity_ids(tmp_path), docker) == 0
+
+    assert docker.calls == [other_volume_lookup, other_image_lookup, docker.stat_call]
+
+
+@pytest.mark.parametrize("project_value", [None, ""], ids=["unset", "empty"])
+def test_logs_owner_fix_requires_u4i_project(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    project_value: str | None,
+) -> None:
+    """Never a silent skip: without the project it would miss the spoke's volume."""
+    monkeypatch.delenv("U4I_PROJECT", raising=False)
+    if project_value is not None:
+        monkeypatch.setenv("U4I_PROJECT", project_value)
+    docker = _FakeDocker()
+
+    assert _fix(_capacity_ids(tmp_path), docker) != 0
+
+    assert docker.calls == []
+    err = capsys.readouterr().err
+    assert "U4I_PROJECT" in err
+    assert "through make" in err
 
 
 def test_run_docker_prefixes_docker_and_sets_timeout(

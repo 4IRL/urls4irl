@@ -1,0 +1,79 @@
+# Per-user hub shared by every spoke (each checkout's docker/compose.local.yaml stack): the one Postgres
+# cluster, its cluster-wide provisioning one-shot, and the Playwright browser server. Run it only through
+# make (`make hub-up` / `hub-down` / `hub-restart`; every stack start runs `hub-up`), which always uses the
+# PRIMARY clone's copy of this file and its .env, so spokes on different branches never recreate the hub
+# with diverging config. Nothing publishes a host port: spokes reach it over the external per-user network.
+name: ${U4I_HUB_PROJECT:?run the hub through make (make hub-up)}
+
+services:
+  # One cluster for every spoke's dev DB and every per-run test DB. Sized by `make capacity` (the primary
+  # clone's file); durability is traded for test speed (fsync=off), so a host crash can corrupt pgdata —
+  # recover with `make down` in every spoke, `make hub-down`, `docker volume rm <hub project>_pgdata`,
+  # then `make up d=1 && make reset-db`. Its `command:` args change only via `make hub-down` + `make hub-up`.
+  db:
+    image: postgres:16.3-bookworm
+    command: postgres -c max_connections=${U4I_PG_MAX_CONN:-263} -c shared_buffers=${U4I_PG_SHARED_BUFFERS_MB:-128}MB -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+    env_file:
+      - .env
+    environment:
+      # No bootstrap app DB: each spoke's db-init creates its own U4I_DEV_DB.
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - u4i_shared
+
+  # Cluster-wide provisioning (docker/db-provision.sh, cluster scope): the test role with its connection
+  # limit and password, and the base test DB. `make hub-up` runs it fresh (`run --rm`) every time, so a
+  # changed U4I_PG_TEST_CONN_LIMIT is re-applied by the next `make up` without a hub teardown. Profiled so
+  # `up` never starts it.
+  cluster-init:
+    image: postgres:16.3-bookworm
+    profiles: ["init"]
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    volumes:
+      - ./docker/db-provision.sh:/db-provision.sh:ro
+    entrypoint: ["bash", "/db-provision.sh"]
+    environment:
+      - PGHOST=db
+      - U4I_PROVISION_SCOPE=cluster
+      - U4I_TEST_ROLE=${U4I_TEST_ROLE:-u4i_test}
+      - U4I_PG_TEST_CONN_LIMIT=${U4I_PG_TEST_CONN_LIMIT:-230}
+    networks:
+      - u4i_shared
+
+  # The one shared browser server for every spoke's UI tests (`make playwright-up`). Spokes reach it as
+  # ws://playwright:3000/ and it reaches each spoke by its slugged web-<slug> / vite-<slug> alias.
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.60.0-noble
+    init: true
+    user: pwuser
+    working_dir: /home/pwuser
+    # The official image ships the browsers + node but NOT the playwright CLI on
+    # PATH; the documented browser-server invocation is npx with a version pinned
+    # to the image tag (and to the pip pin in requirements-test.txt).
+    command: npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - u4i_shared
+
+networks:
+  u4i_shared:
+    external: true
+    name: ${U4I_SHARED_NET:?run the hub through make (make hub-up)}
+
+volumes:
+  pgdata:

@@ -1,8 +1,10 @@
-name: u4i-local
+# One spoke: this checkout's stack. Run it only through make, which computes the per-checkout names
+# (U4I_PROJECT, U4I_WEB_HOST, U4I_VITE_HOST, U4I_SHARED_NET), resolves the host ports, and starts the
+# per-user hub (docker/compose.hub.yaml: db, playwright) first. `make stack-info` prints them all.
+name: ${U4I_PROJECT:?run the stack through make (it computes U4I_PROJECT)}
 
 services:
   web:
-    container_name: u4i-local-web
     # PID 1 would otherwise be `flask run`, which never reaps orphans, so SIGKILLed pytest-xdist
     # workers would linger as <defunct> zombies until web restarts; docker-init reaps them.
     init: true
@@ -15,11 +17,10 @@ services:
         HOST_UID: "${HOST_UID:-1001}"
         HOST_GID: "${HOST_GID:-1001}"
     ports:
-      - "8659:5000"
+      - "${U4I_WEB_PORT:-8659}:5000"
     user: u4i-host:u4i-host-group
+    # The hub db is another project: `make up` starts it (hub-up) before this stack, never depends_on.
     depends_on:
-      db:
-        condition: service_healthy
       db-init:
         condition: service_completed_successfully
       redis:
@@ -30,8 +31,8 @@ services:
       - .env
     environment:
       - PRODUCTION=false
-      # Per-worktree dev DB (beats .env's POSTGRES_DB, now only the cluster's bootstrap name) and the
-      # test role; both expressions are shared with db-init so each name has one source of truth.
+      # Per-worktree dev DB (overrides .env's POSTGRES_DB; the hub db bootstraps only `postgres`),
+      # shared with db-init, and the test role, whose expression is shared with the hub's cluster-init.
       - POSTGRES_DB=${U4I_DEV_DB:-u4i_dev_urls4irl}
       - POSTGRES_TEST_USER=${U4I_TEST_ROLE:-u4i_test}
       - REDIS_URI=redis://redis:6379/0
@@ -41,10 +42,15 @@ services:
       - FLASK_ENV=development
       - BASE_EMAIL=u4i@urls4irl.app
       - DOCKER=true
+      # The hub's shared browser server, by its hub service name on u4i_shared.
       - PLAYWRIGHT_WS_URL=ws://playwright:3000/
+      # This spoke's slugged alias, which the hub browser uses as UI tests' base URL (DOCKER_BASE_URL).
+      - U4I_WEB_HOST=${U4I_WEB_HOST:?run the stack through make (it computes U4I_WEB_HOST)}
+      # Browsers scope cookies by host, not port: spokes sharing 127.0.0.1 need distinct session cookies.
+      - U4I_SESSION_COOKIE_NAME=${U4I_PROJECT:?run the stack through make (it computes U4I_PROJECT)}_session
       - VITE_DEV_SERVER=true
-      - VITE_URL=http://localhost:5173
-      - VITE_INTERNAL_HOST=vite
+      - VITE_URL=http://localhost:${U4I_VITE_PORT:-5173}
+      - VITE_INTERNAL_HOST=${U4I_VITE_HOST:?run the stack through make (it computes U4I_VITE_HOST)}
       - ENABLE_SSL=false
       # Anonymous metrics knobs. METRICS_ENABLED is on by default locally (see the
       # `make metrics-*` targets). Opt a machine out with METRICS_ENABLED=false in
@@ -65,23 +71,42 @@ services:
       - ./docker:/code/u4i/docker:ro
       - ./frontend/types:/code/u4i/frontend/types
       - app_logs:/app/volume
+    networks:
+      default: {}
+      # Compose also registers the bare name `web` here, which resolves to every spoke's web with N
+      # spokes up: never use it in-network, only U4I_WEB_HOST (web-<slug>).
+      u4i_shared:
+        aliases:
+          - ${U4I_WEB_HOST:?run the stack through make (it computes U4I_WEB_HOST)}
 
   vite:
-    container_name: u4i-local-vite
     profiles: ["ui", "full"]
     build:
       context: .
       dockerfile: docker/Dockerfile.Vite
+      args:
+        HOST_UID: "${HOST_UID:-1001}"
+        HOST_GID: "${HOST_GID:-1001}"
     ports:
-      - "5173:5173"
+      - "${U4I_VITE_PORT:-5173}:5173"
+    # Host identity, like web: the dev server, `make vite-build` and built mode's `vite build` (compose.built.yaml
+    # inherits this) write backend/static/dist into the checkout, which must stay owned by you, not root.
+    user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
     networks:
       default:
         aliases:
           - localhost
+      # Compose also registers the bare name `vite` here, which resolves to every spoke's vite with N
+      # spokes up: never use it in-network, only U4I_VITE_HOST (vite-<slug>, VITE_INTERNAL_HOST in web).
+      u4i_shared:
+        aliases:
+          - ${U4I_VITE_HOST:?run the stack through make (it computes U4I_VITE_HOST)}
     environment:
       - NODE_ENV=development
       - ENABLE_SSL=false
       - DOCKER=true
+      # vite.config.ts adds it to allowedHosts, so the hub browser can load assets via vite-<slug>.
+      - U4I_VITE_HOST=${U4I_VITE_HOST:?run the stack through make (it computes U4I_VITE_HOST)}
     volumes:
       - ./frontend:/app/frontend
       - ./frontend/vite.config.ts:/app/vite.config.ts
@@ -91,7 +116,9 @@ services:
       - /app/node_modules
       # Masks host frontend/node_modules (pnpm symlinks into the host store, unresolvable here)
       - /app/frontend/node_modules
-      - ./backend/static/dist:/app/backend/static/dist
+      # The parent dir, not dist itself: docker would create a missing bind-mount source (dist) as root, which the
+      # non-root vite could not write. Mounted this way, vite creates dist as the host user.
+      - ./backend/static:/app/backend/static
     command: pnpm run dev
     healthcheck:
       test: |
@@ -104,29 +131,7 @@ services:
       timeout: 5s
       retries: 3
 
-  playwright:
-    image: mcr.microsoft.com/playwright:v1.60.0-noble
-    container_name: u4i-playwright
-    profiles: ["ui", "full"]
-    init: true
-    user: pwuser
-    working_dir: /home/pwuser
-    # The official image ships the browsers + node but NOT the playwright CLI on
-    # PATH; the documented browser-server invocation is npx with a version pinned
-    # to the image tag (and to the pip pin in requirements-test.txt).
-    command: npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0
-    depends_on:
-      web:
-        condition: service_healthy
-      vite:
-        condition: service_started
-    ports:
-      - "3000:3000"
-    volumes:
-      - /dev/shm:/dev/shm
-
   workflow:
-    container_name: u4i-local-workflow
     profiles: ["full"]
     build:
       context: .
@@ -152,7 +157,6 @@ services:
       - POSTGRES_DB=${U4I_DEV_DB:-u4i_dev_urls4irl}
     volumes:
       - app_logs:/app/volume
-      - pgdata:/var/lib/postgresql/data:ro
       - workflow_logs:/app/workflow_logs
       - backups:/backups
     restart: unless-stopped
@@ -162,54 +166,34 @@ services:
       timeout: 5s
       retries: 3
       start_period: 200s
+    # u4i_shared so POSTGRES_HOST=db resolves to the hub db.
+    networks:
+      default: {}
+      u4i_shared: {}
 
-  # One cluster for the dev DB and every per-run test DB. Sized by `make capacity`; durability is
-  # traded for test speed (fsync=off), so a host crash can corrupt pgdata — recover with
-  # `docker volume rm` then `make up d=1 && make reset-db`.
-  db:
-    image: postgres:16.3-bookworm
-    container_name: u4i-local-postgres
-    command: postgres -c max_connections=${U4I_PG_MAX_CONN:-263} -c shared_buffers=${U4I_PG_SHARED_BUFFERS_MB:-128}MB -c fsync=off -c synchronous_commit=off -c full_page_writes=off
-    env_file:
-      - .env
-    environment:
-      # Bootstrap name only (fresh volume); db-init renames it to U4I_DEV_DB.
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-        # `postgres`, not $POSTGRES_DB: after db-init's rename the bootstrap DB no longer exists.
-        test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d postgres"]
-        interval: 5s
-        timeout: 5s
-        retries: 5
-
-  # One-shot, idempotent provisioning on every `up` (docker/db-provision.sh): test role, one-time
-  # legacy dev-DB rename, dev-DB isolation, base test DB. The `u4i_dev_urls4irl` default matches the
-  # Makefile's derived U4I_DEV_DB on the primary clone, so a raw `docker compose` stays consistent.
+  # One-shot, idempotent provisioning of this spoke's dev DB on every `up` (docker/db-provision.sh, spoke
+  # scope: create U4I_DEV_DB, revoke PUBLIC CONNECT) in the hub db. Cluster-wide objects (test role, base
+  # test DB) belong to the hub's cluster-init. It waits for the hub db itself (no cross-project
+  # depends_on), and reads POSTGRES_TEST_DB from .env for its collision guard. The `u4i_dev_urls4irl`
+  # default matches the Makefile's derived U4I_DEV_DB on the primary clone.
   db-init:
     image: postgres:16.3-bookworm
     env_file:
       - .env
-    depends_on:
-      db:
-        condition: service_healthy
     restart: "no"
     volumes:
       - ./docker/db-provision.sh:/db-provision.sh:ro
     entrypoint: ["bash", "/db-provision.sh"]
     environment:
       - PGHOST=db
+      - U4I_PROVISION_SCOPE=spoke
       - U4I_DEV_DB=${U4I_DEV_DB:-u4i_dev_urls4irl}
-      - LEGACY_DEV_DB=${POSTGRES_DB}
-      - U4I_TEST_ROLE=${U4I_TEST_ROLE:-u4i_test}
-      - U4I_PG_TEST_CONN_LIMIT=${U4I_PG_TEST_CONN_LIMIT:-230}
+    # Talks only to the hub db, so it needs no default network.
+    networks:
+      - u4i_shared
 
   redis:
     image: redis:6.2
-    container_name: u4i-local-redis
     # Session lease pool for 2 concurrent runs of 30 workers (DB 0 + base
     # session DB reserved); must equal scripts/capacity.py SHARED_REDIS_DATABASES.
     command: redis-server --databases 64
@@ -223,7 +207,6 @@ services:
 
   redis-metrics:
     image: redis:6.2
-    container_name: u4i-local-redis-metrics
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no --databases ${REDIS_METRICS_DATABASES:-16}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -245,7 +228,6 @@ services:
   # service listens on 5000 inside the compose network), not a host-published port.
   cloudflared:
     image: cloudflare/cloudflared:2026.6.1
-    container_name: u4i-local-cloudflared
     profiles: ["tunnel"]
     command: tunnel --no-autoupdate --url http://web:5000
     depends_on:
@@ -253,8 +235,16 @@ services:
         condition: service_healthy
     restart: "no"
 
+networks:
+  default: {}
+  # The per-user network the hub lives on. Only web, vite, workflow and db-init join it (web/vite under
+  # slugged aliases); redis, redis-metrics and cloudflared stay off it, since compose registers each
+  # service name as an alias there and N spokes' bare names would be ambiguous.
+  u4i_shared:
+    external: true
+    name: ${U4I_SHARED_NET:?run the stack through make (it computes U4I_SHARED_NET)}
+
 volumes:
-  pgdata:
   redisdata:
   app_logs:
   workflow_logs:

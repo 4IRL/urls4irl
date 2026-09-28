@@ -5,7 +5,7 @@ description: Start or stop the on-demand public Cloudflare tunnel that exposes t
 
 # Tunnel skill
 
-Wraps the `make tunnel` / `make tunnel-stop` targets (defined in the project `Makefile`; backed by the profiled `cloudflared` service in `docker/compose.local.yaml`). Cloudflare quick tunnels are token-free and ephemeral; `make tunnel` forces the **built** stack up first so the served page works on a remote device (no `localhost:5173` dependency).
+Wraps the `make tunnel` / `make tunnel-stop` targets (defined in the project `Makefile`; backed by the profiled `cloudflared` service in `docker/compose.local.yaml`). Cloudflare quick tunnels are token-free and ephemeral; `make tunnel` forces this checkout's **built** stack up first so the served page works on a remote device (no `localhost:<vite port>` dependency): it starts the shared hub `db`, starts web + the one-shot vite build detached, waits for the vite build to exit 0, waits for a healthy `web`, then starts `cloudflared`. It tunnels whichever checkout (primary clone or worktree) it is run in; `make stack-info` shows which.
 
 ## Step 0 — Determine intent
 
@@ -23,7 +23,7 @@ If genuinely ambiguous, ask via `AskUserQuestion` (start vs stop). Otherwise pro
    ```
    make tunnel
    ```
-2. Read the `TUNNEL URL:` value from stdout. If the loop times out without printing a URL, run `docker compose --project-directory . -f docker/compose.local.yaml -f docker/compose.built.yaml logs cloudflared` (DDS) and report what you find instead of guessing.
+2. Read the `TUNNEL URL:` value from stdout. If the loop times out without printing a URL, run `make logs c=cloudflared` (DDS) and report what you find instead of guessing. If `make tunnel` fails before the tunnel starts, read the failing step in make's output: a vite build failure prints `the vite asset build exited N (see: make logs c=vite)`; port, hub or `.env` errors name themselves.
 3. Print the URL plus the first two seeded test logins in this copy-paste-friendly block (login is by **username**; the seeded mock password equals the user's email):
 
    ```
@@ -37,6 +37,7 @@ If genuinely ambiguous, ask via `AskUserQuestion` (start vs stop). Otherwise pro
    username: u4i_test2
    password: u4i_test2@urls4irl.app
    ```
+   A fresh worktree's dev DB (`u4i_dev_<slug>`) is created empty: run `make addmock` (or `make reset-db`) once in that checkout so these logins exist.
 4. Remind the user the machine must stay awake while away, and that they can say "stop the tunnel" to take it down.
 
 ## Stop

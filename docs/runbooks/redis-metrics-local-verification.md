@@ -9,13 +9,16 @@ Run top-to-bottom. Each step has a pass criterion; deviations point to a specifi
 ```bash
 make down                       # ensure clean state — testing on stale state masks wiring bugs
 make up p=full d=1              # p=full adds the workflow container Steps 2 and 7 use; METRICS_ENABLED defaults to true (compose); opt out via .env
-docker compose --project-directory . -f docker/compose.local.yaml ps
+make stack-info                 # prints this checkout's compose project (u4i-<slug>) and web URL
+docker ps --filter label=com.docker.compose.project=<project from stack-info>
 ```
 
-**Pass:** both `u4i-local-redis` and `u4i-local-redis-metrics` are listed and show `(healthy)`.
+**Pass:** both the `redis` and `redis-metrics` services (containers `<project>-redis-1` and `<project>-redis-metrics-1`) are listed and show `(healthy)`.
 
 - Missing `redis-metrics` → service was never added to `compose.local.yaml`.
-- `(unhealthy)` → `docker compose logs redis-metrics` for startup errors (most likely a bad `--maxmemory` value or port conflict).
+- `(unhealthy)` → `make logs c=redis-metrics` for startup errors (most likely a bad `--maxmemory` value or port conflict).
+
+Each checkout's stack is its own compose project, which only `make` can resolve, so the `docker compose exec <service> …` commands below are shorthand: run each as `docker exec <project>-<service>-1 …` (e.g. `docker exec u4i-urls4irl-redis-metrics-1 redis-cli CONFIG GET maxmemory`). Logs are read with `make logs c=<service>`. The app URL `http://127.0.0.1:8659/` below is the primary clone's; in a worktree use the web URL from `make stack-info`.
 
 ## Step 1 — Dedicated container has the expected runtime config
 
@@ -58,7 +61,7 @@ docker compose exec redis redis-cli -n 2 KEYS '*'
 ## Step 4 — Drive a write through the live app
 
 ```bash
-curl -sI http://127.0.0.1:8659/ > /dev/null
+curl -sI http://127.0.0.1:8659/ > /dev/null   # port: the web URL from `make stack-info`
 ```
 
 Or just load the homepage in a browser. Either path hits the splash route and increments an `api_hit` counter.
@@ -128,7 +131,7 @@ Demonstrates the structural promise: when memory fills, counters are LRU-evicted
 docker compose exec redis-metrics redis-cli CONFIG SET maxmemory 1mb
 docker compose exec redis-metrics redis-cli CONFIG RESETSTAT
 
-for i in {1..2000}; do curl -s http://127.0.0.1:8659/ > /dev/null; done
+for i in {1..2000}; do curl -s http://127.0.0.1:8659/ > /dev/null; done   # port: the web URL from `make stack-info`
 
 docker compose exec redis-metrics redis-cli INFO stats | grep evicted_keys
 
@@ -140,12 +143,12 @@ docker compose exec redis-metrics redis-cli CONFIG SET maxmemory 268435456
 
 **Pass:** `evicted_keys:N` for some `N>0`, AND shared `redis` still has no `metrics:*` keys.
 
-Under a 1 mb cap with concurrent writers, expect a steady stream of `redis.exceptions.OutOfMemoryError: ... command not allowed when used memory > 'maxmemory'` lines in `docker compose logs web` — the writer is racing eviction inside MULTI/EXEC pipelines, and individual pipelined commands lose. That is **not** a fail signal on its own: the structural pass criterion is `evicted_keys>0` **and** shared redis untouched. Eviction running concurrently with some pipeline rejections is the expected behavior.
+Under a 1 mb cap with concurrent writers, expect a steady stream of `redis.exceptions.OutOfMemoryError: ... command not allowed when used memory > 'maxmemory'` lines in `make logs c=web` — the writer is racing eviction inside MULTI/EXEC pipelines, and individual pipelined commands lose. That is **not** a fail signal on its own: the structural pass criterion is `evicted_keys>0` **and** shared redis untouched. Eviction running concurrently with some pipeline rejections is the expected behavior.
 
 **Fail mode (real):** the eviction policy wasn't applied — recheck Step 1's `maxmemory-policy=allkeys-lru`. The diagnostic is `evicted_keys:0` after the 2000 hits, not the presence of error logs. To inspect:
 
 ```bash
-docker compose logs web | grep -E "OutOfMemoryError|maxmemory"
+make logs c=web | grep -E "OutOfMemoryError|maxmemory"
 ```
 
 The deterministic automated equivalent is `make test-file f=tests/integration/system/test_metrics_redis_isolation.py`.
@@ -162,9 +165,9 @@ make down                       # stops the stack
 | Symptom                                                  | Likely cause                                                                  |
 |----------------------------------------------------------|-------------------------------------------------------------------------------|
 | `redis-metrics` container missing from `ps`              | `compose.local.yaml` not applied — `make down && make up p=full d=1` again    |
-| `redis-metrics` unhealthy                                | `docker compose logs redis-metrics` — check `--maxmemory` value or port       |
+| `redis-metrics` unhealthy                                | `make logs c=redis-metrics` — check `--maxmemory` value or port               |
 | `metrics-snapshot` prints nothing after a curl           | `METRICS_ENABLED=false` in `.env`, or web container started before the change |
 | Counters appear on shared `redis` (`-n 2`)               | Web container env still points at old URI — `make restart c=web`              |
 | `metrics-flush-now` logs `another flush is in progress, skipping` | Workflow cron holds the lock — Step 7 expects you to `UNLINK metrics:flush:lock` first |
-| `metrics-flush-now` succeeds but `metrics-rows` is empty | Flush worker is hitting a different Postgres than expected — check workflow env       |
+| `metrics-flush-now` succeeds but `metrics-rows` is empty | Flush worker hit a different Postgres/dev DB — check workflow env             |
 | Step 9 ends with `evicted_keys:0`                        | `maxmemory-policy` not `allkeys-lru` on the dedicated container — NOT the presence of `OutOfMemoryError` logs, which are expected under 1 mb cap |
