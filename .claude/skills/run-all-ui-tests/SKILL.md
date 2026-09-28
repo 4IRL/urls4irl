@@ -26,7 +26,7 @@ make test-ui-parallel-built > "$OUTPUT_FILE" 2>&1
 
 `test-ui-parallel-built` calls `start-built` which stops any running stack and brings up the built stack before running tests. It runs the UI marker set hardcoded in the target's `-m` expression in the `Makefile`, in parallel within a single pytest invocation, using the target's default worker count. **Before running**, compare the `_ui` markers in `pytest.ini`'s `markers =` list against that expression; if any is missing from the `Makefile`, report the mismatch to the user first (it would be silently skipped).
 
-**Fallback (sequential):** Only use if the parallel run produces unexplained errors unrelated to test logic (e.g., repeated `chromium.connect()` failures against the shared Playwright browser-server, container instability). Run each marker one at a time, appending to the output file:
+**Fallback (sequential):** Only use if the parallel run produces unexplained errors unrelated to test logic (e.g., repeated `chromium.connect()` failures against the shared Playwright browser-server, container instability). Before falling back, try `make playwright-up` first: the hub browser-server exits on its own after an idle window, and `playwright-up` restarts it in place and waits until it is healthy (a final `RuntimeError` from `build_page_browser` naming `make playwright-up` means exactly this). Only if connect failures persist after that, and no UI run is in flight in any checkout, escalate to `make hub-restart c=playwright`. Run each marker one at a time, appending to the output file:
 
 Markers: read the `markers =` list in `pytest.ini` at runtime and run every marker ending in `_ui`, in the order listed there. Do not rely on a remembered list; markers are added over time.
 

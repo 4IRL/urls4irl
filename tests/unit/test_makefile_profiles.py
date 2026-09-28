@@ -526,6 +526,7 @@ def test_integration_marker_leaves_hub_playwright_alone(
     [
         pytest.param(("f=tests/functional/splash_ui/test_x.py",), id="functional-file"),
         pytest.param(("f=tests",), id="whole-tree"),
+        pytest.param(("f=./tests",), id="dot-slash-whole-tree"),
         pytest.param((), id="no-path"),
     ],
 )
@@ -737,6 +738,54 @@ def test_explicit_n_overrides_the_marker_worker_cap(make_target: str) -> None:
         _successful_dry_run(make_target, "m=splash_ui", "n=3")
     )
     assert " -n 3 " in pytest_line
+
+
+@pytest.mark.parametrize(
+    "make_target", ["test-file-parallel", "test-file-parallel-built"]
+)
+@pytest.mark.parametrize(
+    "path_args",
+    [
+        pytest.param(("f=tests/functional/splash_ui/test_x.py",), id="functional-file"),
+        pytest.param(("f=tests/functional",), id="functional-dir"),
+        pytest.param(("f=tests",), id="whole-tree"),
+        pytest.param(("f=./tests",), id="dot-slash-whole-tree"),
+        pytest.param(("f=./tests/",), id="dot-slash-whole-tree-trailing-slash"),
+        pytest.param(("f=.",), id="repo-root"),
+        pytest.param((), id="no-path"),
+    ],
+)
+def test_ui_file_parallel_uses_the_ui_worker_cap(
+    make_target: str, path_args: tuple[str, ...]
+) -> None:
+    pytest_line = _pytest_exec_line(_successful_dry_run(make_target, *path_args))
+    assert UI_WORKER_CAP in pytest_line
+    assert INTEGRATION_WORKER_CAP not in pytest_line
+
+
+@pytest.mark.parametrize(
+    "make_target", ["test-file-parallel", "test-file-parallel-built"]
+)
+@pytest.mark.parametrize(
+    "path", ["tests/unit/test_capacity.py", "tests/integration", "tests/unit"]
+)
+def test_integration_file_parallel_uses_the_integration_worker_cap(
+    make_target: str, path: str
+) -> None:
+    pytest_line = _pytest_exec_line(_successful_dry_run(make_target, f"f={path}"))
+    assert INTEGRATION_WORKER_CAP in pytest_line
+    assert UI_WORKER_CAP not in pytest_line
+
+
+@pytest.mark.parametrize(
+    "make_target", ["test-file-parallel", "test-file-parallel-built"]
+)
+def test_explicit_n_overrides_the_file_worker_cap(make_target: str) -> None:
+    pytest_line = _pytest_exec_line(
+        _successful_dry_run(make_target, "f=tests/functional/splash_ui", "n=3")
+    )
+    assert " -n 3 " in pytest_line
+    assert UI_WORKER_CAP not in pytest_line
 
 
 def test_stack_info_reports_hub_playwright() -> None:

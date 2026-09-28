@@ -311,7 +311,12 @@ UI_MARKER_START = $(if $(UI_MARKER_WORDS),playwright-up)
 # Default -n for the marker-parallel targets: a *_ui marker gets the UI cap (same word match, so m='not admin_ui'
 # gets the smaller UI cap too: fewer workers, never a failure).
 MARKER_N_KEY = $(if $(UI_MARKER_WORDS),U4I_N_UI,U4I_N_INT)
-UI_PATH_START = $(if $(or $(findstring tests/functional,$(f)),$(filter tests tests/ . ./,$(or $(f),.))),playwright-up)
+# Non-empty when f collects tests/functional (a functional path, or the whole tree: empty f, tests, tests/, ., ./, with
+# or without a leading ./). The substring match errs toward the UI side (an extra start, the smaller cap), never a failure.
+UI_PATH_MATCH = $(or $(findstring tests/functional,$(f)),$(filter tests tests/ . ./,$(or $(f),.) $(patsubst ./%,%,$(f))))
+UI_PATH_START = $(if $(UI_PATH_MATCH),playwright-up)
+# Default -n for the file-parallel targets: a path that collects UI tests gets the UI cap (whole tree included).
+PATH_N_KEY = $(if $(UI_PATH_MATCH),U4I_N_UI,U4I_N_INT)
 test-marker: $(UI_MARKER_START) ## Run tests for a specific marker: make test-marker m=<marker> (a *_ui marker starts hub playwright)
 	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
 
@@ -331,10 +336,10 @@ test-file: $(UI_PATH_START) ## Run pytest against a specific file or path: make 
 	$(EXEC_WEB) "$(PYTEST) $(f) -v $(args)"
 
 test-file-parallel: _capacity-fresh _require-n-fits $(UI_PATH_START) ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>] (a tests/functional path starts hub playwright)
-	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v $(args)"
+	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,$(PATH_N_KEY))) --dist=loadscope -v $(args)"
 
 test-file-parallel-built: _capacity-fresh _require-n-fits start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
-	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v $(args)"
+	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,$(PATH_N_KEY))) --dist=loadscope -v $(args)"
 
 vite-build: ## Build Vite to verify no import/syntax errors (one-off vite container)
 	$(RUN_VITE) pnpm exec vite build
@@ -564,7 +569,7 @@ _require-n-fits: _capacity-fresh
 		max_n=$(call capacity_val,U4I_N_MAX); \
 		case "$$max_n" in ''|*[!0-9]*) echo "U4I_N_MAX invalid in $(CAPACITY_ENV) — run 'make capacity'"; exit 1;; esac; \
 		if [ "$(n)" -gt "$$max_n" ]; then \
-			echo "n=$(n) exceeds this host's capacity ceiling (U4I_N_MAX=$$max_n); raise it with 'make capacity U4I_N_UI=$(n)' (UI targets) or 'make capacity U4I_N_INT=$(n)' (integration/marker/file targets), then 'make up [p=…] d=1'"; \
+			echo "n=$(n) exceeds this host's capacity ceiling (U4I_N_MAX=$$max_n); raise it with 'make capacity U4I_N_UI=$(n)' (UI targets, *_ui markers, tests/functional paths) or 'make capacity U4I_N_INT=$(n)' (other integration/marker/file targets), then 'make up [p=…] d=1'"; \
 			exit 1; \
 		fi; \
 	fi

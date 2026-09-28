@@ -101,16 +101,18 @@ A `Makefile` is provided for common development tasks:
 | `make build` | Rebuild images without starting (every profile) |
 | `make restart c=<service>` | Restart one of this checkout's services (e.g. `make restart c=web`; `c=` is required) |
 | `make logs c=<service>` | Show one of this checkout's service logs (e.g. `make logs c=cloudflared`) |
-| `make stack-info` | Print this checkout's compose project, URLs, and the shared hub's state |
+| `make stack-info` | Print this checkout's compose project, URLs, and the shared hub's `db` and `playwright` state (`hub playwright: Exited (0) …` = idle-reaped, normal) |
 | `make hub-up` / `make hub-down` | Start / stop the shared hub (`hub-down` refuses while any checkout's stack is attached) |
-| `make hub-restart c=db\|playwright` | Restart a hub service: drops every checkout's connections / in-flight runs, so only when no test run is in progress in any checkout |
+| `make playwright-up` | Start the hub `playwright` browser server and wait until it is healthy; restarts an idle-reaped one in place (idempotent) |
+| `make playwright-rebuild` | Rebuild the hub `playwright` image and recreate it, to pick up image/config changes; refuses while any UI run is connected |
+| `make hub-restart c=db\|playwright` | Restart a hub service (no health wait): drops every checkout's connections / in-flight runs, so only when no test run is in progress in any checkout. Use `make playwright-rebuild` for image changes |
 | `make test-integration` | Run all non-UI integration tests |
 | `make test-functional` | Run all UI/Playwright functional tests (starts `vite` + `playwright` itself) |
 | `make test-js` | Run all JS unit tests (vitest) on the host — no stack needed |
 | `make test-marker m=<marker>` | Run tests for a specific pytest marker (e.g. `make test-marker m=utubs`) |
 | `make test-integration-parallel [n=<N>]` | Run all non-UI integration tests in parallel (preferred; default `n` from `make capacity`) |
 | `make test-ui-parallel [n=<N>]` | Run all UI/Playwright tests in parallel (preferred; default `n` from `make capacity`; starts `vite` + `playwright` itself) |
-| `make test-marker-parallel m=<marker> [n=<N>]` | Run tests for a specific marker in parallel (preferred; default `n` from `make capacity`) |
+| `make test-marker-parallel m=<marker> [n=<N>]` | Run tests for a specific marker in parallel (preferred; default `n` from `make capacity`: the UI count for a `*_ui` marker, else the integration count) |
 | `make vite-build` | Build Vite to verify no import/syntax errors (one-off `vite` container; no `p=` needed) |
 | `make help` | List all available make commands |
 
@@ -183,7 +185,9 @@ pytest -m splash         # auth integration tests
 pytest -k "test_name"    # specific test
 ```
 
-UI tests require the shared Playwright browser-server, which lives in the per-user hub and serves every checkout's stack (`make test-functional`/`make test-ui-parallel` and the `*-built` targets start it themselves; for other dev-mode UI runs use `make up p=ui d=1`): the hub `playwright` service runs `npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0`, each checkout's `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, the browser reaches that checkout's app by its `web-<slug>` alias, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it). See [`pytest.ini`](pytest.ini) for the full list of test markers.
+UI tests require the shared Playwright browser-server, which lives in the per-user hub and serves every checkout's stack: the hub `playwright` service runs `playwright run-server --port 3000 --host 0.0.0.0` from a thin derived image (`docker/Dockerfile.Playwright`, `u4i-playwright:<version>`, with the CLI baked in so a start never touches the npm registry; its version is kept in lockstep with `requirements/requirements-test.txt`). Each checkout's `web` service sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/`, the browser reaches that checkout's app by its `web-<slug>` alias, and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it), retrying a few times on transient failures.
+
+The server has a TCP healthcheck, and to free its ~500 MB it exits on its own after `U4I_PLAYWRIGHT_IDLE_MINUTES` (default 15; `0` disables it) with no connected client. An `Exited (0)` hub `playwright` is therefore normal: `make playwright-up` restarts it in place and waits for it to be healthy, and every UI target runs it for you (`make up p=ui`, `make test-functional`/`make test-ui-parallel`, the `*-built` targets, `make test-marker*` with a `*_ui` marker, and `make test-file*` on a path that collects `tests/functional`). A dev-mode UI run still needs `make up p=ui d=1` for `web` + `vite`. `make test-last-failed` does not start it: run `make playwright-up` first if the last failures include UI tests. After changing the image or its compose config, run `make playwright-rebuild`. See [`pytest.ini`](pytest.ini) for the full list of test markers.
 
 ## Project Structure
 
