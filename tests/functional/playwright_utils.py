@@ -7,6 +7,7 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 from flask import Flask, session
 from playwright.sync_api import BrowserContext, Locator, Page, expect
 
+from backend.config import ConfigTest
 from backend.models.users import Users
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -954,7 +955,7 @@ def login_user_with_cookie_from_session(
     context.add_cookies(
         [
             {
-                "name": "session",
+                "name": ConfigTest.SESSION_COOKIE_NAME,
                 "value": session_id,
                 "url": base_url,
                 "httpOnly": True,

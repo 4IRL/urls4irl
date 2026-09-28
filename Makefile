@@ -229,9 +229,10 @@ format: _require-tools _require-shell-files ## Apply all formatters
 	cd frontend && $(MISE) ./node_modules/.bin/prettier --write "**/*.{ts,js}"
 	$(MISE) shfmt -i 2 -ci -w $(SHELL_FILES)
 
-typecheck: _require-tools ## Run TypeScript typecheck (app + test tsconfigs) on the host
+typecheck: _require-tools ## Run TypeScript typecheck (app + test + node-side tsconfigs) on the host
 	$(MISE) $(FRONTEND_BIN)/tsc --noEmit --project frontend/tsconfig.json
 	$(MISE) $(FRONTEND_BIN)/tsc --noEmit --project frontend/tsconfig.test.json
+	$(MISE) $(FRONTEND_BIN)/tsc --noEmit --project frontend/tsconfig.node.json
 
 generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
 	$(EXEC_WEB_AS_HOST) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"

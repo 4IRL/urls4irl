@@ -35,5 +35,5 @@ jobs:
       - name: Lint (ruff, eslint, shellcheck, lockfile-check, lint-actions)
         run: make lint
 
-      - name: Typecheck (tsc, app + test tsconfigs)
+      - name: Typecheck (tsc, app + test + node-side tsconfigs)
         run: make typecheck

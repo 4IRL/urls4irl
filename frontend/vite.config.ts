@@ -1,10 +1,12 @@
 import { defineConfig } from "vite";
-import { resolve } from "path";
+import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
 const useSSL = process.env.ENABLE_SSL === "true";
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+// String form (not `new URL(".", import.meta.url)`): under vitest's happy-dom
+// environment the global URL is happy-dom's, which fileURLToPath rejects.
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // "mode" defined through CLI options passed to vite, i.e. pnpm run _dev_ adds development as mode
 export default defineConfig(({ mode }) => ({
@@ -24,13 +26,21 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     strictPort: true,
     cors: true,
-    https: useSSL,
-    allowedHosts: ["vite", "localhost", "127.0.0.1"],
-    // HMR host is intentionally not set - Vite will infer from page URL
-    // This allows HMR to work for both local dev (localhost) and Selenium tests (vite hostname)
-    hmr: {
-      port: 5173,
-    },
+    // No `https` key: when ENABLE_SSL is on, basicSsl() fills server.https
+    // itself (it only skips an explicit `false`); otherwise it stays HTTP.
+    // U4I_VITE_HOST is this spoke's `vite-<slug>` alias, which the hub
+    // Playwright browser uses. Read here (inside the factory), not at module
+    // top level, so each config evaluation sees the current env.
+    allowedHosts: [
+      "vite",
+      "localhost",
+      "127.0.0.1",
+      ...(process.env.U4I_VITE_HOST ? [process.env.U4I_VITE_HOST] : []),
+    ],
+    // No `hmr` host/port: the Vite client derives the HMR socket from the URL
+    // it was loaded from — localhost:<U4I_VITE_PORT> for the host browser,
+    // vite-<slug>:5173 for the hub Playwright browser. (If that socket fails,
+    // Vite's client retries localhost:<server.port>, i.e. :5173.)
     watch: {
       usePolling: true,
       interval: 1000,

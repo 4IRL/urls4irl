@@ -1,6 +1,6 @@
 from os import environ, path
 from time import time
-from urllib.parse import quote
+from urllib.parse import quote, urlparse, urlunparse
 
 from cachelib import FileSystemCache
 from dotenv import load_dotenv
@@ -161,6 +161,9 @@ class Config:
         SESSION_REDIS = Redis.from_url(REDIS_URI)
     SESSION_SERIALIZATION_FORMAT = "json"
     SESSION_COOKIE_SAMESITE = "lax"
+    # Browsers scope cookies by host, not port, so local spokes sharing 127.0.0.1 need distinct names.
+    # An empty value falls back too: a nameless cookie would silently break sessions.
+    SESSION_COOKIE_NAME = environ.get(ENV.U4I_SESSION_COOKIE_NAME) or "session"
     # Secure flag required on any HTTPS-served origin (prod behind TLS-terminating proxy,
     # staging/dev-server, or local HTTPS via ENABLE_SSL). Disabled only for plaintext-HTTP
     # local dev, where browsers otherwise silently drop the session cookie.
@@ -302,12 +305,11 @@ class ConfigTestUI(ConfigTest):
 
     def __init__(self) -> None:
         super().__init__()
-        # Override VITE_URL for Docker-based UI tests
-        # Chromium in the Playwright container reaches Vite via Docker network hostname
+        # Override VITE_URL for Docker-based UI tests: hub Chromium reaches this
+        # spoke's Vite via its `vite-<slug>` alias on the container port (5173);
+        # the host port in VITE_URL is never valid in-network.
         if IS_DOCKER and VITE_INTERNAL_HOST:
-            from urllib.parse import urlparse, urlunparse
-
             parsed = urlparse(VITE_URL)
             self.VITE_URL = urlunparse(
-                parsed._replace(netloc=f"{VITE_INTERNAL_HOST}:{parsed.port or 5173}")
+                parsed._replace(netloc=f"{VITE_INTERNAL_HOST}:5173")
             )

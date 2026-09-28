@@ -17,7 +17,7 @@ HOME_PATH: str = "/home"
 def _base_url_for(*, config: ConfigTestUI) -> str:
     """Select the host portion of the URL from the test config so the
     helper works both inside Docker (where the browser-server reaches Flask
-    via `http://web:<port>`) and on the host (`http://127.0.0.1:<port>`).
+    via `http://<U4I_WEB_HOST>:<port>`) and on the host (`http://127.0.0.1:<port>`).
     """
     return (
         UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
