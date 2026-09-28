@@ -76,12 +76,10 @@ BYTES_PER_KB: int = 1024
 DOCKER_INFO_TIMEOUT_SECONDS: int = 30
 AUTO: str = "auto"
 
-# `logs-owner-fix`: the project label must track compose.local.yaml's `name:`.
-LOGS_VOLUME_FILTERS: tuple[str, ...] = (
-    "label=com.docker.compose.project=u4i-local",
-    "label=com.docker.compose.volume=app_logs",
-)
-WEB_IMAGE: str = "u4i-local-web:latest"
+# `logs-owner-fix` finds the spoke's volume and web image from U4I_PROJECT (compose.local.yaml's `name:`),
+# which the Makefile computes and exports.
+PROJECT_ENV_VAR: str = "U4I_PROJECT"
+LOGS_VOLUME_NAME: str = "app_logs"
 LOGS_VOLUME_MOUNT: str = "/app/volume"
 LOGS_DIR: str = f"{LOGS_VOLUME_MOUNT}/logs"
 LOGS_DIR_MODE: str = "775"  # as web's image sets it
@@ -95,7 +93,21 @@ FINGERPRINT_KEY: str = "U4I_CAPACITY_FINGERPRINT"
 OVERRIDE_N_UI_KEY: str = "U4I_OVERRIDE_N_UI"
 OVERRIDE_N_INT_KEY: str = "U4I_OVERRIDE_N_INT"
 OVERRIDE_MEM_FRACTION_KEY: str = "U4I_OVERRIDE_MEM_FRACTION"
-# Values baked into running containers: a change needs `make up [p=…] d=1`.
+# Values baked into running containers. A spoke interlock change needs `make up [p=…] d=1`
+# (U4I_PG_TEST_CONN_LIMIT too: `make up` → `hub-up` → `cluster-init` re-applies the role's limit).
+# A hub interlock is baked into the hub `db`'s Postgres `command:` args, which `hub-up`'s
+# `--no-recreate db` never restarts, so it needs every spoke down, then `hub-down` + `hub-up`.
+# The hub (db args, cluster-init's U4I_PG_TEST_CONN_LIMIT) reads ONLY the primary clone's capacity
+# file ($PRIMARY_ROOT/docker/.capacity.generated.env, PRIMARY_ROOT exported by the Makefile). When a
+# linked worktree writes its own file, HUB_READ_KEYS changes there reach the hub only after
+# `make capacity` in the primary clone, so they get PRIMARY_ONLY_NOTE instead of the tier messages.
+SPOKE_INTERLOCK_KEYS: tuple[str, ...] = (
+    "REDIS_METRICS_DATABASES",
+    "U4I_PG_TEST_CONN_LIMIT",
+    "HOST_UID",
+    "HOST_GID",
+)
+HUB_INTERLOCK_KEYS: tuple[str, ...] = ("U4I_PG_MAX_CONN", "U4I_PG_SHARED_BUFFERS_MB")
 INTERLOCK_KEYS: tuple[str, ...] = (
     "REDIS_METRICS_DATABASES",
     "U4I_PG_TEST_CONN_LIMIT",
@@ -103,6 +115,18 @@ INTERLOCK_KEYS: tuple[str, ...] = (
     "U4I_PG_SHARED_BUFFERS_MB",
     "HOST_UID",
     "HOST_GID",
+)
+SPOKE_RECREATE_MESSAGE: str = "recreate required: run 'make up [p=…] d=1'"
+HUB_RECREATE_MESSAGE: str = (
+    "hub recreate required: run 'make down' in every spoke, "
+    "then 'make hub-down' and 'make hub-up'"
+)
+PRIMARY_ROOT_ENV_VAR: str = "PRIMARY_ROOT"
+PRIMARY_CAPACITY_RELATIVE_PATH: Path = Path("docker") / ".capacity.generated.env"
+HUB_READ_KEYS: tuple[str, ...] = (*HUB_INTERLOCK_KEYS, "U4I_PG_TEST_CONN_LIMIT")
+PRIMARY_ONLY_NOTE: str = (
+    "note: the hub reads the primary clone's capacity file, so these apply only "
+    "after 'make capacity' in {primary_root}"
 )
 # Every `KEY=value` line `render_env` emits, in order.
 ENV_KEYS: tuple[str, ...] = (
@@ -607,20 +631,24 @@ def _logs_owner(recorded: dict[str, str], output: Path) -> str:
     return ":".join(str(owner_id) for owner_id in owner_ids)
 
 
-def _logs_owner_fix(output: Path, docker: DockerRunner) -> None:
+def _logs_owner_fix(output: Path, project: str, docker: DockerRunner) -> None:
     """Re-own the app_logs log dir to HOST_UID:HOST_GID when another uid owns it.
 
-    Uses `docker run` against the existing web image, not `compose run`, so a
-    missing volume is never created (and seeded by a stale image). Skips
+    `project` is the spoke's compose project, which names its volume and web
+    image. Uses `docker run` against the existing web image, not `compose run`,
+    so a missing volume is never created (and seeded by a stale image). Skips
     quietly with no volume, image, or log dir yet (a fresh machine).
     """
     volume_filters = [
         flag
-        for volume_filter in LOGS_VOLUME_FILTERS
+        for volume_filter in (
+            f"label=com.docker.compose.project={project}",
+            f"label=com.docker.compose.volume={LOGS_VOLUME_NAME}",
+        )
         for flag in ("--filter", volume_filter)
     ]
     volume = _lookup(docker, ["volume", "ls", "-q", *volume_filters])
-    image = _lookup(docker, ["image", "ls", "-q", WEB_IMAGE])
+    image = _lookup(docker, ["image", "ls", "-q", f"{project}-web:latest"])
     if not volume or not image:
         return
     wanted = _logs_owner(read_env(output), output)
@@ -642,6 +670,20 @@ def _logs_owner_fix(output: Path, docker: DockerRunner) -> None:
 
 
 # --- subcommands -------------------------------------------------------------
+
+
+def _foreign_primary_root(output: Path) -> str | None:
+    """PRIMARY_ROOT when `output` is not the primary clone's capacity file, else None.
+
+    None too when PRIMARY_ROOT is unset (a direct run outside make, unit tests).
+    """
+    primary_root = os.environ.get(PRIMARY_ROOT_ENV_VAR, "")
+    if not primary_root:
+        return None
+    primary_file = Path(primary_root) / PRIMARY_CAPACITY_RELATIVE_PATH
+    if output.resolve() == primary_file.resolve():
+        return None
+    return primary_root
 
 
 def _generate(
@@ -674,10 +716,20 @@ def _generate(
     print(f"capacity regenerated ({output})")
     # A first write has nothing to compare against; `make up` creates the stack.
     changed = changed_interlocks(existing, new_values) if existing else []
-    if changed:
-        print(
-            f"recreate required: run 'make up [p=…] d=1' (changed: {', '.join(changed)})"
-        )
+    primary_root = _foreign_primary_root(output)
+    if primary_root is not None:
+        hub_changed = [key for key in changed if key in HUB_READ_KEYS]
+        if hub_changed:
+            note = PRIMARY_ONLY_NOTE.format(primary_root=primary_root)
+            print(f"{note} (changed: {', '.join(hub_changed)})")
+        changed = [key for key in changed if key not in HUB_READ_KEYS]
+    for tier_keys, message in (
+        (SPOKE_INTERLOCK_KEYS, SPOKE_RECREATE_MESSAGE),
+        (HUB_INTERLOCK_KEYS, HUB_RECREATE_MESSAGE),
+    ):
+        tier_changed = [key for key in changed if key in tier_keys]
+        if tier_changed:
+            print(f"{message} (changed: {', '.join(tier_changed)})")
 
 
 def _ensure(output: Path, host_probe: Probe) -> None:
@@ -751,7 +803,15 @@ def main(
         if args.command == "show":
             return _show(args.output)
         if args.command == "logs-owner-fix":
-            _logs_owner_fix(args.output, docker_runner)
+            project = os.environ.get(PROJECT_ENV_VAR, "")
+            if not project:
+                print(
+                    f"make capacity: {PROJECT_ENV_VAR} is not set — run logs-owner-fix "
+                    "through make (make up), which computes the spoke's compose project",
+                    file=sys.stderr,
+                )
+                return 1
+            _logs_owner_fix(args.output, project, docker_runner)
             return 0
         host_probe = probe_host()
         if args.command == "generate":

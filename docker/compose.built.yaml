@@ -1,5 +1,3 @@
-name: u4i-local
-
 services:
   web:
     environment:
@@ -10,8 +8,3 @@ services:
     restart: "no"
     healthcheck:
       disable: true
-
-  playwright:
-    depends_on:
-      vite:
-        condition: service_completed_successfully

@@ -179,9 +179,61 @@ def test_restart_requires_a_service() -> None:
 
 def test_restart_reaches_every_profile() -> None:
     restart_line = _single_line_containing(
-        _successful_dry_run("restart", "c=playwright"), " restart "
+        _successful_dry_run("restart", "c=vite"), " restart "
     )
-    assert f"{ALL_PROFILES_FLAG} restart playwright" in restart_line
+    assert f"{ALL_PROFILES_FLAG} restart vite" in restart_line
+
+
+@pytest.mark.parametrize("hub_service", ["db", "playwright"])
+def test_restart_rejects_hub_services(hub_service: str) -> None:
+    result = _dry_run("restart", f"c={hub_service}")
+    assert result.returncode != 0
+    assert f"make hub-restart c={hub_service}" in result.stderr
+
+
+def test_hub_restart_targets_the_hub_project() -> None:
+    restart_line = _single_line_containing(
+        _successful_dry_run("hub-restart", "c=playwright"), " restart "
+    )
+    assert f"-p u4i-hub-{os.getuid()} " in restart_line
+    assert restart_line.endswith("compose.hub.yaml restart playwright")
+
+
+@pytest.mark.parametrize(
+    ("make_args", "expected_message"),
+    [
+        pytest.param(("hub-restart",), "c=<service> is required", id="missing"),
+        pytest.param(("hub-restart", "c=web"), "c must be one of", id="spoke-service"),
+    ],
+)
+def test_hub_restart_rejects_non_hub_services(
+    make_args: tuple[str, ...], expected_message: str
+) -> None:
+    result = _dry_run(*make_args)
+    assert result.returncode != 0
+    assert expected_message in result.stderr
+
+
+def test_logs_requires_a_service() -> None:
+    result = _dry_run("logs")
+    assert result.returncode != 0
+    assert "c=<service> is required" in result.stderr
+
+
+def test_logs_targets_the_spoke_project() -> None:
+    logs_line = _single_line_containing(
+        _successful_dry_run("logs", "c=cloudflared", "U4I_SLUG=wt-a"), " logs "
+    )
+    assert "-p u4i-wt-a " in logs_line
+    assert "compose.hub.yaml" not in logs_line
+    assert logs_line.endswith(f"{ALL_PROFILES_FLAG} logs cloudflared")
+
+
+@pytest.mark.parametrize("hub_service", ["db", "playwright"])
+def test_logs_rejects_hub_services(hub_service: str) -> None:
+    result = _dry_run("logs", f"c={hub_service}")
+    assert result.returncode != 0
+    assert "is a hub service" in result.stderr
 
 
 @pytest.mark.parametrize("make_target", ["down", "build"])
@@ -293,10 +345,17 @@ def test_ui_up_resolves_ports_before_starting_vite() -> None:
     output = _successful_dry_run("test-functional")
     lines = output.splitlines()
     resolve_index = lines.index(_ports_resolve_line(output))
-    ui_up_line = _single_line_containing(
-        output, "--profile ui up -d --wait vite playwright"
-    )
+    ui_up_line = _single_line_containing(output, "--profile ui up -d --wait web vite")
     assert resolve_index < lines.index(ui_up_line)
+
+
+def test_ui_up_starts_hub_playwright_first() -> None:
+    output = _successful_dry_run("test-functional")
+    lines = output.splitlines()
+    playwright_up_line = _hub_playwright_up_line(output)
+    ui_up_line = _single_line_containing(output, "--profile ui up -d --wait web vite")
+    assert lines.index(playwright_up_line) < lines.index(ui_up_line)
+    assert "playwright" not in ui_up_line
 
 
 @pytest.mark.parametrize("make_target", ["up-built", "start-built", "tunnel"])
@@ -322,3 +381,246 @@ def test_setup_runs_worktree_init_first() -> None:
     assert len(setup_lines) == 1, setup_lines
     prerequisites = setup_lines[0].split(":", 1)[1].split("##", 1)[0].split()
     assert prerequisites and prerequisites[0] == "worktree-init", prerequisites
+
+
+HUB_FILE_MARKER: str = "compose.hub.yaml"
+
+
+def _hub_lines(output: str) -> list[str]:
+    return [line for line in output.splitlines() if HUB_FILE_MARKER in line]
+
+
+def _hub_db_up_line(output: str) -> str:
+    return _single_line_containing(output, " up -d --wait --no-recreate db")
+
+
+def _hub_playwright_up_line(output: str) -> str:
+    return _single_line_containing(output, " up -d --wait --no-recreate playwright")
+
+
+def _primary_root() -> str:
+    assert GIT_BINARY is not None
+    common_dir = subprocess.run(
+        [GIT_BINARY, "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    return str(Path(common_dir).parent)
+
+
+def test_spoke_compose_passes_the_project_name() -> None:
+    up_line = _compose_up_line(_successful_dry_run("up", "U4I_SLUG=wt-a"))
+    assert "-p u4i-wt-a " in up_line
+    assert HUB_FILE_MARKER not in up_line
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_up_ensures_the_hub_first() -> None:
+    output = _successful_dry_run("up")
+    lines = output.splitlines()
+    hub_db_line = _hub_db_up_line(output)
+    assert f"-f {_primary_root()}/docker/{HUB_FILE_MARKER}" in hub_db_line
+    assert "--build" not in hub_db_line
+    # --no-deps: `run` must never recreate a diverged db that `--no-recreate db` just left alone.
+    cluster_init_line = _single_line_containing(
+        output, " run --rm --no-deps cluster-init"
+    )
+    up_index = lines.index(_compose_up_line(output))
+    assert lines.index(hub_db_line) < lines.index(cluster_init_line) < up_index
+    assert not [line for line in _hub_lines(output) if "--build" in line]
+
+
+def test_up_with_a_profile_starts_hub_playwright() -> None:
+    output = _successful_dry_run("up", "p=ui")
+    lines = output.splitlines()
+    playwright_up_line = _hub_playwright_up_line(output)
+    assert HUB_FILE_MARKER in playwright_up_line
+    assert lines.index(playwright_up_line) < lines.index(_compose_up_line(output))
+
+
+def test_bare_up_leaves_hub_playwright_alone() -> None:
+    output = _successful_dry_run("up")
+    assert not [line for line in _hub_lines(output) if "playwright" in line]
+
+
+@pytest.mark.parametrize("make_target", ["up-built", "start-built"])
+def test_built_stack_starts_hub_playwright(make_target: str) -> None:
+    output = _successful_dry_run(make_target)
+    lines = output.splitlines()
+    first_spoke_compose_index = next(
+        index
+        for index, line in enumerate(lines)
+        if "docker compose" in line and HUB_FILE_MARKER not in line
+    )
+    assert lines.index(_hub_playwright_up_line(output)) < first_spoke_compose_index
+
+
+def test_tunnel_needs_no_hub_playwright() -> None:
+    output = _successful_dry_run("tunnel")
+    _hub_db_up_line(output)
+    assert not [line for line in _hub_lines(output) if "playwright" in line]
+    assert _single_line_containing(output, " rm -sf ").endswith("rm -sf workflow")
+
+
+@pytest.mark.parametrize("make_target", ["up", "up-built", "start-built", "tunnel"])
+def test_stack_start_targets_run_worktree_init_first(make_target: str) -> None:
+    # make -n is safe here: none of these targets or their prerequisites recurse via $(MAKE).
+    lines = _successful_dry_run(make_target, "U4I_PRIMARY=1").splitlines()
+    init_index = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if "worktree-init: primary clone, nothing to link" in line
+        ),
+        None,
+    )
+    assert init_index is not None, lines
+    first_compose_index = next(
+        index for index, line in enumerate(lines) if "docker compose" in line
+    )
+    assert init_index < first_compose_index
+
+
+def test_down_leaves_the_hub_alone() -> None:
+    assert _hub_lines(_successful_dry_run("down")) == []
+
+
+def test_hub_down_is_its_own_target() -> None:
+    lines = _successful_dry_run("hub-down").splitlines()
+    hub_down_line = _single_line_containing(
+        "\n".join(lines), f"{ALL_PROFILES_FLAG} down"
+    )
+    assert HUB_FILE_MARKER in hub_down_line
+    assert f"-p u4i-hub-{os.getuid()} " in hub_down_line
+    attachment_check_index = next(
+        index
+        for index, line in enumerate(lines)
+        if f"docker ps -a --filter network=u4i-shared-{os.getuid()} " in line
+        and "spokes still attached" in line
+    )
+    assert attachment_check_index < lines.index(hub_down_line)
+    network_rm_line = _single_line_containing(
+        "\n".join(lines), f"docker network rm u4i-shared-{os.getuid()}"
+    )
+    assert lines.index(hub_down_line) < lines.index(network_rm_line)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_hub_compose_uses_the_primary_clones_files() -> None:
+    primary_root = _primary_root()
+    hub_db_line = _hub_db_up_line(_successful_dry_run("hub-up"))
+    assert f"--project-directory {primary_root} " in hub_db_line
+    assert f"--env-file {primary_root}/.env " in hub_db_line
+    assert f"-p u4i-hub-{os.getuid()} " in hub_db_line
+
+
+def test_hub_up_creates_the_shared_network_first() -> None:
+    lines = _successful_dry_run("hub-up").splitlines()
+    network_line = _single_line_containing(
+        "\n".join(lines), f"docker network create u4i-shared-{os.getuid()}"
+    )
+    assert lines.index(network_line) < lines.index(_hub_db_up_line("\n".join(lines)))
+
+
+@pytest.mark.parametrize(
+    "make_target",
+    ["metrics-rows", "metrics-clear-rows", "gauge-rows", "gauge-clear-rows"],
+)
+def test_metrics_rows_queries_the_hub_db(make_target: str) -> None:
+    exec_line = _single_line_containing(
+        _successful_dry_run(make_target, "U4I_SLUG=wt-a"), " exec db "
+    )
+    assert HUB_FILE_MARKER in exec_line
+    assert '-d "u4i_dev_wt_a"' in exec_line
+
+
+def test_stack_info_lists_attached_spokes() -> None:
+    output = _successful_dry_run("stack-info")
+    assert f"docker network inspect u4i-shared-{os.getuid()}" in output
+    assert "hub: not running" in output
+    assert f"docker ps -a --filter network=u4i-shared-{os.getuid()} " in output
+    assert (
+        f"--filter label=com.docker.compose.project=u4i-hub-{os.getuid()} "
+        "--filter label=com.docker.compose.service=db --filter status=running"
+    ) in output
+
+
+def test_attached_spokes_exclude_the_hub_by_project_label() -> None:
+    hub_down_check_line = _single_line_containing(
+        _successful_dry_run("hub-down"), "spokes still attached"
+    )
+    assert '{{.Label "com.docker.compose.project"}} {{.Names}}' in hub_down_check_line
+    assert f"-v hub='u4i-hub-{os.getuid()}'" in hub_down_check_line
+    assert "$1 != hub" in hub_down_check_line
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_hub_up_ensures_the_primary_capacity_file_before_the_hub_db() -> None:
+    # A prerequisite, so HUB_COMPOSE's wildcard (expanded with hub-up's recipe) sees a file made on this run.
+    output = _successful_dry_run("hub-up")
+    lines = output.splitlines()
+    ensure_line = _single_line_containing(
+        output,
+        f"capacity.py ensure --output {_primary_root()}/docker/.capacity.generated.env",
+    )
+    assert lines.index(ensure_line) < lines.index(_hub_db_up_line(output))
+
+
+@pytest.mark.parametrize("make_target", ["start-built", "tunnel"])
+def test_built_stack_waits_for_the_vite_build_before_web(make_target: str) -> None:
+    # `up --wait` fails once the unreferenced one-shot vite exits, so the build starts detached, the vite
+    # barrier blocks on it, and only then does a waiting `up` target web.
+    output = _successful_dry_run(make_target)
+    lines = output.splitlines()
+    build_up_line = _compose_up_line(output)
+    assert " --wait" not in build_up_line
+    # The barrier is one make variable, so its backslash-continued shell prints as one line.
+    barrier_line = _single_line_containing(output, "docker wait ")
+    assert f"{make_target}: the vite asset build exited" in barrier_line
+    assert '[ "$vite_exit" != 0 ]' in barrier_line
+    assert barrier_line.endswith("exit 1; fi")
+    web_wait_line = _single_line_containing(output, " up --wait web")
+    assert (
+        lines.index(build_up_line)
+        < lines.index(barrier_line)
+        < lines.index(web_wait_line)
+    )
+
+
+def test_hub_named_spoke_slug_is_rejected() -> None:
+    result = _dry_run("stack-info", f"U4I_SLUG=hub-{os.getuid()}")
+    assert result.returncode != 0
+    assert "U4I_SLUG" in result.stderr
+
+
+def test_hub_targets_require_the_primary_hub_file() -> None:
+    result = _dry_run("hub-up", "PRIMARY_ROOT=/nonexistent-u4i-root")
+    assert result.returncode != 0
+    assert (
+        "the primary clone (/nonexistent-u4i-root) must be a git checkout carrying "
+        "docker/compose.hub.yaml"
+    ) in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("make_target", "service_value"),
+    [
+        pytest.param("restart", "web;id", id="shell-metachar"),
+        pytest.param("logs", "web id", id="two-words"),
+    ],
+)
+def test_service_name_must_be_one_compose_service(
+    make_target: str, service_value: str
+) -> None:
+    result = _dry_run(make_target, f"c={service_value}")
+    assert result.returncode != 0
+    assert "c must be one compose service name ([a-z0-9_-])" in result.stderr
+
+
+def test_restart_accepts_a_dashed_service_name() -> None:
+    restart_line = _single_line_containing(
+        _successful_dry_run("restart", "c=redis-metrics"), " restart "
+    )
+    assert restart_line.endswith("restart redis-metrics")

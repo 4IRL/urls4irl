@@ -17,8 +17,8 @@ SPOKE_PORTS = mise exec python -- python scripts/spoke_ports.py
 # their file on a first run. `.env` goes first: passing any --env-file disables compose's implicit .env discovery, and a
 # missing .env now errors loudly.
 COMPOSE_ENV_FILES = --env-file .env $(if $(wildcard $(CAPACITY_ENV)),--env-file $(CAPACITY_ENV)) $(if $(wildcard $(PORTS_ENV)),--env-file $(PORTS_ENV))
-COMPOSE = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f docker/compose.local.yaml
-COMPOSE_BUILT = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f docker/compose.local.yaml -f docker/compose.built.yaml
+COMPOSE = docker compose --project-directory . -p $(U4I_PROJECT) $(COMPOSE_ENV_FILES) -f docker/compose.local.yaml
+COMPOSE_BUILT = docker compose --project-directory . -p $(U4I_PROJECT) $(COMPOSE_ENV_FILES) -f docker/compose.local.yaml -f docker/compose.built.yaml
 # Recipe-time shell read of one KEY from the capacity file. The keys are never exported into make, so a
 # value read back here is never mistaken for a command-line override.
 capacity_val = $$(sed -n 's/^$(1)=//p' $(CAPACITY_ENV))
@@ -42,7 +42,11 @@ U4I_PRIMARY ?= $(if $(filter $(PRIMARY_ROOT),$(CURDIR)),1)
 # DNS-label-safe slug for compose project/alias names: lowercase [a-z0-9-], no leading/trailing dash, at most 40 chars.
 U4I_HOST_SLUG := $(shell printf '%s' '$(U4I_SLUG_SHELL)' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/^-*//' | cut -c1-40 | sed 's/-*$$//')
 $(if $(strip $(U4I_HOST_SLUG)),,$(error U4I_SLUG '$(U4I_SLUG)' sanitizes to an empty compose project name))
+# Spoke names derive from the checkout's basename only, so two checkouts with the same directory name on one Docker
+# host share a compose project and dev DB: keep worktree directory names unique.
 U4I_PROJECT := u4i-$(U4I_HOST_SLUG)
+# A spoke project inside the hub's u4i-hub-* namespace would own (and `make down` would remove) the hub's containers.
+$(if $(filter u4i-hub-%,$(U4I_PROJECT)),$(error U4I_SLUG '$(U4I_SLUG)' gives spoke project $(U4I_PROJECT) inside the per-user hub's u4i-hub-* namespace; rename the checkout or set another U4I_SLUG))
 U4I_WEB_HOST := web-$(U4I_HOST_SLUG)
 U4I_VITE_HOST := vite-$(U4I_HOST_SLUG)
 # Per-user hub (shared Postgres + Playwright) and its external network: per-user so two users' hubs never share DNS names.
@@ -50,16 +54,29 @@ U4I_UID := $(shell id -u)
 U4I_HUB_PROJECT := u4i-hub-$(U4I_UID)
 U4I_SHARED_NET := u4i-shared-$(U4I_UID)
 export PRIMARY_ROOT U4I_PRIMARY U4I_HOST_SLUG U4I_PROJECT U4I_WEB_HOST U4I_VITE_HOST U4I_UID U4I_HUB_PROJECT U4I_SHARED_NET
+# The per-user hub (docker/compose.hub.yaml: db, cluster-init, playwright) is always defined by the PRIMARY clone's
+# files (compose file, .env, capacity file), so spokes on different branches can never recreate it with diverging
+# config. Recursive `=` so the capacity-file `wildcard` is evaluated when hub-up's recipe is expanded, i.e. after its
+# prerequisites ran (_hub-capacity ensures the file; make expands a whole recipe before running its first line).
+PRIMARY_CAPACITY_ENV = $(PRIMARY_ROOT)/$(CAPACITY_ENV)
+HUB_COMPOSE = docker compose --project-directory $(PRIMARY_ROOT) --env-file $(PRIMARY_ROOT)/.env $(if $(wildcard $(PRIMARY_CAPACITY_ENV)),--env-file $(PRIMARY_CAPACITY_ENV)) -p $(U4I_HUB_PROJECT) -f $(PRIMARY_ROOT)/docker/compose.hub.yaml
+HUB_SERVICES := db playwright
+# Non-hub containers attached to the shared network, running or stopped (an exited db-init still pins the network),
+# one name per line; none when the network is absent. The hub is excluded by its compose project label, not a name
+# prefix a spoke slug could mimic; an unlabelled stray prints as " <name>", so the name is always the last field.
+# Used by hub-down (refuses while any remain) and stack-info.
+ATTACHED_SPOKES = docker ps -a --filter network=$(U4I_SHARED_NET) --format '{{.Label "com.docker.compose.project"}} {{.Names}}' 2>/dev/null | awk -v hub='$(U4I_HUB_PROJECT)' 'NF && $$1 != hub {print $$NF}'
 EXEC_WEB = $(COMPOSE) exec web bash -c
 EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 # For steps that write into bind-mounted host files (frontend/types): run as the host user so the
 # files keep host ownership, with LOG_DIR moved to /tmp since the image's log dir is only writable by the web user.
 EXEC_WEB_AS_HOST = $(COMPOSE) exec --user $(shell id -u):$(shell id -g) -e LOG_DIR=/tmp/u4i-cli-logs web bash -c
 # Compose profiles (docker/compose.local.yaml): p= picks the optional services layered on web + datastores.
-#   (unset) web, db, db-init, redis, redis-metrics   ·   ui: + vite, playwright   ·   full: + workflow
+#   (unset) web, db-init, redis, redis-metrics   ·   ui: + vite (hub playwright started too)   ·   full: + workflow
 PROFILES := ui full
-# The profiled services `up` stops when p narrows (cloudflared is left to tunnel/tunnel-stop).
-OPTIONAL_SERVICES := vite playwright workflow
+# The profiled services `up` stops when p narrows (cloudflared is left to tunnel/tunnel-stop). Hub playwright is
+# never stopped by a spoke: other spokes may be using it.
+OPTIONAL_SERVICES := vite workflow
 # p is spliced into command lines, so it is validated at parse time: an invalid p fails every target before any command runs.
 $(if $(word 2,$(p)),$(error p takes one profile: one of $(PROFILES)))
 $(if $(filter-out $(PROFILES),$(p)),$(error p must be one of: $(PROFILES) (got '$(p)')))
@@ -79,7 +96,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up _hub-network _hub-capacity _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -98,38 +115,93 @@ _profile-narrow:
 # profile is active) on every up, so a stale pre-bump node_modules never shadows the freshly built image's pnpm install.
 # Named volumes are unaffected.
 up: NARROW_PROFILE = $(p)
-up: _capacity-fresh _logs-owner-fix _ports-resolve _profile-narrow ## Build and start web + datastores; p=ui adds vite + playwright, p=full also adds workflow (pass d=1 for detached mode)
+up: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up $(if $(p),playwright-up) _profile-narrow ## Start the hub, then build and start this spoke's web + datastores; p=ui adds vite (+ hub playwright), p=full also adds workflow (pass d=1 for detached mode)
 	$(COMPOSE) $(PROFILE_FLAGS) up --build --remove-orphans -V $(if $(d),-d,)
 
 # A built stack always needs the vite one-shot build (else pages render with no assets), so p defaults to ui here.
 up-built: NARROW_PROFILE = $(or $(p),ui)
-up-built: _capacity-fresh _logs-owner-fix _ports-resolve _profile-narrow ## Build and start with pre-built Vite assets: web + datastores + vite build + playwright; p=full also adds workflow (pass d=1 for detached mode)
+up-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up playwright-up _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode)
 	$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --build --remove-orphans -V $(if $(d),-d,)
 
-start-built: _capacity-fresh _logs-owner-fix _ports-resolve prune ## Tear down stack, rebuild with pre-built assets (ui profile, no workflow), wait for healthy (used by built test targets)
-	$(COMPOSE) $(ALL_PROFILES) down
-	$(COMPOSE_BUILT) --profile ui up --build --remove-orphans --wait
+# Completion barrier for the built stack's one-shot vite (`vite build`). Nothing depends on it (hub playwright used to,
+# and web must not depend on the profiled vite), so `up --wait` cannot include it: once vite exits, even with 0, a
+# waiting `up` fails the whole command. `docker compose wait` cannot serve either: once the container has exited it
+# fails with "no containers". So targets start the stack detached, block here, then `up --wait web`. `docker wait`
+# returns an exited container's code too, but prints it and itself exits 0, so the printed code is compared to 0.
+VITE_BUILD_BARRIER = vite_id="$$($(COMPOSE_BUILT) --profile ui ps -a -q vite)"; \
+	if [ -z "$$vite_id" ]; then echo "$@: no vite build container found" >&2; exit 1; fi; \
+	vite_exit="$$(docker wait $$vite_id)" || exit 1; \
+	if [ "$$vite_exit" != 0 ]; then echo "$@: the vite asset build exited $$vite_exit (see: make logs c=vite)" >&2; exit 1; fi
 
-down: ## Stop the stack (every profile)
+start-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve playwright-up prune ## Tear down this spoke, rebuild with pre-built assets (ui profile, no workflow), wait for the vite build + a healthy web (used by built test targets)
+	$(COMPOSE) $(ALL_PROFILES) down
+	$(COMPOSE_BUILT) --profile ui up --build --remove-orphans -d
+	@$(VITE_BUILD_BARRIER)
+	$(COMPOSE_BUILT) --profile ui up --wait web
+
+down: ## Stop this spoke (every profile); the hub keeps running (make hub-down)
 	$(COMPOSE) $(ALL_PROFILES) down
 
 build: _capacity-fresh ## Rebuild images without starting (every profile)
 	$(COMPOSE) $(ALL_PROFILES) build
 
-restart: ## Restart a specific container: make restart c=<service>
-	$(if $(c),,$(error c=<service> is required, e.g. make restart c=playwright))
+restart: ## Restart a spoke service: make restart c=<service> (hub services: make hub-restart)
+	$(if $(c),,$(error c=<service> is required, e.g. make restart c=vite))
+	$(if $(filter $(HUB_SERVICES),$(c)),$(error $(c) is a hub service — use make hub-restart c=$(c)))
 	$(COMPOSE) $(ALL_PROFILES) restart $(c)
 
-# Starts the dev UI-test dependencies (vite + playwright, plus web/datastores via depends_on); idempotent when already up.
-# Assumes a dev stack: on an up-built stack use the `-built` test targets instead, else this recreates vite as the dev server.
-_ui-up: _capacity-fresh _logs-owner-fix _ports-resolve
-	$(COMPOSE) --profile ui up -d --wait vite playwright
+# COMPOSE_BUILT (not COMPOSE) so it also reaches the built-mode stack the tunnel target runs.
+logs: ## Tail a spoke service's logs: make logs c=<service>
+	$(if $(c),,$(error c=<service> is required, e.g. make logs c=cloudflared))
+	$(if $(filter $(HUB_SERVICES),$(c)),$(error $(c) is a hub service — its logs are in the hub project: docker compose -p $(U4I_HUB_PROJECT) logs $(c)))
+	$(COMPOSE_BUILT) $(ALL_PROFILES) logs $(c)
 
-# Tunnel never needs playwright/workflow: drop any left from a wider session (profile narrowing can't drop playwright
-# without vite, and --remove-orphans ignores profile-disabled services). Naming vite on `up` enables its profile.
-tunnel: _capacity-fresh _logs-owner-fix _ports-resolve ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
-	$(COMPOSE_BUILT) $(ALL_PROFILES) rm -sf playwright workflow
-	$(COMPOSE_BUILT) up --build --remove-orphans -V -d --wait web vite
+# Starts the dev UI-test dependencies: hub playwright, then this spoke's web + vite (datastores via depends_on); idempotent
+# when already up. web is named because nothing in the spoke depends on it any more (playwright did, before the hub).
+# Assumes a dev stack: on an up-built stack use the `-built` test targets instead, else this recreates vite as the dev server.
+_ui-up: _capacity-fresh _logs-owner-fix _ports-resolve playwright-up
+	$(COMPOSE) --profile ui up -d --wait web vite
+
+# The shared per-user network the hub and every spoke join. Idempotent, and race-tolerant when two spokes create it at
+# once: a failed create is fine as long as the network then exists.
+_hub-network:
+	@docker network inspect $(U4I_SHARED_NET) >/dev/null 2>&1 || docker network create $(U4I_SHARED_NET) >/dev/null 2>&1 || docker network inspect $(U4I_SHARED_NET) >/dev/null
+
+# --no-recreate: a spoke never restarts the shared cluster under another spoke, so a change to db's own config (its
+# command: args U4I_PG_MAX_CONN / U4I_PG_SHARED_BUFFERS_MB) applies only through hub-down + hub-up. cluster-init is a
+# fresh `run --rm` every time, so a changed U4I_PG_TEST_CONN_LIMIT is re-applied by the next `make up` with no teardown.
+# cluster-init runs with --no-deps: `run` would otherwise recreate a db whose config diverged, defeating
+# `--no-recreate db`. db is already up and healthy by then, and db-provision.sh has its own readiness wait.
+# Concurrent hub-ups from two spokes are safe once the hub exists: cluster-init's cluster steps are serialized by a
+# Postgres advisory lock in db-provision.sh (the second waits, then re-applies idempotently) and _hub-network is
+# race-tolerant. Known residual race, deliberately not engineered around (same stance as _ports-resolve): two spokes'
+# simultaneous FIRST-EVER `up -d --no-recreate db` (or playwright) can both try to create the container, and the loser
+# fails with a container name conflict. Rerunning `make up` fixes it, since the container then exists.
+hub-up: _hub-capacity _hub-network ## Start the per-user hub (Postgres cluster), provisioning cluster-wide roles; idempotent
+	$(HUB_COMPOSE) up -d --wait --no-recreate db
+	$(HUB_COMPOSE) run --rm --no-deps cluster-init
+
+# The seam Phase 8 extends (a healthcheck, lazy start, idle reaping).
+playwright-up: hub-up ## Start the hub's shared Playwright browser server (idempotent)
+	$(HUB_COMPOSE) up -d --wait --no-recreate playwright
+
+hub-down: _require-hub-files ## Stop the hub; refuses while any spoke is attached to the shared network
+	@attached="$$($(ATTACHED_SPOKES))"; if [ -n "$$attached" ]; then echo "hub-down: spokes still attached: $$(echo $$attached) — run 'make down' in each first" >&2; exit 1; fi
+	$(HUB_COMPOSE) $(ALL_PROFILES) down
+	@if docker network inspect $(U4I_SHARED_NET) >/dev/null 2>&1; then docker network rm $(U4I_SHARED_NET) >/dev/null; fi
+
+hub-restart: _require-hub-files ## Restart a hub service: make hub-restart c=db|playwright
+	$(if $(c),,$(error c=<service> is required, e.g. make hub-restart c=playwright))
+	$(if $(filter-out $(HUB_SERVICES),$(c)),$(error c must be one of: $(HUB_SERVICES) (got '$(c)')))
+	$(HUB_COMPOSE) restart $(c)
+
+# Tunnel never needs workflow: drop any left from a wider session (--remove-orphans ignores profile-disabled services).
+# Naming vite on `up` enables its profile. The hub db is needed (web's dev DB); hub playwright is not.
+tunnel: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
+	$(COMPOSE_BUILT) $(ALL_PROFILES) rm -sf workflow
+	$(COMPOSE_BUILT) up --build --remove-orphans -V -d web vite
+	@$(VITE_BUILD_BARRIER)
+	$(COMPOSE_BUILT) up --wait web
 	$(COMPOSE_BUILT) --profile tunnel up -d --no-recreate cloudflared
 	@echo "Waiting for Cloudflare quick-tunnel URL (~5-10s)..."
 	@for i in $$(seq 1 30); do \
@@ -270,6 +342,11 @@ remove_chars = $(if $(1),$(call remove_chars,$(wordlist 2,$(words $(1)),$(1)),$(
 REAP_TTL = $(or $(ttl),10)
 REAP_TTL_NON_DIGITS = $(strip $(call remove_chars,0 1 2 3 4 5 6 7 8 9,$(REAP_TTL)))
 
+# c (restart / logs / hub-restart) is spliced into compose command lines, so it is validated at parse time as one
+# compose service name. Here, not at the top, because it needs remove_chars; the `$` guard at the top still runs first.
+SERVICE_NAME_CHARS := a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9 _ -
+$(if $(c),$(if $(or $(word 2,$(c)),$(strip $(call remove_chars,$(SERVICE_NAME_CHARS),$(c)))),$(error c must be one compose service name ([a-z0-9_-]), got '$(c)')))
+
 reset-test-dbs: ## Drop leaked per-run test databases and orphaned Redis leases (ttl=<minutes>, default 10)
 	$(if $(or $(REAP_TTL_NON_DIGITS),$(word 2,$(REAP_TTL))),$(error ttl must be a non-negative integer number of minutes))
 	$(EXEC_WEB) "source /code/venv/bin/activate && python -m scripts.testrun_resources reap --ttl-minutes $(REAP_TTL)"
@@ -307,6 +384,10 @@ stack-info: _require-mise ## Print this checkout's spoke project, host URLs, hub
 	@echo "shared network: $(U4I_SHARED_NET)"
 	@echo "primary clone:  $(if $(U4I_PRIMARY),yes,no)"
 	@$(SPOKE_PORTS) show --output $(PORTS_ENV)
+	@if docker network inspect $(U4I_SHARED_NET) >/dev/null 2>&1; then \
+		if [ -n "$$(docker ps --filter label=com.docker.compose.project=$(U4I_HUB_PROJECT) --filter label=com.docker.compose.service=db --filter status=running -q)" ]; then echo "hub db:         running"; else echo "hub db:         not running"; fi; \
+		attached="$$($(ATTACHED_SPOKES))"; echo "attached to hub: $$(echo $${attached:-none})"; \
+	else echo "hub: not running"; fi
 
 # Links one untracked path ($(1)) from the primary clone into this worktree. An existing symlink is kept, a real
 # file or dir is never clobbered (warning only), and $(2) runs when the primary lacks the path too. A dangling
@@ -322,8 +403,8 @@ worktree_link = if [ -L $(1) ] && [ ! -e $(1) ]; then \
 WORKTREE_INIT_PRIMARY_MSG := worktree-init: primary clone, nothing to link
 
 # The branch is chosen with make's $(if), not a shell `if`, so `make -n` prints only the taken branch. No $(MAKE)
-# recursion here, because `make -n` would run a recursive make for real (setup depends on this target today, and
-# the stack-start targets will too). The $(error) guard is recipe-level, so it fires only when this target runs.
+# recursion here, because `make -n` would run a recursive make for real (setup and every stack-start target depend
+# on it). The $(error) guard is recipe-level, so it fires only when this target runs.
 worktree-init: ## Link .env and secrets/ from the primary clone into this worktree (no-op in the primary clone)
 	$(if $(PRIMARY_ROOT),,$(error worktree-init: not inside a git checkout (git rev-parse --git-common-dir failed)))
 	$(if $(U4I_PRIMARY),@echo "$(WORKTREE_INIT_PRIMARY_MSG)",@$(call worktree_link,.env,echo "worktree-init: $(PRIMARY_ROOT)/.env is missing; create it in the primary clone first" >&2; exit 1,exit 1))
@@ -371,6 +452,16 @@ _require-tools:
 # Capacity only needs mise's python, not the frontend prettier binary _require-tools also demands.
 _require-mise:
 	@command -v mise >/dev/null || { echo "mise missing — run 'make tools' (or 'make setup')"; exit 1; }
+
+# The hub is always defined by the primary clone's files (HUB_COMPOSE). The $(error) is recipe-level, so it fires only
+# when a hub target runs (a `make -n` dry run included), and an empty PRIMARY_ROOT (not a git checkout) fails it too.
+_require-hub-files:
+	$(if $(wildcard $(PRIMARY_ROOT)/docker/compose.hub.yaml),,$(error the primary clone ($(PRIMARY_ROOT)) must be a git checkout carrying docker/compose.hub.yaml (check out a branch with the hub there)))
+
+# hub-up's prerequisite, never a hub-up recipe line: make expands a whole recipe before running its first line, so
+# HUB_COMPOSE's capacity-file `wildcard` would otherwise miss a file created on this same run and drop its --env-file.
+_hub-capacity: _require-hub-files _require-mise
+	@$(CAPACITY) ensure --output $(PRIMARY_CAPACITY_ENV)
 
 # Runs before every stack/test target: regenerates the capacity file only when missing or its host fingerprint changed.
 _capacity-fresh: _require-mise
@@ -434,7 +525,7 @@ metrics-flush-now: _require-workflow ## Trigger an immediate flush worker run (d
 	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up p=full d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
 
 metrics-rows: ## Show last 25 flushed rows from AnonymousMetrics
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
+	$(HUB_COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
 
 metrics-smoke-test: metrics-snapshot metrics-flush-now metrics-rows ## E2E: snapshot Redis, force flush, dump Postgres rows
 
@@ -442,7 +533,7 @@ metrics-clear-counters: ## Delete pending Redis state (metrics:counter:* and met
 	$(COMPOSE) exec redis-metrics sh -c 'redis-cli --scan --pattern "metrics:counter:*" | xargs -r redis-cli UNLINK; redis-cli --scan --pattern "metrics:batch:*" | xargs -r redis-cli UNLINK'
 
 metrics-clear-rows: ## Truncate AnonymousMetrics in Postgres
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousMetrics\";"'
+	$(HUB_COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousMetrics\";"'
 
 metrics-clear-all: metrics-clear-counters metrics-clear-rows gauge-clear-rows ## Wipe all metrics data (Redis pending + Postgres flushed + gauges)
 
@@ -450,10 +541,10 @@ gauge-sample-now: _require-workflow ## Trigger an immediate gauge sampler run (w
 	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run make up p=full d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/sample_gauges.py'
 
 gauge-rows: ## Show last 25 sampled rows from AnonymousGauges
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"gaugeName\", \"sampledAt\", \"valueInt\", \"valueFloat\", dimensions FROM \"AnonymousGauges\" ORDER BY \"sampledAt\" DESC LIMIT 25;"'
+	$(HUB_COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "SELECT \"gaugeName\", \"sampledAt\", \"valueInt\", \"valueFloat\", dimensions FROM \"AnonymousGauges\" ORDER BY \"sampledAt\" DESC LIMIT 25;"'
 
 gauge-clear-rows: ## Truncate AnonymousGauges in Postgres
-	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousGauges\";"'
+	$(HUB_COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$(U4I_DEV_DB)" -c "TRUNCATE TABLE \"AnonymousGauges\";"'
 
 notify-test: _require-workflow ## Post a message to the Discord webhook (NOTIFICATION_URL from the environment, else from .env) via restricted_curl in the workflow container (msg optional, defaults to a sample digest): make notify-test [msg="DOCKER: your message"]
 	@url="$${NOTIFICATION_URL:-}"; \
