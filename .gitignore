@@ -2,6 +2,8 @@ venv/
 .env
 # Generated per host by `make capacity` (worker counts + interlocks + host UID/GID)
 docker/.capacity.generated.env
+# Generated per checkout by `make up` & co. (scripts/spoke_ports.py: this spoke's web/vite host ports)
+docker/.ports.generated.env
 .flaskenv
 __pycache__/
 .vscode/

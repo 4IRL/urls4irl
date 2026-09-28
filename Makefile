@@ -1,15 +1,22 @@
-# p (profile) and c (restart) are rejected when they contain a `$`, checked unexpanded via $(value …): expanding one
-# would run any embedded make function (e.g. $(shell …)). These must stay the first lines: make 4.4+ exports
-# command-line variables into every $(shell …) environment, so the first $(shell …) below would already expand them.
+# p (profile), c (restart) and U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) are rejected when
+# they contain a `$`, checked unexpanded via $(value …): expanding one would run any embedded make function (e.g.
+# $(shell …)). These must stay the first lines: make 4.4+ exports command-line variables into every $(shell …)
+# environment, so the first $(shell …) below would already expand them.
 $(if $(findstring $$,$(value p)),$(error p must not contain '$$'))
 $(if $(findstring $$,$(value c)),$(error c must not contain '$$'))
+$(if $(findstring $$,$(value U4I_WEB_PORT)),$(error U4I_WEB_PORT must not contain '$$'))
+$(if $(findstring $$,$(value U4I_VITE_PORT)),$(error U4I_VITE_PORT must not contain '$$'))
 
 # Host capacity (scripts/capacity.py, `make capacity`): derived worker counts + interlocks + host UID/GID.
 CAPACITY_ENV = docker/.capacity.generated.env
 CAPACITY = mise exec python -- python scripts/capacity.py
-# Recursive `=` so `wildcard` is evaluated at recipe time, after _capacity-fresh has (re)generated the file.
-# `.env` goes first: passing any --env-file disables compose's implicit .env discovery, and a missing .env now errors loudly.
-COMPOSE_ENV_FILES = --env-file .env $(if $(wildcard $(CAPACITY_ENV)),--env-file $(CAPACITY_ENV))
+# Spoke host ports (scripts/spoke_ports.py, run by _ports-resolve): U4I_WEB_PORT / U4I_VITE_PORT, cached per checkout.
+PORTS_ENV = docker/.ports.generated.env
+SPOKE_PORTS = mise exec python -- python scripts/spoke_ports.py
+# Recursive `=` so each `wildcard` is evaluated at recipe time, after _capacity-fresh / _ports-resolve have (re)generated
+# their file on a first run. `.env` goes first: passing any --env-file disables compose's implicit .env discovery, and a
+# missing .env now errors loudly.
+COMPOSE_ENV_FILES = --env-file .env $(if $(wildcard $(CAPACITY_ENV)),--env-file $(CAPACITY_ENV)) $(if $(wildcard $(PORTS_ENV)),--env-file $(PORTS_ENV))
 COMPOSE = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f docker/compose.local.yaml
 COMPOSE_BUILT = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f docker/compose.local.yaml -f docker/compose.built.yaml
 # Recipe-time shell read of one KEY from the capacity file. The keys are never exported into make, so a
@@ -72,7 +79,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup stack-info worktree-init tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -91,15 +98,15 @@ _profile-narrow:
 # profile is active) on every up, so a stale pre-bump node_modules never shadows the freshly built image's pnpm install.
 # Named volumes are unaffected.
 up: NARROW_PROFILE = $(p)
-up: _capacity-fresh _logs-owner-fix _profile-narrow ## Build and start web + datastores; p=ui adds vite + playwright, p=full also adds workflow (pass d=1 for detached mode)
+up: _capacity-fresh _logs-owner-fix _ports-resolve _profile-narrow ## Build and start web + datastores; p=ui adds vite + playwright, p=full also adds workflow (pass d=1 for detached mode)
 	$(COMPOSE) $(PROFILE_FLAGS) up --build --remove-orphans -V $(if $(d),-d,)
 
 # A built stack always needs the vite one-shot build (else pages render with no assets), so p defaults to ui here.
 up-built: NARROW_PROFILE = $(or $(p),ui)
-up-built: _capacity-fresh _logs-owner-fix _profile-narrow ## Build and start with pre-built Vite assets: web + datastores + vite build + playwright; p=full also adds workflow (pass d=1 for detached mode)
+up-built: _capacity-fresh _logs-owner-fix _ports-resolve _profile-narrow ## Build and start with pre-built Vite assets: web + datastores + vite build + playwright; p=full also adds workflow (pass d=1 for detached mode)
 	$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --build --remove-orphans -V $(if $(d),-d,)
 
-start-built: _capacity-fresh _logs-owner-fix prune ## Tear down stack, rebuild with pre-built assets (ui profile, no workflow), wait for healthy (used by built test targets)
+start-built: _capacity-fresh _logs-owner-fix _ports-resolve prune ## Tear down stack, rebuild with pre-built assets (ui profile, no workflow), wait for healthy (used by built test targets)
 	$(COMPOSE) $(ALL_PROFILES) down
 	$(COMPOSE_BUILT) --profile ui up --build --remove-orphans --wait
 
@@ -115,12 +122,12 @@ restart: ## Restart a specific container: make restart c=<service>
 
 # Starts the dev UI-test dependencies (vite + playwright, plus web/datastores via depends_on); idempotent when already up.
 # Assumes a dev stack: on an up-built stack use the `-built` test targets instead, else this recreates vite as the dev server.
-_ui-up: _capacity-fresh _logs-owner-fix
+_ui-up: _capacity-fresh _logs-owner-fix _ports-resolve
 	$(COMPOSE) --profile ui up -d --wait vite playwright
 
 # Tunnel never needs playwright/workflow: drop any left from a wider session (profile narrowing can't drop playwright
 # without vite, and --remove-orphans ignores profile-disabled services). Naming vite on `up` enables its profile.
-tunnel: _capacity-fresh _logs-owner-fix ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
+tunnel: _capacity-fresh _logs-owner-fix _ports-resolve ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
 	$(COMPOSE_BUILT) $(ALL_PROFILES) rm -sf playwright workflow
 	$(COMPOSE_BUILT) up --build --remove-orphans -V -d --wait web vite
 	$(COMPOSE_BUILT) --profile tunnel up -d --no-recreate cloudflared
@@ -291,7 +298,7 @@ hooks-check: ## Report whether the pre-commit hook is installed (exits 1 when mi
 		if test -f "$$hook_path"; then echo "pre-commit hook: INSTALLED"; \
 		else echo "pre-commit hook: MISSING — run 'make hooks'"; exit 1; fi
 
-stack-info: ## Print this checkout's spoke project, host URLs, hub project and shared network
+stack-info: _require-mise ## Print this checkout's spoke project, host URLs, hub project and shared network
 	@echo "slug:           $(U4I_SLUG)"
 	@echo "spoke project:  $(U4I_PROJECT)"
 	@echo "web alias:      $(U4I_WEB_HOST)"
@@ -299,6 +306,7 @@ stack-info: ## Print this checkout's spoke project, host URLs, hub project and s
 	@echo "hub project:    $(U4I_HUB_PROJECT)"
 	@echo "shared network: $(U4I_SHARED_NET)"
 	@echo "primary clone:  $(if $(U4I_PRIMARY),yes,no)"
+	@$(SPOKE_PORTS) show --output $(PORTS_ENV)
 
 # Links one untracked path ($(1)) from the primary clone into this worktree. An existing symlink is kept, a real
 # file or dir is never clobbered (warning only), and $(2) runs when the primary lacks the path too. A dangling
@@ -373,6 +381,14 @@ _capacity-fresh: _require-mise
 # (and its unit tests) lives in scripts/capacity.py `logs-owner-fix`; it prints once when it repairs, silent otherwise.
 _logs-owner-fix: _capacity-fresh
 	@$(CAPACITY) logs-owner-fix --output $(CAPACITY_ENV)
+
+# Runs before every stack start: probes Docker + host sockets and (re)writes $(PORTS_ENV) with this spoke's web/vite host
+# ports (explicit U4I_WEB_PORT/U4I_VITE_PORT > cached-and-still-free > first free from the preferred port; see
+# scripts/spoke_ports.py). Known residual race, deliberately not engineered around: two spokes starting in the same
+# second can pick the same free port, and the second `compose up` fails with `port is already allocated`. Rerunning
+# `make up` fixes it, since the port is then published by the other project and gets skipped.
+_ports-resolve: _require-mise
+	@$(SPOKE_PORTS) resolve --project $(U4I_PROJECT) --slug $(U4I_HOST_SLUG) $(if $(U4I_PRIMARY),--primary) $(if $(U4I_WEB_PORT),--web-port '$(subst ','\'',$(U4I_WEB_PORT))') $(if $(U4I_VITE_PORT),--vite-port '$(subst ','\'',$(U4I_VITE_PORT))') --output $(PORTS_ENV)
 
 # Refuses a corrupt capacity file (the derived U4I_N_UI/U4I_N_INT defaults are spliced into pytest's -n) and an
 # explicit n that is not a positive integer or exceeds this host's ceiling, before any prune/rebuild/pytest. Depends

@@ -141,6 +141,12 @@ def test_up_rejects_invalid_profile(profile_value: str, expected_message: str) -
     [
         pytest.param("up", "p", "p must not contain '$'", id="p"),
         pytest.param("restart", "c", "c must not contain '$'", id="c"),
+        pytest.param(
+            "up", "U4I_WEB_PORT", "U4I_WEB_PORT must not contain '$'", id="web-port"
+        ),
+        pytest.param(
+            "up", "U4I_VITE_PORT", "U4I_VITE_PORT must not contain '$'", id="vite-port"
+        ),
     ],
 )
 @pytest.mark.parametrize(
@@ -262,6 +268,50 @@ def test_worktree_init_links_are_gitignored(linked_path: str) -> None:
         check=False,
     )
     assert result.returncode == 0, f"{linked_path} is not gitignored: {result.stderr}"
+
+
+def _ports_resolve_line(output: str) -> str:
+    return _single_line_containing(output, "spoke_ports.py resolve")
+
+
+def test_up_resolves_ports_before_starting() -> None:
+    output = _successful_dry_run("up", "U4I_SLUG=wt-a")
+    lines = output.splitlines()
+    resolve_line = _ports_resolve_line(output)
+    assert "--project u4i-wt-a " in resolve_line
+    assert lines.index(resolve_line) < lines.index(_compose_up_line(output))
+
+
+def test_explicit_port_is_forwarded() -> None:
+    resolve_line = _ports_resolve_line(_successful_dry_run("up", "U4I_WEB_PORT=9001"))
+    assert "--web-port '9001' " in resolve_line
+    assert "--vite-port" not in resolve_line
+
+
+def test_ui_up_resolves_ports_before_starting_vite() -> None:
+    # test-functional reaches _ui-up with no $(MAKE) recursion, so a dry run stays side-effect free.
+    output = _successful_dry_run("test-functional")
+    lines = output.splitlines()
+    resolve_index = lines.index(_ports_resolve_line(output))
+    ui_up_line = _single_line_containing(
+        output, "--profile ui up -d --wait vite playwright"
+    )
+    assert resolve_index < lines.index(ui_up_line)
+
+
+@pytest.mark.parametrize("make_target", ["up-built", "start-built", "tunnel"])
+def test_other_stack_starts_resolve_ports(make_target: str) -> None:
+    output = _successful_dry_run(make_target)
+    lines = output.splitlines()
+    resolve_index = lines.index(_ports_resolve_line(output))
+    first_compose_index = next(
+        index for index, line in enumerate(lines) if "docker compose" in line
+    )
+    assert resolve_index < first_compose_index
+
+
+def test_stack_info_shows_the_resolved_ports() -> None:
+    assert "spoke_ports.py show" in _successful_dry_run("stack-info")
 
 
 def test_setup_runs_worktree_init_first() -> None:
