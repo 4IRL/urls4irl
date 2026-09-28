@@ -15,14 +15,34 @@ COMPOSE_BUILT = docker compose --project-directory . $(COMPOSE_ENV_FILES) -f doc
 # Recipe-time shell read of one KEY from the capacity file. The keys are never exported into make, so a
 # value read back here is never mistaken for a command-line override.
 capacity_val = $$(sed -n 's/^$(1)=//p' $(CAPACITY_ENV))
-# Tier 3 worktree identity: computed from the checkout dir name, never stored. First consumer is the
-# per-worktree dev DB name below (Phase 5); master Phase 7 extends it to full per-worktree stacks.
+# Tier 3 worktree identity: computed from the checkout dir name, never stored. It names the per-worktree dev DB
+# (Phase 5) and, since Phase 7, the spoke compose project and its hub-reachable aliases (web-<slug>, vite-<slug>).
+# Host ports are resolved at recipe time (they need Docker); every parse-time $(shell …) here uses only
+# git/printf/tr/sed/cut/id, never docker, so the CI dry runs stay Docker-free.
 U4I_SLUG ?= $(notdir $(CURDIR))
 export U4I_SLUG
 # Per-worktree dev DB: u4i_dev_<sanitized slug>. Must agree with scripts/testrun_resources.dev_db_name.
 $(if $(strip $(U4I_SLUG)),,$(error U4I_SLUG must be non-empty))
-U4I_DEV_DB := u4i_dev_$(shell printf '%s' '$(U4I_SLUG)' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_' '_' | cut -c1-55)
+# The slug with each ' escaped as '\'' so it can sit inside a single-quoted shell word.
+U4I_SLUG_SHELL := $(subst ','\'',$(U4I_SLUG))
+U4I_DEV_DB := u4i_dev_$(shell printf '%s' '$(U4I_SLUG_SHELL)' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_' '_' | cut -c1-55)
 export U4I_DEV_DB
+# The primary clone is the git common dir's parent (same resolution as `hooks`); every linked worktree shares it.
+# The patsubst assumes the common dir is <primary>/.git: a `--separate-git-dir` clone is not detected as primary,
+# so run it with U4I_PRIMARY=1. Empty outside a git checkout (worktree-init refuses to run then).
+PRIMARY_ROOT := $(patsubst %/.git,%,$(shell git rev-parse --path-format=absolute --git-common-dir 2>/dev/null))
+U4I_PRIMARY ?= $(if $(filter $(PRIMARY_ROOT),$(CURDIR)),1)
+# DNS-label-safe slug for compose project/alias names: lowercase [a-z0-9-], no leading/trailing dash, at most 40 chars.
+U4I_HOST_SLUG := $(shell printf '%s' '$(U4I_SLUG_SHELL)' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/^-*//' | cut -c1-40 | sed 's/-*$$//')
+$(if $(strip $(U4I_HOST_SLUG)),,$(error U4I_SLUG '$(U4I_SLUG)' sanitizes to an empty compose project name))
+U4I_PROJECT := u4i-$(U4I_HOST_SLUG)
+U4I_WEB_HOST := web-$(U4I_HOST_SLUG)
+U4I_VITE_HOST := vite-$(U4I_HOST_SLUG)
+# Per-user hub (shared Postgres + Playwright) and its external network: per-user so two users' hubs never share DNS names.
+U4I_UID := $(shell id -u)
+U4I_HUB_PROJECT := u4i-hub-$(U4I_UID)
+U4I_SHARED_NET := u4i-shared-$(U4I_UID)
+export PRIMARY_ROOT U4I_PRIMARY U4I_HOST_SLUG U4I_PROJECT U4I_WEB_HOST U4I_VITE_HOST U4I_UID U4I_HUB_PROJECT U4I_SHARED_NET
 EXEC_WEB = $(COMPOSE) exec web bash -c
 EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 # For steps that write into bind-mounted host files (frontend/types): run as the host user so the
@@ -52,7 +72,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup stack-info worktree-init tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -270,7 +290,37 @@ hooks-check: ## Report whether the pre-commit hook is installed (exits 1 when mi
 		if test -f "$$hook_path"; then echo "pre-commit hook: INSTALLED"; \
 		else echo "pre-commit hook: MISSING — run 'make hooks'"; exit 1; fi
 
-setup: ## One-time per clone/worktree: toolchain, pnpm deps, hooks, capacity (idempotent)
+stack-info: ## Print this checkout's spoke project, host URLs, hub project and shared network
+	@echo "slug:           $(U4I_SLUG)"
+	@echo "spoke project:  $(U4I_PROJECT)"
+	@echo "web alias:      $(U4I_WEB_HOST)"
+	@echo "vite alias:     $(U4I_VITE_HOST)"
+	@echo "hub project:    $(U4I_HUB_PROJECT)"
+	@echo "shared network: $(U4I_SHARED_NET)"
+	@echo "primary clone:  $(if $(U4I_PRIMARY),yes,no)"
+
+# Links one untracked path ($(1)) from the primary clone into this worktree. An existing symlink is kept, a real
+# file or dir is never clobbered (warning only), and $(2) runs when the primary lacks the path too. A dangling
+# symlink is reported with a removal hint, then $(3) runs (exit 1 for .env; a no-op for secrets).
+worktree_link = if [ -L $(1) ] && [ ! -e $(1) ]; then \
+		echo "worktree-init: $(1) is a broken symlink to $$(readlink $(1)); remove it (rm $(1)) and rerun 'make worktree-init'" >&2; $(3); \
+	elif [ -L $(1) ]; then echo "worktree-init: $(1) already linked"; \
+	elif [ -e $(1) ]; then echo "worktree-init: warning: $(1) is a real file or directory here; leaving it" >&2; \
+	elif [ -e "$(PRIMARY_ROOT)/$(1)" ]; then ln -s "$(PRIMARY_ROOT)/$(1)" $(1); \
+	else $(2); fi
+
+# Held in a variable because its comma would otherwise split the $(if …) below. Dry-run tests match it verbatim.
+WORKTREE_INIT_PRIMARY_MSG := worktree-init: primary clone, nothing to link
+
+# The branch is chosen with make's $(if), not a shell `if`, so `make -n` prints only the taken branch. No $(MAKE)
+# recursion here, because `make -n` would run a recursive make for real (setup depends on this target today, and
+# the stack-start targets will too). The $(error) guard is recipe-level, so it fires only when this target runs.
+worktree-init: ## Link .env and secrets/ from the primary clone into this worktree (no-op in the primary clone)
+	$(if $(PRIMARY_ROOT),,$(error worktree-init: not inside a git checkout (git rev-parse --git-common-dir failed)))
+	$(if $(U4I_PRIMARY),@echo "$(WORKTREE_INIT_PRIMARY_MSG)",@$(call worktree_link,.env,echo "worktree-init: $(PRIMARY_ROOT)/.env is missing; create it in the primary clone first" >&2; exit 1,exit 1))
+	$(if $(U4I_PRIMARY),,@$(call worktree_link,secrets,echo "worktree-init: no secrets/ in the primary clone either; skipping (local compose never reads it)",:))
+
+setup: worktree-init ## One-time per clone/worktree: .env/secrets links (worktrees), toolchain, pnpm deps, hooks, capacity (idempotent)
 	@$(MAKE) --no-print-directory tools
 	@$(MAKE) --no-print-directory hooks
 	@$(MAKE) --no-print-directory capacity || echo "⚠ capacity deferred: docker unavailable — 'make up' will generate it"

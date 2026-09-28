@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
@@ -22,6 +23,7 @@ import pytest
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 MAKEFILE: Path = REPO_ROOT / "Makefile"
 MAKE_BINARY: str | None = shutil.which("make")
+GIT_BINARY: str | None = shutil.which("git")
 
 pytestmark = [
     pytest.mark.unit,
@@ -31,10 +33,24 @@ pytestmark = [
     ),
 ]
 
-# Inherited make state (e.g. pytest launched from a make recipe) must not leak an outer p/c/d into the dry run.
+# Inherited make state (e.g. pytest launched from a make recipe) must not leak an outer p/c/d, or an outer
+# worktree identity / port choice, into the dry run.
 INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
-    {"MAKEFLAGS", "MFLAGS", "MAKELEVEL", "MAKEOVERRIDES", "p", "c", "d"}
+    {
+        "MAKEFLAGS",
+        "MFLAGS",
+        "MAKELEVEL",
+        "MAKEOVERRIDES",
+        "p",
+        "c",
+        "d",
+        "U4I_SLUG",
+        "U4I_PRIMARY",
+        "U4I_WEB_PORT",
+        "U4I_VITE_PORT",
+    }
 )
+SLUGGED_NAME_PATTERN: re.Pattern[str] = re.compile(r"\b(?:web|vite|u4i)-[a-z0-9-]*")
 ALL_PROFILES_FLAG: str = "--profile '*'"
 
 
@@ -168,3 +184,91 @@ def test_lifecycle_targets_reach_every_profile(make_target: str) -> None:
         _successful_dry_run(make_target), f" {make_target}"
     )
     assert lifecycle_line.endswith(f"{ALL_PROFILES_FLAG} {make_target}")
+
+
+def test_stack_info_sanitizes_slug_for_project_and_aliases() -> None:
+    output = _successful_dry_run("stack-info", "U4I_SLUG=Feature.X_y")
+    for expected_name in ("u4i-feature-x-y", "web-feature-x-y", "vite-feature-x-y"):
+        assert expected_name in output
+
+
+def test_stack_info_strips_trailing_dashes_from_aliases() -> None:
+    output = _successful_dry_run("stack-info", "U4I_SLUG=wt-a.")
+    assert "web-wt-a" in output
+    assert "vite-wt-a" in output
+    slugged_names = SLUGGED_NAME_PATTERN.findall(output)
+    assert slugged_names, output
+    assert not [name for name in slugged_names if name.endswith("-")], slugged_names
+
+
+def test_stack_info_names_the_per_user_hub() -> None:
+    output = _successful_dry_run("stack-info")
+    assert f"u4i-hub-{os.getuid()}" in output
+    assert f"u4i-shared-{os.getuid()}" in output
+
+
+def test_stack_info_truncates_slug_without_a_trailing_dash() -> None:
+    # 39 kept chars + "-.-x": the 40-char cut lands on a dash, which must then be stripped.
+    output = _successful_dry_run("stack-info", f"U4I_SLUG={'a' * 39}-.-x")
+    assert re.search(rf"web-{'a' * 39}(?![a-z0-9-])", output), output
+
+
+def test_slug_with_a_quote_is_sanitized() -> None:
+    output = _successful_dry_run("stack-info", "U4I_SLUG=a'b")
+    assert "u4i-a-b" in output
+
+
+def test_slug_that_sanitizes_to_empty_is_rejected() -> None:
+    result = _dry_run("stack-info", "U4I_SLUG=...")
+    assert result.returncode != 0
+    assert "U4I_SLUG" in result.stderr
+
+
+def test_worktree_init_is_a_noop_in_the_primary_clone() -> None:
+    output = _successful_dry_run("worktree-init", "U4I_PRIMARY=1")
+    assert "worktree-init: primary clone, nothing to link" in output
+    assert not [line for line in output.splitlines() if "ln " in line]
+
+
+def test_worktree_init_links_env_and_secrets_from_the_primary() -> None:
+    output = _successful_dry_run("worktree-init", "U4I_PRIMARY=")
+    link_lines = [line for line in output.splitlines() if "ln -s" in line]
+    assert any(".env" in line for line in link_lines), output
+    assert any("secrets" in line for line in link_lines), output
+
+
+def test_worktree_init_fails_on_missing_env_but_skips_missing_secrets() -> None:
+    output = _successful_dry_run("worktree-init", "U4I_PRIMARY=")
+    link_lines = [line for line in output.splitlines() if "ln -s" in line]
+    assert len(link_lines) == 2, link_lines
+    env_line, secrets_line = link_lines
+    assert "/.env" in env_line and "exit 1" in env_line, env_line
+    assert "/secrets" in secrets_line and "exit 1" not in secrets_line, secrets_line
+    for link_line in link_lines:
+        assert "leaving it" in link_line, link_line
+        assert "broken symlink" in link_line, link_line
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize("linked_path", [".env", "secrets"])
+def test_worktree_init_links_are_gitignored(linked_path: str) -> None:
+    # --no-index treats a nonexistent path as a plain file: exactly how git sees the symlink worktree-init creates.
+    assert GIT_BINARY is not None
+    result = subprocess.run(
+        [GIT_BINARY, "check-ignore", "-q", "--no-index", linked_path],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, f"{linked_path} is not gitignored: {result.stderr}"
+
+
+def test_setup_runs_worktree_init_first() -> None:
+    # Static text check, never `make -n setup`: its `$(MAKE)` recipe lines run for real even under -n.
+    setup_lines = [
+        line for line in MAKEFILE.read_text().splitlines() if line.startswith("setup:")
+    ]
+    assert len(setup_lines) == 1, setup_lines
+    prerequisites = setup_lines[0].split(":", 1)[1].split("##", 1)[0].split()
+    assert prerequisites and prerequisites[0] == "worktree-init", prerequisites

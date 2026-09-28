@@ -18,6 +18,8 @@ bootstrap-[0-9]*.css*
 backend/static/styles/bootstrap.*.css*
 *.code-workspace
 secrets/
+# `make worktree-init` links secrets in as a symlink, which the dir-only pattern above does not match
+/secrets
 backups/
 *.gz*
 node_modules/
