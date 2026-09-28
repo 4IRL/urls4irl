@@ -298,6 +298,25 @@ def test_show_before_resolution_points_at_make_up(
     assert "not resolved yet — run make up" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize(
+    "cached_line",
+    [
+        pytest.param("U4I_WEB_PORT=8700", id="missing-vite"),
+        pytest.param("U4I_VITE_PORT=5200", id="missing-web"),
+    ],
+)
+def test_show_with_partial_cache_points_at_make_up(
+    output: Path, capsys: pytest.CaptureFixture[str], cached_line: str
+) -> None:
+    output.write_text(f"{cached_line}\n")
+
+    assert main(["show", "--output", str(output)]) == 0
+
+    stdout = capsys.readouterr().out
+    assert "not resolved yet — run make up" in stdout
+    assert "http://" not in stdout
+
+
 def test_real_bind_probe_detects_a_listener() -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("0.0.0.0", 0))

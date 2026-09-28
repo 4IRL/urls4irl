@@ -251,6 +251,22 @@ def test_web_and_vite_have_slugged_aliases(
     ), environment
 
 
+@pytest.mark.parametrize(
+    ("env_key", "slugged_variable"),
+    [("U4I_WEB_HOST", "U4I_WEB_HOST"), ("VITE_INTERNAL_HOST", "U4I_VITE_HOST")],
+)
+def test_web_hub_reached_hosts_come_from_slugged_vars(
+    env_key: str, slugged_variable: str
+) -> None:
+    """Bare `web`/`vite` are ambiguous on u4i_shared with N spokes up (compose aliases every
+    service name on every joined network), so the hosts the hub browser loads must be slugged."""
+    web_environment = _load_services(LOCAL_COMPOSE_FILE)["web"]["environment"]
+    host_entry = next(
+        entry for entry in web_environment if entry.startswith(f"{env_key}=")
+    )
+    assert host_entry.startswith(f"{env_key}=${{{slugged_variable}:?")
+
+
 def test_vite_localhost_alias_stays_on_the_default_network() -> None:
     vite_networks = _load_services(LOCAL_COMPOSE_FILE)["vite"]["networks"]
     assert vite_networks["default"]["aliases"] == ["localhost"]

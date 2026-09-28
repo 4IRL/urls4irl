@@ -3,14 +3,14 @@ import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
-const useSSL = process.env.ENABLE_SSL === "true";
 // String form (not `new URL(".", import.meta.url)`): under vitest's happy-dom
 // environment the global URL is happy-dom's, which fileURLToPath rejects.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // "mode" defined through CLI options passed to vite, i.e. pnpm run _dev_ adds development as mode
 export default defineConfig(({ mode }) => ({
-  plugins: useSSL ? [basicSsl()] : [],
+  // ENABLE_SSL is read inside the factory, so each config evaluation sees the current env.
+  plugins: process.env.ENABLE_SSL === "true" ? [basicSsl()] : [],
   // Root directory for your frontend source
   root: "./frontend",
 

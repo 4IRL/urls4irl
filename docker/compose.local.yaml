@@ -73,6 +73,8 @@ services:
       - app_logs:/app/volume
     networks:
       default: {}
+      # Compose also registers the bare name `web` here, which resolves to every spoke's web with N
+      # spokes up: never use it in-network, only U4I_WEB_HOST (web-<slug>).
       u4i_shared:
         aliases:
           - ${U4I_WEB_HOST:?run the stack through make (it computes U4I_WEB_HOST)}
@@ -94,6 +96,8 @@ services:
       default:
         aliases:
           - localhost
+      # Compose also registers the bare name `vite` here, which resolves to every spoke's vite with N
+      # spokes up: never use it in-network, only U4I_VITE_HOST (vite-<slug>, VITE_INTERNAL_HOST in web).
       u4i_shared:
         aliases:
           - ${U4I_VITE_HOST:?run the stack through make (it computes U4I_VITE_HOST)}
