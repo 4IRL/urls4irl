@@ -33,8 +33,9 @@ pytestmark = [
     ),
 ]
 
-# Inherited make state (e.g. pytest launched from a make recipe) must not leak an outer p/c/d, or an outer
-# worktree identity / port choice, into the dry run.
+# Inherited make state (e.g. pytest launched from a make recipe) must not leak an outer p/c/d/f/m/n/args (make
+# exports command-line variables to recipes, so `make test-host-static f=…` would otherwise reach every dry run),
+# or an outer worktree identity / port choice, into the dry run.
 INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
     {
         "MAKEFLAGS",
@@ -44,6 +45,10 @@ INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
         "p",
         "c",
         "d",
+        "f",
+        "m",
+        "n",
+        "args",
         "U4I_SLUG",
         "U4I_PRIMARY",
         "U4I_WEB_PORT",
@@ -561,15 +566,177 @@ def test_playwright_rebuild_builds_then_force_recreates() -> None:
 def test_playwright_rebuild_refuses_while_clients_are_connected() -> None:
     output = _successful_dry_run("playwright-rebuild")
     lines = output.splitlines()
-    # The guard is a backslash-continued recipe line, so make -n prints the count and the refusal on two lines.
+    # The guard is a backslash-continued recipe line, so make -n prints each of its steps on its own line.
     count_line = _single_line_containing(
-        output, "exec -T playwright cat /proc/net/tcp /proc/net/tcp6"
+        output, "docker/playwright-entrypoint.sh --count -"
     )
-    assert "docker/playwright-entrypoint.sh --count -" in count_line
     refusal_line = _single_line_containing(output, "UI client(s) connected")
-    assert '[ "${active:-0}" -gt 0 ]' in refusal_line
+    assert '[ "$active" -gt 0 ]' in refusal_line
     build_line = next(line for line in lines if line.endswith(" build playwright"))
     assert lines.index(count_line) < lines.index(refusal_line) < lines.index(build_line)
+
+
+def test_playwright_rebuild_guard_fails_closed() -> None:
+    # Only an absent or stopped container skips the count. A live one must yield readable tables and a numeric
+    # count, else the rebuild is refused: an exec failure must never read as 0 clients and force-recreate.
+    output = _successful_dry_run("playwright-rebuild")
+    lines = output.splitlines()
+    state_line = _single_line_containing(output, "--format '{{.State}}'")
+    assert (
+        f"docker ps -a --filter label=com.docker.compose.project=u4i-hub-{os.getuid()} "
+        "--filter label=com.docker.compose.service=playwright"
+    ) in state_line
+    assert state_line.endswith("|| \\")
+    state_refusal_line = _single_line_containing(
+        output, "could not query the hub playwright container state"
+    )
+    stopped_line = _single_line_containing(output, "''|created|exited|dead) exit 0")
+    tables_line = _single_line_containing(output, "exec -T playwright sh -c")
+    assert "cat /proc/net/tcp &&" in tables_line
+    assert '&& [ -n "$tables" ] ||' in tables_line
+    # Captured first, never piped straight into the counter (sh has no pipefail).
+    assert "--count" not in tables_line
+    unreadable_line = _single_line_containing(
+        output, "connection tables could not be read"
+    )
+    count_line = _single_line_containing(
+        output, "docker/playwright-entrypoint.sh --count -"
+    )
+    numeric_line = _single_line_containing(output, "could not count UI clients")
+    assert "''|*[!0-9]*)" in numeric_line
+    refusal_line = _single_line_containing(output, "UI client(s) connected")
+    build_line = next(line for line in lines if line.endswith(" build playwright"))
+    ordered_lines = [
+        state_line,
+        state_refusal_line,
+        stopped_line,
+        tables_line,
+        unreadable_line,
+        count_line,
+        numeric_line,
+        refusal_line,
+        build_line,
+    ]
+    ordered_indices = [lines.index(line) for line in ordered_lines]
+    assert ordered_indices == sorted(ordered_indices), ordered_indices
+    assert not [line for line in lines if "${active:-0}" in line]
+
+
+# One ESTABLISHED (01) row on the server port 0BB8 from a non-loopback peer: a connected UI client.
+CLIENT_TCP_ROW: str = "0: 0100000A:0BB8 0200000A:1234 01"
+
+
+@pytest.mark.parametrize(
+    ("container_state_cmd", "hub_compose_stub", "extra_args", "refusal"),
+    [
+        pytest.param(
+            "printf running", "false", (), "could not be read", id="exec-fails"
+        ),
+        pytest.param(
+            "printf running", "true", (), "could not be read", id="empty-tables"
+        ),
+        pytest.param(
+            "printf running",
+            f"printf '{CLIENT_TCP_ROW}\\n'",
+            (),
+            "1 UI client(s) connected",
+            id="client-connected",
+        ),
+        pytest.param(
+            "printf running",
+            "echo",
+            ("PRIMARY_ROOT=/nonexistent",),
+            "could not count UI clients",
+            id="counter-missing",
+        ),
+        pytest.param("false", "echo", (), "could not query", id="state-query-fails"),
+        pytest.param("printf running", "echo", (), None, id="running-no-clients"),
+        pytest.param("printf exited", "false", (), None, id="exited-skips-count"),
+        pytest.param("true", "false", (), None, id="absent-skips-count"),
+    ],
+)
+def test_playwright_rebuild_guard_behaviour(
+    container_state_cmd: str,
+    hub_compose_stub: str,
+    extra_args: tuple[str, ...],
+    refusal: str | None,
+) -> None:
+    # Runs the real guard with its prerequisites skipped (-o) and every docker call stubbed, so no container is
+    # touched: HUB_PLAYWRIGHT_PS reports the state, HUB_COMPOSE stands in for exec/build/up. A proceeding guard
+    # reaches the stubbed ` build playwright` line (which fails under the `false` stub, after the guard passed).
+    assert MAKE_BINARY is not None
+    clean_env = {
+        name: value
+        for name, value in os.environ.items()
+        if name not in INHERITED_MAKE_VARIABLES
+    }
+    result = subprocess.run(
+        [
+            MAKE_BINARY,
+            "--no-print-directory",
+            "-o",
+            "hub-up",
+            "-o",
+            "_require-hub-files",
+            "playwright-rebuild",
+            f"HUB_PLAYWRIGHT_PS={container_state_cmd}",
+            f"HUB_COMPOSE={hub_compose_stub}",
+            *extra_args,
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        env=clean_env,
+        check=False,
+    )
+    reached_build = f"{hub_compose_stub} build playwright" in result.stdout
+    if refusal is None:
+        assert reached_build, result.stdout + result.stderr
+    else:
+        assert result.returncode != 0
+        assert "playwright-rebuild: " in result.stderr
+        assert refusal in result.stderr, result.stderr
+        assert not reached_build, result.stdout
+
+
+UI_WORKER_CAP: str = "s/^U4I_N_UI=//p"
+INTEGRATION_WORKER_CAP: str = "s/^U4I_N_INT=//p"
+
+
+@pytest.mark.parametrize(
+    "make_target", ["test-marker-parallel", "test-marker-parallel-built"]
+)
+@pytest.mark.parametrize(
+    "marker", ["splash_ui", "splash_ui or home_ui", "(splash_ui) and not slow"]
+)
+def test_ui_marker_parallel_uses_the_ui_worker_cap(
+    make_target: str, marker: str
+) -> None:
+    pytest_line = _pytest_exec_line(_successful_dry_run(make_target, f"m={marker}"))
+    assert UI_WORKER_CAP in pytest_line
+    assert INTEGRATION_WORKER_CAP not in pytest_line
+
+
+@pytest.mark.parametrize(
+    "make_target", ["test-marker-parallel", "test-marker-parallel-built"]
+)
+@pytest.mark.parametrize("marker", ["unit", "tags"])
+def test_integration_marker_parallel_uses_the_integration_worker_cap(
+    make_target: str, marker: str
+) -> None:
+    pytest_line = _pytest_exec_line(_successful_dry_run(make_target, f"m={marker}"))
+    assert INTEGRATION_WORKER_CAP in pytest_line
+    assert UI_WORKER_CAP not in pytest_line
+
+
+@pytest.mark.parametrize(
+    "make_target", ["test-marker-parallel", "test-marker-parallel-built"]
+)
+def test_explicit_n_overrides_the_marker_worker_cap(make_target: str) -> None:
+    pytest_line = _pytest_exec_line(
+        _successful_dry_run(make_target, "m=splash_ui", "n=3")
+    )
+    assert " -n 3 " in pytest_line
 
 
 def test_stack_info_reports_hub_playwright() -> None:

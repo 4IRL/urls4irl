@@ -64,6 +64,8 @@ HUB_SERVICES := db playwright
 # --no-recreate starts an idle-reaped (exited 0) hub playwright in place: same container, no registry fetch. It never
 # picks up an image/config change (that is playwright-rebuild). --wait blocks until its node TCP healthcheck passes.
 PLAYWRIGHT_UP = $(HUB_COMPOSE) up -d --wait --no-recreate playwright
+# The hub playwright container, running or stopped, selected by compose labels (stack-info, playwright-rebuild).
+HUB_PLAYWRIGHT_PS = docker ps -a --filter label=com.docker.compose.project=$(U4I_HUB_PROJECT) --filter label=com.docker.compose.service=playwright
 # Non-hub containers attached to the shared network, running or stopped (an exited db-init still pins the network),
 # one name per line; none when the network is absent. The hub is excluded by its compose project label, not a name
 # prefix a spoke slug could mimic; an unlabelled stray prints as " <name>", so the name is always the last field.
@@ -199,11 +201,21 @@ playwright-up: hub-up ## Start the hub's shared Playwright browser server and wa
 	$(PLAYWRIGHT_UP)
 
 # Picks up a changed Dockerfile.Playwright / compose playwright config (playwright-up never recreates). Refuses while
-# any client is connected, since recreating drops every spoke's in-flight UI workers. An exited or absent container
-# makes `exec` fail silently: the empty stream counts 0, so the rebuild proceeds.
+# any client is connected, since recreating drops every spoke's in-flight UI workers. Fails closed: only an absent or
+# stopped (created/exited/dead) container skips the count. Any other state must give readable connection tables
+# (tcp6 is optional: IPv6 may be disabled) and a numeric count, else it refuses. The tables are captured before
+# counting because sh has no pipefail: a failed `exec` piped straight into the counter would read as 0 clients.
+# Known residual race (not engineered around): another spoke's playwright-up can start and connect between the guard
+# and --force-recreate.
 playwright-rebuild: _require-hub-files hub-up ## Rebuild the hub Playwright image and recreate it (refuses while any UI run is connected)
-	@active="$$($(HUB_COMPOSE) exec -T playwright cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | $(PRIMARY_ROOT)/docker/playwright-entrypoint.sh --count -)"; \
-	if [ "$${active:-0}" -gt 0 ]; then echo "playwright-rebuild: $$active UI client(s) connected — wait for the run(s) to finish" >&2; exit 1; fi
+	@state="$$($(HUB_PLAYWRIGHT_PS) --format '{{.State}}')" || \
+		{ echo "playwright-rebuild: could not query the hub playwright container state — refusing to recreate it" >&2; exit 1; }; \
+	case "$$state" in ''|created|exited|dead) exit 0;; esac; \
+	tables="$$($(HUB_COMPOSE) exec -T playwright sh -c 'cat /proc/net/tcp && { cat /proc/net/tcp6 2>/dev/null || true; }')" && [ -n "$$tables" ] || \
+		{ echo "playwright-rebuild: hub playwright is $$(echo $$state) but its connection tables could not be read — refusing to recreate it" >&2; exit 1; }; \
+	active="$$(printf '%s\n' "$$tables" | $(PRIMARY_ROOT)/docker/playwright-entrypoint.sh --count -)"; \
+	case "$$active" in ''|*[!0-9]*) echo "playwright-rebuild: could not count UI clients (got '$$active') — refusing to recreate it" >&2; exit 1;; esac; \
+	if [ "$$active" -gt 0 ]; then echo "playwright-rebuild: $$active UI client(s) connected — wait for the run(s) to finish" >&2; exit 1; fi
 	$(HUB_COMPOSE) build playwright
 	$(HUB_COMPOSE) up -d --wait --force-recreate playwright
 
@@ -294,7 +306,11 @@ test-host-static: _require-mise ## Run the host-only static tests (Makefile/comp
 # (m='not admin_ui' still starts it): a harmless extra start, never a failure.
 PAREN_OPEN := (
 PAREN_CLOSE := )
-UI_MARKER_START = $(if $(filter %_ui,$(subst $(PAREN_OPEN), ,$(subst $(PAREN_CLOSE), ,$(m)))),playwright-up)
+UI_MARKER_WORDS = $(filter %_ui,$(subst $(PAREN_OPEN), ,$(subst $(PAREN_CLOSE), ,$(m))))
+UI_MARKER_START = $(if $(UI_MARKER_WORDS),playwright-up)
+# Default -n for the marker-parallel targets: a *_ui marker gets the UI cap (same word match, so m='not admin_ui'
+# gets the smaller UI cap too: fewer workers, never a failure).
+MARKER_N_KEY = $(if $(UI_MARKER_WORDS),U4I_N_UI,U4I_N_INT)
 UI_PATH_START = $(if $(or $(findstring tests/functional,$(f)),$(filter tests tests/ . ./,$(or $(f),.))),playwright-up)
 test-marker: $(UI_MARKER_START) ## Run tests for a specific marker: make test-marker m=<marker> (a *_ui marker starts hub playwright)
 	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
@@ -303,10 +319,10 @@ test-marker-built: start-built ## Run tests for a specific marker against built 
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -v"
 
 test-marker-parallel: _capacity-fresh _require-n-fits $(UI_MARKER_START) ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=derived: see make capacity] (a *_ui marker starts hub playwright)
-	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
+	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,$(MARKER_N_KEY))) --dist=loadscope -v"
 
 test-marker-parallel-built: _capacity-fresh _require-n-fits start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=derived: see make capacity]
-	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
+	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,$(MARKER_N_KEY))) --dist=loadscope -v"
 
 test-last-failed: ## Re-run only the tests that failed last run (pytest --lf)
 	$(EXEC_WEB) "$(PYTEST) tests/ -v --lf"
@@ -437,7 +453,7 @@ stack-info: _require-mise ## Print this checkout's spoke project, host URLs, hub
 	@$(SPOKE_PORTS) show --output $(PORTS_ENV)
 	@if docker network inspect $(U4I_SHARED_NET) >/dev/null 2>&1; then \
 		if [ -n "$$(docker ps --filter label=com.docker.compose.project=$(U4I_HUB_PROJECT) --filter label=com.docker.compose.service=db --filter status=running -q)" ]; then echo "hub db:         running"; else echo "hub db:         not running"; fi; \
-		playwright_status="$$(docker ps -a --filter label=com.docker.compose.project=$(U4I_HUB_PROJECT) --filter label=com.docker.compose.service=playwright --format '{{.Status}}')"; echo "hub playwright: $${playwright_status:-absent}"; \
+		playwright_status="$$($(HUB_PLAYWRIGHT_PS) --format '{{.Status}}')"; echo "hub playwright: $${playwright_status:-absent}"; \
 		attached="$$($(ATTACHED_SPOKES))"; echo "attached to hub: $$(echo $${attached:-none})"; \
 	else echo "hub: not running"; fi
 
