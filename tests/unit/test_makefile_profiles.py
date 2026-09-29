@@ -828,6 +828,23 @@ def test_host_static_reinstalls_when_pins_are_newer_than_the_stamp() -> None:
     assert "import pytest" not in install_line
 
 
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_host_static_reinstall_skips_the_source_built_psycopg2_pin() -> None:
+    # psycopg2 builds from source (needs pg_config); psycopg2-binary must still install.
+    install_line = _single_line_containing(
+        _successful_dry_run("test-host-static"), '/venv/bin/pip" install'
+    )
+    filter_match = re.search(r"grep -hvE '([^']+)'", install_line)
+    assert filter_match is not None
+    assert install_line.index(filter_match.group(0)) < install_line.index(
+        '/venv/bin/pip" install'
+    )
+    excluded_pattern = re.compile(filter_match.group(1))
+    assert excluded_pattern.search("psycopg2==2.9.10")
+    assert excluded_pattern.search("-r requirements-prod.txt")
+    assert not excluded_pattern.search("psycopg2-binary==2.9.10")
+
+
 def test_tunnel_needs_no_hub_playwright() -> None:
     output = _successful_dry_run("tunnel")
     _hub_db_up_line(output)
