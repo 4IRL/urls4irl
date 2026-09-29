@@ -564,6 +564,21 @@ def test_playwright_rebuild_builds_then_force_recreates() -> None:
     ]
 
 
+def test_playwright_lifecycle_builds_the_image_before_running_the_harness() -> None:
+    output = _successful_dry_run("test-playwright-lifecycle")
+    lines = output.splitlines()
+    build_line = _single_line_containing(
+        output, "docker build -f docker/Dockerfile.Playwright"
+    )
+    harness_line = _single_line_containing(
+        output, "docker/playwright-lifecycle-test.sh"
+    )
+    assert lines.index(build_line) < lines.index(harness_line)
+    tag_match = re.search(r" -t (\S+)", build_line)
+    assert tag_match is not None, build_line
+    assert harness_line.split()[-1] == tag_match.group(1)
+
+
 def test_playwright_rebuild_refuses_while_clients_are_connected() -> None:
     output = _successful_dry_run("playwright-rebuild")
     lines = output.splitlines()
