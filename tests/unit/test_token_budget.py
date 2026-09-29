@@ -15,6 +15,7 @@ import io
 import itertools
 import os
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -497,22 +498,34 @@ def test_symlinked_lock_dir_is_refused(
     assert err.startswith(f"token budget: {lock_dir} is a symlink or not a directory")
 
 
-def test_lock_dir_with_any_group_or_other_bit_is_refused(
+def test_group_readable_lock_dir_is_refused(
     tmp_path: Path,
     capacity_file: Path,
     lock_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    lock_dir.mkdir()
-    # Group execute only: any group/other bit is refused, and this one grants no
-    # read or write access (keeps CodeQL's overly-permissive-chmod rule quiet).
-    os.chmod(lock_dir, 0o710)
+    lock_dir.mkdir(mode=0o700)
+    real_lstat = os.lstat
+
+    # Fake the mode rather than chmod the dir open: CodeQL flags any real chmod
+    # that grants group/other access, even in a test.
+    def fake_lstat(path: str | os.PathLike[str], **kwargs: object) -> os.stat_result:
+        result = real_lstat(path, **kwargs)
+        if Path(str(path)) != lock_dir:
+            return result
+        fields = list(result)
+        fields[0] = stat.S_IFDIR | 0o750  # st_mode
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(token_budget.os, "lstat", fake_lstat)
     marker = tmp_path / "ran"
     exit_code = main(_run_args(capacity_file, lock_dir, "1", _touch_child(marker)))
+    monkeypatch.undo()
     assert exit_code == 1
     assert not marker.exists()
     assert capsys.readouterr().err == (
-        f"token budget: {lock_dir} dir mode is 0710, expected 0700 — remove it and "
+        f"token budget: {lock_dir} dir mode is 0750, expected 0700 — remove it and "
         "rerun\n"
     )
 
