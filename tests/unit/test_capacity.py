@@ -801,6 +801,19 @@ def test_render_env_header_and_decision_comment() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("# decision: n_ui=8 n_int=12 spoke_max=4\n", "4"),
+        ("# decision: n_ui=8 n_int=12 spoke_max=1 (clamped)\n", "1"),
+        ("U4I_SPOKE_MAX=4\n", None),
+    ],
+    ids=["plain", "clamped", "no_decision_line"],
+)
+def test_decision_spoke_max_parses_the_token(text: str, expected: str | None) -> None:
+    assert capacity._decision_spoke_max(text) == expected
+
+
 def test_render_env_emits_exactly_the_expected_keys() -> None:
     keys = [
         line.split("=", 1)[0]
@@ -955,6 +968,25 @@ def test_generate_ignores_decision_comment_jitter(
     assert capsys.readouterr().out == f"capacity unchanged ({env_path})\n"
     assert env_path.read_text() == original_content
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
+
+
+def test_generate_restores_a_hand_edited_spoke_max(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A U4I_SPOKE_MAX that disagrees with the file's own `# decision:` line is a
+    hand edit, not jitter, so `make capacity` restores the derived value."""
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    derived_line = f"U4I_SPOKE_MAX={_derive(_probe()).spoke_max}\n"
+    original_content = env_path.read_text()
+    assert derived_line in original_content
+    env_path.write_text(original_content.replace(derived_line, "U4I_SPOKE_MAX=1\n"))
+    capsys.readouterr()
+
+    assert _run(["generate", "--output", str(env_path)]) == 0
+
+    assert capsys.readouterr().out == f"capacity regenerated ({env_path})\n"
+    assert env_path.read_text() == original_content
 
 
 def test_generate_and_ensure_reuse_recorded_mem_fraction_until_auto(
