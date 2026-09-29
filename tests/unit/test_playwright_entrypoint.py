@@ -1,4 +1,4 @@
-"""Unit tests for the hub Playwright entrypoint's pure `--count` mode.
+"""Unit tests for the hub Playwright entrypoint's pure `--count` mode and env validation.
 
 `docker/playwright-entrypoint.sh --count FILE…` counts ESTABLISHED, non-loopback client
 connections to the browser server's port (3000 = `0BB8`) in `/proc/net/tcp`-format tables. The
@@ -8,6 +8,7 @@ rows count. Tables are fed as temp files (or stdin), so this runs anywhere bash 
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import subprocess
 
@@ -147,3 +148,26 @@ def test_stdin_dash_is_read() -> None:
         check=True,
     )
     assert int(result.stdout.strip()) == 2
+
+
+@pytest.mark.parametrize("poll_seconds", ["0", "abc"])
+def test_invalid_poll_seconds_is_rejected_before_serving(poll_seconds: str) -> None:
+    # Validation runs before `playwright` is invoked, so no server binary is needed; the timeout
+    # keeps a regression (validation skipped, server launched) from hanging the suite. IDLE_MINUTES
+    # is pinned valid because it is validated first and an ambient value would mask this check.
+    result = subprocess.run(
+        ["bash", str(SCRIPT)],
+        env={
+            **os.environ,
+            "U4I_PLAYWRIGHT_IDLE_MINUTES": "15",
+            "U4I_PLAYWRIGHT_POLL_SECONDS": poll_seconds,
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=10,
+    )
+    assert result.returncode != 0
+    assert result.stderr.startswith("playwright-entrypoint: ")
+    assert "U4I_PLAYWRIGHT_POLL_SECONDS" in result.stderr
+    assert "playwright-entrypoint: serving" not in result.stdout
