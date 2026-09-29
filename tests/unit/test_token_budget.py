@@ -515,7 +515,7 @@ def test_group_readable_lock_dir_is_refused(
     )
 
 
-# --- CLI validation and robustness ---------------------------------------------
+# --- CLI validation and robustness -------------------------------------------
 
 
 @pytest.mark.parametrize("max_wait", ["nan", "inf", "-1"])
@@ -625,7 +625,7 @@ def test_stale_slot_is_skipped_in_best_effort_holders(
     assert "ghost" not in err
 
 
-# --- real fcntl contention between processes ----------------------------------
+# --- real fcntl contention between processes ---------------------------------
 
 
 def test_queues_behind_holder_and_kernel_releases_on_sigkill(
@@ -749,7 +749,7 @@ def test_turnstile_holder_is_served_before_later_waiter(
     assert second.wait() == 0, second.output()
 
 
-# --- stdlib-only contract ------------------------------------------------------
+# --- stdlib-only contract ----------------------------------------------------
 
 
 def test_token_budget_module_is_stdlib_only() -> None:
