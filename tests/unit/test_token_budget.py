@@ -497,20 +497,22 @@ def test_symlinked_lock_dir_is_refused(
     assert err.startswith(f"token budget: {lock_dir} is a symlink or not a directory")
 
 
-def test_group_readable_lock_dir_is_refused(
+def test_lock_dir_with_any_group_or_other_bit_is_refused(
     tmp_path: Path,
     capacity_file: Path,
     lock_dir: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     lock_dir.mkdir()
-    os.chmod(lock_dir, 0o750)
+    # Group execute only: any group/other bit is refused, and this one grants no
+    # read or write access (keeps CodeQL's overly-permissive-chmod rule quiet).
+    os.chmod(lock_dir, 0o710)
     marker = tmp_path / "ran"
     exit_code = main(_run_args(capacity_file, lock_dir, "1", _touch_child(marker)))
     assert exit_code == 1
     assert not marker.exists()
     assert capsys.readouterr().err == (
-        f"token budget: {lock_dir} dir mode is 0750, expected 0700 — remove it and "
+        f"token budget: {lock_dir} dir mode is 0710, expected 0700 — remove it and "
         "rerun\n"
     )
 
