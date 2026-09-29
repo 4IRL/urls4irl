@@ -673,8 +673,14 @@ def _resolve_overrides(
     )
 
 
+def _read_existing_text(path: Path) -> str | None:
+    """The capacity file's raw text, or None when it does not exist."""
+    return path.read_text() if path.exists() else None
+
+
 def _read_existing(path: Path) -> dict[str, str] | None:
-    return read_env(path) if path.exists() else None
+    text = _read_existing_text(path)
+    return _parse_env(text) if text is not None else None
 
 
 # --- app_logs ownership ------------------------------------------------------
@@ -883,7 +889,7 @@ def _generate(
 ) -> None:
     # The recorded overrides are read after the (slow) docker probe, as close
     # to the atomic replace as possible, to narrow the read-then-replace window.
-    existing_text = output.read_text() if output.exists() else None
+    existing_text = _read_existing_text(output)
     existing = _parse_env(existing_text) if existing_text is not None else None
     overrides = _resolve_overrides(
         existing or {}, n_ui_flag, n_int_flag, mem_fraction_flag
