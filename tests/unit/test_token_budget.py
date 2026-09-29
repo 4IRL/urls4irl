@@ -504,13 +504,13 @@ def test_group_readable_lock_dir_is_refused(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     lock_dir.mkdir()
-    os.chmod(lock_dir, 0o755)
+    os.chmod(lock_dir, 0o750)
     marker = tmp_path / "ran"
     exit_code = main(_run_args(capacity_file, lock_dir, "1", _touch_child(marker)))
     assert exit_code == 1
     assert not marker.exists()
     assert capsys.readouterr().err == (
-        f"token budget: {lock_dir} dir mode is 0755, expected 0700 — remove it and "
+        f"token budget: {lock_dir} dir mode is 0750, expected 0700 — remove it and "
         "rerun\n"
     )
 
