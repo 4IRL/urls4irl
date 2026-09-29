@@ -20,6 +20,7 @@ pytestmark = pytest.mark.unit
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 HUB_COMPOSE_FILE: Path = REPO_ROOT / "docker" / "compose.hub.yaml"
 PLAYWRIGHT_DOCKERFILE: Path = REPO_ROOT / "docker" / "Dockerfile.Playwright"
+LIFECYCLE_HARNESS: Path = REPO_ROOT / "docker" / "playwright-lifecycle-test.sh"
 REQUIREMENTS: Path = REPO_ROOT / "requirements" / "requirements-test.txt"
 
 
@@ -114,6 +115,21 @@ def test_playwright_dockerfile_healthcheck_matches_compose() -> None:
         for option_name, option_value in healthcheck.items()
         if option_name != "test"
     }
+
+
+def test_lifecycle_harness_probe_matches_compose_healthcheck() -> None:
+    """The lifecycle harness's probe() runs the same node -e script as the compose healthcheck.
+
+    With the Dockerfile/compose test above, this closes the three-way lockstep.
+    """
+    probe_match = re.search(
+        r'^probe\(\) \{\n[^}]*?\bnode -e "([^"\n]*)"\n\}$',
+        LIFECYCLE_HARNESS.read_text(),
+        re.MULTILINE,
+    )
+    assert probe_match is not None, "playwright-lifecycle-test.sh lost its probe()"
+    healthcheck = _load_services()["playwright"]["healthcheck"]
+    assert probe_match.group(1) == healthcheck["test"][-1]
 
 
 def test_playwright_has_no_command_override() -> None:

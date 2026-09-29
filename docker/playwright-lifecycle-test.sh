@@ -58,7 +58,10 @@ die_with_logs() {
 }
 
 # Canonical TCP probe: Dockerfile.Playwright's HEALTHCHECK and compose.hub.yaml's healthcheck.test reuse
-# this exact node -e script byte-identical. Loopback, so the idle watchdog never counts it as a client.
+# this exact node -e script byte-identical (enforced by tests/unit/test_compose_hub.py's
+# test_playwright_dockerfile_healthcheck_matches_compose and
+# test_lifecycle_harness_probe_matches_compose_healthcheck). Loopback, so the idle watchdog never
+# counts it as a client.
 probe() {
   docker exec "$1" node -e "require('net').connect(3000,'127.0.0.1').on('connect',function(){process.exit(0)}).on('error',function(){process.exit(1)})"
 }

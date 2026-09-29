@@ -18,7 +18,9 @@ WORKDIR /home/pwuser
 # Mirrors Dockerfile.Workflow's HEALTHCHECK-mirrors-compose-healthcheck convention (see its :101-102).
 # Same probe literal as docker/playwright-lifecycle-test.sh's probe() and compose.hub.yaml's healthcheck
 # test:, byte-identical, and the same interval/timeout/retries/start-period/start-interval as the compose
-# healthcheck — keep all three in lockstep on any edit. --start-interval needs BuildKit/engine >= 25.
+# healthcheck — keep all three in lockstep on any edit (enforced by tests/unit/test_compose_hub.py's
+# test_playwright_dockerfile_healthcheck_matches_compose and
+# test_lifecycle_harness_probe_matches_compose_healthcheck). --start-interval needs BuildKit/engine >= 25.
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=60s --start-interval=1s \
     CMD node -e "require('net').connect(3000,'127.0.0.1').on('connect',function(){process.exit(0)}).on('error',function(){process.exit(1)})"
 ENTRYPOINT ["/usr/local/bin/u4i-playwright-entrypoint"]

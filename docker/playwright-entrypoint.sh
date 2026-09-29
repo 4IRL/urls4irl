@@ -5,8 +5,9 @@
 # WHY: the idle server holds ~518 MB for nothing between UI runs. This script supervises
 # `playwright run-server` and exits 0 once no client has been connected for
 # U4I_PLAYWRIGHT_IDLE_MINUTES (default 15; 0 disables reaping), polling every
-# U4I_PLAYWRIGHT_POLL_SECONDS (default 30); `make playwright-up` then restarts the exited container
-# in place. The idle clock starts at container start, so a fresh start gets one full window.
+# U4I_PLAYWRIGHT_POLL_SECONDS (default 30, a test-harness override only: see the knob block below);
+# `make playwright-up` then restarts the exited container in place. The idle clock starts at
+# container start, so a fresh start gets one full window.
 #
 # `--count FILE…` is a pure mode used by the watchdog and by `make playwright-rebuild`'s guard: it
 # prints how many clients are connected, from /proc/net/tcp-format tables (`-` reads stdin, a
@@ -66,6 +67,9 @@ fi
 [ "$#" -eq 0 ] || fail "unexpected arguments: $*"
 
 IDLE_MINUTES="${U4I_PLAYWRIGHT_IDLE_MINUTES:-15}"
+# U4I_PLAYWRIGHT_POLL_SECONDS (default 30) is a test-harness override, set only by
+# docker/playwright-lifecycle-test.sh via `docker run -e` and deliberately not wired into
+# compose.hub.yaml: operators tune reaping via U4I_PLAYWRIGHT_IDLE_MINUTES only.
 POLL_SECONDS="${U4I_PLAYWRIGHT_POLL_SECONDS:-30}"
 [[ "$IDLE_MINUTES" =~ ^[0-9]{1,5}$ ]] ||
   fail "U4I_PLAYWRIGHT_IDLE_MINUTES must be 0-99999 (0 disables reaping), got '$IDLE_MINUTES'"
