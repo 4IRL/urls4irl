@@ -21,6 +21,33 @@ PLAYWRIGHT_CONNECT_ATTEMPTS = 3
 PLAYWRIGHT_CONNECT_TIMEOUT_MS = 15_000
 PLAYWRIGHT_CONNECT_BACKOFF_SECONDS = 1
 
+# Ports >= 1024 that Chromium refuses to navigate to (net::ERR_UNSAFE_PORT; kRestrictedPorts in
+# net/base/port_util.cc). A worker's Flask server bound to one is unreachable for every test on that worker, e.g.
+# port_probe_start's per-run jitter landing gw0 on 10080.
+BROWSER_UNSAFE_PORTS = frozenset(
+    {
+        1719,
+        1720,
+        1723,
+        2049,
+        3659,
+        4045,
+        4190,
+        5060,
+        5061,
+        6000,
+        6566,
+        6665,
+        6666,
+        6667,
+        6668,
+        6669,
+        6679,
+        6697,
+        10080,
+    }
+)
+
 
 def run_app(port: int, show_flask_logs: bool, config: Optional[ConfigTestUI] = None):
     """
@@ -80,6 +107,8 @@ def clear_db(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
 
 def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
     for port in range(start_port, end_port + 1):
+        if port in BROWSER_UNSAFE_PORTS:
+            continue
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
                 s.bind(("127.0.0.1", port))
