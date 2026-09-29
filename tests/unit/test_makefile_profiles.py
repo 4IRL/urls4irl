@@ -1041,6 +1041,7 @@ def test_restart_accepts_a_dashed_service_name() -> None:
 
 
 TOKEN_BUDGET_RUN: str = "mise exec python -- python scripts/token_budget.py run "
+TOKEN_LOCK_DIR_FLAG: str = f" --lock-dir '/tmp/u4i-test-tokens-{os.getuid()}' "
 SEQUENTIAL_BUDGETED_TARGETS: list[tuple[str, ...]] = [
     ("test-integration",),
     ("test-functional",),
@@ -1086,6 +1087,7 @@ def test_pytest_targets_run_through_the_token_budget(
     assert (
         f" --capacity-file {_primary_root()}/docker/.capacity.generated.env "
     ) in pytest_line
+    assert TOKEN_LOCK_DIR_FLAG in pytest_line
     # Tokens wrap only the pytest exec, never a prerequisite such as start-built's rebuild.
     budget_separator = f" --label {make_args[0]} -- "
     assert budget_separator in pytest_line
@@ -1283,6 +1285,7 @@ def test_docker_harnesses_hold_one_token_around_the_run_only(
     assert harness_line.startswith(TOKEN_BUDGET_RUN), harness_line
     assert " --tokens 1 " in harness_line
     assert f" --label {make_target} " in harness_line
+    assert TOKEN_LOCK_DIR_FLAG in harness_line
     build_lines = [line for line in lines if line.startswith("docker build ")]
     assert len(build_lines) == build_count, build_lines
     assert not [line for line in build_lines if "token_budget.py" in line]
