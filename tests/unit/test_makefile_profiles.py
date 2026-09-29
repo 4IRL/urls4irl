@@ -53,6 +53,7 @@ INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
         "U4I_PRIMARY",
         "U4I_WEB_PORT",
         "U4I_VITE_PORT",
+        "U4I_TOKEN_DIR",
     }
 )
 SLUGGED_NAME_PATTERN: re.Pattern[str] = re.compile(r"\b(?:web|vite|u4i)-[a-z0-9-]*")
@@ -151,6 +152,12 @@ def test_up_rejects_invalid_profile(profile_value: str, expected_message: str) -
         ),
         pytest.param(
             "up", "U4I_VITE_PORT", "U4I_VITE_PORT must not contain '$'", id="vite-port"
+        ),
+        pytest.param(
+            "test-file",
+            "U4I_TOKEN_DIR",
+            "U4I_TOKEN_DIR must not contain '$'",
+            id="token-dir",
         ),
     ],
 )
@@ -1031,3 +1038,260 @@ def test_restart_accepts_a_dashed_service_name() -> None:
         _successful_dry_run("restart", "c=redis-metrics"), " restart "
     )
     assert restart_line.endswith("restart redis-metrics")
+
+
+TOKEN_BUDGET_RUN: str = "mise exec python -- python scripts/token_budget.py run "
+TOKEN_LOCK_DIR_FLAG: str = f" --lock-dir '/tmp/u4i-test-tokens-{os.getuid()}' "
+SEQUENTIAL_BUDGETED_TARGETS: list[tuple[str, ...]] = [
+    ("test-integration",),
+    ("test-functional",),
+    ("test-functional-built",),
+    ("test-marker", "m=unit"),
+    ("test-marker-built", "m=unit"),
+    ("test-last-failed",),
+    ("test-file", "f=tests/unit"),
+]
+PARALLEL_BUDGETED_TARGETS: list[tuple[tuple[str, ...], str]] = [
+    (("test-integration-parallel",), INTEGRATION_WORKER_CAP),
+    (("test-ui-parallel",), UI_WORKER_CAP),
+    (("test-ui-parallel-built",), UI_WORKER_CAP),
+    (("test-marker-parallel", "m=unit"), INTEGRATION_WORKER_CAP),
+    (("test-marker-parallel-built", "m=unit"), INTEGRATION_WORKER_CAP),
+    (("test-file-parallel", "f=tests/unit"), INTEGRATION_WORKER_CAP),
+    (("test-file-parallel-built", "f=tests/unit"), INTEGRATION_WORKER_CAP),
+]
+ALL_BUDGETED_TARGETS: list[tuple[str, ...]] = SEQUENTIAL_BUDGETED_TARGETS + [
+    make_args for make_args, _ in PARALLEL_BUDGETED_TARGETS
+]
+
+
+def _budgeted_ids(make_args: tuple[str, ...]) -> str:
+    return make_args[0]
+
+
+def _flag_value(line: str, flag: str, terminator: str) -> str:
+    # The text between `<flag> ` and the next ` <terminator>`: a worker-count expression may contain spaces.
+    flag_match = re.search(rf" {re.escape(flag)} (.+?) {re.escape(terminator)}", line)
+    assert flag_match is not None, f"no {flag!r} … {terminator!r} in {line!r}"
+    return flag_match.group(1)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize("make_args", ALL_BUDGETED_TARGETS, ids=_budgeted_ids)
+def test_pytest_targets_run_through_the_token_budget(
+    make_args: tuple[str, ...],
+) -> None:
+    pytest_line = _pytest_exec_line(_successful_dry_run(*make_args))
+    assert pytest_line.startswith(TOKEN_BUDGET_RUN), pytest_line
+    assert f" --label {make_args[0]} " in pytest_line
+    assert (
+        f" --capacity-file {_primary_root()}/docker/.capacity.generated.env "
+    ) in pytest_line
+    assert TOKEN_LOCK_DIR_FLAG in pytest_line
+    # Tokens wrap only the pytest exec, never a prerequisite such as start-built's rebuild.
+    budget_separator = f" --label {make_args[0]} -- "
+    assert budget_separator in pytest_line
+    assert pytest_line.index(budget_separator) < pytest_line.index("python -m pytest")
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize("make_args", SEQUENTIAL_BUDGETED_TARGETS, ids=_budgeted_ids)
+def test_sequential_targets_hold_one_token(make_args: tuple[str, ...]) -> None:
+    pytest_line = _pytest_exec_line(_successful_dry_run(*make_args))
+    assert " --tokens 1 " in pytest_line
+    assert " -n " not in pytest_line
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    ("make_args", "worker_cap"),
+    PARALLEL_BUDGETED_TARGETS,
+    ids=[make_args[0] for make_args, _ in PARALLEL_BUDGETED_TARGETS],
+)
+def test_parallel_targets_hold_as_many_tokens_as_workers(
+    make_args: tuple[str, ...], worker_cap: str
+) -> None:
+    pytest_line = _pytest_exec_line(_successful_dry_run(*make_args))
+    budget_part, pytest_part = pytest_line.split("python -m pytest", 1)
+    token_expression = _flag_value(budget_part, "--tokens", "--label")
+    worker_expression = _flag_value(pytest_part, "-n", "--dist=loadscope")
+    assert worker_cap in token_expression
+    assert token_expression == worker_expression
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    "make_args",
+    [make_args for make_args, _ in PARALLEL_BUDGETED_TARGETS],
+    ids=[make_args[0] for make_args, _ in PARALLEL_BUDGETED_TARGETS],
+)
+def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> None:
+    pytest_line = _pytest_exec_line(_successful_dry_run(*make_args, "n=3"))
+    assert " --tokens 3 " in pytest_line
+    assert " -n 3 " in pytest_line
+
+
+@pytest.mark.parametrize(
+    "make_args",
+    [
+        ("reset-test-dbs",),
+        ("audit",),
+        ("clear-db",),
+        ("addmock",),
+        ("test-js",),
+        ("test-host-static",),
+    ],
+    ids=_budgeted_ids,
+)
+def test_recovery_and_host_targets_never_queue(make_args: tuple[str, ...]) -> None:
+    assert "token_budget.py" not in _successful_dry_run(*make_args)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    ("path_value", "args_value"),
+    [
+        pytest.param("tests/unit", "-n 4", id="short-spaced"),
+        pytest.param("tests/unit", "-n4", id="short-joined"),
+        pytest.param("tests/unit", "-nauto", id="short-auto"),
+        pytest.param("tests/unit", "--numprocesses 2", id="long-spaced"),
+        pytest.param("tests/unit", "--numprocesses=2", id="long-equals"),
+        pytest.param("tests/unit", "-v -n 2", id="after-another-flag"),
+        pytest.param("tests/unit -n 8", "", id="in-path"),
+    ],
+)
+@pytest.mark.parametrize(
+    "make_target", ["test-file", "test-file-parallel", "test-file-parallel-built"]
+)
+def test_file_targets_reject_worker_count_in_args(
+    make_target: str, path_value: str, args_value: str
+) -> None:
+    extra_args = [f"args={args_value}"] if args_value else []
+    result = _dry_run(make_target, f"f={path_value}", *extra_args)
+    assert result.returncode != 0
+    assert (
+        "args and f must not set -n/--numprocesses (it bypasses the token budget); "
+        "use make test-file-parallel f=… n=<N>"
+    ) in result.stderr
+    assert result.stdout == ""
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    "make_target", ["test-file", "test-file-parallel", "test-file-parallel-built"]
+)
+def test_file_targets_pass_other_args_through(make_target: str) -> None:
+    pytest_line = _pytest_exec_line(
+        _successful_dry_run(make_target, "f=tests/unit", "args=-k budget --no-header")
+    )
+    assert pytest_line.endswith('-k budget --no-header"')
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worker_count_guard_is_scoped_to_the_file_targets() -> None:
+    # args is only spliced into the test-file* recipes, so other goals never see the guard.
+    _successful_dry_run("test-marker", "m=unit", "args=-n 4")
+
+
+@pytest.mark.parametrize(
+    "make_target",
+    [
+        "test-integration-parallel",
+        "test-ui-parallel",
+        "test-ui-parallel-built",
+        "test-marker-parallel",
+        "test-marker-parallel-built",
+        "test-file-parallel",
+        "test-file-parallel-built",
+        "test-backup-pipeline",
+        "test-db-provision",
+        "test-playwright-lifecycle",
+    ],
+)
+def test_budgeted_targets_document_the_token_budget(make_target: str) -> None:
+    # Static text check: `make help` surfaces the queueing, so every budgeted -parallel target and harness says so.
+    makefile_lines = MAKEFILE.read_text().splitlines()
+    target_lines = [
+        line for line in makefile_lines if line.startswith(f"{make_target}:")
+    ]
+    assert len(target_lines) == 1, target_lines
+    assert "## " in target_lines[0], target_lines[0]
+    description = target_lines[0].split("## ", 1)[1]
+    assert "queues on the host token budget" in description
+    phony_lines = [line for line in makefile_lines if line.startswith(".PHONY:")]
+    assert len(phony_lines) == 1, phony_lines
+    assert "_admit-spoke" in phony_lines[0].split()
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    "make_target",
+    ["up", "up-built", "start-built", "tunnel", "test-functional", "test-ui-parallel"],
+)
+def test_spoke_starts_are_admitted_before_any_container_starts(
+    make_target: str,
+) -> None:
+    output = _successful_dry_run(make_target, "U4I_SLUG=wt-a")
+    lines = output.splitlines()
+    admission_line = _single_line_containing(output, "capacity.py admit ")
+    assert (
+        f" --output {_primary_root()}/docker/.capacity.generated.env "
+    ) in admission_line
+    assert " --project u4i-wt-a " in admission_line
+    assert f" --hub-project u4i-hub-{os.getuid()} " in admission_line
+    assert admission_line.endswith(f" --network u4i-shared-{os.getuid()}")
+    admission_index = lines.index(admission_line)
+    assert admission_index > lines.index(_ports_resolve_line(output))
+    assert admission_index < lines.index(_hub_db_up_line(output))
+    first_spoke_up_index = next(
+        index
+        for index, line in enumerate(lines)
+        if "docker compose" in line and HUB_FILE_MARKER not in line and " up " in line
+    )
+    assert admission_index < first_spoke_up_index
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    ("make_target", "harness_marker", "build_count"),
+    [
+        pytest.param(
+            "test-backup-pipeline",
+            "docker/backup-pipeline-test.sh ",
+            2,
+            id="backup-pipeline",
+        ),
+        pytest.param(
+            "test-db-provision", "docker/db-provision-test.sh", 0, id="db-provision"
+        ),
+        pytest.param(
+            "test-playwright-lifecycle",
+            "docker/playwright-lifecycle-test.sh ",
+            1,
+            id="playwright-lifecycle",
+        ),
+    ],
+)
+def test_docker_harnesses_hold_one_token_around_the_run_only(
+    make_target: str, harness_marker: str, build_count: int
+) -> None:
+    output = _successful_dry_run(make_target)
+    lines = output.splitlines()
+    harness_line = next(
+        line
+        for line in lines
+        if harness_marker in line and "chmod" not in line and "docker build" not in line
+    )
+    assert harness_line.startswith(TOKEN_BUDGET_RUN), harness_line
+    assert " --tokens 1 " in harness_line
+    assert f" --label {make_target} " in harness_line
+    assert TOKEN_LOCK_DIR_FLAG in harness_line
+    build_lines = [line for line in lines if line.startswith("docker build ")]
+    assert len(build_lines) == build_count, build_lines
+    assert not [line for line in build_lines if "token_budget.py" in line]
+    # _hub-capacity ensures the primary capacity file the token runner reads.
+    ensure_line = _single_line_containing(
+        output,
+        f"capacity.py ensure --output {_primary_root()}/docker/.capacity.generated.env",
+    )
+    assert lines.index(ensure_line) < lines.index(harness_line)

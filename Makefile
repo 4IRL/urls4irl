@@ -1,15 +1,19 @@
-# p (profile), c (restart) and U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) are rejected when
-# they contain a `$`, checked unexpanded via $(value …): expanding one would run any embedded make function (e.g.
-# $(shell …)). These must stay the first lines: make 4.4+ exports command-line variables into every $(shell …)
-# environment, so the first $(shell …) below would already expand them.
+# p (profile), c (restart), U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) and U4I_TOKEN_DIR
+# (spliced into every budgeted test line) are rejected when they contain a `$`, checked unexpanded via $(value …):
+# expanding one would run any embedded make function (e.g. $(shell …)). These must stay the first lines: make 4.4+
+# exports command-line variables into every $(shell …) environment, so the first $(shell …) below would already
+# expand them.
 $(if $(findstring $$,$(value p)),$(error p must not contain '$$'))
 $(if $(findstring $$,$(value c)),$(error c must not contain '$$'))
 $(if $(findstring $$,$(value U4I_WEB_PORT)),$(error U4I_WEB_PORT must not contain '$$'))
 $(if $(findstring $$,$(value U4I_VITE_PORT)),$(error U4I_VITE_PORT must not contain '$$'))
+$(if $(findstring $$,$(value U4I_TOKEN_DIR)),$(error U4I_TOKEN_DIR must not contain '$$'))
 
 # Host capacity (scripts/capacity.py, `make capacity`): derived worker counts + interlocks + host UID/GID.
 CAPACITY_ENV = docker/.capacity.generated.env
 CAPACITY = mise exec python -- python scripts/capacity.py
+# Host-wide test token budget (scripts/token_budget.py): a counting semaphore of U4I_N_MAX tokens, per user.
+TOKEN_BUDGET = mise exec python -- python scripts/token_budget.py
 # Spoke host ports (scripts/spoke_ports.py, run by _ports-resolve): U4I_WEB_PORT / U4I_VITE_PORT, cached per checkout.
 PORTS_ENV = docker/.ports.generated.env
 SPOKE_PORTS = mise exec python -- python scripts/spoke_ports.py
@@ -53,6 +57,8 @@ U4I_VITE_HOST := vite-$(U4I_HOST_SLUG)
 U4I_UID := $(shell id -u)
 U4I_HUB_PROJECT := u4i-hub-$(U4I_UID)
 U4I_SHARED_NET := u4i-shared-$(U4I_UID)
+# The token budget's lock dir: per user like the hub, so it is shared by every checkout of that user (created 0700).
+U4I_TOKEN_DIR := /tmp/u4i-test-tokens-$(U4I_UID)
 export PRIMARY_ROOT U4I_PRIMARY U4I_HOST_SLUG U4I_PROJECT U4I_WEB_HOST U4I_VITE_HOST U4I_UID U4I_HUB_PROJECT U4I_SHARED_NET
 # The per-user hub (docker/compose.hub.yaml: db, cluster-init, playwright) is always defined by the PRIMARY clone's
 # files (compose file, .env, capacity file), so spokes on different branches can never recreate it with diverging
@@ -73,6 +79,14 @@ HUB_PLAYWRIGHT_PS = docker ps -a --filter label=com.docker.compose.project=$(U4I
 ATTACHED_SPOKES = docker ps -a --filter network=$(U4I_SHARED_NET) --format '{{.Label "com.docker.compose.project"}} {{.Names}}' 2>/dev/null | awk -v hub='$(U4I_HUB_PROJECT)' 'NF && $$1 != hub {print $$NF}'
 EXEC_WEB = $(COMPOSE) exec web bash -c
 EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
+# Budgeted exec: `$(call BUDGETED,<tokens>,$@) $(EXEC_WEB) "…"` queues until <tokens> are free, then runs the rest of
+# the line holding them. It wraps only that one line, never a prerequisite (start-built's rebuild holds no tokens).
+# The budget is the PRIMARY clone's U4I_N_MAX, the same authority as the hub. EXEC_WEB itself stays unbudgeted:
+# audit/addmock/clear-db and the reset-test-dbs recovery tool share it and must never queue.
+BUDGETED = $(TOKEN_BUDGET) run --capacity-file $(PRIMARY_CAPACITY_ENV) --lock-dir '$(subst ','\'',$(U4I_TOKEN_DIR))' --tokens $(1) --label $(2) --
+# Worker counts for the -parallel targets, used for both --tokens and -n so a run holds exactly one token per worker.
+N_INT = $(or $(n),$(call capacity_val,U4I_N_INT))
+N_UI = $(or $(n),$(call capacity_val,U4I_N_UI))
 # For steps that write into bind-mounted host files (frontend/types): run as the host user so the
 # files keep host ownership, with LOG_DIR moved to /tmp since the image's log dir is only writable by the web user.
 EXEC_WEB_AS_HOST = $(COMPOSE) exec --user $(shell id -u):$(shell id -g) -e LOG_DIR=/tmp/u4i-cli-logs web bash -c
@@ -101,7 +115,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -120,7 +134,7 @@ _profile-narrow:
 # profile is active) on every up, so a stale pre-bump node_modules never shadows the freshly built image's pnpm install.
 # Named volumes are unaffected.
 up: NARROW_PROFILE = $(p)
-up: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up $(if $(p),playwright-up) _profile-narrow ## Start the hub, then build and start this spoke's web + datastores; p=ui adds vite (+ hub playwright), p=full also adds workflow (pass d=1 for detached mode)
+up: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hub-up $(if $(p),playwright-up) _profile-narrow ## Start the hub, then build and start this spoke's web + datastores; p=ui adds vite (+ hub playwright), p=full also adds workflow (pass d=1 for detached mode)
 	$(COMPOSE) $(PROFILE_FLAGS) up --build --remove-orphans -V $(if $(d),-d,)
 
 # A built stack always needs the vite one-shot build (else pages render with no assets), so p defaults to ui here.
@@ -129,7 +143,7 @@ up: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up $(if $(p
 up-built: NARROW_PROFILE = $(or $(p),ui)
 # Hub playwright: with d=1 it starts last, after a healthy web, for the same idle-clock reason as start-built. Attached
 # mode never reaches a trailing line (Ctrl-C stops the stack), so there it stays an early prerequisite.
-up-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up $(if $(d),,playwright-up) _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode, which waits for the vite build + a healthy web, then starts playwright)
+up-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hub-up $(if $(d),,playwright-up) _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode, which waits for the vite build + a healthy web, then starts playwright)
 	$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --build --remove-orphans -V $(if $(d),-d,)
 	$(if $(d),@$(VITE_BUILD_BARRIER))
 	$(if $(d),$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --wait web)
@@ -147,7 +161,7 @@ VITE_BUILD_BARRIER = vite_id="$$($(COMPOSE_BUILT) --profile ui ps -a -q vite)"; 
 
 # Hub playwright starts last: its idle clock starts at container start, so a long rebuild + vite build must not eat
 # the window before pytest connects. hub-up stays a prerequisite (the spoke needs the hub db).
-start-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up prune ## Tear down this spoke, rebuild with pre-built assets (ui profile, no workflow), wait for the vite build + a healthy web, then start hub playwright (used by built test targets)
+start-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hub-up prune ## Tear down this spoke, rebuild with pre-built assets (ui profile, no workflow), wait for the vite build + a healthy web, then start hub playwright (used by built test targets)
 	$(COMPOSE) $(ALL_PROFILES) down
 	$(COMPOSE_BUILT) --profile ui up --build --remove-orphans -d
 	@$(VITE_BUILD_BARRIER)
@@ -174,7 +188,7 @@ logs: ## Tail a spoke service's logs: make logs c=<service>
 # Starts the dev UI-test dependencies: hub playwright, then this spoke's web + vite (datastores via depends_on); idempotent
 # when already up. web is named because nothing in the spoke depends on it any more (playwright did, before the hub).
 # Assumes a dev stack: on an up-built stack use the `-built` test targets instead, else this recreates vite as the dev server.
-_ui-up: _capacity-fresh _logs-owner-fix _ports-resolve playwright-up
+_ui-up: _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke playwright-up
 	$(COMPOSE) --profile ui up -d --wait web vite
 
 # The shared per-user network the hub and every spoke join. Idempotent, and race-tolerant when two spokes create it at
@@ -231,7 +245,7 @@ hub-restart: _require-hub-files ## Restart a hub service: make hub-restart c=db|
 
 # Tunnel never needs workflow: drop any left from a wider session (--remove-orphans ignores profile-disabled services).
 # Naming vite on `up` enables its profile. The hub db is needed (web's dev DB); hub playwright is not.
-tunnel: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
+tunnel: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hub-up ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
 	$(COMPOSE_BUILT) $(ALL_PROFILES) rm -sf workflow
 	$(COMPOSE_BUILT) up --build --remove-orphans -V -d web vite
 	@$(VITE_BUILD_BARRIER)
@@ -248,41 +262,43 @@ tunnel: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up ## F
 tunnel-stop: ## Stop and remove the Cloudflare tunnel (leaves the rest of the stack running)
 	$(COMPOSE) --profile tunnel rm -sf cloudflared
 
-test-integration: ## Run all integration (non-UI) tests
-	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -v"
+test-integration: _hub-capacity ## Run all integration (non-UI) tests
+	$(call BUDGETED,1,$@) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -v"
 
-test-integration-parallel: _capacity-fresh _require-n-fits ## Run integration tests in parallel: make test-integration-parallel [n=derived: see make capacity]
-	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
+test-integration-parallel: _capacity-fresh _require-n-fits _hub-capacity ## Run integration tests in parallel (queues on the host token budget): make test-integration-parallel [n=derived: see make capacity]
+	$(call BUDGETED,$(N_INT),$@) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -n $(N_INT) --dist=loadscope -v"
 
-test-functional: prune _ui-up ## Run all functional (UI/Playwright) tests
-	$(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
+test-functional: _hub-capacity prune _ui-up ## Run all functional (UI/Playwright) tests
+	$(call BUDGETED,1,$@) $(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
 
-test-functional-built: start-built ## Run all functional (UI/Playwright) tests against built assets
-	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
+test-functional-built: _hub-capacity start-built ## Run all functional (UI/Playwright) tests against built assets
+	$(call BUDGETED,1,$@) $(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
 
-test-ui-parallel: _capacity-fresh _require-n-fits prune _ui-up ## Run UI tests in parallel: make test-ui-parallel [n=derived: see make capacity]
-	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_UI)) --dist=loadscope"
+test-ui-parallel: _capacity-fresh _require-n-fits _hub-capacity prune _ui-up ## Run UI tests in parallel (queues on the host token budget): make test-ui-parallel [n=derived: see make capacity]
+	$(call BUDGETED,$(N_UI),$@) $(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(N_UI) --dist=loadscope"
 
-test-ui-parallel-built: _capacity-fresh _require-n-fits start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=derived: see make capacity]
-	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(or $(n),$(call capacity_val,U4I_N_UI)) --dist=loadscope"
+test-ui-parallel-built: _capacity-fresh _require-n-fits _hub-capacity start-built ## Run UI tests in parallel against built assets (queues on the host token budget): make test-ui-parallel-built [n=derived: see make capacity]
+	$(call BUDGETED,$(N_UI),$@) $(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n $(N_UI) --dist=loadscope"
 
 test-js: _require-tools ## Run all JS unit tests (vitest) on the host — no stack needed
 	$(MISE) $(FRONTEND_BIN)/vitest run --config frontend/vitest.config.ts
 
 test-js-built: test-js ## Alias of test-js (kept for skills/docs; vitest is host-native and mode-independent)
 
-test-backup-pipeline: ## Build web+workflow images and run the backup pipeline E2E harness locally
+# The three Docker E2E harnesses take no -n, so each holds a flat 1 token around its run line only (never the image
+# builds). They use throwaway containers/networks, not the hub: _hub-capacity only ensures the budget's capacity file.
+test-backup-pipeline: _hub-capacity ## Build web+workflow images and run the backup pipeline E2E harness locally (queues on the host token budget)
 	docker build -f docker/Dockerfile.Local    -t u4i-local-web:test .
 	docker build -f docker/Dockerfile.Workflow -t u4i-local-workflow:test .
 	chmod +x docker/backup-pipeline-test.sh docker/backup-pipeline-driver.sh
-	docker/backup-pipeline-test.sh u4i-local-web:test u4i-local-workflow:test
+	$(call BUDGETED,1,$@) docker/backup-pipeline-test.sh u4i-local-web:test u4i-local-workflow:test
 
-test-db-provision: ## Run the db-provision.sh E2E harness against a throwaway Postgres container
-	docker/db-provision-test.sh
+test-db-provision: _hub-capacity ## Run the db-provision.sh E2E harness against a throwaway Postgres container (queues on the host token budget)
+	$(call BUDGETED,1,$@) docker/db-provision-test.sh
 
-test-playwright-lifecycle: ## Build the derived Playwright image and run its idle-reap/restart E2E harness (~7 min)
+test-playwright-lifecycle: _hub-capacity ## Build the derived Playwright image and run its idle-reap/restart E2E harness (~7 min; queues on the host token budget)
 	docker build -f docker/Dockerfile.Playwright -t u4i-playwright:lifecycle-test docker
-	docker/playwright-lifecycle-test.sh u4i-playwright:lifecycle-test
+	$(call BUDGETED,1,$@) docker/playwright-lifecycle-test.sh u4i-playwright:lifecycle-test
 
 # Host-only static tests (Makefile dry runs, compose YAML, the playwright entrypoint): they skip inside `web`, which has
 # no make and no compose files. They run in the primary clone's gitignored venv/ (created like `hooks` does), into
@@ -311,35 +327,42 @@ UI_MARKER_START = $(if $(UI_MARKER_WORDS),playwright-up)
 # Default -n for the marker-parallel targets: a *_ui marker gets the UI cap (same word match, so m='not admin_ui'
 # gets the smaller UI cap too: fewer workers, never a failure).
 MARKER_N_KEY = $(if $(UI_MARKER_WORDS),U4I_N_UI,U4I_N_INT)
+N_MARKER = $(or $(n),$(call capacity_val,$(MARKER_N_KEY)))
 # Non-empty when f collects tests/functional (a functional path, or the whole tree: empty f, tests, tests/, ., ./, with
 # or without a leading ./). The substring match errs toward the UI side (an extra start, the smaller cap), never a failure.
 UI_PATH_MATCH = $(or $(findstring tests/functional,$(f)),$(filter tests tests/ . ./,$(or $(f),.) $(patsubst ./%,%,$(f))))
 UI_PATH_START = $(if $(UI_PATH_MATCH),playwright-up)
 # Default -n for the file-parallel targets: a path that collects UI tests gets the UI cap (whole tree included).
 PATH_N_KEY = $(if $(UI_PATH_MATCH),U4I_N_UI,U4I_N_INT)
-test-marker: $(UI_MARKER_START) ## Run tests for a specific marker: make test-marker m=<marker> (a *_ui marker starts hub playwright)
-	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
+N_PATH = $(or $(n),$(call capacity_val,$(PATH_N_KEY)))
+# A free-form f= or args= (both spliced into the pytest line) carrying its own worker count would run more workers
+# than the tokens held, so the test-file* goals refuse one at parse time (-n, -n<N>/-nauto, --numprocesses[=N]); n= is
+# the only way to set the count. Combined short flags such as -vn4 are not caught: a pattern broad enough to catch
+# them would also match --no-header, so they are accepted as a deliberate-bypass residual.
+$(if $(filter test-file test-file-parallel test-file-parallel-built,$(MAKECMDGOALS)),$(if $(filter -n -n% --numprocesses --numprocesses=%,$(f) $(args)),$(error args and f must not set -n/--numprocesses (it bypasses the token budget); use make test-file-parallel f=… n=<N>)))
+test-marker: _hub-capacity $(UI_MARKER_START) ## Run tests for a specific marker: make test-marker m=<marker> (a *_ui marker starts hub playwright)
+	$(call BUDGETED,1,$@) $(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
 
-test-marker-built: start-built ## Run tests for a specific marker against built assets: make test-marker-built m=<marker>
-	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -v"
+test-marker-built: _hub-capacity start-built ## Run tests for a specific marker against built assets: make test-marker-built m=<marker>
+	$(call BUDGETED,1,$@) $(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -v"
 
-test-marker-parallel: _capacity-fresh _require-n-fits $(UI_MARKER_START) ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=derived: see make capacity] (a *_ui marker starts hub playwright)
-	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,$(MARKER_N_KEY))) --dist=loadscope -v"
+test-marker-parallel: _capacity-fresh _require-n-fits _hub-capacity $(UI_MARKER_START) ## Run tests for a specific marker in parallel (queues on the host token budget): make test-marker-parallel m=<marker> [n=derived: see make capacity] (a *_ui marker starts hub playwright)
+	$(call BUDGETED,$(N_MARKER),$@) $(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(N_MARKER) --dist=loadscope -v"
 
-test-marker-parallel-built: _capacity-fresh _require-n-fits start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=derived: see make capacity]
-	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,$(MARKER_N_KEY))) --dist=loadscope -v"
+test-marker-parallel-built: _capacity-fresh _require-n-fits _hub-capacity start-built ## Run tests for a specific marker in parallel against built assets (queues on the host token budget): make test-marker-parallel-built m=<marker> [n=derived: see make capacity]
+	$(call BUDGETED,$(N_MARKER),$@) $(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(N_MARKER) --dist=loadscope -v"
 
-test-last-failed: ## Re-run only the tests that failed last run (pytest --lf)
-	$(EXEC_WEB) "$(PYTEST) tests/ -v --lf"
+test-last-failed: _hub-capacity ## Re-run only the tests that failed last run (pytest --lf)
+	$(call BUDGETED,1,$@) $(EXEC_WEB) "$(PYTEST) tests/ -v --lf"
 
-test-file: $(UI_PATH_START) ## Run pytest against a specific file or path: make test-file f=<path> [args=<extra-pytest-args>] (a tests/functional path starts hub playwright)
-	$(EXEC_WEB) "$(PYTEST) $(f) -v $(args)"
+test-file: _hub-capacity $(UI_PATH_START) ## Run pytest against a specific file or path: make test-file f=<path> [args=<extra-pytest-args>, never -n: use test-file-parallel] (a tests/functional path starts hub playwright)
+	$(call BUDGETED,1,$@) $(EXEC_WEB) "$(PYTEST) $(f) -v $(args)"
 
-test-file-parallel: _capacity-fresh _require-n-fits $(UI_PATH_START) ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>] (a tests/functional path starts hub playwright)
-	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,$(PATH_N_KEY))) --dist=loadscope -v $(args)"
+test-file-parallel: _capacity-fresh _require-n-fits _hub-capacity $(UI_PATH_START) ## Run pytest against a specific file or path in parallel (queues on the host token budget): make test-file-parallel f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>] (a tests/functional path starts hub playwright)
+	$(call BUDGETED,$(N_PATH),$@) $(EXEC_WEB) "$(PYTEST) $(f) -n $(N_PATH) --dist=loadscope -v $(args)"
 
-test-file-parallel-built: _capacity-fresh _require-n-fits start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
-	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,$(PATH_N_KEY))) --dist=loadscope -v $(args)"
+test-file-parallel-built: _capacity-fresh _require-n-fits _hub-capacity start-built ## Run pytest against a specific file or path in parallel against built assets (queues on the host token budget): make test-file-parallel-built f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
+	$(call BUDGETED,$(N_PATH),$@) $(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(N_PATH) --dist=loadscope -v $(args)"
 
 vite-build: ## Build Vite to verify no import/syntax errors (one-off vite container)
 	$(RUN_VITE) pnpm exec vite build
@@ -553,6 +576,17 @@ _logs-owner-fix: _capacity-fresh
 # `make up` fixes it, since the port is then published by the other project and gets skipped.
 _ports-resolve: _require-mise
 	@$(SPOKE_PORTS) resolve --project $(U4I_PROJECT) --slug $(U4I_HOST_SLUG) $(if $(U4I_PRIMARY),--primary) $(if $(U4I_WEB_PORT),--web-port '$(subst ','\'',$(U4I_WEB_PORT))') $(if $(U4I_VITE_PORT),--vite-port '$(subst ','\'',$(U4I_VITE_PORT))') --output $(PORTS_ENV)
+
+# Runs before every spoke start (after _ports-resolve, before hub-up / any compose up): refuses spoke N+1 when the hub,
+# N+1 idle spokes and one full-width test run would exceed usable memory (U4I_SPOKE_MAX in the PRIMARY clone's capacity
+# file; see scripts/capacity.py `admit`). Counts distinct running compose projects on the shared network minus the hub,
+# and always admits a spoke that is already running, so re-running `make up` (or start-built's down/up) is never
+# refused. A docker failure refuses, never admits. Known residual race, deliberately not engineered around (same stance
+# as _ports-resolve): two spokes starting in the same second can both be counted before either starts, so both are admitted.
+# "Before hub-up" is serial-make ordering: under make -j they are sibling prerequisites, so the hub may start first, but
+# the spoke's own compose up (a recipe line, run after every prerequisite) is still gated.
+_admit-spoke: _hub-capacity
+	@$(CAPACITY) admit --output $(PRIMARY_CAPACITY_ENV) --project $(U4I_PROJECT) --hub-project $(U4I_HUB_PROJECT) --network $(U4I_SHARED_NET)
 
 # Refuses a corrupt capacity file (the derived U4I_N_UI/U4I_N_INT defaults are spliced into pytest's -n) and an
 # explicit n that is not a positive integer or exceeds this host's ceiling, before any prune/rebuild/pytest. Depends
