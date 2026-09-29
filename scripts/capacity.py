@@ -56,6 +56,17 @@ SESSION_REDIS_RESERVED_DBS: int = 2
 SHARED_REDIS_DATABASES_FLOOR: int = 32
 BASE_GB: float = 2.0
 WORKER_GB: float = 0.5
+# Idle footprints for spoke admission (measured on the reference Linux host):
+# hub Postgres ~230 MB + hub Playwright ~339 MiB after a UI run (master Phase 8).
+HUB_IDLE_GB: float = 0.6
+# One idle spoke (web + db-init + redis + redis-metrics): 213-225 MB (master Phase 6).
+SPOKE_IDLE_GB: float = 0.25
+# Keys that track mem_available (like the `# decision:` usable_gb): a difference
+# only in these is jitter, so `generate` reports the file unchanged. U4I_USABLE_MB
+# and U4I_SPOKE_MAX are thus a point-in-time snapshot from when the file was last
+# (re)written (`ensure` regenerates only on a fingerprint/missing-key change; a
+# jitter-only diff is ignored) — not a live signal, like n_ui/n_int's own freshness.
+MEMORY_SNAPSHOT_KEYS: tuple[str, ...] = ("U4I_USABLE_MB", "U4I_SPOKE_MAX")
 DEFAULT_MEM_FRACTION: float = 0.70
 DEFAULT_MEM_SAFETY: float = 0.90
 
@@ -130,6 +141,10 @@ ENV_KEYS: tuple[str, ...] = (
     "U4I_PG_TEST_CONN_LIMIT",
     "U4I_PG_MAX_CONN",
     "U4I_PG_SHARED_BUFFERS_MB",
+    "U4I_USABLE_MB",
+    "U4I_HUB_IDLE_MB",
+    "U4I_SPOKE_IDLE_MB",
+    "U4I_SPOKE_MAX",
     "HOST_UID",
     "HOST_GID",
     FINGERPRINT_KEY,
@@ -188,6 +203,8 @@ class Capacity:
     pg_shared_buffers_mb: int
     usable_gb: float
     binding_constraint: str
+    spoke_max: int
+    spoke_max_clamped: bool
 
 
 def clamp(value: int, low: int, high: int) -> int:
@@ -223,6 +240,16 @@ def _memory_guard(usable_gb: float) -> int:
     # Round before flooring: binary-float rounding on usable_gb (e.g. 237.99999999999997
     # instead of 238.0) can otherwise make the floor under-count by one worker.
     return max(1, math.floor(round((usable_gb - BASE_GB) / WORKER_GB, 6)))
+
+
+def _spoke_ceiling(usable_gb: float, n_max: int) -> tuple[int, bool]:
+    """(spokes that fit, whether the floor clamped to 1): the hub, the idle spokes and
+    one full-width test run must share usable memory. Round before flooring, as in
+    `_memory_guard`, so binary-float rounding can't under-count by one."""
+    spokes_that_fit = math.floor(
+        round((usable_gb - HUB_IDLE_GB - _gb_needed(n_max)) / SPOKE_IDLE_GB, 6)
+    )
+    return max(1, spokes_that_fit), spokes_that_fit < 1
 
 
 def _gb_needed(worker_count: int) -> float:
@@ -313,6 +340,7 @@ def derive(
     stable_usable_gb = _usable_gb(
         replace(probe, mem_available_bytes=None), mem_fraction, mem_safety
     )
+    spoke_max, spoke_max_clamped = _spoke_ceiling(usable_gb, n_max)
     return Capacity(
         n_ui=n_ui,
         n_int=n_int,
@@ -330,6 +358,8 @@ def derive(
         ),
         usable_gb=usable_gb,
         binding_constraint=binding_constraint,
+        spoke_max=spoke_max,
+        spoke_max_clamped=spoke_max_clamped,
     )
 
 
@@ -456,6 +486,10 @@ def render_env(
         "U4I_PG_TEST_CONN_LIMIT": capacity.pg_test_conn_limit,
         "U4I_PG_MAX_CONN": capacity.pg_max_conn,
         "U4I_PG_SHARED_BUFFERS_MB": capacity.pg_shared_buffers_mb,
+        "U4I_USABLE_MB": int(round(capacity.usable_gb * MB_PER_GB, 6)),
+        "U4I_HUB_IDLE_MB": int(HUB_IDLE_GB * MB_PER_GB),
+        "U4I_SPOKE_IDLE_MB": int(SPOKE_IDLE_GB * MB_PER_GB),
+        "U4I_SPOKE_MAX": capacity.spoke_max,
         "HOST_UID": host_probe.host_uid,
         "HOST_GID": host_probe.host_gid,
         FINGERPRINT_KEY: fp,
@@ -465,7 +499,9 @@ def render_env(
     }
     decision = (
         f"{DECISION_PREFIX}n_ui={capacity.n_ui} n_int={capacity.n_int} "
-        f"binding={capacity.binding_constraint} usable_gb={capacity.usable_gb:.1f}"
+        f"binding={capacity.binding_constraint} usable_gb={capacity.usable_gb:.1f} "
+        f"spoke_max={capacity.spoke_max}"
+        f"{' (clamped)' if capacity.spoke_max_clamped else ''}"
     )
     body = "".join(f"{key}={value}\n" for key, value in values.items())
     return f"{GENERATED_HEADER}\n{decision}\n{body}"
@@ -485,6 +521,19 @@ def _parse_env(text: str) -> dict[str, str]:
 def read_env(path: Path) -> dict[str, str]:
     """Return the `KEY=value` lines of an env file; comments are ignored."""
     return _parse_env(path.read_text())
+
+
+def _same_but_for_memory_jitter(
+    existing: dict[str, str] | None, new: dict[str, str]
+) -> bool:
+    """Every key present in both, and equal outside MEMORY_SNAPSHOT_KEYS."""
+    if existing is None or existing.keys() != new.keys():
+        return False
+    return all(
+        existing[key] == value
+        for key, value in new.items()
+        if key not in MEMORY_SNAPSHOT_KEYS
+    )
 
 
 def changed_interlocks(old: dict[str, str], new: dict[str, str]) -> list[str]:
@@ -702,7 +751,7 @@ def _generate(
         capacity, host_probe, overrides, fingerprint(host_probe, overrides)
     )
     new_values = _parse_env(content)
-    if existing == new_values:
+    if _same_but_for_memory_jitter(existing, new_values):
         print(f"capacity unchanged ({output})")
         return
     _write_atomically(output, content)
