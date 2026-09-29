@@ -6,9 +6,47 @@ from typing import Optional, Tuple
 
 from flask import Flask
 from flask.testing import FlaskCliRunner
+from playwright.sync_api import Browser, BrowserType, Error as PlaywrightError
 
 from backend import create_app, db
 from backend.config import ConfigTestUI
+
+# Bounded chromium.connect() retry against the shared hub browser-server: at most ~48 s in total. It only rides out
+# transient connect failures (e.g. the server launching a browser for a burst of workers at once). It cannot revive a
+# container the idle watchdog reaped: `web` has no Docker access, so nothing here can restart it. Residual window:
+# `make playwright-up` returns immediately for an already-healthy container, so one at the very end of its
+# U4I_PLAYWRIGHT_IDLE_MINUTES window (default 15) can still be reaped before the first connect; the gap is at most one
+# watchdog poll interval (U4I_PLAYWRIGHT_POLL_SECONDS, default 30). The final error then says to run `make playwright-up`.
+PLAYWRIGHT_CONNECT_ATTEMPTS = 3
+PLAYWRIGHT_CONNECT_TIMEOUT_MS = 15_000
+PLAYWRIGHT_CONNECT_BACKOFF_SECONDS = 1
+
+# Ports >= 1024 that Chromium refuses to navigate to (net::ERR_UNSAFE_PORT; kRestrictedPorts in
+# net/base/port_util.cc). A worker's Flask server bound to one is unreachable for every test on that worker, e.g.
+# port_probe_start's per-run jitter landing gw0 on 10080.
+BROWSER_UNSAFE_PORTS = frozenset(
+    {
+        1719,
+        1720,
+        1723,
+        2049,
+        3659,
+        4045,
+        4190,
+        5060,
+        5061,
+        6000,
+        6566,
+        6665,
+        6666,
+        6667,
+        6668,
+        6669,
+        6679,
+        6697,
+        10080,
+    }
+)
 
 
 def run_app(port: int, show_flask_logs: bool, config: Optional[ConfigTestUI] = None):
@@ -69,6 +107,8 @@ def clear_db(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
 
 def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
     for port in range(start_port, end_port + 1):
+        if port in BROWSER_UNSAFE_PORTS:
+            continue
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
                 s.bind(("127.0.0.1", port))
@@ -76,6 +116,25 @@ def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
             except OSError:
                 continue
     raise RuntimeError("No available port found in the specified range.")
+
+
+def connect_to_browser_server(chromium: BrowserType, ws_url: str) -> Browser:
+    """Connects to the Playwright browser-server, retrying transient failures
+    with a linear backoff; raises a RuntimeError naming `make playwright-up`
+    once every attempt has failed."""
+    last_error: Optional[PlaywrightError] = None
+    for attempt in range(1, PLAYWRIGHT_CONNECT_ATTEMPTS + 1):
+        try:
+            return chromium.connect(ws_url, timeout=PLAYWRIGHT_CONNECT_TIMEOUT_MS)
+        except PlaywrightError as connect_error:
+            last_error = connect_error
+            if attempt < PLAYWRIGHT_CONNECT_ATTEMPTS:
+                sleep(PLAYWRIGHT_CONNECT_BACKOFF_SECONDS * attempt)
+    raise RuntimeError(
+        f"Could not connect to the Playwright browser server at {ws_url} after "
+        f"{PLAYWRIGHT_CONNECT_ATTEMPTS} attempts. The hub playwright may have been "
+        "idle-reaped: run `make playwright-up` on the host, then rerun the tests."
+    ) from last_error
 
 
 def ping_server(url: str, timeout: float = 2) -> bool:

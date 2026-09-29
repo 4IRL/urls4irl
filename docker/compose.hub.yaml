@@ -56,15 +56,28 @@ services:
 
   # The one shared browser server for every spoke's UI tests (`make playwright-up`). Spokes reach it as
   # ws://playwright:3000/ and it reaches each spoke by its slugged web-<slug> / vite-<slug> alias.
+  # Derived image (docker/Dockerfile.Playwright): the CLI is baked in, so a start needs no network. Its
+  # entrypoint exits 0 after U4I_PLAYWRIGHT_IDLE_MINUTES with no clients (0 disables reaping), and there
+  # is no restart policy, so it stays down until `make playwright-up` restarts it in place. That never
+  # recreates it: image or config changes need `make playwright-rebuild`.
   playwright:
-    image: mcr.microsoft.com/playwright:v1.60.0-noble
+    image: u4i-playwright:1.60.0
+    build:
+      context: docker
+      dockerfile: Dockerfile.Playwright
     init: true
-    user: pwuser
-    working_dir: /home/pwuser
-    # The official image ships the browsers + node but NOT the playwright CLI on
-    # PATH; the documented browser-server invocation is npx with a version pinned
-    # to the image tag (and to the pip pin in requirements-test.txt).
-    command: npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0
+    environment:
+      - U4I_PLAYWRIGHT_IDLE_MINUTES=${U4I_PLAYWRIGHT_IDLE_MINUTES:-15}
+    healthcheck:
+      # A ws server does not answer a plain HTTP GET: probe that connect() succeeds. Loopback, so the idle
+      # watchdog (docker/playwright-entrypoint.sh) never counts the probe as a client. Byte-identical to
+      # Dockerfile.Playwright's HEALTHCHECK (test_compose_hub.py enforces it).
+      test: ["CMD", "node", "-e", "require('net').connect(3000,'127.0.0.1').on('connect',function(){process.exit(0)}).on('error',function(){process.exit(1)})"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+      start_interval: 1s
     volumes:
       - /dev/shm:/dev/shm
     networks:

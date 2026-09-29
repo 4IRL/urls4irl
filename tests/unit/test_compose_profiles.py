@@ -310,6 +310,12 @@ def test_vite_mounts_static_not_a_missing_dist() -> None:
     assert not [volume for volume in vite_volumes if "static/dist" in volume]
 
 
+def test_web_mounts_requirements_read_only() -> None:
+    """The live pins, not the image's build-time copy (test_playwright_versions_agree reads them)."""
+    web_volumes = _load_services(LOCAL_COMPOSE_FILE)["web"]["volumes"]
+    assert "./requirements:/code/u4i/requirements:ro" in web_volumes
+
+
 def test_web_reaches_hub_services_by_their_hub_names() -> None:
     web_environment = _load_services(LOCAL_COMPOSE_FILE)["web"]["environment"]
     assert "PLAYWRIGHT_WS_URL=ws://playwright:3000/" in web_environment

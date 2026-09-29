@@ -61,6 +61,11 @@ export PRIMARY_ROOT U4I_PRIMARY U4I_HOST_SLUG U4I_PROJECT U4I_WEB_HOST U4I_VITE_
 PRIMARY_CAPACITY_ENV = $(PRIMARY_ROOT)/$(CAPACITY_ENV)
 HUB_COMPOSE = docker compose --project-directory $(PRIMARY_ROOT) --env-file $(PRIMARY_ROOT)/.env $(if $(wildcard $(PRIMARY_CAPACITY_ENV)),--env-file $(PRIMARY_CAPACITY_ENV)) -p $(U4I_HUB_PROJECT) -f $(PRIMARY_ROOT)/docker/compose.hub.yaml
 HUB_SERVICES := db playwright
+# --no-recreate starts an idle-reaped (exited 0) hub playwright in place: same container, no registry fetch. It never
+# picks up an image/config change (that is playwright-rebuild). --wait blocks until its node TCP healthcheck passes.
+PLAYWRIGHT_UP = $(HUB_COMPOSE) up -d --wait --no-recreate playwright
+# The hub playwright container, running or stopped, selected by compose labels (stack-info, playwright-rebuild).
+HUB_PLAYWRIGHT_PS = docker ps -a --filter label=com.docker.compose.project=$(U4I_HUB_PROJECT) --filter label=com.docker.compose.service=playwright
 # Non-hub containers attached to the shared network, running or stopped (an exited db-init still pins the network),
 # one name per line; none when the network is absent. The hub is excluded by its compose project label, not a name
 # prefix a spoke slug could mimic; an unlabelled stray prints as " <name>", so the name is always the last field.
@@ -96,7 +101,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up _hub-network _hub-capacity _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -122,10 +127,13 @@ up: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up $(if $(p
 # With d=1 it then waits like start-built/tunnel (VITE_BUILD_BARRIER, then a healthy web). Attached mode has no such
 # point: its `up` streams logs until Ctrl-C (which stops the stack), and the vite build output is visible in the stream.
 up-built: NARROW_PROFILE = $(or $(p),ui)
-up-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up playwright-up _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode, which waits for the vite build + a healthy web)
+# Hub playwright: with d=1 it starts last, after a healthy web, for the same idle-clock reason as start-built. Attached
+# mode never reaches a trailing line (Ctrl-C stops the stack), so there it stays an early prerequisite.
+up-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up $(if $(d),,playwright-up) _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode, which waits for the vite build + a healthy web, then starts playwright)
 	$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --build --remove-orphans -V $(if $(d),-d,)
 	$(if $(d),@$(VITE_BUILD_BARRIER))
 	$(if $(d),$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --wait web)
+	$(if $(d),$(PLAYWRIGHT_UP))
 
 # Completion barrier for the built stack's one-shot vite (`vite build`). Nothing depends on it (hub playwright used to,
 # and web must not depend on the profiled vite), so `up --wait` cannot include it: once vite exits, even with 0, a
@@ -137,11 +145,14 @@ VITE_BUILD_BARRIER = vite_id="$$($(COMPOSE_BUILT) --profile ui ps -a -q vite)"; 
 	vite_exit="$$(docker wait $$vite_id)" || exit 1; \
 	if [ "$$vite_exit" != 0 ]; then echo "$@: the vite asset build exited $$vite_exit (see: make logs c=vite)" >&2; exit 1; fi
 
-start-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve playwright-up prune ## Tear down this spoke, rebuild with pre-built assets (ui profile, no workflow), wait for the vite build + a healthy web (used by built test targets)
+# Hub playwright starts last: its idle clock starts at container start, so a long rebuild + vite build must not eat
+# the window before pytest connects. hub-up stays a prerequisite (the spoke needs the hub db).
+start-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve hub-up prune ## Tear down this spoke, rebuild with pre-built assets (ui profile, no workflow), wait for the vite build + a healthy web, then start hub playwright (used by built test targets)
 	$(COMPOSE) $(ALL_PROFILES) down
 	$(COMPOSE_BUILT) --profile ui up --build --remove-orphans -d
 	@$(VITE_BUILD_BARRIER)
 	$(COMPOSE_BUILT) --profile ui up --wait web
+	$(PLAYWRIGHT_UP)
 
 down: ## Stop this spoke (every profile); the hub keeps running (make hub-down)
 	$(COMPOSE) $(ALL_PROFILES) down
@@ -185,16 +196,35 @@ hub-up: _hub-capacity _hub-network ## Start the per-user hub (Postgres cluster),
 	$(HUB_COMPOSE) up -d --wait --no-recreate db
 	$(HUB_COMPOSE) run --rm --no-deps cluster-init
 
-# The seam Phase 8 extends (a healthcheck, lazy start, idle reaping).
-playwright-up: hub-up ## Start the hub's shared Playwright browser server (idempotent)
-	$(HUB_COMPOSE) up -d --wait --no-recreate playwright
+# Idempotent: restarts an idle-reaped container in place and waits for it to be healthy (see PLAYWRIGHT_UP).
+playwright-up: hub-up ## Start the hub's shared Playwright browser server and wait until healthy (restarts an idle-reaped one in place; idempotent)
+	$(PLAYWRIGHT_UP)
+
+# Picks up a changed Dockerfile.Playwright / compose playwright config (playwright-up never recreates). Refuses while
+# any client is connected, since recreating drops every spoke's in-flight UI workers. Fails closed: only an absent or
+# stopped (created/exited/dead) container skips the count. Any other state must give readable connection tables
+# (tcp6 is optional: IPv6 may be disabled) and a numeric count, else it refuses. The tables are captured before
+# counting because sh has no pipefail: a failed `exec` piped straight into the counter would read as 0 clients.
+# Known residual race (not engineered around): another spoke's playwright-up can start and connect between the guard
+# and --force-recreate.
+playwright-rebuild: _require-hub-files hub-up ## Rebuild the hub Playwright image and recreate it (refuses while any UI run is connected)
+	@state="$$($(HUB_PLAYWRIGHT_PS) --format '{{.State}}')" || \
+		{ echo "playwright-rebuild: could not query the hub playwright container state — refusing to recreate it" >&2; exit 1; }; \
+	case "$$state" in ''|created|exited|dead) exit 0;; esac; \
+	tables="$$($(HUB_COMPOSE) exec -T playwright sh -c 'cat /proc/net/tcp && { cat /proc/net/tcp6 2>/dev/null || true; }')" && [ -n "$$tables" ] || \
+		{ echo "playwright-rebuild: hub playwright is $$(echo $$state) but its connection tables could not be read — refusing to recreate it" >&2; exit 1; }; \
+	active="$$(printf '%s\n' "$$tables" | $(PRIMARY_ROOT)/docker/playwright-entrypoint.sh --count -)"; \
+	case "$$active" in ''|*[!0-9]*) echo "playwright-rebuild: could not count UI clients (got '$$active') — refusing to recreate it" >&2; exit 1;; esac; \
+	if [ "$$active" -gt 0 ]; then echo "playwright-rebuild: $$active UI client(s) connected — wait for the run(s) to finish" >&2; exit 1; fi
+	$(HUB_COMPOSE) build playwright
+	$(HUB_COMPOSE) up -d --wait --force-recreate playwright
 
 hub-down: _require-hub-files ## Stop the hub; refuses while any spoke is attached to the shared network
 	@attached="$$($(ATTACHED_SPOKES))"; if [ -n "$$attached" ]; then echo "hub-down: spokes still attached: $$(echo $$attached) — run 'make down' in each first" >&2; exit 1; fi
 	$(HUB_COMPOSE) $(ALL_PROFILES) down
 	@if docker network inspect $(U4I_SHARED_NET) >/dev/null 2>&1; then docker network rm $(U4I_SHARED_NET) >/dev/null; fi
 
-hub-restart: _require-hub-files ## Restart a hub service: make hub-restart c=db|playwright
+hub-restart: _require-hub-files ## Restart a hub service: make hub-restart c=db|playwright (no health wait; image changes: make playwright-rebuild)
 	$(if $(c),,$(error c=<service> is required, e.g. make hub-restart c=playwright))
 	$(if $(filter-out $(HUB_SERVICES),$(c)),$(error c must be one of: $(HUB_SERVICES) (got '$(c)')))
 	$(HUB_COMPOSE) restart $(c)
@@ -250,29 +280,66 @@ test-backup-pipeline: ## Build web+workflow images and run the backup pipeline E
 test-db-provision: ## Run the db-provision.sh E2E harness against a throwaway Postgres container
 	docker/db-provision-test.sh
 
-test-marker: ## Run tests for a specific marker: make test-marker m=<marker>
+test-playwright-lifecycle: ## Build the derived Playwright image and run its idle-reap/restart E2E harness (~7 min)
+	docker build -f docker/Dockerfile.Playwright -t u4i-playwright:lifecycle-test docker
+	docker/playwright-lifecycle-test.sh u4i-playwright:lifecycle-test
+
+# Host-only static tests (Makefile dry runs, compose YAML, the playwright entrypoint): they skip inside `web`, which has
+# no make and no compose files. They run in the primary clone's gitignored venv/ (created like `hooks` does), into
+# which the primary clone's requirements-test.txt (+ prod) pins are (re)installed whenever either file is newer than
+# a stamp inside that venv, so a pin bump reaches it too; the stamp is touched only after a successful install.
+# psycopg2 is skipped: it builds from source (needs pg_config), and the pinned psycopg2-binary provides the same
+# `psycopg2` module the root conftest imports.
+HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_profiles.py tests/unit/test_playwright_entrypoint.py
+HOST_STATIC_STAMP = $(PRIMARY_ROOT)/venv/.u4i-host-static.stamp
+HOST_STATIC_TEST_PINS = $(PRIMARY_ROOT)/requirements/requirements-test.txt
+HOST_STATIC_PROD_PINS = $(PRIMARY_ROOT)/requirements/requirements-prod.txt
+test-host-static: _require-mise ## Run the host-only static tests (Makefile/compose/entrypoint) in the primary clone's venv: make test-host-static [f=<paths>] [args=<extra-pytest-args>]
+	@test -n "$(PRIMARY_ROOT)" || { echo "$@: not inside a git checkout" >&2; exit 1; }
+	@test -x "$(PRIMARY_ROOT)/venv/bin/python" || (cd "$(PRIMARY_ROOT)" && mise exec python -- python -m venv venv) || exit 1
+	@test -f "$(HOST_STATIC_TEST_PINS)" -a -f "$(HOST_STATIC_PROD_PINS)" || { echo "$@: missing $(HOST_STATIC_TEST_PINS) or $(HOST_STATIC_PROD_PINS)" >&2; exit 1; }
+	@if [ ! -f "$(HOST_STATIC_STAMP)" ] || [ "$(HOST_STATIC_TEST_PINS)" -nt "$(HOST_STATIC_STAMP)" ] || [ "$(HOST_STATIC_PROD_PINS)" -nt "$(HOST_STATIC_STAMP)" ]; then grep -hvE '^(-r |psycopg2==)' "$(HOST_STATIC_TEST_PINS)" "$(HOST_STATIC_PROD_PINS)" | "$(PRIMARY_ROOT)/venv/bin/pip" install --quiet --disable-pip-version-check -r /dev/stdin && touch "$(HOST_STATIC_STAMP)"; fi
+	"$(PRIMARY_ROOT)/venv/bin/python" -m pytest $(or $(f),$(HOST_STATIC_TESTS)) -v $(args)
+
+# Dev-mode lazy start: a *_ui marker, or a path that collects tests/functional (the whole tree included), restarts an
+# idle-reaped hub playwright first. The %_ui word match (parentheses stripped) ignores marker-expression semantics
+# (m='not admin_ui' still starts it): a harmless extra start, never a failure.
+PAREN_OPEN := (
+PAREN_CLOSE := )
+UI_MARKER_WORDS = $(filter %_ui,$(subst $(PAREN_OPEN), ,$(subst $(PAREN_CLOSE), ,$(m))))
+UI_MARKER_START = $(if $(UI_MARKER_WORDS),playwright-up)
+# Default -n for the marker-parallel targets: a *_ui marker gets the UI cap (same word match, so m='not admin_ui'
+# gets the smaller UI cap too: fewer workers, never a failure).
+MARKER_N_KEY = $(if $(UI_MARKER_WORDS),U4I_N_UI,U4I_N_INT)
+# Non-empty when f collects tests/functional (a functional path, or the whole tree: empty f, tests, tests/, ., ./, with
+# or without a leading ./). The substring match errs toward the UI side (an extra start, the smaller cap), never a failure.
+UI_PATH_MATCH = $(or $(findstring tests/functional,$(f)),$(filter tests tests/ . ./,$(or $(f),.) $(patsubst ./%,%,$(f))))
+UI_PATH_START = $(if $(UI_PATH_MATCH),playwright-up)
+# Default -n for the file-parallel targets: a path that collects UI tests gets the UI cap (whole tree included).
+PATH_N_KEY = $(if $(UI_PATH_MATCH),U4I_N_UI,U4I_N_INT)
+test-marker: $(UI_MARKER_START) ## Run tests for a specific marker: make test-marker m=<marker> (a *_ui marker starts hub playwright)
 	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
 
 test-marker-built: start-built ## Run tests for a specific marker against built assets: make test-marker-built m=<marker>
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -v"
 
-test-marker-parallel: _capacity-fresh _require-n-fits ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=derived: see make capacity]
-	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
+test-marker-parallel: _capacity-fresh _require-n-fits $(UI_MARKER_START) ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=derived: see make capacity] (a *_ui marker starts hub playwright)
+	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,$(MARKER_N_KEY))) --dist=loadscope -v"
 
 test-marker-parallel-built: _capacity-fresh _require-n-fits start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=derived: see make capacity]
-	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v"
+	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),$(call capacity_val,$(MARKER_N_KEY))) --dist=loadscope -v"
 
 test-last-failed: ## Re-run only the tests that failed last run (pytest --lf)
 	$(EXEC_WEB) "$(PYTEST) tests/ -v --lf"
 
-test-file: ## Run pytest against a specific file or path: make test-file f=<path> [args=<extra-pytest-args>]
+test-file: $(UI_PATH_START) ## Run pytest against a specific file or path: make test-file f=<path> [args=<extra-pytest-args>] (a tests/functional path starts hub playwright)
 	$(EXEC_WEB) "$(PYTEST) $(f) -v $(args)"
 
-test-file-parallel: _capacity-fresh _require-n-fits ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
-	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v $(args)"
+test-file-parallel: _capacity-fresh _require-n-fits $(UI_PATH_START) ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>] (a tests/functional path starts hub playwright)
+	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,$(PATH_N_KEY))) --dist=loadscope -v $(args)"
 
 test-file-parallel-built: _capacity-fresh _require-n-fits start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
-	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,U4I_N_INT)) --dist=loadscope -v $(args)"
+	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),$(call capacity_val,$(PATH_N_KEY))) --dist=loadscope -v $(args)"
 
 vite-build: ## Build Vite to verify no import/syntax errors (one-off vite container)
 	$(RUN_VITE) pnpm exec vite build
@@ -379,7 +446,8 @@ hooks-check: ## Report whether the pre-commit hook is installed (exits 1 when mi
 		if test -f "$$hook_path"; then echo "pre-commit hook: INSTALLED"; \
 		else echo "pre-commit hook: MISSING — run 'make hooks'"; exit 1; fi
 
-stack-info: _require-mise ## Print this checkout's spoke project, host URLs, hub project and shared network
+# hub playwright: `-a`, so an idle-reaped container shows as `Exited (0) …` (normal; the next UI target restarts it).
+stack-info: _require-mise ## Print this checkout's spoke project, host URLs, hub project, hub db/playwright state and shared network
 	@echo "slug:           $(U4I_SLUG)"
 	@echo "spoke project:  $(U4I_PROJECT)"
 	@echo "web alias:      $(U4I_WEB_HOST)"
@@ -390,6 +458,7 @@ stack-info: _require-mise ## Print this checkout's spoke project, host URLs, hub
 	@$(SPOKE_PORTS) show --output $(PORTS_ENV)
 	@if docker network inspect $(U4I_SHARED_NET) >/dev/null 2>&1; then \
 		if [ -n "$$(docker ps --filter label=com.docker.compose.project=$(U4I_HUB_PROJECT) --filter label=com.docker.compose.service=db --filter status=running -q)" ]; then echo "hub db:         running"; else echo "hub db:         not running"; fi; \
+		playwright_status="$$($(HUB_PLAYWRIGHT_PS) --format '{{.Status}}')"; echo "hub playwright: $${playwright_status:-absent}"; \
 		attached="$$($(ATTACHED_SPOKES))"; echo "attached to hub: $$(echo $${attached:-none})"; \
 	else echo "hub: not running"; fi
 
@@ -500,7 +569,7 @@ _require-n-fits: _capacity-fresh
 		max_n=$(call capacity_val,U4I_N_MAX); \
 		case "$$max_n" in ''|*[!0-9]*) echo "U4I_N_MAX invalid in $(CAPACITY_ENV) — run 'make capacity'"; exit 1;; esac; \
 		if [ "$(n)" -gt "$$max_n" ]; then \
-			echo "n=$(n) exceeds this host's capacity ceiling (U4I_N_MAX=$$max_n); raise it with 'make capacity U4I_N_UI=$(n)' (UI targets) or 'make capacity U4I_N_INT=$(n)' (integration/marker/file targets), then 'make up [p=…] d=1'"; \
+			echo "n=$(n) exceeds this host's capacity ceiling (U4I_N_MAX=$$max_n); raise it with 'make capacity U4I_N_UI=$(n)' (UI targets, *_ui markers, tests/functional paths) or 'make capacity U4I_N_INT=$(n)' (other integration/marker/file targets), then 'make up [p=…] d=1'"; \
 			exit 1; \
 		fi; \
 	fi
