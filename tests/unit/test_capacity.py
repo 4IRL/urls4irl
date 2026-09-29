@@ -41,6 +41,7 @@ from scripts.capacity import (
     SPOKE_INTERLOCK_KEYS,
     SUPERUSER_RESERVED,
     WORKER_GB,
+    AdmissionResult,
     Capacity,
     DockerInfoError,
     DockerRunError,
@@ -49,6 +50,7 @@ from scripts.capacity import (
     Probe,
     _memory_guard,
     _usable_gb,
+    admission_decision,
     changed_interlocks,
     clamp,
     derive,
@@ -1587,7 +1589,7 @@ def _capacity_ids(
 
 
 def _no_probe() -> Probe:
-    raise AssertionError("logs-owner-fix must not probe the host")
+    raise AssertionError("logs-owner-fix and admit must not probe the host")
 
 
 def _fix(env_path: Path, docker: _FakeDocker) -> int:
@@ -1839,3 +1841,252 @@ def test_run_docker_launch_failures_raise_docker_run_error(
     monkeypatch.setattr(capacity.subprocess, "run", failing_run)
     with pytest.raises(DockerRunError, match=expected_fragment):
         run_docker(IMAGE_LOOKUP)
+
+
+# --- admit (spoke admission) -------------------------------------------------
+
+ADMIT_SELF: str = "u4i-self"
+ADMIT_HUB: str = "u4i-hub-1000"
+ADMIT_NETWORK: str = "u4i-shared-1000"
+# The full argv `admit` issues; the runner receives it without the leading
+# "docker", which `run_docker` prepends.
+ADMIT_PS_ARGV: list[str] = [
+    "docker",
+    "ps",
+    "--filter",
+    f"network={ADMIT_NETWORK}",
+    "--filter",
+    "status=running",
+    "--format",
+    '{{.Label "com.docker.compose.project"}}',
+]
+ADMIT_CAPACITY_LINES: dict[str, str] = {
+    "U4I_N_MAX": "12",
+    "U4I_USABLE_MB": "9830",
+    "U4I_HUB_IDLE_MB": "614",
+    "U4I_SPOKE_IDLE_MB": "256",
+    "U4I_SPOKE_MAX": "2",
+}
+
+
+class _FakePsDocker:
+    """Scripted runner for `admit`'s `docker ps`: fixed output, records every call."""
+
+    def __init__(
+        self,
+        stdout: str = "",
+        returncode: int = 0,
+        stderr: str = "",
+        raises: Exception | None = None,
+    ) -> None:
+        self.stdout = stdout
+        self.returncode = returncode
+        self.stderr = stderr
+        self.raises = raises
+        self.calls: list[list[str]] = []
+
+    def __call__(self, args: list[str]) -> subprocess.CompletedProcess[str]:
+        self.calls.append(args)
+        if self.raises is not None:
+            raise self.raises
+        return _completed(self.returncode, stdout=self.stdout, stderr=self.stderr)
+
+
+def _admit_capacity(tmp_path: Path, omit: str | None = None) -> Path:
+    env_path = tmp_path / "capacity.env"
+    env_path.write_text(
+        "".join(
+            f"{key}={value}\n"
+            for key, value in ADMIT_CAPACITY_LINES.items()
+            if key != omit
+        )
+    )
+    return env_path
+
+
+def _admit(env_path: Path, docker: _FakePsDocker) -> int:
+    return main(
+        [
+            "admit",
+            "--output",
+            str(env_path),
+            "--project",
+            ADMIT_SELF,
+            "--hub-project",
+            ADMIT_HUB,
+            "--network",
+            ADMIT_NETWORK,
+        ],
+        _no_probe,
+        docker,
+    )
+
+
+def _running(*projects: str) -> str:
+    return "".join(f"{project}\n" for project in projects)
+
+
+@pytest.mark.parametrize(
+    "running",
+    [(), ("u4i-alpha",)],
+    ids=["no-other-spokes", "one-other-spoke"],
+)
+def test_admit_admits_silently_under_the_ceiling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], running: tuple[str, ...]
+) -> None:
+    docker = _FakePsDocker(stdout=_running(*running))
+
+    assert _admit(_admit_capacity(tmp_path), docker) == 0
+
+    assert ["docker", *docker.calls[0]] == ADMIT_PS_ARGV
+    assert len(docker.calls) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_admit_refuses_the_spoke_past_the_ceiling_with_the_numbers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running("u4i-beta", "u4i-alpha"))
+
+    assert _admit(_admit_capacity(tmp_path), docker) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "spoke admission: refusing spoke 3 (u4i-self) — hub 0.60 GB + 3 × 0.25 GB "
+        "idle spokes + one full test run (2.00 + 12 × 0.50 GB) = 9.35 GB exceeds "
+        "usable 9.60 GB (U4I_SPOKE_MAX=2). Running spokes: u4i-alpha, u4i-beta. "
+        "Stop one with 'make down' in its checkout.\n"
+    )
+
+
+def test_admit_never_refuses_a_spoke_that_is_already_running(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running("u4i-alpha", ADMIT_SELF, "u4i-beta"))
+
+    assert _admit(_admit_capacity(tmp_path), docker) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_admit_ignores_the_hub_and_empty_labels(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running(ADMIT_HUB, "", "u4i-alpha", ADMIT_HUB, ""))
+
+    assert _admit(_admit_capacity(tmp_path), docker) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_admit_counts_a_project_with_several_containers_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running("u4i-alpha", "u4i-alpha", "u4i-alpha"))
+
+    assert _admit(_admit_capacity(tmp_path), docker) == 0
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize(
+    ("docker", "expected_err"),
+    [
+        (
+            _FakePsDocker(returncode=1, stderr="Cannot connect to the Docker daemon\n"),
+            "spoke admission: docker ps failed — Cannot connect to the Docker daemon\n",
+        ),
+        (
+            _FakePsDocker(returncode=125),
+            "spoke admission: docker ps failed — exited 125\n",
+        ),
+        (
+            _FakePsDocker(
+                raises=FileNotFoundError("No such file or directory: 'docker'")
+            ),
+            "spoke admission: docker ps failed — No such file or directory: 'docker'\n",
+        ),
+        (
+            _FakePsDocker(raises=DockerRunError("docker ps timed out after 120s")),
+            "spoke admission: docker ps failed — docker ps timed out after 120s\n",
+        ),
+    ],
+    ids=["non-zero-exit", "non-zero-exit-no-stderr", "not-installed", "timeout"],
+)
+def test_admit_docker_failure_is_loud_and_never_admits(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    docker: _FakePsDocker,
+    expected_err: str,
+) -> None:
+    assert _admit(_admit_capacity(tmp_path), docker) == 1
+    assert capsys.readouterr().err == expected_err
+
+
+@pytest.mark.parametrize("missing_key", list(ADMIT_CAPACITY_LINES))
+def test_admit_capacity_file_missing_a_key_exits_non_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], missing_key: str
+) -> None:
+    env_path = _admit_capacity(tmp_path, omit=missing_key)
+
+    assert _admit(env_path, _FakePsDocker()) == 1
+
+    assert capsys.readouterr().err == (
+        f"spoke admission: {missing_key} missing or invalid in {env_path} "
+        "— run 'make capacity'\n"
+    )
+
+
+def test_admit_non_integer_value_exits_non_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = _admit_capacity(tmp_path)
+    env_path.write_text(
+        env_path.read_text().replace("U4I_SPOKE_MAX=2", "U4I_SPOKE_MAX=two")
+    )
+
+    assert _admit(env_path, _FakePsDocker()) == 1
+    assert "U4I_SPOKE_MAX missing or invalid" in capsys.readouterr().err
+
+
+def test_admit_missing_capacity_file_exits_non_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "absent.env"
+    docker = _FakePsDocker()
+
+    assert _admit(env_path, docker) == 1
+
+    assert docker.calls == []
+    assert capsys.readouterr().err == (
+        f"spoke admission: {env_path} does not exist — run 'make capacity'\n"
+    )
+
+
+def test_admit_unreadable_capacity_file_exits_non_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    env_path.write_bytes(b"\xff\xfe\x00")
+    docker = _FakePsDocker()
+
+    assert _admit(env_path, docker) == 1
+
+    assert docker.calls == []
+    captured_err = capsys.readouterr().err
+    assert captured_err.startswith("spoke admission: ")
+    assert captured_err.endswith("— run 'make capacity'\n")
+
+
+def test_admission_decision_reports_the_other_running_spokes() -> None:
+    env = dict(ADMIT_CAPACITY_LINES)
+
+    admitted = admission_decision(["u4i-alpha", ADMIT_SELF], ADMIT_SELF, ADMIT_HUB, env)
+    refused = admission_decision(
+        ["u4i-beta", "u4i-alpha", ADMIT_HUB], ADMIT_SELF, ADMIT_HUB, env
+    )
+
+    assert admitted == AdmissionResult(admitted=True, others=("u4i-alpha",), message="")
+    assert refused.admitted is False
+    assert refused.others == ("u4i-alpha", "u4i-beta")
+    assert refused.message.startswith("refusing spoke 3 (u4i-self)")
