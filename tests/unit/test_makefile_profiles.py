@@ -24,6 +24,7 @@ REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 MAKEFILE: Path = REPO_ROOT / "Makefile"
 MAKE_BINARY: str | None = shutil.which("make")
 GIT_BINARY: str | None = shutil.which("git")
+MISE_BINARY: str | None = shutil.which("mise")
 
 pytestmark = [
     pytest.mark.unit,
@@ -57,13 +58,20 @@ INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
         "U4I_TOKEN_DIR",
         "U4I_MEMORY_WAIT",
         "U4I_SETTLE_SECONDS",
+        "base",
+        "AFFECTED_INT",
+        "AFFECTED_UI",
+        "AFFECTED_HOST_STATIC",
+        "AFFECTED_MARKERS",
     }
 )
 SLUGGED_NAME_PATTERN: re.Pattern[str] = re.compile(r"\b(?:web|vite|u4i)-[a-z0-9-]*")
 ALL_PROFILES_FLAG: str = "--profile '*'"
 
 
-def _dry_run(*make_args: str) -> subprocess.CompletedProcess[str]:
+def _dry_run(
+    *make_args: str, extra_env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     assert MAKE_BINARY is not None
     clean_env = {
         name: value
@@ -75,7 +83,7 @@ def _dry_run(*make_args: str) -> subprocess.CompletedProcess[str]:
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
-        env=clean_env,
+        env={**clean_env, **(extra_env or {})},
         check=False,
     )
 
@@ -151,6 +159,9 @@ def test_up_rejects_invalid_profile(profile_value: str, expected_message: str) -
         pytest.param("up", "p", "p must not contain '$'", id="p"),
         pytest.param("restart", "c", "c must not contain '$'", id="c"),
         pytest.param("endpoint-info", "e", "e must not contain '$'", id="e"),
+        pytest.param(
+            "affected-markers", "base", "base must not contain '$'", id="base"
+        ),
         pytest.param(
             "up", "U4I_WEB_PORT", "U4I_WEB_PORT must not contain '$'", id="web-port"
         ),
@@ -1247,6 +1258,7 @@ def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> 
         ("addmock",),
         ("test-js",),
         ("test-host-static",),
+        ("affected-markers",),
     ],
     ids=_budgeted_ids,
 )
@@ -1356,6 +1368,7 @@ def test_worker_count_guard_is_scoped_to_the_file_targets() -> None:
         "test-backup-pipeline",
         "test-db-provision",
         "test-playwright-lifecycle",
+        "test-affected",
     ],
 )
 def test_budgeted_targets_document_the_token_budget(make_target: str) -> None:
@@ -1459,3 +1472,259 @@ def test_capacity_shows_live_memory_through_the_hub() -> None:
     assert " --output docker/.capacity.generated.env" in show_line
     assert show_line.endswith(HUB_PROJECT_FLAG.rstrip())
     assert lines.index(generate_line) < lines.index(show_line)
+
+
+# test-affected / test-agent: the selection is injected on the command line, so these dry runs never depend on the
+# real branch diff (a command-line AFFECTED_* wins over the parse-time scripts/affected_markers.py call).
+AFFECTED_INTEGRATION_EXPRESSION: str = "members or mobile_api"
+AFFECTED_UI_EXPRESSION: str = "members_ui"
+HOST_STATIC_PYTEST_FRAGMENT: str = '/venv/bin/python" -m pytest '
+CONTAINER_PYTEST_FRAGMENT: str = "python -m pytest tests/ -m "
+
+
+def _affected_selection(
+    *, integration: str, ui: str, host_static: str
+) -> tuple[str, str, str]:
+    return (
+        f"AFFECTED_INT={integration}",
+        f"AFFECTED_UI={ui}",
+        f"AFFECTED_HOST_STATIC={host_static}",
+    )
+
+
+def _container_pytest_lines(output: str) -> list[str]:
+    return [line for line in output.splitlines() if CONTAINER_PYTEST_FRAGMENT in line]
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_affected_runs_integration_then_ui_as_two_budgeted_lines() -> None:
+    output = _successful_dry_run(
+        "test-affected",
+        *_affected_selection(
+            integration=AFFECTED_INTEGRATION_EXPRESSION,
+            ui=AFFECTED_UI_EXPRESSION,
+            host_static="0",
+        ),
+    )
+    pytest_lines = _container_pytest_lines(output)
+    assert len(pytest_lines) == 2, pytest_lines
+    integration_line, ui_line = pytest_lines
+    for pytest_line, expression, worker_cap in (
+        (integration_line, AFFECTED_INTEGRATION_EXPRESSION, INTEGRATION_WORKER_CAP),
+        (ui_line, AFFECTED_UI_EXPRESSION, UI_WORKER_CAP),
+    ):
+        assert pytest_line.startswith(TOKEN_BUDGET_RUN), pytest_line
+        assert " --label test-affected -- " in pytest_line
+        budget_part, pytest_part = pytest_line.split("python -m pytest", 1)
+        assert worker_cap in _flag_value(budget_part, "--tokens", "--label")
+        assert f" -m '{expression}' -n @TOKENS@ --dist=loadscope -v\"" in pytest_part
+    assert HOST_STATIC_PYTEST_FRAGMENT not in output
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_affected_integration_only_skips_the_ui_stack() -> None:
+    output = _successful_dry_run(
+        "test-affected",
+        *_affected_selection(
+            integration=AFFECTED_INTEGRATION_EXPRESSION, ui="", host_static="0"
+        ),
+    )
+    assert len(_container_pytest_lines(output)) == 1
+    assert "playwright" not in output
+    assert " vite" not in output
+
+
+def test_affected_with_nothing_selected_runs_nothing() -> None:
+    output = _successful_dry_run(
+        "test-affected", *_affected_selection(integration="", ui="", host_static="0")
+    )
+    assert "python -m pytest" not in output
+    assert "docker" not in output
+    assert "No affected markers — nothing to run" in output
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_affected_host_static_only_runs_the_host_tests_without_docker() -> None:
+    output = _successful_dry_run(
+        "test-affected", *_affected_selection(integration="", ui="", host_static="1")
+    )
+    host_line = _single_line_containing(output, HOST_STATIC_PYTEST_FRAGMENT)
+    assert "token_budget.py" not in host_line
+    assert "tests/unit/test_makefile_profiles.py" in host_line
+    # _host-static-run carries its own _require-mise, so it runs when reached via test-affected too.
+    assert "command -v mise" in output
+    assert "docker" not in output
+    assert not _container_pytest_lines(output)
+    assert "No affected markers" not in output
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_affected_runs_host_static_then_integration_then_ui() -> None:
+    output = _successful_dry_run(
+        "test-affected",
+        *_affected_selection(
+            integration=AFFECTED_INTEGRATION_EXPRESSION,
+            ui=AFFECTED_UI_EXPRESSION,
+            host_static="1",
+        ),
+    )
+    lines = output.splitlines()
+    host_line = _single_line_containing(output, HOST_STATIC_PYTEST_FRAGMENT)
+    integration_line, ui_line = _container_pytest_lines(output)
+    assert lines.index(host_line) < lines.index(integration_line) < lines.index(ui_line)
+    assert "token_budget.py" not in host_line
+    assert "token_budget.py" in integration_line
+    assert "token_budget.py" in ui_line
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_agent_runs_typecheck_and_vitest_before_the_affected_markers() -> None:
+    output = _successful_dry_run(
+        "test-agent",
+        *_affected_selection(integration="members", ui="", host_static="0"),
+    )
+    lines = output.splitlines()
+    typecheck_lines = [line for line in lines if "tsc --noEmit" in line]
+    assert len(typecheck_lines) == 3, typecheck_lines
+    vitest_line = _single_line_containing(output, "vitest run")
+    (pytest_line,) = _container_pytest_lines(output)
+    first_pytest_index = lines.index(pytest_line)
+    assert all(lines.index(line) < first_pytest_index for line in typecheck_lines)
+    assert lines.index(vitest_line) < first_pytest_index
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_agent_host_static_only_needs_no_docker() -> None:
+    output = _successful_dry_run(
+        "test-agent", *_affected_selection(integration="", ui="", host_static="1")
+    )
+    assert "vitest run" in output
+    assert HOST_STATIC_PYTEST_FRAGMENT in output
+    assert "docker" not in output
+
+
+@pytest.mark.parametrize(
+    ("base_args", "expected_base"),
+    [
+        pytest.param((), "'origin/main'", id="default"),
+        pytest.param(("base=HEAD~2",), "'HEAD~2'", id="override"),
+    ],
+)
+def test_affected_markers_runs_the_host_report(
+    base_args: tuple[str, ...], expected_base: str
+) -> None:
+    output = _successful_dry_run("affected-markers", *base_args)
+    assert f"scripts/affected_markers.py report --base {expected_base}" in output
+    assert "token_budget.py" not in output
+
+
+@pytest.mark.parametrize("make_target", ["affected-markers", "test-affected"])
+def test_base_with_a_single_quote_is_rejected(make_target: str) -> None:
+    # base is spliced into a single-quoted shell word (--base '$(base)'), so a ' would break out of it.
+    result = _dry_run(make_target, "base=main' ; touch pwned '")
+    assert result.returncode != 0
+    assert "base must not contain a single quote" in result.stderr
+    assert result.stdout == ""
+
+
+@pytest.mark.parametrize("make_target", ["test-affected", "test-agent"])
+@pytest.mark.parametrize(
+    "scope_args",
+    [
+        pytest.param(("f=tests/unit",), id="f"),
+        pytest.param(("args=-x",), id="args"),
+        pytest.param(("f=tests/unit", "args=-x"), id="both"),
+    ],
+)
+def test_affected_targets_refuse_f_and_args(
+    make_target: str, scope_args: tuple[str, ...]
+) -> None:
+    result = _dry_run(
+        make_target,
+        *scope_args,
+        *_affected_selection(integration="unit", ui="", host_static="0"),
+    )
+    assert result.returncode != 0
+    assert "f=/args= are not supported by test-affected/test-agent" in result.stderr
+    assert result.stdout == ""
+
+
+@pytest.mark.skipif(
+    GIT_BINARY is None or MISE_BINARY is None, reason="needs git and mise"
+)
+def test_affected_selection_failure_aborts_the_dry_run() -> None:
+    # No AFFECTED_* overrides: the real script runs at parse time, fails on the unresolvable base, and the
+    # AFFECTED_MARKERS_FAILED=<exit> stdout sentinel stops make before any recipe line instead of running an
+    # empty selection.
+    result = _dry_run("test-affected", "base=refs/does-not-exist")
+    assert result.returncode != 0
+    assert "affected_markers.py failed (exit " in result.stderr
+    assert "python -m pytest" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "make_args",
+    [
+        pytest.param(("help",), id="help"),
+        pytest.param(("up",), id="up"),
+        pytest.param(("affected-markers",), id="affected-markers"),
+    ],
+)
+def test_other_goals_never_run_the_selection_at_parse_time(
+    tmp_path: Path, make_args: tuple[str, ...]
+) -> None:
+    probe_file = tmp_path / "probe"
+    probe_command = f"AFFECTED_MARKERS=sh -c 'touch {probe_file}' affected-probe"
+    _successful_dry_run(*make_args, probe_command)
+    assert not probe_file.exists(), "a non-affected goal shelled out to the selector"
+
+
+def test_affected_goal_runs_the_selection_at_parse_time(tmp_path: Path) -> None:
+    # Positive control for the probe above: the goal guard does match test-affected.
+    probe_file = tmp_path / "probe"
+    probe_command = f"AFFECTED_MARKERS=sh -c 'touch {probe_file}' affected-probe"
+    output = _successful_dry_run("test-affected", probe_command)
+    assert probe_file.exists()
+    assert "No affected markers — nothing to run" in output
+
+
+def test_affected_env_selection_does_not_skip_the_script(tmp_path: Path) -> None:
+    # Only a command-line AFFECTED_* skips the selector; a stale exported one must not.
+    probe_file = tmp_path / "probe"
+    probe_command = f"AFFECTED_MARKERS=sh -c 'touch {probe_file}' affected-probe"
+    result = _dry_run(
+        "test-affected", probe_command, extra_env={"AFFECTED_INT": "members"}
+    )
+    assert result.returncode == 0, result.stderr
+    assert probe_file.exists(), "an environment AFFECTED_INT skipped the selector"
+    assert "-m 'members'" not in result.stdout
+
+
+def test_affected_selection_must_not_contain_the_tokens_placeholder() -> None:
+    result = _dry_run(
+        "test-affected",
+        *_affected_selection(integration="@TOKENS@", ui="", host_static="0"),
+    )
+    assert result.returncode != 0
+    assert "AFFECTED_INT and AFFECTED_UI must not contain @TOKENS@" in result.stderr
+    assert result.stdout == ""
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_host_static_still_runs_its_host_pytest_line() -> None:
+    output = _successful_dry_run("test-host-static")
+    assert "command -v mise" in output
+    host_line = _single_line_containing(output, HOST_STATIC_PYTEST_FRAGMENT)
+    assert host_line.endswith("tests/unit/test_playwright_entrypoint.py -v ")
+
+
+def test_agent_documents_the_token_budget() -> None:
+    # test-agent has no budgeted line of its own, so it is pinned here rather than in
+    # test_budgeted_targets_document_the_token_budget.
+    target_lines = [
+        line
+        for line in MAKEFILE.read_text().splitlines()
+        if line.startswith("test-agent:")
+    ]
+    assert len(target_lines) == 1, target_lines
+    assert "queues on the host token budget" in target_lines[0].split("## ", 1)[1]
