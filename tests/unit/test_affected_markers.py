@@ -472,6 +472,43 @@ def test_too_complex_test_file_falls_back_to_a_text_scan() -> None:
     assert selection.markers == {"tags"}
 
 
+def test_unparseable_file_with_aliased_pytest_falls_back_to_its_marks() -> None:
+    """
+    GIVEN a changed test file with a syntax error that applies a marker
+        through `import pytest as pt`
+    WHEN it resolves
+    THEN the text-scan fallback still selects the aliased marker
+    """
+    path = "tests/integration/test_x.py"
+    texts = {path: "import pytest as pt\n\npytestmark = pt.mark.tags\ndef broken(:\n"}
+
+    selection = _resolve([path], texts=texts)
+
+    assert selection.markers == {"tags"}
+
+
+def test_unparseable_file_with_bare_mark_import_falls_back_to_its_marks() -> None:
+    """
+    GIVEN a changed test file with a syntax error that applies a marker
+        through `from pytest import mark`
+    WHEN it resolves
+    THEN the text-scan fallback still selects the bare-`mark` marker
+    """
+    path = "tests/integration/test_x.py"
+    texts = {
+        path: (
+            "from pytest import mark\n\n"
+            "@mark.urls\n"
+            "def test_it() -> None: ...\n"
+            "def broken(:\n"
+        )
+    }
+
+    selection = _resolve([path], texts=texts)
+
+    assert selection.markers == {"urls"}
+
+
 def test_this_test_module_selects_only_its_own_unit_marker() -> None:
     """
     GIVEN the committed `tests/unit/test_affected_markers.py`, whose fixture

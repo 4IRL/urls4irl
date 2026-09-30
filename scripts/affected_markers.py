@@ -69,7 +69,8 @@ UI_SUFFIX: str = "_ui"
 NO_IMPACT_REASON: str = "no test impact"
 UNMAPPED_REASON: str = "unmapped path — safe default"
 REASON_ENDPOINT_LIMIT: int = 3
-_MARK_PATTERN: re.Pattern[str] = re.compile(r"pytest\.mark\.(\w+)")
+# Any `<name>.mark.X` or bare `mark.X`, so aliased imports still over-select.
+_MARK_PATTERN: re.Pattern[str] = re.compile(r"(?:\b\w+\.)?mark\.(\w+)")
 PYTESTMARK_NAME: str = "pytestmark"
 MARK_NAMESPACE: str = "mark"
 _MARKERS_HEADER_PATTERN: re.Pattern[str] = re.compile(r"^markers\s*=")
@@ -597,7 +598,8 @@ def _applied_marks(text: str) -> set[str]:
     `pytest.param(..., marks=...)` inside one. Marker names in strings or
     comments are ignored. Text the parser rejects (a syntax error, or too
     deeply nested: MemoryError / RecursionError) falls back to a whole-text
-    scan, which over-selects rather than under-selects."""
+    scan for any `mark.X` (covering `pt.mark.X` and `from pytest import
+    mark`), which over-selects rather than under-selects."""
     try:
         tree = ast.parse(text)
     except (SyntaxError, MemoryError, RecursionError):
