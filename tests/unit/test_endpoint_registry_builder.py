@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 import pytest
@@ -617,12 +618,17 @@ def test_missing_templates_root_raises(tmp_path: Path) -> None:
     """
     GIVEN a templates_root that does not exist
     WHEN build_registry is called
-    THEN a ValueError is raised instead of silently scanning nothing
+    THEN a ValueError naming the full checked path is raised instead of
+        silently scanning nothing
     """
     app = _build_synthetic_app(ordering_probe)
+    missing_root = tmp_path / "missing"
 
-    with pytest.raises(ValueError, match="templates_root is not a directory"):
-        build_registry(app, templates_root=tmp_path / "missing")
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"templates_root is not a directory: {missing_root}"),
+    ):
+        build_registry(app, templates_root=missing_root)
 
 
 # ---------------------------------------------------------------------------

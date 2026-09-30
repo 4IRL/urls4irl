@@ -358,7 +358,7 @@ def _js_route_keys() -> dict[str, list[str]]:
 def _template_url_for_refs(templates_root: Path) -> dict[str, list[str]]:
     """Map `endpoint -> sorted template paths` for every literal Jinja `url_for`."""
     if not templates_root.is_dir():
-        raise ValueError(f"templates_root is not a directory: {templates_root.name}")
+        raise ValueError(f"templates_root is not a directory: {templates_root}")
     templates_by_endpoint: dict[str, set[str]] = {}
     for template_path in sorted(templates_root.rglob("*.html")):
         relative_path = template_path.relative_to(templates_root).as_posix()
