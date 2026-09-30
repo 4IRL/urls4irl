@@ -222,7 +222,7 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 | File | Put a package here when… | Installed by |
 |---|---|---|
 | `requirements-prod.txt` | the app imports it at runtime (`backend/`, `migrations/`, runtime `scripts/`) | prod image (`docker/Dockerfile`) |
-| `requirements-test.txt` | only `tests/`/conftest import it | **CI** (`test.yml`, `types-staleness.yml`, `event-coverage-staleness.yml`) |
+| `requirements-test.txt` | only `tests/`/conftest import it | **CI** (`test.yml`, `types-staleness.yml`, `event-coverage-staleness.yml`, `registry-staleness.yml`) |
 | `requirements-dev.txt` | nothing imports it — local tooling only (`pre-commit` and its deps) | local `web` image (`docker/Dockerfile.Local`) |
 
 The local container installs dev, so a misplaced pin passes every local test and only fails in CI, where it breaks collection for every pytest job at once. Before committing a new import, confirm the file CI installs has it. The workflow image pins its own venv in `docker/Dockerfile.Workflow` (versions match prod), so a new workflow dependency goes there too.
