@@ -1419,6 +1419,13 @@ def test_acquire_blanks_a_stale_settle_marker(lock_dir: Path) -> None:
         _release_acquired(acquired)
 
 
+def test_mark_settling_on_a_closed_fd_does_not_raise(lock_dir: Path) -> None:
+    # Best-effort: a failed marker write only costs a waiter its settle line.
+    descriptor = _held_turnstile(lock_dir)
+    os.close(descriptor)
+    token_budget._mark_settling(descriptor, TEST_SLUG, "unit-label", 20)
+
+
 def test_run_leaves_the_turnstile_blank(capacity_file: Path, lock_dir: Path) -> None:
     # 3 tokens: above the exemption, so the run marks its settle window.
     assert (
