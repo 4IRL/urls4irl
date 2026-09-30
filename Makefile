@@ -1,12 +1,25 @@
-# p (profile), c (restart), e (endpoint-info), U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) and
-# U4I_TOKEN_DIR / U4I_MEMORY_WAIT / U4I_SETTLE_SECONDS (spliced into every budgeted test line) are rejected when they contain a `$`,
-# checked unexpanded via $(value …):
+# p (profile), c (restart), e (endpoint-info), base and AFFECTED_INT / AFFECTED_UI (affected-markers / test-affected /
+# test-agent), U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) and U4I_TOKEN_DIR / U4I_MEMORY_WAIT /
+# U4I_SETTLE_SECONDS (spliced into every budgeted test line) are rejected when they contain a `$`, checked unexpanded via
+# $(value …):
 # expanding one would run any embedded make function (e.g. $(shell …)). These must stay the first lines: make 4.4+
 # exports command-line variables into every $(shell …) environment, so the first $(shell …) below would already
 # expand them.
 $(if $(findstring $$,$(value p)),$(error p must not contain '$$'))
 $(if $(findstring $$,$(value c)),$(error c must not contain '$$'))
 $(if $(findstring $$,$(value e)),$(error e must not contain '$$'))
+$(if $(findstring $$,$(value base)),$(error base must not contain '$$'))
+# base is also spliced into a single-quoted shell word (--base '$(base)'), so a ' in it is refused as well.
+$(if $(findstring ',$(value base)),$(error base must not contain a single quote (it is passed as one single-quoted shell word)))
+# A command-line AFFECTED_INT= / AFFECTED_UI= override skips the selector and is spliced into -m '$(AFFECTED_…)'
+# on the budgeted pytest lines, so it gets the same $ and ' guards as base. That single-quoted word also sits inside
+# the double-quoted $(EXEC_WEB) "…" string, which the host shell parses first, so ", ` and \ are refused as well.
+$(if $(findstring $$,$(value AFFECTED_INT)),$(error AFFECTED_INT must not contain '$$'))
+$(if $(findstring ',$(value AFFECTED_INT)),$(error AFFECTED_INT must not contain a single quote (it is passed as one single-quoted shell word)))
+$(if $(or $(findstring ",$(value AFFECTED_INT)),$(findstring `,$(value AFFECTED_INT)),$(findstring \,$(value AFFECTED_INT))),$(error AFFECTED_INT must not contain a double quote, backtick or backslash (it is spliced into a double-quoted shell string)))
+$(if $(findstring $$,$(value AFFECTED_UI)),$(error AFFECTED_UI must not contain '$$'))
+$(if $(findstring ',$(value AFFECTED_UI)),$(error AFFECTED_UI must not contain a single quote (it is passed as one single-quoted shell word)))
+$(if $(or $(findstring ",$(value AFFECTED_UI)),$(findstring `,$(value AFFECTED_UI)),$(findstring \,$(value AFFECTED_UI))),$(error AFFECTED_UI must not contain a double quote, backtick or backslash (it is spliced into a double-quoted shell string)))
 $(if $(findstring $$,$(value U4I_WEB_PORT)),$(error U4I_WEB_PORT must not contain '$$'))
 $(if $(findstring $$,$(value U4I_VITE_PORT)),$(error U4I_VITE_PORT must not contain '$$'))
 $(if $(findstring $$,$(value U4I_TOKEN_DIR)),$(error U4I_TOKEN_DIR must not contain '$$'))
@@ -23,6 +36,10 @@ PORTS_ENV = docker/.ports.generated.env
 SPOKE_PORTS = mise exec python -- python scripts/spoke_ports.py
 # Endpoint lookup (scripts/endpoint_info.py, make endpoint-info): stdlib only, reads the committed docs/endpoints/endpoint-registry.json.
 ENDPOINT_INFO = mise exec python -- python scripts/endpoint_info.py
+# Diff-scoped test selection (scripts/affected_markers.py, make affected-markers / test-affected / test-agent): stdlib only,
+# maps the branch diff against the merge-base with $(base) to pytest markers.
+AFFECTED_MARKERS = mise exec python -- python scripts/affected_markers.py
+base ?= origin/main
 # Recursive `=` so each `wildcard` is evaluated at recipe time, after _capacity-fresh / _ports-resolve have (re)generated
 # their file on a first run. `.env` goes first: passing any --env-file disables compose's implicit .env discovery, and a
 # missing .env now errors loudly.
@@ -35,7 +52,9 @@ capacity_val = $$(sed -n 's/^$(1)=//p' $(CAPACITY_ENV))
 # Tier 3 worktree identity: computed from the checkout dir name, never stored. It names the per-worktree dev DB
 # (Phase 5) and, since Phase 7, the spoke compose project and its hub-reachable aliases (web-<slug>, vite-<slug>).
 # Host ports are resolved at recipe time (they need Docker); every parse-time $(shell …) here uses only
-# git/printf/tr/sed/cut/id, never docker, so the CI dry runs stay Docker-free.
+# git/printf/tr/sed/cut/id, never docker, so the CI dry runs stay Docker-free. One bounded exception: for the
+# test-affected / test-agent goals only, the parse-time $(shell …) also runs the host stdlib scripts/affected_markers.py
+# via mise exec python (still Docker-free).
 U4I_SLUG ?= $(notdir $(CURDIR))
 export U4I_SLUG
 # Per-worktree dev DB: u4i_dev_<sanitized slug>. Must agree with scripts/testrun_resources.dev_db_name.
@@ -138,7 +157,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -333,12 +352,55 @@ HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compos
 HOST_STATIC_STAMP = $(PRIMARY_ROOT)/venv/.u4i-host-static.stamp
 HOST_STATIC_TEST_PINS = $(PRIMARY_ROOT)/requirements/requirements-test.txt
 HOST_STATIC_PROD_PINS = $(PRIMARY_ROOT)/requirements/requirements-prod.txt
-test-host-static: _require-mise ## Run the host-only static tests (Makefile/compose/entrypoint) in the primary clone's venv: make test-host-static [f=<paths>] [args=<extra-pytest-args>]
-	@test -n "$(PRIMARY_ROOT)" || { echo "$@: not inside a git checkout" >&2; exit 1; }
+test-host-static: _require-mise _host-static-run ## Run the host-only static tests (Makefile/compose/entrypoint) in the primary clone's venv: make test-host-static [f=<paths>] [args=<extra-pytest-args>]
+
+# The host-static run itself, shared by test-host-static and test-affected (a host-static diff); carries its own mise guard.
+# PYTHONDONTWRITEBYTECODE=1: tests/ and backend/ are bind-mounted into `web`, which runs the same CPython 3.11 and would
+# reuse host-written __pycache__ files whose code objects carry host paths (source lookups then hit FileNotFoundError).
+_host-static-run: _require-mise
+	@test -n "$(PRIMARY_ROOT)" || { echo "test-host-static: not inside a git checkout" >&2; exit 1; }
 	@test -x "$(PRIMARY_ROOT)/venv/bin/python" || (cd "$(PRIMARY_ROOT)" && mise exec python -- python -m venv venv) || exit 1
-	@test -f "$(HOST_STATIC_TEST_PINS)" -a -f "$(HOST_STATIC_PROD_PINS)" || { echo "$@: missing $(HOST_STATIC_TEST_PINS) or $(HOST_STATIC_PROD_PINS)" >&2; exit 1; }
+	@test -f "$(HOST_STATIC_TEST_PINS)" -a -f "$(HOST_STATIC_PROD_PINS)" || { echo "test-host-static: missing $(HOST_STATIC_TEST_PINS) or $(HOST_STATIC_PROD_PINS)" >&2; exit 1; }
 	@if [ ! -f "$(HOST_STATIC_STAMP)" ] || [ "$(HOST_STATIC_TEST_PINS)" -nt "$(HOST_STATIC_STAMP)" ] || [ "$(HOST_STATIC_PROD_PINS)" -nt "$(HOST_STATIC_STAMP)" ]; then grep -hvE '^(-r |psycopg2==)' "$(HOST_STATIC_TEST_PINS)" "$(HOST_STATIC_PROD_PINS)" | "$(PRIMARY_ROOT)/venv/bin/pip" install --quiet --disable-pip-version-check -r /dev/stdin && touch "$(HOST_STATIC_STAMP)"; fi
-	"$(PRIMARY_ROOT)/venv/bin/python" -m pytest $(or $(f),$(HOST_STATIC_TESTS)) -v $(args)
+	PYTHONDONTWRITEBYTECODE=1 "$(PRIMARY_ROOT)/venv/bin/python" -m pytest $(or $(f),$(HOST_STATIC_TESTS)) -v $(args)
+
+# Diff-scoped selection for test-affected / test-agent, resolved at parse time (the prerequisites depend on it, and a
+# $(MAKE) recursion would break the dry-run tests). Guarded by goal so no other target shells out; `:=` runs each
+# script call once, and the $(origin …) guard lets only a command-line AFFECTED_INT= / AFFECTED_UI= /
+# AFFECTED_HOST_STATIC= skip the script (a stale exported env var does not). $(shell …) captures only stdout, so a
+# failing script's stderr message prints on its own; affected_select appends an AFFECTED_MARKERS_FAILED=<exit> sentinel
+# to stdout on failure, and affected_check turns it into a hard stop instead of a silently empty selection (works on
+# any GNU make, including macOS make 3.81). affected-markers is deliberately absent: its recipe calls the script directly.
+affected_select = $(shell $(AFFECTED_MARKERS) $(1) --base '$(base)' || echo "AFFECTED_MARKERS_FAILED=$$?")
+affected_check = $(if $(filter AFFECTED_MARKERS_FAILED=%,$(1)),$(error affected_markers.py failed (exit $(patsubst AFFECTED_MARKERS_FAILED=%,%,$(filter AFFECTED_MARKERS_FAILED=%,$(1)))) — see its message above; for an unresolvable base run git fetch origin))
+ifneq ($(filter test-affected test-agent,$(MAKECMDGOALS)),)
+$(if $(strip $(f)$(args)),$(error f=/args= are not supported by test-affected/test-agent — they select their own scope; use make test-host-static or test-file-parallel for a narrower run))
+ifneq ($(origin AFFECTED_INT),command line)
+AFFECTED_INT := $(call affected_select,expr --kind integration)
+$(call affected_check,$(AFFECTED_INT))
+endif
+ifneq ($(origin AFFECTED_UI),command line)
+AFFECTED_UI := $(call affected_select,expr --kind ui)
+$(call affected_check,$(AFFECTED_UI))
+endif
+ifneq ($(origin AFFECTED_HOST_STATIC),command line)
+AFFECTED_HOST_STATIC := $(call affected_select,host-static)
+$(call affected_check,$(AFFECTED_HOST_STATIC))
+endif
+$(if $(findstring @TOKENS@,$(AFFECTED_INT) $(AFFECTED_UI)),$(error AFFECTED_INT and AFFECTED_UI must not contain @TOKENS@ (the token runner replaces it with the granted worker count)))
+endif
+
+affected-markers: ## Show which test markers the branch diff affects, and why: make affected-markers [base=<ref>]
+	@$(AFFECTED_MARKERS) report --base '$(base)'
+
+# A host-static-only diff (both marker sets empty) touches no Docker/capacity state; _host-static-run goes first so its
+# line precedes the budgeted integration then UI lines.
+test-affected: $(if $(filter 1,$(AFFECTED_HOST_STATIC)),_host-static-run) $(if $(strip $(AFFECTED_INT)$(AFFECTED_UI)),_capacity-fresh _require-n-fits _hub-capacity) $(if $(strip $(AFFECTED_UI)),prune _ui-up) ## Run only the test markers the branch diff affects (integration, then UI); queues on the host token budget; shrinks to fit live memory unless n= is given: make test-affected [base=<ref>]
+	$(if $(strip $(AFFECTED_INT)),$(call BUDGETED,$(N_INT),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) tests/ -m '$(AFFECTED_INT)' -n @TOKENS@ --dist=loadscope -v")
+	$(if $(strip $(AFFECTED_UI)),$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) tests/ -m '$(AFFECTED_UI)' -n @TOKENS@ --dist=loadscope -v")
+	$(if $(strip $(AFFECTED_INT)$(AFFECTED_UI)$(filter 1,$(AFFECTED_HOST_STATIC))),,@echo "No affected markers — nothing to run")
+
+test-agent: typecheck test-js test-affected ## Agent tier: typecheck + vitest + the affected markers; queues on the host token budget (target <60s on a single-domain diff): make test-agent [base=<ref>]
 
 # Dev-mode lazy start: a *_ui marker, or a path that collects tests/functional (the whole tree included), restarts an
 # idle-reaped hub playwright first. The %_ui word match (parentheses stripped) ignores marker-expression semantics
