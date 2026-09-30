@@ -10,8 +10,11 @@ this order:
 1. `NO_IMPACT_GLOBS` (minus `NO_IMPACT_EXEMPT`) -> no markers.
 2. `HOST_STATIC_GLOBS` -> sets `host_static`, then keeps resolving.
 3. `BROAD_GLOBS` -> everything.
-4. A test file (`tests/**/test_*.py`) -> the markers in its own text; a
-   deleted or unmarked one falls through to its `PATH_MARKERS` dir row.
+4. A test file (`tests/**/test_*.py`) -> the markers it applies (its
+   `pytestmark` assignments and `@pytest.mark.X` decorators, parsed with
+   `ast`, so marker names inside strings or comments are ignored; a file that
+   does not parse falls back to every `pytest.mark.X` in its text). A deleted
+   or unmarked one falls through to its `PATH_MARKERS` dir row.
 5. Registry rows whose handler, services, schemas or templates name the file
    -> each row's `BLUEPRINT_MARKERS` (+ `ENDPOINT_MARKER_OVERRIDES`).
 6. The first matching `PATH_MARKERS` row, unioned with step 5.
@@ -24,6 +27,7 @@ host under bare mise python.
 from __future__ import annotations
 
 import argparse
+import ast
 import fnmatch
 import json
 import re
@@ -47,6 +51,8 @@ NO_IMPACT_REASON: str = "no test impact"
 UNMAPPED_REASON: str = "unmapped path — safe default"
 REASON_ENDPOINT_LIMIT: int = 3
 _MARK_PATTERN: re.Pattern[str] = re.compile(r"pytest\.mark\.(\w+)")
+PYTESTMARK_NAME: str = "pytestmark"
+MARK_NAMESPACE: str = "mark"
 _MARKERS_HEADER_PATTERN: re.Pattern[str] = re.compile(r"^markers\s*=")
 _MARKER_NAME_PATTERN: re.Pattern[str] = re.compile(r"\w+")
 _SKIPPED_SCHEMA_MODULES: frozenset[str] = frozenset({"backend.schemas.errors"})
@@ -549,6 +555,55 @@ def _is_test_file(path: str) -> bool:
     )
 
 
+def _is_mark_namespace(node: ast.expr) -> bool:
+    """`<name>.mark` (`pytest.mark`, or an alias such as `pt.mark`) or a bare
+    `mark` (`from pytest import mark`)."""
+    if isinstance(node, ast.Attribute):
+        return node.attr == MARK_NAMESPACE and isinstance(node.value, ast.Name)
+    return isinstance(node, ast.Name) and node.id == MARK_NAMESPACE
+
+
+def _mark_names(expression: ast.AST) -> set[str]:
+    """Every `X` in a `pytest.mark.X` reference anywhere inside `expression`."""
+    return {
+        node.attr
+        for node in ast.walk(expression)
+        if isinstance(node, ast.Attribute) and _is_mark_namespace(node.value)
+    }
+
+
+def _applied_marks(text: str) -> set[str]:
+    """The marker names a test module applies: `pytestmark` assignments (module
+    or class level) and `@pytest.mark.X` decorators, including any
+    `pytest.param(..., marks=...)` inside one. Marker names in strings or
+    comments are ignored. Text the parser rejects (a syntax error, or too
+    deeply nested: MemoryError / RecursionError) falls back to a whole-text
+    scan, which over-selects rather than under-selects."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, MemoryError, RecursionError):
+        return set(_MARK_PATTERN.findall(text))
+    marks: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            targets: list[ast.expr] = node.targets
+            value: ast.expr | None = node.value
+        elif isinstance(node, ast.AnnAssign):
+            targets, value = [node.target], node.value
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            for decorator in node.decorator_list:
+                marks.update(_mark_names(decorator))
+            continue
+        else:
+            continue
+        if value is not None and any(
+            isinstance(target, ast.Name) and target.id == PYTESTMARK_NAME
+            for target in targets
+        ):
+            marks.update(_mark_names(value))
+    return marks
+
+
 @dataclass(frozen=True)
 class _FileResult:
     markers: tuple[str, ...]
@@ -572,9 +627,7 @@ def _resolve_file(
     if _is_test_file(path):
         text = read_text(path)
         if text is not None:
-            parsed = sorted(
-                set(_MARK_PATTERN.findall(text)).intersection(declared_markers)
-            )
+            parsed = sorted(_applied_marks(text).intersection(declared_markers))
             if parsed:
                 return _FileResult(tuple(parsed), f"{prefix}pytestmark in test file")
         prefix += "deleted test file; " if text is None else "unmarked test file; "

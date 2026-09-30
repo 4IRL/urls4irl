@@ -328,12 +328,161 @@ def test_list_form_pytestmark_is_parsed_and_non_markers_are_ignored() -> None:
         path: (
             "pytestmark = [pytest.mark.urls_ui, pytest.mark.mobile_ui]\n"
             "@pytest.mark.parametrize('value', [1])\n"
+            "def test_it(value: int) -> None: ...\n"
         )
     }
 
     selection = _resolve([path], texts=texts)
 
     assert selection.markers == {"urls_ui", "mobile_ui"}
+
+
+def test_marker_literals_in_strings_and_comments_are_ignored() -> None:
+    """
+    GIVEN a test file marked `unit` whose strings, docstrings and comments
+        mention other `pytest.mark.X` names
+    WHEN it resolves
+    THEN only the marker it actually applies is selected
+    """
+    path = "tests/unit/test_x.py"
+    texts = {
+        path: (
+            '"""Mentions pytest.mark.tags in a docstring."""\n'
+            "import pytest\n\n"
+            "pytestmark = pytest.mark.unit\n"
+            "# pytest.mark.admin in a comment\n"
+            "FIXTURE = 'pytestmark = [pytest.mark.urls_ui, pytest.mark.mobile_ui]'\n"
+            "def test_it() -> None:\n"
+            "    assert 'pytest.mark.members' in FIXTURE\n"
+        )
+    }
+
+    selection = _resolve([path], texts=texts)
+
+    assert selection.markers == {"unit"}
+
+
+def test_multiline_pytestmark_and_decorator_marks_are_selected() -> None:
+    """
+    GIVEN a test file with a multi-line list pytestmark, a function-level
+        and a class-level `@pytest.mark.X` decorator, and a
+        `pytest.param(..., marks=pytest.mark.X)` inside a parametrize
+    WHEN it resolves
+    THEN every applied declared marker is selected
+    """
+    path = "tests/integration/test_x.py"
+    texts = {
+        path: (
+            "import pytest\n\n"
+            "pytestmark = [\n"
+            "    pytest.mark.utubs,\n"
+            "    pytest.mark.urls,\n"
+            "]\n\n"
+            "@pytest.mark.mobile_ui\n"
+            "def test_mobile() -> None: ...\n\n"
+            "@pytest.mark.members\n"
+            "class TestMembers:\n"
+            "    @pytest.mark.parametrize(\n"
+            "        'value', [pytest.param(1, marks=pytest.mark.tags)]\n"
+            "    )\n"
+            "    def test_it(self, value: int) -> None: ...\n"
+        )
+    }
+
+    selection = _resolve([path], texts=texts)
+
+    assert selection.markers == {"utubs", "urls", "mobile_ui", "members", "tags"}
+
+
+def test_unparseable_test_file_falls_back_to_a_text_scan() -> None:
+    """
+    GIVEN a changed test file that is not valid Python (e.g. mid-edit)
+    WHEN it resolves
+    THEN every declared `pytest.mark.X` in its text is selected (safe
+        over-selection), never an error
+    """
+    path = "tests/integration/test_x.py"
+    texts = {
+        path: "pytestmark = pytest.mark.tags\ndef broken(:\n  'pytest.mark.urls'\n"
+    }
+
+    selection = _resolve([path], texts=texts)
+
+    assert selection.markers == {"tags", "urls"}
+
+
+def test_annotated_and_class_level_pytestmark_are_selected() -> None:
+    """
+    GIVEN a test file with an annotated module-level `pytestmark` and a
+        plain `pytestmark` assignment inside a class body
+    WHEN it resolves
+    THEN the markers from both assignments are selected
+    """
+    path = "tests/integration/test_x.py"
+    texts = {
+        path: (
+            "import pytest\n\n"
+            "pytestmark: list[pytest.MarkDecorator] = [pytest.mark.urls]\n\n"
+            "class TestTags:\n"
+            "    pytestmark = pytest.mark.tags\n"
+        )
+    }
+
+    selection = _resolve([path], texts=texts)
+
+    assert selection.markers == {"urls", "tags"}
+
+
+def test_aliased_pytest_and_mark_imports_are_selected() -> None:
+    """
+    GIVEN a test file that applies markers through `import pytest as pt`
+        and `from pytest import mark`
+    WHEN it resolves
+    THEN both aliased markers are selected, not the directory default
+    """
+    path = "tests/integration/test_x.py"
+    texts = {
+        path: (
+            "import pytest as pt\n"
+            "from pytest import mark\n\n"
+            "pytestmark = pt.mark.urls\n\n"
+            "@mark.mobile_ui\n"
+            "def test_it() -> None: ...\n"
+        )
+    }
+
+    selection = _resolve([path], texts=texts)
+
+    assert selection.markers == {"urls", "mobile_ui"}
+
+
+def test_too_complex_test_file_falls_back_to_a_text_scan() -> None:
+    """
+    GIVEN a changed test file too deeply nested for the parser (it raises
+        MemoryError rather than SyntaxError)
+    WHEN it resolves
+    THEN it falls back to the whole-text scan instead of crashing
+    """
+    path = "tests/integration/test_x.py"
+    texts = {path: "pytestmark = pytest.mark.tags\nvalue = " + "-" * 200_000 + "1\n"}
+
+    selection = _resolve([path], texts=texts)
+
+    assert selection.markers == {"tags"}
+
+
+def test_this_test_module_selects_only_its_own_unit_marker() -> None:
+    """
+    GIVEN the committed `tests/unit/test_affected_markers.py`, whose fixture
+        strings mention many other markers
+    WHEN it resolves with its real text
+    THEN it selects only `unit`, its own pytestmark
+    """
+    path = "tests/unit/test_affected_markers.py"
+
+    selection = _resolve([path], texts={path: (REPO_ROOT / path).read_text()})
+
+    assert selection.markers == {"unit"}
 
 
 def test_deleted_test_file_falls_back_to_its_directory_row() -> None:
