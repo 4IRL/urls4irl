@@ -54,8 +54,10 @@ make setup
    Postgres limits that depend on them, and the host UID/GID for the web image. It writes the
    gitignored `docker/.capacity.generated.env`. The same file sets the host-wide test token
    budget (`U4I_N_MAX`: concurrent test runs across every checkout queue rather than exceed it)
-   and the spoke admission ceiling (`U4I_SPOKE_MAX`: how many checkouts' stacks can run at once
-   and still leave room for one full test run). If this step fails (for example, Docker isn't
+   and an informational spoke estimate (`U4I_SPOKE_MAX`: how many checkouts' stacks fit on an
+   idle machine). Every value comes from stable inputs (cores, total memory), so the file doesn't
+   change as free memory moves; test-run starts and stack starts read live free memory instead,
+   and `make capacity` prints it on a `live:` line. If this step fails (for example, Docker isn't
    running yet), `make setup` defers it instead of failing and `make up` generates the file
    later; run `make capacity` to see the error.
 
@@ -97,8 +99,8 @@ A `Makefile` is provided for common development tasks:
 | Command | Description |
 |---|---|
 | `make setup` | One-time per clone/worktree: `.env`/`secrets/` links (worktrees), host toolchain, pre-commit hook, capacity file (idempotent) |
-| `make capacity` | Derive test worker counts, the test token budget, the spoke admission ceiling and stack limits for this machine (overrides: `U4I_N_UI=`, `U4I_N_INT=`, `U4I_MEM_FRACTION=`) |
-| `make up [p=ui\|full] d=1` | Start the shared hub (`db`), then build and start this checkout's `web` + datastores (`redis`, `redis-metrics`); `p=ui` adds `vite` and starts the hub `playwright`, `p=full` also adds `workflow`. Refuses to start one checkout's stack too many (past `U4I_SPOKE_MAX`), with the memory numbers and the running checkouts |
+| `make capacity` | Derive test worker counts, the test token budget and stack limits for this machine (overrides: `U4I_N_UI=`, `U4I_N_INT=`, `U4I_MEM_FRACTION=`), then print a `live:` line with the memory usable right now |
+| `make up [p=ui\|full] d=1` | Start the shared hub (`db`), then build and start this checkout's `web` + datastores (`redis`, `redis-metrics`); `p=ui` adds `vite` and starts the hub `playwright`, `p=full` also adds `workflow`. Refuses to start another checkout's stack when free memory can't hold it plus a minimum test run, with the memory numbers and the running checkouts |
 | `make up-built [p=full] d=1` | Same, with pre-built Vite assets (always includes the `ui` profile's vite build + hub `playwright`) |
 | `make down` | Stop this checkout's stack (every profile); the hub keeps running |
 | `make build` | Rebuild images without starting (every profile) |
@@ -129,9 +131,9 @@ make up p=ui d=1
 
 Always go through `make`: it computes the compose project and network names, resolves this checkout's host ports, generates the capacity env file, and starts the hub first. A raw `docker compose -f docker/compose.local.yaml …` fails fast on the unset `U4I_PROJECT`.
 
-**Several checkouts at once.** Each checkout (the main clone or any `git worktree`) runs its own stack, compose project `u4i-<folder name>`, and all of them share one per-user hub (`docker/compose.hub.yaml`: the Postgres cluster and the Playwright browser server). A new worktree needs only `make setup` (or just `make up d=1`), which links `.env` from the main clone. Give each worktree a unique folder name. Each stack gets its own dev database and session cookie name. `make up` refuses to start one stack more than the machine can hold (`U4I_SPOKE_MAX` from `make capacity`: the hub, every idle stack and one full test run must fit in usable memory), naming the running stacks so you can `make down` one; re-running `make up` on an already-running stack is always allowed.
+**Several checkouts at once.** Each checkout (the main clone or any `git worktree`) runs its own stack, compose project `u4i-<folder name>`, and all of them share one per-user hub (`docker/compose.hub.yaml`: the Postgres cluster and the Playwright browser server). A new worktree needs only `make setup` (or just `make up d=1`), which links `.env` from the main clone. Give each worktree a unique folder name. Each stack gets its own dev database and session cookie name. `make up` reads the machine's free memory at that moment and refuses a new stack unless it can hold one more idle stack plus a minimum test run (plus the hub, if it isn't running yet), naming the running stacks so you can `make down` one; re-running `make up` on an already-running stack is always allowed. If free memory can't be read (on macOS it is read from the Docker VM through the hub `db`), it falls back to the `U4I_SPOKE_MAX` count from `make capacity`.
 
-**Concurrent test runs.** Every `make test-*` target that runs pytest in `web` (not `test-host-static`), plus the three Docker E2E harnesses, holds tokens from a host-wide, per-user budget of `U4I_N_MAX` (a run at `-n k` holds `k`, a sequential run holds 1), so test runs in several checkouts, or several in one checkout, never oversubscribe the machine. A run that doesn't fit prints `token budget: waiting for <k> of <budget> tokens — held by: …` (then a heartbeat every 30s) and starts as soon as tokens free up: it isn't hung. A failing run prints the capacity it ran under; `at ceiling: yes` with timeouts suggests rerunning with a lower `n=`.
+**Concurrent test runs.** Every `make test-*` target that runs pytest in `web` (not `test-host-static`), plus the three Docker E2E harnesses, holds tokens from a host-wide, per-user budget of `U4I_N_MAX` (a run at `-n k` holds `k`, a sequential run holds 1), so test runs in several checkouts, or several in one checkout, never oversubscribe the machine. A run that doesn't fit prints `token budget: waiting for <k> of <budget> tokens — held by: …` (then a heartbeat every 30s) and starts as soon as tokens free up: it isn't hung. Each start also checks free memory: without `n=`, a parallel run shrinks to the workers that fit right now; with `n=` it waits (a default or sequential run also waits if not even one worker fits), printing `token budget: waiting for memory — need … GB for <n> workers, … GB usable (…); runs holding tokens: …`. If no other test run holds tokens (something else is using the memory), it gives up after `U4I_MEMORY_WAIT` seconds (default 600). A failing run prints the capacity and memory it ran under; `at ceiling: yes` with timeouts suggests rerunning with a lower `n=`, and a low-memory hint suggests memory pressure rather than a product bug.
 
 - Flask: `http://localhost:8659` in the main clone
 - Vite: `http://localhost:5173` in the main clone (only with the `ui` or `full` profile)
