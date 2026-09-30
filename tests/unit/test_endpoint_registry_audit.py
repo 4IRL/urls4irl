@@ -16,9 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from flask import Flask
 
-from backend import create_app
 from backend.config import ConfigTest
 from backend.endpoint_registry.audit import (
     JS_LINKAGE_REMEDY,
@@ -33,6 +31,7 @@ from backend.endpoint_registry.audit import (
 )
 from backend.endpoint_registry.registry import build_registry, render_markdown
 from backend.utils.all_routes import INDIRECT_JS_ENDPOINTS, NO_JS_ENDPOINTS
+from tests.utils_for_test import create_secondary_app
 
 pytestmark = pytest.mark.unit
 
@@ -63,9 +62,7 @@ def _finding_tuples(findings: list[RegistryFinding]) -> list[tuple[str, str]]:
 @pytest.fixture(scope="module")
 def live_registry() -> Registry:
     # Pass the class, not an instance, so Config.__init__ env validation is skipped.
-    app: Flask | None = create_app(ConfigTest)
-    assert app is not None
-    return build_registry(app)
+    return build_registry(create_secondary_app(ConfigTest))
 
 
 @pytest.fixture(scope="module")

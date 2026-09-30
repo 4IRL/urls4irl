@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 from flask import Flask
 
-from backend import create_app
 from backend.config import ConfigTest
 from backend.utils.all_routes import (
     ADMIN_JS_ROUTES,
@@ -12,6 +11,7 @@ from backend.utils.all_routes import (
     generate_admin_routes_js,
     generate_routes_js,
 )
+from tests.utils_for_test import create_secondary_app
 
 pytestmark = pytest.mark.unit
 
@@ -84,9 +84,7 @@ EXPECTED_ADMIN_JS_ROUTE_URLS: dict[str, str] = {
 @pytest.fixture(scope="module")
 def full_app() -> Flask:
     # Pass the class, not an instance, so Config.__init__ env validation is skipped.
-    app = create_app(ConfigTest)
-    assert app is not None
-    return app
+    return create_secondary_app(ConfigTest)
 
 
 def test_delete_utub_key_points_at_delete_endpoint() -> None:

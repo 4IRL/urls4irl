@@ -7,7 +7,6 @@ from typing import Any
 import pytest
 from flask import Blueprint, Flask
 
-from backend import create_app
 from backend.config import ConfigTest
 from backend.endpoint_registry.registry import (
     _js,
@@ -19,6 +18,7 @@ from backend.endpoint_registry.registry import (
     render_markdown,
 )
 from backend.utils.all_routes import IndirectJsSource, NoJsReason
+from tests.utils_for_test import create_secondary_app
 
 pytestmark = pytest.mark.unit
 
@@ -86,9 +86,7 @@ def _build_synthetic_app(*blueprints: Blueprint) -> Flask:
 @pytest.fixture(scope="module")
 def full_app() -> Flask:
     # Pass the class, not an instance, so Config.__init__ env validation is skipped.
-    app = create_app(ConfigTest)
-    assert app is not None
-    return app
+    return create_secondary_app(ConfigTest)
 
 
 @pytest.fixture(scope="module")

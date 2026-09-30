@@ -1,11 +1,11 @@
 import re
-from logging import LogRecord
-from typing import NamedTuple
+from logging import Handler, Logger, LogRecord, getLogger
+from typing import Any, NamedTuple
 
 from flask import Flask
 import sqlalchemy
 
-from backend import db
+from backend import create_app, db, oauth
 from backend.config import ConfigTest
 from backend.models.urls import Urls
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -201,6 +201,52 @@ def clear_database(test_config: ConfigTest):
     meta.reflect()
     meta.drop_all()
     meta.create_all()
+
+
+def create_secondary_app(config: type[ConfigTest]) -> Flask:
+    """
+    Build a second full app without clobbering the shared test app's
+    process-wide state (the session-scoped `build_app` in tests/conftest.py).
+
+    `create_app` mutates two process-wide singletons that every app built in
+    the same xdist worker shares:
+      - the `backend` app logger (and `cli_logger`): `configure_logging` sets
+        `propagate = False` and adds a StreamHandler, undoing `build_app`'s
+        `propagate = True` and silently emptying `caplog.records` for every
+        later test in that worker;
+      - Authlib's module-level `oauth` registry: `oauth.init_app` and
+        `oauth.register` overwrite the `google`/`github` clients `build_app`
+        registered with dummy credentials.
+    Snapshot both before the call and restore them afterwards.
+
+    `limiter` and `metrics_writer` are also module-level singletons that
+    `create_app` re-initializes, but for `ConfigTest` both end in the same
+    state `build_app` leaves them (limiter disabled, metrics disabled), so
+    they are not restored here. Extend the snapshot if `config` diverges.
+    """
+    touched_loggers: list[Logger] = [getLogger("backend"), getLogger("cli_logger")]
+    saved_logger_states: list[tuple[Logger, bool, int, list[Handler]]] = [
+        (logger, logger.propagate, logger.level, list(logger.handlers))
+        for logger in touched_loggers
+    ]
+    # Authlib keeps registrations in private instance attributes: `register`
+    # mutates the `_registry`/`_clients` dicts in place (so copy them), while
+    # `init_app` rebinds `app` (so keep the original reference, never a copy).
+    saved_oauth_state: dict[str, Any] = {
+        attribute: dict(value) if isinstance(value, dict) else value
+        for attribute, value in vars(oauth).items()
+    }
+    try:
+        app = create_app(config)
+    finally:
+        for logger, propagate, level, handlers in saved_logger_states:
+            logger.propagate = propagate
+            logger.setLevel(level)
+            logger.handlers = handlers
+        vars(oauth).clear()
+        vars(oauth).update(saved_oauth_state)
+    assert app is not None
+    return app
 
 
 def trim_and_parse_logs(logs: list[LogRecord]) -> list[str]:
