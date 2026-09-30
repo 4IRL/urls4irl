@@ -23,17 +23,24 @@ host under bare mise python.
 
 from __future__ import annotations
 
+import argparse
 import fnmatch
+import json
 import re
 import subprocess
+import sys
 from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[1]
-DEFAULT_REGISTRY: Path = REPO_ROOT / "docs" / "endpoints" / "endpoint-registry.json"
+REGISTRY_FILE: str = "docs/endpoints/endpoint-registry.json"
+DEFAULT_REGISTRY: Path = REPO_ROOT / REGISTRY_FILE
 PYTEST_INI: Path = REPO_ROOT / "pytest.ini"
+# Registry-bearing route modules: a change here needs make generate-endpoints.
+ROUTE_FILE_GLOBS: tuple[str, ...] = ("backend/*/routes.py", "backend/*/*_routes.py")
+EMPTY_MARKERS: str = "—"
 
 UI_SUFFIX: str = "_ui"
 NO_IMPACT_REASON: str = "no test impact"
@@ -41,6 +48,7 @@ UNMAPPED_REASON: str = "unmapped path — safe default"
 REASON_ENDPOINT_LIMIT: int = 3
 _MARK_PATTERN: re.Pattern[str] = re.compile(r"pytest\.mark\.(\w+)")
 _MARKERS_HEADER_PATTERN: re.Pattern[str] = re.compile(r"^markers\s*=")
+_MARKER_NAME_PATTERN: re.Pattern[str] = re.compile(r"\w+")
 _SKIPPED_SCHEMA_MODULES: frozenset[str] = frozenset({"backend.schemas.errors"})
 
 MarkerRow = tuple[str, tuple[str, ...]]
@@ -668,7 +676,10 @@ def read_declared_markers(pytest_ini: Path) -> set[str]:
             break
         if stripped.startswith("#"):
             continue
-        declared.add(stripped.split(":", 1)[0].split("(", 1)[0].strip())
+        name = stripped.split(":", 1)[0].split("(", 1)[0].strip()
+        if _MARKER_NAME_PATTERN.fullmatch(name) is None:
+            raise ValueError(f"invalid marker name in {pytest_ini}: {name!r}")
+        declared.add(name)
     if not declared:
         raise ValueError(f"no markers declared in {pytest_ini}")
     return declared
@@ -692,6 +703,10 @@ def _git(
         )
     except OSError as os_error:
         raise SelectionError(f"cannot run git: {os_error}") from os_error
+    except UnicodeDecodeError as decode_error:
+        raise SelectionError(
+            f"git output is not UTF-8 (a non-UTF-8 file name?): {decode_error}"
+        ) from decode_error
 
 
 def _nul_separated_paths(completed: subprocess.CompletedProcess[str]) -> set[str]:
@@ -727,6 +742,166 @@ def collect_changed_files(
     return sorted(_nul_separated_paths(diff) | _nul_separated_paths(untracked))
 
 
+# ---------------------------------------------------------------------------
+# Formatting
+# ---------------------------------------------------------------------------
+
+
+def format_expression(markers: Iterable[str]) -> str:
+    """A pytest `-m` expression: sorted markers joined with " or " ("" if none)."""
+    return " or ".join(sorted(markers))
+
+
+def _footer_line(label: str, markers: list[str], *, everything: bool) -> str:
+    expression = format_expression(markers) or "none"
+    if everything:
+        return f"{label}: everything — {expression}"
+    return f"{label}: {expression}"
+
+
+def format_report(selection: Selection, declared: Collection[str]) -> str:
+    """One `<path>  →  <markers> (<reason>)` line per file, then the footer."""
+    lines = [
+        f"{path}  →  {', '.join(markers) or EMPTY_MARKERS} ({reason})"
+        for path, reason, markers in selection.reasons
+    ] or ["No changed files."]
+    lines.extend(
+        [
+            "",
+            _footer_line(
+                "Integration",
+                selection.integration_markers(declared),
+                everything=selection.everything,
+            ),
+            _footer_line(
+                "UI", selection.ui_markers(declared), everything=selection.everything
+            ),
+            f"Host-static: {'yes' if selection.host_static else 'no'}",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def registry_staleness_warning(changed_files: Collection[str]) -> str | None:
+    """A warning when a route file changed but the registry JSON did not."""
+    if REGISTRY_FILE in changed_files:
+        return None
+    if all(_first_match(path, ROUTE_FILE_GLOBS) is None for path in changed_files):
+        return None
+    return (
+        "WARNING: route file changed but endpoint registry not regenerated"
+        " — run make generate-endpoints"
+    )
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def _read_repo_file(rel: str) -> str | None:
+    """A repo-relative file's text, or None when it does not exist (deleted)."""
+    repo_file = REPO_ROOT / rel
+    if not repo_file.is_file():
+        return None
+    return repo_file.read_text(encoding="utf-8", errors="replace")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="affected_markers.py",
+        description="Map the branch diff to the pytest markers it affects.",
+    )
+    subcommands = parser.add_subparsers(dest="command", required=True)
+    expr_parser = subcommands.add_parser(
+        "expr", help="print one kind's markers as a pytest -m expression"
+    )
+    expr_parser.add_argument("--kind", choices=("integration", "ui"), required=True)
+    host_static_parser = subcommands.add_parser(
+        "host-static", help="print 1 if a host-static file changed, else 0"
+    )
+    report_parser = subcommands.add_parser(
+        "report", help="print each changed file's markers and why"
+    )
+    for subparser in (expr_parser, host_static_parser, report_parser):
+        subparser.add_argument(
+            "--base", default="origin/main", help="diff base ref (default: origin/main)"
+        )
+        subparser.add_argument(
+            "--files",
+            nargs="*",
+            default=None,
+            help="use these repo-relative files instead of the git diff",
+        )
+        subparser.add_argument(
+            "--registry",
+            type=Path,
+            default=DEFAULT_REGISTRY,
+            help="registry JSON (default: docs/endpoints/endpoint-registry.json)",
+        )
+        subparser.add_argument(
+            "--pytest-ini",
+            type=Path,
+            default=PYTEST_INI,
+            help="pytest.ini declaring the markers (default: pytest.ini)",
+        )
+    return parser
+
+
+def _load_registry(registry_path: Path) -> dict[str, Any]:
+    try:
+        return json.loads(registry_path.read_text(encoding="utf-8"))
+    except FileNotFoundError as missing:
+        raise SelectionError(
+            f"endpoint registry not found: {registry_path} — run make generate-endpoints"
+        ) from missing
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as read_error:
+        raise SelectionError(
+            f"endpoint registry unreadable: {registry_path} — {read_error}"
+        ) from read_error
+
+
+def main(
+    argv: list[str] | None = None,
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> int:
+    args = _build_parser().parse_args(argv)
+    try:
+        registry = _load_registry(args.registry)
+        declared = read_declared_markers(args.pytest_ini)
+        changed_files = (
+            collect_changed_files(args.base, run=run)
+            if args.files is None
+            else sorted(set(args.files))
+        )
+        try:
+            _registry_index(registry)
+        except (KeyError, TypeError, AttributeError) as shape_error:
+            raise SelectionError(
+                f"endpoint registry unreadable: {args.registry} — {shape_error!r}"
+            ) from shape_error
+        selection = resolve_markers(changed_files, registry, declared, _read_repo_file)
+    except (SelectionError, ValueError, OSError, UnicodeDecodeError) as failure:
+        print(failure, file=sys.stderr)
+        return 1
+
+    if args.command == "expr":
+        kind_markers = (
+            selection.ui_markers(declared)
+            if args.kind == "ui"
+            else selection.integration_markers(declared)
+        )
+        print(format_expression(kind_markers))
+    elif args.command == "host-static":
+        print(1 if selection.host_static else 0)
+    else:
+        print(format_report(selection, declared))
+        warning = registry_staleness_warning(changed_files)
+        if warning is not None:
+            print(warning, file=sys.stderr)
+    return 0
+
+
 __all__ = [
     "BLUEPRINT_MARKERS",
     "BROAD_GLOBS",
@@ -738,9 +913,18 @@ __all__ = [
     "PATH_MARKERS",
     "PYTEST_INI",
     "REPO_ROOT",
+    "UI_SUFFIX",
     "Selection",
     "SelectionError",
     "collect_changed_files",
+    "format_expression",
+    "format_report",
+    "main",
     "read_declared_markers",
+    "registry_staleness_warning",
     "resolve_markers",
 ]
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
