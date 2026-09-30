@@ -340,7 +340,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.api_v1.services.auth:google_auth_for_api`
 - **Schema:** request: `backend.schemas.requests.api_auth.ApiGoogleAuthRequest`; response: `backend.schemas.api_v1.ApiTokenPairResponseSchema`; status: 200 `backend.schemas.api_v1.ApiTokenPairResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/auth/login` — `api_v1.api_v1_auth_login`
 
@@ -349,7 +349,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.api_v1.services.auth:login_user_for_api`
 - **Schema:** request: `backend.schemas.requests.api_auth.ApiLoginRequest`; response: `backend.schemas.api_v1.ApiTokenPairResponseSchema`; status: 200 `backend.schemas.api_v1.ApiTokenPairResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/auth/logout` — `api_v1.api_v1_auth_logout`
 
@@ -358,7 +358,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.api_v1.services.auth:logout_api_device`
 - **Schema:** request: `backend.schemas.requests.api_auth.ApiLogoutRequest`; response: `backend.schemas.base.StatusMessageResponseSchema`; status: 200 `backend.schemas.base.StatusMessageResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/auth/logout-all` — `api_v1.api_v1_auth_logout_all`
 
@@ -367,7 +367,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.api_v1.services.auth:logout_api_everywhere`
 - **Schema:** response: `backend.schemas.base.StatusMessageResponseSchema`; status: 200 `backend.schemas.base.StatusMessageResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/auth/refresh` — `api_v1.api_v1_auth_refresh`
 
@@ -376,7 +376,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.api_v1.services.auth:refresh_api_tokens`
 - **Schema:** request: `backend.schemas.requests.api_auth.ApiRefreshRequest`; response: `backend.schemas.api_v1.ApiTokenPairResponseSchema`; status: 200 `backend.schemas.api_v1.ApiTokenPairResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/auth/resend-validation` — `api_v1.api_v1_auth_resend_validation`
 
@@ -385,7 +385,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.api_v1.services.auth:resend_validation_email_for_api`
 - **Schema:** response: `backend.schemas.base.StatusMessageResponseSchema`; status: 200 `backend.schemas.base.StatusMessageResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `GET /api/v1/me` — `api_v1.api_v1_get_me`
 
@@ -394,7 +394,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** —
 - **Schema:** response: `backend.schemas.api_v1.ApiUserProfileSchema`; status: 200 `backend.schemas.api_v1.ApiUserProfileSchema`, 401 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `GET /api/v1/search` — `api_v1.api_v1_search_across_utubs`
 
@@ -403,7 +403,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.search.services.cross_utub_search:search_across_user_utubs`
 - **Schema:** query: `backend.schemas.requests.search.SearchQuerySchema`; response: `backend.schemas.search.SearchResultsSchema`; status: 200 `backend.schemas.search.SearchResultsSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `GET /api/v1/utubs` — `api_v1.api_v1_get_utubs`
 
@@ -412,7 +412,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.utubs.services.read_utubs:get_all_utubs_of_user`
 - **Schema:** response: `backend.schemas.users.UtubSummaryListSchema`; status: 200 `backend.schemas.users.UtubSummaryListSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/utubs` — `api_v1.api_v1_create_utub`
 
@@ -421,7 +421,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.utubs.services.create_utubs:create_new_utub`
 - **Schema:** request: `backend.schemas.requests.utubs.CreateUTubRequest`; response: `backend.schemas.utubs.UtubCreatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubCreatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `DELETE /api/v1/utubs/<int:utub_id>` — `api_v1.api_v1_delete_utub`
 
@@ -430,7 +430,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.utubs.services.delete_utubs:delete_utub_for_user`
 - **Schema:** response: `backend.schemas.utubs.UtubDeletedResponseSchema`; status: 200 `backend.schemas.utubs.UtubDeletedResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `GET /api/v1/utubs/<int:utub_id>` — `api_v1.api_v1_get_single_utub`
 
@@ -439,7 +439,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.utubs.services.read_utubs:get_single_utub_for_user`
 - **Schema:** response: `backend.schemas.utubs.UtubDetailSchema`; status: 200 `backend.schemas.utubs.UtubDetailSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `GET /api/v1/utubs/<int:utub_id>/co-members` — `api_v1.api_v1_get_co_member_candidates`
 
@@ -448,7 +448,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.members.services.co_member_search:get_co_member_candidates`
 - **Schema:** response: `backend.schemas.users.CoMemberListSchema`; status: 200 `backend.schemas.users.CoMemberListSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `PATCH /api/v1/utubs/<int:utub_id>/description` — `api_v1.api_v1_update_utub_desc`
 
@@ -457,7 +457,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.utubs.services.update_utubs:update_utub_desc_if_new`
 - **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubDescriptionRequest`; response: `backend.schemas.utubs.UtubDescUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubDescUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/utubs/<int:utub_id>/members` — `api_v1.api_v1_create_member`
 
@@ -466,7 +466,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.members.services.create_members:create_utub_member`
 - **Schema:** request: `backend.schemas.requests.members.AddMemberRequest`; response: `backend.schemas.users.MemberModifiedResponseSchema`; status: 200 `backend.schemas.users.MemberModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `DELETE /api/v1/utubs/<int:utub_id>/members/<int:user_id>` — `api_v1.api_v1_remove_member`
 
@@ -475,7 +475,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.members.services.delete_members:remove_member_or_self_from_utub`
 - **Schema:** response: `backend.schemas.users.MemberModifiedResponseSchema`; status: 200 `backend.schemas.users.MemberModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `PATCH /api/v1/utubs/<int:utub_id>/members/<int:user_id>` — `api_v1.api_v1_modify_member_role`
 
@@ -484,7 +484,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.members.services.modify_member_role:modify_member_role`
 - **Schema:** request: `backend.schemas.requests.members.ModifyMemberRoleRequest`; response: `backend.schemas.users.MemberModifiedResponseSchema`; status: 200 `backend.schemas.users.MemberModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `PATCH /api/v1/utubs/<int:utub_id>/name` — `api_v1.api_v1_update_utub_name`
 
@@ -493,7 +493,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.utubs.services.update_utubs:update_utub_name_if_new`
 - **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubNameRequest`; response: `backend.schemas.utubs.UtubNameUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubNameUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `PATCH /api/v1/utubs/<int:utub_id>/owner` — `api_v1.api_v1_transfer_utub_ownership`
 
@@ -502,7 +502,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.members.services.transfer_ownership:transfer_ownership`
 - **Schema:** request: `backend.schemas.requests.members.TransferOwnershipRequest`; response: `backend.schemas.users.OwnershipTransferredResponseSchema`; status: 200 `backend.schemas.users.OwnershipTransferredResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/utubs/<int:utub_id>/tags` — `api_v1.api_v1_create_utub_tag`
 
@@ -511,7 +511,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.tags.services.create_utub_tag:create_tag_in_utub`
 - **Schema:** request: `backend.schemas.requests.tags.AddTagRequest`; response: `backend.schemas.tags.UtubTagAddedToUtubResponseSchema`; status: 200 `backend.schemas.tags.UtubTagAddedToUtubResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `DELETE /api/v1/utubs/<int:utub_id>/tags/<int:utub_tag_id>` — `api_v1.api_v1_delete_utub_tag`
 
@@ -520,7 +520,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.tags.services.delete_utub_tag:delete_utub_tag_from_utub_and_utub_urls`
 - **Schema:** response: `backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema`; status: 200 `backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/utubs/<int:utub_id>/urls` — `api_v1.api_v1_create_url`
 
@@ -529,7 +529,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.urls.services.create_urls:create_url_in_utub`
 - **Schema:** request: `backend.schemas.requests.urls.CreateURLRequest`; response: `backend.schemas.urls.UrlCreatedResponseSchema`; status: 200 `backend.schemas.urls.UrlCreatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `DELETE /api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>` — `api_v1.api_v1_delete_url`
 
@@ -538,7 +538,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.urls.services.delete_urls:delete_url_in_utub`
 - **Schema:** response: `backend.schemas.urls.UrlDeletedResponseSchema`; status: 200 `backend.schemas.urls.UrlDeletedResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `GET /api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>` — `api_v1.api_v1_get_url`
 
@@ -547,7 +547,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.urls.services.read_urls:get_url_in_utub`
 - **Schema:** response: `backend.schemas.urls.UrlReadResponseSchema`; status: 200 `backend.schemas.urls.UrlReadResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `PATCH /api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>` — `api_v1.api_v1_update_url`
 
@@ -556,7 +556,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.urls.services.update_urls:update_url_in_utub`
 - **Schema:** request: `backend.schemas.requests.urls.UpdateURLStringRequest`; response: `backend.schemas.urls.UrlUpdatedResponseSchema`; status: 200 `backend.schemas.urls.UrlUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags` — `api_v1.api_v1_create_utub_url_tag`
 
@@ -565,7 +565,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.tags.services.create_url_tag:add_tag_to_url_if_valid`
 - **Schema:** request: `backend.schemas.requests.tags.AddTagRequest`; response: `backend.schemas.tags.UrlTagModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `DELETE /api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_tag_id>` — `api_v1.api_v1_delete_utub_url_tag`
 
@@ -574,7 +574,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.tags.services.delete_url_tag:delete_url_tag`
 - **Schema:** response: `backend.schemas.tags.UrlTagModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagModifiedResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `POST /api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/batch` — `api_v1.api_v1_create_utub_url_tags`
 
@@ -583,7 +583,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.tags.services.create_url_tag:add_batch_tags_to_existing_url`
 - **Schema:** request: `backend.schemas.requests.tags.AddTagsRequest`; response: `backend.schemas.tags.UrlTagsModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagsModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ### `PATCH /api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>/title` — `api_v1.api_v1_update_url_title`
 
@@ -592,7 +592,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.urls.services.update_url_titles:update_url_title_if_new`
 - **Schema:** request: `backend.schemas.requests.urls.UpdateURLTitleRequest`; response: `backend.schemas.urls.UrlTitleUpdatedResponseSchema`; status: 200 `backend.schemas.urls.UrlTitleUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: mobile-api
 
 ## contact
 
@@ -818,7 +818,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.splash.services.oauth.linking_service:initiate_link_oauth_redirect`
 - **Schema:** status: 302 `backend.schemas.base.EmptyRedirectSchema`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: browser-redirect
 
 ### `GET /oauth/github/callback` — `splash.github_callback`
 
@@ -827,7 +827,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.splash.services.oauth.github_service:handle_github_callback`
 - **Schema:** query: `backend.schemas.requests.splash.GitHubOAuthCallbackQuerySchema`; status: 200 `backend.schemas.base.HtmlErrorPageSchema`, 302 `backend.schemas.base.EmptyRedirectSchema`, 400 `backend.schemas.errors.ErrorResponse`
 - **Template:** `pages/splash.html`
-- **JS:** —
+- **JS:** no-js: oauth-callback
 
 ### `GET /oauth/github/login` — `splash.github_login`
 
@@ -845,7 +845,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.splash.services.oauth.google_service:handle_google_callback`
 - **Schema:** query: `backend.schemas.requests.splash.GoogleOAuthCallbackQuerySchema`; status: 200 `backend.schemas.base.HtmlErrorPageSchema`, 302 `backend.schemas.base.EmptyRedirectSchema`, 400 `backend.schemas.errors.ErrorResponse`
 - **Template:** `pages/splash.html`
-- **JS:** —
+- **JS:** no-js: oauth-callback
 
 ### `GET /oauth/google/login` — `splash.google_login`
 
@@ -908,7 +908,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.splash.services.reset_password:reset_password_for_user`
 - **Schema:** request: `backend.schemas.requests.splash.ResetPasswordRequest`; response: `backend.schemas.users.ResetPasswordResponseSchema`; status: 200 `backend.schemas.users.ResetPasswordResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** indirect: page-self-url
 
 ### `POST /send-validation-email` — `splash.send_validation_email`
 
@@ -946,7 +946,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** —
 - **Schema:** response: `backend.schemas.system.HealthResponseSchema`; status: 200 `backend.schemas.system.HealthResponseSchema`, 503 `backend.schemas.base.StatusMessageResponseSchema`
 - **Template:** —
-- **JS:** —
+- **JS:** no-js: infra-probe
 
 ## urls
 
@@ -1094,7 +1094,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.splash.services.oauth.linking_service:unlink_provider`
 - **Schema:** response: `backend.schemas.base.StatusMessageResponseSchema`; status: 200 `backend.schemas.base.StatusMessageResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** indirect: server-built-url
 
 ### `POST /users/<int:user_id>/oauth/link/<string:provider>` — `users.link_oauth_provider`
 
@@ -1103,7 +1103,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.splash.services.oauth.linking_service:initiate_settings_link`
 - **Schema:** request: `backend.schemas.requests.users.ProviderLinkRequest`; response: `backend.schemas.users.LoginRedirectResponseSchema`; status: 200 `backend.schemas.users.LoginRedirectResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** —
+- **JS:** indirect: server-built-url
 
 ### `PUT /users/<int:user_id>/password` — `users.change_password`
 

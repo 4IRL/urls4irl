@@ -29,7 +29,12 @@ from typing import Any, Callable
 
 from flask import Flask
 
-from backend.utils.all_routes import ADMIN_JS_ROUTES, JS_ROUTES
+from backend.utils.all_routes import (
+    ADMIN_JS_ROUTES,
+    INDIRECT_JS_ENDPOINTS,
+    JS_ROUTES,
+    NO_JS_ENDPOINTS,
+)
 
 # ---------------------------------------------------------------------------
 # Module-level constants
@@ -57,11 +62,8 @@ _DEFAULT_TEMPLATES_ROOT: Path = _REPO_ROOT / "backend" / "templates"
 _TEMPLATE_URL_FOR_PATTERN = re.compile(r"url_for\(\s*['\"]([A-Za-z0-9_.]+)['\"]")
 
 _NO_JS_FULL_PAGE_NAVIGATION = "full-page-navigation"
-
-# Placeholder exact-endpoint -> no-JS reason map. Step 5 replaces this with
-# NO_JS_ENDPOINTS (backend/utils/all_routes.py) and adds the `<blueprint>.*`
-# prefix lookup.
-_NO_JS_ENDPOINTS_STUB: dict[str, str] = {}
+# `NO_JS_ENDPOINTS` keys ending in this suffix cover a whole blueprint.
+BLUEPRINT_WILDCARD_SUFFIX = ".*"
 
 _GENERATED_BY = "flask endpoints generate — DO NOT EDIT"
 _SOURCE_OF_TRUTH = (
@@ -369,8 +371,18 @@ def _template_url_for_refs(templates_root: Path) -> dict[str, list[str]]:
 
 
 def _no_js_reason(endpoint: str) -> str | None:
-    """Exact-endpoint lookup against the no-JS map."""
-    return _NO_JS_ENDPOINTS_STUB.get(endpoint)
+    """Look up `NO_JS_ENDPOINTS`: exact endpoint first, then `<blueprint>.*`."""
+    reason = NO_JS_ENDPOINTS.get(endpoint)
+    if reason is None:
+        blueprint = endpoint.rpartition(".")[0]
+        reason = NO_JS_ENDPOINTS.get(blueprint + BLUEPRINT_WILDCARD_SUFFIX)
+    return None if reason is None else reason.value
+
+
+def _indirect_js_source(endpoint: str) -> str | None:
+    """Look up `INDIRECT_JS_ENDPOINTS` (exact endpoint keys only)."""
+    source = INDIRECT_JS_ENDPOINTS.get(endpoint)
+    return None if source is None else source.value
 
 
 def _js(
@@ -379,12 +391,15 @@ def _js(
     route_keys: list[str],
     template_url_for: list[str],
 ) -> dict[str, Any]:
+    indirect = _indirect_js_source(endpoint)
     no_js = _no_js_reason(endpoint)
-    if no_js is None and not is_api_route and not route_keys and not template_url_for:
+    is_linked = bool(route_keys or template_url_for or indirect)
+    if no_js is None and not is_api_route and not is_linked:
         no_js = _NO_JS_FULL_PAGE_NAVIGATION
     return {
         "route_keys": route_keys,
         "template_url_for": template_url_for,
+        "indirect": indirect,
         "no_js": no_js,
     }
 
@@ -487,6 +502,8 @@ def _render_js(js: dict[str, Any]) -> str:
         parts.append(f"keys: {_code_list(js['route_keys'])}")
     if js["template_url_for"]:
         parts.append(f"template url_for: {_code_list(js['template_url_for'])}")
+    if js["indirect"]:
+        parts.append(f"indirect: {js['indirect']}")
     if js["no_js"]:
         parts.append(f"no-js: {js['no_js']}")
     return "; ".join(parts) or _EMPTY_VALUE
@@ -527,6 +544,7 @@ def render_markdown(registry: dict[str, Any]) -> str:
 
 
 __all__ = [
+    "BLUEPRINT_WILDCARD_SUFFIX",
     "EXCLUDED_ENDPOINT_PREFIXES",
     "build_registry",
     "dump_registry_json",

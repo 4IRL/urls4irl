@@ -10,12 +10,15 @@ from flask import Blueprint, Flask
 from backend import create_app
 from backend.config import ConfigTest
 from backend.endpoint_registry.registry import (
+    _js,
+    _no_js_reason,
     _service_function_def,
     build_registry,
     dump_registry_json,
     is_registry_endpoint,
     render_markdown,
 )
+from backend.utils.all_routes import IndirectJsSource, NoJsReason
 
 pytestmark = pytest.mark.unit
 
@@ -487,18 +490,105 @@ def test_unlinked_page_route_is_full_page_navigation(
     assert js_field == {
         "route_keys": [],
         "template_url_for": [],
+        "indirect": None,
         "no_js": FULL_PAGE_NAVIGATION,
     }
 
 
-def test_unlinked_api_route_has_null_no_js(registry_rows: RegistryRows) -> None:
+@pytest.mark.parametrize(
+    ("endpoint", "expected_no_js"),
+    [
+        pytest.param(SYSTEM_HEALTH, "infra-probe", id="exact-key"),
+        pytest.param("api_v1.api_v1_get_me", "mobile-api", id="blueprint-wildcard"),
+    ],
+)
+def test_no_js_reason_from_no_js_endpoints(
+    registry_rows: RegistryRows, endpoint: str, expected_no_js: str
+) -> None:
     """
-    GIVEN system.health: an @api_route with no key, no template ref, and (until
-        NO_JS_ENDPOINTS exists) no no-js reason
+    GIVEN an @api_route covered by NO_JS_ENDPOINTS (exact key or `<bp>.*`)
     WHEN the registry is built
+    THEN no_js is the entry's reason as a plain string
+    """
+    no_js = registry_rows[endpoint]["js"]["no_js"]
+    assert no_js == expected_no_js
+    assert type(no_js) is str
+
+
+def test_no_js_exact_key_wins_over_blueprint_wildcard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN a NO_JS map with both `probe.*` and an exact `probe.special` key
+    WHEN the reason is looked up
+    THEN the exact key wins, other probe endpoints fall back to the wildcard,
+        and an unmapped endpoint gets None
+    """
+    monkeypatch.setattr(
+        "backend.endpoint_registry.registry.NO_JS_ENDPOINTS",
+        {"probe.*": NoJsReason.MOBILE_API, "probe.special": NoJsReason.INFRA_PROBE},
+    )
+    assert _no_js_reason("probe.special") == "infra-probe"
+    assert _no_js_reason("probe.other") == "mobile-api"
+    assert _no_js_reason("unmapped.other") is None
+
+
+def test_unlinked_api_route_has_null_no_js() -> None:
+    """
+    GIVEN an @api_route with no key, no template ref and no NO_JS entry
+    WHEN its JS field is derived
     THEN no_js stays null rather than defaulting to full-page navigation
     """
-    assert registry_rows[SYSTEM_HEALTH]["js"]["no_js"] is None
+    js_field = _js(
+        "unmapped.endpoint", is_api_route=True, route_keys=[], template_url_for=[]
+    )
+    assert js_field["no_js"] is None
+    assert js_field["indirect"] is None
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "expected_indirect"),
+    [
+        ("users.link_oauth_provider", "server-built-url"),
+        ("users.unlink_oauth_provider", "server-built-url"),
+        ("splash.reset_password", "page-self-url"),
+    ],
+)
+def test_indirect_js_source_from_indirect_js_endpoints(
+    registry_rows: RegistryRows, endpoint: str, expected_indirect: str
+) -> None:
+    """
+    GIVEN an endpoint the frontend calls through a URL it gets indirectly
+    WHEN the registry is built
+    THEN js.indirect is its INDIRECT_JS_ENDPOINTS source as a plain string,
+        and no_js is null (it has a web-JS caller)
+    """
+    js_field = registry_rows[endpoint]["js"]
+    assert js_field["indirect"] == expected_indirect
+    assert type(js_field["indirect"]) is str
+    assert js_field["no_js"] is None
+
+
+def test_indirect_source_suppresses_full_page_navigation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN a non-@api_route endpoint with no key or template ref but an
+        INDIRECT_JS_ENDPOINTS entry
+    WHEN its JS field is derived
+    THEN it carries the indirect source and no full-page-navigation fallback
+    """
+    monkeypatch.setattr(
+        "backend.endpoint_registry.registry.INDIRECT_JS_ENDPOINTS",
+        {"probe.page": IndirectJsSource.PAGE_SELF_URL},
+    )
+    js_field = _js("probe.page", is_api_route=False, route_keys=[], template_url_for=[])
+    assert js_field == {
+        "route_keys": [],
+        "template_url_for": [],
+        "indirect": "page-self-url",
+        "no_js": None,
+    }
 
 
 def test_template_scan_uses_given_templates_root(tmp_path: Path) -> None:
@@ -657,6 +747,7 @@ def _two_endpoint_registry() -> dict[str, Any]:
                 "js": {
                     "route_keys": ["deleteUTub"],
                     "template_url_for": [],
+                    "indirect": None,
                     "no_js": None,
                 },
             },
@@ -673,6 +764,7 @@ def _two_endpoint_registry() -> dict[str, Any]:
                 "js": {
                     "route_keys": [],
                     "template_url_for": ["admin_portal/users/detail.html"],
+                    "indirect": None,
                     "no_js": "full-page-navigation",
                 },
             },
@@ -775,6 +867,25 @@ def test_render_markdown_page_route_bullets() -> None:
         "; no-js: full-page-navigation\n"
     )
     assert expected_block in markdown
+
+
+def test_render_markdown_indirect_js_source() -> None:
+    """
+    GIVEN an @api_route row whose only JS linkage is an indirect source
+    WHEN render_markdown is called
+    THEN its JS bullet reads `indirect: <source>`
+    """
+    registry = _two_endpoint_registry()
+    registry["endpoints"][0]["js"] = {
+        "route_keys": [],
+        "template_url_for": [],
+        "indirect": "server-built-url",
+        "no_js": None,
+    }
+
+    markdown = render_markdown(registry)
+
+    assert "- **JS:** indirect: server-built-url\n" in markdown
 
 
 def test_render_markdown_full_app_has_one_heading_per_endpoint(

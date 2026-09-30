@@ -6,6 +6,7 @@
       "endpoint": "splash.splash_page",
       "handler": "backend/splash/routes.py:splash_page",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -34,6 +35,7 @@
       "endpoint": "admin.admin_portal",
       "handler": "backend/admin/routes.py:admin_portal",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -59,6 +61,7 @@
       "endpoint": "admin.admin_audit_log",
       "handler": "backend/admin/routes.py:admin_audit_log",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -84,6 +87,7 @@
       "endpoint": "admin.admin_audit_log_rows",
       "handler": "backend/admin/routes.py:admin_audit_log_rows",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -111,6 +115,7 @@
       "endpoint": "admin.admin_db",
       "handler": "backend/admin/routes.py:admin_db",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -140,6 +145,7 @@
       "endpoint": "admin.admin_db_table",
       "handler": "backend/admin/routes.py:admin_db_table",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -168,6 +174,7 @@
       "endpoint": "admin.admin_db_row",
       "handler": "backend/admin/routes.py:admin_db_row",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -194,6 +201,7 @@
       "endpoint": "admin.admin_health",
       "handler": "backend/admin/routes.py:admin_health",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -219,6 +227,7 @@
       "endpoint": "admin.admin_health_snapshot",
       "handler": "backend/admin/routes.py:admin_health_snapshot",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -245,6 +254,7 @@
       "endpoint": "admin.admin_metrics",
       "handler": "backend/admin/routes.py:admin_metrics",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "adminMetricsPage"
@@ -274,6 +284,7 @@
       "endpoint": "admin.admin_ops_audit_purge",
       "handler": "backend/admin/action_routes.py:admin_ops_audit_purge",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -311,6 +322,7 @@
       "endpoint": "admin.admin_ops_backup_trigger",
       "handler": "backend/admin/action_routes.py:admin_ops_backup_trigger",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -348,6 +360,7 @@
       "endpoint": "admin.admin_ops_gauge_sample",
       "handler": "backend/admin/action_routes.py:admin_ops_gauge_sample",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -385,6 +398,7 @@
       "endpoint": "admin.admin_ops_metrics_flush",
       "handler": "backend/admin/action_routes.py:admin_ops_metrics_flush",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -422,6 +436,7 @@
       "endpoint": "admin.admin_ops_short_urls_sync",
       "handler": "backend/admin/action_routes.py:admin_ops_short_urls_sync",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -459,6 +474,7 @@
       "endpoint": "admin.admin_ops_verify_tables",
       "handler": "backend/admin/action_routes.py:admin_ops_verify_tables",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -495,6 +511,7 @@
       "endpoint": "admin.admin_system_operations",
       "handler": "backend/admin/routes.py:admin_system_operations",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -521,6 +538,7 @@
       "endpoint": "admin.admin_url_purge",
       "handler": "backend/admin/action_routes.py:admin_url_purge",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -555,6 +573,7 @@
       "endpoint": "admin.admin_users",
       "handler": "backend/admin/routes.py:admin_users",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -582,6 +601,7 @@
       "endpoint": "admin.admin_user_email_resend",
       "handler": "backend/admin/action_routes.py:admin_user_email_resend",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -619,6 +639,7 @@
       "endpoint": "admin.admin_user_email_verify",
       "handler": "backend/admin/action_routes.py:admin_user_email_verify",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -655,6 +676,7 @@
       "endpoint": "admin.admin_user_erase",
       "handler": "backend/admin/action_routes.py:admin_user_erase",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -691,6 +713,7 @@
       "endpoint": "admin.admin_user_force_reset",
       "handler": "backend/admin/action_routes.py:admin_user_force_reset",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -728,6 +751,7 @@
       "endpoint": "admin.admin_user_kill_sessions",
       "handler": "backend/admin/action_routes.py:admin_user_kill_sessions",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -764,6 +788,7 @@
       "endpoint": "admin.admin_user_oauth_unlink",
       "handler": "backend/admin/action_routes.py:admin_user_oauth_unlink",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -800,6 +825,7 @@
       "endpoint": "admin.admin_user_suspend",
       "handler": "backend/admin/action_routes.py:admin_user_suspend",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -836,6 +862,7 @@
       "endpoint": "admin.admin_user_unsuspend",
       "handler": "backend/admin/action_routes.py:admin_user_unsuspend",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -871,6 +898,7 @@
       "endpoint": "admin.admin_user_detail",
       "handler": "backend/admin/routes.py:admin_user_detail",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -898,6 +926,7 @@
       "endpoint": "admin.admin_users_search",
       "handler": "backend/admin/routes.py:admin_users_search",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -925,6 +954,7 @@
       "endpoint": "admin.admin_utubs",
       "handler": "backend/admin/routes.py:admin_utubs",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -954,6 +984,7 @@
       "endpoint": "admin.admin_utub_detail",
       "handler": "backend/admin/routes.py:admin_utub_detail",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -982,6 +1013,7 @@
       "endpoint": "admin.admin_utub_delete",
       "handler": "backend/admin/action_routes.py:admin_utub_delete",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -1017,6 +1049,7 @@
       "endpoint": "admin.admin_utub_lock",
       "handler": "backend/admin/action_routes.py:admin_utub_lock",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -1052,6 +1085,7 @@
       "endpoint": "admin.admin_member_remove",
       "handler": "backend/admin/action_routes.py:admin_member_remove",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -1087,6 +1121,7 @@
       "endpoint": "admin.admin_utub_tag_delete",
       "handler": "backend/admin/action_routes.py:admin_utub_tag_delete",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -1122,6 +1157,7 @@
       "endpoint": "admin.admin_utub_unlock",
       "handler": "backend/admin/action_routes.py:admin_utub_unlock",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -1157,6 +1193,7 @@
       "endpoint": "admin.admin_url_delete",
       "handler": "backend/admin/action_routes.py:admin_url_delete",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -1193,6 +1230,7 @@
       "endpoint": "metrics.ingest",
       "handler": "backend/metrics/routes.py:ingest",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsIngest"
@@ -1224,6 +1262,7 @@
       "endpoint": "metrics.query_flow",
       "handler": "backend/metrics/routes.py:query_flow",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsQueryFlow"
@@ -1257,6 +1296,7 @@
       "endpoint": "metrics.query_gauges_timeseries",
       "handler": "backend/metrics/routes.py:query_gauges_timeseries",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsQueryGaugesTimeseries"
@@ -1292,6 +1332,7 @@
       "endpoint": "metrics.query_grouped_timeseries",
       "handler": "backend/metrics/routes.py:query_grouped_timeseries",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsQueryGroupedTimeseries"
@@ -1327,6 +1368,7 @@
       "endpoint": "metrics.query_latency",
       "handler": "backend/metrics/routes.py:query_latency",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsQueryLatency"
@@ -1362,6 +1404,7 @@
       "endpoint": "metrics.query_latency_timeseries",
       "handler": "backend/metrics/routes.py:query_latency_timeseries",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsQueryLatencyTimeseries"
@@ -1397,6 +1440,7 @@
       "endpoint": "metrics.query_summary",
       "handler": "backend/metrics/routes.py:query_summary",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsQuerySummary"
@@ -1432,6 +1476,7 @@
       "endpoint": "metrics.query_timeseries",
       "handler": "backend/metrics/routes.py:query_timeseries",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsQueryTimeseries"
@@ -1467,6 +1512,7 @@
       "endpoint": "metrics.query_top",
       "handler": "backend/metrics/routes.py:query_top",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "metricsQueryTop"
@@ -1502,7 +1548,8 @@
       "endpoint": "api_v1.api_v1_auth_google",
       "handler": "backend/api_v1/routes.py:api_v1_auth_google",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1537,7 +1584,8 @@
       "endpoint": "api_v1.api_v1_auth_login",
       "handler": "backend/api_v1/routes.py:api_v1_auth_login",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1569,7 +1617,8 @@
       "endpoint": "api_v1.api_v1_auth_logout",
       "handler": "backend/api_v1/routes.py:api_v1_auth_logout",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1603,7 +1652,8 @@
       "endpoint": "api_v1.api_v1_auth_logout_all",
       "handler": "backend/api_v1/routes.py:api_v1_auth_logout_all",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1635,7 +1685,8 @@
       "endpoint": "api_v1.api_v1_auth_refresh",
       "handler": "backend/api_v1/routes.py:api_v1_auth_refresh",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1669,7 +1720,8 @@
       "endpoint": "api_v1.api_v1_auth_resend_validation",
       "handler": "backend/api_v1/routes.py:api_v1_auth_resend_validation",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1703,7 +1755,8 @@
       "endpoint": "api_v1.api_v1_get_me",
       "handler": "backend/api_v1/routes.py:api_v1_get_me",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1732,7 +1785,8 @@
       "endpoint": "api_v1.api_v1_search_across_utubs",
       "handler": "backend/api_v1/url_routes.py:api_v1_search_across_utubs",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1765,7 +1819,8 @@
       "endpoint": "api_v1.api_v1_get_utubs",
       "handler": "backend/api_v1/utub_routes.py:api_v1_get_utubs",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1797,7 +1852,8 @@
       "endpoint": "api_v1.api_v1_create_utub",
       "handler": "backend/api_v1/utub_routes.py:api_v1_create_utub",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1830,7 +1886,8 @@
       "endpoint": "api_v1.api_v1_delete_utub",
       "handler": "backend/api_v1/utub_routes.py:api_v1_delete_utub",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1863,7 +1920,8 @@
       "endpoint": "api_v1.api_v1_get_single_utub",
       "handler": "backend/api_v1/utub_routes.py:api_v1_get_single_utub",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1896,7 +1954,8 @@
       "endpoint": "api_v1.api_v1_get_co_member_candidates",
       "handler": "backend/api_v1/utub_member_routes.py:api_v1_get_co_member_candidates",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1929,7 +1988,8 @@
       "endpoint": "api_v1.api_v1_update_utub_desc",
       "handler": "backend/api_v1/utub_routes.py:api_v1_update_utub_desc",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1964,7 +2024,8 @@
       "endpoint": "api_v1.api_v1_create_member",
       "handler": "backend/api_v1/utub_member_routes.py:api_v1_create_member",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -1999,7 +2060,8 @@
       "endpoint": "api_v1.api_v1_remove_member",
       "handler": "backend/api_v1/utub_member_routes.py:api_v1_remove_member",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2033,7 +2095,8 @@
       "endpoint": "api_v1.api_v1_modify_member_role",
       "handler": "backend/api_v1/utub_member_routes.py:api_v1_modify_member_role",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2067,7 +2130,8 @@
       "endpoint": "api_v1.api_v1_update_utub_name",
       "handler": "backend/api_v1/utub_routes.py:api_v1_update_utub_name",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2101,7 +2165,8 @@
       "endpoint": "api_v1.api_v1_transfer_utub_ownership",
       "handler": "backend/api_v1/utub_member_routes.py:api_v1_transfer_utub_ownership",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2135,7 +2200,8 @@
       "endpoint": "api_v1.api_v1_create_utub_tag",
       "handler": "backend/api_v1/tag_routes.py:api_v1_create_utub_tag",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2169,7 +2235,8 @@
       "endpoint": "api_v1.api_v1_delete_utub_tag",
       "handler": "backend/api_v1/tag_routes.py:api_v1_delete_utub_tag",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2202,7 +2269,8 @@
       "endpoint": "api_v1.api_v1_create_url",
       "handler": "backend/api_v1/url_routes.py:api_v1_create_url",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2237,7 +2305,8 @@
       "endpoint": "api_v1.api_v1_delete_url",
       "handler": "backend/api_v1/url_routes.py:api_v1_delete_url",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2270,7 +2339,8 @@
       "endpoint": "api_v1.api_v1_get_url",
       "handler": "backend/api_v1/url_routes.py:api_v1_get_url",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2303,7 +2373,8 @@
       "endpoint": "api_v1.api_v1_update_url",
       "handler": "backend/api_v1/url_routes.py:api_v1_update_url",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2338,7 +2409,8 @@
       "endpoint": "api_v1.api_v1_create_utub_url_tag",
       "handler": "backend/api_v1/tag_routes.py:api_v1_create_utub_url_tag",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2372,7 +2444,8 @@
       "endpoint": "api_v1.api_v1_delete_utub_url_tag",
       "handler": "backend/api_v1/tag_routes.py:api_v1_delete_utub_url_tag",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2405,7 +2478,8 @@
       "endpoint": "api_v1.api_v1_create_utub_url_tags",
       "handler": "backend/api_v1/tag_routes.py:api_v1_create_utub_url_tags",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2439,7 +2513,8 @@
       "endpoint": "api_v1.api_v1_update_url_title",
       "handler": "backend/api_v1/url_routes.py:api_v1_update_url_title",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "mobile-api",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2470,6 +2545,7 @@
       "endpoint": "splash.confirm_email_after_register",
       "handler": "backend/splash/routes.py:confirm_email_after_register",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "confirmEmailAfterRegister"
@@ -2490,6 +2566,7 @@
       "endpoint": "splash.confirm_email_change",
       "handler": "backend/splash/routes.py:confirm_email_change",
       "js": {
+        "indirect": null,
         "no_js": "full-page-navigation",
         "route_keys": [],
         "template_url_for": []
@@ -2510,6 +2587,7 @@
       "endpoint": "contact.contact_us",
       "handler": "backend/contact/routes.py:contact_us",
       "js": {
+        "indirect": null,
         "no_js": "full-page-navigation",
         "route_keys": [],
         "template_url_for": []
@@ -2535,6 +2613,7 @@
       "endpoint": "contact.submit_contact_us",
       "handler": "backend/contact/routes.py:submit_contact_us",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "contactUs"
@@ -2569,6 +2648,7 @@
       "endpoint": "splash.forgot_password",
       "handler": "backend/splash/routes.py:forgot_password",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "forgotPassword"
@@ -2603,7 +2683,8 @@
       "endpoint": "system.health",
       "handler": "backend/system/routes.py:health",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "infra-probe",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2631,6 +2712,7 @@
       "endpoint": "utubs.home",
       "handler": "backend/utubs/routes.py:home",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "home"
@@ -2659,6 +2741,7 @@
       "endpoint": "splash.error_page",
       "handler": "backend/splash/routes.py:error_page",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "errorPage"
@@ -2683,6 +2766,7 @@
       "endpoint": "splash.login",
       "handler": "backend/splash/routes.py:login",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "login"
@@ -2715,6 +2799,7 @@
       "endpoint": "users.logout",
       "handler": "backend/users/routes.py:logout",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "logout"
@@ -2738,7 +2823,8 @@
       "endpoint": "splash.oauth_link",
       "handler": "backend/splash/routes.py:oauth_link",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "browser-redirect",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2768,7 +2854,8 @@
       "endpoint": "splash.github_callback",
       "handler": "backend/splash/routes.py:github_callback",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "oauth-callback",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2802,6 +2889,7 @@
       "endpoint": "splash.github_login",
       "handler": "backend/splash/routes.py:github_login",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "oauthGithubLogin"
@@ -2837,7 +2925,8 @@
       "endpoint": "splash.google_callback",
       "handler": "backend/splash/routes.py:google_callback",
       "js": {
-        "no_js": null,
+        "indirect": null,
+        "no_js": "oauth-callback",
         "route_keys": [],
         "template_url_for": []
       },
@@ -2871,6 +2960,7 @@
       "endpoint": "splash.google_login",
       "handler": "backend/splash/routes.py:google_login",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "oauthGoogleLogin"
@@ -2905,6 +2995,7 @@
       "endpoint": "splash.oauth_confirm_link_page",
       "handler": "backend/splash/routes.py:oauth_confirm_link_page",
       "js": {
+        "indirect": null,
         "no_js": "full-page-navigation",
         "route_keys": [],
         "template_url_for": []
@@ -2930,6 +3021,7 @@
       "endpoint": "splash.oauth_confirm_link",
       "handler": "backend/splash/routes.py:oauth_confirm_link",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -2962,6 +3054,7 @@
       "endpoint": "users.privacy_policy",
       "handler": "backend/users/routes.py:privacy_policy",
       "js": {
+        "indirect": null,
         "no_js": "full-page-navigation",
         "route_keys": [],
         "template_url_for": []
@@ -2986,6 +3079,7 @@
       "endpoint": "splash.register_user",
       "handler": "backend/splash/routes.py:register_user",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "register"
@@ -3021,6 +3115,7 @@
       "endpoint": "splash.resend_registration_email",
       "handler": "backend/splash/routes.py:resend_registration_email",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "resendRegistrationEmail"
@@ -3052,6 +3147,7 @@
       "endpoint": "splash.reset_password_page",
       "handler": "backend/splash/routes.py:reset_password_page",
       "js": {
+        "indirect": null,
         "no_js": "full-page-navigation",
         "route_keys": [],
         "template_url_for": []
@@ -3076,6 +3172,7 @@
       "endpoint": "splash.reset_password",
       "handler": "backend/splash/routes.py:reset_password",
       "js": {
+        "indirect": "page-self-url",
         "no_js": null,
         "route_keys": [],
         "template_url_for": []
@@ -3108,6 +3205,7 @@
       "endpoint": "search.search_across_utubs",
       "handler": "backend/search/routes.py:search_across_utubs",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "crossUtubSearch"
@@ -3140,6 +3238,7 @@
       "endpoint": "splash.send_validation_email",
       "handler": "backend/splash/routes.py:send_validation_email",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "sendValidationEmail"
@@ -3174,6 +3273,7 @@
       "endpoint": "users.settings",
       "handler": "backend/users/routes.py:settings",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -3201,6 +3301,7 @@
       "endpoint": "users.terms_and_conditions",
       "handler": "backend/users/routes.py:terms_and_conditions",
       "js": {
+        "indirect": null,
         "no_js": "full-page-navigation",
         "route_keys": [],
         "template_url_for": []
@@ -3224,6 +3325,7 @@
       "endpoint": "users.delete_account",
       "handler": "backend/users/routes.py:delete_account",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -3260,6 +3362,7 @@
       "endpoint": "users.data_export",
       "handler": "backend/users/routes.py:data_export",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -3294,6 +3397,7 @@
       "endpoint": "users.change_email",
       "handler": "backend/users/routes.py:change_email",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -3329,6 +3433,7 @@
       "endpoint": "users.logout_everywhere",
       "handler": "backend/users/routes.py:logout_everywhere",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -3362,6 +3467,7 @@
       "endpoint": "users.unlink_oauth_provider",
       "handler": "backend/users/routes.py:unlink_oauth_provider",
       "js": {
+        "indirect": "server-built-url",
         "no_js": null,
         "route_keys": [],
         "template_url_for": []
@@ -3394,6 +3500,7 @@
       "endpoint": "users.link_oauth_provider",
       "handler": "backend/users/routes.py:link_oauth_provider",
       "js": {
+        "indirect": "server-built-url",
         "no_js": null,
         "route_keys": [],
         "template_url_for": []
@@ -3428,6 +3535,7 @@
       "endpoint": "users.change_password",
       "handler": "backend/users/routes.py:change_password",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -3463,6 +3571,7 @@
       "endpoint": "users.update_preferences",
       "handler": "backend/users/routes.py:update_preferences",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -3497,6 +3606,7 @@
       "endpoint": "users.change_username",
       "handler": "backend/users/routes.py:change_username",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [],
         "template_url_for": [
@@ -3532,6 +3642,7 @@
       "endpoint": "utubs.get_utubs",
       "handler": "backend/utubs/routes.py:get_utubs",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "getUTubs"
@@ -3564,6 +3675,7 @@
       "endpoint": "utubs.create_utub",
       "handler": "backend/utubs/routes.py:create_utub",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "createUTub"
@@ -3597,6 +3709,7 @@
       "endpoint": "utubs.delete_utub",
       "handler": "backend/utubs/routes.py:delete_utub",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "deleteUTub"
@@ -3631,6 +3744,7 @@
       "endpoint": "utubs.get_single_utub",
       "handler": "backend/utubs/routes.py:get_single_utub",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "getUTub"
@@ -3664,6 +3778,7 @@
       "endpoint": "members.get_co_member_candidates_route",
       "handler": "backend/members/routes.py:get_co_member_candidates_route",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "coMemberCandidates"
@@ -3698,6 +3813,7 @@
       "endpoint": "utubs.update_utub_desc",
       "handler": "backend/utubs/routes.py:update_utub_desc",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "updateUTubDescription"
@@ -3734,6 +3850,7 @@
       "endpoint": "members.create_member",
       "handler": "backend/members/routes.py:create_member",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "createMember"
@@ -3770,6 +3887,7 @@
       "endpoint": "members.remove_member",
       "handler": "backend/members/routes.py:remove_member",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "removeMember"
@@ -3805,6 +3923,7 @@
       "endpoint": "members.modify_member_role",
       "handler": "backend/members/routes.py:modify_member_role",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "modifyMemberRole"
@@ -3840,6 +3959,7 @@
       "endpoint": "utubs.update_utub_name",
       "handler": "backend/utubs/routes.py:update_utub_name",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "updateUTubName"
@@ -3875,6 +3995,7 @@
       "endpoint": "members.transfer_utub_ownership",
       "handler": "backend/members/routes.py:transfer_utub_ownership",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "transferUtubOwnership"
@@ -3910,6 +4031,7 @@
       "endpoint": "utub_tags.create_utub_tag",
       "handler": "backend/tags/utub_tag_routes.py:create_utub_tag",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "createUTubTag"
@@ -3944,6 +4066,7 @@
       "endpoint": "utub_tags.delete_utub_tag",
       "handler": "backend/tags/utub_tag_routes.py:delete_utub_tag",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "deleteUTubTag"
@@ -3977,6 +4100,7 @@
       "endpoint": "urls.create_url",
       "handler": "backend/urls/routes.py:create_url",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "createURL"
@@ -4012,6 +4136,7 @@
       "endpoint": "urls.delete_url",
       "handler": "backend/urls/routes.py:delete_url",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "deleteURL"
@@ -4046,6 +4171,7 @@
       "endpoint": "urls.get_url",
       "handler": "backend/urls/routes.py:get_url",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "getURL"
@@ -4079,6 +4205,7 @@
       "endpoint": "urls.update_url",
       "handler": "backend/urls/routes.py:update_url",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "updateURL"
@@ -4115,6 +4242,7 @@
       "endpoint": "utub_url_tags.create_utub_url_tag",
       "handler": "backend/tags/url_tag_routes.py:create_utub_url_tag",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "createURLTag"
@@ -4149,6 +4277,7 @@
       "endpoint": "utub_url_tags.delete_utub_url_tag",
       "handler": "backend/tags/url_tag_routes.py:delete_utub_url_tag",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "deleteURLTag"
@@ -4182,6 +4311,7 @@
       "endpoint": "utub_url_tags.create_utub_url_tags",
       "handler": "backend/tags/url_tag_routes.py:create_utub_url_tags",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "createURLTagsBatch"
@@ -4216,6 +4346,7 @@
       "endpoint": "urls.update_url_title",
       "handler": "backend/urls/routes.py:update_url_title",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "updateURLTitle"
@@ -4251,6 +4382,7 @@
       "endpoint": "urls.delete_urls_from_utub",
       "handler": "backend/urls/routes.py:delete_urls_from_utub",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "bulkDeleteURLs"
@@ -4286,6 +4418,7 @@
       "endpoint": "utub_url_tags.apply_tags_to_utub_urls",
       "handler": "backend/tags/url_tag_routes.py:apply_tags_to_utub_urls",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "applyTagsToURLs"
@@ -4321,6 +4454,7 @@
       "endpoint": "urls.copy_urls_to_utubs",
       "handler": "backend/urls/routes.py:copy_urls_to_utubs",
       "js": {
+        "indirect": null,
         "no_js": null,
         "route_keys": [
           "copyURLsToUtubs"
@@ -4352,6 +4486,7 @@
       "endpoint": "splash.validate_email",
       "handler": "backend/splash/routes.py:validate_email",
       "js": {
+        "indirect": null,
         "no_js": "full-page-navigation",
         "route_keys": [],
         "template_url_for": []
@@ -4372,6 +4507,7 @@
       "endpoint": "splash.validate_email_expired",
       "handler": "backend/splash/routes.py:validate_email_expired",
       "js": {
+        "indirect": null,
         "no_js": "full-page-navigation",
         "route_keys": [],
         "template_url_for": []

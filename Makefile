@@ -135,7 +135,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -442,6 +442,9 @@ generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per
 
 generate-endpoints: ## Regenerate docs/endpoints/endpoint-registry.json + ENDPOINT_REGISTRY.md from the live url_map
 	$(EXEC_WEB_AS_HOST) "$(FLASK) endpoints generate --output /code/u4i/docs/endpoints/endpoint-registry.json --markdown-output /code/u4i/docs/endpoints/ENDPOINT_REGISTRY.md"
+
+audit-endpoints: ## Audit the committed endpoint registry against the live app (exits non-zero on drift)
+	$(EXEC_WEB) "$(FLASK) endpoints audit --strict"
 
 audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
 	$(EXEC_WEB) "$(FLASK) metrics audit --strict"

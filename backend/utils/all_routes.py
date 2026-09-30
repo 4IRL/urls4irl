@@ -2,6 +2,7 @@
 Contains all routes for easy insertion into `url_for` flask function
 """
 
+from enum import StrEnum
 from typing import NamedTuple
 
 from flask import url_for
@@ -313,6 +314,67 @@ ADMIN_JS_ROUTES: dict[str, JsRoute] = {
     "metricsQueryLatencyTimeseries": JsRoute(
         METRICS_ROUTES.QUERY_LATENCY_TIMESERIES, {}
     ),
+}
+
+
+# JS linkage invariant. Every `@api_route` endpoint must be reachable through
+# one of four channels (the two maps below never combine with another channel):
+#   1. a `JS_ROUTES` / `ADMIN_JS_ROUTES` key (shipped in `APP_CONFIG.routes`);
+#   2. a Jinja `url_for('<endpoint>')` reference in `backend/templates`
+#      (typically a `data-*-url` attribute the frontend reads);
+#   3. an `INDIRECT_JS_ENDPOINTS` entry below: the web frontend calls the
+#      endpoint, but gets its URL another way (its own page URL, a URL built
+#      server-side), so channels 1-2 cannot see the call;
+#   4. a `NO_JS_ENDPOINTS` entry below, giving the reason nothing in the web
+#      frontend calls the endpoint at all.
+# `flask endpoints audit --strict` (`make audit-endpoints`) enforces this, and
+# also flags `INDIRECT_JS_ENDPOINTS` / `NO_JS_ENDPOINTS` entries that name a
+# dead endpoint, one that already has a key or template reference, or one
+# listed in both maps. Never add an entry for an endpoint that could simply get
+# a route key or a template `url_for`: link it instead.
+
+
+class IndirectJsSource(StrEnum):
+    PAGE_SELF_URL = "page-self-url"
+    SERVER_BUILT_URL = "server-built-url"
+
+
+# Keys are exact endpoints only (no `<blueprint>.*` wildcard): each entry names
+# one frontend caller.
+INDIRECT_JS_ENDPOINTS: dict[str, IndirectJsSource] = {
+    # frontend/splash/reset-password-form.ts POSTs to its own page URL
+    # (window.location.pathname).
+    "splash.reset_password": IndirectJsSource.PAGE_SELF_URL,
+    # frontend/settings/connected-accounts.ts reads a `data-action-url` whose
+    # per-provider URL is built server-side (linking_service.py) into the
+    # settings page's template context, not via a literal template url_for.
+    "users.link_oauth_provider": IndirectJsSource.SERVER_BUILT_URL,
+    "users.unlink_oauth_provider": IndirectJsSource.SERVER_BUILT_URL,
+}
+
+
+class NoJsReason(StrEnum):
+    MOBILE_API = "mobile-api"
+    OAUTH_CALLBACK = "oauth-callback"
+    BROWSER_REDIRECT = "browser-redirect"
+    INFRA_PROBE = "infra-probe"
+
+
+# Keys are exact endpoints, or `<blueprint>.*` for a whole blueprint. A
+# `<blueprint>.*` key matches only endpoints whose blueprint is exactly that
+# name, not endpoints of blueprints nested under it. Exact keys win over
+# blueprint-prefix keys. Entries here have no web-JS caller at all; an
+# endpoint the frontend calls belongs in `INDIRECT_JS_ENDPOINTS` instead.
+NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
+    # Bearer-token API consumed by the mobile app, never the web frontend.
+    "api_v1.*": NoJsReason.MOBILE_API,
+    # Container/uptime health check.
+    "system.health": NoJsReason.INFRA_PROBE,
+    # OAuth provider redirects back to these; the browser follows them.
+    "splash.google_callback": NoJsReason.OAUTH_CALLBACK,
+    "splash.github_callback": NoJsReason.OAUTH_CALLBACK,
+    # Redirect target built server-side (linking_service, account_service).
+    "splash.oauth_link": NoJsReason.BROWSER_REDIRECT,
 }
 
 

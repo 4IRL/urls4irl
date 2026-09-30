@@ -1239,6 +1239,7 @@ def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> 
         ("reset-test-dbs",),
         ("audit",),
         ("generate-endpoints",),
+        ("audit-endpoints",),
         ("clear-db",),
         ("addmock",),
         ("test-js",),
@@ -1258,6 +1259,11 @@ def test_generate_endpoints_writes_into_the_mounted_docs_dir() -> None:
         in output
     )
     assert "--markdown-output /code/u4i/docs/endpoints/ENDPOINT_REGISTRY.md" in output
+
+
+def test_audit_endpoints_runs_the_strict_audit() -> None:
+    # --strict is what makes the target exit non-zero on drift.
+    assert "endpoints audit --strict" in _successful_dry_run("audit-endpoints")
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
