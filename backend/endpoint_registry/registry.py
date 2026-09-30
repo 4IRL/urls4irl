@@ -1,0 +1,444 @@
+"""Build the canonical endpoint registry from a live Flask app.
+
+Pure with respect to the app: no request context, no DB. Everything is read
+from `app.url_map` / `app.view_functions`, the handler source files (via AST),
+`backend/utils/all_routes.py` and `backend/templates`. Blueprint and route
+modules are never imported at module scope here (circular-import rule, see
+backend/__init__.py:287-290); service modules are imported lazily only to
+follow the one-hop template lookup, and they are already loaded by the app.
+
+Output is deterministic: rows sorted by `(rule, methods, endpoint)`, no
+timestamps, no source line numbers.
+
+Two public builders:
+- `build_registry(app)` — the canonical registry dict.
+- `dump_registry_json(registry)` — its stable JSON text.
+"""
+
+from __future__ import annotations
+
+import ast
+import importlib
+import inspect
+import json
+import re
+from pathlib import Path
+from typing import Any, Callable
+
+from flask import Flask
+
+from backend.utils.all_routes import ADMIN_JS_ROUTES, JS_ROUTES
+
+# ---------------------------------------------------------------------------
+# Module-level constants
+# ---------------------------------------------------------------------------
+
+_REPO_ROOT: Path = Path(__file__).resolve().parent.parent.parent
+
+# The `debug` blueprint registers only outside testing/production and
+# `fake_oauth` only under UI_TESTING (backend/__init__.py:330-338), so the
+# url_map differs by config. Excluding both keeps the CLI (dev/CI config) and
+# the unit-test app (ConfigTest) in agreement.
+EXCLUDED_ENDPOINT_PREFIXES: tuple[str, ...] = ("debug.", "fake_oauth.")
+
+_IGNORED_METHODS: frozenset[str] = frozenset({"HEAD", "OPTIONS"})
+
+# Service modules that match neither the `.services.` nor the `*_service`
+# naming convention.
+_EXTRA_SERVICE_MODULES: frozenset[str] = frozenset({"backend.contact.contact_us"})
+
+_API_ROUTE_DECORATOR = "api_route"
+_ROUTE_DECORATOR_ATTR = "route"
+_RENDER_TEMPLATE = "render_template"
+
+_DEFAULT_TEMPLATES_ROOT: Path = _REPO_ROOT / "backend" / "templates"
+_TEMPLATE_URL_FOR_PATTERN = re.compile(r"url_for\(\s*['\"]([A-Za-z0-9_.]+)['\"]")
+
+_NO_JS_FULL_PAGE_NAVIGATION = "full-page-navigation"
+
+# Placeholder exact-endpoint -> no-JS reason map. Step 5 replaces this with
+# NO_JS_ENDPOINTS (backend/utils/all_routes.py) and adds the `<blueprint>.*`
+# prefix lookup.
+_NO_JS_ENDPOINTS_STUB: dict[str, str] = {}
+
+_GENERATED_BY = "flask endpoints generate — DO NOT EDIT"
+_SOURCE_OF_TRUTH = (
+    "live Flask url_map + backend/utils/all_routes.py + backend/templates"
+)
+
+AstCache = dict[Path, ast.Module]
+
+
+# ---------------------------------------------------------------------------
+# Endpoint filtering
+# ---------------------------------------------------------------------------
+
+
+def is_registry_endpoint(endpoint: str) -> bool:
+    """Return False for static/debug-toolbar endpoints and excluded blueprints.
+
+    The static/debugtoolbar predicate mirrors `generate_openapi_spec`
+    (backend/cli/openapi.py:441-446). Shared by the builder and the audit.
+    """
+    if (
+        endpoint == "static"
+        or endpoint.endswith(".static")
+        or endpoint.startswith("debugtoolbar")
+    ):
+        return False
+    return not endpoint.startswith(EXCLUDED_ENDPOINT_PREFIXES)
+
+
+# ---------------------------------------------------------------------------
+# AST helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_source(source_path: Path, ast_cache: AstCache) -> ast.Module:
+    """Parse a source file once per build, memoised in `ast_cache`."""
+    if source_path not in ast_cache:
+        ast_cache[source_path] = ast.parse(
+            source_path.read_text(encoding="utf-8"), filename=str(source_path)
+        )
+    return ast_cache[source_path]
+
+
+def _source_path(function: Callable[..., Any]) -> Path:
+    source_file = inspect.getsourcefile(function)
+    if source_file is None:
+        raise ValueError(f"No source file for {function.__qualname__}")
+    return Path(source_file).resolve()
+
+
+def _module_function_def(tree: ast.Module, name: str) -> ast.FunctionDef | None:
+    """Return the module-level `def <name>` in `tree`, if any."""
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == name:
+            return node
+    return None
+
+
+def _call_name(call: ast.Call) -> str | None:
+    """Return the callee's bare name for `name(...)` or `obj.name(...)` calls."""
+    if isinstance(call.func, ast.Name):
+        return call.func.id
+    if isinstance(call.func, ast.Attribute):
+        return call.func.attr
+    return None
+
+
+def _render_template_literals(func_def: ast.FunctionDef) -> set[str]:
+    """Collect literal first args of every `render_template(...)` in the body."""
+    literals: set[str] = set()
+    for statement in func_def.body:
+        for node in ast.walk(statement):
+            if (
+                isinstance(node, ast.Call)
+                and _call_name(node) == _RENDER_TEMPLATE
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                literals.add(node.args[0].value)
+    return literals
+
+
+def _import_qualified_map(module_tree: ast.Module) -> dict[str, str]:
+    """Map every top-level imported name to its fully qualified dotted path.
+
+    `from a.b import c as d` binds `d -> a.b.c`; `import a.b` binds
+    `a.b -> a.b`. A bare ImportFrom alias is identical whether it binds a
+    function or a submodule, so one unified map serves both call shapes.
+    Relative imports are skipped (none exist in route modules). Dotted
+    Attribute chains such as `import a.b` then `a.b.fn()` are not resolved
+    (only `name(...)` / `name.attr(...)` calls are matched); no route module
+    uses that shape.
+    """
+    qualified_names: dict[str, str] = {}
+    for node in module_tree.body:
+        if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            for alias in node.names:
+                bound_name = alias.asname or alias.name
+                qualified_names[bound_name] = f"{node.module}.{alias.name}"
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                bound_name = alias.asname or alias.name
+                qualified_names[bound_name] = alias.name
+    return qualified_names
+
+
+# ---------------------------------------------------------------------------
+# Column derivation
+# ---------------------------------------------------------------------------
+
+
+def _handler(endpoint: str, raw: Callable[..., Any]) -> str:
+    """Return `<repo-relative path>:<qualname>` of the unwrapped view. No line numbers."""
+    try:
+        relative_path = _source_path(raw).relative_to(_REPO_ROOT).as_posix()
+    except ValueError as outside_repo_error:
+        raise ValueError(
+            f"{endpoint}: handler source is outside the repo root"
+        ) from outside_repo_error
+    return f"{relative_path}:{raw.__qualname__}"
+
+
+def _handler_function_def(
+    endpoint: str, raw: Callable[..., Any], ast_cache: AstCache
+) -> tuple[ast.Module, ast.FunctionDef]:
+    """Locate the handler's module tree and its module-level FunctionDef."""
+    module_tree = _parse_source(_source_path(raw), ast_cache)
+    func_def = _module_function_def(module_tree, raw.__name__)
+    if func_def is None:
+        raise ValueError(
+            f"{endpoint}: handler {raw.__qualname__} is not a module-level def; "
+            "the registry derives decorators/services from module-level handlers only"
+        )
+    return module_tree, func_def
+
+
+def _is_route_decorator(decorator: ast.expr) -> bool:
+    return (
+        isinstance(decorator, ast.Call)
+        and isinstance(decorator.func, ast.Attribute)
+        and decorator.func.attr == _ROUTE_DECORATOR_ATTR
+    )
+
+
+def _is_api_route_call(decorator: ast.expr) -> bool:
+    return (
+        isinstance(decorator, ast.Call)
+        and isinstance(decorator.func, ast.Name)
+        and decorator.func.id == _API_ROUTE_DECORATOR
+    )
+
+
+def _decorators(endpoint: str, func_def: ast.FunctionDef) -> list[str]:
+    """Render the decorator stack (outer -> inner), route decorator dropped.
+
+    `@api_route(...)` collapses to the bare `"api_route"`: its schemas live in
+    the Schema column and its description kwargs would churn the artifact.
+    """
+    if not func_def.decorator_list or not _is_route_decorator(
+        func_def.decorator_list[0]
+    ):
+        raise ValueError(
+            f"{endpoint}: expected the outermost decorator to be `@<bp>.route(...)`"
+        )
+    return [
+        _API_ROUTE_DECORATOR
+        if _is_api_route_call(decorator)
+        else ast.unparse(decorator)
+        for decorator in func_def.decorator_list[1:]
+    ]
+
+
+def _is_service_module(module: str) -> bool:
+    return (
+        ".services." in module
+        or module.rsplit(".", 1)[-1].endswith("_service")
+        or module in _EXTRA_SERVICE_MODULES
+    )
+
+
+def _services(func_def: ast.FunctionDef, module_tree: ast.Module) -> list[str]:
+    """Return sorted unique `module:function` service calls in the handler body.
+
+    Resolves `fn(...)` and `module_obj.fn(...)` through the handler module's
+    imports. Only the body is walked (decorator calls are not services).
+    """
+    qualified_names = _import_qualified_map(module_tree)
+    services: set[str] = set()
+    for statement in func_def.body:
+        for node in ast.walk(statement):
+            if not isinstance(node, ast.Call):
+                continue
+            service: str | None = None
+            if isinstance(node.func, ast.Name) and node.func.id in qualified_names:
+                module, _, function = qualified_names[node.func.id].rpartition(".")
+                service = f"{module}:{function}"
+            elif (
+                isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id in qualified_names
+            ):
+                module = qualified_names[node.func.value.id]
+                service = f"{module}:{node.func.attr}"
+            if service is not None and _is_service_module(service.split(":")[0]):
+                services.add(service)
+    return sorted(services)
+
+
+def _qualified_class_name(schema_cls: type | None) -> str | None:
+    if schema_cls is None:
+        return None
+    return f"{schema_cls.__module__}.{schema_cls.__qualname__}"
+
+
+def _schemas(view_fn: Callable[..., Any]) -> dict[str, Any] | None:
+    """Read the `@api_route` stash (parse_request.py:184-194); None for non-api routes."""
+    if not hasattr(view_fn, "_api_route_request_schema"):
+        return None
+    status_codes = getattr(view_fn, "_api_route_status_codes", None) or {}
+    return {
+        "request": _qualified_class_name(
+            getattr(view_fn, "_api_route_request_schema", None)
+        ),
+        "query": _qualified_class_name(
+            getattr(view_fn, "_api_route_query_schema", None)
+        ),
+        "response": _qualified_class_name(
+            getattr(view_fn, "_api_route_response_schema", None)
+        ),
+        "status_codes": {
+            str(code): _qualified_class_name(schema_cls)
+            for code, schema_cls in sorted(status_codes.items())
+        },
+    }
+
+
+def _service_function_def(service: str, ast_cache: AstCache) -> ast.FunctionDef | None:
+    """Resolve a `module:function` service to its module-level FunctionDef."""
+    module_name, _, function_name = service.partition(":")
+    try:
+        service_module = importlib.import_module(module_name)
+    except ModuleNotFoundError:
+        # `SomeCls.method()` on an imported class yields a "module" path that is
+        # really `pkg.mod.SomeCls`; there is no module-level def to follow.
+        return None
+    target = getattr(service_module, function_name, None)
+    if not inspect.isfunction(target):
+        return None
+    raw_target = inspect.unwrap(target)
+    module_tree = _parse_source(_source_path(raw_target), ast_cache)
+    return _module_function_def(module_tree, raw_target.__name__)
+
+
+def _templates(
+    func_def: ast.FunctionDef, services: list[str], ast_cache: AstCache
+) -> list[str]:
+    """Literal `render_template` targets in the handler plus one service hop."""
+    templates = _render_template_literals(func_def)
+    for service in services:
+        service_def = _service_function_def(service, ast_cache)
+        if service_def is not None:
+            templates |= _render_template_literals(service_def)
+    return sorted(templates)
+
+
+# ---------------------------------------------------------------------------
+# JS linkage
+# ---------------------------------------------------------------------------
+
+
+def _js_route_keys() -> dict[str, list[str]]:
+    """Invert `JS_ROUTES | ADMIN_JS_ROUTES` into `endpoint -> sorted keys`."""
+    keys_by_endpoint: dict[str, list[str]] = {}
+    for key, js_route in (JS_ROUTES | ADMIN_JS_ROUTES).items():
+        keys_by_endpoint.setdefault(js_route.endpoint, []).append(key)
+    return {endpoint: sorted(keys) for endpoint, keys in keys_by_endpoint.items()}
+
+
+def _template_url_for_refs(templates_root: Path) -> dict[str, list[str]]:
+    """Map `endpoint -> sorted template paths` for every literal Jinja `url_for`."""
+    if not templates_root.is_dir():
+        raise ValueError(f"templates_root is not a directory: {templates_root.name}")
+    templates_by_endpoint: dict[str, set[str]] = {}
+    for template_path in sorted(templates_root.rglob("*.html")):
+        relative_path = template_path.relative_to(templates_root).as_posix()
+        source = template_path.read_text(encoding="utf-8")
+        for endpoint in _TEMPLATE_URL_FOR_PATTERN.findall(source):
+            templates_by_endpoint.setdefault(endpoint, set()).add(relative_path)
+    return {
+        endpoint: sorted(paths) for endpoint, paths in templates_by_endpoint.items()
+    }
+
+
+def _no_js_reason(endpoint: str) -> str | None:
+    """Exact-endpoint lookup against the no-JS map."""
+    return _NO_JS_ENDPOINTS_STUB.get(endpoint)
+
+
+def _js(
+    endpoint: str,
+    is_api_route: bool,
+    route_keys: list[str],
+    template_url_for: list[str],
+) -> dict[str, Any]:
+    no_js = _no_js_reason(endpoint)
+    if no_js is None and not is_api_route and not route_keys and not template_url_for:
+        no_js = _NO_JS_FULL_PAGE_NAVIGATION
+    return {
+        "route_keys": route_keys,
+        "template_url_for": template_url_for,
+        "no_js": no_js,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Public builders
+# ---------------------------------------------------------------------------
+
+
+def build_registry(app: Flask, templates_root: Path | None = None) -> dict[str, Any]:
+    """Build the canonical registry dict from `app`'s url_map.
+
+    Rows are sorted by `(rule, methods, endpoint)`; the envelope carries no
+    timestamp so repeated builds are byte-identical once dumped.
+    """
+    ast_cache: AstCache = {}
+    route_keys_by_endpoint = _js_route_keys()
+    template_refs_by_endpoint = _template_url_for_refs(
+        templates_root or _DEFAULT_TEMPLATES_ROOT
+    )
+
+    endpoints: list[dict[str, Any]] = []
+    for rule in app.url_map.iter_rules():
+        endpoint = rule.endpoint
+        if not is_registry_endpoint(endpoint):
+            continue
+        view_fn = app.view_functions[endpoint]
+        raw = inspect.unwrap(view_fn)
+        module_tree, func_def = _handler_function_def(endpoint, raw, ast_cache)
+        blueprint = endpoint.rpartition(".")[0]
+        services = _services(func_def, module_tree)
+        schemas = _schemas(view_fn)
+        endpoints.append(
+            {
+                "endpoint": endpoint,
+                "blueprint": blueprint,
+                "rule": rule.rule,
+                "methods": sorted(set(rule.methods or ()) - _IGNORED_METHODS),
+                "handler": _handler(endpoint, raw),
+                "decorators": _decorators(endpoint, func_def),
+                "services": services,
+                "schemas": schemas,
+                "templates": _templates(func_def, services, ast_cache),
+                "js": _js(
+                    endpoint,
+                    is_api_route=schemas is not None,
+                    route_keys=list(route_keys_by_endpoint.get(endpoint, [])),
+                    template_url_for=list(template_refs_by_endpoint.get(endpoint, [])),
+                ),
+            }
+        )
+
+    endpoints.sort(key=lambda row: (row["rule"], row["methods"], row["endpoint"]))
+    return {
+        "generated_by": _GENERATED_BY,
+        "source_of_truth": _SOURCE_OF_TRUTH,
+        "endpoints": endpoints,
+    }
+
+
+def dump_registry_json(registry: dict[str, Any]) -> str:
+    """Stable JSON text: sorted keys, 2-space indent, trailing newline."""
+    return json.dumps(registry, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+
+
+__all__ = [
+    "EXCLUDED_ENDPOINT_PREFIXES",
+    "build_registry",
+    "dump_registry_json",
+    "is_registry_endpoint",
+]
