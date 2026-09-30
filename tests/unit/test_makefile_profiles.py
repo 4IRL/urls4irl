@@ -54,6 +54,8 @@ INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
         "U4I_WEB_PORT",
         "U4I_VITE_PORT",
         "U4I_TOKEN_DIR",
+        "U4I_MEMORY_WAIT",
+        "U4I_SETTLE_SECONDS",
     }
 )
 SLUGGED_NAME_PATTERN: re.Pattern[str] = re.compile(r"\b(?:web|vite|u4i)-[a-z0-9-]*")
@@ -158,6 +160,18 @@ def test_up_rejects_invalid_profile(profile_value: str, expected_message: str) -
             "U4I_TOKEN_DIR",
             "U4I_TOKEN_DIR must not contain '$'",
             id="token-dir",
+        ),
+        pytest.param(
+            "test-file",
+            "U4I_MEMORY_WAIT",
+            "U4I_MEMORY_WAIT must not contain '$'",
+            id="memory-wait",
+        ),
+        pytest.param(
+            "test-file",
+            "U4I_SETTLE_SECONDS",
+            "U4I_SETTLE_SECONDS must not contain '$'",
+            id="settle-seconds",
         ),
     ],
 )
@@ -759,7 +773,9 @@ def test_explicit_n_overrides_the_marker_worker_cap(make_target: str) -> None:
     pytest_line = _pytest_exec_line(
         _successful_dry_run(make_target, "m=splash_ui", "n=3")
     )
-    assert " -n 3 " in pytest_line
+    assert " --min-tokens 3 --tokens 3 " in pytest_line
+    assert " -n @TOKENS@ " in pytest_line
+    assert UI_WORKER_CAP not in pytest_line
 
 
 @pytest.mark.parametrize(
@@ -806,7 +822,8 @@ def test_explicit_n_overrides_the_file_worker_cap(make_target: str) -> None:
     pytest_line = _pytest_exec_line(
         _successful_dry_run(make_target, "f=tests/functional/splash_ui", "n=3")
     )
-    assert " -n 3 " in pytest_line
+    assert " --min-tokens 3 --tokens 3 " in pytest_line
+    assert " -n @TOKENS@ " in pytest_line
     assert UI_WORKER_CAP not in pytest_line
 
 
@@ -1042,6 +1059,8 @@ def test_restart_accepts_a_dashed_service_name() -> None:
 
 TOKEN_BUDGET_RUN: str = "mise exec python -- python scripts/token_budget.py run "
 TOKEN_LOCK_DIR_FLAG: str = f" --lock-dir '/tmp/u4i-test-tokens-{os.getuid()}' "
+HUB_PROJECT_FLAG: str = f" --hub-project u4i-hub-{os.getuid()} "
+TOKENS_PLACEHOLDER: str = "@TOKENS@"
 SEQUENTIAL_BUDGETED_TARGETS: list[tuple[str, ...]] = [
     ("test-integration",),
     ("test-functional",),
@@ -1088,18 +1107,96 @@ def test_pytest_targets_run_through_the_token_budget(
         f" --capacity-file {_primary_root()}/docker/.capacity.generated.env "
     ) in pytest_line
     assert TOKEN_LOCK_DIR_FLAG in pytest_line
+    assert HUB_PROJECT_FLAG in pytest_line
+    assert " --memory-wait 600 " in pytest_line
+    assert " --settle-seconds 20 " in pytest_line
     # Tokens wrap only the pytest exec, never a prerequisite such as start-built's rebuild.
     budget_separator = f" --label {make_args[0]} -- "
     assert budget_separator in pytest_line
     assert pytest_line.index(budget_separator) < pytest_line.index("python -m pytest")
+    # Every new runner flag sits before `--tokens <N> --label <target> --`, so that adjacency (and
+    # _flag_value(line, "--tokens", "--label")) keeps holding.
+    budget_part = pytest_line.split(budget_separator, 1)[0]
+    tokens_index = budget_part.index(" --tokens ")
+    for flag in (
+        " --hub-project ",
+        " --memory-wait ",
+        " --settle-seconds ",
+        " --min-tokens ",
+    ):
+        assert budget_part.index(flag) < tokens_index, flag
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    ("make_args", "memory_wait", "settle_seconds"),
+    [
+        pytest.param(("test-file", "f=tests/unit"), "5", "0", id="sequential"),
+        pytest.param(("test-marker-parallel", "m=unit"), "45", "7", id="parallel"),
+    ],
+)
+def test_budgeted_targets_pass_memory_wait_and_settle_overrides(
+    make_args: tuple[str, ...], memory_wait: str, settle_seconds: str
+) -> None:
+    pytest_line = _pytest_exec_line(
+        _successful_dry_run(
+            *make_args,
+            f"U4I_MEMORY_WAIT={memory_wait}",
+            f"U4I_SETTLE_SECONDS={settle_seconds}",
+        )
+    )
+    assert f" --memory-wait {memory_wait} " in pytest_line
+    assert f" --settle-seconds {settle_seconds} " in pytest_line
+
+
+@pytest.mark.parametrize("variable_name", ["U4I_MEMORY_WAIT", "U4I_SETTLE_SECONDS"])
+@pytest.mark.parametrize(
+    "bad_value",
+    [
+        pytest.param("", id="empty"),
+        pytest.param("abc", id="letters"),
+        pytest.param("1 2", id="two-words"),
+        pytest.param("1;touch", id="semicolon"),
+        pytest.param("1`id`", id="backticks"),
+        pytest.param("-5", id="negative"),
+    ],
+)
+def test_memory_wait_and_settle_must_be_one_number(
+    variable_name: str, bad_value: str
+) -> None:
+    # Both are spliced bare into the budgeted shell line, so anything but digits/dots is refused at parse time.
+    result = _dry_run("test-file", "f=tests/unit", f"{variable_name}={bad_value}")
+    assert result.returncode != 0
+    assert (
+        f"{variable_name} must be a non-negative number of seconds (got '{bad_value}')"
+    ) in result.stderr
+    assert result.stdout == ""
+
+
+@pytest.mark.parametrize(
+    "make_args",
+    [
+        pytest.param(("test-file", "f=tests/unit/@TOKENS@"), id="path"),
+        pytest.param(("test-file", "f=tests/unit", "args=-k @TOKENS@"), id="args"),
+        pytest.param(("test-marker", "m=@TOKENS@"), id="marker"),
+    ],
+)
+def test_user_text_must_not_carry_the_tokens_placeholder(
+    make_args: tuple[str, ...],
+) -> None:
+    result = _dry_run(*make_args)
+    assert result.returncode != 0
+    assert "f, args and m must not contain @TOKENS@" in result.stderr
+    assert result.stdout == ""
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
 @pytest.mark.parametrize("make_args", SEQUENTIAL_BUDGETED_TARGETS, ids=_budgeted_ids)
 def test_sequential_targets_hold_one_token(make_args: tuple[str, ...]) -> None:
     pytest_line = _pytest_exec_line(_successful_dry_run(*make_args))
-    assert " --tokens 1 " in pytest_line
+    assert " --min-tokens 1 --tokens 1 " in pytest_line
     assert " -n " not in pytest_line
+    assert TOKENS_PLACEHOLDER not in pytest_line
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
@@ -1111,12 +1208,16 @@ def test_sequential_targets_hold_one_token(make_args: tuple[str, ...]) -> None:
 def test_parallel_targets_hold_as_many_tokens_as_workers(
     make_args: tuple[str, ...], worker_cap: str
 ) -> None:
+    # No n=: an elastic run. --tokens carries the derived cap, --min-tokens 1 lets the runner shrink it to
+    # what fits live memory, and pytest's -n receives the granted count through the placeholder.
     pytest_line = _pytest_exec_line(_successful_dry_run(*make_args))
     budget_part, pytest_part = pytest_line.split("python -m pytest", 1)
     token_expression = _flag_value(budget_part, "--tokens", "--label")
     worker_expression = _flag_value(pytest_part, "-n", "--dist=loadscope")
     assert worker_cap in token_expression
-    assert token_expression == worker_expression
+    assert " --min-tokens 1 --tokens " in budget_part
+    assert worker_expression == TOKENS_PLACEHOLDER
+    assert TOKENS_PLACEHOLDER not in budget_part
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
@@ -1126,9 +1227,10 @@ def test_parallel_targets_hold_as_many_tokens_as_workers(
     ids=[make_args[0] for make_args, _ in PARALLEL_BUDGETED_TARGETS],
 )
 def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> None:
+    # An explicit n= is exact: min == max, so the runner waits for memory instead of shrinking.
     pytest_line = _pytest_exec_line(_successful_dry_run(*make_args, "n=3"))
-    assert " --tokens 3 " in pytest_line
-    assert " -n 3 " in pytest_line
+    assert " --min-tokens 3 --tokens 3 " in pytest_line
+    assert " -n @TOKENS@ " in pytest_line
 
 
 @pytest.mark.parametrize(
@@ -1218,6 +1320,8 @@ def test_budgeted_targets_document_the_token_budget(make_target: str) -> None:
     assert "## " in target_lines[0], target_lines[0]
     description = target_lines[0].split("## ", 1)[1]
     assert "queues on the host token budget" in description
+    if make_target.endswith(("-parallel", "-parallel-built")):
+        assert "shrinks to fit live memory unless n= is given" in description
     phony_lines = [line for line in makefile_lines if line.startswith(".PHONY:")]
     assert len(phony_lines) == 1, phony_lines
     assert "_admit-spoke" in phony_lines[0].split()
@@ -1283,9 +1387,10 @@ def test_docker_harnesses_hold_one_token_around_the_run_only(
         if harness_marker in line and "chmod" not in line and "docker build" not in line
     )
     assert harness_line.startswith(TOKEN_BUDGET_RUN), harness_line
-    assert " --tokens 1 " in harness_line
-    assert f" --label {make_target} " in harness_line
+    assert f" --min-tokens 1 --tokens 1 --label {make_target} -- " in harness_line
+    assert TOKENS_PLACEHOLDER not in harness_line
     assert TOKEN_LOCK_DIR_FLAG in harness_line
+    assert HUB_PROJECT_FLAG in harness_line
     build_lines = [line for line in lines if line.startswith("docker build ")]
     assert len(build_lines) == build_count, build_lines
     assert not [line for line in build_lines if "token_budget.py" in line]
@@ -1295,3 +1400,14 @@ def test_docker_harnesses_hold_one_token_around_the_run_only(
         f"capacity.py ensure --output {_primary_root()}/docker/.capacity.generated.env",
     )
     assert lines.index(ensure_line) < lines.index(harness_line)
+
+
+def test_capacity_shows_live_memory_through_the_hub() -> None:
+    # `show` reads the VM's memory through the hub db on macOS/Colima, so it needs the per-user hub project.
+    output = _successful_dry_run("capacity")
+    lines = output.splitlines()
+    generate_line = _single_line_containing(output, "capacity.py generate ")
+    show_line = _single_line_containing(output, "capacity.py show ")
+    assert " --output docker/.capacity.generated.env" in show_line
+    assert show_line.endswith(HUB_PROJECT_FLAG.rstrip())
+    assert lines.index(generate_line) < lines.index(show_line)
