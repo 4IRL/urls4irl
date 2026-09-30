@@ -1348,6 +1348,38 @@ def test_settling_run_with_too_few_free_tokens_keeps_the_token_wait(
     ]
 
 
+@pytest.mark.parametrize("slots", [[0], [0, 1, 2]], ids=["settle", "tokens"])
+def test_wait_behind_a_settling_run_scans_holders_only_when_announcing(
+    lock_dir: Path, monkeypatch: pytest.MonkeyPatch, slots: list[int]
+) -> None:
+    turnstile = _hold_settling_turnstile(lock_dir, os.getpid())
+    held = _hold_slots(lock_dir, slots, "holder")
+    real_holders = token_budget._holders
+    scans: list[bool] = []
+
+    def counting_holders(*args: object, **kwargs: object) -> list[object]:
+        scans.append(True)
+        return real_holders(*args, **kwargs)
+
+    monkeypatch.setattr(token_budget, "_holders", counting_holders)
+    try:
+        with pytest.raises(BudgetError):
+            _acquire(
+                lock_dir,
+                2,
+                2,
+                _scripted(_live(AMPLE_USABLE_GB)),
+                FakeTime(),
+                io.StringIO(),
+                max_wait=token_budget.HEARTBEAT_SECONDS + 1,
+            )
+    finally:
+        _release_slots(held)
+        os.close(turnstile)
+    # 32 one-second polls, but only the first line and the 30s heartbeat scan.
+    assert len(scans) == 2
+
+
 def test_settle_marker_of_a_dead_runner_is_ignored(lock_dir: Path) -> None:
     finished = subprocess.Popen([sys.executable, "-c", "pass"])
     finished.wait(timeout=SYNC_TIMEOUT_SECONDS)

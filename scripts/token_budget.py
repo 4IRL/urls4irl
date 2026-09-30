@@ -535,6 +535,11 @@ def _describe(holders: list[_Holder]) -> str:
     return ", ".join(f"{holder.name} ({holder.slots})" for holder in holders) or UNKNOWN
 
 
+def _announce_due(last_announced: float | None, now: float) -> bool:
+    """A wait line is due the first time, then once per heartbeat."""
+    return last_announced is None or now - last_announced >= HEARTBEAT_SECONDS
+
+
 def _memory_target(live: LiveMemory, tokens: int, budget_file: BudgetFile) -> int:
     """Workers a run of `tokens` may start now: as many as fit in live memory,
     capped at `tokens`; all of them when live memory is unreadable (static)."""
@@ -617,6 +622,10 @@ def acquire(
     previous = started
     memory_short = False
     others_holding = False
+    # None while not behind a settling run; else whether the settle window alone
+    # blocks this start, from the last scan of `settle_holders`.
+    settle_blocked: bool | None = None
+    settle_holders: list[_Holder] = []
     memory_waited = 0.0
     outside_pressure_waited = 0.0
     try:
@@ -655,15 +664,22 @@ def acquire(
                 else:
                     memory_short = True
             # Behind a settling run, the free slots decide which wait this is.
-            holders = (
-                _holders(lock_dir, budget, set(held), probe_locks=False)
-                if settling is not None
-                else []
-            )
-            settle_blocked = (
-                settling is not None
-                and budget - sum(holder.slots for holder in holders) >= min_tokens
-            )
+            # Rescan them only on entering that wait or when its line is due,
+            # like the token and memory branches; reuse the last scan otherwise.
+            if settling is None:
+                settle_blocked = None
+                settle_holders = []
+            elif settle_blocked is None or _announce_due(
+                announced_at.get(WAIT_SETTLE if settle_blocked else WAIT_TOKENS), now
+            ):
+                settle_holders = _holders(
+                    lock_dir, budget, set(held), probe_locks=False
+                )
+                settle_blocked = (
+                    budget - sum(holder.slots for holder in settle_holders)
+                    >= min_tokens
+                )
+            holders = settle_holders
             if memory_short:
                 reason = WAIT_MEMORY
             elif settle_blocked:
@@ -671,9 +687,7 @@ def acquire(
             else:
                 reason = WAIT_TOKENS
             last_announced = announced_at.get(reason)
-            announce = (
-                last_announced is None or now - last_announced >= HEARTBEAT_SECONDS
-            )
+            announce = _announce_due(last_announced, now)
             if settling is None and (memory_short or announce):
                 holders = _holders(lock_dir, budget, set(held), turnstile is not None)
             others_holding = bool(holders)
