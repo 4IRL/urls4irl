@@ -8,14 +8,22 @@ line of `test-backup-pipeline`, `test-db-provision` and
 `test-playwright-lifecycle`:
 
     token_budget.py run --capacity-file <primary file> --lock-dir <dir> \
-        --tokens <k> --label <target> -- <command…>
+        [--min-tokens <m>] --tokens <k> --label <target> -- <command…>
 
 A run at `-n k` holds `k` tokens (a sequential run holds 1) out of the budget
 `U4I_N_MAX` read from the primary clone's capacity file. Tokens are `flock`ed
 slot files in a per-user lock dir, so the kernel releases them when the runner
 dies — there is no ledger to go stale. A run that doesn't fit queues (and says
 so) instead of oversubscribing the host; a failing run prints the capacity it
-ran under. Stdlib only: it runs on the host under bare mise python.
+ran under.
+
+Each start is also gated on live available memory (this host's /proc/meminfo,
+else the Docker VM's via the hub db container, else static capacity). An
+elastic run (`--min-tokens m < --tokens k`) is granted as many of its `k`
+workers as fit right now, at least `m`, and `@TOKENS@` in its command becomes
+that count; an exact run waits until all `k` fit. A memory wait with no other
+run holding tokens (outside pressure) gives up after `--memory-wait` seconds.
+Stdlib only: it runs on the host under bare mise python.
 """
 
 from __future__ import annotations
@@ -56,6 +64,30 @@ CEILING_HINT: str = (
     "timeouts or spurious login failures at the ceiling are often capacity, "
     "not product bugs — rerun with a lower n="
 )
+BASE_MB_KEY: str = "U4I_BASE_MB"
+WORKER_MB_KEY: str = "U4I_WORKER_MB"
+# Replaced in every argv element by the granted worker count before the child starts.
+TOKENS_PLACEHOLDER: str = "@TOKENS@"
+# Defaults of --settle-seconds / --memory-wait (the Makefile's U4I_SETTLE_SECONDS /
+# U4I_MEMORY_WAIT).
+SETTLE_SECONDS: int = 20
+MEMORY_WAIT_SECONDS: int = 600
+NO_HOLDERS: str = "none"
+WAIT_TOKENS: str = "tokens"
+WAIT_MEMORY: str = "memory"
+
+# Live memory: duplicated from capacity.py (the two scripts can't import each
+# other); test_token_budget.py's parity tests pin every copy to the original.
+MEM_SAFETY: float = 0.90
+LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS: int = 10
+DEFAULT_MEMINFO_PATH: Path = Path("/proc/meminfo")
+DEFAULT_CGROUP_PATH: Path = Path("/sys/fs/cgroup/memory.max")
+BYTES_PER_KB: int = 1024
+BYTES_PER_GB: int = 1024**3
+MB_PER_GB: int = 1024
+LIVE_SOURCE_HOST: str = "host"  # this host's /proc/meminfo (Linux)
+LIVE_SOURCE_VM: str = "vm"  # the Docker VM's, via the hub db container (macOS/Colima)
+LIVE_SOURCE_NONE: str = "none"  # unreadable: static capacity applies
 
 
 class BudgetError(ValueError):
@@ -63,13 +95,39 @@ class BudgetError(ValueError):
 
 
 @dataclass(frozen=True)
+class LiveMemory:
+    """Available memory right now (bytes, None when unreadable) and its LIVE_SOURCE_*."""
+
+    available_bytes: int | None
+    source: str
+
+
+@dataclass(frozen=True)
+class BudgetFile:
+    """What the runner reads from the capacity file: the token budget, the
+    `# decision:` text, and the per-run memory model (GB)."""
+
+    budget: int
+    decision: str
+    base_gb: float
+    worker_gb: float
+
+
+@dataclass(frozen=True)
 class Acquired:
-    """The slot fds a run holds, plus what it waited for and shared the host with."""
+    """The slot fds a run holds, plus what it waited for and shared the host with.
+
+    `granted` is how many workers the run may start (== len(fds));
+    `memory_wait_seconds` is the part of the queue spent waiting for memory.
+    """
 
     fds: tuple[int, ...]
     queued_seconds: float
     others_at_start: tuple[str, ...]
     in_use_at_start: int
+    granted: int
+    live_at_start: LiveMemory
+    memory_wait_seconds: float
 
 
 @dataclass(frozen=True)
@@ -81,8 +139,9 @@ class _Holder:
 # --- capacity file -----------------------------------------------------------
 
 
-def read_budget(path: Path) -> tuple[int, str]:
-    """Return (U4I_N_MAX, the `# decision:` line's text) from the capacity file."""
+def read_budget(path: Path) -> BudgetFile:
+    """Read U4I_N_MAX, the `# decision:` line's text and the per-run memory
+    model (U4I_BASE_MB, U4I_WORKER_MB) from the capacity file."""
     invalid = BudgetError(
         f"{path} missing or has no valid {BUDGET_KEY} — run 'make capacity'"
     )
@@ -90,7 +149,7 @@ def read_budget(path: Path) -> tuple[int, str]:
         text = path.read_text()
     except (OSError, UnicodeDecodeError) as read_error:
         raise invalid from read_error
-    budget: int | None = None
+    values: dict[str, int | None] = {}
     decision = ""
     for line in text.splitlines():
         stripped = line.strip()
@@ -98,11 +157,24 @@ def read_budget(path: Path) -> tuple[int, str]:
             decision = stripped.removeprefix(DECISION_PREFIX)
             continue
         key, separator, value = stripped.partition("=")
-        if separator and key == BUDGET_KEY:
-            budget = int(value) if _is_ascii_digits(value) else None
+        if separator and key in (BUDGET_KEY, BASE_MB_KEY, WORKER_MB_KEY):
+            values[key] = int(value) if _is_ascii_digits(value) else None
+    budget = values.get(BUDGET_KEY)
     if budget is None or budget < 1:
         raise invalid
-    return budget, decision
+    base_mb = values.get(BASE_MB_KEY)
+    worker_mb = values.get(WORKER_MB_KEY)
+    if base_mb is None or worker_mb is None or worker_mb < 1:
+        raise BudgetError(
+            f"{path} missing or has no valid {BASE_MB_KEY}/{WORKER_MB_KEY} — run "
+            "'make capacity'"
+        )
+    return BudgetFile(
+        budget=budget,
+        decision=decision,
+        base_gb=base_mb / MB_PER_GB,
+        worker_gb=worker_mb / MB_PER_GB,
+    )
 
 
 def _is_ascii_digits(text: str) -> bool:
@@ -110,10 +182,18 @@ def _is_ascii_digits(text: str) -> bool:
     return text.isascii() and text.isdigit()
 
 
-def _parse_tokens(raw: str) -> int:
+def _parse_tokens(raw: str, flag: str) -> int:
     if not _is_ascii_digits(raw) or int(raw) < 1:
-        raise BudgetError(f"--tokens must be a positive integer, got {raw!r}")
+        raise BudgetError(f"{flag} must be a positive integer, got {raw!r}")
     return int(raw)
+
+
+def _validate_seconds(seconds: float | None, flag: str) -> None:
+    """Refuse a NaN, infinite or negative seconds value (None = flag unset)."""
+    if seconds is not None and (not math.isfinite(seconds) or seconds < 0):
+        raise BudgetError(
+            f"{flag} must be a finite number of seconds >= 0, got {seconds}"
+        )
 
 
 def ensure_lock_dir(lock_dir: Path) -> None:
@@ -144,6 +224,134 @@ def ensure_lock_dir(lock_dir: Path) -> None:
             f"{lock_dir} dir mode is {stat.S_IMODE(status.st_mode):04o}, expected "
             f"{LOCK_DIR_MODE:04o} — remove it and rerun"
         )
+
+
+# --- live memory -------------------------------------------------------------
+# Behaviourally identical copies of capacity.py's functions; keep the two in step
+# (parity tests). hub_vm_meminfo's error handling is adapted: with no
+# DockerRunError here, it catches the raw subprocess errors directly.
+
+DockerRunner = Callable[[list[str]], subprocess.CompletedProcess[str]]
+
+
+def parse_meminfo(text: str, key: str) -> int | None:
+    """Return `key`'s value from /proc/meminfo text in bytes, or None.
+
+    A malformed value is treated like a missing key (unknown), not an error.
+    """
+    for line in text.splitlines():
+        name, _, rest = line.partition(":")
+        if name == key:
+            try:
+                return int(rest.split()[0]) * BYTES_PER_KB
+            except (IndexError, ValueError):
+                return None
+    return None
+
+
+def parse_cgroup_max(text: str) -> int | None:
+    """Return a cgroup v2 `memory.max` limit in bytes; None for `max` or malformed."""
+    limit = text.strip()
+    if limit == "max":
+        return None
+    try:
+        return int(limit)
+    except ValueError:
+        return None
+
+
+def _read_optional(path: Path) -> str | None:
+    try:
+        return path.read_text()
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def read_live_available(
+    meminfo_path: Path, cgroup_path: Path, vm_meminfo: Callable[[], str | None]
+) -> LiveMemory:
+    """Available memory now: this host's MemAvailable (capped by the cgroup limit),
+    else the Docker VM's via `vm_meminfo`, else unknown. Malformed readings fall
+    through to the next source."""
+    meminfo_text = _read_optional(meminfo_path)
+    host_available = (
+        parse_meminfo(meminfo_text, "MemAvailable") if meminfo_text else None
+    )
+    if host_available is not None:
+        cgroup_text = _read_optional(cgroup_path)
+        cgroup_max = parse_cgroup_max(cgroup_text) if cgroup_text else None
+        if cgroup_max is not None:
+            host_available = min(host_available, cgroup_max)
+        return LiveMemory(host_available, LIVE_SOURCE_HOST)
+    vm_text = vm_meminfo()
+    vm_available = parse_meminfo(vm_text, "MemAvailable") if vm_text else None
+    if vm_available is not None:
+        return LiveMemory(vm_available, LIVE_SOURCE_VM)
+    return LiveMemory(None, LIVE_SOURCE_NONE)
+
+
+def _run_docker_short(args: list[str]) -> subprocess.CompletedProcess[str]:
+    """`docker <args>` with the live-memory read's short timeout (may raise)."""
+    return subprocess.run(
+        ["docker", *args],
+        capture_output=True,
+        text=True,
+        timeout=LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS,
+    )
+
+
+def hub_vm_meminfo(hub_project: str, docker: DockerRunner) -> str | None:
+    """The Docker VM's /proc/meminfo, read inside the running hub db container
+    (a container sees its kernel's meminfo). None on any failure; never raises."""
+    ps_args = [
+        "ps",
+        "-q",
+        "--filter",
+        f"label=com.docker.compose.project={hub_project}",
+        "--filter",
+        "label=com.docker.compose.service=db",
+        "--filter",
+        "status=running",
+    ]
+    try:
+        listed = docker(ps_args)
+        container_ids = listed.stdout.split() if listed.returncode == 0 else []
+        if not container_ids:
+            return None
+        meminfo = docker(["exec", container_ids[0], "cat", "/proc/meminfo"])
+    except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
+        return None
+    return meminfo.stdout if meminfo.returncode == 0 else None
+
+
+def live_usable_gb(live: LiveMemory) -> float | None:
+    """The tests' usable share of the live reading (the MEM_SAFETY margin applied)."""
+    if live.available_bytes is None:
+        return None
+    return live.available_bytes * MEM_SAFETY / BYTES_PER_GB
+
+
+def workers_that_fit(usable_gb: float, base_gb: float, worker_gb: float) -> int:
+    """Test workers a run can start in `usable_gb`; 0 when not even one fits.
+    Round before flooring, as in capacity.py's `_memory_guard`."""
+    return max(0, math.floor(round((usable_gb - base_gb) / worker_gb, 6)))
+
+
+def _live_memory_reader(
+    meminfo_path: Path, cgroup_path: Path, hub_project: str | None
+) -> Callable[[], LiveMemory]:
+    """The production reading: `meminfo_path` (capped by `cgroup_path`), else
+    (given a hub project) the VM."""
+
+    def vm_meminfo() -> str | None:
+        if hub_project is None:
+            return None
+        return hub_vm_meminfo(hub_project, _run_docker_short)
+
+    def read() -> LiveMemory:
+        return read_live_available(meminfo_path, cgroup_path, vm_meminfo)
+
+    return read
 
 
 # --- slots -------------------------------------------------------------------
@@ -258,71 +466,169 @@ def _describe(holders: list[_Holder]) -> str:
     return ", ".join(f"{holder.name} ({holder.slots})" for holder in holders) or UNKNOWN
 
 
+def _memory_target(live: LiveMemory, tokens: int, budget_file: BudgetFile) -> int:
+    """Workers a run of `tokens` may start now: as many as fit in live memory,
+    capped at `tokens`; all of them when live memory is unreadable (static)."""
+    usable_gb = live_usable_gb(live)
+    if usable_gb is None:
+        return tokens
+    fit = workers_that_fit(usable_gb, budget_file.base_gb, budget_file.worker_gb)
+    return min(tokens, fit)
+
+
+def _lock_slots(
+    lock_dir: Path,
+    budget: int,
+    wanted: int,
+    held: dict[int, int],
+    stamped: dict[int, int],
+    slug: str,
+    label: str,
+) -> None:
+    """Trim `held` down to `wanted` slots (highest index first), then lock free
+    slots until it holds `wanted` or none is free. `stamped` records the
+    `tokens=` count written into each held slot."""
+    for index in sorted(held)[wanted:]:
+        _release([held.pop(index)])
+        del stamped[index]
+    for index in range(budget):
+        if len(held) >= wanted:
+            return
+        if index in held:
+            continue
+        descriptor = _try_lock(_slot_path(lock_dir, index))
+        if descriptor is not None:
+            held[index] = descriptor
+            _write_slot(descriptor, slug, label, wanted)
+            stamped[index] = wanted
+
+
 def acquire(
     lock_dir: Path,
     tokens: int,
-    budget: int,
+    min_tokens: int,
+    budget_file: BudgetFile,
     label: str,
     slug: str,
     max_wait: float | None,
+    memory_wait: float,
     clock: Callable[[], float],
+    sleep: Callable[[float], None],
+    live_memory: Callable[[], LiveMemory],
     out: TextIO,
 ) -> Acquired:
-    """Lock `tokens` of the `budget` slot files, polling — never a blocking flock.
+    """Lock between `min_tokens` and `tokens` of the budget's slot files, as many
+    as live memory fits, polling — never a blocking flock.
 
-    Only the turnstile holder accumulates slots, and it keeps the turnstile until
-    it has all of them, so runs never hold-and-wait on each other and a large
-    request can't be starved by smaller ones arriving after it. Default SIGINT
-    handling stays in place: Ctrl-C unwinds this loop (KeyboardInterrupt) and
-    every fd taken so far is closed on the way out.
+    Only the turnstile holder reads live memory and accumulates slots, and it
+    keeps the turnstile until it is granted, so starts are serialised, runs never
+    hold-and-wait on each other, and a large request can't be starved by smaller
+    ones arriving after it. While fewer than `min_tokens` workers fit, it waits for
+    memory keeping the turnstile and every slot it holds; extras past a lower fit
+    are released once the fit is back at or above `min_tokens` (when it locks
+    toward the new target). That wait
+    gives up after `memory_wait` seconds summed over polls where no other run
+    holds tokens (outside pressure); behind our own runs it waits like a token
+    wait. `max_wait` bounds the whole wait. Default SIGINT handling stays in
+    place: Ctrl-C unwinds this loop (KeyboardInterrupt) and every fd taken so far
+    is closed on the way out.
     """
+    budget = budget_file.budget
     started = clock()
     deadline = None if max_wait is None else started + max_wait
     turnstile: int | None = None
     held: dict[int, int] = {}
-    announced_at: float | None = None
+    stamped: dict[int, int] = {}
+    announced_at: dict[str, float] = {}
+    live = LiveMemory(None, LIVE_SOURCE_NONE)
+    noted_static = False
+    previous = started
+    memory_short = False
+    others_holding = False
+    memory_waited = 0.0
+    outside_pressure_waited = 0.0
     try:
         while True:
+            now = clock()
+            if memory_short:
+                memory_waited += now - previous
+                if not others_holding:
+                    outside_pressure_waited += now - previous
+            previous = now
+            wanted = tokens
+            memory_short = False
             if turnstile is None:
                 turnstile = _try_lock(lock_dir / TURNSTILE_NAME)
             if turnstile is not None:
-                for index in range(budget):
-                    if len(held) == tokens:
+                live = live_memory()
+                if live.available_bytes is None and not noted_static:
+                    print(
+                        f"{MESSAGE_PREFIX}live memory unavailable — using static "
+                        "capacity",
+                        file=out,
+                        flush=True,
+                    )
+                    noted_static = True
+                wanted = _memory_target(live, tokens, budget_file)
+                if wanted >= min_tokens:
+                    _lock_slots(lock_dir, budget, wanted, held, stamped, slug, label)
+                    if len(held) == wanted:
                         break
-                    if index in held:
-                        continue
-                    descriptor = _try_lock(_slot_path(lock_dir, index))
-                    if descriptor is not None:
-                        held[index] = descriptor
-                        _write_slot(descriptor, slug, label, tokens)
-                if len(held) == tokens:
-                    break
-            now = clock()
-            waiting = f"{tokens} of {budget} tokens"
-            if announced_at is None or now - announced_at >= HEARTBEAT_SECONDS:
-                holders = _describe(
-                    _holders(lock_dir, budget, set(held), turnstile is not None)
-                )
-                if announced_at is None:
-                    print(
-                        f"{MESSAGE_PREFIX}waiting for {waiting} — held by: {holders}",
-                        file=out,
-                        flush=True,
-                    )
                 else:
-                    print(
-                        f"{MESSAGE_PREFIX}still waiting for {waiting} "
-                        f"({now - started:.0f}s) — held by: {holders}",
-                        file=out,
-                        flush=True,
+                    memory_short = True
+            reason = WAIT_MEMORY if memory_short else WAIT_TOKENS
+            last_announced = announced_at.get(reason)
+            announce = (
+                last_announced is None or now - last_announced >= HEARTBEAT_SECONDS
+            )
+            holders = (
+                _holders(lock_dir, budget, set(held), turnstile is not None)
+                if memory_short or announce
+                else []
+            )
+            others_holding = bool(holders)
+            if memory_short:
+                need = (
+                    f"{budget_file.base_gb + min_tokens * budget_file.worker_gb:.2f} GB"
+                )
+                usable = f"{live_usable_gb(live):.2f} GB usable ({live.source})"
+                waiting = "memory"
+                detail = (
+                    f"need {need} for {min_tokens} workers, {usable}; runs holding "
+                    f"tokens: {_describe(holders) if holders else NO_HOLDERS}"
+                )
+            else:
+                waiting = f"{wanted} of {budget} tokens"
+                detail = f"held by: {_describe(holders)}"
+            if announce:
+                if last_announced is None:
+                    line = f"waiting for {waiting} — {detail}"
+                else:
+                    line = (
+                        f"still waiting for {waiting} ({now - started:.0f}s) — {detail}"
                     )
-                announced_at = now
+                print(f"{MESSAGE_PREFIX}{line}", file=out, flush=True)
+                announced_at[reason] = now
+            if (
+                memory_short
+                and not others_holding
+                and outside_pressure_waited >= memory_wait
+            ):
+                raise BudgetError(
+                    f"gave up after {outside_pressure_waited:.0f}s waiting for memory "
+                    f"with no other test run holding tokens — need {need}, {usable}; "
+                    f"lower n= or free host memory (U4I_MEMORY_WAIT={memory_wait:g})"
+                )
             if deadline is not None and now >= deadline:
                 raise BudgetError(
                     f"gave up after {now - started:.1f}s waiting for {waiting} "
                     "(--max-wait)"
                 )
-            time.sleep(POLL_SECONDS)
+            sleep(POLL_SECONDS)
+        granted = len(held)
+        for index, descriptor in held.items():
+            if stamped[index] != granted:
+                _write_slot(descriptor, slug, label, granted)
         others = _holders(lock_dir, budget, set(held), probe_locks=True)
     except BaseException:
         _release(list(held.values()))
@@ -335,6 +641,9 @@ def acquire(
         queued_seconds=clock() - started,
         others_at_start=tuple(holder.name for holder in others),
         in_use_at_start=sum(holder.slots for holder in others),
+        granted=granted,
+        live_at_start=live,
+        memory_wait_seconds=memory_waited,
     )
 
 
@@ -428,11 +737,47 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--lock-dir", type=Path, required=True)
     # Validated by hand (not type=int) so a bad count exits 1 with our prefix.
     run_parser.add_argument("--tokens", required=True)
+    run_parser.add_argument(
+        "--min-tokens",
+        help="fewest workers an elastic run accepts (default --tokens: exact); "
+        f"below --tokens the command must contain {TOKENS_PLACEHOLDER}",
+    )
     run_parser.add_argument("--label", required=True)
     run_parser.add_argument(
         "--max-wait",
         type=float,
         help="give up (exit 1) after this many seconds queued; default waits forever",
+    )
+    run_parser.add_argument(
+        "--memory-wait",
+        type=float,
+        default=MEMORY_WAIT_SECONDS,
+        help="give up (exit 1) after this many seconds waiting for memory while no "
+        "other run holds tokens",
+    )
+    run_parser.add_argument(
+        "--settle-seconds",
+        type=float,
+        default=SETTLE_SECONDS,
+        help="keep starts serialised this long after the child starts (validated "
+        "only until the settle window lands)",
+    )
+    run_parser.add_argument(
+        "--hub-project",
+        help="read the Docker VM's memory through this hub's db container when "
+        "--meminfo is unreadable (macOS/Colima)",
+    )
+    run_parser.add_argument(
+        "--meminfo",
+        type=Path,
+        default=DEFAULT_MEMINFO_PATH,
+        help="host meminfo file (tests)",
+    )
+    run_parser.add_argument(
+        "--cgroup",
+        type=Path,
+        default=DEFAULT_CGROUP_PATH,
+        help="cgroup memory.max file (tests)",
     )
     run_parser.add_argument("command", nargs=argparse.REMAINDER)
     return parser
@@ -445,8 +790,9 @@ def main(argv: list[str]) -> int:
         command = command[1:]
     capacity_file: Path = args.capacity_file
     try:
-        budget, decision = read_budget(capacity_file)
-        tokens = _parse_tokens(args.tokens)
+        budget_file = read_budget(capacity_file)
+        budget = budget_file.budget
+        tokens = _parse_tokens(args.tokens, "--tokens")
         if tokens > budget:
             raise BudgetError(
                 f"this run needs {tokens} tokens but the host budget is {budget} "
@@ -455,20 +801,40 @@ def main(argv: list[str]) -> int:
             )
         if not command:
             raise BudgetError("no command given after --")
-        max_wait: float | None = args.max_wait
-        if max_wait is not None and (not math.isfinite(max_wait) or max_wait < 0):
+        min_tokens = (
+            _parse_tokens(args.min_tokens, "--min-tokens")
+            if args.min_tokens is not None
+            else tokens
+        )
+        if min_tokens > tokens:
             raise BudgetError(
-                f"--max-wait must be a finite number of seconds >= 0, got {max_wait}"
+                f"--min-tokens must be between 1 and --tokens ({tokens}), "
+                f"got {min_tokens}"
             )
+        if min_tokens < tokens and not any(
+            TOKENS_PLACEHOLDER in element for element in command
+        ):
+            raise BudgetError(
+                "an elastic run (--min-tokens < --tokens) needs "
+                f"{TOKENS_PLACEHOLDER} in the command"
+            )
+        max_wait: float | None = args.max_wait
+        _validate_seconds(max_wait, "--max-wait")
+        _validate_seconds(args.memory_wait, "--memory-wait")
+        _validate_seconds(args.settle_seconds, "--settle-seconds")
         ensure_lock_dir(args.lock_dir)
         acquired = acquire(
             args.lock_dir,
             tokens,
-            budget,
+            min_tokens,
+            budget_file,
             args.label,
             os.environ.get(SLUG_ENV_VAR) or UNKNOWN,
             max_wait,
+            args.memory_wait,
             time.monotonic,
+            time.sleep,
+            _live_memory_reader(args.meminfo, args.cgroup, args.hub_project),
             sys.stderr,
         )
     except BudgetError as refusal:
@@ -483,6 +849,10 @@ def main(argv: list[str]) -> int:
     # Everything after acquire() is covered, so the slots are released even if a
     # Ctrl-C lands outside _run_child's handlers (just before or after them).
     try:
+        command = [
+            element.replace(TOKENS_PLACEHOLDER, str(acquired.granted))
+            for element in command
+        ]
         try:
             exit_code = _run_child(command)
         except OSError as spawn_error:
@@ -501,7 +871,7 @@ def main(argv: list[str]) -> int:
                 queued_seconds=acquired.queued_seconds,
                 others_at_start=acquired.others_at_start,
                 in_use_at_start=acquired.in_use_at_start,
-                decision=decision,
+                decision=budget_file.decision,
             ):
                 print(line, file=sys.stderr)
         return exit_code
