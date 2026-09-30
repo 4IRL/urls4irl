@@ -4,8 +4,8 @@ Asserts what `flask endpoints audit --strict` enforces, against the real repo:
 the committed `docs/endpoints/` artifacts match the live app, every
 `@api_route` endpoint has JS linkage, `NO_JS_ENDPOINTS` and
 `INDIRECT_JS_ENDPOINTS` hold only live and needed entries, and the markdown is
-the rendering of the committed JSON. The
-negative probes below feed hand-built dicts to the pure helpers in
+the rendering of the committed JSON.
+The negative probes below feed hand-built dicts to the pure helpers in
 `backend.endpoint_registry.audit`, one per finding kind.
 """
 
