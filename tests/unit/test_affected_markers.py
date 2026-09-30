@@ -9,6 +9,7 @@ marker, blueprint or test directory without a table row fails loudly here.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Callable
@@ -1618,6 +1619,22 @@ def test_read_repo_file_returns_none_for_a_missing_file() -> None:
     assert "pytestmark = pytest.mark.unit" in (
         affected_markers._read_repo_file("tests/unit/test_affected_markers.py") or ""
     )
+
+
+def test_read_repo_file_returns_none_for_a_path_escaping_the_repo_root(
+    tmp_path: Path,
+) -> None:
+    """
+    GIVEN a `../`-escaping path that names a real file outside the repo root
+    WHEN it is read through the default read_text seam
+    THEN None comes back instead of the outside file's text
+    """
+    outside_file = tmp_path / "escape_probe.txt"
+    outside_file.write_text("outside the repo", encoding="utf-8")
+    escaping_path = os.path.relpath(outside_file, REPO_ROOT)
+
+    assert escaping_path.startswith("..")
+    assert affected_markers._read_repo_file(escaping_path) is None
 
 
 # --- stdlib-only guard --------------------------------------------------------

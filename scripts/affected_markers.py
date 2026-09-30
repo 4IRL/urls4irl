@@ -872,8 +872,14 @@ def registry_staleness_warning(changed_files: Collection[str]) -> str | None:
 
 
 def _read_repo_file(rel: str) -> str | None:
-    """A repo-relative file's text, or None when it does not exist (deleted)."""
-    repo_file = REPO_ROOT / rel
+    """A repo-relative file's text, or None when it does not exist (deleted).
+
+    A path that resolves outside the repo root (`../` escapes, symlinks out)
+    is treated as absent, so `--files` can never read beyond the checkout.
+    """
+    repo_file = (REPO_ROOT / rel).resolve()
+    if not repo_file.is_relative_to(REPO_ROOT.resolve()):
+        return None
     if not repo_file.is_file():
         return None
     return repo_file.read_text(encoding="utf-8", errors="replace")
