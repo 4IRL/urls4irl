@@ -321,7 +321,7 @@ def _resolve_workers(
     if override > memory_guard:
         raise InfeasibleCapacity(
             f"{knob}={override} needs {_gb_needed(override):.1f} GB but only "
-            f"{usable_gb:.1f} GB is usable (at most {memory_guard} workers fit); "
+            f"{usable_gb:.1f} GB is usable (at most {_workers_fit(memory_guard)}); "
             f"rerun with a smaller {knob} or raise U4I_MEM_FRACTION on a dedicated host"
         )
     return override, False
@@ -844,6 +844,16 @@ def workers_that_fit(usable_gb: float, base_gb: float, worker_gb: float) -> int:
     return max(0, math.floor(round((usable_gb - base_gb) / worker_gb, 6)))
 
 
+def workers_phrase(count: int) -> str:
+    """`1 worker` or `<count> workers`."""
+    return f"{count} worker" if count == 1 else f"{count} workers"
+
+
+def _workers_fit(count: int) -> str:
+    """`1 worker fits` or `<count> workers fit`."""
+    return f"{workers_phrase(count)} {'fits' if count == 1 else 'fit'}"
+
+
 def _live_memory(hub_project: str) -> LiveMemory:
     return read_live_available(
         DEFAULT_MEMINFO_PATH,
@@ -1099,7 +1109,7 @@ def _live_line(live: LiveMemory) -> str:
         return "live: unavailable — static capacity applies"
     workers = workers_that_fit(usable_gb, BASE_GB, WORKER_GB)
     return (
-        f"live: {usable_gb:.1f} GB usable now ({live.source}) — {workers} workers fit"
+        f"live: {usable_gb:.1f} GB usable now ({live.source}) — {_workers_fit(workers)}"
     )
 
 

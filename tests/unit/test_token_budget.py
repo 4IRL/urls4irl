@@ -1129,9 +1129,7 @@ def test_memory_wait_heartbeats(lock_dir: Path) -> None:
             max_wait=token_budget.HEARTBEAT_SECONDS + 1,
         )
     lines = out.getvalue().splitlines()
-    body = (
-        "need 2.50 GB for 1 workers, 2.20 GB usable (host); runs holding tokens: none"
-    )
+    body = "need 2.50 GB for 1 worker, 2.20 GB usable (host); runs holding tokens: none"
     assert lines == [
         f"token budget: waiting for memory — {body}",
         f"token budget: still waiting for memory (30s) — {body}",
@@ -1274,6 +1272,136 @@ def test_acquire_closes_the_turnstile_when_memory_wait_gives_up(
         error.value
     )
     assert _turnstile_free(lock_dir)
+
+
+# --- settle wait (acquire) ---------------------------------------------------
+
+SETTLE_BODY: str = (
+    "starts are held for up to 20s after a run starts; held by: other/settler (1)"
+)
+
+
+def _hold_settling_turnstile(lock_dir: Path, pid: int) -> int:
+    """Lock the turnstile in this process with the marker a settling runner writes."""
+    lock_dir.mkdir(mode=0o700, exist_ok=True)
+    descriptor = token_budget._try_lock(lock_dir / token_budget.TURNSTILE_NAME)
+    assert descriptor is not None
+    os.write(
+        descriptor, f"pid={pid} slug=other label=settler settle_seconds=20\n".encode()
+    )
+    return descriptor
+
+
+@pytest.mark.parametrize(("tokens", "min_tokens"), [(2, 2), (4, 1)])
+def test_settle_blocked_wait_names_the_settling_run(
+    lock_dir: Path, tokens: int, min_tokens: int
+) -> None:
+    turnstile = _hold_settling_turnstile(lock_dir, os.getpid())
+    held = _hold_slots(lock_dir, [0], "settler")
+    out = io.StringIO()
+    try:
+        with pytest.raises(BudgetError) as error:
+            _acquire(
+                lock_dir,
+                tokens,
+                min_tokens,
+                _scripted(_live(AMPLE_USABLE_GB)),
+                FakeTime(),
+                out,
+                max_wait=token_budget.HEARTBEAT_SECONDS + 1,
+            )
+    finally:
+        _release_slots(held)
+        os.close(turnstile)
+    # 3 of 4 tokens are free, enough for the run: only the settle window blocks it.
+    assert out.getvalue().splitlines() == [
+        f"token budget: waiting for other/settler to settle — {SETTLE_BODY}",
+        f"token budget: still waiting for other/settler to settle (30s) — {SETTLE_BODY}",
+    ]
+    assert str(error.value) == (
+        "gave up after 31.0s waiting for other/settler to settle (--max-wait)"
+    )
+
+
+def test_settling_run_with_too_few_free_tokens_keeps_the_token_wait(
+    lock_dir: Path,
+) -> None:
+    turnstile = _hold_settling_turnstile(lock_dir, os.getpid())
+    held = _hold_slots(lock_dir, [0, 1, 2], "holder")
+    out = io.StringIO()
+    try:
+        with pytest.raises(BudgetError):
+            _acquire(
+                lock_dir,
+                2,
+                2,
+                _scripted(_live(AMPLE_USABLE_GB)),
+                FakeTime(),
+                out,
+                max_wait=0,
+            )
+    finally:
+        _release_slots(held)
+        os.close(turnstile)
+    assert out.getvalue().splitlines() == [
+        "token budget: waiting for 2 of 4 tokens — held by: other/holder (3)"
+    ]
+
+
+def test_settle_marker_of_a_dead_runner_is_ignored(lock_dir: Path) -> None:
+    finished = subprocess.Popen([sys.executable, "-c", "pass"])
+    finished.wait(timeout=SYNC_TIMEOUT_SECONDS)
+    turnstile = _hold_settling_turnstile(lock_dir, finished.pid)
+    held = _hold_slots(lock_dir, [0], "holder")
+    out = io.StringIO()
+    try:
+        with pytest.raises(BudgetError):
+            _acquire(
+                lock_dir,
+                2,
+                2,
+                _scripted(_live(AMPLE_USABLE_GB)),
+                FakeTime(),
+                out,
+                max_wait=0,
+            )
+    finally:
+        _release_slots(held)
+        os.close(turnstile)
+    assert out.getvalue().splitlines() == [
+        "token budget: waiting for 2 of 4 tokens — held by: other/holder (1)"
+    ]
+
+
+def test_acquire_blanks_a_stale_settle_marker(lock_dir: Path) -> None:
+    lock_dir.mkdir(mode=0o700)
+    (lock_dir / token_budget.TURNSTILE_NAME).write_text(
+        f"pid={os.getpid()} slug=other label=ghost settle_seconds=20\n"
+    )
+    acquired = _acquire(
+        lock_dir, 1, 1, _scripted(_live(AMPLE_USABLE_GB)), FakeTime(), io.StringIO()
+    )
+    try:
+        assert _read(lock_dir / token_budget.TURNSTILE_NAME) == ""
+    finally:
+        _release_acquired(acquired)
+
+
+def test_run_leaves_the_turnstile_blank(capacity_file: Path, lock_dir: Path) -> None:
+    # 3 tokens: above the exemption, so the run marks its settle window.
+    assert (
+        main(
+            _run_args(
+                capacity_file,
+                lock_dir,
+                "3",
+                _exit_child(0),
+                extra_flags=("--settle-seconds", "3600"),
+            )
+        )
+        == 0
+    )
+    assert _read(lock_dir / token_budget.TURNSTILE_NAME) == ""
 
 
 # --- settle window and mid-run sampling (_run_child) -------------------------
@@ -1491,6 +1619,41 @@ def test_settle_window_delays_the_next_start(
     assert runner_b.wait() == 0, runner_b.output()
 
 
+def test_waiter_behind_a_settling_run_says_so(
+    tmp_path: Path, lock_dir: Path, spawn: Callable[..., Runner]
+) -> None:
+    # A's window outlasts every harness wait, so B can only start once A's child
+    # exits (which closes A's turnstile) — never by the window running out.
+    settle_seconds = 2 * SYNC_TIMEOUT_SECONDS
+    a_child, a_started, a_release = _marker_child(tmp_path, "a")
+    b_child, b_started, b_release = _marker_child(tmp_path, "b")
+    runner_a = spawn("a", 3, a_child, settle_seconds=settle_seconds)
+    _wait_for(a_started.exists, "A's child to start")
+    marker = _slot_fields(_read(lock_dir / token_budget.TURNSTILE_NAME))
+    assert marker == {
+        "pid": str(runner_a.process.pid),
+        "slug": TEST_SLUG,
+        "label": "a",
+        "settle_seconds": f"{settle_seconds:g}",
+    }
+
+    runner_b = spawn("b", 1, b_child)
+    settle_line = (
+        f"token budget: waiting for {TEST_SLUG}/a to settle — starts are held for "
+        f"up to {settle_seconds}s after a run starts; held by: {TEST_SLUG}/a (3)"
+    )
+    _wait_for(lambda: settle_line in runner_b.output(), "B's settle wait line")
+    assert "tokens" not in runner_b.output()
+    assert not b_started.exists()
+
+    a_release.touch()
+    assert runner_a.wait() == 0, runner_a.output()
+    _wait_for(b_started.exists, "B's child to start once A's child exits")
+    b_release.touch()
+    assert runner_b.wait() == 0, runner_b.output()
+    assert _read(lock_dir / token_budget.TURNSTILE_NAME) == ""
+
+
 @pytest.mark.parametrize(
     ("tokens", "settle_seconds"),
     [
@@ -1662,7 +1825,7 @@ def test_meminfo_flag_is_honoured(
     assert exit_code == 1
     assert not marker.exists()
     err = capsys.readouterr().err
-    assert "token budget: waiting for memory — need 2.50 GB for 1 workers" in err
+    assert "token budget: waiting for memory — need 2.50 GB for 1 worker," in err
     assert "gave up after 0s waiting for memory with no other test run" in err
 
 
@@ -1783,6 +1946,18 @@ def test_workers_that_fit_matches_capacity(
     assert token_budget.workers_that_fit(
         usable_gb, base_gb, worker_gb
     ) == capacity.workers_that_fit(usable_gb, base_gb, worker_gb)
+
+
+@pytest.mark.parametrize(
+    ("count", "phrase"), [(0, "0 workers"), (1, "1 worker"), (2, "2 workers")]
+)
+def test_workers_phrase_is_singular_only_for_one(count: int, phrase: str) -> None:
+    assert token_budget.workers_phrase(count) == phrase
+
+
+@pytest.mark.parametrize("count", [0, 1, 2, 12])
+def test_workers_phrase_matches_capacity(count: int) -> None:
+    assert token_budget.workers_phrase(count) == capacity.workers_phrase(count)
 
 
 @pytest.mark.parametrize(

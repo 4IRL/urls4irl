@@ -25,8 +25,10 @@ that count; an exact run waits until all `k` fit. A memory wait with no other
 run holding tokens (outside pressure) gives up after `--memory-wait` seconds.
 Starts stay serialised for `--settle-seconds` after the child starts (a run of
 at most SETTLE_EXEMPT_MAX_WORKERS workers skips this), so the next starter's
-reading includes this run's ramp-up. While the child runs, live memory is
-sampled: a low reading prints one warning, and the failure block shows memory.
+reading includes this run's ramp-up; the turnstile file names the settling run,
+so a runner queued only behind that window says so instead of printing a token
+wait. While the child runs, live memory is sampled: a low reading prints one
+warning, and the failure block shows memory.
 Stdlib only: it runs on the host under bare mise python.
 """
 
@@ -90,6 +92,7 @@ MEMORY_HINT: str = "failures may be memory pressure, not product bugs"
 NO_HOLDERS: str = "none"
 WAIT_TOKENS: str = "tokens"
 WAIT_MEMORY: str = "memory"
+WAIT_SETTLE: str = "settle"
 
 # Live memory: duplicated from capacity.py (the two scripts can't import each
 # other); test_token_budget.py's parity tests pin every copy to the original.
@@ -364,6 +367,11 @@ def workers_that_fit(usable_gb: float, base_gb: float, worker_gb: float) -> int:
     return max(0, math.floor(round((usable_gb - base_gb) / worker_gb, 6)))
 
 
+def workers_phrase(count: int) -> str:
+    """`1 worker` or `<count> workers`."""
+    return f"{count} worker" if count == 1 else f"{count} workers"
+
+
 def _live_memory_reader(
     meminfo_path: Path, cgroup_path: Path, hub_project: str | None
 ) -> Callable[[], LiveMemory]:
@@ -489,6 +497,40 @@ def _holders(
     return [_Holder(name=names[key], slots=counts[key]) for key in counts]
 
 
+def _mark_settling(
+    turnstile_fd: int, slug: str, label: str, settle_seconds: float
+) -> None:
+    """Say in the held turnstile that this run is inside its settle window, so a
+    waiter can tell a settle wait from a token wait. Blanked when it is closed.
+    Best-effort: without it a waiter just shows the token wait."""
+    line = (
+        f"pid={os.getpid()} slug={slug} label={label} "
+        f"settle_seconds={settle_seconds:g}\n"
+    )
+    try:
+        os.ftruncate(turnstile_fd, 0)
+        os.pwrite(turnstile_fd, line.encode(), 0)
+    except OSError:
+        pass
+
+
+def _settling_run(lock_dir: Path) -> tuple[str, float] | None:
+    """("<slug>/<label>", settle seconds) of a live run the turnstile says is
+    settling, else None. Read best-effort by a runner that couldn't lock it."""
+    try:
+        fields = _parse_slot((lock_dir / TURNSTILE_NAME).read_text())
+    except (OSError, UnicodeDecodeError):
+        return None
+    try:
+        settle_seconds = float(fields.get("settle_seconds", ""))
+    except ValueError:
+        return None
+    if not _pid_alive(fields.get("pid", "")):
+        return None
+    name = f"{fields.get('slug', UNKNOWN)}/{fields.get('label', UNKNOWN)}"
+    return name, settle_seconds
+
+
 def _describe(holders: list[_Holder]) -> str:
     return ", ".join(f"{holder.name} ({holder.slots})" for holder in holders) or UNKNOWN
 
@@ -587,8 +629,14 @@ def acquire(
             previous = now
             wanted = tokens
             memory_short = False
+            settling: tuple[str, float] | None = None
             if turnstile is None:
                 turnstile = _try_lock(lock_dir / TURNSTILE_NAME)
+                if turnstile is None:
+                    settling = _settling_run(lock_dir)
+                else:
+                    # A settle marker left by a killed runner is not ours to show.
+                    os.ftruncate(turnstile, 0)
             if turnstile is not None:
                 live = live_memory()
                 if live.available_bytes is None and not noted_static:
@@ -606,16 +654,28 @@ def acquire(
                         break
                 else:
                     memory_short = True
-            reason = WAIT_MEMORY if memory_short else WAIT_TOKENS
+            # Behind a settling run, the free slots decide which wait this is.
+            holders = (
+                _holders(lock_dir, budget, set(held), probe_locks=False)
+                if settling is not None
+                else []
+            )
+            settle_blocked = (
+                settling is not None
+                and budget - sum(holder.slots for holder in holders) >= min_tokens
+            )
+            if memory_short:
+                reason = WAIT_MEMORY
+            elif settle_blocked:
+                reason = WAIT_SETTLE
+            else:
+                reason = WAIT_TOKENS
             last_announced = announced_at.get(reason)
             announce = (
                 last_announced is None or now - last_announced >= HEARTBEAT_SECONDS
             )
-            holders = (
-                _holders(lock_dir, budget, set(held), turnstile is not None)
-                if memory_short or announce
-                else []
-            )
+            if settling is None and (memory_short or announce):
+                holders = _holders(lock_dir, budget, set(held), turnstile is not None)
             others_holding = bool(holders)
             if memory_short:
                 need = (
@@ -624,8 +684,15 @@ def acquire(
                 usable = f"{live_usable_gb(live):.2f} GB usable ({live.source})"
                 waiting = "memory"
                 detail = (
-                    f"need {need} for {min_tokens} workers, {usable}; runs holding "
-                    f"tokens: {_describe(holders) if holders else NO_HOLDERS}"
+                    f"need {need} for {workers_phrase(min_tokens)}, {usable}; runs "
+                    f"holding tokens: {_describe(holders) if holders else NO_HOLDERS}"
+                )
+            elif settling is not None and settle_blocked:
+                settler, settle_seconds = settling
+                waiting = f"{settler} to settle"
+                detail = (
+                    f"starts are held for up to {settle_seconds:g}s after a run "
+                    f"starts; held by: {_describe(holders)}"
                 )
             else:
                 waiting = f"{wanted} of {budget} tokens"
@@ -748,7 +815,7 @@ def _run_child(
         while True:
             now = clock()
             if turnstile is not None and now - started >= settle_seconds:
-                os.close(turnstile)
+                _release([turnstile])
                 turnstile = None
             if now >= next_sample:
                 reading = live_memory()
@@ -776,7 +843,7 @@ def _run_child(
             break
     finally:
         if turnstile is not None:
-            os.close(turnstile)
+            _release([turnstile])
         for signum, handler in previous.items():
             signal.signal(signum, handler)
     return ChildResult(
@@ -940,6 +1007,7 @@ def main(argv: list[str]) -> int:
         _validate_seconds(args.memory_wait, "--memory-wait")
         _validate_seconds(args.settle_seconds, "--settle-seconds")
         ensure_lock_dir(args.lock_dir)
+        slug = os.environ.get(SLUG_ENV_VAR) or UNKNOWN
         live_memory = _live_memory_reader(args.meminfo, args.cgroup, args.hub_project)
         acquired = acquire(
             args.lock_dir,
@@ -947,7 +1015,7 @@ def main(argv: list[str]) -> int:
             min_tokens,
             budget_file,
             args.label,
-            os.environ.get(SLUG_ENV_VAR) or UNKNOWN,
+            slug,
             max_wait,
             args.memory_wait,
             time.monotonic,
@@ -974,6 +1042,10 @@ def main(argv: list[str]) -> int:
         effective_settle_seconds = (
             0 if acquired.granted <= SETTLE_EXEMPT_MAX_WORKERS else args.settle_seconds
         )
+        if effective_settle_seconds > 0:
+            _mark_settling(
+                acquired.turnstile_fd, slug, args.label, effective_settle_seconds
+            )
         command = [
             element.replace(TOKENS_PLACEHOLDER, str(acquired.granted))
             for element in command
@@ -1016,7 +1088,7 @@ def main(argv: list[str]) -> int:
         return EXIT_INTERRUPTED
     finally:
         if turnstile_fd is not None:
-            os.close(turnstile_fd)
+            _release([turnstile_fd])
         _release(acquired.fds)
 
 

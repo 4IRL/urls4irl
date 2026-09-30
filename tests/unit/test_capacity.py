@@ -491,6 +491,30 @@ def test_override_above_memory_guard_raises_naming_gb() -> None:
     assert "5.6 GB" in message
 
 
+@pytest.mark.parametrize(
+    ("mem_total_gib", "fit"),
+    [
+        # usable = 4 * 0.7 = 2.8 GiB → floor((2.8 - 2.0) / 0.5) = 1 worker.
+        (4, "at most 1 worker fits"),
+        # usable = 8 * 0.7 = 5.6 GiB → floor((5.6 - 2.0) / 0.5) = 7 workers.
+        (8, "at most 7 workers fit"),
+    ],
+)
+def test_override_above_memory_guard_counts_workers_in_words(
+    mem_total_gib: int, fit: str
+) -> None:
+    with pytest.raises(InfeasibleCapacity) as excinfo:
+        _derive(
+            _probe(ncpu=12, mem_total_bytes=mem_total_gib * GIB), Overrides(n_ui=20)
+        )
+    assert f"({fit});" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(("count", "phrase"), [(0, "0 workers"), (1, "1 worker")])
+def test_workers_phrase_is_singular_only_for_one(count: int, phrase: str) -> None:
+    assert capacity.workers_phrase(count) == phrase
+
+
 def test_int_override_above_memory_guard_names_int_knob() -> None:
     with pytest.raises(InfeasibleCapacity, match="U4I_N_INT=20"):
         _derive(_probe(ncpu=12, mem_total_bytes=8 * GIB), Overrides(n_int=20))
@@ -2265,6 +2289,24 @@ def test_show_prints_the_live_line_from_the_hub_reader(
     assert asked == [LIVE_HUB]
     out_lines = capsys.readouterr().out.splitlines()
     assert out_lines[-1] == "live: 4.0 GB usable now (vm) — 4 workers fit"
+
+
+def test_show_live_line_is_singular_for_one_worker(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+
+    # floor((2.5 − 2.0) / 0.5) = 1 worker.
+    _show_with_live(
+        env_path,
+        LiveMemory(int(2.5 / DEFAULT_MEM_SAFETY * GIB), LIVE_SOURCE_VM),
+        LIVE_HUB,
+    )
+
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: 2.5 GB usable now (vm) — 1 worker fits"
 
 
 def test_show_prints_unavailable_when_live_memory_cannot_be_read(
