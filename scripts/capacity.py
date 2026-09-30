@@ -62,15 +62,6 @@ WORKER_GB: float = 0.5
 HUB_IDLE_GB: float = 0.6
 # One idle spoke (web + db-init + redis + redis-metrics): 213-225 MB (master Phase 6).
 SPOKE_IDLE_GB: float = 0.25
-# Keys that track mem_available (like the `# decision:` usable_gb): a difference
-# only in these is jitter, so `generate` reports the file unchanged. U4I_USABLE_MB
-# and U4I_SPOKE_MAX are thus a point-in-time snapshot from when the file was last
-# (re)written (`ensure` regenerates only on a fingerprint/missing-key change; a
-# jitter-only diff is ignored) — not a live signal, like n_ui/n_int's own freshness.
-# A U4I_SPOKE_MAX that disagrees with its own `# decision:` line is a hand edit, not
-# jitter, so `generate` rewrites it; U4I_USABLE_MB gets no such check since it is
-# purely informational (only read for the admission refusal message).
-MEMORY_SNAPSHOT_KEYS: tuple[str, ...] = ("U4I_USABLE_MB", "U4I_SPOKE_MAX")
 DEFAULT_MEM_FRACTION: float = 0.70
 DEFAULT_MEM_SAFETY: float = 0.90
 
@@ -161,6 +152,8 @@ ENV_KEYS: tuple[str, ...] = (
     "U4I_USABLE_MB",
     "U4I_HUB_IDLE_MB",
     "U4I_SPOKE_IDLE_MB",
+    "U4I_BASE_MB",
+    "U4I_WORKER_MB",
     "U4I_SPOKE_MAX",
     "HOST_UID",
     "HOST_GID",
@@ -268,12 +261,13 @@ def _memory_guard(usable_gb: float) -> int:
     return max(1, math.floor(round((usable_gb - BASE_GB) / WORKER_GB, 6)))
 
 
-def _spoke_ceiling(usable_gb: float, n_max: int) -> tuple[int, bool]:
-    """(spokes that fit, whether the floor clamped to 1): the hub, the idle spokes and
-    one full-width test run must share usable memory. Round before flooring, as in
-    `_memory_guard`, so binary-float rounding can't under-count by one."""
+def _spoke_ceiling(usable_gb: float) -> tuple[int, bool]:
+    """(spokes that fit, whether the floor clamped to 1): spokes that fit on an idle
+    host with room for one minimum test run; informational — admission reads live
+    memory. Round before flooring, as in `_memory_guard`, so binary-float rounding
+    can't under-count by one."""
     spokes_that_fit = math.floor(
-        round((usable_gb - HUB_IDLE_GB - _gb_needed(n_max)) / SPOKE_IDLE_GB, 6)
+        round((usable_gb - HUB_IDLE_GB - _gb_needed(1)) / SPOKE_IDLE_GB, 6)
     )
     return max(1, spokes_that_fit), spokes_that_fit < 1
 
@@ -334,7 +328,12 @@ def derive(
             f"U4I_MEM_FRACTION={mem_fraction} is outside (0, 1]; "
             f"rerun with U4I_MEM_FRACTION between 0 and 1 (or U4I_MEM_FRACTION=auto)"
         )
-    usable_gb = _usable_gb(probe, mem_fraction, mem_safety)
+    # Sized from the fingerprinted inputs only (total × fraction, cgroup; never
+    # MemAvailable), so no value in the file jitters between runs: live memory
+    # gates each test-run and spoke start instead.
+    usable_gb = _usable_gb(
+        replace(probe, mem_available_bytes=None), mem_fraction, mem_safety
+    )
     memory_guard = _memory_guard(usable_gb)
 
     n_ui, ui_memory_bound = _resolve_workers(
@@ -361,12 +360,7 @@ def derive(
 
     n_max = max(n_ui, n_int)
     pg_test_conn_limit = n_max * CONN_PER_WORKER + CONN_BASE
-    # Sized from the fingerprinted inputs only (no MemAvailable), because
-    # shared_buffers is an interlock and must not jitter between runs.
-    stable_usable_gb = _usable_gb(
-        replace(probe, mem_available_bytes=None), mem_fraction, mem_safety
-    )
-    spoke_max, spoke_max_clamped = _spoke_ceiling(usable_gb, n_max)
+    spoke_max, spoke_max_clamped = _spoke_ceiling(usable_gb)
     return Capacity(
         n_ui=n_ui,
         n_int=n_int,
@@ -378,7 +372,7 @@ def derive(
         pg_test_conn_limit=pg_test_conn_limit,
         pg_max_conn=pg_test_conn_limit + DEV_CONN_BUDGET + SUPERUSER_RESERVED,
         pg_shared_buffers_mb=clamp(
-            int(stable_usable_gb * MB_PER_GB) // PG_SHARED_BUFFERS_DIVISOR,
+            int(usable_gb * MB_PER_GB) // PG_SHARED_BUFFERS_DIVISOR,
             PG_SHARED_BUFFERS_MIN_MB,
             PG_SHARED_BUFFERS_MAX_MB,
         ),
@@ -515,6 +509,8 @@ def render_env(
         "U4I_USABLE_MB": int(round(capacity.usable_gb * MB_PER_GB, 6)),
         "U4I_HUB_IDLE_MB": int(HUB_IDLE_GB * MB_PER_GB),
         "U4I_SPOKE_IDLE_MB": int(SPOKE_IDLE_GB * MB_PER_GB),
+        "U4I_BASE_MB": int(BASE_GB * MB_PER_GB),
+        "U4I_WORKER_MB": int(WORKER_GB * MB_PER_GB),
         "U4I_SPOKE_MAX": capacity.spoke_max,
         "HOST_UID": host_probe.host_uid,
         "HOST_GID": host_probe.host_gid,
@@ -559,25 +555,18 @@ def _decision_spoke_max(text: str) -> str | None:
     return None
 
 
-def _same_but_for_memory_jitter(existing_text: str | None, new: dict[str, str]) -> bool:
-    """Every key present in both, and equal outside MEMORY_SNAPSHOT_KEYS.
+def _is_consistent(existing_text: str | None, new: dict[str, str]) -> bool:
+    """The file's keys equal `new`, and U4I_SPOKE_MAX matches its `# decision:` token.
 
-    U4I_SPOKE_MAX must still match the file's own `# decision:` line (both are
-    written by one render): a mismatch is a hand edit, not jitter, so it is
-    rewritten rather than kept.
+    Both are written by one render, so a U4I_SPOKE_MAX that disagrees with the
+    decision line is a hand edit, and the file is rewritten rather than kept.
     """
     if existing_text is None:
         return False
     existing = _parse_env(existing_text)
-    if existing.keys() != new.keys():
+    if existing != new:
         return False
-    if existing["U4I_SPOKE_MAX"] != _decision_spoke_max(existing_text):
-        return False
-    return all(
-        existing[key] == value
-        for key, value in new.items()
-        if key not in MEMORY_SNAPSHOT_KEYS
-    )
+    return existing["U4I_SPOKE_MAX"] == _decision_spoke_max(existing_text)
 
 
 def changed_interlocks(old: dict[str, str], new: dict[str, str]) -> list[str]:
@@ -676,11 +665,6 @@ def _resolve_overrides(
 def _read_existing_text(path: Path) -> str | None:
     """The capacity file's raw text, or None when it does not exist."""
     return path.read_text() if path.exists() else None
-
-
-def _read_existing(path: Path) -> dict[str, str] | None:
-    text = _read_existing_text(path)
-    return _parse_env(text) if text is not None else None
 
 
 # --- app_logs ownership ------------------------------------------------------
@@ -904,7 +888,7 @@ def _generate(
         capacity, host_probe, overrides, fingerprint(host_probe, overrides)
     )
     new_values = _parse_env(content)
-    if _same_but_for_memory_jitter(existing_text, new_values):
+    if _is_consistent(existing_text, new_values):
         print(f"capacity unchanged ({output})")
         return
     _write_atomically(output, content)
@@ -928,16 +912,27 @@ def _generate(
 
 
 def _ensure(output: Path, host_probe: Probe) -> None:
-    """Regenerate when P is missing, a key was deleted, or the fingerprint moved.
+    """Regenerate when P is missing, a key was deleted, the fingerprint moved, or
+    the file disagrees with a fresh render (e.g. a hand-edited U4I_SPOKE_MAX).
 
-    Values are deliberately not re-derived here: the fingerprint excludes the
-    mem_available jitter, so a matching, complete file is left untouched.
+    Every file value comes from the fingerprinted inputs, so re-deriving on a
+    fingerprint match is pure computation and a consistent file is left untouched.
     """
-    existing = _read_existing(output)
+    existing_text = _read_existing_text(output)
+    existing = _parse_env(existing_text) if existing_text is not None else None
     if existing is not None and all(key in existing for key in ENV_KEYS):
         overrides = _resolve_overrides(existing, None, None, None)
-        if existing.get(FINGERPRINT_KEY) == fingerprint(host_probe, overrides):
-            return
+        host_fingerprint = fingerprint(host_probe, overrides)
+        if existing.get(FINGERPRINT_KEY) == host_fingerprint:
+            mem_fraction = (
+                overrides.mem_fraction
+                if overrides.mem_fraction is not None
+                else DEFAULT_MEM_FRACTION
+            )
+            capacity = derive(host_probe, overrides, mem_fraction, DEFAULT_MEM_SAFETY)
+            content = render_env(capacity, host_probe, overrides, host_fingerprint)
+            if _is_consistent(existing_text, _parse_env(content)):
+                return
     _generate(output, host_probe, None, None, None)
 
 

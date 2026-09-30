@@ -210,8 +210,31 @@ def test_derive_pg_shared_buffers_ignores_mem_available_jitter() -> None:
     """shared_buffers is an interlock, so it must not move with MemAvailable."""
     low = _derive(_probe(mem_total_bytes=16 * GIB, mem_available_bytes=6 * GIB))
     high = _derive(_probe(mem_total_bytes=16 * GIB, mem_available_bytes=7 * GIB))
-    assert low.usable_gb != high.usable_gb
     assert low.pg_shared_buffers_mb == high.pg_shared_buffers_mb
+
+
+def test_derive_ignores_mem_available_for_every_file_value() -> None:
+    """Every value written to the file comes from stable inputs: a memory-bound
+    MemAvailable reading changes none of them (live memory gates each start)."""
+    memory_bound = _derive(
+        _probe(
+            ncpu=12,
+            mem_total_bytes=REFERENCE_HOST_MEM_TOTAL_BYTES,
+            mem_available_bytes=4 * GIB,
+        )
+    )
+    unknown = _derive(_probe(ncpu=12, mem_total_bytes=REFERENCE_HOST_MEM_TOTAL_BYTES))
+    for field_name in (
+        "n_ui",
+        "n_int",
+        "n_max",
+        "redis_metrics_databases",
+        "pg_test_conn_limit",
+        "pg_max_conn",
+        "usable_gb",
+        "spoke_max",
+    ):
+        assert getattr(memory_bound, field_name) == getattr(unknown, field_name)
 
 
 def test_derive_pg_shared_buffers_honors_cgroup_limit() -> None:
@@ -237,24 +260,24 @@ def _rendered_values(
     return capacity._parse_env(_render(overrides=overrides, probe_value=probe_value))
 
 
-def test_spoke_max_on_reference_host_reserves_hub_and_one_full_run() -> None:
-    """(9.6 - 0.6 hub - 2.0 base - 12 × 0.5 workers) / 0.25 per idle spoke = 4."""
+def test_spoke_max_on_reference_host_reserves_hub_and_one_minimum_run() -> None:
+    """(9.6 - 0.6 hub - (2.0 base + 1 × 0.5 worker)) / 0.25 per idle spoke = 26."""
     reference_probe = _probe(ncpu=12, mem_total_bytes=REFERENCE_HOST_MEM_TOTAL_BYTES)
     result = _derive(reference_probe)
     assert f"{result.usable_gb:.1f}" == "9.6"
     assert (result.n_ui, result.n_int, result.n_max) == (8, 12, 12)
     assert result.binding_constraint == "cpu"
-    assert result.spoke_max == 4
+    assert result.spoke_max == 26
     assert result.spoke_max_clamped is False
-    assert _rendered_values(reference_probe)["U4I_SPOKE_MAX"] == "4"
+    assert _rendered_values(reference_probe)["U4I_SPOKE_MAX"] == "26"
 
 
 def test_spoke_max_clamps_to_one_on_a_memory_starved_host() -> None:
+    """4 GiB total: usable 2.8 GB, and (2.8 - 0.6 - 2.5) / 0.25 < 1 → 1 (clamped)."""
     starved_probe = _probe(ncpu=12, mem_total_bytes=4 * GIB)
     result = _derive(starved_probe)
-    assert (
-        result.usable_gb - HUB_IDLE_GB - BASE_GB - result.n_max * WORKER_GB
-    ) / SPOKE_IDLE_GB <= 0
+    assert result.usable_gb == pytest.approx(2.8)
+    assert (result.usable_gb - HUB_IDLE_GB - BASE_GB - WORKER_GB) / SPOKE_IDLE_GB < 1
     assert result.spoke_max == 1
     assert result.spoke_max_clamped is True
     rendered = render_env(
@@ -276,14 +299,15 @@ def test_usable_mb_matches_the_decision_usable_gb() -> None:
     assert values["U4I_SPOKE_IDLE_MB"] == str(int(SPOKE_IDLE_GB * 1024))
 
 
-def test_spoke_max_falls_as_an_n_override_raises_n_max() -> None:
-    """The admission interlock moves with n: more workers reserved, fewer spokes."""
+def test_spoke_max_does_not_move_with_an_n_override() -> None:
+    """The informational ceiling reserves one minimum test run, not n_max workers:
+    (179.2 - 0.6 - 2.5) / 0.25 = 704 whatever U4I_N_UI is."""
     default_result = _derive(_probe())
     overridden_result = _derive(_probe(), Overrides(n_ui=16))
     assert overridden_result.n_max == 16 > default_result.n_max
-    assert default_result.spoke_max == 682
-    assert overridden_result.spoke_max == 674
-    assert _rendered_values(_probe(), Overrides(n_ui=16))["U4I_SPOKE_MAX"] == "674"
+    assert default_result.spoke_max == 704
+    assert overridden_result.spoke_max == 704
+    assert _rendered_values(_probe(), Overrides(n_ui=16))["U4I_SPOKE_MAX"] == "704"
 
 
 def test_shared_redis_databases_hold_concurrent_runs_at_hard_ceiling() -> None:
@@ -315,20 +339,20 @@ def test_redis_metrics_databases_floor_is_sixteen() -> None:
 # --- memory guard ------------------------------------------------------------
 
 
-def test_memory_guard_binds_when_available_memory_is_low() -> None:
-    # usable = min(32 * 0.7, 5 * 0.9) = 4.5 GiB -> floor((4.5 - 2.0) / 0.5) = 5
+def test_memory_guard_ignores_low_available_memory() -> None:
+    """MemAvailable is live, so it never sizes the file: usable = 32 * 0.7 = 22.4
+    GiB, not min(22.4, 5 * 0.9); the live gate in the token runner handles it."""
     result = _derive(
         _probe(ncpu=12, mem_total_bytes=32 * GIB, mem_available_bytes=5 * GIB)
     )
-    assert result.usable_gb == pytest.approx(4.5)
-    assert result.n_ui == 5
-    assert result.n_int == 5
-    assert result.n_max == 5
-    assert result.binding_constraint == "memory"
+    assert result.usable_gb == pytest.approx(22.4)
+    assert result.n_ui == 8
+    assert result.n_int == 12
+    assert result.binding_constraint == "cpu"
 
 
-def test_memory_guard_uses_min_of_available_and_cgroup() -> None:
-    # available = min(20, 4) = 4 GiB -> usable = min(22.4, 3.6) = 3.6 -> n = 3
+def test_memory_guard_uses_cgroup_even_with_ample_available_memory() -> None:
+    # cgroup 4 GiB (stable) -> usable = min(22.4, 3.6) = 3.6 -> n = 3
     result = _derive(
         _probe(
             ncpu=12,
@@ -769,6 +793,8 @@ RENDERED_KEYS: list[str] = [
     "U4I_USABLE_MB",
     "U4I_HUB_IDLE_MB",
     "U4I_SPOKE_IDLE_MB",
+    "U4I_BASE_MB",
+    "U4I_WORKER_MB",
     "U4I_SPOKE_MAX",
     "HOST_UID",
     "HOST_GID",
@@ -797,7 +823,7 @@ def test_render_env_header_and_decision_comment() -> None:
     lines = _render().splitlines()
     assert lines[0] == "# GENERATED by make capacity — DO NOT EDIT"
     assert (
-        "# decision: n_ui=8 n_int=12 binding=cpu usable_gb=179.2 spoke_max=682" in lines
+        "# decision: n_ui=8 n_int=12 binding=cpu usable_gb=179.2 spoke_max=704" in lines
     )
 
 
@@ -834,6 +860,8 @@ def test_render_env_values() -> None:
     assert "U4I_PG_TEST_CONN_LIMIT=230\n" in rendered
     assert "U4I_PG_MAX_CONN=263\n" in rendered
     assert f"U4I_PG_SHARED_BUFFERS_MB={PG_SHARED_BUFFERS_MAX_MB}\n" in rendered
+    assert "U4I_BASE_MB=2048\n" in rendered
+    assert "U4I_WORKER_MB=512\n" in rendered
     assert "HOST_UID=1000\n" in rendered
     assert "HOST_GID=1000\n" in rendered
     assert (
@@ -947,11 +975,11 @@ def test_generate_unchanged_leaves_file_untouched(
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
 
 
-def test_generate_ignores_decision_comment_jitter(
+def test_generate_is_unchanged_when_only_mem_available_moves(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """usable_gb in the `# decision:` line, U4I_USABLE_MB and U4I_SPOKE_MAX track
-    mem_available; a jitter-only difference is not a change."""
+    """Nothing in the file is sized from MemAvailable, so a MemAvailable-only
+    difference renders identical text and leaves the file untouched."""
     env_path = tmp_path / "capacity.env"
     first_probe = _probe(mem_available_bytes=100 * GIB)
     second_probe = _probe(mem_available_bytes=120 * GIB)
@@ -962,9 +990,7 @@ def test_generate_ignores_decision_comment_jitter(
 
     assert _run(["generate", "--output", str(env_path)], second_probe) == 0
 
-    assert _derive(second_probe).binding_constraint == "cpu"
-    assert _derive(second_probe).spoke_max != _derive(first_probe).spoke_max
-    assert _render(probe_value=second_probe) != original_content
+    assert _render(probe_value=second_probe) == original_content
     assert capsys.readouterr().out == f"capacity unchanged ({env_path})\n"
     assert env_path.read_text() == original_content
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
@@ -1309,6 +1335,53 @@ def test_ensure_migrates_file_missing_admission_keys(
     assert env_path.read_text() == current_content
 
 
+def test_ensure_migrates_file_missing_memory_model_keys(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A file from before the per-run memory model (no U4I_BASE_MB/U4I_WORKER_MB)
+    heals on the next ensure, with no recreate message: they are not interlocks."""
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    current_content = env_path.read_text()
+    memory_model_keys = ("U4I_BASE_MB", "U4I_WORKER_MB")
+    legacy_content = "".join(
+        line
+        for line in current_content.splitlines(keepends=True)
+        if not line.startswith(tuple(f"{key}=" for key in memory_model_keys))
+    )
+    env_path.write_text(legacy_content)
+    assert not set(memory_model_keys) & set(read_env(env_path))
+    capsys.readouterr()
+
+    assert _run(["ensure", "--output", str(env_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"capacity regenerated ({env_path})"
+    ]
+    assert env_path.read_text() == current_content
+
+
+def test_ensure_restores_a_hand_edited_spoke_max(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A U4I_SPOKE_MAX that disagrees with its `# decision:` token is a hand edit:
+    `ensure` regenerates it even though the fingerprint still matches."""
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    derived_line = f"U4I_SPOKE_MAX={_derive(_probe()).spoke_max}\n"
+    original_content = env_path.read_text()
+    assert derived_line in original_content
+    env_path.write_text(original_content.replace(derived_line, "U4I_SPOKE_MAX=1\n"))
+    capsys.readouterr()
+
+    assert _run(["ensure", "--output", str(env_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"capacity regenerated ({env_path})"
+    ]
+    assert env_path.read_text() == original_content
+
+
 def test_ensure_infeasible_recorded_override_exits_non_zero_untouched(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1325,6 +1398,34 @@ def test_ensure_infeasible_recorded_override_exits_non_zero_untouched(
     assert exit_code != 0
     assert "U4I_N_UI" in capsys.readouterr().err
     assert env_path.read_text() == original_content
+    assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
+
+
+def test_ensure_infeasible_override_with_matching_fingerprint_exits_untouched(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A fingerprint match still re-derives (the consistency check), so an
+    infeasible recorded override fails loudly there and leaves the file as is."""
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    recorded = read_env(env_path)
+    infeasible_overrides = Overrides(n_ui=HARD_N_CEILING + 1)
+    edited_content = (
+        env_path.read_text()
+        .replace("U4I_OVERRIDE_N_UI=\n", f"U4I_OVERRIDE_N_UI={HARD_N_CEILING + 1}\n")
+        .replace(
+            recorded["U4I_CAPACITY_FINGERPRINT"],
+            fingerprint(_probe(), infeasible_overrides),
+        )
+    )
+    env_path.write_text(edited_content)
+    _age(env_path)
+    capsys.readouterr()
+
+    assert _run(["ensure", "--output", str(env_path)]) != 0
+
+    assert "U4I_N_UI" in capsys.readouterr().err
+    assert env_path.read_text() == edited_content
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
 
 
