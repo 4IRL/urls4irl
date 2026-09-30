@@ -8,7 +8,7 @@ only: it runs on the host under bare mise python, before any container exists.
 
 Subcommands (see `main`): `generate` writes the gitignored env file,
 `ensure` regenerates it only when the host fingerprint changed (run before
-every stack/test target), `show` prints the resolved values,
+every stack/test target), `show` prints the resolved values and live memory,
 `logs-owner-fix` re-owns the `app_logs` volume's log dir to the recorded
 HOST_UID:HOST_GID (run before every stack start), and `admit` refuses a new
 spoke past the U4I_SPOKE_MAX ceiling (spoke admission).
@@ -92,6 +92,15 @@ LOGS_DIR_MODE: str = "775"  # as web's image sets it
 # A 0 uid/gid (root host) maps here, mirroring docker/Dockerfile.Local's fallback.
 ROOT_ID_FALLBACK: int = 1001
 DOCKER_RUN_TIMEOUT_SECONDS: int = 120
+# The live-memory read runs on every test-run poll and spoke admit, so a hung
+# daemon must not stall it for DOCKER_RUN_TIMEOUT_SECONDS. token_budget.py
+# duplicates this constant (a parity test pins the two together).
+LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS: int = 10
+
+# Where a live available-memory reading came from.
+LIVE_SOURCE_HOST: str = "host"  # this host's /proc/meminfo (Linux)
+LIVE_SOURCE_VM: str = "vm"  # the Docker VM's, via the hub db container (macOS/Colima)
+LIVE_SOURCE_NONE: str = "none"  # unreadable: callers fall back to static capacity
 
 # `admit` lists the compose project of every running container on the shared network.
 COMPOSE_PROJECT_FORMAT: str = '{{.Label "com.docker.compose.project"}}'
@@ -192,6 +201,14 @@ class AdmissionResult:
     admitted: bool
     others: tuple[str, ...]
     message: str
+
+
+@dataclass(frozen=True)
+class LiveMemory:
+    """Available memory right now (bytes, None when unreadable) and its LIVE_SOURCE_*."""
+
+    available_bytes: int | None
+    source: str
 
 
 @dataclass(frozen=True)
@@ -449,7 +466,7 @@ def run_docker_info() -> str:
 def _read_optional(path: Path) -> str | None:
     try:
         return path.read_text()
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return None
 
 
@@ -745,6 +762,94 @@ def _logs_owner_fix(output: Path, project: str, docker: DockerRunner) -> None:
         )
 
 
+# --- live memory -------------------------------------------------------------
+
+
+def read_live_available(
+    meminfo_path: Path, cgroup_path: Path, vm_meminfo: Callable[[], str | None]
+) -> LiveMemory:
+    """Available memory now: this host's MemAvailable (capped by the cgroup limit),
+    else the Docker VM's via `vm_meminfo`, else unknown. Malformed readings fall
+    through to the next source."""
+    meminfo_text = _read_optional(meminfo_path)
+    host_available = (
+        parse_meminfo(meminfo_text, "MemAvailable") if meminfo_text else None
+    )
+    if host_available is not None:
+        cgroup_text = _read_optional(cgroup_path)
+        cgroup_max = parse_cgroup_max(cgroup_text) if cgroup_text else None
+        if cgroup_max is not None:
+            host_available = min(host_available, cgroup_max)
+        return LiveMemory(host_available, LIVE_SOURCE_HOST)
+    vm_text = vm_meminfo()
+    vm_available = parse_meminfo(vm_text, "MemAvailable") if vm_text else None
+    if vm_available is not None:
+        return LiveMemory(vm_available, LIVE_SOURCE_VM)
+    return LiveMemory(None, LIVE_SOURCE_NONE)
+
+
+def _run_docker_short(args: list[str]) -> subprocess.CompletedProcess[str]:
+    """`run_docker` with the live-memory read's short timeout."""
+    try:
+        return subprocess.run(
+            ["docker", *args],
+            capture_output=True,
+            text=True,
+            timeout=LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as timed_out:
+        raise DockerRunError(
+            f"docker {args[0]} timed out after {LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS}s"
+        ) from timed_out
+    except OSError as launch_error:
+        raise DockerRunError(str(launch_error)) from launch_error
+
+
+def hub_vm_meminfo(hub_project: str, docker: DockerRunner) -> str | None:
+    """The Docker VM's /proc/meminfo, read inside the running hub db container
+    (a container sees its kernel's meminfo). None on any failure; never raises."""
+    ps_args = [
+        "ps",
+        "-q",
+        "--filter",
+        f"label=com.docker.compose.project={hub_project}",
+        "--filter",
+        "label=com.docker.compose.service=db",
+        "--filter",
+        "status=running",
+    ]
+    try:
+        listed = docker(ps_args)
+        container_ids = listed.stdout.split() if listed.returncode == 0 else []
+        if not container_ids:
+            return None
+        meminfo = docker(["exec", container_ids[0], "cat", "/proc/meminfo"])
+    except (DockerRunError, OSError, UnicodeDecodeError):
+        return None
+    return meminfo.stdout if meminfo.returncode == 0 else None
+
+
+def live_usable_gb(live: LiveMemory) -> float | None:
+    """The tests' usable share of the live reading (the MEM_SAFETY margin applied)."""
+    if live.available_bytes is None:
+        return None
+    return live.available_bytes * DEFAULT_MEM_SAFETY / BYTES_PER_GB
+
+
+def workers_that_fit(usable_gb: float, base_gb: float, worker_gb: float) -> int:
+    """Test workers a run can start in `usable_gb`; 0 when not even one fits.
+    Round before flooring, as in `_memory_guard`."""
+    return max(0, math.floor(round((usable_gb - base_gb) / worker_gb, 6)))
+
+
+def _live_memory(hub_project: str) -> LiveMemory:
+    return read_live_available(
+        DEFAULT_MEMINFO_PATH,
+        DEFAULT_CGROUP_PATH,
+        lambda: hub_vm_meminfo(hub_project, _run_docker_short),
+    )
+
+
 # --- spoke admission ---------------------------------------------------------
 
 
@@ -936,7 +1041,21 @@ def _ensure(output: Path, host_probe: Probe) -> None:
     _generate(output, host_probe, None, None, None)
 
 
-def _show(output: Path) -> int:
+def _live_line(live: LiveMemory) -> str:
+    usable_gb = live_usable_gb(live)
+    if usable_gb is None:
+        return "live: unavailable — static capacity applies"
+    workers = workers_that_fit(usable_gb, BASE_GB, WORKER_GB)
+    return (
+        f"live: {usable_gb:.1f} GB usable now ({live.source}) — {workers} workers fit"
+    )
+
+
+def _show(
+    output: Path, hub_project: str | None, live_memory: Callable[[str], LiveMemory]
+) -> int:
+    """Print the capacity file, then live memory. Without `hub_project` only this
+    host's file is read (no VM attempt)."""
     if not output.exists():
         print(f"{output} does not exist; run 'make capacity'", file=sys.stderr)
         return 1
@@ -954,6 +1073,14 @@ def _show(output: Path) -> int:
         print(f"  {decision}")
     for key, value in rows.items():
         print(f"  {key.ljust(key_width)}  {value or '-'}")
+    live = (
+        live_memory(hub_project)
+        if hub_project is not None
+        else read_live_available(
+            DEFAULT_MEMINFO_PATH, DEFAULT_CGROUP_PATH, lambda: None
+        )
+    )
+    print(_live_line(live))
     return 0
 
 
@@ -975,11 +1102,17 @@ def _build_parser() -> argparse.ArgumentParser:
 
     for name, help_text in (
         ("ensure", "regenerate only when the host fingerprint changed"),
-        ("show", "print the resolved capacity table"),
         ("logs-owner-fix", "re-own the app_logs log dir to HOST_UID:HOST_GID"),
     ):
         subcommand_parser = subcommands.add_parser(name, help=help_text)
         subcommand_parser.add_argument("--output", type=Path, required=True)
+
+    show_parser = subcommands.add_parser(
+        "show", help="print the resolved capacity table and live memory"
+    )
+    show_parser.add_argument("--output", type=Path, required=True)
+    # The VM reading (macOS/Colima) goes through the hub db; without it only the host file is read.
+    show_parser.add_argument("--hub-project")
 
     admit_parser = subcommands.add_parser(
         "admit", help="refuse a spoke start past the U4I_SPOKE_MAX ceiling"
@@ -995,11 +1128,12 @@ def main(
     argv: list[str],
     probe_host: Callable[[], Probe] = _probe_host,
     docker_runner: DockerRunner = run_docker,
+    live_memory: Callable[[str], LiveMemory] = _live_memory,
 ) -> int:
     args = _build_parser().parse_args(argv)
     try:
         if args.command == "show":
-            return _show(args.output)
+            return _show(args.output, args.hub_project, live_memory)
         if args.command == "admit":
             return _admit(args, docker_runner)
         if args.command == "logs-owner-fix":

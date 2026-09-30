@@ -32,6 +32,10 @@ from scripts.capacity import (
     HUB_INTERLOCK_KEYS,
     INTERLOCK_KEYS,
     LEASE_CONCURRENT_RUNS,
+    LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS,
+    LIVE_SOURCE_HOST,
+    LIVE_SOURCE_NONE,
+    LIVE_SOURCE_VM,
     METRICS_REDIS_RESERVED_DBS,
     PG_SHARED_BUFFERS_MAX_MB,
     PG_SHARED_BUFFERS_MIN_MB,
@@ -46,25 +50,32 @@ from scripts.capacity import (
     DockerInfoError,
     DockerRunError,
     InfeasibleCapacity,
+    LiveMemory,
     Overrides,
     Probe,
+    _live_memory,
     _memory_guard,
+    _run_docker_short,
     _usable_gb,
     admission_decision,
     changed_interlocks,
     clamp,
     derive,
     fingerprint,
+    hub_vm_meminfo,
+    live_usable_gb,
     main,
     parse_cgroup_max,
     parse_docker_info,
     parse_meminfo,
     probe,
     read_env,
+    read_live_available,
     render_env,
     round_up_pow2,
     run_docker,
     run_docker_info,
+    workers_that_fit,
 )
 
 pytestmark = pytest.mark.unit
@@ -1465,6 +1476,9 @@ def test_show_prints_table_and_slug(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("U4I_SLUG", "cap-test")
+    # Without --hub-project, show reads the host file: keep it off the real /proc.
+    monkeypatch.setattr(capacity, "DEFAULT_MEMINFO_PATH", tmp_path / "no-meminfo")
+    monkeypatch.setattr(capacity, "DEFAULT_CGROUP_PATH", tmp_path / "no-cgroup")
     env_path = tmp_path / "capacity.env"
     _run(["generate", "--output", str(env_path)])
     capsys.readouterr()
@@ -1974,6 +1988,357 @@ def test_run_docker_launch_failures_raise_docker_run_error(
     monkeypatch.setattr(capacity.subprocess, "run", failing_run)
     with pytest.raises(DockerRunError, match=expected_fragment):
         run_docker(IMAGE_LOOKUP)
+
+
+# --- live memory -------------------------------------------------------------
+
+LIVE_HUB: str = "u4i-hub-1000"
+HUB_DB_ID: str = "f00dfeedbeef"
+MEMINFO_AVAILABLE_BYTES: int = 9437184 * 1024
+HUB_DB_PS_ARGS: list[str] = [
+    "ps",
+    "-q",
+    "--filter",
+    f"label=com.docker.compose.project={LIVE_HUB}",
+    "--filter",
+    "label=com.docker.compose.service=db",
+    "--filter",
+    "status=running",
+]
+HUB_DB_EXEC_ARGS: list[str] = ["exec", HUB_DB_ID, "cat", "/proc/meminfo"]
+
+
+def _vm_never_called() -> str | None:
+    raise AssertionError("the VM reader must not run when the host file is readable")
+
+
+def _meminfo_file(tmp_path: Path, text: str = MEMINFO_TEXT) -> Path:
+    meminfo_path = tmp_path / "meminfo"
+    meminfo_path.write_text(text)
+    return meminfo_path
+
+
+class _ScriptedDocker:
+    """Docker runner answering each call from a script (a result or an exception)."""
+
+    def __init__(
+        self, *responses: subprocess.CompletedProcess[str] | Exception
+    ) -> None:
+        self.responses = list(responses)
+        self.calls: list[list[str]] = []
+
+    def __call__(self, args: list[str]) -> subprocess.CompletedProcess[str]:
+        self.calls.append(args)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+
+def test_read_live_available_reads_host_meminfo(tmp_path: Path) -> None:
+    result = read_live_available(
+        _meminfo_file(tmp_path), tmp_path / "no-cgroup", _vm_never_called
+    )
+    assert result == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_HOST)
+
+
+@pytest.mark.parametrize(
+    ("cgroup_text", "expected_bytes"),
+    [
+        ("4294967296\n", 4 * GIB),
+        (f"{20 * GIB}\n", MEMINFO_AVAILABLE_BYTES),
+        ("max\n", MEMINFO_AVAILABLE_BYTES),
+    ],
+    ids=["lower-cgroup-wins", "higher-cgroup-ignored", "unlimited-cgroup"],
+)
+def test_read_live_available_caps_host_reading_at_the_cgroup_limit(
+    tmp_path: Path, cgroup_text: str, expected_bytes: int
+) -> None:
+    cgroup_path = tmp_path / "memory.max"
+    cgroup_path.write_text(cgroup_text)
+
+    result = read_live_available(_meminfo_file(tmp_path), cgroup_path, _vm_never_called)
+
+    assert result == LiveMemory(expected_bytes, LIVE_SOURCE_HOST)
+
+
+def test_read_live_available_falls_back_to_the_vm(tmp_path: Path) -> None:
+    result = read_live_available(
+        tmp_path / "no-meminfo", tmp_path / "no-cgroup", lambda: MEMINFO_TEXT
+    )
+    assert result == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_VM)
+
+
+def test_read_live_available_gives_none_when_nothing_is_readable(
+    tmp_path: Path,
+) -> None:
+    result = read_live_available(
+        tmp_path / "no-meminfo", tmp_path / "no-cgroup", lambda: None
+    )
+    assert result == LiveMemory(None, LIVE_SOURCE_NONE)
+
+
+@pytest.mark.parametrize(
+    "bad_meminfo",
+    ["MemAvailable: abc kB\n", "MemTotal: 16384000 kB\n", ""],
+    ids=["malformed-value", "missing-key", "empty-file"],
+)
+def test_read_live_available_malformed_host_reading_falls_through_to_the_vm(
+    tmp_path: Path, bad_meminfo: str
+) -> None:
+    result = read_live_available(
+        _meminfo_file(tmp_path, bad_meminfo),
+        tmp_path / "no-cgroup",
+        lambda: MEMINFO_TEXT,
+    )
+    assert result == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_VM)
+
+
+def test_read_live_available_undecodable_host_file_falls_through_to_the_vm(
+    tmp_path: Path,
+) -> None:
+    meminfo_path = tmp_path / "meminfo"
+    meminfo_path.write_bytes(b"MemAvailable: \xff\xfe kB\n")
+
+    result = read_live_available(
+        meminfo_path, tmp_path / "no-cgroup", lambda: MEMINFO_TEXT
+    )
+
+    assert result == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_VM)
+
+
+def test_read_live_available_malformed_vm_reading_gives_none(tmp_path: Path) -> None:
+    result = read_live_available(
+        tmp_path / "no-meminfo",
+        tmp_path / "no-cgroup",
+        lambda: "MemAvailable: abc kB\n",
+    )
+    assert result == LiveMemory(None, LIVE_SOURCE_NONE)
+
+
+def test_hub_vm_meminfo_reads_the_hub_db_container() -> None:
+    docker = _ScriptedDocker(
+        _completed(0, stdout=f"{HUB_DB_ID}\n"), _completed(0, stdout=MEMINFO_TEXT)
+    )
+
+    assert hub_vm_meminfo(LIVE_HUB, docker) == MEMINFO_TEXT
+    assert docker.calls == [HUB_DB_PS_ARGS, HUB_DB_EXEC_ARGS]
+
+
+def test_hub_vm_meminfo_without_a_running_hub_db_gives_none() -> None:
+    docker = _ScriptedDocker(_completed(0, stdout="\n"))
+
+    assert hub_vm_meminfo(LIVE_HUB, docker) is None
+    assert docker.calls == [HUB_DB_PS_ARGS]
+
+
+@pytest.mark.parametrize(
+    "responses",
+    [
+        (_completed(1, stderr="daemon down\n"),),
+        (DockerRunError("docker ps timed out after 10s"),),
+        (FileNotFoundError("No such file or directory: 'docker'"),),
+        (_completed(0, stdout=f"{HUB_DB_ID}\n"), _completed(1, stderr="gone\n")),
+        (
+            _completed(0, stdout=f"{HUB_DB_ID}\n"),
+            DockerRunError("docker exec timed out after 10s"),
+        ),
+        (
+            _completed(0, stdout=f"{HUB_DB_ID}\n"),
+            UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+        ),
+    ],
+    ids=[
+        "ps-exits-non-zero",
+        "ps-raises",
+        "ps-launch-fails",
+        "exec-exits-non-zero",
+        "exec-raises",
+        "exec-output-undecodable",
+    ],
+)
+def test_hub_vm_meminfo_never_raises_on_docker_failure(
+    responses: tuple[subprocess.CompletedProcess[str] | Exception, ...],
+) -> None:
+    assert hub_vm_meminfo(LIVE_HUB, _ScriptedDocker(*responses)) is None
+
+
+def test_run_docker_short_uses_the_live_memory_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorded: dict[str, object] = {}
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        recorded["command"] = command
+        recorded.update(kwargs)
+        return _completed(0, stdout="ok\n")
+
+    monkeypatch.setattr(capacity.subprocess, "run", fake_run)
+
+    assert _run_docker_short(HUB_DB_PS_ARGS).stdout == "ok\n"
+    assert recorded["command"] == ["docker", *HUB_DB_PS_ARGS]
+    assert recorded["timeout"] == LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS
+    assert LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS < DOCKER_RUN_TIMEOUT_SECONDS
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected_fragment"),
+    [
+        (FileNotFoundError("No such file or directory: 'docker'"), "docker"),
+        (
+            subprocess.TimeoutExpired(
+                cmd="docker", timeout=LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS
+            ),
+            f"docker ps timed out after {LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS}s",
+        ),
+    ],
+)
+def test_run_docker_short_launch_failures_raise_docker_run_error(
+    monkeypatch: pytest.MonkeyPatch, raised: Exception, expected_fragment: str
+) -> None:
+    def failing_run(*args: object, **kwargs: object) -> None:
+        raise raised
+
+    monkeypatch.setattr(capacity.subprocess, "run", failing_run)
+    with pytest.raises(DockerRunError, match=expected_fragment):
+        _run_docker_short(HUB_DB_PS_ARGS)
+
+
+def test_live_usable_gb_applies_the_safety_margin() -> None:
+    assert live_usable_gb(LiveMemory(10 * GIB, LIVE_SOURCE_HOST)) == pytest.approx(
+        10 * DEFAULT_MEM_SAFETY
+    )
+    assert live_usable_gb(LiveMemory(None, LIVE_SOURCE_NONE)) is None
+
+
+@pytest.mark.parametrize(
+    ("usable_gb", "expected_workers"),
+    [
+        (3.6, 3),
+        (4.0, 4),
+        # Float noise a hair under an exact fit: rounding before the floor keeps
+        # it at 3 workers rather than 2.
+        (BASE_GB + 3 * WORKER_GB - 1e-12, 3),
+        (2.2, 0),
+        (1.0, 0),
+    ],
+)
+def test_workers_that_fit_rounds_before_flooring_and_can_be_zero(
+    usable_gb: float, expected_workers: int
+) -> None:
+    assert workers_that_fit(usable_gb, BASE_GB, WORKER_GB) == expected_workers
+
+
+def _show_with_live(
+    env_path: Path, live: LiveMemory, hub_project: str | None
+) -> list[str]:
+    """Run `show` with an injected live reader; return the hubs it was asked for."""
+    asked: list[str] = []
+
+    def fake_live_memory(hub: str) -> LiveMemory:
+        asked.append(hub)
+        return live
+
+    argv = ["show", "--output", str(env_path)]
+    if hub_project is not None:
+        argv += ["--hub-project", hub_project]
+    assert main(argv, _no_probe, _ScriptedDocker(), fake_live_memory) == 0
+    return asked
+
+
+def test_show_prints_the_live_line_from_the_hub_reader(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+
+    asked = _show_with_live(
+        env_path,
+        LiveMemory(int(4.0 / DEFAULT_MEM_SAFETY * GIB), LIVE_SOURCE_VM),
+        LIVE_HUB,
+    )
+
+    assert asked == [LIVE_HUB]
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: 4.0 GB usable now (vm) — 4 workers fit"
+
+
+def test_show_prints_unavailable_when_live_memory_cannot_be_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+
+    _show_with_live(env_path, LiveMemory(None, LIVE_SOURCE_NONE), LIVE_HUB)
+
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: unavailable — static capacity applies"
+
+
+def test_show_without_hub_project_reads_only_the_host_file(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+    monkeypatch.setattr(capacity, "DEFAULT_MEMINFO_PATH", _meminfo_file(tmp_path))
+    monkeypatch.setattr(capacity, "DEFAULT_CGROUP_PATH", tmp_path / "no-cgroup")
+
+    asked = _show_with_live(env_path, LiveMemory(None, LIVE_SOURCE_NONE), None)
+
+    assert asked == []
+    # 9437184 kB × 0.9 = 8.1 GB usable → floor((8.1 − 2.0) / 0.5) = 12 workers.
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: 8.1 GB usable now (host) — 12 workers fit"
+
+
+def test_show_without_hub_project_never_tries_the_vm(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+    monkeypatch.setattr(capacity, "DEFAULT_MEMINFO_PATH", tmp_path / "no-meminfo")
+    monkeypatch.setattr(capacity, "DEFAULT_CGROUP_PATH", tmp_path / "no-cgroup")
+    docker = _ScriptedDocker()
+
+    assert main(["show", "--output", str(env_path)], _no_probe, docker) == 0
+
+    assert docker.calls == []
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: unavailable — static capacity applies"
+
+
+def test_default_live_memory_reads_the_vm_with_the_short_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recorded: list[tuple[list[str], object]] = []
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        recorded.append((command, kwargs["timeout"]))
+        if command[1] == "ps":
+            return _completed(0, stdout=f"{HUB_DB_ID}\n")
+        return _completed(0, stdout=MEMINFO_TEXT)
+
+    monkeypatch.setattr(capacity.subprocess, "run", fake_run)
+    monkeypatch.setattr(capacity, "DEFAULT_MEMINFO_PATH", tmp_path / "no-meminfo")
+    monkeypatch.setattr(capacity, "DEFAULT_CGROUP_PATH", tmp_path / "no-cgroup")
+
+    assert _live_memory(LIVE_HUB) == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_VM)
+    assert recorded == [
+        (["docker", *HUB_DB_PS_ARGS], LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS),
+        (["docker", *HUB_DB_EXEC_ARGS], LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS),
+    ]
 
 
 # --- admit (spoke admission) -------------------------------------------------
