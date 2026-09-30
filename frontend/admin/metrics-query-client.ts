@@ -4,6 +4,10 @@
  * Each wrapper builds a typed URL query string against the
  * `/api/metrics/query/*` routes and returns a `JQuery.jqXHR<SuccessResponse<...>>`
  * tied to the corresponding `operations` entry in `frontend/types/api.d.ts`.
+ * The route URLs come from `APP_CONFIG.adminRoutes` (admin-only, rendered by
+ * the backend from `ADMIN_JS_ROUTES`) and are resolved lazily inside each
+ * `fetch*` call via `requireAdminRoute()`, so importing this module on a
+ * non-admin page never throws.
  *
  * `ajaxCall()` (see `frontend/lib/ajax.ts`) wraps `$.ajax`, which automatically
  * sends the `X-Requested-With: XMLHttpRequest` header for same-origin GETs. The
@@ -17,7 +21,7 @@ import type { FlowId } from "../types/metrics-flows.js";
 import type { ResourceName } from "../types/metrics-resources.js";
 
 import { ajaxCall } from "../lib/ajax.js";
-import { APP_CONFIG } from "../lib/config.js";
+import { APP_CONFIG, requireAdminRoute } from "../lib/config.js";
 
 type MetricsCategory = "api" | "ui" | "domain";
 type TimeseriesResolution = "hour" | "day";
@@ -26,15 +30,6 @@ const DEVICE_TYPE_PARAM = APP_CONFIG.constants.DEVICE_TYPE_DIM_KEY;
 
 const QUERY_TIMEOUT_MS = 5000;
 const DEFAULT_TOP_LIMIT = 10;
-
-const TOP_ENDPOINT = "/api/metrics/query/top";
-const TIMESERIES_ENDPOINT = "/api/metrics/query/timeseries";
-const GROUPED_TIMESERIES_ENDPOINT = "/api/metrics/query/grouped-timeseries";
-const SUMMARY_ENDPOINT = "/api/metrics/query/summary";
-const FLOW_ENDPOINT = "/api/metrics/query/flow";
-const GAUGES_TIMESERIES_ENDPOINT = "/api/metrics/query/gauges/timeseries";
-const LATENCY_ENDPOINT = "/api/metrics/query/latency";
-const LATENCY_TIMESERIES_ENDPOINT = "/api/metrics/query/latency/timeseries";
 
 /**
  * Fetch the top-N events for a window, optionally scoped to a single category.
@@ -67,7 +62,7 @@ export function fetchTopEvents({
   if (deviceType !== undefined && deviceType !== null) {
     params.set(DEVICE_TYPE_PARAM, String(deviceType));
   }
-  const url = `${TOP_ENDPOINT}?${params.toString()}`;
+  const url = `${requireAdminRoute("metricsQueryTop")}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryTop">
   >;
@@ -114,7 +109,7 @@ export function fetchTimeseries({
   if (deviceType !== undefined && deviceType !== null) {
     params.set(DEVICE_TYPE_PARAM, String(deviceType));
   }
-  const url = `${TIMESERIES_ENDPOINT}?${params.toString()}`;
+  const url = `${requireAdminRoute("metricsQueryTimeseries")}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryTimeseries">
   >;
@@ -163,7 +158,7 @@ export function fetchGroupedTimeseries({
   if (resolution !== undefined) {
     params.set("resolution", resolution);
   }
-  const url = `${GROUPED_TIMESERIES_ENDPOINT}?${params.toString()}`;
+  const url = `${requireAdminRoute("metricsQueryGroupedTimeseries")}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryGroupedTimeseries">
   >;
@@ -181,7 +176,7 @@ export function fetchSummary({
   window: string;
 }): JQuery.jqXHR<SuccessResponse<"querySummary">> {
   const queryString = new URLSearchParams({ window }).toString();
-  const url = `${SUMMARY_ENDPOINT}?${queryString}`;
+  const url = `${requireAdminRoute("metricsQuerySummary")}?${queryString}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"querySummary">
   >;
@@ -207,7 +202,7 @@ export function fetchFlow({
     flow_id: flowId,
     window,
   }).toString();
-  const url = `${FLOW_ENDPOINT}?${queryString}`;
+  const url = `${requireAdminRoute("metricsQueryFlow")}?${queryString}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryFlow">
   >;
@@ -247,7 +242,7 @@ export function fetchGaugesTimeseries({
   if (end !== undefined) {
     params.set("end", end);
   }
-  const url = `${GAUGES_TIMESERIES_ENDPOINT}?${params.toString()}`;
+  const url = `${requireAdminRoute("metricsQueryGaugesTimeseries")}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryGaugesTimeseries">
   >;
@@ -269,7 +264,7 @@ export function fetchLatency({
   window: string;
 }): JQuery.jqXHR<SuccessResponse<"queryLatency">> {
   const queryString = new URLSearchParams({ window }).toString();
-  const url = `${LATENCY_ENDPOINT}?${queryString}`;
+  const url = `${requireAdminRoute("metricsQueryLatency")}?${queryString}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryLatency">
   >;
@@ -302,7 +297,7 @@ export function fetchLatencyTimeseries({
   if (resolution !== undefined) {
     params.set("resolution", resolution);
   }
-  const url = `${LATENCY_TIMESERIES_ENDPOINT}?${params.toString()}`;
+  const url = `${requireAdminRoute("metricsQueryLatencyTimeseries")}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryLatencyTimeseries">
   >;

@@ -63,10 +63,21 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "contactUs": "/contact",
     # Search
     "crossUtubSearch": "/search",
+    # Metrics ingest
+    "metricsIngest": "/api/metrics",
 }
 
 EXPECTED_ADMIN_JS_ROUTE_URLS: dict[str, str] = {
     "adminMetricsPage": "/admin/metrics",
+    # Metrics query routes
+    "metricsQueryTop": "/api/metrics/query/top",
+    "metricsQueryTimeseries": "/api/metrics/query/timeseries",
+    "metricsQuerySummary": "/api/metrics/query/summary",
+    "metricsQueryGroupedTimeseries": "/api/metrics/query/grouped-timeseries",
+    "metricsQueryFlow": "/api/metrics/query/flow",
+    "metricsQueryGaugesTimeseries": "/api/metrics/query/gauges/timeseries",
+    "metricsQueryLatency": "/api/metrics/query/latency",
+    "metricsQueryLatencyTimeseries": "/api/metrics/query/latency/timeseries",
 }
 
 
@@ -91,7 +102,7 @@ def test_js_routes_table_keys_match_expected_order() -> None:
     """
     GIVEN the declarative JS_ROUTES table
     WHEN its keys are listed
-    THEN they match the 37 frontend route keys in their established order
+    THEN they match the 38 frontend route keys in their established order
     """
     assert list(JS_ROUTES) == list(EXPECTED_JS_ROUTE_URLS)
 
@@ -100,7 +111,7 @@ def test_generate_routes_js_renders_expected_urls(full_app: Flask) -> None:
     """
     GIVEN the full app url_map
     WHEN generate_routes_js() is called inside a request context
-    THEN it returns exactly the expected {key: url} dict for all 37 keys
+    THEN it returns exactly the expected {key: url} dict for all 38 keys
     """
     with full_app.test_request_context():
         rendered_routes = generate_routes_js()
@@ -112,7 +123,7 @@ def test_generate_admin_routes_js_renders_expected_urls(full_app: Flask) -> None
     """
     GIVEN the full app url_map
     WHEN generate_admin_routes_js() is called inside a request context
-    THEN it returns only the admin metrics page URL
+    THEN it returns the admin metrics page and the 8 metrics query URLs
     """
     with full_app.test_request_context():
         rendered_admin_routes = generate_admin_routes_js()

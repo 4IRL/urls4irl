@@ -9,7 +9,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from backend.models.users import Users
-from backend.utils.all_routes import ADMIN_ROUTES, SEARCH_ROUTES
+from backend.utils.all_routes import ADMIN_ROUTES, METRICS_ROUTES, SEARCH_ROUTES
 
 pytestmark = pytest.mark.cli
 
@@ -67,6 +67,42 @@ def test_admin_user_sees_admin_metrics_route_in_app_config(
     assert response.status_code == 200
     routes = _routes_from_response(response.data)
     assert routes.get("adminMetricsPage") == expected_admin_metrics_url
+
+
+def test_admin_user_sees_metrics_query_routes_in_app_config(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Admin users get the admin-only `metricsQuery*` keys in APP_CONFIG.routes."""
+    client, _, _, _ = login_admin_user_with_register
+
+    with client.application.test_request_context():
+        expected_admin_metrics_url = url_for(ADMIN_ROUTES.METRICS_PAGE)
+        expected_query_top_url = url_for(METRICS_ROUTES.QUERY_TOP)
+
+    response = client.get(expected_admin_metrics_url)
+
+    assert response.status_code == 200
+    routes = _routes_from_response(response.data)
+    assert routes.get("metricsQueryTop") == expected_query_top_url
+
+
+def test_non_admin_user_gets_metrics_ingest_but_not_query_routes(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Authenticated non-admins get `metricsIngest` (emitted from every page)
+    but none of the admin-only `metricsQuery*` keys.
+    """
+    client, _, _, _ = login_first_user_with_register
+
+    with client.application.test_request_context():
+        expected_ingest_url = url_for(METRICS_ROUTES.INGEST)
+
+    response = client.get("/home")
+
+    assert response.status_code == 200
+    routes = _routes_from_response(response.data)
+    assert routes.get("metricsIngest") == expected_ingest_url
+    assert not any(route_key.startswith("metricsQuery") for route_key in routes)
 
 
 def test_non_admin_user_does_not_see_admin_metrics_route_in_app_config(

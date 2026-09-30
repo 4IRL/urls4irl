@@ -121,6 +121,19 @@ class ADMIN_ROUTES:
     MOD_URL_PURGE = _ADMIN + "admin_url_purge"
 
 
+class METRICS_ROUTES:
+    _METRICS = "metrics."
+    INGEST = _METRICS + "ingest"
+    QUERY_TOP = _METRICS + "query_top"
+    QUERY_TIMESERIES = _METRICS + "query_timeseries"
+    QUERY_SUMMARY = _METRICS + "query_summary"
+    QUERY_GROUPED_TIMESERIES = _METRICS + "query_grouped_timeseries"
+    QUERY_FLOW = _METRICS + "query_flow"
+    QUERY_GAUGES_TIMESERIES = _METRICS + "query_gauges_timeseries"
+    QUERY_LATENCY = _METRICS + "query_latency"
+    QUERY_LATENCY_TIMESERIES = _METRICS + "query_latency_timeseries"
+
+
 class SEARCH_ROUTES:
     _SEARCH = "search."
     SEARCH = _SEARCH + "search_across_utubs"
@@ -198,6 +211,7 @@ class ROUTES:
     USERS = USER_ROUTES
     ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
     ADMIN = ADMIN_ROUTES
+    METRICS = METRICS_ROUTES
     SEARCH = SEARCH_ROUTES
     UTUBS = UTUB_ROUTES
 
@@ -280,10 +294,25 @@ JS_ROUTES: dict[str, JsRoute] = {
     "contactUs": JsRoute(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT, {}),
     # Search
     "crossUtubSearch": JsRoute(SEARCH_ROUTES.SEARCH, {}),
+    # Metrics ingest (emitted from every page)
+    "metricsIngest": JsRoute(METRICS_ROUTES.INGEST, {}),
 }
 
 ADMIN_JS_ROUTES: dict[str, JsRoute] = {
     "adminMetricsPage": JsRoute(ADMIN_ROUTES.METRICS_PAGE, {}),
+    # Metrics query routes (admin dashboard only)
+    "metricsQueryTop": JsRoute(METRICS_ROUTES.QUERY_TOP, {}),
+    "metricsQueryTimeseries": JsRoute(METRICS_ROUTES.QUERY_TIMESERIES, {}),
+    "metricsQuerySummary": JsRoute(METRICS_ROUTES.QUERY_SUMMARY, {}),
+    "metricsQueryGroupedTimeseries": JsRoute(
+        METRICS_ROUTES.QUERY_GROUPED_TIMESERIES, {}
+    ),
+    "metricsQueryFlow": JsRoute(METRICS_ROUTES.QUERY_FLOW, {}),
+    "metricsQueryGaugesTimeseries": JsRoute(METRICS_ROUTES.QUERY_GAUGES_TIMESERIES, {}),
+    "metricsQueryLatency": JsRoute(METRICS_ROUTES.QUERY_LATENCY, {}),
+    "metricsQueryLatencyTimeseries": JsRoute(
+        METRICS_ROUTES.QUERY_LATENCY_TIMESERIES, {}
+    ),
 }
 
 

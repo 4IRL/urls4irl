@@ -40,6 +40,7 @@ export interface AppRoutes {
   logout: string;
   contactUs: string;
   crossUtubSearch: string;
+  metricsIngest: string;
 
   // Dynamic single-param routes
   getUTub: (id: number) => string;
@@ -67,6 +68,22 @@ export interface AppRoutes {
 
   // Dynamic three-param routes
   deleteURLTag: (utubId: number, urlId: number, tagId: number) => string;
+}
+
+/**
+ * Admin-only routes. The backend merges these into `APP_CONFIG.routes` only
+ * for authenticated admins, so every key is `undefined` on non-admin pages.
+ * Read them through `requireAdminRoute()`.
+ */
+export interface AdminRoutes {
+  metricsQueryTop: string | undefined;
+  metricsQueryTimeseries: string | undefined;
+  metricsQuerySummary: string | undefined;
+  metricsQueryGroupedTimeseries: string | undefined;
+  metricsQueryFlow: string | undefined;
+  metricsQueryGaugesTimeseries: string | undefined;
+  metricsQueryLatency: string | undefined;
+  metricsQueryLatencyTimeseries: string | undefined;
 }
 
 export interface MemberRoles {
@@ -98,6 +115,7 @@ export interface AppConstants {
 
 export interface AppConfig {
   readonly routes: Readonly<AppRoutes>;
+  readonly adminRoutes: Readonly<AdminRoutes>;
   readonly constants: Readonly<AppConstants>;
   readonly strings: Readonly<Record<string, string>>;
   readonly debugEnabled: boolean;
@@ -207,9 +225,36 @@ export const APP_CONFIG: AppConfig = Object.freeze({
 
     contactUs: rawConfig.routes.contactUs,
     crossUtubSearch: rawConfig.routes.crossUtubSearch,
+    metricsIngest: rawConfig.routes.metricsIngest,
+  }),
+  adminRoutes: Object.freeze({
+    metricsQueryTop: rawConfig.routes.metricsQueryTop,
+    metricsQueryTimeseries: rawConfig.routes.metricsQueryTimeseries,
+    metricsQuerySummary: rawConfig.routes.metricsQuerySummary,
+    metricsQueryGroupedTimeseries:
+      rawConfig.routes.metricsQueryGroupedTimeseries,
+    metricsQueryFlow: rawConfig.routes.metricsQueryFlow,
+    metricsQueryGaugesTimeseries: rawConfig.routes.metricsQueryGaugesTimeseries,
+    metricsQueryLatency: rawConfig.routes.metricsQueryLatency,
+    metricsQueryLatencyTimeseries:
+      rawConfig.routes.metricsQueryLatencyTimeseries,
   }),
   constants: Object.freeze(rawConfig.constants),
   strings: Object.freeze(rawConfig.strings),
   debugEnabled: rawConfig.debugEnabled,
   isProduction: rawConfig.isProduction,
 }) as AppConfig;
+
+/**
+ * Return an admin-only route URL, throwing when it is absent from
+ * `APP_CONFIG` (i.e. the current page was not rendered for an admin).
+ */
+export function requireAdminRoute(key: keyof AdminRoutes): string {
+  const url = APP_CONFIG.adminRoutes[key];
+  if (url === undefined) {
+    throw new Error(
+      `Admin route ${key} missing from APP_CONFIG (non-admin page?)`,
+    );
+  }
+  return url;
+}
