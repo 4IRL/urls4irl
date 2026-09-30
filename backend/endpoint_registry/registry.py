@@ -468,6 +468,11 @@ def dump_registry_json(registry: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Markdown rendering
 # ---------------------------------------------------------------------------
+# `_code`, `_code_list`, `_render_schemas` and `_render_js` are deliberately
+# mirrored in scripts/endpoint_info.py, which stays stdlib-only and cannot
+# import `backend`. Make any formatting change in both places.
+# tests/unit/test_endpoint_info.py cross-checks `format_entry()` against
+# `render_markdown()` to catch drift.
 
 
 def _code(value: str) -> str:

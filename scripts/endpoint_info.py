@@ -95,6 +95,11 @@ def resolve(registry: dict[str, Any], query: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Formatting (mirrors registry.py's markdown value rendering)
 # ---------------------------------------------------------------------------
+# `_code`, `_code_list`, `_render_schemas` and `_render_js` deliberately mirror
+# the same helpers in backend/endpoint_registry/registry.py: this script stays
+# stdlib-only and host-native, so it must not import `backend`. Make any
+# formatting change in both places. tests/unit/test_endpoint_info.py
+# cross-checks `format_entry()` against `render_markdown()` to catch drift.
 
 
 def _code(value: str) -> str:
