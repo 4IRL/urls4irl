@@ -7,6 +7,7 @@ identically on a laptop, inside the web container, and on a CI runner.
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 import re
 import subprocess
@@ -32,6 +33,10 @@ from scripts.capacity import (
     HUB_INTERLOCK_KEYS,
     INTERLOCK_KEYS,
     LEASE_CONCURRENT_RUNS,
+    LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS,
+    LIVE_SOURCE_HOST,
+    LIVE_SOURCE_NONE,
+    LIVE_SOURCE_VM,
     METRICS_REDIS_RESERVED_DBS,
     PG_SHARED_BUFFERS_MAX_MB,
     PG_SHARED_BUFFERS_MIN_MB,
@@ -46,25 +51,32 @@ from scripts.capacity import (
     DockerInfoError,
     DockerRunError,
     InfeasibleCapacity,
+    LiveMemory,
     Overrides,
     Probe,
+    _live_memory,
     _memory_guard,
+    _run_docker_short,
     _usable_gb,
     admission_decision,
     changed_interlocks,
     clamp,
     derive,
     fingerprint,
+    hub_vm_meminfo,
+    live_usable_gb,
     main,
     parse_cgroup_max,
     parse_docker_info,
     parse_meminfo,
     probe,
     read_env,
+    read_live_available,
     render_env,
     round_up_pow2,
     run_docker,
     run_docker_info,
+    workers_that_fit,
 )
 
 pytestmark = pytest.mark.unit
@@ -210,8 +222,31 @@ def test_derive_pg_shared_buffers_ignores_mem_available_jitter() -> None:
     """shared_buffers is an interlock, so it must not move with MemAvailable."""
     low = _derive(_probe(mem_total_bytes=16 * GIB, mem_available_bytes=6 * GIB))
     high = _derive(_probe(mem_total_bytes=16 * GIB, mem_available_bytes=7 * GIB))
-    assert low.usable_gb != high.usable_gb
     assert low.pg_shared_buffers_mb == high.pg_shared_buffers_mb
+
+
+def test_derive_ignores_mem_available_for_every_file_value() -> None:
+    """Every value written to the file comes from stable inputs: a memory-bound
+    MemAvailable reading changes none of them (live memory gates each start)."""
+    memory_bound = _derive(
+        _probe(
+            ncpu=12,
+            mem_total_bytes=REFERENCE_HOST_MEM_TOTAL_BYTES,
+            mem_available_bytes=4 * GIB,
+        )
+    )
+    unknown = _derive(_probe(ncpu=12, mem_total_bytes=REFERENCE_HOST_MEM_TOTAL_BYTES))
+    for field_name in (
+        "n_ui",
+        "n_int",
+        "n_max",
+        "redis_metrics_databases",
+        "pg_test_conn_limit",
+        "pg_max_conn",
+        "usable_gb",
+        "spoke_max",
+    ):
+        assert getattr(memory_bound, field_name) == getattr(unknown, field_name)
 
 
 def test_derive_pg_shared_buffers_honors_cgroup_limit() -> None:
@@ -237,24 +272,24 @@ def _rendered_values(
     return capacity._parse_env(_render(overrides=overrides, probe_value=probe_value))
 
 
-def test_spoke_max_on_reference_host_reserves_hub_and_one_full_run() -> None:
-    """(9.6 - 0.6 hub - 2.0 base - 12 × 0.5 workers) / 0.25 per idle spoke = 4."""
+def test_spoke_max_on_reference_host_reserves_hub_and_one_minimum_run() -> None:
+    """(9.6 - 0.6 hub - (2.0 base + 1 × 0.5 worker)) / 0.25 per idle spoke = 26."""
     reference_probe = _probe(ncpu=12, mem_total_bytes=REFERENCE_HOST_MEM_TOTAL_BYTES)
     result = _derive(reference_probe)
     assert f"{result.usable_gb:.1f}" == "9.6"
     assert (result.n_ui, result.n_int, result.n_max) == (8, 12, 12)
     assert result.binding_constraint == "cpu"
-    assert result.spoke_max == 4
+    assert result.spoke_max == 26
     assert result.spoke_max_clamped is False
-    assert _rendered_values(reference_probe)["U4I_SPOKE_MAX"] == "4"
+    assert _rendered_values(reference_probe)["U4I_SPOKE_MAX"] == "26"
 
 
 def test_spoke_max_clamps_to_one_on_a_memory_starved_host() -> None:
+    """4 GiB total: usable 2.8 GB, and (2.8 - 0.6 - 2.5) / 0.25 < 1 → 1 (clamped)."""
     starved_probe = _probe(ncpu=12, mem_total_bytes=4 * GIB)
     result = _derive(starved_probe)
-    assert (
-        result.usable_gb - HUB_IDLE_GB - BASE_GB - result.n_max * WORKER_GB
-    ) / SPOKE_IDLE_GB <= 0
+    assert result.usable_gb == pytest.approx(2.8)
+    assert (result.usable_gb - HUB_IDLE_GB - BASE_GB - WORKER_GB) / SPOKE_IDLE_GB < 1
     assert result.spoke_max == 1
     assert result.spoke_max_clamped is True
     rendered = render_env(
@@ -276,14 +311,15 @@ def test_usable_mb_matches_the_decision_usable_gb() -> None:
     assert values["U4I_SPOKE_IDLE_MB"] == str(int(SPOKE_IDLE_GB * 1024))
 
 
-def test_spoke_max_falls_as_an_n_override_raises_n_max() -> None:
-    """The admission interlock moves with n: more workers reserved, fewer spokes."""
+def test_spoke_max_does_not_move_with_an_n_override() -> None:
+    """The informational ceiling reserves one minimum test run, not n_max workers:
+    (179.2 - 0.6 - 2.5) / 0.25 = 704 whatever U4I_N_UI is."""
     default_result = _derive(_probe())
     overridden_result = _derive(_probe(), Overrides(n_ui=16))
     assert overridden_result.n_max == 16 > default_result.n_max
-    assert default_result.spoke_max == 682
-    assert overridden_result.spoke_max == 674
-    assert _rendered_values(_probe(), Overrides(n_ui=16))["U4I_SPOKE_MAX"] == "674"
+    assert default_result.spoke_max == 704
+    assert overridden_result.spoke_max == 704
+    assert _rendered_values(_probe(), Overrides(n_ui=16))["U4I_SPOKE_MAX"] == "704"
 
 
 def test_shared_redis_databases_hold_concurrent_runs_at_hard_ceiling() -> None:
@@ -315,20 +351,20 @@ def test_redis_metrics_databases_floor_is_sixteen() -> None:
 # --- memory guard ------------------------------------------------------------
 
 
-def test_memory_guard_binds_when_available_memory_is_low() -> None:
-    # usable = min(32 * 0.7, 5 * 0.9) = 4.5 GiB -> floor((4.5 - 2.0) / 0.5) = 5
+def test_memory_guard_ignores_low_available_memory() -> None:
+    """MemAvailable is live, so it never sizes the file: usable = 32 * 0.7 = 22.4
+    GiB, not min(22.4, 5 * 0.9); the live gate in the token runner handles it."""
     result = _derive(
         _probe(ncpu=12, mem_total_bytes=32 * GIB, mem_available_bytes=5 * GIB)
     )
-    assert result.usable_gb == pytest.approx(4.5)
-    assert result.n_ui == 5
-    assert result.n_int == 5
-    assert result.n_max == 5
-    assert result.binding_constraint == "memory"
+    assert result.usable_gb == pytest.approx(22.4)
+    assert result.n_ui == 8
+    assert result.n_int == 12
+    assert result.binding_constraint == "cpu"
 
 
-def test_memory_guard_uses_min_of_available_and_cgroup() -> None:
-    # available = min(20, 4) = 4 GiB -> usable = min(22.4, 3.6) = 3.6 -> n = 3
+def test_memory_guard_uses_cgroup_even_with_ample_available_memory() -> None:
+    # cgroup 4 GiB (stable) -> usable = min(22.4, 3.6) = 3.6 -> n = 3
     result = _derive(
         _probe(
             ncpu=12,
@@ -453,6 +489,30 @@ def test_override_above_memory_guard_raises_naming_gb() -> None:
     assert "U4I_N_UI=20" in message
     assert "12.0 GB" in message
     assert "5.6 GB" in message
+
+
+@pytest.mark.parametrize(
+    ("mem_total_gib", "fit"),
+    [
+        # usable = 4 * 0.7 = 2.8 GiB → floor((2.8 - 2.0) / 0.5) = 1 worker.
+        (4, "at most 1 worker fits"),
+        # usable = 8 * 0.7 = 5.6 GiB → floor((5.6 - 2.0) / 0.5) = 7 workers.
+        (8, "at most 7 workers fit"),
+    ],
+)
+def test_override_above_memory_guard_counts_workers_in_words(
+    mem_total_gib: int, fit: str
+) -> None:
+    with pytest.raises(InfeasibleCapacity) as excinfo:
+        _derive(
+            _probe(ncpu=12, mem_total_bytes=mem_total_gib * GIB), Overrides(n_ui=20)
+        )
+    assert f"({fit});" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(("count", "phrase"), [(0, "0 workers"), (1, "1 worker")])
+def test_workers_phrase_is_singular_only_for_one(count: int, phrase: str) -> None:
+    assert capacity.workers_phrase(count) == phrase
 
 
 def test_int_override_above_memory_guard_names_int_knob() -> None:
@@ -769,6 +829,8 @@ RENDERED_KEYS: list[str] = [
     "U4I_USABLE_MB",
     "U4I_HUB_IDLE_MB",
     "U4I_SPOKE_IDLE_MB",
+    "U4I_BASE_MB",
+    "U4I_WORKER_MB",
     "U4I_SPOKE_MAX",
     "HOST_UID",
     "HOST_GID",
@@ -797,7 +859,7 @@ def test_render_env_header_and_decision_comment() -> None:
     lines = _render().splitlines()
     assert lines[0] == "# GENERATED by make capacity — DO NOT EDIT"
     assert (
-        "# decision: n_ui=8 n_int=12 binding=cpu usable_gb=179.2 spoke_max=682" in lines
+        "# decision: n_ui=8 n_int=12 binding=cpu usable_gb=179.2 spoke_max=704" in lines
     )
 
 
@@ -834,6 +896,8 @@ def test_render_env_values() -> None:
     assert "U4I_PG_TEST_CONN_LIMIT=230\n" in rendered
     assert "U4I_PG_MAX_CONN=263\n" in rendered
     assert f"U4I_PG_SHARED_BUFFERS_MB={PG_SHARED_BUFFERS_MAX_MB}\n" in rendered
+    assert "U4I_BASE_MB=2048\n" in rendered
+    assert "U4I_WORKER_MB=512\n" in rendered
     assert "HOST_UID=1000\n" in rendered
     assert "HOST_GID=1000\n" in rendered
     assert (
@@ -947,11 +1011,11 @@ def test_generate_unchanged_leaves_file_untouched(
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
 
 
-def test_generate_ignores_decision_comment_jitter(
+def test_generate_is_unchanged_when_only_mem_available_moves(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """usable_gb in the `# decision:` line, U4I_USABLE_MB and U4I_SPOKE_MAX track
-    mem_available; a jitter-only difference is not a change."""
+    """Nothing in the file is sized from MemAvailable, so a MemAvailable-only
+    difference renders identical text and leaves the file untouched."""
     env_path = tmp_path / "capacity.env"
     first_probe = _probe(mem_available_bytes=100 * GIB)
     second_probe = _probe(mem_available_bytes=120 * GIB)
@@ -962,9 +1026,7 @@ def test_generate_ignores_decision_comment_jitter(
 
     assert _run(["generate", "--output", str(env_path)], second_probe) == 0
 
-    assert _derive(second_probe).binding_constraint == "cpu"
-    assert _derive(second_probe).spoke_max != _derive(first_probe).spoke_max
-    assert _render(probe_value=second_probe) != original_content
+    assert _render(probe_value=second_probe) == original_content
     assert capsys.readouterr().out == f"capacity unchanged ({env_path})\n"
     assert env_path.read_text() == original_content
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
@@ -1309,6 +1371,53 @@ def test_ensure_migrates_file_missing_admission_keys(
     assert env_path.read_text() == current_content
 
 
+def test_ensure_migrates_file_missing_memory_model_keys(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A file from before the per-run memory model (no U4I_BASE_MB/U4I_WORKER_MB)
+    heals on the next ensure, with no recreate message: they are not interlocks."""
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    current_content = env_path.read_text()
+    memory_model_keys = ("U4I_BASE_MB", "U4I_WORKER_MB")
+    legacy_content = "".join(
+        line
+        for line in current_content.splitlines(keepends=True)
+        if not line.startswith(tuple(f"{key}=" for key in memory_model_keys))
+    )
+    env_path.write_text(legacy_content)
+    assert not set(memory_model_keys) & set(read_env(env_path))
+    capsys.readouterr()
+
+    assert _run(["ensure", "--output", str(env_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"capacity regenerated ({env_path})"
+    ]
+    assert env_path.read_text() == current_content
+
+
+def test_ensure_restores_a_hand_edited_spoke_max(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A U4I_SPOKE_MAX that disagrees with its `# decision:` token is a hand edit:
+    `ensure` regenerates it even though the fingerprint still matches."""
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    derived_line = f"U4I_SPOKE_MAX={_derive(_probe()).spoke_max}\n"
+    original_content = env_path.read_text()
+    assert derived_line in original_content
+    env_path.write_text(original_content.replace(derived_line, "U4I_SPOKE_MAX=1\n"))
+    capsys.readouterr()
+
+    assert _run(["ensure", "--output", str(env_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"capacity regenerated ({env_path})"
+    ]
+    assert env_path.read_text() == original_content
+
+
 def test_ensure_infeasible_recorded_override_exits_non_zero_untouched(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1325,6 +1434,34 @@ def test_ensure_infeasible_recorded_override_exits_non_zero_untouched(
     assert exit_code != 0
     assert "U4I_N_UI" in capsys.readouterr().err
     assert env_path.read_text() == original_content
+    assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
+
+
+def test_ensure_infeasible_override_with_matching_fingerprint_exits_untouched(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A fingerprint match still re-derives (the consistency check), so an
+    infeasible recorded override fails loudly there and leaves the file as is."""
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    recorded = read_env(env_path)
+    infeasible_overrides = Overrides(n_ui=HARD_N_CEILING + 1)
+    edited_content = (
+        env_path.read_text()
+        .replace("U4I_OVERRIDE_N_UI=\n", f"U4I_OVERRIDE_N_UI={HARD_N_CEILING + 1}\n")
+        .replace(
+            recorded["U4I_CAPACITY_FINGERPRINT"],
+            fingerprint(_probe(), infeasible_overrides),
+        )
+    )
+    env_path.write_text(edited_content)
+    _age(env_path)
+    capsys.readouterr()
+
+    assert _run(["ensure", "--output", str(env_path)]) != 0
+
+    assert "U4I_N_UI" in capsys.readouterr().err
+    assert env_path.read_text() == edited_content
     assert env_path.stat().st_mtime_ns == OLD_MTIME_NS
 
 
@@ -1364,6 +1501,9 @@ def test_show_prints_table_and_slug(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("U4I_SLUG", "cap-test")
+    # Without --hub-project, show reads the host file: keep it off the real /proc.
+    monkeypatch.setattr(capacity, "DEFAULT_MEMINFO_PATH", tmp_path / "no-meminfo")
+    monkeypatch.setattr(capacity, "DEFAULT_CGROUP_PATH", tmp_path / "no-cgroup")
     env_path = tmp_path / "capacity.env"
     _run(["generate", "--output", str(env_path)])
     capsys.readouterr()
@@ -1875,6 +2015,375 @@ def test_run_docker_launch_failures_raise_docker_run_error(
         run_docker(IMAGE_LOOKUP)
 
 
+# --- live memory -------------------------------------------------------------
+
+LIVE_HUB: str = "u4i-hub-1000"
+HUB_DB_ID: str = "f00dfeedbeef"
+MEMINFO_AVAILABLE_BYTES: int = 9437184 * 1024
+HUB_DB_PS_ARGS: list[str] = [
+    "ps",
+    "-q",
+    "--filter",
+    f"label=com.docker.compose.project={LIVE_HUB}",
+    "--filter",
+    "label=com.docker.compose.service=db",
+    "--filter",
+    "status=running",
+]
+HUB_DB_EXEC_ARGS: list[str] = ["exec", HUB_DB_ID, "cat", "/proc/meminfo"]
+
+
+def _vm_never_called() -> str | None:
+    raise AssertionError("the VM reader must not run when the host file is readable")
+
+
+def _meminfo_file(tmp_path: Path, text: str = MEMINFO_TEXT) -> Path:
+    meminfo_path = tmp_path / "meminfo"
+    meminfo_path.write_text(text)
+    return meminfo_path
+
+
+class _ScriptedDocker:
+    """Docker runner answering each call from a script (a result or an exception)."""
+
+    def __init__(
+        self, *responses: subprocess.CompletedProcess[str] | Exception
+    ) -> None:
+        self.responses = list(responses)
+        self.calls: list[list[str]] = []
+
+    def __call__(self, args: list[str]) -> subprocess.CompletedProcess[str]:
+        self.calls.append(args)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+
+def test_read_live_available_reads_host_meminfo(tmp_path: Path) -> None:
+    result = read_live_available(
+        _meminfo_file(tmp_path), tmp_path / "no-cgroup", _vm_never_called
+    )
+    assert result == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_HOST)
+
+
+@pytest.mark.parametrize(
+    ("cgroup_text", "expected_bytes"),
+    [
+        ("4294967296\n", 4 * GIB),
+        (f"{20 * GIB}\n", MEMINFO_AVAILABLE_BYTES),
+        ("max\n", MEMINFO_AVAILABLE_BYTES),
+    ],
+    ids=["lower-cgroup-wins", "higher-cgroup-ignored", "unlimited-cgroup"],
+)
+def test_read_live_available_caps_host_reading_at_the_cgroup_limit(
+    tmp_path: Path, cgroup_text: str, expected_bytes: int
+) -> None:
+    cgroup_path = tmp_path / "memory.max"
+    cgroup_path.write_text(cgroup_text)
+
+    result = read_live_available(_meminfo_file(tmp_path), cgroup_path, _vm_never_called)
+
+    assert result == LiveMemory(expected_bytes, LIVE_SOURCE_HOST)
+
+
+def test_read_live_available_falls_back_to_the_vm(tmp_path: Path) -> None:
+    result = read_live_available(
+        tmp_path / "no-meminfo", tmp_path / "no-cgroup", lambda: MEMINFO_TEXT
+    )
+    assert result == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_VM)
+
+
+def test_read_live_available_gives_none_when_nothing_is_readable(
+    tmp_path: Path,
+) -> None:
+    result = read_live_available(
+        tmp_path / "no-meminfo", tmp_path / "no-cgroup", lambda: None
+    )
+    assert result == LiveMemory(None, LIVE_SOURCE_NONE)
+
+
+@pytest.mark.parametrize(
+    "bad_meminfo",
+    ["MemAvailable: abc kB\n", "MemTotal: 16384000 kB\n", ""],
+    ids=["malformed-value", "missing-key", "empty-file"],
+)
+def test_read_live_available_malformed_host_reading_falls_through_to_the_vm(
+    tmp_path: Path, bad_meminfo: str
+) -> None:
+    result = read_live_available(
+        _meminfo_file(tmp_path, bad_meminfo),
+        tmp_path / "no-cgroup",
+        lambda: MEMINFO_TEXT,
+    )
+    assert result == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_VM)
+
+
+def test_read_live_available_undecodable_host_file_falls_through_to_the_vm(
+    tmp_path: Path,
+) -> None:
+    meminfo_path = tmp_path / "meminfo"
+    meminfo_path.write_bytes(b"MemAvailable: \xff\xfe kB\n")
+
+    result = read_live_available(
+        meminfo_path, tmp_path / "no-cgroup", lambda: MEMINFO_TEXT
+    )
+
+    assert result == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_VM)
+
+
+def test_read_live_available_malformed_vm_reading_gives_none(tmp_path: Path) -> None:
+    result = read_live_available(
+        tmp_path / "no-meminfo",
+        tmp_path / "no-cgroup",
+        lambda: "MemAvailable: abc kB\n",
+    )
+    assert result == LiveMemory(None, LIVE_SOURCE_NONE)
+
+
+def test_hub_vm_meminfo_reads_the_hub_db_container() -> None:
+    docker = _ScriptedDocker(
+        _completed(0, stdout=f"{HUB_DB_ID}\n"), _completed(0, stdout=MEMINFO_TEXT)
+    )
+
+    assert hub_vm_meminfo(LIVE_HUB, docker) == MEMINFO_TEXT
+    assert docker.calls == [HUB_DB_PS_ARGS, HUB_DB_EXEC_ARGS]
+
+
+def test_hub_vm_meminfo_without_a_running_hub_db_gives_none() -> None:
+    docker = _ScriptedDocker(_completed(0, stdout="\n"))
+
+    assert hub_vm_meminfo(LIVE_HUB, docker) is None
+    assert docker.calls == [HUB_DB_PS_ARGS]
+
+
+@pytest.mark.parametrize(
+    "responses",
+    [
+        (_completed(1, stderr="daemon down\n"),),
+        (DockerRunError("docker ps timed out after 10s"),),
+        (FileNotFoundError("No such file or directory: 'docker'"),),
+        (_completed(0, stdout=f"{HUB_DB_ID}\n"), _completed(1, stderr="gone\n")),
+        (
+            _completed(0, stdout=f"{HUB_DB_ID}\n"),
+            DockerRunError("docker exec timed out after 10s"),
+        ),
+        (
+            _completed(0, stdout=f"{HUB_DB_ID}\n"),
+            UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+        ),
+    ],
+    ids=[
+        "ps-exits-non-zero",
+        "ps-raises",
+        "ps-launch-fails",
+        "exec-exits-non-zero",
+        "exec-raises",
+        "exec-output-undecodable",
+    ],
+)
+def test_hub_vm_meminfo_never_raises_on_docker_failure(
+    responses: tuple[subprocess.CompletedProcess[str] | Exception, ...],
+) -> None:
+    assert hub_vm_meminfo(LIVE_HUB, _ScriptedDocker(*responses)) is None
+
+
+def test_run_docker_short_uses_the_live_memory_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorded: dict[str, object] = {}
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        recorded["command"] = command
+        recorded.update(kwargs)
+        return _completed(0, stdout="ok\n")
+
+    monkeypatch.setattr(capacity.subprocess, "run", fake_run)
+
+    assert _run_docker_short(HUB_DB_PS_ARGS).stdout == "ok\n"
+    assert recorded["command"] == ["docker", *HUB_DB_PS_ARGS]
+    assert recorded["timeout"] == LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS
+    assert LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS < DOCKER_RUN_TIMEOUT_SECONDS
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected_fragment"),
+    [
+        (FileNotFoundError("No such file or directory: 'docker'"), "docker"),
+        (
+            subprocess.TimeoutExpired(
+                cmd="docker", timeout=LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS
+            ),
+            f"docker ps timed out after {LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS}s",
+        ),
+    ],
+)
+def test_run_docker_short_launch_failures_raise_docker_run_error(
+    monkeypatch: pytest.MonkeyPatch, raised: Exception, expected_fragment: str
+) -> None:
+    def failing_run(*args: object, **kwargs: object) -> None:
+        raise raised
+
+    monkeypatch.setattr(capacity.subprocess, "run", failing_run)
+    with pytest.raises(DockerRunError, match=expected_fragment):
+        _run_docker_short(HUB_DB_PS_ARGS)
+
+
+def test_live_usable_gb_applies_the_safety_margin() -> None:
+    assert live_usable_gb(LiveMemory(10 * GIB, LIVE_SOURCE_HOST)) == pytest.approx(
+        10 * DEFAULT_MEM_SAFETY
+    )
+    assert live_usable_gb(LiveMemory(None, LIVE_SOURCE_NONE)) is None
+
+
+@pytest.mark.parametrize(
+    ("usable_gb", "expected_workers"),
+    [
+        (3.6, 3),
+        (4.0, 4),
+        # Float noise a hair under an exact fit: rounding before the floor keeps
+        # it at 3 workers rather than 2.
+        (BASE_GB + 3 * WORKER_GB - 1e-12, 3),
+        (2.2, 0),
+        (1.0, 0),
+    ],
+)
+def test_workers_that_fit_rounds_before_flooring_and_can_be_zero(
+    usable_gb: float, expected_workers: int
+) -> None:
+    assert workers_that_fit(usable_gb, BASE_GB, WORKER_GB) == expected_workers
+
+
+def _show_with_live(
+    env_path: Path, live: LiveMemory, hub_project: str | None
+) -> list[str]:
+    """Run `show` with an injected live reader; return the hubs it was asked for."""
+    asked: list[str] = []
+
+    def fake_live_memory(hub: str) -> LiveMemory:
+        asked.append(hub)
+        return live
+
+    argv = ["show", "--output", str(env_path)]
+    if hub_project is not None:
+        argv += ["--hub-project", hub_project]
+    assert main(argv, _no_probe, _ScriptedDocker(), fake_live_memory) == 0
+    return asked
+
+
+def test_show_prints_the_live_line_from_the_hub_reader(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+
+    asked = _show_with_live(
+        env_path,
+        LiveMemory(int(4.0 / DEFAULT_MEM_SAFETY * GIB), LIVE_SOURCE_VM),
+        LIVE_HUB,
+    )
+
+    assert asked == [LIVE_HUB]
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: 4.0 GB usable now (vm) — 4 workers fit"
+
+
+def test_show_live_line_is_singular_for_one_worker(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+
+    # floor((2.5 − 2.0) / 0.5) = 1 worker.
+    _show_with_live(
+        env_path,
+        LiveMemory(int(2.5 / DEFAULT_MEM_SAFETY * GIB), LIVE_SOURCE_VM),
+        LIVE_HUB,
+    )
+
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: 2.5 GB usable now (vm) — 1 worker fits"
+
+
+def test_show_prints_unavailable_when_live_memory_cannot_be_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+
+    _show_with_live(env_path, LiveMemory(None, LIVE_SOURCE_NONE), LIVE_HUB)
+
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: unavailable — static capacity applies"
+
+
+def test_show_without_hub_project_reads_only_the_host_file(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+    monkeypatch.setattr(capacity, "DEFAULT_MEMINFO_PATH", _meminfo_file(tmp_path))
+    monkeypatch.setattr(capacity, "DEFAULT_CGROUP_PATH", tmp_path / "no-cgroup")
+
+    asked = _show_with_live(env_path, LiveMemory(None, LIVE_SOURCE_NONE), None)
+
+    assert asked == []
+    # 9437184 kB × 0.9 = 8.1 GB usable → floor((8.1 − 2.0) / 0.5) = 12 workers.
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: 8.1 GB usable now (host) — 12 workers fit"
+
+
+def test_show_without_hub_project_never_tries_the_vm(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_path = tmp_path / "capacity.env"
+    _run(["generate", "--output", str(env_path)])
+    capsys.readouterr()
+    monkeypatch.setattr(capacity, "DEFAULT_MEMINFO_PATH", tmp_path / "no-meminfo")
+    monkeypatch.setattr(capacity, "DEFAULT_CGROUP_PATH", tmp_path / "no-cgroup")
+    docker = _ScriptedDocker()
+
+    assert main(["show", "--output", str(env_path)], _no_probe, docker) == 0
+
+    assert docker.calls == []
+    out_lines = capsys.readouterr().out.splitlines()
+    assert out_lines[-1] == "live: unavailable — static capacity applies"
+
+
+def test_default_live_memory_reads_the_vm_with_the_short_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recorded: list[tuple[list[str], object]] = []
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        recorded.append((command, kwargs["timeout"]))
+        if command[1] == "ps":
+            return _completed(0, stdout=f"{HUB_DB_ID}\n")
+        return _completed(0, stdout=MEMINFO_TEXT)
+
+    monkeypatch.setattr(capacity.subprocess, "run", fake_run)
+    monkeypatch.setattr(capacity, "DEFAULT_MEMINFO_PATH", tmp_path / "no-meminfo")
+    monkeypatch.setattr(capacity, "DEFAULT_CGROUP_PATH", tmp_path / "no-cgroup")
+
+    assert _live_memory(LIVE_HUB) == LiveMemory(MEMINFO_AVAILABLE_BYTES, LIVE_SOURCE_VM)
+    assert recorded == [
+        (["docker", *HUB_DB_PS_ARGS], LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS),
+        (["docker", *HUB_DB_EXEC_ARGS], LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS),
+    ]
+
+
 # --- admit (spoke admission) -------------------------------------------------
 
 ADMIT_SELF: str = "u4i-self"
@@ -1898,7 +2407,29 @@ ADMIT_CAPACITY_LINES: dict[str, str] = {
     "U4I_HUB_IDLE_MB": "614",
     "U4I_SPOKE_IDLE_MB": "256",
     "U4I_SPOKE_MAX": "2",
+    "U4I_BASE_MB": "2048",
+    "U4I_WORKER_MB": "512",
 }
+# No live reading: admission falls back to the static U4I_SPOKE_MAX count rule.
+STATIC_LIVE: LiveMemory = LiveMemory(None, LIVE_SOURCE_NONE)
+
+
+def _live_usable(usable_gb: float, source: str = LIVE_SOURCE_HOST) -> LiveMemory:
+    """A live reading whose usable share (after DEFAULT_MEM_SAFETY) is `usable_gb`,
+    rounded up to the byte so a boundary value never truncates just below it."""
+    return LiveMemory(math.ceil(usable_gb / DEFAULT_MEM_SAFETY * GIB), source)
+
+
+class _FakeLive:
+    """`admit`'s live-memory reader: returns a fixed reading, records each hub project."""
+
+    def __init__(self, reading: LiveMemory) -> None:
+        self.reading = reading
+        self.hub_projects: list[str] = []
+
+    def __call__(self, hub_project: str) -> LiveMemory:
+        self.hub_projects.append(hub_project)
+        return self.reading
 
 
 class _FakePsDocker:
@@ -1936,7 +2467,12 @@ def _admit_capacity(tmp_path: Path, omit: str | None = None) -> Path:
     return env_path
 
 
-def _admit(env_path: Path, docker: _FakePsDocker) -> int:
+def _admit(
+    env_path: Path,
+    docker: _FakePsDocker,
+    live_memory: Callable[[str], LiveMemory] | None = None,
+) -> int:
+    """Run `admit` for ADMIT_SELF; without `live_memory` there is no live reading."""
     return main(
         [
             "admit",
@@ -1951,6 +2487,7 @@ def _admit(env_path: Path, docker: _FakePsDocker) -> int:
         ],
         _no_probe,
         docker,
+        live_memory if live_memory is not None else _FakeLive(STATIC_LIVE),
     )
 
 
@@ -1977,12 +2514,13 @@ def test_admit_admits_silently_under_the_ceiling(
     assert captured.err == ""
 
 
-def test_admit_refuses_the_spoke_past_the_ceiling_with_the_numbers(
+def test_admit_without_live_memory_refuses_past_the_spoke_max_with_the_static_numbers(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """No live reading → today's count rule and its refusal text, byte for byte."""
     docker = _FakePsDocker(stdout=_running("u4i-beta", "u4i-alpha"))
 
-    assert _admit(_admit_capacity(tmp_path), docker) == 1
+    assert _admit(_admit_capacity(tmp_path), docker, _FakeLive(STATIC_LIVE)) == 1
 
     captured = capsys.readouterr()
     assert captured.out == ""
@@ -1992,6 +2530,102 @@ def test_admit_refuses_the_spoke_past_the_ceiling_with_the_numbers(
         "usable 9.60 GB (U4I_SPOKE_MAX=2). Running spokes: u4i-alpha, u4i-beta. "
         "Stop one with 'make down' in its checkout.\n"
     )
+
+
+@pytest.mark.parametrize(
+    "usable_gb",
+    [4.0, 2.75],
+    ids=["ample", "exactly-the-minimum"],
+)
+def test_admit_live_admits_past_the_spoke_max_when_memory_holds_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], usable_gb: float
+) -> None:
+    """Hub up, 2 others running (static would refuse spoke 3): needs only
+    0.25 GB idle + 2.50 GB minimum run = 2.75 GB — running spokes aren't re-counted."""
+    docker = _FakePsDocker(stdout=_running("u4i-alpha", ADMIT_HUB, "u4i-beta"))
+    live = _FakeLive(_live_usable(usable_gb))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 0
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_admit_live_refuses_with_the_numbers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running("u4i-beta", ADMIT_HUB, "u4i-alpha"))
+
+    assert _admit(_admit_capacity(tmp_path), docker, _FakeLive(_live_usable(2.5))) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "spoke admission: refusing spoke 3 (u4i-self) — needs 0.25 GB idle + 2.50 GB "
+        "for a minimum test run = 2.75 GB, but only 2.50 GB is usable now (host). "
+        "Running spokes: u4i-alpha, u4i-beta. "
+        "Free memory or stop one with 'make down' in its checkout.\n"
+    )
+
+
+def test_admit_live_adds_the_hub_idle_cost_when_the_hub_is_not_running(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Hub label absent → its idle cost isn't in MemAvailable yet: 2.75 + 0.60 = 3.35 GB."""
+    capacity_file = _admit_capacity(tmp_path)
+    running = _running("u4i-alpha", "u4i-beta")
+    enough = _FakeLive(_live_usable(3.35))
+    short = _FakeLive(_live_usable(3.0))
+
+    assert _admit(capacity_file, _FakePsDocker(stdout=running), enough) == 0
+    assert _admit(capacity_file, _FakePsDocker(stdout=running), short) == 1
+
+    assert capsys.readouterr().err == (
+        "spoke admission: refusing spoke 3 (u4i-self) — needs 0.25 GB idle + 2.50 GB "
+        "for a minimum test run + 0.60 GB hub = 3.35 GB, but only 3.00 GB is usable "
+        "now (host). Running spokes: u4i-alpha, u4i-beta. "
+        "Free memory or stop one with 'make down' in its checkout.\n"
+    )
+
+
+def test_admit_live_refusal_with_no_other_spokes_names_none(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running(ADMIT_HUB))
+    live = _FakeLive(_live_usable(1.0, LIVE_SOURCE_VM))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 1
+
+    assert capsys.readouterr().err == (
+        "spoke admission: refusing spoke 1 (u4i-self) — needs 0.25 GB idle + 2.50 GB "
+        "for a minimum test run = 2.75 GB, but only 1.00 GB is usable now (vm). "
+        "Running spokes: none. "
+        "Free memory or stop one with 'make down' in its checkout.\n"
+    )
+
+
+def test_admit_live_never_refuses_a_spoke_that_is_already_running(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running("u4i-alpha", ADMIT_SELF, ADMIT_HUB))
+    live = _FakeLive(LiveMemory(0, LIVE_SOURCE_HOST))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_admit_reads_live_memory_for_the_hub_project_after_docker_ps(
+    tmp_path: Path,
+) -> None:
+    docker = _FakePsDocker(stdout=_running(ADMIT_HUB))
+    live = _FakeLive(_live_usable(4.0))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 0
+
+    assert live.hub_projects == [ADMIT_HUB]
+    assert ["docker", *docker.calls[0]] == ADMIT_PS_ARGV
+    assert len(docker.calls) == 1
 
 
 def test_admit_never_refuses_a_spoke_that_is_already_running(
@@ -2051,17 +2685,27 @@ def test_admit_docker_failure_is_loud_and_never_admits(
     docker: _FakePsDocker,
     expected_err: str,
 ) -> None:
-    assert _admit(_admit_capacity(tmp_path), docker) == 1
+    live = _FakeLive(_live_usable(4.0))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 1
+
     assert capsys.readouterr().err == expected_err
+    assert live.hub_projects == []
 
 
+@pytest.mark.parametrize(
+    "live", [STATIC_LIVE, _live_usable(4.0)], ids=["static", "live"]
+)
 @pytest.mark.parametrize("missing_key", list(ADMIT_CAPACITY_LINES))
 def test_admit_capacity_file_missing_a_key_exits_non_zero(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], missing_key: str
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    missing_key: str,
+    live: LiveMemory,
 ) -> None:
     env_path = _admit_capacity(tmp_path, omit=missing_key)
 
-    assert _admit(env_path, _FakePsDocker()) == 1
+    assert _admit(env_path, _FakePsDocker(), _FakeLive(live)) == 1
 
     assert capsys.readouterr().err == (
         f"spoke admission: {missing_key} missing or invalid in {env_path} "
@@ -2110,15 +2754,27 @@ def test_admit_unreadable_capacity_file_exits_non_zero(
     assert captured_err.endswith("— run 'make capacity'\n")
 
 
-def test_admission_decision_reports_the_other_running_spokes() -> None:
+@pytest.mark.parametrize(
+    ("refusing_live", "message_start"),
+    [
+        (STATIC_LIVE, "refusing spoke 3 (u4i-self) — hub 0.60 GB"),
+        (_live_usable(2.5), "refusing spoke 3 (u4i-self) — needs 0.25 GB idle"),
+    ],
+    ids=["static", "live"],
+)
+def test_admission_decision_reports_the_other_running_spokes(
+    refusing_live: LiveMemory, message_start: str
+) -> None:
     env = dict(ADMIT_CAPACITY_LINES)
 
-    admitted = admission_decision(["u4i-alpha", ADMIT_SELF], ADMIT_SELF, ADMIT_HUB, env)
+    admitted = admission_decision(
+        ["u4i-alpha", ADMIT_SELF], ADMIT_SELF, ADMIT_HUB, env, refusing_live
+    )
     refused = admission_decision(
-        ["u4i-beta", "u4i-alpha", ADMIT_HUB], ADMIT_SELF, ADMIT_HUB, env
+        ["u4i-beta", "u4i-alpha", ADMIT_HUB], ADMIT_SELF, ADMIT_HUB, env, refusing_live
     )
 
     assert admitted == AdmissionResult(admitted=True, others=("u4i-alpha",), message="")
     assert refused.admitted is False
     assert refused.others == ("u4i-alpha", "u4i-beta")
-    assert refused.message.startswith("refusing spoke 3 (u4i-self)")
+    assert refused.message.startswith(message_start)
