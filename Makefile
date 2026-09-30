@@ -68,7 +68,10 @@ U4I_MEMORY_WAIT ?= 600
 U4I_SETTLE_SECONDS ?= 20
 # Both are spliced bare into every budgeted line, so each must be one word of digits and dots (the runner validates the
 # number itself): this refuses shell metacharacters and an empty override at parse time, before any recipe runs.
-non_numeric_rest = $(subst 0,,$(subst 1,,$(subst 2,,$(subst 3,,$(subst 4,,$(subst 5,,$(subst 6,,$(subst 7,,$(subst 8,,$(subst 9,,$(subst .,,$(1))))))))))))
+# $(call remove_chars,<chars>,<text>) folds over the word list <chars>, deleting each one from <text> in turn
+# (plain $(foreach) cannot chain subst results). Recursive $(call) works on GNU make 3.81 (macOS).
+remove_chars = $(if $(1),$(call remove_chars,$(wordlist 2,$(words $(1)),$(1)),$(subst $(firstword $(1)),,$(2))),$(2))
+non_numeric_rest = $(call remove_chars,0 1 2 3 4 5 6 7 8 9 .,$(1))
 $(foreach seconds_var,U4I_MEMORY_WAIT U4I_SETTLE_SECONDS,$(if $(or $(filter-out 1,$(words $($(seconds_var)))),$(call non_numeric_rest,$($(seconds_var)))),$(error $(seconds_var) must be a non-negative number of seconds (got '$($(seconds_var))'))))
 export PRIMARY_ROOT U4I_PRIMARY U4I_HOST_SLUG U4I_PROJECT U4I_WEB_HOST U4I_VITE_HOST U4I_UID U4I_HUB_PROJECT U4I_SHARED_NET
 # The per-user hub (docker/compose.hub.yaml: db, cluster-init, playwright) is always defined by the PRIMARY clone's
@@ -449,15 +452,13 @@ clear-db: ## Empty every table in the dev database (same schema, no data) — fr
 reset-db: clear-db addmock ## Empty the dev database, then reseed all mock data (seeded users/UTubs restored)
 
 # ttl is spliced into a double-quoted `bash -c` string, so it is validated with make functions only (a shell
-# `case` over $(ttl) would itself expand it): stripping every digit must leave nothing, and it must be one word.
-# $(call remove_chars,<chars>,<text>) folds over the word list <chars>, deleting each one from <text> in turn
-# (plain $(foreach) cannot chain subst results). Recursive $(call) works on GNU make 3.81 (macOS).
-remove_chars = $(if $(1),$(call remove_chars,$(wordlist 2,$(words $(1)),$(1)),$(subst $(firstword $(1)),,$(2))),$(2))
+# `case` over $(ttl) would itself expand it): stripping every digit (remove_chars, defined at the top) must leave
+# nothing, and it must be one word.
 REAP_TTL = $(or $(ttl),10)
 REAP_TTL_NON_DIGITS = $(strip $(call remove_chars,0 1 2 3 4 5 6 7 8 9,$(REAP_TTL)))
 
 # c (restart / logs / hub-restart) is spliced into compose command lines, so it is validated at parse time as one
-# compose service name. Here, not at the top, because it needs remove_chars; the `$` guard at the top still runs first.
+# compose service name, via remove_chars; the `$` guard at the top still runs first.
 SERVICE_NAME_CHARS := a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9 _ -
 $(if $(c),$(if $(or $(word 2,$(c)),$(strip $(call remove_chars,$(SERVICE_NAME_CHARS),$(c)))),$(error c must be one compose service name ([a-z0-9_-]), got '$(c)')))
 
