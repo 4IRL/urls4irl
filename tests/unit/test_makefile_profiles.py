@@ -45,6 +45,7 @@ INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
         "p",
         "c",
         "d",
+        "e",
         "f",
         "m",
         "n",
@@ -149,6 +150,7 @@ def test_up_rejects_invalid_profile(profile_value: str, expected_message: str) -
     [
         pytest.param("up", "p", "p must not contain '$'", id="p"),
         pytest.param("restart", "c", "c must not contain '$'", id="c"),
+        pytest.param("endpoint-info", "e", "e must not contain '$'", id="e"),
         pytest.param(
             "up", "U4I_WEB_PORT", "U4I_WEB_PORT must not contain '$'", id="web-port"
         ),
@@ -1240,6 +1242,7 @@ def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> 
         ("audit",),
         ("generate-endpoints",),
         ("audit-endpoints",),
+        ("endpoint-info", "e=utubs.get_single_utub"),
         ("clear-db",),
         ("addmock",),
         ("test-js",),
@@ -1264,6 +1267,34 @@ def test_generate_endpoints_writes_into_the_mounted_docs_dir() -> None:
 def test_audit_endpoints_runs_the_strict_audit() -> None:
     # --strict is what makes the target exit non-zero on drift.
     assert "endpoints audit --strict" in _successful_dry_run("audit-endpoints")
+
+
+@pytest.mark.parametrize(
+    ("route_value", "expected_argument"),
+    [
+        pytest.param("utubs.get_single_utub", "'utubs.get_single_utub'", id="endpoint"),
+        pytest.param(
+            "DELETE /utubs/<int:utub_id>",
+            "'DELETE /utubs/<int:utub_id>'",
+            id="method-rule",
+        ),
+        pytest.param("it's", "'it'\\''s'", id="single-quote"),
+        pytest.param("-h", "'-h'", id="dash-leading"),
+    ],
+)
+def test_endpoint_info_runs_the_host_script(
+    route_value: str, expected_argument: str
+) -> None:
+    # Host-native (no stack): the route reaches the stdlib script as one single-quoted shell word,
+    # after `--` so a dash-leading route is never parsed as an option.
+    output = _successful_dry_run("endpoint-info", f"e={route_value}")
+    assert f"scripts/endpoint_info.py -- {expected_argument}" in output
+
+
+def test_endpoint_info_requires_a_route() -> None:
+    result = _dry_run("endpoint-info")
+    assert result.returncode != 0
+    assert "e=<route> is required" in result.stderr
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
