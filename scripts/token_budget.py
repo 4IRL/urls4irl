@@ -23,6 +23,10 @@ elastic run (`--min-tokens m < --tokens k`) is granted as many of its `k`
 workers as fit right now, at least `m`, and `@TOKENS@` in its command becomes
 that count; an exact run waits until all `k` fit. A memory wait with no other
 run holding tokens (outside pressure) gives up after `--memory-wait` seconds.
+Starts stay serialised for `--settle-seconds` after the child starts (a run of
+at most SETTLE_EXEMPT_MAX_WORKERS workers skips this), so the next starter's
+reading includes this run's ramp-up. While the child runs, live memory is
+sampled: a low reading prints one warning, and the failure block shows memory.
 Stdlib only: it runs on the host under bare mise python.
 """
 
@@ -60,6 +64,8 @@ EXIT_INTERRUPTED: int = 130
 EXIT_CANNOT_RUN: int = 127
 SIGNAL_EXIT_BASE: int = 128
 FORWARDED_SIGNALS: tuple[signal.Signals, ...] = (signal.SIGINT, signal.SIGTERM)
+# What signal.signal() returns and accepts: a callable, SIG_DFL/SIG_IGN, or None.
+SignalHandler = Callable[[int, FrameType | None], object] | int | signal.Handlers | None
 CEILING_HINT: str = (
     "timeouts or spurious login failures at the ceiling are often capacity, "
     "not product bugs — rerun with a lower n="
@@ -72,6 +78,15 @@ TOKENS_PLACEHOLDER: str = "@TOKENS@"
 # U4I_MEMORY_WAIT).
 SETTLE_SECONDS: int = 20
 MEMORY_WAIT_SECONDS: int = 600
+# A run granted this many workers or fewer has no ramp-up worth protecting, so
+# it skips the settle window.
+SETTLE_EXEMPT_MAX_WORKERS: int = 2
+# Mid-run sampling: a file read on Linux; a `docker exec` into the VM is dearer.
+MIDRUN_SAMPLE_SECONDS_HOST: int = 5
+MIDRUN_SAMPLE_SECONDS_VM: int = 15
+# Live usable memory below this during a run prints a warning and a hint.
+LOW_MEMORY_GB: float = 1.0
+MEMORY_HINT: str = "failures may be memory pressure, not product bugs"
 NO_HOLDERS: str = "none"
 WAIT_TOKENS: str = "tokens"
 WAIT_MEMORY: str = "memory"
@@ -118,7 +133,9 @@ class Acquired:
     """The slot fds a run holds, plus what it waited for and shared the host with.
 
     `granted` is how many workers the run may start (== len(fds));
-    `memory_wait_seconds` is the part of the queue spent waiting for memory.
+    `memory_wait_seconds` is the part of the queue spent waiting for memory;
+    `turnstile_fd` is the still-held turnstile, which the caller closes once the
+    run has settled.
     """
 
     fds: tuple[int, ...]
@@ -128,6 +145,16 @@ class Acquired:
     granted: int
     live_at_start: LiveMemory
     memory_wait_seconds: float
+    turnstile_fd: int
+
+
+@dataclass(frozen=True)
+class ChildResult:
+    """The child's exit code and the lowest live usable memory (GB) sampled
+    while it ran (None when no sample could be read)."""
+
+    exit_code: int
+    min_live_usable_gb: float | None
 
 
 @dataclass(frozen=True)
@@ -532,6 +559,9 @@ def acquire(
     wait. `max_wait` bounds the whole wait. Default SIGINT handling stays in
     place: Ctrl-C unwinds this loop (KeyboardInterrupt) and every fd taken so far
     is closed on the way out.
+
+    On success it returns still holding the turnstile (`Acquired.turnstile_fd`):
+    the caller keeps starts serialised until the run has settled, then closes it.
     """
     budget = budget_file.budget
     started = clock()
@@ -631,11 +661,14 @@ def acquire(
                 _write_slot(descriptor, slug, label, granted)
         others = _holders(lock_dir, budget, set(held), probe_locks=True)
     except BaseException:
+        # No Acquired reaches a caller on a raise, so close the turnstile here.
         _release(list(held.values()))
-        raise
-    finally:
         if turnstile is not None:
             os.close(turnstile)
+        raise
+    # The loop only breaks while holding the turnstile.
+    if turnstile is None:
+        raise RuntimeError("acquire() left its loop without holding the turnstile")
     return Acquired(
         fds=tuple(held.values()),
         queued_seconds=clock() - started,
@@ -644,6 +677,7 @@ def acquire(
         granted=granted,
         live_at_start=live,
         memory_wait_seconds=memory_waited,
+        turnstile_fd=turnstile,
     )
 
 
@@ -660,8 +694,24 @@ def _should_relay(signum: int, child_pid: int) -> bool:
         return False
 
 
-def _run_child(command: list[str]) -> int:
+def _run_child(
+    command: list[str],
+    turnstile_fd: int,
+    settle_seconds: float,
+    live_memory: Callable[[], LiveMemory],
+    clock: Callable[[], float],
+    label: str,
+    out: TextIO,
+) -> ChildResult:
     """Run `command`, relaying signals to it only while it runs.
+
+    The turnstile is closed `settle_seconds` after the child starts, or as soon
+    as it exits (and on every other way out, spawn failure included). Live
+    memory is sampled every MIDRUN_SAMPLE_SECONDS_* while it runs; a reading
+    below LOW_MEMORY_GB prints one warning. The child is never paused or killed.
+    A mid-run sample is synchronous, so on the VM path (docker ps + docker exec,
+    each up to LIVE_MEMORY_DOCKER_TIMEOUT_SECONDS) the settle close and child
+    reaping can lag by one read.
 
     SIGTERM (e.g. `kill <runner>`) reaches only the runner, so it is always
     relayed. A terminal Ctrl-C is delivered by the tty to the whole foreground
@@ -673,6 +723,9 @@ def _run_child(command: list[str]) -> int:
     """
     child: subprocess.Popen[bytes] | None = None
     pending: list[int] = []
+    turnstile: int | None = turnstile_fd
+    lowest: float | None = None
+    warned = False
 
     def forward(signum: int, _frame: FrameType | None) -> None:
         if child is None:
@@ -680,17 +733,56 @@ def _run_child(command: list[str]) -> int:
         elif _should_relay(signum, child.pid):
             child.send_signal(signum)
 
-    previous = {signum: signal.signal(signum, forward) for signum in FORWARDED_SIGNALS}
+    # Filled inside the try, so a failure mid-install still restores what was
+    # installed and still closes the turnstile.
+    previous: dict[signal.Signals, SignalHandler] = {}
     try:
+        for signum in FORWARDED_SIGNALS:
+            previous[signum] = signal.signal(signum, forward)
         child = subprocess.Popen(command)
         for signum in pending:
             if _should_relay(signum, child.pid):
                 child.send_signal(signum)
-        exit_code = child.wait()
+        started = clock()
+        next_sample = started + MIDRUN_SAMPLE_SECONDS_HOST
+        while True:
+            now = clock()
+            if turnstile is not None and now - started >= settle_seconds:
+                os.close(turnstile)
+                turnstile = None
+            if now >= next_sample:
+                reading = live_memory()
+                usable_gb = live_usable_gb(reading)
+                if usable_gb is not None:
+                    lowest = usable_gb if lowest is None else min(lowest, usable_gb)
+                    if usable_gb < LOW_MEMORY_GB and not warned:
+                        print(
+                            f"{MESSAGE_PREFIX}host memory low during {label} — "
+                            f"{usable_gb:.2f} GB usable ({reading.source}); "
+                            "expect timeouts",
+                            file=out,
+                            flush=True,
+                        )
+                        warned = True
+                next_sample = now + (
+                    MIDRUN_SAMPLE_SECONDS_HOST
+                    if reading.source == LIVE_SOURCE_HOST
+                    else MIDRUN_SAMPLE_SECONDS_VM
+                )
+            try:
+                exit_code = child.wait(timeout=POLL_SECONDS)
+            except subprocess.TimeoutExpired:
+                continue
+            break
     finally:
+        if turnstile is not None:
+            os.close(turnstile)
         for signum, handler in previous.items():
             signal.signal(signum, handler)
-    return SIGNAL_EXIT_BASE - exit_code if exit_code < 0 else exit_code
+    return ChildResult(
+        exit_code=SIGNAL_EXIT_BASE - exit_code if exit_code < 0 else exit_code,
+        min_live_usable_gb=lowest,
+    )
 
 
 def format_failure_block(
@@ -703,6 +795,8 @@ def format_failure_block(
     others_at_start: tuple[str, ...],
     in_use_at_start: int,
     decision: str,
+    live_at_start: LiveMemory,
+    min_live_usable_gb: float | None,
 ) -> list[str]:
     """The capacity a failed run ran under, so a capacity artifact identifies itself."""
     others = f" ({', '.join(others_at_start)})" if others_at_start else ""
@@ -715,10 +809,33 @@ def format_failure_block(
         f"  at ceiling:     {'yes' if at_ceiling else 'no'}  "
         "(tokens in use incl. this run == budget)",
         f"  decision:       {decision or UNKNOWN}",
+        f"  memory:         {_describe_memory(live_at_start, min_live_usable_gb)}",
     ]
     if at_ceiling:
         lines.append(f"  hint:           {CEILING_HINT}")
+    if min_live_usable_gb is not None and min_live_usable_gb < LOW_MEMORY_GB:
+        lines.append(
+            f"  hint:           host memory ran low ({min_live_usable_gb:.2f} GB) "
+            f"during this run — {MEMORY_HINT}"
+        )
     return lines
+
+
+def _describe_memory(
+    live_at_start: LiveMemory, min_live_usable_gb: float | None
+) -> str:
+    """The failure block's memory line: usable GB at start and lowest during the run."""
+    start_gb = live_usable_gb(live_at_start)
+    if start_gb is None:
+        if min_live_usable_gb is None:
+            return "unavailable (static capacity)"
+        return f"unavailable at start, {min_live_usable_gb:.2f} GB lowest during run"
+    lowest = (
+        ""
+        if min_live_usable_gb is None
+        else f", {min_live_usable_gb:.2f} GB lowest during run"
+    )
+    return f"{start_gb:.2f} GB usable at start{lowest} ({live_at_start.source})"
 
 
 # --- CLI ---------------------------------------------------------------------
@@ -759,8 +876,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--settle-seconds",
         type=float,
         default=SETTLE_SECONDS,
-        help="keep starts serialised this long after the child starts (validated "
-        "only until the settle window lands)",
+        help="keep starts serialised this long after the child starts (a run "
+        f"granted <= {SETTLE_EXEMPT_MAX_WORKERS} workers skips it)",
     )
     run_parser.add_argument(
         "--hub-project",
@@ -823,6 +940,7 @@ def main(argv: list[str]) -> int:
         _validate_seconds(args.memory_wait, "--memory-wait")
         _validate_seconds(args.settle_seconds, "--settle-seconds")
         ensure_lock_dir(args.lock_dir)
+        live_memory = _live_memory_reader(args.meminfo, args.cgroup, args.hub_project)
         acquired = acquire(
             args.lock_dir,
             tokens,
@@ -834,7 +952,7 @@ def main(argv: list[str]) -> int:
             args.memory_wait,
             time.monotonic,
             time.sleep,
-            _live_memory_reader(args.meminfo, args.cgroup, args.hub_project),
+            live_memory,
             sys.stderr,
         )
     except BudgetError as refusal:
@@ -846,38 +964,59 @@ def main(argv: list[str]) -> int:
     except KeyboardInterrupt:
         print(f"{MESSAGE_PREFIX}interrupted while queued", file=sys.stderr)
         return EXIT_INTERRUPTED
-    # Everything after acquire() is covered, so the slots are released even if a
+    # Ours to close until handed to _run_child, which closes it on every path
+    # (so it is never closed twice).
+    turnstile_fd: int | None = acquired.turnstile_fd
+    # Everything from here on is covered, so the slots are released even if a
     # Ctrl-C lands outside _run_child's handlers (just before or after them).
     try:
+        # A narrow run has no ramp-up worth making the next starter wait for.
+        effective_settle_seconds = (
+            0 if acquired.granted <= SETTLE_EXEMPT_MAX_WORKERS else args.settle_seconds
+        )
         command = [
             element.replace(TOKENS_PLACEHOLDER, str(acquired.granted))
             for element in command
         ]
+        turnstile_fd = None
         try:
-            exit_code = _run_child(command)
+            result = _run_child(
+                command,
+                acquired.turnstile_fd,
+                effective_settle_seconds,
+                live_memory,
+                time.monotonic,
+                args.label,
+                sys.stderr,
+            )
         except OSError as spawn_error:
             print(
                 f"{MESSAGE_PREFIX}cannot run {command[0]}: {spawn_error}",
                 file=sys.stderr,
             )
             return EXIT_CANNOT_RUN
+        exit_code = result.exit_code
         if exit_code not in (0, EXIT_INTERRUPTED):
             for line in format_failure_block(
                 label=args.label,
                 exit_code=exit_code,
-                tokens=tokens,
+                tokens=acquired.granted,
                 budget=budget,
                 capacity_file=capacity_file,
                 queued_seconds=acquired.queued_seconds,
                 others_at_start=acquired.others_at_start,
                 in_use_at_start=acquired.in_use_at_start,
                 decision=budget_file.decision,
+                live_at_start=acquired.live_at_start,
+                min_live_usable_gb=result.min_live_usable_gb,
             ):
                 print(line, file=sys.stderr)
         return exit_code
     except KeyboardInterrupt:
         return EXIT_INTERRUPTED
     finally:
+        if turnstile_fd is not None:
+            os.close(turnstile_fd)
         _release(acquired.fds)
 
 

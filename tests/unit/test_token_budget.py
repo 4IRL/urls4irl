@@ -14,6 +14,7 @@ import fcntl
 import io
 import itertools
 import json
+import math
 import os
 import signal
 import stat
@@ -21,6 +22,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable, Iterator
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -158,6 +160,38 @@ def _acquire(
     )
 
 
+def _release_acquired(acquired: token_budget.Acquired) -> None:
+    """Undo a successful acquire(): unlock its slots and its turnstile."""
+    token_budget._release(acquired.fds)
+    os.close(acquired.turnstile_fd)
+
+
+def _turnstile_free(lock_dir: Path) -> bool:
+    """Whether the turnstile can be locked right now (probe, then let go)."""
+    descriptor = token_budget._try_lock(lock_dir / token_budget.TURNSTILE_NAME)
+    if descriptor is None:
+        return False
+    os.close(descriptor)
+    return True
+
+
+class SteppingClock:
+    """A clock that advances `step` seconds on every call, calling `on_tick`
+    with each value it returns (before returning it)."""
+
+    def __init__(
+        self, step: float, on_tick: Callable[[float], None] = lambda now: None
+    ) -> None:
+        self.step = step
+        self.on_tick = on_tick
+        self.now = -step
+
+    def __call__(self) -> float:
+        self.now += self.step
+        self.on_tick(self.now)
+        return self.now
+
+
 def _locked_slots(lock_dir: Path) -> list[int]:
     return [
         index
@@ -241,7 +275,10 @@ def spawn(
         child: list[str],
         max_wait: float | None = None,
         meminfo: Path | None = None,
+        settle_seconds: float = 0,
     ) -> Runner:
+        """No settle window unless a test asks for one: the contention cases
+        predate it, and a 20 s default would only slow them down."""
         log = tmp_path / f"{name}.log"
         argv = [
             sys.executable,
@@ -256,6 +293,8 @@ def spawn(
             str(meminfo or capacity_file.with_name(MEMINFO_NAME)),
             "--cgroup",
             str(capacity_file.with_name(NO_CGROUP_NAME)),
+            "--settle-seconds",
+            str(settle_seconds),
             "--tokens",
             str(tokens),
             "--label",
@@ -292,7 +331,10 @@ def spawn(
                 runner.process.kill()
 
 
-def _marker_child(tmp_path: Path, name: str) -> tuple[list[str], Path, Path]:
+def _marker_child(
+    tmp_path: Path, name: str, lifetime_seconds: float = SYNC_TIMEOUT_SECONDS
+) -> tuple[list[str], Path, Path]:
+    """A MARKER_CHILD that self-exits after `lifetime_seconds` if never released."""
     started = tmp_path / f"{name}-started"
     release = tmp_path / f"{name}-release"
     child = [
@@ -301,7 +343,7 @@ def _marker_child(tmp_path: Path, name: str) -> tuple[list[str], Path, Path]:
         MARKER_CHILD,
         str(started),
         str(release),
-        str(SYNC_TIMEOUT_SECONDS),
+        str(lifetime_seconds),
     ]
     return child, started, release
 
@@ -494,7 +536,35 @@ def test_child_failure_propagates_and_prints_capacity_block(
     assert "  queued:         0.0s; other holders at start: 0 tokens" in err
     assert f"  decision:       {DECISION}" in err
     assert "  at ceiling:     no" in err
+    # The child exits long before the first mid-run sample.
+    assert "  memory:         60.00 GB usable at start (host)\n" in err
     assert "hint:" not in err
+
+
+def test_failure_block_reports_the_granted_tokens_of_an_elastic_run(
+    tmp_path: Path,
+    capacity_file: Path,
+    lock_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # floor((3.6 - 2.0) / 0.5) = 3 of the 4 requested workers fit.
+    meminfo = _write_meminfo(tmp_path / "tight-meminfo", 3.6)
+    child = [*_exit_child(4), "@TOKENS@"]
+    exit_code = main(
+        _run_args(
+            capacity_file,
+            lock_dir,
+            "4",
+            child,
+            extra_flags=("--min-tokens", "1"),
+            meminfo=meminfo,
+        )
+    )
+    assert exit_code == 4
+    err = capsys.readouterr().err
+    assert f"  tokens (n):     3 of budget 4 (U4I_N_MAX, {capacity_file})" in err
+    assert "  at ceiling:     no" in err
+    assert "  memory:         3.60 GB usable at start (host)\n" in err
 
 
 @pytest.mark.parametrize("code", [0, 130])
@@ -558,6 +628,8 @@ def test_format_failure_block_is_pure() -> None:
         others_at_start=("a/test-y",),
         in_use_at_start=1,
         decision=DECISION,
+        live_at_start=_live(3.6),
+        min_live_usable_gb=0.8,
     )
     assert lines == [
         "token budget: test-x exited 5 — resolved capacity for this run:",
@@ -565,8 +637,58 @@ def test_format_failure_block_is_pure() -> None:
         "  queued:         12.3s; other holders at start: 1 tokens (a/test-y)",
         "  at ceiling:     yes  (tokens in use incl. this run == budget)",
         f"  decision:       {DECISION}",
+        "  memory:         3.60 GB usable at start, 0.80 GB lowest during run (host)",
         "  hint:           timeouts or spurious login failures at the ceiling are "
         "often capacity, not product bugs — rerun with a lower n=",
+        "  hint:           host memory ran low (0.80 GB) during this run — failures "
+        "may be memory pressure, not product bugs",
+    ]
+
+
+def _failure_block_memory_lines(
+    live_at_start: LiveMemory, min_live_usable_gb: float | None
+) -> list[str]:
+    """The failure block's memory lines (below the ceiling: no ceiling hint)."""
+    lines = format_failure_block(
+        label="test-x",
+        exit_code=1,
+        tokens=1,
+        budget=4,
+        capacity_file=Path("/cap.env"),
+        queued_seconds=0.0,
+        others_at_start=(),
+        in_use_at_start=0,
+        decision=DECISION,
+        live_at_start=live_at_start,
+        min_live_usable_gb=min_live_usable_gb,
+    )
+    return [line for line in lines if "memory" in line]
+
+
+def test_failure_block_memory_line_without_a_live_reading() -> None:
+    assert _failure_block_memory_lines(LiveMemory(None, "none"), None) == [
+        "  memory:         unavailable (static capacity)"
+    ]
+
+
+def test_failure_block_memory_line_with_only_a_mid_run_sample() -> None:
+    assert _failure_block_memory_lines(LiveMemory(None, "none"), 0.8) == [
+        "  memory:         unavailable at start, 0.80 GB lowest during run",
+        "  hint:           host memory ran low (0.80 GB) during this run — failures "
+        "may be memory pressure, not product bugs",
+    ]
+
+
+def test_failure_block_memory_line_without_a_mid_run_sample() -> None:
+    assert _failure_block_memory_lines(_live(3.6), None) == [
+        "  memory:         3.60 GB usable at start (host)"
+    ]
+
+
+def test_failure_block_has_no_memory_hint_at_the_low_memory_threshold() -> None:
+    # Only a lowest reading strictly below LOW_MEMORY_GB earns the hint.
+    assert _failure_block_memory_lines(_live(3.6), token_budget.LOW_MEMORY_GB) == [
+        "  memory:         3.60 GB usable at start, 1.00 GB lowest during run (host)"
     ]
 
 
@@ -707,6 +829,7 @@ def test_command_not_found_exits_127_and_releases(
     missing = ["/nonexistent-u4i-command"]
     assert main(_run_args(capacity_file, lock_dir, "1", missing)) == 127
     assert capsys.readouterr().err.startswith("token budget: cannot run")
+    assert _turnstile_free(lock_dir)
     # Every slot is free again: a full-budget run needs no wait.
     assert main(_run_args(capacity_file, lock_dir, "4", _exit_child(0))) == 0
 
@@ -933,7 +1056,7 @@ def test_elastic_run_shrinks_to_the_workers_that_fit(lock_dir: Path) -> None:
         assert acquired.live_at_start == _live(3.6)
         assert out.getvalue() == ""
     finally:
-        token_budget._release(acquired.fds)
+        _release_acquired(acquired)
 
 
 def test_exact_run_waits_for_memory_then_starts(lock_dir: Path) -> None:
@@ -948,7 +1071,7 @@ def test_exact_run_waits_for_memory_then_starts(lock_dir: Path) -> None:
         assert acquired.live_at_start == _live(4.0)
         assert acquired.memory_wait_seconds == token_budget.POLL_SECONDS
     finally:
-        token_budget._release(acquired.fds)
+        _release_acquired(acquired)
     assert out.getvalue().splitlines() == [
         "token budget: waiting for memory — need 4.00 GB for 4 workers, 3.60 GB "
         "usable (host); runs holding tokens: none"
@@ -1024,7 +1147,7 @@ def test_unreadable_live_memory_falls_back_to_static_capacity(lock_dir: Path) ->
         assert acquired.granted == 4
         assert acquired.live_at_start == LiveMemory(None, "none")
     finally:
-        token_budget._release(acquired.fds)
+        _release_acquired(acquired)
     assert out.getvalue() == (
         "token budget: live memory unavailable — using static capacity\n"
     )
@@ -1050,7 +1173,7 @@ def test_extras_are_released_when_the_fit_drops_while_waiting(lock_dir: Path) ->
             assert _read(lock_dir / f"{token_budget.SLOT_PREFIX}1") == ""
             assert "tokens=1 " in _read(lock_dir / f"{token_budget.SLOT_PREFIX}0")
         finally:
-            token_budget._release(acquired.fds)
+            _release_acquired(acquired)
     finally:
         _release_slots(held)
     assert out.getvalue().startswith(
@@ -1098,6 +1221,314 @@ def test_ctrl_c_during_memory_wait_releases_slots_and_turnstile(
         os.close(turnstile)
     finally:
         _release_slots(held)
+
+
+# --- turnstile hand-off (acquire) --------------------------------------------
+
+
+def test_acquire_returns_still_holding_the_turnstile(lock_dir: Path) -> None:
+    acquired = _acquire(
+        lock_dir, 2, 2, _scripted(_live(AMPLE_USABLE_GB)), FakeTime(), io.StringIO()
+    )
+    try:
+        # The caller (_run_child) closes it once the settle window ends.
+        assert not _turnstile_free(lock_dir)
+    finally:
+        _release_acquired(acquired)
+    assert _turnstile_free(lock_dir)
+
+
+def test_acquire_closes_the_turnstile_when_max_wait_gives_up(lock_dir: Path) -> None:
+    held = _hold_slots(lock_dir, [0, 1, 2, 3], "holder")
+    try:
+        with pytest.raises(BudgetError) as error:
+            _acquire(
+                lock_dir,
+                1,
+                1,
+                _scripted(_live(AMPLE_USABLE_GB)),
+                FakeTime(),
+                io.StringIO(),
+                max_wait=5,
+            )
+        assert "(--max-wait)" in str(error.value)
+        assert _turnstile_free(lock_dir)
+    finally:
+        _release_slots(held)
+
+
+def test_acquire_closes_the_turnstile_when_memory_wait_gives_up(
+    lock_dir: Path,
+) -> None:
+    with pytest.raises(BudgetError) as error:
+        _acquire(
+            lock_dir,
+            1,
+            1,
+            _scripted(_live(2.2)),
+            FakeTime(),
+            io.StringIO(),
+            memory_wait=60,
+        )
+    assert "waiting for memory with no other test run holding tokens" in str(
+        error.value
+    )
+    assert _turnstile_free(lock_dir)
+
+
+# --- settle window and mid-run sampling (_run_child) -------------------------
+
+
+def _held_turnstile(lock_dir: Path) -> int:
+    token_budget.ensure_lock_dir(lock_dir)
+    descriptor = token_budget._try_lock(lock_dir / token_budget.TURNSTILE_NAME)
+    assert descriptor is not None
+    return descriptor
+
+
+def _run_child(
+    command: list[str],
+    turnstile_fd: int,
+    settle_seconds: float,
+    live_memory: Callable[[], LiveMemory],
+    clock: Callable[[], float],
+    out: io.StringIO,
+) -> token_budget.ChildResult:
+    return token_budget._run_child(
+        command, turnstile_fd, settle_seconds, live_memory, clock, "unit-label", out
+    )
+
+
+@pytest.fixture
+def fast_poll(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Shrink the child-wait poll so a fake-clock case loops without real 1 s
+    waits; the fake clock, not the poll, decides when anything is due."""
+    monkeypatch.setattr(token_budget, "POLL_SECONDS", 0.01)
+
+
+def test_child_exiting_inside_the_settle_window_releases_the_turnstile(
+    lock_dir: Path,
+) -> None:
+    turnstile = _held_turnstile(lock_dir)
+    result = _run_child(
+        _exit_child(0),
+        turnstile,
+        3600,
+        _scripted(LiveMemory(None, "none")),
+        time.monotonic,
+        io.StringIO(),
+    )
+    assert result == token_budget.ChildResult(exit_code=0, min_live_usable_gb=None)
+    assert _turnstile_free(lock_dir)
+
+
+@pytest.mark.usefixtures("fast_poll")
+def test_settle_window_closes_the_turnstile_while_the_child_runs(
+    tmp_path: Path, lock_dir: Path
+) -> None:
+    settle_seconds = 3
+    child, _, release = _marker_child(tmp_path, "settling")
+    observed: list[tuple[float, bool]] = []
+
+    def on_tick(now: float) -> None:
+        observed.append((now, _turnstile_free(lock_dir)))
+        if now >= settle_seconds + 3:
+            release.touch()
+
+    result = _run_child(
+        child,
+        _held_turnstile(lock_dir),
+        settle_seconds,
+        _scripted(LiveMemory(None, "none")),
+        SteppingClock(1, on_tick),
+        io.StringIO(),
+    )
+    assert result.exit_code == 0
+    # Each tick probes before the pass acts on that tick's reading, so the
+    # turnstile is still held at every tick up to the one where the window ends,
+    # and free at every tick after it — while the child is still running.
+    assert all(not free for now, free in observed if now <= settle_seconds)
+    assert all(free for now, free in observed if now > settle_seconds)
+    assert any(now > settle_seconds for now, _ in observed)
+
+
+@pytest.mark.usefixtures("fast_poll")
+def test_mid_run_low_memory_warns_once_and_reports_the_minimum(
+    tmp_path: Path, lock_dir: Path
+) -> None:
+    child, _, release = _marker_child(tmp_path, "low")
+    readings = [_live(3.6), _live(0.8), _live(0.9), _live(2.0)]
+    served: list[LiveMemory] = []
+
+    def live_memory() -> LiveMemory:
+        reading = readings[min(len(served), len(readings) - 1)]
+        served.append(reading)
+        if len(served) >= len(readings):
+            release.touch()
+        return reading
+
+    out = io.StringIO()
+    result = _run_child(
+        child,
+        _held_turnstile(lock_dir),
+        0,
+        live_memory,
+        SteppingClock(token_budget.MIDRUN_SAMPLE_SECONDS_HOST),
+        out,
+    )
+    assert result.exit_code == 0
+    assert result.min_live_usable_gb == pytest.approx(0.8)
+    assert out.getvalue() == (
+        "token budget: host memory low during unit-label — 0.80 GB usable (host); "
+        "expect timeouts\n"
+    )
+
+
+@pytest.mark.usefixtures("fast_poll")
+@pytest.mark.parametrize(
+    ("available_bytes", "warns"),
+    [
+        # The smallest reading whose usable memory is >= LOW_MEMORY_GB (1.0 GB).
+        (math.ceil(GIB / token_budget.MEM_SAFETY), False),
+        # One byte less: strictly below it.
+        (math.ceil(GIB / token_budget.MEM_SAFETY) - 1, True),
+    ],
+)
+def test_mid_run_low_memory_threshold_is_strict(
+    tmp_path: Path, lock_dir: Path, available_bytes: int, warns: bool
+) -> None:
+    child, _, release = _marker_child(tmp_path, "edge")
+
+    def live_memory() -> LiveMemory:
+        release.touch()
+        return LiveMemory(available_bytes, "host")
+
+    out = io.StringIO()
+    result = _run_child(
+        child,
+        _held_turnstile(lock_dir),
+        0,
+        live_memory,
+        SteppingClock(token_budget.MIDRUN_SAMPLE_SECONDS_HOST),
+        out,
+    )
+    assert result.exit_code == 0
+    assert result.min_live_usable_gb is not None
+    assert ("host memory low" in out.getvalue()) is warns
+
+
+@pytest.mark.usefixtures("fast_poll")
+@pytest.mark.parametrize(
+    ("source", "interval"),
+    [
+        ("host", token_budget.MIDRUN_SAMPLE_SECONDS_HOST),
+        ("vm", token_budget.MIDRUN_SAMPLE_SECONDS_VM),
+    ],
+)
+def test_mid_run_sampling_interval_follows_the_source(
+    tmp_path: Path, lock_dir: Path, source: str, interval: int
+) -> None:
+    child, _, release = _marker_child(tmp_path, "sampled")
+    clock = SteppingClock(token_budget.MIDRUN_SAMPLE_SECONDS_HOST)
+    sampled_at: list[float] = []
+
+    def live_memory() -> LiveMemory:
+        sampled_at.append(clock.now)
+        if len(sampled_at) >= 3:
+            release.touch()
+        return LiveMemory(8 * GIB, source)
+
+    _run_child(child, _held_turnstile(lock_dir), 0, live_memory, clock, io.StringIO())
+    first = token_budget.MIDRUN_SAMPLE_SECONDS_HOST
+    assert sampled_at[:3] == [first, first + interval, first + 2 * interval]
+
+
+# --- settle window across processes ------------------------------------------
+
+
+def _since(fields: dict[str, str]) -> float:
+    return datetime.fromisoformat(fields["since"]).timestamp()
+
+
+def test_settle_window_delays_the_next_start(
+    tmp_path: Path, lock_dir: Path, spawn: Callable[..., Runner]
+) -> None:
+    settle_seconds = 3
+    # The test holds 2 slots, so A (3 tokens) takes the turnstile and waits for
+    # its third: B, spawned now, deterministically queues behind A's turnstile.
+    held = _hold_slots(lock_dir, [0, 1], "holder")
+    a_child, a_started, a_release = _marker_child(tmp_path, "a")
+    b_child, b_started, b_release = _marker_child(tmp_path, "b")
+    try:
+        runner_a = spawn("a", 3, a_child, settle_seconds=settle_seconds)
+        _wait_for(
+            lambda: (
+                len([line for line in _slot_lines(lock_dir) if "label=a " in line]) == 2
+            ),
+            "A's first 2 slot lines",
+        )
+        runner_b = spawn("b", 1, b_child)
+        _wait_for(
+            lambda: "waiting for 1 of 4 tokens" in runner_b.output(),
+            "B's wait line",
+        )
+    finally:
+        _release_slots(held)
+    _wait_for(a_started.exists, "A's child to start")
+    _wait_for(b_started.exists, "B's child to start")
+
+    lines = [_slot_fields(line) for line in _slot_lines(lock_dir)]
+    a_since = max(_since(fields) for fields in lines if fields["label"] == "a")
+    b_since = [_since(fields) for fields in lines if fields["label"] == "b"]
+    # A stamps its last slot just before its child starts, so this is a lower
+    # bound on A's child start: B locked nothing until A's window had run out.
+    assert len(b_since) == 1
+    assert b_since[0] >= a_since + settle_seconds
+
+    a_release.touch()
+    b_release.touch()
+    assert runner_a.wait() == 0, runner_a.output()
+    assert runner_b.wait() == 0, runner_b.output()
+
+
+@pytest.mark.parametrize(
+    ("tokens", "settle_seconds"),
+    [
+        # No window at all.
+        (3, 0),
+        # The small-run exemption: a run granted <= SETTLE_EXEMPT_MAX_WORKERS
+        # workers skips a window longer than every harness wait (so a window
+        # wrongly applied would time the wait below out).
+        (1, 2 * SYNC_TIMEOUT_SECONDS),
+        (2, 2 * SYNC_TIMEOUT_SECONDS),
+    ],
+)
+def test_next_start_is_not_delayed_without_a_settle_window(
+    tmp_path: Path,
+    lock_dir: Path,
+    spawn: Callable[..., Runner],
+    tokens: int,
+    settle_seconds: float,
+) -> None:
+    # A's child outlives every harness wait, so the turnstile can only come free
+    # below because no window applied — not because A's child self-exited.
+    a_child, a_started, a_release = _marker_child(
+        tmp_path, "a", lifetime_seconds=3 * SYNC_TIMEOUT_SECONDS
+    )
+    b_child, b_started, b_release = _marker_child(tmp_path, "b")
+    runner_a = spawn("a", tokens, a_child, settle_seconds=settle_seconds)
+    _wait_for(a_started.exists, "A's child to start")
+    _wait_for(lambda: _turnstile_free(lock_dir), "A to release the turnstile")
+    assert runner_a.process.poll() is None, runner_a.output()  # A still running
+
+    runner_b = spawn("b", 1, b_child)
+    _wait_for(b_started.exists, "B's child to start")
+    assert "waiting" not in runner_b.output()
+
+    a_release.touch()
+    b_release.touch()
+    assert runner_a.wait() == 0, runner_a.output()
+    assert runner_b.wait() == 0, runner_b.output()
 
 
 # --- live memory gate (main) -------------------------------------------------
