@@ -2,6 +2,8 @@
 Contains all routes for easy insertion into `url_for` flask function
 """
 
+from typing import NamedTuple
+
 from flask import url_for
 
 
@@ -200,73 +202,99 @@ class ROUTES:
     UTUBS = UTUB_ROUTES
 
 
+class JsRoute(NamedTuple):
+    """A frontend-exposed route: its Flask endpoint and URL placeholder kwargs.
+
+    `placeholders` holds the negative-int URL kwargs the frontend substitutes
+    at call time (`utub_id=-1`, `utub_url_id=-2`, `utub_tag_id=-3`,
+    `user_id=-4`). The tables below are readable without a request context,
+    so tooling can inspect them without rendering URLs.
+    """
+
+    endpoint: str
+    placeholders: dict[str, int]
+
+
+JS_ROUTES: dict[str, JsRoute] = {
+    # UTub routes
+    "home": JsRoute(UTUB_ROUTES.HOME, {}),
+    "createUTub": JsRoute(UTUB_ROUTES.CREATE_UTUB, {}),
+    "getUTubs": JsRoute(UTUB_ROUTES.GET_UTUBS, {}),
+    "getUTub": JsRoute(UTUB_ROUTES.GET_SINGLE_UTUB, {"utub_id": -1}),
+    "deleteUTub": JsRoute(UTUB_ROUTES.DELETE_UTUB, {"utub_id": -1}),
+    "updateUTubName": JsRoute(UTUB_ROUTES.UPDATE_UTUB_NAME, {"utub_id": -1}),
+    "updateUTubDescription": JsRoute(UTUB_ROUTES.UPDATE_UTUB_DESC, {"utub_id": -1}),
+    # URL routes
+    "getURL": JsRoute(URL_ROUTES.GET_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "createURL": JsRoute(URL_ROUTES.CREATE_URL, {"utub_id": -1}),
+    "deleteURL": JsRoute(URL_ROUTES.DELETE_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "updateURL": JsRoute(URL_ROUTES.UPDATE_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "updateURLTitle": JsRoute(
+        URL_ROUTES.UPDATE_URL_TITLE, {"utub_id": -1, "utub_url_id": -2}
+    ),
+    "copyURLsToUtubs": JsRoute(URL_ROUTES.COPY_URLS_MULTI, {}),
+    "bulkDeleteURLs": JsRoute(URL_ROUTES.DELETE_URLS_BULK, {"utub_id": -1}),
+    # UTub URL Tag routes
+    "createURLTag": JsRoute(
+        URL_TAG_ROUTES.CREATE_URL_TAG, {"utub_id": -1, "utub_url_id": -2}
+    ),
+    "createURLTagsBatch": JsRoute(
+        URL_TAG_ROUTES.BATCH_ADD_URL_TAGS, {"utub_id": -1, "utub_url_id": -2}
+    ),
+    "applyTagsToURLs": JsRoute(URL_TAG_ROUTES.APPLY_TAGS_TO_URLS, {"utub_id": -1}),
+    "deleteURLTag": JsRoute(
+        URL_TAG_ROUTES.DELETE_URL_TAG,
+        {"utub_id": -1, "utub_url_id": -2, "utub_tag_id": -3},
+    ),
+    # UTub Tag routes
+    "createUTubTag": JsRoute(UTUB_TAG_ROUTES.CREATE_UTUB_TAG, {"utub_id": -1}),
+    "deleteUTubTag": JsRoute(
+        UTUB_TAG_ROUTES.DELETE_UTUB_TAG, {"utub_id": -1, "utub_tag_id": -2}
+    ),
+    # Member routes
+    "createMember": JsRoute(MEMBER_ROUTES.CREATE_MEMBER, {"utub_id": -1}),
+    "coMemberCandidates": JsRoute(MEMBER_ROUTES.CO_MEMBER_CANDIDATES, {"utub_id": -1}),
+    "removeMember": JsRoute(
+        MEMBER_ROUTES.REMOVE_MEMBER, {"utub_id": -1, "user_id": -4}
+    ),
+    "modifyMemberRole": JsRoute(
+        MEMBER_ROUTES.MODIFY_MEMBER_ROLE, {"utub_id": -1, "user_id": -4}
+    ),
+    "transferUtubOwnership": JsRoute(
+        MEMBER_ROUTES.TRANSFER_UTUB_OWNERSHIP, {"utub_id": -1}
+    ),
+    # Splash routes
+    "login": JsRoute(SPLASH_ROUTES.LOGIN, {}),
+    "register": JsRoute(SPLASH_ROUTES.REGISTER, {}),
+    "confirmEmailAfterRegister": JsRoute(SPLASH_ROUTES.CONFIRM_EMAIL, {}),
+    "sendValidationEmail": JsRoute(SPLASH_ROUTES.SEND_VALIDATION_EMAIL, {}),
+    "resendRegistrationEmail": JsRoute(SPLASH_ROUTES.RESEND_REGISTRATION_EMAIL, {}),
+    "forgotPassword": JsRoute(SPLASH_ROUTES.FORGOT_PASSWORD_PAGE, {}),
+    "oauthGoogleLogin": JsRoute(OAUTH_ROUTES.GOOGLE_LOGIN, {}),
+    "oauthGithubLogin": JsRoute(OAUTH_ROUTES.GITHUB_LOGIN, {}),
+    # Util routes
+    "errorPage": JsRoute(SPLASH_ROUTES.ERROR_PAGE, {}),
+    # Logout
+    "logout": JsRoute(USER_ROUTES.LOGOUT, {}),
+    # Contact
+    "contactUs": JsRoute(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT, {}),
+    # Search
+    "crossUtubSearch": JsRoute(SEARCH_ROUTES.SEARCH, {}),
+}
+
+ADMIN_JS_ROUTES: dict[str, JsRoute] = {
+    "adminMetricsPage": JsRoute(ADMIN_ROUTES.METRICS_PAGE, {}),
+}
+
+
 def generate_routes_js() -> dict[str, str]:
     """
     Generate routes configuration for frontend JavaScript.
     Returns a dict that can be passed to Jinja and converted to JSON.
     """
     return {
-        # UTub routes
-        "home": url_for(UTUB_ROUTES.HOME),
-        "createUTub": url_for(UTUB_ROUTES.CREATE_UTUB),
-        "getUTubs": url_for(UTUB_ROUTES.GET_UTUBS),
-        "getUTub": url_for(UTUB_ROUTES.GET_SINGLE_UTUB, utub_id=-1),
-        "deleteUTub": url_for(UTUB_ROUTES.GET_SINGLE_UTUB, utub_id=-1),
-        "updateUTubName": url_for(UTUB_ROUTES.UPDATE_UTUB_NAME, utub_id=-1),
-        "updateUTubDescription": url_for(UTUB_ROUTES.UPDATE_UTUB_DESC, utub_id=-1),
-        # URL routes
-        "getURL": url_for(URL_ROUTES.GET_URL, utub_id=-1, utub_url_id=-2),
-        "createURL": url_for(URL_ROUTES.CREATE_URL, utub_id=-1),
-        "deleteURL": url_for(URL_ROUTES.DELETE_URL, utub_id=-1, utub_url_id=-2),
-        "updateURL": url_for(URL_ROUTES.UPDATE_URL, utub_id=-1, utub_url_id=-2),
-        "updateURLTitle": url_for(
-            URL_ROUTES.UPDATE_URL_TITLE, utub_id=-1, utub_url_id=-2
-        ),
-        "copyURLsToUtubs": url_for(URL_ROUTES.COPY_URLS_MULTI),
-        "bulkDeleteURLs": url_for(URL_ROUTES.DELETE_URLS_BULK, utub_id=-1),
-        # UTub URL Tag routes
-        "createURLTag": url_for(
-            URL_TAG_ROUTES.CREATE_URL_TAG, utub_id=-1, utub_url_id=-2
-        ),
-        "createURLTagsBatch": url_for(
-            URL_TAG_ROUTES.BATCH_ADD_URL_TAGS, utub_id=-1, utub_url_id=-2
-        ),
-        "applyTagsToURLs": url_for(URL_TAG_ROUTES.APPLY_TAGS_TO_URLS, utub_id=-1),
-        "deleteURLTag": url_for(
-            URL_TAG_ROUTES.DELETE_URL_TAG, utub_id=-1, utub_url_id=-2, utub_tag_id=-3
-        ),
-        # UTub Tag routes
-        "createUTubTag": url_for(UTUB_TAG_ROUTES.CREATE_UTUB_TAG, utub_id=-1),
-        "deleteUTubTag": url_for(
-            UTUB_TAG_ROUTES.DELETE_UTUB_TAG, utub_id=-1, utub_tag_id=-2
-        ),
-        # Member routes
-        "createMember": url_for(MEMBER_ROUTES.CREATE_MEMBER, utub_id=-1),
-        "coMemberCandidates": url_for(MEMBER_ROUTES.CO_MEMBER_CANDIDATES, utub_id=-1),
-        "removeMember": url_for(MEMBER_ROUTES.REMOVE_MEMBER, utub_id=-1, user_id=-4),
-        "modifyMemberRole": url_for(
-            MEMBER_ROUTES.MODIFY_MEMBER_ROLE, utub_id=-1, user_id=-4
-        ),
-        "transferUtubOwnership": url_for(
-            MEMBER_ROUTES.TRANSFER_UTUB_OWNERSHIP, utub_id=-1
-        ),
-        # Splash routes
-        "login": url_for(SPLASH_ROUTES.LOGIN),
-        "register": url_for(SPLASH_ROUTES.REGISTER),
-        "confirmEmailAfterRegister": url_for(SPLASH_ROUTES.CONFIRM_EMAIL),
-        "sendValidationEmail": url_for(SPLASH_ROUTES.SEND_VALIDATION_EMAIL),
-        "resendRegistrationEmail": url_for(SPLASH_ROUTES.RESEND_REGISTRATION_EMAIL),
-        "forgotPassword": url_for(SPLASH_ROUTES.FORGOT_PASSWORD_PAGE),
-        "oauthGoogleLogin": url_for(OAUTH_ROUTES.GOOGLE_LOGIN),
-        "oauthGithubLogin": url_for(OAUTH_ROUTES.GITHUB_LOGIN),
-        # Util routes
-        "errorPage": url_for(SPLASH_ROUTES.ERROR_PAGE),
-        # Logout
-        "logout": url_for(USER_ROUTES.LOGOUT),
-        # Contact
-        "contactUs": url_for(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT),
-        # Search
-        "crossUtubSearch": url_for(SEARCH_ROUTES.SEARCH),
+        key: url_for(route.endpoint, **route.placeholders)
+        for key, route in JS_ROUTES.items()
     }
 
 
@@ -280,5 +308,6 @@ def generate_admin_routes_js() -> dict[str, str]:
     in their payload.
     """
     return {
-        "adminMetricsPage": url_for(ADMIN_ROUTES.METRICS_PAGE),
+        key: url_for(route.endpoint, **route.placeholders)
+        for key, route in ADMIN_JS_ROUTES.items()
     }
