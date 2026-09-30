@@ -37,6 +37,11 @@ jobs:
         name: 'Event Coverage Audit'
         uses: ./.github/workflows/event-coverage-staleness.yml
 
+    registry-staleness:
+        needs: 'lint'
+        name: 'Endpoint Registry Audit'
+        uses: ./.github/workflows/registry-staleness.yml
+
     build-image-test:
         needs: 'lint'
         name: 'Test Build Docker Container'

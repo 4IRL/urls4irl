@@ -14,6 +14,7 @@ describe("APP_CONFIG shape", () => {
       "createUTub",
       "getUTubs",
       "contactUs",
+      "metricsIngest",
     ] as const;
 
     it.each(STATIC_ROUTE_KEYS)("routes.%s is a string", (key) => {
@@ -119,6 +120,33 @@ describe("APP_CONFIG shape", () => {
 
     it("isProduction is a boolean", () => {
       expect(typeof APP_CONFIG.isProduction).toBe("boolean");
+    });
+  });
+
+  describe("admin routes", () => {
+    it("requireAdminRoute returns the admin route URL when present", async () => {
+      const { requireAdminRoute } = await import("../config.js");
+      expect(requireAdminRoute("metricsQueryTop")).toBe(
+        "/api/metrics/query/top",
+      );
+    });
+
+    it("requireAdminRoute throws when the admin route is absent", async () => {
+      const configElement = document.getElementById("app-config")!;
+      const originalConfigText = configElement.textContent;
+      const parsedConfig = JSON.parse(originalConfigText!);
+      delete parsedConfig.routes.metricsQueryTop;
+      configElement.textContent = JSON.stringify(parsedConfig);
+      try {
+        vi.resetModules();
+        const { requireAdminRoute } = await import("../config.js");
+        expect(() => requireAdminRoute("metricsQueryTop")).toThrow(
+          "Admin route metricsQueryTop missing from APP_CONFIG (non-admin page?)",
+        );
+      } finally {
+        configElement.textContent = originalConfigText;
+        vi.resetModules();
+      }
     });
   });
 

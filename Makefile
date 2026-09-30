@@ -1,11 +1,12 @@
-# p (profile), c (restart), U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) and U4I_TOKEN_DIR /
-# U4I_MEMORY_WAIT / U4I_SETTLE_SECONDS (spliced into every budgeted test line) are rejected when they contain a `$`,
+# p (profile), c (restart), e (endpoint-info), U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) and
+# U4I_TOKEN_DIR / U4I_MEMORY_WAIT / U4I_SETTLE_SECONDS (spliced into every budgeted test line) are rejected when they contain a `$`,
 # checked unexpanded via $(value …):
 # expanding one would run any embedded make function (e.g. $(shell …)). These must stay the first lines: make 4.4+
 # exports command-line variables into every $(shell …) environment, so the first $(shell …) below would already
 # expand them.
 $(if $(findstring $$,$(value p)),$(error p must not contain '$$'))
 $(if $(findstring $$,$(value c)),$(error c must not contain '$$'))
+$(if $(findstring $$,$(value e)),$(error e must not contain '$$'))
 $(if $(findstring $$,$(value U4I_WEB_PORT)),$(error U4I_WEB_PORT must not contain '$$'))
 $(if $(findstring $$,$(value U4I_VITE_PORT)),$(error U4I_VITE_PORT must not contain '$$'))
 $(if $(findstring $$,$(value U4I_TOKEN_DIR)),$(error U4I_TOKEN_DIR must not contain '$$'))
@@ -20,6 +21,8 @@ TOKEN_BUDGET = mise exec python -- python scripts/token_budget.py
 # Spoke host ports (scripts/spoke_ports.py, run by _ports-resolve): U4I_WEB_PORT / U4I_VITE_PORT, cached per checkout.
 PORTS_ENV = docker/.ports.generated.env
 SPOKE_PORTS = mise exec python -- python scripts/spoke_ports.py
+# Endpoint lookup (scripts/endpoint_info.py, make endpoint-info): stdlib only, reads the committed docs/endpoints/endpoint-registry.json.
+ENDPOINT_INFO = mise exec python -- python scripts/endpoint_info.py
 # Recursive `=` so each `wildcard` is evaluated at recipe time, after _capacity-fresh / _ports-resolve have (re)generated
 # their file on a first run. `.env` goes first: passing any --env-file disables compose's implicit .env discovery, and a
 # missing .env now errors loudly.
@@ -135,7 +138,7 @@ FRONTEND_BIN = frontend/node_modules/.bin
 SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
+.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs
 
 .DEFAULT_GOAL := help
 
@@ -439,6 +442,16 @@ generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-resources --output /code/u4i/frontend/types/metrics-resources.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-flows --output /code/u4i/frontend/types/metrics-flows.ts"
 	$(RUN_VITE) pnpm exec prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
+
+generate-endpoints: ## Regenerate docs/endpoints/endpoint-registry.json + ENDPOINT_REGISTRY.md from the live url_map
+	$(EXEC_WEB_AS_HOST) "$(FLASK) endpoints generate --output /code/u4i/docs/endpoints/endpoint-registry.json --markdown-output /code/u4i/docs/endpoints/ENDPOINT_REGISTRY.md"
+
+audit-endpoints: ## Audit the committed endpoint registry against the live app (exits non-zero on drift)
+	$(EXEC_WEB) "$(FLASK) endpoints audit --strict"
+
+endpoint-info: ## Show what touches a route: make endpoint-info e=<endpoint | rule | 'METHOD /rule'>
+	$(if $(e),,$(error e=<route> is required, e.g. make endpoint-info e=utubs.get_single_utub))
+	@$(ENDPOINT_INFO) -- '$(subst ','\'',$(e))'
 
 audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
 	$(EXEC_WEB) "$(FLASK) metrics audit --strict"

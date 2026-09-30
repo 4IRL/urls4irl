@@ -29,8 +29,9 @@ Adding a new funnel
      - api_endpoint +    for stream='api' steps, matched against API_HIT's flat
        api_method        endpoint/method columns — NOT a dimension. api_endpoint
                          must be the Flask endpoint name (e.g. 'urls.create_url'),
-                         NOT the URL pattern. Run `flask routes` or check
-                         ENDPOINT_REGISTRY.md for the correct value. Exactly one
+                         NOT the URL pattern. Run `make endpoint-info e=<route>`
+                         (or see `docs/endpoints/ENDPOINT_REGISTRY.md`) for the
+                         correct value. Exactly one
                          of (event_name) or (api_endpoint+api_method) must be set
      - dim_filter        optional per-step AND-filter (e.g. [("form","login")])
      - drop_breakdown    optional FlowStepBreakdown(event_name, dim_filter, group_by)

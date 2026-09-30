@@ -91,6 +91,16 @@ const appConfig = {
     modifyMemberRole: "/utubs/-1/members/-4",
     contactUs: "/contact",
     crossUtubSearch: "/search",
+    metricsIngest: "/api/metrics",
+    // Admin-only keys (backend merges these in only for admins).
+    metricsQueryTop: "/api/metrics/query/top",
+    metricsQueryTimeseries: "/api/metrics/query/timeseries",
+    metricsQuerySummary: "/api/metrics/query/summary",
+    metricsQueryGroupedTimeseries: "/api/metrics/query/grouped-timeseries",
+    metricsQueryFlow: "/api/metrics/query/flow",
+    metricsQueryGaugesTimeseries: "/api/metrics/query/gauges/timeseries",
+    metricsQueryLatency: "/api/metrics/query/latency",
+    metricsQueryLatencyTimeseries: "/api/metrics/query/latency/timeseries",
   },
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,

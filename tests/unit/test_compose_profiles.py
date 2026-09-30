@@ -316,6 +316,12 @@ def test_web_mounts_requirements_read_only() -> None:
     assert "./requirements:/code/u4i/requirements:ro" in web_volumes
 
 
+def test_web_mounts_endpoint_registry_dir() -> None:
+    """`make generate-endpoints` runs in web and writes docs/endpoints/; the repo root is not mounted."""
+    web_volumes = _load_services(LOCAL_COMPOSE_FILE)["web"]["volumes"]
+    assert "./docs/endpoints:/code/u4i/docs/endpoints" in web_volumes
+
+
 def test_web_reaches_hub_services_by_their_hub_names() -> None:
     web_environment = _load_services(LOCAL_COMPOSE_FILE)["web"]["environment"]
     assert "PLAYWRIGHT_WS_URL=ws://playwright:3000/" in web_environment

@@ -33,6 +33,7 @@ Reference plan may have files in the @plans directory - please reference these i
   | Build | `make vite-build` |
   | Lint / format | `make lint` · `make format-check` · `make typecheck` (fix: `make format`); onboard a clone/worktree with `make setup` (worktree-init `.env`/secrets links + toolchain + hook + capacity). The pre-commit hook runs these automatically **only if the hook is installed** (`make setup`, or `make hooks` alone; check with `make hooks-check`) |
   | Regenerate types | `make generate-types` |
+  | Regenerate endpoint registry | `make generate-endpoints` (check: `make audit-endpoints`) |
 - **Configuration surface:** every local knob, by tier. A spoke's compose reads `--env-file .env`, then `docker/.capacity.generated.env`, then `docker/.ports.generated.env`; shell env beats all three. The hub's compose always reads the **primary clone's** `.env` and capacity file, whichever checkout runs it. Use `make` targets: raw compose lacks the computed names and files.
   | Knob                                             | Tier                     | Default                                                              | Set by                                                                                                                                                                                                                                                                                                                             |
   | ------------------------------------------------ | ------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -91,13 +92,9 @@ Review files are stored **co-located with each plan** at `plans/<topic>/reviews/
 
 ### Endpoint Registry
 
-`ENDPOINT_REGISTRY.md` at the project root maps every route through all implementation layers (handler → service → schema → template → JS module → tests). **When any code change adds, modifies, or removes an endpoint, its entry in the registry must be updated in the same commit.** This includes changes to:
-- Route handlers, decorators, or URL paths
-- Service functions called by routes
-- Pydantic request schemas
-- Templates rendered by routes
-- JS modules that call endpoints
-- Test files covering endpoints
+The endpoint registry is **generated** at `docs/endpoints/` (`endpoint-registry.json` is canonical; `ENDPOINT_REGISTRY.md` is rendered from it) by `make generate-endpoints`, and is never hand-edited — regenerate and commit `docs/endpoints/` after changing a route, its decorators, services, schemas, templates, or JS linkage.
+Look up what touches a route with `make endpoint-info e=<endpoint | rule | 'METHOD /rule'>` (host-native, no stack needed).
+CI's `Endpoint Registry Audit` job (`make audit-endpoints` locally) fails on registry drift, or on an `@api_route` with no JS linkage in `backend/utils/all_routes.py` — it needs one of: a `JS_ROUTES`/`ADMIN_JS_ROUTES` key, a template `url_for`, an `INDIRECT_JS_ENDPOINTS` entry (the frontend calls it via a URL it gets indirectly — the page's own URL or a server-built one), or a `NO_JS_ENDPOINTS` reason (genuinely no web-JS caller). Never add a `NO_JS_ENDPOINTS` entry for an endpoint that has a JS caller.
 
 ### Metrics Coverage for New Endpoints
 
@@ -228,7 +225,7 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 | File | Put a package here when… | Installed by |
 |---|---|---|
 | `requirements-prod.txt` | the app imports it at runtime (`backend/`, `migrations/`, runtime `scripts/`) | prod image (`docker/Dockerfile`) |
-| `requirements-test.txt` | only `tests/`/conftest import it | **CI** (`test.yml`, `types-staleness.yml`, `event-coverage-staleness.yml`) |
+| `requirements-test.txt` | only `tests/`/conftest import it | **CI** (`test.yml`, `types-staleness.yml`, `event-coverage-staleness.yml`, `registry-staleness.yml`) |
 | `requirements-dev.txt` | nothing imports it — local tooling only (`pre-commit` and its deps) | local `web` image (`docker/Dockerfile.Local`) |
 
 The local container installs dev, so a misplaced pin passes every local test and only fails in CI, where it breaks collection for every pytest job at once. Before committing a new import, confirm the file CI installs has it. The workflow image pins its own venv in `docker/Dockerfile.Workflow` (versions match prod), so a new workflow dependency goes there too.
@@ -289,6 +286,7 @@ After any backend change that alters the OpenAPI surface, run `make generate-typ
 - New or modified `api_route(query_schema=..., header_schema=..., path_schema=...)`
 - New or removed route, or a decorator change that affects OpenAPI metadata
 - Changes to metrics dimensions, events, or resources (regenerates `metrics-dimensions.d.ts`, `metrics-dim-values.ts`, `metrics-events.ts`, `metrics-resources.ts`)
+- A route, decorator, service, schema, template, or `all_routes.py` JS-linkage change also needs `make generate-endpoints` — stage the regenerated `docs/endpoints/` in the same commit (CI's `Endpoint Registry Audit` fails otherwise; see "Endpoint Registry")
 
 Before committing a backend change in any of those categories, run `make generate-types` and check `git status` for changes under `frontend/types/`. Stage them in the same commit as the backend change.
 
@@ -332,6 +330,9 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make vite-build` | Vite build verification |
 | `make addmock` | Seed dev DB with all mock data |
 | `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
+| `make generate-endpoints` | Regenerate `docs/endpoints/endpoint-registry.json` + `ENDPOINT_REGISTRY.md` from the live url_map (needs `web` up) |
+| `make audit-endpoints` | Audit the committed endpoint registry against the live app: drift, `@api_route` JS linkage, stale `NO_JS_ENDPOINTS`/`INDIRECT_JS_ENDPOINTS` entries, markdown freshness (exits 1 on any finding; needs `web` up) |
+| `make endpoint-info e=<route>` | Show what touches a route (`e=` endpoint, rule, or `'METHOD /rule'`), read from the committed JSON (host-native, no stack needed) |
 | `make help` | List all available make commands |
 
 ### Metrics Verification (local stack)

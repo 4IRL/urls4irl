@@ -33,9 +33,8 @@ export type EmitArgs<EventT extends UIEventName> = {
   event: EventT;
 } & CallerDimensions<EventT>;
 
-const METRICS_INGEST_URL = "/api/metrics" as const;
-const METRICS_INGEST_BEACON_URL =
-  `${METRICS_INGEST_URL}?transport=beacon` as const;
+const METRICS_INGEST_URL = APP_CONFIG.routes.metricsIngest;
+const METRICS_INGEST_BEACON_URL = `${METRICS_INGEST_URL}?transport=beacon`;
 const DEDUPE_COOLDOWN_MS = 1000;
 const FLUSH_INTERVAL_MS = 60000;
 const BATCH_THRESHOLD = 50;

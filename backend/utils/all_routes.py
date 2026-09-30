@@ -2,6 +2,9 @@
 Contains all routes for easy insertion into `url_for` flask function
 """
 
+from enum import StrEnum
+from typing import NamedTuple
+
 from flask import url_for
 
 
@@ -119,6 +122,19 @@ class ADMIN_ROUTES:
     MOD_URL_PURGE = _ADMIN + "admin_url_purge"
 
 
+class METRICS_ROUTES:
+    _METRICS = "metrics."
+    INGEST = _METRICS + "ingest"
+    QUERY_TOP = _METRICS + "query_top"
+    QUERY_TIMESERIES = _METRICS + "query_timeseries"
+    QUERY_SUMMARY = _METRICS + "query_summary"
+    QUERY_GROUPED_TIMESERIES = _METRICS + "query_grouped_timeseries"
+    QUERY_FLOW = _METRICS + "query_flow"
+    QUERY_GAUGES_TIMESERIES = _METRICS + "query_gauges_timeseries"
+    QUERY_LATENCY = _METRICS + "query_latency"
+    QUERY_LATENCY_TIMESERIES = _METRICS + "query_latency_timeseries"
+
+
 class SEARCH_ROUTES:
     _SEARCH = "search."
     SEARCH = _SEARCH + "search_across_utubs"
@@ -196,8 +212,170 @@ class ROUTES:
     USERS = USER_ROUTES
     ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
     ADMIN = ADMIN_ROUTES
+    METRICS = METRICS_ROUTES
     SEARCH = SEARCH_ROUTES
     UTUBS = UTUB_ROUTES
+
+
+class JsRoute(NamedTuple):
+    """A frontend-exposed route: its Flask endpoint and URL placeholder kwargs.
+
+    `placeholders` holds the negative-int URL kwargs the frontend substitutes
+    at call time (`utub_id=-1`, `utub_url_id=-2`, `utub_tag_id=-3`,
+    `user_id=-4`). The tables below are readable without a request context,
+    so tooling can inspect them without rendering URLs.
+    """
+
+    endpoint: str
+    placeholders: dict[str, int]
+
+
+JS_ROUTES: dict[str, JsRoute] = {
+    # UTub routes
+    "home": JsRoute(UTUB_ROUTES.HOME, {}),
+    "createUTub": JsRoute(UTUB_ROUTES.CREATE_UTUB, {}),
+    "getUTubs": JsRoute(UTUB_ROUTES.GET_UTUBS, {}),
+    "getUTub": JsRoute(UTUB_ROUTES.GET_SINGLE_UTUB, {"utub_id": -1}),
+    "deleteUTub": JsRoute(UTUB_ROUTES.DELETE_UTUB, {"utub_id": -1}),
+    "updateUTubName": JsRoute(UTUB_ROUTES.UPDATE_UTUB_NAME, {"utub_id": -1}),
+    "updateUTubDescription": JsRoute(UTUB_ROUTES.UPDATE_UTUB_DESC, {"utub_id": -1}),
+    # URL routes
+    "getURL": JsRoute(URL_ROUTES.GET_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "createURL": JsRoute(URL_ROUTES.CREATE_URL, {"utub_id": -1}),
+    "deleteURL": JsRoute(URL_ROUTES.DELETE_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "updateURL": JsRoute(URL_ROUTES.UPDATE_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "updateURLTitle": JsRoute(
+        URL_ROUTES.UPDATE_URL_TITLE, {"utub_id": -1, "utub_url_id": -2}
+    ),
+    "copyURLsToUtubs": JsRoute(URL_ROUTES.COPY_URLS_MULTI, {}),
+    "bulkDeleteURLs": JsRoute(URL_ROUTES.DELETE_URLS_BULK, {"utub_id": -1}),
+    # UTub URL Tag routes
+    "createURLTag": JsRoute(
+        URL_TAG_ROUTES.CREATE_URL_TAG, {"utub_id": -1, "utub_url_id": -2}
+    ),
+    "createURLTagsBatch": JsRoute(
+        URL_TAG_ROUTES.BATCH_ADD_URL_TAGS, {"utub_id": -1, "utub_url_id": -2}
+    ),
+    "applyTagsToURLs": JsRoute(URL_TAG_ROUTES.APPLY_TAGS_TO_URLS, {"utub_id": -1}),
+    "deleteURLTag": JsRoute(
+        URL_TAG_ROUTES.DELETE_URL_TAG,
+        {"utub_id": -1, "utub_url_id": -2, "utub_tag_id": -3},
+    ),
+    # UTub Tag routes
+    "createUTubTag": JsRoute(UTUB_TAG_ROUTES.CREATE_UTUB_TAG, {"utub_id": -1}),
+    "deleteUTubTag": JsRoute(
+        UTUB_TAG_ROUTES.DELETE_UTUB_TAG, {"utub_id": -1, "utub_tag_id": -2}
+    ),
+    # Member routes
+    "createMember": JsRoute(MEMBER_ROUTES.CREATE_MEMBER, {"utub_id": -1}),
+    "coMemberCandidates": JsRoute(MEMBER_ROUTES.CO_MEMBER_CANDIDATES, {"utub_id": -1}),
+    "removeMember": JsRoute(
+        MEMBER_ROUTES.REMOVE_MEMBER, {"utub_id": -1, "user_id": -4}
+    ),
+    "modifyMemberRole": JsRoute(
+        MEMBER_ROUTES.MODIFY_MEMBER_ROLE, {"utub_id": -1, "user_id": -4}
+    ),
+    "transferUtubOwnership": JsRoute(
+        MEMBER_ROUTES.TRANSFER_UTUB_OWNERSHIP, {"utub_id": -1}
+    ),
+    # Splash routes
+    "login": JsRoute(SPLASH_ROUTES.LOGIN, {}),
+    "register": JsRoute(SPLASH_ROUTES.REGISTER, {}),
+    "confirmEmailAfterRegister": JsRoute(SPLASH_ROUTES.CONFIRM_EMAIL, {}),
+    "sendValidationEmail": JsRoute(SPLASH_ROUTES.SEND_VALIDATION_EMAIL, {}),
+    "resendRegistrationEmail": JsRoute(SPLASH_ROUTES.RESEND_REGISTRATION_EMAIL, {}),
+    "forgotPassword": JsRoute(SPLASH_ROUTES.FORGOT_PASSWORD_PAGE, {}),
+    "oauthGoogleLogin": JsRoute(OAUTH_ROUTES.GOOGLE_LOGIN, {}),
+    "oauthGithubLogin": JsRoute(OAUTH_ROUTES.GITHUB_LOGIN, {}),
+    # Util routes
+    "errorPage": JsRoute(SPLASH_ROUTES.ERROR_PAGE, {}),
+    # Logout
+    "logout": JsRoute(USER_ROUTES.LOGOUT, {}),
+    # Contact
+    "contactUs": JsRoute(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT, {}),
+    # Search
+    "crossUtubSearch": JsRoute(SEARCH_ROUTES.SEARCH, {}),
+    # Metrics ingest (emitted from every page)
+    "metricsIngest": JsRoute(METRICS_ROUTES.INGEST, {}),
+}
+
+ADMIN_JS_ROUTES: dict[str, JsRoute] = {
+    "adminMetricsPage": JsRoute(ADMIN_ROUTES.METRICS_PAGE, {}),
+    # Metrics query routes (admin dashboard only)
+    "metricsQueryTop": JsRoute(METRICS_ROUTES.QUERY_TOP, {}),
+    "metricsQueryTimeseries": JsRoute(METRICS_ROUTES.QUERY_TIMESERIES, {}),
+    "metricsQuerySummary": JsRoute(METRICS_ROUTES.QUERY_SUMMARY, {}),
+    "metricsQueryGroupedTimeseries": JsRoute(
+        METRICS_ROUTES.QUERY_GROUPED_TIMESERIES, {}
+    ),
+    "metricsQueryFlow": JsRoute(METRICS_ROUTES.QUERY_FLOW, {}),
+    "metricsQueryGaugesTimeseries": JsRoute(METRICS_ROUTES.QUERY_GAUGES_TIMESERIES, {}),
+    "metricsQueryLatency": JsRoute(METRICS_ROUTES.QUERY_LATENCY, {}),
+    "metricsQueryLatencyTimeseries": JsRoute(
+        METRICS_ROUTES.QUERY_LATENCY_TIMESERIES, {}
+    ),
+}
+
+
+# JS linkage invariant. Every `@api_route` endpoint must be reachable through
+# one of four channels (the two maps below never combine with another channel):
+#   1. a `JS_ROUTES` / `ADMIN_JS_ROUTES` key (shipped in `APP_CONFIG.routes`);
+#   2. a Jinja `url_for('<endpoint>')` reference in `backend/templates`
+#      (typically a `data-*-url` attribute the frontend reads);
+#   3. an `INDIRECT_JS_ENDPOINTS` entry below: the web frontend calls the
+#      endpoint, but gets its URL another way (its own page URL, a URL built
+#      server-side), so channels 1-2 cannot see the call;
+#   4. a `NO_JS_ENDPOINTS` entry below, giving the reason nothing in the web
+#      frontend calls the endpoint at all.
+# `flask endpoints audit --strict` (`make audit-endpoints`) enforces this, and
+# also flags `INDIRECT_JS_ENDPOINTS` / `NO_JS_ENDPOINTS` entries that name a
+# dead endpoint, one that already has a key or template reference, or one
+# listed in both maps. Never add an entry for an endpoint that could simply get
+# a route key or a template `url_for`: link it instead.
+
+
+class IndirectJsSource(StrEnum):
+    PAGE_SELF_URL = "page-self-url"
+    SERVER_BUILT_URL = "server-built-url"
+
+
+# Keys are exact endpoints only (no `<blueprint>.*` wildcard): each entry names
+# one frontend caller.
+INDIRECT_JS_ENDPOINTS: dict[str, IndirectJsSource] = {
+    # frontend/splash/reset-password-form.ts POSTs to its own page URL
+    # (window.location.pathname).
+    "splash.reset_password": IndirectJsSource.PAGE_SELF_URL,
+    # frontend/settings/connected-accounts.ts reads a `data-action-url` whose
+    # per-provider URL is built server-side (linking_service.py) into the
+    # settings page's template context, not via a literal template url_for.
+    "users.link_oauth_provider": IndirectJsSource.SERVER_BUILT_URL,
+    "users.unlink_oauth_provider": IndirectJsSource.SERVER_BUILT_URL,
+}
+
+
+class NoJsReason(StrEnum):
+    MOBILE_API = "mobile-api"
+    OAUTH_CALLBACK = "oauth-callback"
+    BROWSER_REDIRECT = "browser-redirect"
+    INFRA_PROBE = "infra-probe"
+
+
+# Keys are exact endpoints, or `<blueprint>.*` for a whole blueprint. A
+# `<blueprint>.*` key matches only endpoints whose blueprint is exactly that
+# name, not endpoints of blueprints nested under it. Exact keys win over
+# blueprint-prefix keys. Entries here have no web-JS caller at all; an
+# endpoint the frontend calls belongs in `INDIRECT_JS_ENDPOINTS` instead.
+NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
+    # Bearer-token API consumed by the mobile app, never the web frontend.
+    "api_v1.*": NoJsReason.MOBILE_API,
+    # Container/uptime health check.
+    "system.health": NoJsReason.INFRA_PROBE,
+    # OAuth provider redirects back to these; the browser follows them.
+    "splash.google_callback": NoJsReason.OAUTH_CALLBACK,
+    "splash.github_callback": NoJsReason.OAUTH_CALLBACK,
+    # Redirect target built server-side (linking_service, account_service).
+    "splash.oauth_link": NoJsReason.BROWSER_REDIRECT,
+}
 
 
 def generate_routes_js() -> dict[str, str]:
@@ -206,67 +384,8 @@ def generate_routes_js() -> dict[str, str]:
     Returns a dict that can be passed to Jinja and converted to JSON.
     """
     return {
-        # UTub routes
-        "home": url_for(UTUB_ROUTES.HOME),
-        "createUTub": url_for(UTUB_ROUTES.CREATE_UTUB),
-        "getUTubs": url_for(UTUB_ROUTES.GET_UTUBS),
-        "getUTub": url_for(UTUB_ROUTES.GET_SINGLE_UTUB, utub_id=-1),
-        "deleteUTub": url_for(UTUB_ROUTES.GET_SINGLE_UTUB, utub_id=-1),
-        "updateUTubName": url_for(UTUB_ROUTES.UPDATE_UTUB_NAME, utub_id=-1),
-        "updateUTubDescription": url_for(UTUB_ROUTES.UPDATE_UTUB_DESC, utub_id=-1),
-        # URL routes
-        "getURL": url_for(URL_ROUTES.GET_URL, utub_id=-1, utub_url_id=-2),
-        "createURL": url_for(URL_ROUTES.CREATE_URL, utub_id=-1),
-        "deleteURL": url_for(URL_ROUTES.DELETE_URL, utub_id=-1, utub_url_id=-2),
-        "updateURL": url_for(URL_ROUTES.UPDATE_URL, utub_id=-1, utub_url_id=-2),
-        "updateURLTitle": url_for(
-            URL_ROUTES.UPDATE_URL_TITLE, utub_id=-1, utub_url_id=-2
-        ),
-        "copyURLsToUtubs": url_for(URL_ROUTES.COPY_URLS_MULTI),
-        "bulkDeleteURLs": url_for(URL_ROUTES.DELETE_URLS_BULK, utub_id=-1),
-        # UTub URL Tag routes
-        "createURLTag": url_for(
-            URL_TAG_ROUTES.CREATE_URL_TAG, utub_id=-1, utub_url_id=-2
-        ),
-        "createURLTagsBatch": url_for(
-            URL_TAG_ROUTES.BATCH_ADD_URL_TAGS, utub_id=-1, utub_url_id=-2
-        ),
-        "applyTagsToURLs": url_for(URL_TAG_ROUTES.APPLY_TAGS_TO_URLS, utub_id=-1),
-        "deleteURLTag": url_for(
-            URL_TAG_ROUTES.DELETE_URL_TAG, utub_id=-1, utub_url_id=-2, utub_tag_id=-3
-        ),
-        # UTub Tag routes
-        "createUTubTag": url_for(UTUB_TAG_ROUTES.CREATE_UTUB_TAG, utub_id=-1),
-        "deleteUTubTag": url_for(
-            UTUB_TAG_ROUTES.DELETE_UTUB_TAG, utub_id=-1, utub_tag_id=-2
-        ),
-        # Member routes
-        "createMember": url_for(MEMBER_ROUTES.CREATE_MEMBER, utub_id=-1),
-        "coMemberCandidates": url_for(MEMBER_ROUTES.CO_MEMBER_CANDIDATES, utub_id=-1),
-        "removeMember": url_for(MEMBER_ROUTES.REMOVE_MEMBER, utub_id=-1, user_id=-4),
-        "modifyMemberRole": url_for(
-            MEMBER_ROUTES.MODIFY_MEMBER_ROLE, utub_id=-1, user_id=-4
-        ),
-        "transferUtubOwnership": url_for(
-            MEMBER_ROUTES.TRANSFER_UTUB_OWNERSHIP, utub_id=-1
-        ),
-        # Splash routes
-        "login": url_for(SPLASH_ROUTES.LOGIN),
-        "register": url_for(SPLASH_ROUTES.REGISTER),
-        "confirmEmailAfterRegister": url_for(SPLASH_ROUTES.CONFIRM_EMAIL),
-        "sendValidationEmail": url_for(SPLASH_ROUTES.SEND_VALIDATION_EMAIL),
-        "resendRegistrationEmail": url_for(SPLASH_ROUTES.RESEND_REGISTRATION_EMAIL),
-        "forgotPassword": url_for(SPLASH_ROUTES.FORGOT_PASSWORD_PAGE),
-        "oauthGoogleLogin": url_for(OAUTH_ROUTES.GOOGLE_LOGIN),
-        "oauthGithubLogin": url_for(OAUTH_ROUTES.GITHUB_LOGIN),
-        # Util routes
-        "errorPage": url_for(SPLASH_ROUTES.ERROR_PAGE),
-        # Logout
-        "logout": url_for(USER_ROUTES.LOGOUT),
-        # Contact
-        "contactUs": url_for(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT),
-        # Search
-        "crossUtubSearch": url_for(SEARCH_ROUTES.SEARCH),
+        key: url_for(route.endpoint, **route.placeholders)
+        for key, route in JS_ROUTES.items()
     }
 
 
@@ -280,5 +399,6 @@ def generate_admin_routes_js() -> dict[str, str]:
     in their payload.
     """
     return {
-        "adminMetricsPage": url_for(ADMIN_ROUTES.METRICS_PAGE),
+        key: url_for(route.endpoint, **route.placeholders)
+        for key, route in ADMIN_JS_ROUTES.items()
     }

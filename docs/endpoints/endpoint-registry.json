@@ -1,0 +1,4528 @@
+{
+  "endpoints": [
+    {
+      "blueprint": "splash",
+      "decorators": [],
+      "endpoint": "splash.splash_page",
+      "handler": "backend/splash/routes.py:splash_page",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "email_templates/email_validation_email.html",
+          "email_templates/oauth_provider_hint_email.html",
+          "email_templates/reset_password_email.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/",
+      "schemas": null,
+      "services": [
+        "backend.splash.services.change_email:build_email_change_banner"
+      ],
+      "templates": [
+        "pages/splash.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_portal",
+      "handler": "backend/admin/routes.py:admin_portal",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/_nav.html",
+          "components/nav/nav_home_items.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "admin_portal/index.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_audit_log",
+      "handler": "backend/admin/routes.py:admin_audit_log",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/_nav.html",
+          "admin_portal/index.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/audit-log",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "admin_portal/audit_log/index.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_audit_log_rows",
+      "handler": "backend/admin/routes.py:admin_audit_log_rows",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/audit_log/_rows.html",
+          "admin_portal/audit_log/index.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/audit-log/rows",
+      "schemas": null,
+      "services": [
+        "backend.admin.audit_service:query_audit_log"
+      ],
+      "templates": [
+        "admin_portal/audit_log/_rows.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_db",
+      "handler": "backend/admin/routes.py:admin_db",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/_nav.html",
+          "admin_portal/db/row.html",
+          "admin_portal/db/table.html",
+          "admin_portal/index.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/db",
+      "schemas": null,
+      "services": [
+        "backend.admin.db_browser_service:list_tables"
+      ],
+      "templates": [
+        "admin_portal/db/index.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_db_table",
+      "handler": "backend/admin/routes.py:admin_db_table",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/db/index.html",
+          "admin_portal/db/row.html",
+          "admin_portal/db/table.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/db/<table_name>",
+      "schemas": null,
+      "services": [
+        "backend.admin.db_browser_service:get_table_page"
+      ],
+      "templates": [
+        "admin_portal/db/table.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_db_row",
+      "handler": "backend/admin/routes.py:admin_db_row",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/db/table.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/db/<table_name>/<path:row_pk>",
+      "schemas": null,
+      "services": [
+        "backend.admin.db_browser_service:get_row_detail"
+      ],
+      "templates": [
+        "admin_portal/db/row.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_health",
+      "handler": "backend/admin/routes.py:admin_health",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/_nav.html",
+          "admin_portal/index.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/health",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "admin_portal/health.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_health_snapshot",
+      "handler": "backend/admin/routes.py:admin_health_snapshot",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/health.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/health/snapshot",
+      "schemas": null,
+      "services": [
+        "backend.admin.health_service:collect_health_snapshot"
+      ],
+      "templates": [
+        "admin_portal/_health_snapshot.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_metrics",
+      "handler": "backend/admin/routes.py:admin_metrics",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "adminMetricsPage"
+        ],
+        "template_url_for": [
+          "admin_portal/_nav.html",
+          "admin_portal/index.html",
+          "components/nav/nav_home_items.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/metrics",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "pages/admin_metrics.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_ops_audit_purge",
+      "handler": "backend/admin/action_routes.py:admin_ops_audit_purge",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/system_operations/index.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/ops/audit-purge",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "500": "backend.schemas.errors.ErrorResponse",
+          "503": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.ops_service:trigger_audit_purge"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_ops_backup_trigger",
+      "handler": "backend/admin/action_routes.py:admin_ops_backup_trigger",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/system_operations/index.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/ops/backup-trigger",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "500": "backend.schemas.errors.ErrorResponse",
+          "503": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.ops_service:trigger_backup"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_ops_gauge_sample",
+      "handler": "backend/admin/action_routes.py:admin_ops_gauge_sample",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/system_operations/index.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/ops/gauge-sample",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "500": "backend.schemas.errors.ErrorResponse",
+          "503": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.ops_service:trigger_gauge_sample"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_ops_metrics_flush",
+      "handler": "backend/admin/action_routes.py:admin_ops_metrics_flush",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/system_operations/index.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/ops/metrics-flush",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "500": "backend.schemas.errors.ErrorResponse",
+          "503": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.ops_service:trigger_metrics_flush"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_ops_short_urls_sync",
+      "handler": "backend/admin/action_routes.py:admin_ops_short_urls_sync",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/system_operations/index.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/ops/short-urls-sync",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "500": "backend.schemas.errors.ErrorResponse",
+          "503": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.ops_service:trigger_short_urls_sync"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_ops_verify_tables",
+      "handler": "backend/admin/action_routes.py:admin_ops_verify_tables",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/system_operations/index.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/ops/verify-tables",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "500": "backend.schemas.errors.ErrorResponse",
+          "503": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.ops_service:trigger_verify_tables"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_system_operations",
+      "handler": "backend/admin/routes.py:admin_system_operations",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/_nav.html",
+          "admin_portal/index.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/system-operations",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "admin_portal/system_operations/index.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_url_purge",
+      "handler": "backend/admin/action_routes.py:admin_url_purge",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/utubs/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/urls/<int:url_id>/purge",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.moderation_service:purge_url_globally"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_users",
+      "handler": "backend/admin/routes.py:admin_users",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/_nav.html",
+          "admin_portal/index.html",
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/users",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "admin_portal/users/index.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_user_email_resend",
+      "handler": "backend/admin/action_routes.py:admin_user_email_resend",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/users/<int:target_user_id>/email/resend",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "502": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.account_data_service:resend_verification_email"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_user_email_verify",
+      "handler": "backend/admin/action_routes.py:admin_user_email_verify",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/users/<int:target_user_id>/email/verify",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.account_data_service:mark_email_verified"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_user_erase",
+      "handler": "backend/admin/action_routes.py:admin_user_erase",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/users/<int:target_user_id>/erase",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.account_data_service:erase_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_user_force_reset",
+      "handler": "backend/admin/action_routes.py:admin_user_force_reset",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/users/<int:target_user_id>/force-reset",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "502": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.account_service:force_password_reset"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_user_kill_sessions",
+      "handler": "backend/admin/action_routes.py:admin_user_kill_sessions",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/users/<int:target_user_id>/kill-sessions",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.account_service:kill_user_sessions"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_user_oauth_unlink",
+      "handler": "backend/admin/action_routes.py:admin_user_oauth_unlink",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/users/<int:target_user_id>/oauth/<int:identity_id>/unlink",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.account_data_service:unlink_oauth_identity"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_user_suspend",
+      "handler": "backend/admin/action_routes.py:admin_user_suspend",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/users/<int:target_user_id>/suspend",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.account_service:suspend_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_user_unsuspend",
+      "handler": "backend/admin/action_routes.py:admin_user_unsuspend",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/users/<int:target_user_id>/unsuspend",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.account_service:unsuspend_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_user_detail",
+      "handler": "backend/admin/routes.py:admin_user_detail",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/_results.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/users/<int:user_id>",
+      "schemas": null,
+      "services": [
+        "backend.admin.account_data_service:is_tombstoned",
+        "backend.admin.user_service:get_user_detail"
+      ],
+      "templates": [
+        "admin_portal/users/detail.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_users_search",
+      "handler": "backend/admin/routes.py:admin_users_search",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/users/_results.html",
+          "admin_portal/users/index.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/users/search",
+      "schemas": null,
+      "services": [
+        "backend.admin.user_service:search_users"
+      ],
+      "templates": [
+        "admin_portal/users/_results.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_utubs",
+      "handler": "backend/admin/routes.py:admin_utubs",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/_nav.html",
+          "admin_portal/index.html",
+          "admin_portal/utubs/detail.html",
+          "admin_portal/utubs/index.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/utubs",
+      "schemas": null,
+      "services": [
+        "backend.admin.db_browser_service:get_table_page"
+      ],
+      "templates": [
+        "admin_portal/utubs/index.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_login_required"
+      ],
+      "endpoint": "admin.admin_utub_detail",
+      "handler": "backend/admin/routes.py:admin_utub_detail",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/utubs/detail.html",
+          "admin_portal/utubs/index.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/admin/utubs/<int:utub_id>",
+      "schemas": null,
+      "services": [
+        "backend.admin.user_service:escape_like_wildcards"
+      ],
+      "templates": [
+        "admin_portal/utubs/detail.html"
+      ]
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_utub_delete",
+      "handler": "backend/admin/action_routes.py:admin_utub_delete",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/utubs/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/utubs/<int:utub_id>/delete",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.moderation_service:delete_utub_admin"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_utub_lock",
+      "handler": "backend/admin/action_routes.py:admin_utub_lock",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/utubs/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/utubs/<int:utub_id>/lock",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.moderation_service:lock_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_member_remove",
+      "handler": "backend/admin/action_routes.py:admin_member_remove",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/utubs/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/utubs/<int:utub_id>/members/<int:target_user_id>/remove",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.moderation_service:remove_member_admin"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_utub_tag_delete",
+      "handler": "backend/admin/action_routes.py:admin_utub_tag_delete",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/utubs/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/utubs/<int:utub_id>/tags/<int:utub_tag_id>/delete",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.moderation_service:delete_utub_tag_admin"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_utub_unlock",
+      "handler": "backend/admin/action_routes.py:admin_utub_unlock",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/utubs/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/utubs/<int:utub_id>/unlock",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.moderation_service:unlock_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.admin_url_delete",
+      "handler": "backend/admin/action_routes.py:admin_url_delete",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/utubs/detail.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/utubs/<int:utub_id>/urls/<int:utub_url_id>/delete",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.moderation_service:delete_url_in_utub_admin"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "csrf.exempt",
+        "api_route",
+        "limiter.limit(_METRICS_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "metrics.ingest",
+      "handler": "backend/metrics/routes.py:ingest",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsIngest"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/metrics",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.TransportQuerySchema",
+        "request": "backend.schemas.requests.metrics.MetricsIngestRequest",
+        "response": "backend.schemas.metrics.MetricsIngestResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.MetricsIngestResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "metrics.query_flow",
+      "handler": "backend/metrics/routes.py:query_flow",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsQueryFlow"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/metrics/query/flow",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.FlowQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.FlowResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.FlowResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "metrics.query_gauges_timeseries",
+      "handler": "backend/metrics/routes.py:query_gauges_timeseries",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsQueryGaugesTimeseries"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/metrics/query/gauges/timeseries",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.GaugesTimeseriesQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.GaugesTimeseriesResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.GaugesTimeseriesResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.metrics.query_service:gauges_timeseries_all"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "metrics.query_grouped_timeseries",
+      "handler": "backend/metrics/routes.py:query_grouped_timeseries",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsQueryGroupedTimeseries"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/metrics/query/grouped-timeseries",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.GroupedTimeseriesQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.GroupedTimeseriesResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.GroupedTimeseriesResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.metrics.query_service:grouped_timeseries"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "metrics.query_latency",
+      "handler": "backend/metrics/routes.py:query_latency",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsQueryLatency"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/metrics/query/latency",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.LatencyQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.LatencyPercentilesResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.LatencyPercentilesResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.metrics.query_service:latency_percentiles"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "metrics.query_latency_timeseries",
+      "handler": "backend/metrics/routes.py:query_latency_timeseries",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsQueryLatencyTimeseries"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/metrics/query/latency/timeseries",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.LatencyTimeseriesQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.LatencyTimeseriesResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.LatencyTimeseriesResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.metrics.query_service:latency_timeseries"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "metrics.query_summary",
+      "handler": "backend/metrics/routes.py:query_summary",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsQuerySummary"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/metrics/query/summary",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.SummaryQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.SummaryResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.SummaryResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.metrics.query_service:summary"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "metrics.query_timeseries",
+      "handler": "backend/metrics/routes.py:query_timeseries",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsQueryTimeseries"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/metrics/query/timeseries",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.TimeseriesQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.TimeseriesResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.TimeseriesResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.metrics.query_service:timeseries"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "metrics",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "metrics.query_top",
+      "handler": "backend/metrics/routes.py:query_top",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "metricsQueryTop"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/metrics/query/top",
+      "schemas": {
+        "query": "backend.schemas.requests.metrics.TopEventsQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.TopEventsResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.TopEventsResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.metrics.query_service:top_events"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_route",
+        "limiter.limit(API_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "api_v1.api_v1_auth_google",
+      "handler": "backend/api_v1/routes.py:api_v1_auth_google",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/auth/google",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.api_auth.ApiGoogleAuthRequest",
+        "response": "backend.schemas.api_v1.ApiTokenPairResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.api_v1.ApiTokenPairResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.api_v1.services.auth:google_auth_for_api"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_route",
+        "limiter.limit(API_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "api_v1.api_v1_auth_login",
+      "handler": "backend/api_v1/routes.py:api_v1_auth_login",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/auth/login",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.api_auth.ApiLoginRequest",
+        "response": "backend.schemas.api_v1.ApiTokenPairResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.api_v1.ApiTokenPairResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.api_v1.services.auth:login_user_for_api"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_route",
+        "limiter.limit(API_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "api_v1.api_v1_auth_logout",
+      "handler": "backend/api_v1/routes.py:api_v1_auth_logout",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/auth/logout",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.api_auth.ApiLogoutRequest",
+        "response": "backend.schemas.base.StatusMessageResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.base.StatusMessageResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.api_v1.services.auth:logout_api_device"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_authentication_required",
+        "api_route",
+        "limiter.limit(API_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "api_v1.api_v1_auth_logout_all",
+      "handler": "backend/api_v1/routes.py:api_v1_auth_logout_all",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/auth/logout-all",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.base.StatusMessageResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.base.StatusMessageResponseSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.api_v1.services.auth:logout_api_everywhere"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_route",
+        "limiter.limit(API_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "api_v1.api_v1_auth_refresh",
+      "handler": "backend/api_v1/routes.py:api_v1_auth_refresh",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/auth/refresh",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.api_auth.ApiRefreshRequest",
+        "response": "backend.schemas.api_v1.ApiTokenPairResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.api_v1.ApiTokenPairResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.api_v1.services.auth:refresh_api_tokens"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_authentication_required",
+        "api_route",
+        "limiter.limit(API_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "api_v1.api_v1_auth_resend_validation",
+      "handler": "backend/api_v1/routes.py:api_v1_auth_resend_validation",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/auth/resend-validation",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.base.StatusMessageResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.base.StatusMessageResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.api_v1.services.auth:resend_validation_email_for_api"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_authentication_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_get_me",
+      "handler": "backend/api_v1/routes.py:api_v1_get_me",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/v1/me",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.api_v1.ApiUserProfileSchema",
+        "status_codes": {
+          "200": "backend.schemas.api_v1.ApiUserProfileSchema",
+          "401": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_search_across_utubs",
+      "handler": "backend/api_v1/url_routes.py:api_v1_search_across_utubs",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/v1/search",
+      "schemas": {
+        "query": "backend.schemas.requests.search.SearchQuerySchema",
+        "request": null,
+        "response": "backend.schemas.search.SearchResultsSchema",
+        "status_codes": {
+          "200": "backend.schemas.search.SearchResultsSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.search.services.cross_utub_search:search_across_user_utubs"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_get_utubs",
+      "handler": "backend/api_v1/utub_routes.py:api_v1_get_utubs",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/v1/utubs",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.users.UtubSummaryListSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.UtubSummaryListSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.read_utubs:get_all_utubs_of_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_create_utub",
+      "handler": "backend/api_v1/utub_routes.py:api_v1_create_utub",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/utubs",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.utubs.CreateUTubRequest",
+        "response": "backend.schemas.utubs.UtubCreatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubCreatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.create_utubs:create_new_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_owner_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_delete_utub",
+      "handler": "backend/api_v1/utub_routes.py:api_v1_delete_utub",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.utubs.UtubDeletedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubDeletedResponseSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.delete_utubs:delete_utub_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_get_single_utub",
+      "handler": "backend/api_v1/utub_routes.py:api_v1_get_single_utub",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.utubs.UtubDetailSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubDetailSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.read_utubs:get_single_utub_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_manager_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_get_co_member_candidates",
+      "handler": "backend/api_v1/utub_member_routes.py:api_v1_get_co_member_candidates",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/co-members",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.users.CoMemberListSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.CoMemberListSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.co_member_search:get_co_member_candidates"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_manager_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_update_utub_desc",
+      "handler": "backend/api_v1/utub_routes.py:api_v1_update_utub_desc",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/description",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.utubs.UpdateUTubDescriptionRequest",
+        "response": "backend.schemas.utubs.UtubDescUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubDescUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.update_utubs:update_utub_desc_if_new"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_manager_required",
+        "api_route",
+        "limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "api_v1.api_v1_create_member",
+      "handler": "backend/api_v1/utub_member_routes.py:api_v1_create_member",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/members",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.members.AddMemberRequest",
+        "response": "backend.schemas.users.MemberModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.MemberModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.create_members:create_utub_member"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_remove_member",
+      "handler": "backend/api_v1/utub_member_routes.py:api_v1_remove_member",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/members/<int:user_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.users.MemberModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.MemberModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.delete_members:remove_member_or_self_from_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_owner_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_modify_member_role",
+      "handler": "backend/api_v1/utub_member_routes.py:api_v1_modify_member_role",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/members/<int:user_id>",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.members.ModifyMemberRoleRequest",
+        "response": "backend.schemas.users.MemberModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.MemberModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.modify_member_role:modify_member_role"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_manager_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_update_utub_name",
+      "handler": "backend/api_v1/utub_routes.py:api_v1_update_utub_name",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/name",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.utubs.UpdateUTubNameRequest",
+        "response": "backend.schemas.utubs.UtubNameUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubNameUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.update_utubs:update_utub_name_if_new"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_owner_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_transfer_utub_ownership",
+      "handler": "backend/api_v1/utub_member_routes.py:api_v1_transfer_utub_ownership",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/owner",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.members.TransferOwnershipRequest",
+        "response": "backend.schemas.users.OwnershipTransferredResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.OwnershipTransferredResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.transfer_ownership:transfer_ownership"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_create_utub_tag",
+      "handler": "backend/api_v1/tag_routes.py:api_v1_create_utub_tag",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/tags",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.tags.AddTagRequest",
+        "response": "backend.schemas.tags.UtubTagAddedToUtubResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UtubTagAddedToUtubResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.create_utub_tag:create_tag_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_with_valid_utub_tag",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_delete_utub_tag",
+      "handler": "backend/api_v1/tag_routes.py:api_v1_delete_utub_tag",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/tags/<int:utub_tag_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.delete_utub_tag:delete_utub_tag_from_utub_and_utub_urls"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_create_url",
+      "handler": "backend/api_v1/url_routes.py:api_v1_create_url",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/urls",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.urls.CreateURLRequest",
+        "response": "backend.schemas.urls.UrlCreatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlCreatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.create_urls:create_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_delete_url",
+      "handler": "backend/api_v1/url_routes.py:api_v1_delete_url",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.urls.UrlDeletedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlDeletedResponseSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.delete_urls:delete_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_with_valid_url_in_utub_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_get_url",
+      "handler": "backend/api_v1/url_routes.py:api_v1_get_url",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.urls.UrlReadResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlReadResponseSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.read_urls:get_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_update_url",
+      "handler": "backend/api_v1/url_routes.py:api_v1_update_url",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.urls.UpdateURLStringRequest",
+        "response": "backend.schemas.urls.UrlUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.update_urls:update_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_with_valid_url_in_utub_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_create_utub_url_tag",
+      "handler": "backend/api_v1/tag_routes.py:api_v1_create_utub_url_tag",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.tags.AddTagRequest",
+        "response": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.create_url_tag:add_tag_to_url_if_valid"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_with_valid_url_tag",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_delete_utub_url_tag",
+      "handler": "backend/api_v1/tag_routes.py:api_v1_delete_utub_url_tag",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_tag_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.delete_url_tag:delete_url_tag"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_utub_membership_with_valid_url_in_utub_required",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_create_utub_url_tags",
+      "handler": "backend/api_v1/tag_routes.py:api_v1_create_utub_url_tags",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/batch",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.tags.AddTagsRequest",
+        "response": "backend.schemas.tags.UrlTagsModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UrlTagsModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.create_url_tag:add_batch_tags_to_existing_url"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
+        "api_url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)",
+        "api_route"
+      ],
+      "endpoint": "api_v1.api_v1_update_url_title",
+      "handler": "backend/api_v1/url_routes.py:api_v1_update_url_title",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/api/v1/utubs/<int:utub_id>/urls/<int:utub_url_id>/title",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.urls.UpdateURLTitleRequest",
+        "response": "backend.schemas.urls.UrlTitleUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlTitleUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.update_url_titles:update_url_title_if_new"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [],
+      "endpoint": "splash.confirm_email_after_register",
+      "handler": "backend/splash/routes.py:confirm_email_after_register",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "confirmEmailAfterRegister"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/confirm-email",
+      "schemas": null,
+      "services": [],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [],
+      "endpoint": "splash.confirm_email_change",
+      "handler": "backend/splash/routes.py:confirm_email_change",
+      "js": {
+        "indirect": null,
+        "no_js": "full-page-navigation",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/confirm-email-change/<string:token>",
+      "schemas": null,
+      "services": [
+        "backend.splash.services.change_email:confirm_email_change_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "contact",
+      "decorators": [],
+      "endpoint": "contact.contact_us",
+      "handler": "backend/contact/routes.py:contact_us",
+      "js": {
+        "indirect": null,
+        "no_js": "full-page-navigation",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/contact",
+      "schemas": null,
+      "services": [
+        "backend.contact.contact_us:load_contact_us_page"
+      ],
+      "templates": [
+        "pages/contact_us.html"
+      ]
+    },
+    {
+      "blueprint": "contact",
+      "decorators": [
+        "api_route",
+        "limiter.limit(f'{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day', methods=['POST'])"
+      ],
+      "endpoint": "contact.submit_contact_us",
+      "handler": "backend/contact/routes.py:submit_contact_us",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "contactUs"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/contact",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.contact.ContactRequest",
+        "response": "backend.schemas.contact.ContactResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.contact.ContactResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.contact.contact_us:validate_and_contact"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "no_authenticated_users_allowed",
+        "api_route",
+        "limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "splash.forgot_password",
+      "handler": "backend/splash/routes.py:forgot_password",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "forgotPassword"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/forgot-password",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.splash.ForgotPasswordRequest",
+        "response": "backend.schemas.users.ForgotPasswordResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.ForgotPasswordResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.forgot_password:send_forgot_password_email_to_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "system",
+      "decorators": [
+        "limiter.exempt",
+        "api_route"
+      ],
+      "endpoint": "system.health",
+      "handler": "backend/system/routes.py:health",
+      "js": {
+        "indirect": null,
+        "no_js": "infra-probe",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/health",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.system.HealthResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.system.HealthResponseSchema",
+          "503": "backend.schemas.base.StatusMessageResponseSchema"
+        }
+      },
+      "services": [],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required"
+      ],
+      "endpoint": "utubs.home",
+      "handler": "backend/utubs/routes.py:home",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "home"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/home",
+      "schemas": null,
+      "services": [
+        "backend.splash.services.change_email:build_email_change_banner",
+        "backend.users.services.preferences_service:build_display_preferences_context",
+        "backend.utubs.services.home_page:render_home_page",
+        "backend.utubs.services.home_page:validate_home_query_params",
+        "backend.utubs.services.home_page:validate_user_is_member_of_utub_on_home_page_with_query_param"
+      ],
+      "templates": [
+        "pages/home.html"
+      ]
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [],
+      "endpoint": "splash.error_page",
+      "handler": "backend/splash/routes.py:error_page",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "errorPage"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/invalid",
+      "schemas": null,
+      "services": [],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "no_authenticated_users_allowed",
+        "api_route",
+        "limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "splash.login",
+      "handler": "backend/splash/routes.py:login",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "login"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/login",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.splash.LoginRequest",
+        "response": "backend.schemas.users.LoginRedirectResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.LoginRedirectResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.user_login:login_user_to_u4i"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [],
+      "endpoint": "users.logout",
+      "handler": "backend/users/routes.py:logout",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "logout"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/logout",
+      "schemas": null,
+      "services": [],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "splash.oauth_link",
+      "handler": "backend/splash/routes.py:oauth_link",
+      "js": {
+        "indirect": null,
+        "no_js": "browser-redirect",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/oauth/<string:provider>/link",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": null,
+        "status_codes": {
+          "302": "backend.schemas.base.EmptyRedirectSchema"
+        }
+      },
+      "services": [
+        "backend.splash.services.oauth.linking_service:initiate_link_oauth_redirect"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "csrf.exempt",
+        "api_route"
+      ],
+      "endpoint": "splash.github_callback",
+      "handler": "backend/splash/routes.py:github_callback",
+      "js": {
+        "indirect": null,
+        "no_js": "oauth-callback",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/oauth/github/callback",
+      "schemas": {
+        "query": "backend.schemas.requests.splash.GitHubOAuthCallbackQuerySchema",
+        "request": null,
+        "response": null,
+        "status_codes": {
+          "200": "backend.schemas.base.HtmlErrorPageSchema",
+          "302": "backend.schemas.base.EmptyRedirectSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.oauth.github_service:handle_github_callback"
+      ],
+      "templates": [
+        "pages/splash.html"
+      ]
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "no_authenticated_users_allowed",
+        "api_route"
+      ],
+      "endpoint": "splash.github_login",
+      "handler": "backend/splash/routes.py:github_login",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "oauthGithubLogin"
+        ],
+        "template_url_for": [
+          "components/splash/login.html",
+          "components/splash/register_user.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/oauth/github/login",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": null,
+        "status_codes": {
+          "302": "backend.schemas.base.EmptyRedirectSchema"
+        }
+      },
+      "services": [
+        "backend.splash.services.oauth.github_service:initiate_github_login"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "csrf.exempt",
+        "api_route"
+      ],
+      "endpoint": "splash.google_callback",
+      "handler": "backend/splash/routes.py:google_callback",
+      "js": {
+        "indirect": null,
+        "no_js": "oauth-callback",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/oauth/google/callback",
+      "schemas": {
+        "query": "backend.schemas.requests.splash.GoogleOAuthCallbackQuerySchema",
+        "request": null,
+        "response": null,
+        "status_codes": {
+          "200": "backend.schemas.base.HtmlErrorPageSchema",
+          "302": "backend.schemas.base.EmptyRedirectSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.oauth.google_service:handle_google_callback"
+      ],
+      "templates": [
+        "pages/splash.html"
+      ]
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "no_authenticated_users_allowed",
+        "api_route"
+      ],
+      "endpoint": "splash.google_login",
+      "handler": "backend/splash/routes.py:google_login",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "oauthGoogleLogin"
+        ],
+        "template_url_for": [
+          "components/splash/login.html",
+          "components/splash/register_user.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/oauth/google/login",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": null,
+        "status_codes": {
+          "302": "backend.schemas.base.EmptyRedirectSchema"
+        }
+      },
+      "services": [
+        "backend.splash.services.oauth.google_service:initiate_google_login"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "no_authenticated_users_allowed"
+      ],
+      "endpoint": "splash.oauth_confirm_link_page",
+      "handler": "backend/splash/routes.py:oauth_confirm_link_page",
+      "js": {
+        "indirect": null,
+        "no_js": "full-page-navigation",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/oauth/link/confirm",
+      "schemas": null,
+      "services": [
+        "backend.splash.services.oauth.linking_service:render_confirm_link_page"
+      ],
+      "templates": [
+        "pages/splash.html"
+      ]
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "no_authenticated_users_allowed",
+        "api_route"
+      ],
+      "endpoint": "splash.oauth_confirm_link",
+      "handler": "backend/splash/routes.py:oauth_confirm_link",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "components/splash/oauth_confirm_link.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/oauth/link/confirm",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.splash.ConfirmLinkRequest",
+        "response": "backend.schemas.users.LoginRedirectResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.LoginRedirectResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.oauth.linking_service:confirm_link_with_password"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [],
+      "endpoint": "users.privacy_policy",
+      "handler": "backend/users/routes.py:privacy_policy",
+      "js": {
+        "indirect": null,
+        "no_js": "full-page-navigation",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/privacy-policy",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "pages/privacy_policy.html"
+      ]
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "no_authenticated_users_allowed",
+        "api_route",
+        "limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "splash.register_user",
+      "handler": "backend/splash/routes.py:register_user",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "register"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/register",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.splash.RegisterRequest",
+        "response": "backend.schemas.users.RegisterResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.RegisterResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.user_registration:register_new_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "no_authenticated_users_allowed",
+        "api_route",
+        "limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "splash.resend_registration_email",
+      "handler": "backend/splash/routes.py:resend_registration_email",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "resendRegistrationEmail"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/resend-registration-email",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.splash.ResendRegistrationEmailRequest",
+        "response": "backend.schemas.base.StatusMessageResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.base.StatusMessageResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.validate_email:send_resend_registration_email"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [],
+      "endpoint": "splash.reset_password_page",
+      "handler": "backend/splash/routes.py:reset_password_page",
+      "js": {
+        "indirect": null,
+        "no_js": "full-page-navigation",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/reset-password/<string:token>",
+      "schemas": null,
+      "services": [
+        "backend.splash.services.reset_password:get_reset_password_page"
+      ],
+      "templates": [
+        "pages/splash.html"
+      ]
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "api_route"
+      ],
+      "endpoint": "splash.reset_password",
+      "handler": "backend/splash/routes.py:reset_password",
+      "js": {
+        "indirect": "page-self-url",
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/reset-password/<string:token>",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.splash.ResetPasswordRequest",
+        "response": "backend.schemas.users.ResetPasswordResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.ResetPasswordResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.reset_password:reset_password_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "search",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "search.search_across_utubs",
+      "handler": "backend/search/routes.py:search_across_utubs",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "crossUtubSearch"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/search",
+      "schemas": {
+        "query": "backend.schemas.requests.search.SearchQuerySchema",
+        "request": null,
+        "response": "backend.schemas.search.SearchResultsSchema",
+        "status_codes": {
+          "200": "backend.schemas.search.SearchResultsSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.search.services.cross_utub_search:search_across_user_utubs"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [
+        "api_route"
+      ],
+      "endpoint": "splash.send_validation_email",
+      "handler": "backend/splash/routes.py:send_validation_email",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "sendValidationEmail"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/send-validation-email",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.users.EmailValidationResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.EmailValidationResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.validate_email:send_validation_email_to_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required"
+      ],
+      "endpoint": "users.settings",
+      "handler": "backend/users/routes.py:settings",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "components/nav/nav_home_items.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/settings",
+      "schemas": null,
+      "services": [
+        "backend.splash.services.oauth.linking_service:build_connected_accounts_context",
+        "backend.users.services.account_service:build_account_info_context",
+        "backend.users.services.preferences_service:build_display_preferences_context",
+        "backend.users.services.stats_service:build_user_stats_context"
+      ],
+      "templates": [
+        "pages/settings.html"
+      ]
+    },
+    {
+      "blueprint": "users",
+      "decorators": [],
+      "endpoint": "users.terms_and_conditions",
+      "handler": "backend/users/routes.py:terms_and_conditions",
+      "js": {
+        "indirect": null,
+        "no_js": "full-page-navigation",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/terms",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "pages/terms_and_conditions.html"
+      ]
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "users.delete_account",
+      "handler": "backend/users/routes.py:delete_account",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "pages/settings.html"
+        ]
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/users/<int:user_id>",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.users.DeleteAccountRequest",
+        "response": "backend.schemas.users.AccountRemovalResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.AccountRemovalResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.account_service:apply_account_deletion"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "session_required",
+        "api_route",
+        "limiter.limit(DATA_EXPORT_RATE_LIMIT, methods=['GET'])"
+      ],
+      "endpoint": "users.data_export",
+      "handler": "backend/users/routes.py:data_export",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "pages/settings.html"
+        ]
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/users/<int:user_id>/data-export",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.exports.UserDataExportResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.exports.UserDataExportResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.data_export_service:build_user_data_export_core"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "users.change_email",
+      "handler": "backend/users/routes.py:change_email",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "pages/settings.html"
+        ]
+      },
+      "methods": [
+        "PUT"
+      ],
+      "rule": "/users/<int:user_id>/email",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.users.ChangeEmailRequest",
+        "response": "backend.schemas.users.ChangeEmailResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.ChangeEmailResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.account_service:apply_email_change"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "session_required",
+        "api_route"
+      ],
+      "endpoint": "users.logout_everywhere",
+      "handler": "backend/users/routes.py:logout_everywhere",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "pages/settings.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/users/<int:user_id>/logout-everywhere",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.users.AccountRemovalResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.AccountRemovalResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.account_service:apply_logout_everywhere"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "users.unlink_oauth_provider",
+      "handler": "backend/users/routes.py:unlink_oauth_provider",
+      "js": {
+        "indirect": "server-built-url",
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/users/<int:user_id>/oauth/link/<string:provider>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.base.StatusMessageResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.base.StatusMessageResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.oauth.linking_service:unlink_provider"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "users.link_oauth_provider",
+      "handler": "backend/users/routes.py:link_oauth_provider",
+      "js": {
+        "indirect": "server-built-url",
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/users/<int:user_id>/oauth/link/<string:provider>",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.users.ProviderLinkRequest",
+        "response": "backend.schemas.users.LoginRedirectResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.LoginRedirectResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.splash.services.oauth.linking_service:initiate_settings_link"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "users.change_password",
+      "handler": "backend/users/routes.py:change_password",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "pages/settings.html"
+        ]
+      },
+      "methods": [
+        "PUT"
+      ],
+      "rule": "/users/<int:user_id>/password",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.users.ChangePasswordRequest",
+        "response": "backend.schemas.users.ChangePasswordResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.ChangePasswordResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.account_service:apply_password_change"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "users.update_preferences",
+      "handler": "backend/users/routes.py:update_preferences",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "pages/settings.html"
+        ]
+      },
+      "methods": [
+        "PUT"
+      ],
+      "rule": "/users/<int:user_id>/preferences",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.users.UpdatePreferencesRequest",
+        "response": "backend.schemas.users.UpdatePreferencesResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.UpdatePreferencesResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.preferences_service:apply_preferences_change"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "users.change_username",
+      "handler": "backend/users/routes.py:change_username",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "pages/settings.html"
+        ]
+      },
+      "methods": [
+        "PUT"
+      ],
+      "rule": "/users/<int:user_id>/username",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.users.ChangeUsernameRequest",
+        "response": "backend.schemas.users.ChangeUsernameResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.ChangeUsernameResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.account_service:apply_username_change"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.get_utubs",
+      "handler": "backend/utubs/routes.py:get_utubs",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "getUTubs"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/utubs",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.users.UtubSummaryListSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.UtubSummaryListSchema"
+        }
+      },
+      "services": [
+        "backend.utubs.services.read_utubs:get_all_utubs_of_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.create_utub",
+      "handler": "backend/utubs/routes.py:create_utub",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "createUTub"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.utubs.CreateUTubRequest",
+        "response": "backend.schemas.utubs.UtubCreatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubCreatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.create_utubs:create_new_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "utub_owner_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.delete_utub",
+      "handler": "backend/utubs/routes.py:delete_utub",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "deleteUTub"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.utubs.UtubDeletedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubDeletedResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.delete_utubs:delete_utub_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.get_single_utub",
+      "handler": "backend/utubs/routes.py:get_single_utub",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "getUTub"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/utubs/<int:utub_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.utubs.UtubDetailSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubDetailSchema",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.read_utubs:get_single_utub_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "members",
+      "decorators": [
+        "utub_manager_required",
+        "api_route"
+      ],
+      "endpoint": "members.get_co_member_candidates_route",
+      "handler": "backend/members/routes.py:get_co_member_candidates_route",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "coMemberCandidates"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/utubs/<int:utub_id>/co-members",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.users.CoMemberListSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.CoMemberListSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.co_member_search:get_co_member_candidates"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "utub_manager_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.update_utub_desc",
+      "handler": "backend/utubs/routes.py:update_utub_desc",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "updateUTubDescription"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/utubs/<int:utub_id>/description",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.utubs.UpdateUTubDescriptionRequest",
+        "response": "backend.schemas.utubs.UtubDescUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubDescUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.update_utubs:update_utub_desc_if_new"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "members",
+      "decorators": [
+        "utub_manager_required",
+        "api_route",
+        "limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])"
+      ],
+      "endpoint": "members.create_member",
+      "handler": "backend/members/routes.py:create_member",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "createMember"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/members",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.members.AddMemberRequest",
+        "response": "backend.schemas.users.MemberModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.MemberModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.create_members:create_utub_member"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "members",
+      "decorators": [
+        "utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "members.remove_member",
+      "handler": "backend/members/routes.py:remove_member",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "removeMember"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/members/<int:user_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.users.MemberModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.MemberModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.delete_members:remove_member_or_self_from_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "members",
+      "decorators": [
+        "utub_owner_required",
+        "api_route"
+      ],
+      "endpoint": "members.modify_member_role",
+      "handler": "backend/members/routes.py:modify_member_role",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "modifyMemberRole"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/utubs/<int:utub_id>/members/<int:user_id>",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.members.ModifyMemberRoleRequest",
+        "response": "backend.schemas.users.MemberModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.MemberModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.modify_member_role:modify_member_role"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "utub_manager_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.update_utub_name",
+      "handler": "backend/utubs/routes.py:update_utub_name",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "updateUTubName"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/utubs/<int:utub_id>/name",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.utubs.UpdateUTubNameRequest",
+        "response": "backend.schemas.utubs.UtubNameUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubNameUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.update_utubs:update_utub_name_if_new"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "members",
+      "decorators": [
+        "utub_owner_required",
+        "api_route"
+      ],
+      "endpoint": "members.transfer_utub_ownership",
+      "handler": "backend/members/routes.py:transfer_utub_ownership",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "transferUtubOwnership"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/utubs/<int:utub_id>/owner",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.members.TransferOwnershipRequest",
+        "response": "backend.schemas.users.OwnershipTransferredResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.OwnershipTransferredResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.members.services.transfer_ownership:transfer_ownership"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utub_tags",
+      "decorators": [
+        "utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "utub_tags.create_utub_tag",
+      "handler": "backend/tags/utub_tag_routes.py:create_utub_tag",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "createUTubTag"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/tags",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.tags.AddTagRequest",
+        "response": "backend.schemas.tags.UtubTagAddedToUtubResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UtubTagAddedToUtubResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.create_utub_tag:create_tag_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utub_tags",
+      "decorators": [
+        "utub_membership_with_valid_utub_tag",
+        "api_route"
+      ],
+      "endpoint": "utub_tags.delete_utub_tag",
+      "handler": "backend/tags/utub_tag_routes.py:delete_utub_tag",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "deleteUTubTag"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/tags/<int:utub_tag_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.delete_utub_tag:delete_utub_tag_from_utub_and_utub_urls"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "urls.create_url",
+      "handler": "backend/urls/routes.py:create_url",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "createURL"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.urls.CreateURLRequest",
+        "response": "backend.schemas.urls.UrlCreatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlCreatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.create_urls:create_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)",
+        "api_route"
+      ],
+      "endpoint": "urls.delete_url",
+      "handler": "backend/urls/routes.py:delete_url",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "deleteURL"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.urls.UrlDeletedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlDeletedResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.delete_urls:delete_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "utub_membership_with_valid_url_in_utub_required",
+        "api_route"
+      ],
+      "endpoint": "urls.get_url",
+      "handler": "backend/urls/routes.py:get_url",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "getURL"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.urls.UrlReadResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlReadResponseSchema",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.read_urls:get_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)",
+        "api_route"
+      ],
+      "endpoint": "urls.update_url",
+      "handler": "backend/urls/routes.py:update_url",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "updateURL"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.urls.UpdateURLStringRequest",
+        "response": "backend.schemas.urls.UrlUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.update_urls:update_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utub_url_tags",
+      "decorators": [
+        "utub_membership_with_valid_url_in_utub_required",
+        "api_route"
+      ],
+      "endpoint": "utub_url_tags.create_utub_url_tag",
+      "handler": "backend/tags/url_tag_routes.py:create_utub_url_tag",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "createURLTag"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.tags.AddTagRequest",
+        "response": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.create_url_tag:add_tag_to_url_if_valid"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utub_url_tags",
+      "decorators": [
+        "utub_membership_with_valid_url_tag",
+        "api_route"
+      ],
+      "endpoint": "utub_url_tags.delete_utub_url_tag",
+      "handler": "backend/tags/url_tag_routes.py:delete_utub_url_tag",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "deleteURLTag"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_tag_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.delete_url_tag:delete_url_tag"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utub_url_tags",
+      "decorators": [
+        "utub_membership_with_valid_url_in_utub_required",
+        "api_route"
+      ],
+      "endpoint": "utub_url_tags.create_utub_url_tags",
+      "handler": "backend/tags/url_tag_routes.py:create_utub_url_tags",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "createURLTagsBatch"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/batch",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.tags.AddTagsRequest",
+        "response": "backend.schemas.tags.UrlTagsModifiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.UrlTagsModifiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.create_url_tag:add_batch_tags_to_existing_url"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "url_adder_or_manager_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)",
+        "api_route"
+      ],
+      "endpoint": "urls.update_url_title",
+      "handler": "backend/urls/routes.py:update_url_title",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "updateURLTitle"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/title",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.urls.UpdateURLTitleRequest",
+        "response": "backend.schemas.urls.UrlTitleUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.UrlTitleUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.update_url_titles:update_url_title_if_new"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "urls.delete_urls_from_utub",
+      "handler": "backend/urls/routes.py:delete_urls_from_utub",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "bulkDeleteURLs"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/delete",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.urls.DeleteUrlsRequest",
+        "response": "backend.schemas.urls.DeleteUrlsResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.DeleteUrlsResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.delete_urls:delete_urls_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utub_url_tags",
+      "decorators": [
+        "utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "utub_url_tags.apply_tags_to_utub_urls",
+      "handler": "backend/tags/url_tag_routes.py:apply_tags_to_utub_urls",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "applyTagsToURLs"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/tags/batch",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.tags.AddTagsToUrlsRequest",
+        "response": "backend.schemas.tags.AddTagsToUrlsResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.tags.AddTagsToUrlsResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.tags.services.create_url_tag:add_tags_to_urls_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "urls.copy_urls_to_utubs",
+      "handler": "backend/urls/routes.py:copy_urls_to_utubs",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "copyURLsToUtubs"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/urls/copy",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.urls.CopyUrlsRequest",
+        "response": "backend.schemas.urls.CopyUrlsResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.urls.CopyUrlsResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.copy_urls:copy_urls_into_utubs"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [],
+      "endpoint": "splash.validate_email",
+      "handler": "backend/splash/routes.py:validate_email",
+      "js": {
+        "indirect": null,
+        "no_js": "full-page-navigation",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/validate/<string:token>",
+      "schemas": null,
+      "services": [
+        "backend.splash.services.validate_email:validate_email_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "splash",
+      "decorators": [],
+      "endpoint": "splash.validate_email_expired",
+      "handler": "backend/splash/routes.py:validate_email_expired",
+      "js": {
+        "indirect": null,
+        "no_js": "full-page-navigation",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/validate/expired",
+      "schemas": null,
+      "services": [],
+      "templates": [
+        "pages/splash.html"
+      ]
+    }
+  ],
+  "generated_by": "flask endpoints generate — DO NOT EDIT",
+  "source_of_truth": "live Flask url_map + backend/utils/all_routes.py + backend/templates"
+}
