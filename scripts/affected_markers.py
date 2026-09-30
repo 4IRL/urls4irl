@@ -22,6 +22,25 @@ this order:
 
 Globs use `fnmatch`, so `*` also matches `/`. Stdlib only: it runs on the
 host under bare mise python.
+
+Extending the tables: the table-consistency tests in
+`tests/unit/test_affected_markers.py` read the committed `pytest.ini` and
+endpoint registry, and fail until the tables below are updated. Update the
+table, not the test.
+- New marker (declared in `pytest.ini`): add it to at least one row, a
+  `BLUEPRINT_MARKERS` entry or a `PATH_MARKERS` row, so it is reachable.
+- New blueprint (appears in the regenerated registry): add a
+  `BLUEPRINT_MARKERS` entry, plus a `PATH_MARKERS` row for its
+  `backend/<dir>/*` whose markers cover the blueprint's markers.
+  `ENDPOINT_MARKER_OVERRIDES` is only for a single endpoint whose tests carry
+  markers beyond its blueprint's.
+- New test directory under `tests/integration/` or `tests/functional/`: add a
+  `PATH_MARKERS` row mapping it to its marker, so a changed helper there
+  (or a deleted test file) still selects it.
+- New host-only file: add it to `HOST_STATIC_GLOBS` and give it an explicit
+  `PATH_MARKERS` row (`()` if it has no pytest markers).
+Put a more specific `PATH_MARKERS` glob before a broader one: the first match
+wins.
 """
 
 from __future__ import annotations
