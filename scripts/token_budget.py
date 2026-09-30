@@ -29,6 +29,8 @@ reading includes this run's ramp-up; the turnstile file names the settling run,
 so a runner queued only behind that window says so instead of printing a token
 wait. While the child runs, live memory is sampled: a low reading prints one
 warning, and the failure block shows memory.
+`--meminfo` and `--cgroup` are test hooks: they default to the real
+/proc/meminfo and cgroup v2 memory.max paths.
 Stdlib only: it runs on the host under bare mise python.
 """
 
@@ -969,13 +971,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--meminfo",
         type=Path,
         default=DEFAULT_MEMINFO_PATH,
-        help="host meminfo file (tests)",
+        help=f"host meminfo file (test hook; default {DEFAULT_MEMINFO_PATH})",
     )
     run_parser.add_argument(
         "--cgroup",
         type=Path,
         default=DEFAULT_CGROUP_PATH,
-        help="cgroup memory.max file (tests)",
+        help="cgroup v2 memory.max file capping --meminfo (test hook; default "
+        f"{DEFAULT_CGROUP_PATH})",
     )
     run_parser.add_argument("command", nargs=argparse.REMAINDER)
     return parser
