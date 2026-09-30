@@ -7,6 +7,7 @@ identically on a laptop, inside the web container, and on a CI runner.
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 import re
 import subprocess
@@ -2364,7 +2365,29 @@ ADMIT_CAPACITY_LINES: dict[str, str] = {
     "U4I_HUB_IDLE_MB": "614",
     "U4I_SPOKE_IDLE_MB": "256",
     "U4I_SPOKE_MAX": "2",
+    "U4I_BASE_MB": "2048",
+    "U4I_WORKER_MB": "512",
 }
+# No live reading: admission falls back to the static U4I_SPOKE_MAX count rule.
+STATIC_LIVE: LiveMemory = LiveMemory(None, LIVE_SOURCE_NONE)
+
+
+def _live_usable(usable_gb: float, source: str = LIVE_SOURCE_HOST) -> LiveMemory:
+    """A live reading whose usable share (after DEFAULT_MEM_SAFETY) is `usable_gb`,
+    rounded up to the byte so a boundary value never truncates just below it."""
+    return LiveMemory(math.ceil(usable_gb / DEFAULT_MEM_SAFETY * GIB), source)
+
+
+class _FakeLive:
+    """`admit`'s live-memory reader: returns a fixed reading, records each hub project."""
+
+    def __init__(self, reading: LiveMemory) -> None:
+        self.reading = reading
+        self.hub_projects: list[str] = []
+
+    def __call__(self, hub_project: str) -> LiveMemory:
+        self.hub_projects.append(hub_project)
+        return self.reading
 
 
 class _FakePsDocker:
@@ -2402,7 +2425,12 @@ def _admit_capacity(tmp_path: Path, omit: str | None = None) -> Path:
     return env_path
 
 
-def _admit(env_path: Path, docker: _FakePsDocker) -> int:
+def _admit(
+    env_path: Path,
+    docker: _FakePsDocker,
+    live_memory: Callable[[str], LiveMemory] | None = None,
+) -> int:
+    """Run `admit` for ADMIT_SELF; without `live_memory` there is no live reading."""
     return main(
         [
             "admit",
@@ -2417,6 +2445,7 @@ def _admit(env_path: Path, docker: _FakePsDocker) -> int:
         ],
         _no_probe,
         docker,
+        live_memory if live_memory is not None else _FakeLive(STATIC_LIVE),
     )
 
 
@@ -2443,12 +2472,13 @@ def test_admit_admits_silently_under_the_ceiling(
     assert captured.err == ""
 
 
-def test_admit_refuses_the_spoke_past_the_ceiling_with_the_numbers(
+def test_admit_without_live_memory_refuses_past_the_spoke_max_with_the_static_numbers(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """No live reading → today's count rule and its refusal text, byte for byte."""
     docker = _FakePsDocker(stdout=_running("u4i-beta", "u4i-alpha"))
 
-    assert _admit(_admit_capacity(tmp_path), docker) == 1
+    assert _admit(_admit_capacity(tmp_path), docker, _FakeLive(STATIC_LIVE)) == 1
 
     captured = capsys.readouterr()
     assert captured.out == ""
@@ -2458,6 +2488,102 @@ def test_admit_refuses_the_spoke_past_the_ceiling_with_the_numbers(
         "usable 9.60 GB (U4I_SPOKE_MAX=2). Running spokes: u4i-alpha, u4i-beta. "
         "Stop one with 'make down' in its checkout.\n"
     )
+
+
+@pytest.mark.parametrize(
+    "usable_gb",
+    [4.0, 2.75],
+    ids=["ample", "exactly-the-minimum"],
+)
+def test_admit_live_admits_past_the_spoke_max_when_memory_holds_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], usable_gb: float
+) -> None:
+    """Hub up, 2 others running (static would refuse spoke 3): needs only
+    0.25 GB idle + 2.50 GB minimum run = 2.75 GB — running spokes aren't re-counted."""
+    docker = _FakePsDocker(stdout=_running("u4i-alpha", ADMIT_HUB, "u4i-beta"))
+    live = _FakeLive(_live_usable(usable_gb))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 0
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_admit_live_refuses_with_the_numbers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running("u4i-beta", ADMIT_HUB, "u4i-alpha"))
+
+    assert _admit(_admit_capacity(tmp_path), docker, _FakeLive(_live_usable(2.5))) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "spoke admission: refusing spoke 3 (u4i-self) — needs 0.25 GB idle + 2.50 GB "
+        "for a minimum test run = 2.75 GB, but only 2.50 GB is usable now (host). "
+        "Running spokes: u4i-alpha, u4i-beta. "
+        "Free memory or stop one with 'make down' in its checkout.\n"
+    )
+
+
+def test_admit_live_adds_the_hub_idle_cost_when_the_hub_is_not_running(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Hub label absent → its idle cost isn't in MemAvailable yet: 2.75 + 0.60 = 3.35 GB."""
+    capacity_file = _admit_capacity(tmp_path)
+    running = _running("u4i-alpha", "u4i-beta")
+    enough = _FakeLive(_live_usable(3.35))
+    short = _FakeLive(_live_usable(3.0))
+
+    assert _admit(capacity_file, _FakePsDocker(stdout=running), enough) == 0
+    assert _admit(capacity_file, _FakePsDocker(stdout=running), short) == 1
+
+    assert capsys.readouterr().err == (
+        "spoke admission: refusing spoke 3 (u4i-self) — needs 0.25 GB idle + 2.50 GB "
+        "for a minimum test run + 0.60 GB hub = 3.35 GB, but only 3.00 GB is usable "
+        "now (host). Running spokes: u4i-alpha, u4i-beta. "
+        "Free memory or stop one with 'make down' in its checkout.\n"
+    )
+
+
+def test_admit_live_refusal_with_no_other_spokes_names_none(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running(ADMIT_HUB))
+    live = _FakeLive(_live_usable(1.0, LIVE_SOURCE_VM))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 1
+
+    assert capsys.readouterr().err == (
+        "spoke admission: refusing spoke 1 (u4i-self) — needs 0.25 GB idle + 2.50 GB "
+        "for a minimum test run = 2.75 GB, but only 1.00 GB is usable now (vm). "
+        "Running spokes: none. "
+        "Free memory or stop one with 'make down' in its checkout.\n"
+    )
+
+
+def test_admit_live_never_refuses_a_spoke_that_is_already_running(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    docker = _FakePsDocker(stdout=_running("u4i-alpha", ADMIT_SELF, ADMIT_HUB))
+    live = _FakeLive(LiveMemory(0, LIVE_SOURCE_HOST))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_admit_reads_live_memory_for_the_hub_project_after_docker_ps(
+    tmp_path: Path,
+) -> None:
+    docker = _FakePsDocker(stdout=_running(ADMIT_HUB))
+    live = _FakeLive(_live_usable(4.0))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 0
+
+    assert live.hub_projects == [ADMIT_HUB]
+    assert ["docker", *docker.calls[0]] == ADMIT_PS_ARGV
+    assert len(docker.calls) == 1
 
 
 def test_admit_never_refuses_a_spoke_that_is_already_running(
@@ -2517,17 +2643,27 @@ def test_admit_docker_failure_is_loud_and_never_admits(
     docker: _FakePsDocker,
     expected_err: str,
 ) -> None:
-    assert _admit(_admit_capacity(tmp_path), docker) == 1
+    live = _FakeLive(_live_usable(4.0))
+
+    assert _admit(_admit_capacity(tmp_path), docker, live) == 1
+
     assert capsys.readouterr().err == expected_err
+    assert live.hub_projects == []
 
 
+@pytest.mark.parametrize(
+    "live", [STATIC_LIVE, _live_usable(4.0)], ids=["static", "live"]
+)
 @pytest.mark.parametrize("missing_key", list(ADMIT_CAPACITY_LINES))
 def test_admit_capacity_file_missing_a_key_exits_non_zero(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], missing_key: str
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    missing_key: str,
+    live: LiveMemory,
 ) -> None:
     env_path = _admit_capacity(tmp_path, omit=missing_key)
 
-    assert _admit(env_path, _FakePsDocker()) == 1
+    assert _admit(env_path, _FakePsDocker(), _FakeLive(live)) == 1
 
     assert capsys.readouterr().err == (
         f"spoke admission: {missing_key} missing or invalid in {env_path} "
@@ -2576,15 +2712,27 @@ def test_admit_unreadable_capacity_file_exits_non_zero(
     assert captured_err.endswith("— run 'make capacity'\n")
 
 
-def test_admission_decision_reports_the_other_running_spokes() -> None:
+@pytest.mark.parametrize(
+    ("refusing_live", "message_start"),
+    [
+        (STATIC_LIVE, "refusing spoke 3 (u4i-self) — hub 0.60 GB"),
+        (_live_usable(2.5), "refusing spoke 3 (u4i-self) — needs 0.25 GB idle"),
+    ],
+    ids=["static", "live"],
+)
+def test_admission_decision_reports_the_other_running_spokes(
+    refusing_live: LiveMemory, message_start: str
+) -> None:
     env = dict(ADMIT_CAPACITY_LINES)
 
-    admitted = admission_decision(["u4i-alpha", ADMIT_SELF], ADMIT_SELF, ADMIT_HUB, env)
+    admitted = admission_decision(
+        ["u4i-alpha", ADMIT_SELF], ADMIT_SELF, ADMIT_HUB, env, refusing_live
+    )
     refused = admission_decision(
-        ["u4i-beta", "u4i-alpha", ADMIT_HUB], ADMIT_SELF, ADMIT_HUB, env
+        ["u4i-beta", "u4i-alpha", ADMIT_HUB], ADMIT_SELF, ADMIT_HUB, env, refusing_live
     )
 
     assert admitted == AdmissionResult(admitted=True, others=("u4i-alpha",), message="")
     assert refused.admitted is False
     assert refused.others == ("u4i-alpha", "u4i-beta")
-    assert refused.message.startswith("refusing spoke 3 (u4i-self)")
+    assert refused.message.startswith(message_start)
