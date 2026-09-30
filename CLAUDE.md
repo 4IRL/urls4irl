@@ -91,13 +91,7 @@ Review files are stored **co-located with each plan** at `plans/<topic>/reviews/
 
 ### Endpoint Registry
 
-`ENDPOINT_REGISTRY.md` at the project root maps every route through all implementation layers (handler → service → schema → template → JS module → tests). **When any code change adds, modifies, or removes an endpoint, its entry in the registry must be updated in the same commit.** This includes changes to:
-- Route handlers, decorators, or URL paths
-- Service functions called by routes
-- Pydantic request schemas
-- Templates rendered by routes
-- JS modules that call endpoints
-- Test files covering endpoints
+The endpoint registry is **generated** at `docs/endpoints/` (`endpoint-registry.json` is canonical; `ENDPOINT_REGISTRY.md` is rendered from it) by `make generate-endpoints`, and is never hand-edited. Regenerate and commit `docs/endpoints/` after changing a route, its decorators, services, schemas, templates, or JS linkage. A CI gate enforcing freshness lands later in the endpoint-registry-generator plan.
 
 ### Metrics Coverage for New Endpoints
 

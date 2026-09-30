@@ -1238,6 +1238,7 @@ def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> 
     [
         ("reset-test-dbs",),
         ("audit",),
+        ("generate-endpoints",),
         ("clear-db",),
         ("addmock",),
         ("test-js",),
@@ -1247,6 +1248,16 @@ def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> 
 )
 def test_recovery_and_host_targets_never_queue(make_args: tuple[str, ...]) -> None:
     assert "token_budget.py" not in _successful_dry_run(*make_args)
+
+
+def test_generate_endpoints_writes_into_the_mounted_docs_dir() -> None:
+    # web mounts only ./docs/endpoints (not the repo root), so both outputs must land there.
+    output = _successful_dry_run("generate-endpoints")
+    assert (
+        "endpoints generate --output /code/u4i/docs/endpoints/endpoint-registry.json"
+        in output
+    )
+    assert "--markdown-output /code/u4i/docs/endpoints/ENDPOINT_REGISTRY.md" in output
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")

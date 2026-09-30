@@ -35,6 +35,7 @@ from backend.extensions.metrics.writer import (
 from backend.extensions.notifications.notifications import NotificationSender
 from backend.extensions.request_timing import init_app as init_request_timing
 from backend.extensions.url_validation.url_validator import UrlValidator
+from backend.cli.endpoints import register_endpoints_cli
 from backend.cli.metrics import register_metrics_cli
 from backend.cli.mock_options import register_mocks_db_cli
 from backend.cli.openapi import register_openapi_cli
@@ -341,6 +342,7 @@ def create_app(
     # validate cap-override keys here (not in init_app, where url_map is empty).
     validate_latency_cap_overrides(app)
 
+    register_endpoints_cli(app)
     register_metrics_cli(app)
     register_mocks_db_cli(app)
     register_openapi_cli(app)
