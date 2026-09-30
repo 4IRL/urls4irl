@@ -1541,6 +1541,29 @@ def test_main_reports_a_malformed_registry(
     assert err.startswith(f"endpoint registry unreadable: {registry_path} — ")
 
 
+@pytest.mark.parametrize("unreadable_kind", ["directory", "invalid_utf8"])
+def test_main_reports_an_unreadable_registry(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], unreadable_kind: str
+) -> None:
+    """
+    GIVEN a --registry path that is a directory, or a file of invalid UTF-8
+    WHEN `report` runs
+    THEN it exits 1 with "endpoint registry unreadable" on stderr and empty stdout
+    """
+    registry_path = tmp_path / "endpoint-registry.json"
+    if unreadable_kind == "directory":
+        registry_path.mkdir()
+    else:
+        registry_path.write_bytes(b'{"endpoints": "\xff\xfe"}')
+
+    exit_code, out, err = _run_main(
+        ["report", "--files", "Makefile", "--registry", str(registry_path)], capsys
+    )
+
+    assert (exit_code, out) == (1, "")
+    assert err.startswith(f"endpoint registry unreadable: {registry_path} — ")
+
+
 @pytest.mark.parametrize("command", SUBCOMMANDS)
 def test_main_surfaces_a_selection_error_from_every_subcommand(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], command: list[str]
