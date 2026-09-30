@@ -345,12 +345,14 @@ HOST_STATIC_PROD_PINS = $(PRIMARY_ROOT)/requirements/requirements-prod.txt
 test-host-static: _require-mise _host-static-run ## Run the host-only static tests (Makefile/compose/entrypoint) in the primary clone's venv: make test-host-static [f=<paths>] [args=<extra-pytest-args>]
 
 # The host-static run itself, shared by test-host-static and test-affected (a host-static diff); carries its own mise guard.
+# PYTHONDONTWRITEBYTECODE=1: tests/ and backend/ are bind-mounted into `web`, which runs the same CPython 3.11 and would
+# reuse host-written __pycache__ files whose code objects carry host paths (source lookups then hit FileNotFoundError).
 _host-static-run: _require-mise
 	@test -n "$(PRIMARY_ROOT)" || { echo "test-host-static: not inside a git checkout" >&2; exit 1; }
 	@test -x "$(PRIMARY_ROOT)/venv/bin/python" || (cd "$(PRIMARY_ROOT)" && mise exec python -- python -m venv venv) || exit 1
 	@test -f "$(HOST_STATIC_TEST_PINS)" -a -f "$(HOST_STATIC_PROD_PINS)" || { echo "test-host-static: missing $(HOST_STATIC_TEST_PINS) or $(HOST_STATIC_PROD_PINS)" >&2; exit 1; }
 	@if [ ! -f "$(HOST_STATIC_STAMP)" ] || [ "$(HOST_STATIC_TEST_PINS)" -nt "$(HOST_STATIC_STAMP)" ] || [ "$(HOST_STATIC_PROD_PINS)" -nt "$(HOST_STATIC_STAMP)" ]; then grep -hvE '^(-r |psycopg2==)' "$(HOST_STATIC_TEST_PINS)" "$(HOST_STATIC_PROD_PINS)" | "$(PRIMARY_ROOT)/venv/bin/pip" install --quiet --disable-pip-version-check -r /dev/stdin && touch "$(HOST_STATIC_STAMP)"; fi
-	"$(PRIMARY_ROOT)/venv/bin/python" -m pytest $(or $(f),$(HOST_STATIC_TESTS)) -v $(args)
+	PYTHONDONTWRITEBYTECODE=1 "$(PRIMARY_ROOT)/venv/bin/python" -m pytest $(or $(f),$(HOST_STATIC_TESTS)) -v $(args)
 
 # Diff-scoped selection for test-affected / test-agent, resolved at parse time (the prerequisites depend on it, and a
 # $(MAKE) recursion would break the dry-run tests). Guarded by goal so no other target shells out; `:=` runs each

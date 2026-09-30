@@ -1718,6 +1718,15 @@ def test_host_static_still_runs_its_host_pytest_line() -> None:
     assert host_line.endswith("tests/unit/test_playwright_entrypoint.py -v ")
 
 
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_host_static_never_writes_bytecode_into_the_bind_mounted_tree() -> None:
+    # tests/ and backend/ are bind-mounted into `web` (same CPython 3.11), which would reuse
+    # host-written __pycache__ files whose code objects carry host paths.
+    output = _successful_dry_run("test-host-static")
+    host_line = _single_line_containing(output, HOST_STATIC_PYTEST_FRAGMENT)
+    assert host_line.startswith("PYTHONDONTWRITEBYTECODE=1 ")
+
+
 def test_agent_documents_the_token_budget() -> None:
     # test-agent has no budgeted line of its own, so it is pinned here rather than in
     # test_budgeted_targets_document_the_token_budget.
