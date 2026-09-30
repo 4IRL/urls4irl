@@ -163,6 +163,18 @@ def test_up_rejects_invalid_profile(profile_value: str, expected_message: str) -
             "affected-markers", "base", "base must not contain '$'", id="base"
         ),
         pytest.param(
+            "test-affected",
+            "AFFECTED_INT",
+            "AFFECTED_INT must not contain '$'",
+            id="affected-int",
+        ),
+        pytest.param(
+            "test-affected",
+            "AFFECTED_UI",
+            "AFFECTED_UI must not contain '$'",
+            id="affected-ui",
+        ),
+        pytest.param(
             "up", "U4I_WEB_PORT", "U4I_WEB_PORT must not contain '$'", id="web-port"
         ),
         pytest.param(
@@ -1624,6 +1636,40 @@ def test_base_with_a_single_quote_is_rejected(make_target: str) -> None:
     result = _dry_run(make_target, "base=main' ; touch pwned '")
     assert result.returncode != 0
     assert "base must not contain a single quote" in result.stderr
+    assert result.stdout == ""
+
+
+@pytest.mark.parametrize("make_target", ["test-affected", "test-agent"])
+@pytest.mark.parametrize("variable_name", ["AFFECTED_INT", "AFFECTED_UI"])
+def test_affected_override_with_a_single_quote_is_rejected(
+    make_target: str, variable_name: str
+) -> None:
+    # A command-line override is spliced into -m '$(AFFECTED_…)', so a ' would break out of the quoted word.
+    result = _dry_run(make_target, f"{variable_name}=members' ; touch pwned '")
+    assert result.returncode != 0
+    assert f"{variable_name} must not contain a single quote" in result.stderr
+    assert result.stdout == ""
+
+
+@pytest.mark.parametrize("variable_name", ["AFFECTED_INT", "AFFECTED_UI"])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param('members" ; touch pwned ; echo "', id="double-quote"),
+        pytest.param("members`touch pwned`", id="backtick"),
+        pytest.param("members\\", id="backslash"),
+    ],
+)
+def test_affected_override_cannot_break_out_of_the_exec_string(
+    variable_name: str, payload: str
+) -> None:
+    # The quoted -m word sits inside the double-quoted $(EXEC_WEB) "…" string, which the host shell parses first.
+    result = _dry_run("test-affected", f"{variable_name}={payload}")
+    assert result.returncode != 0
+    assert (
+        f"{variable_name} must not contain a double quote, backtick or backslash"
+        in result.stderr
+    )
     assert result.stdout == ""
 
 

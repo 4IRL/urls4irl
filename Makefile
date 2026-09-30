@@ -1,6 +1,7 @@
-# p (profile), c (restart), e (endpoint-info), base (affected-markers / test-affected / test-agent), U4I_WEB_PORT /
-# U4I_VITE_PORT (spliced into the _ports-resolve recipe) and U4I_TOKEN_DIR / U4I_MEMORY_WAIT / U4I_SETTLE_SECONDS (spliced
-# into every budgeted test line) are rejected when they contain a `$`, checked unexpanded via $(value …):
+# p (profile), c (restart), e (endpoint-info), base and AFFECTED_INT / AFFECTED_UI (affected-markers / test-affected /
+# test-agent), U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) and U4I_TOKEN_DIR / U4I_MEMORY_WAIT /
+# U4I_SETTLE_SECONDS (spliced into every budgeted test line) are rejected when they contain a `$`, checked unexpanded via
+# $(value …):
 # expanding one would run any embedded make function (e.g. $(shell …)). These must stay the first lines: make 4.4+
 # exports command-line variables into every $(shell …) environment, so the first $(shell …) below would already
 # expand them.
@@ -10,6 +11,15 @@ $(if $(findstring $$,$(value e)),$(error e must not contain '$$'))
 $(if $(findstring $$,$(value base)),$(error base must not contain '$$'))
 # base is also spliced into a single-quoted shell word (--base '$(base)'), so a ' in it is refused as well.
 $(if $(findstring ',$(value base)),$(error base must not contain a single quote (it is passed as one single-quoted shell word)))
+# A command-line AFFECTED_INT= / AFFECTED_UI= override skips the selector and is spliced into -m '$(AFFECTED_…)'
+# on the budgeted pytest lines, so it gets the same $ and ' guards as base. That single-quoted word also sits inside
+# the double-quoted $(EXEC_WEB) "…" string, which the host shell parses first, so ", ` and \ are refused as well.
+$(if $(findstring $$,$(value AFFECTED_INT)),$(error AFFECTED_INT must not contain '$$'))
+$(if $(findstring ',$(value AFFECTED_INT)),$(error AFFECTED_INT must not contain a single quote (it is passed as one single-quoted shell word)))
+$(if $(or $(findstring ",$(value AFFECTED_INT)),$(findstring `,$(value AFFECTED_INT)),$(findstring \,$(value AFFECTED_INT))),$(error AFFECTED_INT must not contain a double quote, backtick or backslash (it is spliced into a double-quoted shell string)))
+$(if $(findstring $$,$(value AFFECTED_UI)),$(error AFFECTED_UI must not contain '$$'))
+$(if $(findstring ',$(value AFFECTED_UI)),$(error AFFECTED_UI must not contain a single quote (it is passed as one single-quoted shell word)))
+$(if $(or $(findstring ",$(value AFFECTED_UI)),$(findstring `,$(value AFFECTED_UI)),$(findstring \,$(value AFFECTED_UI))),$(error AFFECTED_UI must not contain a double quote, backtick or backslash (it is spliced into a double-quoted shell string)))
 $(if $(findstring $$,$(value U4I_WEB_PORT)),$(error U4I_WEB_PORT must not contain '$$'))
 $(if $(findstring $$,$(value U4I_VITE_PORT)),$(error U4I_VITE_PORT must not contain '$$'))
 $(if $(findstring $$,$(value U4I_TOKEN_DIR)),$(error U4I_TOKEN_DIR must not contain '$$'))
