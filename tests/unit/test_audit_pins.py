@@ -641,7 +641,7 @@ def test_audit_pins_module_is_stdlib_only() -> None:
     probe_script = (
         "import importlib.util\n"
         "import sys\n"
-        "sys.path = [p for p in sys.path if p not in ('', PROJECT_ROOT)]\n"
+        "sys.path = [path_entry for path_entry in sys.path if path_entry not in ('', PROJECT_ROOT)]\n"
         "spec = importlib.util.spec_from_file_location('audit_pins_leaf', MODULE_FILE)\n"
         "module = importlib.util.module_from_spec(spec)\n"
         "sys.modules[spec.name] = module\n"
