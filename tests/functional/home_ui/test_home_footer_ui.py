@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from tests.functional.locators import HomePageLocators as HPL

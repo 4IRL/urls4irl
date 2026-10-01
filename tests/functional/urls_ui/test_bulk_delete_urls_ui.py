@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend import db

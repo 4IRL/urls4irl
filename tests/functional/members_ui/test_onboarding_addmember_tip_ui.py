@@ -14,8 +14,8 @@ addMember eligibility (``nudges.ts`` registry):
 seeded as seen so the curated sequence has already advanced to addMember.
 """
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import USERNAME_BASE

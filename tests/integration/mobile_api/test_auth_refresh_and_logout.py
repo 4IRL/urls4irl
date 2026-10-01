@@ -1,6 +1,6 @@
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend.api_v1.constants import ApiAuthErrorCodes
 from backend.api_v1.services.tokens import issue_refresh_token

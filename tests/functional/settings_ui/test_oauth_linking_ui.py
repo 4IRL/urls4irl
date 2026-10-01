@@ -15,8 +15,8 @@ from __future__ import annotations
 import re
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend import db

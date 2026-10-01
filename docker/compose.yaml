@@ -63,7 +63,7 @@ services:
         retries: 5
 
   redis:
-    image: redis:6.2
+    image: redis:6.2.24
     container_name: u4i-prod-redis
     restart: unless-stopped
     secrets:
@@ -84,7 +84,7 @@ services:
       /bin/sh -c "redis-server --appendonly yes --requirepass $(cat /run/secrets/REDIS_PASSWORD)"
 
   redis-metrics:
-    image: redis:6.2
+    image: redis:6.2.24
     container_name: u4i-prod-redis-metrics
     restart: unless-stopped
     secrets:

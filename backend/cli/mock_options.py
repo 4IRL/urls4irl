@@ -8,15 +8,14 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 from sqlalchemy.exc import ProgrammingError
 
-from backend.utils.db_table_names import TABLE_NAMES
-from backend.db import db
 from backend.cli.mock_constants import MOCK_TRACKING_SEED_URL_PAIRS, TEST_USER_COUNT
 from backend.cli.mock_data.admin import generate_mock_admin
 from backend.cli.mock_data.tags import generate_mock_tags
-from backend.cli.mock_data.urls import generate_mock_urls, generate_custom_mock_url
+from backend.cli.mock_data.urls import generate_custom_mock_url, generate_mock_urls
 from backend.cli.mock_data.users import generate_mock_users
 from backend.cli.mock_data.utubmembers import generate_mock_utubmembers
 from backend.cli.mock_data.utubs import generate_mock_utubs
+from backend.db import db
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics.events import DeviceType, EventName
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeKind
@@ -32,6 +31,7 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.datetime_utils import utc_now
+from backend.utils.db_table_names import TABLE_NAMES
 
 SEED_TEST_DATA_HOUR_OFFSETS: tuple[int, ...] = (0, 1, 2)
 

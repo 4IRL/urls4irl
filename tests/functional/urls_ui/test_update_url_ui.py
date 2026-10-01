@@ -2,9 +2,9 @@ import random
 from typing import Tuple
 from urllib.parse import urlsplit
 
+import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
-import pytest
 from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import (
@@ -21,8 +21,8 @@ from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import URL_FAILURE
 from tests.functional.db_utils import (
     add_mock_urls,
-    get_utub_this_user_created,
     get_url_in_utub,
+    get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (

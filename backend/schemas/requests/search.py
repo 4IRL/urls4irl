@@ -10,7 +10,8 @@ from backend.utils.constants import SEARCH_CONSTANTS
 
 class SearchQuerySchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    q: str = Field(
+    query: str = Field(
+        alias="q",
         min_length=SEARCH_CONSTANTS.MIN_QUERY_LENGTH,
         max_length=SEARCH_CONSTANTS.MAX_QUERY_LENGTH,
         description="Case-insensitive search term matched against URL strings, titles, and tags.",
@@ -29,7 +30,7 @@ class SearchQuerySchema(BaseModel):
         json_schema_extra={"explode": False},
     )
 
-    @field_validator("q", mode="before")
+    @field_validator("query", mode="before")
     @classmethod
     def _strip_query(cls, value: str | None) -> str | None:
         return value.strip() if isinstance(value, str) else value

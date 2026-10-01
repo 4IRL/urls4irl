@@ -6,17 +6,17 @@ import enum
 import json
 from dataclasses import dataclass
 
-from sqlalchemy import Enum as SQLEnum, String, inspect, or_
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import String, inspect, or_
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.sql.elements import ColumnElement
-
-from backend import db
-from backend.admin.user_service import LIKE_ESCAPE_CHAR, escape_like_wildcards
 
 # Imported for its side effect: backend/models/__init__.py imports every model
 # module, so the mapper registry iterated below is fully populated even in
 # testing mode (where create_app skips the migration-time import).
 import backend.models  # noqa: F401
+from backend import db
+from backend.admin.user_service import LIKE_ESCAPE_CHAR, escape_like_wildcards
 
 _TABLE_GRID_LIMIT: int = 50
 _CELL_TRUNCATE_LENGTH: int = 120

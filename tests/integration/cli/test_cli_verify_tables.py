@@ -1,7 +1,8 @@
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import inspect as sa_inspect, text
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
 from backend import db

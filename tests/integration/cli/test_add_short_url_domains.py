@@ -1,4 +1,5 @@
 from typing import Any
+
 import pytest
 import redis
 from redis import Redis

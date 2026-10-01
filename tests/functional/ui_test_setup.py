@@ -1,12 +1,13 @@
 import logging
-import requests
 import socket
 from time import sleep
 from typing import Optional, Tuple
 
+import requests
 from flask import Flask
 from flask.testing import FlaskCliRunner
-from playwright.sync_api import Browser, BrowserType, Error as PlaywrightError
+from playwright.sync_api import Browser, BrowserType
+from playwright.sync_api import Error as PlaywrightError
 
 from backend import create_app, db
 from backend.config import ConfigTestUI
@@ -109,9 +110,9 @@ def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
     for port in range(start_port, end_port + 1):
         if port in BROWSER_UNSAFE_PORTS:
             continue
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe_socket:
             try:
-                s.bind(("127.0.0.1", port))
+                probe_socket.bind(("127.0.0.1", port))
                 return port
             except OSError:
                 continue

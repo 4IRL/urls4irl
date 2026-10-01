@@ -1,5 +1,5 @@
 from backend.utils.strings.json_strs import FAILURE_GENERAL
-from backend.utils.strings.model_strs import UTUB_TAG, TAG_COUNTS_MODIFIED
+from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED, UTUB_TAG
 from backend.utils.strings.url_strs import URL_GENERAL
 from backend.utils.strings.utub_strs import UTUB_GENERAL
 

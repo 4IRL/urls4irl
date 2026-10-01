@@ -53,7 +53,7 @@ services:
 
   redis:
     restart: unless-stopped
-    image: redis:6.2
+    image: redis:6.2.24
     container_name: u4i-dev-redis
     command: redis-server --databases 32
     volumes:
@@ -66,7 +66,7 @@ services:
 
   redis-metrics:
     restart: unless-stopped
-    image: redis:6.2
+    image: redis:6.2.24
     container_name: u4i-dev-redis-metrics
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
     healthcheck:

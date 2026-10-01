@@ -26,9 +26,9 @@ const HISTORY_COLLAPSE_WINDOW_MS = 5 * MINUTE_MS;
 // belong to the same forward-typing or backspacing chain (e.g. "reh" -> "rehre"
 // or "rehre" -> "reh").
 function isPrefixChain(left: string, right: string): boolean {
-  const a = left.toLowerCase();
-  const b = right.toLowerCase();
-  return a.startsWith(b) || b.startsWith(a);
+  const leftLower = left.toLowerCase();
+  const rightLower = right.toLowerCase();
+  return leftLower.startsWith(rightLower) || rightLower.startsWith(leftLower);
 }
 
 // Reads + parses the persisted history. Returns [] on any read/parse error or

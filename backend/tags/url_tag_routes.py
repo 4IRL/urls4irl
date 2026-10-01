@@ -8,9 +8,9 @@ from backend.api_common.auth_decorators import (
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.models.utub_tags import Utub_Tags
-from backend.models.utubs import Utubs
-from backend.models.utub_urls import Utub_Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.tags import (
     AddTagRequest,

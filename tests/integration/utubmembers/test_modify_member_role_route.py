@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from typing import Tuple
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import db
 from backend.members.constants import UTubMembersErrorCodes

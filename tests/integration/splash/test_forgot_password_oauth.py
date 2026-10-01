@@ -1,8 +1,8 @@
 from unittest import mock
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 from requests import Response
 from werkzeug.test import TestResponse
 

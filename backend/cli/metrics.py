@@ -5,7 +5,6 @@ from pathlib import Path
 import click
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
-
 from pydantic import ValidationError
 
 from backend.extensions.metrics.buckets import previous_window, resolve_query_window

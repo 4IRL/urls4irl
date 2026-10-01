@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import Annotated
+
 from pydantic import BeforeValidator
+
 from backend.api_common.input_sanitization import sanitize_user_input
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 

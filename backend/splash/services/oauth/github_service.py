@@ -40,13 +40,13 @@ from backend.splash.services.oauth.linking_service import (
 )
 from backend.splash.services.user_login import verify_and_provide_next_page
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
-from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE,
     GENERIC_FAILURE_MESSAGE,
     GITHUB_INVALID_CALLBACK_QUERY_MESSAGE,
     GITHUB_UNVERIFIED_EMAIL_MESSAGE,
 )
+from backend.utils.strings.user_strs import USER_FAILURE
 
 # Relative resource paths resolved by Authlib against the registered
 # `api_base_url` — `https://api.github.com/` in production, the fake

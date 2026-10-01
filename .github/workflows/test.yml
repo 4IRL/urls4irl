@@ -100,7 +100,7 @@ jobs:
 
       # Redis service configuration
       redis:
-        image: 'redis:6.2.16-alpine'
+        image: 'redis:6.2.24-alpine'
         ports:
           - 6379:6379
         options: >-
@@ -111,7 +111,7 @@ jobs:
 
       # Dedicated metrics Redis container (isolated from shared sessions/limiter).
       redis-metrics:
-        image: 'redis:6.2.16-alpine'
+        image: 'redis:6.2.24-alpine'
         ports:
           - 6380:6379
         command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
@@ -152,7 +152,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python3.11 -m pip install --upgrade pip;
+          python3.11 -m pip install --upgrade pip==26.2.1;
           pip install -r requirements/requirements-test.txt;
 
       - name: Run tests
@@ -180,7 +180,9 @@ jobs:
 
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Overall backstop only. The test budget lives on the "Run tests" step, so slow setup
+    # (e.g. Playwright's apt deps) no longer counts against the tests.
+    timeout-minutes: 25
 
     # Splits tests into multiple workers
     strategy:
@@ -225,7 +227,7 @@ jobs:
 
       # Redis service configuration
       redis:
-        image: 'redis:6.2.16-alpine'
+        image: 'redis:6.2.24-alpine'
         ports:
           - 6379:6379
         options: >-
@@ -236,7 +238,7 @@ jobs:
 
       # Dedicated metrics Redis container (isolated from shared sessions/limiter).
       redis-metrics:
-        image: 'redis:6.2.16-alpine'
+        image: 'redis:6.2.24-alpine'
         ports:
           - 6380:6379
         command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
@@ -277,14 +279,15 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python3.11 -m pip install --upgrade pip;
+          python3.11 -m pip install --upgrade pip==26.2.1;
           pip install -r requirements/requirements-test.txt;
 
       # Every worker in this job is a UI worker, so the chromium binary is
       # provisioned unconditionally (previously bounded to a numeric worker
-      # range within a shared job).
-      - name: Install Playwright browser
-        run: python3.11 -m playwright install chromium --with-deps
+      # range within a shared job). The same cache is warmed on main by
+      # playwright-cache-warm.yml, so a new PR's first run can restore it.
+      - name: Install Playwright browser (cached apt deps + browser)
+        uses: ./.github/actions/setup-playwright
 
       - name: Install pinned toolchain (.mise.toml) + cache pnpm store
         uses: ./.github/actions/setup-pnpm
@@ -303,7 +306,8 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
-        timeout-minutes: 15
+        # The tests' own budget (formerly the job-level limit); setup time no longer counts against it.
+        timeout-minutes: 10
         run: |
           if [[ "$XDIST_N" -gt 0 ]]; then
             python3.11 -m pytest -n "$XDIST_N" --dist=loadscope

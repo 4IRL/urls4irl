@@ -1,6 +1,6 @@
+import pytest
 from flask import url_for
 from flask_login import current_user
-import pytest
 
 from backend import db
 from backend.metrics.events import EventName

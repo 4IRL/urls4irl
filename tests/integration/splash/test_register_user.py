@@ -1,9 +1,9 @@
 from copy import deepcopy
 from unittest.mock import MagicMock
 
+import pytest
 from flask import Flask, request, url_for
 from flask_login import current_user
-import pytest
 from requests import Response
 
 from backend import db
@@ -22,10 +22,10 @@ from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.user_strs import MEMBER_SUCCESS, USER_FAILURE
 from tests.integration.splash.conftest import register_json
 from tests.integration.system.metrics_helpers import (
+    REJECTION_REASON_DIM_KEY,
     count_counter_keys,
     find_counter_keys,
     parse_dims,
-    REJECTION_REASON_DIM_KEY,
 )
 from tests.integration.utils import assert_response_conforms_to_schema
 from tests.models_for_test import valid_user_1, valid_user_2, valid_user_3

@@ -49,16 +49,13 @@ if __name__ == "__main__":
         INVALID_SCHEME_PREFIXES,
         OTHER_VALID_SCHEMES,
         PROTOCOL,
-        TRACKING_QUERY_PARAMS,
         TRACKING_QUERY_PARAM_PREFIXES,
+        TRACKING_QUERY_PARAMS,
         WEB_SCHEMES_FOR_TRACKING_STRIP,
     )
 
 else:
-    from backend.utils.strings.url_validation_strs import (
-        URL_VALIDATION as VALIDATION_STRS,
-    )
-    from backend.app_logger import safe_add_log, warning_log, critical_log
+    from backend.app_logger import critical_log, safe_add_log, warning_log
     from backend.extensions.url_validation.constants import (
         CORE_SCHEMES,
         DEV_URLS,
@@ -67,9 +64,12 @@ else:
         INVALID_SCHEME_PREFIXES,
         OTHER_VALID_SCHEMES,
         PROTOCOL,
-        TRACKING_QUERY_PARAMS,
         TRACKING_QUERY_PARAM_PREFIXES,
+        TRACKING_QUERY_PARAMS,
         WEB_SCHEMES_FOR_TRACKING_STRIP,
+    )
+    from backend.utils.strings.url_validation_strs import (
+        URL_VALIDATION as VALIDATION_STRS,
     )
 
 

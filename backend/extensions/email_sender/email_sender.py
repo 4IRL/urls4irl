@@ -2,14 +2,14 @@ import traceback
 from json import dumps
 
 from flask import render_template
-from requests import Response
 from mailjet_rest import Client
 from mailjet_rest.client import ApiError, TimeoutError
+from requests import Response
 
 from backend.app_logger import error_log, safe_get_request_id
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE
-from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.email_validation_strs import EMAILS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
@@ -181,17 +181,17 @@ class EmailSender:
         try:
             return self._mailjet_client.send.create(data=message)
 
-        except (ApiError, TimeoutError) as e:
+        except (ApiError, TimeoutError) as mailjet_error:
             # Can occur if not connected to internet, or on a limited service
             # TODO: Include the error output for logging but just return error here
             error_log(
-                f"[{request_id}] Error with Mailjet service: {e}\n\n[BEGIN EXCEPTION]\n\n{traceback.format_exc()}\n[END EXCEPTION]\n"
+                f"[{request_id}] Error with Mailjet service: {mailjet_error}\n\n[BEGIN EXCEPTION]\n\n{traceback.format_exc()}\n[END EXCEPTION]\n"
             )
             return self._mock_response_builder(500)
 
-        except Exception as e:
+        except Exception as send_error:
             # TODO: Include the error output for logging but just return error here
-            error_log(f"[{request_id}] Error with Mailjet service: {e}")
+            error_log(f"[{request_id}] Error with Mailjet service: {send_error}")
             return self._mock_response_builder(500)
 
     @staticmethod

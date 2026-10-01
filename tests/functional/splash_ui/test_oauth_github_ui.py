@@ -13,8 +13,8 @@ The provider-agnostic forgot-password UI test lives in
 
 from __future__ import annotations
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend import db

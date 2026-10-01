@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Locator, Page
 
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS

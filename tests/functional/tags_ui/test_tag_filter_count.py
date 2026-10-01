@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from flask import Flask, url_for
 import pytest
+from flask import Flask, url_for
 from playwright.sync_api import Page
 
 from backend import db
+from backend.cli.mock_constants import MOCK_TAGS
 from backend.models.urls import Urls
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -14,7 +15,6 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import TAG_FORM
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import DELETE_URL_WARNING
-from backend.cli.mock_constants import MOCK_TAGS
 from tests.functional.db_utils import (
     add_tag_to_utub_user_created,
     add_two_tags_across_urls_in_utub,

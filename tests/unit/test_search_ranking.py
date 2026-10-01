@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs

@@ -70,7 +70,15 @@ repos:
       entry: make lint-actions
       language: system
       types: [yaml]
-      files: ^\.github/workflows/
+      files: ^\.github/(workflows|actions)/
+      pass_filenames: false
+      require_serial: true
+
+    - id: audit-pins
+      name: audit-pins
+      entry: make audit-pins
+      language: system
+      files: ^(requirements/.*\.txt|frontend/package\.json|frontend/pnpm-workspace\.yaml|\.mise\.toml|docker/.*|\.github/.*|scripts/audit_pins\.py)$
       pass_filenames: false
       require_serial: true
 

@@ -1,7 +1,9 @@
 from urllib.parse import parse_qs, urlencode, urlparse
+
 from flask import request, url_for
 from flask_login import current_user, login_user
 from werkzeug.security import check_password_hash, generate_password_hash
+
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.metrics.writer import record_event

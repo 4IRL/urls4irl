@@ -2,8 +2,9 @@
 
 from typing import cast
 
-from playwright.sync_api import Browser, BrowserType, Error as PlaywrightError
 import pytest
+from playwright.sync_api import Browser, BrowserType
+from playwright.sync_api import Error as PlaywrightError
 
 from tests.functional import ui_test_setup
 from tests.functional.ui_test_setup import (

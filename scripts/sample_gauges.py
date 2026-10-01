@@ -20,12 +20,12 @@ transaction. On any failure the whole batch is rolled back and the run fails
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import importlib.util
 import logging
 import os
 import sys
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from types import ModuleType

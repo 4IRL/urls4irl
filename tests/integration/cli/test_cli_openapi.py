@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from enum import IntEnum
 import json
+from enum import IntEnum
 from typing import get_args
 
 import pytest
@@ -159,7 +159,7 @@ def test_delete_utub_has_integer_path_param(runner, tmp_path):
     delete_op = spec["paths"]["/utubs/{utub_id}"]["delete"]
     assert "parameters" in delete_op
     utub_id_param = next(
-        (p for p in delete_op["parameters"] if p["name"] == "utub_id"), None
+        (param for param in delete_op["parameters"] if param["name"] == "utub_id"), None
     )
     assert utub_id_param is not None, "utub_id param not found"
     assert utub_id_param["schema"]["type"] == "integer"
@@ -179,7 +179,7 @@ def test_post_utub_urls_has_path_param_and_request_body(runner, tmp_path):
     # Path param
     assert "parameters" in post_op
     utub_id_param = next(
-        (p for p in post_op["parameters"] if p["name"] == "utub_id"), None
+        (param for param in post_op["parameters"] if param["name"] == "utub_id"), None
     )
     assert utub_id_param is not None, "utub_id param not found"
 

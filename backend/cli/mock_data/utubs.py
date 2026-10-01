@@ -1,9 +1,9 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from backend.cli.mock_constants import TEST_USER_COUNT, MOCK_UTUB_NAME_BASE
+from backend.cli.mock_constants import MOCK_UTUB_NAME_BASE, TEST_USER_COUNT
 from backend.models.users import Users
-from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utubs import Utubs
 
 
 def generate_mock_utubs(db: SQLAlchemy, no_dupes: bool):
@@ -15,8 +15,8 @@ def generate_mock_utubs(db: SQLAlchemy, no_dupes: bool):
         db (SQLAlchemy): Database engine and connection for committing mock data
         no_dupes (bool): True if wanting to avoid creating duplicate UTubs, else will create UTubs with duplicate names
     """
-    for i in range(TEST_USER_COUNT):
-        creator_id = i + 1
+    for user_index in range(TEST_USER_COUNT):
+        creator_id = user_index + 1
         utub_name = f"{MOCK_UTUB_NAME_BASE}{creator_id}"
         creator: Users = Users.query.get(creator_id)
 

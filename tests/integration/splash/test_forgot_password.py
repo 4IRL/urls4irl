@@ -1,25 +1,26 @@
 from datetime import datetime, timedelta
-from flask import url_for
-import pytest
 
+import pytest
+from flask import url_for
+
+from backend import db
 from backend.api_common.request_errors import INVALID_EMAIL_STR
 from backend.metrics.events import EventName
+from backend.models.forgot_passwords import Forgot_Passwords
+from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
 from backend.schemas.users import ForgotPasswordResponseSchema
 from backend.splash.utils import verify_token
-from backend.utils.strings.html_identifiers import IDENTIFIERS
-from tests.models_for_test import valid_user_1
-from backend import db
-from backend.models.forgot_passwords import Forgot_Passwords
-from backend.models.users import Users
 from backend.utils import constants as U4I_CONSTANTS
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
-from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
+from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
-from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
+from tests.models_for_test import valid_user_1
 
 pytestmark = pytest.mark.splash
 

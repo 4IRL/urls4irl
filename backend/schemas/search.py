@@ -7,7 +7,7 @@ from pydantic import Field
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagOnAddDeleteSchema
 from backend.search.constants import MatchedField
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
 
 if TYPE_CHECKING:
@@ -17,18 +17,18 @@ if TYPE_CHECKING:
 
 class SearchHitSchema(BaseSchema):
     utub_url_id: int = Field(
-        alias=M.UTUB_URL_ID,
+        alias=MODELS.UTUB_URL_ID,
         description="Utub_Urls association id (the .urlRow[utuburlid] DOM key)",
     )
-    url_string: str = Field(alias=M.URL_STRING, description="The URL string")
+    url_string: str = Field(alias=MODELS.URL_STRING, description="The URL string")
     url_title: str = Field(
-        alias=M.URL_TITLE, description="Per-UTub display title for the URL"
+        alias=MODELS.URL_TITLE, description="Per-UTub display title for the URL"
     )
     url_tags: list[UtubTagOnAddDeleteSchema] = Field(
-        alias=M.URL_TAGS, description="Tags applied to this URL in its UTub"
+        alias=MODELS.URL_TAGS, description="Tags applied to this URL in its UTub"
     )
     matched_fields: list[MatchedField] = Field(
-        alias=M.MATCHED_FIELDS,
+        alias=MODELS.MATCHED_FIELDS,
         description="Which fields the query matched (title/url/tag) — consumers may highlight these in the UI.",
     )
 
@@ -60,7 +60,8 @@ class SearchUtubGroupSchema(BaseSchema):
         alias=UTUB_NAME, description="Source UTub name for the group label"
     )
     urls: list[SearchHitSchema] = Field(
-        alias=M.URLS, description="Matching URLs within this UTub, ranked best-first"
+        alias=MODELS.URLS,
+        description="Matching URLs within this UTub, ranked best-first",
     )
 
     @classmethod
@@ -79,7 +80,7 @@ class SearchUtubGroupSchema(BaseSchema):
 
 class SearchResultsSchema(BaseSchema):
     results: list[SearchUtubGroupSchema] = Field(
-        alias=M.SEARCH_RESULTS,
+        alias=MODELS.SEARCH_RESULTS,
         description="Groups ranked best-first; one group per source UTub with ≥1 matching URL",
     )
 

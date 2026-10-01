@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page
 
 from backend import db
@@ -7,6 +7,7 @@ from backend.models.utub_members import Utub_Members
 from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.utub_strs import UTUB_CREATE_MSG
+from tests.functional.db_utils import create_test_searchable_utubs
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_active_utub,
@@ -14,7 +15,6 @@ from tests.functional.playwright_assert_utils import (
     assert_tooltip_animates,
     assert_visible_css_selector,
 )
-from tests.functional.db_utils import create_test_searchable_utubs
 from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid,
 )

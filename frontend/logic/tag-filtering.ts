@@ -56,8 +56,10 @@ export function computeVisibleTagCounts(
  * Given an array of tag objects with a `visibleCount` property, returns
  * a new array sorted descending by visibleCount.
  */
-export function sortTagsByCount<T extends { visibleCount: number }>(
-  tags: T[],
-): T[] {
-  return [...tags].sort((a, b) => b.visibleCount - a.visibleCount);
+export function sortTagsByCount<CountedTag extends { visibleCount: number }>(
+  tags: CountedTag[],
+): CountedTag[] {
+  return [...tags].sort(
+    (left, right) => right.visibleCount - left.visibleCount,
+  );
 }

@@ -2,9 +2,9 @@ from flask_sqlalchemy import SQLAlchemy
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
 from backend.models.urls import Urls
-from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 
 
 def generate_mock_urls(db: SQLAlchemy):

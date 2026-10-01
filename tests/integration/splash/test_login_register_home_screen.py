@@ -1,6 +1,6 @@
+import pytest
 from flask import Flask, url_for
 from markupsafe import escape
-import pytest
 
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import CONSTANTS

@@ -1,7 +1,7 @@
 import re
 
-from flask import url_for
 import pytest
+from flask import url_for
 
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now

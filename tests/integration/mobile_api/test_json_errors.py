@@ -1,6 +1,6 @@
+import pytest
 from flask import Flask
 from flask.testing import FlaskClient
-import pytest
 
 from backend.utils.strings.api_auth_strs import API_AUTH
 from backend.utils.strings.json_strs import FAILURE_GENERAL

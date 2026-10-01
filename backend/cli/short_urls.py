@@ -1,5 +1,4 @@
 import redis
-
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 

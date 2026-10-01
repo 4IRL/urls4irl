@@ -32,6 +32,8 @@ from backend.schemas.utubs import (
     UtubDetailSchema,
     UtubNameUpdatedResponseSchema,
 )
+from backend.utils.strings.openapi_strs import OPEN_API
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.services.create_utubs import create_new_utub
 from backend.utubs.services.delete_utubs import delete_utub_for_user
@@ -43,8 +45,6 @@ from backend.utubs.services.update_utubs import (
     update_utub_desc_if_new,
     update_utub_name_if_new,
 )
-from backend.utils.strings.openapi_strs import OPEN_API
-from backend.utils.strings.utub_strs import UTUB_FAILURE
 
 
 @api_v1.route("/utubs", methods=["POST"])

@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
+from backend.schemas.requests._sanitize import SanitizedStr
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE
-from backend.schemas.requests._sanitize import SanitizedStr
 
 TagStringItem = Annotated[
     SanitizedStr,

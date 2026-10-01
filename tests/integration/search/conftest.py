@@ -2,12 +2,12 @@ import pytest
 from flask import Flask
 
 from backend import db
-from backend.models.utub_tags import Utub_Tags
 from backend.models.users import Users
-from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
-from backend.models.utub_urls import Utub_Urls
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 
 
 @pytest.fixture

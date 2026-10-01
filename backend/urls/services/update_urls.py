@@ -1,5 +1,6 @@
 from flask import current_app
 from flask_login import current_user
+
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs, warning_log

@@ -23,9 +23,9 @@ from __future__ import annotations
 
 from unittest import mock
 
+import pytest
 from flask import Flask, url_for
 from flask_login import current_user
-import pytest
 
 from backend import db
 from backend.metrics.events import EventName

@@ -151,6 +151,7 @@ NO_IMPACT_GLOBS: tuple[str, ...] = (
     "migrations/README",
     "frontend/.prettierignore",
     "frontend/eslint.config.js",
+    "frontend/eslint-rules/*",
     # vitest files run under make test-js, not pytest.
     "frontend/*__tests__/*",
 )
@@ -248,10 +249,14 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     "scripts/token_budget.py",
     "scripts/capacity.py",
     "scripts/spoke_ports.py",
+    "scripts/audit_pins.py",
     "tests/unit/test_makefile_profiles.py",
     "tests/unit/test_compose_hub.py",
     "tests/unit/test_compose_profiles.py",
+    "tests/unit/test_audit_pins.py",
     "tests/unit/test_playwright_entrypoint.py",
+    # Imported by test_audit_pins.py (a host-static test).
+    "tests/unit/stdlib_only_utils.py",
 )
 
 # UI test directories -> the markers their files carry. Five host mobile-only

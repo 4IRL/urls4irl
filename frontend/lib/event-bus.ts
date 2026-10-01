@@ -71,29 +71,29 @@ export const AppEvents = Object.freeze({
 
 const _handlers = new Map<string, Set<(payload: unknown) => void>>();
 
-export function on<K extends keyof AppEventMap>(
-  event: K,
-  handler: AppEventMap[K] extends void
+export function on<EventName extends keyof AppEventMap>(
+  event: EventName,
+  handler: AppEventMap[EventName] extends void
     ? () => void
-    : (payload: AppEventMap[K]) => void,
+    : (payload: AppEventMap[EventName]) => void,
 ): () => void {
   if (!_handlers.has(event)) _handlers.set(event, new Set());
   _handlers.get(event)!.add(handler as (payload: unknown) => void);
   return () => off(event, handler);
 }
 
-export function off<K extends keyof AppEventMap>(
-  event: K,
-  handler: AppEventMap[K] extends void
+export function off<EventName extends keyof AppEventMap>(
+  event: EventName,
+  handler: AppEventMap[EventName] extends void
     ? () => void
-    : (payload: AppEventMap[K]) => void,
+    : (payload: AppEventMap[EventName]) => void,
 ): void {
   _handlers.get(event)?.delete(handler as (payload: unknown) => void);
 }
 
-export function emit<K extends keyof AppEventMap>(
-  event: K,
-  ...args: AppEventMap[K] extends void ? [] : [AppEventMap[K]]
+export function emit<EventName extends keyof AppEventMap>(
+  event: EventName,
+  ...args: AppEventMap[EventName] extends void ? [] : [AppEventMap[EventName]]
 ): void {
   _handlers.get(event)?.forEach((handler) => handler(args[0]));
 }

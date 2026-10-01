@@ -26,20 +26,20 @@ export function registerJQueryPlugins(): void {
   };
 
   $.fn.onExact = function (events, callback, options = {}) {
-    return this.on(events, function (e) {
+    return this.on(events, function (event) {
       // Check if currentTarget matches the bound element
-      if (!$(e.currentTarget).is(this)) return;
+      if (!$(event.currentTarget).is(this)) return;
 
       // Check for exceptions (elements to ignore)
       if (options.except) {
         const exceptions = Array.isArray(options.except)
           ? options.except
           : [options.except];
-        if ($(e.target).closest(exceptions.join(",")).length) return;
+        if ($(event.target).closest(exceptions.join(",")).length) return;
       }
 
       // Call the actual handler
-      callback.call(this, e);
+      callback.call(this, event);
     });
   };
 

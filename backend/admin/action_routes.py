@@ -2,8 +2,8 @@
 
 Defines routes on the existing ``admin`` blueprint imported from
 ``backend.admin.routes``. Registered by importing this module inside
-``create_app()`` after ``admin`` is imported — the import side-effect
-registers the route decorators on the already-created blueprint object.
+``create_app()`` before the blueprint is registered — the import side-effect
+registers the route decorators on the ``admin`` blueprint object.
 """
 
 from __future__ import annotations

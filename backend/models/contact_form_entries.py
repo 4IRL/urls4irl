@@ -1,10 +1,10 @@
-from datetime import datetime
 import hashlib
+from datetime import datetime
 
 from flask_login import current_user
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from ua_parser import parse
 from ua_parser.core import OS, Device, UserAgent
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 
 from backend import db
 from backend.contact.constants import CONTACT_FORM_CONSTANTS

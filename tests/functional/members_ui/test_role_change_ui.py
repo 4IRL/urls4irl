@@ -1,6 +1,6 @@
+import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
-import pytest
 
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members

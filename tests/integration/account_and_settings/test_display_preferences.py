@@ -25,7 +25,7 @@ from backend.users.constants import PreferencesErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import (
     PREFERENCES_CHANGE_NO_CHANGE,
     PREFERENCES_CHANGE_SUCCESS,
@@ -37,29 +37,29 @@ pytestmark = pytest.mark.account_and_support
 # Non-default values (so the happy-path write is observably a change from the
 # enum defaults a pre-existing user has).
 _VALID_PAYLOAD = {
-    M.THEME: Theme.DARK.value,
-    M.DEFAULT_VIEW: ViewMode.CARDS.value,
-    M.DEFAULT_SORT: SortOrder.OLDEST.value,
-    M.DENSITY: Density.COMPACT.value,
-    M.DATE_FORMAT: DateFormat.US.value,
+    MODELS.THEME: Theme.DARK.value,
+    MODELS.DEFAULT_VIEW: ViewMode.CARDS.value,
+    MODELS.DEFAULT_SORT: SortOrder.OLDEST.value,
+    MODELS.DENSITY: Density.COMPACT.value,
+    MODELS.DATE_FORMAT: DateFormat.US.value,
 }
 
 # The enum defaults every pre-existing (no-row) user carries — a PUT of these is
 # a no-op.
 _DEFAULT_PAYLOAD = {
-    M.THEME: Theme.SYSTEM.value,
-    M.DEFAULT_VIEW: ViewMode.LIST.value,
-    M.DEFAULT_SORT: SortOrder.NEWEST.value,
-    M.DENSITY: Density.COMFORTABLE.value,
-    M.DATE_FORMAT: DateFormat.ISO.value,
+    MODELS.THEME: Theme.SYSTEM.value,
+    MODELS.DEFAULT_VIEW: ViewMode.LIST.value,
+    MODELS.DEFAULT_SORT: SortOrder.NEWEST.value,
+    MODELS.DENSITY: Density.COMFORTABLE.value,
+    MODELS.DATE_FORMAT: DateFormat.ISO.value,
 }
 
 _EXPECTED_KEYS = {
-    M.THEME,
-    M.DEFAULT_VIEW,
-    M.DEFAULT_SORT,
-    M.DENSITY,
-    M.DATE_FORMAT,
+    MODELS.THEME,
+    MODELS.DEFAULT_VIEW,
+    MODELS.DEFAULT_SORT,
+    MODELS.DENSITY,
+    MODELS.DATE_FORMAT,
     STD_JSON.STATUS,
     STD_JSON.MESSAGE,
 }
@@ -90,11 +90,11 @@ def test_update_preferences_success_creates_row_and_returns_envelope(
     )
     assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert response_json[STD_JSON.MESSAGE] == PREFERENCES_CHANGE_SUCCESS
-    assert response_json[M.THEME] == Theme.DARK.value
-    assert response_json[M.DEFAULT_VIEW] == ViewMode.CARDS.value
-    assert response_json[M.DEFAULT_SORT] == SortOrder.OLDEST.value
-    assert response_json[M.DENSITY] == Density.COMPACT.value
-    assert response_json[M.DATE_FORMAT] == DateFormat.US.value
+    assert response_json[MODELS.THEME] == Theme.DARK.value
+    assert response_json[MODELS.DEFAULT_VIEW] == ViewMode.CARDS.value
+    assert response_json[MODELS.DEFAULT_SORT] == SortOrder.OLDEST.value
+    assert response_json[MODELS.DENSITY] == Density.COMPACT.value
+    assert response_json[MODELS.DATE_FORMAT] == DateFormat.US.value
 
     with app.app_context():
         refreshed: Users = Users.query.get(user_id)
@@ -157,7 +157,7 @@ def test_update_preferences_invalid_enum_returns_400_field_error(
     client, csrf_token, user, _ = login_first_user_with_register
 
     bad_payload = dict(_VALID_PAYLOAD)
-    bad_payload[M.THEME] = "rainbow"
+    bad_payload[MODELS.THEME] = "rainbow"
 
     response = client.put(
         url_for(ROUTES.USERS.UPDATE_PREFERENCES, user_id=user.id),
@@ -167,7 +167,7 @@ def test_update_preferences_invalid_enum_returns_400_field_error(
 
     assert response.status_code == 400
     response_json = response.get_json()
-    assert M.THEME in response_json[STD_JSON.ERRORS]
+    assert MODELS.THEME in response_json[STD_JSON.ERRORS]
 
 
 def test_update_preferences_missing_csrf_returns_403_html(

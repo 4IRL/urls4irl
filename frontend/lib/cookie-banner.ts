@@ -47,8 +47,8 @@ export function initCookieBanner(): void {
     ".tagFilter",
     ".urlRow",
   ];
-  $(document).on("click.clickOutsideBanner", (e) => {
-    const target: EventTarget | null = e.target;
+  $(document).on("click.clickOutsideBanner", (event) => {
+    const target: EventTarget | null = event.target;
     if (!isHTMLElement(target)) return;
     if ($(target.closest(interactiveClickSelectors.join(","))!).length > 0) {
       hideBanner();
@@ -62,12 +62,12 @@ export function initCookieBanner(): void {
     ".tagFilter",
     ".urlRow",
   ];
-  $(document).on("keyup.clickOutsideBanner", (e) => {
-    if (e.originalEvent?.repeat) return;
-    const target: EventTarget | null = e.target;
+  $(document).on("keyup.clickOutsideBanner", (event) => {
+    if (event.originalEvent?.repeat) return;
+    const target: EventTarget | null = event.target;
     if (!isHTMLElement(target)) return;
     if (
-      e.key === KEYS.ENTER &&
+      event.key === KEYS.ENTER &&
       $(target.closest(interactiveKeySelectors.join(","))!).length > 0
     ) {
       hideBanner();

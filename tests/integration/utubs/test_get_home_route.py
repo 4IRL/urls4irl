@@ -2,9 +2,9 @@ import json
 import re
 from typing import Tuple
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import db
 from backend.models.user_preferences import (

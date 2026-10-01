@@ -1,13 +1,13 @@
-from typing import Callable
-from flask import abort, g, redirect, session, url_for
-from flask_login import login_required, current_user
 from functools import wraps
+from typing import Callable
+
+from flask import abort, g, redirect, session, url_for
+from flask_login import current_user, login_required
 
 from backend.api_common.request_utils import (
     is_current_utub_manager,
     is_current_utub_owner,
 )
-from backend.schemas.errors import build_message_error_response
 from backend.app_logger import critical_log, warning_log
 from backend.models.users import User_Role
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -15,6 +15,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.errors import build_message_error_response
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
 from backend.utils.strings.email_validation_strs import EMAILS

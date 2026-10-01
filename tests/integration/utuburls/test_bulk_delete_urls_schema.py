@@ -9,8 +9,7 @@ from backend.schemas.urls import (
 )
 from backend.urls.constants import BulkDeleteSkipReason
 from backend.utils.constants import URL_CONSTANTS
-from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS, TAG_COUNTS_MODIFIED
 from backend.utils.strings.url_strs import URL_FAILURE
 
 pytestmark = pytest.mark.urls
@@ -65,8 +64,8 @@ class TestDeleteUrlsResponseSchema:
             utub_url_id=7, reason=BulkDeleteSkipReason.FORBIDDEN
         )
         dumped = skipped.model_dump(by_alias=True)
-        assert dumped[M.UTUB_URL_ID] == 7
-        assert dumped[M.SKIP_REASON] == BulkDeleteSkipReason.FORBIDDEN
+        assert dumped[MODELS.UTUB_URL_ID] == 7
+        assert dumped[MODELS.SKIP_REASON] == BulkDeleteSkipReason.FORBIDDEN
 
     def test_response_dump_uses_aliases(self):
         deleted_item = UtubUrlDeleteSchema(
@@ -83,8 +82,11 @@ class TestDeleteUrlsResponseSchema:
             total_skipped=1,
         )
         dumped = response.model_dump(by_alias=True)
-        assert dumped[M.DELETED][0][M.UTUB_URL_ID] == 1
-        assert dumped[M.SKIPPED][0][M.SKIP_REASON] == BulkDeleteSkipReason.FORBIDDEN
+        assert dumped[MODELS.DELETED][0][MODELS.UTUB_URL_ID] == 1
+        assert (
+            dumped[MODELS.SKIPPED][0][MODELS.SKIP_REASON]
+            == BulkDeleteSkipReason.FORBIDDEN
+        )
         assert dumped[TAG_COUNTS_MODIFIED] == {5: 0, 6: 2}
-        assert dumped[M.TOTAL_DELETED] == 1
-        assert dumped[M.TOTAL_SKIPPED] == 1
+        assert dumped[MODELS.TOTAL_DELETED] == 1
+        assert dumped[MODELS.TOTAL_SKIPPED] == 1

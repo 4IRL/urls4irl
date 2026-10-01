@@ -229,8 +229,8 @@ export function initBtnsForms(): void {
   // Provide responsiveness to the custom text input boxes
   const textInputs = $(".text-input");
   let textInput: JQuery<HTMLElement>;
-  for (let i = 0; i < textInputs.length; i++) {
-    textInput = $(textInputs[i]);
+  for (let index = 0; index < textInputs.length; index++) {
+    textInput = $(textInputs[index]);
     textInput.val("");
     if (textInput.hasClass("search-input")) {
       textInput.on("blur", handleSearchInputBlur);

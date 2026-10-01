@@ -8,7 +8,7 @@ from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.search.constants import DEFAULT_SEARCH_FIELDS, field_order_metric_value
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
@@ -50,7 +50,7 @@ def test_search_with_results_records_metric_with_has_results_true(
     )
 
     assert response.status_code == 200
-    assert len(response.get_json()[M.SEARCH_RESULTS]) > 0
+    assert len(response.get_json()[MODELS.SEARCH_RESULTS]) > 0
 
     counter_keys = find_counter_keys(
         provide_metrics_redis, EventName.CROSS_UTUB_SEARCH_PERFORMED
@@ -86,7 +86,7 @@ def test_search_with_no_results_records_metric_with_has_results_false(
     )
 
     assert response.status_code == 200
-    assert response.get_json()[M.SEARCH_RESULTS] == []
+    assert response.get_json()[MODELS.SEARCH_RESULTS] == []
 
     counter_keys = find_counter_keys(
         provide_metrics_redis, EventName.CROSS_UTUB_SEARCH_PERFORMED

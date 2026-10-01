@@ -2,8 +2,8 @@ import re
 from logging import Handler, Logger, LogRecord, getLogger
 from typing import Any, NamedTuple
 
-from flask import Flask
 import sqlalchemy
+from flask import Flask
 
 from backend import create_app, db, oauth
 from backend.config import ConfigTest

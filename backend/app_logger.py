@@ -1,11 +1,11 @@
-from datetime import datetime
 import json
 import logging
 import os
 import re
 import sys
-from typing import Optional
 import uuid
+from datetime import datetime
+from typing import Optional
 
 from flask import Flask, Request, Response, current_app, g, has_request_context, request
 from flask.logging import default_handler
@@ -245,6 +245,16 @@ def sanitize_request_id(request_id: Optional[str], max_length: int = 12) -> str:
     return sanitized
 
 
+def sanitize_log_value(value: object) -> str:
+    """
+    Neutralise CR/LF in a value bound for a log message to prevent log injection.
+
+    Returns str(value) with carriage returns and line feeds escaped as literal
+    `\\r` / `\\n`, so attacker-controlled text cannot forge extra log lines.
+    """
+    return str(value).replace("\r", "\\r").replace("\n", "\\n")
+
+
 def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = False):
     @app.before_request
     def before_request():
@@ -253,7 +263,9 @@ def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = Fa
 
         g.http_method = request.method
         g.query_params = (
-            {k: v for k, v in request.args.items()} if request.args else None
+            {key: value for key, value in request.args.items()}
+            if request.args
+            else None
         )
         g.remote_addr = getattr(request, "remote_addr", "-") if request else "-"
         g.content_type = request.content_type

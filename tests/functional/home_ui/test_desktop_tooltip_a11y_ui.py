@@ -17,8 +17,8 @@ The coarse-pointer (mobile) twin of this file is
 is created on touch at all.
 """
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend.utils.constants import STRINGS

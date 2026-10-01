@@ -3,6 +3,7 @@ from flask import (
     jsonify,
     request,
 )
+
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 
 debug = Blueprint("debug", __name__)

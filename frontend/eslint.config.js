@@ -1,6 +1,9 @@
 import tsParser from "@typescript-eslint/parser";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 
+import destructuredParams from "./eslint-rules/destructured-params.js";
+import destructuredParamsBaseline from "./eslint-rules/destructured-params-baseline.json" with { type: "json" };
+
 export default [
   {
     files: ["**/*.ts"],
@@ -21,6 +24,38 @@ export default [
         },
       ],
       "no-console": "error",
+      // Single-letter names: `$` (jQuery) and `_` (unused) are the only exceptions.
+      "id-length": [
+        "error",
+        { min: 2, exceptions: ["$", "_"], properties: "never" },
+      ],
+      // id-length skips type parameters, so enforce descriptive ones separately.
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: "typeParameter",
+          format: ["PascalCase"],
+          custom: { regex: "^.{2,}$", match: true },
+        },
+      ],
+    },
+  },
+  {
+    files: ["**/*.ts"],
+    ignores: ["**/__tests__/**", "**/*.test.ts", "test-setup.ts", "**/*.d.ts"],
+    plugins: { u4i: { rules: { "destructured-params": destructuredParams } } },
+    rules: {
+      // Legacy violators are grandfathered in the baseline; the rule flags
+      // stale keys, so convert a baselined function when touching its signature.
+      "u4i/destructured-params": [
+        "error",
+        {
+          allowNames: ["on", "off", "emit"],
+          baseline: destructuredParamsBaseline,
+          // Resolve baseline keys against frontend/, wherever ESLint runs from.
+          root: import.meta.dirname,
+        },
+      ],
     },
   },
   {

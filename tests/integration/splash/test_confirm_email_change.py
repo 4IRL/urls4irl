@@ -12,10 +12,10 @@ from typing import Tuple
 from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
+import pytest
 from flask import Flask, g, url_for
 from flask.testing import FlaskClient
 from markupsafe import escape
-import pytest
 from sqlalchemy.exc import IntegrityError
 from werkzeug.test import TestResponse
 

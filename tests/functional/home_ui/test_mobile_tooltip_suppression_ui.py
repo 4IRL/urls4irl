@@ -13,8 +13,8 @@ on touch too — so each case asserts the exact ``aria-label`` survives while no
 Bootstrap Tooltip instance is ever created.
 """
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page
 
 from backend.utils.constants import STRINGS

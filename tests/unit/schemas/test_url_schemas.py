@@ -9,7 +9,7 @@ from backend.schemas.requests.urls import (
     UpdateURLTitleRequest,
 )
 from backend.utils.constants import TAG_CONSTANTS, URL_CONSTANTS
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE
 
 pytestmark = pytest.mark.unit
@@ -28,8 +28,8 @@ class _MockUtubUrl:
     standalone_url = _MockUrl()
     associated_tag_ids = [3, 5]
     associated_tags = [
-        {M.UTUB_TAG_ID: 3, M.TAG_STRING: "python"},
-        {M.UTUB_TAG_ID: 5, M.TAG_STRING: "web"},
+        {MODELS.UTUB_TAG_ID: 3, MODELS.TAG_STRING: "python"},
+        {MODELS.UTUB_TAG_ID: 5, MODELS.TAG_STRING: "web"},
     ]
 
 
@@ -40,11 +40,11 @@ def test_utub_url_schema_dump():
         _MockUtubUrl(), current_user_id=2, viewer_is_manager=True
     )
     dumped = schema.model_dump(by_alias=True)
-    assert dumped[M.UTUB_URL_ID] == 10
-    assert dumped[M.URL_STRING] == "https://example.com"
-    assert dumped[M.URL_TAG_IDS] == [3, 5]
-    assert dumped[M.URL_TITLE] == "Example Site"
-    assert dumped[M.CAN_DELETE] is True
+    assert dumped[MODELS.UTUB_URL_ID] == 10
+    assert dumped[MODELS.URL_STRING] == "https://example.com"
+    assert dumped[MODELS.URL_TAG_IDS] == [3, 5]
+    assert dumped[MODELS.URL_TITLE] == "Example Site"
+    assert dumped[MODELS.CAN_DELETE] is True
     # added_at is serialized to an ISO-8601 string via field_serializer.
     assert dumped["addedAt"] == "2024-03-09T12:00:00+00:00"
 
@@ -70,12 +70,18 @@ def test_utub_url_detail_schema_dump():
 
     schema = UtubUrlDetailSchema.from_orm_url(_MockUtubUrl())
     dumped = schema.model_dump(by_alias=True)
-    assert dumped[M.UTUB_URL_ID] == 10
-    assert dumped[M.URL_TITLE] == "Example Site"
-    assert dumped[M.URL_STRING] == "https://example.com"
-    assert len(dumped[M.URL_TAGS]) == 2
-    assert dumped[M.URL_TAGS][0] == {M.UTUB_TAG_ID: 3, M.TAG_STRING: "python"}
-    assert dumped[M.URL_TAGS][1] == {M.UTUB_TAG_ID: 5, M.TAG_STRING: "web"}
+    assert dumped[MODELS.UTUB_URL_ID] == 10
+    assert dumped[MODELS.URL_TITLE] == "Example Site"
+    assert dumped[MODELS.URL_STRING] == "https://example.com"
+    assert len(dumped[MODELS.URL_TAGS]) == 2
+    assert dumped[MODELS.URL_TAGS][0] == {
+        MODELS.UTUB_TAG_ID: 3,
+        MODELS.TAG_STRING: "python",
+    }
+    assert dumped[MODELS.URL_TAGS][1] == {
+        MODELS.UTUB_TAG_ID: 5,
+        MODELS.TAG_STRING: "web",
+    }
 
 
 def test_utub_url_detail_schema_missing_required_fields():
@@ -89,11 +95,11 @@ def test_utub_url_detail_schema_validate_from_dict():
     from backend.schemas.urls import UtubUrlDetailSchema
 
     data = {
-        M.UTUB_URL_ID: 10,
-        M.URL_TITLE: "Example Site",
-        M.URL_STRING: "https://example.com",
-        M.URL_TAGS: [
-            {M.UTUB_TAG_ID: 3, M.TAG_STRING: "python"},
+        MODELS.UTUB_URL_ID: 10,
+        MODELS.URL_TITLE: "Example Site",
+        MODELS.URL_STRING: "https://example.com",
+        MODELS.URL_TAGS: [
+            {MODELS.UTUB_TAG_ID: 3, MODELS.TAG_STRING: "python"},
         ],
     }
     schema = UtubUrlDetailSchema.model_validate(data)
@@ -110,9 +116,9 @@ def test_utub_url_delete_schema_dump():
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped == {
-        M.UTUB_URL_ID: 10,
-        M.URL_STRING: "https://example.com",
-        M.URL_TITLE: "Example Site",
+        MODELS.UTUB_URL_ID: 10,
+        MODELS.URL_STRING: "https://example.com",
+        MODELS.URL_TITLE: "Example Site",
     }
 
 

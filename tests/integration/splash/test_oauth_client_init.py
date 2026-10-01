@@ -19,9 +19,9 @@ to prove a negative — a second call cannot reliably prove `oauth.google`/
 persists.
 """
 
+import pytest
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, current_app
-import pytest
 
 from backend import oauth, should_register_github_oauth, should_register_google_oauth
 from tests.conftest import TEST_GITHUB_OAUTH_CLIENT_ID, TEST_GOOGLE_OAUTH_CLIENT_ID

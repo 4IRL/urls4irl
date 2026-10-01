@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Locator, Page
 
 from backend import db

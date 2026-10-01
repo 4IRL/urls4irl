@@ -1,22 +1,22 @@
 import logging
 import os
 import time
-from typing import Any, Awaitable, Generator, Optional, Tuple, Union
 import warnings
+from typing import Any, Awaitable, Generator, Optional, Tuple, Union
 
-from flask import Flask
-from flask.testing import FlaskCliRunner, FlaskClient
-from flask_login import FlaskLoginClient
-from flask_session.redis import RedisSessionInterface
 import pytest
 import redis
+from flask import Flask
+from flask.testing import FlaskClient, FlaskCliRunner
+from flask_login import FlaskLoginClient
+from flask_session.redis import RedisSessionInterface
 from redis import Redis
-from sqlalchemy import create_engine, event, inspect as sa_inspect, text
+from sqlalchemy import create_engine, event, text
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from backend import create_app, db
 from backend.config import (
-    ConfigTest,
     POSTGRES_PASSWORD,
     POSTGRES_TEST_DB,
     POSTGRES_TEST_USER,
@@ -27,6 +27,7 @@ from backend.config import (
     TEST_GOOGLE_OAUTH_CLIENT_SECRET,
     TEST_METRICS_REDIS_URI,
     TEST_REDIS_URI,
+    ConfigTest,
 )
 from backend.models.urls import Urls
 from backend.models.users import User_Role, Users
@@ -40,17 +41,17 @@ from backend.utils.strings import model_strs
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from scripts import testrun_resources
-from tests.utils_for_test import clear_database, get_csrf_token
 from tests.models_for_test import (
+    all_empty_utubs,
+    all_tags,
+    maximum_tags,
+    valid_empty_utub_1,
+    valid_url_strings,
     valid_user_1,
     valid_user_2,
     valid_user_3,
-    all_empty_utubs,
-    valid_empty_utub_1,
-    valid_url_strings,
-    all_tags,
-    maximum_tags,
 )
+from tests.utils_for_test import clear_database, get_csrf_token
 
 # Per-run Redis isolation: every worker of every pytest invocation LEASES its
 # session and metrics Redis DB indices (scripts/testrun_resources.py) instead of

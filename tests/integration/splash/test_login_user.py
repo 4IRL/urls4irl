@@ -1,18 +1,18 @@
 from copy import deepcopy
 from unittest.mock import MagicMock
 
+import pytest
 from flask import Flask, request, url_for
 from flask_login import current_user
 from werkzeug.security import check_password_hash
-import pytest
 
 from backend import db
 from backend.metrics.events import EventName
-from backend.splash.services import user_login
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.splash.constants import LoginErrorCodes
+from backend.splash.services import user_login
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS

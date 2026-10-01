@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from flask import Flask, g
 import pytest
+from flask import Flask, g
 
 from backend.extensions.request_timing import init_app, request_elapsed_ms
 

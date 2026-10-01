@@ -14,7 +14,7 @@ from backend.schemas.users import (
     UtubSummaryListSchema,
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import REDIRECT_URL
 from backend.utils.strings.utub_strs import UTUB_ID
 
@@ -24,7 +24,7 @@ pytestmark = pytest.mark.unit
 def test_user_schema_dump():
     schema = UserSchema(id=1, username="alice")
     dumped = schema.model_dump(by_alias=True)
-    assert dumped == {M.ID: 1, M.USERNAME: "alice"}
+    assert dumped == {MODELS.ID: 1, MODELS.USERNAME: "alice"}
 
 
 def test_user_schema_missing_required_fields():
@@ -38,10 +38,10 @@ def test_utub_summary_item_schema_dump():
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped == {
-        M.ID: 2,
-        M.NAME: "My UTub",
-        M.MEMBER_ROLE: "creator",
-        M.IS_LOCKED: False,
+        MODELS.ID: 2,
+        MODELS.NAME: "My UTub",
+        MODELS.MEMBER_ROLE: "creator",
+        MODELS.IS_LOCKED: False,
     }
 
 
@@ -63,17 +63,32 @@ def test_utub_summary_list_schema_dump():
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped == {
-        M.UTUBS: [
-            {M.ID: 1, M.NAME: "UTub A", M.MEMBER_ROLE: "creator", M.IS_LOCKED: False},
-            {M.ID: 2, M.NAME: "UTub B", M.MEMBER_ROLE: "editor", M.IS_LOCKED: False},
+        MODELS.UTUBS: [
+            {
+                MODELS.ID: 1,
+                MODELS.NAME: "UTub A",
+                MODELS.MEMBER_ROLE: "creator",
+                MODELS.IS_LOCKED: False,
+            },
+            {
+                MODELS.ID: 2,
+                MODELS.NAME: "UTub B",
+                MODELS.MEMBER_ROLE: "editor",
+                MODELS.IS_LOCKED: False,
+            },
         ]
     }
 
 
 def test_utub_summary_list_schema_validate_from_dict():
     data = {
-        M.UTUBS: [
-            {M.ID: 1, M.NAME: "UTub A", M.MEMBER_ROLE: "creator", M.IS_LOCKED: False},
+        MODELS.UTUBS: [
+            {
+                MODELS.ID: 1,
+                MODELS.NAME: "UTub A",
+                MODELS.MEMBER_ROLE: "creator",
+                MODELS.IS_LOCKED: False,
+            },
         ]
     }
     schema = UtubSummaryListSchema.model_validate(data)
@@ -113,8 +128,16 @@ def test_ownership_transferred_response_schema_dump():
     dumped = schema.model_dump(by_alias=True)
     assert dumped == {
         UTUB_ID: 7,
-        M.NEW_OWNER: {M.ID: 2, M.USERNAME: "alice", M.MEMBER_ROLE: "creator"},
-        M.PREVIOUS_OWNER: {M.ID: 1, M.USERNAME: "bob", M.MEMBER_ROLE: "cocreator"},
+        MODELS.NEW_OWNER: {
+            MODELS.ID: 2,
+            MODELS.USERNAME: "alice",
+            MODELS.MEMBER_ROLE: "creator",
+        },
+        MODELS.PREVIOUS_OWNER: {
+            MODELS.ID: 1,
+            MODELS.USERNAME: "bob",
+            MODELS.MEMBER_ROLE: "cocreator",
+        },
     }
 
 

@@ -1,10 +1,11 @@
 from flask_login import current_user
+
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
-from backend.models.user_preferences import resolve_preferences, SortOrder
+from backend.models.user_preferences import SortOrder, resolve_preferences
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.users import UtubSummaryListSchema

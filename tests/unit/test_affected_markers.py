@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -39,6 +38,7 @@ from scripts.affected_markers import (
     registry_staleness_warning,
     resolve_markers,
 )
+from tests.unit.stdlib_only_utils import assert_module_is_stdlib_only
 
 pytestmark = pytest.mark.unit
 
@@ -570,8 +570,11 @@ def test_frontend_dir_resolves_through_the_path_table() -> None:
     [
         "README.md",
         ".github/workflows/test.yml",
+        ".github/actions/setup-playwright/action.yml",
         ".claude/x",
         "frontend/lib/__tests__/csrf.test.ts",
+        "frontend/eslint-rules/destructured-params.js",
+        "frontend/eslint-rules/destructured-params-baseline.json",
     ],
 )
 def test_no_impact_paths_select_nothing(path: str) -> None:
@@ -686,6 +689,19 @@ def test_host_static_script_continues_into_its_path_row() -> None:
     THEN host_static is set AND resolution continues into its `unit` row
     """
     selection = _resolve(["scripts/capacity.py"])
+
+    assert selection.host_static
+    assert selection.markers == {"unit"}
+    assert not selection.everything
+
+
+def test_stdlib_only_helper_selects_host_static_and_unit() -> None:
+    """
+    GIVEN tests/unit/stdlib_only_utils.py, imported by host-static and unit tests
+    WHEN it changes
+    THEN host_static is set AND its `unit` row is selected
+    """
+    selection = _resolve(["tests/unit/stdlib_only_utils.py"])
 
     assert selection.host_static
     assert selection.markers == {"unit"}
@@ -1710,31 +1726,7 @@ def test_affected_markers_module_is_stdlib_only() -> None:
     project root), so any third-party or `backend` import would either fail or
     show up in `sys.modules`.
     """
-    probe_script = (
-        "import importlib.util\n"
-        "import sys\n"
-        "sys.path = [p for p in sys.path if p not in ('', PROJECT_ROOT)]\n"
-        "spec = importlib.util.spec_from_file_location('affected_leaf', MODULE_FILE)\n"
-        "module = importlib.util.module_from_spec(spec)\n"
-        # Register before exec so the frozen dataclasses can resolve their own
-        # module under `from __future__ import annotations`.
-        "sys.modules[spec.name] = module\n"
-        "spec.loader.exec_module(module)\n"
-        "forbidden = [name for name in sys.modules "
-        "if name.split('.')[0] in ('flask', 'sqlalchemy', 'redis', 'backend')]\n"
-        "assert forbidden == [], forbidden\n"
-    )
-    module_file = Path(affected_markers.__file__).resolve()
-    project_root = module_file.parents[1]
-    preamble = (
-        f"PROJECT_ROOT = {str(project_root)!r}\nMODULE_FILE = {str(module_file)!r}\n"
-    )
-    result = subprocess.run(
-        [sys.executable, "-c", preamble + probe_script],
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, (
-        f"affected_markers module pulled in a non-stdlib import:\n"
-        f"stdout={result.stdout}\nstderr={result.stderr}"
+    assert_module_is_stdlib_only(
+        Path(affected_markers.__file__),
+        ("flask", "sqlalchemy", "redis", "backend"),
     )

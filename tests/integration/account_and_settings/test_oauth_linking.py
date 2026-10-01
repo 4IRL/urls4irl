@@ -23,9 +23,9 @@ from __future__ import annotations
 from typing import Generator, Tuple
 from unittest import mock
 
+import pytest
 from flask import Flask, redirect, url_for
 from flask.testing import FlaskClient
-import pytest
 from redis import Redis
 
 from backend import db

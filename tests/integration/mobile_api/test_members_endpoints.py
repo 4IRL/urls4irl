@@ -12,15 +12,15 @@ Conventions:
   - pytestmark = pytest.mark.mobile_api
 """
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import db, limiter
 from backend.api_v1.services.tokens import create_access_token
 from backend.members.constants import MEMBER_ADD_RATE_LIMIT, UTubMembersErrorCodes
-from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.users import Users
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE

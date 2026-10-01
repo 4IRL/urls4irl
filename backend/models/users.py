@@ -4,16 +4,18 @@ from datetime import datetime
 from enum import Enum
 
 import jwt
-from flask_login import UserMixin
 from flask import current_app
+from flask_login import UserMixin
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum as SQLEnum,
     Integer,
     String,
     text,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 

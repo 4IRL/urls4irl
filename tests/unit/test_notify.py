@@ -12,9 +12,9 @@ from scripts.notify import (
     FLUSH_LAST_SUCCESS_KEY,
     GAUGE_LAST_SUCCESS_KEY,
     HEALTH_OK_GLYPH,
+    HEALTH_STALE_AFTER_SECONDS,
     HEALTH_STALE_GLYPH,
     HEALTH_UNKNOWN_GLYPH,
-    HEALTH_STALE_AFTER_SECONDS,
     MANUAL_TRIGGER_MARKER,
     MESSAGE_PREFIX,
     RESTRICTED_CURL_BINARY,
@@ -900,7 +900,9 @@ def test_build_metrics_redis_client_missing_returns_none(monkeypatch):
     THEN None is returned rather than raising.
     """
     monkeypatch.delenv("METRICS_REDIS_URI", raising=False)
-    monkeypatch.setattr(notify, "_load_env_from_container_dump", lambda *a, **k: None)
+    monkeypatch.setattr(
+        notify, "_load_env_from_container_dump", lambda *args, **kwargs: None
+    )
     assert notify._build_metrics_redis_client() is None
 
 

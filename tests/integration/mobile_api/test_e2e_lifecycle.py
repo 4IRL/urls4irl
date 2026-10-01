@@ -12,9 +12,9 @@ Conventions:
   - pytestmark = pytest.mark.mobile_api
 """
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend.api_v1.constants import ApiAuthErrorCodes
 from backend.models.api_refresh_tokens import ApiRefreshTokens

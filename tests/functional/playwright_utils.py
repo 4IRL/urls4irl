@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from enum import Enum
 import re
 import secrets
+from dataclasses import dataclass
+from enum import Enum
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from flask import Flask, session

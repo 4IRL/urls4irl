@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from enum import IntEnum
-from functools import wraps
 import inspect
 import re
+from enum import IntEnum
+from functools import wraps
 from typing import Callable, Type, TypeVar
 
 from flask import redirect, request, url_for

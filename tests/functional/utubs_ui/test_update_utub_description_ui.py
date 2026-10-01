@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
@@ -7,6 +7,11 @@ from backend.models.users import Users
 from backend.models.utubs import Utubs
 from backend.utils.constants import CONSTANTS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
+from tests.functional.db_utils import (
+    get_utub_this_user_created,
+    get_utub_this_user_did_not_create,
+    update_utub_to_empty_desc,
+)
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
@@ -14,11 +19,6 @@ from tests.functional.playwright_assert_utils import (
     assert_on_429_page,
     assert_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
-)
-from tests.functional.db_utils import (
-    get_utub_this_user_created,
-    get_utub_this_user_did_not_create,
-    update_utub_to_empty_desc,
 )
 from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_name,

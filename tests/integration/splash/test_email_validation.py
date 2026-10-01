@@ -2,35 +2,35 @@ import threading
 from unittest import mock
 from urllib.parse import urlparse
 
+import pytest
 from flask import url_for
 from flask_login import current_user
-import pytest
 from requests import Response
 
+from backend import db
 from backend.extensions.email_sender.email_sender import EmailSender
 from backend.metrics.events import EventName
+from backend.models.email_validations import Email_Validations
+from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
 from backend.schemas.users import EmailValidationResponseSchema
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.splash.utils import verify_token
-from tests.models_for_test import valid_user_1
-from backend import db
-from backend.models.email_validations import Email_Validations
-from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import EMAIL_CONSTANTS
 from backend.utils.datetime_utils import utc_now
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.email_validation_strs import (
     EMAILS,
     EMAILS_FAILURE,
 )
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.user_strs import MEMBER_SUCCESS, USER_FAILURE
 from tests.integration.splash.conftest import register_json
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
+from tests.models_for_test import valid_user_1
 
 pytestmark = pytest.mark.splash
 

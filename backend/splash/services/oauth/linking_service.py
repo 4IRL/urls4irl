@@ -32,8 +32,8 @@ from backend.splash.services.oauth.constants import (
     OAUTH_LINK_INTENT_SESSION_KEY,
     OAUTH_LINK_MAX_AGE_SECONDS,
     OAUTH_PENDING_LINK_SESSION_KEY,
-    Provider,
     REMOVAL_INTENT_ACTION_DELETE,
+    Provider,
 )
 from backend.users.services.account_service import reject_self_sole_admin
 from backend.users.services.removal_oauth import execute_removal_intent

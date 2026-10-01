@@ -12,7 +12,7 @@ from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
@@ -77,7 +77,7 @@ def test_candidates_with_results_records_metric_has_results_true(
     )
 
     assert response.status_code == 200
-    assert len(response.get_json()[M.MEMBERS]) > 0
+    assert len(response.get_json()[MODELS.MEMBERS]) > 0
 
     counter_keys = find_counter_keys(
         provide_metrics_redis, EventName.MEMBER_ADD_CANDIDATES_LOADED
@@ -113,7 +113,7 @@ def test_candidates_with_no_results_records_metric_has_results_false(
     )
 
     assert response.status_code == 200
-    assert response.get_json()[M.MEMBERS] == []
+    assert response.get_json()[MODELS.MEMBERS] == []
 
     counter_keys = find_counter_keys(
         provide_metrics_redis, EventName.MEMBER_ADD_CANDIDATES_LOADED

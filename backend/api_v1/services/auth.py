@@ -39,7 +39,6 @@ from backend.splash.services.oauth.account_service import (
     find_or_create_oauth_user,
 )
 from backend.splash.services.oauth.constants import Provider
-
 from backend.splash.services.oauth.google_service import resolve_preferred_username
 from backend.splash.services.user_login import DUMMY_HASH
 from backend.splash.services.validate_email import (

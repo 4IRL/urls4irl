@@ -1,5 +1,5 @@
-from flask import current_app
 import jwt
+from flask import current_app
 from jwt import exceptions as JWTExceptions
 
 from backend.models.users import Users

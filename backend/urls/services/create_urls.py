@@ -258,28 +258,28 @@ def _normalize_and_validate_url(url_string: str | None) -> NormalizedUrl:
 
         validation_time = (time.perf_counter() - start) * 1000
 
-    except URLWithCredentialsError as e:
+    except URLWithCredentialsError as credentials_error:
         return NormalizedUrl(
             input_url_string=input_url,
             time_to_validate=(time.perf_counter() - start) * 1000,
             status=URLNormalizationResult.INVALID_CREDENTIALS_URL,
-            exception=e,
+            exception=credentials_error,
         )
 
-    except InvalidURLError as e:
+    except InvalidURLError as invalid_url_error:
         return NormalizedUrl(
             input_url_string=input_url,
             time_to_validate=(time.perf_counter() - start) * 1000,
             status=URLNormalizationResult.INVALID_URL,
-            exception=e,
+            exception=invalid_url_error,
         )
 
-    except (AdaUrlParsingError, Exception) as e:
+    except (AdaUrlParsingError, Exception) as parse_error:
         return NormalizedUrl(
             input_url_string=input_url,
             time_to_validate=(time.perf_counter() - start) * 1000,
             status=URLNormalizationResult.UNKNOWN_FAILURE_URL,
-            exception=e,
+            exception=parse_error,
         )
 
     total_time = (time.perf_counter() - start) * 1000

@@ -14,8 +14,8 @@ auto-logs the user in: a credential-sensitive change requires a fresh login.
 
 from __future__ import annotations
 
-from flask import current_app, redirect, url_for
 import jwt
+from flask import current_app, redirect, url_for
 from sqlalchemy.exc import IntegrityError
 from werkzeug import Response as WerkzeugResponse
 from werkzeug.exceptions import NotFound

@@ -13,10 +13,10 @@ these tests skip inside the container and run host-side (and in CI's unit job).
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 

@@ -1,13 +1,15 @@
+import pytest
 from flask import url_for
 from flask_login import current_user
-import pytest
 
 from backend.models.utub_url_tags import Utub_Url_Tags
-from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import (
     FAILURE_GENERAL,
+)
+from backend.utils.strings.json_strs import (
     STD_JSON_RESPONSE as STD_JSON,
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
@@ -70,7 +72,7 @@ def test_get_url_in_utub(
                 }
                 for tag in tags_on_url_in_utub
             ],
-            key=lambda x: x[MODEL_STRS.UTUB_TAG_ID],
+            key=lambda tag_object: tag_object[MODEL_STRS.UTUB_TAG_ID],
         )
 
     get_url_response = client.get(
@@ -95,7 +97,7 @@ def test_get_url_in_utub(
 
     sorted_tag_objects_response = sorted(
         [tag for tag in url_object[URL_SUCCESS.URL_TAGS]],
-        key=lambda x: x[MODEL_STRS.UTUB_TAG_ID],
+        key=lambda tag_object: tag_object[MODEL_STRS.UTUB_TAG_ID],
     )
     assert sorted_tag_objects_response == tag_objects_on_url_in_utub
 

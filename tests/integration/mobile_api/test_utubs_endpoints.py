@@ -14,14 +14,14 @@ Conventions:
   - pytestmark = pytest.mark.mobile_api
 """
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend.api_v1.services.tokens import create_access_token
+from backend.models.users import Users
 from backend.models.utub_members import Member_Role
 from backend.models.utubs import Utubs
-from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON

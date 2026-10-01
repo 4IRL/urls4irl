@@ -4,10 +4,10 @@ from flask import current_app
 
 from backend import db
 from backend.extensions.url_validation.url_validator import UrlValidator
-from backend.models.utils import VerifyTokenResponse
-from backend.models.utub_tags import Utub_Tags
 from backend.models.urls import Urls
 from backend.models.users import User_Role, Users
+from backend.models.utils import VerifyTokenResponse
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
 from backend.splash.utils import verify_token
 from backend.utils.strings.config_strs import CONFIG_ENVS

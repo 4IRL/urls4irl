@@ -1,6 +1,6 @@
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import db
 from backend.models.email_validations import Email_Validations

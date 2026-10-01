@@ -14,11 +14,11 @@ describe("event-bus", () => {
     cleanups = [];
   });
 
-  function track<K extends keyof AppEventMap>(
-    event: K,
-    handler: (payload: AppEventMap[K]) => void,
+  function track<EventName extends keyof AppEventMap>(
+    event: EventName,
+    handler: (payload: AppEventMap[EventName]) => void,
   ): () => void {
-    const unsub = on(event, handler as Parameters<typeof on<K>>[1]);
+    const unsub = on(event, handler as Parameters<typeof on<EventName>>[1]);
     cleanups.push(unsub);
     return unsub;
   }

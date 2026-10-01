@@ -3,9 +3,9 @@ import re
 from typing import Tuple
 from urllib.parse import urlsplit
 
+import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
-import pytest
 from playwright.sync_api import Locator, Page, expect
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS

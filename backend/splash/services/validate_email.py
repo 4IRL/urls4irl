@@ -1,12 +1,11 @@
+import requests
 from flask import abort, current_app, redirect, session, url_for
 from flask_login import current_user, login_user
-import requests
 from werkzeug import Response as WerkzeugResponse
 
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, error_log, safe_add_log, warning_log
-from backend.schemas.errors import build_message_error_response
 from backend.extensions.extension_utils import (
     safe_get_email_sender,
     safe_get_notif_sender,
@@ -15,6 +14,7 @@ from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
+from backend.schemas.errors import build_message_error_response
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.splash.utils import verify_token
 from backend.utils.all_routes import ROUTES

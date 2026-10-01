@@ -1,9 +1,9 @@
 import json
 import re
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend.api_common.error_handler import _is_reload_safe_request
 from backend.utils.all_routes import ROUTES

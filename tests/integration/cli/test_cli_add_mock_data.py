@@ -25,15 +25,15 @@ from backend.models.utubs import Utubs
 from tests.integration.cli.utils import (
     verify_custom_url_added_to_all_utubs,
     verify_custom_url_in_database,
-    verify_users_added,
-    verify_utubs_added_no_duplicates,
-    verify_utubs_added_duplicates,
-    verify_utubmembers_added,
-    verify_urls_in_database,
-    verify_urls_added_to_all_utubs,
-    verify_tags_in_utubs,
     verify_tags_added_to_all_urls_in_utubs,
+    verify_tags_in_utubs,
     verify_tracking_seed_urls_added,
+    verify_urls_added_to_all_utubs,
+    verify_urls_in_database,
+    verify_users_added,
+    verify_utubmembers_added,
+    verify_utubs_added_duplicates,
+    verify_utubs_added_no_duplicates,
 )
 
 pytestmark = pytest.mark.cli

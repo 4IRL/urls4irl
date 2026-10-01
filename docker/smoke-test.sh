@@ -143,7 +143,7 @@ REDIS_CONTAINER_ID=$(
   docker run -d \
     --network "$SMOKE_NET" \
     --name "$SMOKE_REDIS" \
-    redis:6.2
+    redis:6.2.24
 )
 
 # Give Redis a moment to accept connections before the first SET.

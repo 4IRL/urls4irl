@@ -36,6 +36,6 @@ def search_across_utubs() -> FlaskResponse:
     if not isinstance(parsed, BaseModel):
         return parsed
     response_schema = search_across_user_utubs(
-        query=parsed.q, fields=parsed.fields, user_id=current_user.id
+        query=parsed.query, fields=parsed.fields, user_id=current_user.id
     )
     return APIResponse(data=response_schema, status_code=200).to_response()

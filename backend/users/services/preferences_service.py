@@ -9,11 +9,11 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.models.user_preferences import (
     DateFormat,
     Density,
-    resolve_preferences,
     SortOrder,
     Theme,
     User_Preferences,
     ViewMode,
+    resolve_preferences,
 )
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import UpdatePreferencesResponseSchema

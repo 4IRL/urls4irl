@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page
 
 from backend.models.users import Users

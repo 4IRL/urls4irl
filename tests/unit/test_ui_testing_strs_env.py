@@ -7,9 +7,9 @@ monkeypatching the already-imported one.
 """
 
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest

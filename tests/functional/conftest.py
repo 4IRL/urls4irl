@@ -2,10 +2,10 @@ import threading
 from time import sleep
 from typing import Generator, Tuple
 
+import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
 from playwright.sync_api import Browser, Page, sync_playwright
-import pytest
 from redis import Redis
 
 from backend import create_app, db
@@ -19,6 +19,8 @@ from scripts import testrun_resources
 from tests.functional.db_utils import add_mock_urls
 from tests.functional.playwright_utils import (
     PageBundle,
+)
+from tests.functional.playwright_utils import (
     add_cookie_banner_cookie as add_playwright_cookie_banner_cookie,
 )
 from tests.functional.ui_test_setup import (

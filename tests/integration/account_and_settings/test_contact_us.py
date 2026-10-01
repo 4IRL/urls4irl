@@ -1,8 +1,9 @@
 from typing import Tuple
 from unittest import mock
+
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import limiter
 from backend.api_common.request_errors import max_length_message, min_length_message
