@@ -74,6 +74,14 @@ repos:
       pass_filenames: false
       require_serial: true
 
+    - id: audit-pins
+      name: audit-pins
+      entry: make audit-pins
+      language: system
+      files: ^(requirements/.*\.txt|frontend/package\.json|frontend/pnpm-workspace\.yaml|\.mise\.toml|docker/.*|\.github/.*|scripts/audit_pins\.py)$
+      pass_filenames: false
+      require_serial: true
+
     # Workspace-wide presence check (no types/files filter): runs on every commit.
     - id: lockfile-check
       name: lockfile-check

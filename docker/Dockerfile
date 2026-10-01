@@ -3,7 +3,7 @@
 # ============================================
 # Frontend Builder Stage - Build Vite assets
 # ============================================
-FROM node:22-bookworm-slim AS frontend-builder
+FROM node:22.23.3-bookworm-slim AS frontend-builder
 
 WORKDIR /build
 
@@ -47,7 +47,7 @@ COPY requirements/requirements-prod.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m venv /code/venv \
     && . /code/venv/bin/activate \
-    && pip install --upgrade pip \
+    && pip install --upgrade pip==26.2.1 \
     && pip install --no-compile -r requirements-prod.txt \
     && find /code/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \
     && find /code/venv -type f -name '*.pyc' -delete

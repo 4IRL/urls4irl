@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.5
-FROM debian:12-slim
+FROM debian:12.15-slim
 LABEL org.opencontainers.image.source="https://github.com/4IRL/urls4irl/daily-workflow"
 
 # Install system dependencies
@@ -33,7 +33,7 @@ RUN apt-get update \
 
 # Create Python venv with metrics dependencies (versions match requirements/requirements-prod.txt)
 RUN python3 -m venv /opt/metrics-venv \
-    && /opt/metrics-venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/metrics-venv/bin/pip install --no-cache-dir --upgrade pip==26.2.1 \
     && /opt/metrics-venv/bin/pip install --no-cache-dir \
          redis==5.0.1 \
          psycopg2-binary==2.9.9

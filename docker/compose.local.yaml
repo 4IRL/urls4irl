@@ -198,7 +198,7 @@ services:
       - u4i_shared
 
   redis:
-    image: redis:6.2
+    image: redis:6.2.24
     # Session lease pool for 2 concurrent runs of 30 workers (DB 0 + base
     # session DB reserved); must equal scripts/capacity.py SHARED_REDIS_DATABASES.
     command: redis-server --databases 64
@@ -211,7 +211,7 @@ services:
       retries: 3
 
   redis-metrics:
-    image: redis:6.2
+    image: redis:6.2.24
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no --databases ${REDIS_METRICS_DATABASES:-16}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

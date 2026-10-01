@@ -100,7 +100,7 @@ jobs:
 
       # Redis service configuration
       redis:
-        image: 'redis:6.2.16-alpine'
+        image: 'redis:6.2.24-alpine'
         ports:
           - 6379:6379
         options: >-
@@ -111,7 +111,7 @@ jobs:
 
       # Dedicated metrics Redis container (isolated from shared sessions/limiter).
       redis-metrics:
-        image: 'redis:6.2.16-alpine'
+        image: 'redis:6.2.24-alpine'
         ports:
           - 6380:6379
         command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
@@ -152,7 +152,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python3.11 -m pip install --upgrade pip;
+          python3.11 -m pip install --upgrade pip==26.2.1;
           pip install -r requirements/requirements-test.txt;
 
       - name: Run tests
@@ -225,7 +225,7 @@ jobs:
 
       # Redis service configuration
       redis:
-        image: 'redis:6.2.16-alpine'
+        image: 'redis:6.2.24-alpine'
         ports:
           - 6379:6379
         options: >-
@@ -236,7 +236,7 @@ jobs:
 
       # Dedicated metrics Redis container (isolated from shared sessions/limiter).
       redis-metrics:
-        image: 'redis:6.2.16-alpine'
+        image: 'redis:6.2.24-alpine'
         ports:
           - 6380:6379
         command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
@@ -277,7 +277,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python3.11 -m pip install --upgrade pip;
+          python3.11 -m pip install --upgrade pip==26.2.1;
           pip install -r requirements/requirements-test.txt;
 
       # Every worker in this job is a UI worker, so the chromium binary is
