@@ -572,6 +572,8 @@ def test_frontend_dir_resolves_through_the_path_table() -> None:
         ".github/workflows/test.yml",
         ".claude/x",
         "frontend/lib/__tests__/csrf.test.ts",
+        "frontend/eslint-rules/destructured-params.js",
+        "frontend/eslint-rules/destructured-params-baseline.json",
     ],
 )
 def test_no_impact_paths_select_nothing(path: str) -> None:

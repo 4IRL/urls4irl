@@ -151,6 +151,7 @@ NO_IMPACT_GLOBS: tuple[str, ...] = (
     "migrations/README",
     "frontend/.prettierignore",
     "frontend/eslint.config.js",
+    "frontend/eslint-rules/*",
     # vitest files run under make test-js, not pytest.
     "frontend/*__tests__/*",
 )
