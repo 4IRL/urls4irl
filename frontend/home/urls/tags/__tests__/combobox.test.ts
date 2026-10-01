@@ -278,7 +278,7 @@ describe("combobox — at-cap", () => {
     const urlCard = $(".urlRow");
     const appliedIds = Array.from(
       { length: APP_CONFIG.constants.TAGS_MAX_ON_URLS },
-      (_, i) => i + 1,
+      (_, index) => index + 1,
     ).join(",");
     urlCard.attr("data-utub-url-tag-ids", appliedIds);
     const block = createTagComboboxBlock({

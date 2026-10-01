@@ -494,8 +494,8 @@ function setupTagHeaderForMaximizeMinimize() {
 function getNumDecksAlreadyCollapsed(): number {
   let collapsedDecksCount = 0;
 
-  for (let i = 0; i < LHS_DECKS.length; i++) {
-    if ($(LHS_DECKS[i]).hasClass("collapsed")) collapsedDecksCount += 1;
+  for (let index = 0; index < LHS_DECKS.length; index++) {
+    if ($(LHS_DECKS[index]).hasClass("collapsed")) collapsedDecksCount += 1;
   }
 
   return collapsedDecksCount;
@@ -513,13 +513,13 @@ function getNumDecksAlreadyCollapsed(): number {
  * harmless marker rather than a mis-directed eviction.
  */
 function findDeckMarkedLastCollapsed(): string | undefined {
-  for (let i = 0; i < LHS_DECKS.length; i++) {
-    const deck = $(LHS_DECKS[i]);
+  for (let index = 0; index < LHS_DECKS.length; index++) {
+    const deck = $(LHS_DECKS[index]);
     if (
       deck.attr("data-last-collapsed") === "true" &&
       deck.hasClass("collapsed")
     ) {
-      return LHS_DECKS[i];
+      return LHS_DECKS[index];
     }
   }
   return undefined;
@@ -604,11 +604,11 @@ function clearLastCollapsed(expandingDeck: string): void {
 }
 
 function setLastCollapsed(collapsingDeck: string): void {
-  for (let i = 0; i < LHS_DECKS.length; i++) {
-    if (collapsingDeck === LHS_DECKS[i]) {
+  for (let index = 0; index < LHS_DECKS.length; index++) {
+    if (collapsingDeck === LHS_DECKS[index]) {
       $(collapsingDeck).attr("data-last-collapsed", "true");
     } else {
-      $(LHS_DECKS[i]).attr("data-last-collapsed", "false");
+      $(LHS_DECKS[index]).attr("data-last-collapsed", "false");
     }
   }
 }

@@ -213,7 +213,7 @@ describe("renderPipelineHealthChart", () => {
     // X positions must follow the BATCH_SIZE_BUCKET_ORDER index — "1" < "6-25"
     // < "26-100", so the first rect (from the "1" column) sits left of the
     // "6-25" rect, and "6-25" sits left of "26-100".
-    const sortedXValues = [...xValues].sort((a, b) => a - b);
+    const sortedXValues = [...xValues].sort((left, right) => left - right);
     expect(sortedXValues).toEqual(xValues);
   });
 

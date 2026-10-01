@@ -6,16 +6,16 @@
 
 import { diffIDLists } from "./deck-diffing.js";
 
-export interface DeckDiffConfig<T> {
-  oldItems: T[];
-  newItems: T[];
-  getID: (item: T) => number;
+export interface DeckDiffConfig<Item> {
+  oldItems: Item[];
+  newItems: Item[];
+  getID: (item: Item) => number;
   removeElement: (id: number) => void;
-  addElement: (item: T) => void;
-  updateElement?: (id: number, item: T) => void;
+  addElement: (item: Item) => void;
+  updateElement?: (id: number, item: Item) => void;
 }
 
-export function applyDeckDiff<T>(config: DeckDiffConfig<T>): void {
+export function applyDeckDiff<Item>(config: DeckDiffConfig<Item>): void {
   const oldIDs = config.oldItems.map(config.getID);
   const newIDs = config.newItems.map(config.getID);
 

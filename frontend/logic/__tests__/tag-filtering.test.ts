@@ -114,7 +114,7 @@ describe("sortTagsByCount", () => {
       { id: 3, visibleCount: 3 },
     ];
     const result = sortTagsByCount(tags);
-    expect(result.map((t) => t.id)).toEqual([2, 3, 1]);
+    expect(result.map((tag) => tag.id)).toEqual([2, 3, 1]);
   });
 
   it("does not mutate the original array", () => {
@@ -133,6 +133,6 @@ describe("sortTagsByCount", () => {
     ];
     const result = sortTagsByCount(tags);
     expect(result).toHaveLength(2);
-    expect(result.every((t) => t.visibleCount === 3)).toBe(true);
+    expect(result.every((tag) => tag.visibleCount === 3)).toBe(true);
   });
 });

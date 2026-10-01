@@ -77,13 +77,13 @@ export function setTagDeckOnUTubSelected(
   }
 
   // Loop through all tags and provide checkbox input for filtering
-  for (let i in dictTags) {
+  for (let index in dictTags) {
     parent.append(
       buildTagFilterInDeck(
         utubID,
-        dictTags[i].id,
-        dictTags[i].tagString,
-        dictTags[i].tagApplied,
+        dictTags[index].id,
+        dictTags[index].tagString,
+        dictTags[index].tagApplied,
       ),
     );
   }

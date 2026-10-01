@@ -24,6 +24,20 @@ export default [
         },
       ],
       "no-console": "error",
+      // Single-letter names: `$` (jQuery) and `_` (unused) are the only exceptions.
+      "id-length": [
+        "error",
+        { min: 2, exceptions: ["$", "_"], properties: "never" },
+      ],
+      // id-length skips type parameters, so enforce descriptive ones separately.
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: "typeParameter",
+          format: ["PascalCase"],
+          custom: { regex: "^.{2,}$", match: true },
+        },
+      ],
     },
   },
   {
