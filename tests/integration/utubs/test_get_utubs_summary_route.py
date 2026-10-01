@@ -117,9 +117,9 @@ def test_get_utubs_if_has_multiple_utubs(
     assert response.status_code == 200
     assert isinstance(response.json, dict)
     assert isinstance(response.json[MODELS.UTUBS], list)
-    assert sorted(utub_summary[MODELS.UTUBS], key=lambda x: x[MODELS.ID]) == sorted(
-        response.json[MODELS.UTUBS], key=lambda x: x[MODELS.ID]
-    )
+    assert sorted(
+        utub_summary[MODELS.UTUBS], key=lambda utub_item: utub_item[MODELS.ID]
+    ) == sorted(response.json[MODELS.UTUBS], key=lambda utub_item: utub_item[MODELS.ID])
 
 
 def test_get_utubs_summary_reflects_locked_state(

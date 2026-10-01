@@ -19,7 +19,7 @@ from backend.schemas.urls import (
     UtubUrlDeleteSchema,
 )
 from backend.urls.constants import BulkDeleteSkipReason, URLErrorCodes
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from backend.utubs.guards import reject_if_utub_locked
 
@@ -116,7 +116,7 @@ def _update_tag_counts_on_url_delete(
     ).delete()  # type: ignore
 
     # Update utub tag count after successful removal of all tags associated with deleted URL
-    return {t[0]: t[1] - 1 for t in tag_ids_and_count}
+    return {tag_id: tag_count - 1 for tag_id, tag_count in tag_ids_and_count}
 
 
 def _get_utub_url_tag_ids_and_utub_tag_ids_on_utub_url(
@@ -295,8 +295,8 @@ def delete_urls_in_utub(
         else:
             skipped.append(
                 {
-                    M.UTUB_URL_ID: row.id,
-                    M.SKIP_REASON: BulkDeleteSkipReason.FORBIDDEN,
+                    MODELS.UTUB_URL_ID: row.id,
+                    MODELS.SKIP_REASON: BulkDeleteSkipReason.FORBIDDEN,
                 }
             )
 

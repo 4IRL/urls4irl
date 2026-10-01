@@ -36,24 +36,24 @@ def _send_msg(
         )
         info_log(f"{prefix}Successfully sent notification: {response.status_code=}")
         return response
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException as request_error:
         if response:
             warn_log(
-                f"{prefix}Failed sending notification: {response.status_code=} | {e}"
+                f"{prefix}Failed sending notification: {response.status_code=} | {request_error}"
             )
             return
         warn_log(
-            f"{prefix}Received no response from notification request after RequestException | {e}"
+            f"{prefix}Received no response from notification request after RequestException | {request_error}"
         )
         return
-    except Exception as e:
+    except Exception as send_error:
         if response:
             warn_log(
-                f"{prefix}Failed sending notification: {response.status_code=} | {e}"
+                f"{prefix}Failed sending notification: {response.status_code=} | {send_error}"
             )
             return
         warn_log(
-            f"{prefix}Received no response from notification request after Exception | {e}"
+            f"{prefix}Received no response from notification request after Exception | {send_error}"
         )
         return
 

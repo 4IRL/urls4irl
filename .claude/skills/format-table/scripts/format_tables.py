@@ -73,7 +73,7 @@ def find_tables(lines):
 
 
 def has_box_chars(line):
-    return any(c in BOX_CHARS for c in line)
+    return any(char in BOX_CHARS for char in line)
 
 
 def find_box_diagrams(lines):
@@ -90,7 +90,9 @@ def find_box_diagrams(lines):
                 code_start = idx + 1
             else:
                 if code_start < idx:
-                    block_lines = [lines[i].rstrip() for i in range(code_start, idx)]
+                    block_lines = [
+                        lines[line_idx].rstrip() for line_idx in range(code_start, idx)
+                    ]
                     segments = split_into_segments(block_lines, code_start)
                     diagrams.extend(segments)
                 in_code_block = False
@@ -103,9 +105,9 @@ def split_into_segments(block_lines, global_offset):
     segments = []
     box_lines = []
 
-    for i, bline in enumerate(block_lines):
+    for line_idx, bline in enumerate(block_lines):
         if has_box_chars(bline):
-            box_lines.append((i, len(bline)))
+            box_lines.append((line_idx, len(bline)))
 
     if len(box_lines) < 3:
         return segments
@@ -115,7 +117,7 @@ def split_into_segments(block_lines, global_offset):
 
     for curr in box_lines[1:]:
         curr_w = curr[1]
-        group_widths = [w for _, w in current_group]
+        group_widths = [width for _, width in current_group]
         most_common_w = Counter(group_widths).most_common(1)[0][0]
 
         if abs(curr_w - most_common_w) <= 2:
@@ -137,9 +139,9 @@ def split_into_segments(block_lines, global_offset):
 
 
 def find_rightmost_border_col(line):
-    for i in range(len(line) - 1, -1, -1):
-        if line[i] in "│┐┘┤╣╗╝║":
-            return i
+    for col in range(len(line) - 1, -1, -1):
+        if line[col] in "│┐┘┤╣╗╝║":
+            return col
     return -1
 
 
@@ -190,7 +192,7 @@ def check_tables(filepath, lines, fix, new_lines):
     all_aligned = True
 
     for start, end in reversed(tables):
-        table_lines = [lines[i].rstrip() for i in range(start, end)]
+        table_lines = [lines[line_idx].rstrip() for line_idx in range(start, end)]
         formatted = format_table(table_lines)
 
         if table_lines != formatted:
@@ -213,10 +215,10 @@ HORIZONTAL_BORDER_CHARS = set("─┌┐└┘┬┴┼├┤═╔╗╚╝╦�
 
 
 def is_border_line(line):
-    non_space = [c for c in line if c != " "]
+    non_space = [char for char in line if char != " "]
     if not non_space:
         return False
-    border_count = sum(1 for c in non_space if c in HORIZONTAL_BORDER_CHARS)
+    border_count = sum(1 for char in non_space if char in HORIZONTAL_BORDER_CHARS)
     return border_count > len(non_space) * 0.5
 
 
@@ -237,7 +239,7 @@ def find_nearby_vertical_chars(diagram_lines, row, col, direction, max_gap=5):
 
 
 def check_vertical_pipe_alignment(filepath, lines, start, end):
-    diagram_lines = [lines[i].rstrip() for i in range(start, end)]
+    diagram_lines = [lines[line_idx].rstrip() for line_idx in range(start, end)]
     if not diagram_lines:
         return True
 
@@ -297,7 +299,7 @@ def check_vertical_pipe_alignment(filepath, lines, start, end):
 
 
 def fix_vertical_pipe_alignment(lines, start, end):
-    diagram_lines = [lines[i].rstrip() for i in range(start, end)]
+    diagram_lines = [lines[line_idx].rstrip() for line_idx in range(start, end)]
     if not diagram_lines:
         return False
 
@@ -362,8 +364,8 @@ def fix_vertical_pipe_alignment(lines, start, end):
                 break
 
     if changed:
-        for i, dl in enumerate(diagram_lines):
-            lines[start + i] = dl
+        for line_idx, dl in enumerate(diagram_lines):
+            lines[start + line_idx] = dl
 
     return changed
 
@@ -373,10 +375,12 @@ def check_diagrams(filepath, lines, fix, new_lines):
     all_aligned = True
 
     for start, end in reversed(diagrams):
-        diagram_lines = [lines[i].rstrip() for i in range(start, end)]
+        diagram_lines = [lines[line_idx].rstrip() for line_idx in range(start, end)]
 
         nonempty_box = [
-            (i, line) for i, line in enumerate(diagram_lines) if has_box_chars(line)
+            (line_idx, line)
+            for line_idx, line in enumerate(diagram_lines)
+            if has_box_chars(line)
         ]
         if not nonempty_box:
             continue
@@ -386,9 +390,11 @@ def check_diagrams(filepath, lines, fix, new_lines):
         if len(set(widths)) > 1:
             target = width_counts.most_common(1)[0][0]
             bad_lines = [
-                (start + i, w)
-                for i, w in zip([x[0] for x in nonempty_box], widths)
-                if w != target
+                (start + line_idx, width)
+                for line_idx, width in zip(
+                    [box_entry[0] for box_entry in nonempty_box], widths
+                )
+                if width != target
             ]
 
             if bad_lines:

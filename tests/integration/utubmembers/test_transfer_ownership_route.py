@@ -28,7 +28,7 @@ from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID
@@ -140,10 +140,12 @@ def test_transfer_to_plain_member_as_owner(
     assert _role_of(app, utub_id, FIRST_USER_ID) == Member_Role.CO_CREATOR
 
     assert body[UTUB_ID] == utub_id
-    assert body[M.NEW_OWNER][M.MEMBER_ROLE] == Member_Role.CREATOR.value
-    assert body[M.NEW_OWNER][M.ID] == THIRD_USER_ID
-    assert body[M.PREVIOUS_OWNER][M.MEMBER_ROLE] == Member_Role.CO_CREATOR.value
-    assert body[M.PREVIOUS_OWNER][M.ID] == FIRST_USER_ID
+    assert body[MODELS.NEW_OWNER][MODELS.MEMBER_ROLE] == Member_Role.CREATOR.value
+    assert body[MODELS.NEW_OWNER][MODELS.ID] == THIRD_USER_ID
+    assert (
+        body[MODELS.PREVIOUS_OWNER][MODELS.MEMBER_ROLE] == Member_Role.CO_CREATOR.value
+    )
+    assert body[MODELS.PREVIOUS_OWNER][MODELS.ID] == FIRST_USER_ID
 
 
 def test_transfer_to_existing_co_owner_as_owner(

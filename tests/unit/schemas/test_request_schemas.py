@@ -29,7 +29,7 @@ class TestCreateUTubRequest:
         with pytest.raises(ValidationError) as exc_info:
             CreateUTubRequest.model_validate({"utubDescription": "desc"})
         errors = exc_info.value.errors()
-        assert any(e["loc"][0] == "utubName" for e in errors)
+        assert any(error["loc"][0] == "utubName" for error in errors)
 
     def test_whitespace_only_name_raises(self):
         from backend.schemas.requests.utubs import CreateUTubRequest
@@ -37,7 +37,7 @@ class TestCreateUTubRequest:
         with pytest.raises(ValidationError) as exc_info:
             CreateUTubRequest.model_validate({"utubName": "   "})
         errors = exc_info.value.errors()
-        assert any(e["loc"][0] == "utubName" for e in errors)
+        assert any(error["loc"][0] == "utubName" for error in errors)
 
     def test_name_too_long_raises(self):
         from backend.schemas.requests.utubs import CreateUTubRequest
@@ -47,7 +47,7 @@ class TestCreateUTubRequest:
                 {"utubName": "a" * (UTUB_CONSTANTS.MAX_NAME_LENGTH + 1)}
             )
         errors = exc_info.value.errors()
-        assert any(e["loc"][0] == "utubName" for e in errors)
+        assert any(error["loc"][0] == "utubName" for error in errors)
 
 
 class TestUpdateUTubDescriptionRequest:
@@ -79,7 +79,7 @@ class TestAddTagRequest:
         with pytest.raises(ValidationError) as exc_info:
             AddTagRequest.model_validate({"tagString": "   "})
         errors = exc_info.value.errors()
-        assert any(e["loc"][0] == "tagString" for e in errors)
+        assert any(error["loc"][0] == "tagString" for error in errors)
 
     def test_html_tag_is_rejected(self):
         from backend.schemas.requests.tags import AddTagRequest
@@ -169,7 +169,7 @@ class TestAddMemberRequest:
         with pytest.raises(ValidationError) as exc_info:
             AddMemberRequest.model_validate({})
         errors = exc_info.value.errors()
-        assert any(e["loc"][0] == "username" for e in errors)
+        assert any(error["loc"][0] == "username" for error in errors)
 
     def test_valid_username(self):
         from backend.schemas.requests.members import AddMemberRequest

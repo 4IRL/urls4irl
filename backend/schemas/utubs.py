@@ -9,8 +9,7 @@ from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
 from backend.schemas.users import UtubMemberSchema
-from backend.utils.strings.model_strs import MODELS as M
-from backend.utils.strings.model_strs import UTUB_DESCRIPTION
+from backend.utils.strings.model_strs import MODELS, UTUB_DESCRIPTION
 from backend.utils.strings.utub_strs import UTUB_CREATOR_ID, UTUB_ID, UTUB_NAME
 
 if TYPE_CHECKING:
@@ -22,51 +21,51 @@ class UtubDetailSchema(BaseSchema):
     """Full UTub detail with members, URLs, and tags"""
 
     id: int = Field(
-        alias=M.ID,
+        alias=MODELS.ID,
         description="Unique UTub ID",
     )
     name: str = Field(
-        alias=M.NAME,
+        alias=MODELS.NAME,
         description="Name of the UTub",
     )
     created_by: int = Field(
-        alias=M.CREATED_BY,
+        alias=MODELS.CREATED_BY,
         description="User ID of the UTub creator",
     )
     created_at: datetime = Field(
-        alias=M.CREATED_AT,
+        alias=MODELS.CREATED_AT,
         description="Creation timestamp of the UTub (ISO 8601)",
     )
     description: str = Field(
-        alias=M.DESCRIPTION,
+        alias=MODELS.DESCRIPTION,
         description="Description of the UTub",
     )
     members: list[UtubMemberSchema] = Field(
-        alias=M.MEMBERS,
+        alias=MODELS.MEMBERS,
         description="List of members in the UTub",
     )
     urls: list[UtubUrlSchema] = Field(
-        alias=M.URLS,
+        alias=MODELS.URLS,
         description="List of URLs in the UTub",
     )
     tags: list[UtubTagSchema] = Field(
-        alias=M.TAGS,
+        alias=MODELS.TAGS,
         description="List of tags used in the UTub",
     )
     is_creator: bool = Field(
-        alias=M.IS_CREATOR,
+        alias=MODELS.IS_CREATOR,
         description="Whether the current user is the creator of the UTub",
     )
     is_co_creator: bool = Field(
-        alias=M.IS_CO_CREATOR,
+        alias=MODELS.IS_CO_CREATOR,
         description="Whether the current user is a co-creator (co-owner) of the UTub",
     )
     is_locked: bool = Field(
-        alias=M.IS_LOCKED,
+        alias=MODELS.IS_LOCKED,
         description="Whether the UTub is locked (frozen to all user mutations)",
     )
     current_user: int = Field(
-        alias=M.CURRENT_USER,
+        alias=MODELS.CURRENT_USER,
         description="ID of the currently authenticated user",
     )
 
@@ -106,12 +105,15 @@ class UtubDetailSchema(BaseSchema):
         # ``get_single_utub_for_user``) — the serialized ``urls`` list is emitted
         # in exactly this order.
         urls = [
-            UtubUrlSchema.from_orm_url(u, current_user_id, viewer_is_manager)
-            for u in ordered_utub_urls
+            UtubUrlSchema.from_orm_url(utub_url, current_user_id, viewer_is_manager)
+            for utub_url in ordered_utub_urls
         ]
-        tags = [UtubTagSchema(id=t.id, tag_string=t.tag_string) for t in utub.utub_tags]
+        tags = [
+            UtubTagSchema(id=utub_tag.id, tag_string=utub_tag.tag_string)
+            for utub_tag in utub.utub_tags
+        ]
         # Replicate the tag_applied count loop from Utubs.serialized()
-        tag_map = {t.id: t for t in tags}
+        tag_map = {tag.id: tag for tag in tags}
         for url in urls:
             for tag_id in url.utub_url_tag_ids:
                 if tag_id in tag_map:

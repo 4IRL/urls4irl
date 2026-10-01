@@ -1927,11 +1927,11 @@ def test_latency_timeseries_admin_happy_path_returns_buckets(
     assert "buckets" in body
     assert _ISO_8601_UTC_REGEX.match(body["window_start"])
 
-    non_empty = [b for b in body["buckets"] if b["sample_count"] > 0]
+    non_empty = [bucket for bucket in body["buckets"] if bucket["sample_count"] > 0]
     assert len(non_empty) == 1
     assert non_empty[0]["p50"] == 20.0
     # Zero-fill buckets carry null percentiles (never 0) so the chart breaks.
-    empty = [b for b in body["buckets"] if b["sample_count"] == 0]
+    empty = [bucket for bucket in body["buckets"] if bucket["sample_count"] == 0]
     assert empty
     assert empty[0]["p50"] is None
 

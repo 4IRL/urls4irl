@@ -61,8 +61,8 @@ class ViteManifestEntry(TypedDict):
 def _read_manifest(manifest_path: str) -> dict[str, ViteManifestEntry]:
     """Return parsed Vite manifest JSON, or {} on failure."""
     try:
-        with open(manifest_path, "r") as f:
-            return json.load(f)
+        with open(manifest_path, "r") as manifest_file:
+            return json.load(manifest_file)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
@@ -535,7 +535,9 @@ def init_vite_app(app: Flask):
                 return []  # Vite HMR injects CSS via JS in dev mode
             manifest = _read_manifest(manifest_path)
             css_paths = collect_css_from_manifest(manifest, entrypoint)
-            return [url_for("static", filename=f"dist/{f}") for f in css_paths]
+            return [
+                url_for("static", filename=f"dist/{css_path}") for css_path in css_paths
+            ]
 
         return dict(
             vite_asset=vite_asset,

@@ -44,8 +44,8 @@ def assert_row_counts_match_ignoring_new_tables(
 
 def verify_users_added():
     """Verifies all unique mock users are in the database with emails validated"""
-    for i in range(TEST_USER_COUNT):
-        username = f"{USERNAME_BASE}{i + 1}"
+    for user_index in range(TEST_USER_COUNT):
+        username = f"{USERNAME_BASE}{user_index + 1}"
         assert Users.query.filter(Users.username == username).count() == 1
         user: Users = Users.query.filter(Users.username == username).first()
         assert user.email_validated
@@ -60,15 +60,15 @@ def verify_utubs_added_duplicates(utub_count: int):
     """
     assert Users.query.count() == TEST_USER_COUNT
     assert Utubs.query.count() == TEST_USER_COUNT * utub_count
-    for i in range(TEST_USER_COUNT):
-        utub_name = f"{MOCK_UTUB_NAME_BASE}{i + 1}"
+    for user_index in range(TEST_USER_COUNT):
+        utub_name = f"{MOCK_UTUB_NAME_BASE}{user_index + 1}"
         assert Utubs.query.filter(Utubs.name == utub_name).count() == utub_count
 
 
 def verify_utubs_added_no_duplicates():
     """Verifies all unique utubs are in the database"""
-    for i in range(TEST_USER_COUNT):
-        utub_name = f"{MOCK_UTUB_NAME_BASE}{i + 1}"
+    for user_index in range(TEST_USER_COUNT):
+        utub_name = f"{MOCK_UTUB_NAME_BASE}{user_index + 1}"
         assert Utubs.query.filter(Utubs.name == utub_name).count() == 1
 
 

@@ -25,7 +25,7 @@ from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 
 pytestmark = pytest.mark.mobile_api
 
@@ -120,17 +120,17 @@ def test_co_member_candidates_happy_path(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
-    members = response_json[M.MEMBERS]
+    members = response_json[MODELS.MEMBERS]
     assert isinstance(members, list)
     # Ordered case-insensitively by username: CenturyUser1234, PersonalEntry1234
-    assert [member[M.USERNAME] for member in members] == [
+    assert [member[MODELS.USERNAME] for member in members] == [
         "CenturyUser1234",
         "PersonalEntry1234",
     ]
     for member in members:
-        assert M.ID in member
-        assert M.USERNAME in member
-        assert member[M.SHARED_UTUB_COUNT] == 1
+        assert MODELS.ID in member
+        assert MODELS.USERNAME in member
+        assert member[MODELS.SHARED_UTUB_COUNT] == 1
 
 
 def test_co_member_candidates_empty_list(
@@ -159,7 +159,7 @@ def test_co_member_candidates_empty_list(
     assert response.status_code == 200
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert response_json[M.MEMBERS] == []
+    assert response_json[MODELS.MEMBERS] == []
 
 
 def test_co_member_candidates_no_token_is_401(app: Flask, api_client: FlaskClient):

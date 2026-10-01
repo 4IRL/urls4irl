@@ -75,11 +75,11 @@ def reset_limiter():
         "limiter", None
     )
 
-    def _get_limiter(s: set | None) -> Limiter | None:
-        if not s:
+    def _get_limiter(extensions: set | None) -> Limiter | None:
+        if not extensions:
             return
 
-        for val in s:
+        for val in extensions:
             if isinstance(val, Limiter):
                 return val
         return

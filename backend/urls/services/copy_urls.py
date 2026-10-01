@@ -17,7 +17,7 @@ from backend.schemas.urls import (
     UrlCopySkippedSchema,
 )
 from backend.urls.constants import BulkCopySkipReason, DestCopyStatus, URLErrorCodes
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
 
@@ -56,8 +56,8 @@ def _copy_source_rows_into_dest(
         if (dest_utub.id, source_row.url_id) in existing_pairs:
             skipped_results.append(
                 {
-                    M.UTUB_URL_ID: source_row.id,
-                    M.SKIP_REASON: BulkCopySkipReason.DUPLICATE,
+                    MODELS.UTUB_URL_ID: source_row.id,
+                    MODELS.SKIP_REASON: BulkCopySkipReason.DUPLICATE,
                 }
             )
             continue

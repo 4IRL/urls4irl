@@ -84,7 +84,8 @@ all_tags = (
 all_tag_strings = [tag[MODEL_STRS.TAG_STRING] for tag in all_tags]
 
 max_tag_strings = [
-    all_tag_strings[i % len(all_tag_strings)] for i in range(TAG_CONSTANTS.MAX_URL_TAGS)
+    all_tag_strings[tag_index % len(all_tag_strings)]
+    for tag_index in range(TAG_CONSTANTS.MAX_URL_TAGS)
 ]
 
 maximum_tags = [

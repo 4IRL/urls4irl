@@ -16,7 +16,7 @@ from backend.models.utubs import Utubs
 from backend.search.constants import SearchErrorCodes, SearchFailureMessages
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
 from tests.integration.search.helpers import seed_single_utub_with_one_url
@@ -119,7 +119,7 @@ def test_search_returns_grouped_ranked_results(
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
-    groups = body[M.SEARCH_RESULTS]
+    groups = body[MODELS.SEARCH_RESULTS]
     assert isinstance(groups, list)
     assert len(groups) > 0
 
@@ -127,19 +127,19 @@ def test_search_returns_grouped_ranked_results(
     for group in groups:
         assert UTUB_ID in group
         assert UTUB_NAME in group
-        assert M.URLS in group
-        for hit in group[M.URLS]:
-            assert M.UTUB_URL_ID in hit
-            assert M.URL_STRING in hit
-            assert M.URL_TITLE in hit
-            assert M.URL_TAGS in hit
-            assert M.MATCHED_FIELDS in hit
+        assert MODELS.URLS in group
+        for hit in group[MODELS.URLS]:
+            assert MODELS.UTUB_URL_ID in hit
+            assert MODELS.URL_STRING in hit
+            assert MODELS.URL_TITLE in hit
+            assert MODELS.URL_TAGS in hit
+            assert MODELS.MATCHED_FIELDS in hit
             # Every hit here matches title + url, the maximum score for "https".
-            all_titles_at_max_score.append(hit[M.URL_TITLE])
+            all_titles_at_max_score.append(hit[MODELS.URL_TITLE])
 
     best_ranked_title = min(all_titles_at_max_score)
-    assert groups[0][M.URLS][0][M.URL_TITLE] == best_ranked_title
-    assert groups[0][M.URLS][0][M.MATCHED_FIELDS] == ["title", "url"]
+    assert groups[0][MODELS.URLS][0][MODELS.URL_TITLE] == best_ranked_title
+    assert groups[0][MODELS.URLS][0][MODELS.MATCHED_FIELDS] == ["title", "url"]
 
 
 def test_search_excludes_non_member_utubs(
@@ -155,7 +155,7 @@ def test_search_excludes_non_member_utubs(
 
     assert response.status_code == 200
     body = response.get_json()
-    returned_utub_ids = {group[UTUB_ID] for group in body[M.SEARCH_RESULTS]}
+    returned_utub_ids = {group[UTUB_ID] for group in body[MODELS.SEARCH_RESULTS]}
     assert 1 not in returned_utub_ids
 
 
@@ -204,7 +204,7 @@ def test_search_no_match_returns_empty_list(
 
     assert response.status_code == 200
     body = response.get_json()
-    assert body[M.SEARCH_RESULTS] == []
+    assert body[MODELS.SEARCH_RESULTS] == []
 
 
 def test_search_unauthenticated_redirects(client: FlaskClient) -> None:
@@ -253,14 +253,16 @@ def test_search_route_honors_fields_subset(
     default_response = logged_in_client.get(base_url)
     assert default_response.status_code == 200
     default_body = default_response.get_json()
-    default_groups = default_body[M.SEARCH_RESULTS]
+    default_groups = default_body[MODELS.SEARCH_RESULTS]
     assert len(default_groups) >= 1
-    assert sum(len(group[M.URLS]) for group in default_groups) >= 1
+    assert sum(len(group[MODELS.URLS]) for group in default_groups) >= 1
 
     filtered_response = logged_in_client.get(base_url + "&fields=title,url")
     assert filtered_response.status_code == 200
     filtered_body = filtered_response.get_json()
-    filtered_hits = sum(len(group[M.URLS]) for group in filtered_body[M.SEARCH_RESULTS])
+    filtered_hits = sum(
+        len(group[MODELS.URLS]) for group in filtered_body[MODELS.SEARCH_RESULTS]
+    )
     assert filtered_hits == 0
 
 
@@ -286,20 +288,20 @@ def test_search_route_honors_fields_order(
     default_body = default_response.get_json()
     default_group = next(
         group
-        for group in default_body[M.SEARCH_RESULTS]
+        for group in default_body[MODELS.SEARCH_RESULTS]
         if group[UTUB_ID] == seeded_utub_id
     )
-    assert default_group[M.URLS][0][M.URL_TITLE] == f"{query_term} title"
+    assert default_group[MODELS.URLS][0][MODELS.URL_TITLE] == f"{query_term} title"
 
     flipped_response = logged_in_client.get(base_url + "&fields=tag,title")
     assert flipped_response.status_code == 200
     flipped_body = flipped_response.get_json()
     flipped_group = next(
         group
-        for group in flipped_body[M.SEARCH_RESULTS]
+        for group in flipped_body[MODELS.SEARCH_RESULTS]
         if group[UTUB_ID] == seeded_utub_id
     )
-    assert flipped_group[M.URLS][0][M.URL_TITLE] == "unrelated b"
+    assert flipped_group[MODELS.URLS][0][MODELS.URL_TITLE] == "unrelated b"
 
 
 def test_search_route_rejects_invalid_fields_token(
@@ -355,7 +357,7 @@ def test_search_route_omitted_fields_searches_all(
 
     assert response.status_code == 200
     body = response.get_json()
-    groups = body[M.SEARCH_RESULTS]
+    groups = body[MODELS.SEARCH_RESULTS]
     assert len(groups) >= 1
-    total_hits = sum(len(group[M.URLS]) for group in groups)
+    total_hits = sum(len(group[MODELS.URLS]) for group in groups)
     assert total_hits >= 1

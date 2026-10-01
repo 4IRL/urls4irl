@@ -181,17 +181,17 @@ class EmailSender:
         try:
             return self._mailjet_client.send.create(data=message)
 
-        except (ApiError, TimeoutError) as e:
+        except (ApiError, TimeoutError) as mailjet_error:
             # Can occur if not connected to internet, or on a limited service
             # TODO: Include the error output for logging but just return error here
             error_log(
-                f"[{request_id}] Error with Mailjet service: {e}\n\n[BEGIN EXCEPTION]\n\n{traceback.format_exc()}\n[END EXCEPTION]\n"
+                f"[{request_id}] Error with Mailjet service: {mailjet_error}\n\n[BEGIN EXCEPTION]\n\n{traceback.format_exc()}\n[END EXCEPTION]\n"
             )
             return self._mock_response_builder(500)
 
-        except Exception as e:
+        except Exception as send_error:
             # TODO: Include the error output for logging but just return error here
-            error_log(f"[{request_id}] Error with Mailjet service: {e}")
+            error_log(f"[{request_id}] Error with Mailjet service: {send_error}")
             return self._mock_response_builder(500)
 
     @staticmethod

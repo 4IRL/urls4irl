@@ -110,9 +110,9 @@ def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
     for port in range(start_port, end_port + 1):
         if port in BROWSER_UNSAFE_PORTS:
             continue
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe_socket:
             try:
-                s.bind(("127.0.0.1", port))
+                probe_socket.bind(("127.0.0.1", port))
                 return port
             except OSError:
                 continue

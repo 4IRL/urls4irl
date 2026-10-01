@@ -12,7 +12,7 @@ from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
 pytestmark = pytest.mark.members
@@ -71,17 +71,17 @@ def test_co_member_candidates_returns_200_with_shape(
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
-    members = body[M.MEMBERS]
+    members = body[MODELS.MEMBERS]
     assert isinstance(members, list)
     # Ordered case-insensitively by username: CenturyUser1234, PersonalEntry1234
-    assert [member[M.USERNAME] for member in members] == [
+    assert [member[MODELS.USERNAME] for member in members] == [
         "CenturyUser1234",
         "PersonalEntry1234",
     ]
     for member in members:
-        assert M.ID in member
-        assert M.USERNAME in member
-        assert member[M.SHARED_UTUB_COUNT] == 1
+        assert MODELS.ID in member
+        assert MODELS.USERNAME in member
+        assert member[MODELS.SHARED_UTUB_COUNT] == 1
 
 
 def test_co_member_candidates_empty_list(
@@ -101,7 +101,7 @@ def test_co_member_candidates_empty_list(
     )
 
     assert response.status_code == 200
-    assert response.get_json()[M.MEMBERS] == []
+    assert response.get_json()[MODELS.MEMBERS] == []
 
 
 def test_co_member_candidates_non_ajax_redirects(

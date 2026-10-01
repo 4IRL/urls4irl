@@ -253,7 +253,9 @@ def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = Fa
 
         g.http_method = request.method
         g.query_params = (
-            {k: v for k, v in request.args.items()} if request.args else None
+            {key: value for key, value in request.args.items()}
+            if request.args
+            else None
         )
         g.remote_addr = getattr(request, "remote_addr", "-") if request else "-"
         g.content_type = request.content_type

@@ -6,7 +6,7 @@ from pydantic import Field
 
 from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER, REDIRECT_URL
 from backend.utils.strings.utub_strs import UTUB_ID
 
@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 
 class UserSchema(BaseSchema):
-    id: int = Field(alias=M.ID, description="Unique user ID")
-    username: str = Field(alias=M.USERNAME, description="Username of the user")
+    id: int = Field(alias=MODELS.ID, description="Unique user ID")
+    username: str = Field(alias=MODELS.USERNAME, description="Username of the user")
 
 
 MemberSchema = UserSchema
@@ -30,10 +30,10 @@ class UtubMemberSchema(BaseSchema):
     role exposure is scoped to the detail response only.
     """
 
-    id: int = Field(alias=M.ID, description="Unique user ID")
-    username: str = Field(alias=M.USERNAME, description="Username of the user")
+    id: int = Field(alias=MODELS.ID, description="Unique user ID")
+    username: str = Field(alias=MODELS.USERNAME, description="Username of the user")
     member_role: str = Field(
-        alias=M.MEMBER_ROLE,
+        alias=MODELS.MEMBER_ROLE,
         description="Role of the member in the UTub",
     )
 
@@ -42,10 +42,10 @@ class CoMemberSchema(BaseSchema):
     """A co-member add candidate: a user who shares >=1 other UTub with the
     requester and is not already a member of the target UTub."""
 
-    id: int = Field(alias=M.ID, description="Unique user ID")
-    username: str = Field(alias=M.USERNAME, description="Username of the user")
+    id: int = Field(alias=MODELS.ID, description="Unique user ID")
+    username: str = Field(alias=MODELS.USERNAME, description="Username of the user")
     shared_utub_count: int = Field(
-        alias=M.SHARED_UTUB_COUNT,
+        alias=MODELS.SHARED_UTUB_COUNT,
         description="Number of the requester's UTubs this candidate also belongs to",
     )
 
@@ -59,20 +59,20 @@ class CoMemberListSchema(BaseSchema):
 
     members: list[CoMemberSchema] = Field(
         default_factory=list,
-        alias=M.MEMBERS,
+        alias=MODELS.MEMBERS,
         description="Co-member add candidates for the target UTub",
     )
 
 
 class UtubSummaryItemSchema(BaseSchema):
-    id: int = Field(alias=M.ID, description="Unique UTub ID")
-    name: str = Field(alias=M.NAME, description="Name of the UTub")
+    id: int = Field(alias=MODELS.ID, description="Unique UTub ID")
+    name: str = Field(alias=MODELS.NAME, description="Name of the UTub")
     member_role: str = Field(
-        alias=M.MEMBER_ROLE,
+        alias=MODELS.MEMBER_ROLE,
         description="Role of the current user in the UTub",
     )
     is_locked: bool = Field(
-        alias=M.IS_LOCKED,
+        alias=MODELS.IS_LOCKED,
         description="Whether the UTub is locked (frozen to all user mutations)",
     )
 
@@ -81,7 +81,7 @@ class UtubSummaryListSchema(BaseSchema):
     """List of UTub summaries"""
 
     utubs: list[UtubSummaryItemSchema] = Field(
-        alias=M.UTUBS,
+        alias=MODELS.UTUBS,
         description="List of UTubs the user is a member of",
     )
 
@@ -89,18 +89,18 @@ class UtubSummaryListSchema(BaseSchema):
     def from_user(cls, user: Users) -> UtubSummaryListSchema:
         sorted_utubs = sorted(
             user.utubs_is_member_of,
-            key=lambda m: m.to_utub.last_updated,
+            key=lambda membership: membership.to_utub.last_updated,
             reverse=True,
         )
         return cls(
             utubs=[
                 UtubSummaryItemSchema(
-                    id=m.to_utub.id,
-                    name=m.to_utub.name,
-                    member_role=m.member_role.value,
-                    is_locked=m.to_utub.is_locked,
+                    id=membership.to_utub.id,
+                    name=membership.to_utub.name,
+                    member_role=membership.member_role.value,
+                    is_locked=membership.to_utub.is_locked,
                 )
-                for m in sorted_utubs
+                for membership in sorted_utubs
             ]
         )
 
@@ -141,11 +141,11 @@ class OwnershipTransferredResponseSchema(BaseSchema):
         description="ID of the UTub whose ownership was transferred",
     )
     new_owner: UtubMemberSchema = Field(
-        alias=M.NEW_OWNER,
+        alias=MODELS.NEW_OWNER,
         description="The promoted member, now CREATOR",
     )
     previous_owner: UtubMemberSchema = Field(
-        alias=M.PREVIOUS_OWNER,
+        alias=MODELS.PREVIOUS_OWNER,
         description="The demoted member, now CO_CREATOR",
     )
 
@@ -161,7 +161,7 @@ class ChangeUsernameResponseSchema(BaseSchema):
     """
 
     username: str = Field(
-        alias=M.USERNAME,
+        alias=MODELS.USERNAME,
         description="The account's username after the change (echoed back)",
     )
     status: Literal["Success", "No change"] = Field(
@@ -187,23 +187,23 @@ class UpdatePreferencesResponseSchema(BaseSchema):
     """
 
     theme: str = Field(
-        alias=M.THEME,
+        alias=MODELS.THEME,
         description="The account's theme after the change (echoed back)",
     )
     default_view: str = Field(
-        alias=M.DEFAULT_VIEW,
+        alias=MODELS.DEFAULT_VIEW,
         description="The account's default view mode after the change",
     )
     default_sort: str = Field(
-        alias=M.DEFAULT_SORT,
+        alias=MODELS.DEFAULT_SORT,
         description="The account's default sort order after the change",
     )
     density: str = Field(
-        alias=M.DENSITY,
+        alias=MODELS.DENSITY,
         description="The account's layout density after the change",
     )
     date_format: str = Field(
-        alias=M.DATE_FORMAT,
+        alias=MODELS.DATE_FORMAT,
         description="The account's date format after the change",
     )
     status: Literal["Success", "No change"] = Field(
@@ -240,7 +240,7 @@ class ChangeEmailResponseSchema(StatusMessageResponseSchema):
 
     pending_email: str | None = Field(
         default=None,
-        alias=M.PENDING_EMAIL,
+        alias=MODELS.PENDING_EMAIL,
         description="The staged (not-yet-confirmed) new email, echoed back (DD-6)",
     )
 

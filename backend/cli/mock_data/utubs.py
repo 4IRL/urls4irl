@@ -15,8 +15,8 @@ def generate_mock_utubs(db: SQLAlchemy, no_dupes: bool):
         db (SQLAlchemy): Database engine and connection for committing mock data
         no_dupes (bool): True if wanting to avoid creating duplicate UTubs, else will create UTubs with duplicate names
     """
-    for i in range(TEST_USER_COUNT):
-        creator_id = i + 1
+    for user_index in range(TEST_USER_COUNT):
+        creator_id = user_index + 1
         utub_name = f"{MOCK_UTUB_NAME_BASE}{creator_id}"
         creator: Users = Users.query.get(creator_id)
 
