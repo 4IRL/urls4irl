@@ -570,6 +570,7 @@ def test_frontend_dir_resolves_through_the_path_table() -> None:
     [
         "README.md",
         ".github/workflows/test.yml",
+        ".github/actions/setup-playwright/action.yml",
         ".claude/x",
         "frontend/lib/__tests__/csrf.test.ts",
         "frontend/eslint-rules/destructured-params.js",

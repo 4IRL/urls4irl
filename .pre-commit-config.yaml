@@ -70,7 +70,7 @@ repos:
       entry: make lint-actions
       language: system
       types: [yaml]
-      files: ^\.github/workflows/
+      files: ^\.github/(workflows|actions)/
       pass_filenames: false
       require_serial: true
 

@@ -1,0 +1,51 @@
+name: Warm Playwright Cache
+permissions:
+  contents: read
+
+# Tests only run on pull_request, so Tests-UI only ever saves the Playwright cache under its
+# own refs/pull/N/merge scope, which no other PR can read. A cache saved on main is readable
+# by every PR, so this workflow keeps one there and a new PR's first UI run starts warm.
+on:
+  # Refill whenever the cache key or its contents could change: the playwright== pin lives in
+  # requirements-test.txt, and the key/paths/install steps live in the composite action.
+  push:
+    branches: [main]
+    paths:
+      - requirements/requirements-test.txt
+      - .github/actions/setup-playwright/**
+      - .github/workflows/playwright-cache-warm.yml
+  # Manual refill, e.g. after deleting the cache entry by hand.
+  workflow_dispatch:
+  # GitHub evicts a cache entry after 7 days without access, and the paths filter alone would
+  # not refill it after a quiet week. A weekly run either restores the entry (refreshing its
+  # last-access time) or, if it was already evicted, saves a fresh one.
+  schedule:
+    - cron: "17 6 * * 1"
+
+jobs:
+  warm-playwright-cache:
+    name: Warm Playwright Cache
+    # Must match Tests-UI's runner so the runner.os/runner.arch key parts line up.
+    runs-on: ubuntu-latest
+    # A cold apt download can take about 8 minutes on a slow mirror.
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: '3.11.14'
+          cache: 'pip'
+          cache-dependency-path: '**/requirements/requirements-test.txt'
+
+      # Same install as Tests-UI, so the playwright CLI version matches the cache key.
+      - name: Install Python dependencies
+        run: |
+          python3.11 -m pip install --upgrade pip==26.2.1
+          pip install -r requirements/requirements-test.txt
+
+      - name: Install Playwright browser (cached apt deps + browser)
+        uses: ./.github/actions/setup-playwright
