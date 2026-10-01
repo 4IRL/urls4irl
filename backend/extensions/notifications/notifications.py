@@ -5,7 +5,13 @@ from enum import IntEnum
 import requests
 from flask import Flask
 
-from backend.app_logger import error_log, safe_add_log, safe_get_request_id, warning_log
+from backend.app_logger import (
+    error_log,
+    safe_add_log,
+    safe_get_request_id,
+    sanitize_log_value,
+    warning_log,
+)
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 
@@ -34,26 +40,38 @@ def _send_msg(
         response = requests.post(
             url=url, json=payload, headers=headers, timeout=timeout
         )
-        info_log(f"{prefix}Successfully sent notification: {response.status_code=}")
+        info_log(
+            sanitize_log_value(
+                f"{prefix}Successfully sent notification: {response.status_code=}"
+            )
+        )
         return response
     except requests.exceptions.RequestException as request_error:
         if response:
             warn_log(
-                f"{prefix}Failed sending notification: {response.status_code=} | {request_error}"
+                sanitize_log_value(
+                    f"{prefix}Failed sending notification: {response.status_code=} | {request_error}"
+                )
             )
             return
         warn_log(
-            f"{prefix}Received no response from notification request after RequestException | {request_error}"
+            sanitize_log_value(
+                f"{prefix}Received no response from notification request after RequestException | {request_error}"
+            )
         )
         return
     except Exception as send_error:
         if response:
             warn_log(
-                f"{prefix}Failed sending notification: {response.status_code=} | {send_error}"
+                sanitize_log_value(
+                    f"{prefix}Failed sending notification: {response.status_code=} | {send_error}"
+                )
             )
             return
         warn_log(
-            f"{prefix}Received no response from notification request after Exception | {send_error}"
+            sanitize_log_value(
+                f"{prefix}Received no response from notification request after Exception | {send_error}"
+            )
         )
         return
 

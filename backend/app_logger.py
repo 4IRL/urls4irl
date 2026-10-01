@@ -245,6 +245,16 @@ def sanitize_request_id(request_id: Optional[str], max_length: int = 12) -> str:
     return sanitized
 
 
+def sanitize_log_value(value: object) -> str:
+    """
+    Neutralise CR/LF in a value bound for a log message to prevent log injection.
+
+    Returns str(value) with carriage returns and line feeds escaped as literal
+    `\\r` / `\\n`, so attacker-controlled text cannot forge extra log lines.
+    """
+    return str(value).replace("\r", "\\r").replace("\n", "\\n")
+
+
 def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = False):
     @app.before_request
     def before_request():
