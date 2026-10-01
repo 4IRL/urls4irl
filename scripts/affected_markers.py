@@ -255,6 +255,8 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     "tests/unit/test_compose_profiles.py",
     "tests/unit/test_audit_pins.py",
     "tests/unit/test_playwright_entrypoint.py",
+    # Imported by test_audit_pins.py (a host-static test).
+    "tests/unit/stdlib_only_utils.py",
 )
 
 # UI test directories -> the markers their files carry. Five host mobile-only

@@ -9,14 +9,13 @@ the host and in CI.
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 import textwrap
 from pathlib import Path
 
 import pytest
 
 from scripts import audit_pins
+from tests.unit.stdlib_only_utils import assert_module_is_stdlib_only
 
 pytestmark = pytest.mark.unit
 
@@ -638,29 +637,7 @@ def test_audit_pins_module_is_stdlib_only() -> None:
     WHEN it is loaded in a fresh interpreter without the project root
     THEN no third-party or backend module is imported (stdlib only)
     """
-    probe_script = (
-        "import importlib.util\n"
-        "import sys\n"
-        "sys.path = [path_entry for path_entry in sys.path if path_entry not in ('', PROJECT_ROOT)]\n"
-        "spec = importlib.util.spec_from_file_location('audit_pins_leaf', MODULE_FILE)\n"
-        "module = importlib.util.module_from_spec(spec)\n"
-        "sys.modules[spec.name] = module\n"
-        "spec.loader.exec_module(module)\n"
-        "forbidden = [name for name in sys.modules "
-        "if name.split('.')[0] in ('flask', 'sqlalchemy', 'redis', 'yaml', 'backend')]\n"
-        "assert forbidden == [], forbidden\n"
-    )
-    module_file = Path(audit_pins.__file__).resolve()
-    project_root = module_file.parents[1]
-    preamble = (
-        f"PROJECT_ROOT = {str(project_root)!r}\nMODULE_FILE = {str(module_file)!r}\n"
-    )
-    result = subprocess.run(
-        [sys.executable, "-c", preamble + probe_script],
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, (
-        f"audit_pins module pulled in a non-stdlib import:\n"
-        f"stdout={result.stdout}\nstderr={result.stderr}"
+    assert_module_is_stdlib_only(
+        Path(audit_pins.__file__),
+        ("flask", "sqlalchemy", "redis", "yaml", "backend"),
     )
