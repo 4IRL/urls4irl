@@ -148,7 +148,7 @@ Code should be concise, but readable. We are looking for maintainability and fut
    | Only Jinja renders it AND nothing asserts against the literal (static section heading, ARIA label, window radio label, placeholder) | **No bridge.** Write the literal directly in the Jinja template. |
 
    Hard rules that still apply: never hardcode display strings in TypeScript (always go through `APP_CONFIG.strings`); `ui_testing_strs.py` constants must import from the backend source, never duplicate the literal.
-3. **Destructured object parameters** — any function taking 2+ parameters (or even a single boolean/enum-ish parameter where the call site would otherwise be a bare literal) must accept a single destructured object so call sites are self-documenting. Prefer `emitMetric({ name, utubId, urlId })` over `emitMetric(name, utubId, urlId)`; `openModal({ dismissible: false })` over `openModal(false)`. Applies to new functions and to edits that touch an existing signature — when modifying a positional-args function, convert it as part of the change.
+3. Destructured object params for 2+ args or a bare boolean — enforced by `u4i/destructured-params`. Baselined legacy functions: when you touch one's signature, convert it and delete its key from `frontend/eslint-rules/destructured-params-baseline.json` (the rule flags stale keys).
 4. **Established TS patterns** — use these existing patterns rather than inventing new ones:
    - **Type-guard dispatch** for field-level validation errors: `const FIELDS = [...] as const` + `isFieldName()` guard (see `splash/init.ts`, `tags/create.ts`)
    - **is429Handled(xhr)** guard at the top of every `.fail()` handler (`frontend/lib/ajax.ts`)
@@ -158,14 +158,13 @@ Code should be concise, but readable. We are looking for maintainability and fut
    - **App store** (`frontend/store/app-store.ts`): `getState()`/`setState()` with `Object.assign` merges
    - **Event bus** (`frontend/lib/event-bus.ts`): typed `emit()`/`on()` with `AppEvents` enum — see ARCHITECTURE.md for full event reference
    - **Vitest mocks**: `vi.mock()` at top, `createMockJqXHRChainable()` from `frontend/__tests__/helpers/mock-jquery.ts`, `vi.importActual()` inside `it()` blocks only
-5. **Runtime debug logging via `debug(namespace)`** — never call `console.*` directly in app code; enforced by ESLint `no-console` (rule in `frontend/eslint.config.js`; `lib/debug.ts` is the only whitelisted file). Use `import { debug } from "<path>/lib/debug.js"; const log = debug("subsystem"); log("event", data);`. Toggle namespaces via DevTools: `localStorage.debug = "metrics,ajax"` then refresh. The 5 splash namespaces (`splash`, `splash:login`, `splash:register`, `splash:password`, `splash:email`) are available to any user; all other namespaces require `APP_CONFIG.debugEnabled` (admin-only). The 20 active namespaces are: `ajax, csrf, metrics, config, init, cookie-banner, security, home-shell, utubs, urls, urls:cards, urls:tags, tags, members, onboarding, splash, splash:login, splash:register, splash:password, splash:email`.
+5. **Runtime debug logging via `debug(namespace)`** — never call `console.*` directly in app code; enforced by ESLint `no-console` (rule in `frontend/eslint.config.js`; `lib/debug.ts` is the only whitelisted file). Use `import { debug } from "<path>/lib/debug.js"; const log = debug("subsystem"); log("event", data);`. The DevTools toggle, admin gating and the active namespace list: see `docs/development.md`.
 
 
 ### Backend - Python/PostgreSQL/Redis
 
 1. Use typehints! No shortcuts around this.
-2. Never use quoted type hints (e.g. `"Utubs"`). All schema/model files use `from __future__ import annotations`, which makes every annotation lazy at runtime — so `TYPE_CHECKING`-only imports and self-referential return types can be written unquoted.
-3. Never use single-letter variable names. All variables must be named descriptively to convey their purpose (e.g. `value` not `v`, `route_fn` not `f`, `validation_error` not `e`, `SchemaT` not `T`).
+2. Quoted type hints (ruff UP037) and single-letter names (`scripts/check_identifier_names.py`, ESLint `id-length`) are enforced by `make lint`.
 
 ### Tests
 
@@ -214,13 +213,7 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 
 ### Dependency Pinning
 
-(see central Dependency Pinning rule for the general policy — this repo's manifests/forms:)
-
-| Manifest                                       | Required form                                                                          | Forbidden forms                           |
-|------------------------------------------------|----------------------------------------------------------------------------------------|-------------------------------------------|
-| `requirements*.txt` (pip)                      | `package==X.Y.Z`                                                                       | `>=`, `~=`, `<=`, `*`, unpinned           |
-| `frontend/package.json` direct deps & devDeps  | `"pkg": "X.Y.Z"`                                                                       | `^X.Y.Z`, `~X.Y.Z`, `>=`, `*`, `latest`   |
-| `frontend/pnpm-workspace.yaml` `overrides:`    | `pkg: X.Y.Z` (exact patch that satisfies all peer-deps and any open security alert)    | `^`, `~`, ranges                          |
+(see central Dependency Pinning rule for the general policy.) Exact pins everywhere — enforced by `make audit-pins` (manifests, Dockerfile `FROM`, compose `image:`, `pip install`, workflow `uses:`).
 
 **Which `requirements/*.txt` file:** they nest dev ⊃ test ⊃ prod (`-r`), and each environment installs only its own file.
 
@@ -241,14 +234,6 @@ When adding or bumping a dependency, never introduce a range — if you only nee
 ### Import Style
 
 **Exception to the central top-level-imports-only rule — `vi.importActual()` inside vitest `it(...)` blocks**: vitest's `vi.mock()` hoisting runs before module-level code, so `vi.importActual()` calls used for partial mocking cannot be moved to module scope. Local usage inside `it(...)` closures is permitted for this specific pattern only.
-
-### Import Ordering
-
-Imports are sorted into three groups, each alphabetized internally, separated by a blank line:
-
-1. Standard library modules
-2. Third-party modules
-3. Project modules (`backend.*`, `tests.*`, etc.)
 
 ### General
 
@@ -296,64 +281,13 @@ Before committing a backend change in any of those categories, run `make generat
 
 ### Makefile Shortcuts
 
-Common tasks (see central Makefile-First Command Policy for the general rule):
-
-| Command | Description |
-|---|---|
-| `make setup` | One-time per clone/worktree onboarding: `worktree-init` + `tools` + `hooks` + `capacity` (idempotent; a capacity failure, e.g. Docker down, is deferred — rerun `make capacity` to see the error) |
-| `make capacity [U4I_N_UI=<n\|auto>] [U4I_N_INT=<n\|auto>] [U4I_MEM_FRACTION=<f\|auto>]` | Derive test worker counts + interlocks for this host into `docker/.capacity.generated.env` (overrides are sticky; `=auto` clears), then prints a `live:` line (usable memory now, its source, workers that fit) |
-| `make tools` | Install the pinned host toolchain + `frontend/node_modules` (run by `make setup`; re-run after pin bumps) |
-| `make hooks` | Install the pre-commit git hook in the main checkout (run by `make setup`; safe from any worktree — see "Pre-commit hooks" below) |
-| `make hooks-check` | Report whether the pre-commit hook is installed (exits 1 when missing; worktree-safe) |
-| `make up [p=ui\|full] d=1` | Start the hub, then build and start this spoke's web + datastores (detached); `p=ui` adds vite and starts hub playwright, `p=full` also adds workflow. A narrower `p` stops the spoke services it no longer enables. Refuses a new spoke when live memory can't hold it idle plus a minimum test run, printing the numbers and the running spokes (`make down` one first; no live reading → the `U4I_SPOKE_MAX` count); a running spoke is always re-admitted |
-| `make up-built [p=full] d=1` | Start the hub, then build and start with pre-built Vite assets (detached): web + datastores + vite one-shot build, waiting for the build and a healthy web, then start hub playwright; `p=full` also adds workflow |
-| `make down` | Stop this spoke (every profile); the hub keeps running |
-| `make build` | Rebuild this spoke's images without starting (every profile) |
-| `make restart c=<service>` | Restart a **spoke** service (`c=` is required; reaches profiled services too; hub services are refused) |
-| `make logs c=<service>` | Show a spoke service's logs, dev or built stack (e.g. `c=cloudflared`; hub services are refused) |
-| `make stack-info` | Print this checkout's spoke project, aliases, URLs, hub project, hub `db` and `playwright` state (`Exited (0)` = idle-reaped) and attached spokes |
-| `make worktree-init` | Link `.env` and `secrets/` from the primary clone into this worktree (no-op in the primary; run by `setup`, `up`, `up-built`, `start-built`, `tunnel`) |
-| `make hub-up` | Start the per-user hub `db` and run `cluster-init` (idempotent; every stack start runs it) |
-| `make playwright-up` | Start the hub's shared Playwright browser server and wait until healthy; restarts an idle-reaped one in place (idempotent; run by `p=ui\|full`, the UI test targets, `*-built`, and `test-marker*` / `test-file*` for UI markers/paths) |
-| `make playwright-rebuild` | Rebuild the hub Playwright image and force-recreate it (picks up `Dockerfile.Playwright` / compose / `U4I_PLAYWRIGHT_IDLE_MINUTES` changes); refuses while any UI client is connected, or when it cannot read or count the connections |
-| `make hub-down` | Stop the hub and remove the shared network; refuses while any spoke is attached (`make down` in each first) |
-| `make hub-restart c=db\|playwright` | Restart a hub service (no health wait): drops every spoke's connections / in-flight runs, so only when no test run is in progress in any spoke. Image changes: `make playwright-rebuild` |
-| `make test-integration-parallel [n=<N>]` | All non-UI integration tests in parallel (**preferred**; default `n` = derived `U4I_N_INT`). Every `test-*` target that runs pytest in `web` (not `test-host-static`), and the Docker E2E harnesses, queues on the host token budget (`U4I_N_MAX` tokens in `U4I_TOKEN_DIR`; `-n k` holds `k`, sequential holds 1) |
-| `make test-integration` | All non-UI integration tests (sequential fallback) |
-| `make test-ui-parallel [n=<N>]` | All UI/Playwright tests in parallel (**preferred**; default `n` = derived `U4I_N_UI`; starts vite + playwright itself) |
-| `make test-functional` | All UI/Playwright functional tests (sequential fallback; starts vite + playwright itself) |
-| `make test-js` | All JS unit tests (vitest, host-native — no stack needed) |
-| `make test-marker-parallel m=<marker> [n=<N>]` | Tests for a specific marker in parallel (**preferred**; default `n` = derived `U4I_N_INT`, or `U4I_N_UI` for a `*_ui` marker, which also runs `playwright-up`) |
-| `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
-| `make test-file f=<path> [args=...]` | Single test file/path (a path that collects `tests/functional` runs `playwright-up`) |
-| `make test-file-parallel f=<path> [n=<N>] [args=...]` | Test file/path in parallel (default `n` = derived `U4I_N_UI` for a path that collects `tests/functional`, the whole tree included, else `U4I_N_INT`) |
-| `make test-host-static [f=<paths>] [args=...]` | Host-only static tests (Makefile dry runs, compose YAML, playwright entrypoint; they skip inside `web`) in the primary clone's `venv/`; installs the test + prod pins on first use and again whenever `requirements-test.txt` / `requirements-prod.txt` is newer than the venv stamp |
-| `make affected-markers [base=<ref>]` | Show which test markers the branch diff affects, and why: one line per changed file, then an `Integration:` / `UI:` / `Host-static:` footer (host-native, no stack, no budget). The diff is against `git merge-base <base> HEAD` (default `origin/main`) plus uncommitted and untracked files; an unmapped path selects everything |
-| `make test-affected [base=<ref>]` | Run only the test markers the branch diff affects: the host-static tests (if a host-only file changed), then one budgeted integration run at `U4I_N_INT`, then one budgeted UI run at `U4I_N_UI` (starts vite + playwright only when UI markers are selected). Queues on the host token budget; shrinks to fit live memory unless `n=` is given. Prints `No affected markers — nothing to run` for an empty selection. If the selector fails (e.g. an unresolvable `base`), make stops with `affected_markers.py failed (exit N)` before any test runs; run `git fetch origin`. Its scope comes only from `base=<ref>` (`n=`, if given, applies to both runs): unlike every other `test-*` target, `f=`/`args=` are refused, because it selects its own scope from the diff; use `make test-host-static` or `make test-file-parallel` for a narrower, file-scoped run. `base` must not contain `$` or `'` |
-| `make test-agent [base=<ref>]` | Agent tier: `typecheck` + `test-js` + `test-affected`; queues on the host token budget (target <60s on a single-domain diff; measured: an integration-only `backend/contact/` diff ≈ 28 s, a `backend/members/` diff ≈ 88 s, dominated by the UI run). Same scope rule as `test-affected` (`f=`/`args=` refused) |
-| `make test-playwright-lifecycle` | Build the derived Playwright image and run its idle-reap / restart E2E harness in throwaway containers (~7 min) |
-| `make vite-build` | Vite build verification |
-| `make addmock` | Seed dev DB with all mock data |
-| `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
-| `make generate-endpoints` | Regenerate `docs/endpoints/endpoint-registry.json` + `ENDPOINT_REGISTRY.md` from the live url_map (needs `web` up) |
-| `make audit-endpoints` | Audit the committed endpoint registry against the live app: drift, `@api_route` JS linkage, stale `NO_JS_ENDPOINTS`/`INDIRECT_JS_ENDPOINTS` entries, markdown freshness (exits 1 on any finding; needs `web` up) |
-| `make endpoint-info e=<route>` | Show what touches a route (`e=` endpoint, rule, or `'METHOD /rule'`), read from the committed JSON (host-native, no stack needed) |
-| `make help` | List all available make commands |
+Run `make help` for every target; annotated reference in `docs/development.md`.
 
 ### Metrics Verification (local stack)
 
 Bring the stack up with `make up p=full d=1` to exercise the anonymous-metrics pipeline end-to-end: the flush/gauge `workflow` container is only in the `full` profile, and `metrics-flush-now`/`gauge-sample-now`/`notify-test` refuse to run (`workflow is not running — start it with: make up p=full d=1`) without it. Metrics are **on by default locally**: `docker/compose.local.yaml` declares the tracked default `METRICS_ENABLED=${METRICS_ENABLED:-true}`, so every `make up` enables them on every host (the web app still records into Redis on the default stack; only the flush to Postgres needs `p=full`) — **never prefix `METRICS_ENABLED=true` on local commands**. To opt a machine out (or exercise the disabled path), put `METRICS_ENABLED=false` in `.env`, which `make` passes via `--env-file .env`. **Remove any lingering `export METRICS_ENABLED=…` from your shell profile:** compose interpolation resolves the shell environment before `--env-file`, so a leftover export silently overrides the `.env` opt-out (check with `printenv METRICS_ENABLED`). Tests are unaffected (`ConfigTest.METRICS_ENABLED = False`). Prod (`docker/compose.yaml`) and dev (`docker/compose.dev.yaml`) both hard-set `METRICS_ENABLED=true`.
 
-| Command | Description |
-|---|---|
-| `make metrics-watch` | Live tail of Redis ops on metrics DB 2 |
-| `make metrics-snapshot` | Dump current `metrics:counter:*` keys with values |
-| `make metrics-flush-now` | Trigger an immediate flush worker run (Redis → Postgres) |
-| `make metrics-rows` | Show last 25 rows from `AnonymousMetrics` |
-| `make metrics-smoke-test` | E2E: snapshot → flush → rows |
-| `make metrics-clear-counters` | UNLINK pending Redis state (counters + batch nonces); leaves flush lock/sentinel intact |
-| `make metrics-clear-rows` | `TRUNCATE "AnonymousMetrics"` |
-| `make metrics-clear-all` | Wipe Redis pending + Postgres flushed |
+Metrics verification commands: see `docs/development.md`.
 
 ### Docker Execution Note
 
@@ -381,29 +315,15 @@ make up p=full d=1   # + workflow (metrics flush / gauge sampler / backups cron)
 # Set ENABLE_SSL=true and VITE_URL=https://localhost:${U4I_VITE_PORT:-5173} in docker/compose.local.yaml
 ```
 
-**Built mode** (`make up-built`, `start-built`, `tunnel`) runs vite as a one-shot `vite build` that exits when done. Nothing can `depends_on` it, so `up-built d=1`, `start-built` and `tunnel` start the stack detached, then `docker wait` on the vite build container (failing if it exited non-zero; see `make logs c=vite`), then `up --wait web`. Attached `make up-built` (no `d=1`) streams logs instead and has no such wait.
-
-**Host identity:** the local web image's `u4i-host` user is built with this host's `HOST_UID`/`HOST_GID` (from `make capacity`; build args in `docker/compose.local.yaml`, image default 1001), so files it writes into bind mounts are owned by you. The `vite` container runs as the same `HOST_UID:HOST_GID` (compose `user:` plus build args; its image re-owns `/app`), so `backend/static/dist` from `vite build` (built mode, `make vite-build`) is yours too and `git worktree remove` never hits `Permission denied`. A `dist` left root-owned by an older vite image makes the build fail (`EACCES`, see `make logs c=vite`); remove it once with `docker run --rm -v "$PWD/backend/static:/s" alpine:3 rm -rf /s/dist`. An `app_logs` volume created by an older image, or re-owned by a previous workflow start, can leave `/app/volume/logs` owned by another uid, and web would crash on its log file. `make up`/`up-built`/`start-built`/`tunnel` repair that automatically through the private `_logs-owner-fix` prerequisite, which prints `repairing app_logs ownership (was X, now UID:GID)` once and is silent otherwise. The workflow container keeps write access through the log dir's group.
+Built mode: see ARCHITECTURE.md → Docker (`docker/compose.built.yaml`). Host identity (UID/GID) details: see `docs/development.md`.
 
 #### Playwright
 
 Use the following URL to access the website with Playwright MCP: `http://127.0.0.1:8659/` (primary clone; in a worktree use the web URL from `make stack-info`). Each spoke has its own session cookie name (`<project>_session`), so logins in two spokes don't log each other out. The stack must be up with `make up p=ui d=1` or `make up-built d=1`; on the default `make up d=1` stack there is no vite, so pages render unstyled.
 
-### Running the App (without Docker)
+### Running without Docker, Frontend (Vite) and Flask CLI
 
-```bash
-flask db upgrade
-flask shorturls add
-flask managedb create          # optional: populate test data
-flask run --host=0.0.0.0 --port=5000
-```
-
-### Frontend (Vite)
-
-```bash
-make vite-build  # build to backend/static/dist/ (= pnpm run build) in a one-off vite container
-make test-js     # run JS unit tests (vitest) on the host
-```
+Running without Docker, Frontend (Vite) build commands, and Flask CLI commands: see `docs/development.md`.
 
 `make vite-build` and `make generate-types` run vite in a one-off container (`run --rm --no-deps vite`), so they need no `p=` (`generate-types` still needs `web` up, which the default `make up d=1` provides). `make test-js` runs on the host and needs no stack at all (`test-js-built` is just an alias). The Testing targets below `exec` into the running local stack, so it must be up (`make up d=1`); on the built stack (`make up-built`) use the `-built` variants (`vite-build-built`, `test-file-parallel-built`).
 
@@ -419,26 +339,13 @@ make test-file f=tests/functional/splash_ui/test_reset_password_ui.py
 make test-marker-parallel m=unit
 ```
 
-**Running tests outside Docker (if virtual environment is already activated):**
-
-```bash
-pytest                        # run all tests
-pytest -m unit                # unit tests only
-pytest -m splash              # integration tests for auth
-pytest -m utubs               # integration tests for UTubs
-pytest tests/unit/test_foo.py # single test file
-pytest -k "test_name"         # single test by name
-```
-
-Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`, `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`, `metrics_ui`, `settings_ui`, `search_ui`, `mobile_api`, `admin`, `admin_ui`
+Running tests outside Docker and the test marker list: see `docs/development.md` (markers are defined in `pytest.ini`).
 
 **Prefer parallel make targets** (`test-marker-parallel`, `test-integration-parallel`, `test-ui-parallel`) over sequential ones. "Parallel" means `-n` workers within a single invocation. Concurrent invocations are isolated from each other, and the host token budget queues any run that would push total workers past `U4I_N_MAX` (see Testing Best Practices #7).
 
 **Always minimize wall-clock time**: omit `n=` so each target uses this host's derived maximum (`U4I_N_UI` for UI, including a `*_ui` marker or `tests/functional` path; `U4I_N_INT` for other integration/marker/file runs; see the parallelism-cap note above and `make capacity`). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., shared Playwright browser-server connection idle-timeouts) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite. `make test-agent` is the default pre-commit check for agents: it scopes by marker (the markers the diff affects, via `make test-affected`), never by lowering `n`.
 
-UI/functional tests require the shared Playwright browser-server, which lives in the per-user hub and serves every spoke: the hub `playwright` service runs `playwright run-server --port 3000 --host 0.0.0.0` from the derived image `u4i-playwright:<version>` (`docker/Dockerfile.Playwright`: the CLI is baked in, so a start never touches the npm registry; its `ARG PLAYWRIGHT_VERSION` is unit-tested to match the `playwright==` pin in `requirements/requirements-test.txt`), each spoke's `web` sets `PLAYWRIGHT_WS_URL=ws://playwright:3000/` (the hub service name on `u4i-shared-<uid>`), and `build_page_browser` in `tests/functional/conftest.py` calls `chromium.connect(config.TEST_PLAYWRIGHT_URI)` in Docker (falling back to `chromium.launch()` outside it). The hub browser reaches a spoke by its slugged aliases (`web-<slug>` via `U4I_WEB_HOST` → `UI_TEST_STRINGS.DOCKER_BASE_URL`, `vite-<slug>` via `VITE_INTERNAL_HOST`), since bare `web`/`vite` would be ambiguous across spokes. Playwright no longer `depends_on` web or vite (cross-project dependencies are impossible), so make targets order the start instead: `make test-functional`/`make test-ui-parallel` run `playwright-up`, then `up -d --wait web vite`; the `*-built` targets start them via `start-built`, which runs `playwright-up` **last** (after a healthy `web`) so a long rebuild can't eat the idle window before pytest connects (`up-built d=1` does the same).
-
-Lifecycle: the entrypoint (`docker/playwright-entrypoint.sh`) supervises the server and exits 0 after `U4I_PLAYWRIGHT_IDLE_MINUTES` (default 15) with no non-loopback client, freeing ~500 MB. The service has a node TCP healthcheck (loopback, so it never counts as a client) and no restart policy. Its logs hold only a startup line (`playwright-entrypoint: serving :3000, reaping after 15m idle`, or `serving :3000, reaping disabled` with `IDLE_MINUTES=0`) and a reap line (`idle 15m with no clients — exiting`). `make playwright-up` restarts a reaped container in place (same container, no registry fetch) and waits for health; it never picks up an image/config change, which needs `make playwright-rebuild`. In dev mode, `make test-marker*` with a `*_ui` marker and `make test-file*` on a path that collects `tests/functional` (the whole tree included) run `playwright-up` themselves (and their `-parallel` / `-parallel-built` variants default `-n` to `U4I_N_UI`; an explicit `n=` wins), but still need `make up p=ui d=1` for web + vite. The `%_ui` word match ignores marker-expression semantics, so `m='not admin_ui'` also starts playwright and uses the UI cap: harmless (an extra start, fewer workers). `make test-last-failed` does not start it: run `make playwright-up` first if the last failures include UI tests. `make test-playwright-lifecycle` proves the image's reap/restart behavior in throwaway containers.
+Playwright browser-server mechanics and lifecycle: see `docs/development.md`.
 
 ### Linting & Formatting
 
@@ -447,8 +354,9 @@ One definition per check, run host-native. The pre-commit hook and CI call the s
 ```bash
 make setup          # once per clone/worktree: .env/secrets links + tools + hooks + capacity (idempotent)
 make tools          # install the pinned toolchain, pnpm install --frozen-lockfile --ignore-scripts, set blame.ignoreRevsFile (run by setup)
-make lint           # ruff check + eslint + shellcheck + lockfile-check + lint-actions
+make lint           # ruff check + identifier check + eslint + shellcheck + lockfile-check + lint-actions + audit-pins
 make lint-actions   # actionlint on .github/workflows/ (also run by make lint)
+make audit-pins     # exact-pin audit: manifests, Dockerfile FROM, compose image:, pip install, workflow uses: (also run by make lint)
 make format-check   # ruff format --check + prettier --check + shfmt -d (no writes)
 make typecheck      # tsc on frontend/tsconfig.json + tsconfig.test.json (no stack needed)
 make format         # apply ruff format + prettier --write + shfmt -w
@@ -483,15 +391,6 @@ Known rough edges, so these aren't mistaken for code problems:
   mask**; recreate the container afterwards with `make down` then `make up p=ui d=1` (a fresh
   container gets fresh anonymous volumes; `make restart c=vite` keeps the old container and its
   detached mask) before `make tools` / `make test-js`.
-
-### Flask CLI Commands
-
-```bash
-flask addmock all             # populate DB with test data (Docker: `make addmock`)
-flask managedb clear          # clear test data
-flask managedb drop           # drop database tables
-flask shorturls add           # register short URL routes
-```
 
 ### Database Migrations
 
