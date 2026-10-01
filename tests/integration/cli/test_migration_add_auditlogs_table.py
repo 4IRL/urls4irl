@@ -13,9 +13,9 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 
+import pytest
 from alembic import command
 from alembic.config import Config
-import pytest
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 

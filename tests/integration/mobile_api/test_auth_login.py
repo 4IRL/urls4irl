@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import db
 from backend.api_v1.constants import ApiAuthErrorCodes

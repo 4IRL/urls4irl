@@ -1,5 +1,5 @@
-from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.form_strs import EMAIL
+from backend.utils.strings.json_strs import FAILURE_GENERAL
 
 VALIDATE_EMAIL = "validate_email"
 CHANGE_EMAIL = "change_email"

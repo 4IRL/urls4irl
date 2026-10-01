@@ -6,9 +6,9 @@ from backend.cli.mock_constants import (
     TEST_USER_COUNT,
 )
 from backend.models.utub_tags import Utub_Tags
-from backend.models.utubs import Utubs
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 
 
 def generate_mock_tags(db: SQLAlchemy):

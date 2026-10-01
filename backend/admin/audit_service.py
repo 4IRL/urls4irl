@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import or_
 
-from backend.admin.user_service import escape_like_wildcards, LIKE_ESCAPE_CHAR
+from backend.admin.user_service import LIKE_ESCAPE_CHAR, escape_like_wildcards
 from backend.models.audit_log import AuditLog
 from backend.models.users import Users
 

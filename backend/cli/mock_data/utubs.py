@@ -1,9 +1,9 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from backend.cli.mock_constants import TEST_USER_COUNT, MOCK_UTUB_NAME_BASE
+from backend.cli.mock_constants import MOCK_UTUB_NAME_BASE, TEST_USER_COUNT
 from backend.models.users import Users
-from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utubs import Utubs
 
 
 def generate_mock_utubs(db: SQLAlchemy, no_dupes: bool):

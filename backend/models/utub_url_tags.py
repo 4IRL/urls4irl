@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer
 
 from backend import db
 from backend.models.utub_tags import Utub_Tags
-from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.utils.datetime_utils import utc_now
 
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from flask import current_app
 import jwt
+from flask import current_app
 from jwt import PyJWKClient
 from jwt import exceptions as JWTExceptions
 

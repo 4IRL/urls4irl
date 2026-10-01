@@ -9,8 +9,8 @@ from backend.schemas.urls import (
 )
 from backend.urls.constants import BulkDeleteSkipReason
 from backend.utils.constants import URL_CONSTANTS
-from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED
 from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED
 from backend.utils.strings.url_strs import URL_FAILURE
 
 pytestmark = pytest.mark.urls

@@ -1,6 +1,7 @@
 from enum import Enum
 
-from sqlalchemy import Column, Enum as SQLEnum, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Enum as SQLEnum
 
 from backend import db
 

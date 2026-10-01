@@ -23,15 +23,15 @@ keys into Postgres.
 
 from __future__ import annotations
 
-from collections import namedtuple
-from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
 import importlib.util
 import json
 import logging
 import os
 import sys
 import time
+from collections import namedtuple
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType
 

@@ -5,7 +5,7 @@ from flask import (
 from backend import limiter
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
-from backend.contact.constants import ContactErrorCodes, CONTACT_FORM_CONSTANTS
+from backend.contact.constants import CONTACT_FORM_CONSTANTS, ContactErrorCodes
 from backend.contact.contact_us import load_contact_us_page, validate_and_contact
 from backend.schemas.contact import ContactResponseSchema
 from backend.schemas.errors import ErrorResponse

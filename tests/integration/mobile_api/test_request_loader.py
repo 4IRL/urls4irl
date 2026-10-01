@@ -1,5 +1,5 @@
-from flask import Flask, request
 import pytest
+from flask import Flask, request
 
 from backend.users.routes import load_user_from_request
 from backend.utils.strings.api_auth_strs import API_AUTH

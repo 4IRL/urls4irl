@@ -3,7 +3,7 @@ line-length = 88            # black 26.1.0 default
 target-version = "py311"    # matches the pinned python 3.11.14 in .mise.toml
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
+select = ["E", "F", "W", "I001", "UP037"]
 ignore = ["E501", "E203"]   # E203 is preview-only in ruff; kept to document flake8 parity
 exclude = ["migrations/**"] # lint-only exclude (flake8 parity); the formatter still formats migrations (black parity)
 

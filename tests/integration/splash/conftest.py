@@ -1,19 +1,19 @@
 from datetime import timedelta
 from typing import Generator, Tuple
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import db
 from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
-from tests.utils_for_test import get_csrf_token
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings import model_strs, reset_password_strs
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from tests.models_for_test import valid_user_1
+from tests.utils_for_test import get_csrf_token
 
 
 def register_json(user_data: dict) -> dict:

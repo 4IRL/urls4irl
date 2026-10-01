@@ -1,8 +1,8 @@
-from enum import IntEnum
-import requests
-import threading
 import logging
+import threading
+from enum import IntEnum
 
+import requests
 from flask import Flask
 
 from backend.app_logger import error_log, safe_add_log, safe_get_request_id, warning_log

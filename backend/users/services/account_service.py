@@ -30,8 +30,8 @@ from backend.schemas.users import (
 from backend.splash.constants import LOGIN_FAILURE_REASON_BAD_PASSWORD
 from backend.splash.services.forgot_password import provider_display_name
 from backend.splash.services.oauth.constants import (
-    Provider,
     REMOVAL_INTENT_ACTION_DELETE,
+    Provider,
 )
 from backend.users.constants import (
     ChangeEmailErrorCodes,

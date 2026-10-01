@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import secrets
+import uuid
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
-import secrets
-import uuid
 
-from flask import current_app
 import jwt
+from flask import current_app
 from jwt import exceptions as JWTExceptions
 
 from backend import db

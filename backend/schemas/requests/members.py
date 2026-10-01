@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 from backend.members.constants import MemberAddSource, MemberRoleTarget

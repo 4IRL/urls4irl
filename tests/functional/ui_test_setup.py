@@ -1,12 +1,13 @@
 import logging
-import requests
 import socket
 from time import sleep
 from typing import Optional, Tuple
 
+import requests
 from flask import Flask
 from flask.testing import FlaskCliRunner
-from playwright.sync_api import Browser, BrowserType, Error as PlaywrightError
+from playwright.sync_api import Browser, BrowserType
+from playwright.sync_api import Error as PlaywrightError
 
 from backend import create_app, db
 from backend.config import ConfigTestUI

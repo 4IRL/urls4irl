@@ -5,13 +5,13 @@ from backend.cli.mock_constants import (
     MOCK_TAGS,
     MOCK_TRACKING_SEED_URL_STRINGS,
     MOCK_URL_STRINGS,
+    MOCK_UTUB_NAME_BASE,
     TEST_USER_COUNT,
     USERNAME_BASE,
-    MOCK_UTUB_NAME_BASE,
 )
-from backend.models.utub_tags import Utub_Tags
 from backend.models.urls import Urls
 from backend.models.users import Users
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from backend.utils.constants import UTUB_CONSTANTS, TAG_CONSTANTS
+from backend.utils.constants import TAG_CONSTANTS, UTUB_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE
 
 pytestmark = pytest.mark.unit

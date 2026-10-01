@@ -10,9 +10,9 @@ from backend.app_logger import critical_log, safe_add_many_logs, warning_log
 from backend.extensions.metrics.writer import record_event
 from backend.members.constants import UTubMembersErrorCodes
 from backend.metrics.events import EventName
-from backend.schemas.errors import build_message_error_response
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
+from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utubs.guards import reject_if_utub_locked

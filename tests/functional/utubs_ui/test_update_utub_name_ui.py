@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page
 
 from backend.cli.mock_constants import MOCK_UTUB_NAME_BASE
@@ -9,6 +9,7 @@ from backend.utils.constants import CONSTANTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_UPDATE_SAME_NAME
 from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
@@ -40,7 +41,6 @@ from tests.functional.utubs_ui.playwright_utils import (
     open_update_utub_name_input,
     update_utub_name,
 )
-from tests.functional.locators import HomePageLocators as HPL
 
 pytestmark = pytest.mark.utubs_ui
 

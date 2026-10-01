@@ -1,14 +1,14 @@
+import pytest
 from flask import url_for
 from flask_login import current_user
-import pytest
 
 from backend import db
 from backend.metrics.events import EventName
-from backend.schemas.urls import UtubUrlDetailSchema
 from backend.models.urls import Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
-from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
+from backend.schemas.urls import UtubUrlDetailSchema
 from backend.urls.constants import URLErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import URL_FORM
@@ -16,6 +16,8 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
     FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
+)
+from backend.utils.strings.json_strs import (
     STD_JSON_RESPONSE as STD_JSON,
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS

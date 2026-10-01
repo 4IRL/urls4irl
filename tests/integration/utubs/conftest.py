@@ -1,13 +1,14 @@
+from typing import Generator, Tuple
+
+import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 from flask_login import current_user
-import pytest
-from typing import Generator, Tuple
 
 from backend import db
 from backend.models.users import Users
-from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utubs import Utubs
 from backend.utils.strings import model_strs
 from tests.models_for_test import (
     valid_empty_utub_1,

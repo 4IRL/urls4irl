@@ -3,9 +3,9 @@ import os
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
-import pytest
 from sqlalchemy import inspect, text
 
 from backend import db, migrate

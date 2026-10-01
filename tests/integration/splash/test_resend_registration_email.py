@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
-from flask import Flask, url_for
 import pytest
+from flask import Flask, url_for
 from requests import Response
 
 from backend import db

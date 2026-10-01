@@ -8,10 +8,12 @@ from typing import TYPE_CHECKING
 from sqlalchemy import (
     Column,
     DateTime,
-    Enum as SQLEnum,
     ForeignKey,
     Integer,
     UniqueConstraint,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 
 from backend import db

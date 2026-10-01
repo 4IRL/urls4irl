@@ -2,14 +2,14 @@ import traceback
 from json import dumps
 
 from flask import render_template
-from requests import Response
 from mailjet_rest import Client
 from mailjet_rest.client import ApiError, TimeoutError
+from requests import Response
 
 from backend.app_logger import error_log, safe_get_request_id
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE
-from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.email_validation_strs import EMAILS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE

@@ -21,11 +21,11 @@ from typing import Any, Callable
 from unittest import mock
 from urllib.parse import parse_qs, urlencode, urlparse
 
+import pytest
 from authlib.integrations.base_client.errors import OAuthError
 from flask import Flask, redirect, url_for
 from flask_login import current_user
 from pydantic import BaseModel, ValidationError
-import pytest
 from redis import Redis
 from werkzeug import Response as WerkzeugResponse
 
@@ -49,8 +49,14 @@ from backend.utils.strings import model_strs
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE as _CONSENT_DECLINED_MESSAGE,
+)
+from backend.utils.strings.oauth_strs import (
     GENERIC_FAILURE_MESSAGE as _GENERIC_FAILURE_MESSAGE,
+)
+from backend.utils.strings.oauth_strs import (
     GITHUB_INVALID_CALLBACK_QUERY_MESSAGE as _GITHUB_INVALID_CALLBACK_QUERY_MESSAGE,
+)
+from backend.utils.strings.oauth_strs import (
     GITHUB_UNVERIFIED_EMAIL_MESSAGE as _GITHUB_UNVERIFIED_EMAIL_MESSAGE,
 )
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM

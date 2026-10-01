@@ -1,8 +1,8 @@
 import re
 
+import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
-import pytest
 
 from backend.models.users import Users
 from backend.utils.strings.user_strs import (

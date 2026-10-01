@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend import db
@@ -13,6 +13,7 @@ from backend.utils.strings.utub_strs import (
     UTUB_DELETE_WARNING,
     UTUB_SELECT,
 )
+from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.playwright_assert_utils import (
@@ -22,7 +23,6 @@ from tests.functional.playwright_assert_utils import (
     assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.playwright_login_utils import login_user_and_select_utub_by_name
 from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,

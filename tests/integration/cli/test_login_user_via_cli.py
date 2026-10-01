@@ -1,9 +1,9 @@
 from typing import Tuple
 
+import pytest
 from click.testing import Result
 from flask import Flask
 from flask.testing import FlaskCliRunner
-import pytest
 
 from backend.cli.mock_constants import TEST_USER_COUNT
 from backend.cli.mock_options import USER_ID_INVALID_TO_LOGIN_WITH

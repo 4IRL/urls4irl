@@ -1,7 +1,7 @@
 import re
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from tests.functional.db_utils import get_utub_this_user_did_not_create

@@ -1,13 +1,13 @@
 from backend.utils.strings.json_strs import FAILURE_GENERAL, REDIRECT
 from backend.utils.strings.model_strs import (
     ADDED_BY,
+    TAG_COUNTS_MODIFIED,
     URL_ID,
     URL_STRING,
-    URL_TITLE,
-    UTUB_URL_TAG_IDS,
     URL_TAGS,
+    URL_TITLE,
     UTUB_URL_ID,
-    TAG_COUNTS_MODIFIED,
+    UTUB_URL_TAG_IDS,
 )
 from backend.utils.strings.utub_strs import UTUB_GENERAL
 

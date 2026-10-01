@@ -1,9 +1,10 @@
 import os
 
+import pytest
 from alembic import command
 from alembic.config import Config
-import pytest
-from sqlalchemy import Enum as SQLEnum, inspect, text
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
 from backend import db, migrate

@@ -2,10 +2,9 @@ import threading
 from unittest import mock
 
 import ada_url
-from flask import url_for
-from backend.schemas.urls import UtubUrlDetailSchema
-from flask_login import current_user
 import pytest
+from flask import url_for
+from flask_login import current_user
 
 from backend import db
 from backend.extensions.url_validation.url_validator import (
@@ -13,10 +12,11 @@ from backend.extensions.url_validation.url_validator import (
 )
 from backend.metrics.events import EventName
 from backend.models.urls import Urls
-from backend.models.utub_url_tags import Utub_Url_Tags
-from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
+from backend.schemas.urls import UtubUrlDetailSchema
 from backend.urls.constants import URLErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import URL_FORM
@@ -24,16 +24,18 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
     FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
+)
+from backend.utils.strings.json_strs import (
     STD_JSON_RESPONSE as STD_JSON,
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import (
+    STRIPPED_DIM_KEY,
     count_counter_keys,
     find_counter_keys,
     parse_dims,
-    STRIPPED_DIM_KEY,
 )
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,

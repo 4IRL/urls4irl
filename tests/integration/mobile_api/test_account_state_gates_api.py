@@ -7,9 +7,9 @@ authenticating the moment the account is suspended (request_loader gate).
 
 from __future__ import annotations
 
+import pytest
 from flask import Flask, g, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import db
 from backend.admin.account_service import kill_user_sessions

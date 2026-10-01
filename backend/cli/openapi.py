@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from collections import defaultdict
-from enum import IntEnum
 import functools
 import json
-from pathlib import Path
 import re
-from typing import Any, Type, get_args
 import warnings
+from collections import defaultdict
+from enum import IntEnum
+from pathlib import Path
+from typing import Any, Type, get_args
 
 import click
 from flask import Flask, current_app

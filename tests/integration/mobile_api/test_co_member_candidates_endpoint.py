@@ -13,9 +13,9 @@ Conventions:
   - pytestmark = pytest.mark.mobile_api
 """
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend import db
 from backend.api_v1.services.tokens import create_access_token

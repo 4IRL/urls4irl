@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 from pydantic import BaseModel, Field, field_validator
-from backend.utils.constants import TAG_CONSTANTS, URL_CONSTANTS
-from backend.utils.strings.url_strs import URL_FAILURE
+
 from backend.schemas.requests._sanitize import SanitizedStr
 from backend.schemas.requests.tags import TagStringItem, validate_tag_strings
+from backend.utils.constants import TAG_CONSTANTS, URL_CONSTANTS
+from backend.utils.strings.url_strs import URL_FAILURE
 
 
 def dedup_and_reject_non_positive(ids: list[int], error_message: str) -> list[int]:

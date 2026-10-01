@@ -1,12 +1,12 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page
 
 from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from backend.models.users import Users
 from backend.utils.constants import CONSTANTS, STRINGS
-from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.utub_strs import UTUB_CREATE_SAME_NAME, UTUB_FAILURE
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (

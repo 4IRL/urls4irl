@@ -11,8 +11,8 @@ from backend.models.utubs import Utubs
 from backend.urls.constants import BulkDeleteSkipReason, URLErrorCodes
 from backend.urls.services.delete_urls import delete_urls_in_utub
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,

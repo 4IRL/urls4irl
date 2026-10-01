@@ -1,6 +1,6 @@
+import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
-import pytest
 
 from backend.utils.strings.user_strs import TRANSFER_INSTEAD_ACTION
 from tests.functional.db_utils import (

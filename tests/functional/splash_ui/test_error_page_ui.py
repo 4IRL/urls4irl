@@ -1,5 +1,5 @@
-from flask import Flask, url_for
 import pytest
+from flask import Flask, url_for
 from playwright.sync_api import Page, Route, expect
 
 from backend.utils.all_routes import ROUTES

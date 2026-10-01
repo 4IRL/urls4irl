@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
-from flask_login import current_user
 import pytest
+from flask_login import current_user
 from sqlalchemy import event
 from werkzeug.exceptions import NotFound
 

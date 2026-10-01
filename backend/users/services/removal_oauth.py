@@ -27,8 +27,8 @@ from backend.metrics.events import EventName
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.splash.services.oauth.constants import (
     OAUTH_LINK_INTENT_SESSION_KEY,
-    Provider,
     REMOVAL_INTENT_ACTION_DELETE,
+    Provider,
 )
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.user_strs import ACCOUNT_AUDIT_ACTIONS

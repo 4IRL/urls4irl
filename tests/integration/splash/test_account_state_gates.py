@@ -15,10 +15,10 @@ from __future__ import annotations
 from typing import Tuple
 from unittest import mock
 
+import pytest
 from flask import Flask, g, url_for
 from flask.testing import FlaskClient
 from flask_login import current_user
-import pytest
 
 from backend import db
 from backend.models.user_oauth_identities import UserOAuthIdentity

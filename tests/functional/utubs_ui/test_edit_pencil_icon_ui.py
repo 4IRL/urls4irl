@@ -1,14 +1,14 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page
 
 from backend.models.utubs import Utubs
+from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_not_visible_css_selector,
     assert_visible_css_selector,
 )
-from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,

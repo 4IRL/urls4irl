@@ -37,6 +37,8 @@ from backend.splash.services.change_email import (
 from backend.users.services.preferences_service import (
     build_display_preferences_context,
 )
+from backend.utils.all_routes import ROUTES
+from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID_QUERY_PARAM
 from backend.utubs.constants import UTubErrorCodes
@@ -55,8 +57,6 @@ from backend.utubs.services.update_utubs import (
     update_utub_desc_if_new,
     update_utub_name_if_new,
 )
-from backend.utils.all_routes import ROUTES
-from backend.utils.constants import provide_config_for_constants
 
 utubs = Blueprint("utubs", __name__)
 

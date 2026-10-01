@@ -16,13 +16,13 @@ from backend.members.constants import (
 )
 from backend.members.data_models import ValidatedMember
 from backend.metrics.events import EventName
+from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
+from backend.models.utubs import Utubs
 from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
 )
-from backend.models.users import Users
-from backend.models.utub_members import Utub_Members
-from backend.models.utubs import Utubs
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS, USER_FAILURE

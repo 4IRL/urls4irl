@@ -1,8 +1,8 @@
 from typing import Tuple
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 from werkzeug.test import TestResponse
 
 from backend import limiter

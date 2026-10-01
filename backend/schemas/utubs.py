@@ -9,8 +9,9 @@ from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
 from backend.schemas.users import UtubMemberSchema
-from backend.utils.strings.model_strs import MODELS as M, UTUB_DESCRIPTION
-from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME, UTUB_CREATOR_ID
+from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import UTUB_DESCRIPTION
+from backend.utils.strings.utub_strs import UTUB_CREATOR_ID, UTUB_ID, UTUB_NAME
 
 if TYPE_CHECKING:
     from backend.models.utub_urls import Utub_Urls

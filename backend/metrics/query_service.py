@@ -12,8 +12,8 @@ from backend.extensions.metrics.writer import MetricsWriter
 from backend.metrics.dimension_models import DIMENSION_MODELS
 from backend.metrics.events import (
     DEVICE_TYPE_DIM_KEY,
-    DeviceType,
     EVENT_CATEGORY,
+    DeviceType,
     EventCategory,
     EventName,
 )

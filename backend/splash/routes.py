@@ -1,10 +1,10 @@
 from flask import (
     Blueprint,
+    abort,
     redirect,
-    url_for,
     render_template,
     request,
-    abort,
+    url_for,
 )
 from flask_login import current_user, login_user
 from werkzeug import Response as WerkzeugResponse
@@ -46,12 +46,12 @@ from backend.schemas.users import (
     ResetPasswordResponseSchema,
 )
 from backend.splash.constants import (
+    SPLASH_AUTH_RATE_LIMIT,
     ForgotPasswordErrorCodes,
     LoginErrorCodes,
     OAuthLinkErrorCodes,
     RegisterErrorCodes,
     ResetPasswordErrorCodes,
-    SPLASH_AUTH_RATE_LIMIT,
 )
 from backend.splash.services.change_email import (
     EMAIL_CHANGE_STATUS_QUERY_PARAM,
@@ -87,13 +87,13 @@ from backend.splash.services.validate_email import (
     send_validation_email_to_user,
     validate_email_for_user,
 )
+from backend.utils.all_routes import ROUTES
+from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.oauth_strs import CONFIRM_LINK_INVALID_MESSAGE
 from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from backend.utils.strings.user_strs import USER_FAILURE
-from backend.utils.all_routes import ROUTES
-from backend.utils.constants import provide_config_for_constants
 
 splash = Blueprint("splash", __name__)
 

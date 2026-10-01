@@ -1,4 +1,5 @@
 from typing import Tuple
+
 from flask import Flask
 from flask.testing import FlaskCliRunner
 
@@ -7,8 +8,8 @@ from backend.models.urls import Urls
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
-from backend.models.utub_urls import Utub_Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 

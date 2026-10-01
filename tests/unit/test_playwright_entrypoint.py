@@ -9,8 +9,8 @@ rows count. Tables are fed as temp files (or stdin), so this runs anywhere bash 
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 import pytest
 

@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page
 
 from backend.utils.strings.url_strs import DELETE_URL_WARNING

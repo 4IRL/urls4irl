@@ -1,9 +1,9 @@
 import random
 from typing import Tuple
 
+import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
-import pytest
 from playwright.sync_api import Page
 
 from backend.cli.mock_constants import MOCK_TEST_URL_STRINGS

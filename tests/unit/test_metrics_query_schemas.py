@@ -18,12 +18,12 @@ from backend.schemas.metrics import (
 )
 from backend.schemas.requests.metrics import (
     BOTH_WINDOW_AND_RANGE_ERROR,
-    GaugesTimeseriesQuerySchema,
-    LatencyQuerySchema,
-    LatencyTimeseriesQuerySchema,
     MISSING_WINDOW_OR_RANGE_ERROR,
     PARTIAL_RANGE_ERROR,
     RANGE_ORDER_ERROR,
+    GaugesTimeseriesQuerySchema,
+    LatencyQuerySchema,
+    LatencyTimeseriesQuerySchema,
     SummaryQuerySchema,
     TimeseriesQuerySchema,
     TopEventsQuerySchema,

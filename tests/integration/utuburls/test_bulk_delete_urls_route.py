@@ -1,6 +1,6 @@
+import pytest
 from flask import current_app, url_for
 from flask_login import current_user
-import pytest
 from werkzeug.exceptions import MethodNotAllowed
 
 from backend import db
@@ -12,7 +12,8 @@ from backend.urls.constants import BulkDeleteSkipReason, URLErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import URL_CONSTANTS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utils.strings.model_strs import MODELS as MODEL_STRS, TAG_COUNTS_MODIFIED
+from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import (

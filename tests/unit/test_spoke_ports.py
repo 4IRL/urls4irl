@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import errno
 import os
-from pathlib import Path
 import socket
 import subprocess
 import sys
 import zlib
+from pathlib import Path
 
 import pytest
 

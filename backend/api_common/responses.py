@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict
-from flask import jsonify, Response
+
+from flask import Response, jsonify
 from pydantic import BaseModel
 
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON

@@ -10,8 +10,8 @@ when `UI_TESTING` is set (see `ConfigTestUI` in `backend/config.py`).
 
 from __future__ import annotations
 
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend import db

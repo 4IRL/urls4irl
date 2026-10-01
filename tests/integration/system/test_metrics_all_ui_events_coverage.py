@@ -10,7 +10,8 @@ from flask import Flask
 from pydantic import BaseModel
 from redis import Redis
 
-from backend import db, metrics_writer as app_metrics_writer
+from backend import db
+from backend import metrics_writer as app_metrics_writer
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics.dimension_models import DIMENSION_MODELS
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName

@@ -1,9 +1,9 @@
 from typing import Tuple
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from flask_login import current_user
-import pytest
 
 from backend import db
 from backend.models.users import Users

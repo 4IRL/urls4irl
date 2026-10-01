@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
 from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS as M
-from backend.utils.strings.utub_strs import UTUB_ID
 from backend.utils.strings.user_strs import MEMBER, REDIRECT_URL
+from backend.utils.strings.utub_strs import UTUB_ID
 
 if TYPE_CHECKING:
     from backend.models.users import Users

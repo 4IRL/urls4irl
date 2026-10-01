@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
-from flask_login import current_user
 import pytest
+from flask_login import current_user
 
 from backend import db
 from backend.metrics.events import EventName

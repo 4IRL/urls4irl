@@ -1,8 +1,7 @@
-from flask import Flask
 import pytest
+from flask import Flask
 from playwright.sync_api import Page, expect
 
-from tests.functional.locators import HomePageLocators as HPL
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.strings.user_strs import MEMBER_DELETE_WARNING
@@ -11,6 +10,7 @@ from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
 )
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import (
     delete_member_active_utub,
     get_all_member_usernames,

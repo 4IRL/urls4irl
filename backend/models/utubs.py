@@ -4,8 +4,8 @@ from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, t
 
 from backend import db
 from backend.models.utub_members import Utub_Members
-from backend.models.utub_urls import Utub_Urls
 from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_urls import Utub_Urls
 from backend.utils.constants import UTUB_CONSTANTS
 from backend.utils.datetime_utils import utc_now
 

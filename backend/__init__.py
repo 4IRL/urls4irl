@@ -1,5 +1,5 @@
-import os
 import json
+import os
 import secrets
 from typing import Mapping, NotRequired, TypedDict
 from urllib.parse import urljoin
@@ -14,6 +14,7 @@ from flask_session import Session
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# isort: off
 # This project-import block is ordered to avoid a circular import, not alphabetically.
 from backend import app_logger
 from backend.db import db
@@ -48,6 +49,7 @@ from backend.utils.oauth_config import (
 )
 from backend.utils.session_utils import restamp_current_session
 from backend.utils.strings.config_strs import CONFIG_ENVS
+# isort: on
 
 
 class ViteManifestEntry(TypedDict):
@@ -289,8 +291,8 @@ def create_app(
     # imports are kept inside `create_app()` to avoid module-scope circular
     # imports — every blueprint module ultimately imports from `backend.*`,
     # which transitively imports this module. Mirrors the existing pattern.
-    from backend.admin.routes import admin as admin_blueprint
     from backend.admin import action_routes  # noqa: F401 — registers admin ops routes
+    from backend.admin.routes import admin as admin_blueprint
     from backend.api_v1.routes import api_v1
     from backend.contact.routes import contact
     from backend.members.routes import members
@@ -298,11 +300,11 @@ def create_app(
     from backend.search.routes import search
     from backend.splash.routes import splash
     from backend.system.routes import system
+    from backend.tags.url_tag_routes import utub_url_tags
+    from backend.tags.utub_tag_routes import utub_tags
     from backend.urls.routes import urls
     from backend.users.routes import users
     from backend.utubs.routes import utubs
-    from backend.tags.url_tag_routes import utub_url_tags
-    from backend.tags.utub_tag_routes import utub_tags
 
     @app.context_processor
     def asset_processor():

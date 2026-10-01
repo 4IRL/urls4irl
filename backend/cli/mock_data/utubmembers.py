@@ -1,8 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
 
 from backend.models.users import Users
-from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utubs import Utubs
 
 
 def generate_mock_utubmembers(db: SQLAlchemy):

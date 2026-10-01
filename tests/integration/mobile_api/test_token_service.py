@@ -1,8 +1,8 @@
 from datetime import timedelta
 
-from flask import Flask
 import jwt
 import pytest
+from flask import Flask
 
 from backend import db
 from backend.api_v1.services.tokens import (

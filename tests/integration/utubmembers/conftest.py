@@ -1,7 +1,7 @@
 from typing import Generator, Tuple
 
-from flask import Flask
 import pytest
+from flask import Flask
 
 from backend import db
 from backend.models.users import Users

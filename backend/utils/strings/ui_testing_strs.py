@@ -2,12 +2,12 @@ from os import environ
 
 # Internal libraries
 from backend.cli.mock_constants import (
-    USERNAME_BASE,
-    MOCK_UTUB_NAME_BASE,
     EMAIL_SUFFIX,
     MOCK_URL_STRINGS,
     MOCK_URL_TRACKING_STRIPPED,
     MOCK_URL_WITH_TRACKING_PARAMS,
+    MOCK_UTUB_NAME_BASE,
+    USERNAME_BASE,
 )
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.admin_portal_strs import (
@@ -44,7 +44,11 @@ from backend.utils.strings.splash_form_strs import (
 )
 from backend.utils.strings.tag_strs import (
     TAG_DECK_NO_TAGS as _TAG_DECK_NO_TAGS,
+)
+from backend.utils.strings.tag_strs import (
     TAG_FILTER_NO_RESULTS,
+)
+from backend.utils.strings.tag_strs import (
     TAG_SEARCH_NO_RESULTS as _TAG_SEARCH_NO_RESULTS,
 )
 from backend.utils.strings.url_strs import (

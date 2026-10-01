@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Enum as SQLEnum, String
+from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Enum as SQLEnum
 
 from backend import db
 from backend.metrics.events import EventCategory

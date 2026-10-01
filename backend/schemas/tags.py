@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 from pydantic import Field
 
 from backend.schemas.base import BaseSchema
-from backend.utils.strings.model_strs import MODELS as M, TAG_COUNTS_MODIFIED
+from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED
 from backend.utils.strings.tag_strs import UTUB_URL_IDS
 
 if TYPE_CHECKING:

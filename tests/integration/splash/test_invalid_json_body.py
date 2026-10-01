@@ -4,8 +4,8 @@ Verifies that the @api_route decorator correctly returns 400 responses
 when JSON is missing entirely, empty, or missing required fields.
 """
 
-from flask import url_for
 import pytest
+from flask import url_for
 
 from backend.splash.constants import (
     ForgotPasswordErrorCodes,

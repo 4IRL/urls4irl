@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from enum import IntEnum
 import json
+from enum import IntEnum
 from typing import get_args
 
 import pytest

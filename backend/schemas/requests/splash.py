@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
+from backend.schemas.requests._sanitize import SanitizedStr
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
 from backend.utils.strings.splash_form_strs import EMAILS_NOT_IDENTICAL
-
-from backend.schemas.requests._sanitize import SanitizedStr
 
 
 class _UsernameStripMixin(BaseModel):
