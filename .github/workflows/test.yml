@@ -180,7 +180,9 @@ jobs:
 
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Overall backstop only. The test budget lives on the "Run tests" step, so slow setup
+    # (e.g. Playwright's apt deps) no longer counts against the tests.
+    timeout-minutes: 25
 
     # Splits tests into multiple workers
     strategy:
@@ -280,11 +282,67 @@ jobs:
           python3.11 -m pip install --upgrade pip==26.2.1;
           pip install -r requirements/requirements-test.txt;
 
+      - name: Read Playwright version
+        id: playwright-version
+        run: |
+          version="$(sed -nE 's/^playwright==([^[:space:]#]+).*/\1/p' requirements/requirements-test.txt)"
+          if [[ -z "$version" ]]; then
+            echo "::error::no playwright== pin found in requirements/requirements-test.txt"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Caches apt's .deb archives (Playwright's --with-deps system packages) together with the
+      # browser in ~/.cache/ms-playwright. A cold apt download once took 7m24s at ~72 kB/s.
+      # The schema tag (v1) precedes the version so a hand bump to v2 also escapes restore-keys.
+      # Every matrix row shares one key: on a miss, concurrent saves race, and the losers log
+      # a harmless "unable to reserve cache" warning.
+      - name: Restore Playwright apt packages and browser
+        id: playwright-cache
+        uses: actions/cache/restore@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        with:
+          path: |
+            ~/.cache/apt-archives
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-v1-${{ steps.playwright-version.outputs.version }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-playwright-v1-
+
+      # --with-deps runs apt-get, which then reuses the cached debs and only downloads changed ones.
+      - name: Point apt at the cached archive dir
+        run: |
+          mkdir -p "$HOME/.cache/apt-archives/partial"
+          printf '%s\n' \
+            "Dir::Cache::Archives \"$HOME/.cache/apt-archives\";" \
+            'APT::Keep-Downloaded-Packages "true";' \
+            'Binary::apt::APT::Keep-Downloaded-Packages "true";' \
+            | sudo tee /etc/apt/apt.conf.d/99-u4i-archive-cache > /dev/null
+
       # Every worker in this job is a UI worker, so the chromium binary is
       # provisioned unconditionally (previously bounded to a numeric worker
       # range within a shared job).
       - name: Install Playwright browser
         run: python3.11 -m playwright install chromium --with-deps
+
+      # apt writes the archives (and its lock/partial files) as root; hand them to the runner
+      # user so the save step can tar them, dropping the lock and any half-downloaded partials.
+      - name: Prepare apt archive dir for caching
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -f "$HOME/.cache/apt-archives/lock"
+          sudo find "$HOME/.cache/apt-archives/partial" -mindepth 1 -delete
+          sudo chown -R "$(id -u):$(id -g)" "$HOME/.cache/apt-archives"
+
+      # Saved right after the install (not in a combined action's post-step), so a job that
+      # later fails or times out in pytest still persists the cache.
+      - name: Save Playwright apt packages and browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        with:
+          path: |
+            ~/.cache/apt-archives
+            ~/.cache/ms-playwright
+          key: ${{ steps.playwright-cache.outputs.cache-primary-key }}
 
       - name: Install pinned toolchain (.mise.toml) + cache pnpm store
         uses: ./.github/actions/setup-pnpm
@@ -303,7 +361,8 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
-        timeout-minutes: 15
+        # The tests' own budget (formerly the job-level limit); setup time no longer counts against it.
+        timeout-minutes: 10
         run: |
           if [[ "$XDIST_N" -gt 0 ]]; then
             python3.11 -m pytest -n "$XDIST_N" --dist=loadscope
