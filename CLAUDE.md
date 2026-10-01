@@ -159,12 +159,13 @@ Code should be concise, but readable. We are looking for maintainability and fut
    - **Event bus** (`frontend/lib/event-bus.ts`): typed `emit()`/`on()` with `AppEvents` enum — see ARCHITECTURE.md for full event reference
    - **Vitest mocks**: `vi.mock()` at top, `createMockJqXHRChainable()` from `frontend/__tests__/helpers/mock-jquery.ts`, `vi.importActual()` inside `it()` blocks only
 5. **Runtime debug logging via `debug(namespace)`** — never call `console.*` directly in app code; enforced by ESLint `no-console` (rule in `frontend/eslint.config.js`; `lib/debug.ts` is the only whitelisted file). Use `import { debug } from "<path>/lib/debug.js"; const log = debug("subsystem"); log("event", data);`. The DevTools toggle, admin gating and the active namespace list: see `docs/development.md`.
+6. Single-letter identifiers and type parameters are enforced by ESLint `id-length` + `@typescript-eslint/naming-convention` (`make lint`).
 
 
 ### Backend - Python/PostgreSQL/Redis
 
 1. Use typehints! No shortcuts around this.
-2. Quoted type hints (ruff UP037) and single-letter names (`scripts/check_identifier_names.py`, ESLint `id-length`) are enforced by `make lint`.
+2. Quoted type hints (ruff UP037) and single-letter names (`scripts/check_identifier_names.py`) are enforced by `make lint`.
 
 ### Tests
 
