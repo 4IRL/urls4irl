@@ -1,4 +1,4 @@
-# p (profile), c (restart), e (endpoint-info), base and AFFECTED_INT / AFFECTED_UI (affected-markers / test-affected /
+# p (profile), c (restart), e (endpoint-info), run (test-artifacts), base and AFFECTED_INT / AFFECTED_UI (affected-markers / test-affected /
 # test-agent), U4I_WEB_PORT / U4I_VITE_PORT (spliced into the _ports-resolve recipe) and U4I_TOKEN_DIR / U4I_MEMORY_WAIT /
 # U4I_SETTLE_SECONDS (spliced into every budgeted test line) are rejected when they contain a `$`, checked unexpanded via
 # $(value …):
@@ -8,6 +8,7 @@
 $(if $(findstring $$,$(value p)),$(error p must not contain '$$'))
 $(if $(findstring $$,$(value c)),$(error c must not contain '$$'))
 $(if $(findstring $$,$(value e)),$(error e must not contain '$$'))
+$(if $(findstring $$,$(value run)),$(error run must not contain '$$'))
 $(if $(findstring $$,$(value base)),$(error base must not contain '$$'))
 # base is also spliced into a single-quoted shell word (--base '$(base)'), so a ' in it is refused as well.
 $(if $(findstring ',$(value base)),$(error base must not contain a single quote (it is passed as one single-quoted shell word)))
@@ -36,6 +37,8 @@ PORTS_ENV = docker/.ports.generated.env
 SPOKE_PORTS = mise exec python -- python scripts/spoke_ports.py
 # Endpoint lookup (scripts/endpoint_info.py, make endpoint-info): stdlib only, reads the committed docs/endpoints/endpoint-registry.json.
 ENDPOINT_INFO = mise exec python -- python scripts/endpoint_info.py
+# UI failure-artifact reader (scripts/failure_artifacts_report.py, make test-artifacts): stdlib only, reads tmp/test-artifacts/.
+FAILURE_ARTIFACTS_REPORT = mise exec python -- python scripts/failure_artifacts_report.py
 # Diff-scoped test selection (scripts/affected_markers.py, make affected-markers / test-affected / test-agent): stdlib only,
 # maps the branch diff against the merge-base with $(base) to pytest markers.
 AFFECTED_MARKERS = mise exec python -- python scripts/affected_markers.py
@@ -158,7 +161,7 @@ SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.c
 PYTHON_FILES = $(wildcard $(shell git ls-files '*.py' ':!:migrations/*' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs audit-pins
+.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info test-artifacts clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs audit-pins
 
 .DEFAULT_GOAL := help
 
@@ -516,6 +519,9 @@ audit-endpoints: ## Audit the committed endpoint registry against the live app (
 endpoint-info: ## Show what touches a route: make endpoint-info e=<endpoint | rule | 'METHOD /rule'>
 	$(if $(e),,$(error e=<route> is required, e.g. make endpoint-info e=utubs.get_single_utub))
 	@$(ENDPOINT_INFO) -- '$(subst ','\'',$(e))'
+
+test-artifacts: _require-mise ## Print the latest UI failure-artifact index (run=<id> for an older run)
+	@$(FAILURE_ARTIFACTS_REPORT) --root tmp/test-artifacts $(if $(run),--run='$(subst ','\'',$(run))')
 
 audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
 	$(EXEC_WEB) "$(FLASK) metrics audit --strict"
