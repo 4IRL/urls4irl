@@ -920,6 +920,29 @@ def test_stack_start_targets_run_worktree_init_first(make_target: str) -> None:
     assert init_index < first_compose_index
 
 
+@pytest.mark.parametrize(
+    "make_target", ["up", "up-built", "start-built", "tunnel", "_ui-up"]
+)
+def test_stack_start_targets_precreate_the_test_artifacts_dir(
+    make_target: str,
+) -> None:
+    """Docker would create a missing bind source as root; make pre-creates it host-owned before any compose up."""
+    lines = _successful_dry_run(make_target).splitlines()
+    mkdir_index = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if line.strip() == "mkdir -p tmp/test-artifacts"
+        ),
+        None,
+    )
+    assert mkdir_index is not None, lines
+    first_compose_index = next(
+        index for index, line in enumerate(lines) if "docker compose" in line
+    )
+    assert mkdir_index < first_compose_index
+
+
 def test_down_leaves_the_hub_alone() -> None:
     assert _hub_lines(_successful_dry_run("down")) == []
 

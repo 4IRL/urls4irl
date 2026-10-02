@@ -158,7 +158,7 @@ SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.c
 PYTHON_FILES = $(wildcard $(shell git ls-files '*.py' ':!:migrations/*' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs audit-pins
+.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs audit-pins
 
 .DEFAULT_GOAL := help
 
@@ -177,7 +177,7 @@ _profile-narrow:
 # profile is active) on every up, so a stale pre-bump node_modules never shadows the freshly built image's pnpm install.
 # Named volumes are unaffected.
 up: NARROW_PROFILE = $(p)
-up: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hub-up $(if $(p),playwright-up) _profile-narrow ## Start the hub, then build and start this spoke's web + datastores; p=ui adds vite (+ hub playwright), p=full also adds workflow (pass d=1 for detached mode)
+up: worktree-init _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _admit-spoke hub-up $(if $(p),playwright-up) _profile-narrow ## Start the hub, then build and start this spoke's web + datastores; p=ui adds vite (+ hub playwright), p=full also adds workflow (pass d=1 for detached mode)
 	$(COMPOSE) $(PROFILE_FLAGS) up --build --remove-orphans -V $(if $(d),-d,)
 
 # A built stack always needs the vite one-shot build (else pages render with no assets), so p defaults to ui here.
@@ -186,7 +186,7 @@ up: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hu
 up-built: NARROW_PROFILE = $(or $(p),ui)
 # Hub playwright: with d=1 it starts last, after a healthy web, for the same idle-clock reason as start-built. Attached
 # mode never reaches a trailing line (Ctrl-C stops the stack), so there it stays an early prerequisite.
-up-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hub-up $(if $(d),,playwright-up) _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode, which waits for the vite build + a healthy web, then starts playwright)
+up-built: worktree-init _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _admit-spoke hub-up $(if $(d),,playwright-up) _profile-narrow ## Start the hub + its playwright, then build and start with pre-built Vite assets: web + datastores + vite build; p=full also adds workflow (pass d=1 for detached mode, which waits for the vite build + a healthy web, then starts playwright)
 	$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --build --remove-orphans -V $(if $(d),-d,)
 	$(if $(d),@$(VITE_BUILD_BARRIER))
 	$(if $(d),$(COMPOSE_BUILT) --profile $(NARROW_PROFILE) up --wait web)
@@ -204,7 +204,7 @@ VITE_BUILD_BARRIER = vite_id="$$($(COMPOSE_BUILT) --profile ui ps -a -q vite)"; 
 
 # Hub playwright starts last: its idle clock starts at container start, so a long rebuild + vite build must not eat
 # the window before pytest connects. hub-up stays a prerequisite (the spoke needs the hub db).
-start-built: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hub-up prune ## Tear down this spoke, rebuild with pre-built assets (ui profile, no workflow), wait for the vite build + a healthy web, then start hub playwright (used by built test targets)
+start-built: worktree-init _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _admit-spoke hub-up prune ## Tear down this spoke, rebuild with pre-built assets (ui profile, no workflow), wait for the vite build + a healthy web, then start hub playwright (used by built test targets)
 	$(COMPOSE) $(ALL_PROFILES) down
 	$(COMPOSE_BUILT) --profile ui up --build --remove-orphans -d
 	@$(VITE_BUILD_BARRIER)
@@ -231,7 +231,7 @@ logs: ## Tail a spoke service's logs: make logs c=<service>
 # Starts the dev UI-test dependencies: hub playwright, then this spoke's web + vite (datastores via depends_on); idempotent
 # when already up. web is named because nothing in the spoke depends on it any more (playwright did, before the hub).
 # Assumes a dev stack: on an up-built stack use the `-built` test targets instead, else this recreates vite as the dev server.
-_ui-up: _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke playwright-up
+_ui-up: _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _admit-spoke playwright-up
 	$(COMPOSE) --profile ui up -d --wait web vite
 
 # The shared per-user network the hub and every spoke join. Idempotent, and race-tolerant when two spokes create it at
@@ -288,7 +288,7 @@ hub-restart: _require-hub-files ## Restart a hub service: make hub-restart c=db|
 
 # Tunnel never needs workflow: drop any left from a wider session (--remove-orphans ignores profile-disabled services).
 # Naming vite on `up` enables its profile. The hub db is needed (web's dev DB); hub playwright is not.
-tunnel: worktree-init _capacity-fresh _logs-owner-fix _ports-resolve _admit-spoke hub-up ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
+tunnel: worktree-init _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _admit-spoke hub-up ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
 	$(COMPOSE_BUILT) $(ALL_PROFILES) rm -sf workflow
 	$(COMPOSE_BUILT) up --build --remove-orphans -V -d web vite
 	@$(VITE_BUILD_BARRIER)
@@ -664,11 +664,21 @@ _hub-capacity: _require-hub-files _require-mise
 _capacity-fresh: _require-mise
 	@$(CAPACITY) ensure --output $(CAPACITY_ENV)
 
-# Runs before up/up-built/start-built/tunnel: re-owns the app_logs volume's log dir to HOST_UID:HOST_GID (mode 775) when an
+# Runs before up/up-built/start-built/_ui-up/tunnel: re-owns the app_logs volume's log dir to HOST_UID:HOST_GID (mode 775) when an
 # older image or workflow start left it owned by another uid, since web would otherwise crash on its log file. Logic
 # (and its unit tests) lives in scripts/capacity.py `logs-owner-fix`; it prints once when it repairs, silent otherwise.
 _logs-owner-fix: _capacity-fresh
 	@$(CAPACITY) logs-owner-fix --output $(CAPACITY_ENV)
+
+# Runs before up/up-built/start-built/_ui-up/tunnel: pre-creates web's UI failure-artifact bind source
+# (tests/functional/failure_artifacts.py) as the host user, since Docker would create a missing one as root and web
+# (HOST_UID) could not write into it. A root-owned leftover from before this target existed fails with the fix command
+# (the whole tmp/, since Docker's auto-create also leaves a missing parent root-owned). A symlink or file in its place is
+# refused rather than followed, so the bind mount never writes artifacts outside the checkout.
+_test-artifacts-dir:
+	@if [ -L tmp/test-artifacts ] || { [ -e tmp/test-artifacts ] && [ ! -d tmp/test-artifacts ]; }; then echo "tmp/test-artifacts must be a real directory (found a symlink or file): remove it" >&2; exit 1; fi
+	@mkdir -p tmp/test-artifacts
+	@test -w tmp/test-artifacts || { echo "tmp/test-artifacts is not writable (root-owned from an older Docker auto-create?): sudo chown -R $$(id -u):$$(id -g) tmp" >&2; exit 1; }
 
 # Runs before every stack start: probes Docker + host sockets and (re)writes $(PORTS_ENV) with this spoke's web/vite host
 # ports (explicit U4I_WEB_PORT/U4I_VITE_PORT > cached-and-still-free > first free from the preferred port; see
