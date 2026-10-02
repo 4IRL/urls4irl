@@ -394,12 +394,13 @@ def test_recorder_survives_response_lookup_error() -> None:
     assert recorder.network[0]["status"] is None
 
 
-def test_recorder_finish_without_request_event_still_records() -> None:
+@pytest.mark.parametrize("event", ["requestfinished", "requestfailed"])
+def test_recorder_settle_without_in_flight_entry_is_dropped(event: str) -> None:
     fake = FakeContext()
     recorder = attached_recorder(fake)
-    fake.emit("requestfinished", FakeRequest(url="http://web/late", status=500))
-    assert recorder.network[0]["status"] == 500
-    assert len(recorder.failed_requests) == 1
+    fake.emit(event, FakeRequest(url="http://web/late", status=500, failure="x"))
+    assert list(recorder.network) == []
+    assert recorder.failed_requests == []
 
 
 def test_recorder_failed_requests_capped() -> None:
@@ -438,6 +439,24 @@ def test_recorder_in_flight_map_is_bounded() -> None:
     assert len(recorder._in_flight) == BUFFER_LIMIT
     oldest_kept = next(iter(recorder._in_flight))
     assert cast(FakeRequest, oldest_kept).url == "http://web/hang/5"
+
+
+@pytest.mark.parametrize("event", ["requestfinished", "requestfailed"])
+def test_recorder_late_settle_of_evicted_request_adds_no_duplicate(event: str) -> None:
+    fake = FakeContext()
+    recorder = attached_recorder(fake)
+    requests = [
+        FakeRequest(url=f"http://web/hang/{index}", status=500, failure="net::ERR")
+        for index in range(BUFFER_LIMIT + 1)
+    ]
+    for request in requests:
+        fake.emit("request", request)
+    evicted = requests[0]
+    assert evicted not in recorder._in_flight
+    network_before = list(recorder.network)
+    fake.emit(event, evicted)
+    assert list(recorder.network) == network_before
+    assert recorder.failed_requests == []
 
 
 # --- write_failure_record ---------------------------------------------------

@@ -225,10 +225,11 @@ class ContextRecorder:
             # Requests that never settle (e.g. a closed page) must not leak.
             self._in_flight.pop(next(iter(self._in_flight)))
 
-    def _settle(self, request: Request) -> dict[str, object]:
-        if request not in self._in_flight:
-            self._on_request(request)
-        return self._in_flight.pop(request)
+    def _settle(self, request: Request) -> dict[str, object] | None:
+        # Listeners attach before the context makes any request, so an unknown
+        # request was evicted by the in-flight cap after its entry was recorded.
+        # Re-recording it would append a stale duplicate to `network`.
+        return self._in_flight.pop(request, None)
 
     def _flag_failed(self, entry: dict[str, object]) -> None:
         if len(self.failed_requests) < FAILED_REQUEST_LIMIT:
@@ -236,6 +237,8 @@ class ContextRecorder:
 
     def _on_request_finished(self, request: Request) -> None:
         entry = self._settle(request)
+        if entry is None:
+            return
         try:
             response = request.response()
         except Exception:
@@ -248,6 +251,8 @@ class ContextRecorder:
 
     def _on_request_failed(self, request: Request) -> None:
         entry = self._settle(request)
+        if entry is None:
+            return
         entry["failure"] = request.failure
         self._flag_failed(entry)
 
