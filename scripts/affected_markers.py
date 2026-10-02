@@ -179,6 +179,8 @@ BROAD_GLOBS: tuple[str, ...] = (
     "tests/integration/system/metrics_helpers.py",
     # Imported by tests/functional/conftest.py, so as broad as that conftest.
     "tests/functional/urls_ui/playwright_utils.py",
+    # Imported by tests/functional/conftest.py — as broad as that conftest.
+    "tests/functional/failure_artifacts.py",
     "backend/__init__.py",
     "backend/config.py",
     "backend/db.py",
