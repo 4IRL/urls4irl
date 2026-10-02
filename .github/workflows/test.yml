@@ -184,8 +184,10 @@ jobs:
     # (e.g. Playwright's apt deps) no longer counts against the tests.
     timeout-minutes: 25
 
-    # Splits tests into multiple workers
+    # Splits tests into multiple workers. fail-fast is off so one failing row doesn't
+    # cancel the others: every failing row keeps its ui-failure-artifacts-<marker> upload.
     strategy:
+      fail-fast: false
       matrix:
         worker:
           - ['UI Splash Functional Tests', 'splash_ui', 2]
