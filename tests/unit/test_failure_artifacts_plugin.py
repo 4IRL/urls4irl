@@ -437,3 +437,66 @@ def test_session_start_prunes_to_keep(
     assert len(remaining) == expected_runs
     assert {"aaaaaaa2", "aaaaaaa3"} <= remaining
     assert "aaaaaaa1" not in remaining
+
+
+# No portable filesystem state makes `prune_runs` raise (a non-dir root is
+# skipped, and permission bits don't bind root), so this `-p` plugin injects the
+# OSError into the session-start hook's prune call.
+PRUNE_FAULT_PLUGIN = """
+PLUGIN_NAME = "tests.functional.failure_artifacts"
+
+
+def _raise_prune(*, root, keep):
+    raise PermissionError("injected prune failure")
+
+
+def pytest_configure(config):
+    config.pluginmanager.get_plugin(PLUGIN_NAME).prune_runs = _raise_prune
+"""
+
+
+@pytest.mark.parametrize(
+    ("hook", "expected_warning"),
+    [
+        pytest.param(
+            "sessionstart",
+            "failure artifacts: could not prune old runs under *injected prune failure*",
+            id="sessionstart-prune",
+        ),
+        pytest.param(
+            "sessionfinish",
+            "failure artifacts: could not write the run index under *latest.json*",
+            id="sessionfinish-index",
+        ),
+    ],
+)
+def test_session_hook_oserror_warns_instead_of_crashing(
+    pytester: pytest.Pytester, inner_project: Path, hook: str, expected_warning: str
+) -> None:
+    extra_args: list[str] = []
+    if hook == "sessionstart":
+        pytester.makepyfile(prune_fault=PRUNE_FAULT_PLUGIN)
+        extra_args = ["-p", "prune_fault"]
+    else:
+        # A directory where latest.json goes makes the atomic os.replace raise.
+        (inner_project / "latest.json").mkdir(parents=True)
+    pytester.makepyfile(
+        test_inner="""
+        def test_fails(page):
+            assert False, "boom-session-hook"
+        """
+    )
+    result = pytester.runpytest_subprocess(*extra_args)
+
+    result.assert_outcomes(failed=1)
+    assert result.ret == pytest.ExitCode.TESTS_FAILED
+    output = result.stdout.str() + result.stderr.str()
+    assert "INTERNALERROR" not in output
+    # sessionstart warns before pytest captures warnings (stderr); sessionfinish
+    # lands in pytest's warnings summary (stdout).
+    pytest.LineMatcher(output.splitlines()).fnmatch_lines(
+        [f"*UserWarning: {expected_warning}"]
+    )
+    # The capture itself is unaffected: the failure record is still written.
+    (record,) = failure_records(root=inner_project)
+    assert "boom-session-hook" in str(record["error_summary"])
