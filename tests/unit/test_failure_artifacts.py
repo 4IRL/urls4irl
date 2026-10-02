@@ -233,8 +233,13 @@ def test_run_dir_and_test_dir(tmp_path: Path) -> None:
 def test_load_settings_defaults() -> None:
     settings = load_settings(environ={}, rootpath=ROOTPATH)
     assert settings == ArtifactSettings(
-        root=ROOTPATH / "tmp" / "test-artifacts", trace=True, keep_runs=10
+        root=ROOTPATH / "tmp" / "test-artifacts", trace=False, keep_runs=10
     )
+
+
+def test_load_settings_empty_trace_value_is_off() -> None:
+    settings = load_settings(environ={"U4I_UI_TRACE": ""}, rootpath=ROOTPATH)
+    assert settings.trace is False
 
 
 def test_load_settings_relative_dir_resolves_against_rootpath() -> None:
@@ -256,7 +261,7 @@ def test_load_settings_trace_off() -> None:
     assert settings.trace is False
 
 
-def test_load_settings_trace_explicit_default() -> None:
+def test_load_settings_trace_opt_in() -> None:
     settings = load_settings(
         environ={"U4I_UI_TRACE": "retain-on-failure"}, rootpath=ROOTPATH
     )

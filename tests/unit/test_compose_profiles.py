@@ -329,9 +329,12 @@ def test_web_mounts_test_artifacts_dir() -> None:
 
 
 def test_web_passes_artifact_knobs() -> None:
-    """The artifact knobs are tracked defaults, overridable from `.env` or the shell."""
+    """The artifact knobs are tracked defaults, overridable from `.env` or the shell.
+
+    Tracing defaults to off (opt-in): it measured ~+30% UI-suite wall-clock.
+    """
     web_environment = _load_services(LOCAL_COMPOSE_FILE)["web"]["environment"]
-    assert "U4I_UI_TRACE=${U4I_UI_TRACE:-retain-on-failure}" in web_environment
+    assert "U4I_UI_TRACE=${U4I_UI_TRACE:-off}" in web_environment
     assert "U4I_TEST_ARTIFACTS_KEEP=${U4I_TEST_ARTIFACTS_KEEP:-10}" in web_environment
 
 

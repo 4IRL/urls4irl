@@ -61,8 +61,9 @@ services:
       - METRICS_REDIS_URI=redis://redis-metrics:6379/0
       - METRICS_BATCH_NONCE_TTL_SECONDS=120
       # UI failure-artifact knobs (tests/functional/failure_artifacts.py): tracing mode
-      # (retain-on-failure | off) and how many run dirs to keep per checkout.
-      - U4I_UI_TRACE=${U4I_UI_TRACE:-retain-on-failure}
+      # (off | retain-on-failure; opt-in, since tracing costs ~+30% UI-suite wall-clock)
+      # and how many run dirs to keep per checkout.
+      - U4I_UI_TRACE=${U4I_UI_TRACE:-off}
       - U4I_TEST_ARTIFACTS_KEEP=${U4I_TEST_ARTIFACTS_KEEP:-10}
     volumes:
       - ./run.py:/code/u4i/run.py

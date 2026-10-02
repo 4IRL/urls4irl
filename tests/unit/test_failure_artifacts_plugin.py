@@ -20,8 +20,10 @@ pytestmark = pytest.mark.unit
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS_DIRNAME = "artifacts"
 TRACING_LOG = "tracing-calls.log"
+TRACING_START_OPTIONS = "tracing-start-options.json"
 
 INNER_CONFTEST = """
+import json
 import os
 from pathlib import Path
 
@@ -33,6 +35,7 @@ PLUGIN_NAME = "tests.functional.failure_artifacts"
 pytest_plugins = [PLUGIN_NAME]
 
 TRACING_LOG = "tracing-calls.log"
+TRACING_START_OPTIONS = "tracing-start-options.json"
 
 
 def pytest_configure(config):
@@ -54,6 +57,9 @@ class FakeTracing:
 
     def start(self, **options):
         self._log("start")
+        self.log_path.with_name(TRACING_START_OPTIONS).write_text(
+            json.dumps(options, sort_keys=True), encoding="utf-8"
+        )
 
     def stop(self, path=None):
         self._log("stop:" + ("none" if path is None else "path"))
@@ -110,7 +116,8 @@ def inner_project(pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch) ->
         os.pathsep.join(path for path in (str(REPO_ROOT), existing_pythonpath) if path),
     )
     monkeypatch.setenv("U4I_TEST_ARTIFACTS_DIR", ARTIFACTS_DIRNAME)
-    monkeypatch.delenv("U4I_UI_TRACE", raising=False)
+    # Tracing is opt-in (default off); most cases exercise the traced path.
+    monkeypatch.setenv("U4I_UI_TRACE", "retain-on-failure")
     monkeypatch.delenv("U4I_TEST_ARTIFACTS_KEEP", raising=False)
     monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
     # xdist (the `-n` test) is loaded via plugin autoload.
@@ -179,6 +186,25 @@ def test_passing_test_discards_trace_and_writes_nothing(
     assert run_dirs(root=inner_project) == []
     assert not (inner_project / "latest.json").exists()
     assert tracing_calls(pytester=pytester) == ["start", "stop:none"]
+
+
+def test_tracing_starts_without_dom_snapshots(
+    pytester: pytest.Pytester, inner_project: Path
+) -> None:
+    """DOM snapshots stay off: they cost +45% UI-suite wall-clock (measured)."""
+    pytester.makepyfile(
+        test_inner="""
+        def test_passes(page):
+            assert True
+        """
+    )
+    result = pytester.runpytest_subprocess()
+    result.assert_outcomes(passed=1)
+
+    start_options = json.loads(
+        (pytester.path / TRACING_START_OPTIONS).read_text(encoding="utf-8")
+    )
+    assert start_options == {"screenshots": True, "snapshots": False, "sources": False}
 
 
 def test_setup_failure_after_page_yield_is_setup_phase(
@@ -349,10 +375,21 @@ def test_xdist_workers_and_controller_share_one_run_id(
     assert_single_xdist_failure(root=nested_root)
 
 
+@pytest.mark.parametrize(
+    "trace_mode",
+    [pytest.param("off", id="explicit-off"), pytest.param(None, id="unset")],
+)
 def test_trace_off_never_starts_tracing(
-    pytester: pytest.Pytester, inner_project: Path, monkeypatch: pytest.MonkeyPatch
+    pytester: pytest.Pytester,
+    inner_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    trace_mode: str | None,
 ) -> None:
-    monkeypatch.setenv("U4I_UI_TRACE", "off")
+    """Tracing is opt-in: unset means off, yet the rest is still captured."""
+    if trace_mode is None:
+        monkeypatch.delenv("U4I_UI_TRACE", raising=False)
+    else:
+        monkeypatch.setenv("U4I_UI_TRACE", trace_mode)
     pytester.makepyfile(
         test_inner="""
         def test_fails(page):
@@ -365,6 +402,9 @@ def test_trace_off_never_starts_tracing(
     assert tracing_calls(pytester=pytester) == []
     (record,) = failure_records(root=inner_project)
     assert record["trace"] is None
+    assert record["console"] == "console.json"
+    assert record["network"] == "network.json"
+    assert len(record["pages"]) == 1
 
 
 @pytest.mark.parametrize(

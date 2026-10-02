@@ -12,13 +12,15 @@ On a failing UI test, `capture_failure` writes into
 - `network.json`: recent requests plus failed ones (status >= 400 or a
   network failure) — URLs only; headers and bodies are deliberately never
   captured (cookies/secrets),
-- `trace.zip`: the Playwright trace (when tracing is on),
+- `trace.zip`: the Playwright trace — only when opted in with
+  `U4I_UI_TRACE=retain-on-failure` (off by default: it costs ~+30% UI-suite
+  wall-clock; everything else above is always captured),
 - `failure.json`: the record indexing all of the above.
 
 Sensitivity: `console.json` / `network.json` exclude headers and bodies, but
-`trace.zip` (Playwright tracing with snapshots) DOES include request/response
-headers, cookies and bodies — keep it in local or private CI artifacts only,
-never anywhere public.
+`trace.zip` (Playwright tracing: action timeline + screencast, no DOM
+snapshots) DOES include request/response headers, cookies and bodies — keep
+it in local or private CI artifacts only, never anywhere public.
 
 Every capture step is isolated: a dead browser or full disk becomes an entry
 in `failure.json["capture_errors"]`, never an exception in fixture teardown.
@@ -127,14 +129,15 @@ def load_settings(*, environ: Mapping[str, str], rootpath: Path) -> ArtifactSett
 
     - `U4I_TEST_ARTIFACTS_DIR`: artifact root (relative resolves against
       `rootpath`); default `<rootpath>/tmp/test-artifacts`.
-    - `U4I_UI_TRACE`: `retain-on-failure` (default) or `off`.
+    - `U4I_UI_TRACE`: `off` (default) or `retain-on-failure` (opt-in; tracing
+      costs ~+30% UI-suite wall-clock even without DOM snapshots).
     - `U4I_TEST_ARTIFACTS_KEEP`: run dirs kept per root, >= 1; default 10.
     """
     raw_root = environ.get(ARTIFACTS_DIR_ENV, "")
     # `rootpath / "/abs"` is `/abs`, so an absolute override is kept as-is.
     root = rootpath / raw_root if raw_root else rootpath / "tmp" / "test-artifacts"
 
-    trace_mode = environ.get(TRACE_ENV, "") or TRACE_RETAIN_ON_FAILURE
+    trace_mode = environ.get(TRACE_ENV, "") or TRACE_OFF
     if trace_mode not in TRACE_MODES:
         raise ValueError(
             f"{TRACE_ENV}={trace_mode!r} is invalid; allowed values: "
@@ -607,7 +610,9 @@ def recorded_context(
     recorder = ContextRecorder()
     recorder.attach(context=context)
     if settings.trace:
-        context.tracing.start(screenshots=True, snapshots=True, sources=False)
+        # DOM snapshots off: they cost +45% UI-suite wall-clock (measured);
+        # the failure-time DOM is still captured as page-<N>.html.
+        context.tracing.start(screenshots=True, snapshots=False, sources=False)
     item = request.node
 
     def capture(*, phase: str, error_summary: str) -> None:
