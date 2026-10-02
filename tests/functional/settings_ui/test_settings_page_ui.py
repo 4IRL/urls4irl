@@ -21,6 +21,7 @@ from tests.functional.locators import SettingsPageLocators as SPL
 from tests.functional.playwright_utils import (
     click_on_navbar,
     wait_for_element_presence,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_in_focus,
@@ -1079,7 +1080,8 @@ def test_removal_modal_focus_returns_to_trigger_on_cancel(
     )
 
     wait_then_click_element(page=page, css_selector=trigger_selector)
-    expect(page.locator(modal_selector)).to_be_visible()
+    # Cancel mid-fade-in is a silent no-op (Bootstrap's _isTransitioning guard).
+    wait_for_modal_ready(page=page, modal_selector=modal_selector)
     wait_then_click_element(page=page, css_selector=cancel_selector)
     expect(page.locator(modal_selector)).to_be_hidden()
 
@@ -1113,7 +1115,8 @@ def test_logout_everywhere_modal_focus_returns_to_trigger_on_cancel(
     expect(page.locator(SPL.PANEL_PRIVACY_DATA)).to_be_visible()
 
     wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_TRIGGER)
-    expect(page.locator(SPL.LOGOUT_EVERYWHERE_MODAL)).to_be_visible()
+    # Cancel mid-fade-in is a silent no-op (Bootstrap's _isTransitioning guard).
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGOUT_EVERYWHERE_MODAL)
     wait_then_click_element(page=page, css_selector=SPL.LOGOUT_EVERYWHERE_CANCEL_BTN)
     expect(page.locator(SPL.LOGOUT_EVERYWHERE_MODAL)).to_be_hidden()
 
@@ -1163,6 +1166,8 @@ def test_removal_modal_clears_fields_on_dismiss(
     for field_selector in field_selectors:
         page.fill(field_selector, "scratch-value-to-be-cleared")
 
+    # Cancel mid-fade-in is a silent no-op (Bootstrap's _isTransitioning guard).
+    wait_for_modal_ready(page=page, modal_selector=modal_selector)
     wait_then_click_element(page=page, css_selector=cancel_selector)
     expect(page.locator(modal_selector)).to_be_hidden()
 
