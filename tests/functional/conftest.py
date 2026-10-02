@@ -1,3 +1,4 @@
+import os
 import threading
 from time import sleep
 from typing import Generator, Tuple
@@ -17,6 +18,11 @@ from backend.models.users import Users
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from scripts import testrun_resources
 from tests.functional.db_utils import add_mock_urls
+from tests.functional.failure_artifacts import (
+    ArtifactSettings,
+    load_settings,
+    recorded_context,
+)
 from tests.functional.playwright_utils import (
     PageBundle,
 )
@@ -195,6 +201,11 @@ def build_page_browser(
         pass
 
 
+@pytest.fixture(scope="session")
+def failure_artifact_settings(pytestconfig: pytest.Config) -> ArtifactSettings:
+    return load_settings(environ=os.environ, rootpath=pytestconfig.rootpath)
+
+
 @pytest.fixture
 def page_without_cookie_banner_cookie(
     build_page_browser: Browser,
@@ -202,10 +213,14 @@ def page_without_cookie_banner_cookie(
     provide_config: ConfigTest,
     runner: Tuple[Flask, FlaskCliRunner],
     debug_strings,
+    request: pytest.FixtureRequest,
+    worker_id: str,
+    failure_artifact_settings: ArtifactSettings,
 ) -> Generator[PageBundle, None, None]:
     """Clears the DB and yields a fresh, auto-isolated context+page per
     test. No manual cookie/tab/viewport cleanup is needed — the context is
-    closed after each test.
+    closed after each test. A failing test (setup or call phase) leaves its
+    trace/screenshots/logs under tmp/test-artifacts/ (`recorded_context`).
     """
     base_url = (
         UI_TEST_STRINGS.DOCKER_BASE_URL
@@ -219,17 +234,24 @@ def page_without_cookie_banner_cookie(
             "height": DESKTOP_VIEWPORT_HEIGHT_PX,
         }
     )
-    context.set_default_timeout(10_000)
-    context.set_default_navigation_timeout(30_000)
+    try:
+        with recorded_context(
+            context=context,
+            request=request,
+            settings=failure_artifact_settings,
+            worker_id=worker_id,
+        ):
+            context.set_default_timeout(10_000)
+            context.set_default_navigation_timeout(30_000)
 
-    page: Page = context.new_page()
-    page.goto(base_url + "/")
+            page: Page = context.new_page()
+            page.goto(base_url + "/")
 
-    clear_db(runner, debug_strings)
+            clear_db(runner, debug_strings)
 
-    yield PageBundle(page=page, context=context, base_url=base_url)
-
-    context.close()
+            yield PageBundle(page=page, context=context, base_url=base_url)
+    finally:
+        context.close()
 
 
 @pytest.fixture
@@ -257,10 +279,13 @@ def page_mobile_portrait_without_cookie_banner_cookie(
     provide_config: ConfigTest,
     runner: Tuple[Flask, FlaskCliRunner],
     debug_strings,
+    request: pytest.FixtureRequest,
+    worker_id: str,
+    failure_artifact_settings: ArtifactSettings,
 ) -> Generator[PageBundle, None, None]:
     """Mobile-portrait Playwright context: Playwright-native touch/mobile
     emulation replaces the Selenium `execute_cdp_cmd` touch + coarse-pointer
-    media emulation.
+    media emulation. Failure artifacts as in `page_without_cookie_banner_cookie`.
     """
     base_url = (
         UI_TEST_STRINGS.DOCKER_BASE_URL
@@ -273,17 +298,24 @@ def page_mobile_portrait_without_cookie_banner_cookie(
         has_touch=True,
         is_mobile=True,
     )
-    context.set_default_timeout(10_000)
-    context.set_default_navigation_timeout(30_000)
+    try:
+        with recorded_context(
+            context=context,
+            request=request,
+            settings=failure_artifact_settings,
+            worker_id=worker_id,
+        ):
+            context.set_default_timeout(10_000)
+            context.set_default_navigation_timeout(30_000)
 
-    page: Page = context.new_page()
-    page.goto(base_url + "/")
+            page: Page = context.new_page()
+            page.goto(base_url + "/")
 
-    clear_db(runner, debug_strings)
+            clear_db(runner, debug_strings)
 
-    yield PageBundle(page=page, context=context, base_url=base_url)
-
-    context.close()
+            yield PageBundle(page=page, context=context, base_url=base_url)
+    finally:
+        context.close()
 
 
 @pytest.fixture

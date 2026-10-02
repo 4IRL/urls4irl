@@ -60,6 +60,11 @@ services:
       - METRICS_BUCKET_SECONDS=3600
       - METRICS_REDIS_URI=redis://redis-metrics:6379/0
       - METRICS_BATCH_NONCE_TTL_SECONDS=120
+      # UI failure-artifact knobs (tests/functional/failure_artifacts.py): tracing mode
+      # (off | retain-on-failure; opt-in, since tracing costs ~+30% UI-suite wall-clock)
+      # and how many run dirs to keep per checkout.
+      - U4I_UI_TRACE=${U4I_UI_TRACE:-off}
+      - U4I_TEST_ARTIFACTS_KEEP=${U4I_TEST_ARTIFACTS_KEEP:-10}
     volumes:
       - ./run.py:/code/u4i/run.py
       - ./pytest.ini:/code/u4i/pytest.ini
@@ -75,6 +80,9 @@ services:
       # Generated endpoint registry (`make generate-endpoints`). A directory mount, so git's
       # inode-swapping checkouts of the files inside stay visible to web.
       - ./docs/endpoints:/code/u4i/docs/endpoints
+      # UI failure artifacts (tests/functional/failure_artifacts.py); make pre-creates the source host-owned, since
+      # Docker would create a missing one as root.
+      - ./tmp/test-artifacts:/code/u4i/tmp/test-artifacts
       - app_logs:/app/volume
     networks:
       default: {}

@@ -47,6 +47,7 @@ INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
         "c",
         "d",
         "e",
+        "run",
         "f",
         "m",
         "n",
@@ -159,6 +160,7 @@ def test_up_rejects_invalid_profile(profile_value: str, expected_message: str) -
         pytest.param("up", "p", "p must not contain '$'", id="p"),
         pytest.param("restart", "c", "c must not contain '$'", id="c"),
         pytest.param("endpoint-info", "e", "e must not contain '$'", id="e"),
+        pytest.param("test-artifacts", "run", "run must not contain '$'", id="run"),
         pytest.param(
             "affected-markers", "base", "base must not contain '$'", id="base"
         ),
@@ -920,6 +922,29 @@ def test_stack_start_targets_run_worktree_init_first(make_target: str) -> None:
     assert init_index < first_compose_index
 
 
+@pytest.mark.parametrize(
+    "make_target", ["up", "up-built", "start-built", "tunnel", "_ui-up"]
+)
+def test_stack_start_targets_precreate_the_test_artifacts_dir(
+    make_target: str,
+) -> None:
+    """Docker would create a missing bind source as root; make pre-creates it host-owned before any compose up."""
+    lines = _successful_dry_run(make_target).splitlines()
+    mkdir_index = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if line.strip() == "mkdir -p tmp/test-artifacts"
+        ),
+        None,
+    )
+    assert mkdir_index is not None, lines
+    first_compose_index = next(
+        index for index, line in enumerate(lines) if "docker compose" in line
+    )
+    assert mkdir_index < first_compose_index
+
+
 def test_down_leaves_the_hub_alone() -> None:
     assert _hub_lines(_successful_dry_run("down")) == []
 
@@ -1266,6 +1291,7 @@ def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> 
         ("generate-endpoints",),
         ("audit-endpoints",),
         ("endpoint-info", "e=utubs.get_single_utub"),
+        ("test-artifacts",),
         ("clear-db",),
         ("addmock",),
         ("test-js",),
@@ -1319,6 +1345,33 @@ def test_endpoint_info_requires_a_route() -> None:
     result = _dry_run("endpoint-info")
     assert result.returncode != 0
     assert "e=<route> is required" in result.stderr
+
+
+def test_test_artifacts_reads_the_latest_run_by_default() -> None:
+    # Host-native (no stack): with no run=, the reader follows latest.json under the checkout's tmp/test-artifacts.
+    output = _successful_dry_run("test-artifacts")
+    report_line = _single_line_containing(output, "scripts/failure_artifacts_report.py")
+    assert report_line.rstrip().endswith("--root tmp/test-artifacts")
+    assert "--run" not in report_line
+
+
+@pytest.mark.parametrize(
+    ("run_value", "expected_argument"),
+    [
+        pytest.param("a1b2c3d4", "--run='a1b2c3d4'", id="run-id"),
+        pytest.param("it's", "--run='it'\\''s'", id="single-quote"),
+        pytest.param("-h", "--run='-h'", id="dash-leading"),
+    ],
+)
+def test_test_artifacts_passes_run_as_one_quoted_word(
+    run_value: str, expected_argument: str
+) -> None:
+    # `--run=` (not `--run <word>`) so a dash-leading value is never parsed as an option.
+    output = _successful_dry_run("test-artifacts", f"run={run_value}")
+    assert (
+        f"scripts/failure_artifacts_report.py --root tmp/test-artifacts {expected_argument}"
+        in output
+    )
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")

@@ -184,8 +184,10 @@ jobs:
     # (e.g. Playwright's apt deps) no longer counts against the tests.
     timeout-minutes: 25
 
-    # Splits tests into multiple workers
+    # Splits tests into multiple workers. fail-fast is off so one failing row doesn't
+    # cancel the others: every failing row keeps its ui-failure-artifacts-<marker> upload.
     strategy:
+      fail-fast: false
       matrix:
         worker:
           - ['UI Splash Functional Tests', 'splash_ui', 2]
@@ -314,3 +316,15 @@ jobs:
           else
             python3.11 -m pytest
           fi
+
+      # Evidence for a red UI row: tests/functional/failure_artifacts.py writes each failing test's
+      # screenshot/DOM/console/network + failure.json (and the run's index.json) under the checkout's
+      # tmp/test-artifacts/. Tracing is opt-in (U4I_UI_TRACE unset here), so no trace.zip.
+      - name: Upload UI failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ui-failure-artifacts-${{ matrix.worker[1] }}
+          path: tmp/test-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7

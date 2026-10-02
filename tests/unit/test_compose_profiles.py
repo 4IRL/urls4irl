@@ -322,6 +322,22 @@ def test_web_mounts_endpoint_registry_dir() -> None:
     assert "./docs/endpoints:/code/u4i/docs/endpoints" in web_volumes
 
 
+def test_web_mounts_test_artifacts_dir() -> None:
+    """UI failure artifacts (tests/functional/failure_artifacts.py) written in web must be visible on the host."""
+    web_volumes = _load_services(LOCAL_COMPOSE_FILE)["web"]["volumes"]
+    assert "./tmp/test-artifacts:/code/u4i/tmp/test-artifacts" in web_volumes
+
+
+def test_web_passes_artifact_knobs() -> None:
+    """The artifact knobs are tracked defaults, overridable from `.env` or the shell.
+
+    Tracing defaults to off (opt-in): it measured ~+30% UI-suite wall-clock.
+    """
+    web_environment = _load_services(LOCAL_COMPOSE_FILE)["web"]["environment"]
+    assert "U4I_UI_TRACE=${U4I_UI_TRACE:-off}" in web_environment
+    assert "U4I_TEST_ARTIFACTS_KEEP=${U4I_TEST_ARTIFACTS_KEEP:-10}" in web_environment
+
+
 def test_web_reaches_hub_services_by_their_hub_names() -> None:
     web_environment = _load_services(LOCAL_COMPOSE_FILE)["web"]["environment"]
     assert "PLAYWRIGHT_WS_URL=ws://playwright:3000/" in web_environment

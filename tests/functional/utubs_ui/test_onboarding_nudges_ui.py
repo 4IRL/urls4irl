@@ -40,6 +40,7 @@ from tests.functional.playwright_utils import (
     wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_selector_to_be_removed,
     wait_then_click_element,
+    wait_then_get_element,
     wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
@@ -51,6 +52,11 @@ from tests.functional.utubs_ui.playwright_utils import (
 )
 
 pytestmark = pytest.mark.utubs_ui
+
+# Tap-away clicks land this far inside the URL-deck subheader's right edge:
+# its center sits ~1px from the Create-UTub nudge bubble's right edge, so a
+# center click races the bubble's final layout under load.
+TAP_AWAY_EDGE_INSET_PX = 4
 
 
 def test_create_utub_nudge_shows_with_bridged_copy(
@@ -190,8 +196,19 @@ def test_create_utub_nudge_tap_away_dismisses_and_persists(
 
     # Tap-away path: a click on a neutral element away from the anchor (the URL
     # deck subheader on the opposite panel, which has no click handler while no
-    # UTub is selected, so it never navigates) dismisses the tip.
-    wait_then_click_element(page=page, css_selector=HPL.SUBHEADER_URL_DECK)
+    # UTub is selected, so it never navigates) dismisses the tip. Click its far
+    # right end, clear of the bubble's footprint (see TAP_AWAY_EDGE_INSET_PX).
+    url_deck_subheader = wait_then_get_element(
+        page=page, css_selector=HPL.SUBHEADER_URL_DECK
+    )
+    subheader_box = url_deck_subheader.bounding_box()
+    assert subheader_box is not None
+    url_deck_subheader.click(
+        position={
+            "x": subheader_box["width"] - TAP_AWAY_EDGE_INSET_PX,
+            "y": subheader_box["height"] / 2,
+        }
+    )
     wait_until_hidden(page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP)
 
     page.reload()
