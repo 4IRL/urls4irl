@@ -24,6 +24,18 @@ Every capture step is isolated: a dead browser or full disk becomes an entry
 in `failure.json["capture_errors"]`, never an exception in fixture teardown.
 `write_run_index` then summarizes a run in `index.json` and points
 `<root>/latest.json` at it; `prune_runs` bounds how many runs are kept.
+
+It is also a pytest plugin, registered in the root `tests/conftest.py`
+`pytest_plugins` (so its session hooks run on the xdist controller too, which
+never imports `tests/functional/conftest.py`): `pytest_configure` pins one run
+id shared by every worker (and rejects a bad knob as a usage error),
+`pytest_sessionstart` prunes old runs, `pytest_runtest_makereport` stashes
+each phase's report for `failure_phase`, and `pytest_sessionfinish` writes the
+run index. The page fixtures wrap their browser context in
+`recorded_context`, which captures on a failure and discards the trace
+otherwise. Outside UI runs the hooks are inert: nothing is written unless a
+test actually captured a failure, and an unreadable/unwritable artifact root
+only warns, never fails the session.
 """
 
 import hashlib
@@ -32,13 +44,16 @@ import os
 import re
 import shutil
 import uuid
+import warnings
 from collections import deque
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypeVar
 
+import pytest
 from playwright.sync_api import BrowserContext, ConsoleMessage, Request, WebError
 
 FUNCTIONAL_PREFIX = "tests/functional/"
@@ -54,7 +69,9 @@ TRACE_OFF = "off"
 TRACE_MODES = (TRACE_RETAIN_ON_FAILURE, TRACE_OFF)
 DEFAULT_KEEP_RUNS = 10
 # Run ids are the first 8 chars of a uuid4 hex; only such dirs are prunable.
-RUN_ID_PATTERN = re.compile(r"[0-9a-f]{8}")
+RUN_ID_LENGTH = 8
+RUN_ID_PATTERN = re.compile(rf"[0-9a-f]{{{RUN_ID_LENGTH}}}")
+SUMMARY_FALLBACK_LENGTH = 500
 
 BUFFER_LIMIT = 300
 PAGE_ERROR_LIMIT = 100
@@ -478,3 +495,146 @@ def prune_runs(*, root: Path, keep: int) -> list[Path]:
     for path in removed:
         shutil.rmtree(path, ignore_errors=True)
     return removed
+
+
+# --- pytest wiring -----------------------------------------------------------
+
+PHASE_REPORTS_KEY: pytest.StashKey[dict[str, pytest.TestReport]] = pytest.StashKey()
+
+
+def _is_xdist_worker(*, config: pytest.Config) -> bool:
+    return hasattr(config, "workerinput")
+
+
+def resolve_run_id(*, config: pytest.Config) -> str:
+    """The run id shared by the controller and every xdist worker of one run."""
+    if _is_xdist_worker(config=config):
+        return config.workerinput["testrunuid"][:RUN_ID_LENGTH]
+    return config.option.testrunuid[:RUN_ID_LENGTH]
+
+
+def failure_phase(*, item: pytest.Item) -> tuple[str, str] | None:
+    """Return `(phase, error_summary)` if the test's call or setup failed.
+
+    Teardown-phase failures are deliberately not captured: pytest reports
+    them only after every fixture (the page fixture included) has already
+    torn down, so there is no live browser context left to capture from.
+    """
+    reports = item.stash.get(PHASE_REPORTS_KEY, {})
+    for phase in ("call", "setup"):
+        report = reports.get(phase)
+        if report is None or not report.failed:
+            continue
+        crash = getattr(report.longrepr, "reprcrash", None)
+        message = getattr(crash, "message", None)
+        summary = message if message else str(report.longrepr)[:SUMMARY_FALLBACK_LENGTH]
+        return phase, summary
+    return None
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_makereport(
+    item: pytest.Item,
+) -> Generator[None, pytest.TestReport, pytest.TestReport]:
+    report = yield
+    item.stash.setdefault(PHASE_REPORTS_KEY, {})[report.when] = report
+    return report
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    # Pin the run id before xdist's NodeManager reads --testrunuid (it does so
+    # at session start), so every worker inherits this same uid.
+    if _is_xdist_worker(config=config):
+        return
+    if not getattr(config.option, "testrunuid", None):
+        config.option.testrunuid = uuid.uuid4().hex
+    # Validate the knobs up front: a bad value is a clean usage error, not an
+    # INTERNALERROR from a later session hook.
+    try:
+        load_settings(environ=os.environ, rootpath=config.rootpath)
+    except ValueError as exc:
+        raise pytest.UsageError(str(exc)) from exc
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    if _is_xdist_worker(config=session.config):
+        return
+    settings = load_settings(environ=os.environ, rootpath=session.config.rootpath)
+    try:
+        prune_runs(root=settings.root, keep=settings.keep_runs)
+    except OSError as exc:
+        warnings.warn(
+            f"failure artifacts: could not prune old runs under {settings.root}: {exc}",
+            stacklevel=1,
+        )
+
+
+def pytest_sessionfinish(session: pytest.Session) -> None:
+    if _is_xdist_worker(config=session.config):
+        return
+    settings = load_settings(environ=os.environ, rootpath=session.config.rootpath)
+    try:
+        write_run_index(
+            root=settings.root, run_id=resolve_run_id(config=session.config)
+        )
+    except OSError as exc:
+        warnings.warn(
+            f"failure artifacts: could not write the run index under "
+            f"{settings.root}: {exc}",
+            stacklevel=1,
+        )
+
+
+@contextmanager
+def recorded_context(
+    *,
+    context: BrowserContext,
+    request: pytest.FixtureRequest,
+    settings: ArtifactSettings,
+    worker_id: str,
+) -> Iterator[ContextRecorder]:
+    """Record a page fixture's context; capture artifacts if its test failed.
+
+    Open it right after `new_context()`, around the whole fixture body
+    including its `yield`, so tracing and listeners cover setup too:
+
+    - an exception escaping the block (a pre-yield setup failure, e.g. a
+      `page.goto()` timeout — pytest has no setup report for it yet) is
+      captured as `phase="setup"` and re-raised;
+    - on normal exit, a failed call/setup report (`failure_phase`) is
+      captured, otherwise the trace is discarded.
+    """
+    recorder = ContextRecorder()
+    recorder.attach(context=context)
+    if settings.trace:
+        context.tracing.start(screenshots=True, snapshots=True, sources=False)
+    item = request.node
+
+    def capture(*, phase: str, error_summary: str) -> None:
+        run_id = resolve_run_id(config=request.config)
+        capture_failure(
+            context=context,
+            recorder=recorder,
+            dest=test_dir(root=settings.root, run_id=run_id, nodeid=item.nodeid),
+            nodeid=item.nodeid,
+            phase=phase,
+            error_summary=error_summary,
+            worker=worker_id,
+            run_id=run_id,
+            trace=settings.trace,
+        )
+
+    try:
+        yield recorder
+    except (Exception, pytest.fail.Exception) as exc:
+        # `pytest.fail` raises a BaseException subclass; skip and
+        # KeyboardInterrupt still propagate uncaptured.
+        capture(phase="setup", error_summary=f"{type(exc).__name__}: {exc}")
+        raise
+
+    failure = failure_phase(item=item)
+    if failure is not None:
+        phase, error_summary = failure
+        capture(phase=phase, error_summary=error_summary)
+    elif settings.trace:
+        discard_trace(context=context)

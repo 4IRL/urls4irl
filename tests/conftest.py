@@ -73,7 +73,20 @@ from tests.utils_for_test import clear_database, get_csrf_token
 # misuse). The fixtures themselves only resolve their session-scoped
 # dependencies (`worker_metrics_redis_uri`, `parallelize_app`, etc.) when a
 # test actually requests one of them, so integration tests are unaffected.
-pytest_plugins = ["tests.functional.metrics_helpers.conftest_fragment"]
+#
+# `tests.functional.failure_artifacts` (UI failure artifacts) is registered
+# here rather than re-exported from `tests/functional/conftest.py` so its
+# session hooks (`pytest_configure` run-id pinning, `pytest_sessionstart`
+# pruning, `pytest_sessionfinish` index writing) also run on the xdist
+# CONTROLLER, which only collects on workers and so never imports the nested
+# conftest. Its hooks are inert outside UI runs (nothing is written unless a
+# page fixture captured a failure). `pytester` is registered here too, because
+# `pytest_plugins` is root-only; it backs the failure-artifacts plugin tests.
+pytest_plugins = [
+    "tests.functional.metrics_helpers.conftest_fragment",
+    "tests.functional.failure_artifacts",
+    "pytester",
+]
 
 
 class AjaxFlaskClient(FlaskClient):
