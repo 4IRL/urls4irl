@@ -74,7 +74,7 @@ Reference plan may have files in the @plans directory - please reference these i
 - **Push gate:** (suites a push must pass; first matching row wins per changed path, all matched suites run sequentially)
   | Paths (space-separated globs) | Command |
   | ----------------------------- | ------- |
-  | `docs/** *.md LICENSE .claude/** .gitignore .gitmodules .git-blame-ignore-revs .env.example .dockerignore` | na docs, markdown and repo-metadata paths run no suite |
+  | `docs/** **/*.md LICENSE .claude/** .gitignore .gitmodules .git-blame-ignore-revs .env.example .dockerignore` | na docs, markdown and repo-metadata paths run no suite |
   | `frontend/**` | `make test-js && make test-ui-parallel-built` |
   | `**` | `make test-integration-parallel && make test-ui-parallel-built` |
 
