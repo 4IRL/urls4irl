@@ -17,7 +17,7 @@ Reference plan may have files in the @plans directory - please reference these i
 - **Repo slug:** `4IRL/urls4irl`  (always pass `--repo 4IRL/urls4irl` to `gh`; `GPropersi/urls4irl` redirects but is not canonical)
 - **Default branch:** `main`
 - **Stack:** `flask-jinja-vanillajs-vite` (drives which opt-in plan-creator/plan-reviewer protocol reference files load — Python/Flask backend, SQLAlchemy, Jinja templates, vanilla-JS→Vite/ES6 frontend, Vitest + Playwright tests, pip/`requirements-*.txt` pinning)
-- **Plans store (central):** `~/code/plans/urls4irl/{open,completed,research}/<topic>/` — plans now live in the central stronghold store, not this repo (bucket = this repo's slug basename `urls4irl`). Reviews/research/mocks are co-located per plan under its `<topic>/`; finished topics move `open/`→`completed/` as a unit. See `~/code/CLAUDE.md` "Central Plans Store". (Legacy in-repo `plans/` migrated 07-2026; the leftover `plans/tmp/` is gitignored scratch.)
+- **Plans store (central):** `~/code/plans/urls4irl/{open,completed,research}/<topic>/` — plans now live in the central stronghold store, not this repo (bucket = the `Plans bucket` key below, `urls4irl`). Reviews/research/mocks are co-located per plan under its `<topic>/`; finished topics move `open/`→`completed/` as a unit. See `~/code/CLAUDE.md` "Central Plans Store". (Legacy in-repo `plans/` migrated 07-2026; the leftover `plans/tmp/` is gitignored scratch.)
 - **Bot identity:** `gpropersi-claude[bot]` `141576524+gpropersi-claude[bot]@users.noreply.github.com`  <!-- renamed from u4i-claude-code; same App, same bot user id -->
 - **Bot push script:** `~/code/.claude/scripts/gh-app-push.sh` (central, repo-agnostic; derives the repo from `origin`, pushes as the shared bot)
 - **Token generator:** `~/code/.claude/scripts/generate-gh-token.sh` (tracked in the stronghold — the shared consolidated `gpropersi-claude` App; one generator serves every repo, auto-resolves the installation from the repo's owner. Only the private key `~/.claude/u4i-app.pem` lives outside git)
@@ -70,6 +70,13 @@ Reference plan may have files in the @plans directory - please reference these i
 - **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. The genericized `/git-push` performs the lookup; `.claude/skills/git-push/SKILL.md` documents the mutations.
 - **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
 - **PR reviewer:** `GPropersi`
+- **Plans bucket:** `urls4irl`   <!-- directory under ~/code/plans/ for this repo's plans; explicit, never inferred from the slug or the directory name -->
+- **Push gate:** (suites a push must pass; first matching row wins per changed path, all matched suites run sequentially)
+  | Paths (space-separated globs) | Command |
+  | ----------------------------- | ------- |
+  | `docs/** *.md LICENSE .claude/** .gitignore .gitmodules .git-blame-ignore-revs .env.example .dockerignore` | na docs, markdown and repo-metadata paths run no suite |
+  | `frontend/**` | `make test-js && make test-ui-parallel-built` |
+  | `**` | `make test-integration-parallel && make test-ui-parallel-built` |
 
 
 ## Project Overview
