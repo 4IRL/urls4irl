@@ -254,6 +254,8 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     "scripts/capacity.py",
     "scripts/spoke_ports.py",
     "scripts/audit_pins.py",
+    "scripts/worktree.sh",
+    "tests/unit/test_worktree_script.py",
     "tests/unit/test_makefile_profiles.py",
     "tests/unit/test_compose_hub.py",
     "tests/unit/test_compose_profiles.py",
@@ -261,6 +263,8 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     "tests/unit/test_playwright_entrypoint.py",
     # Imported by test_audit_pins.py (a host-static test).
     "tests/unit/stdlib_only_utils.py",
+    # Imported by test_worktree_script.py and test_makefile_profiles.py (host-static tests).
+    "tests/unit/worktree_test_utils.py",
 )
 
 # UI test directories -> the markers their files carry. Five host mobile-only
@@ -289,6 +293,8 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     # Host-static only: HOST_STATIC_GLOBS already set host_static.
     ("Makefile", ()),
     ("docker/*", ()),
+    # Ahead of scripts/*.sh (unit, admin): the worktree script is exercised only by host-static tests.
+    ("scripts/worktree.sh", ()),
     ("docs/endpoints/endpoint-registry.json", ("unit", "cli")),
     ("docs/endpoints/ENDPOINT_REGISTRY.md", ("unit", "cli")),
     # --- tests -----------------------------------------------------------

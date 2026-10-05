@@ -352,7 +352,7 @@ test-playwright-lifecycle: _hub-capacity ## Build the derived Playwright image a
 # a stamp inside that venv, so a pin bump reaches it too; the stamp is touched only after a successful install.
 # psycopg2 is skipped: it builds from source (needs pg_config), and the pinned psycopg2-binary provides the same
 # `psycopg2` module the root conftest imports.
-HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py
+HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py tests/unit/test_worktree_script.py
 HOST_STATIC_STAMP = $(PRIMARY_ROOT)/venv/.u4i-host-static.stamp
 HOST_STATIC_TEST_PINS = $(PRIMARY_ROOT)/requirements/requirements-test.txt
 HOST_STATIC_PROD_PINS = $(PRIMARY_ROOT)/requirements/requirements-prod.txt

@@ -695,6 +695,32 @@ def test_host_static_script_continues_into_its_path_row() -> None:
     assert not selection.everything
 
 
+def test_worktree_script_selects_host_static_only() -> None:
+    """
+    GIVEN scripts/worktree.sh, exercised only by host-static tests
+    WHEN it resolves
+    THEN host_static is set, no markers, and it does not fall into scripts/*.sh (unit, admin)
+    """
+    selection = _resolve(["scripts/worktree.sh"])
+
+    assert selection.host_static
+    assert selection.markers == frozenset()
+    assert not selection.everything
+
+
+def test_worktree_script_test_selects_host_static_and_unit() -> None:
+    """
+    GIVEN tests/unit/test_worktree_script.py, a host-static test
+    WHEN it resolves
+    THEN host_static is set AND resolution continues into the `unit` row
+    """
+    selection = _resolve(["tests/unit/test_worktree_script.py"])
+
+    assert selection.host_static
+    assert selection.markers == {"unit"}
+    assert not selection.everything
+
+
 def test_stdlib_only_helper_selects_host_static_and_unit() -> None:
     """
     GIVEN tests/unit/stdlib_only_utils.py, imported by host-static and unit tests
