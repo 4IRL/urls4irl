@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Keep your replies extremely concise and focus on conveying the key information. No unnecessary fluff, no long code snippets.
 
-Reference plan may have files in the @plans directory - please reference these if there's a relevant plan file in this directory.
+Plans, reviews and research live in the central store under `~/code/plans/urls4irl/{open,completed}/<topic>/` (see `Plans store (central)` below) - reference the relevant plan there if one exists.
 
 
 ## Claude Config
@@ -13,6 +13,8 @@ Reference plan may have files in the @plans directory - please reference these i
      Stable keys — do not rename. Account-specific GraphQL IDs are intentionally NOT inlined here
      (secrets policy); the genericized workflow resolves them at runtime by name — see the
      GitHub project board key below. -->
+
+The keys Plans store, Bot identity, Bot push script, Token generator, GitHub project board, Issue labels, PR reviewer, Plans bucket, Push gate and Stack are optional maintainer tooling, consumed only by the stronghold's central skills; the repo is fully usable without them. Commands, Container runtime and Configuration surface are repo docs.
 
 - **Repo slug:** `4IRL/urls4irl`  (always pass `--repo 4IRL/urls4irl` to `gh`; `GPropersi/urls4irl` redirects but is not canonical)
 - **Default branch:** `main`
@@ -70,7 +72,7 @@ Reference plan may have files in the @plans directory - please reference these i
   | `make stack-info`                                | worktree identity target | n/a                                                                  | prints this checkout's project, aliases, resolved URLs, hub project, hub `db` and `playwright` state (`hub playwright: Exited (0) …` = idle-reaped, `absent` = never created) and attached spokes                                                                                                                                  |
   | `make hub-up` / `make hub-down`                  | hub target               | n/a                                                                  | `hub-up` starts the hub `db` (never recreating it) and runs `cluster-init`; every stack start runs it. `hub-down` refuses while any spoke container (running or stopped) is attached, else stops the hub and removes the network                                                                                                   |
   | `make capacity`                                  | host capacity target     | n/a                                                                  | writes gitignored `docker/.capacity.generated.env`; stack-start and `-parallel` targets refresh it (`recreate required` = rerun `make up [p=…] d=1`; `hub recreate required` = the hub teardown above). In a linked worktree a hub-key change only prints a note: rerun `make capacity` in the primary clone                       |
-- **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. The genericized `/git-push` performs the lookup; `.claude/skills/git-push/SKILL.md` documents the mutations.
+- **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. Maintainer workflow (requires the stronghold's `/git-push`; optional for other contributors): the genericized `/git-push` performs the lookup; `~/code/.claude/skills/git-push/SKILL.md` (stronghold-owned) documents the mutations.
 - **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
 - **PR reviewer:** `GPropersi`
 - **Worktree policy:** `full`
@@ -109,7 +111,7 @@ This project's naming differs from most companies. Do not assume the conventiona
 
 ## Project Structure
 
-Review files are stored **co-located with each plan** at `plans/<topic>/reviews/<plan-name>-review.md` — this matches the 30+ existing review folders in the repo. (An earlier version of this note claimed a repo-root `reviews/`; that was inaccurate and there is no repo-root `reviews/` directory.)
+Review files are stored **co-located with each plan** in the central store at `~/code/plans/urls4irl/{open,completed}/<topic>/reviews/<plan-name>-review.md`, not in this repo. (An earlier version of this note claimed a repo-root `reviews/`; that was inaccurate and there is no repo-root `reviews/` directory.)
 
 ### Endpoint Registry
 
@@ -131,7 +133,7 @@ Performance/latency **is** measured. `backend/extensions/request_timing.py` reco
 
 ### GitHub Issue Linking
 
-Every plan and every PR has a linked GitHub issue. The **issue** carries the public-facing WHY (Problem / Why / Outcome — read at a glance); the **plan** is the source of truth for HOW (detailed steps, file paths, code shapes).
+**Maintainer workflow (requires the stronghold's `/plan-creator`, `/master-plan-creator` and `/git-push`; optional for other contributors).** Every plan and every PR has a linked GitHub issue. The **issue** carries the public-facing WHY (Problem / Why / Outcome — read at a glance); the **plan** is the source of truth for HOW (detailed steps, file paths, code shapes).
 
 **Single-plan flow:**
 1. `/plan-creator` creates the plan file, then creates a GitHub issue (or links to an existing matching one) and writes `github_issue:` + `github_issue_url:` into the plan's YAML frontmatter.
@@ -281,9 +283,9 @@ After editing JavaScript files, always run the Vite build (`make vite-build`) to
 
 - **Source matters:** the image must be of the **implemented** feature captured via Playwright MCP against the running app (`http://127.0.0.1:8659/`; primary clone, in a worktree use the web URL from `make stack-info`), NOT the upfront design mock. The stack must serve assets (`make up p=ui d=1` or `make up-built d=1`; see Playwright below). Reusing a pre-implementation mock does not satisfy this rule.
 - Use the `login-with-playwright` skill to reach the home page; for mobile features, set the viewport to a mobile width (e.g. 420px) before capturing. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
-- Surface the image to the user with `SendUserFile` (not just a saved path). Save screenshots under `plans/<topic>/screenshots/` (gitignored, like the rest of `plans/`).
+- Surface the image to the user with `SendUserFile` (not just a saved path). Save screenshots under the gitignored `plans/tmp/` scratch (or the plan's `screenshots/` folder in the central store `~/code/plans/urls4irl/open/<topic>/`, which is gitignored in the stronghold).
 - If the app cannot be brought up to capture the screenshot, say so explicitly rather than silently skipping this step.
-- **Design mocks and screenshots must NEVER be checked into source control.** Keep them under gitignored paths only (`plans/**`). Before committing, confirm no image artifact landed in a tracked location (e.g. project root, `backend/static/`); if one did, move it under `plans/<topic>/` rather than committing it.
+- **Design mocks and screenshots must NEVER be checked into source control.** Keep them under gitignored paths only (`plans/tmp/` here, or the central store `~/code/plans/urls4irl/...`). Before committing, confirm no image artifact landed in a tracked location (e.g. project root, `backend/static/`); if one did, move it to a gitignored path rather than committing it.
 
 ## Generated Types Freshness
 
