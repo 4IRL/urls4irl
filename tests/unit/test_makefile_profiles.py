@@ -20,6 +20,12 @@ from pathlib import Path
 
 import pytest
 
+from tests.unit.worktree_test_utils import (
+    TempPrimary,
+    add_linked_worktree,
+    build_temp_primary,
+)
+
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 MAKEFILE: Path = REPO_ROOT / "Makefile"
 MAKE_BINARY: str | None = shutil.which("make")
@@ -60,6 +66,9 @@ INHERITED_MAKE_VARIABLES: frozenset[str] = frozenset(
         "U4I_MEMORY_WAIT",
         "U4I_SETTLE_SECONDS",
         "base",
+        "name",
+        "b",
+        "from",
         "AFFECTED_INT",
         "AFFECTED_UI",
         "AFFECTED_HOST_STATIC",
@@ -1814,7 +1823,7 @@ def test_host_static_still_runs_its_host_pytest_line() -> None:
     output = _successful_dry_run("test-host-static")
     assert "command -v mise" in output
     host_line = _single_line_containing(output, HOST_STATIC_PYTEST_FRAGMENT)
-    assert host_line.endswith("tests/unit/test_playwright_entrypoint.py -v ")
+    assert host_line.endswith("tests/unit/test_env_example.py -v ")
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
@@ -1836,3 +1845,377 @@ def test_agent_documents_the_token_budget() -> None:
     ]
     assert len(target_lines) == 1, target_lines
     assert "queues on the host token budget" in target_lines[0].split("## ", 1)[1]
+
+
+@pytest.mark.parametrize("make_target", ["worktree-new", "worktree-rm"])
+def test_worktree_targets_are_documented_and_phony(make_target: str) -> None:
+    # Structure only (see test_budgeted_targets_document_the_token_budget): one `target:` line, a `## ` description
+    # for `make help`, and a single .PHONY line naming it.
+    makefile_lines = MAKEFILE.read_text().splitlines()
+    target_lines = [
+        line for line in makefile_lines if line.startswith(f"{make_target}:")
+    ]
+    assert len(target_lines) == 1, target_lines
+    assert "## " in target_lines[0], target_lines[0]
+    phony_lines = [line for line in makefile_lines if line.startswith(".PHONY:")]
+    assert len(phony_lines) == 1, phony_lines
+    assert make_target in phony_lines[0].split()
+
+
+def test_worktree_new_single_quotes_and_escapes_its_arguments() -> None:
+    # A ' is accepted and escaped as '\'' (not refused), so it cannot break out of the single-quoted shell word.
+    output = _successful_dry_run("worktree-new", "name=a'b", "b=x y", "from=o'k")
+    line = _single_line_containing(output, "scripts/worktree.sh new")
+    assert line.split("scripts/worktree.sh new ", 1)[1].strip() == (
+        "'a'\\''b' 'x y' 'o'\\''k'"
+    )
+
+
+def test_worktree_new_passes_empty_branch_and_from_when_omitted() -> None:
+    # `base ?= origin/main` plays no part: an omitted from= must stay distinguishable from an explicit one.
+    output = _successful_dry_run("worktree-new", "name=ok")
+    line = _single_line_containing(output, "scripts/worktree.sh new")
+    assert line.split("scripts/worktree.sh new ", 1)[1].strip() == "'ok' '' ''"
+
+
+@pytest.mark.parametrize("variable_name", ["name", "b", "from"])
+def test_worktree_new_rejects_a_dollar_before_expansion(
+    tmp_path: Path, variable_name: str
+) -> None:
+    probe_file = tmp_path / "probe"
+    arguments = {"name": "ok", "b": "ok", "from": "ok"}
+    arguments[variable_name] = f"a$(shell touch {probe_file})"
+    result = _dry_run(
+        "worktree-new", *(f"{key}={value}" for key, value in arguments.items())
+    )
+    assert result.returncode != 0
+    assert f"{variable_name} must not contain '$'" in result.stderr
+    assert "No rule to make target" not in result.stderr
+    assert not probe_file.exists(), "the embedded $(shell …) ran before the guard"
+
+
+def test_worktree_rm_recipe_order_and_derived_names() -> None:
+    # -n prints (never runs) every recipe line, shell guards included, so the order is observable anywhere.
+    output = _successful_dry_run(
+        "worktree-rm", "U4I_PRIMARY=", "U4I_SLUG=infra-worktree-adoption"
+    )
+    probe_at = output.index("docker ps -a -q")
+    guards = output[:probe_at]
+    # primary, CURDIR outside <primary>/.claude/worktrees/, CURDIR named like the primary, U4I_SLUG != CURDIR name
+    guard_messages = (
+        "refusing to run in the primary clone",
+        "this directory is not under <primary>/.claude/worktrees/",
+        "is named like the primary clone",
+        "differs from this directory name",
+    )
+    positions = [guards.index(message) for message in guard_messages]
+    assert positions == sorted(positions), guards
+    for probe in ("docker volume ls -q", "docker image ls -q"):
+        assert probe in output
+    label = "label=com.docker.compose.project=u4i-infra-worktree-adoption"
+    assert output.count(label) >= 3
+    down_at = output.index("down -v --rmi local --remove-orphans")
+    assert f"{ALL_PROFILES_FLAG} down -v --rmi local --remove-orphans" in output
+    hub_probe_at = output.index("com.docker.compose.service=db")
+    drop_at = output.index("DROP DATABASE IF EXISTS")
+    remove_at = output.index("worktree remove")
+    assert probe_at < down_at < hub_probe_at <= drop_at < remove_at
+    assert "u4i_dev_infra_worktree_adoption" in output[drop_at:remove_at]
+    assert "worktree remove --force" not in output
+    assert ".worktree.env" not in output
+
+
+def test_worktree_rm_refuses_the_primary_before_anything_else() -> None:
+    # A real run (never -n, never U4I_PRIMARY= in this checkout): the guard is the first recipe line, so nothing
+    # else can run, even when the suite itself runs inside a linked worktree.
+    assert MAKE_BINARY is not None
+    clean_env = {
+        name: value
+        for name, value in os.environ.items()
+        if name not in INHERITED_MAKE_VARIABLES
+    }
+    result = subprocess.run(
+        [MAKE_BINARY, "--no-print-directory", "worktree-rm", "U4I_PRIMARY=1"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        env=clean_env,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "worktree-rm" in result.stderr
+    assert "primary" in result.stderr.lower()
+    assert "No rule to make target" not in result.stderr
+
+
+def _rm_primary(tmp_path: Path) -> TempPrimary:
+    return build_temp_primary(tmp_path, name="fakeprimary", with_makefile=True)
+
+
+def _run_worktree_rm(
+    primary: TempPrimary,
+    cwd: Path,
+    *make_args: str,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    assert MAKE_BINARY is not None
+    return subprocess.run(
+        [
+            MAKE_BINARY,
+            "--no-print-directory",
+            "worktree-rm",
+            "U4I_PRIMARY=",
+            *make_args,
+        ],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        env=primary.env(INHERITED_MAKE_VARIABLES, extra_env, primary_root=False),
+        check=False,
+    )
+
+
+def _worktree_is_gone(primary: TempPrimary, path: Path) -> bool:
+    return str(path) not in primary.worktree_list()
+
+
+def _docker_lines_starting(primary: TempPrimary, prefix: str) -> list[str]:
+    return [line for line in primary.docker_lines() if line.startswith(prefix)]
+
+
+def _compose_down_lines(primary: TempPrimary) -> list[str]:
+    return [
+        line
+        for line in primary.docker_lines()
+        if line.startswith("compose ") and " down " in f"{line} "
+    ]
+
+
+def _drop_lines(primary: TempPrimary) -> list[str]:
+    return [line for line in primary.docker_lines() if "DROP DATABASE" in line]
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_refuses_a_directory_outside_the_worktrees_dir(
+    tmp_path: Path,
+) -> None:
+    primary = _rm_primary(tmp_path)
+    before = primary.worktree_list()
+
+    result = _run_worktree_rm(primary, primary.root)
+
+    assert result.returncode != 0
+    assert "worktree-rm" in result.stderr
+    assert ".claude/worktrees" in result.stderr
+    assert primary.docker_lines() == []
+    assert primary.worktree_list() == before
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_refuses_a_directory_named_like_the_primary(
+    tmp_path: Path,
+) -> None:
+    # `worktree-new` refuses this name, git does not: the derived project/DB would be the primary's own.
+    primary = _rm_primary(tmp_path)
+    hand_made = add_linked_worktree(primary, "fakeprimary")
+    before = primary.worktree_list()
+
+    result = _run_worktree_rm(primary, hand_made)
+
+    assert result.returncode != 0
+    assert "worktree-rm" in result.stderr
+    assert "fakeprimary" in result.stderr
+    assert primary.docker_lines() == []
+    assert primary.worktree_list() == before
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_refuses_a_slug_that_differs_from_the_directory(
+    tmp_path: Path,
+) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt1")
+    before = primary.worktree_list()
+
+    result = _run_worktree_rm(primary, path, "U4I_SLUG=fakeprimary")
+
+    assert result.returncode != 0
+    assert "fakeprimary" in result.stderr
+    assert "wt1" in result.stderr
+    assert primary.docker_lines() == []
+    assert primary.worktree_list() == before
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_passes_the_slug_guard_without_an_override(tmp_path: Path) -> None:
+    # Control for the refusal above: the guard must not over-refuse a matching slug.
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt1")
+
+    result = _run_worktree_rm(primary, path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _docker_lines_starting(primary, "ps -a -q"), "the compose probes ran"
+    assert _worktree_is_gone(primary, path)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_drops_the_dev_db_after_probing_the_hub(tmp_path: Path) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(primary, path, extra_env={"STUB_HUB_ID": "abc123def456"})
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = primary.docker_lines()
+    probe_at = next(index for index, line in enumerate(lines) if "service=db" in line)
+    drop_at = next(index for index, line in enumerate(lines) if "DROP DATABASE" in line)
+    assert probe_at < drop_at
+    assert "u4i_dev_wt_one" in lines[drop_at]
+    assert lines[drop_at].startswith("exec abc123def456 sh -c")
+    assert _worktree_is_gone(primary, path)
+    assert primary.git("branch", "--list", "branch-wt-one").stdout.strip(), (
+        "the branch is kept"
+    )
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_aborts_before_the_remove_when_psql_fails(tmp_path: Path) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(
+        primary,
+        path,
+        extra_env={"STUB_HUB_ID": "abc123def456", "STUB_EXEC_RC": "1"},
+    )
+
+    assert result.returncode != 0
+    assert "No rule to make target" not in result.stderr
+    assert len(_drop_lines(primary)) == 1, "the drop was attempted, and failed"
+    assert path.is_dir()
+    assert not _worktree_is_gone(primary, path)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_warns_and_still_removes_when_the_hub_is_down(
+    tmp_path: Path,
+) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(primary, path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "u4i_dev_wt_one" in result.stdout + result.stderr
+    assert _drop_lines(primary) == []
+    assert _worktree_is_gone(primary, path)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_skips_down_when_the_project_has_no_compose_resources(
+    tmp_path: Path,
+) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(primary, path, extra_env={"STUB_HUB_ID": "abc123def456"})
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "no compose resources" in (result.stdout + result.stderr).lower()
+    assert _compose_down_lines(primary) == []
+    assert len(_drop_lines(primary)) == 1
+    assert _worktree_is_gone(primary, path)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    "resource_env",
+    [
+        pytest.param("STUB_PS_ALL_OUT", id="containers"),
+        pytest.param("STUB_VOLUME_OUT", id="volumes"),
+        pytest.param("STUB_IMAGE_OUT", id="images"),
+    ],
+)
+def test_worktree_rm_runs_down_for_any_single_resource_kind(
+    tmp_path: Path, resource_env: str
+) -> None:
+    # An image left by `make build` / `vite-build` / a failed `up` still counts as compose resources, as does
+    # any other single kind (a stopped container, a volume).
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(primary, path, extra_env={resource_env: "sha256abc"})
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    down_lines = _compose_down_lines(primary)
+    assert len(down_lines) == 1
+    assert "down -v --rmi local --remove-orphans" in down_lines[0]
+    assert "no compose resources" not in (result.stdout + result.stderr).lower()
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_aborts_when_compose_down_fails(tmp_path: Path) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(
+        primary,
+        path,
+        extra_env={
+            "STUB_IMAGE_OUT": "sha256abc",
+            "STUB_COMPOSE_DOWN_RC": "1",
+            "STUB_HUB_ID": "abc123def456",
+        },
+    )
+
+    assert result.returncode != 0
+    assert "No rule to make target" not in result.stderr
+    assert len(_compose_down_lines(primary)) == 1, "the down was attempted, and failed"
+    assert _drop_lines(primary) == []
+    assert path.is_dir()
+    assert not _worktree_is_gone(primary, path)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_probes_are_scoped_to_the_compose_project(tmp_path: Path) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(primary, path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    label = "--filter label=com.docker.compose.project=u4i-wt-one"
+    for prefix in ("ps -a -q", "volume ls -q", "image ls -q"):
+        probes = _docker_lines_starting(primary, prefix)
+        assert len(probes) == 1, (prefix, primary.docker_lines())
+        assert label in probes[0]
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+@pytest.mark.parametrize(
+    "failing_probe_env",
+    [
+        pytest.param("STUB_PS_ALL_RC", id="containers"),
+        pytest.param("STUB_VOLUME_RC", id="volumes"),
+        pytest.param("STUB_IMAGE_RC", id="images"),
+    ],
+)
+def test_worktree_rm_aborts_when_a_resource_probe_fails(
+    tmp_path: Path, failing_probe_env: str
+) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(
+        primary,
+        path,
+        extra_env={failing_probe_env: "1", "STUB_HUB_ID": "abc123def456"},
+    )
+
+    assert result.returncode != 0
+    assert "No rule to make target" not in result.stderr
+    assert _docker_lines_starting(primary, "ps -a -q"), "the probes ran"
+    assert _compose_down_lines(primary) == []
+    assert _drop_lines(primary) == []
+    assert not _worktree_is_gone(primary, path)

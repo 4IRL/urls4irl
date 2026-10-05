@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Keep your replies extremely concise and focus on conveying the key information. No unnecessary fluff, no long code snippets.
 
-Reference plan may have files in the @plans directory - please reference these if there's a relevant plan file in this directory.
+Plans, reviews and research live in the central store under `~/code/plans/urls4irl/{open,completed}/<topic>/` (see `Plans store (central)` below) - reference the relevant plan there if one exists.
 
 
 ## Claude Config
@@ -13,6 +13,8 @@ Reference plan may have files in the @plans directory - please reference these i
      Stable keys — do not rename. Account-specific GraphQL IDs are intentionally NOT inlined here
      (secrets policy); the genericized workflow resolves them at runtime by name — see the
      GitHub project board key below. -->
+
+The keys Plans store, Bot identity, Bot push script, Token generator, GitHub project board, Issue labels, PR reviewer, Plans bucket, Push gate and Stack are optional maintainer tooling, consumed only by the stronghold's central skills; the repo is fully usable without them. Commands, Container runtime and Configuration surface are repo docs.
 
 - **Repo slug:** `4IRL/urls4irl`  (always pass `--repo 4IRL/urls4irl` to `gh`; `GPropersi/urls4irl` redirects but is not canonical)
 - **Default branch:** `main`
@@ -36,6 +38,8 @@ Reference plan may have files in the @plans directory - please reference these i
   | Regenerate types | `make generate-types` |
   | Regenerate endpoint registry | `make generate-endpoints` (check: `make audit-endpoints`) |
   | Inspect UI failures | `make test-artifacts` (latest run's failure index + evidence paths; `run=<id>` for an older run) |
+  | New worktree | `make worktree-new name=<slug> [b=<branch>] [from=<ref>]` |
+  | Remove worktree | `make worktree-rm` (run inside the worktree) |
 - **Configuration surface:** every local knob, by tier. A spoke's compose reads `--env-file .env`, then `docker/.capacity.generated.env`, then `docker/.ports.generated.env`; shell env beats all three. The hub's compose always reads the **primary clone's** `.env` and capacity file, whichever checkout runs it. Use `make` targets: raw compose lacks the computed names and files.
   | Knob                                             | Tier                     | Default                                                              | Set by                                                                                                                                                                                                                                                                                                                             |
   | ------------------------------------------------ | ------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -64,12 +68,20 @@ Reference plan may have files in the @plans directory - please reference these i
   | `POSTGRES_TEST_USER`                             | tracked default          | `u4i_test` locally; unset (CI) = `POSTGRES_USER`                     | compose sets `${U4I_TEST_ROLE:-u4i_test}`, the expression the hub's `cluster-init` creates the role from (password = `POSTGRES_PASSWORD`; no CONNECT on `u4i_dev_*`)                                                                                                                                                               |
   | `make setup`                                     | onboarding target        | n/a                                                                  | once per clone/worktree: `worktree-init` + `tools` + `hooks` + `capacity` (idempotent; a failed capacity step, e.g. Docker down, is deferred)                                                                                                                                                                                      |
   | `make worktree-init`                             | onboarding target        | n/a                                                                  | links `.env` and `secrets/` from the primary clone into a worktree (no-op in the primary; never clobbers a real file); run by `setup`, `up`, `up-built`, `start-built`, `tunnel`                                                                                                                                                   |
+  | `make worktree-new` / `make worktree-rm`         | onboarding target        | n/a                                                                  | `worktree-new name=<slug> [b=<branch>] [from=<ref>]` checks admission, creates the worktree under `.claude/worktrees/<slug>`, links `.env`/`secrets/` and prints `make up d=1` (starts no stack). `worktree-rm` (run inside the worktree) runs `down -v --rmi local` on compose project `u4i-<slug>`, drops the hub dev DB `u4i_dev_<slug>`, then `git worktree remove` (branch kept); see `docs/worktrees.md` |
   | `make stack-info`                                | worktree identity target | n/a                                                                  | prints this checkout's project, aliases, resolved URLs, hub project, hub `db` and `playwright` state (`hub playwright: Exited (0) …` = idle-reaped, `absent` = never created) and attached spokes                                                                                                                                  |
   | `make hub-up` / `make hub-down`                  | hub target               | n/a                                                                  | `hub-up` starts the hub `db` (never recreating it) and runs `cluster-init`; every stack start runs it. `hub-down` refuses while any spoke container (running or stopped) is attached, else stops the hub and removes the network                                                                                                   |
   | `make capacity`                                  | host capacity target     | n/a                                                                  | writes gitignored `docker/.capacity.generated.env`; stack-start and `-parallel` targets refresh it (`recreate required` = rerun `make up [p=…] d=1`; `hub recreate required` = the hub teardown above). In a linked worktree a hub-key change only prints a note: rerun `make capacity` in the primary clone                       |
-- **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. The genericized `/git-push` performs the lookup; `.claude/skills/git-push/SKILL.md` documents the mutations.
+- **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. Maintainer workflow (requires the stronghold's `/git-push`; optional for other contributors): the genericized `/git-push` performs the lookup; `~/code/.claude/skills/git-push/SKILL.md` (stronghold-owned) documents the mutations.
 - **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
 - **PR reviewer:** `GPropersi`
+- **Worktree policy:** `full`
+- **Worktree link:** `.env secrets`
+- **Worktree setup:** `setup`
+- **Worktree teardown:** `n/a` <!-- informational; the owned worktree-rm target does the teardown (down -v --rmi local, dev DB drop, git worktree remove) -->
+- **Worktree ports:** `U4I_WEB_PORT=8659,U4I_VITE_PORT=5173` <!-- informational: primary bases; scripts/spoke_ports.py (repo-local, not the stronghold's resolver) owns the per-worktree values -->
+- **Worktree allowed targets:** `n/a`
+- **Worktree guarded targets:** `n/a`
 - **Plans bucket:** `urls4irl`   <!-- directory under ~/code/plans/ for this repo's plans; explicit, never inferred from the slug or the directory name -->
 - **Push gate:** (suites a push must pass; first matching row wins per changed path, all matched suites run sequentially)
   | Paths (space-separated globs) | Command |
@@ -99,7 +111,7 @@ This project's naming differs from most companies. Do not assume the conventiona
 
 ## Project Structure
 
-Review files are stored **co-located with each plan** at `plans/<topic>/reviews/<plan-name>-review.md` — this matches the 30+ existing review folders in the repo. (An earlier version of this note claimed a repo-root `reviews/`; that was inaccurate and there is no repo-root `reviews/` directory.)
+Review files are stored **co-located with each plan** in the central store at `~/code/plans/urls4irl/{open,completed}/<topic>/reviews/<plan-name>-review.md`, not in this repo. (An earlier version of this note claimed a repo-root `reviews/`; that was inaccurate and there is no repo-root `reviews/` directory.)
 
 ### Endpoint Registry
 
@@ -121,7 +133,7 @@ Performance/latency **is** measured. `backend/extensions/request_timing.py` reco
 
 ### GitHub Issue Linking
 
-Every plan and every PR has a linked GitHub issue. The **issue** carries the public-facing WHY (Problem / Why / Outcome — read at a glance); the **plan** is the source of truth for HOW (detailed steps, file paths, code shapes).
+**Maintainer workflow (requires the stronghold's `/plan-creator`, `/master-plan-creator` and `/git-push`; optional for other contributors).** Every plan and every PR has a linked GitHub issue. The **issue** carries the public-facing WHY (Problem / Why / Outcome — read at a glance); the **plan** is the source of truth for HOW (detailed steps, file paths, code shapes).
 
 **Single-plan flow:**
 1. `/plan-creator` creates the plan file, then creates a GitHub issue (or links to an existing matching one) and writes `github_issue:` + `github_issue_url:` into the plan's YAML frontmatter.
@@ -271,9 +283,9 @@ After editing JavaScript files, always run the Vite build (`make vite-build`) to
 
 - **Source matters:** the image must be of the **implemented** feature captured via Playwright MCP against the running app (`http://127.0.0.1:8659/`; primary clone, in a worktree use the web URL from `make stack-info`), NOT the upfront design mock. The stack must serve assets (`make up p=ui d=1` or `make up-built d=1`; see Playwright below). Reusing a pre-implementation mock does not satisfy this rule.
 - Use the `login-with-playwright` skill to reach the home page; for mobile features, set the viewport to a mobile width (e.g. 420px) before capturing. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
-- Surface the image to the user with `SendUserFile` (not just a saved path). Save screenshots under `plans/<topic>/screenshots/` (gitignored, like the rest of `plans/`).
+- Surface the image to the user with `SendUserFile` (not just a saved path). Save screenshots under the gitignored `plans/tmp/` scratch (or the plan's `screenshots/` folder in the central store `~/code/plans/urls4irl/open/<topic>/`, which is gitignored in the stronghold).
 - If the app cannot be brought up to capture the screenshot, say so explicitly rather than silently skipping this step.
-- **Design mocks and screenshots must NEVER be checked into source control.** Keep them under gitignored paths only (`plans/**`). Before committing, confirm no image artifact landed in a tracked location (e.g. project root, `backend/static/`); if one did, move it under `plans/<topic>/` rather than committing it.
+- **Design mocks and screenshots must NEVER be checked into source control.** Keep them under gitignored paths only (`plans/tmp/` here, or the central store `~/code/plans/urls4irl/...`). Before committing, confirm no image artifact landed in a tracked location (e.g. project root, `backend/static/`); if one did, move it to a gitignored path rather than committing it.
 
 ## Generated Types Freshness
 
@@ -310,7 +322,7 @@ All `make`/`docker`/`docker compose` targets used by this repo are already liste
 
 ### Running the App (Docker - recommended)
 
-**Hub and spokes.** Each checkout (the primary clone or any git worktree) runs its own compose project, a "spoke" named `u4i-<slug>` from `docker/compose.local.yaml`. Every spoke shares one per-user "hub" (`u4i-hub-<uid>`, `docker/compose.hub.yaml`): the Postgres `db`, its one-shot `cluster-init`, and the Playwright browser server, on the external network `u4i-shared-<uid>`. `setup`, `up`, `up-built`, `start-built` and `tunnel` run `worktree-init` (links `.env`/`secrets/` in a worktree); every stack start resolves this spoke's host ports and brings up the hub first; `make down` stops only this spoke, and `make hub-down` (refused while any spoke is attached) stops the hub. A new worktree needs only `make setup` (or just `make up d=1`). Its folder name must be unique among checkouts on the host, since the project and dev DB names derive from it. **Spoke admission:** every spoke start runs `_admit-spoke` (`capacity.py admit`), refusing when live usable memory can't hold one more idle spoke plus a minimum test run (plus the hub's idle cost if it is down): `spoke admission: refusing spoke <N+1> (<project>) — needs … GB, but only … GB is usable now (<source>). Running spokes: …`. Running spokes are already out of the reading, so none is counted twice. With no live reading it falls back to refusing spoke N+1 past `U4I_SPOKE_MAX` (its `… exceeds usable …` message). An already-running spoke is always re-admitted. `(clamped)` on the capacity file's `# decision:` line means the ceiling floored to 1; details in ARCHITECTURE.md → Docker.
+**Hub and spokes.** Each checkout (the primary clone or any git worktree) runs its own compose project, a "spoke" named `u4i-<slug>` from `docker/compose.local.yaml`. Every spoke shares one per-user "hub" (`u4i-hub-<uid>`, `docker/compose.hub.yaml`): the Postgres `db`, its one-shot `cluster-init`, and the Playwright browser server, on the external network `u4i-shared-<uid>`. `setup`, `up`, `up-built`, `start-built` and `tunnel` run `worktree-init` (links `.env`/`secrets/` in a worktree); every stack start resolves this spoke's host ports and brings up the hub first; `make down` stops only this spoke, and `make hub-down` (refused while any spoke is attached) stops the hub. Create one with `make worktree-new name=<slug> [b=<branch>] [from=<ref>]` and remove it with `make worktree-rm` run inside it (see `docs/worktrees.md`); a new worktree then needs only `make up d=1`. Its folder name must be unique among checkouts on the host, since the project and dev DB names derive from it. **Spoke admission:** every spoke start runs `_admit-spoke` (`capacity.py admit`), refusing when live usable memory can't hold one more idle spoke plus a minimum test run (plus the hub's idle cost if it is down): `spoke admission: refusing spoke <N+1> (<project>) — needs … GB, but only … GB is usable now (<source>). Running spokes: …`. Running spokes are already out of the reading, so none is counted twice. With no live reading it falls back to refusing spoke N+1 past `U4I_SPOKE_MAX` (its `… exceeds usable …` message). An already-running spoke is always re-admitted. `(clamped)` on the capacity file's `# decision:` line means the ceiling floored to 1; details in ARCHITECTURE.md → Docker.
 
 Compose profiles pick the optional spoke services layered on the always-on core (`web`, `db-init`, `redis`, `redis-metrics`, plus the hub `db`):
 

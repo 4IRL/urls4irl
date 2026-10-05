@@ -21,6 +21,8 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make logs c=<service>` | Show a spoke service's logs, dev or built stack (e.g. `c=cloudflared`; hub services are refused) |
 | `make stack-info` | Print this checkout's spoke project, aliases, URLs, hub project, hub `db` and `playwright` state (`Exited (0)` = idle-reaped) and attached spokes |
 | `make worktree-init` | Link `.env` and `secrets/` from the primary clone into this worktree (no-op in the primary; run by `setup`, `up`, `up-built`, `start-built`, `tunnel`) |
+| `make worktree-new name=<slug> [b=<branch>] [from=<ref>]` | Create a worktree under `.claude/worktrees/<slug>`: checks docker, the primary's `.env` and spoke admission first, links `.env`/`secrets/`, prints `make up d=1` (starts no stack). `from=` is the base ref (default `origin/<default branch>`; not `base=`, the affected-markers knob) |
+| `make worktree-rm` | Run inside a worktree: `down -v --rmi local` its compose project, drop its hub dev DB, then non-force `git worktree remove` (branch kept). Refuses in the primary |
 | `make hub-up` | Start the per-user hub `db` and run `cluster-init` (idempotent; every stack start runs it) |
 | `make playwright-up` | Start the hub's shared Playwright browser server and wait until healthy; restarts an idle-reaped one in place (idempotent; run by `p=ui\|full`, the UI test targets, `*-built`, and `test-marker*` / `test-file*` for UI markers/paths) |
 | `make playwright-rebuild` | Rebuild the hub Playwright image and force-recreate it (picks up `Dockerfile.Playwright` / compose / `U4I_PLAYWRIGHT_IDLE_MINUTES` changes); refuses while any UI client is connected, or when it cannot read or count the connections |

@@ -26,6 +26,11 @@ $(if $(findstring $$,$(value U4I_VITE_PORT)),$(error U4I_VITE_PORT must not cont
 $(if $(findstring $$,$(value U4I_TOKEN_DIR)),$(error U4I_TOKEN_DIR must not contain '$$'))
 $(if $(findstring $$,$(value U4I_MEMORY_WAIT)),$(error U4I_MEMORY_WAIT must not contain '$$'))
 $(if $(findstring $$,$(value U4I_SETTLE_SECONDS)),$(error U4I_SETTLE_SECONDS must not contain '$$'))
+# worktree-new's name / b / from are spliced into single-quoted shell words ($(subst ','\'',…) escapes any '), so only `$`
+# needs refusing here: unlike base above, a ' in them is accepted.
+$(if $(findstring $$,$(value name)),$(error name must not contain '$$'))
+$(if $(findstring $$,$(value b)),$(error b must not contain '$$'))
+$(if $(findstring $$,$(value from)),$(error from must not contain '$$'))
 
 # Host capacity (scripts/capacity.py, `make capacity`): derived worker counts + interlocks + host UID/GID.
 CAPACITY_ENV = docker/.capacity.generated.env
@@ -161,7 +166,7 @@ SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.c
 PYTHON_FILES = $(wildcard $(shell git ls-files '*.py' ':!:migrations/*' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info test-artifacts clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs audit-pins
+.PHONY: hooks hooks-check setup stack-info worktree-init worktree-new worktree-rm hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info test-artifacts clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop reset-test-dbs audit-pins
 
 .DEFAULT_GOAL := help
 
@@ -352,7 +357,7 @@ test-playwright-lifecycle: _hub-capacity ## Build the derived Playwright image a
 # a stamp inside that venv, so a pin bump reaches it too; the stamp is touched only after a successful install.
 # psycopg2 is skipped: it builds from source (needs pg_config), and the pinned psycopg2-binary provides the same
 # `psycopg2` module the root conftest imports.
-HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py
+HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py tests/unit/test_worktree_script.py tests/unit/test_env_example.py
 HOST_STATIC_STAMP = $(PRIMARY_ROOT)/venv/.u4i-host-static.stamp
 HOST_STATIC_TEST_PINS = $(PRIMARY_ROOT)/requirements/requirements-test.txt
 HOST_STATIC_PROD_PINS = $(PRIMARY_ROOT)/requirements/requirements-prod.txt
@@ -609,6 +614,47 @@ worktree-init: ## Link .env and secrets/ from the primary clone into this worktr
 	$(if $(PRIMARY_ROOT),,$(error worktree-init: not inside a git checkout (git rev-parse --git-common-dir failed)))
 	$(if $(U4I_PRIMARY),@echo "$(WORKTREE_INIT_PRIMARY_MSG)",@$(call worktree_link,.env,echo "worktree-init: $(PRIMARY_ROOT)/.env is missing; create it in the primary clone first" >&2; exit 1,exit 1))
 	$(if $(U4I_PRIMARY),,@$(call worktree_link,secrets,echo "worktree-init: no secrets/ in the primary clone either; skipping (local compose never reads it)",:))
+
+# Single-quote-escape one value for a single-quoted shell word ('\'' closes, escapes and reopens the quote).
+wt_sq = $(subst ','\'',$(1))
+
+# worktree-new logic lives in scripts/worktree.sh (shellcheck/shfmt-linted, stub-tested). `from` is deliberately not `base`:
+# `base ?= origin/main` above is the affected-markers knob and is never empty, so an omitted ref could not be told from
+# an explicit one. An empty b / from means "default" to the script. It creates the worktree and links .env/secrets; it never
+# starts a stack (it prints `make up d=1`). Neither target reads or writes .worktree.env: the INIT=1 bootstrap's copy has a
+# wrong-prefix PROJECT= (urls4irl-…, not u4i-…) and is ignored by design; names derive from $(U4I_PROJECT)/$(U4I_DEV_DB).
+worktree-new: ## Create a worktree: make worktree-new name=<slug> [b=<branch>] [from=<ref>]
+	@bash scripts/worktree.sh new '$(call wt_sq,$(name))' '$(call wt_sq,$(b))' '$(call wt_sq,$(from))'
+
+# worktree-rm is direct recipe lines (no script, no $(MAKE) recursion) so `make -n` prints every line, guards included,
+# and tests/unit/test_makefile_profiles.py pins their order. The four refusals come first and are shell lines, never
+# $(error)/$(if) at expansion time. The last one binds the destructive lines to the directory being removed:
+# U4I_SLUG is overridable (command line or env) and derives U4I_PROJECT / U4I_DEV_DB, so without it
+# `make worktree-rm U4I_SLUG=<primary slug>` would pass the directory guards and tear down the primary's stack and DB.
+# Each compose probe is an assignment (not `[ -n "$(…)" ]`) so a failing docker aborts instead of reading as "empty".
+worktree-rm: ## Remove this worktree (run inside it): down -v --rmi local, drop its dev DB, git worktree remove
+	@[ -z '$(call wt_sq,$(U4I_PRIMARY))' ] || { echo "worktree-rm: refusing to run in the primary clone; run it inside a linked worktree" >&2; exit 1; }
+	@case '$(call wt_sq,$(CURDIR))' in '$(call wt_sq,$(PRIMARY_ROOT))/.claude/worktrees/'?*) ;; *) echo "worktree-rm: refusing: this directory is not under <primary>/.claude/worktrees/" >&2; exit 1 ;; esac
+	@case '$(call wt_sq,$(notdir $(CURDIR)))' in '$(call wt_sq,$(notdir $(PRIMARY_ROOT)))') printf 'worktree-rm: refusing: this directory is named like the primary clone (%s), so the derived project and dev DB would be those of the primary\n' '$(call wt_sq,$(notdir $(CURDIR)))' >&2; exit 1 ;; esac
+	@[ '$(U4I_SLUG_SHELL)' = '$(call wt_sq,$(notdir $(CURDIR)))' ] || { printf 'worktree-rm: refusing: U4I_SLUG %s differs from this directory name %s\n' '$(U4I_SLUG_SHELL)' '$(call wt_sq,$(notdir $(CURDIR)))' >&2; exit 1; }
+	@containers="$$(docker ps -a -q --filter label=com.docker.compose.project=$(U4I_PROJECT))" || exit 1; \
+		volumes="$$(docker volume ls -q --filter label=com.docker.compose.project=$(U4I_PROJECT))" || exit 1; \
+		images="$$(docker image ls -q --filter label=com.docker.compose.project=$(U4I_PROJECT))" || exit 1; \
+		if [ -n "$$containers$$volumes$$images" ]; then \
+			$(COMPOSE) $(ALL_PROFILES) down -v --rmi local --remove-orphans || exit 1; \
+		else \
+			echo "worktree-rm: no compose resources for $(U4I_PROJECT); skipping down"; \
+		fi
+	@case '$(U4I_DEV_DB)' in u4i_dev_?*) ;; *) echo "worktree-rm: internal error: dev DB name '$(U4I_DEV_DB)' lacks the u4i_dev_ prefix; refusing" >&2; exit 1 ;; esac
+	@hub="$$(docker ps --filter label=com.docker.compose.project=$(U4I_HUB_PROJECT) --filter label=com.docker.compose.service=db --filter status=running -q 2>/dev/null)" || hub=""; \
+		if [ -n "$$hub" ]; then \
+			docker exec "$$hub" sh -c 'psql -U "$$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"$(U4I_DEV_DB)\" WITH (FORCE)"' || exit 1; \
+			echo "worktree-rm: dropped dev DB $(U4I_DEV_DB)"; \
+		else \
+			echo "worktree-rm: warning: the hub db is not running, so dev DB $(U4I_DEV_DB) was not dropped and persists in the hub" >&2; \
+		fi
+	@git -C '$(call wt_sq,$(PRIMARY_ROOT))' worktree remove '$(call wt_sq,$(CURDIR))'
+	@printf 'worktree-rm: removed %s (branch kept); your shell may still be in it, cd to %s\n' '$(call wt_sq,$(CURDIR))' '$(call wt_sq,$(PRIMARY_ROOT))'
 
 setup: worktree-init ## One-time per clone/worktree: .env/secrets links (worktrees), toolchain, pnpm deps, hooks, capacity (idempotent)
 	@$(MAKE) --no-print-directory tools
