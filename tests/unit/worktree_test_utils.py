@@ -53,7 +53,7 @@ case "$1" in
   info) exit "${STUB_DOCKER_INFO_RC:-0}" ;;
   compose)
     case " $* " in
-      *" ls "*) printf '%s' "${STUB_COMPOSE_LS:-[]}"; exit 0 ;;
+      *" ls "*) printf '%s' "${STUB_COMPOSE_LS:-[]}"; exit "${STUB_COMPOSE_LS_RC:-0}" ;;
       *" down "*) exit "${STUB_COMPOSE_DOWN_RC:-0}" ;;
     esac
     exit 0 ;;

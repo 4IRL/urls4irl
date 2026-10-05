@@ -21,7 +21,7 @@ die() {
 }
 
 # slug <raw>: lowercase, non [a-z0-9-] -> '-', strip leading '-', cut 40, strip trailing '-'. Identical to the
-# Makefile's U4I_HOST_SLUG (Makefile:75-76), pinned by tests/unit/test_worktree_script.py. Prints no newline.
+# Makefile's U4I_HOST_SLUG (see `U4I_HOST_SLUG` there), pinned by tests/unit/test_worktree_script.py. Prints no newline.
 slug() {
   local raw="$1" cleaned
   cleaned="$(printf '%s' "$raw" | LC_ALL=C tr '[:upper:]' '[:lower:]' | LC_ALL=C tr -c 'a-z0-9-' '-')"
@@ -35,7 +35,7 @@ slug() {
   printf '%s' "$cleaned"
 }
 
-# resolve_primary_root: the exported PRIMARY_ROOT when set, else derived from git exactly as Makefile:72 does.
+# resolve_primary_root: the exported PRIMARY_ROOT when set, else derived from git exactly as the Makefile's `PRIMARY_ROOT` does.
 resolve_primary_root() {
   local common
   if [ -n "${PRIMARY_ROOT:-}" ]; then

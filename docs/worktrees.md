@@ -118,8 +118,7 @@ make worktree-rm
 ## Via the stronghold
 
 From `~/code`, `make wt-new REPO=urls4irl BRANCH=<branch>` and `make wt-rm REPO=urls4irl BRANCH=<branch>`
-detect the root Makefile's `worktree-new` / `worktree-rm` targets and delegate to them (once this change
-is on the primary's `main`). A repo with no worktree support can bootstrap a plain worktree with
+detect the root Makefile's `worktree-new` / `worktree-rm` targets and delegate to them. A repo with no worktree support can bootstrap a plain worktree with
 `make wt-new REPO=<repo> BRANCH=<branch> INIT=1` (no owned targets, ports or compose isolation).
 
 ## Worktrees cut before this change

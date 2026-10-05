@@ -133,6 +133,54 @@ def test_new_refuses_colliding_or_invalid_names(
     assert "No such file" not in result.stderr
 
 
+def test_new_refuses_a_name_matching_a_non_default_primary_basename(
+    tmp_path: Path,
+) -> None:
+    # The refusal compares against the primary directory's own slug, not just the literal `urls4irl`.
+    primary = build_temp_primary(tmp_path, name="myclone")
+    before = primary.worktree_list()
+
+    result = _new(primary, "myclone")
+
+    _assert_refused_cleanly(primary, result, before, "myclone")
+    assert "primary clone's own name" in result.stderr
+
+
+def test_new_refuses_when_the_compose_project_listing_fails(
+    primary: TempPrimary,
+) -> None:
+    before = primary.worktree_list()
+
+    result = _new(
+        primary,
+        "wt1",
+        extra_env={"STUB_COMPOSE_LS": "ls: boom", "STUB_COMPOSE_LS_RC": "1"},
+    )
+
+    _assert_refused_cleanly(primary, result, before, "wt1")
+    assert "could not list compose projects" in result.stderr
+    assert "ls: boom" in result.stderr
+
+
+def test_new_refuses_a_non_hex_hub_container_id(primary: TempPrimary) -> None:
+    before = primary.worktree_list()
+
+    result = _new(primary, "wt1", extra_env={"STUB_HUB_ID": "not-hex!"})
+
+    _assert_refused_cleanly(primary, result, before, "wt1")
+    assert "unexpected hub db container id" in result.stderr
+    assert not [line for line in primary.docker_lines() if line.startswith("exec ")]
+
+
+def test_new_treats_a_failing_hub_probe_as_the_hub_being_down(
+    primary: TempPrimary,
+) -> None:
+    result = _new(primary, "wt1", extra_env={"STUB_HUB_ID": HUB_ID, "STUB_HUB_RC": "1"})
+
+    assert result.returncode == 0, _output(result)
+    assert not [line for line in primary.docker_lines() if line.startswith("exec ")]
+
+
 def test_new_refuses_when_a_leftover_dev_db_exists(primary: TempPrimary) -> None:
     before = primary.worktree_list()
 
@@ -275,6 +323,7 @@ def test_new_accepts_a_branch_that_normalizes_to_the_slug(
         pytest.param("bad..name", id="check-ref-format"),
         pytest.param("-foo", id="leading-dash"),
         pytest.param("foo bar", id="space"),
+        pytest.param("a@{b", id="reflog-syntax"),
     ],
 )
 def test_new_rejects_an_invalid_branch(primary: TempPrimary, branch: str) -> None:
@@ -368,6 +417,24 @@ def test_new_tracks_an_origin_only_branch(primary: TempPrimary) -> None:
     assert primary.git(
         "config", "branch.remote-only.remote", cwd=path
     ).stdout.strip() == ("origin")
+
+
+def test_new_ignores_from_for_an_origin_only_branch_with_a_warning(
+    primary: TempPrimary,
+) -> None:
+    primary.git("push", "origin", "main:refs/heads/remote-only")
+    primary.git("fetch", "origin")
+
+    result = _new(primary, "remote-only", "", primary.first_commit)
+
+    assert result.returncode == 0, _output(result)
+    assert "ignored" in result.stderr.lower()
+    assert "(origin)" in result.stderr
+    path = _worktree_path(primary, "remote-only")
+    # The checkout is origin/remote-only (pushed from the second commit), not the `from` ref's commit.
+    assert primary.git("rev-parse", "HEAD", cwd=path).stdout.strip() == (
+        primary.second_commit
+    )
 
 
 def test_new_runs_admission_before_adding_the_worktree(primary: TempPrimary) -> None:

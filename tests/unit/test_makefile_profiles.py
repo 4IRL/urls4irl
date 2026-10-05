@@ -1902,9 +1902,14 @@ def test_worktree_rm_recipe_order_and_derived_names() -> None:
     probe_at = output.index("docker ps -a -q")
     guards = output[:probe_at]
     # primary, CURDIR outside <primary>/.claude/worktrees/, CURDIR named like the primary, U4I_SLUG != CURDIR name
-    assert guards.count("exit 1") >= 4, guards
-    assert "primary" in guards.lower()
-    assert guards.index(".claude/worktrees/") < guards.rindex("U4I_SLUG")
+    guard_messages = (
+        "refusing to run in the primary clone",
+        "this directory is not under <primary>/.claude/worktrees/",
+        "is named like the primary clone",
+        "differs from this directory name",
+    )
+    positions = [guards.index(message) for message in guard_messages]
+    assert positions == sorted(positions), guards
     for probe in ("docker volume ls -q", "docker image ls -q"):
         assert probe in output
     label = "label=com.docker.compose.project=u4i-infra-worktree-adoption"
@@ -2124,18 +2129,52 @@ def test_worktree_rm_skips_down_when_the_project_has_no_compose_resources(
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
-def test_worktree_rm_cleans_an_image_only_project(tmp_path: Path) -> None:
-    # An image left by `make build` / `vite-build` / a failed `up` still counts as compose resources.
+@pytest.mark.parametrize(
+    "resource_env",
+    [
+        pytest.param("STUB_PS_ALL_OUT", id="containers"),
+        pytest.param("STUB_VOLUME_OUT", id="volumes"),
+        pytest.param("STUB_IMAGE_OUT", id="images"),
+    ],
+)
+def test_worktree_rm_runs_down_for_any_single_resource_kind(
+    tmp_path: Path, resource_env: str
+) -> None:
+    # An image left by `make build` / `vite-build` / a failed `up` still counts as compose resources, as does
+    # any other single kind (a stopped container, a volume).
     primary = _rm_primary(tmp_path)
     path = add_linked_worktree(primary, "wt-one")
 
-    result = _run_worktree_rm(primary, path, extra_env={"STUB_IMAGE_OUT": "sha256abc"})
+    result = _run_worktree_rm(primary, path, extra_env={resource_env: "sha256abc"})
 
     assert result.returncode == 0, result.stdout + result.stderr
     down_lines = _compose_down_lines(primary)
     assert len(down_lines) == 1
     assert "down -v --rmi local --remove-orphans" in down_lines[0]
     assert "no compose resources" not in (result.stdout + result.stderr).lower()
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_worktree_rm_aborts_when_compose_down_fails(tmp_path: Path) -> None:
+    primary = _rm_primary(tmp_path)
+    path = add_linked_worktree(primary, "wt-one")
+
+    result = _run_worktree_rm(
+        primary,
+        path,
+        extra_env={
+            "STUB_IMAGE_OUT": "sha256abc",
+            "STUB_COMPOSE_DOWN_RC": "1",
+            "STUB_HUB_ID": "abc123def456",
+        },
+    )
+
+    assert result.returncode != 0
+    assert "No rule to make target" not in result.stderr
+    assert len(_compose_down_lines(primary)) == 1, "the down was attempted, and failed"
+    assert _drop_lines(primary) == []
+    assert path.is_dir()
+    assert not _worktree_is_gone(primary, path)
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
