@@ -1823,7 +1823,7 @@ def test_host_static_still_runs_its_host_pytest_line() -> None:
     output = _successful_dry_run("test-host-static")
     assert "command -v mise" in output
     host_line = _single_line_containing(output, HOST_STATIC_PYTEST_FRAGMENT)
-    assert host_line.endswith("tests/unit/test_worktree_script.py -v ")
+    assert host_line.endswith("tests/unit/test_env_example.py -v ")
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
