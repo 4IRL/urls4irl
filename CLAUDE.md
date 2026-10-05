@@ -70,6 +70,7 @@ Reference plan may have files in the @plans directory - please reference these i
 - **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. The genericized `/git-push` performs the lookup; `.claude/skills/git-push/SKILL.md` documents the mutations.
 - **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
 - **PR reviewer:** `GPropersi`
+- **Worktree policy:** `full`
 - **Plans bucket:** `urls4irl`   <!-- directory under ~/code/plans/ for this repo's plans; explicit, never inferred from the slug or the directory name -->
 - **Push gate:** (suites a push must pass; first matching row wins per changed path, all matched suites run sequentially)
   | Paths (space-separated globs) | Command |
