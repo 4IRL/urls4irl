@@ -83,12 +83,14 @@ Two things to know once the hook is installed:
 | `POSTGRES_DB` | Yes | - | PostgreSQL database name (locally, compose overrides it with the per-worktree `u4i_dev_<slug>`, which each spoke's `db-init` creates in the shared hub cluster) |
 | `MAILJET_API_KEY` | Yes | - | Mailjet API key for transactional emails |
 | `MAILJET_SECRET_KEY` | Yes | - | Mailjet secret key |
-| `POSTGRES_TEST_DB` | No | - | Test database name prefix: each pytest run/worker gets `{POSTGRES_TEST_DB}_{uid8}_{worker}` (lowercase `[a-z0-9_]`; locally it must differ from the dev DB name `u4i_dev_<slug>`, or `db-init` refuses to provision) |
+| `POSTGRES_TEST_DB` | Tests / local Docker | - | Test database name prefix: each pytest run/worker gets `{POSTGRES_TEST_DB}_{uid8}_{worker}` (lowercase `[a-z0-9_]`; locally it must differ from the dev DB name `u4i_dev_<slug>`, or `db-init` refuses to provision). Not needed by `Config.__init__`, but required by `ConfigTest.__init__` (`backend/config.py`), by `docker/db-provision.sh` on every `make up`, and by `scripts/testrun_resources.py` |
 | `POSTGRES_TEST_USER` | No | `POSTGRES_USER` | Role tests connect as; local compose sets the `u4i_test` role, which cannot connect to the dev database |
 | `REDIS_URI` | No | `memory://` | Redis connection URI |
 | `METRICS_REDIS_URI` | No | `memory://` | Redis URI for the dedicated metrics counter buffer (separate from `REDIS_URI`) |
 | `ENABLE_SSL` | No | `false` | Enable HTTPS in local dev (Flask + Vite) |
 | `VITE_URL` | No | `http://localhost:5173` | Vite dev server URL (use `https://` when `ENABLE_SSL=true`); local compose sets `http://localhost:<this checkout's vite port>` |
+
+Copy `.env.example` to `.env` and fill the required keys before `make setup`.
 
 See [`backend/config.py`](backend/config.py) for the full list.
 

@@ -721,6 +721,32 @@ def test_worktree_script_test_selects_host_static_and_unit() -> None:
     assert not selection.everything
 
 
+def test_env_example_selects_host_static_only() -> None:
+    """
+    GIVEN .env.example, read only by the host-static test_env_example.py
+    WHEN it resolves
+    THEN host_static is set, no markers, and the NO_IMPACT glob does not swallow it
+    """
+    selection = _resolve([".env.example"])
+
+    assert selection.host_static
+    assert selection.markers == frozenset()
+    assert not selection.everything
+
+
+def test_env_example_test_selects_host_static_and_unit() -> None:
+    """
+    GIVEN tests/unit/test_env_example.py, a host-static test
+    WHEN it resolves
+    THEN host_static is set AND resolution continues into the `unit` row
+    """
+    selection = _resolve(["tests/unit/test_env_example.py"])
+
+    assert selection.host_static
+    assert selection.markers == {"unit"}
+    assert not selection.everything
+
+
 def test_stdlib_only_helper_selects_host_static_and_unit() -> None:
     """
     GIVEN tests/unit/stdlib_only_utils.py, imported by host-static and unit tests

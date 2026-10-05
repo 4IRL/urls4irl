@@ -373,7 +373,7 @@ CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 10 parallel 
 
 ## Environment Variables
 
-Required: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`. See `backend/config.py` for the full list and `backend/utils/strings/config_strs.py` for env var name constants.
+Required: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_TEST_DB` (local Docker and tests), `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`. See `backend/config.py` for the full list and `backend/utils/strings/config_strs.py` for env var name constants.
 
 ### How secrets reach each environment (deploy-rendered, not hand-managed)
 

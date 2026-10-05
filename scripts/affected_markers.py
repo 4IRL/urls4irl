@@ -157,7 +157,10 @@ NO_IMPACT_GLOBS: tuple[str, ...] = (
 )
 
 # Match a NO_IMPACT glob but are read by tests, so they resolve normally.
-NO_IMPACT_EXEMPT: tuple[str, ...] = ("docs/endpoints/ENDPOINT_REGISTRY.md",)
+NO_IMPACT_EXEMPT: tuple[str, ...] = (
+    "docs/endpoints/ENDPOINT_REGISTRY.md",
+    ".env.example",
+)
 
 # Everything: shared fixtures, app factory, models, shared strings/schemas,
 # layout templates, dependency pins and frontend build config.
@@ -256,6 +259,8 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     "scripts/audit_pins.py",
     "scripts/worktree.sh",
     "tests/unit/test_worktree_script.py",
+    "tests/unit/test_env_example.py",
+    ".env.example",
     "tests/unit/test_makefile_profiles.py",
     "tests/unit/test_compose_hub.py",
     "tests/unit/test_compose_profiles.py",
@@ -293,6 +298,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     # Host-static only: HOST_STATIC_GLOBS already set host_static.
     ("Makefile", ()),
     ("docker/*", ()),
+    (".env.example", ()),
     # Ahead of scripts/*.sh (unit, admin): the worktree script is exercised only by host-static tests.
     ("scripts/worktree.sh", ()),
     ("docs/endpoints/endpoint-registry.json", ("unit", "cli")),
