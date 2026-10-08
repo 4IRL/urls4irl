@@ -41,6 +41,7 @@ import {
   TRIM_SYNC_KEY,
   TrimMode,
   createParamTrimBlock,
+  expandParamTrimBlock,
   type TrimSubmission,
 } from "../trim/param-trim-block.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
@@ -540,7 +541,9 @@ function createURLFail({
         // The collision is caused by the user's trim: say so, and expand the
         // section (same three-part move as the header toggle) so the cause is
         // on screen.
-        expandCreateURLParamTrim();
+        expandParamTrimBlock({
+          trimWrap: $("#createURLWrap").find(".urlParamTrimWrap"),
+        });
       }
       displayCreateUrlFailErrors({
         key: "urlString",
@@ -555,14 +558,6 @@ function createURLFail({
     default:
       window.location.assign(APP_CONFIG.routes.errorPage);
   }
-}
-
-// Same three-part move as the block's header toggle, applied directly.
-function expandCreateURLParamTrim(): void {
-  const trimWrap = $("#createURLWrap").find(".urlParamTrimWrap");
-  trimWrap.removeClass("collapsed");
-  trimWrap.find(".title-caret").removeClass("closed");
-  trimWrap.find(".urlParamTrimHeader").attr("aria-expanded", "true");
 }
 
 function createURLShowFormErrors(

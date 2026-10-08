@@ -1,4 +1,4 @@
-import { $ } from "../../../lib/globals.js";
+import { $, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { hideTooltip } from "../../../lib/tooltips.js";
 import {
@@ -18,6 +18,11 @@ import {
   isURLStringSubmitInFlight,
 } from "./update-string.js";
 import { isCoarsePointer } from "../../mobile.js";
+import {
+  TRIM_SYNC_KEY,
+  TrimMode,
+  createParamTrimBlock,
+} from "../trim/param-trim-block.js";
 import { FIELD_SAVED_CHECK_SVG } from "../field-saved-tick.js";
 import {
   makeTextInput,
@@ -31,6 +36,8 @@ import {
   SEARCH_ACTIVE,
   URL_ACCESS_TRIGGER,
 } from "../../../types/metrics-dim-values.js";
+
+const TRIM_INPUT_EVENT = "input.urlStringTrim";
 
 // Element to displayu the URL string
 export function createURLString(urlStringText: string): JQuery<HTMLElement> {
@@ -183,8 +190,22 @@ function createUpdateURLStringInput(
         .html(`${APP_CONFIG.strings.FIELD_SAVED} ${FIELD_SAVED_CHECK_SVG}`),
     );
 
+  // The trim block is built once per card and shown/hidden in place (it is
+  // reset, never destroyed). It sits between the input row and the tick slot.
+  const trimWrap = createParamTrimBlock({
+    mode: TrimMode.URL,
+    urlCard,
+  });
+  // Own namespace: nothing else `.off()`s it, and it must survive input blur.
+  urlStringTextInput.on(TRIM_INPUT_EVENT, function () {
+    (
+      trimWrap.data(TRIM_SYNC_KEY) as ((rawValue: string) => void) | undefined
+    )?.(getInputValue(urlStringTextInput));
+  });
+
   urlStringUpdateTextInputContainer
     .append(urlStringInputInnerRow)
+    .append(trimWrap)
     .append(urlStringSavedTickSlot);
 
   return urlStringUpdateTextInputContainer;

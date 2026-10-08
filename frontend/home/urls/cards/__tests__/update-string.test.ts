@@ -1,4 +1,13 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
+import { APP_CONFIG } from "../../../../lib/config.js";
+import {
+  TRIM_FLUSH_KEY,
+  TRIM_GET_KEY,
+  TRIM_SUBMISSION_KEY,
+  TRIM_SYNC_KEY,
+  TrimMode,
+  createParamTrimBlock,
+} from "../../trim/param-trim-block.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
@@ -895,5 +904,258 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
     await updateURL(urlStringInput, urlCard, 99);
 
     expect(vi.mocked(restoreTooltipIfStillTargeted)).not.toHaveBeenCalled();
+  });
+});
+
+describe("query-parameter trim block in the edit-URL-string flow", () => {
+  const TRIM_URL = "https://example.com/p?a=1&b=2&c=3";
+  let urlCard: JQuery, urlStringInput: JQuery, trimWrap: JQuery;
+
+  // Mirrors what createUpdateURLStringInput builds: the real block sits inside
+  // .updateUrlStringWrap next to the input.
+  function buildCard({ href }: { href: string }): void {
+    document.body.innerHTML = `
+      <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+        <a class="urlString" href="${href}">${href}</a>
+        <div class="updateUrlStringWrap hidden">
+          <input class="urlStringUpdate" type="text" value="${href}" />
+          <div class="urlStringUpdate-error"></div>
+        </div>
+        <div class="updateUrlTitleWrap hidden"></div>
+        <button class="urlStringBtnUpdate"></button>
+      </div>`;
+    urlCard = $(".urlRow");
+    urlStringInput = urlCard.find(".urlStringUpdate");
+    trimWrap = createParamTrimBlock({ mode: TrimMode.URL, urlCard });
+    urlCard.find(".updateUrlStringWrap").append(trimWrap);
+  }
+
+  function syncFromInput(value: string): void {
+    urlStringInput.val(value);
+    (trimWrap.data(TRIM_FLUSH_KEY) as (rawValue: string) => void)(value);
+  }
+
+  function dropChip(index: number): void {
+    trimWrap.find(`.urlParamTrimChip[data-index="${index}"]`).trigger("click");
+  }
+
+  function mockSuccess(urlString: string): void {
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString,
+        urlTitle: "t",
+        urlTags: [],
+      },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+      }),
+    );
+  }
+
+  function mockConflict(): void {
+    const xhr = {
+      status: 409,
+      responseJSON: { message: "URL already in UTub", urlString: TRIM_URL },
+    } as unknown as JQuery.jqXHR;
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        fail: (cb: unknown) => (cb as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(ajaxCall).mockReset();
+    vi.useFakeTimers();
+    vi.mocked(is429Handled).mockReturnValue(false);
+    buildCard({ href: "https://example.com" });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renders the pre-filled value immediately on open, collapsed", () => {
+    urlStringInput.val(TRIM_URL);
+
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.find(".urlParamTrimChip").length).toBe(3);
+  });
+
+  it("re-collapses and resets the block in place when the form is cancelled", () => {
+    syncFromInput(TRIM_URL);
+    trimWrap.find(".urlParamTrimHeader").trigger("click");
+    dropChip(0);
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    expect(urlCard.find(".urlParamTrimWrap")[0]).toBe(trimWrap[0]);
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "false",
+    );
+    const getSubmission = trimWrap.data(TRIM_SUBMISSION_KEY) as () => {
+      droppedCount: number;
+    };
+    expect(getSubmission().droppedCount).toBe(0);
+  });
+
+  it("cancels a pending debounced re-parse on close", () => {
+    const sync = trimWrap.data(TRIM_SYNC_KEY) as (rawValue: string) => void;
+    sync(TRIM_URL);
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+    vi.advanceTimersByTime(500);
+
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+  });
+
+  it("cancels a pending debounced re-parse on keepOpen close", () => {
+    const sync = trimWrap.data(TRIM_SYNC_KEY) as (rawValue: string) => void;
+    // Stored href has a different query than the stale pending value.
+    urlCard.find(".urlString").attr("href", "https://example.com/p?z=1");
+    sync(TRIM_URL);
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+    vi.advanceTimersByTime(500);
+
+    // Rendered from the resynced href (1 chip), not the stale pending value (3).
+    expect(trimWrap.find(".urlParamTrimChip").length).toBe(1);
+  });
+
+  it("keepOpen retains the block and re-renders it from the resynced value", () => {
+    urlCard.find(".urlString").attr("href", TRIM_URL);
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(urlCard.find(".urlParamTrimWrap").length).toBe(1);
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+  });
+
+  it("submits the typed value byte-for-byte when nothing is dropped", async () => {
+    syncFromInput("https://example.com/p?q=hello%20world&next=https://a.com/b");
+    mockSuccess("https://example.com/p?q=hello%20world&next=https://a.com/b");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
+      urlString: "https://example.com/p?q=hello%20world&next=https://a.com/b",
+    });
+  });
+
+  it("submits the URL with the dropped parameters removed", async () => {
+    syncFromInput(TRIM_URL);
+    dropChip(0);
+    dropChip(2);
+    mockSuccess("https://example.com/p?b=2");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
+      urlString: "https://example.com/p?b=2",
+    });
+  });
+
+  it("trims against the current input when submitting inside the debounce window", async () => {
+    syncFromInput("https://example.com/p?a=1&b=2");
+    dropChip(0);
+    // A further edit that has not been re-parsed yet (debounce pending).
+    const newValue = "https://example.com/p?x=9&y=8";
+    urlStringInput.val(newValue);
+    (trimWrap.data(TRIM_SYNC_KEY) as (rawValue: string) => void)(newValue);
+    mockSuccess(newValue);
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    // The flush re-parsed the new value (clearing the stale drop) before reading.
+    expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
+      urlString: newValue,
+    });
+  });
+
+  it("returns an unparseable value unchanged from the block rather than an empty string", () => {
+    const bad = "http://";
+    syncFromInput(bad);
+
+    const getTrimmed = trimWrap.data(TRIM_GET_KEY) as () => string;
+    expect(getTrimmed()).toBe(bad);
+  });
+
+  it("lets submit-time validation reject an invalid value the block passes through", async () => {
+    syncFromInput("javascript:alert(1)");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+    expect(urlCard.find(".urlStringUpdate-error").hasClass("visible")).toBe(
+      true,
+    );
+  });
+
+  it("stays a client-side no-op when the trimmed value equals the stored href", async () => {
+    urlCard.find(".urlString").attr("href", "https://example.com/p?b=2");
+    syncFromInput("https://example.com/p?a=1&b=2");
+    dropChip(0);
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+  });
+
+  it("keeps the section expanded when a further edit re-parses", () => {
+    syncFromInput(TRIM_URL);
+    trimWrap.find(".urlParamTrimHeader").trigger("click");
+
+    syncFromInput("https://example.com/p?a=1&b=2");
+
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "true",
+    );
+  });
+
+  it("substitutes the trim message and force-expands on a 409 after a drop", async () => {
+    syncFromInput(TRIM_URL);
+    dropChip(1);
+    mockConflict();
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(urlCard.find(".urlStringUpdate-error").text()).toBe(
+      APP_CONFIG.strings.URL_TRIM_CONFLICT,
+    );
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+    expect(trimWrap.find(".title-caret").hasClass("closed")).toBe(false);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "true",
+    );
+  });
+
+  it("keeps the server message and collapsed state on a 409 with nothing dropped", async () => {
+    syncFromInput(TRIM_URL);
+    mockConflict();
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(urlCard.find(".urlStringUpdate-error").text()).toBe(
+      "URL already in UTub",
+    );
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
   });
 });

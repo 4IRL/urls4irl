@@ -41,6 +41,14 @@ import {
 } from "./options/edit-string-btn.js";
 import { closeURLEditPanel } from "./update-url-panel.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
+import {
+  TRIM_FLUSH_KEY,
+  TRIM_GET_KEY,
+  TRIM_RESET_KEY,
+  TRIM_SUBMISSION_KEY,
+  expandParamTrimBlock,
+  type TrimSubmission,
+} from "../trim/param-trim-block.js";
 import { getState, setState } from "../../../store/app-store.js";
 import {
   HOME_FORM,
@@ -125,6 +133,14 @@ export function showUpdateURLStringForm({
   enableTabbableChildElements(updateURLStringWrap);
   updateURLStringWrap.showClassFlex();
 
+  // Render the trim control from the pre-filled value immediately (flush, not
+  // the debounced sync). It never takes focus, so the select-all below is safe.
+  (
+    updateURLStringWrap.find(".urlParamTrimWrap").data(TRIM_FLUSH_KEY) as
+      | ((rawValue: string) => void)
+      | undefined
+  )?.(getInputValue(updateURLStringWrap.find("input.urlStringUpdate")));
+
   // Handle case where iOS needs a direct focus not in a timeout, even with animation
   if (isMobile()) {
     updateURLStringWrap.find("input").focus();
@@ -205,6 +221,17 @@ export function hideAndResetUpdateURLStringForm({
   const urlStringElem = urlCard.find(".urlString");
   urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href") as string);
 
+  // Reset the card's trim block in place (cancels its pending debounce and
+  // re-collapses it). A kept-open field stays visible, so re-render it from the
+  // resynced value.
+  const trimWrap = urlCard.find(".urlParamTrimWrap");
+  (trimWrap.data(TRIM_RESET_KEY) as (() => void) | undefined)?.();
+  if (keepOpen) {
+    (
+      trimWrap.data(TRIM_FLUSH_KEY) as ((rawValue: string) => void) | undefined
+    )?.(getInputValue(urlCard.find(".urlStringUpdate")));
+  }
+
   if (!keepOpen) {
     // Make the Update URL button now allow updating again
     const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
@@ -259,18 +286,38 @@ export function hideAndResetUpdateURLStringForm({
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLSetup(
-  urlStringUpdateInput: JQuery,
-  utubID: number,
-  utubUrlID: number,
-): [string, UpdateUrlStringRequest] {
+function updateURLSetup({
+  urlStringUpdateInput,
+  utubID,
+  utubUrlID,
+  urlCard,
+}: {
+  urlStringUpdateInput: JQuery;
+  utubID: number;
+  utubUrlID: number;
+  urlCard: JQuery;
+}): [string, UpdateUrlStringRequest, TrimSubmission | null] {
   const postURL = APP_CONFIG.routes.updateURL(utubID, utubUrlID);
 
-  const updatedURL = getInputValue(urlStringUpdateInput).trim();
+  // Flush the trim block's pending debounce so a submit within 200ms of the last
+  // keystroke trims against the input's current value, not a stale parse.
+  const trimWrap = urlCard.find(".urlParamTrimWrap");
+  (trimWrap.data(TRIM_FLUSH_KEY) as ((rawValue: string) => void) | undefined)?.(
+    getInputValue(urlStringUpdateInput),
+  );
+  // Absent block or nothing dropped: the raw input value, byte-for-byte.
+  const getTrimmed = trimWrap.data(TRIM_GET_KEY) as (() => string) | undefined;
+  const updatedURL = (
+    getTrimmed ? getTrimmed() : getInputValue(urlStringUpdateInput)
+  ).trim();
+  const trimSubmission =
+    (
+      trimWrap.data(TRIM_SUBMISSION_KEY) as (() => TrimSubmission) | undefined
+    )?.() ?? null;
 
   const data: UpdateUrlStringRequest = { urlString: updatedURL };
 
-  return [postURL, data];
+  return [postURL, data, trimSubmission];
 }
 
 // Handles update of an existing URL
@@ -294,11 +341,12 @@ export async function updateURL(
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     // Extract data to submit in POST request
-    const [patchURL, data] = updateURLSetup(
+    const [patchURL, data, trimSubmission] = updateURLSetup({
       urlStringUpdateInput,
       utubID,
       utubUrlID,
-    );
+      urlCard,
+    });
 
     if (data.urlString === urlCard.find(".urlString").attr("href")) {
       log("updateURL skipped — value unchanged", { utubUrlID });
@@ -346,13 +394,13 @@ export async function updateURL(
       xhr: JQuery.jqXHR,
     ) {
       if (xhr.status === 200) {
-        updateURLSuccess(response, urlCard);
+        updateURLSuccess({ response, urlCard, trimSubmission });
       }
     });
 
     request.fail(function (xhr: JQuery.jqXHR) {
       resetUpdateURLFailErrors(urlCard);
-      updateURLFail(xhr, urlCard, utubID);
+      updateURLFail({ xhr, urlCard, utubID, trimSubmission });
     });
 
     request.always(function () {
@@ -371,10 +419,16 @@ export async function updateURL(
 }
 
 // Displays changes related to a successful update of a URL
-function updateURLSuccess(
-  response: UpdateUrlStringResponse,
-  urlCard: JQuery,
-): void {
+function updateURLSuccess({
+  response,
+  urlCard,
+  // Unread until Step 7 (outcome banner); renamed so no-unused-vars passes.
+  trimSubmission: _trimSubmission,
+}: {
+  response: UpdateUrlStringResponse;
+  urlCard: JQuery;
+  trimSubmission: TrimSubmission | null;
+}): void {
   // Extract response data
   const updatedURLString = response.URL.urlString;
 
@@ -469,11 +523,17 @@ function restoreUpdateURLStringSubmitTooltip(urlCard: JQuery): void {
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
-function updateURLFail(
-  xhr: JQuery.jqXHR,
-  urlCard: JQuery,
-  utubID: number,
-): void {
+function updateURLFail({
+  xhr,
+  urlCard,
+  utubID,
+  trimSubmission,
+}: {
+  xhr: JQuery.jqXHR;
+  urlCard: JQuery;
+  utubID: number;
+  trimSubmission: TrimSubmission | null;
+}): void {
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
 
@@ -522,9 +582,19 @@ function updateURLFail(
       }
     case 409:
       checkForStaleDataOn409(responseJSON, utubID);
+      // The collision is caused by the user's trim: say so, and expand the
+      // section so the cause is on screen.
+      const trimCausedConflict = (trimSubmission?.droppedCount ?? 0) > 0;
+      if (trimCausedConflict) {
+        expandParamTrimBlock({
+          trimWrap: urlCard.find(".urlParamTrimWrap"),
+        });
+      }
       displayUpdateURLErrors(
         "urlString",
-        responseJSON.message as string,
+        trimCausedConflict
+          ? APP_CONFIG.strings.URL_TRIM_CONFLICT
+          : (responseJSON.message as string),
         urlCard,
       );
       restoreUpdateURLStringSubmitTooltip(urlCard);

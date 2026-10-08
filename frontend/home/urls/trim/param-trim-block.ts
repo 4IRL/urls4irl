@@ -82,6 +82,16 @@ function createCaret(): JQuery<HTMLElement> {
   return $(svg as unknown as HTMLElement);
 }
 
+/**
+ * Force-expands a trim block from outside (e.g. a trim-caused 409): the same
+ * three-part move as the header toggle, applied directly via the DOM.
+ */
+export function expandParamTrimBlock({ trimWrap }: { trimWrap: JQuery }): void {
+  trimWrap.removeClass("collapsed");
+  trimWrap.find(".title-caret").removeClass("closed");
+  trimWrap.find(".urlParamTrimHeader").attr("aria-expanded", "true");
+}
+
 function actionableSegments(parsed: ParsedQuery): QueryParamSegment[] {
   return parsed.segments.filter((segment) => !segment.isAutoStripped);
 }
@@ -124,7 +134,9 @@ export function createParamTrimBlock({
     "urlParamTrimDroppedCount hidden",
   );
   const header = $(document.createElement("button"))
-    .addClass("urlParamTrimHeader flex-row flex-center gap-2p clickable")
+    .addClass(
+      "urlParamTrimHeader flex-row flex-center gap-2p clickable tabbable",
+    )
     .attr({
       type: "button",
       "aria-expanded": "false",

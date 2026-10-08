@@ -369,3 +369,83 @@ describe("URL string edit buttons - tooltip attributes and hover-tooltip hide", 
     );
   });
 });
+
+describe("createUpdateURLStringInput - query-parameter trim block", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function mountCard({ utubUrlId }: { utubUrlId: number }): JQuery {
+    document.body.innerHTML = `<div class="urlRow" utuburlid="${utubUrlId}" urlSelected="true" filterable="true"></div>`;
+    const urlCard = $(".urlRow");
+    urlCard.append(
+      createURLStringAndUpdateBlock("https://example.com", urlCard, 1),
+    );
+    return urlCard;
+  }
+
+  it("mounts a hidden, collapsed block between the input row and the tick slot", () => {
+    const urlCard = mountCard({ utubUrlId: 1 });
+    const trimWrap = urlCard.find(".updateUrlStringWrap .urlParamTrimWrap");
+
+    expect(trimWrap.length).toBe(1);
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.prev().hasClass("flex-row")).toBe(true);
+    expect(trimWrap.next().hasClass("field-saved-tick-slot")).toBe(true);
+  });
+
+  it("gives each card its own aria-controls target", () => {
+    document.body.innerHTML = `
+      <div class="urlRow" utuburlid="1"></div>
+      <div class="urlRow" utuburlid="2"></div>`;
+    $(".urlRow").each((_, element) => {
+      const card = $(element);
+      card.append(
+        createURLStringAndUpdateBlock("https://example.com", card, 1),
+      );
+    });
+
+    const controls = $(".urlParamTrimHeader")
+      .map((_, header) => $(header).attr("aria-controls"))
+      .get();
+    expect(controls).toEqual(["urlParamTrimBody-1", "urlParamTrimBody-2"]);
+  });
+
+  it("reveals the block after the debounce when the typed URL has a query", () => {
+    const urlCard = mountCard({ utubUrlId: 1 });
+    const input = urlCard.find(".urlStringUpdate");
+    const trimWrap = urlCard.find(".urlParamTrimWrap");
+
+    input.val("https://example.com/p?a=1&b=2").trigger("input");
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+    vi.advanceTimersByTime(200);
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.find(".urlParamTrimChip").length).toBe(2);
+  });
+
+  it("keeps syncing typing after the input blurs", () => {
+    const urlCard = mountCard({ utubUrlId: 1 });
+    const input = urlCard.find(".urlStringUpdate");
+    const trimWrap = urlCard.find(".urlParamTrimWrap");
+
+    input.trigger("focus");
+    input.trigger("blur");
+    input.val("https://example.com?a=1").trigger("input");
+    vi.advanceTimersByTime(200);
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+  });
+
+  it("marks the disclosure header tabbable so the card toggles its tab stop", () => {
+    const urlCard = mountCard({ utubUrlId: 1 });
+    expect(urlCard.find(".urlParamTrimHeader").hasClass("tabbable")).toBe(true);
+  });
+});
