@@ -4,8 +4,6 @@ export interface QueryParamSegment {
   index: number;
   raw: string;
   name: string;
-  hasValue: boolean;
-  value: string;
   isAutoStripped: boolean;
 }
 
@@ -86,13 +84,10 @@ export function parseQuerySegments(urlString: string): ParsedQuery | null {
       ? []
       : query.split("&").map((raw, index) => {
           const equalsIndex = raw.indexOf("=");
-          const hasValue = equalsIndex !== -1;
           return {
             index,
             raw,
-            name: hasValue ? raw.slice(0, equalsIndex) : raw,
-            hasValue,
-            value: hasValue ? raw.slice(equalsIndex + 1) : "",
+            name: equalsIndex === -1 ? raw : raw.slice(0, equalsIndex),
             isAutoStripped: false,
           };
         });

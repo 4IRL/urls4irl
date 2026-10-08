@@ -33,7 +33,12 @@ export const TRIM_SYNC_KEY = "urlParamTrimSync";
 export const TRIM_SUBMISSION_KEY = "urlParamTrimSubmission";
 export const TRIM_FLUSH_KEY = "urlParamTrimFlush";
 
-/** What Steps 5-7 capture at submit time for the outcome banner and Undo. */
+export type UrlParamsTrimmedForm =
+  (typeof URL_PARAMS_TRIMMED_FORM)[keyof typeof URL_PARAMS_TRIMMED_FORM];
+export type UrlParamsTrimmedAction =
+  (typeof URL_PARAMS_TRIMMED_ACTION)[keyof typeof URL_PARAMS_TRIMMED_ACTION];
+
+/** Captured at submit time; feeds the outcome banner and its Undo. */
 export interface TrimSubmission {
   originalUrlString: string;
   droppedSegments: string[];
@@ -110,11 +115,9 @@ function actionableSegments(parsed: ParsedQuery): QueryParamSegment[] {
 export function createParamTrimBlock({
   mode,
   urlCard,
-  onDroppedChange,
 }: {
   mode: TrimMode;
   urlCard: JQuery | null;
-  onDroppedChange?: () => void;
 }): JQuery {
   const refs: TrimRefs = {
     parsed: null,
@@ -225,7 +228,7 @@ export function createParamTrimBlock({
   function emitTrimAction({
     action,
   }: {
-    action: (typeof URL_PARAMS_TRIMMED_ACTION)[keyof typeof URL_PARAMS_TRIMMED_ACTION];
+    action: UrlParamsTrimmedAction;
   }): void {
     emit({
       event: UI_EVENTS.UI_URL_PARAMS_TRIMMED,
@@ -262,7 +265,6 @@ export function createParamTrimBlock({
         },
       }),
     );
-    onDroppedChange?.();
   }
 
   function createChip(segment: QueryParamSegment): JQuery {
@@ -412,33 +414,21 @@ export function createParamTrimBlock({
     if (refs.parsed !== null && refs.original === rawValue) return;
     const parsed = parseQuerySegments(rawValue);
     const hadDropped = refs.dropped.size > 0;
-    if (parsed === null) {
-      // `original` MUST be the raw text (never ""): TRIM_GET_KEY has to return
-      // exactly what should be submitted in every reachable state (DD-23).
-      refs.parsed = null;
-      refs.dropped.clear();
-      refs.original = rawValue;
-      renderTrimBlock();
-      if (hadDropped) {
-        announce(APP_CONFIG.strings.URL_TRIM_DROPS_RESET);
-        onDroppedChange?.();
-      }
-      return;
-    }
-
-    parsed.segments.forEach((segment) => {
+    parsed?.segments.forEach((segment) => {
       segment.isAutoStripped = isAutoStrippedParam({
         name: segment.name,
         scheme: parsed.scheme,
       });
     });
     refs.parsed = parsed;
+    // `original` MUST be the raw text (never ""), even when unparseable:
+    // TRIM_GET_KEY has to return exactly what should be submitted in every
+    // reachable state.
     refs.original = rawValue;
     refs.dropped.clear();
     renderTrimBlock();
     if (hadDropped) {
       announce(APP_CONFIG.strings.URL_TRIM_DROPS_RESET);
-      onDroppedChange?.();
     }
   }
 
@@ -472,7 +462,6 @@ export function createParamTrimBlock({
         values: { kept: String(kept), total: String(total) },
       }),
     );
-    onDroppedChange?.();
   }
 
   dropAllBtn.on("click.urlParamTrim", (event: JQuery.TriggeredEvent) => {

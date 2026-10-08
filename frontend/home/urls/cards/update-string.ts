@@ -538,7 +538,7 @@ function updateURLFail({
         restoreUpdateURLStringSubmitTooltip(urlCard);
         break;
       }
-    case 409:
+    case 409: {
       checkForStaleDataOn409(responseJSON, utubID);
       // The collision is caused by the user's trim: say so, and expand the
       // section so the cause is on screen.
@@ -557,6 +557,7 @@ function updateURLFail({
       );
       restoreUpdateURLStringSubmitTooltip(urlCard);
       break;
+    }
     case 403:
     case 404:
     default:

@@ -39,13 +39,11 @@ function mount(
   options: {
     mode?: TrimMode;
     urlCard?: JQuery | null;
-    onDroppedChange?: () => void;
   } = {},
 ): Wrap {
   const wrap = createParamTrimBlock({
     mode: options.mode ?? TrimMode.CREATE,
     urlCard: options.urlCard ?? null,
-    onDroppedChange: options.onDroppedChange,
   });
   window.jQuery(document.body).append(wrap);
   return wrap;
@@ -263,14 +261,6 @@ describe("createParamTrimBlock", () => {
       chipButtons(wrap).first().trigger("focus");
       chipButtons(wrap).first().trigger("click");
       expect(document.activeElement).toBe(chipButtons(wrap).first()[0]);
-    });
-
-    it("notifies onDroppedChange on toggle", () => {
-      const onDroppedChange = vi.fn();
-      const wrap = mount({ onDroppedChange });
-      flush(wrap, URL_WITH_AUTO);
-      chipButtons(wrap).first().trigger("click");
-      expect(onDroppedChange).toHaveBeenCalledTimes(1);
     });
   });
 

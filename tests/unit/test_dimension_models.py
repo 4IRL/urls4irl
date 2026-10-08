@@ -66,6 +66,18 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
     ),
     (EventName.UI_URL_COPY, {"result": "success", "device_type": DeviceType.DESKTOP}),
     (
+        EventName.UI_URL_PARAMS_TRIMMED,
+        {"form": "url_create", "action": "toggle", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_URL_PARAMS_TRIMMED,
+        {
+            "form": "url_string_edit",
+            "action": "undo",
+            "device_type": DeviceType.MOBILE,
+        },
+    ),
+    (
         EventName.UI_UTUB_SEARCH_OPEN,
         {"target": "utubs", "device_type": DeviceType.MOBILE},
     ),
@@ -459,6 +471,19 @@ def test_mobile_nav_rejects_unknown_trigger():
                 "trigger": "swipe",
                 "device_type": DeviceType.MOBILE,
             }
+        )
+
+
+def test_url_params_trimmed_rejects_unknown_form_and_action():
+    """`_DimUrlParamsTrimmed.form`/`action` are closed low-cardinality sets."""
+    base = {"device_type": DeviceType.DESKTOP}
+    with pytest.raises(ValidationError):
+        DIMENSION_MODELS[EventName.UI_URL_PARAMS_TRIMMED].model_validate(
+            {"form": "url_delete", "action": "toggle", **base}
+        )
+    with pytest.raises(ValidationError):
+        DIMENSION_MODELS[EventName.UI_URL_PARAMS_TRIMMED].model_validate(
+            {"form": "url_create", "action": "reset", **base}
         )
 
 

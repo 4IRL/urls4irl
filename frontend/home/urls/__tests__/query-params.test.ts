@@ -48,8 +48,6 @@ describe("parseQuerySegments", () => {
           index: 0,
           raw: "x=1",
           name: "x",
-          hasValue: true,
-          value: "1",
           isAutoStripped: false,
         },
       ]);
@@ -64,17 +62,16 @@ describe("parseQuerySegments", () => {
       ]);
     });
 
-    it("keeps an empty value as hasValue true with empty value", () => {
+    it("keeps an empty value's raw text and name", () => {
       const [segment] = parseOrFail("https://a.com/p?a=").segments;
-      expect(segment.hasValue).toBe(true);
-      expect(segment.value).toBe("");
+      expect(segment.raw).toBe("a=");
+      expect(segment.name).toBe("a");
     });
 
-    it("marks a segment without = as hasValue false", () => {
+    it("uses the whole segment as the name when there is no =", () => {
       const [first, second] = parseOrFail("https://a.com/p?a&b=1").segments;
-      expect(first.hasValue).toBe(false);
       expect(first.name).toBe("a");
-      expect(second.hasValue).toBe(true);
+      expect(second.name).toBe("b");
     });
 
     it("preserves empty segments from a double ampersand", () => {
@@ -89,7 +86,7 @@ describe("parseQuerySegments", () => {
     it("splits only on the first = so values keep later = signs", () => {
       const [segment] = parseOrFail("https://a.com/p?t=a=b").segments;
       expect(segment.name).toBe("t");
-      expect(segment.value).toBe("a=b");
+      expect(segment.raw).toBe("t=a=b");
     });
 
     it("defaults isAutoStripped to false", () => {
@@ -104,14 +101,13 @@ describe("parseQuerySegments", () => {
     it("keeps percent-encoding untouched", () => {
       const [segment] = parseOrFail("https://a.com/p?q=hello%20world").segments;
       expect(segment.raw).toBe("q=hello%20world");
-      expect(segment.value).toBe("hello%20world");
     });
 
     it("keeps a literal :// inside a value", () => {
       const [segment] = parseOrFail(
         "https://a.com/p?next=https://a.com/b",
       ).segments;
-      expect(segment.value).toBe("https://a.com/b");
+      expect(segment.raw).toBe("next=https://a.com/b");
     });
 
     it("does not lowercase names", () => {

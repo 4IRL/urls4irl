@@ -7,17 +7,15 @@ import { isUtubLockedHandled } from "../utub-locked.js";
 import { showURLDeckBannerError } from "./deck.js";
 import { deleteURLOnStale } from "./cards/get.js";
 import { applyUpdatedURLString } from "./cards/apply-url-string.js";
-import { fillTemplate, type TrimSubmission } from "./trim/param-trim-block.js";
+import {
+  fillTemplate,
+  type TrimSubmission,
+  type UrlParamsTrimmedForm,
+} from "./trim/param-trim-block.js";
 import { debug } from "../../lib/debug.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
-import {
-  URL_PARAMS_TRIMMED_ACTION,
-  URL_PARAMS_TRIMMED_FORM,
-} from "../../types/metrics-dim-values.js";
-
-type UrlParamsTrimmedForm =
-  (typeof URL_PARAMS_TRIMMED_FORM)[keyof typeof URL_PARAMS_TRIMMED_FORM];
+import { URL_PARAMS_TRIMMED_ACTION } from "../../types/metrics-dim-values.js";
 
 const log = debug("urls:outcome-banner");
 
