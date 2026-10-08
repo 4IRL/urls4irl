@@ -1,5 +1,6 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
+import { APP_CONFIG } from "../../../../lib/config.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "../../empty-state.js";
 import { showURLSearchIcon } from "../../search.js";
 import { STAGED_GET_KEY } from "../../tags/combobox.js";
@@ -146,7 +147,11 @@ describe("createURL - client-side validation", () => {
       urlStringInput.val(invalidUrl);
       urlTitleInput.val("My Title");
 
-      createURL(urlTitleInput, urlStringInput, 1);
+      createURL({
+        createURLTitleInput: urlTitleInput,
+        createURLInput: urlStringInput,
+        utubID: 1,
+      });
 
       expect($("#urlStringCreate-error").hasClass("visible")).toBe(true);
       expect($("#urlStringCreate-error").text()).toBeTruthy();
@@ -280,7 +285,11 @@ describe("createURL - client-side validation", () => {
       });
       vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-      createURL(urlTitleInput, urlStringInput, 99);
+      createURL({
+        createURLTitleInput: urlTitleInput,
+        createURLInput: urlStringInput,
+        utubID: 99,
+      });
 
       expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
       expect(checkForStaleDataOn409).toHaveBeenCalledWith(responseJSON, 99);
@@ -298,7 +307,11 @@ describe("createURL - client-side validation", () => {
       const chainable = createMockJqXHRChainable();
       vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-      createURL(urlTitleInput, urlStringInput, 1);
+      createURL({
+        createURLTitleInput: urlTitleInput,
+        createURLInput: urlStringInput,
+        utubID: 1,
+      });
 
       expect(ajaxCall).toHaveBeenCalledTimes(1);
       const postData = vi.mocked(ajaxCall).mock.calls[0][2] as {
@@ -316,7 +329,11 @@ describe("createURL - client-side validation", () => {
       const chainable = createMockJqXHRChainable();
       vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-      createURL(urlTitleInput, urlStringInput, 1);
+      createURL({
+        createURLTitleInput: urlTitleInput,
+        createURLInput: urlStringInput,
+        utubID: 1,
+      });
 
       const postData = vi.mocked(ajaxCall).mock.calls[0][2] as {
         tagStrings: string[];
@@ -356,7 +373,11 @@ describe("createURL - client-side validation", () => {
       });
       vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-      createURL(urlTitleInput, urlStringInput, 1);
+      createURL({
+        createURLTitleInput: urlTitleInput,
+        createURLInput: urlStringInput,
+        utubID: 1,
+      });
 
       expect(renderAppliedTagsForUrl).toHaveBeenCalledTimes(1);
       const renderArgs = vi.mocked(renderAppliedTagsForUrl).mock.calls[0][0];
@@ -411,7 +432,11 @@ describe("createURL - client-side validation", () => {
       });
       vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-      createURL(urlTitleInput, urlStringInput, 1);
+      createURL({
+        createURLTitleInput: urlTitleInput,
+        createURLInput: urlStringInput,
+        utubID: 1,
+      });
 
       expect(emit).toHaveBeenCalledWith(AppEvents.URL_DECK_CHANGED);
     });
@@ -487,7 +512,11 @@ describe("createURL - client-side validation", () => {
       });
       vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-      createURL($("#urlTitleCreate"), $("#urlStringCreate"), 1);
+      createURL({
+        createURLTitleInput: $("#urlTitleCreate"),
+        createURLInput: $("#urlStringCreate"),
+        utubID: 1,
+      });
 
       // (1) The new card lands at its sorted DOM position (last), via the
       // detach/re-append reorder into #listURLs.
@@ -541,11 +570,291 @@ describe("createURL - client-side validation", () => {
       });
       vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-      createURL(urlTitleInput, urlStringInput, 1);
+      createURL({
+        createURLTitleInput: urlTitleInput,
+        createURLInput: urlStringInput,
+        utubID: 1,
+      });
 
       const msg = $("#createURLWrap .urlTagComboboxMsg");
       expect(msg.text()).toBe("Tag is too long");
       expect(msg.hasClass("warn")).toBe(true);
     });
+  });
+});
+
+describe("createURL - query-parameter trim block", () => {
+  const QUERY_URL = "https://example.com/p?a=1&b=2&c=3";
+  let urlStringInput: JQuery, urlTitleInput: JQuery;
+
+  function typeURL(value: string): void {
+    urlStringInput.val(value);
+    urlStringInput.trigger("input");
+  }
+
+  function trimWrap(): JQuery {
+    return $("#createURLWrap").find(".urlParamTrimWrap");
+  }
+
+  function mockCreateRequest(
+    handlers: Parameters<typeof createMockJqXHRChainable>[0] = {},
+  ): void {
+    vi.mocked(ajaxCall).mockReturnValue(createMockJqXHRChainable(handlers));
+  }
+
+  function submittedURLString(): string {
+    return (vi.mocked(ajaxCall).mock.calls[0][2] as { urlString: string })
+      .urlString;
+  }
+
+  function submit(): void {
+    createURL({
+      createURLTitleInput: urlTitleInput,
+      createURLInput: urlStringInput,
+      utubID: 1,
+    });
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    document.body.innerHTML = `
+      <div id="createURLWrap">
+        <div class="flex-row"><button id="urlSubmitBtnCreate"></button></div>
+      </div>
+      <input id="urlStringCreate" />
+      <input id="urlTitleCreate" />
+      <div id="urlStringCreate-error"></div>
+      <div id="urlTitleCreate-error"></div>
+      <button id="urlBtnCreate"></button>
+      <button id="urlBtnMultiSelect" class="visible"></button>
+      <div id="urlCreateDualLoadingRing"></div>
+    `;
+    urlStringInput = $("#urlStringCreate");
+    urlTitleInput = $("#urlTitleCreate");
+    createURLShowInput(1);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("mounts the block before the action row and tag combobox", () => {
+    expect(trimWrap()).toHaveLength(1);
+    const order = $("#createURLWrap")
+      .children()
+      .toArray()
+      .map((el) => el.className);
+    expect(order[0]).toContain("urlParamTrimWrap");
+    expect(order[1]).toContain("urlTagComboboxWrap");
+    expect(order[2]).toContain("flex-row");
+  });
+
+  it("stays hidden for a query-less URL", () => {
+    typeURL("https://example.com/p");
+    vi.advanceTimersByTime(200);
+
+    expect(trimWrap().hasClass("hidden")).toBe(true);
+  });
+
+  it("appears collapsed after a debounced input with a query", () => {
+    typeURL(QUERY_URL);
+    expect(trimWrap().hasClass("hidden")).toBe(true);
+
+    vi.advanceTimersByTime(200);
+
+    expect(trimWrap().hasClass("hidden")).toBe(false);
+    expect(trimWrap().hasClass("collapsed")).toBe(true);
+    expect(trimWrap().find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "false",
+    );
+  });
+
+  it("preserves the user's expanded choice across a re-parse", () => {
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+    trimWrap().find(".urlParamTrimHeader").trigger("click");
+    expect(trimWrap().hasClass("collapsed")).toBe(false);
+
+    typeURL(`${QUERY_URL}&d=4`);
+    vi.advanceTimersByTime(200);
+
+    expect(trimWrap().hasClass("collapsed")).toBe(false);
+    expect(trimWrap().find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "true",
+    );
+  });
+
+  it("does not steal focus or flag the URL input when it appears", () => {
+    urlStringInput.trigger("focus");
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+
+    expect(document.activeElement).toBe(urlStringInput[0]);
+    expect(urlStringInput.hasClass("invalid-field")).toBe(false);
+    expect($("#urlStringCreate-error").hasClass("visible")).toBe(false);
+  });
+
+  it("keeps listening after the URL input blurs and refocuses", () => {
+    urlStringInput.trigger("blur");
+    urlStringInput.trigger("focus");
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+
+    expect(trimWrap().hasClass("hidden")).toBe(false);
+  });
+
+  it("submits the typed value byte-for-byte when nothing is dropped", () => {
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+    mockCreateRequest();
+
+    submit();
+
+    expect(submittedURLString()).toBe(QUERY_URL);
+  });
+
+  it("submits a urlString with the dropped segments removed", () => {
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+    trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+    mockCreateRequest();
+
+    submit();
+
+    expect(submittedURLString()).toBe("https://example.com/p?a=1&c=3");
+  });
+
+  it("flushes a pending debounce so a fast submit trims the current value", () => {
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+    trimWrap().find(".urlParamTrimChip").eq(0).trigger("click");
+    // Edit then submit before the block's 200ms debounce fires. The edit resets
+    // all drops, so the stale parse (with `a` dropped) must not be used.
+    typeURL("https://example.com/p?x=9&y=8");
+    mockCreateRequest();
+
+    submit();
+
+    expect(submittedURLString()).toBe("https://example.com/p?x=9&y=8");
+  });
+
+  describe("409 conflict", () => {
+    function failWith409(): void {
+      const xhr = {
+        status: 409,
+        responseJSON: {
+          status: "Failure",
+          message: "URL already in UTub",
+          errorCode: null,
+          errors: null,
+          details: null,
+          urlString: "https://example.com/p?a=1",
+        },
+      } as unknown as JQuery.jqXHR;
+      mockCreateRequest({
+        fail: (callback: unknown) =>
+          (callback as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      });
+    }
+
+    it("substitutes the trim message and expands the section when params were dropped", () => {
+      typeURL(QUERY_URL);
+      vi.advanceTimersByTime(200);
+      trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+      failWith409();
+
+      submit();
+
+      expect($("#urlStringCreate-error").text()).toBe(
+        APP_CONFIG.strings.URL_TRIM_CONFLICT,
+      );
+      expect(trimWrap().hasClass("collapsed")).toBe(false);
+      expect(trimWrap().find(".title-caret").hasClass("closed")).toBe(false);
+      expect(trimWrap().find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+        "true",
+      );
+      expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the server message and stays collapsed when nothing was dropped", () => {
+      typeURL(QUERY_URL);
+      vi.advanceTimersByTime(200);
+      failWith409();
+
+      submit();
+
+      expect($("#urlStringCreate-error").text()).toBe("URL already in UTub");
+      expect(trimWrap().hasClass("collapsed")).toBe(true);
+    });
+
+    it("keeps the server message when a drop was toggled back to zero", () => {
+      typeURL(QUERY_URL);
+      vi.advanceTimersByTime(200);
+      trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+      trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+      failWith409();
+
+      submit();
+
+      expect($("#urlStringCreate-error").text()).toBe("URL already in UTub");
+      expect(trimWrap().hasClass("collapsed")).toBe(true);
+    });
+
+    // A removed block yields a null trimSubmission.
+    it("keeps the server message when the block is absent", () => {
+      trimWrap().remove();
+      urlStringInput.val(QUERY_URL);
+      failWith409();
+
+      submit();
+
+      expect($("#urlStringCreate-error").text()).toBe("URL already in UTub");
+    });
+  });
+
+  it("creates the card with the trimmed URL and removes the block on success", () => {
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+    trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+    const trimmed = "https://example.com/p?a=1&c=3";
+    const response = {
+      utubID: 1,
+      addedByUserID: 1,
+      URL: {
+        utubUrlID: 42,
+        urlString: trimmed,
+        urlTitle: "T",
+        utubUrlTagIDs: [],
+        addedAt: "2024-03-09T12:00:00+00:00",
+      },
+      appliedTags: [],
+    };
+    mockCreateRequest({
+      done: (callback: unknown) =>
+        (callback as (r: unknown, t: unknown, x: unknown) => void)(
+          response,
+          "success",
+          { status: 200 },
+        ),
+    });
+
+    submit();
+
+    expect(submittedURLString()).toBe(trimmed);
+    expect(createURLBlock).toHaveBeenCalledTimes(1);
+    expect(trimWrap()).toHaveLength(0);
+  });
+
+  it("removes the block and its input listener when the form resets", () => {
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+
+    createURLHideInput();
+
+    expect(trimWrap()).toHaveLength(0);
+    typeURL(QUERY_URL);
+    vi.advanceTimersByTime(200);
+    expect(trimWrap()).toHaveLength(0);
   });
 });

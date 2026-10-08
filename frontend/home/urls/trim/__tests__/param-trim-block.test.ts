@@ -469,6 +469,19 @@ describe("createParamTrimBlock", () => {
       });
     });
 
+    it("keeps dropped segments when re-synced with an unchanged value", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?a=1&b=2");
+      chipButtons(wrap).eq(0).trigger("click");
+
+      flush(wrap, "https://a.com/p?a=1&b=2");
+
+      expect(getSubmission(wrap).droppedCount).toBe(1);
+      expect(announcerText(wrap)).not.toBe(
+        APP_CONFIG.strings.URL_TRIM_DROPS_RESET,
+      );
+    });
+
     it("resets droppedCount to 0 on a re-parse", () => {
       const wrap = mount();
       flush(wrap, "https://a.com/p?a=1&b=2");

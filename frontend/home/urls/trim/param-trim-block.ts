@@ -371,6 +371,9 @@ export function createParamTrimBlock({
 
   /** The actual re-parse; the only place `refs.dropped` is cleared. */
   function applyTrimSync(rawValue: string): void {
+    // An unchanged value must keep the user's drop choices: the submit-time
+    // flush re-syncs with the current input and would otherwise wipe them.
+    if (refs.parsed !== null && refs.original === rawValue) return;
     const parsed = parseQuerySegments(rawValue);
     const hadDropped = refs.dropped.size > 0;
     if (parsed === null) {
