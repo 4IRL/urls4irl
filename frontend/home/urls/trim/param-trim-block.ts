@@ -144,8 +144,14 @@ export function expandParamTrimBlock({ trimWrap }: { trimWrap: JQuery }): void {
   trimWrap.find(".urlParamTrimHeader").attr("aria-expanded", "true");
 }
 
+// Empty segments (from `&&` or a trailing `&`) stay in `ParsedQuery.segments` so
+// serialization is faithful, but they are never shown or counted.
+function visibleSegments(parsed: ParsedQuery): QueryParamSegment[] {
+  return parsed.segments.filter((segment) => segment.raw !== "");
+}
+
 function actionableSegments(parsed: ParsedQuery): QueryParamSegment[] {
-  return parsed.segments.filter((segment) => !segment.isAutoStripped);
+  return visibleSegments(parsed).filter((segment) => !segment.isAutoStripped);
 }
 
 /**
@@ -383,7 +389,7 @@ export function createParamTrimBlock({
     const parsed = refs.parsed;
     wrap.toggleClass(
       "hidden",
-      !parsed || !parsed.hadQuery || parsed.segments.length === 0,
+      !parsed || !parsed.hadQuery || visibleSegments(parsed).length === 0,
     );
     if (!parsed) {
       chips.empty();
@@ -423,7 +429,9 @@ export function createParamTrimBlock({
       .find(".urlParamTrimChip:focus")
       .attr("data-index");
     chips.empty();
-    parsed.segments.forEach((segment) => chips.append(createChip(segment)));
+    visibleSegments(parsed).forEach((segment) =>
+      chips.append(createChip(segment)),
+    );
     if (focusedIndex !== undefined) {
       chips
         .find(`.urlParamTrimChip[data-index="${focusedIndex}"]`)
@@ -450,10 +458,13 @@ export function createParamTrimBlock({
 
   /** The actual re-parse; the only place `refs.dropped` is cleared. */
   function applyTrimSync(rawValue: string): void {
+    // Surrounding whitespace is never part of the URL: parse and submit the
+    // trimmed text so a padded value shows the block and the last segment stays clean.
+    const trimmedValue = rawValue.trim();
     // An unchanged value must keep the user's drop choices: the submit-time
     // flush re-syncs with the current input and would otherwise wipe them.
-    if (refs.parsed !== null && refs.original === rawValue) return;
-    const parsed = parseQuerySegments(rawValue);
+    if (refs.parsed !== null && refs.original === trimmedValue) return;
+    const parsed = parseQuerySegments(trimmedValue);
     const hadDropped = refs.dropped.size > 0;
     parsed?.segments.forEach((segment) => {
       segment.isAutoStripped = isAutoStrippedParam({
@@ -462,10 +473,10 @@ export function createParamTrimBlock({
       });
     });
     refs.parsed = parsed;
-    // `original` MUST be the raw text (never ""), even when unparseable:
-    // TRIM_GET_KEY has to return exactly what should be submitted in every
-    // reachable state.
-    refs.original = rawValue;
+    // `original` MUST be the (trimmed) input text (never ""), even when
+    // unparseable: TRIM_GET_KEY has to return exactly what should be submitted
+    // in every reachable state.
+    refs.original = trimmedValue;
     refs.dropped.clear();
     renderTrimBlock();
     if (hadDropped) {

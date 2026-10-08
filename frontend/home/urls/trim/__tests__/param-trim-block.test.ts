@@ -236,6 +236,48 @@ describe("createParamTrimBlock", () => {
       expect(wrap.find(".urlParamTrimCount").text()).toBe("2 of 2 kept");
     });
 
+    it("shows the block for leading whitespace and submits the trimmed value", () => {
+      const wrap = mount();
+      flush(wrap, "  https://a.com/p?a=1&b=2  ");
+      expect(wrap.hasClass("hidden")).toBe(false);
+      expect(chipButtons(wrap).eq(1).text()).toContain("b=2");
+      expect(chipButtons(wrap).eq(1).text()).not.toContain(" ");
+      expect(getTrimmed(wrap)).toBe("https://a.com/p?a=1&b=2");
+      expect(getSubmission(wrap).originalUrlString).toBe(
+        "https://a.com/p?a=1&b=2",
+      );
+    });
+
+    it("keeps drops when re-synced with the same value plus padding", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?a=1&b=2");
+      chipButtons(wrap).eq(0).trigger("click");
+      flush(wrap, "https://a.com/p?a=1&b=2 ");
+      expect(getSubmission(wrap).droppedCount).toBe(1);
+    });
+
+    it("does not render or count empty segments from && or a trailing &", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?a=1&&b=2&");
+      expect(chipButtons(wrap).length).toBe(2);
+      expect(wrap.find(".urlParamTrimTitle").text()).toBe(
+        "Query parameters (2)",
+      );
+      expect(wrap.find(".urlParamTrimCount").text()).toBe("2 of 2 kept");
+
+      const [dropAll] = wrap.find(".urlParamTrimBtn").toArray();
+      window.jQuery(dropAll).trigger("click");
+      expect(wrap.find(".urlParamTrimCount").text()).toBe("0 of 2 kept");
+      // Serialization stays faithful: the empty segments survive.
+      expect(getTrimmed(wrap)).toBe("https://a.com/p?&");
+    });
+
+    it("stays hidden when the query holds only empty segments", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?&&");
+      expect(wrap.hasClass("hidden")).toBe(true);
+    });
+
     it("renders param text through .text(), never as markup", () => {
       const wrap = mount();
       flush(wrap, "https://a.com/p?x=<b>hi</b>&y=2");
