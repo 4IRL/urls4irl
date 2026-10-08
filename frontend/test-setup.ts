@@ -108,6 +108,11 @@ const appConfig = {
     URLS_TITLE_MIN_LENGTH: 1,
     URLS_TITLE_MAX_LENGTH: 100,
     URLS_MAX_LENGTH: 8000,
+    // Representative subset of backend/extensions/url_validation/constants.py;
+    // tests assert behaviour, not blocklist membership.
+    TRACKING_QUERY_PARAMS: ["gclid", "fbclid", "msclkid"],
+    TRACKING_QUERY_PARAM_PREFIXES: ["utm_"],
+    TRACKING_STRIP_SCHEMES: ["http", "https"],
     TAGS_MIN_LENGTH: 1,
     TAGS_MAX_LENGTH: 30,
     TAGS_MAX_ON_URLS: 20,

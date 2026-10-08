@@ -1,6 +1,7 @@
 import {
   parseQuerySegments,
   buildTrimmedUrl,
+  isAutoStrippedParam,
   previewStoredUrl,
   type ParsedQuery,
 } from "../query-params.js";
@@ -260,5 +261,33 @@ describe("previewStoredUrl", () => {
         dropped: [],
       }),
     ).toBe("https://a.com/p#s");
+  });
+});
+
+describe("isAutoStrippedParam", () => {
+  it("matches an exact blocklist name", () => {
+    expect(isAutoStrippedParam({ name: "gclid", scheme: "https" })).toBe(true);
+  });
+
+  it("matches a prefix", () => {
+    expect(isAutoStrippedParam({ name: "utm_source", scheme: "https" })).toBe(
+      true,
+    );
+  });
+
+  it("returns false for a non-tracking name", () => {
+    expect(isAutoStrippedParam({ name: "ref", scheme: "https" })).toBe(false);
+  });
+
+  it("returns false for a non-web scheme even with a tracking name", () => {
+    expect(isAutoStrippedParam({ name: "utm_source", scheme: "mailto" })).toBe(
+      false,
+    );
+  });
+
+  it("matches the name case-insensitively", () => {
+    expect(isAutoStrippedParam({ name: "UTM_SOURCE", scheme: "http" })).toBe(
+      true,
+    );
   });
 });

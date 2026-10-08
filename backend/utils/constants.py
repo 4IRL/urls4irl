@@ -1,6 +1,11 @@
 from flask import current_app
 from flask_login import current_user
 
+from backend.extensions.url_validation.constants import (
+    TRACKING_QUERY_PARAM_PREFIXES,
+    TRACKING_QUERY_PARAMS,
+    WEB_SCHEMES_FOR_TRACKING_STRIP,
+)
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType
 from backend.models.user_preferences import resolve_preferences
@@ -1032,6 +1037,11 @@ def generate_constants_js() -> dict[
         "URLS_TITLE_MAX_LENGTH": CONSTANTS.URLS.MAX_URL_TITLE_LENGTH,
         "URLS_MIN_LENGTH": CONSTANTS.URLS.MIN_URL_LENGTH,
         "URLS_MAX_LENGTH": CONSTANTS.URLS.MAX_URL_LENGTH,
+        # Tracking-param blocklist (source of truth: backend.extensions.url_validation.constants).
+        # Sorted so the rendered #app-config JSON is deterministic across processes.
+        "TRACKING_QUERY_PARAMS": sorted(TRACKING_QUERY_PARAMS),
+        "TRACKING_QUERY_PARAM_PREFIXES": list(TRACKING_QUERY_PARAM_PREFIXES),
+        "TRACKING_STRIP_SCHEMES": sorted(WEB_SCHEMES_FOR_TRACKING_STRIP),
         # Tag constants
         "TAGS_MIN_LENGTH": CONSTANTS.TAGS.MIN_TAG_LENGTH,
         "TAGS_MAX_LENGTH": CONSTANTS.TAGS.MAX_TAG_LENGTH,

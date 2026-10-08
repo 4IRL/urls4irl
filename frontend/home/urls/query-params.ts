@@ -1,3 +1,5 @@
+import { APP_CONFIG } from "../../lib/config.js";
+
 export interface QueryParamSegment {
   index: number;
   raw: string;
@@ -15,6 +17,30 @@ export interface ParsedQuery {
   segments: QueryParamSegment[];
   fragment: string;
   hadQuery: boolean;
+}
+
+/**
+ * Mirrors `UrlValidator._is_tracking_param`: the name is lowercased, matched
+ * exactly or by prefix, and only for the web schemes the server strips.
+ */
+export function isAutoStrippedParam({
+  name,
+  scheme,
+}: {
+  name: string;
+  scheme: string;
+}): boolean {
+  const {
+    TRACKING_QUERY_PARAMS,
+    TRACKING_QUERY_PARAM_PREFIXES,
+    TRACKING_STRIP_SCHEMES,
+  } = APP_CONFIG.constants;
+  if (!TRACKING_STRIP_SCHEMES.includes(scheme.toLowerCase())) return false;
+  const lowered = name.toLowerCase();
+  return (
+    TRACKING_QUERY_PARAMS.includes(lowered) ||
+    TRACKING_QUERY_PARAM_PREFIXES.some((prefix) => lowered.startsWith(prefix))
+  );
 }
 
 interface TrimArgs {
