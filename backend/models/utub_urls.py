@@ -40,20 +40,16 @@ class Utub_Urls(db.Model):
     last_accessed: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="lastAccessed"
     )
-    # Soft-delete marker; NULL means not trashed. Not yet written by any code path;
-    # the soft-delete-restore behavior phases will set it.
+    # Soft-delete marker; NULL means not trashed.
     deleted_at: datetime | None = Column(
         DateTime(timezone=True), nullable=True, default=None, name="deletedAt"
     )
     deleted_by: int | None = Column(
         Integer, ForeignKey("Users.id"), nullable=True, default=None, name="deletedBy"
     )
-    # Snapshot of the URL's tag ids at delete time. Written by the soft-delete-restore
-    # master's "URL soft-delete behavior" phase; read by that phase's revive-on-readd
-    # path and the "Trash API surface" restore endpoint for the lost-tag diff. Plain
-    # JSONB has no mutation tracking: always reassign a new list, never mutate in
-    # place. NULL means "no snapshot" (so no default=list); none_as_null=True makes
-    # Python None persist as SQL NULL rather than the JSON value null.
+    # Snapshot of the URL's tag ids at delete time. NULL means "no snapshot" (so no
+    # default=list). JSONB has no mutation tracking: always reassign a new list,
+    # never mutate in place.
     trashed_tag_ids: list[int] | None = Column(
         JSONB(none_as_null=True), nullable=True, default=None, name="trashedTagIds"
     )

@@ -40,8 +40,7 @@ class Utubs(db.Model):
         server_default=text("false"),
         name="isLocked",
     )
-    # Soft-delete marker; NULL means not trashed. Not yet written by any code path;
-    # the soft-delete-restore behavior phases will set it.
+    # Soft-delete marker; NULL means not trashed.
     deleted_at: datetime | None = Column(
         DateTime(timezone=True), nullable=True, default=None, name="deletedAt"
     )
