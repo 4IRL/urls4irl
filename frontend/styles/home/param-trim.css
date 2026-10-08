@@ -34,6 +34,13 @@
     }
 }
 
+/* layout.css hides every `.title-caret` below 992px because the left decks are
+   desktop-only. This disclosure works at every width and the caret is its only
+   open/closed cue, so re-show it here (higher specificity, order-independent). */
+.urlParamTrimWrap .title-caret {
+    display: inline-block;
+}
+
 .urlParamTrimTitle {
     font-size: var(--fs-sm);
     margin-left: 4px;

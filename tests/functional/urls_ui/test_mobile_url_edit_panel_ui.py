@@ -428,6 +428,8 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     header = page.locator(HPL.EDIT_FORM_TRIM_HEADER)
     expect(header).to_be_visible()
     expect(header).to_have_attribute("aria-expanded", "false")
+    # The caret is the only open/closed cue; layout.css hides `.title-caret` on mobile.
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).to_be_visible()
     expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
 
     set_trim_section_expanded(
