@@ -2,6 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { fillTemplate } from "../../../lib/string-template.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   URL_PARAMS_TRIMMED_ACTION,
@@ -62,21 +63,6 @@ interface TrimRefs {
   original: string;
   debounceTimer: ReturnType<typeof setTimeout> | null;
   pendingRawValue: string;
-}
-
-/** Fills `{key}` placeholders; a function replacer keeps `$&`-style text in values literal. */
-export function fillTemplate({
-  template,
-  values,
-}: {
-  template: string;
-  values: Record<string, string>;
-}): string {
-  // Single pass: substituted values (user URL text) are never re-scanned.
-  return template.replace(
-    /\{(\w+)\}/g,
-    (placeholder, key: string) => values[key] ?? placeholder,
-  );
 }
 
 function createCaret(): JQuery<HTMLElement> {

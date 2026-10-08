@@ -8,10 +8,10 @@ import { showURLDeckBannerError } from "./deck.js";
 import { deleteURLOnStale } from "./cards/get.js";
 import { applyUpdatedURLString } from "./cards/apply-url-string.js";
 import {
-  fillTemplate,
   type TrimSubmission,
   type UrlParamsTrimmedForm,
 } from "./trim/param-trim-block.js";
+import { fillTemplate } from "../../lib/string-template.js";
 import { debug } from "../../lib/debug.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
