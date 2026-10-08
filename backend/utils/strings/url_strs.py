@@ -150,13 +150,13 @@ URL_DATE_ADDED_ARIA = "Added"
 # message (the server cannot tell a user trim apart: the request body arrives
 # already trimmed), so it is Tier 1, unlike the server-rendered
 # URL_IN_UTUB_TRACKING_PARAMS_STRIPPED.
-URL_TRIM_PARAMS_LABEL = "Query parameters ({n})"
-URL_TRIM_PARAMS_LABEL_ONE = "Query parameter (1)"
+URL_TRIM_PARAMS_LABEL = "Trim URL parameters ({n})"
+URL_TRIM_PARAMS_LABEL_ONE = "Trim URL parameter (1)"
 # Title of the auto-only variant: every parameter is one the server removes itself.
-URL_TRIM_AUTO_ONLY_TITLE = "Removed automatically"
+URL_TRIM_AUTO_ONLY_TITLE = "URL parameters removed automatically"
 URL_TRIM_WARNING = "Warning: removing parameters may break this link."
 URL_TRIM_WARNING_ONE = "Warning: removing this parameter may break this link."
-URL_TRIM_GROUP_ARIA = "Query parameters to keep or drop"
+URL_TRIM_GROUP_ARIA = "URL parameters to keep or drop"
 URL_TRIM_DROP_ALL = "Drop all"
 URL_TRIM_KEEP_ALL = "Keep all"
 URL_TRIM_KEPT_COUNT = "{kept} of {total} kept"

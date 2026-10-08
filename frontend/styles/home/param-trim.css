@@ -1,4 +1,4 @@
-/* Collapsible "Query parameters" trim control (Add-URL form and URL-card edit).
+/* Collapsible "Trim URL parameters" control (Add-URL form and URL-card edit).
    The disclosure reuses the global `.title-caret` / `.title-caret.closed` rules
    from decks.css as-is; this file adds the deck-header chrome that decks.css
    scopes to the three deck IDs, the body collapse and the chips. */

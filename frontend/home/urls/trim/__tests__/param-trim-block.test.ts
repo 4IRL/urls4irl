@@ -214,7 +214,7 @@ describe("createParamTrimBlock", () => {
       flush(wrap, "https://a.com/p?q=1&q=2");
       expect(chipButtons(wrap).length).toBe(2);
       expect(wrap.find(".urlParamTrimTitle").text()).toBe(
-        "Query parameters (2)",
+        "Trim URL parameters (2)",
       );
     });
 
@@ -231,7 +231,7 @@ describe("createParamTrimBlock", () => {
       );
       expect(chipButtons(wrap).length).toBe(2);
       expect(wrap.find(".urlParamTrimTitle").text()).toBe(
-        "Query parameters (2)",
+        "Trim URL parameters (2)",
       );
       expect(wrap.find(".urlParamTrimCount").text()).toBe("2 of 2 kept");
     });
@@ -276,7 +276,7 @@ describe("createParamTrimBlock", () => {
       flush(wrap, "https://a.com/p?utm_source=x");
       flush(wrap, "https://a.com/p?utm_source=x&ref=1");
       expect(wrap.find(".urlParamTrimTitle").text()).toBe(
-        "Query parameter (1)",
+        "Trim URL parameter (1)",
       );
       expect(wrap.find(".urlParamTrimMsg").hasClass("hidden")).toBe(false);
       expect(wrap.find(".urlParamTrimActions").hasClass("hidden")).toBe(false);
@@ -307,7 +307,7 @@ describe("createParamTrimBlock", () => {
       flush(wrap, "https://a.com/p?a=1&&b=2&");
       expect(chipButtons(wrap).length).toBe(2);
       expect(wrap.find(".urlParamTrimTitle").text()).toBe(
-        "Query parameters (2)",
+        "Trim URL parameters (2)",
       );
       expect(wrap.find(".urlParamTrimCount").text()).toBe("2 of 2 kept");
 

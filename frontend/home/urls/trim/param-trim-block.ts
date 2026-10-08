@@ -152,7 +152,7 @@ function actionableSegments(parsed: ParsedQuery): QueryParamSegment[] {
 }
 
 /**
- * Builds the collapsible "Query parameters" trim control, returned hidden and
+ * Builds the collapsible "Trim URL parameters" control, returned hidden and
  * collapsed. Mirrors `createTagComboboxBlock`: state lives in a closure and the
  * imperative callbacks are published on `wrap.data()` under the exported keys.
  */
