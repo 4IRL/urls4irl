@@ -432,6 +432,17 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).to_be_visible()
     expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
 
+    # Collapsed, the disclosure must not leave a tall dead zone above the Close
+    # bar: the string wrap's bottom padding and the empty `.urlTags` padding are
+    # dropped while the panel is open (the gap was ~125px before).
+    header_box = header.bounding_box()
+    close_box = selected_url.locator(
+        HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
+    ).bounding_box()
+    assert header_box is not None and close_box is not None
+    gap_below_header = close_box["y"] - (header_box["y"] + header_box["height"])
+    assert gap_below_header < 70, f"dead space above Close bar: {gap_below_header}px"
+
     set_trim_section_expanded(
         page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
     )

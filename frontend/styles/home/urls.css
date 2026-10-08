@@ -337,6 +337,21 @@ a.urlString {
     .updateUrlStringWrap.flex-row {
         flex-direction: column !important;
     }
+
+    /* Tighten the dead space between the URL field (and its trim disclosure) and
+       the full-width Cancel bar while the consolidated edit panel is open. The
+       string wrap's own 20px bottom padding duplicates the 20px
+       `.field-saved-tick-slot` below it (the title wrap already drops it, above),
+       and the selected card's `.urlTags` keeps 35px of padding even when it holds
+       no tags. Neither is needed while the form is open; both stay on a closed
+       card, where `.urlTags` separates the URL from the option buttons. */
+    .updateUrlStringWrap {
+        padding-bottom: 0;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlRowContent:has(.updateUrlStringWrap:not(.hidden)) .urlTags:not(:has(.tagBadge)) {
+        padding: 0;
+    }
 }
 
 /* Descendant (space) combinator, not direct-child (>): the Step 3 two-level
