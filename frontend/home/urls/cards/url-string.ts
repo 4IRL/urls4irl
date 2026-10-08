@@ -19,9 +19,9 @@ import {
 } from "./update-string.js";
 import { isCoarsePointer } from "../../mobile.js";
 import {
-  TRIM_SYNC_KEY,
   TrimMode,
   createParamTrimBlock,
+  syncParamTrim,
 } from "../trim/param-trim-block.js";
 import { FIELD_SAVED_CHECK_SVG } from "../field-saved-tick.js";
 import {
@@ -198,9 +198,10 @@ function createUpdateURLStringInput(
   });
   // Own namespace: nothing else `.off()`s it, and it must survive input blur.
   urlStringTextInput.on(TRIM_INPUT_EVENT, function () {
-    (
-      trimWrap.data(TRIM_SYNC_KEY) as ((rawValue: string) => void) | undefined
-    )?.(getInputValue(urlStringTextInput));
+    syncParamTrim({
+      trimWrap,
+      rawValue: getInputValue(urlStringTextInput),
+    });
   });
 
   urlStringUpdateTextInputContainer

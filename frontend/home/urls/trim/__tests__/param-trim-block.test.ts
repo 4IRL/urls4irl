@@ -1,5 +1,9 @@
 import {
   createParamTrimBlock,
+  flushParamTrim,
+  readTrimSubmit,
+  resetParamTrim,
+  syncParamTrim,
   TRIM_FLUSH_KEY,
   TRIM_GET_KEY,
   TRIM_RESET_KEY,
@@ -540,6 +544,65 @@ describe("createParamTrimBlock", () => {
       vi.advanceTimersByTime(500);
       expect(getTrimmed(wrap)).toBe("");
       expect(wrap.hasClass("hidden")).toBe(true);
+    });
+  });
+
+  describe("typed accessors", () => {
+    it("readTrimSubmit flushes the input value and reports the drops", () => {
+      const wrap = mount();
+      sync(wrap, "https://a.com/p?stale=1");
+      let result = readTrimSubmit({ trimWrap: wrap, rawValue: URL_WITH_AUTO });
+      expect(result.urlString).toBe(URL_WITH_AUTO);
+      expect(result.trimSubmission?.droppedCount).toBe(0);
+
+      chipButtons(wrap).first().trigger("click");
+      result = readTrimSubmit({ trimWrap: wrap, rawValue: URL_WITH_AUTO });
+      expect(result.urlString).toBe("https://a.com/p?utm_source=x&size=L");
+      expect(result.trimSubmission).toEqual({
+        originalUrlString: URL_WITH_AUTO,
+        droppedSegments: ["ref=1"],
+        droppedCount: 1,
+      });
+
+      vi.advanceTimersByTime(200);
+      expect(getTrimmed(wrap)).toBe("https://a.com/p?utm_source=x&size=L");
+    });
+
+    it("readTrimSubmit falls back to the raw value with no block", () => {
+      expect(
+        readTrimSubmit({
+          trimWrap: window.jQuery(),
+          rawValue: "https://a.com/?x=1",
+        }),
+      ).toEqual({ urlString: "https://a.com/?x=1", trimSubmission: null });
+    });
+
+    it("syncParamTrim is debounced, flushParamTrim is immediate", () => {
+      const wrap = mount();
+      syncParamTrim({ trimWrap: wrap, rawValue: URL_WITH_AUTO });
+      expect(wrap.hasClass("hidden")).toBe(true);
+      vi.advanceTimersByTime(200);
+      expect(wrap.hasClass("hidden")).toBe(false);
+
+      flushParamTrim({ trimWrap: wrap, rawValue: "https://a.com/p?z=1" });
+      expect(getTrimmed(wrap)).toBe("https://a.com/p?z=1");
+    });
+
+    it("resetParamTrim clears the block", () => {
+      const wrap = mount();
+      flushParamTrim({ trimWrap: wrap, rawValue: URL_WITH_AUTO });
+      resetParamTrim({ trimWrap: wrap });
+      expect(wrap.hasClass("hidden")).toBe(true);
+      expect(getTrimmed(wrap)).toBe("");
+    });
+
+    it("accessors are no-ops on an empty jQuery set", () => {
+      const empty = window.jQuery();
+      expect(() => {
+        syncParamTrim({ trimWrap: empty, rawValue: "x" });
+        flushParamTrim({ trimWrap: empty, rawValue: "x" });
+        resetParamTrim({ trimWrap: empty });
+      }).not.toThrow();
     });
   });
 });

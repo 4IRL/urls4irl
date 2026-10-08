@@ -38,11 +38,10 @@ import {
 import { closeURLEditPanel } from "./update-url-panel.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import {
-  TRIM_FLUSH_KEY,
-  TRIM_GET_KEY,
-  TRIM_RESET_KEY,
-  TRIM_SUBMISSION_KEY,
   expandParamTrimBlock,
+  flushParamTrim,
+  readTrimSubmit,
+  resetParamTrim,
   type TrimSubmission,
 } from "../trim/param-trim-block.js";
 import { applyUpdatedURLString } from "./apply-url-string.js";
@@ -134,11 +133,10 @@ export function showUpdateURLStringForm({
 
   // Render the trim control from the pre-filled value immediately (flush, not
   // the debounced sync). It never takes focus, so the select-all below is safe.
-  (
-    updateURLStringWrap.find(".urlParamTrimWrap").data(TRIM_FLUSH_KEY) as
-      | ((rawValue: string) => void)
-      | undefined
-  )?.(getInputValue(updateURLStringWrap.find("input.urlStringUpdate")));
+  flushParamTrim({
+    trimWrap: updateURLStringWrap.find(".urlParamTrimWrap"),
+    rawValue: getInputValue(updateURLStringWrap.find("input.urlStringUpdate")),
+  });
 
   // Handle case where iOS needs a direct focus not in a timeout, even with animation
   if (isMobile()) {
@@ -224,11 +222,12 @@ export function hideAndResetUpdateURLStringForm({
   // re-collapses it). A kept-open field stays visible, so re-render it from the
   // resynced value.
   const trimWrap = urlCard.find(".urlParamTrimWrap");
-  (trimWrap.data(TRIM_RESET_KEY) as (() => void) | undefined)?.();
+  resetParamTrim({ trimWrap });
   if (keepOpen) {
-    (
-      trimWrap.data(TRIM_FLUSH_KEY) as ((rawValue: string) => void) | undefined
-    )?.(getInputValue(urlCard.find(".urlStringUpdate")));
+    flushParamTrim({
+      trimWrap,
+      rawValue: getInputValue(urlCard.find(".urlStringUpdate")),
+    });
   }
 
   if (!keepOpen) {
@@ -298,23 +297,14 @@ function updateURLSetup({
 }): [string, UpdateUrlStringRequest, TrimSubmission | null] {
   const postURL = APP_CONFIG.routes.updateURL(utubID, utubUrlID);
 
-  // Flush the trim block's pending debounce so a submit within 200ms of the last
-  // keystroke trims against the input's current value, not a stale parse.
-  const trimWrap = urlCard.find(".urlParamTrimWrap");
-  (trimWrap.data(TRIM_FLUSH_KEY) as ((rawValue: string) => void) | undefined)?.(
-    getInputValue(urlStringUpdateInput),
-  );
-  // Absent block or nothing dropped: the raw input value, byte-for-byte.
-  const getTrimmed = trimWrap.data(TRIM_GET_KEY) as (() => string) | undefined;
-  const updatedURL = (
-    getTrimmed ? getTrimmed() : getInputValue(urlStringUpdateInput)
-  ).trim();
-  const trimSubmission =
-    (
-      trimWrap.data(TRIM_SUBMISSION_KEY) as (() => TrimSubmission) | undefined
-    )?.() ?? null;
+  // Flushes the trim block's pending debounce so a submit within 200ms of the
+  // last keystroke trims against the input's current value, not a stale parse.
+  const { urlString, trimSubmission } = readTrimSubmit({
+    trimWrap: urlCard.find(".urlParamTrimWrap"),
+    rawValue: getInputValue(urlStringUpdateInput),
+  });
 
-  const data: UpdateUrlStringRequest = { urlString: updatedURL };
+  const data: UpdateUrlStringRequest = { urlString: urlString.trim() };
 
   return [postURL, data, trimSubmission];
 }

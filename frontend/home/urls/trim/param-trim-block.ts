@@ -46,6 +46,61 @@ export interface TrimSubmission {
   droppedCount: number;
 }
 
+/**
+ * Typed accessors over the `wrap.data(KEY)` callbacks. Each is a no-op when the
+ * block is absent (an empty `trimWrap` jQuery set has no data).
+ */
+export function syncParamTrim({
+  trimWrap,
+  rawValue,
+}: {
+  trimWrap: JQuery;
+  rawValue: string;
+}): void {
+  (trimWrap.data(TRIM_SYNC_KEY) as ((value: string) => void) | undefined)?.(
+    rawValue,
+  );
+}
+
+export function flushParamTrim({
+  trimWrap,
+  rawValue,
+}: {
+  trimWrap: JQuery;
+  rawValue: string;
+}): void {
+  (trimWrap.data(TRIM_FLUSH_KEY) as ((value: string) => void) | undefined)?.(
+    rawValue,
+  );
+}
+
+export function resetParamTrim({ trimWrap }: { trimWrap: JQuery }): void {
+  (trimWrap.data(TRIM_RESET_KEY) as (() => void) | undefined)?.();
+}
+
+/**
+ * Flushes the pending debounce against the input's current value, then reads the
+ * string to submit and the drop summary. With no block (or nothing dropped) the
+ * string is the raw input value and the submission is null.
+ */
+export function readTrimSubmit({
+  trimWrap,
+  rawValue,
+}: {
+  trimWrap: JQuery;
+  rawValue: string;
+}): { urlString: string; trimSubmission: TrimSubmission | null } {
+  flushParamTrim({ trimWrap, rawValue });
+  const getTrimmed = trimWrap.data(TRIM_GET_KEY) as (() => string) | undefined;
+  const getSubmission = trimWrap.data(TRIM_SUBMISSION_KEY) as
+    | (() => TrimSubmission)
+    | undefined;
+  return {
+    urlString: getTrimmed ? getTrimmed() : rawValue,
+    trimSubmission: getSubmission ? getSubmission() : null,
+  };
+}
+
 const REPARSE_DEBOUNCE_MS = 200;
 const BODY_ID_PREFIX = "urlParamTrimBody";
 const CARET_PATH =

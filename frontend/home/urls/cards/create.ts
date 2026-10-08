@@ -34,14 +34,12 @@ import {
 } from "../tags/combobox.js";
 import { renderAppliedTagsForUrl } from "../tags/tag-render.js";
 import {
-  TRIM_FLUSH_KEY,
-  TRIM_GET_KEY,
-  TRIM_RESET_KEY,
-  TRIM_SUBMISSION_KEY,
-  TRIM_SYNC_KEY,
   TrimMode,
   createParamTrimBlock,
   expandParamTrimBlock,
+  readTrimSubmit,
+  resetParamTrim,
+  syncParamTrim,
   type TrimSubmission,
 } from "../trim/param-trim-block.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
@@ -140,7 +138,7 @@ export function resetNewURLForm(): void {
 // open, so it always starts hidden and collapsed; no collapse reset is needed.
 function resetCreateURLParamTrim(): void {
   const trimWrap = $("#createURLWrap").find(".urlParamTrimWrap");
-  (trimWrap.data(TRIM_RESET_KEY) as (() => void) | undefined)?.();
+  resetParamTrim({ trimWrap });
   trimWrap.remove();
   $("#urlStringCreate").off(TRIM_INPUT_EVENT);
 }
@@ -203,9 +201,10 @@ function mountCreateURLParamTrim(): void {
   $("#urlStringCreate")
     .off(TRIM_INPUT_EVENT)
     .on(TRIM_INPUT_EVENT, function () {
-      (
-        trimWrap.data(TRIM_SYNC_KEY) as ((rawValue: string) => void) | undefined
-      )?.(getInputValue($("#urlStringCreate")));
+      syncParamTrim({
+        trimWrap,
+        rawValue: getInputValue($("#urlStringCreate")),
+      });
     });
 }
 
@@ -242,19 +241,12 @@ function createURLSetup({
   // Assemble submission data
   const urlTitle = getInputValue(createURLTitleInput);
 
-  // Flush the trim block's pending debounce so a submit within 200ms of the last
-  // keystroke trims against the input's current value, not a stale parse.
-  const trimWrap = $("#createURLWrap").find(".urlParamTrimWrap");
-  (trimWrap.data(TRIM_FLUSH_KEY) as ((rawValue: string) => void) | undefined)?.(
-    getInputValue(createURLInput),
-  );
-  // Absent block or nothing dropped: the raw input value, byte-for-byte.
-  const getTrimmed = trimWrap.data(TRIM_GET_KEY) as (() => string) | undefined;
-  const urlString = getTrimmed ? getTrimmed() : getInputValue(createURLInput);
-  const trimSubmission =
-    (
-      trimWrap.data(TRIM_SUBMISSION_KEY) as (() => TrimSubmission) | undefined
-    )?.() ?? null;
+  // Flushes the trim block's pending debounce so a submit within 200ms of the
+  // last keystroke trims against the input's current value, not a stale parse.
+  const { urlString, trimSubmission } = readTrimSubmit({
+    trimWrap: $("#createURLWrap").find(".urlParamTrimWrap"),
+    rawValue: getInputValue(createURLInput),
+  });
 
   // Fold any staged tags from the inline combobox into the create request. The
   // getter returns a defensive copy; defaults to [] when the combobox is absent.
