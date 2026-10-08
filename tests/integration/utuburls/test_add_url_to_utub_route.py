@@ -1733,6 +1733,109 @@ def test_add_url_records_tracking_params_stripped_false(
 
 
 @pytest.mark.parametrize(
+    "client_trimmed_url",
+    [
+        "https://example.com/p?ref=x",
+        "https://example.com/p?sort=date",
+        "https://example.com/p?page=2",
+        "https://example.com/p?q=1&q=2",
+        "https://example.com/search?q=hello%20world",
+        "https://example.com/?continue=https://gogle.cm",
+    ],
+)
+def test_add_url_stores_exactly_what_client_sent_for_non_blocklisted_params(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+    client_trimmed_url,
+):
+    """
+    GIVEN a logged-in creator of a UTub with no URLs yet
+    WHEN they POST a URL whose query holds only non-blocklisted params (the
+        string the client-side trim control submits, so the server must not
+        alter or re-add anything)
+    THEN the response echoes, and the Urls row stores, exactly that string.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+
+        assert Urls.query.filter(Urls.url_string == client_trimmed_url).count() == 0
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: client_trimmed_url,
+            URL_FORM.URL_TITLE: "Client trimmed URL",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    assert (
+        add_url_response.json[MODEL_STRS.URL][URL_SUCCESS.URL_STRING]
+        == client_trimmed_url
+    )
+
+    with app.app_context():
+        assert Urls.query.filter(Urls.url_string == client_trimmed_url).count() == 1
+
+
+def test_add_user_trimmed_url_collision_returns_plain_in_utub_message(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub that already holds "https://example.com/page"
+    WHEN they POST "https://example.com/page" again (the client-trimmed form of
+        "https://example.com/page?ref=x", so the server sees no tracking params)
+    THEN the server responds 409 with URL_ALREADY_IN_UTUB_ERROR and the plain
+        URL_IN_UTUB message, because it cannot tell a user trim happened. This is
+        why the friendlier trim-conflict message is substituted client-side.
+    """
+    stored_url = "https://example.com/page"
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+
+    seed_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: stored_url,
+            URL_FORM.URL_TITLE: "Seed canonical URL",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert seed_response.status_code == 200
+
+    trimmed_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: stored_url,
+            URL_FORM.URL_TITLE: "Trimmed duplicate",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert trimmed_response.status_code == 409
+    trimmed_json = trimmed_response.json
+    assert trimmed_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        int(trimmed_json[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
+    assert trimmed_json[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert trimmed_json[URL_FAILURE.URL_STRING] == stored_url
+
+
+@pytest.mark.parametrize(
     "lowercase_url,valid_url",
     [
         (lowercase_url, valid_url)

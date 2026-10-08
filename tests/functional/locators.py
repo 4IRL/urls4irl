@@ -391,6 +391,46 @@ class HomePageLocators(GenericPageLocator):
     CREATE_FORM_TAG_STAGED_CHIP = f"{WRAP_URL_CREATE} {TAG_STAGED_CHIP}"
     CREATE_FORM_TAG_COMBOBOX_MSG = f"{WRAP_URL_CREATE} {TAG_COMBOBOX_MSG}"
 
+    # Opt-in query-parameter trim control. Built once by createParamTrimBlock and
+    # mounted in the create form (`#createURLWrap`) and inside each URL card's
+    # string-edit form, so the unscoped class selectors below are combined with
+    # WRAP_URL_CREATE / ROW_SELECTED_URL by the CREATE_FORM_* / EDIT_FORM_* sets.
+    TRIM_WRAP = ".urlParamTrimWrap"
+    TRIM_HEADER = f"{TRIM_WRAP} .urlParamTrimHeader"
+    TRIM_CARET = f"{TRIM_HEADER} .title-caret"
+    TRIM_DROPPED_COUNT = f"{TRIM_HEADER} .urlParamTrimDroppedCount"
+    TRIM_CHIP = f"{TRIM_WRAP} .urlParamTrimChips .urlParamTrimChip"
+    TRIM_CHIP_ACTIONABLE = f"{TRIM_CHIP}[aria-pressed]"
+    TRIM_CHIP_AUTO = f"{TRIM_CHIP}[data-auto='true']"
+    TRIM_DROP_ALL = f"{TRIM_WRAP} .urlParamTrimBtn.danger"
+    TRIM_KEEP_ALL = f"{TRIM_WRAP} .urlParamTrimBtn:not(.danger)"
+    TRIM_PREVIEW = f"{TRIM_WRAP} .urlParamTrimPreviewValue"
+
+    CREATE_FORM_TRIM_WRAP = f"{WRAP_URL_CREATE} {TRIM_WRAP}"
+    CREATE_FORM_TRIM_HEADER = f"{WRAP_URL_CREATE} {TRIM_HEADER}"
+    CREATE_FORM_TRIM_CARET = f"{WRAP_URL_CREATE} {TRIM_CARET}"
+    CREATE_FORM_TRIM_DROPPED_COUNT = f"{WRAP_URL_CREATE} {TRIM_DROPPED_COUNT}"
+    CREATE_FORM_TRIM_CHIP = f"{WRAP_URL_CREATE} {TRIM_CHIP}"
+    CREATE_FORM_TRIM_CHIP_ACTIONABLE = f"{WRAP_URL_CREATE} {TRIM_CHIP_ACTIONABLE}"
+    CREATE_FORM_TRIM_CHIP_AUTO = f"{WRAP_URL_CREATE} {TRIM_CHIP_AUTO}"
+    CREATE_FORM_TRIM_DROP_ALL = f"{WRAP_URL_CREATE} {TRIM_DROP_ALL}"
+    CREATE_FORM_TRIM_KEEP_ALL = f"{WRAP_URL_CREATE} {TRIM_KEEP_ALL}"
+    CREATE_FORM_TRIM_PREVIEW = f"{WRAP_URL_CREATE} {TRIM_PREVIEW}"
+
+    EDIT_FORM_TRIM_WRAP = f"{ROW_SELECTED_URL} {TRIM_WRAP}"
+    EDIT_FORM_TRIM_HEADER = f"{ROW_SELECTED_URL} {TRIM_HEADER}"
+    EDIT_FORM_TRIM_CARET = f"{ROW_SELECTED_URL} {TRIM_CARET}"
+    EDIT_FORM_TRIM_DROPPED_COUNT = f"{ROW_SELECTED_URL} {TRIM_DROPPED_COUNT}"
+    EDIT_FORM_TRIM_CHIP_AUTO = f"{ROW_SELECTED_URL} {TRIM_CHIP_AUTO}"
+    EDIT_FORM_TRIM_CHIP_ACTIONABLE = f"{ROW_SELECTED_URL} {TRIM_CHIP_ACTIONABLE}"
+    EDIT_FORM_TRIM_PREVIEW = f"{ROW_SELECTED_URL} {TRIM_PREVIEW}"
+
+    # Outcome banner shown after a trim-and-save (shared deck-level container)
+    URL_OUTCOME_BANNER = "#URLDeckOutcomeBanner"
+    URL_OUTCOME_BANNER_MESSAGE = f"{URL_OUTCOME_BANNER} .urlOutcomeBannerMessage"
+    URL_OUTCOME_BANNER_DETAIL = f"{URL_OUTCOME_BANNER} .urlOutcomeBannerDetail"
+    URL_OUTCOME_BANNER_UNDO = f"{URL_OUTCOME_BANNER} .urlOutcomeBannerAction"
+
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 
     UPDATE_URL_STRING_WRAP = ".updateUrlStringWrap"

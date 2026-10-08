@@ -34,6 +34,11 @@ from tests.functional.playwright_utils import (
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
+from tests.functional.urls_ui.playwright_utils import (
+    TRIM_URL_KEEP_ONLY,
+    TRIM_URL_TWO_PARAMS,
+    set_trim_section_expanded,
+)
 
 pytestmark = pytest.mark.mobile_ui
 
@@ -387,6 +392,70 @@ def test_url_string_edit_via_consolidated_panel_mobile(
     for sibling_btn in _SIBLING_OPTION_BTNS:
         expect(selected_url.locator(sibling_btn)).to_be_visible()
     expect(selected_url.locator(HPL.GO_TO_URL_ICON)).to_be_visible()
+
+
+def test_url_string_trim_section_in_consolidated_panel_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests the query-parameter trim control inside the mobile edit panel.
+
+    GIVEN a user has the consolidated edit panel open on a mobile device
+    WHEN the user types a URL with two query parameters
+    THEN the trim section appears collapsed; expanding it shows both chips inside
+        the viewport; dropping one and submitting saves the trimmed string and
+        leaves the (kept-open) form's trim section collapsed again
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    _open_url_edit_panel_mobile(page=page)
+
+    selected_url.locator(HPL.INPUT_URL_STRING_UPDATE).fill(TRIM_URL_TWO_PARAMS)
+
+    header = page.locator(HPL.EDIT_FORM_TRIM_HEADER)
+    expect(header).to_be_visible()
+    expect(header).to_have_attribute("aria-expanded", "false")
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+    chips = page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE)
+    expect(chips).to_have_count(2)
+    expect(chips.nth(1)).to_be_visible()
+    assert page.viewport_size is not None
+    viewport_width = page.viewport_size["width"]
+    for chip_index in range(2):
+        chip_box = chips.nth(chip_index).bounding_box()
+        assert chip_box is not None
+        assert chip_box["x"] >= 0
+        assert chip_box["x"] + chip_box["width"] <= viewport_width
+
+    chips.nth(1).click()
+    expect(chips.nth(1)).to_have_attribute("aria-pressed", "false")
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+
+    expect(selected_url.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, TRIM_URL_KEEP_ONLY
+    )
+    expect(header).to_have_attribute("aria-expanded", "false")
 
 
 def test_url_edit_button_hidden_and_unreachable_when_not_selected_mobile(
