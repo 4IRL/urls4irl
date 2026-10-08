@@ -158,4 +158,8 @@ Knobs (compose `web` env, read when `web` is created; set them in `.env` or on a
 
 To get a trace for one failure, rerun just that test traced. The `*-built` targets recreate `web`, so a per-command prefix works there: `U4I_UI_TRACE=retain-on-failure make test-file-parallel-built f=<path>`. The dev-mode `make test-file` / `test-marker*` targets `exec` into the running `web`, so restart it traced first: `U4I_UI_TRACE=retain-on-failure make up p=ui d=1`, then run the test, then `make up p=ui d=1` again to turn tracing back off. Open the zip by dragging it onto https://trace.playwright.dev (step-by-step action timeline, screencast, console, network).
 
+**Bot pushes:** use the stronghold's `~/code/.claude/scripts/gh-app-push.sh`, which is what this repo's
+`## Claude Config` → Bot push script names. The copy at this repo's own `.claude/scripts/gh-app-push.sh`
+predates the bot consolidation and hardcodes a token-generator path that no longer exists, so it exits 4.
+
 **CI:** when a `Tests-UI` matrix row fails, `.github/workflows/test.yml` uploads that row's `tmp/test-artifacts/` as the `ui-failure-artifacts-<marker>` artifact (kept 7 days). CI does not set `U4I_UI_TRACE`, so those artifacts carry no `trace.zip`. Download one from the run page, or with the stronghold helper (run from `~/code`): `.claude/scripts/gh-log-fetch.sh run download <run-id> --repo 4IRL/urls4irl --name ui-failure-artifacts-<marker> --dir /tmp/claude/ci-artifacts/<run-id>`, then point `make test-artifacts` at it with `mise exec python -- python scripts/failure_artifacts_report.py --root /tmp/claude/ci-artifacts/<run-id>`.
