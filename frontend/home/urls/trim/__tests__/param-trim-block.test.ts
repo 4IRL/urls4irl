@@ -236,6 +236,35 @@ describe("createParamTrimBlock", () => {
       expect(wrap.find(".urlParamTrimCount").text()).toBe("2 of 2 kept");
     });
 
+    it("renders an auto-only variant when every parameter is auto-stripped", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?utm_source=x&gclid=2");
+      expect(wrap.hasClass("hidden")).toBe(false);
+      expect(wrap.find(".urlParamTrimTitle").text()).toBe(
+        APP_CONFIG.strings.URL_TRIM_AUTO_ONLY_TITLE,
+      );
+      expect(wrap.find(".urlParamTrimTitle").text()).not.toContain("(0)");
+      expect(wrap.find('.urlParamTrimChip[data-auto="true"]').length).toBe(2);
+      expect(chipButtons(wrap).length).toBe(0);
+      expect(wrap.find(".urlParamTrimMsg").hasClass("hidden")).toBe(true);
+      expect(wrap.find(".urlParamTrimActions").hasClass("hidden")).toBe(true);
+      expect(getTrimmed(wrap)).toBe("https://a.com/p?utm_source=x&gclid=2");
+      expect(wrap.find(".urlParamTrimPreviewValue").text()).toBe(
+        "https://a.com/p",
+      );
+    });
+
+    it("leaves the auto-only variant when a normal parameter is typed", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?utm_source=x");
+      flush(wrap, "https://a.com/p?utm_source=x&ref=1");
+      expect(wrap.find(".urlParamTrimTitle").text()).toBe(
+        "Query parameter (1)",
+      );
+      expect(wrap.find(".urlParamTrimMsg").hasClass("hidden")).toBe(false);
+      expect(wrap.find(".urlParamTrimActions").hasClass("hidden")).toBe(false);
+    });
+
     it("shows the block for leading whitespace and submits the trimmed value", () => {
       const wrap = mount();
       flush(wrap, "  https://a.com/p?a=1&b=2  ");

@@ -405,7 +405,13 @@ class HomePageLocators(GenericPageLocator):
     TRIM_DROP_ALL = f"{TRIM_WRAP} .urlParamTrimBtn.danger"
     TRIM_KEEP_ALL = f"{TRIM_WRAP} .urlParamTrimBtn:not(.danger)"
     TRIM_PREVIEW = f"{TRIM_WRAP} .urlParamTrimPreviewValue"
+    TRIM_TITLE = f"{TRIM_HEADER} .urlParamTrimTitle"
+    TRIM_WARNING = f"{TRIM_WRAP} .urlParamTrimMsg"
+    TRIM_ACTIONS = f"{TRIM_WRAP} .urlParamTrimActions"
 
+    CREATE_FORM_TRIM_TITLE = f"{WRAP_URL_CREATE} {TRIM_TITLE}"
+    CREATE_FORM_TRIM_WARNING = f"{WRAP_URL_CREATE} {TRIM_WARNING}"
+    CREATE_FORM_TRIM_ACTIONS = f"{WRAP_URL_CREATE} {TRIM_ACTIONS}"
     CREATE_FORM_TRIM_WRAP = f"{WRAP_URL_CREATE} {TRIM_WRAP}"
     CREATE_FORM_TRIM_HEADER = f"{WRAP_URL_CREATE} {TRIM_HEADER}"
     CREATE_FORM_TRIM_CARET = f"{WRAP_URL_CREATE} {TRIM_CARET}"

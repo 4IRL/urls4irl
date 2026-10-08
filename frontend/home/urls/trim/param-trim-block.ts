@@ -401,15 +401,22 @@ export function createParamTrimBlock({
     const actionable = actionableSegments(parsed);
     const total = actionable.length;
     const dropped = refs.dropped.size;
+    // Every shown parameter is one the server removes itself: nothing to decide,
+    // so the warning, the count and the bulk row give way to an explanatory title.
+    const isAutoOnly = total === 0;
 
     title.text(
-      total === 1
-        ? APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL_ONE
-        : fillTemplate({
-            template: APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL,
-            values: { n: String(total) },
-          }),
+      isAutoOnly
+        ? APP_CONFIG.strings.URL_TRIM_AUTO_ONLY_TITLE
+        : total === 1
+          ? APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL_ONE
+          : fillTemplate({
+              template: APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL,
+              values: { n: String(total) },
+            }),
     );
+    message.toggleClass("hidden", isAutoOnly);
+    actions.toggleClass("hidden", isAutoOnly);
     droppedCount.toggleClass("hidden", dropped === 0).text(
       dropped === 0
         ? ""

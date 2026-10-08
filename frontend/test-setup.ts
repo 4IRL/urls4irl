@@ -281,6 +281,7 @@ const appConfig = {
     URL_DATE_ADDED_ARIA: "Added",
     URL_TRIM_PARAMS_LABEL: "Query parameters ({n})",
     URL_TRIM_PARAMS_LABEL_ONE: "Query parameter (1)",
+    URL_TRIM_AUTO_ONLY_TITLE: "Removed automatically",
     URL_TRIM_WARNING: "Warning: removing parameters may break this link.",
     URL_TRIM_WARNING_ONE:
       "Warning: removing this parameter may break this link.",
