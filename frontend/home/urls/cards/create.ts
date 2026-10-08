@@ -45,6 +45,10 @@ import {
   type TrimSubmission,
 } from "../trim/param-trim-block.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
+import {
+  clearURLOutcomeBanner,
+  showTrimSavedBanner,
+} from "../outcome-banner.js";
 import { isATagSelected } from "../../tags/utils.js";
 import { getState, setState } from "../../../store/app-store.js";
 import {
@@ -124,6 +128,7 @@ export function resetNewURLForm(): void {
   newURLInputRemoveEventListeners();
   resetCreateURLParamTrim();
   resetCreateURLTagCombobox();
+  clearURLOutcomeBanner();
   $("#urlBtnCreate").showClassNormal();
   // Restore the multi-select toggle (guarded on the UTub still having URLs).
   refreshMultiSelectToggleVisibility();
@@ -327,11 +332,10 @@ export function createURL({
 }
 
 // Displays changes related to a successful addition of a new URL
-// `trimSubmission` is threaded for the outcome banner added in a later step.
 function createURLSuccess({
   response,
   utubID,
-  trimSubmission: _trimSubmission,
+  trimSubmission,
 }: {
   response: CreateUrlResponse;
   utubID: number;
@@ -407,6 +411,18 @@ function createURLSuccess({
 
   closeURLSearchAndEraseInput();
   showURLSearchIcon();
+
+  // Last, so the form reset and card selection above (which clear any banner)
+  // cannot wipe it. A save with nothing dropped relies on that same reset to
+  // clear a stale banner.
+  if (trimSubmission !== null && trimSubmission.droppedCount > 0) {
+    showTrimSavedBanner({
+      trimSubmission,
+      utubID,
+      utubUrlID: url.utubUrlID,
+      urlCard: newUrlCard,
+    });
+  }
 }
 
 // DD-36's sanctioned client-side visual exception: the ONLY place the client

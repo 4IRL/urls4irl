@@ -224,6 +224,93 @@
     line-height: 1.45;
 }
 
+/* Outcome banner with an Undo slot (copy of .bulkTagBanner plus actions). */
+.urlOutcomeBanner {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+.urlOutcomeBanner.hidden {
+    display: none;
+}
+
+.urlOutcomeBanner.success {
+    background: rgba(67, 199, 154, 0.12);
+    border: 1px solid var(--splashGreen);
+}
+
+.urlOutcomeBanner.partial {
+    background: rgba(253, 231, 76, 0.12);
+    border: 1px solid var(--editURLColor);
+}
+
+.urlOutcomeBannerBody {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.urlOutcomeBannerDetail {
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.78rem;
+    color: var(--cardURLTextColor);
+    word-break: break-all;
+}
+
+.urlOutcomeBannerActions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.urlOutcomeBannerAction,
+.urlOutcomeBannerDismiss {
+    background: transparent;
+    border: 1px solid var(--grayBadgeSelection);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    color: var(--textPrimary);
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+/* Glyph drawn here so no display string lives in TS; the label is aria-label. */
+.urlOutcomeBannerDismiss::before {
+    content: "\2715";
+}
+
+.urlOutcomeBannerAction[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.urlOutcomeBannerAction:focus-visible,
+.urlOutcomeBannerDismiss:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media (any-pointer: coarse) {
+    .urlOutcomeBannerAction,
+    .urlOutcomeBannerDismiss {
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+    }
+}
+
 /* The chip is the touch target here, so the sub-44px exemption the tag-chip
    remove button enjoys does not apply. Sticky :hover/:focus is re-pinned to the
    resting fill so a tap never leaves a stuck state. */

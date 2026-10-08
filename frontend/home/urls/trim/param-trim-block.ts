@@ -54,7 +54,7 @@ interface TrimRefs {
 }
 
 /** Fills `{key}` placeholders; a function replacer keeps `$&`-style text in values literal. */
-function fillTemplate({
+export function fillTemplate({
   template,
   values,
 }: {

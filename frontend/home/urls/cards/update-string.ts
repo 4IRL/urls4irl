@@ -1,5 +1,4 @@
 import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
-import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { restoreTooltipIfStillTargeted } from "../../../lib/tooltips.js";
@@ -16,14 +15,11 @@ import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { enableEditingURLTitle, isEmptyString } from "./utils.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { isValidURL } from "../validation.js";
-import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
   clearTimeoutIDAndHideLoadingIcon,
 } from "./loading.js";
-import { accessLink } from "./access.js";
-import { copyURLString } from "./copy.js";
 import {
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
@@ -49,11 +45,13 @@ import {
   expandParamTrimBlock,
   type TrimSubmission,
 } from "../trim/param-trim-block.js";
-import { getState, setState } from "../../../store/app-store.js";
+import { applyUpdatedURLString } from "./apply-url-string.js";
+import {
+  clearURLOutcomeBanner,
+  showTrimSavedBanner,
+} from "../outcome-banner.js";
 import {
   HOME_FORM,
-  SEARCH_ACTIVE,
-  URL_ACCESS_TRIGGER,
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
@@ -394,7 +392,7 @@ export async function updateURL(
       xhr: JQuery.jqXHR,
     ) {
       if (xhr.status === 200) {
-        updateURLSuccess({ response, urlCard, trimSubmission });
+        updateURLSuccess({ response, urlCard, utubID, trimSubmission });
       }
     });
 
@@ -422,69 +420,15 @@ export async function updateURL(
 function updateURLSuccess({
   response,
   urlCard,
-  // Unread until Step 7 (outcome banner); renamed so no-unused-vars passes.
-  trimSubmission: _trimSubmission,
+  utubID,
+  trimSubmission,
 }: {
   response: UpdateUrlStringResponse;
   urlCard: JQuery;
+  utubID: number;
   trimSubmission: TrimSubmission | null;
 }): void {
-  // Extract response data
-  const updatedURLString = response.URL.urlString;
-
-  setState({
-    urls: getState().urls.map((existingUrl: UtubUrlItem) =>
-      existingUrl.utubUrlID === response.URL.utubUrlID
-        ? {
-            ...existingUrl,
-            urlString: response.URL.urlString,
-            urlTitle: response.URL.urlTitle,
-            utubUrlTagIDs: response.URL.urlTags.map(
-              (urlTag) => urlTag.utubTagID,
-            ),
-          }
-        : existingUrl,
-    ),
-  });
-
-  // Update URL body with latest published data
-  urlCard
-    .find(".urlString")
-    .attr({ href: updatedURLString })
-    .text(updatedURLString);
-
-  // Update URL options. Dimensions (search_active, active_tag_count) are read
-  // at click time so values reflect the deck state at the moment the user
-  // activates the rebound button — not at updateURLSuccess time.
-  urlCard.find(".urlBtnAccess").offAndOnExact("click", function () {
-    emit({
-      event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: URL_ACCESS_TRIGGER.MAIN_BUTTON,
-      search_active: isURLSearchActive()
-        ? SEARCH_ACTIVE.TRUE
-        : SEARCH_ACTIVE.FALSE,
-      active_tag_count: getActiveTagCount(),
-    });
-    accessLink(updatedURLString);
-  });
-
-  urlCard.find(".goToUrlIcon").offAndOnExact("click", function () {
-    emit({
-      event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
-      search_active: isURLSearchActive()
-        ? SEARCH_ACTIVE.TRUE
-        : SEARCH_ACTIVE.FALSE,
-      active_tag_count: getActiveTagCount(),
-    });
-    accessLink(updatedURLString);
-  });
-
-  urlCard
-    .find(".urlBtnCopy")
-    .offAndOnExact("click", function (this: HTMLElement) {
-      copyURLString(updatedURLString, this);
-    });
+  applyUpdatedURLString({ response, urlCard });
 
   // Panel-aware: on mobile the title form can still be open alongside this
   // string field. Suppress the sibling restore so submitting the string does
@@ -511,6 +455,18 @@ function updateURLSuccess({
       announce: $("#fieldSavedAnnouncement"),
       label: APP_CONFIG.strings.FIELD_SAVED_LABEL_URL,
     });
+  }
+
+  if (trimSubmission !== null && trimSubmission.droppedCount > 0) {
+    showTrimSavedBanner({
+      trimSubmission,
+      utubID,
+      utubUrlID: response.URL.utubUrlID,
+      urlCard,
+    });
+  } else {
+    // The next save supersedes any earlier outcome banner.
+    clearURLOutcomeBanner();
   }
 }
 

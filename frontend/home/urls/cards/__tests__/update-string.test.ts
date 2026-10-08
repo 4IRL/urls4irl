@@ -9,6 +9,10 @@ import {
   createParamTrimBlock,
 } from "../../trim/param-trim-block.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
+import {
+  clearURLOutcomeBanner,
+  showTrimSavedBanner,
+} from "../../outcome-banner.js";
 import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
@@ -63,6 +67,11 @@ vi.mock("../loading.js", () => ({
 vi.mock("../get.js", () => ({
   getUpdatedURL: vi.fn(() => Promise.resolve()),
   handleRejectFromGetURL: vi.fn(),
+}));
+
+vi.mock("../../outcome-banner.js", () => ({
+  showTrimSavedBanner: vi.fn(),
+  clearURLOutcomeBanner: vi.fn(),
 }));
 
 vi.mock("../selection.js", () => ({
@@ -1145,6 +1154,46 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
       "true",
     );
+  });
+
+  it("shows the Undo banner with the untrimmed original after a trim-and-save", async () => {
+    syncFromInput(TRIM_URL);
+    dropChip(0);
+    dropChip(2);
+    mockSuccess("https://example.com/p?b=2");
+
+    await updateURL(urlStringInput, urlCard, 7);
+
+    expect(showTrimSavedBanner).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(showTrimSavedBanner).mock.calls[0][0];
+    expect(args.trimSubmission).toEqual({
+      originalUrlString: TRIM_URL,
+      droppedSegments: ["a=1", "c=3"],
+      droppedCount: 2,
+    });
+    expect(args.utubID).toBe(7);
+    expect(args.utubUrlID).toBe(1);
+    expect(args.urlCard[0]).toBe(urlCard[0]);
+  });
+
+  it("shows no banner and clears a stale one when nothing was dropped", async () => {
+    syncFromInput("https://example.com/p?a=1&b=2");
+    mockSuccess("https://example.com/p?a=1&b=2");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    expect(clearURLOutcomeBanner).toHaveBeenCalled();
+  });
+
+  it("shows no banner when the trim block is absent", async () => {
+    trimWrap.remove();
+    urlStringInput.val("https://example.com/p?a=1");
+    mockSuccess("https://example.com/p?a=1");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
   });
 
   it("keeps the server message and collapsed state on a 409 with nothing dropped", async () => {

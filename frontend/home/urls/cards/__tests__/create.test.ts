@@ -8,6 +8,11 @@ import { renderAppliedTagsForUrl } from "../../tags/tag-render.js";
 import { getNumOfURLs } from "../../utils.js";
 import { getState } from "../../../../store/app-store.js";
 import { createURLBlock } from "../cards.js";
+import { selectURLCard } from "../selection.js";
+import {
+  clearURLOutcomeBanner,
+  showTrimSavedBanner,
+} from "../../outcome-banner.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
   createURL,
@@ -56,6 +61,11 @@ vi.mock("../../utils.js", () => ({
 
 vi.mock("../conflict-handler.js", () => ({
   checkForStaleDataOn409: vi.fn(),
+}));
+
+vi.mock("../../outcome-banner.js", () => ({
+  showTrimSavedBanner: vi.fn(),
+  clearURLOutcomeBanner: vi.fn(),
 }));
 
 vi.mock("../../../tags/utils.js", () => ({
@@ -844,6 +854,102 @@ describe("createURL - query-parameter trim block", () => {
     expect(submittedURLString()).toBe(trimmed);
     expect(createURLBlock).toHaveBeenCalledTimes(1);
     expect(trimWrap()).toHaveLength(0);
+  });
+
+  describe("outcome banner", () => {
+    function succeedWith(urlString: string): void {
+      const response = {
+        utubID: 1,
+        addedByUserID: 1,
+        URL: {
+          utubUrlID: 42,
+          urlString,
+          urlTitle: "T",
+          utubUrlTagIDs: [],
+          addedAt: "2024-03-09T12:00:00+00:00",
+        },
+        appliedTags: [],
+      };
+      mockCreateRequest({
+        done: (callback: unknown) =>
+          (callback as (r: unknown, t: unknown, x: unknown) => void)(
+            response,
+            "success",
+            { status: 200 },
+          ),
+      });
+    }
+
+    it("shows the Undo banner with the untrimmed original after a trim-and-save", () => {
+      typeURL(QUERY_URL);
+      vi.advanceTimersByTime(200);
+      trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+      succeedWith("https://example.com/p?a=1&c=3");
+
+      submit();
+
+      expect(showTrimSavedBanner).toHaveBeenCalledTimes(1);
+      const args = vi.mocked(showTrimSavedBanner).mock.calls[0][0];
+      expect(args.trimSubmission).toEqual({
+        originalUrlString: QUERY_URL,
+        droppedSegments: ["b=2"],
+        droppedCount: 1,
+      });
+      expect(args.utubID).toBe(1);
+      expect(args.utubUrlID).toBe(42);
+      expect(args.urlCard[0]).toBe(
+        vi.mocked(createURLBlock).mock.results[0].value[0],
+      );
+    });
+
+    it("shows no banner, and the form reset clears a stale one, when nothing was dropped", () => {
+      typeURL(QUERY_URL);
+      vi.advanceTimersByTime(200);
+      succeedWith(QUERY_URL);
+      vi.mocked(clearURLOutcomeBanner).mockClear();
+
+      submit();
+
+      expect(showTrimSavedBanner).not.toHaveBeenCalled();
+      expect(clearURLOutcomeBanner).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows the banner after the reset and selection that clear it", () => {
+      typeURL(QUERY_URL);
+      vi.advanceTimersByTime(200);
+      trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+      succeedWith("https://example.com/p?a=1&c=3");
+      vi.mocked(selectURLCard).mockImplementationOnce(() =>
+        clearURLOutcomeBanner(),
+      );
+
+      submit();
+
+      const clearOrders = vi
+        .mocked(clearURLOutcomeBanner)
+        .mock.invocationCallOrder.slice();
+      const showOrder =
+        vi.mocked(showTrimSavedBanner).mock.invocationCallOrder[0];
+      expect(Math.max(...clearOrders)).toBeLessThan(showOrder);
+    });
+
+    it("shows no banner when the trim block is absent", () => {
+      trimWrap().remove();
+      urlStringInput.val(QUERY_URL);
+      succeedWith(QUERY_URL);
+
+      submit();
+
+      expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    });
+
+    it("clears the banner when the create form is reset", () => {
+      vi.mocked(clearURLOutcomeBanner).mockClear();
+
+      createURLHideInput();
+
+      expect(clearURLOutcomeBanner).toHaveBeenCalled();
+    });
   });
 
   it("removes the block and its input listener when the form resets", () => {
