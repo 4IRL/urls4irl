@@ -1,0 +1,261 @@
+/* Collapsible "Query parameters" trim control (Add-URL form and URL-card edit).
+   The disclosure reuses the global `.title-caret` / `.title-caret.closed` rules
+   from decks.css as-is; this file adds the deck-header chrome that decks.css
+   scopes to the three deck IDs, the body collapse and the chips. */
+
+.urlParamTrimWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* Header button reset + deck-header hover/focus chrome. */
+.urlParamTrimHeader {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--cardURLTextColor);
+    cursor: pointer;
+    align-self: flex-start;
+    transition: filter 0.15s ease;
+}
+
+/* Negative offset so an `overflow: hidden` ancestor cannot clip the ring. */
+.urlParamTrimHeader:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+/* Not gated to >=992px like the decks: this disclosure works at every width. */
+@media (hover: hover) {
+    .urlParamTrimHeader:hover {
+        filter: brightness(0.8);
+    }
+}
+
+.urlParamTrimTitle {
+    font-size: var(--fs-sm);
+    margin-left: 4px;
+}
+
+/* Keeps "N dropped" visible while collapsed so collapsing never hides that the
+   string about to be saved differs from the one in the input. */
+.urlParamTrimDroppedCount {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    color: var(--removeIconColor);
+    margin-left: 6px;
+}
+
+/* Collapse shape copied from `.deck.collapsed .content` (decks.css). `visibility`
+   is in the transition list so the hide defers to the end of the animation, and
+   keeps collapsed content out of the tab order and the a11y tree (never
+   `display: none`, which kills the transition, nor bare `opacity: 0`). */
+.urlParamTrimBody {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease;
+}
+
+/* No flex gap between the header and the zero-height collapsed body. */
+.urlParamTrimWrap.collapsed {
+    gap: 0;
+}
+
+.urlParamTrimWrap.collapsed .urlParamTrimBody {
+    height: 0;
+    opacity: 0;
+    visibility: hidden;
+    overflow: hidden;
+}
+
+.urlParamTrimMsg {
+    font-size: 0.78rem;
+    color: var(--cardURLTextColor);
+}
+
+/* --cautionText, never --editURLColor (fill/border-only, illegible on light). */
+.urlParamTrimMsg.warn {
+    color: var(--cautionText);
+}
+
+.urlParamTrimMsg .warnIcon {
+    font-style: normal;
+    margin-right: 4px;
+}
+
+/* Wraps and scrolls vertically only: a horizontal scroller would fight the card
+   swipe gesture's `touch-action: pan-y`. */
+.urlParamTrimChips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    background: var(--pageBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    padding: 7px 8px;
+    max-height: 8.5rem;
+    overflow-y: auto;
+}
+
+.urlParamTrimChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    background: rgba(126, 130, 130, 0.18);
+    border: 1px solid var(--grayBadgeSelection);
+    border-radius: 12px;
+    padding: 3px 8px;
+    color: var(--textPrimary);
+    font-family: inherit;
+    font-weight: var(--fw-bold);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color 0.2s ease,
+        opacity 0.2s ease;
+}
+
+/* `min-width: 0` lets the flex item shrink so the ellipsis can ever apply. */
+.urlParamTrimChipText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+    min-width: 0;
+}
+
+.urlParamTrimChipGlyph {
+    font-size: 0.78rem;
+    line-height: 1;
+}
+
+/* Dropped: strikethrough AND an X glyph, never colour alone (WCAG 1.4.1). */
+.urlParamTrimChip[aria-pressed="false"] {
+    background: transparent;
+    border-color: var(--removeIconColor);
+    color: var(--removeIconColor);
+    text-decoration: line-through;
+    opacity: 0.85;
+}
+
+/* Removed by the server's tracking blocklist: inert, never a user decision. */
+.urlParamTrimChip[data-auto="true"] {
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--cardURLTextColor);
+    color: var(--cardURLTextColor);
+    text-decoration: line-through;
+    cursor: default;
+    font-weight: var(--fw-regular);
+}
+
+.urlParamTrimAutoTag {
+    font-size: 0.65rem;
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+
+.urlParamTrimActions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.urlParamTrimBtn {
+    background: transparent;
+    border: 1px solid var(--grayBadgeSelection);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    color: var(--textPrimary);
+    font-family: inherit;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.urlParamTrimBtn.danger {
+    color: var(--removeIconColor);
+    border-color: var(--removeIconColor);
+}
+
+.urlParamTrimChip:focus-visible,
+.urlParamTrimBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.urlParamTrimCount {
+    font-size: 0.78rem;
+    color: var(--cardURLTextColor);
+    margin-left: auto;
+}
+
+.urlParamTrimPreview {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-left: 2px solid var(--splashGreen);
+    padding-left: 9px;
+}
+
+.urlParamTrimPreviewLabel {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cardURLTextColor);
+}
+
+.urlParamTrimPreviewValue {
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--textPrimary);
+    word-break: break-all;
+    line-height: 1.45;
+}
+
+/* The chip is the touch target here, so the sub-44px exemption the tag-chip
+   remove button enjoys does not apply. Sticky :hover/:focus is re-pinned to the
+   resting fill so a tap never leaves a stuck state. */
+@media (any-pointer: coarse) {
+    .urlParamTrimChip,
+    .urlParamTrimBtn,
+    .urlParamTrimHeader {
+        min-height: 2.75rem;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlParamTrimChip[aria-pressed="true"]:hover,
+    .urlParamTrimChip[aria-pressed="true"]:focus {
+        background: rgba(126, 130, 130, 0.18) !important;
+    }
+
+    .urlParamTrimChip[aria-pressed="false"]:hover,
+    .urlParamTrimChip[aria-pressed="false"]:focus {
+        background: transparent !important;
+    }
+
+    .urlParamTrimBtn:hover,
+    .urlParamTrimBtn:focus {
+        background: transparent !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .urlParamTrimChip,
+    .urlParamTrimBody,
+    .urlParamTrimHeader,
+    .urlParamTrimWrap .title-caret {
+        transition: none;
+    }
+}

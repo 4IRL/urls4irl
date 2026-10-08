@@ -307,6 +307,8 @@ const appConfig = {
     URL_TRIM_CONFLICT:
       "That URL is already in this UTub once the parameters you removed are dropped.",
     URL_TRIM_DROPS_RESET: "URL changed — all parameters are kept again.",
+    URL_TRIM_VERB_DROPPED: "Dropped",
+    URL_TRIM_VERB_KEPT: "Kept",
     CROSS_SEARCH_NO_RESULTS: "No results found across your UTubs",
     CROSS_SEARCH_SHORT_QUERY:
       "Type a search and press Enter or the search button",

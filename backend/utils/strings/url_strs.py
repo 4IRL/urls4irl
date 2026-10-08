@@ -178,6 +178,9 @@ URL_TRIM_CONFLICT = (
     "That URL is already in this UTub once the parameters you removed are dropped."
 )
 URL_TRIM_DROPS_RESET = "URL changed — all parameters are kept again."
+# `{verb}` values for URL_TRIM_ANNOUNCE (single chip toggle).
+URL_TRIM_VERB_DROPPED = "Dropped"
+URL_TRIM_VERB_KEPT = "Kept"
 
 
 class URL_GENERAL:
