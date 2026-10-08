@@ -56,6 +56,8 @@ Core domain: `Users` -> `Utub_Members` (with `Member_Role`: MEMBER/CREATOR/CO_CR
 
 ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.3.
 
+`Utubs` and `Utub_Urls` carry nullable soft-delete columns (`deletedAt`, `deletedBy`; `Utub_Urls` also has the `trashedTagIds` tag snapshot), where `NULL` means live. They are unused until the soft-delete-restore behavior phases land.
+
 ## Frontend Structure
 
 TypeScript ES6 modules in `frontend/` built by Vite. jQuery (3.7.1) and Bootstrap (5.2.3) loaded as global `<script>` tags and re-exported from `frontend/lib/globals.ts`. Templates are Jinja2 in `backend/templates/`. `init_vite_app()` in `backend/__init__.py` handles manifest-based asset resolution.

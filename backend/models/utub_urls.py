@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 
 from backend import db
 from backend.models.urls import Urls
@@ -39,12 +40,29 @@ class Utub_Urls(db.Model):
     last_accessed: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="lastAccessed"
     )
+    # Soft-delete marker; NULL means not trashed.
+    deleted_at: datetime | None = Column(
+        DateTime(timezone=True), nullable=True, default=None, name="deletedAt"
+    )
+    deleted_by: int | None = Column(
+        Integer, ForeignKey("Users.id"), nullable=True, default=None, name="deletedBy"
+    )
+    # Snapshot of the URL's tag ids at delete time. NULL means "no snapshot" (so no
+    # default=list). JSONB has no mutation tracking: always reassign a new list,
+    # never mutate in place.
+    trashed_tag_ids: list[int] | None = Column(
+        JSONB(none_as_null=True), nullable=True, default=None, name="trashedTagIds"
+    )
 
     standalone_url: Urls = db.relationship("Urls")
     utub = db.relationship("Utubs", back_populates="utub_urls")
     url_tags = db.relationship("Utub_Url_Tags", back_populates="tagged_url")
 
     UniqueConstraint(utub_id, url_id, name="unique_url_per_utub")
+
+    @property
+    def is_trashed(self) -> bool:
+        return self.deleted_at is not None
 
     @property
     def associated_tag_ids(self) -> list[int]:
