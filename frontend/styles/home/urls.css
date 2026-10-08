@@ -340,17 +340,19 @@ a.urlString {
 
     /* Tighten the dead space between the URL field (and its trim disclosure) and
        the full-width Cancel bar while the consolidated edit panel is open. The
-       string wrap's own 20px bottom padding duplicates the 20px
-       `.field-saved-tick-slot` below it (the title wrap already drops it, above),
-       and the selected card's `.urlTags` keeps 35px of padding even when it holds
-       no tags. Neither is needed while the form is open; both stay on a closed
-       card, where `.urlTags` separates the URL from the option buttons. */
-    .updateUrlStringWrap {
-        padding-bottom: 0;
-    }
-
+       selected card's `.urlTags` keeps 35px of padding even when it holds no
+       tags, and the option row keeps 15px above the Cancel bar; the 20px
+       `.field-saved-tick-slot` already separates the field from both. The tick
+       slot + 4px lands the field→Cancel gap on the same ~24px as the field→field
+       gap below. Both stay on a closed card, where `.urlTags` and the 15px
+       separate the URL from the option buttons. (The string wrap's own bottom
+       padding is dropped further down, after its base rule, so it takes effect.) */
     .urlRow[filterable="true"][urlSelected="true"] .urlRowContent:has(.updateUrlStringWrap:not(.hidden)) .urlTags:not(:has(.tagBadge)) {
         padding: 0;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlRowContent:has(.updateUrlStringWrap:not(.hidden)) .urlOptions {
+        padding-top: 4px;
     }
 }
 
@@ -436,22 +438,26 @@ a.urlString {
     padding-top: 20px;
 }
 
-/* Coarse-pointer (mobile) only: match the vertical gap between the URL card's
-   Title and URL-string inputs to the gap between the UTub header's name and
-   description inputs (measured ~36px). On touch, each field also reserves a
-   ~1.25rem (20px) `.field-saved-tick-slot` below its input, so the desktop
-   20px+20px inter-wrap padding pushes the visual title→string gap to ~60px —
-   24px wider than the UTub panel. Drop the title wrap's bottom padding and trim
-   the string wrap's top padding to 16px so tick-slot(20px) + 16px = ~36px,
-   matching the UTub name→description gap. Desktop (no tick slot, side-by-side
-   layout) keeps the 20/20 padding above and is untouched. */
+/* Coarse-pointer (mobile) only: keep the vertical gap between the URL card's
+   Title and URL-string inputs equal to the gap between the UTub header's name
+   and description inputs (utubs.css), both ~24px. On touch, each field also
+   reserves a ~1.25rem (20px) `.field-saved-tick-slot` below its input, so the
+   desktop 20px+20px inter-wrap padding would push the visual title→string gap
+   to ~60px. Drop the title wrap's bottom padding and trim the string wrap's top
+   padding to 4px so tick-slot(20px) + 4px = ~24px. The string wrap's bottom
+   padding is dropped too: the tick slot below its last field already provides
+   the space above the Cancel bar (the title wrap does the same above). This
+   block sits after the base `.updateUrlStringWrap` rule on purpose, so it wins
+   by source order. Desktop (no tick slot, side-by-side layout) keeps the 20/20
+   padding above and is untouched. */
 @media (any-pointer: coarse) {
     .updateUrlTitleWrap {
         padding-bottom: 0;
     }
 
     .updateUrlStringWrap {
-        padding-top: 16px;
+        padding-top: 4px;
+        padding-bottom: 0;
     }
 }
 

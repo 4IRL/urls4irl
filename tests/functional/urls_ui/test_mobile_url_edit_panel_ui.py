@@ -32,6 +32,7 @@ from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_until_css_property,
     wait_until_hidden,
+    wait_until_vertical_gap,
     wait_until_visible_css_selector,
 )
 from tests.functional.urls_ui.playwright_utils import (
@@ -433,15 +434,17 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
 
     # Collapsed, the disclosure must not leave a tall dead zone above the Close
-    # bar: the string wrap's bottom padding and the empty `.urlTags` padding are
-    # dropped while the panel is open (the gap was ~125px before).
+    # bar: the string wrap's bottom padding, the empty `.urlTags` padding and the
+    # option row's top padding are tightened while the panel is open (the gap was
+    # ~95px before; ~29px now: the 20px "Saved" slot plus 4px, plus the Close
+    # button's own margin).
     header_box = header.bounding_box()
     close_box = selected_url.locator(
         HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
     ).bounding_box()
     assert header_box is not None and close_box is not None
     gap_below_header = close_box["y"] - (header_box["y"] + header_box["height"])
-    assert gap_below_header < 70, f"dead space above Close bar: {gap_below_header}px"
+    assert gap_below_header < 45, f"dead space above Close bar: {gap_below_header}px"
 
     set_trim_section_expanded(
         page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
@@ -469,6 +472,74 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
         HPL.URL_STRING_IN_DATA, TRIM_URL_KEEP_ONLY
     )
     expect(header).to_have_attribute("aria-expanded", "false")
+
+
+def _vertical_center(*, locator: Locator) -> float:
+    box = locator.bounding_box()
+    assert box is not None
+    return box["y"] + box["height"] / 2
+
+
+def test_url_edit_panel_field_spacing_and_errored_submit_centering_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests the consolidated edit panel's vertical rhythm and that each field's
+    green check stays centered on its input box when an error message shows.
+
+    GIVEN a user has the consolidated edit panel open on a mobile device
+    WHEN the panel is open, then each field is blanked and submitted
+    THEN the Title-to-URL gap is the same ~24px as the UTub name-to-description
+        gap, and each submit button stays vertically centered on its own input
+        (not on the input plus its error message)
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    _open_url_edit_panel_mobile(page=page)
+
+    title_input = selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)
+    string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
+    wait_until_vertical_gap(
+        page=page,
+        upper_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}",
+        lower_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+        slot_selector=f"{HPL.ROW_SELECTED_URL} .updateUrlTitleWrap .field-saved-tick-slot",
+        min_px=3,
+        max_px=5,
+    )
+
+    for input_locator, submit_selector, error_selector in (
+        (
+            title_input,
+            HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE,
+            f"{HPL.INPUT_URL_TITLE_UPDATE}-error",
+        ),
+        (
+            string_input,
+            HPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
+            f"{HPL.INPUT_URL_STRING_UPDATE}-error",
+        ),
+    ):
+        input_locator.fill("")
+        submit_button = selected_url.locator(submit_selector)
+        submit_button.click()
+        expect(selected_url.locator(error_selector)).to_be_visible()
+        offset = abs(
+            _vertical_center(locator=input_locator)
+            - _vertical_center(locator=submit_button.locator("svg"))
+        )
+        assert offset <= 1.5, f"{submit_selector} is {offset}px off its errored input"
 
 
 def test_url_edit_button_hidden_and_unreachable_when_not_selected_mobile(

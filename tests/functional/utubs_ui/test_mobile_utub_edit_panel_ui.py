@@ -77,6 +77,16 @@ def test_utub_edit_panel_toggle_opens_both_name_and_description_mobile(
         page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
     )
 
+    # The description row adds only 4px of its own top padding on top of the name
+    # field's reserved "Saved" tick slot, matching the URL card's title -> string
+    # spacing. Assert the padding itself: the rendered total also depends on the
+    # header's min-height centering, which varies with the UTub's data.
+    expect(
+        page.locator(HPL.INPUT_UTUB_DESCRIPTION_UPDATE).locator(
+            "xpath=ancestor::div[contains(@class, 'createDiv')][1]"
+        )
+    ).to_have_css("padding-top", "4px")
+
     # The name input pre-fills with the current (clean) name — capture it to prove
     # it is untouched by the independent description submit below.
     original_name = page.locator(HPL.INPUT_UTUB_NAME_UPDATE).input_value()
