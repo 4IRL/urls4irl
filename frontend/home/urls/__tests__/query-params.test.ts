@@ -281,6 +281,31 @@ describe("isAutoStrippedParam", () => {
     );
   });
 
+  it("matches a percent-encoded name after decoding", () => {
+    expect(isAutoStrippedParam({ name: "utm%5Fsource", scheme: "https" })).toBe(
+      true,
+    );
+    expect(isAutoStrippedParam({ name: "%67clid", scheme: "https" })).toBe(
+      true,
+    );
+  });
+
+  it("decodes + to a space like the server, so utm+source is not utm_source", () => {
+    expect(isAutoStrippedParam({ name: "utm+source", scheme: "https" })).toBe(
+      false,
+    );
+    expect(isAutoStrippedParam({ name: "utm%2Bsource", scheme: "https" })).toBe(
+      false,
+    );
+  });
+
+  it("falls back to the raw name on a malformed escape instead of throwing", () => {
+    expect(isAutoStrippedParam({ name: "100%", scheme: "https" })).toBe(false);
+    expect(isAutoStrippedParam({ name: "utm_%zz", scheme: "https" })).toBe(
+      true,
+    );
+  });
+
   it("matches the name case-insensitively", () => {
     expect(isAutoStrippedParam({ name: "UTM_SOURCE", scheme: "http" })).toBe(
       true,

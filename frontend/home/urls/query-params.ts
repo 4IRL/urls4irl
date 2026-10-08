@@ -17,9 +17,20 @@ export interface ParsedQuery {
   hadQuery: boolean;
 }
 
+/** Form-decodes a query name like `URLSearchParams`; a malformed escape keeps the raw name. */
+function decodeParamName(name: string): string {
+  const spaced = name.replace(/\+/g, " ");
+  try {
+    return decodeURIComponent(spaced);
+  } catch {
+    return spaced;
+  }
+}
+
 /**
- * Mirrors `UrlValidator._is_tracking_param`: the name is lowercased, matched
- * exactly or by prefix, and only for the web schemes the server strips.
+ * Mirrors `UrlValidator._is_tracking_param`: the name is percent-decoded (the
+ * server matches after `URLSearchParams` decoding), lowercased, matched exactly
+ * or by prefix, and only for the web schemes the server strips.
  */
 export function isAutoStrippedParam({
   name,
@@ -34,7 +45,7 @@ export function isAutoStrippedParam({
     TRACKING_STRIP_SCHEMES,
   } = APP_CONFIG.constants;
   if (!TRACKING_STRIP_SCHEMES.includes(scheme.toLowerCase())) return false;
-  const lowered = name.toLowerCase();
+  const lowered = decodeParamName(name).toLowerCase();
   return (
     TRACKING_QUERY_PARAMS.includes(lowered) ||
     TRACKING_QUERY_PARAM_PREFIXES.some((prefix) => lowered.startsWith(prefix))
