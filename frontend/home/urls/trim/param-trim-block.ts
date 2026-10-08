@@ -106,9 +106,6 @@ const BODY_ID_PREFIX = "urlParamTrimBody";
 const CARET_PATH =
   "M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z";
 const SVG_NS = "http://www.w3.org/2000/svg";
-const GLYPH_KEPT = "✓";
-const GLYPH_DROPPED = "✕";
-const GLYPH_WARNING = "⚠";
 
 let trimIdCounter = 0;
 
@@ -204,8 +201,7 @@ export function createParamTrimBlock({
 
   const warningIcon = $(document.createElement("i"))
     .addClass("warnIcon")
-    .attr("aria-hidden", "true")
-    .text(GLYPH_WARNING);
+    .attr("aria-hidden", "true");
   const warningText = $(document.createElement("span"));
   const message = $(document.createElement("div"))
     .addClass("urlParamTrimMsg warn")
@@ -338,10 +334,10 @@ export function createParamTrimBlock({
     }
 
     const isDropped = refs.dropped.has(segment.index);
+    // Drawn by CSS keyed on the chip's aria-pressed, so no display text lives here.
     const glyph = $(document.createElement("span"))
       .addClass("urlParamTrimChipGlyph")
-      .attr("aria-hidden", "true")
-      .text(isDropped ? GLYPH_DROPPED : GLYPH_KEPT);
+      .attr("aria-hidden", "true");
     const chip = $(document.createElement("button"))
       .addClass("urlParamTrimChip tabbable")
       .attr({

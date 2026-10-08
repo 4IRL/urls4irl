@@ -236,6 +236,23 @@ describe("createParamTrimBlock", () => {
       expect(wrap.find(".urlParamTrimCount").text()).toBe("2 of 2 kept");
     });
 
+    it("draws glyphs in CSS: glyph spans and the warning icon hold no text", () => {
+      const wrap = mount();
+      flush(wrap, URL_WITH_AUTO);
+      chipButtons(wrap).first().trigger("click");
+      const glyphs = wrap.find(".urlParamTrimChipGlyph");
+      expect(glyphs.length).toBe(2);
+      glyphs.each((_, glyph) => {
+        expect(glyph.textContent).toBe("");
+        expect(glyph.getAttribute("aria-hidden")).toBe("true");
+      });
+      expect(wrap.find(".warnIcon").text()).toBe("");
+      expect(wrap.find(".warnIcon").attr("aria-hidden")).toBe("true");
+      // The CSS keys the check/cross on the chip's own aria-pressed.
+      expect(chipButtons(wrap).first().attr("aria-pressed")).toBe("false");
+      expect(chipButtons(wrap).eq(1).attr("aria-pressed")).toBe("true");
+    });
+
     it("renders an auto-only variant when every parameter is auto-stripped", () => {
       const wrap = mount();
       flush(wrap, "https://a.com/p?utm_source=x&gclid=2");

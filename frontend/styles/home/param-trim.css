@@ -88,6 +88,12 @@
     margin-right: 4px;
 }
 
+/* Glyphs drawn here (like the banner dismiss button) so no display text lives in
+   TS; both are aria-hidden and decorative. */
+.urlParamTrimMsg .warnIcon::before {
+    content: "\26A0";
+}
+
 /* Wraps and scrolls vertically only: a horizontal scroller would fight the card
    swipe gesture's `touch-action: pan-y`. */
 .urlParamTrimChips {
@@ -134,6 +140,14 @@
 .urlParamTrimChipGlyph {
     font-size: 0.78rem;
     line-height: 1;
+}
+
+.urlParamTrimChip[aria-pressed="true"] .urlParamTrimChipGlyph::before {
+    content: "\2713";
+}
+
+.urlParamTrimChip[aria-pressed="false"] .urlParamTrimChipGlyph::before {
+    content: "\2715";
 }
 
 /* Dropped: strikethrough AND an X glyph, never colour alone (WCAG 1.4.1). */
