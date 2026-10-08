@@ -402,6 +402,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Non-HTTP URL warning dismissed (no access)",
         category=EventCategory.UI,
     ),
+    EventName.UI_URL_PARAMS_TRIMMED: EventRegistryEntry(
+        description="URL query-parameter trim control used (toggle, drop/keep all, undo)",
+        category=EventCategory.UI,
+        dimensions={
+            "form": ("url_create", "url_string_edit"),
+            "action": ("toggle", "drop_all", "keep_all", "undo"),
+        },
+    ),
     EventName.UI_UTUB_SEARCH_OPEN: EventRegistryEntry(
         description="UTub search box opened",
         category=EventCategory.UI,

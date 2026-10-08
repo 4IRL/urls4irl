@@ -1,6 +1,12 @@
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS } from "../../../lib/constants.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
+import {
+  URL_PARAMS_TRIMMED_ACTION,
+  URL_PARAMS_TRIMMED_FORM,
+} from "../../../types/metrics-dim-values.js";
 import {
   buildTrimmedUrl,
   isAutoStrippedParam,
@@ -211,6 +217,23 @@ export function createParamTrimBlock({
     announcer.text(text);
   }
 
+  const metricsForm =
+    mode === TrimMode.URL
+      ? URL_PARAMS_TRIMMED_FORM.URL_STRING_EDIT
+      : URL_PARAMS_TRIMMED_FORM.URL_CREATE;
+
+  function emitTrimAction({
+    action,
+  }: {
+    action: (typeof URL_PARAMS_TRIMMED_ACTION)[keyof typeof URL_PARAMS_TRIMMED_ACTION];
+  }): void {
+    emit({
+      event: UI_EVENTS.UI_URL_PARAMS_TRIMMED,
+      form: metricsForm,
+      action,
+    });
+  }
+
   function keptTotals(): { kept: number; total: number } {
     const total = refs.parsed ? actionableSegments(refs.parsed).length : 0;
     return { kept: total - refs.dropped.size, total };
@@ -224,6 +247,7 @@ export function createParamTrimBlock({
       refs.dropped.add(segment.index);
     }
     renderTrimBlock();
+    emitTrimAction({ action: URL_PARAMS_TRIMMED_ACTION.TOGGLE });
     const { kept, total } = keptTotals();
     announce(
       fillTemplate({
@@ -425,6 +449,7 @@ export function createParamTrimBlock({
 
   function setAllDropped({ shouldDrop }: { shouldDrop: boolean }): void {
     if (!refs.parsed) return;
+    const droppedBefore = refs.dropped.size;
     refs.dropped.clear();
     if (shouldDrop) {
       actionableSegments(refs.parsed).forEach((segment) =>
@@ -432,6 +457,14 @@ export function createParamTrimBlock({
       );
     }
     renderTrimBlock();
+    // Only a bulk action that changed something counts as a use of the control.
+    if (refs.dropped.size !== droppedBefore) {
+      emitTrimAction({
+        action: shouldDrop
+          ? URL_PARAMS_TRIMMED_ACTION.DROP_ALL
+          : URL_PARAMS_TRIMMED_ACTION.KEEP_ALL,
+      });
+    }
     const { kept, total } = keptTotals();
     announce(
       fillTemplate({

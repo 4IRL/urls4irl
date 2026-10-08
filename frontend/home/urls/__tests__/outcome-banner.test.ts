@@ -5,6 +5,7 @@ import { isUtubLockedHandled } from "../../utub-locked.js";
 import { showURLDeckBannerError } from "../deck.js";
 import { deleteURLOnStale } from "../cards/get.js";
 import { applyUpdatedURLString } from "../cards/apply-url-string.js";
+import { URL_PARAMS_TRIMMED_FORM } from "../../../types/metrics-dim-values.js";
 import {
   clearURLOutcomeBanner,
   performUndo,
@@ -273,6 +274,7 @@ describe("outcome banner", () => {
         utubID: 3,
         utubUrlID: 42,
         urlCard: $(".urlRow[utuburlid=42]"),
+        form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
       });
     }
 
@@ -433,6 +435,7 @@ describe("outcome banner", () => {
         utubID: 3,
         utubUrlID: 42,
         urlCard: $(".urlRow[utuburlid=42]"),
+        form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
       });
       mockFail(429);
       vi.mocked(is429Handled).mockReturnValue(true);

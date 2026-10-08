@@ -1173,6 +1173,7 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     });
     expect(args.utubID).toBe(7);
     expect(args.utubUrlID).toBe(1);
+    expect(args.form).toBe("url_string_edit");
     expect(args.urlCard[0]).toBe(urlCard[0]);
   });
 

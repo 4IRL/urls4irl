@@ -9,6 +9,15 @@ import { deleteURLOnStale } from "./cards/get.js";
 import { applyUpdatedURLString } from "./cards/apply-url-string.js";
 import { fillTemplate, type TrimSubmission } from "./trim/param-trim-block.js";
 import { debug } from "../../lib/debug.js";
+import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
+import {
+  URL_PARAMS_TRIMMED_ACTION,
+  URL_PARAMS_TRIMMED_FORM,
+} from "../../types/metrics-dim-values.js";
+
+type UrlParamsTrimmedForm =
+  (typeof URL_PARAMS_TRIMMED_FORM)[keyof typeof URL_PARAMS_TRIMMED_FORM];
 
 const log = debug("urls:outcome-banner");
 
@@ -195,11 +204,13 @@ export function showTrimSavedBanner({
   utubID,
   utubUrlID,
   urlCard,
+  form,
 }: {
   trimSubmission: TrimSubmission;
   utubID: number;
   utubUrlID: number;
   urlCard: JQuery;
+  form: UrlParamsTrimmedForm;
 }): void {
   const returnFocusTo = $(`.urlRow[utuburlid=${utubUrlID}]`).find(
     ".urlStringBtnUpdate",
@@ -217,14 +228,20 @@ export function showTrimSavedBanner({
     message,
     detail: trimSubmission.droppedSegments.join(", "),
     actionLabel: APP_CONFIG.strings.URL_TRIM_UNDO,
-    onAction: () =>
+    onAction: () => {
+      emit({
+        event: UI_EVENTS.UI_URL_PARAMS_TRIMMED,
+        form,
+        action: URL_PARAMS_TRIMMED_ACTION.UNDO,
+      });
       performUndo({
         utubID,
         utubUrlID,
         urlCard,
         originalUrlString: trimSubmission.originalUrlString,
         returnFocusTo,
-      }),
+      });
+    },
     returnFocusTo,
   });
 }

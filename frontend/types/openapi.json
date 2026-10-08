@@ -5019,6 +5019,7 @@
                 "ui_url_copy",
                 "ui_url_access_warning",
                 "ui_url_access_warning_dismiss",
+                "ui_url_params_trimmed",
                 "ui_utub_search_open",
                 "ui_utub_search_close",
                 "ui_url_search_open",
@@ -5375,6 +5376,7 @@
                 "ui_url_copy",
                 "ui_url_access_warning",
                 "ui_url_access_warning_dismiss",
+                "ui_url_params_trimmed",
                 "ui_utub_search_open",
                 "ui_utub_search_close",
                 "ui_url_search_open",
@@ -6832,6 +6834,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -10219,6 +10231,7 @@
               "ui_url_copy",
               "ui_url_access_warning",
               "ui_url_access_warning_dismiss",
+              "ui_url_params_trimmed",
               "ui_utub_search_open",
               "ui_utub_search_close",
               "ui_url_search_open",

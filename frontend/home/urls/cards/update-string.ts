@@ -52,6 +52,7 @@ import {
 } from "../outcome-banner.js";
 import {
   HOME_FORM,
+  URL_PARAMS_TRIMMED_FORM,
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
@@ -463,6 +464,7 @@ function updateURLSuccess({
       utubID,
       utubUrlID: response.URL.utubUrlID,
       urlCard,
+      form: URL_PARAMS_TRIMMED_FORM.URL_STRING_EDIT,
     });
   } else {
     // The next save supersedes any earlier outcome banner.

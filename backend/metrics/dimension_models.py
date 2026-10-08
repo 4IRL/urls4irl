@@ -152,6 +152,11 @@ class _DimUrlCopy(UIBaseDimensions):
     result: Literal["success", "failure"]
 
 
+class _DimUrlParamsTrimmed(UIBaseDimensions):
+    form: Literal["url_create", "url_string_edit"]
+    action: Literal["toggle", "drop_all", "keep_all", "undo"]
+
+
 # Each search variant has its own dim class (one per `EventName`) so each
 # event has a 1:1 grep-able dim model. UTub-search and URL-search classes
 # share the same field shape today but may diverge as the search UI grows;
@@ -568,6 +573,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_URL_COPY: _DimUrlCopy,
     EventName.UI_URL_ACCESS_WARNING: _DimDeviceOnly,
     EventName.UI_URL_ACCESS_WARNING_DISMISS: _DimDeviceOnly,
+    EventName.UI_URL_PARAMS_TRIMMED: _DimUrlParamsTrimmed,
     # UI — Search
     EventName.UI_UTUB_SEARCH_OPEN: _DimUtubSearchOpen,
     EventName.UI_UTUB_SEARCH_CLOSE: _DimUtubSearchClose,

@@ -61,6 +61,7 @@ import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
   HOME_FORM,
+  URL_PARAMS_TRIMMED_FORM,
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
@@ -421,6 +422,7 @@ function createURLSuccess({
       utubID,
       utubUrlID: url.utubUrlID,
       urlCard: newUrlCard,
+      form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
     });
   }
 }

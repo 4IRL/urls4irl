@@ -897,6 +897,7 @@ describe("createURL - query-parameter trim block", () => {
       });
       expect(args.utubID).toBe(1);
       expect(args.utubUrlID).toBe(42);
+      expect(args.form).toBe("url_create");
       expect(args.urlCard[0]).toBe(
         vi.mocked(createURLBlock).mock.results[0].value[0],
       );
