@@ -40,6 +40,14 @@ class Utubs(db.Model):
         server_default=text("false"),
         name="isLocked",
     )
+    # Soft-delete marker; NULL means not trashed. Not yet written by any code path;
+    # the soft-delete-restore behavior phases will set it.
+    deleted_at: datetime | None = Column(
+        DateTime(timezone=True), nullable=True, default=None, name="deletedAt"
+    )
+    deleted_by: int | None = Column(
+        Integer, ForeignKey("Users.id"), nullable=True, default=None, name="deletedBy"
+    )
     utub_tags: list[Utub_Tags] = db.relationship(
         "Utub_Tags", cascade="all, delete, delete-orphan", passive_deletes=True
     )
@@ -63,3 +71,7 @@ class Utubs(db.Model):
 
     def set_last_updated(self):
         self.last_updated = utc_now()
+
+    @property
+    def is_trashed(self) -> bool:
+        return self.deleted_at is not None

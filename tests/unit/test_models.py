@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import jwt
 import pytest
 from flask import current_app
@@ -8,6 +10,7 @@ from backend.models.urls import Urls
 from backend.models.users import User_Role, Users
 from backend.models.utils import VerifyTokenResponse
 from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.splash.utils import verify_token
 from backend.utils.strings.config_strs import CONFIG_ENVS
@@ -231,6 +234,49 @@ def test_utub_model(app):
         assert len(new_utub_object.members) == 0
         assert len(new_utub_object.utub_urls) == 0
         assert len(new_utub_object.utub_url_tags) == 0
+        assert new_utub_object.deleted_at is None
+
+
+def test_utub_is_trashed_helper(app):
+    """
+    GIVEN a new transient UTub
+    WHEN deleted_at is left unset versus set to a timestamp
+    THEN is_trashed is False until deleted_at is set
+    """
+    with app.app_context():
+        utub_object = Utubs(
+            name=new_utub["name"],
+            utub_creator=new_utub["creator"],
+            utub_description=new_utub["description"],
+        )
+
+        assert utub_object.deleted_at is None
+        assert utub_object.deleted_by is None
+        assert utub_object.is_trashed is False
+
+        utub_object.deleted_at = datetime.now(timezone.utc)
+        assert utub_object.is_trashed is True
+
+
+def test_utub_url_is_trashed_helper(app):
+    """
+    GIVEN a new transient UTub URL
+    WHEN deleted_at is left unset versus set to a timestamp
+    THEN is_trashed is False until deleted_at is set, and trashed_tag_ids defaults to None
+    """
+    with app.app_context():
+        utub_url_object = Utub_Urls()
+        utub_url_object.utub_id = 1
+        utub_url_object.url_id = 1
+        utub_url_object.user_id = 1
+
+        assert utub_url_object.deleted_at is None
+        assert utub_url_object.deleted_by is None
+        assert utub_url_object.trashed_tag_ids is None
+        assert utub_url_object.is_trashed is False
+
+        utub_url_object.deleted_at = datetime.now(timezone.utc)
+        assert utub_url_object.is_trashed is True
 
 
 def test_url_model(app):

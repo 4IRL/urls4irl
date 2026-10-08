@@ -23,6 +23,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.types import Integer
 
 from backend import db, migrate
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from tests.integration.cli.utils import assert_row_counts_match_ignoring_new_tables
 
 pytestmark = pytest.mark.cli
@@ -144,6 +146,38 @@ def _assert_soft_delete_schema_absent(connection: Connection) -> None:
     )
 
 
+def _assert_models_match_migrated_schema(connection: Connection) -> None:
+    """Compare the model's view of each new column with the inspected schema.
+
+    Normal tests build the schema from the models via ``db.create_all()``, so
+    this is the only drift check between the models and the migration.
+    """
+    for model, table_name in ((Utubs, _UTUBS_TABLE), (Utub_Urls, _UTUB_URLS_TABLE)):
+        model_columns = model.__table__.c
+        inspected_columns = _get_columns_by_name(connection, table_name)
+
+        model_deleted_at = model_columns[_DELETED_AT_COLUMN]
+        inspected_deleted_at = inspected_columns[_DELETED_AT_COLUMN]
+        assert model_deleted_at.nullable is inspected_deleted_at["nullable"]
+        assert model_deleted_at.type.timezone is inspected_deleted_at["type"].timezone
+
+        model_deleted_by = model_columns[_DELETED_BY_COLUMN]
+        inspected_deleted_by = inspected_columns[_DELETED_BY_COLUMN]
+        assert model_deleted_by.nullable is inspected_deleted_by["nullable"]
+        assert isinstance(model_deleted_by.type, Integer)
+        assert {
+            foreign_key.target_fullname for foreign_key in model_deleted_by.foreign_keys
+        } == {f"{_USERS_TABLE}.id"}
+
+    model_trashed_tag_ids = Utub_Urls.__table__.c[_TRASHED_TAG_IDS_COLUMN]
+    inspected_trashed_tag_ids = _get_columns_by_name(connection, _UTUB_URLS_TABLE)[
+        _TRASHED_TAG_IDS_COLUMN
+    ]
+    assert isinstance(model_trashed_tag_ids.type, JSONB)
+    assert isinstance(inspected_trashed_tag_ids["type"], JSONB)
+    assert model_trashed_tag_ids.nullable is inspected_trashed_tag_ids["nullable"]
+
+
 def _mark_one_row_per_table_trashed(connection: Connection) -> None:
     """Populate the soft-delete columns on one Utubs row and one UtubUrls row.
 
@@ -247,6 +281,7 @@ def test_add_soft_delete_columns_migration_upgrade_and_downgrade(runner) -> None
 
             with db.engine.connect() as connection:
                 _assert_soft_delete_schema_present(connection)
+                _assert_models_match_migrated_schema(connection)
                 for table_name, columns in (
                     (_UTUBS_TABLE, _UTUBS_SOFT_DELETE_COLUMNS),
                     (_UTUB_URLS_TABLE, _UTUB_URLS_SOFT_DELETE_COLUMNS),
