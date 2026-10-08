@@ -8,7 +8,10 @@ export interface QueryParamSegment {
 }
 
 export interface ParsedQuery {
-  /** Everything before the `?`: scheme, host, port AND path (never a bare `URL.origin`). */
+  /**
+   * The text before the first `?` or `#`, verbatim (with `https://` prepended
+   * when the input had no protocol): scheme, userinfo, host, port AND path.
+   */
   beforeQuery: string;
   /** Protocol without the trailing `:`, lowercased by the `URL` API. */
   scheme: string;
@@ -82,13 +85,9 @@ export function parseQuerySegments(urlString: string): ParsedQuery | null {
   const hadQuery = queryIndex !== -1;
   const query = hadQuery ? beforeHash.slice(queryIndex + 1) : "";
 
-  // Non-special schemes (e.g. mailto:) have an opaque "null" origin.
-  const beforeQuery =
-    parsedUrl.origin === "null"
-      ? hadQuery
-        ? beforeHash.slice(0, queryIndex)
-        : beforeHash
-      : parsedUrl.origin + parsedUrl.pathname;
+  // Verbatim text before the first `?`/`#`: re-serializing via the URL API would
+  // drop userinfo, resolve dot-segments and normalize spaces/backslashes.
+  const beforeQuery = hadQuery ? beforeHash.slice(0, queryIndex) : beforeHash;
 
   const segments: QueryParamSegment[] =
     query === ""

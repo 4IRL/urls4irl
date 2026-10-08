@@ -142,10 +142,28 @@ describe("parseQuerySegments", () => {
       expect(parsed.scheme).toBe("https");
     });
 
-    it("lowercases a mixed-case scheme via the URL API but keeps path case", () => {
+    it("keeps a mixed-case scheme and host as typed; scheme comes from the URL API", () => {
       const parsed = parseOrFail("HTTPS://A.com/Path?x=1");
       expect(parsed.scheme).toBe("https");
-      expect(parsed.beforeQuery).toBe("https://a.com/Path");
+      expect(parsed.beforeQuery).toBe("HTTPS://A.com/Path");
+    });
+
+    it("leaves userinfo, dot-segments and spaces untouched", () => {
+      expect(
+        parseOrFail("https://user:pw@a.com/a/../b/./c?x=1").beforeQuery,
+      ).toBe("https://user:pw@a.com/a/../b/./c");
+      expect(parseOrFail("https://a.com/a b/c?x=1").beforeQuery).toBe(
+        "https://a.com/a b/c",
+      );
+      expect(parseOrFail("https://a.com\\p?x=1").beforeQuery).toBe(
+        "https://a.com\\p",
+      );
+    });
+
+    it("stops beforeQuery at a # that precedes any ?", () => {
+      expect(parseOrFail("https://a.com/p#frag?x=1").beforeQuery).toBe(
+        "https://a.com/p",
+      );
     });
 
     it("recognizes an uppercase scheme with no path as having a protocol", () => {
@@ -176,6 +194,18 @@ describe("buildTrimmedUrl", () => {
 
   it("returns a bare-? original unchanged when nothing is dropped", () => {
     expect(trim("https://a.com?", [])).toBe("https://a.com?");
+  });
+
+  it("re-emits userinfo, dot-segments and spaces untouched when dropping", () => {
+    expect(trim("https://user:pw@a.com/a/../b c?x=1&y=2", [0])).toBe(
+      "https://user:pw@a.com/a/../b c?y=2",
+    );
+  });
+
+  it("keeps a typed mixed-case host and path when dropping", () => {
+    expect(trim("HTTPS://A.com/Path?x=1&y=2", [1])).toBe(
+      "HTTPS://A.com/Path?x=1",
+    );
   });
 
   it("keeps the path when dropping a param (DD-17)", () => {
