@@ -11,6 +11,7 @@ from playwright.sync_api import Locator, Page, expect
 from backend.cli.mock_constants import MOCK_URL_STRINGS
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.url_strs import URL_UPDATED_BANNER
 from tests.functional.db_utils import (
     add_mock_urls,
     get_url_in_utub,
@@ -43,6 +44,8 @@ from tests.functional.urls_ui.playwright_utils import (
 )
 
 pytestmark = pytest.mark.mobile_ui
+
+PLAIN_EDIT_URL = "https://plain-edit.example.com/path"
 
 # The four sibling option buttons that collapse away while the consolidated edit
 # panel is open, leaving only the full-width "Cancel" button in the options row.
@@ -552,6 +555,96 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     )
     expect(string_input).to_have_value(TRIM_URL_TWO_PARAMS)
     expect(page.locator(HPL.EDIT_FORM_TRIM_DROPPED_COUNT)).to_be_hidden()
+
+
+@pytest.mark.parametrize("close_with", ["close_button", "escape_key"])
+def test_url_string_save_button_removed_when_panel_closes_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+    close_with: str,
+):
+    """
+    GIVEN the mobile edit panel shows the "Save URL" button (trim section open)
+    WHEN the panel is closed with the Close bar or the Escape key
+    THEN the "Save URL" button is gone from the card
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    _open_url_edit_panel_mobile(page=page)
+    selected_url.locator(HPL.INPUT_URL_STRING_UPDATE).fill(TRIM_URL_TWO_PARAMS)
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+    save_button = selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)
+    expect(save_button).to_be_visible()
+
+    if close_with == "close_button":
+        selected_url.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE).click()
+    else:
+        page.keyboard.press("Escape")
+
+    wait_until_hidden(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+    )
+    expect(save_button).to_have_count(0)
+
+
+def test_url_string_plain_edit_undo_restores_kept_open_input_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the mobile edit panel stays open after a plain URL edit (no parameters)
+    WHEN the "URL updated." banner's Undo is tapped
+    THEN the card and the kept-open input both go back to the pre-edit string
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    url_string_elem = selected_url.locator(HPL.URL_STRING_READ)
+    original_url = url_string_elem.get_attribute(HPL.URL_STRING_IN_DATA)
+    assert original_url is not None
+
+    _open_url_edit_panel_mobile(page=page)
+    string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
+    string_input.fill(PLAIN_EDIT_URL)
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+
+    expect(url_string_elem).to_have_attribute(HPL.URL_STRING_IN_DATA, PLAIN_EDIT_URL)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_UPDATED_BANNER
+    )
+    expect(string_input).to_have_value(PLAIN_EDIT_URL)
+
+    page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
+
+    expect(url_string_elem).to_have_attribute(HPL.URL_STRING_IN_DATA, original_url)
+    expect(string_input).to_have_value(original_url)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
 
 
 def _vertical_center(*, locator: Locator) -> float:

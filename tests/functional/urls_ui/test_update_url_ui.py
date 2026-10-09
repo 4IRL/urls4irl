@@ -1635,6 +1635,101 @@ def test_update_url_string_plain_edit_shows_updated_banner_and_undo_restores(
     expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_have_value(original_url)
 
 
+def test_update_url_string_enter_key_plain_edit_shows_updated_banner(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user editing a URL's string to a different URL with no parameters
+    WHEN the edit is submitted with the Enter key
+    THEN the outcome banner reports "URL updated." with an Undo
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    plain_new_url = "https://plain-edit.example.com/path"
+
+    url_row = _select_first_mock_url_and_type(
+        app=provide_app, page=page, typed_url=plain_new_url
+    )
+    page.keyboard.press("Enter")
+
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, plain_new_url
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_UPDATED_BANNER
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_UNDO)).to_be_visible()
+
+
+def _show_updated_banner_with_fake_clock(*, app: Flask, page: Page) -> Locator:
+    """Install Playwright's fake clock, submit a plain edit and return the shown
+    outcome banner with the pointer parked away from it."""
+    _select_first_mock_url_and_type(
+        app=app, page=page, typed_url="https://plain-edit.example.com/path"
+    )
+    # Installed before the banner shows, so its countdown runs on the fake clock.
+    page.clock.install()
+    page.keyboard.press("Enter")
+
+    banner = page.locator(HPL.URL_OUTCOME_BANNER)
+    expect(banner).to_be_visible()
+    # A pointer resting where the banner appears would hold the countdown; moving
+    # it away either releases that hold or is a no-op.
+    page.mouse.move(1, 1)
+    return banner
+
+
+def test_outcome_banner_hides_itself_after_countdown(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN the "URL updated." banner is showing
+    WHEN the 10s countdown elapses with the pointer elsewhere
+    THEN the banner hides itself
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+
+    banner = _show_updated_banner_with_fake_clock(app=provide_app, page=page)
+    expect(banner).to_be_visible()
+
+    page.clock.fast_forward(11_000)
+
+    expect(banner).to_be_hidden()
+
+
+def test_outcome_banner_stays_while_hovered_and_hides_after_leaving(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN the "URL updated." banner is showing
+    WHEN the pointer hovers it past the countdown, then leaves
+    THEN the banner stays up while hovered and hides one countdown after leaving
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+
+    banner = _show_updated_banner_with_fake_clock(app=provide_app, page=page)
+
+    banner.hover()
+    page.clock.fast_forward(30_000)
+    expect(banner).to_be_visible()
+
+    page.mouse.move(1, 1)
+    page.clock.fast_forward(11_000)
+    expect(banner).to_be_hidden()
+
+
 def test_update_url_string_trim_conflict_shows_trim_message_and_expands_section(
     page: Page, create_test_urls, provide_app: Flask
 ):
