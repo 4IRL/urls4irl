@@ -19,22 +19,17 @@ const INPUT_EVENT = `input.${DIRTY_NAMESPACE}`;
 const TRIM_EVENT = `${TRIM_RENDERED_EVENT}.${DIRTY_NAMESPACE}`;
 const BOUND_KEY = "editPanelDirtyBound";
 
-function titleInput(urlCard: JQuery): JQuery {
-  return urlCard.find(".urlTitleUpdate");
-}
-
-function stringInput(urlCard: JQuery): JQuery {
-  return urlCard.find(".urlStringUpdate");
-}
-
-function trimWrap(urlCard: JQuery): JQuery {
-  return urlCard.find(".urlParamTrimWrap");
-}
+const TITLE_INPUT_SELECTOR = ".urlTitleUpdate";
+const STRING_INPUT_SELECTOR = ".urlStringUpdate";
+const TRIM_WRAP_SELECTOR = ".urlParamTrimWrap";
+const TITLE_SUBMIT_SELECTOR = ".urlTitleSubmitBtnUpdate";
+const STRING_SUBMIT_SELECTOR = ".urlStringSubmitBtnUpdate";
+const STRING_SAVE_SELECTOR = ".urlStringSaveBigBtnUpdate";
 
 /** Title is dirty when its trimmed input differs from the stored title text. */
 export function isTitleDirty(urlCard: JQuery): boolean {
   return (
-    getInputValue(titleInput(urlCard)).trim() !==
+    getInputValue(urlCard.find(TITLE_INPUT_SELECTOR)).trim() !==
     urlCard.find(".urlTitle").text()
   );
 }
@@ -46,12 +41,12 @@ export function isTitleDirty(urlCard: JQuery): boolean {
  * flushing the trim block's debounce, so it is safe on every keystroke.
  */
 export function isURLStringDirty(urlCard: JQuery): boolean {
-  const getSubmission = trimWrap(urlCard).data(TRIM_SUBMISSION_KEY) as
-    | (() => TrimSubmission)
-    | undefined;
+  const getSubmission = urlCard
+    .find(TRIM_WRAP_SELECTOR)
+    .data(TRIM_SUBMISSION_KEY) as (() => TrimSubmission) | undefined;
   if (getSubmission && getSubmission().droppedCount > 0) return true;
   return (
-    getInputValue(stringInput(urlCard)).trim() !==
+    getInputValue(urlCard.find(STRING_INPUT_SELECTOR)).trim() !==
     urlCard.find(".urlString").attr("href")
   );
 }
@@ -60,16 +55,16 @@ export function isURLStringDirty(urlCard: JQuery): boolean {
 export function syncEditPanelDirtyState(urlCard: JQuery): void {
   if (!urlCard.data(BOUND_KEY)) return;
   setConfirmButtonUnchanged({
-    button: urlCard.find(".urlTitleSubmitBtnUpdate"),
+    button: urlCard.find(TITLE_SUBMIT_SELECTOR),
     isUnchanged: !isTitleDirty(urlCard),
   });
   const stringUnchanged = !isURLStringDirty(urlCard);
   setConfirmButtonUnchanged({
-    button: urlCard.find(".urlStringSubmitBtnUpdate"),
+    button: urlCard.find(STRING_SUBMIT_SELECTOR),
     isUnchanged: stringUnchanged,
   });
   setConfirmButtonUnchanged({
-    button: urlCard.find(".urlStringSaveBigBtnUpdate"),
+    button: urlCard.find(STRING_SAVE_SELECTOR),
     isUnchanged: stringUnchanged,
   });
 }
@@ -79,21 +74,21 @@ export function bindEditPanelDirtyState(urlCard: JQuery): void {
   if (!isCoarsePointer()) return;
   urlCard.data(BOUND_KEY, true);
   const resync = (): void => syncEditPanelDirtyState(urlCard);
-  titleInput(urlCard).off(INPUT_EVENT).on(INPUT_EVENT, resync);
-  stringInput(urlCard).off(INPUT_EVENT).on(INPUT_EVENT, resync);
-  trimWrap(urlCard).off(TRIM_EVENT).on(TRIM_EVENT, resync);
+  urlCard.find(TITLE_INPUT_SELECTOR).off(INPUT_EVENT).on(INPUT_EVENT, resync);
+  urlCard.find(STRING_INPUT_SELECTOR).off(INPUT_EVENT).on(INPUT_EVENT, resync);
+  urlCard.find(TRIM_WRAP_SELECTOR).off(TRIM_EVENT).on(TRIM_EVENT, resync);
   syncEditPanelDirtyState(urlCard);
 }
 
 /** Panel close: unbinds the triggers and removes the disabled state. Idempotent. */
 export function unbindEditPanelDirtyState(urlCard: JQuery): void {
   urlCard.removeData(BOUND_KEY);
-  titleInput(urlCard).off(INPUT_EVENT);
-  stringInput(urlCard).off(INPUT_EVENT);
-  trimWrap(urlCard).off(TRIM_EVENT);
+  urlCard.find(TITLE_INPUT_SELECTOR).off(INPUT_EVENT);
+  urlCard.find(STRING_INPUT_SELECTOR).off(INPUT_EVENT);
+  urlCard.find(TRIM_WRAP_SELECTOR).off(TRIM_EVENT);
   clearConfirmButtonState(
     urlCard.find(
-      ".urlTitleSubmitBtnUpdate, .urlStringSubmitBtnUpdate, .urlStringSaveBigBtnUpdate",
+      `${TITLE_SUBMIT_SELECTOR}, ${STRING_SUBMIT_SELECTOR}, ${STRING_SAVE_SELECTOR}`,
     ),
   );
 }

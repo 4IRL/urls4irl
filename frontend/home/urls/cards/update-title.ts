@@ -182,9 +182,7 @@ export async function updateURLTitle(
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   const panelOpen = isCardEditPanelOpen(urlCard);
   const titleSubmitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
-  // clearTitleSubmitInFlight strips aria-disabled from the ✓ at every exit, so
-  // re-derive the panel's dirty state right after it (saved -> disabled, failed
-  // save -> still dirty -> enabled).
+  // Clearing in-flight strips aria-disabled from the ✓, so re-sync the dirty state after it.
   const finishSubmit = (): void => {
     clearTitleSubmitInFlight(titleSubmitBtn);
     syncEditPanelDirtyState(urlCard);

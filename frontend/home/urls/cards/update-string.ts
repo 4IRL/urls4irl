@@ -136,8 +136,7 @@ function mountTrimSaveButton({
       if (isConfirmButtonDisabled(saveButton) || stringSubmitInFlight) return;
       closePanelAfterNextURLSave = true;
       urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
-      // updateURL consumes the flag synchronously on entry; if the ✓ handler bailed
-      // before reaching it, drop the flag so it can never leak into a later ✓ save.
+      // updateURL consumes the flag synchronously; drop it if the ✓ handler bailed first.
       closePanelAfterNextURLSave = false;
     });
   closeBar.after(saveButton);
@@ -366,9 +365,7 @@ export async function updateURL(
   const panelOpen = isCardEditPanelOpen(urlCard);
   const stringSubmitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
   const closePanelAfterSave = consumeClosePanelAfterNextURLSave();
-  // clearStringSubmitInFlight strips aria-disabled from the ✓ at every exit, so
-  // re-derive the panel's dirty state right after it (saved field -> disabled,
-  // failed save -> still dirty -> enabled).
+  // Clearing in-flight strips aria-disabled from the ✓, so re-sync the dirty state after it.
   const finishSubmit = (): void => {
     clearStringSubmitInFlight(stringSubmitBtn);
     syncEditPanelDirtyState(urlCard);

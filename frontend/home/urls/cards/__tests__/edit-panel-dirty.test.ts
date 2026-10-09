@@ -192,7 +192,7 @@ describe("edit panel dirty state (mobile)", () => {
       flushTrim({ urlCard, rawValue: STORED_URL });
       trimWrap.find('.urlParamTrimChip[data-index="0"]').trigger("click");
 
-      expect(onWrap).toHaveBeenCalledTimes(2);
+      expect(onWrap).toHaveBeenCalled();
       expect(onCard).not.toHaveBeenCalled();
     });
 

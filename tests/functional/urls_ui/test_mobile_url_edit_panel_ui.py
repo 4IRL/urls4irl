@@ -7,6 +7,7 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
 from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
 from backend.models.utubs import Utubs
@@ -46,6 +47,9 @@ from tests.functional.urls_ui.playwright_utils import (
 pytestmark = pytest.mark.mobile_ui
 
 PLAIN_EDIT_URL = "https://plain-edit.example.com/path"
+
+# How long a negative "no update request is sent" check waits for a request.
+NO_REQUEST_WAIT_MS = 2000
 
 # The four sibling option buttons that collapse away while the consolidated edit
 # panel is open, leaving only the full-width "Cancel" button in the options row.
@@ -768,6 +772,22 @@ def _expect_confirm_enabled(*, button: Locator) -> None:
     expect(button).not_to_have_class(re.compile(r"\bunchanged\b"))
 
 
+def _expect_no_update_request_on_forced_click(
+    *, page: Page, buttons: list[Locator]
+) -> None:
+    """Force-click each button and assert no PATCH is sent within the wait window.
+
+    The update path is asynchronous (pre-flight GET, then PATCH), so the wait is
+    bounded rather than a load-state check, which would return before it starts.
+    """
+    with pytest.raises(PlaywrightTimeoutError):
+        with page.expect_request(
+            lambda request: request.method == "PATCH", timeout=NO_REQUEST_WAIT_MS
+        ):
+            for button in buttons:
+                button.click(force=True)
+
+
 def test_url_edit_panel_confirm_buttons_follow_dirty_state_mobile(
     page_mobile_portrait: Page,
     create_test_utubs,
@@ -803,16 +823,24 @@ def test_url_edit_panel_confirm_buttons_follow_dirty_state_mobile(
     _expect_confirm_disabled(button=title_check)
     _expect_confirm_disabled(button=string_check)
 
-    # Clicking a disabled check is a no-op: nothing is sent, no tick shows.
+    # Clicking a disabled check is a no-op: no update request is sent, no tick shows.
+    # The values are changed without firing "input" so the checks stay disabled and
+    # only the click guard (not an unchanged-value early return) can stop the request.
     # (force: Playwright's actionability treats aria-disabled as not enabled.)
-    title_check.click(force=True)
-    string_check.click(force=True)
+    original_string = string_input.input_value()
+    title_input.evaluate("(el, v) => { el.value = v; }", f"{original_title} silent")
+    string_input.evaluate("(el, v) => { el.value = v; }", PLAIN_EDIT_URL)
+    _expect_no_update_request_on_forced_click(
+        page=page, buttons=[title_check, string_check]
+    )
     expect(selected_url.locator(HPL.SAVED_TICK_URL_TITLE)).not_to_have_class(
         re.compile(r"\bopa-1\b")
     )
     expect(selected_url.locator(HPL.SAVED_TICK_URL_STRING)).not_to_have_class(
         re.compile(r"\bopa-1\b")
     )
+    title_input.evaluate("(el, v) => { el.value = v; }", original_title)
+    string_input.evaluate("(el, v) => { el.value = v; }", original_string)
 
     title_input.fill(f"{original_title} edited")
     _expect_confirm_enabled(button=title_check)

@@ -23,6 +23,8 @@ import {
   showUpdateURLStringForm,
 } from "../update-string.js";
 import { showUpdateURLTitleForm } from "../update-title.js";
+import { createURLStringAndUpdateBlock } from "../url-string.js";
+import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { isCoarsePointer } from "../../../mobile.js";
 import { openURLEditPanel, closeURLEditPanel } from "../update-url-panel.js";
@@ -51,7 +53,8 @@ vi.mock("../../../../lib/globals.js", () => globalsMock);
 // or `:focus-visible`) and the deferral
 // past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts). Mock it
 // here so these tests assert WHICH element each keep-open branch restores.
-vi.mock("../../../../lib/tooltips.js", () => ({
+vi.mock("../../../../lib/tooltips.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../../lib/tooltips.js")>()),
   hideTooltip: vi.fn(),
   restoreTooltipIfStillTargeted: vi.fn(),
 }));
@@ -102,7 +105,10 @@ vi.mock("../../../mobile.js", () => ({
   isCoarsePointer: vi.fn(() => false),
 }));
 
-vi.mock("../../../btns-forms.js", () => ({
+// Partial mock: the real form factories (makeTextInput/makeSubmitButton/...) are
+// needed to build the URL/title blocks whose real click guards are exercised.
+vi.mock("../../../btns-forms.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../btns-forms.js")>()),
   highlightInput: vi.fn(),
 }));
 
@@ -1350,19 +1356,10 @@ describe('mobile edit panel "Save URL" button beside Close', () => {
 });
 
 describe("Save URL closes the panel after a successful save when the title is clean", () => {
+  // Title and URL blocks come from the real url-title.ts / url-string.ts builders,
+  // so the ✓ click handlers (and their disabled guards) are the production ones.
   const CARD_HTML = `
     <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
-      <h6 class="urlTitle">My Title</h6>
-      <div class="updateUrlTitleWrap">
-        <input class="urlTitleUpdate" value="My Title" />
-        <button class="urlTitleSubmitBtnUpdate"></button>
-      </div>
-      <a class="urlString" href="https://example.com">https://example.com</a>
-      <div class="updateUrlStringWrap hidden">
-        <input class="urlStringUpdate" type="text" value="https://example.com" />
-        <button class="urlStringSubmitBtnUpdate"></button>
-        <div class="urlStringUpdate-error"></div>
-      </div>
       <div class="urlOptions">
         <button class="urlStringBtnUpdate fourty-p-width"></button>
       </div>
@@ -1385,9 +1382,13 @@ describe("Save URL closes the panel after a successful save when the title is cl
     vi.mocked(isCoarsePointer).mockReturnValue(true);
   });
 
-  // Opens the panel, binds the dirty state and wires the ✓ like url-string.ts does.
+  // Builds the real title/URL blocks, opens the panel and binds the dirty state.
   function openPanel(): { urlCard: JQuery; urlInput: JQuery } {
     const urlCard = $(".urlRow");
+    urlCard.append(createURLTitleAndUpdateBlock("My Title", urlCard, 1));
+    urlCard.append(
+      createURLStringAndUpdateBlock("https://example.com", urlCard, 1),
+    );
     const urlInput = urlCard.find(".urlStringUpdate");
     showUpdateURLStringForm({
       urlCard,
@@ -1395,15 +1396,6 @@ describe("Save URL closes the panel after a successful save when the title is cl
       suppressSiblingDisable: true,
     });
     bindEditPanelDirtyState(urlCard);
-    urlCard.find(".urlStringSubmitBtnUpdate").on("click", () => {
-      if (isURLStringSubmitInFlight()) return;
-      if (
-        urlCard.find(".urlStringSubmitBtnUpdate").attr("aria-disabled") ===
-        "true"
-      )
-        return;
-      void updateURL(urlInput, urlCard, 1);
-    });
     return { urlCard, urlInput };
   }
 
@@ -1500,6 +1492,48 @@ describe("Save URL closes the panel after a successful save when the title is cl
 
     expect(ajaxCall).not.toHaveBeenCalled();
     expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  // The value is changed WITHOUT firing "input", so the dirty sync never runs and
+  // the check stays aria-disabled: only the click handler's guard can stop the
+  // request (an unchanged value alone would also skip it, masking a removed guard).
+  it("a click on the aria-disabled URL check sends no request", async () => {
+    const { urlCard, urlInput } = openPanel();
+    const check = urlCard.find(".urlStringSubmitBtnUpdate");
+    urlInput.val("https://new-example.com");
+    mockSave({ outcome: "done" });
+    expect(check.attr("aria-disabled")).toBe("true");
+
+    check.trigger("click");
+    await flush();
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+
+    // Once the check is enabled the same click goes through.
+    urlInput.trigger("input");
+    check.trigger("click");
+    await flush();
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+  });
+
+  it("a click on the aria-disabled title check sends no request", async () => {
+    const { urlCard } = openPanel();
+    const check = urlCard.find(".urlTitleSubmitBtnUpdate");
+    const titleInput = urlCard.find(".urlTitleUpdate");
+    titleInput.val("Edited title");
+    mockSave({ outcome: "done" });
+    expect(check.attr("aria-disabled")).toBe("true");
+
+    check.trigger("click");
+    await flush();
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+
+    // Once the check is enabled the same click goes through.
+    titleInput.trigger("input");
+    check.trigger("click");
+    await flush();
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
   });
 
   it("a green check save never closes the panel", async () => {

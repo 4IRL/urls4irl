@@ -4,7 +4,7 @@
 // on. Uses aria-disabled (never native `disabled`) so focus is kept, matching the
 // in-flight guard convention.
 
-export const UNCHANGED_CLASS = "unchanged";
+const UNCHANGED_CLASS = "unchanged";
 
 /**
  * Marks `button` as unchanged (disabled look + aria-disabled) or, when the field

@@ -3,6 +3,7 @@ import re
 import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from backend.models.utubs import Utubs
 from tests.functional.db_utils import (
@@ -32,6 +33,9 @@ pytestmark = pytest.mark.mobile_ui
 # persists directly instead of tripping the duplicate-name confirmation modal.
 _NEW_UTUB_NAME = "Renamed Mobile UTub"
 _NEW_UTUB_DESCRIPTION = "Updated via mobile panel"
+
+# How long a negative "no update request is sent" check waits for a request.
+_NO_REQUEST_WAIT_MS = 2000
 
 
 def test_utub_edit_panel_toggle_opens_both_name_and_description_mobile(
@@ -390,16 +394,26 @@ def test_utub_edit_panel_confirm_buttons_follow_dirty_state_mobile(
     _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
     _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
 
-    # Clicking a disabled check does nothing.
+    # Clicking a disabled check does nothing: no update request is sent. The values
+    # are changed without firing "input" so the checks stay disabled and only the
+    # click guard can stop the request.
     # (force: Playwright's actionability treats aria-disabled as not enabled.)
-    page.locator(name_submit).click(force=True)
-    page.locator(description_submit).click(force=True)
+    name_input.evaluate("(el, v) => { el.value = v; }", _NEW_UTUB_NAME)
+    description_input.evaluate("(el, v) => { el.value = v; }", _NEW_UTUB_DESCRIPTION)
+    with pytest.raises(PlaywrightTimeoutError):
+        with page.expect_request(
+            lambda request: request.method == "PATCH", timeout=_NO_REQUEST_WAIT_MS
+        ):
+            page.locator(name_submit).click(force=True)
+            page.locator(description_submit).click(force=True)
     expect(page.locator(HPL.SAVED_TICK_NAME)).not_to_have_class(
         re.compile(r"\bopa-1\b")
     )
     expect(page.locator(HPL.SAVED_TICK_DESCRIPTION)).not_to_have_class(
         re.compile(r"\bopa-1\b")
     )
+    name_input.evaluate("(el, v) => { el.value = v; }", original_name)
+    description_input.evaluate("(el, v) => { el.value = v; }", original_description)
 
     name_input.fill(_NEW_UTUB_NAME)
     _expect_utub_confirm_enabled(page=page, css_selector=name_submit)

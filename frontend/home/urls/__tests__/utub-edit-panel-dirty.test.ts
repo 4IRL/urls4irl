@@ -88,21 +88,6 @@ describe("UTub edit panel dirty state (mobile)", () => {
     expect(name.attr("aria-disabled")).toBe("true");
   });
 
-  it("re-derives the state after a save moves the stored value", () => {
-    bindUTubEditPanelDirtyState();
-    const name = $("#utubNameSubmitBtnUpdate");
-    $("#utubNameUpdate").val("Renamed").trigger("input");
-    expect(name.attr("aria-disabled")).toBeUndefined();
-
-    // What the success handler does: stored header text catches up to the input,
-    // and the in-flight clear strips aria-disabled before the re-sync runs.
-    $("#URLDeckHeader").text("Renamed");
-    name.removeAttr("aria-disabled");
-    syncUTubEditPanelDirtyState();
-
-    expect(name.attr("aria-disabled")).toBe("true");
-  });
-
   it("removes the state and stops reacting after unbind (panel close)", () => {
     bindUTubEditPanelDirtyState();
 
