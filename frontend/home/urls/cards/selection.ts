@@ -16,6 +16,7 @@ import { isCoarsePointer } from "../../mobile.js";
 import { _consumeSwipeClickSuppression } from "./swipe.js";
 import { toggleURLCardSelection } from "../bulk-actions/bulk-selection.js";
 import { isAnyBulkPickerOpen } from "../bulk-actions/picker-guard.js";
+import { clearURLOutcomeBanner } from "../outcome-banner.js";
 import { debug } from "../../../lib/debug.js";
 
 const log = debug("urls:cards");
@@ -73,6 +74,10 @@ export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
       ".urlTagOption",
       ".urlTagStagedChip",
       ".urlTagComboboxSubmitBtn",
+      ".urlParamTrimWrap",
+      ".urlParamTrimHeader",
+      ".urlParamTrimChip",
+      ".urlParamTrimBtn",
     ];
 
     for (
@@ -128,6 +133,7 @@ function deselectURL(urlCard: JQuery): void {
   setURLCardSelectionEventListener(urlCard);
   setFocusEventListenersOnURLCard(urlCard);
   urlCard.blur(); // Remove focus after deselecting the URL
+  clearURLOutcomeBanner();
 }
 
 export function deselectAllURLs(): void {

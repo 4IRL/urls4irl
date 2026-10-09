@@ -109,6 +109,9 @@ export interface AppConstants {
   readonly TAGS_MAX_ON_URLS: number;
   readonly VALIDATE_EMAIL_ERROR_CODES: Record<string, number>;
   readonly DIMENSION_KEYS: readonly string[];
+  readonly TRACKING_QUERY_PARAMS: readonly string[];
+  readonly TRACKING_QUERY_PARAM_PREFIXES: readonly string[];
+  readonly TRACKING_STRIP_SCHEMES: readonly string[];
   readonly DEVICE_TYPE: DeviceTypeValues;
   readonly DEVICE_TYPE_DIM_KEY: string;
 }

@@ -1,5 +1,23 @@
-import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
+import {
+  createMockJqXHR,
+  createMockJqXHRChainable,
+} from "../../../../__tests__/helpers/mock-jquery.js";
+import { getUpdatedURL, handleRejectFromGetURL } from "../get.js";
+import { APP_CONFIG } from "../../../../lib/config.js";
+import {
+  TRIM_FLUSH_KEY,
+  TRIM_GET_KEY,
+  TRIM_SUBMISSION_KEY,
+  TRIM_SYNC_KEY,
+  TrimMode,
+  createParamTrimBlock,
+} from "../../trim/param-trim-block.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
+import {
+  clearURLOutcomeBanner,
+  showTrimSavedBanner,
+  showURLUpdatedBanner,
+} from "../../outcome-banner.js";
 import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
@@ -9,9 +27,12 @@ import {
   showUpdateURLStringForm,
 } from "../update-string.js";
 import { showUpdateURLTitleForm } from "../update-title.js";
+import { createURLStringAndUpdateBlock } from "../url-string.js";
+import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { isCoarsePointer } from "../../../mobile.js";
-import { openURLEditPanel } from "../update-url-panel.js";
+import { openURLEditPanel, closeURLEditPanel } from "../update-url-panel.js";
+import { bindEditPanelDirtyState } from "../edit-panel-dirty.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
 import { HOME_FORM } from "../../../../types/metrics-dim-values.js";
@@ -36,7 +57,8 @@ vi.mock("../../../../lib/globals.js", () => globalsMock);
 // or `:focus-visible`) and the deferral
 // past Bootstrap's fade (covered by lib/__tests__/tooltips.test.ts). Mock it
 // here so these tests assert WHICH element each keep-open branch restores.
-vi.mock("../../../../lib/tooltips.js", () => ({
+vi.mock("../../../../lib/tooltips.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../../lib/tooltips.js")>()),
   hideTooltip: vi.fn(),
   restoreTooltipIfStillTargeted: vi.fn(),
 }));
@@ -54,6 +76,12 @@ vi.mock("../loading.js", () => ({
 vi.mock("../get.js", () => ({
   getUpdatedURL: vi.fn(() => Promise.resolve()),
   handleRejectFromGetURL: vi.fn(),
+}));
+
+vi.mock("../../outcome-banner.js", () => ({
+  showTrimSavedBanner: vi.fn(),
+  showURLUpdatedBanner: vi.fn(),
+  clearURLOutcomeBanner: vi.fn(),
 }));
 
 vi.mock("../selection.js", () => ({
@@ -81,7 +109,10 @@ vi.mock("../../../mobile.js", () => ({
   isCoarsePointer: vi.fn(() => false),
 }));
 
-vi.mock("../../../btns-forms.js", () => ({
+// Partial mock: the real form factories (makeTextInput/makeSubmitButton/...) are
+// needed to build the URL/title blocks whose real click guards are exercised.
+vi.mock("../../../btns-forms.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../btns-forms.js")>()),
   highlightInput: vi.fn(),
 }));
 
@@ -895,5 +926,888 @@ describe("updateURL - restores the submit button tooltip on a keep-open failure"
     await updateURL(urlStringInput, urlCard, 99);
 
     expect(vi.mocked(restoreTooltipIfStillTargeted)).not.toHaveBeenCalled();
+  });
+});
+
+describe("query-parameter trim block in the edit-URL-string flow", () => {
+  const TRIM_URL = "https://example.com/p?a=1&b=2&c=3";
+  let urlCard: JQuery, urlStringInput: JQuery, trimWrap: JQuery;
+
+  // Mirrors what createUpdateURLStringInput builds: the real block sits inside
+  // .updateUrlStringWrap next to the input.
+  function buildCard({ href }: { href: string }): void {
+    document.body.innerHTML = `
+      <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+        <a class="urlString" href="${href}">${href}</a>
+        <div class="updateUrlStringWrap hidden">
+          <input class="urlStringUpdate" type="text" value="${href}" />
+          <div class="urlStringUpdate-error"></div>
+        </div>
+        <div class="updateUrlTitleWrap hidden"></div>
+        <button class="urlStringBtnUpdate"></button>
+      </div>`;
+    urlCard = $(".urlRow");
+    urlStringInput = urlCard.find(".urlStringUpdate");
+    trimWrap = createParamTrimBlock({ mode: TrimMode.URL, urlCard });
+    urlCard.find(".updateUrlStringWrap").append(trimWrap);
+  }
+
+  function syncFromInput(value: string): void {
+    urlStringInput.val(value);
+    (trimWrap.data(TRIM_FLUSH_KEY) as (rawValue: string) => void)(value);
+  }
+
+  function dropChip(index: number): void {
+    trimWrap.find(`.urlParamTrimChip[data-index="${index}"]`).trigger("click");
+  }
+
+  function mockSuccess(urlString: string, status?: string): void {
+    const response = {
+      ...(status === undefined ? {} : { status }),
+      URL: {
+        utubUrlID: 1,
+        urlString,
+        urlTitle: "t",
+        urlTags: [],
+      },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+      }),
+    );
+  }
+
+  function mockConflict(): void {
+    const xhr = {
+      status: 409,
+      responseJSON: { message: "URL already in UTub", urlString: TRIM_URL },
+    } as unknown as JQuery.jqXHR;
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        fail: (cb: unknown) => (cb as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(ajaxCall).mockReset();
+    vi.useFakeTimers();
+    vi.mocked(is429Handled).mockReturnValue(false);
+    buildCard({ href: "https://example.com" });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renders the pre-filled value immediately on open, collapsed", () => {
+    urlStringInput.val(TRIM_URL);
+
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.find(".urlParamTrimChip").length).toBe(3);
+  });
+
+  it("re-collapses and resets the block in place when the form is cancelled", () => {
+    syncFromInput(TRIM_URL);
+    trimWrap.find(".urlParamTrimHeader").trigger("click");
+    dropChip(0);
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    expect(urlCard.find(".urlParamTrimWrap")[0]).toBe(trimWrap[0]);
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "false",
+    );
+    const getSubmission = trimWrap.data(TRIM_SUBMISSION_KEY) as () => {
+      droppedCount: number;
+    };
+    expect(getSubmission().droppedCount).toBe(0);
+  });
+
+  it("cancels a pending debounced re-parse on close", () => {
+    const sync = trimWrap.data(TRIM_SYNC_KEY) as (rawValue: string) => void;
+    sync(TRIM_URL);
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+    vi.advanceTimersByTime(500);
+
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+  });
+
+  it("cancels a pending debounced re-parse on keepOpen close", () => {
+    const sync = trimWrap.data(TRIM_SYNC_KEY) as (rawValue: string) => void;
+    // Stored href has a different query than the stale pending value.
+    urlCard.find(".urlString").attr("href", "https://example.com/p?z=1");
+    sync(TRIM_URL);
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+    vi.advanceTimersByTime(500);
+
+    // Rendered from the resynced href (1 chip), not the stale pending value (3).
+    expect(trimWrap.find(".urlParamTrimChip").length).toBe(1);
+  });
+
+  it("keepOpen retains the block and re-renders it from the resynced value", () => {
+    urlCard.find(".urlString").attr("href", TRIM_URL);
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(urlCard.find(".urlParamTrimWrap").length).toBe(1);
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+  });
+
+  it("submits the typed value byte-for-byte when nothing is dropped", async () => {
+    syncFromInput("https://example.com/p?q=hello%20world&next=https://a.com/b");
+    mockSuccess("https://example.com/p?q=hello%20world&next=https://a.com/b");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
+      urlString: "https://example.com/p?q=hello%20world&next=https://a.com/b",
+    });
+  });
+
+  it("submits the URL with the dropped parameters removed", async () => {
+    syncFromInput(TRIM_URL);
+    dropChip(0);
+    dropChip(2);
+    mockSuccess("https://example.com/p?b=2");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
+      urlString: "https://example.com/p?b=2",
+    });
+  });
+
+  it("trims against the current input when submitting inside the debounce window", async () => {
+    syncFromInput("https://example.com/p?a=1&b=2");
+    dropChip(0);
+    // A further edit that has not been re-parsed yet (debounce pending).
+    const newValue = "https://example.com/p?x=9&y=8";
+    urlStringInput.val(newValue);
+    (trimWrap.data(TRIM_SYNC_KEY) as (rawValue: string) => void)(newValue);
+    mockSuccess(newValue);
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    // The flush re-parsed the new value (clearing the stale drop) before reading.
+    expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
+      urlString: newValue,
+    });
+  });
+
+  it("returns an unparseable value unchanged from the block rather than an empty string", () => {
+    const bad = "http://";
+    syncFromInput(bad);
+
+    const getTrimmed = trimWrap.data(TRIM_GET_KEY) as () => string;
+    expect(getTrimmed()).toBe(bad);
+  });
+
+  it("lets submit-time validation reject an invalid value the block passes through", async () => {
+    syncFromInput("javascript:alert(1)");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+    expect(urlCard.find(".urlStringUpdate-error").hasClass("visible")).toBe(
+      true,
+    );
+  });
+
+  it("stays a client-side no-op when the trimmed value equals the stored href", async () => {
+    urlCard.find(".urlString").attr("href", "https://example.com/p?b=2");
+    syncFromInput("https://example.com/p?a=1&b=2");
+    dropChip(0);
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+  });
+
+  it("keeps the section expanded when a further edit re-parses", () => {
+    syncFromInput(TRIM_URL);
+    trimWrap.find(".urlParamTrimHeader").trigger("click");
+
+    syncFromInput("https://example.com/p?a=1&b=2");
+
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "true",
+    );
+  });
+
+  it("substitutes the trim message and force-expands on a 409 after a drop", async () => {
+    syncFromInput(TRIM_URL);
+    dropChip(1);
+    mockConflict();
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(urlCard.find(".urlStringUpdate-error").text()).toBe(
+      APP_CONFIG.strings.URL_TRIM_CONFLICT,
+    );
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+    expect(trimWrap.find(".title-caret").hasClass("closed")).toBe(false);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "true",
+    );
+  });
+
+  it("shows the Undo banner with the untrimmed original after a trim-and-save", async () => {
+    syncFromInput(TRIM_URL);
+    dropChip(0);
+    dropChip(2);
+    mockSuccess("https://example.com/p?b=2");
+
+    await updateURL(urlStringInput, urlCard, 7);
+
+    expect(showTrimSavedBanner).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(showTrimSavedBanner).mock.calls[0][0];
+    expect(args.trimSubmission).toEqual({
+      originalUrlString: TRIM_URL,
+      droppedSegments: ["a=1", "c=3"],
+      droppedCount: 2,
+    });
+    expect(args.utubID).toBe(7);
+    expect(args.utubUrlID).toBe(1);
+    expect(args.form).toBe("url_string_edit");
+    expect(args.urlCard[0]).toBe(urlCard[0]);
+    // The trim banner replaces the plain one; both never show together.
+    expect(showURLUpdatedBanner).not.toHaveBeenCalled();
+  });
+
+  it("shows the plain URL-updated banner, restoring the previous string, when nothing was dropped", async () => {
+    const previous = urlCard.find(".urlString").attr("href");
+    syncFromInput("https://example.com/p?a=1&b=2");
+    mockSuccess("https://example.com/p?a=1&b=2");
+
+    await updateURL(urlStringInput, urlCard, 7);
+
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    expect(showURLUpdatedBanner).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(showURLUpdatedBanner).mock.calls[0][0];
+    expect(args.previousUrlString).toBe(previous);
+    expect(args.utubID).toBe(7);
+    expect(args.utubUrlID).toBe(1);
+    expect(args.urlCard[0]).toBe(urlCard[0]);
+  });
+
+  it("captures the stored string from before the save, not the saved one", async () => {
+    urlCard.find(".urlString").attr("href", "https://example.com/old");
+    syncFromInput("https://example.com/new");
+    mockSuccess("https://example.com/new");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(
+      vi.mocked(showURLUpdatedBanner).mock.calls[0][0].previousUrlString,
+    ).toBe("https://example.com/old");
+  });
+
+  it("shows no banner and clears a stale one when the server reports no change", async () => {
+    syncFromInput("https://example.com/p?a=1&b=2");
+    mockSuccess("https://example.com/p?a=1&b=2", "No change");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    expect(showURLUpdatedBanner).not.toHaveBeenCalled();
+    expect(clearURLOutcomeBanner).toHaveBeenCalled();
+  });
+
+  it("shows no banner when the edit fails", async () => {
+    syncFromInput("https://example.com/p?a=1&b=2");
+    mockConflict();
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    expect(showURLUpdatedBanner).not.toHaveBeenCalled();
+  });
+
+  it("shows no banner when the trim block is absent", async () => {
+    trimWrap.remove();
+    urlStringInput.val("https://example.com/p?a=1");
+    mockSuccess("https://example.com/p?a=1");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+  });
+
+  it("keeps the server message and collapsed state on a 409 with nothing dropped", async () => {
+    syncFromInput(TRIM_URL);
+    mockConflict();
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(urlCard.find(".urlStringUpdate-error").text()).toBe(
+      "URL already in UTub",
+    );
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+  });
+});
+
+describe('mobile edit panel "Save URL" button beside Close', () => {
+  const CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <a class="urlString" href="https://example.com">https://example.com</a>
+      <div class="updateUrlStringWrap hidden">
+        <input class="urlStringUpdate" type="text" value="https://example.com" />
+        <button class="urlStringSubmitBtnUpdate"></button>
+        <div class="urlStringUpdate-error"></div>
+      </div>
+      <div class="urlOptions">
+        <button class="urlStringBtnUpdate fourty-p-width"></button>
+        <button class="urlBtnAccess"></button>
+      </div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = CARD_HTML;
+  });
+
+  function openPanel(): JQuery {
+    const urlCard = $(".urlRow");
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    return urlCard;
+  }
+
+  it("mounts a Save URL button right after the Close bar on a coarse pointer", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+
+    const urlCard = openPanel();
+
+    const saveButton = urlCard.find(".urlStringSaveBigBtnUpdate");
+    expect(saveButton.length).toBe(1);
+    expect(saveButton.text()).toBe(APP_CONFIG.strings.URL_TRIM_SAVE_URL);
+    expect(saveButton.attr("type")).toBe("button");
+    expect(saveButton.prev().hasClass("urlStringCancelBigBtnUpdate")).toBe(
+      true,
+    );
+  });
+
+  it("clicking it clicks the URL field's own submit button (same save path)", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const urlCard = openPanel();
+    const submitClick = vi.fn();
+    urlCard.find(".urlStringSubmitBtnUpdate").on("click", submitClick);
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+
+    expect(submitClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not stack a second button when the panel is reopened", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const urlCard = openPanel();
+
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringCancelBigBtnUpdate"),
+    });
+
+    expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(1);
+  });
+
+  it("removes it when the form closes", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const urlCard = openPanel();
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(0);
+  });
+
+  it("keeps it while the form stays open after a save (keepOpen)", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const urlCard = openPanel();
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(1);
+  });
+
+  it("is never mounted on a fine pointer (desktop has its own inline check and cancel)", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+
+    const urlCard = openPanel();
+
+    expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(0);
+  });
+});
+
+describe("Save URL closes the panel after a successful save when the title is clean", () => {
+  // Title and URL blocks come from the real url-title.ts / url-string.ts builders,
+  // so the ✓ click handlers (and their disabled guards) are the production ones.
+  const CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlOptions">
+        <button class="urlStringBtnUpdate fourty-p-width"></button>
+      </div>
+      <div class="urlCardDualLoadingRing"></div>
+    </div>
+  `;
+
+  const SAVED_RESPONSE = {
+    URL: {
+      utubUrlID: 1,
+      urlString: "https://new-example.com",
+      urlTitle: "My Title",
+      urlTags: [],
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = CARD_HTML;
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+  });
+
+  // Builds the real title/URL blocks, opens the panel and binds the dirty state.
+  function openPanel(): { urlCard: JQuery; urlInput: JQuery } {
+    const urlCard = $(".urlRow");
+    urlCard.append(createURLTitleAndUpdateBlock("My Title", urlCard, 1));
+    urlCard.append(
+      createURLStringAndUpdateBlock("https://example.com", urlCard, 1),
+    );
+    const urlInput = urlCard.find(".urlStringUpdate");
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+      suppressSiblingDisable: true,
+    });
+    bindEditPanelDirtyState(urlCard);
+    return { urlCard, urlInput };
+  }
+
+  function mockSave({
+    outcome,
+    status = "Success",
+    urlTitle = SAVED_RESPONSE.URL.urlTitle,
+  }: {
+    outcome: "done" | "fail";
+    status?: string;
+    urlTitle?: string;
+  }): void {
+    const response = {
+      ...SAVED_RESPONSE,
+      URL: { ...SAVED_RESPONSE.URL, urlTitle },
+      status,
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable(
+        outcome === "done"
+          ? {
+              done: (cb: unknown) =>
+                (cb as (...args: unknown[]) => void)(response, "success", {
+                  status: 200,
+                }),
+              always: (cb: unknown) => (cb as () => void)(),
+            }
+          : {
+              fail: (cb: unknown) =>
+                (cb as (xhr: JQuery.jqXHR) => void)({
+                  status: 0,
+                } as unknown as JQuery.jqXHR),
+              always: (cb: unknown) => (cb as () => void)(),
+            },
+      ),
+    );
+  }
+
+  async function flush(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  it("closes the panel on a successful Save URL when the title has no unsaved edits", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "done" });
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+
+    expect(closeURLEditPanel).toHaveBeenCalledTimes(1);
+    expect(closeURLEditPanel).toHaveBeenCalledWith(urlCard);
+  });
+
+  it("keeps the panel open when the title has unsaved edits", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlCard.find(".urlTitleUpdate").val("Edited title").trigger("input");
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "done" });
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("does not close on a failed save and does not leak into a later check save", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "fail" });
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+
+    // The same still-dirty field saved via the green check must never close.
+    mockSave({ outcome: "done" });
+    urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+    await flush();
+
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("does not close when the server reports no change", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "done", status: "No change" });
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op while the URL is unchanged: no request and no close", async () => {
+    const { urlCard } = openPanel();
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  // The value is changed WITHOUT firing "input", so the dirty sync never runs and
+  // the check stays aria-disabled: only the click handler's guard can stop the
+  // request (an unchanged value alone would also skip it, masking a removed guard).
+  it("a click on the aria-disabled URL check sends no request", async () => {
+    const { urlCard, urlInput } = openPanel();
+    const check = urlCard.find(".urlStringSubmitBtnUpdate");
+    urlInput.val("https://new-example.com");
+    mockSave({ outcome: "done" });
+    expect(check.attr("aria-disabled")).toBe("true");
+
+    check.trigger("click");
+    await flush();
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+
+    // Once the check is enabled the same click goes through.
+    urlInput.trigger("input");
+    check.trigger("click");
+    await flush();
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+  });
+
+  it("a click on the aria-disabled title check sends no request", async () => {
+    const { urlCard } = openPanel();
+    const check = urlCard.find(".urlTitleSubmitBtnUpdate");
+    const titleInput = urlCard.find(".urlTitleUpdate");
+    titleInput.val("Edited title");
+    mockSave({ outcome: "done" });
+    expect(check.attr("aria-disabled")).toBe("true");
+
+    check.trigger("click");
+    await flush();
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+
+    // Once the check is enabled the same click goes through.
+    titleInput.trigger("input");
+    check.trigger("click");
+    await flush();
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+  });
+
+  it("a green check save never closes the panel", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "done" });
+
+    urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+    await flush();
+
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("re-disables the check after a kept-open save and keeps it enabled after a failed save", async () => {
+    const { urlCard, urlInput } = openPanel();
+    const check = urlCard.find(".urlStringSubmitBtnUpdate");
+    urlInput.val("https://new-example.com").trigger("input");
+    expect(check.attr("aria-disabled")).toBeUndefined();
+
+    mockSave({ outcome: "fail" });
+    check.trigger("click");
+    await flush();
+    expect(check.attr("aria-disabled")).toBeUndefined();
+
+    mockSave({ outcome: "done" });
+    check.trigger("click");
+    await flush();
+    // Stored href now equals the input, so the field reads as unchanged again.
+    expect(check.attr("aria-disabled")).toBe("true");
+    expect(check.hasClass("unchanged")).toBe(true);
+  });
+
+  describe("title ✓ re-sync after a kept-open save", () => {
+    it("re-disables the title check once the stored title catches up, and keeps it enabled after a failed save", async () => {
+      const { urlCard } = openPanel();
+      const check = urlCard.find(".urlTitleSubmitBtnUpdate");
+      urlCard.find(".urlTitleUpdate").val("Edited title").trigger("input");
+      expect(check.attr("aria-disabled")).toBeUndefined();
+
+      mockSave({ outcome: "fail" });
+      check.trigger("click");
+      await flush();
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      expect(check.attr("aria-disabled")).toBeUndefined();
+      expect(check.hasClass("unchanged")).toBe(false);
+
+      mockSave({ outcome: "done", urlTitle: "Edited title" });
+      check.trigger("click");
+      await flush();
+      expect(ajaxCall).toHaveBeenCalledTimes(2);
+      expect(urlCard.find(".urlTitle").text()).toBe("Edited title");
+      expect(check.attr("aria-disabled")).toBe("true");
+      expect(check.hasClass("unchanged")).toBe(true);
+    });
+
+    it("clears the in-flight state and re-syncs when the pre-flight fetch is rejected", async () => {
+      const { urlCard } = openPanel();
+      const check = urlCard.find(".urlTitleSubmitBtnUpdate");
+      urlCard.find(".urlTitleUpdate").val("Edited title").trigger("input");
+      vi.mocked(getUpdatedURL).mockRejectedValueOnce({ status: 404 });
+
+      check.trigger("click");
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+      expect(handleRejectFromGetURL).toHaveBeenCalledTimes(1);
+      expect(check.attr("aria-disabled")).toBeUndefined();
+      expect(check.hasClass("unchanged")).toBe(false);
+    });
+  });
+
+  describe("Save URL branches", () => {
+    // Keeps the PATCH pending so the test can act while the request is in flight.
+    async function startPendingSave({
+      urlCard,
+      via,
+    }: {
+      urlCard: JQuery;
+      via: "saveUrl" | "check";
+    }): Promise<{ deferred: ReturnType<typeof createMockJqXHR> }> {
+      // Returned inside an object: awaiting a bare jQuery Deferred would adopt it
+      // as a thenable and hang until it settles.
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      urlCard
+        .find(
+          via === "saveUrl"
+            ? ".urlStringSaveBigBtnUpdate"
+            : ".urlStringSubmitBtnUpdate",
+        )
+        .trigger("click");
+      await flush();
+      return { deferred };
+    }
+
+    function resolveSave(deferred: ReturnType<typeof createMockJqXHR>): void {
+      deferred.resolve({ ...SAVED_RESPONSE, status: "Success" }, "success", {
+        status: 200,
+      });
+    }
+
+    it("a rejected pre-flight fetch sends no request, releases the in-flight guard and never closes", async () => {
+      const { urlCard, urlInput } = openPanel();
+      const check = urlCard.find(".urlStringSubmitBtnUpdate");
+      urlInput.val("https://new-example.com").trigger("input");
+      vi.mocked(getUpdatedURL).mockRejectedValueOnce({ status: 404 });
+
+      urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+      expect(handleRejectFromGetURL).toHaveBeenCalledTimes(1);
+      expect(isURLStringSubmitInFlight()).toBe(false);
+      expect(check.attr("aria-disabled")).toBeUndefined();
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+
+      // The Save URL intent does not survive into a later ✓ save.
+      mockSave({ outcome: "done" });
+      check.trigger("click");
+      await flush();
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+
+    it("keeps the panel open when the title becomes dirty while the save is in flight", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      const { deferred } = await startPendingSave({ urlCard, via: "saveUrl" });
+
+      urlCard.find(".urlTitleUpdate").val("Typed meanwhile").trigger("input");
+      resolveSave(deferred);
+      await flush();
+
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+
+    it("closes when the title stays clean while the save is in flight (control)", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      const { deferred } = await startPendingSave({ urlCard, via: "saveUrl" });
+
+      resolveSave(deferred);
+      await flush();
+
+      expect(closeURLEditPanel).toHaveBeenCalledTimes(1);
+    });
+
+    it("a Save URL click while a save is in flight sends no second request and does not close later", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      const { deferred } = await startPendingSave({ urlCard, via: "check" });
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+
+      urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+      await flush();
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+
+      resolveSave(deferred);
+      await flush();
+      // The blocked Save URL click must not leak into a later ✓ save either.
+      urlInput.val("https://newer-example.com").trigger("input");
+      mockSave({ outcome: "done" });
+      urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+      await flush();
+
+      expect(ajaxCall).toHaveBeenCalledTimes(2);
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+
+    it("a Save URL click on an aria-disabled Save URL sends no request", async () => {
+      const { urlCard, urlInput } = openPanel();
+      const saveButton = urlCard.find(".urlStringSaveBigBtnUpdate");
+      urlInput.val("https://new-example.com");
+      expect(saveButton.attr("aria-disabled")).toBe("true");
+      mockSave({ outcome: "done" });
+
+      saveButton.trigger("click");
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+
+    it("does not close a panel that was closed while the save was in flight", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      const { deferred } = await startPendingSave({ urlCard, via: "saveUrl" });
+
+      hideAndResetUpdateURLStringForm({ urlCard });
+      resolveSave(deferred);
+      await flush();
+
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Enter honors the same gate as the ✓ (mobile panel)", () => {
+    function pressEnterInTitle(urlCard: JQuery): void {
+      const input = urlCard.find(".urlTitleUpdate");
+      input.trigger("blur").trigger("focus");
+      input.trigger(
+        $.Event("keydown", { key: "Enter", originalEvent: { repeat: false } }),
+      );
+    }
+
+    function pressEnterInURL(urlCard: JQuery): void {
+      urlCard.find(".urlStringUpdate").trigger("blur").trigger("focus");
+      $(document).trigger($.Event("keyup", { key: "Enter" }));
+    }
+
+    afterEach(() => {
+      $(document).off("keyup.updateURLStringFocus");
+    });
+
+    it("title: no request while the check is disabled, even with a silently changed value", async () => {
+      const { urlCard } = openPanel();
+      urlCard.find(".urlTitleUpdate").val("Silently edited");
+      mockSave({ outcome: "done", urlTitle: "Silently edited" });
+      expect(
+        urlCard.find(".urlTitleSubmitBtnUpdate").attr("aria-disabled"),
+      ).toBe("true");
+
+      pressEnterInTitle(urlCard);
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+    });
+
+    it("title: saves when the check is enabled", async () => {
+      const { urlCard } = openPanel();
+      urlCard.find(".urlTitleUpdate").val("Edited title").trigger("input");
+      mockSave({ outcome: "done", urlTitle: "Edited title" });
+
+      pressEnterInTitle(urlCard);
+      await flush();
+
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+    });
+
+    it("URL: no request while the check is disabled, even with a silently changed value", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com");
+      mockSave({ outcome: "done" });
+      expect(
+        urlCard.find(".urlStringSubmitBtnUpdate").attr("aria-disabled"),
+      ).toBe("true");
+
+      pressEnterInURL(urlCard);
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+    });
+
+    it("URL: saves when the check is enabled, without closing the panel", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      mockSave({ outcome: "done" });
+
+      pressEnterInURL(urlCard);
+      await flush();
+
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
   });
 });

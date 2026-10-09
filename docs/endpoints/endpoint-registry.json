@@ -4118,6 +4118,7 @@
         "status_codes": {
           "200": "backend.schemas.urls.UrlCreatedResponseSchema",
           "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
           "404": "backend.schemas.errors.ErrorResponse",
           "409": "backend.schemas.errors.ErrorResponse"
         }

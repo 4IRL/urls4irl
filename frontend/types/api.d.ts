@@ -2283,6 +2283,8 @@ export interface components {
         | "ui_url_copy"
         | "ui_url_access_warning"
         | "ui_url_access_warning_dismiss"
+        | "ui_url_params_trimmed"
+        | "ui_url_edit_undone"
         | "ui_utub_search_open"
         | "ui_utub_search_close"
         | "ui_url_search_open"
@@ -6892,6 +6894,8 @@ export interface operations {
           | "ui_url_copy"
           | "ui_url_access_warning"
           | "ui_url_access_warning_dismiss"
+          | "ui_url_params_trimmed"
+          | "ui_url_edit_undone"
           | "ui_utub_search_open"
           | "ui_utub_search_close"
           | "ui_url_search_open"
@@ -7132,6 +7136,8 @@ export interface operations {
           | "ui_url_copy"
           | "ui_url_access_warning"
           | "ui_url_access_warning_dismiss"
+          | "ui_url_params_trimmed"
+          | "ui_url_edit_undone"
           | "ui_utub_search_open"
           | "ui_utub_search_close"
           | "ui_url_search_open"
@@ -8077,6 +8083,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
       /** @description Not found */

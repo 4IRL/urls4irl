@@ -141,7 +141,11 @@ describe("create metrics — UI_VALIDATION_ERROR (url_create sad path)", () => {
     expect(emit).not.toHaveBeenCalled();
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
 
-    createURL($("#urlTitleCreate"), $("#urlStringCreate"), UTUB_ID);
+    createURL({
+      createURLTitleInput: $("#urlTitleCreate"),
+      createURLInput: $("#urlStringCreate"),
+      utubID: UTUB_ID,
+    });
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_VALIDATION_ERROR,

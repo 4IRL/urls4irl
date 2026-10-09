@@ -955,7 +955,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/urls/routes.py:create_url`
 - **Decorators:** `utub_membership_required`, `api_route`
 - **Service:** `backend.urls.services.create_urls:create_url_in_utub`
-- **Schema:** request: `backend.schemas.requests.urls.CreateURLRequest`; response: `backend.schemas.urls.UrlCreatedResponseSchema`; status: 200 `backend.schemas.urls.UrlCreatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
+- **Schema:** request: `backend.schemas.requests.urls.CreateURLRequest`; response: `backend.schemas.urls.UrlCreatedResponseSchema`; status: 200 `backend.schemas.urls.UrlCreatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `createURL`
 

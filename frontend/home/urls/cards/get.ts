@@ -205,7 +205,7 @@ export function handleRejectFromGetURL(
   }
 }
 
-function deleteURLOnStale(urlCard: JQuery): void {
+export function deleteURLOnStale(urlCard: JQuery): void {
   log(
     "deleteURLOnStale — URL was deleted by another user, removing card locally",
   );

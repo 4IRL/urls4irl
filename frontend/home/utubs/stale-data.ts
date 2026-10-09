@@ -5,6 +5,7 @@ import type { UtubDetail } from "../../types/utub.js";
 import { setState } from "../../store/app-store.js";
 import { fitUTubHeaderAndSubheader } from "./header-fit.js";
 import { getUTubInfo } from "./selectors.js";
+import { syncUTubEditPanelDirtyState } from "../urls/utub-edit-panel-dirty.js";
 import { debug } from "../../lib/debug.js";
 
 const log = debug("utubs");
@@ -73,4 +74,6 @@ function updateUTubNameAndDescription(
   }
 
   fitUTubHeaderAndSubheader();
+  // The open mobile edit panel compares against this stored text (no-op if unbound).
+  syncUTubEditPanelDirtyState();
 }

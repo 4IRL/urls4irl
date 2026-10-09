@@ -54,6 +54,12 @@ export type DimUrlCopy = {
   result: "success" | "failure";
 };
 
+export type DimUrlParamsTrimmed = {
+  device_type: DeviceType;
+  form: "url_create" | "url_string_edit";
+  action: "toggle" | "drop_all" | "keep_all" | "undo";
+};
+
 export type DimUtubSearchOpen = {
   device_type: DeviceType;
   target: "utubs";
@@ -244,6 +250,8 @@ export type UIEventDimensions = {
   ui_url_copy: DimUrlCopy;
   ui_url_access_warning: DimDeviceOnly;
   ui_url_access_warning_dismiss: DimDeviceOnly;
+  ui_url_params_trimmed: DimUrlParamsTrimmed;
+  ui_url_edit_undone: DimDeviceOnly;
   ui_utub_search_open: DimUtubSearchOpen;
   ui_utub_search_close: DimUtubSearchClose;
   ui_url_search_open: DimUrlSearchOpen;

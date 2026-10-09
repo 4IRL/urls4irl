@@ -57,6 +57,7 @@ STD_JSON = STD_JSON_RESPONSE
     status_codes={
         200: UrlCreatedResponseSchema,
         400: ErrorResponse,
+        403: ErrorResponse,
         404: ErrorResponse,
         409: ErrorResponse,
     },

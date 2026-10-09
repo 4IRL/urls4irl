@@ -3,6 +3,7 @@ import re
 import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from backend.models.utubs import Utubs
 from tests.functional.db_utils import (
@@ -12,6 +13,8 @@ from tests.functional.db_utils import (
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
+    assert_confirm_button_disabled,
+    assert_confirm_button_enabled,
     assert_not_visible_css_selector,
     assert_panel_visibility_mobile,
     assert_visible_css_selector,
@@ -32,6 +35,9 @@ pytestmark = pytest.mark.mobile_ui
 # persists directly instead of tripping the duplicate-name confirmation modal.
 _NEW_UTUB_NAME = "Renamed Mobile UTub"
 _NEW_UTUB_DESCRIPTION = "Updated via mobile panel"
+
+# How long a negative "no update request is sent" check waits for a request.
+_NO_REQUEST_WAIT_MS = 2000
 
 
 def test_utub_edit_panel_toggle_opens_both_name_and_description_mobile(
@@ -76,6 +82,16 @@ def test_utub_edit_panel_toggle_opens_both_name_and_description_mobile(
     assert_visible_css_selector(
         page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
     )
+
+    # The description row adds only 4px of its own top padding on top of the name
+    # field's reserved "Saved" tick slot, matching the URL card's title -> string
+    # spacing. Assert the padding itself: the rendered total also depends on the
+    # header's min-height centering, which varies with the UTub's data.
+    expect(
+        page.locator(HPL.INPUT_UTUB_DESCRIPTION_UPDATE).locator(
+            "xpath=ancestor::div[contains(@class, 'createDiv')][1]"
+        )
+    ).to_have_css("padding-top", "4px")
 
     # The name input pre-fills with the current (clean) name — capture it to prove
     # it is untouched by the independent description submit below.
@@ -332,3 +348,103 @@ def test_utub_edit_panel_toggle_hidden_on_locked_utub_mobile(
     assert_not_visible_css_selector(
         page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_TOGGLE
     )
+
+
+def test_utub_edit_panel_confirm_buttons_follow_dirty_state_mobile(
+    page_mobile_portrait: Page,
+    create_test_urls,
+    provide_app: Flask,
+):
+    """
+    GIVEN an owner opens the consolidated UTub edit panel on a mobile device
+    WHEN the name and description are edited, reverted and saved
+    THEN each green check starts disabled, enables only for its own edited field,
+        disables again on revert, and disables again once its save lands
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id = 1
+    utub: Utubs = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    open_utub_edit_panel_mobile(page=page)
+    name_input = page.locator(HPL.INPUT_UTUB_NAME_UPDATE)
+    description_input = page.locator(HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
+    original_name = name_input.input_value()
+    original_description = description_input.input_value()
+
+    name_submit = HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE
+    description_submit = HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
+    assert_confirm_button_disabled(button=page.locator(name_submit))
+    assert_confirm_button_disabled(button=page.locator(description_submit))
+
+    # Clicking a disabled check does nothing: no update request is sent. The values
+    # are changed without firing "input" so the checks stay disabled and only the
+    # click guard can stop the request.
+    # (force: Playwright's actionability treats aria-disabled as not enabled.)
+    name_input.evaluate("(el, v) => { el.value = v; }", _NEW_UTUB_NAME)
+    description_input.evaluate("(el, v) => { el.value = v; }", _NEW_UTUB_DESCRIPTION)
+    with pytest.raises(PlaywrightTimeoutError):
+        with page.expect_request(
+            lambda request: request.method == "PATCH", timeout=_NO_REQUEST_WAIT_MS
+        ):
+            page.locator(name_submit).click(force=True)
+            page.locator(description_submit).click(force=True)
+    expect(page.locator(HPL.SAVED_TICK_NAME)).not_to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    expect(page.locator(HPL.SAVED_TICK_DESCRIPTION)).not_to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    # Enter in a field honors the same gate: still no update request.
+    with pytest.raises(PlaywrightTimeoutError):
+        with page.expect_request(
+            lambda request: request.method == "PATCH", timeout=_NO_REQUEST_WAIT_MS
+        ):
+            name_input.press("Enter")
+            description_input.press("Enter")
+    name_input.evaluate("(el, v) => { el.value = v; }", original_name)
+    description_input.evaluate("(el, v) => { el.value = v; }", original_description)
+
+    name_input.fill(_NEW_UTUB_NAME)
+    assert_confirm_button_enabled(button=page.locator(name_submit))
+    assert_confirm_button_disabled(button=page.locator(description_submit))
+
+    name_input.fill(original_name)
+    assert_confirm_button_disabled(button=page.locator(name_submit))
+
+    # Surrounding whitespace is not a change.
+    name_input.fill(f"  {original_name}  ")
+    assert_confirm_button_disabled(button=page.locator(name_submit))
+
+    description_input.fill(_NEW_UTUB_DESCRIPTION)
+    assert_confirm_button_enabled(button=page.locator(description_submit))
+    assert_confirm_button_disabled(button=page.locator(name_submit))
+
+    description_input.fill(original_description)
+    assert_confirm_button_disabled(button=page.locator(description_submit))
+
+    # A save leaves the saved field's check disabled again (stored == input).
+    description_input.fill(_NEW_UTUB_DESCRIPTION)
+    page.locator(description_submit).click()
+    expect(page.locator(HPL.SAVED_TICK_DESCRIPTION)).to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    expect(page.locator(HPL.SUBHEADER_URL_DECK)).to_have_text(_NEW_UTUB_DESCRIPTION)
+    assert_confirm_button_disabled(button=page.locator(description_submit))
+
+    name_input.fill(_NEW_UTUB_NAME)
+    page.locator(name_submit).click()
+    expect(page.locator(HPL.SAVED_TICK_NAME)).to_have_class(re.compile(r"\bopa-1\b"))
+    expect(page.locator(HPL.HEADER_URL_DECK)).to_have_text(_NEW_UTUB_NAME)
+    assert_confirm_button_disabled(button=page.locator(name_submit))
+
+    # Closing and reopening starts disabled again.
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    open_utub_edit_panel_mobile(page=page)
+    assert_confirm_button_disabled(button=page.locator(name_submit))
+    assert_confirm_button_disabled(button=page.locator(description_submit))

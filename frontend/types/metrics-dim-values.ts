@@ -193,6 +193,18 @@ export const URL_COPY_RESULT = {
   FAILURE: "failure",
 } as const;
 
+export const URL_PARAMS_TRIMMED_ACTION = {
+  TOGGLE: "toggle",
+  DROP_ALL: "drop_all",
+  KEEP_ALL: "keep_all",
+  UNDO: "undo",
+} as const;
+
+export const URL_PARAMS_TRIMMED_FORM = {
+  URL_CREATE: "url_create",
+  URL_STRING_EDIT: "url_string_edit",
+} as const;
+
 export const URL_SEARCH_CLOSE_TARGET = {
   URLS: "urls",
 } as const;

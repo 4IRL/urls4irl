@@ -142,6 +142,55 @@ URL_ADDED_ON = "on"
 URL_DATE_ADDED_LABEL = "Added:"
 URL_DATE_ADDED_ARIA = "Added"
 
+# Opt-in query-parameter trim control (frontend/home/urls/trim/param-trim-block.ts).
+# Every string is rendered by TypeScript, so each takes the full bridge
+# (STRINGS -> generate_strings_js() -> test-setup.ts). Single-brace {n}-style
+# placeholders are interpolated in TS; the _ONE forms are the singular companions.
+# URL_TRIM_CONFLICT is a client-side substitution for the server's generic 409
+# message (the server cannot tell a user trim apart: the request body arrives
+# already trimmed), so it is Tier 1, unlike the server-rendered
+# URL_IN_UTUB_TRACKING_PARAMS_STRIPPED.
+URL_TRIM_PARAMS_LABEL = "Trim URL parameters ({n})"
+URL_TRIM_PARAMS_LABEL_ONE = "Trim URL parameter (1)"
+# Title of the auto-only variant: every parameter is one the server removes itself.
+URL_TRIM_AUTO_ONLY_TITLE = "URL parameters removed automatically"
+URL_TRIM_WARNING = "Warning: removing parameters may break this link."
+URL_TRIM_WARNING_ONE = "Warning: removing this parameter may break this link."
+# Outcome banner after any saved URL-string edit that dropped nothing (its Undo
+# restores the previous string); a trim-and-save uses the URL_TRIM_SAVED_BANNER*
+# strings instead.
+URL_UPDATED_BANNER = "URL updated."
+URL_TRIM_GROUP_ARIA = "URL parameters to keep or drop"
+URL_TRIM_DROP_ALL = "Drop all"
+URL_TRIM_KEEP_ALL = "Keep all"
+URL_TRIM_KEPT_COUNT = "{kept} of {total} kept"
+URL_TRIM_PREVIEW_LABEL = "Saves as"
+URL_TRIM_HEADER_DROPPED = "{n} dropped"
+URL_TRIM_CHIP_KEEP_ARIA = "Keep parameter {param}"
+URL_TRIM_CHIP_DROP_ARIA = "Drop parameter {param}"
+URL_TRIM_CHIP_AUTO_ARIA = "Parameter {param} is removed automatically"
+URL_TRIM_AUTO_TAG = "auto"
+URL_TRIM_ANNOUNCE = "{verb} {param}. {kept} of {total} parameters kept."
+URL_TRIM_BULK_ANNOUNCE = "{kept} of {total} parameters kept."
+URL_TRIM_SAVED_BANNER = "Saved without {n} parameters."
+URL_TRIM_SAVED_BANNER_ONE = "Saved without 1 parameter."
+# Mobile edit panel: saves the URL field (same as its green check) while the trim
+# section is open, so the trimmed result has an obvious save control by Close.
+URL_TRIM_SAVE_URL = "Save URL"
+URL_TRIM_UNDO = "Undo"
+URL_TRIM_DISMISS_ARIA = "Dismiss"
+URL_TRIM_UNDO_NOOP = (
+    "Nothing to undo — those parameters are always removed automatically."
+)
+URL_TRIM_UNDO_CONFLICT = "Cannot undo — the original URL is already in this UTub."
+URL_TRIM_CONFLICT = (
+    "That URL is already in this UTub once the parameters you removed are dropped."
+)
+URL_TRIM_DROPS_RESET = "URL changed — all parameters are kept again."
+# `{verb}` values for URL_TRIM_ANNOUNCE (single chip toggle).
+URL_TRIM_VERB_DROPPED = "Dropped"
+URL_TRIM_VERB_KEPT = "Kept"
+
 
 class URL_GENERAL:
     URL = URL

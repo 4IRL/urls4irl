@@ -17,6 +17,10 @@ import {
 import { clearFieldSavedTick } from "./field-saved-tick.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import { isMultiSelectActive } from "./bulk-actions/bulk-mode.js";
+import {
+  bindUTubEditPanelDirtyState,
+  unbindUTubEditPanelDirtyState,
+} from "./utub-edit-panel-dirty.js";
 
 /**
  * Mobile-only orchestrator for the consolidated UTub edit panel. Opens/closes
@@ -83,6 +87,9 @@ export function openUTubEditPanel(utubID: number): void {
   updateUTubNameShowInput(utubID);
   updateUTubDescriptionShowInput(utubID);
 
+  // Both ✓ start disabled and follow their field's dirty state while open.
+  bindUTubEditPanelDirtyState();
+
   // Swap toggle -> close button visibility.
   $("#utubEditPanelToggle").addClass("hidden");
   $("#utubEditPanelClose").removeClass("hidden");
@@ -111,6 +118,8 @@ export function openUTubEditPanel(utubID: number): void {
 // visibility, with NO focus-return. Called by routine, non-user-initiated
 // resets (UTub switch, UTub delete).
 export function resetUTubEditPanelState(utubID: number | null = null): void {
+  unbindUTubEditPanelDirtyState();
+
   // Flip the panel-open signal to "closed" FIRST — before the Hide calls — so
   // the per-field Hide functions (guarded on `!#utubEditPanelClose.hidden`) take
   // their normal restore-chrome + collapse path here on a true panel close,
