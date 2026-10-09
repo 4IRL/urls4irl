@@ -105,10 +105,7 @@ function isUpdateUrlStringFieldName(
   return (UPDATE_URL_STRING_FIELD_NAMES as readonly string[]).includes(key);
 }
 
-// Mobile edit panel: a "Save URL" button beside the Close bar. CSS only shows it
-// while the trim section is open (urls.css), so the trimmed result has an obvious
-// save control next to Close; it does exactly what the URL field's own green
-// check does (same click path, same in-flight guard, same keep-open behaviour).
+// Mobile "Save URL" button: CSS decides when it shows; click reuses the field's own submit.
 function mountTrimSaveButton({
   urlCard,
   closeBar,

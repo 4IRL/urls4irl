@@ -324,15 +324,14 @@
 .urlOutcomeBannerAction:hover,
 .urlOutcomeBannerAction:focus,
 .urlOutcomeBannerAction:focus-visible {
-    background-color: var(--splashGreen);
-    background-color: color-mix(in srgb, var(--splashGreen) 75%, black);
-    border-color: color-mix(in srgb, var(--splashGreen) 75%, black);
+    background-color: var(--splashGreenSolid);
+    border-color: var(--splashGreenSolid);
     color: white;
 }
 
 .urlOutcomeBannerAction:active {
-    background-color: color-mix(in srgb, var(--splashGreen) 60%, black);
-    border-color: color-mix(in srgb, var(--splashGreen) 60%, black);
+    background-color: var(--splashGreenSolidActive);
+    border-color: var(--splashGreenSolidActive);
 }
 
 /* Glyph drawn here so no display string lives in TS; the label is aria-label. */

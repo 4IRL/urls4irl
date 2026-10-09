@@ -631,15 +631,14 @@ a.urlString {
 .urlStringSaveBigBtnUpdate:hover,
 .urlStringSaveBigBtnUpdate:focus,
 .urlStringSaveBigBtnUpdate:focus-visible {
-    background-color: var(--splashGreen) !important;
-    background-color: color-mix(in srgb, var(--splashGreen) 75%, black) !important;
-    border-color: color-mix(in srgb, var(--splashGreen) 75%, black) !important;
+    background-color: var(--splashGreenSolid) !important;
+    border-color: var(--splashGreenSolid) !important;
     color: white !important;
 }
 
 .urlStringSaveBigBtnUpdate:active {
-    background-color: color-mix(in srgb, var(--splashGreen) 60%, black) !important;
-    border-color: color-mix(in srgb, var(--splashGreen) 60%, black) !important;
+    background-color: var(--splashGreenSolidActive) !important;
+    border-color: var(--splashGreenSolidActive) !important;
     color: white !important;
 }
 

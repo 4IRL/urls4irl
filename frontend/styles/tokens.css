@@ -366,4 +366,16 @@
 
     /* Font family */
     --font-display: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    /* Solid green buttons (Undo, Save URL): darkened so a white label meets 4.5:1.
+       Plain brand green where color-mix() is unsupported. Same in both themes. */
+    --splashGreenSolid: var(--splashGreen);
+    --splashGreenSolidActive: var(--splashGreen);
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+    :root {
+        --splashGreenSolid: color-mix(in srgb, var(--splashGreen) 75%, black);
+        --splashGreenSolidActive: color-mix(in srgb, var(--splashGreen) 60%, black);
+    }
 }
