@@ -14,6 +14,7 @@ from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.schemas.search import (
     SearchResultsSchema,
     SearchUtubGroupSchema,
@@ -162,8 +163,12 @@ def search_across_user_utubs(
 
     escaped = _escape_ilike(query)
     query_lower = query.lower()
-    member_utub_ids = db.session.query(Utub_Members.utub_id).filter(
-        Utub_Members.user_id == user_id
+    # Excludes trashed parent UTubs only; per-URL trashed filtering lands with URL
+    # soft-delete.
+    member_utub_ids = (
+        db.session.query(Utub_Members.utub_id)
+        .join(Utubs, Utubs.id == Utub_Members.utub_id)
+        .filter(Utub_Members.user_id == user_id, Utubs.deleted_at.is_(None))
     )
 
     predicates = []

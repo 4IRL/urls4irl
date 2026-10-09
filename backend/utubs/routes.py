@@ -252,8 +252,8 @@ def update_utub_desc(
 )
 def delete_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
-    Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
-    URLS, tags, and users.
+    Creator wants to delete their UTub. The UTub moves to trash, and all associations between this
+    UTub and its contained URLs, tags, and users are retained for restore.
 
     Args:
         utub_id (int): The ID of the UTub to be deleted

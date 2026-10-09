@@ -335,6 +335,56 @@ def test_user_utub_data_serialized_on_initial_load():
     )
 
 
+def test_user_utub_data_serialization_omits_trashed_utub():
+    """
+    GIVEN a user who is a member of several UTubs, one of which is trashed
+        (its ``deleted_at`` is set)
+    WHEN the UTub summary list is built for that user
+    THEN ensure the trashed UTub is omitted and every live UTub is kept
+    """
+    empty_utubs = (
+        v_models.valid_empty_utub_1,
+        v_models.valid_empty_utub_2,
+        v_models.valid_empty_utub_3,
+    )
+    valid_user = v_models.valid_user_1
+    new_user = Users(
+        username=valid_user[MODEL_STRS.USERNAME],
+        email=valid_user[REGISTER_FORM.EMAIL],
+        plaintext_password=valid_user[REGISTER_FORM.PASSWORD],
+    )
+
+    for empty_utub in empty_utubs:
+        new_utub = Utubs(
+            name=empty_utub[MODEL_STRS.NAME],
+            utub_creator=valid_user[MODEL_STRS.ID],
+            utub_description="",
+        )
+        new_utub.set_last_updated()
+        new_utub.id = empty_utub[MODEL_STRS.ID]
+        new_utub.is_locked = False
+
+        new_utub_user = Utub_Members()
+        new_utub_user.member_role = Member_Role.CREATOR
+        new_utub_user.to_user = new_user
+        new_utub.members.append(new_utub_user)
+
+    trashed_membership = new_user.utubs_is_member_of[0]
+    trashed_membership.to_utub.deleted_at = datetime.now(timezone.utc)
+    trashed_utub_id = trashed_membership.to_utub.id
+
+    serialized_ids = [
+        utub_item.id for utub_item in UtubSummaryListSchema.from_user(new_user).utubs
+    ]
+
+    assert trashed_utub_id not in serialized_ids
+    assert sorted(serialized_ids) == sorted(
+        empty_utub[MODEL_STRS.ID]
+        for empty_utub in empty_utubs
+        if empty_utub[MODEL_STRS.ID] != trashed_utub_id
+    )
+
+
 def test_utub_serialized_only_creator_no_urls_no_tags(
     app: Flask, every_user_makes_a_unique_utub
 ):

@@ -37,7 +37,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub
 
 pytestmark = pytest.mark.members
 
@@ -207,6 +207,52 @@ def test_add_member_to_locked_utub_is_rejected(
             ).count()
             == initial_users_in_utub
         )
+        assert Utub_Members.query.count() == initial_num_user_utubs
+
+
+def test_add_member_to_trashed_utub_is_404(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub containing only themselves, where the UTub is trashed
+    WHEN the creator tries to add another valid user to their trashed UTub
+        - By POST to "/utubs/<int:utub_id>/members" with a valid username
+    THEN the owner/manager gate chain inherits the trashed check: the server responds 404
+        with the generic not-found JSON and no new Utub_Members association is created.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        other_user: Users = Users.query.filter(
+            Users.username != current_user.username
+        ).first()
+        username_to_add = other_user.username
+
+        utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role == Member_Role.CREATOR,
+        ).first()
+        utub_id_of_current_user = utub_member.utub_id
+        creator_user_id = current_user.id
+        initial_num_user_utubs = Utub_Members.query.count()
+
+    trash_utub(app, utub_id_of_current_user, deleted_by=creator_user_id)
+
+    added_user_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
+        json={ADD_USER_FORM.USERNAME: username_to_add},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
+    )
+
+    assert added_user_response.status_code == 404
+    json_response = added_user_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
         assert Utub_Members.query.count() == initial_num_user_utubs
 
 

@@ -15,7 +15,7 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub
 
 pytestmark = pytest.mark.urls
 
@@ -205,6 +205,39 @@ def test_get_url_in_nonexistent_utub(
             utub_id=NONEXISTENT_UTUB_ID,
             utub_url_id=valid_url_in_utub.id,
         ),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert get_url_response.status_code == 404
+    json_response = get_url_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+
+def test_get_url_in_trashed_utub_is_404(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN the creator of a UTub that holds a URL, where the UTub has been moved to trash
+    WHEN the creator attempts to get that URL via a GET to
+        "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN verify the URL gate inherits the trashed check and the server responds with a 404
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_creator_of.id
+        url_id_in_utub = Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first().id
+        creator_user_id = current_user.id
+
+    trash_utub(app, utub_id, deleted_by=creator_user_id)
+
+    get_url_response = client.get(
+        url_for(ROUTES.URLS.GET_URL, utub_id=utub_id, utub_url_id=url_id_in_utub),
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 

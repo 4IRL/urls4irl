@@ -75,19 +75,24 @@ def validate_home_query_params() -> bool:
 def validate_user_is_member_of_utub_on_home_page_with_query_param(utub_id: str) -> bool:
     """
     Given a string query param representing a UTub ID, verify the current user
-    in this request is a member of that UTub.
+    in this request is a member of that UTub. A nonexistent UTub 404s.
 
     Args:
         utub_id (str): The ID of the UTub to verify membership for the current user
 
     Returns:
-        (bool): True if current user is member of UTub with ID of the given query param
+        (bool): True if current user is member of the live UTub with ID of the given
+            query param; False (redirect home) if that UTub is trashed or the user is
+            not a member
     """
     try:
-        if (
-            Utubs.query.get_or_404(int(utub_id)) is None
-            or Utub_Members.query.get((int(utub_id), current_user.id)) is None
-        ):
+        utub: Utubs = Utubs.query.get_or_404(int(utub_id))
+
+        if utub.is_trashed:
+            warning_log(f"User={current_user.id} requested trashed UTub.id={utub_id}")
+            return False
+
+        if Utub_Members.query.get((int(utub_id), current_user.id)) is None:
             warning_log(f"User={current_user.id} not a member of UTub.id={utub_id}")
             return False
 

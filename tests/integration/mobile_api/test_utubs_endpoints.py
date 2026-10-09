@@ -24,10 +24,12 @@ from backend.models.utub_members import Member_Role
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
+from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import UTUB_NAME, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
+from tests.utils_for_test import trash_utub
 
 pytestmark = pytest.mark.mobile_api
 
@@ -217,6 +219,41 @@ def test_get_utubs_happy_path(
     assert utubs_list[0][MODELS.NAME] == valid_empty_utub_1[MODELS.NAME]
 
 
+def test_get_utubs_excludes_trashed(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN a validated user with two UTubs, one of which is trashed
+    WHEN GET /api/v1/utubs
+    THEN 200 with a utubs list containing only the live UTub
+    """
+    live_utub_name = "Live UTub"
+    create_response = api_client.post(
+        _create_utub_url(app),
+        json={_UTUB_NAME_FIELD: live_utub_name},
+        headers=bearer_headers_first_user,
+    )
+    assert create_response.status_code == 200
+
+    with app.app_context():
+        live_utub_id = Utubs.query.filter(Utubs.name == live_utub_name).one().id
+    trash_utub(app, 1, deleted_by=1)
+
+    response = api_client.get(
+        _get_utubs_url(app),
+        headers=bearer_headers_first_user,
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    utub_ids = [utub_item[MODELS.ID] for utub_item in response_json[_UTUBS_KEY]]
+    assert utub_ids == [live_utub_id]
+
+
 def test_get_utubs_empty_returns_empty_list(
     app: Flask,
     api_client: FlaskClient,
@@ -386,6 +423,30 @@ def test_get_single_utub_not_member_is_404(
     assert response.status_code == 404
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_get_single_utub_trashed_is_404(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN the creator of UTub id=1, where the UTub has been moved to trash
+    WHEN GET /api/v1/utubs/1
+    THEN 404 with the generic not-found envelope, exactly as for a deleted UTub
+    """
+    trash_utub(app, 1, deleted_by=1)
+
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=1),
+        headers=bearer_headers_first_user,
+    )
+
+    assert response.status_code == 404
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
 
 # ===========================================================================
@@ -577,7 +638,7 @@ def test_delete_utub_happy_path(
     """
     GIVEN the creator of UTub id=1
     WHEN DELETE /api/v1/utubs/1
-    THEN 200 with utubID and utubName; DB row removed
+    THEN 200 with utubID and utubName; DB row retained, flagged trashed
     """
     with app.app_context():
         initial_count = Utubs.query.count()
@@ -595,7 +656,10 @@ def test_delete_utub_happy_path(
     assert response_json[UTUB_SUCCESS.UTUB_ID] == 1
 
     with app.app_context():
-        assert Utubs.query.count() == 0
+        assert Utubs.query.count() == initial_count
+        trashed_utub: Utubs = Utubs.query.get(1)
+        assert trashed_utub.is_trashed
+        assert trashed_utub.deleted_by == 1
 
 
 def test_delete_utub_no_token_is_401(app: Flask, api_client: FlaskClient):
@@ -625,6 +689,9 @@ def test_delete_utub_not_creator_is_403(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
 
+    with app.app_context():
+        assert not Utubs.query.get(1).is_trashed
+
 
 def test_delete_utub_as_co_creator_is_403(
     app: Flask,
@@ -636,7 +703,7 @@ def test_delete_utub_as_co_creator_is_403(
     GIVEN a UTub created by user id=1 with user id=2 seeded as a CO_CREATOR (co-owner)
     WHEN the co-creator DELETEs /api/v1/utubs/1 with a valid bearer token
     THEN the literal-owner-only guard rejects it: 403 JSON failure envelope, and the
-        UTub still exists (co-creators are not literal owners — DD-1/DD-2).
+        UTub is not trashed (co-creators are not literal owners — DD-1/DD-2).
     """
     user_2_token = _token_for_user(app, user_id=2)
 
@@ -654,6 +721,7 @@ def test_delete_utub_as_co_creator_is_403(
 
     with app.app_context():
         assert Utubs.query.count() == initial_count
+        assert not Utubs.query.get(1).is_trashed
 
 
 def test_delete_utub_nonexistent_is_404(
@@ -671,3 +739,36 @@ def test_delete_utub_nonexistent_is_404(
     assert response.status_code == 404
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_delete_utub_already_trashed_is_404(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN the creator of UTub id=1, where the UTub is already in trash
+    WHEN DELETE /api/v1/utubs/1 again
+    THEN 404 with the generic not-found envelope, and the original trash
+        flags are left untouched
+    """
+    trash_utub(app, 1, deleted_by=1)
+
+    with app.app_context():
+        original_deleted_at = Utubs.query.get(1).deleted_at
+
+    response = api_client.delete(
+        _delete_utub_url(app, utub_id=1),
+        headers=bearer_headers_first_user,
+    )
+
+    assert response.status_code == 404
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        trashed_utub: Utubs = Utubs.query.get(1)
+        assert trashed_utub.deleted_at == original_deleted_at
+        assert trashed_utub.deleted_by == 1

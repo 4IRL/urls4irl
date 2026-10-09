@@ -350,14 +350,17 @@ def delete_utub_tag_elem(*, page: Page, tag_id: str, app: Flask) -> None:
         css_property="opacity",
         expected_value="1",
     )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
-    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_disabled()
+    # Resolve the tag element BEFORE submitting: the delete response can remove it
+    # from the DOM before a post-submit presence wait runs, which flaked as
+    # "Locator expected to be attached" on a fast response.
     delete_utub_tag_css_selector = (
         f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
     )
     utub_tag_locator = wait_for_element_presence(
         page=page, css_selector=delete_utub_tag_css_selector
     )
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_disabled()
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=utub_tag_locator)
 

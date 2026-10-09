@@ -17,12 +17,13 @@ from backend.models.user_preferences import (
 )
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
+from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.utub_strs import (
     MOBILE_PANEL_QUERY_PARAM,
     UTUB_ID_QUERY_PARAM,
 )
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub
 
 pytestmark = pytest.mark.utubs
 
@@ -200,6 +201,67 @@ def test_get_home_page_when_not_in_utub(
         f"User={user.id} not a member of UTub.id={utub_id_not_member_of}",
         caplog.records,
     )
+
+
+def test_get_trashed_utub_on_home_page_redirects(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+    caplog,
+):
+    """
+    GIVEN a user who created a UTub that is now trashed
+    WHEN the user requests /home with that trashed UTub's ID as the query param
+    THEN verify the server redirects to /home (like a non-member) and logs the
+        trashed request
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        creator_membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user.id
+        ).first()
+        trashed_utub_id = creator_membership.utub_id
+    trash_utub(app, trashed_utub_id, deleted_by=user.id)
+
+    url_to_get = (
+        url_for(ROUTES.UTUBS.HOME) + f"?{UTUB_ID_QUERY_PARAM}={trashed_utub_id}"
+    )
+
+    response = client.get(url_to_get)
+    assert response.status_code == 302
+    assert response.location == url_for(ROUTES.UTUBS.HOME)
+    assert is_string_in_logs(
+        f"User={user.id} requested trashed UTub.id={trashed_utub_id}",
+        caplog.records,
+    )
+
+
+def test_get_home_page_excludes_trashed_utub_from_deck(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user who is a member of multiple UTubs, one of which is trashed
+    WHEN the user requests /home
+    THEN verify the server-rendered deck omits the trashed UTub's name and
+        still includes a live UTub's name
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        member_utubs: list[Utubs] = [
+            membership.to_utub
+            for membership in Utub_Members.query.filter(Utub_Members.user_id == user.id)
+            .order_by(Utub_Members.utub_id)
+            .all()
+        ]
+        trashed_utub_id = member_utubs[0].id
+        trashed_utub_name = member_utubs[0].name
+        live_utub_name = member_utubs[1].name
+    trash_utub(app, trashed_utub_id, deleted_by=user.id)
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+    assert trashed_utub_name.encode() not in response.data
+    assert live_utub_name.encode() in response.data
 
 
 def test_get_home_page_when_in_utub(

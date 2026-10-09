@@ -37,6 +37,7 @@ from backend.models.user_preferences import (
     ViewMode,
 )
 from backend.models.users import Users
+from backend.models.utubs import Utubs
 from backend.schemas.exports import UserDataExportResponseSchema
 from backend.users.constants import DATA_EXPORT_RATE_LIMIT, DataExportErrorCodes
 from backend.users.services.data_export_service import build_user_data_export_core
@@ -47,6 +48,7 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
+from tests.utils_for_test import trash_utub
 
 pytestmark = pytest.mark.account_and_support
 
@@ -161,6 +163,46 @@ def test_data_export_core_serializes_all_memberships(
         for tag_payload in utub_payload["tags"]:
             assert "id" not in tag_payload
             assert "createdByUserId" not in tag_payload
+
+
+def test_data_export_core_includes_trashed_utub(
+    login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
+) -> None:
+    """A trashed UTub the user belongs to is still exported (its data is held
+    during the retention window), with its URLs, tags and members intact."""
+    _logged_in_client, seeded_user, app = login_first_user_with_distinct_stats
+
+    with app.app_context():
+        acting_user: Users = Users.query.get(seeded_user.id)
+        export_before = build_user_data_export_core(
+            user=acting_user, generated_at=utc_now()
+        )
+        home_before = max(
+            (utub for utub in export_before.utubs if utub.role == "creator"),
+            key=lambda utub: len(utub.urls),
+        )
+        trashed_utub_id: int = (
+            Utubs.query.filter_by(name=home_before.name, utub_creator=seeded_user.id)
+            .first()
+            .id
+        )
+
+    trash_utub(app, trashed_utub_id, deleted_by=seeded_user.id)
+
+    with app.app_context():
+        acting_user = Users.query.get(seeded_user.id)
+        export_after = build_user_data_export_core(
+            user=acting_user, generated_at=utc_now()
+        )
+
+    assert len(export_after.utubs) == len(export_before.utubs) == 6
+    home_after = next(
+        utub for utub in export_after.utubs if utub.name == home_before.name
+    )
+    assert home_after.role == "creator"
+    assert len(home_after.urls) == len(home_before.urls) > 0
+    assert len(home_after.tags) == len(home_before.tags) > 0
+    assert len(home_after.members) == len(home_before.members) > 0
 
 
 def test_data_export_core_includes_stored_preferences(

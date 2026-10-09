@@ -56,7 +56,7 @@ Core domain: `Users` -> `Utub_Members` (with `Member_Role`: MEMBER/CREATOR/CO_CR
 
 ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.3.
 
-`Utubs` and `Utub_Urls` carry nullable soft-delete columns (`deletedAt`, `deletedBy`; `Utub_Urls` also has the `trashedTagIds` tag snapshot), where `NULL` means live. They are unused until the soft-delete-restore behavior phases land.
+`Utubs` and `Utub_Urls` carry nullable soft-delete columns (`deletedAt`, `deletedBy`; `Utub_Urls` also has the `trashedTagIds` tag snapshot), where `NULL` means live. The `Utubs` columns are live: deleting a UTub sets them (a 30-day trash), and the membership gates, deck list, co-member/cross-UTub search, URL copy and Settings stats exclude trashed UTubs (admin, data export, account erasure and the anonymous gauges still see them by design). The `Utub_Urls` columns remain unused until URL soft-delete lands.
 
 ## Frontend Structure
 

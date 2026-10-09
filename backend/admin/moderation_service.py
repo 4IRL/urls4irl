@@ -144,6 +144,9 @@ def unlock_utub(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
 def delete_utub_admin(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
     """Delete a UTub and all its children (members, URLs, tags) via ORM cascade.
 
+    A moderation delete is a hard delete that purges immediately, whether or
+    not the UTub is already in the user-facing trash; it never soft-deletes.
+
     Args:
         actor_id: ID of the admin user performing the action.
         utub_id: Primary key of the UTub to delete.

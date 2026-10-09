@@ -21,11 +21,14 @@ def get_co_member_candidates(
     members. Each candidate carries ``shared_utub_count`` — the number of the
     requester's UTubs the candidate also belongs to. Ordered case-insensitively
     by username (Utub_Members has no added-at column to order by recency).
+    Trashed UTubs do not count as shared.
 
     Emits the ``MEMBER_ADD_CANDIDATES_LOADED`` domain metric.
     """
-    requester_utub_ids = db.session.query(Utub_Members.utub_id).filter(
-        Utub_Members.user_id == current_user_id
+    requester_utub_ids = (
+        db.session.query(Utub_Members.utub_id)
+        .join(Utubs, Utubs.id == Utub_Members.utub_id)
+        .filter(Utub_Members.user_id == current_user_id, Utubs.deleted_at.is_(None))
     )
     target_member_ids = db.session.query(Utub_Members.user_id).filter(
         Utub_Members.utub_id == current_utub.id
