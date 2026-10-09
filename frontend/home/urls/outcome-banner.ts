@@ -41,14 +41,20 @@ function returnFocus(target: JQuery): void {
 }
 
 // How long the banner stays up before hiding itself. Long enough to read the
-// message and reach Undo on a phone.
+// message and reach Undo on a phone; partial (error / no-change) banners get
+// longer since they are messages the user may need to read.
 const AUTO_HIDE_MS = 10000;
+const AUTO_HIDE_PARTIAL_MS = 20000;
 const PAUSE_EVENTS =
-  "mouseenter.outcomeBannerPause focusin.outcomeBannerPause touchstart.outcomeBannerPause";
+  "pointerenter.outcomeBannerPause pointerdown.outcomeBannerPause focusin.outcomeBannerPause";
 const RESUME_EVENTS =
-  "mouseleave.outcomeBannerPause focusout.outcomeBannerPause touchend.outcomeBannerPause touchcancel.outcomeBannerPause";
+  "pointerleave.outcomeBannerPause pointerup.outcomeBannerPause pointercancel.outcomeBannerPause focusout.outcomeBannerPause";
+// Window after a touch pointer event in which mouse-type pointer events are
+// compatibility events from that touch (they would re-pause with no leave).
+const TOUCH_COMPAT_MOUSE_MS = 1000;
 
 let autoHideTimer: ReturnType<typeof setTimeout> | null = null;
+let lastTouchAt = Number.NEGATIVE_INFINITY;
 
 function stopAutoHide(): void {
   if (autoHideTimer !== null) {
@@ -57,14 +63,42 @@ function stopAutoHide(): void {
   }
 }
 
+function bannerVariant(): OutcomeBannerVariant {
+  return $(BANNER_SELECTOR).hasClass("partial") ? "partial" : "success";
+}
+
 // (Re)starts the full countdown; hides without moving focus (focus can only be
-// inside the banner while the timer is paused, so nothing is lost).
-function startAutoHide(): void {
+// inside the banner while the timer is paused, so nothing is lost). If an Undo
+// request is still in flight when it fires, the hide is deferred: the request's
+// 429 branch restarts the countdown, and every other outcome replaces or clears
+// the banner itself.
+function startAutoHide(variant: OutcomeBannerVariant): void {
   stopAutoHide();
-  autoHideTimer = setTimeout(() => {
-    autoHideTimer = null;
-    clearURLOutcomeBanner();
-  }, AUTO_HIDE_MS);
+  autoHideTimer = setTimeout(
+    () => {
+      autoHideTimer = null;
+      const inFlight =
+        $(BANNER_SELECTOR)
+          .find(".urlOutcomeBannerAction")
+          .attr("aria-disabled") === "true";
+      if (inFlight) return;
+      clearURLOutcomeBanner();
+    },
+    variant === "partial" ? AUTO_HIDE_PARTIAL_MS : AUTO_HIDE_MS,
+  );
+}
+
+// True for a mouse-type pointer event that follows a touch (compat event).
+function isCompatMouseEvent(event: JQuery.TriggeredEvent): boolean {
+  const pointerType = (event.originalEvent as PointerEvent | undefined)
+    ?.pointerType;
+  if (pointerType === "touch") {
+    lastTouchAt = Date.now();
+    return false;
+  }
+  return (
+    pointerType === "mouse" && Date.now() - lastTouchAt < TOUCH_COMPAT_MOUSE_MS
+  );
 }
 
 /** Hides and empties the banner. Safe to call when no banner is showing. */
@@ -145,9 +179,15 @@ export function showURLOutcomeBanner({
     .removeClass("hidden success partial")
     .addClass(variant)
     .append(body, actions)
-    .on(PAUSE_EVENTS, stopAutoHide)
-    .on(RESUME_EVENTS, startAutoHide);
-  startAutoHide();
+    .on(PAUSE_EVENTS, (event) => {
+      if (!isCompatMouseEvent(event)) stopAutoHide();
+    })
+    .on(RESUME_EVENTS, (event) => {
+      if (!isCompatMouseEvent(event)) startAutoHide(variant);
+    });
+  // A banner replaced under a still-hovering pointer stays paused until the
+  // pointer leaves (its pointerleave restarts the countdown).
+  if (!banner.is(":hover")) startAutoHide(variant);
 }
 
 /**
@@ -184,17 +224,24 @@ export function performUndo({
         returnFocusTo,
       });
     } else {
+      const savedURLString = urlCard.find(".urlString").text();
       applyUpdatedURLString({ response, urlCard });
-      // The edit form's input still holds the trimmed string it was saved with
-      // (a kept-open mobile form shows it right now; a closed one would show it
-      // on its next open). Restore it to the stored original and re-render the
-      // trim block from it, so the field reads as it did before the trim.
+      // The edit form's input still holds the string it was saved with (a
+      // kept-open mobile form shows it right now; a closed one on its next
+      // open). Restore it and re-render the trim block, so the field reads as it
+      // did before the save — unless the user has since typed something else.
       const restoredURLString = response.URL.urlString;
-      urlCard.find(".urlStringUpdate").val(restoredURLString);
-      flushParamTrim({
-        trimWrap: urlCard.find(".urlParamTrimWrap"),
-        rawValue: restoredURLString,
-      });
+      const input = urlCard.find(".urlStringUpdate");
+      const formClosed = urlCard
+        .find(".updateUrlStringWrap")
+        .hasClass("hidden");
+      if (formClosed || input.val() === savedURLString) {
+        input.val(restoredURLString);
+        flushParamTrim({
+          trimWrap: urlCard.find(".urlParamTrimWrap"),
+          rawValue: restoredURLString,
+        });
+      }
       clearURLOutcomeBanner();
     }
     returnFocus(returnFocusTo);
@@ -203,9 +250,12 @@ export function performUndo({
   request.fail(function (xhr: JQuery.jqXHR) {
     if (is429Handled(xhr)) {
       // The banner stays up, so let the user retry the Undo.
-      $(BANNER_SELECTOR)
-        .find(".urlOutcomeBannerAction")
-        .removeAttr("aria-disabled");
+      const banner = $(BANNER_SELECTOR);
+      banner.find(".urlOutcomeBannerAction").removeAttr("aria-disabled");
+      // The countdown may have fired (and been deferred) while in flight.
+      if (autoHideTimer === null && !banner.is(":hover")) {
+        startAutoHide(bannerVariant());
+      }
       returnFocus(returnFocusTo);
       return;
     }

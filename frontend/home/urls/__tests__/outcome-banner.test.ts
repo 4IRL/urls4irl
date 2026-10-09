@@ -189,6 +189,7 @@ describe("outcome banner", () => {
 
     describe("auto-hide", () => {
       const AUTO_HIDE_MS = 10000;
+      const AUTO_HIDE_PARTIAL_MS = 20000;
 
       function show(variant: "success" | "partial" = "success"): void {
         showURLOutcomeBanner({
@@ -215,11 +216,28 @@ describe("outcome banner", () => {
         expect(banner().children()).toHaveLength(0);
       });
 
-      it("applies to the partial variant too", () => {
+      it("gives the partial variant a longer countdown", () => {
         show("partial");
 
         vi.advanceTimersByTime(AUTO_HIDE_MS);
+        expect(banner().hasClass("hidden")).toBe(false);
 
+        vi.advanceTimersByTime(AUTO_HIDE_PARTIAL_MS - AUTO_HIDE_MS - 1);
+        expect(banner().hasClass("hidden")).toBe(false);
+
+        vi.advanceTimersByTime(1);
+        expect(banner().hasClass("hidden")).toBe(true);
+      });
+
+      it("restarts a partial banner with the partial duration after a pause", () => {
+        show("partial");
+
+        banner().trigger("focusin");
+        banner().trigger("focusout");
+        vi.advanceTimersByTime(AUTO_HIDE_PARTIAL_MS - 1);
+        expect(banner().hasClass("hidden")).toBe(false);
+
+        vi.advanceTimersByTime(1);
         expect(banner().hasClass("hidden")).toBe(true);
       });
 
@@ -232,11 +250,25 @@ describe("outcome banner", () => {
         expect(document.activeElement).toBe($("#elsewhere")[0]);
       });
 
+      // jQuery maps pointerenter/pointerleave onto the native pointerover /
+      // pointerout, so dispatch those with a pointerType to exercise real events.
+      function firePointer({
+        type,
+        pointerType,
+      }: {
+        type: string;
+        pointerType: string;
+      }): void {
+        const event = new MouseEvent(type, { bubbles: true });
+        Object.defineProperty(event, "pointerType", { value: pointerType });
+        banner()[0].dispatchEvent(event);
+      }
+
       it.each([
-        ["mouseenter", "mouseleave"],
+        ["pointerenter", "pointerleave"],
         ["focusin", "focusout"],
-        ["touchstart", "touchend"],
-        ["touchstart", "touchcancel"],
+        ["pointerdown", "pointerup"],
+        ["pointerdown", "pointercancel"],
       ])(
         "pauses on %s and restarts the full countdown on %s",
         (pauseEvent, resumeEvent) => {
@@ -254,6 +286,76 @@ describe("outcome banner", () => {
           expect(banner().hasClass("hidden")).toBe(true);
         },
       );
+
+      it("a real mouse hover pauses and leaving restarts the countdown", () => {
+        show();
+
+        firePointer({ type: "pointerover", pointerType: "mouse" });
+        vi.advanceTimersByTime(AUTO_HIDE_MS * 3);
+        expect(banner().hasClass("hidden")).toBe(false);
+
+        firePointer({ type: "pointerout", pointerType: "mouse" });
+        vi.advanceTimersByTime(AUTO_HIDE_MS);
+        expect(banner().hasClass("hidden")).toBe(true);
+      });
+
+      it("a touch followed by its compatibility mouse hover does not pin the countdown", () => {
+        show();
+
+        firePointer({ type: "pointerdown", pointerType: "touch" });
+        firePointer({ type: "pointerup", pointerType: "touch" });
+        // The browser's compat mouseenter-equivalent arrives right after touchend
+        // with no matching leave until the next tap.
+        firePointer({ type: "pointerover", pointerType: "mouse" });
+
+        vi.advanceTimersByTime(AUTO_HIDE_MS);
+        expect(banner().hasClass("hidden")).toBe(true);
+      });
+
+      it("a mouse hover long after a touch pauses again", () => {
+        show();
+        firePointer({ type: "pointerdown", pointerType: "touch" });
+        firePointer({ type: "pointerup", pointerType: "touch" });
+
+        vi.advanceTimersByTime(5000);
+        firePointer({ type: "pointerover", pointerType: "mouse" });
+        vi.advanceTimersByTime(AUTO_HIDE_MS * 3);
+
+        expect(banner().hasClass("hidden")).toBe(false);
+      });
+
+      it("a banner replaced under a hovering pointer waits for it to leave", () => {
+        const originalIs = $.fn.is;
+        vi.spyOn($.fn, "is").mockImplementation(function (
+          this: JQuery,
+          selector: unknown,
+        ) {
+          if (selector === ":hover") return true;
+          if (selector === ":visible") return targetVisible;
+          return originalIs.call(this, selector as string);
+        });
+
+        show();
+        vi.advanceTimersByTime(AUTO_HIDE_MS * 3);
+        expect(banner().hasClass("hidden")).toBe(false);
+
+        banner().trigger("pointerleave");
+        vi.advanceTimersByTime(AUTO_HIDE_MS);
+        expect(banner().hasClass("hidden")).toBe(true);
+      });
+
+      it("defers hiding while the Undo request is in flight and keeps the button", () => {
+        show();
+        banner().find(".urlOutcomeBannerAction").trigger("click");
+        expect(
+          banner().find(".urlOutcomeBannerAction").attr("aria-disabled"),
+        ).toBe("true");
+
+        vi.advanceTimersByTime(AUTO_HIDE_MS * 3);
+
+        expect(banner().hasClass("hidden")).toBe(false);
+        expect(banner().find(".urlOutcomeBannerAction")).toHaveLength(1);
+      });
 
       it("pauses while the Undo button has focus and bubbles up to the banner", () => {
         show();
@@ -294,13 +396,13 @@ describe("outcome banner", () => {
       it("clearing and dismissing cancel the countdown and detach the pause handlers", () => {
         show();
         clearURLOutcomeBanner();
-        banner().trigger("mouseleave");
+        banner().trigger("pointerleave");
         vi.advanceTimersByTime(AUTO_HIDE_MS * 2);
         expect(banner().hasClass("hidden")).toBe(true);
 
         show();
         banner().find(".urlOutcomeBannerDismiss").trigger("click");
-        banner().trigger("mouseleave");
+        banner().trigger("pointerleave");
         expect(vi.getTimerCount()).toBe(0);
       });
 
@@ -500,14 +602,51 @@ describe("outcome banner", () => {
     describe("edit form resync", () => {
       const TRIMMED = "https://example.com/p?a=1";
 
-      function addEditForm(): void {
+      // The card shows the just-saved (trimmed) string; the input still holds it.
+      function addEditForm({
+        closed = false,
+      }: { closed?: boolean } = {}): void {
         $(".urlRow[utuburlid=42]").append(`
-          <div class="updateUrlStringWrap">
+          <a class="urlString">${TRIMMED}</a>
+          <div class="updateUrlStringWrap${closed ? " hidden" : ""}">
             <input class="urlStringUpdate" value="${TRIMMED}" />
             <div class="urlParamTrimWrap"></div>
           </div>
         `);
       }
+
+      function mockUndoSuccess(): void {
+        mockDone({
+          status: "Success",
+          URL: { utubUrlID: 42, urlString: ORIGINAL },
+        });
+      }
+
+      it("leaves text the user typed since the save alone, but still updates the card", () => {
+        addEditForm();
+        $(".urlStringUpdate").val("https://example.com/typed");
+        showExistingBanner();
+        mockUndoSuccess();
+
+        runUndo();
+
+        expect($(".urlStringUpdate").val()).toBe("https://example.com/typed");
+        expect(flushParamTrim).not.toHaveBeenCalled();
+        expect(applyUpdatedURLString).toHaveBeenCalledTimes(1);
+        expect(banner().hasClass("hidden")).toBe(true);
+      });
+
+      it("resyncs a closed form even if its input differs", () => {
+        addEditForm({ closed: true });
+        $(".urlStringUpdate").val("https://example.com/stale");
+        showExistingBanner();
+        mockUndoSuccess();
+
+        runUndo();
+
+        expect($(".urlStringUpdate").val()).toBe(ORIGINAL);
+        expect(flushParamTrim).toHaveBeenCalledTimes(1);
+      });
 
       it("restores the input to the stored original and re-renders the trim block from it", () => {
         addEditForm();
@@ -660,6 +799,46 @@ describe("outcome banner", () => {
       expect(banner().hasClass("hidden")).toBe(false);
       expect(showURLDeckBannerError).not.toHaveBeenCalled();
       expect(document.activeElement).toBe(editButton()[0]);
+    });
+
+    it("a 429 after the countdown fired mid-request keeps the Undo button and restarts the countdown", () => {
+      vi.useFakeTimers();
+      showTrimSavedBanner({
+        trimSubmission: {
+          originalUrlString: ORIGINAL,
+          droppedSegments: ["a=1"],
+          droppedCount: 1,
+        },
+        utubID: 3,
+        utubUrlID: 42,
+        urlCard: $(".urlRow[utuburlid=42]"),
+        form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
+      });
+      // The request stays pending until the test settles it.
+      let settle: () => void = () => {};
+      mockXhr({
+        fail: (callback: unknown) => {
+          settle = () =>
+            (callback as (xhrArg: JQuery.jqXHR) => void)({
+              status: 429,
+            } as unknown as JQuery.jqXHR);
+        },
+      });
+      vi.mocked(is429Handled).mockReturnValue(true);
+      banner().find(".urlOutcomeBannerAction").trigger("click");
+
+      vi.advanceTimersByTime(10000);
+      expect(banner().hasClass("hidden")).toBe(false);
+
+      settle();
+      const undo = banner().find(".urlOutcomeBannerAction");
+      expect(undo).toHaveLength(1);
+      expect(undo.attr("aria-disabled")).toBeUndefined();
+
+      vi.advanceTimersByTime(9999);
+      expect(banner().hasClass("hidden")).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(banner().hasClass("hidden")).toBe(true);
     });
 
     it("(legacy) a handled 429 with no banner action still returns focus", () => {
