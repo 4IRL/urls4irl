@@ -187,17 +187,131 @@ describe("outcome banner", () => {
       expect(onAction).toHaveBeenCalledTimes(1);
     });
 
-    it("does not auto-dismiss", () => {
-      vi.useFakeTimers();
-      showURLOutcomeBanner({
-        variant: "success",
-        message: "m",
-        returnFocusTo: editButton(),
+    describe("auto-hide", () => {
+      const AUTO_HIDE_MS = 10000;
+
+      function show(variant: "success" | "partial" = "success"): void {
+        showURLOutcomeBanner({
+          variant,
+          message: "m",
+          actionLabel: variant === "success" ? "Undo" : undefined,
+          onAction: variant === "success" ? () => {} : undefined,
+          returnFocusTo: editButton(),
+        });
+      }
+
+      beforeEach(() => {
+        vi.useFakeTimers();
       });
 
-      vi.advanceTimersByTime(10 * 60 * 1000);
+      it("hides itself after the timeout, not before", () => {
+        show();
 
-      expect(banner().hasClass("hidden")).toBe(false);
+        vi.advanceTimersByTime(AUTO_HIDE_MS - 1);
+        expect(banner().hasClass("hidden")).toBe(false);
+
+        vi.advanceTimersByTime(1);
+        expect(banner().hasClass("hidden")).toBe(true);
+        expect(banner().children()).toHaveLength(0);
+      });
+
+      it("applies to the partial variant too", () => {
+        show("partial");
+
+        vi.advanceTimersByTime(AUTO_HIDE_MS);
+
+        expect(banner().hasClass("hidden")).toBe(true);
+      });
+
+      it("does not move focus when it hides", () => {
+        show();
+        $("#elsewhere").trigger("focus");
+
+        vi.advanceTimersByTime(AUTO_HIDE_MS);
+
+        expect(document.activeElement).toBe($("#elsewhere")[0]);
+      });
+
+      it.each([
+        ["mouseenter", "mouseleave"],
+        ["focusin", "focusout"],
+        ["touchstart", "touchend"],
+        ["touchstart", "touchcancel"],
+      ])(
+        "pauses on %s and restarts the full countdown on %s",
+        (pauseEvent, resumeEvent) => {
+          show();
+          vi.advanceTimersByTime(AUTO_HIDE_MS - 1000);
+
+          banner().trigger(pauseEvent);
+          vi.advanceTimersByTime(60 * 1000);
+          expect(banner().hasClass("hidden")).toBe(false);
+
+          banner().trigger(resumeEvent);
+          vi.advanceTimersByTime(AUTO_HIDE_MS - 1);
+          expect(banner().hasClass("hidden")).toBe(false);
+          vi.advanceTimersByTime(1);
+          expect(banner().hasClass("hidden")).toBe(true);
+        },
+      );
+
+      it("pauses while the Undo button has focus and bubbles up to the banner", () => {
+        show();
+
+        banner().find(".urlOutcomeBannerAction").trigger("focusin");
+        vi.advanceTimersByTime(AUTO_HIDE_MS * 3);
+
+        expect(banner().hasClass("hidden")).toBe(false);
+      });
+
+      it("a newly shown banner gets a fresh full countdown", () => {
+        show();
+        vi.advanceTimersByTime(6000);
+
+        show();
+        vi.advanceTimersByTime(AUTO_HIDE_MS - 1);
+        expect(banner().hasClass("hidden")).toBe(false);
+
+        vi.advanceTimersByTime(1);
+        expect(banner().hasClass("hidden")).toBe(true);
+      });
+
+      it("a replaced banner is not hidden by the earlier banner's timer", () => {
+        show();
+        vi.advanceTimersByTime(AUTO_HIDE_MS - 100);
+        showURLOutcomeBanner({
+          variant: "partial",
+          message: "second",
+          returnFocusTo: editButton(),
+        });
+
+        vi.advanceTimersByTime(200);
+
+        expect(banner().hasClass("hidden")).toBe(false);
+        expect(banner().find(".urlOutcomeBannerMessage").text()).toBe("second");
+      });
+
+      it("clearing and dismissing cancel the countdown and detach the pause handlers", () => {
+        show();
+        clearURLOutcomeBanner();
+        banner().trigger("mouseleave");
+        vi.advanceTimersByTime(AUTO_HIDE_MS * 2);
+        expect(banner().hasClass("hidden")).toBe(true);
+
+        show();
+        banner().find(".urlOutcomeBannerDismiss").trigger("click");
+        banner().trigger("mouseleave");
+        expect(vi.getTimerCount()).toBe(0);
+      });
+
+      it("a pause event after clearing does not arm a stray timer", () => {
+        show();
+        clearURLOutcomeBanner();
+
+        banner().trigger("focusout");
+
+        expect(vi.getTimerCount()).toBe(0);
+      });
     });
 
     it("does not move focus when shown", () => {

@@ -40,15 +40,49 @@ function returnFocus(target: JQuery): void {
   destination.trigger("focus");
 }
 
+// How long the banner stays up before hiding itself. Long enough to read the
+// message and reach Undo on a phone.
+const AUTO_HIDE_MS = 10000;
+const PAUSE_EVENTS =
+  "mouseenter.outcomeBannerPause focusin.outcomeBannerPause touchstart.outcomeBannerPause";
+const RESUME_EVENTS =
+  "mouseleave.outcomeBannerPause focusout.outcomeBannerPause touchend.outcomeBannerPause touchcancel.outcomeBannerPause";
+
+let autoHideTimer: ReturnType<typeof setTimeout> | null = null;
+
+function stopAutoHide(): void {
+  if (autoHideTimer !== null) {
+    clearTimeout(autoHideTimer);
+    autoHideTimer = null;
+  }
+}
+
+// (Re)starts the full countdown; hides without moving focus (focus can only be
+// inside the banner while the timer is paused, so nothing is lost).
+function startAutoHide(): void {
+  stopAutoHide();
+  autoHideTimer = setTimeout(() => {
+    autoHideTimer = null;
+    clearURLOutcomeBanner();
+  }, AUTO_HIDE_MS);
+}
+
 /** Hides and empties the banner. Safe to call when no banner is showing. */
 export function clearURLOutcomeBanner(): void {
-  $(BANNER_SELECTOR).addClass("hidden").removeClass("success partial").empty();
+  stopAutoHide();
+  $(BANNER_SELECTOR)
+    .off(".outcomeBannerPause")
+    .addClass("hidden")
+    .removeClass("success partial")
+    .empty();
 }
 
 /**
- * Shows the deck's transient outcome banner. No auto-dismiss and no focus
- * stolen on show; it is cleared by the next user action or its dismiss button,
- * both of which return focus to `returnFocusTo`.
+ * Shows the deck's transient outcome banner. It hides itself after
+ * `AUTO_HIDE_MS`; the countdown pauses while the banner is hovered, focused or
+ * touched and restarts in full when released. No focus is stolen on show; it can
+ * also be cleared by the next user action or its dismiss button (which returns
+ * focus to `returnFocusTo`).
  */
 export function showURLOutcomeBanner({
   variant,
@@ -106,10 +140,14 @@ export function showURLOutcomeBanner({
   );
 
   banner
+    .off(".outcomeBannerPause")
     .empty()
     .removeClass("hidden success partial")
     .addClass(variant)
-    .append(body, actions);
+    .append(body, actions)
+    .on(PAUSE_EVENTS, stopAutoHide)
+    .on(RESUME_EVENTS, startAutoHide);
+  startAutoHide();
 }
 
 /**
