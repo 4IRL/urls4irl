@@ -182,7 +182,6 @@
             </tr>
         </thead>
         <tbody>
-            {# Trashed UTubs are intentionally listed: admin moderation sees every row. #}
             {% for membership in detail_user.utubs_is_member_of %}
             <tr>
                 <td>{{ membership.to_utub.id }}</td>

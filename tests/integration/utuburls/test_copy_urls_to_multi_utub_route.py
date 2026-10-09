@@ -652,6 +652,44 @@ def test_route_trashed_destination_returns_404(
         assert _dest_url_row_count(THIRD_UTUB_ID) == dest3_before
 
 
+def test_route_trashed_destination_listed_first_with_locked_destination_returns_404(
+    add_multi_dest_with_one_locked,
+    login_first_user_without_register,
+):
+    """
+    GIVEN destination UTub 2 is trashed and listed first, and destination UTub 3 is locked
+    WHEN a copy into [2, 3] is attempted
+    THEN the trashed destination masks the whole request as 404 (the locked
+        destination is not skip-and-reported), and no rows are written to any destination.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
+        target_id = source_by_url_id[1].id
+        dest2_before = _dest_url_row_count(DEST_UTUB_ID)
+        dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
+
+    trash_utub(app, DEST_UTUB_ID, deleted_by=copier_id)
+
+    response = client.post(
+        url_for(ROUTES.URLS.COPY_URLS_MULTI),
+        json={
+            SOURCE_UTUB_ID_FIELD: SOURCE_UTUB_ID,
+            DEST_UTUB_IDS_FIELD: [DEST_UTUB_ID, THIRD_UTUB_ID],
+            UTUB_URL_IDS_FIELD: [target_id],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 404
+
+    with app.app_context():
+        assert _dest_url_row_count(DEST_UTUB_ID) == dest2_before
+        assert _dest_url_row_count(THIRD_UTUB_ID) == dest3_before
+
+
 def test_route_invalid_csrf_returns_403(
     add_multi_dest_state_for_copy,
     login_first_user_without_register,

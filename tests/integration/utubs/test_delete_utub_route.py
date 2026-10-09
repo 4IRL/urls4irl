@@ -1,6 +1,10 @@
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 from flask import url_for
 from flask_login import current_user
+from werkzeug.exceptions import NotFound
 
 from backend import db
 from backend.metrics.events import EventName
@@ -21,6 +25,7 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from backend.utubs.constants import UTubErrorCodes
+from backend.utubs.services.delete_utubs import delete_utub_for_user
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import valid_empty_utub_1
 from tests.utils_for_test import is_string_in_logs, trash_utub
@@ -546,6 +551,11 @@ def test_delete_already_trashed_utub_is_404(add_single_utub_as_user_after_loggin
 
     trash_utub(app, utub_id, deleted_by=creator_user_id)
 
+    with app.app_context():
+        trashed_utub: Utubs = Utubs.query.get(utub_id)
+        original_deleted_at = trashed_utub.deleted_at
+        original_deleted_by = trashed_utub.deleted_by
+
     delete_utub_response = client.delete(
         url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
         headers={
@@ -558,6 +568,43 @@ def test_delete_already_trashed_utub_is_404(add_single_utub_as_user_after_loggin
     json_response = delete_utub_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        unchanged_utub: Utubs = Utubs.query.get(utub_id)
+        assert unchanged_utub.deleted_at == original_deleted_at
+        assert unchanged_utub.deleted_by == original_deleted_by
+
+
+def test_delete_utub_trashed_concurrently_does_not_overwrite_deletion(
+    add_single_utub_as_user_after_logging_in,
+):
+    """
+    GIVEN a UTub loaded as live by one request while a concurrent request trashes it
+    WHEN the first request's delete service then runs against its stale UTub row
+    THEN the conditional write updates no rows, a 404 is raised, and the
+        winning request's deleted_at / deleted_by are left unchanged
+    """
+    _, utub_id, _, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        creator_user_id = current_user.id
+        other_user_id = creator_user_id + 1
+        stale_utub: Utubs = Utubs.query.get(utub_id)
+        assert stale_utub.deleted_at is None
+
+        trash_utub(app, utub_id, deleted_by=creator_user_id)
+
+        with patch(
+            "backend.utubs.services.delete_utubs.current_user",
+            SimpleNamespace(id=other_user_id),
+        ):
+            with pytest.raises(NotFound):
+                delete_utub_for_user(stale_utub)
+
+    with app.app_context():
+        winning_utub: Utubs = Utubs.query.get(utub_id)
+        assert winning_utub.is_trashed
+        assert winning_utub.deleted_by == creator_user_id
 
 
 def test_delete_utub_with_invalid_route(login_first_user_with_register):

@@ -70,9 +70,6 @@ def lock_utub(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
         200 JSON envelope on success or no-op.
         404 when the UTub does not exist.
     """
-    # Admin UTub lookups here (lock, unlock, delete, tag-delete) intentionally
-    # still find trashed UTubs (``deleted_at`` set): moderation must be able to
-    # act on any row, and admin-facing trash management is a design non-goal.
     utub: Utubs | None = Utubs.query.get(utub_id)
     if utub is None:
         return build_message_error_response(

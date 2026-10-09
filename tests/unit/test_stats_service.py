@@ -16,8 +16,7 @@ from backend.users.services.stats_service import (
     _humanize_account_age,
     build_user_stats_context,
 )
-from backend.utils.datetime_utils import utc_now
-from tests.utils_for_test import seed_distinct_stats_for_user_one
+from tests.utils_for_test import seed_distinct_stats_for_user_one, trash_utub
 
 pytestmark = pytest.mark.unit
 
@@ -198,10 +197,11 @@ def test_build_user_stats_context_excludes_trashed_utub(app: Flask):
         assert expected_tags_applied_drop > 0
 
         for trashed_utub_id in trashed_utub_ids:
-            trashed_utub: Utubs = Utubs.query.get(trashed_utub_id)
-            trashed_utub.deleted_at = utc_now()
-            trashed_utub.deleted_by = trashed_utub.utub_creator
-        db.session.commit()
+            trash_utub(
+                app,
+                trashed_utub_id,
+                deleted_by=Utubs.query.get(trashed_utub_id).utub_creator,
+            )
 
         with patch(_CURRENT_USER_TARGET, user_one):
             context_after = build_user_stats_context()

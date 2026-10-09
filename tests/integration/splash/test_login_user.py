@@ -25,7 +25,7 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
 )
 from tests.models_for_test import invalid_user_1, valid_user_1
-from tests.utils_for_test import get_csrf_token, is_string_in_logs
+from tests.utils_for_test import get_csrf_token, is_string_in_logs, trash_utub
 
 _LOGIN_FAILURE_REASON_DIM_KEY = "reason"
 
@@ -861,3 +861,44 @@ def test_login_user_to_utub_id_log(
 
         assert is_string_in_logs(f"Logging User.id={user_id} in", caplog.records)
         assert is_string_in_logs(f"Routing user to UTub.id={utub_id}", caplog.records)
+
+
+def test_login_user_to_trashed_utub_id_redirects_to_home(
+    app_with_server_name, client, every_user_in_every_utub, caplog
+):
+    """
+    GIVEN a registered user who is a member of a UTub that has been trashed
+    WHEN "/login" is POST'd with next="/home?UTubID=<trashed utub id>"
+    THEN ensure the redirect is the plain home page, not the trashed UTub URL
+    """
+    with client:
+        with app_with_server_name.app_context():
+            user: Users = Users.query.filter(
+                Users.username == valid_user_1[LOGIN_FORM.USERNAME]
+            ).first()
+            user_id = user.id
+            utub_member: Utub_Members = Utub_Members.query.filter(
+                Utub_Members.user_id == user_id
+            ).first()
+            utub_id = utub_member.utub_id
+
+        trash_utub(app_with_server_name, utub_id, deleted_by=user_id)
+
+        with app_with_server_name.app_context():
+            splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            csrf_token_str = get_csrf_token(splash_response.data, meta_tag=True)
+
+            response = client.post(
+                url_for(ROUTES.SPLASH.LOGIN, next=f"/home?UTubID={utub_id}"),
+                json={
+                    LOGIN_FORM.USERNAME: valid_user_1[LOGIN_FORM.USERNAME],
+                    LOGIN_FORM.PASSWORD: valid_user_1[LOGIN_FORM.PASSWORD],
+                },
+                headers={"X-CSRFToken": csrf_token_str},
+            )
+            expected_redirect_url = url_for(ROUTES.UTUBS.HOME)
+
+    assert response.status_code == 200
+    assert response.json["redirectUrl"] == expected_redirect_url
+    assert is_string_in_logs(f"Logging User.id={user_id} in", caplog.records)
+    assert not is_string_in_logs(f"Routing user to UTub.id={utub_id}", caplog.records)

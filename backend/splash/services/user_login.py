@@ -144,7 +144,10 @@ def verify_and_provide_next_page(request_args: dict[str, str]) -> str:
     if not utub_id.isdigit() or int(utub_id) <= 0:
         return url
 
-    if Utub_Members.query.get((int(utub_id), current_user.id)) is None:
+    membership: Utub_Members | None = Utub_Members.query.get(
+        (int(utub_id), current_user.id)
+    )
+    if membership is None or membership.to_utub.is_trashed:
         return url
 
     url = (

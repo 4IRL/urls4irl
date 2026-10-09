@@ -134,16 +134,7 @@ def copy_urls_into_utubs(
 
     # Source membership (masking 404) — mirrors the single-destination service.
     source_membership = Utub_Members.query.get((source_utub_id, current_user_id))
-    if source_membership is None:
-        abort(404)
-
-    # A trashed source UTub is masked as a 404, exactly like a non-member source.
-    if (
-        Utubs.query.filter(
-            Utubs.id == source_utub_id, Utubs.deleted_at.is_(None)
-        ).first()
-        is None
-    ):
+    if source_membership is None or source_membership.to_utub.is_trashed:
         abort(404)
 
     # Defensively de-dup ids (order-preserving), mirroring the request schema's own

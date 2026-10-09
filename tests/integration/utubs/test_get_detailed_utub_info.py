@@ -11,7 +11,7 @@ from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.user_preferences import SortOrder, User_Preferences
 from backend.models.users import Users
-from backend.models.utub_members import Member_Role
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -361,6 +361,38 @@ def test_get_trashed_utub_as_creator_is_404(
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 404
+    json_response = response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+
+def test_get_trashed_utub_as_non_creator_member_is_404(
+    every_user_in_every_utub,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a UTub created by user 1 and trashed by them, where user 2 is a plain member
+    WHEN user 2 (a non-creator member, not the deleter) requests the details of that UTub
+    THEN verify the membership decorator responds with a 404
+    """
+    client, _, user, app = login_second_user_without_register
+
+    with app.app_context():
+        member_row: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user.id,
+            Utub_Members.member_role == Member_Role.MEMBER,
+        ).first()
+        trashed_utub_id = member_row.utub_id
+        deleter_id = Utubs.query.get(trashed_utub_id).utub_creator
+
+    trash_utub(app, trashed_utub_id, deleted_by=deleter_id)
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=trashed_utub_id),
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
