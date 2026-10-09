@@ -4,6 +4,17 @@ import { setState } from "../../../store/app-store.js";
 import { emit, AppEvents } from "../../../lib/event-bus.js";
 import type { UtubDetail } from "../../../types/utub.js";
 
+import { isCoarsePointer } from "../../mobile.js";
+import {
+  bindUTubEditPanelDirtyState,
+  unbindUTubEditPanelDirtyState,
+} from "../../urls/utub-edit-panel-dirty.js";
+
+vi.mock("../../mobile.js", () => ({
+  isMobile: vi.fn(() => false),
+  isCoarsePointer: vi.fn(() => false),
+}));
+
 vi.mock("../selectors.js", () => ({
   getUTubInfo: vi.fn(),
 }));
@@ -124,6 +135,74 @@ describe("updateUTubOnFindingStaleData", () => {
 
       expect($("#URLDeckHeader").text()).toBe(mockUtubDetail.name);
       expect($("#URLDeckSubheader").text()).toBe(mockUtubDetail.description);
+    });
+  });
+
+  describe("with the mobile UTub edit panel open", () => {
+    const refreshedUtub = {
+      status: "Success",
+      id: 1,
+      name: "Refreshed name",
+      createdByUserID: 1000,
+      createdAt: "2026-01-01T00:00:00Z",
+      description: "Refreshed description",
+      members: [],
+      urls: [],
+      tags: [],
+      isCreator: true,
+      isCoCreator: false,
+      isLocked: false,
+      currentUser: 1000,
+    } as UtubDetail;
+
+    beforeEach(() => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      document.body.innerHTML = `
+        <div id="URLDeckHeader">Old name</div>
+        <div id="URLDeckSubheader">Old description</div>
+        <utubselector utubid="1"><span class="UTubName"></span></utubselector>
+        <input id="utubNameUpdate" value="Old name" />
+        <button id="utubNameSubmitBtnUpdate"></button>
+        <input id="utubDescriptionUpdate" value="Old description" />
+        <button id="utubDescriptionSubmitBtnUpdate"></button>
+      `;
+      vi.mocked(getUTubInfo).mockReturnValue(
+        $.Deferred<UtubDetail>()
+          .resolve(refreshedUtub)
+          .promise() as unknown as ReturnType<typeof getUTubInfo>,
+      );
+      bindUTubEditPanelDirtyState();
+    });
+
+    afterEach(() => {
+      unbindUTubEditPanelDirtyState();
+    });
+
+    it("re-enables the checks when the refreshed stored values now differ from the inputs", async () => {
+      expect($("#utubNameSubmitBtnUpdate").attr("aria-disabled")).toBe("true");
+      expect($("#utubDescriptionSubmitBtnUpdate").attr("aria-disabled")).toBe(
+        "true",
+      );
+
+      await updateUTubOnFindingStaleData(1);
+
+      expect(
+        $("#utubNameSubmitBtnUpdate").attr("aria-disabled"),
+      ).toBeUndefined();
+      expect(
+        $("#utubDescriptionSubmitBtnUpdate").attr("aria-disabled"),
+      ).toBeUndefined();
+    });
+
+    it("disables a check when the refreshed stored value now matches the typed input", async () => {
+      $("#utubNameUpdate").val("Refreshed name").trigger("input");
+      expect(
+        $("#utubNameSubmitBtnUpdate").attr("aria-disabled"),
+      ).toBeUndefined();
+
+      await updateUTubOnFindingStaleData(1);
+
+      expect($("#utubNameSubmitBtnUpdate").attr("aria-disabled")).toBe("true");
     });
   });
 });

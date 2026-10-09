@@ -8,8 +8,10 @@ import {
   updateUTubNameHideInput,
   updateUTubNameShowInput,
   setupUpdateUTubNameEventListeners,
+  clearNameSubmitInFlight,
 } from "../update-name.js";
 import {
+  clearDescriptionSubmitInFlight,
   updateUTubDescriptionHideInput,
   updateUTubDescriptionShowInput,
   setupUpdateUTubDescriptionEventListeners,
@@ -22,6 +24,7 @@ import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { deselectAllURLs } from "../cards/selection.js";
 import { isCoarsePointer } from "../../mobile.js";
 import { isMultiSelectActive } from "../bulk-actions/bulk-mode.js";
+import { getAllAccessibleUTubNames } from "../../utubs/utils.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 
 // This suite exercises the real UTub-panel orchestrator together with the real
@@ -534,7 +537,7 @@ describe("UTub edit panel orchestrator", () => {
       const deferred = createMockJqXHR();
       vi.mocked(ajaxCall).mockReturnValue(deferred);
       const submitBtn = $("#utubNameSubmitBtnUpdate");
-      submitBtn.trigger("click.updateUTubname");
+      submitBtn.trigger("click");
       expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
       expect(submitBtn.attr("aria-disabled")).toBe("true"); // in flight
 
@@ -635,7 +638,7 @@ describe("UTub edit panel orchestrator", () => {
       setupUpdateUTubDescriptionEventListeners(UTUB_ID);
       openUTubEditPanel(UTUB_ID);
 
-      $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
+      $("#utubNameSubmitBtnUpdate").trigger("click");
       $("#utubDescriptionSubmitBtnUpdate").trigger("click");
 
       expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
@@ -650,7 +653,7 @@ describe("UTub edit panel orchestrator", () => {
 
       const deferred = createMockJqXHR();
       vi.mocked(ajaxCall).mockReturnValue(deferred);
-      submitBtn.trigger("click.updateUTubname");
+      submitBtn.trigger("click");
       expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
       expect(submitBtn.attr("aria-disabled")).toBe("true"); // in flight
 
@@ -661,6 +664,191 @@ describe("UTub edit panel orchestrator", () => {
       expect($("#URLDeckHeader").text()).toBe("Renamed");
       expect(submitBtn.attr("aria-disabled")).toBe("true");
       expect(submitBtn.hasClass("unchanged")).toBe(true);
+    });
+
+    it("description: typing enables the ✓, and a successful save disables it again", () => {
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      openUTubEditPanel(UTUB_ID);
+      const submitBtn = $("#utubDescriptionSubmitBtnUpdate");
+      $("#utubDescriptionUpdate").val("New description").trigger("input");
+      expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      submitBtn.trigger("click");
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+      expect(submitBtn.attr("aria-disabled")).toBe("true"); // in flight
+
+      deferred.resolve(
+        { utubDescription: "New description", utubID: 1 },
+        "success",
+        { status: 200 },
+      );
+
+      expect($("#URLDeckSubheader").text()).toBe("New description");
+      expect(submitBtn.attr("aria-disabled")).toBe("true");
+      expect(submitBtn.hasClass("unchanged")).toBe(true);
+    });
+
+    it("name: a failed save keeps the ✓ enabled and the typed value", () => {
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      openUTubEditPanel(UTUB_ID);
+      const submitBtn = $("#utubNameSubmitBtnUpdate");
+      $("#utubNameUpdate").val("Renamed").trigger("input");
+
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      submitBtn.trigger("click");
+      deferred.reject({
+        status: 400,
+        responseJSON: {
+          message: "Invalid",
+          errors: { utubName: ["Name is invalid"] },
+        },
+      });
+
+      expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+      expect(submitBtn.hasClass("unchanged")).toBe(false);
+      expect($("#utubNameUpdate").val()).toBe("Renamed");
+      expect($("#utubNameUpdate-error").text()).toBe("Name is invalid");
+      expect($("#URLDeckHeader").text()).toBe("Test UTub");
+    });
+
+    it("description: a failed save keeps the ✓ enabled and the typed value", () => {
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      openUTubEditPanel(UTUB_ID);
+      const submitBtn = $("#utubDescriptionSubmitBtnUpdate");
+      $("#utubDescriptionUpdate").val("Changed").trigger("input");
+
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      submitBtn.trigger("click");
+      deferred.reject({
+        status: 400,
+        responseJSON: {
+          message: "Invalid",
+          errors: { utubDescription: ["Description is invalid"] },
+        },
+      });
+
+      expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+      expect(submitBtn.hasClass("unchanged")).toBe(false);
+      expect($("#utubDescriptionUpdate").val()).toBe("Changed");
+      expect($("#URLDeckSubheader").text()).toBe("Test Description");
+    });
+
+    describe("duplicate-name modal path", () => {
+      afterEach(() => {
+        vi.mocked(getAllAccessibleUTubNames).mockReturnValue([]);
+      });
+
+      it("shows the modal without a request and leaves the field dirty with the ✓ enabled", () => {
+        vi.mocked(getAllAccessibleUTubNames).mockReturnValue(["Other UTub"]);
+        setupUpdateUTubNameEventListeners(UTUB_ID);
+        openUTubEditPanel(UTUB_ID);
+        const submitBtn = $("#utubNameSubmitBtnUpdate");
+        $("#utubNameUpdate").val("Other UTub").trigger("input");
+
+        submitBtn.trigger("click");
+
+        expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+        expect($.fn.modal).toHaveBeenCalledWith("show");
+        expect($("#utubNameUpdate").val()).toBe("Other UTub");
+        expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+        expect(submitBtn.hasClass("unchanged")).toBe(false);
+      });
+    });
+
+    it("reopening after a close starts clean: stale typed text is gone and both ✓ are disabled", () => {
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      openUTubEditPanel(UTUB_ID);
+      $("#utubNameUpdate").val("Typed then closed").trigger("input");
+      $("#utubDescriptionUpdate").val("Typed too").trigger("input");
+      expect(
+        $("#utubNameSubmitBtnUpdate").attr("aria-disabled"),
+      ).toBeUndefined();
+
+      closeUTubEditPanel(UTUB_ID);
+      openUTubEditPanel(UTUB_ID);
+
+      expect($("#utubNameUpdate").val()).toBe("Test UTub");
+      expect($("#utubDescriptionUpdate").val()).toBe("Test Description");
+      ["#utubNameSubmitBtnUpdate", "#utubDescriptionSubmitBtnUpdate"].forEach(
+        (selector) => {
+          expect($(selector).attr("aria-disabled")).toBe("true");
+          expect($(selector).hasClass("unchanged")).toBe(true);
+        },
+      );
+    });
+
+    describe("Enter honors the same gate as the ✓", () => {
+      // The in-flight flags are module state: a save left pending by one test
+      // would otherwise swallow the next test's Enter.
+      afterEach(() => {
+        clearNameSubmitInFlight();
+        clearDescriptionSubmitInFlight();
+      });
+
+      function pressEnter(input: string): void {
+        // Blur first so the focus handler (which binds the keydown) always runs,
+        // even when the field is already the active element.
+        $(input).trigger("blur").trigger("focus");
+        $(input).trigger($.Event("keydown", { key: "Enter" }));
+      }
+
+      it("sends no request while either check is disabled", () => {
+        setupUpdateUTubNameEventListeners(UTUB_ID);
+        setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+        openUTubEditPanel(UTUB_ID);
+
+        pressEnter("#utubNameUpdate");
+        pressEnter("#utubDescriptionUpdate");
+
+        expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+      });
+
+      it("sends no request for a whitespace-padded value the trimmed check calls unchanged", () => {
+        setupUpdateUTubNameEventListeners(UTUB_ID);
+        setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+        openUTubEditPanel(UTUB_ID);
+        $("#utubNameUpdate").val("Test UTub ").trigger("input");
+        $("#utubDescriptionUpdate").val("Test Description ").trigger("input");
+        expect($("#utubNameSubmitBtnUpdate").attr("aria-disabled")).toBe(
+          "true",
+        );
+
+        pressEnter("#utubNameUpdate");
+        pressEnter("#utubDescriptionUpdate");
+
+        expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+      });
+
+      it("still saves when the check is enabled", () => {
+        setupUpdateUTubNameEventListeners(UTUB_ID);
+        setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+        openUTubEditPanel(UTUB_ID);
+        vi.mocked(ajaxCall).mockReturnValue(createMockJqXHR());
+        $("#utubNameUpdate").val("Renamed").trigger("input");
+        $("#utubDescriptionUpdate").val("Changed").trigger("input");
+
+        pressEnter("#utubNameUpdate");
+        expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+        pressEnter("#utubDescriptionUpdate");
+        expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(2);
+      });
+
+      it("a padded Enter is not gated on a fine pointer (no bound dirty state)", () => {
+        vi.mocked(isCoarsePointer).mockReturnValue(false);
+        setupUpdateUTubNameEventListeners(UTUB_ID);
+        updateUTubNameShowInput(UTUB_ID);
+        vi.mocked(ajaxCall).mockReturnValue(createMockJqXHR());
+        $("#utubNameUpdate").val("Test UTub ");
+
+        pressEnter("#utubNameUpdate");
+
+        expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

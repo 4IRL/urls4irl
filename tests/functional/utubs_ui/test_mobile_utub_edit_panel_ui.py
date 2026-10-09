@@ -13,6 +13,8 @@ from tests.functional.db_utils import (
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
+    assert_confirm_button_disabled,
+    assert_confirm_button_enabled,
     assert_not_visible_css_selector,
     assert_panel_visibility_mobile,
     assert_visible_css_selector,
@@ -348,21 +350,6 @@ def test_utub_edit_panel_toggle_hidden_on_locked_utub_mobile(
     )
 
 
-def _expect_utub_confirm_disabled(*, page: Page, css_selector: str) -> None:
-    """The ✓ is aria-disabled (never the native attribute) and dimmed."""
-    button = page.locator(css_selector)
-    expect(button).to_have_attribute("aria-disabled", "true")
-    expect(button).to_have_class(re.compile(r"\bunchanged\b"))
-    # Playwright's is-disabled honors aria-disabled, so check the native property.
-    expect(button).to_have_js_property("disabled", False)
-
-
-def _expect_utub_confirm_enabled(*, page: Page, css_selector: str) -> None:
-    button = page.locator(css_selector)
-    expect(button).not_to_have_attribute("aria-disabled", "true")
-    expect(button).not_to_have_class(re.compile(r"\bunchanged\b"))
-
-
 def test_utub_edit_panel_confirm_buttons_follow_dirty_state_mobile(
     page_mobile_portrait: Page,
     create_test_urls,
@@ -391,8 +378,8 @@ def test_utub_edit_panel_confirm_buttons_follow_dirty_state_mobile(
 
     name_submit = HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE
     description_submit = HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
-    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
-    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+    assert_confirm_button_disabled(button=page.locator(name_submit))
+    assert_confirm_button_disabled(button=page.locator(description_submit))
 
     # Clicking a disabled check does nothing: no update request is sent. The values
     # are changed without firing "input" so the checks stay disabled and only the
@@ -412,26 +399,33 @@ def test_utub_edit_panel_confirm_buttons_follow_dirty_state_mobile(
     expect(page.locator(HPL.SAVED_TICK_DESCRIPTION)).not_to_have_class(
         re.compile(r"\bopa-1\b")
     )
+    # Enter in a field honors the same gate: still no update request.
+    with pytest.raises(PlaywrightTimeoutError):
+        with page.expect_request(
+            lambda request: request.method == "PATCH", timeout=_NO_REQUEST_WAIT_MS
+        ):
+            name_input.press("Enter")
+            description_input.press("Enter")
     name_input.evaluate("(el, v) => { el.value = v; }", original_name)
     description_input.evaluate("(el, v) => { el.value = v; }", original_description)
 
     name_input.fill(_NEW_UTUB_NAME)
-    _expect_utub_confirm_enabled(page=page, css_selector=name_submit)
-    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+    assert_confirm_button_enabled(button=page.locator(name_submit))
+    assert_confirm_button_disabled(button=page.locator(description_submit))
 
     name_input.fill(original_name)
-    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+    assert_confirm_button_disabled(button=page.locator(name_submit))
 
     # Surrounding whitespace is not a change.
     name_input.fill(f"  {original_name}  ")
-    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+    assert_confirm_button_disabled(button=page.locator(name_submit))
 
     description_input.fill(_NEW_UTUB_DESCRIPTION)
-    _expect_utub_confirm_enabled(page=page, css_selector=description_submit)
-    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+    assert_confirm_button_enabled(button=page.locator(description_submit))
+    assert_confirm_button_disabled(button=page.locator(name_submit))
 
     description_input.fill(original_description)
-    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+    assert_confirm_button_disabled(button=page.locator(description_submit))
 
     # A save leaves the saved field's check disabled again (stored == input).
     description_input.fill(_NEW_UTUB_DESCRIPTION)
@@ -440,17 +434,17 @@ def test_utub_edit_panel_confirm_buttons_follow_dirty_state_mobile(
         re.compile(r"\bopa-1\b")
     )
     expect(page.locator(HPL.SUBHEADER_URL_DECK)).to_have_text(_NEW_UTUB_DESCRIPTION)
-    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+    assert_confirm_button_disabled(button=page.locator(description_submit))
 
     name_input.fill(_NEW_UTUB_NAME)
     page.locator(name_submit).click()
     expect(page.locator(HPL.SAVED_TICK_NAME)).to_have_class(re.compile(r"\bopa-1\b"))
     expect(page.locator(HPL.HEADER_URL_DECK)).to_have_text(_NEW_UTUB_NAME)
-    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+    assert_confirm_button_disabled(button=page.locator(name_submit))
 
     # Closing and reopening starts disabled again.
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE)
     wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
     open_utub_edit_panel_mobile(page=page)
-    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
-    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+    assert_confirm_button_disabled(button=page.locator(name_submit))
+    assert_confirm_button_disabled(button=page.locator(description_submit))

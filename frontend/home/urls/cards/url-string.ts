@@ -230,6 +230,11 @@ function setFocusEventListenersOnUpdateURLStringInput(
           case KEYS.ENTER:
             // Block an overlapping submit while a kept-open submit is in flight.
             if (isURLStringSubmitInFlight()) return;
+            // Mobile panel: Enter honors the same unchanged gate as the ✓.
+            if (
+              isConfirmButtonDisabled(urlCard.find(".urlStringSubmitBtnUpdate"))
+            )
+              return;
             // Handle enter key pressed
             emit({
               event: UI_EVENTS.UI_FORM_SUBMIT,

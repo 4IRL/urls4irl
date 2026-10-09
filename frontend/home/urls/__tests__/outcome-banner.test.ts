@@ -7,6 +7,11 @@ import { deleteURLOnStale } from "../cards/get.js";
 import { applyUpdatedURLString } from "../cards/apply-url-string.js";
 import { URL_PARAMS_TRIMMED_FORM } from "../../../types/metrics-dim-values.js";
 import { flushParamTrim } from "../trim/param-trim-block.js";
+import { isCoarsePointer } from "../../mobile.js";
+import {
+  bindEditPanelDirtyState,
+  unbindEditPanelDirtyState,
+} from "../cards/edit-panel-dirty.js";
 import {
   clearURLOutcomeBanner,
   performUndo,
@@ -27,6 +32,10 @@ vi.mock("../deck.js", () => ({
 }));
 vi.mock("../cards/get.js", () => ({
   deleteURLOnStale: vi.fn(),
+}));
+vi.mock("../../mobile.js", () => ({
+  isMobile: vi.fn(() => false),
+  isCoarsePointer: vi.fn(() => false),
 }));
 vi.mock("../cards/apply-url-string.js", () => ({
   applyUpdatedURLString: vi.fn(),
@@ -688,6 +697,99 @@ describe("outcome banner", () => {
 
         expect($(".urlStringUpdate").val()).toBe(TRIMMED);
         expect(flushParamTrim).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("open mobile panel dirty-state resync", () => {
+      const TRIMMED = "https://example.com/p?a=1";
+
+      // A Save URL that left the panel open because the title is dirty: the card
+      // shows the saved string, the URL field holds it too (so URL ✓/Save URL are
+      // disabled) and the title field has unsaved edits (title ✓ enabled).
+      function openPanelAfterSaveUrl(): JQuery {
+        const urlCard = $(".urlRow[utuburlid=42]");
+        urlCard.append(`
+          <span class="urlTitle">Stored title</span>
+          <a class="urlString" href="${TRIMMED}">${TRIMMED}</a>
+          <input class="urlTitleUpdate" value="Stored title" />
+          <button class="urlTitleSubmitBtnUpdate"></button>
+          <div class="updateUrlStringWrap">
+            <input class="urlStringUpdate" value="${TRIMMED}" />
+            <div class="urlParamTrimWrap"></div>
+          </div>
+          <button class="urlStringSubmitBtnUpdate"></button>
+          <button class="urlStringSaveBigBtnUpdate"></button>
+        `);
+        // The real apply rewrites the card; the mocked one needs to do it here.
+        vi.mocked(applyUpdatedURLString).mockImplementation(
+          ({ response, urlCard: card }) => {
+            card
+              .find(".urlString")
+              .attr("href", response.URL.urlString)
+              .text(response.URL.urlString);
+          },
+        );
+        vi.mocked(isCoarsePointer).mockReturnValue(true);
+        bindEditPanelDirtyState(urlCard);
+        urlCard.find(".urlTitleUpdate").val("Typed title").trigger("input");
+        return urlCard;
+      }
+
+      afterEach(() => {
+        unbindEditPanelDirtyState($(".urlRow[utuburlid=42]"));
+      });
+
+      it("disables the URL check and Save URL when a typed value now equals the restored string, leaving the title check alone", () => {
+        const urlCard = openPanelAfterSaveUrl();
+        urlCard.find(".urlStringUpdate").val(ORIGINAL).trigger("input");
+        expect(
+          urlCard.find(".urlStringSubmitBtnUpdate").attr("aria-disabled"),
+        ).toBeUndefined();
+        showExistingBanner();
+        mockDone({
+          status: "Success",
+          URL: { utubUrlID: 42, urlString: ORIGINAL },
+        });
+
+        runUndo();
+
+        ["urlStringSubmitBtnUpdate", "urlStringSaveBigBtnUpdate"].forEach(
+          (name) => {
+            const button = urlCard.find(`.${name}`);
+            expect(button.attr("aria-disabled")).toBe("true");
+            expect(button.hasClass("unchanged")).toBe(true);
+          },
+        );
+        expect(
+          urlCard.find(".urlTitleSubmitBtnUpdate").attr("aria-disabled"),
+        ).toBeUndefined();
+      });
+
+      it("enables the URL check and Save URL when the restored string differs from the kept field text", () => {
+        const urlCard = openPanelAfterSaveUrl();
+        const typed = "https://example.com/typed";
+        urlCard.find(".urlStringUpdate").val(TRIMMED).trigger("input");
+        expect(
+          urlCard.find(".urlStringSubmitBtnUpdate").attr("aria-disabled"),
+        ).toBe("true");
+        // Text typed after the save without a dirty sync yet (checks still disabled).
+        urlCard.find(".urlStringUpdate").val(typed);
+        showExistingBanner();
+        mockDone({
+          status: "Success",
+          URL: { utubUrlID: 42, urlString: ORIGINAL },
+        });
+
+        runUndo();
+
+        // The typed text is left alone, and now differs from the restored href.
+        ["urlStringSubmitBtnUpdate", "urlStringSaveBigBtnUpdate"].forEach(
+          (name) => {
+            expect(urlCard.find(`.${name}`).attr("aria-disabled")).toBe(
+              undefined,
+            );
+          },
+        );
       });
     });
 

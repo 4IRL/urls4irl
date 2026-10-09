@@ -21,6 +21,8 @@ from tests.functional.db_utils import (
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
+    assert_confirm_button_disabled,
+    assert_confirm_button_enabled,
     assert_not_visible_css_selector,
     assert_panel_visibility_mobile,
     assert_visible_css_selector,
@@ -759,19 +761,6 @@ def test_url_edit_panel_field_spacing_and_errored_submit_centering_mobile(
         assert offset <= 1.5, f"{submit_selector} is {offset}px off its errored input"
 
 
-def _expect_confirm_disabled(*, button: Locator) -> None:
-    """The ✓ / Save URL is aria-disabled (never the native attribute) and dimmed."""
-    expect(button).to_have_attribute("aria-disabled", "true")
-    expect(button).to_have_class(re.compile(r"\bunchanged\b"))
-    # Playwright's is-disabled honors aria-disabled, so check the native property.
-    expect(button).to_have_js_property("disabled", False)
-
-
-def _expect_confirm_enabled(*, button: Locator) -> None:
-    expect(button).not_to_have_attribute("aria-disabled", "true")
-    expect(button).not_to_have_class(re.compile(r"\bunchanged\b"))
-
-
 def _expect_no_update_request_on_forced_click(
     *, page: Page, buttons: list[Locator]
 ) -> None:
@@ -820,8 +809,8 @@ def test_url_edit_panel_confirm_buttons_follow_dirty_state_mobile(
     title_input = selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)
     string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
 
-    _expect_confirm_disabled(button=title_check)
-    _expect_confirm_disabled(button=string_check)
+    assert_confirm_button_disabled(button=title_check)
+    assert_confirm_button_disabled(button=string_check)
 
     # Clicking a disabled check is a no-op: no update request is sent, no tick shows.
     # The values are changed without firing "input" so the checks stay disabled and
@@ -839,23 +828,31 @@ def test_url_edit_panel_confirm_buttons_follow_dirty_state_mobile(
     expect(selected_url.locator(HPL.SAVED_TICK_URL_STRING)).not_to_have_class(
         re.compile(r"\bopa-1\b")
     )
+
+    # Enter in a field honors the same gate: still no update request.
+    with pytest.raises(PlaywrightTimeoutError):
+        with page.expect_request(
+            lambda request: request.method == "PATCH", timeout=NO_REQUEST_WAIT_MS
+        ):
+            title_input.press("Enter")
+            string_input.press("Enter")
     title_input.evaluate("(el, v) => { el.value = v; }", original_title)
     string_input.evaluate("(el, v) => { el.value = v; }", original_string)
 
     title_input.fill(f"{original_title} edited")
-    _expect_confirm_enabled(button=title_check)
-    _expect_confirm_disabled(button=string_check)
+    assert_confirm_button_enabled(button=title_check)
+    assert_confirm_button_disabled(button=string_check)
 
     title_input.fill(original_title)
-    _expect_confirm_disabled(button=title_check)
+    assert_confirm_button_disabled(button=title_check)
 
     # Surrounding whitespace is not a change.
     title_input.fill(f"  {original_title}  ")
-    _expect_confirm_disabled(button=title_check)
+    assert_confirm_button_disabled(button=title_check)
 
     string_input.fill(PLAIN_EDIT_URL)
-    _expect_confirm_enabled(button=string_check)
-    _expect_confirm_disabled(button=title_check)
+    assert_confirm_button_enabled(button=string_check)
+    assert_confirm_button_disabled(button=title_check)
 
     string_check.click()
     expect(selected_url.locator(HPL.SAVED_TICK_URL_STRING)).to_have_class(
@@ -865,8 +862,20 @@ def test_url_edit_panel_confirm_buttons_follow_dirty_state_mobile(
         HPL.URL_STRING_IN_DATA, PLAIN_EDIT_URL
     )
     # The stored value caught up with the field, so its check is disabled again.
-    _expect_confirm_disabled(button=string_check)
-    _expect_confirm_disabled(button=title_check)
+    assert_confirm_button_disabled(button=string_check)
+    assert_confirm_button_disabled(button=title_check)
+
+    # Same for a title save: its check disables once the stored title catches up.
+    edited_title = f"{original_title} edited"
+    title_input.fill(edited_title)
+    assert_confirm_button_enabled(button=title_check)
+    title_check.click()
+    expect(selected_url.locator(HPL.SAVED_TICK_URL_TITLE)).to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    expect(selected_url.locator(HPL.URL_TITLE_READ)).to_have_text(edited_title)
+    assert_confirm_button_disabled(button=title_check)
+    assert_confirm_button_disabled(button=string_check)
 
 
 def test_url_edit_panel_dropped_chip_enables_url_buttons_mobile(
@@ -903,24 +912,24 @@ def test_url_edit_panel_dropped_chip_enables_url_buttons_mobile(
     expect(selected_url.locator(HPL.URL_STRING_READ)).to_have_attribute(
         HPL.URL_STRING_IN_DATA, TRIM_URL_TWO_PARAMS
     )
-    _expect_confirm_disabled(button=string_check)
+    assert_confirm_button_disabled(button=string_check)
 
     set_trim_section_expanded(
         page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
     )
-    _expect_confirm_disabled(button=save_button)
+    assert_confirm_button_disabled(button=save_button)
 
     chip = page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).nth(1)
     chip.click()
     expect(chip).to_have_attribute("aria-pressed", "false")
     expect(string_input).to_have_value(TRIM_URL_TWO_PARAMS)
-    _expect_confirm_enabled(button=string_check)
-    _expect_confirm_enabled(button=save_button)
+    assert_confirm_button_enabled(button=string_check)
+    assert_confirm_button_enabled(button=save_button)
 
     chip.click()
     expect(chip).to_have_attribute("aria-pressed", "true")
-    _expect_confirm_disabled(button=string_check)
-    _expect_confirm_disabled(button=save_button)
+    assert_confirm_button_disabled(button=string_check)
+    assert_confirm_button_disabled(button=save_button)
 
 
 @pytest.mark.parametrize("title_edited", [False, True])
@@ -961,7 +970,7 @@ def test_url_edit_panel_save_url_closes_only_when_title_untouched_mobile(
         page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
     )
     save_button = selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)
-    _expect_confirm_enabled(button=save_button)
+    assert_confirm_button_enabled(button=save_button)
 
     save_button.click()
 
@@ -975,10 +984,10 @@ def test_url_edit_panel_save_url_closes_only_when_title_untouched_mobile(
         expect(string_input).to_be_visible()
         expect(title_input).to_be_visible()
         expect(title_input).to_have_value(edited_title)
-        _expect_confirm_enabled(
+        assert_confirm_button_enabled(
             button=selected_url.locator(HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
         )
-        _expect_confirm_disabled(button=save_button)
+        assert_confirm_button_disabled(button=save_button)
     else:
         expect(string_input).to_be_hidden()
         expect(title_input).to_be_hidden()

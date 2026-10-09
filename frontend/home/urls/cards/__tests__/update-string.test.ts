@@ -1,4 +1,8 @@
-import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
+import {
+  createMockJqXHR,
+  createMockJqXHRChainable,
+} from "../../../../__tests__/helpers/mock-jquery.js";
+import { getUpdatedURL, handleRejectFromGetURL } from "../get.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import {
   TRIM_FLUSH_KEY,
@@ -1402,11 +1406,17 @@ describe("Save URL closes the panel after a successful save when the title is cl
   function mockSave({
     outcome,
     status = "Success",
+    urlTitle = SAVED_RESPONSE.URL.urlTitle,
   }: {
     outcome: "done" | "fail";
     status?: string;
+    urlTitle?: string;
   }): void {
-    const response = { ...SAVED_RESPONSE, status };
+    const response = {
+      ...SAVED_RESPONSE,
+      URL: { ...SAVED_RESPONSE.URL, urlTitle },
+      status,
+    };
     vi.mocked(ajaxCall).mockReturnValue(
       createMockJqXHRChainable(
         outcome === "done"
@@ -1565,5 +1575,239 @@ describe("Save URL closes the panel after a successful save when the title is cl
     // Stored href now equals the input, so the field reads as unchanged again.
     expect(check.attr("aria-disabled")).toBe("true");
     expect(check.hasClass("unchanged")).toBe(true);
+  });
+
+  describe("title ✓ re-sync after a kept-open save", () => {
+    it("re-disables the title check once the stored title catches up, and keeps it enabled after a failed save", async () => {
+      const { urlCard } = openPanel();
+      const check = urlCard.find(".urlTitleSubmitBtnUpdate");
+      urlCard.find(".urlTitleUpdate").val("Edited title").trigger("input");
+      expect(check.attr("aria-disabled")).toBeUndefined();
+
+      mockSave({ outcome: "fail" });
+      check.trigger("click");
+      await flush();
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      expect(check.attr("aria-disabled")).toBeUndefined();
+      expect(check.hasClass("unchanged")).toBe(false);
+
+      mockSave({ outcome: "done", urlTitle: "Edited title" });
+      check.trigger("click");
+      await flush();
+      expect(ajaxCall).toHaveBeenCalledTimes(2);
+      expect(urlCard.find(".urlTitle").text()).toBe("Edited title");
+      expect(check.attr("aria-disabled")).toBe("true");
+      expect(check.hasClass("unchanged")).toBe(true);
+    });
+
+    it("clears the in-flight state and re-syncs when the pre-flight fetch is rejected", async () => {
+      const { urlCard } = openPanel();
+      const check = urlCard.find(".urlTitleSubmitBtnUpdate");
+      urlCard.find(".urlTitleUpdate").val("Edited title").trigger("input");
+      vi.mocked(getUpdatedURL).mockRejectedValueOnce({ status: 404 });
+
+      check.trigger("click");
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+      expect(handleRejectFromGetURL).toHaveBeenCalledTimes(1);
+      expect(check.attr("aria-disabled")).toBeUndefined();
+      expect(check.hasClass("unchanged")).toBe(false);
+    });
+  });
+
+  describe("Save URL branches", () => {
+    // Keeps the PATCH pending so the test can act while the request is in flight.
+    async function startPendingSave({
+      urlCard,
+      via,
+    }: {
+      urlCard: JQuery;
+      via: "saveUrl" | "check";
+    }): Promise<{ deferred: ReturnType<typeof createMockJqXHR> }> {
+      // Returned inside an object: awaiting a bare jQuery Deferred would adopt it
+      // as a thenable and hang until it settles.
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      urlCard
+        .find(
+          via === "saveUrl"
+            ? ".urlStringSaveBigBtnUpdate"
+            : ".urlStringSubmitBtnUpdate",
+        )
+        .trigger("click");
+      await flush();
+      return { deferred };
+    }
+
+    function resolveSave(deferred: ReturnType<typeof createMockJqXHR>): void {
+      deferred.resolve({ ...SAVED_RESPONSE, status: "Success" }, "success", {
+        status: 200,
+      });
+    }
+
+    it("a rejected pre-flight fetch sends no request, releases the in-flight guard and never closes", async () => {
+      const { urlCard, urlInput } = openPanel();
+      const check = urlCard.find(".urlStringSubmitBtnUpdate");
+      urlInput.val("https://new-example.com").trigger("input");
+      vi.mocked(getUpdatedURL).mockRejectedValueOnce({ status: 404 });
+
+      urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+      expect(handleRejectFromGetURL).toHaveBeenCalledTimes(1);
+      expect(isURLStringSubmitInFlight()).toBe(false);
+      expect(check.attr("aria-disabled")).toBeUndefined();
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+
+      // The Save URL intent does not survive into a later ✓ save.
+      mockSave({ outcome: "done" });
+      check.trigger("click");
+      await flush();
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+
+    it("keeps the panel open when the title becomes dirty while the save is in flight", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      const { deferred } = await startPendingSave({ urlCard, via: "saveUrl" });
+
+      urlCard.find(".urlTitleUpdate").val("Typed meanwhile").trigger("input");
+      resolveSave(deferred);
+      await flush();
+
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+
+    it("closes when the title stays clean while the save is in flight (control)", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      const { deferred } = await startPendingSave({ urlCard, via: "saveUrl" });
+
+      resolveSave(deferred);
+      await flush();
+
+      expect(closeURLEditPanel).toHaveBeenCalledTimes(1);
+    });
+
+    it("a Save URL click while a save is in flight sends no second request and does not close later", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      const { deferred } = await startPendingSave({ urlCard, via: "check" });
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+
+      urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+      await flush();
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+
+      resolveSave(deferred);
+      await flush();
+      // The blocked Save URL click must not leak into a later ✓ save either.
+      urlInput.val("https://newer-example.com").trigger("input");
+      mockSave({ outcome: "done" });
+      urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+      await flush();
+
+      expect(ajaxCall).toHaveBeenCalledTimes(2);
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+
+    it("a Save URL click on an aria-disabled Save URL sends no request", async () => {
+      const { urlCard, urlInput } = openPanel();
+      const saveButton = urlCard.find(".urlStringSaveBigBtnUpdate");
+      urlInput.val("https://new-example.com");
+      expect(saveButton.attr("aria-disabled")).toBe("true");
+      mockSave({ outcome: "done" });
+
+      saveButton.trigger("click");
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+
+    it("does not close a panel that was closed while the save was in flight", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      const { deferred } = await startPendingSave({ urlCard, via: "saveUrl" });
+
+      hideAndResetUpdateURLStringForm({ urlCard });
+      resolveSave(deferred);
+      await flush();
+
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Enter honors the same gate as the ✓ (mobile panel)", () => {
+    function pressEnterInTitle(urlCard: JQuery): void {
+      const input = urlCard.find(".urlTitleUpdate");
+      input.trigger("blur").trigger("focus");
+      input.trigger(
+        $.Event("keydown", { key: "Enter", originalEvent: { repeat: false } }),
+      );
+    }
+
+    function pressEnterInURL(urlCard: JQuery): void {
+      urlCard.find(".urlStringUpdate").trigger("blur").trigger("focus");
+      $(document).trigger($.Event("keyup", { key: "Enter" }));
+    }
+
+    afterEach(() => {
+      $(document).off("keyup.updateURLStringFocus");
+    });
+
+    it("title: no request while the check is disabled, even with a silently changed value", async () => {
+      const { urlCard } = openPanel();
+      urlCard.find(".urlTitleUpdate").val("Silently edited");
+      mockSave({ outcome: "done", urlTitle: "Silently edited" });
+      expect(
+        urlCard.find(".urlTitleSubmitBtnUpdate").attr("aria-disabled"),
+      ).toBe("true");
+
+      pressEnterInTitle(urlCard);
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+    });
+
+    it("title: saves when the check is enabled", async () => {
+      const { urlCard } = openPanel();
+      urlCard.find(".urlTitleUpdate").val("Edited title").trigger("input");
+      mockSave({ outcome: "done", urlTitle: "Edited title" });
+
+      pressEnterInTitle(urlCard);
+      await flush();
+
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+    });
+
+    it("URL: no request while the check is disabled, even with a silently changed value", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com");
+      mockSave({ outcome: "done" });
+      expect(
+        urlCard.find(".urlStringSubmitBtnUpdate").attr("aria-disabled"),
+      ).toBe("true");
+
+      pressEnterInURL(urlCard);
+      await flush();
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+    });
+
+    it("URL: saves when the check is enabled, without closing the panel", async () => {
+      const { urlCard, urlInput } = openPanel();
+      urlInput.val("https://new-example.com").trigger("input");
+      mockSave({ outcome: "done" });
+
+      pressEnterInURL(urlCard);
+      await flush();
+
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
   });
 });
