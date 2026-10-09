@@ -85,7 +85,6 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
 
         trashed_utub: Utubs = Utubs.query.get(utub_id)
         assert trashed_utub.deleted_at is not None
-        assert trashed_utub.is_trashed is True
         assert trashed_utub.deleted_by == creator_user_id
 
 
@@ -132,7 +131,6 @@ def test_delete_locked_utub_is_rejected(
         assert locked_utub is not None
         assert locked_utub.deleted_at is None
         assert locked_utub.deleted_by is None
-        assert not locked_utub.is_trashed
 
 
 def test_delete_utub_records_metric(
@@ -300,7 +298,6 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
         assert Utubs.query.count() == initial_num_utubs
         trashed_utub: Utubs = Utubs.query.get(utub_id_to_delete)
         assert trashed_utub.deleted_at is not None
-        assert trashed_utub.is_trashed is True
         assert trashed_utub.deleted_by == creator_user_id
 
 
@@ -403,7 +400,6 @@ def test_delete_existing_utub_with_urls_no_tags(
         assert Utubs.query.count() == initial_num_utubs
         trashed_utub: Utubs = Utubs.query.get(utub_id_to_delete)
         assert trashed_utub.deleted_at is not None
-        assert trashed_utub.is_trashed is True
         assert trashed_utub.deleted_by == creator_user_id
 
 
@@ -506,7 +502,6 @@ def test_delete_existing_utub_with_urls_and_tags(
         assert Utubs.query.count() == initial_num_utubs
         trashed_utub: Utubs = Utubs.query.get(utub_id_to_delete)
         assert trashed_utub.deleted_at is not None
-        assert trashed_utub.is_trashed is True
         assert trashed_utub.deleted_by == creator_user_id
 
 
@@ -764,8 +759,8 @@ def test_delete_utub_as_co_creator_is_rejected(
     with app.app_context():
         # The UTub is not trashed — the co-creator's delete did not happen
         assert Utubs.query.count() == initial_num_utubs
-        assert Utubs.query.get(utub_id) is not None
-        assert not Utubs.query.get(utub_id).is_trashed
+        untouched_utub: Utubs = Utubs.query.get(utub_id)
+        assert not untouched_utub.is_trashed
 
 
 def test_delete_success_logs(add_single_utub_as_user_after_logging_in, caplog):

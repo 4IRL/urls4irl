@@ -594,7 +594,7 @@ def test_route_trashed_source_returns_404(
         dest2_before = _dest_url_row_count(DEST_UTUB_ID)
         dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
 
-    trash_utub(app, SOURCE_UTUB_ID, copier_id)
+    trash_utub(app, SOURCE_UTUB_ID, deleted_by=copier_id)
 
     response = client.post(
         url_for(ROUTES.URLS.COPY_URLS_MULTI),
@@ -633,7 +633,7 @@ def test_route_trashed_destination_returns_404(
         dest2_before = _dest_url_row_count(DEST_UTUB_ID)
         dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
 
-    trash_utub(app, THIRD_UTUB_ID, copier_id)
+    trash_utub(app, THIRD_UTUB_ID, deleted_by=copier_id)
 
     response = client.post(
         url_for(ROUTES.URLS.COPY_URLS_MULTI),

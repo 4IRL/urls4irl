@@ -61,7 +61,7 @@ def test_candidates_ignore_trashed_shared_utub(app: Flask) -> None:
         target_id = target.id
         trashed_shared_id = trashed_shared.id
 
-    trash_utub(app, trashed_shared_id, requester_id)
+    trash_utub(app, trashed_shared_id, deleted_by=requester_id)
 
     with app.app_context():
         result = get_co_member_candidates(requester_id, Utubs.query.get(target_id))
@@ -84,7 +84,7 @@ def test_shared_count_excludes_trashed_utub(app: Flask) -> None:
         target_id = target.id
         trashed_shared_id = trashed_shared.id
 
-    trash_utub(app, trashed_shared_id, requester_id)
+    trash_utub(app, trashed_shared_id, deleted_by=requester_id)
 
     with app.app_context():
         result = get_co_member_candidates(requester_id, Utubs.query.get(target_id))

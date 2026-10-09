@@ -412,7 +412,7 @@ def test_service_trashed_destination_aborts_404(
         source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
         target_id = source_by_url_id[1].id
 
-    trash_utub(app, THIRD_UTUB_ID, copier_id)
+    trash_utub(app, THIRD_UTUB_ID, deleted_by=copier_id)
 
     with app.app_context():
         dest2_before = _dest_url_row_count(DEST_UTUB_ID)
@@ -448,7 +448,7 @@ def test_service_trashed_source_aborts_404(
         source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
         target_id = source_by_url_id[1].id
 
-    trash_utub(app, SOURCE_UTUB_ID, copier_id)
+    trash_utub(app, SOURCE_UTUB_ID, deleted_by=copier_id)
 
     with app.app_context():
         dest2_before = _dest_url_row_count(DEST_UTUB_ID)

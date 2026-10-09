@@ -50,11 +50,9 @@ def build_user_stats_context() -> dict[str, Any]:
     the "tags applied" count automatically. Rows inside a trashed UTub are
     excluded, as is the trashed UTub itself.
     """
-    stats_utubs_created = (
-        Utubs.query.filter_by(utub_creator=current_user.id)
-        .filter(Utubs.deleted_at.is_(None))
-        .count()
-    )
+    stats_utubs_created = Utubs.query.filter_by(
+        utub_creator=current_user.id, deleted_at=None
+    ).count()
     stats_member_of = (
         Utub_Members.query.join(Utubs, Utubs.id == Utub_Members.utub_id)
         .filter(

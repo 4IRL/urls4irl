@@ -149,7 +149,7 @@ def test_search_excludes_urls_in_trashed_utub(
             url_title="Trashed",
         )
 
-    trash_utub(app, trashed_utub_id, FIRST_USER_ID)
+    trash_utub(app, trashed_utub_id, deleted_by=FIRST_USER_ID)
 
     with app.app_context():
         results = search_across_user_utubs(query=query, user_id=FIRST_USER_ID)
