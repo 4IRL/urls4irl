@@ -338,15 +338,9 @@ a.urlString {
         flex-direction: column !important;
     }
 
-    /* Tighten the dead space between the URL field (and its trim disclosure) and
-       the full-width Cancel bar while the consolidated edit panel is open. The
-       selected card's `.urlTags` keeps 35px of padding even when it holds no
-       tags, and the option row keeps 15px above the Cancel bar; the 20px
-       `.field-saved-tick-slot` already separates the field from both. The tick
-       slot + 4px lands the field→Cancel gap on the same ~24px as the field→field
-       gap below. Both stay on a closed card, where `.urlTags` and the 15px
-       separate the URL from the option buttons. (The string wrap's own bottom
-       padding is dropped further down, after its base rule, so it takes effect.) */
+    /* Tighten the dead space between the URL field and the Cancel bar while the
+       edit panel is open: the tick slot (20px) + 4px matches the ~24px
+       field-to-field gap below. Closed cards keep their padding. */
     .urlRow[filterable="true"][urlSelected="true"] .urlRowContent:has(.updateUrlStringWrap:not(.hidden)) .urlTags:not(:has(.tagBadge)) {
         padding: 0;
     }
@@ -380,12 +374,8 @@ a.urlString {
         width: 100%;
     }
 
-    /* The Title and URL edit rows each sit in a `.ninetyfive-width` (95%) wrapper
-       built separately in url-title.ts / url-string.ts, and the URL row spilled
-       past its wrapper while the Title row stayed inside its own, so the two
-       inputs ended at different right edges. While the consolidated panel is
-       open, make both wrappers full width so the fields (and their check
-       buttons) line up. */
+    /* Title and URL edit rows sit in separate 95% `.ninetyfive-width` wrappers and
+       ended at different right edges; make both full width while the panel is open. */
     .urlRow[filterable="true"][urlSelected="true"] .ninetyfive-width:has(> .updateUrlTitleWrap:not(.hidden)),
     .urlRow[filterable="true"][urlSelected="true"] .ninetyfive-width:has(> .updateUrlStringWrap:not(.hidden)) {
         width: 100%;
@@ -449,18 +439,12 @@ a.urlString {
     padding-top: 20px;
 }
 
-/* Coarse-pointer (mobile) only: keep the vertical gap between the URL card's
-   Title and URL-string inputs equal to the gap between the UTub header's name
-   and description inputs (utubs.css), both ~24px. On touch, each field also
-   reserves a ~1.25rem (20px) `.field-saved-tick-slot` below its input, so the
-   desktop 20px+20px inter-wrap padding would push the visual title→string gap
-   to ~60px. Drop the title wrap's bottom padding and trim the string wrap's top
-   padding to 4px so tick-slot(20px) + 4px = ~24px. The string wrap's bottom
-   padding is dropped too: the tick slot below its last field already provides
-   the space above the Cancel bar (the title wrap does the same above). This
-   block sits after the base `.updateUrlStringWrap` rule on purpose, so it wins
-   by source order. Desktop (no tick slot, side-by-side layout) keeps the 20/20
-   padding above and is untouched. */
+/* Coarse-pointer (mobile) only: keep the Title-to-URL input gap at ~24px, equal
+   to the UTub header's name-to-description gap (utubs.css). Each field reserves a
+   20px `.field-saved-tick-slot`, so the string wrap's top padding is 4px
+   (tick slot + 4px) and the title's and string's bottom padding is dropped.
+   Must stay after the base `.updateUrlStringWrap` rule (source-order win);
+   desktop keeps its 20/20 padding. */
 @media (any-pointer: coarse) {
     .updateUrlTitleWrap {
         padding-bottom: 0;
@@ -626,42 +610,37 @@ a.urlString {
     }
 }
 
-/* Mobile edit panel: "Save URL" beside the Close bar (built in update-string.ts).
-   Hidden unless the trim section is open (expanded, with a query string), so the
-   trimmed result has an obvious save control next to Close; at all other times
-   the URL field's own green check is the way to save. The green is darkened
-   (color-mix, with the plain token as a fallback) so the white label meets 4.5:1
-   contrast; touch devices keep a sticky :hover/:focus after a tap, so every
-   interaction state is pinned like the Close bar's. */
+/* Mobile "Save URL" beside the Close bar (only mounted on coarse pointers by
+   update-string.ts); shown only while the trim section is open. Darkened green
+   so the white label meets 4.5:1; every state is pinned against touch-sticky
+   :hover/:focus, like the Close bar. */
 .urlStringSaveBigBtnUpdate {
     display: none;
 }
 
-@media (any-pointer: coarse) {
-    .urlRowContent:has(.updateUrlStringWrap:not(.hidden) .urlParamTrimWrap:not(.hidden):not(.collapsed)) .urlStringSaveBigBtnUpdate {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        /* No margin of its own: `.urlOptions` spaces its buttons with gap-15p. */
-        color: white;
-        -webkit-tap-highlight-color: transparent;
-    }
+.urlRowContent:has(.updateUrlStringWrap:not(.hidden) .urlParamTrimWrap:not(.hidden):not(.collapsed)) .urlStringSaveBigBtnUpdate {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* No margin of its own: `.urlOptions` spaces its buttons with gap-15p. */
+    color: white;
+    -webkit-tap-highlight-color: transparent;
+}
 
-    .urlStringSaveBigBtnUpdate,
-    .urlStringSaveBigBtnUpdate:hover,
-    .urlStringSaveBigBtnUpdate:focus,
-    .urlStringSaveBigBtnUpdate:focus-visible {
-        background-color: var(--splashGreen) !important;
-        background-color: color-mix(in srgb, var(--splashGreen) 75%, black) !important;
-        border-color: color-mix(in srgb, var(--splashGreen) 75%, black) !important;
-        color: white !important;
-    }
+.urlStringSaveBigBtnUpdate,
+.urlStringSaveBigBtnUpdate:hover,
+.urlStringSaveBigBtnUpdate:focus,
+.urlStringSaveBigBtnUpdate:focus-visible {
+    background-color: var(--splashGreen) !important;
+    background-color: color-mix(in srgb, var(--splashGreen) 75%, black) !important;
+    border-color: color-mix(in srgb, var(--splashGreen) 75%, black) !important;
+    color: white !important;
+}
 
-    .urlStringSaveBigBtnUpdate:active {
-        background-color: color-mix(in srgb, var(--splashGreen) 60%, black) !important;
-        border-color: color-mix(in srgb, var(--splashGreen) 60%, black) !important;
-        color: white !important;
-    }
+.urlStringSaveBigBtnUpdate:active {
+    background-color: color-mix(in srgb, var(--splashGreen) 60%, black) !important;
+    border-color: color-mix(in srgb, var(--splashGreen) 60%, black) !important;
+    color: white !important;
 }
 
 /* Mobile only: the edit pencil is a .btn btn-light whose custom yellow is set

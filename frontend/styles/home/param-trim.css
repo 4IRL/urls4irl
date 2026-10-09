@@ -56,9 +56,8 @@
 }
 
 /* Collapse shape copied from `.deck.collapsed .content` (decks.css). `visibility`
-   is in the transition list so the hide defers to the end of the animation, and
-   keeps collapsed content out of the tab order and the a11y tree (never
-   `display: none`, which kills the transition, nor bare `opacity: 0`). */
+   defers the hide to the end of the transition and keeps collapsed content out
+   of the tab order (never `display: none`, which kills the transition). */
 .urlParamTrimBody {
     display: flex;
     flex-direction: column;
@@ -233,9 +232,7 @@
     flex-direction: column;
     gap: 3px;
     border-left: 2px solid var(--splashGreen);
-    /* A faint green wash (works on both themes; the rgba is the fallback) so the
-       "Saves as" result reads as its own block, set apart from the chips above. */
-    background: rgba(36, 167, 69, 0.1);
+    /* Faint green wash so "Saves as" reads as its own block, apart from the chips. */
     background: color-mix(in srgb, var(--splashGreen) 10%, transparent);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     padding: 6px 10px 6px 9px;
@@ -320,11 +317,9 @@
     cursor: pointer;
 }
 
-/* Undo is the banner's one action, so it gets a solid fill (the ✕ dismiss stays
-   outlined). Same darkened green as the edit panel's "Save URL" button (plain
-   token first as a fallback) so the white label meets 4.5:1 contrast. Every
-   interaction state is pinned so a touch device's sticky :hover/:focus never
-   turns it back to a transparent or grey fill. */
+/* Undo is the banner's one action: solid darkened green (same as "Save URL") so
+   the white label meets 4.5:1. All states are pinned so touch-sticky
+   :hover/:focus never reverts the fill. */
 .urlOutcomeBannerAction,
 .urlOutcomeBannerAction:hover,
 .urlOutcomeBannerAction:focus,
@@ -364,15 +359,10 @@
     }
 }
 
-/* Touch only (the "Saved ✓" slot exists only there). The URL string field
-   reserves a 20px row for its transient "Saved ✓" tick, directly under the
-   input. With the trim disclosure showing, that reserved row is an empty strip
-   between the input and the disclosure. Keep the tick right under the input but
-   stop it reserving height: the slot collapses to zero and the tick is
-   positioned from the slot's top edge, so it fades in over the disclosure
-   row's own padding (the 44px header leaves ~11px above its text) instead of
-   pushing the disclosure down. With no query string the disclosure is hidden
-   and the full 20px row stays, so layout there is unchanged. */
+/* Touch only. While the trim disclosure shows, collapse the tick slot's
+   reserved 20px row and overlay the "Saved ✓" tick on the header's own padding
+   so it doesn't push the disclosure down. Without a query string the full row
+   stays. */
 @media (any-pointer: coarse) {
     .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) > .field-saved-tick-slot {
         position: relative;
@@ -389,22 +379,19 @@
     }
 }
 
-/* The chip is the touch target here, so the sub-44px exemption the tag-chip
-   remove button enjoys does not apply. Sticky :hover/:focus is re-pinned to the
-   resting fill so a tap never leaves a stuck state. */
+/* Chip and header are the touch targets (44px). Sticky :hover/:focus is
+   re-pinned to the resting fill so a tap never leaves a stuck state. */
 @media (any-pointer: coarse) {
     .urlParamTrimChip,
-    .urlParamTrimHeader {
+    .urlParamTrimHeader,
+    .urlParamTrimBtn {
         min-height: 2.75rem;
         -webkit-tap-highlight-color: transparent;
     }
 
-    /* The Drop all / Keep all buttons are secondary shortcuts (each chip is also
-       a full-size toggle), so they run shorter than the 44px chip and header
-       targets. 36px stays well above the WCAG 2.2 minimum (24px). */
+    /* Drop all / Keep all are secondary (each chip is a full toggle): 36px. */
     .urlParamTrimBtn {
         min-height: 2.25rem;
-        -webkit-tap-highlight-color: transparent;
     }
 
     .urlParamTrimChip[aria-pressed="true"]:hover,

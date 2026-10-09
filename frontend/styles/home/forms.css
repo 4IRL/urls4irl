@@ -9,14 +9,10 @@
     position: relative;
 }
 
-/* Action buttons that sit beside a `.text-input-container` (the URL card's
-   title/string edit forms, built in TS) are siblings of the WHOLE container, so
-   the row is as tall as the input plus its error message and the buttons were
-   centered on that taller box, drifting below the input when an error showed.
-   Pin them to the top of the row, where the input box is: their own `my-2`
-   margin (8px) around the 30px icon matches the 46px input, so they stay
-   vertically centered on the input in every state. (The Jinja forms nest their
-   buttons inside `.text-input-inner-container` and never had this problem.) */
+/* Buttons beside a TS-built `.text-input-container` (URL card edit forms) would
+   center on the input plus its error message and drift down when an error
+   shows. Pin them to the top, where the input is (their `my-2` + 30px icon
+   matches the 46px input). */
 .flex-row:has(> .text-input-container) > button {
     align-self: flex-start;
 }

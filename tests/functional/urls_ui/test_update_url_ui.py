@@ -1573,9 +1573,12 @@ def test_update_url_string_trim_collapsed_toggle_drop_save_and_undo(
     )
     expect(page.locator(HPL.URL_OUTCOME_BANNER_DETAIL)).to_have_text(TRIM_DROPPED_PARAM)
 
-    # Undo is the banner's one action: it has a solid fill, not a transparent one.
+    # Undo is the banner's one action: a solid fill, splashGreen mixed 75% with
+    # black (rgb(36, 167, 69) * 0.75); Chromium serializes color-mix as color(srgb).
     undo_button = page.locator(HPL.URL_OUTCOME_BANNER_UNDO)
-    expect(undo_button).not_to_have_css("background-color", "rgba(0, 0, 0, 0)")
+    expect(undo_button).to_have_css(
+        "background-color", "color(srgb 0.105882 0.491176 0.202941)"
+    )
     undo_button.click()
 
     expect(url_string_elem).to_have_attribute(

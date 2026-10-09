@@ -77,6 +77,7 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
             "device_type": DeviceType.MOBILE,
         },
     ),
+    (EventName.UI_URL_EDIT_UNDONE, {"device_type": DeviceType.DESKTOP}),
     (
         EventName.UI_UTUB_SEARCH_OPEN,
         {"target": "utubs", "device_type": DeviceType.MOBILE},

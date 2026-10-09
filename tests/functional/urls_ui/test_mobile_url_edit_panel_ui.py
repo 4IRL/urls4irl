@@ -396,6 +396,12 @@ def test_url_string_edit_via_consolidated_panel_mobile(
     expect(selected_url.locator(HPL.GO_TO_URL_ICON)).to_be_visible()
 
 
+def _bounding_box(*, locator: Locator) -> dict[str, float]:
+    box = locator.bounding_box()
+    assert box is not None
+    return box
+
+
 def test_url_string_trim_section_in_consolidated_panel_mobile(
     page_mobile_portrait: Page,
     create_test_utubs,
@@ -447,24 +453,34 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
         page=page,
         upper_selector=HPL.EDIT_FORM_TRIM_HEADER,
         lower_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE}",
-        min_px=0,
-        max_px=20,
+        min_px=2,
+        max_px=8,
     )
-    header_box = header.bounding_box()
-    assert header_box is not None
-    tick_slot_box = selected_url.locator(
-        ".updateUrlStringWrap .field-saved-tick-slot"
-    ).bounding_box()
-    tick_box = selected_url.locator(
-        ".updateUrlStringWrap .field-saved-tick"
-    ).bounding_box()
-    string_input_box = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE).bounding_box()
-    assert tick_slot_box is not None and string_input_box is not None
-    assert tick_box is not None
-    input_bottom = string_input_box["y"] + string_input_box["height"]
+    tick_slot_selector = (
+        f"{HPL.ROW_SELECTED_URL} .updateUrlStringWrap .field-saved-tick-slot"
+    )
+    string_input_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
+    wait_until_vertical_gap(
+        page=page,
+        upper_selector=string_input_selector,
+        lower_selector=HPL.EDIT_FORM_TRIM_HEADER,
+        min_px=8,
+        max_px=12,
+    )
+    wait_until_vertical_gap(
+        page=page,
+        upper_selector=string_input_selector,
+        lower_selector=tick_slot_selector,
+        min_px=3,
+        max_px=7,
+    )
+    header_box = _bounding_box(locator=header)
+    tick_slot_box = _bounding_box(locator=page.locator(tick_slot_selector))
+    tick_box = _bounding_box(
+        locator=selected_url.locator(".updateUrlStringWrap .field-saved-tick")
+    )
     assert tick_slot_box["height"] <= 1, "tick slot must not reserve a row"
-    assert 0 <= tick_slot_box["y"] - input_bottom <= 8, "tick must sit under the input"
-    assert header_box["y"] - input_bottom <= 12, "no dead space above the trim"
+    assert abs(tick_box["y"] - tick_slot_box["y"]) <= 1, "tick is anchored to the slot"
     # The (faded) tick must clear the disclosure's caret/text (they start ~14px
     # into the 44px header), so it never overlaps them when it shows.
     assert tick_box["y"] + tick_box["height"] <= header_box["y"] + 16
@@ -478,8 +494,7 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     assert page.viewport_size is not None
     viewport_width = page.viewport_size["width"]
     for chip_index in range(2):
-        chip_box = chips.nth(chip_index).bounding_box()
-        assert chip_box is not None
+        chip_box = _bounding_box(locator=chips.nth(chip_index))
         assert chip_box["x"] >= 0
         assert chip_box["x"] + chip_box["width"] <= viewport_width
 
@@ -494,10 +509,9 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
         max_px=40,
     )
     for bulk_selector in (HPL.TRIM_DROP_ALL, HPL.TRIM_KEEP_ALL):
-        bulk_box = page.locator(
-            f"{HPL.ROW_SELECTED_URL} {bulk_selector}"
-        ).bounding_box()
-        assert bulk_box is not None
+        bulk_box = _bounding_box(
+            locator=page.locator(f"{HPL.ROW_SELECTED_URL} {bulk_selector}")
+        )
         assert 30 <= bulk_box["height"] <= 40, (
             f"{bulk_selector}: {bulk_box['height']}px"
         )
@@ -505,11 +519,10 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     # Open: "Save URL" appears next to Close, on the same row and to its right.
     expect(save_button).to_be_visible()
     expect(save_button).to_have_text("Save URL")
-    save_box = save_button.bounding_box()
-    close_bar_box = selected_url.locator(
-        HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
-    ).bounding_box()
-    assert save_box is not None and close_bar_box is not None
+    save_box = _bounding_box(locator=save_button)
+    close_bar_box = _bounding_box(
+        locator=selected_url.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+    )
     assert abs(save_box["y"] - close_bar_box["y"]) <= 2, (
         "Save URL must share Close's row"
     )
@@ -542,8 +555,7 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
 
 
 def _vertical_center(*, locator: Locator) -> float:
-    box = locator.bounding_box()
-    assert box is not None
+    box = _bounding_box(locator=locator)
     return box["y"] + box["height"] / 2
 
 

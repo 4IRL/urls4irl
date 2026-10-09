@@ -1291,7 +1291,7 @@ describe('mobile edit panel "Save URL" button beside Close', () => {
 
     const saveButton = urlCard.find(".urlStringSaveBigBtnUpdate");
     expect(saveButton.length).toBe(1);
-    expect(saveButton.text()).toBe("Save URL");
+    expect(saveButton.text()).toBe(APP_CONFIG.strings.URL_TRIM_SAVE_URL);
     expect(saveButton.attr("type")).toBe("button");
     expect(saveButton.prev().hasClass("urlStringCancelBigBtnUpdate")).toBe(
       true,
