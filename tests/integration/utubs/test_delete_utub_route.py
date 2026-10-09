@@ -23,7 +23,7 @@ from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from backend.utubs.constants import UTubErrorCodes
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import valid_empty_utub_1
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub
 
 pytestmark = pytest.mark.utubs
 
@@ -36,8 +36,8 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
     WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
     THEN ensure that a 200 status code response is given, and the proper JSON response
         indicating the successful deletion of the UTub is included.
-        Additionally, this user and UTub are the only existing entities so ensure that
-        no UTub exist in the database, and no associations exist between UTubs and Users after deletion
+        Additionally, ensure the UTub row is retained but flagged trashed by the creator,
+        and the UTub-User association is retained for restore
 
     On POST with a successful deletion, the JSON response is as follows:
     {
@@ -51,8 +51,10 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
     client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
 
     with app.app_context():
-        # Get initial count of UTubs
+        # Get initial counts of UTubs and UTub-User associations
         initial_num_utubs = Utubs.query.count()
+        initial_num_utub_members = Utub_Members.query.count()
+        creator_user_id = current_user.id
 
     delete_utub_response = client.delete(
         url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
@@ -77,9 +79,14 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
     )
 
     with app.app_context():
-        # Assert no UTubs and no UTub-User associations exist in the database after deletion
-        assert Utubs.query.count() == initial_num_utubs - 1
-        assert Utub_Members.query.count() == 0
+        # Assert the UTub row and its UTub-User association are retained, flagged trashed
+        assert Utubs.query.count() == initial_num_utubs
+        assert Utub_Members.query.count() == initial_num_utub_members
+
+        trashed_utub: Utubs = Utubs.query.get(utub_id)
+        assert trashed_utub.deleted_at is not None
+        assert trashed_utub.is_trashed is True
+        assert trashed_utub.deleted_by == creator_user_id
 
 
 def test_delete_locked_utub_is_rejected(
@@ -90,7 +97,7 @@ def test_delete_locked_utub_is_rejected(
     WHEN the creator requests to delete the locked UTub via a DELETE to "/utubs/<int:utub_id>"
     THEN the lock guard rejects the delete: the server responds 403 with the locked-UTub
         JSON error (status FAILURE, message UTUB_FAILURE.UTUB_IS_LOCKED, error code
-        UTubErrorCodes.UTUB_IS_LOCKED) and the UTub still exists afterward.
+        UTubErrorCodes.UTUB_IS_LOCKED) and the UTub is not trashed afterward.
     """
     client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
 
@@ -119,9 +126,13 @@ def test_delete_locked_utub_is_rejected(
     )
 
     with app.app_context():
-        # The locked UTub still exists — the delete did not happen
+        # The locked UTub is not trashed — the delete did not happen
         assert Utubs.query.count() == initial_num_utubs
-        assert Utubs.query.get(utub_id) is not None
+        locked_utub: Utubs = Utubs.query.get(utub_id)
+        assert locked_utub is not None
+        assert locked_utub.deleted_at is None
+        assert locked_utub.deleted_by is None
+        assert not locked_utub.is_trashed
 
 
 def test_delete_utub_records_metric(
@@ -166,9 +177,9 @@ def test_delete_utub_does_not_inflate_member_removed_counter(
         metrics enabled
     WHEN the creator DELETEs "/utubs/<utub_id>"
     THEN the request returns HTTP 200 AND no MEMBER_REMOVED counter
-        key is written — proving the ORM cascade on `Utubs.members`
-        wipes child `Utub_Members` rows at the DB layer without ever
-        calling `_remove_member_from_utub`.
+        key is written — deleting a UTub only flags it trashed and
+        retains its `Utub_Members` rows, never calling
+        `_remove_member_from_utub`.
     """
     client, csrf_token, _, app = login_first_user_without_register
 
@@ -198,7 +209,8 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
     WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
     THEN ensure that a 200 status code response is given, and the proper JSON response
         indicating the successful deletion of the UTub is included.
-        Ensure all User-UTub associations, URL-UTub associations, and URL-Tag associations are deleted.
+        Ensure the UTub is flagged trashed by its creator, and all User-UTub, URL-UTub, UTub-Tag
+        and URL-Tag associations are retained for restore.
 
     On POST with a successful deletion, the JSON response is as follows:
     {
@@ -221,193 +233,7 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
         utub_name_to_delete = utub_user_is_creator_of.name
         utub_description_to_delete = utub_user_is_creator_of.utub_description
 
-        num_of_users_in_utub = len(utub_user_is_creator_of.members)
-        initial_num_of_user_utubs_associations = Utub_Members.query.count()
-
-        num_of_urls_in_utub = len(utub_user_is_creator_of.utub_urls)
-        initial_num_of_url_utubs_associations = Utub_Urls.query.count()
-
-        num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
-        initial_num_of_url_tag_associations = Utub_Url_Tags.query.count()
-
-        initial_num_utubs = Utubs.query.count()
-
-    delete_utub_response = client.delete(
-        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    assert delete_utub_response.status_code == 200
-
-    delete_utub_json_response = delete_utub_response.json
-
-    # Assert JSON includes proper response on successful deletion of UTub
-    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_SUCCESS.UTUB_DELETED
-    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert (
-        delete_utub_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
-        == utub_description_to_delete
-    )
-    assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id_to_delete
-    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == utub_name_to_delete
-
-    with app.app_context():
-        # Ensure proper counting in DB of deleted associations
-        assert (
-            Utub_Members.query.count()
-            == initial_num_of_user_utubs_associations - num_of_users_in_utub
-        )
-        assert (
-            Utub_Members.query.filter(Utub_Members.utub_id == utub_id_to_delete).count()
-            == 0
-        )
-
-        assert (
-            Utub_Urls.query.count()
-            == initial_num_of_url_utubs_associations - num_of_urls_in_utub
-        )
-        assert (
-            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_delete).count() == 0
-        )
-
-        assert (
-            Utub_Url_Tags.query.count()
-            == initial_num_of_url_tag_associations - num_of_tags_in_utub
-        )
-        assert (
-            Utub_Url_Tags.query.filter(
-                Utub_Url_Tags.utub_id == utub_id_to_delete
-            ).count()
-            == 0
-        )
-
-        assert Utubs.query.count() == initial_num_utubs - 1
-
-
-def test_delete_existing_utub_with_urls_no_tags(
-    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
-):
-    """
-    GIVEN a valid existing user and a UTub they have created that contains members, URLs but no tags on URLs
-    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
-    THEN ensure that a 200 status code response is given, and the proper JSON response
-        indicating the successful deletion of the UTub is included.
-        Ensure all User-UTub associations, URL-UTub associations, and URL-Tag associations are deleted.
-
-    On POST with a successful deletion, the JSON response is as follows:
-    {
-        STD_JSON.STATUS: STD_JSON.SUCCESS,
-        STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
-        UTUB_SUCCESS.UTUB_ID: Integer representing the ID of the UTub deleted,
-        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the description of the deleted UTub,
-        UTUB_SUCCESS.UTUB_NAME: String representing the name of the deleted UTub,
-    }
-    """
-
-    client, csrf_token, _, app = login_first_user_without_register
-
-    with app.app_context():
-        # Get the UTub this user is a creator of
-        utub_user_is_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-        utub_id_to_delete = utub_user_is_creator_of.id
-        utub_name_to_delete = utub_user_is_creator_of.name
-        utub_description_to_delete = utub_user_is_creator_of.utub_description
-
-        num_of_users_in_utub = len(utub_user_is_creator_of.members)
-        initial_num_of_user_utubs_associations = Utub_Members.query.count()
-
-        num_of_urls_in_utub = len(utub_user_is_creator_of.utub_urls)
-        initial_num_of_url_utubs_associations = Utub_Urls.query.count()
-
-        num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
-        initial_num_of_url_tag_associations = Utub_Url_Tags.query.count()
-
-        initial_num_utubs = Utubs.query.count()
-
-    delete_utub_response = client.delete(
-        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    assert delete_utub_response.status_code == 200
-
-    delete_utub_json_response = delete_utub_response.json
-
-    # Assert JSON includes proper response on successful deletion of UTub
-    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_SUCCESS.UTUB_DELETED
-    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert (
-        delete_utub_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
-        == utub_description_to_delete
-    )
-    assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id_to_delete
-    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == utub_name_to_delete
-
-    with app.app_context():
-        # Ensure proper counting in DB of deleted associations
-        assert (
-            Utub_Members.query.count()
-            == initial_num_of_user_utubs_associations - num_of_users_in_utub
-        )
-        assert (
-            Utub_Members.query.filter(Utub_Members.utub_id == utub_id_to_delete).count()
-            == 0
-        )
-
-        assert (
-            Utub_Urls.query.count()
-            == initial_num_of_url_utubs_associations - num_of_urls_in_utub
-        )
-        assert (
-            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_delete).count() == 0
-        )
-
-        assert (
-            Utub_Url_Tags.query.count()
-            == initial_num_of_url_tag_associations - num_of_tags_in_utub
-        )
-        assert (
-            Utub_Url_Tags.query.filter(
-                Utub_Url_Tags.utub_id == utub_id_to_delete
-            ).count()
-            == 0
-        )
-
-        assert Utubs.query.count() == initial_num_utubs - 1
-
-
-def test_delete_existing_utub_with_urls_and_tags(
-    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
-):
-    """
-    GIVEN a valid existing user and a UTub they have created that contains members, URLs, and tags on those URLs
-    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
-    THEN ensure that a 200 status code response is given, and the proper JSON response
-        indicating the successful deletion of the UTub is included.
-        Ensure all User-UTub associations, URL-UTub associations, and URL-Tag associations are deleted.
-
-    On POST with a successful deletion, the JSON response is as follows:
-    {
-        STD_JSON.STATUS: STD_JSON.SUCCESS,
-        STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
-        UTUB_SUCCESS.UTUB_ID: Integer representing the ID of the UTub deleted,
-        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the description of the deleted UTub,
-        UTUB_SUCCESS.UTUB_NAME: String representing the name of the deleted UTub,
-    }
-    """
-
-    client, csrf_token, _, app = login_first_user_without_register
-
-    with app.app_context():
-        # Get the UTub this user is a creator of
-        utub_user_is_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-        utub_id_to_delete = utub_user_is_creator_of.id
-        utub_name_to_delete = utub_user_is_creator_of.name
-        utub_description_to_delete = utub_user_is_creator_of.utub_description
+        creator_user_id = current_user.id
 
         num_of_users_in_utub = len(utub_user_is_creator_of.members)
         initial_num_of_user_utubs_associations = Utub_Members.query.count()
@@ -443,38 +269,245 @@ def test_delete_existing_utub_with_urls_and_tags(
     assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == utub_name_to_delete
 
     with app.app_context():
-        # Ensure proper counting in DB of deleted associations
-        assert (
-            Utub_Members.query.count()
-            == initial_num_of_user_utubs_associations - num_of_users_in_utub
-        )
+        # Ensure all associations are retained for restore
+        assert Utub_Members.query.count() == initial_num_of_user_utubs_associations
         assert (
             Utub_Members.query.filter(Utub_Members.utub_id == utub_id_to_delete).count()
-            == 0
+            == num_of_users_in_utub
         )
 
+        assert Utub_Urls.query.count() == initial_num_of_url_utubs_associations
         assert (
-            Utub_Urls.query.count()
-            == initial_num_of_url_utubs_associations - num_of_urls_in_utub
-        )
-        assert (
-            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_delete).count() == 0
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_delete).count()
+            == num_of_urls_in_utub
         )
 
-        assert Utub_Tags.query.count() == initial_num_of_utub_tags - num_of_tags_in_utub
-
+        assert Utub_Tags.query.count() == initial_num_of_utub_tags
         assert (
-            Utub_Url_Tags.query.count()
-            == initial_num_of_url_tag_associations - num_of_url_tags_in_utub
+            Utub_Tags.query.filter(Utub_Tags.utub_id == utub_id_to_delete).count()
+            == num_of_tags_in_utub
         )
+
+        assert Utub_Url_Tags.query.count() == initial_num_of_url_tag_associations
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_to_delete
             ).count()
-            == 0
+            == num_of_url_tags_in_utub
         )
 
-        assert Utubs.query.count() == initial_num_utubs - 1
+        # Ensure the UTub row is retained, flagged trashed by its creator
+        assert Utubs.query.count() == initial_num_utubs
+        trashed_utub: Utubs = Utubs.query.get(utub_id_to_delete)
+        assert trashed_utub.deleted_at is not None
+        assert trashed_utub.is_trashed is True
+        assert trashed_utub.deleted_by == creator_user_id
+
+
+def test_delete_existing_utub_with_urls_no_tags(
+    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid existing user and a UTub they have created that contains members, URLs but no tags on URLs
+    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
+    THEN ensure that a 200 status code response is given, and the proper JSON response
+        indicating the successful deletion of the UTub is included.
+        Ensure the UTub is flagged trashed by its creator, and all User-UTub, URL-UTub, UTub-Tag
+        and URL-Tag associations are retained for restore.
+
+    On POST with a successful deletion, the JSON response is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the ID of the UTub deleted,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the description of the deleted UTub,
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the deleted UTub,
+    }
+    """
+
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get the UTub this user is a creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_to_delete = utub_user_is_creator_of.id
+        utub_name_to_delete = utub_user_is_creator_of.name
+        utub_description_to_delete = utub_user_is_creator_of.utub_description
+
+        creator_user_id = current_user.id
+
+        num_of_users_in_utub = len(utub_user_is_creator_of.members)
+        initial_num_of_user_utubs_associations = Utub_Members.query.count()
+
+        num_of_urls_in_utub = len(utub_user_is_creator_of.utub_urls)
+        initial_num_of_url_utubs_associations = Utub_Urls.query.count()
+
+        num_of_tags_in_utub = len(utub_user_is_creator_of.utub_tags)
+        initial_num_of_utub_tags = Utub_Tags.query.count()
+
+        num_of_url_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
+        initial_num_of_url_tag_associations = Utub_Url_Tags.query.count()
+
+        initial_num_utubs = Utubs.query.count()
+
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_utub_response.status_code == 200
+
+    delete_utub_json_response = delete_utub_response.json
+
+    # Assert JSON includes proper response on successful deletion of UTub
+    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_SUCCESS.UTUB_DELETED
+    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert (
+        delete_utub_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == utub_description_to_delete
+    )
+    assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id_to_delete
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == utub_name_to_delete
+
+    with app.app_context():
+        # Ensure all associations are retained for restore
+        assert Utub_Members.query.count() == initial_num_of_user_utubs_associations
+        assert (
+            Utub_Members.query.filter(Utub_Members.utub_id == utub_id_to_delete).count()
+            == num_of_users_in_utub
+        )
+
+        assert Utub_Urls.query.count() == initial_num_of_url_utubs_associations
+        assert (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_delete).count()
+            == num_of_urls_in_utub
+        )
+
+        assert Utub_Tags.query.count() == initial_num_of_utub_tags
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == utub_id_to_delete).count()
+            == num_of_tags_in_utub
+        )
+
+        assert Utub_Url_Tags.query.count() == initial_num_of_url_tag_associations
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id_to_delete
+            ).count()
+            == num_of_url_tags_in_utub
+        )
+
+        # Ensure the UTub row is retained, flagged trashed by its creator
+        assert Utubs.query.count() == initial_num_utubs
+        trashed_utub: Utubs = Utubs.query.get(utub_id_to_delete)
+        assert trashed_utub.deleted_at is not None
+        assert trashed_utub.is_trashed is True
+        assert trashed_utub.deleted_by == creator_user_id
+
+
+def test_delete_existing_utub_with_urls_and_tags(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid existing user and a UTub they have created that contains members, URLs, and tags on those URLs
+    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
+    THEN ensure that a 200 status code response is given, and the proper JSON response
+        indicating the successful deletion of the UTub is included.
+        Ensure the UTub is flagged trashed by its creator, and all User-UTub, URL-UTub, UTub-Tag
+        and URL-Tag associations are retained for restore.
+
+    On POST with a successful deletion, the JSON response is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the ID of the UTub deleted,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the description of the deleted UTub,
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the deleted UTub,
+    }
+    """
+
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get the UTub this user is a creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_to_delete = utub_user_is_creator_of.id
+        utub_name_to_delete = utub_user_is_creator_of.name
+        utub_description_to_delete = utub_user_is_creator_of.utub_description
+
+        creator_user_id = current_user.id
+
+        num_of_users_in_utub = len(utub_user_is_creator_of.members)
+        initial_num_of_user_utubs_associations = Utub_Members.query.count()
+
+        num_of_urls_in_utub = len(utub_user_is_creator_of.utub_urls)
+        initial_num_of_url_utubs_associations = Utub_Urls.query.count()
+
+        num_of_tags_in_utub = len(utub_user_is_creator_of.utub_tags)
+        initial_num_of_utub_tags = Utub_Tags.query.count()
+
+        num_of_url_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
+        initial_num_of_url_tag_associations = Utub_Url_Tags.query.count()
+
+        initial_num_utubs = Utubs.query.count()
+
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_utub_response.status_code == 200
+
+    delete_utub_json_response = delete_utub_response.json
+
+    # Assert JSON includes proper response on successful deletion of UTub
+    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_SUCCESS.UTUB_DELETED
+    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert (
+        delete_utub_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == utub_description_to_delete
+    )
+    assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id_to_delete
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == utub_name_to_delete
+
+    with app.app_context():
+        # Ensure all associations are retained for restore
+        assert Utub_Members.query.count() == initial_num_of_user_utubs_associations
+        assert (
+            Utub_Members.query.filter(Utub_Members.utub_id == utub_id_to_delete).count()
+            == num_of_users_in_utub
+        )
+
+        assert Utub_Urls.query.count() == initial_num_of_url_utubs_associations
+        assert (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_delete).count()
+            == num_of_urls_in_utub
+        )
+
+        assert Utub_Tags.query.count() == initial_num_of_utub_tags
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == utub_id_to_delete).count()
+            == num_of_tags_in_utub
+        )
+
+        assert Utub_Url_Tags.query.count() == initial_num_of_url_tag_associations
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id_to_delete
+            ).count()
+            == num_of_url_tags_in_utub
+        )
+
+        # Ensure the UTub row is retained, flagged trashed by its creator
+        assert Utubs.query.count() == initial_num_utubs
+        trashed_utub: Utubs = Utubs.query.get(utub_id_to_delete)
+        assert trashed_utub.deleted_at is not None
+        assert trashed_utub.is_trashed is True
+        assert trashed_utub.deleted_by == creator_user_id
 
 
 def test_delete_nonexistent_utub(login_first_user_with_register):
@@ -503,6 +536,33 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
     # Assert no UTub exists after nonexistent UTub is attempted to be removed
     with app.app_context():
         assert Utubs.query.count() == 0
+
+
+def test_delete_already_trashed_utub_is_404(add_single_utub_as_user_after_logging_in):
+    """
+    GIVEN a valid existing user and a UTub they created that is already trashed
+    WHEN the creator requests to delete the UTub again via a DELETE to "/utubs/<int: utub_id>"
+    THEN ensure that a 404 status code response is given, exactly as for a nonexistent UTub
+    """
+    client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        creator_user_id = current_user.id
+
+    trash_utub(app, utub_id, deleted_by=creator_user_id)
+
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
+    )
+
+    assert delete_utub_response.status_code == 404
+    json_response = delete_utub_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
 
 def test_delete_utub_with_invalid_route(login_first_user_with_register):
@@ -555,9 +615,10 @@ def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in
     assert delete_utub_response.content_type == "text/html; charset=utf-8"
     assert IDENTIFIERS.HTML_403.encode() in delete_utub_response.data
 
-    # Assert 1 UTub exists after nonexistent UTub is attempted to be removed
+    # Assert the UTub still exists and is not trashed after the rejected delete
     with app.app_context():
         assert Utubs.query.count() == initial_num_utubs
+        assert not Utubs.query.get(utub_id).is_trashed
 
 
 def test_delete_utub_as_not_member_or_creator(
@@ -584,6 +645,9 @@ def test_delete_utub_as_not_member_or_creator(
             Utub_Members.user_id != current_user.id
         ).all()
         users_not_in_these_utubs_count = len(user_not_in_these_utubs)
+        targeted_utub_ids: list[int] = [
+            utub_not_in.utub_id for utub_not_in in user_not_in_these_utubs
+        ]
         initial_num_utubs = Utubs.query.count()
         initial_num_utub_members = Utub_Members.query.count()
 
@@ -610,9 +674,11 @@ def test_delete_utub_as_not_member_or_creator(
             assert len(user_not_in_these_utubs) == users_not_in_these_utubs_count
 
     with app.app_context():
-        # Make sure all 3 test UTubs are still available in the database
+        # Make sure all 3 test UTubs are still available in the database, none trashed
         assert Utubs.query.count() == initial_num_utubs
         assert Utub_Members.query.count() == initial_num_utub_members
+        for targeted_utub_id in targeted_utub_ids:
+            assert not Utubs.query.get(targeted_utub_id).is_trashed
 
 
 def test_delete_utub_as_member_only(
@@ -658,8 +724,10 @@ def test_delete_utub_as_member_only(
         )
 
     with app.app_context():
-        # Make sure all 3 test UTubs are still available in the database
+        # Make sure all 3 test UTubs are still available in the database, none trashed
         assert Utubs.query.count() == initial_num_utubs
+        for utub_id_member_of in only_member_in_these_utubs:
+            assert not Utubs.query.get(utub_id_member_of).is_trashed
 
 
 def test_delete_utub_as_co_creator_is_rejected(
@@ -671,7 +739,7 @@ def test_delete_utub_as_co_creator_is_rejected(
         and the co-creator logged in
     WHEN the co-creator requests to delete the UTub via a DELETE to "/utubs/<int:utub_id>"
     THEN the literal-owner-only guard rejects it: 403 with a FAILURE JSON envelope
-        (message UTUB_FAILURE.NOT_AUTHORIZED) and the UTub still exists afterward.
+        (message UTUB_FAILURE.NOT_AUTHORIZED) and the UTub is not trashed afterward.
 
     A co-creator can manage members/URLs but is NOT the literal owner, so deleting
     the whole UTub remains owner-only (DD-1/DD-2).
@@ -694,9 +762,10 @@ def test_delete_utub_as_co_creator_is_rejected(
     assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     with app.app_context():
-        # The UTub still exists — the co-creator's delete did not happen
+        # The UTub is not trashed — the co-creator's delete did not happen
         assert Utubs.query.count() == initial_num_utubs
         assert Utubs.query.get(utub_id) is not None
+        assert not Utubs.query.get(utub_id).is_trashed
 
 
 def test_delete_success_logs(add_single_utub_as_user_after_logging_in, caplog):

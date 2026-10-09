@@ -577,7 +577,7 @@ def test_delete_utub_happy_path(
     """
     GIVEN the creator of UTub id=1
     WHEN DELETE /api/v1/utubs/1
-    THEN 200 with utubID and utubName; DB row removed
+    THEN 200 with utubID and utubName; DB row retained, flagged trashed
     """
     with app.app_context():
         initial_count = Utubs.query.count()
@@ -595,7 +595,10 @@ def test_delete_utub_happy_path(
     assert response_json[UTUB_SUCCESS.UTUB_ID] == 1
 
     with app.app_context():
-        assert Utubs.query.count() == 0
+        assert Utubs.query.count() == initial_count
+        trashed_utub: Utubs = Utubs.query.get(1)
+        assert trashed_utub.is_trashed
+        assert trashed_utub.deleted_by == 1
 
 
 def test_delete_utub_no_token_is_401(app: Flask, api_client: FlaskClient):
@@ -625,6 +628,9 @@ def test_delete_utub_not_creator_is_403(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
 
+    with app.app_context():
+        assert not Utubs.query.get(1).is_trashed
+
 
 def test_delete_utub_as_co_creator_is_403(
     app: Flask,
@@ -636,7 +642,7 @@ def test_delete_utub_as_co_creator_is_403(
     GIVEN a UTub created by user id=1 with user id=2 seeded as a CO_CREATOR (co-owner)
     WHEN the co-creator DELETEs /api/v1/utubs/1 with a valid bearer token
     THEN the literal-owner-only guard rejects it: 403 JSON failure envelope, and the
-        UTub still exists (co-creators are not literal owners — DD-1/DD-2).
+        UTub is not trashed (co-creators are not literal owners — DD-1/DD-2).
     """
     user_2_token = _token_for_user(app, user_id=2)
 
@@ -654,6 +660,7 @@ def test_delete_utub_as_co_creator_is_403(
 
     with app.app_context():
         assert Utubs.query.count() == initial_count
+        assert not Utubs.query.get(1).is_trashed
 
 
 def test_delete_utub_nonexistent_is_404(

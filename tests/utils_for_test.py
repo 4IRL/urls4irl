@@ -13,6 +13,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.utils.datetime_utils import utc_now
 
 
 class DistinctStatsSeed(NamedTuple):
@@ -163,6 +164,25 @@ def set_member_role(app: Flask, utub_id: int, user_id: int, role: Member_Role) -
     with app.app_context():
         member: Utub_Members = Utub_Members.query.get((utub_id, user_id))
         member.member_role = role
+        db.session.commit()
+
+
+def trash_utub(app: Flask, utub_id: int, deleted_by: int) -> None:
+    """Soft-delete (trash) an existing UTub in place.
+
+    Sets ``deleted_at`` to now and ``deleted_by`` to the given user, mirroring
+    what the UTub delete service does, without going through the route. The
+    UTub's URLs, tags and members are left untouched.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub to trash
+        deleted_by (int): The ID of the User recorded as having trashed it
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.deleted_at = utc_now()
+        utub.deleted_by = deleted_by
         db.session.commit()
 
 
