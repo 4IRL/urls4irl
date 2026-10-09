@@ -32,6 +32,7 @@ from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_until_css_property,
     wait_until_hidden,
+    wait_until_same_width_and_right_edge,
     wait_until_vertical_gap,
     wait_until_visible_css_selector,
 )
@@ -576,6 +577,25 @@ def test_url_edit_panel_field_spacing_and_errored_submit_centering_mobile(
 
     title_input = selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)
     string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
+
+    # The Title and URL inputs (and their check buttons) are the same width and
+    # end at the same right edge.
+    wait_until_same_width_and_right_edge(
+        page=page,
+        first_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}",
+        second_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+    )
+    title_check_box = selected_url.locator(
+        HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE
+    ).bounding_box()
+    string_check_box = selected_url.locator(
+        HPL.BUTTON_URL_STRING_SUBMIT_UPDATE
+    ).bounding_box()
+    assert title_check_box is not None and string_check_box is not None
+    assert abs(title_check_box["x"] - string_check_box["x"]) <= 1, (
+        f"check buttons are offset: {title_check_box['x']} vs {string_check_box['x']}"
+    )
+
     wait_until_vertical_gap(
         page=page,
         upper_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}",

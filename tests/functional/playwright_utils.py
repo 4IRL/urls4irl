@@ -173,6 +173,38 @@ def wait_until_css_property(
     return page.locator(css_selector).first
 
 
+def wait_until_same_width_and_right_edge(
+    *,
+    page: Page,
+    first_selector: str,
+    second_selector: str,
+    tolerance_px: float = 1,
+) -> None:
+    """Wait until two elements have the same width and the same right edge.
+
+    Polled (not a single read) so it cannot race a layout that is still settling
+    right after a panel opens. Raises the Playwright timeout otherwise.
+    """
+    page.wait_for_function(
+        """({ firstSelector, secondSelector, tolerancePx }) => {
+            const first = document.querySelector(firstSelector);
+            const second = document.querySelector(secondSelector);
+            if (!first || !second) return false;
+            const a = first.getBoundingClientRect();
+            const b = second.getBoundingClientRect();
+            return (
+                Math.abs(a.width - b.width) <= tolerancePx &&
+                Math.abs(a.right - b.right) <= tolerancePx
+            );
+        }""",
+        arg={
+            "firstSelector": first_selector,
+            "secondSelector": second_selector,
+            "tolerancePx": tolerance_px,
+        },
+    )
+
+
 def wait_until_vertical_gap(
     *,
     page: Page,

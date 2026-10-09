@@ -379,6 +379,17 @@ a.urlString {
     .urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap .text-input-container {
         width: 100%;
     }
+
+    /* The Title and URL edit rows each sit in a `.ninetyfive-width` (95%) wrapper
+       built separately in url-title.ts / url-string.ts, and the URL row spilled
+       past its wrapper while the Title row stayed inside its own, so the two
+       inputs ended at different right edges. While the consolidated panel is
+       open, make both wrappers full width so the fields (and their check
+       buttons) line up. */
+    .urlRow[filterable="true"][urlSelected="true"] .ninetyfive-width:has(> .updateUrlTitleWrap:not(.hidden)),
+    .urlRow[filterable="true"][urlSelected="true"] .ninetyfive-width:has(> .updateUrlStringWrap:not(.hidden)) {
+        width: 100%;
+    }
 }
 
 /* The multi-tag combobox spans the full card width when open (replacing the old
