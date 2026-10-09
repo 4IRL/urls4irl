@@ -47,17 +47,38 @@ def build_user_stats_context() -> dict[str, Any]:
     ``current_user``, returns a flat dict of read-only personal counts plus the
     member-since values. Every count is a ``COUNT`` query filtered on the acting
     user's id; NULL-attributed legacy ``Utub_Url_Tags`` rows are excluded from
-    the "tags applied" count automatically.
+    the "tags applied" count automatically. Rows inside a trashed UTub are
+    excluded, as is the trashed UTub itself.
     """
-    stats_utubs_created = Utubs.query.filter_by(utub_creator=current_user.id).count()
-    stats_member_of = (
-        Utub_Members.query.filter_by(user_id=current_user.id)
-        .filter(Utub_Members.member_role != Member_Role.CREATOR)
+    stats_utubs_created = (
+        Utubs.query.filter_by(utub_creator=current_user.id)
+        .filter(Utubs.deleted_at.is_(None))
         .count()
     )
-    stats_urls_added = Utub_Urls.query.filter_by(user_id=current_user.id).count()
-    stats_tags_created = Utub_Tags.query.filter_by(created_by=current_user.id).count()
-    stats_tags_applied = Utub_Url_Tags.query.filter_by(user_id=current_user.id).count()
+    stats_member_of = (
+        Utub_Members.query.join(Utubs, Utubs.id == Utub_Members.utub_id)
+        .filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role != Member_Role.CREATOR,
+            Utubs.deleted_at.is_(None),
+        )
+        .count()
+    )
+    stats_urls_added = (
+        Utub_Urls.query.join(Utubs, Utubs.id == Utub_Urls.utub_id)
+        .filter(Utub_Urls.user_id == current_user.id, Utubs.deleted_at.is_(None))
+        .count()
+    )
+    stats_tags_created = (
+        Utub_Tags.query.join(Utubs, Utubs.id == Utub_Tags.utub_id)
+        .filter(Utub_Tags.created_by == current_user.id, Utubs.deleted_at.is_(None))
+        .count()
+    )
+    stats_tags_applied = (
+        Utub_Url_Tags.query.join(Utubs, Utubs.id == Utub_Url_Tags.utub_id)
+        .filter(Utub_Url_Tags.user_id == current_user.id, Utubs.deleted_at.is_(None))
+        .count()
+    )
 
     return {
         "stats_utubs_created": stats_utubs_created,
