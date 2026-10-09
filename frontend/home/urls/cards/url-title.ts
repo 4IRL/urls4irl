@@ -12,6 +12,7 @@ import {
   isURLTitleSubmitInFlight,
 } from "./update-title.js";
 import { isCoarsePointer } from "../../mobile.js";
+import { isConfirmButtonDisabled } from "../confirm-btn-state.js";
 import { FIELD_SAVED_CHECK_SVG } from "../field-saved-tick.js";
 import {
   makeTextInput,
@@ -204,6 +205,8 @@ function createUpdateURLTitleInput(
       hideTooltip(this);
       // Block an overlapping submit while a kept-open submit is in flight.
       if (isURLTitleSubmitInFlight()) return;
+      // Mobile panel: the ✓ is aria-disabled while the title is unchanged.
+      if (isConfirmButtonDisabled(urlTitleSubmitBtnUpdate)) return;
       emit({
         event: UI_EVENTS.UI_FORM_SUBMIT,
         form: HOME_FORM.URL_TITLE_EDIT,

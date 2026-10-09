@@ -14,6 +14,10 @@ import {
 } from "./update-string.js";
 import { clearFieldSavedTick } from "../field-saved-tick.js";
 import { enableClickOnSelectedURLCardToHide } from "./selection.js";
+import {
+  bindEditPanelDirtyState,
+  unbindEditPanelDirtyState,
+} from "./edit-panel-dirty.js";
 
 // Opens the consolidated URL edit panel on mobile: the URL title and URL string
 // forms open together. Mirrors the UTub-level orchestrator (update-utub-panel.ts)
@@ -38,6 +42,9 @@ export function openURLEditPanel(urlCard: JQuery): void {
     suppressSiblingDisable: true,
   });
 
+  // Confirm buttons start disabled and follow each field's dirty state.
+  bindEditPanelDirtyState(urlCard);
+
   // Panel-level Escape: closes both fields and returns focus. Bound on document
   // (mirroring setupUTubEditPanelToggle's document-level Escape bind) so it fires
   // regardless of which field has focus; the per-field Escape cases early-return
@@ -58,6 +65,9 @@ export function openURLEditPanel(urlCard: JQuery): void {
 // never opened, which is required because deselectURL()'s routine teardown (Step
 // 4) calls this on every deselection.
 export function resetURLEditPanelState(urlCard: JQuery): void {
+  // Unbind first so the resets below (trim re-render) don't re-sync the buttons.
+  unbindEditPanelDirtyState(urlCard);
+
   // Clear any pending Saved✓ fade timers first, so a stale timer never toggles
   // opacity back on a torn-down card field after this reset runs.
   clearFieldSavedTick(urlCard.find(".updateUrlTitleWrap .field-saved-tick"));

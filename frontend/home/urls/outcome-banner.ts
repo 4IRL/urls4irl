@@ -7,6 +7,7 @@ import { isUtubLockedHandled } from "../utub-locked.js";
 import { showURLDeckBannerError } from "./deck.js";
 import { deleteURLOnStale } from "./cards/get.js";
 import { applyUpdatedURLString } from "./cards/apply-url-string.js";
+import { syncEditPanelDirtyState } from "./cards/edit-panel-dirty.js";
 import {
   flushParamTrim,
   type TrimSubmission,
@@ -242,6 +243,9 @@ export function performUndo({
           rawValue: restoredURLString,
         });
       }
+      // The stored value changed (and the input may have been resynced): re-derive
+      // the open mobile panel's confirm buttons. No-op when the panel isn't open.
+      syncEditPanelDirtyState(urlCard);
       clearURLOutcomeBanner();
     }
     returnFocus(returnFocusTo);

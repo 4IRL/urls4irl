@@ -33,6 +33,9 @@ export const TRIM_RESET_KEY = "urlParamTrimReset";
 export const TRIM_SYNC_KEY = "urlParamTrimSync";
 export const TRIM_SUBMISSION_KEY = "urlParamTrimSubmission";
 export const TRIM_FLUSH_KEY = "urlParamTrimFlush";
+// Custom jQuery event triggered (non-bubbling) on the trim wrap at the end of
+// every render: chip toggle, Drop all / Keep all, and each (debounced) re-parse.
+export const TRIM_RENDERED_EVENT = "urlParamTrimRendered";
 
 export type UrlParamsTrimmedForm =
   (typeof URL_PARAMS_TRIMMED_FORM)[keyof typeof URL_PARAMS_TRIMMED_FORM];
@@ -391,6 +394,7 @@ export function createParamTrimBlock({
       chips.empty();
       droppedCount.addClass("hidden").text("");
       previewValue.text("");
+      wrap.triggerHandler(TRIM_RENDERED_EVENT);
       return;
     }
 
@@ -457,6 +461,7 @@ export function createParamTrimBlock({
         droppedIndexes: refs.dropped,
       }),
     );
+    wrap.triggerHandler(TRIM_RENDERED_EVENT);
   }
 
   /** The actual re-parse; the only place `refs.dropped` is cleared. */

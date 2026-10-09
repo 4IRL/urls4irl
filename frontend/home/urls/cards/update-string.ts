@@ -36,6 +36,8 @@ import {
   bindURLStringEditClickHandler,
 } from "./options/edit-string-btn.js";
 import { closeURLEditPanel } from "./update-url-panel.js";
+import { isConfirmButtonDisabled } from "../confirm-btn-state.js";
+import { isTitleDirty, syncEditPanelDirtyState } from "./edit-panel-dirty.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import {
   expandParamTrimBlock,
@@ -69,6 +71,17 @@ let stringSubmitInFlight = false;
 
 export function isURLStringSubmitInFlight(): boolean {
   return stringSubmitInFlight;
+}
+
+// Set by the mobile "Save URL" click for exactly the ✓ click it triggers. updateURL
+// consumes (reads + clears) it synchronously on entry and carries it as a local, so
+// it only ever applies to that one save and never leaks into a later ✓ or Enter save.
+let closePanelAfterNextURLSave = false;
+
+function consumeClosePanelAfterNextURLSave(): boolean {
+  const shouldClose = closePanelAfterNextURLSave;
+  closePanelAfterNextURLSave = false;
+  return shouldClose;
 }
 
 // Card panel-open predicate: on mobile the string field's morphed full-width
@@ -119,7 +132,13 @@ function mountTrimSaveButton({
     .addClass("btn urlStringSaveBigBtnUpdate tabbable")
     .text(APP_CONFIG.strings.URL_TRIM_SAVE_URL)
     .on("click", function () {
+      // Mirrors the URL ✓: a no-op while nothing would change or a save is in flight.
+      if (isConfirmButtonDisabled(saveButton) || stringSubmitInFlight) return;
+      closePanelAfterNextURLSave = true;
       urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+      // updateURL consumes the flag synchronously on entry; if the ✓ handler bailed
+      // before reaching it, drop the flag so it can never leak into a later ✓ save.
+      closePanelAfterNextURLSave = false;
     });
   closeBar.after(saveButton);
 }
@@ -346,6 +365,14 @@ export async function updateURL(
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   const panelOpen = isCardEditPanelOpen(urlCard);
   const stringSubmitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
+  const closePanelAfterSave = consumeClosePanelAfterNextURLSave();
+  // clearStringSubmitInFlight strips aria-disabled from the ✓ at every exit, so
+  // re-derive the panel's dirty state right after it (saved field -> disabled,
+  // failed save -> still dirty -> enabled).
+  const finishSubmit = (): void => {
+    clearStringSubmitInFlight(stringSubmitBtn);
+    syncEditPanelDirtyState(urlCard);
+  };
   if (panelOpen) {
     // Accessible in-flight guard: mark the submit control aria-disabled (not
     // native disabled, which drops focus) so a second overlapping submit is
@@ -385,7 +412,7 @@ export async function updateURL(
         keepOpen: panelOpen,
       });
       if (panelOpen) setOpenForm(HOME_FORM.URL_STRING_EDIT);
-      clearStringSubmitInFlight(stringSubmitBtn);
+      finishSubmit();
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -401,7 +428,7 @@ export async function updateURL(
         APP_CONFIG.strings.INVALID_URL,
         urlCard,
       );
-      clearStringSubmitInFlight(stringSubmitBtn);
+      finishSubmit();
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -420,6 +447,7 @@ export async function updateURL(
           utubID,
           trimSubmission,
           previousUrlString,
+          closePanelAfterSave,
         });
       }
     });
@@ -430,12 +458,12 @@ export async function updateURL(
     });
 
     request.always(function () {
-      clearStringSubmitInFlight(stringSubmitBtn);
+      finishSubmit();
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
     log("updateURL aborted — pre-flight URL fetch rejected", { utubUrlID });
-    clearStringSubmitInFlight(stringSubmitBtn);
+    finishSubmit();
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
@@ -451,12 +479,14 @@ function updateURLSuccess({
   utubID,
   trimSubmission,
   previousUrlString,
+  closePanelAfterSave,
 }: {
   response: UpdateUrlStringResponse;
   urlCard: JQuery;
   utubID: number;
   trimSubmission: TrimSubmission | null;
   previousUrlString: string;
+  closePanelAfterSave: boolean;
 }): void {
   applyUpdatedURLString({ response, urlCard });
 
@@ -508,6 +538,18 @@ function updateURLSuccess({
     // Nothing actually changed server-side, so there is nothing to undo; the next
     // save supersedes any earlier outcome banner.
     clearURLOutcomeBanner();
+  }
+
+  // "Save URL" saves and closes the panel, but only when the title has no unsaved
+  // edits (closing would discard them). The outcome banner lives outside the card,
+  // so it survives the close.
+  if (
+    closePanelAfterSave &&
+    panelOpen &&
+    response.status !== "No change" &&
+    !isTitleDirty(urlCard)
+  ) {
+    closeURLEditPanel(urlCard);
   }
 }
 

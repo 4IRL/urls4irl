@@ -642,6 +642,29 @@ a.urlString {
     color: white !important;
 }
 
+/* Mobile edit panels (URL card + UTub header): a confirm button whose field is
+   unchanged carries `.unchanged` + aria-disabled (see confirm-btn-state.ts).
+   Dimmed, not-allowed and without hover/active feedback; the colors are the
+   resting ones, so it reads the same in light and dark themes. */
+@media (any-pointer: coarse) {
+    button.unchanged[aria-disabled="true"] {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .green-clickable.unchanged[aria-disabled="true"]:hover,
+    .green-clickable.unchanged[aria-disabled="true"]:active {
+        color: var(--splashGreen);
+    }
+
+    .urlStringSaveBigBtnUpdate.unchanged[aria-disabled="true"]:hover,
+    .urlStringSaveBigBtnUpdate.unchanged[aria-disabled="true"]:active {
+        background-color: var(--splashGreenSolid) !important;
+        border-color: var(--splashGreenSolid) !important;
+        color: white !important;
+    }
+}
+
 /* Mobile only: the edit pencil is a .btn btn-light whose custom yellow is set
    only on the resting state and (desktop-only) :hover. On touch devices a tap
    leaves a sticky :hover/:focus, and with no mobile override Bootstrap's

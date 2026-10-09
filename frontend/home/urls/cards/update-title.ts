@@ -23,6 +23,7 @@ import { enableEditingURLString } from "./utils.js";
 import { hideAndResetUpdateURLStringForm } from "./update-string.js";
 import { isMobile, isCoarsePointer } from "../../mobile.js";
 import { showFieldSavedTick } from "../field-saved-tick.js";
+import { syncEditPanelDirtyState } from "./edit-panel-dirty.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { debug } from "../../../lib/debug.js";
 
@@ -181,6 +182,13 @@ export async function updateURLTitle(
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   const panelOpen = isCardEditPanelOpen(urlCard);
   const titleSubmitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
+  // clearTitleSubmitInFlight strips aria-disabled from the ✓ at every exit, so
+  // re-derive the panel's dirty state right after it (saved -> disabled, failed
+  // save -> still dirty -> enabled).
+  const finishSubmit = (): void => {
+    clearTitleSubmitInFlight(titleSubmitBtn);
+    syncEditPanelDirtyState(urlCard);
+  };
   if (panelOpen) {
     // Accessible in-flight guard: mark the submit control aria-disabled (not
     // native disabled, which drops focus) so a second overlapping submit is
@@ -208,7 +216,7 @@ export async function updateURLTitle(
         keepOpen: panelOpen,
       });
       if (panelOpen) setOpenForm(HOME_FORM.URL_TITLE_EDIT);
-      clearTitleSubmitInFlight(titleSubmitBtn);
+      finishSubmit();
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -239,14 +247,14 @@ export async function updateURLTitle(
     });
 
     request.always(function () {
-      clearTitleSubmitInFlight(titleSubmitBtn);
+      finishSubmit();
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
     log("updateURLTitle aborted — pre-flight URL fetch rejected", {
       utubUrlID,
     });
-    clearTitleSubmitInFlight(titleSubmitBtn);
+    finishSubmit();
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,

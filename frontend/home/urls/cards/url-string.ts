@@ -18,6 +18,7 @@ import {
   isURLStringSubmitInFlight,
 } from "./update-string.js";
 import { isCoarsePointer } from "../../mobile.js";
+import { isConfirmButtonDisabled } from "../confirm-btn-state.js";
 import {
   TrimMode,
   createParamTrimBlock,
@@ -134,6 +135,8 @@ function createUpdateURLStringInput(
       hideTooltip(this);
       // Block an overlapping submit while a kept-open submit is in flight.
       if (isURLStringSubmitInFlight()) return;
+      // Mobile panel: the ✓ is aria-disabled while the URL is unchanged.
+      if (isConfirmButtonDisabled(urlStringSubmitBtnUpdate)) return;
       emit({
         event: UI_EVENTS.UI_FORM_SUBMIT,
         form: HOME_FORM.URL_STRING_EDIT,

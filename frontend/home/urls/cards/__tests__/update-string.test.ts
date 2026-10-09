@@ -25,7 +25,8 @@ import {
 import { showUpdateURLTitleForm } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { isCoarsePointer } from "../../../mobile.js";
-import { openURLEditPanel } from "../update-url-panel.js";
+import { openURLEditPanel, closeURLEditPanel } from "../update-url-panel.js";
+import { bindEditPanelDirtyState } from "../edit-panel-dirty.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
 import { HOME_FORM } from "../../../../types/metrics-dim-values.js";
@@ -1345,5 +1346,190 @@ describe('mobile edit panel "Save URL" button beside Close', () => {
     const urlCard = openPanel();
 
     expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(0);
+  });
+});
+
+describe("Save URL closes the panel after a successful save when the title is clean", () => {
+  const CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <h6 class="urlTitle">My Title</h6>
+      <div class="updateUrlTitleWrap">
+        <input class="urlTitleUpdate" value="My Title" />
+        <button class="urlTitleSubmitBtnUpdate"></button>
+      </div>
+      <a class="urlString" href="https://example.com">https://example.com</a>
+      <div class="updateUrlStringWrap hidden">
+        <input class="urlStringUpdate" type="text" value="https://example.com" />
+        <button class="urlStringSubmitBtnUpdate"></button>
+        <div class="urlStringUpdate-error"></div>
+      </div>
+      <div class="urlOptions">
+        <button class="urlStringBtnUpdate fourty-p-width"></button>
+      </div>
+      <div class="urlCardDualLoadingRing"></div>
+    </div>
+  `;
+
+  const SAVED_RESPONSE = {
+    URL: {
+      utubUrlID: 1,
+      urlString: "https://new-example.com",
+      urlTitle: "My Title",
+      urlTags: [],
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = CARD_HTML;
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+  });
+
+  // Opens the panel, binds the dirty state and wires the ✓ like url-string.ts does.
+  function openPanel(): { urlCard: JQuery; urlInput: JQuery } {
+    const urlCard = $(".urlRow");
+    const urlInput = urlCard.find(".urlStringUpdate");
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+      suppressSiblingDisable: true,
+    });
+    bindEditPanelDirtyState(urlCard);
+    urlCard.find(".urlStringSubmitBtnUpdate").on("click", () => {
+      if (isURLStringSubmitInFlight()) return;
+      if (
+        urlCard.find(".urlStringSubmitBtnUpdate").attr("aria-disabled") ===
+        "true"
+      )
+        return;
+      void updateURL(urlInput, urlCard, 1);
+    });
+    return { urlCard, urlInput };
+  }
+
+  function mockSave({
+    outcome,
+    status = "Success",
+  }: {
+    outcome: "done" | "fail";
+    status?: string;
+  }): void {
+    const response = { ...SAVED_RESPONSE, status };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable(
+        outcome === "done"
+          ? {
+              done: (cb: unknown) =>
+                (cb as (...args: unknown[]) => void)(response, "success", {
+                  status: 200,
+                }),
+              always: (cb: unknown) => (cb as () => void)(),
+            }
+          : {
+              fail: (cb: unknown) =>
+                (cb as (xhr: JQuery.jqXHR) => void)({
+                  status: 0,
+                } as unknown as JQuery.jqXHR),
+              always: (cb: unknown) => (cb as () => void)(),
+            },
+      ),
+    );
+  }
+
+  async function flush(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  it("closes the panel on a successful Save URL when the title has no unsaved edits", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "done" });
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+
+    expect(closeURLEditPanel).toHaveBeenCalledTimes(1);
+    expect(closeURLEditPanel).toHaveBeenCalledWith(urlCard);
+  });
+
+  it("keeps the panel open when the title has unsaved edits", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlCard.find(".urlTitleUpdate").val("Edited title").trigger("input");
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "done" });
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("does not close on a failed save and does not leak into a later check save", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "fail" });
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+
+    // The same still-dirty field saved via the green check must never close.
+    mockSave({ outcome: "done" });
+    urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+    await flush();
+
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("does not close when the server reports no change", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "done", status: "No change" });
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op while the URL is unchanged: no request and no close", async () => {
+    const { urlCard } = openPanel();
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+    await flush();
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("a green check save never closes the panel", async () => {
+    const { urlCard, urlInput } = openPanel();
+    urlInput.val("https://new-example.com").trigger("input");
+    mockSave({ outcome: "done" });
+
+    urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+    await flush();
+
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+    expect(closeURLEditPanel).not.toHaveBeenCalled();
+  });
+
+  it("re-disables the check after a kept-open save and keeps it enabled after a failed save", async () => {
+    const { urlCard, urlInput } = openPanel();
+    const check = urlCard.find(".urlStringSubmitBtnUpdate");
+    urlInput.val("https://new-example.com").trigger("input");
+    expect(check.attr("aria-disabled")).toBeUndefined();
+
+    mockSave({ outcome: "fail" });
+    check.trigger("click");
+    await flush();
+    expect(check.attr("aria-disabled")).toBeUndefined();
+
+    mockSave({ outcome: "done" });
+    check.trigger("click");
+    await flush();
+    // Stored href now equals the input, so the field reads as unchanged again.
+    expect(check.attr("aria-disabled")).toBe("true");
+    expect(check.hasClass("unchanged")).toBe(true);
   });
 });

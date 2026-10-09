@@ -754,6 +754,211 @@ def test_url_edit_panel_field_spacing_and_errored_submit_centering_mobile(
         assert offset <= 1.5, f"{submit_selector} is {offset}px off its errored input"
 
 
+def _expect_confirm_disabled(*, button: Locator) -> None:
+    """The ✓ / Save URL is aria-disabled (never the native attribute) and dimmed."""
+    expect(button).to_have_attribute("aria-disabled", "true")
+    expect(button).to_have_class(re.compile(r"\bunchanged\b"))
+    # Playwright's is-disabled honors aria-disabled, so check the native property.
+    expect(button).to_have_js_property("disabled", False)
+
+
+def _expect_confirm_enabled(*, button: Locator) -> None:
+    expect(button).not_to_have_attribute("aria-disabled", "true")
+    expect(button).not_to_have_class(re.compile(r"\bunchanged\b"))
+
+
+def test_url_edit_panel_confirm_buttons_follow_dirty_state_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the consolidated edit panel on a mobile device
+    WHEN it opens, then the title is edited and reverted, then the URL is edited
+        and saved with its green check
+    THEN both green checks start disabled; typing enables only the edited
+        field's check; reverting disables it again; and after a save the saved
+        field's check is disabled again
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    original_title = selected_url.locator(HPL.URL_TITLE_READ).inner_text()
+    _open_url_edit_panel_mobile(page=page)
+
+    title_check = selected_url.locator(HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+    string_check = selected_url.locator(HPL.BUTTON_URL_STRING_SUBMIT_UPDATE)
+    title_input = selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)
+    string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
+
+    _expect_confirm_disabled(button=title_check)
+    _expect_confirm_disabled(button=string_check)
+
+    # Clicking a disabled check is a no-op: nothing is sent, no tick shows.
+    # (force: Playwright's actionability treats aria-disabled as not enabled.)
+    title_check.click(force=True)
+    string_check.click(force=True)
+    expect(selected_url.locator(HPL.SAVED_TICK_URL_TITLE)).not_to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    expect(selected_url.locator(HPL.SAVED_TICK_URL_STRING)).not_to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+
+    title_input.fill(f"{original_title} edited")
+    _expect_confirm_enabled(button=title_check)
+    _expect_confirm_disabled(button=string_check)
+
+    title_input.fill(original_title)
+    _expect_confirm_disabled(button=title_check)
+
+    # Surrounding whitespace is not a change.
+    title_input.fill(f"  {original_title}  ")
+    _expect_confirm_disabled(button=title_check)
+
+    string_input.fill(PLAIN_EDIT_URL)
+    _expect_confirm_enabled(button=string_check)
+    _expect_confirm_disabled(button=title_check)
+
+    string_check.click()
+    expect(selected_url.locator(HPL.SAVED_TICK_URL_STRING)).to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    expect(selected_url.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, PLAIN_EDIT_URL
+    )
+    # The stored value caught up with the field, so its check is disabled again.
+    _expect_confirm_disabled(button=string_check)
+    _expect_confirm_disabled(button=title_check)
+
+
+def test_url_edit_panel_dropped_chip_enables_url_buttons_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the stored URL has two query parameters and the panel is open
+    WHEN a parameter chip is dropped (the URL text itself unchanged), then kept
+        again
+    THEN the URL's green check and "Save URL" enable on the drop and disable
+        again when the chip is kept
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    _open_url_edit_panel_mobile(page=page)
+    string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
+    string_check = selected_url.locator(HPL.BUTTON_URL_STRING_SUBMIT_UPDATE)
+    save_button = selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)
+
+    # Store the two-parameter URL first so the field text equals the stored value.
+    string_input.fill(TRIM_URL_TWO_PARAMS)
+    string_check.click()
+    expect(selected_url.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, TRIM_URL_TWO_PARAMS
+    )
+    _expect_confirm_disabled(button=string_check)
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+    _expect_confirm_disabled(button=save_button)
+
+    chip = page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).nth(1)
+    chip.click()
+    expect(chip).to_have_attribute("aria-pressed", "false")
+    expect(string_input).to_have_value(TRIM_URL_TWO_PARAMS)
+    _expect_confirm_enabled(button=string_check)
+    _expect_confirm_enabled(button=save_button)
+
+    chip.click()
+    expect(chip).to_have_attribute("aria-pressed", "true")
+    _expect_confirm_disabled(button=string_check)
+    _expect_confirm_disabled(button=save_button)
+
+
+@pytest.mark.parametrize("title_edited", [False, True])
+def test_url_edit_panel_save_url_closes_only_when_title_untouched_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+    title_edited: bool,
+):
+    """
+    GIVEN the mobile edit panel with a URL change and the trim section open
+    WHEN "Save URL" is tapped
+    THEN the URL saves with its Undo banner, and the whole panel closes when the
+        title has no unsaved edits but stays open (title text preserved) when it
+        does
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    original_title = selected_url.locator(HPL.URL_TITLE_READ).inner_text()
+    _open_url_edit_panel_mobile(page=page)
+    title_input = selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)
+    string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
+
+    edited_title = f"{original_title} edited"
+    if title_edited:
+        title_input.fill(edited_title)
+    string_input.fill(TRIM_URL_TWO_PARAMS)
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+    save_button = selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)
+    _expect_confirm_enabled(button=save_button)
+
+    save_button.click()
+
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_UPDATED_BANNER
+    )
+    expect(selected_url.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, TRIM_URL_TWO_PARAMS
+    )
+    if title_edited:
+        expect(string_input).to_be_visible()
+        expect(title_input).to_be_visible()
+        expect(title_input).to_have_value(edited_title)
+        _expect_confirm_enabled(
+            button=selected_url.locator(HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+        )
+        _expect_confirm_disabled(button=save_button)
+    else:
+        expect(string_input).to_be_hidden()
+        expect(title_input).to_be_hidden()
+        expect(save_button).to_have_count(0)
+        expect(selected_url.locator(HPL.BUTTON_URL_STRING_UPDATE)).to_be_visible()
+        # The Undo banner outlives the closed panel.
+        expect(page.locator(HPL.URL_OUTCOME_BANNER_UNDO)).to_be_visible()
+
+
 def test_url_edit_button_hidden_and_unreachable_when_not_selected_mobile(
     page_mobile_portrait: Page,
     create_test_utubs,
