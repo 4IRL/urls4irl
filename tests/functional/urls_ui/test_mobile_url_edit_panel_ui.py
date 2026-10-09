@@ -433,29 +433,34 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).to_be_visible()
     expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
 
-    # The "Saved" tick slot sits directly under the input (above the disclosure),
-    # so the collapsed disclosure groups with the Close bar instead of floating
-    # above a 20px empty row: it must be the last thing before Close, with only
-    # the small row gaps between them (the dead space was ~95px, then ~29px).
+    # The reserved "Saved" tick row must not become an empty strip above or below
+    # the disclosure: with the disclosure showing, the tick shares the
+    # disclosure's row (right side), so the disclosure sits right under the input
+    # and right above Close with only the small row gaps around it.
+    wait_until_vertical_gap(
+        page=page,
+        upper_selector=HPL.EDIT_FORM_TRIM_HEADER,
+        lower_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE}",
+        min_px=0,
+        max_px=20,
+    )
     header_box = header.bounding_box()
-    close_box = selected_url.locator(
-        HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
-    ).bounding_box()
-    assert header_box is not None and close_box is not None
-    gap_below_header = close_box["y"] - (header_box["y"] + header_box["height"])
-    assert gap_below_header < 20, f"dead space above Close bar: {gap_below_header}px"
+    assert header_box is not None
     tick_slot_box = selected_url.locator(
         ".updateUrlStringWrap .field-saved-tick-slot"
     ).bounding_box()
     string_input_box = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE).bounding_box()
     assert tick_slot_box is not None and string_input_box is not None
-    assert tick_slot_box["y"] < header_box["y"], "tick slot must sit above the trim"
-    # The wrap adds its own 5px row gap, so "directly under" means within a few
-    # px, never the ~20px+ it used to be (the disclosure sat in between).
-    tick_offset = tick_slot_box["y"] - (
+    header_bottom = header_box["y"] + header_box["height"]
+    assert header_box["y"] <= tick_slot_box["y"], "tick must share the trim row"
+    assert tick_slot_box["y"] + tick_slot_box["height"] <= header_bottom + 1
+    assert tick_slot_box["x"] >= header_box["x"] + header_box["width"], (
+        "tick must sit to the right of the disclosure text, not over it"
+    )
+    gap_above_header = header_box["y"] - (
         string_input_box["y"] + string_input_box["height"]
     )
-    assert 0 <= tick_offset <= 8, f"tick slot is {tick_offset}px below the input"
+    assert gap_above_header <= 12, f"dead space above the trim: {gap_above_header}px"
 
     set_trim_section_expanded(
         page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
@@ -470,6 +475,25 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
         assert chip_box is not None
         assert chip_box["x"] >= 0
         assert chip_box["x"] + chip_box["width"] <= viewport_width
+
+    # Open: the "Saves as" preview keeps breathing room above the Close bar, and
+    # the Drop all / Keep all shortcuts run shorter than the 44px chip/header
+    # targets (the chips themselves are the full-size toggles).
+    wait_until_vertical_gap(
+        page=page,
+        upper_selector=HPL.EDIT_FORM_TRIM_PREVIEW,
+        lower_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE}",
+        min_px=14,
+        max_px=40,
+    )
+    for bulk_selector in (HPL.TRIM_DROP_ALL, HPL.TRIM_KEEP_ALL):
+        bulk_box = page.locator(
+            f"{HPL.ROW_SELECTED_URL} {bulk_selector}"
+        ).bounding_box()
+        assert bulk_box is not None
+        assert 30 <= bulk_box["height"] <= 40, (
+            f"{bulk_selector}: {bulk_box['height']}px"
+        )
 
     chips.nth(1).click()
     expect(chips.nth(1)).to_have_attribute("aria-pressed", "false")
@@ -528,6 +552,27 @@ def test_url_edit_panel_field_spacing_and_errored_submit_centering_mobile(
         slot_selector=f"{HPL.ROW_SELECTED_URL} .updateUrlTitleWrap .field-saved-tick-slot",
         min_px=3,
         max_px=5,
+    )
+
+    # Without a query string there is no trim disclosure, so the reserved "Saved"
+    # row sits directly under the input and the Close bar follows it closely.
+    tick_slot_selector = (
+        f"{HPL.ROW_SELECTED_URL} .updateUrlStringWrap .field-saved-tick-slot"
+    )
+    # Polled: the option row's top padding animates for 0.2s after the panel opens.
+    wait_until_vertical_gap(
+        page=page,
+        upper_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+        lower_selector=tick_slot_selector,
+        min_px=0,
+        max_px=8,
+    )
+    wait_until_vertical_gap(
+        page=page,
+        upper_selector=tick_slot_selector,
+        lower_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE}",
+        min_px=0,
+        max_px=12,
     )
 
     for input_locator, submit_selector, error_selector in (

@@ -73,6 +73,13 @@
     gap: 0;
 }
 
+/* In the edit form the open disclosure's "Saves as" preview is the last thing
+   before the Close bar, so give it room (the collapsed header already has its
+   own padding from the 44px touch target). */
+.updateUrlStringWrap .urlParamTrimWrap:not(.collapsed) {
+    padding-bottom: 16px;
+}
+
 .urlParamTrimWrap.collapsed .urlParamTrimBody {
     height: 0;
     opacity: 0;
@@ -332,14 +339,56 @@
     }
 }
 
+/* Touch only (the "Saved ✓" slot exists only there). The URL string field
+   reserves a 20px row for its transient "Saved ✓" tick. With the trim
+   disclosure showing, that row is an empty strip either above or below the
+   disclosure, whichever order the markup uses. So share one row: the disclosure
+   on the left and the tick overlaid at the right of the same row, vertically
+   centered on the 44px header. With no query string the disclosure is hidden and
+   the layout is unchanged (the tick sits directly under the input). `!important`
+   on `display` because the edit wrap is shown with `.visible-flex`
+   (`display: flex !important`, layout.css). */
+@media (any-pointer: coarse) {
+    .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+    }
+
+    .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) > :first-child {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) > .urlParamTrimWrap {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+
+    .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) > .field-saved-tick-slot {
+        grid-column: 2;
+        grid-row: 2;
+        z-index: 1;
+        pointer-events: none;
+        margin-top: calc((2.75rem - 1.25rem) / 2);
+    }
+}
+
 /* The chip is the touch target here, so the sub-44px exemption the tag-chip
    remove button enjoys does not apply. Sticky :hover/:focus is re-pinned to the
    resting fill so a tap never leaves a stuck state. */
 @media (any-pointer: coarse) {
     .urlParamTrimChip,
-    .urlParamTrimBtn,
     .urlParamTrimHeader {
         min-height: 2.75rem;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* The Drop all / Keep all buttons are secondary shortcuts (each chip is also
+       a full-size toggle), so they run shorter than the 44px chip and header
+       targets. 36px stays well above the WCAG 2.2 minimum (24px). */
+    .urlParamTrimBtn {
+        min-height: 2.25rem;
         -webkit-tap-highlight-color: transparent;
     }
 
