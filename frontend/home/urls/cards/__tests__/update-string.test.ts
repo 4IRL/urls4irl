@@ -1209,3 +1209,97 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     expect(trimWrap.hasClass("collapsed")).toBe(true);
   });
 });
+
+describe('mobile edit panel "Save URL" button beside Close', () => {
+  const CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <a class="urlString" href="https://example.com">https://example.com</a>
+      <div class="updateUrlStringWrap hidden">
+        <input class="urlStringUpdate" type="text" value="https://example.com" />
+        <button class="urlStringSubmitBtnUpdate"></button>
+        <div class="urlStringUpdate-error"></div>
+      </div>
+      <div class="urlOptions">
+        <button class="urlStringBtnUpdate fourty-p-width"></button>
+        <button class="urlBtnAccess"></button>
+      </div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = CARD_HTML;
+  });
+
+  function openPanel(): JQuery {
+    const urlCard = $(".urlRow");
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    return urlCard;
+  }
+
+  it("mounts a Save URL button right after the Close bar on a coarse pointer", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+
+    const urlCard = openPanel();
+
+    const saveButton = urlCard.find(".urlStringSaveBigBtnUpdate");
+    expect(saveButton.length).toBe(1);
+    expect(saveButton.text()).toBe("Save URL");
+    expect(saveButton.attr("type")).toBe("button");
+    expect(saveButton.prev().hasClass("urlStringCancelBigBtnUpdate")).toBe(
+      true,
+    );
+  });
+
+  it("clicking it clicks the URL field's own submit button (same save path)", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const urlCard = openPanel();
+    const submitClick = vi.fn();
+    urlCard.find(".urlStringSubmitBtnUpdate").on("click", submitClick);
+
+    urlCard.find(".urlStringSaveBigBtnUpdate").trigger("click");
+
+    expect(submitClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not stack a second button when the panel is reopened", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const urlCard = openPanel();
+
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringCancelBigBtnUpdate"),
+    });
+
+    expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(1);
+  });
+
+  it("removes it when the form closes", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const urlCard = openPanel();
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(0);
+  });
+
+  it("keeps it while the form stays open after a save (keepOpen)", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const urlCard = openPanel();
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(1);
+  });
+
+  it("is never mounted on a fine pointer (desktop has its own inline check and cancel)", () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+
+    const urlCard = openPanel();
+
+    expect(urlCard.find(".urlStringSaveBigBtnUpdate").length).toBe(0);
+  });
+});

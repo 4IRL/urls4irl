@@ -6,6 +6,7 @@ import { showURLDeckBannerError } from "../deck.js";
 import { deleteURLOnStale } from "../cards/get.js";
 import { applyUpdatedURLString } from "../cards/apply-url-string.js";
 import { URL_PARAMS_TRIMMED_FORM } from "../../../types/metrics-dim-values.js";
+import { flushParamTrim } from "../trim/param-trim-block.js";
 import {
   clearURLOutcomeBanner,
   performUndo,
@@ -28,6 +29,10 @@ vi.mock("../cards/get.js", () => ({
 }));
 vi.mock("../cards/apply-url-string.js", () => ({
   applyUpdatedURLString: vi.fn(),
+}));
+vi.mock("../trim/param-trim-block.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../trim/param-trim-block.js")>()),
+  flushParamTrim: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -335,6 +340,61 @@ describe("outcome banner", () => {
       expect(banner().hasClass("hidden")).toBe(true);
       expect(banner().children()).toHaveLength(0);
       expect(document.activeElement).toBe(editButton()[0]);
+    });
+
+    describe("edit form resync", () => {
+      const TRIMMED = "https://example.com/p?a=1";
+
+      function addEditForm(): void {
+        $(".urlRow[utuburlid=42]").append(`
+          <div class="updateUrlStringWrap">
+            <input class="urlStringUpdate" value="${TRIMMED}" />
+            <div class="urlParamTrimWrap"></div>
+          </div>
+        `);
+      }
+
+      it("restores the input to the stored original and re-renders the trim block from it", () => {
+        addEditForm();
+        showExistingBanner();
+        mockDone({
+          status: "Success",
+          URL: { utubUrlID: 42, urlString: ORIGINAL },
+        });
+
+        runUndo();
+
+        expect($(".urlStringUpdate").val()).toBe(ORIGINAL);
+        expect(flushParamTrim).toHaveBeenCalledTimes(1);
+        const flushed = vi.mocked(flushParamTrim).mock.calls[0][0];
+        expect(flushed.rawValue).toBe(ORIGINAL);
+        expect(flushed.trimWrap[0]).toBe($(".urlParamTrimWrap")[0]);
+      });
+
+      it('leaves the input alone on a "No change" response', () => {
+        addEditForm();
+        showExistingBanner();
+        mockDone({
+          status: "No change",
+          URL: { utubUrlID: 42, urlString: TRIMMED },
+        });
+
+        runUndo();
+
+        expect($(".urlStringUpdate").val()).toBe(TRIMMED);
+        expect(flushParamTrim).not.toHaveBeenCalled();
+      });
+
+      it("leaves the input alone when the undo fails", () => {
+        addEditForm();
+        showExistingBanner();
+        mockFail(409);
+
+        runUndo();
+
+        expect($(".urlStringUpdate").val()).toBe(TRIMMED);
+        expect(flushParamTrim).not.toHaveBeenCalled();
+      });
     });
 
     it('200 "No change" shows the no-op message as a partial banner', () => {

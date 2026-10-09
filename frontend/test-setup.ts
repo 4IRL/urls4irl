@@ -299,6 +299,7 @@ const appConfig = {
     URL_TRIM_BULK_ANNOUNCE: "{kept} of {total} parameters kept.",
     URL_TRIM_SAVED_BANNER: "Saved without {n} parameters.",
     URL_TRIM_SAVED_BANNER_ONE: "Saved without 1 parameter.",
+    URL_TRIM_SAVE_URL: "Save URL",
     URL_TRIM_UNDO: "Undo",
     URL_TRIM_DISMISS_ARIA: "Dismiss",
     URL_TRIM_UNDO_NOOP:

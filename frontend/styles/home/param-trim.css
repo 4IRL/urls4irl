@@ -233,7 +233,12 @@
     flex-direction: column;
     gap: 3px;
     border-left: 2px solid var(--splashGreen);
-    padding-left: 9px;
+    /* A faint green wash (works on both themes; the rgba is the fallback) so the
+       "Saves as" result reads as its own block, set apart from the chips above. */
+    background: rgba(36, 167, 69, 0.1);
+    background: color-mix(in srgb, var(--splashGreen) 10%, transparent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 6px 10px 6px 9px;
 }
 
 .urlParamTrimPreviewLabel {
@@ -313,6 +318,26 @@
     font-family: inherit;
     font-size: 0.85rem;
     cursor: pointer;
+}
+
+/* Undo is the banner's one action, so it gets a solid fill (the ✕ dismiss stays
+   outlined). Same darkened green as the edit panel's "Save URL" button (plain
+   token first as a fallback) so the white label meets 4.5:1 contrast. Every
+   interaction state is pinned so a touch device's sticky :hover/:focus never
+   turns it back to a transparent or grey fill. */
+.urlOutcomeBannerAction,
+.urlOutcomeBannerAction:hover,
+.urlOutcomeBannerAction:focus,
+.urlOutcomeBannerAction:focus-visible {
+    background-color: var(--splashGreen);
+    background-color: color-mix(in srgb, var(--splashGreen) 75%, black);
+    border-color: color-mix(in srgb, var(--splashGreen) 75%, black);
+    color: white;
+}
+
+.urlOutcomeBannerAction:active {
+    background-color: color-mix(in srgb, var(--splashGreen) 60%, black);
+    border-color: color-mix(in srgb, var(--splashGreen) 60%, black);
 }
 
 /* Glyph drawn here so no display string lives in TS; the label is aria-label. */

@@ -615,6 +615,44 @@ a.urlString {
     }
 }
 
+/* Mobile edit panel: "Save URL" beside the Close bar (built in update-string.ts).
+   Hidden unless the trim section is open (expanded, with a query string), so the
+   trimmed result has an obvious save control next to Close; at all other times
+   the URL field's own green check is the way to save. The green is darkened
+   (color-mix, with the plain token as a fallback) so the white label meets 4.5:1
+   contrast; touch devices keep a sticky :hover/:focus after a tap, so every
+   interaction state is pinned like the Close bar's. */
+.urlStringSaveBigBtnUpdate {
+    display: none;
+}
+
+@media (any-pointer: coarse) {
+    .urlRowContent:has(.updateUrlStringWrap:not(.hidden) .urlParamTrimWrap:not(.hidden):not(.collapsed)) .urlStringSaveBigBtnUpdate {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        /* No margin of its own: `.urlOptions` spaces its buttons with gap-15p. */
+        color: white;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlStringSaveBigBtnUpdate,
+    .urlStringSaveBigBtnUpdate:hover,
+    .urlStringSaveBigBtnUpdate:focus,
+    .urlStringSaveBigBtnUpdate:focus-visible {
+        background-color: var(--splashGreen) !important;
+        background-color: color-mix(in srgb, var(--splashGreen) 75%, black) !important;
+        border-color: color-mix(in srgb, var(--splashGreen) 75%, black) !important;
+        color: white !important;
+    }
+
+    .urlStringSaveBigBtnUpdate:active {
+        background-color: color-mix(in srgb, var(--splashGreen) 60%, black) !important;
+        border-color: color-mix(in srgb, var(--splashGreen) 60%, black) !important;
+        color: white !important;
+    }
+}
+
 /* Mobile only: the edit pencil is a .btn btn-light whose custom yellow is set
    only on the resting state and (desktop-only) :hover. On touch devices a tap
    leaves a sticky :hover/:focus, and with no mobile override Bootstrap's

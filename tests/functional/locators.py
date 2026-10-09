@@ -446,6 +446,7 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
     BUTTON_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBtnUpdate"
     BUTTON_BIG_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBigBtnUpdate"
+    BUTTON_BIG_URL_STRING_SAVE_UPDATE = ".urlStringSaveBigBtnUpdate"
     # Mobile form-model "Saved ✓" ticks (card-scoped by wrap since cards repeat)
     SAVED_TICK_URL_TITLE = ".updateUrlTitleWrap .field-saved-tick"
     SAVED_TICK_URL_STRING = ".updateUrlStringWrap .field-saved-tick"

@@ -8,6 +8,7 @@ import { showURLDeckBannerError } from "./deck.js";
 import { deleteURLOnStale } from "./cards/get.js";
 import { applyUpdatedURLString } from "./cards/apply-url-string.js";
 import {
+  flushParamTrim,
   type TrimSubmission,
   type UrlParamsTrimmedForm,
 } from "./trim/param-trim-block.js";
@@ -146,6 +147,16 @@ export function performUndo({
       });
     } else {
       applyUpdatedURLString({ response, urlCard });
+      // The edit form's input still holds the trimmed string it was saved with
+      // (a kept-open mobile form shows it right now; a closed one would show it
+      // on its next open). Restore it to the stored original and re-render the
+      // trim block from it, so the field reads as it did before the trim.
+      const restoredURLString = response.URL.urlString;
+      urlCard.find(".urlStringUpdate").val(restoredURLString);
+      flushParamTrim({
+        trimWrap: urlCard.find(".urlParamTrimWrap"),
+        rawValue: restoredURLString,
+      });
       clearURLOutcomeBanner();
     }
     returnFocus(returnFocusTo);

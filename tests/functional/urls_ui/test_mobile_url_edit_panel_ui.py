@@ -432,6 +432,10 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     # The caret is the only open/closed cue; layout.css hides `.title-caret` on mobile.
     expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).to_be_visible()
     expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
+    # Collapsed: the URL field's own green check is the way to save, so the extra
+    # Save button beside Close stays hidden.
+    save_button = selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)
+    expect(save_button).to_be_hidden()
 
     # The reserved "Saved" tick row must not become an empty strip above or below
     # the disclosure: with the disclosure showing, the tick stays directly under
@@ -497,18 +501,43 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
             f"{bulk_selector}: {bulk_box['height']}px"
         )
 
+    # Open: "Save URL" appears next to Close, on the same row and to its right.
+    expect(save_button).to_be_visible()
+    expect(save_button).to_have_text("Save URL")
+    save_box = save_button.bounding_box()
+    close_bar_box = selected_url.locator(
+        HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
+    ).bounding_box()
+    assert save_box is not None and close_bar_box is not None
+    assert abs(save_box["y"] - close_bar_box["y"]) <= 2, (
+        "Save URL must share Close's row"
+    )
+    # Spaced like the other option buttons (the row's 15px gap), not wider.
+    button_gap = save_box["x"] - (close_bar_box["x"] + close_bar_box["width"])
+    assert 13 <= button_gap <= 17, f"Close -> Save URL gap: {button_gap}px"
+    assert save_box["x"] + save_box["width"] <= viewport_width
+
     chips.nth(1).click()
     expect(chips.nth(1)).to_have_attribute("aria-pressed", "false")
 
-    wait_then_click_element(
-        page=page,
-        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
-    )
+    # Saving through the new button follows the same path as the field's check.
+    save_button.click()
 
     expect(selected_url.locator(HPL.URL_STRING_READ)).to_have_attribute(
         HPL.URL_STRING_IN_DATA, TRIM_URL_KEEP_ONLY
     )
     expect(header).to_have_attribute("aria-expanded", "false")
+
+    # The kept-open form shows the saved (trimmed) string until Undo restores the
+    # original: the field and the trim block must follow it, not the stale value.
+    string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
+    expect(string_input).to_have_value(TRIM_URL_KEEP_ONLY)
+    page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
+    expect(selected_url.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, TRIM_URL_TWO_PARAMS
+    )
+    expect(string_input).to_have_value(TRIM_URL_TWO_PARAMS)
+    expect(page.locator(HPL.EDIT_FORM_TRIM_DROPPED_COUNT)).to_be_hidden()
 
 
 def _vertical_center(*, locator: Locator) -> float:

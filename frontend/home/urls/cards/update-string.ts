@@ -104,6 +104,28 @@ function isUpdateUrlStringFieldName(
   return (UPDATE_URL_STRING_FIELD_NAMES as readonly string[]).includes(key);
 }
 
+// Mobile edit panel: a "Save URL" button beside the Close bar. CSS only shows it
+// while the trim section is open (urls.css), so the trimmed result has an obvious
+// save control next to Close; it does exactly what the URL field's own green
+// check does (same click path, same in-flight guard, same keep-open behaviour).
+function mountTrimSaveButton({
+  urlCard,
+  closeBar,
+}: {
+  urlCard: JQuery;
+  closeBar: JQuery;
+}): void {
+  urlCard.find(".urlStringSaveBigBtnUpdate").remove();
+  const saveButton = $(document.createElement("button"))
+    .attr("type", "button")
+    .addClass("btn urlStringSaveBigBtnUpdate tabbable")
+    .text(APP_CONFIG.strings.URL_TRIM_SAVE_URL)
+    .on("click", function () {
+      urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+    });
+  closeBar.after(saveButton);
+}
+
 // Shows update URL inputs
 export function showUpdateURLStringForm({
   urlCard,
@@ -185,6 +207,10 @@ export function showUpdateURLStringForm({
       }
     });
 
+  if (isCoarsePointer()) {
+    mountTrimSaveButton({ urlCard, closeBar: urlStringBtnUpdate });
+  }
+
   disableTagRemovalInURLCard(urlCard);
   disableClickOnSelectedURLCardToHide(urlCard);
 }
@@ -231,6 +257,9 @@ export function hideAndResetUpdateURLStringForm({
   }
 
   if (!keepOpen) {
+    // The panel's "Save URL" button goes away with the Close bar it sits beside
+    urlCard.find(".urlStringSaveBigBtnUpdate").remove();
+
     // Make the Update URL button now allow updating again
     const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
     urlStringBtnUpdate
