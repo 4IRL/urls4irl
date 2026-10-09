@@ -131,3 +131,6 @@ them first, or remove them by hand with a non-force `git worktree remove`.
 
 The worktree policy is `full`, so nothing blocks the `tunnel`, deploy and `vps-*` targets. They act on
 real resources from any worktree exactly as they do from the primary. Run them deliberately.
+
+A worktree also blocks deletion of the branch checked out in it, and `git branch -D` does not override
+that — `--force` governs merge status, not checkouts. Remove the worktree first, then delete the branch.
