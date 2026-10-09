@@ -389,15 +389,16 @@ describe("createUpdateURLStringInput - query-parameter trim block", () => {
     return urlCard;
   }
 
-  it("mounts a hidden, collapsed block between the input row and the tick slot", () => {
+  it("mounts a hidden, collapsed block after the tick slot (tick stays under the input)", () => {
     const urlCard = mountCard({ utubUrlId: 1 });
     const trimWrap = urlCard.find(".updateUrlStringWrap .urlParamTrimWrap");
 
     expect(trimWrap.length).toBe(1);
     expect(trimWrap.hasClass("hidden")).toBe(true);
     expect(trimWrap.hasClass("collapsed")).toBe(true);
-    expect(trimWrap.prev().hasClass("flex-row")).toBe(true);
-    expect(trimWrap.next().hasClass("field-saved-tick-slot")).toBe(true);
+    expect(trimWrap.prev().hasClass("field-saved-tick-slot")).toBe(true);
+    expect(trimWrap.prev().prev().hasClass("flex-row")).toBe(true);
+    expect(trimWrap.next().length).toBe(0);
   });
 
   it("gives each card its own aria-controls target", () => {

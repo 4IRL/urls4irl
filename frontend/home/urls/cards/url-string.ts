@@ -191,7 +191,9 @@ function createUpdateURLStringInput(
     );
 
   // The trim block is built once per card and shown/hidden in place (it is
-  // reset, never destroyed). It sits between the input row and the tick slot.
+  // reset, never destroyed). It sits after the tick slot so the "Saved ✓" tick
+  // lands directly under the input (as on the title field) and the disclosure
+  // groups with the Cancel bar below it instead of floating above a 20px gap.
   const trimWrap = createParamTrimBlock({
     mode: TrimMode.URL,
     urlCard,
@@ -206,8 +208,8 @@ function createUpdateURLStringInput(
 
   urlStringUpdateTextInputContainer
     .append(urlStringInputInnerRow)
-    .append(trimWrap)
-    .append(urlStringSavedTickSlot);
+    .append(urlStringSavedTickSlot)
+    .append(trimWrap);
 
   return urlStringUpdateTextInputContainer;
 }

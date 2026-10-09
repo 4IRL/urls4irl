@@ -433,18 +433,29 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).to_be_visible()
     expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
 
-    # Collapsed, the disclosure must not leave a tall dead zone above the Close
-    # bar: the string wrap's bottom padding, the empty `.urlTags` padding and the
-    # option row's top padding are tightened while the panel is open (the gap was
-    # ~95px before; ~29px now: the 20px "Saved" slot plus 4px, plus the Close
-    # button's own margin).
+    # The "Saved" tick slot sits directly under the input (above the disclosure),
+    # so the collapsed disclosure groups with the Close bar instead of floating
+    # above a 20px empty row: it must be the last thing before Close, with only
+    # the small row gaps between them (the dead space was ~95px, then ~29px).
     header_box = header.bounding_box()
     close_box = selected_url.locator(
         HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
     ).bounding_box()
     assert header_box is not None and close_box is not None
     gap_below_header = close_box["y"] - (header_box["y"] + header_box["height"])
-    assert gap_below_header < 45, f"dead space above Close bar: {gap_below_header}px"
+    assert gap_below_header < 20, f"dead space above Close bar: {gap_below_header}px"
+    tick_slot_box = selected_url.locator(
+        ".updateUrlStringWrap .field-saved-tick-slot"
+    ).bounding_box()
+    string_input_box = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE).bounding_box()
+    assert tick_slot_box is not None and string_input_box is not None
+    assert tick_slot_box["y"] < header_box["y"], "tick slot must sit above the trim"
+    # The wrap adds its own 5px row gap, so "directly under" means within a few
+    # px, never the ~20px+ it used to be (the disclosure sat in between).
+    tick_offset = tick_slot_box["y"] - (
+        string_input_box["y"] + string_input_box["height"]
+    )
+    assert 0 <= tick_offset <= 8, f"tick slot is {tick_offset}px below the input"
 
     set_trim_section_expanded(
         page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
