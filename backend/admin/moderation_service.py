@@ -70,6 +70,9 @@ def lock_utub(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
         200 JSON envelope on success or no-op.
         404 when the UTub does not exist.
     """
+    # Admin UTub lookups here (lock, unlock, delete, tag-delete) intentionally
+    # still find trashed UTubs (``deleted_at`` set): moderation must be able to
+    # act on any row, and admin-facing trash management is a design non-goal.
     utub: Utubs | None = Utubs.query.get(utub_id)
     if utub is None:
         return build_message_error_response(
@@ -143,6 +146,9 @@ def unlock_utub(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
 
 def delete_utub_admin(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
     """Delete a UTub and all its children (members, URLs, tags) via ORM cascade.
+
+    A moderation delete is a hard delete that purges immediately, whether or
+    not the UTub is already in the user-facing trash; it never soft-deletes.
 
     Args:
         actor_id: ID of the admin user performing the action.

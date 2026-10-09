@@ -128,6 +128,10 @@ class GaugeDefinition:
                 )
 
 
+# Every gauge below is a raw aggregate with no ``deleted_at`` filter, so those
+# rooted in Utubs/UtubUrls/UtubTags/UtubUrlTags/UtubMembers include trashed
+# UTubs and their rows until the daily purge removes them. Accepted: this is an
+# anonymous ops metric that converges after purge.
 GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
     # -----------------------------------------------------------------------
     # Volume — total counts

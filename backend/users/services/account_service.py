@@ -87,7 +87,9 @@ def build_account_info_context() -> dict[str, Any]:
     # those that will be DELETED outright (solo). Deliberately NOT
     # ``stats_utubs_created`` — that count over-counts for the transfer notice
     # because it includes the solo UTubs, which are deleted rather than handed
-    # off. Mirrors ``erase_user_core``'s per-UTub membership resolution.
+    # off. Mirrors ``erase_user_core``'s per-UTub membership resolution, so
+    # trashed UTubs are counted exactly like live ones (they transfer to another
+    # member, or hard-delete if solo).
     utubs_transferring: int = 0
     utubs_deleting_solo: int = 0
     for membership in current_user.utubs_is_member_of:

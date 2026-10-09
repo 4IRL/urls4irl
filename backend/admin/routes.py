@@ -268,6 +268,9 @@ def admin_utub_detail(utub_id: int) -> FlaskResponse:
     audited; each mutation POSTs to its own audited endpoint — rendering this
     page mutates nothing.
     """
+    # Trashed UTubs (``deleted_at`` set) are intentionally still visible here:
+    # moderation must be able to inspect and act on any row, and admin-facing
+    # trash management is a soft-delete design non-goal.
     detail_utub = Utubs.query.get(utub_id)
     if detail_utub is None:
         abort(404)

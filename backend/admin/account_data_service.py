@@ -117,6 +117,9 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
     memberships_removed_count: int = 0
 
     # Snapshot: deleting UTubs/memberships mutates the relationship in-place.
+    # Trashed UTubs are handled exactly like live ones (soft-delete design,
+    # "Interaction with account deletion"): ownership transfers to another
+    # member, or the UTub is hard-deleted if solo.
     memberships: list[Utub_Members] = list(target_user.utubs_is_member_of)
     for membership in memberships:
         containing_utub: Utubs = membership.to_utub
