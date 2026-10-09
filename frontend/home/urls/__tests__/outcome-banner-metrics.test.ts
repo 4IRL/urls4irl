@@ -1,6 +1,9 @@
 import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
-import { showTrimSavedBanner } from "../outcome-banner.js";
+import {
+  showTrimSavedBanner,
+  showURLUpdatedBanner,
+} from "../outcome-banner.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   URL_PARAMS_TRIMMED_ACTION,
@@ -64,5 +67,33 @@ describe("outcome banner metrics — UI_URL_PARAMS_TRIMMED { action: undo }", ()
       form,
       action: URL_PARAMS_TRIMMED_ACTION.UNDO,
     });
+  });
+});
+
+describe("outcome banner metrics — UI_URL_EDIT_UNDONE", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="URLDeck" tabindex="-1">
+        <div id="URLDeckOutcomeBanner" class="urlOutcomeBanner hidden" role="status"></div>
+        <div class="urlRow" utuburlid="42"><button class="urlStringBtnUpdate">edit</button></div>
+      </div>`;
+    vi.clearAllMocks();
+    vi.mocked(ajaxCall).mockReturnValue(createMockJqXHRChainable({}));
+  });
+
+  it("emits the dedicated event, not the trim one, when Undo is clicked after a plain edit", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+    showURLUpdatedBanner({
+      utubID: 3,
+      utubUrlID: 42,
+      urlCard: $(".urlRow[utuburlid=42]"),
+      previousUrlString: "https://example.com/before",
+    });
+    expect(emit).not.toHaveBeenCalled();
+
+    $("#URLDeckOutcomeBanner").find(".urlOutcomeBannerAction").trigger("click");
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_URL_EDIT_UNDONE });
   });
 });

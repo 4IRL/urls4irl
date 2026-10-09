@@ -574,6 +574,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_URL_ACCESS_WARNING: _DimDeviceOnly,
     EventName.UI_URL_ACCESS_WARNING_DISMISS: _DimDeviceOnly,
     EventName.UI_URL_PARAMS_TRIMMED: _DimUrlParamsTrimmed,
+    EventName.UI_URL_EDIT_UNDONE: _DimDeviceOnly,
     # UI — Search
     EventName.UI_UTUB_SEARCH_OPEN: _DimUtubSearchOpen,
     EventName.UI_UTUB_SEARCH_CLOSE: _DimUtubSearchClose,

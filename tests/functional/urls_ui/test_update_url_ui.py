@@ -24,6 +24,7 @@ from backend.utils.strings.url_strs import (
     URL_TRIM_CONFLICT,
     URL_TRIM_HEADER_DROPPED,
     URL_TRIM_SAVED_BANNER_ONE,
+    URL_UPDATED_BANNER,
 )
 from tests.functional.db_utils import (
     add_mock_urls,
@@ -1586,6 +1587,49 @@ def test_update_url_string_trim_collapsed_toggle_drop_save_and_undo(
     expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_have_value(
         TRIM_URL_TWO_PARAMS
     )
+
+
+def test_update_url_string_plain_edit_shows_updated_banner_and_undo_restores(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user editing a URL's string to a different URL with no parameters
+    WHEN the edit is saved
+    THEN the outcome banner reports "URL updated." (no dropped-parameter detail),
+        and Undo restores the string the card showed before the edit, in both the
+        card and the (closed) edit input
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    plain_new_url = "https://plain-edit.example.com/path"
+
+    url_row = _select_first_mock_url_and_type(
+        app=provide_app, page=page, typed_url=plain_new_url
+    )
+    url_string_elem = url_row.locator(HPL.URL_STRING_READ)
+    original_url = url_string_elem.get_attribute(HPL.URL_STRING_IN_DATA)
+    assert original_url is not None
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    expect(url_string_elem).to_have_attribute(HPL.URL_STRING_IN_DATA, plain_new_url)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_UPDATED_BANNER
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_DETAIL)).to_have_count(0)
+
+    page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
+
+    expect(url_string_elem).to_have_attribute(HPL.URL_STRING_IN_DATA, original_url)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
+    expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_have_value(original_url)
 
 
 def test_update_url_string_trim_conflict_shows_trim_message_and_expands_section(

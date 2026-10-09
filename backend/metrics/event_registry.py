@@ -410,6 +410,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
             "action": ("toggle", "drop_all", "keep_all", "undo"),
         },
     ),
+    EventName.UI_URL_EDIT_UNDONE: EventRegistryEntry(
+        description="Undo used on the banner after saving a URL-string edit",
+        category=EventCategory.UI,
+    ),
     EventName.UI_UTUB_SEARCH_OPEN: EventRegistryEntry(
         description="UTub search box opened",
         category=EventCategory.UI,

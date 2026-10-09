@@ -285,6 +285,7 @@ const appConfig = {
     URL_TRIM_WARNING: "Warning: removing parameters may break this link.",
     URL_TRIM_WARNING_ONE:
       "Warning: removing this parameter may break this link.",
+    URL_UPDATED_BANNER: "URL updated.",
     URL_TRIM_GROUP_ARIA: "URL parameters to keep or drop",
     URL_TRIM_DROP_ALL: "Drop all",
     URL_TRIM_KEEP_ALL: "Keep all",

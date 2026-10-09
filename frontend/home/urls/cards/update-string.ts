@@ -48,6 +48,7 @@ import { applyUpdatedURLString } from "./apply-url-string.js";
 import {
   clearURLOutcomeBanner,
   showTrimSavedBanner,
+  showURLUpdatedBanner,
 } from "../outcome-banner.js";
 import {
   HOME_FORM,
@@ -366,7 +367,11 @@ export async function updateURL(
       urlCard,
     });
 
-    if (data.urlString === urlCard.find(".urlString").attr("href")) {
+    // The stored string before this save: what the banner's Undo restores after a
+    // plain edit (captured now, before applyUpdatedURLString overwrites it).
+    const previousUrlString = urlCard.find(".urlString").attr("href") as string;
+
+    if (data.urlString === previousUrlString) {
       log("updateURL skipped — value unchanged", { utubUrlID });
       // Panel-aware: on mobile the title form can still be open alongside this
       // string field. Suppress the sibling restore so we don't re-arm the card
@@ -412,7 +417,13 @@ export async function updateURL(
       xhr: JQuery.jqXHR,
     ) {
       if (xhr.status === 200) {
-        updateURLSuccess({ response, urlCard, utubID, trimSubmission });
+        updateURLSuccess({
+          response,
+          urlCard,
+          utubID,
+          trimSubmission,
+          previousUrlString,
+        });
       }
     });
 
@@ -442,11 +453,13 @@ function updateURLSuccess({
   urlCard,
   utubID,
   trimSubmission,
+  previousUrlString,
 }: {
   response: UpdateUrlStringResponse;
   urlCard: JQuery;
   utubID: number;
   trimSubmission: TrimSubmission | null;
+  previousUrlString: string;
 }): void {
   applyUpdatedURLString({ response, urlCard });
 
@@ -485,8 +498,18 @@ function updateURLSuccess({
       urlCard,
       form: URL_PARAMS_TRIMMED_FORM.URL_STRING_EDIT,
     });
+  } else if (response.status !== "No change") {
+    // A plain edit (nothing dropped) also gets an Undo banner, restoring the
+    // string the card showed before this save.
+    showURLUpdatedBanner({
+      utubID,
+      utubUrlID: response.URL.utubUrlID,
+      urlCard,
+      previousUrlString,
+    });
   } else {
-    // The next save supersedes any earlier outcome banner.
+    // Nothing actually changed server-side, so there is nothing to undo; the next
+    // save supersedes any earlier outcome banner.
     clearURLOutcomeBanner();
   }
 }

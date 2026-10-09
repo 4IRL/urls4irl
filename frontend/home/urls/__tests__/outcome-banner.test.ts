@@ -12,6 +12,7 @@ import {
   performUndo,
   showTrimSavedBanner,
   showURLOutcomeBanner,
+  showURLUpdatedBanner,
 } from "../outcome-banner.js";
 
 vi.mock("../../../lib/ajax.js", () => ({
@@ -312,6 +313,46 @@ describe("outcome banner", () => {
         "patch",
         APP_CONFIG.routes.updateURL(3, 42),
         { urlString: ORIGINAL },
+        35000,
+      );
+    });
+  });
+
+  describe("showURLUpdatedBanner", () => {
+    const PREVIOUS = "https://example.com/before";
+
+    function show(): void {
+      showURLUpdatedBanner({
+        utubID: 3,
+        utubUrlID: 42,
+        urlCard: $(".urlRow[utuburlid=42]"),
+        previousUrlString: PREVIOUS,
+      });
+    }
+
+    it("shows the plain updated message with an Undo and no dropped-parameter detail", () => {
+      show();
+
+      expect(banner().hasClass("success")).toBe(true);
+      expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
+        APP_CONFIG.strings.URL_UPDATED_BANNER,
+      );
+      expect(banner().find(".urlOutcomeBannerDetail")).toHaveLength(0);
+      expect(banner().find(".urlOutcomeBannerAction").text()).toBe(
+        APP_CONFIG.strings.URL_TRIM_UNDO,
+      );
+    });
+
+    it("Undo PATCHes the string the card showed before the save", () => {
+      mockXhr({});
+      show();
+
+      banner().find(".urlOutcomeBannerAction").trigger("click");
+
+      expect(ajaxCall).toHaveBeenCalledWith(
+        "patch",
+        APP_CONFIG.routes.updateURL(3, 42),
+        { urlString: PREVIOUS },
         35000,
       );
     });

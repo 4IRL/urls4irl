@@ -251,6 +251,7 @@ export type UIEventDimensions = {
   ui_url_access_warning: DimDeviceOnly;
   ui_url_access_warning_dismiss: DimDeviceOnly;
   ui_url_params_trimmed: DimUrlParamsTrimmed;
+  ui_url_edit_undone: DimDeviceOnly;
   ui_utub_search_open: DimUtubSearchOpen;
   ui_utub_search_close: DimUtubSearchClose;
   ui_url_search_open: DimUrlSearchOpen;

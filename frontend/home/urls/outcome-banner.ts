@@ -204,6 +204,44 @@ export function performUndo({
 }
 
 /**
+ * Shows the "URL updated." banner with Undo after a plain URL-string edit (no
+ * parameters dropped). Undo re-saves `previousUrlString`, the string the card
+ * showed before the save. Same focus handling as the trim banner.
+ */
+export function showURLUpdatedBanner({
+  utubID,
+  utubUrlID,
+  urlCard,
+  previousUrlString,
+}: {
+  utubID: number;
+  utubUrlID: number;
+  urlCard: JQuery;
+  previousUrlString: string;
+}): void {
+  const returnFocusTo = $(`.urlRow[utuburlid=${utubUrlID}]`).find(
+    ".urlStringBtnUpdate",
+  );
+
+  showURLOutcomeBanner({
+    variant: "success",
+    message: APP_CONFIG.strings.URL_UPDATED_BANNER,
+    actionLabel: APP_CONFIG.strings.URL_TRIM_UNDO,
+    onAction: () => {
+      emit({ event: UI_EVENTS.UI_URL_EDIT_UNDONE });
+      performUndo({
+        utubID,
+        utubUrlID,
+        urlCard,
+        originalUrlString: previousUrlString,
+        returnFocusTo,
+      });
+    },
+    returnFocusTo,
+  });
+}
+
+/**
  * Shows the "Saved without N parameters" banner with Undo after a trim-and-save.
  * The focus destination is the just-saved card's edit button, looked up fresh
  * here; `returnFocus` falls back to the deck if it is not rendered later.

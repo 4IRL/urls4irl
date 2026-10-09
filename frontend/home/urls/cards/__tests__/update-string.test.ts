@@ -12,6 +12,7 @@ import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import {
   clearURLOutcomeBanner,
   showTrimSavedBanner,
+  showURLUpdatedBanner,
 } from "../../outcome-banner.js";
 import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
@@ -71,6 +72,7 @@ vi.mock("../get.js", () => ({
 
 vi.mock("../../outcome-banner.js", () => ({
   showTrimSavedBanner: vi.fn(),
+  showURLUpdatedBanner: vi.fn(),
   clearURLOutcomeBanner: vi.fn(),
 }));
 
@@ -948,8 +950,9 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     trimWrap.find(`.urlParamTrimChip[data-index="${index}"]`).trigger("click");
   }
 
-  function mockSuccess(urlString: string): void {
+  function mockSuccess(urlString: string, status?: string): void {
     const response = {
+      ...(status === undefined ? {} : { status }),
       URL: {
         utubUrlID: 1,
         urlString,
@@ -1175,16 +1178,57 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     expect(args.utubUrlID).toBe(1);
     expect(args.form).toBe("url_string_edit");
     expect(args.urlCard[0]).toBe(urlCard[0]);
+    // The trim banner replaces the plain one; both never show together.
+    expect(showURLUpdatedBanner).not.toHaveBeenCalled();
   });
 
-  it("shows no banner and clears a stale one when nothing was dropped", async () => {
+  it("shows the plain URL-updated banner, restoring the previous string, when nothing was dropped", async () => {
+    const previous = urlCard.find(".urlString").attr("href");
     syncFromInput("https://example.com/p?a=1&b=2");
     mockSuccess("https://example.com/p?a=1&b=2");
+
+    await updateURL(urlStringInput, urlCard, 7);
+
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    expect(showURLUpdatedBanner).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(showURLUpdatedBanner).mock.calls[0][0];
+    expect(args.previousUrlString).toBe(previous);
+    expect(args.utubID).toBe(7);
+    expect(args.utubUrlID).toBe(1);
+    expect(args.urlCard[0]).toBe(urlCard[0]);
+  });
+
+  it("captures the stored string from before the save, not the saved one", async () => {
+    urlCard.find(".urlString").attr("href", "https://example.com/old");
+    syncFromInput("https://example.com/new");
+    mockSuccess("https://example.com/new");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(
+      vi.mocked(showURLUpdatedBanner).mock.calls[0][0].previousUrlString,
+    ).toBe("https://example.com/old");
+  });
+
+  it("shows no banner and clears a stale one when the server reports no change", async () => {
+    syncFromInput("https://example.com/p?a=1&b=2");
+    mockSuccess("https://example.com/p?a=1&b=2", "No change");
 
     await updateURL(urlStringInput, urlCard, 1);
 
     expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    expect(showURLUpdatedBanner).not.toHaveBeenCalled();
     expect(clearURLOutcomeBanner).toHaveBeenCalled();
+  });
+
+  it("shows no banner when the edit fails", async () => {
+    syncFromInput("https://example.com/p?a=1&b=2");
+    mockConflict();
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    expect(showURLUpdatedBanner).not.toHaveBeenCalled();
   });
 
   it("shows no banner when the trim block is absent", async () => {

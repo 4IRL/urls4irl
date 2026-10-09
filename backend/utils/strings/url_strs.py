@@ -156,6 +156,10 @@ URL_TRIM_PARAMS_LABEL_ONE = "Trim URL parameter (1)"
 URL_TRIM_AUTO_ONLY_TITLE = "URL parameters removed automatically"
 URL_TRIM_WARNING = "Warning: removing parameters may break this link."
 URL_TRIM_WARNING_ONE = "Warning: removing this parameter may break this link."
+# Outcome banner after any saved URL-string edit that dropped nothing (its Undo
+# restores the previous string); a trim-and-save uses the URL_TRIM_SAVED_BANNER*
+# strings instead.
+URL_UPDATED_BANNER = "URL updated."
 URL_TRIM_GROUP_ARIA = "URL parameters to keep or drop"
 URL_TRIM_DROP_ALL = "Drop all"
 URL_TRIM_KEEP_ALL = "Keep all"
