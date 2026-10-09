@@ -24,6 +24,8 @@ import {
 } from "./update-description.js";
 import { showFieldSavedTick } from "./field-saved-tick.js";
 import { isCoarsePointer } from "../mobile.js";
+import { isConfirmButtonDisabled } from "./confirm-btn-state.js";
+import { syncUTubEditPanelDirtyState } from "./utub-edit-panel-dirty.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import {
   isMultiSelectActive,
@@ -135,6 +137,8 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
     // Block an overlapping submit while a kept-open submit is in flight
     // (nameSubmitInFlight is only ever set on the mobile panelOpen path).
     if (nameSubmitInFlight) return;
+    // Mobile panel: the ✓ is aria-disabled while the name is unchanged.
+    if (isConfirmButtonDisabled(utubNameSubmitBtnUpdate)) return;
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.UTUB_NAME_EDIT,
@@ -430,11 +434,14 @@ function updateUTubName(utubID: number): void {
     if (xhr.status === 200) {
       updateUTubNameSuccess(response);
     }
+    // The clear above strips aria-disabled: re-derive the panel's dirty state.
+    syncUTubEditPanelDirtyState();
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
     clearNameSubmitInFlight();
     updateUTubNameFail(xhr);
+    syncUTubEditPanelDirtyState();
   });
 }
 

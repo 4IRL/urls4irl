@@ -342,3 +342,101 @@ def test_utub_edit_panel_toggle_hidden_on_locked_utub_mobile(
     assert_not_visible_css_selector(
         page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_TOGGLE
     )
+
+
+def _expect_utub_confirm_disabled(*, page: Page, css_selector: str) -> None:
+    """The ✓ is aria-disabled (never the native attribute) and dimmed."""
+    button = page.locator(css_selector)
+    expect(button).to_have_attribute("aria-disabled", "true")
+    expect(button).to_have_class(re.compile(r"\bunchanged\b"))
+    # Playwright's is-disabled honors aria-disabled, so check the native property.
+    expect(button).to_have_js_property("disabled", False)
+
+
+def _expect_utub_confirm_enabled(*, page: Page, css_selector: str) -> None:
+    button = page.locator(css_selector)
+    expect(button).not_to_have_attribute("aria-disabled", "true")
+    expect(button).not_to_have_class(re.compile(r"\bunchanged\b"))
+
+
+def test_utub_edit_panel_confirm_buttons_follow_dirty_state_mobile(
+    page_mobile_portrait: Page,
+    create_test_urls,
+    provide_app: Flask,
+):
+    """
+    GIVEN an owner opens the consolidated UTub edit panel on a mobile device
+    WHEN the name and description are edited, reverted and saved
+    THEN each green check starts disabled, enables only for its own edited field,
+        disables again on revert, and disables again once its save lands
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id = 1
+    utub: Utubs = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    open_utub_edit_panel_mobile(page=page)
+    name_input = page.locator(HPL.INPUT_UTUB_NAME_UPDATE)
+    description_input = page.locator(HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
+    original_name = name_input.input_value()
+    original_description = description_input.input_value()
+
+    name_submit = HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE
+    description_submit = HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
+    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+
+    # Clicking a disabled check does nothing.
+    # (force: Playwright's actionability treats aria-disabled as not enabled.)
+    page.locator(name_submit).click(force=True)
+    page.locator(description_submit).click(force=True)
+    expect(page.locator(HPL.SAVED_TICK_NAME)).not_to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    expect(page.locator(HPL.SAVED_TICK_DESCRIPTION)).not_to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+
+    name_input.fill(_NEW_UTUB_NAME)
+    _expect_utub_confirm_enabled(page=page, css_selector=name_submit)
+    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+
+    name_input.fill(original_name)
+    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+
+    # Surrounding whitespace is not a change.
+    name_input.fill(f"  {original_name}  ")
+    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+
+    description_input.fill(_NEW_UTUB_DESCRIPTION)
+    _expect_utub_confirm_enabled(page=page, css_selector=description_submit)
+    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+
+    description_input.fill(original_description)
+    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+
+    # A save leaves the saved field's check disabled again (stored == input).
+    description_input.fill(_NEW_UTUB_DESCRIPTION)
+    page.locator(description_submit).click()
+    expect(page.locator(HPL.SAVED_TICK_DESCRIPTION)).to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    expect(page.locator(HPL.SUBHEADER_URL_DECK)).to_have_text(_NEW_UTUB_DESCRIPTION)
+    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
+
+    name_input.fill(_NEW_UTUB_NAME)
+    page.locator(name_submit).click()
+    expect(page.locator(HPL.SAVED_TICK_NAME)).to_have_class(re.compile(r"\bopa-1\b"))
+    expect(page.locator(HPL.HEADER_URL_DECK)).to_have_text(_NEW_UTUB_NAME)
+    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+
+    # Closing and reopening starts disabled again.
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    open_utub_edit_panel_mobile(page=page)
+    _expect_utub_confirm_disabled(page=page, css_selector=name_submit)
+    _expect_utub_confirm_disabled(page=page, css_selector=description_submit)
