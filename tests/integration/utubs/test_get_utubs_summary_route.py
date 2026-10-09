@@ -14,7 +14,7 @@ from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub
 
 pytestmark = pytest.mark.utubs
 
@@ -168,6 +168,44 @@ def test_get_utubs_summary_reflects_locked_state(
     )
     assert locked_entry[MODELS.IS_LOCKED]
     assert not unlocked_entry[MODELS.IS_LOCKED]
+
+
+def test_get_utubs_excludes_trashed_utub(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user who is a member of multiple UTubs, one of which
+        is trashed
+    WHEN the user requests a summary of all their UTubs
+    THEN verify the trashed UTub is absent and every live UTub is present
+    """
+    client, _, user, app = login_first_user_without_register
+
+    with app.app_context():
+        member_utub_ids = sorted(
+            membership.utub_id
+            for membership in Utub_Members.query.filter(
+                Utub_Members.user_id == user.id
+            ).all()
+        )
+    trashed_utub_id = member_utub_ids[0]
+    live_utub_ids = member_utub_ids[1:]
+    assert len(live_utub_ids) >= 1
+    trash_utub(app, trashed_utub_id, deleted_by=user.id)
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    assert response.json is not None
+    response_utub_ids = sorted(
+        utub_item[MODELS.ID] for utub_item in response.json[MODELS.UTUBS]
+    )
+    assert trashed_utub_id not in response_utub_ids
+    assert response_utub_ids == live_utub_ids
 
 
 def test_get_utubs_sorted_based_on_last_updated(

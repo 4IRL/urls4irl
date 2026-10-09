@@ -219,6 +219,41 @@ def test_get_utubs_happy_path(
     assert utubs_list[0][MODELS.NAME] == valid_empty_utub_1[MODELS.NAME]
 
 
+def test_get_utubs_excludes_trashed(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN a validated user with two UTubs, one of which is trashed
+    WHEN GET /api/v1/utubs
+    THEN 200 with a utubs list containing only the live UTub
+    """
+    live_utub_name = "Live UTub"
+    create_response = api_client.post(
+        _create_utub_url(app),
+        json={_UTUB_NAME_FIELD: live_utub_name},
+        headers=bearer_headers_first_user,
+    )
+    assert create_response.status_code == 200
+
+    with app.app_context():
+        live_utub_id = Utubs.query.filter(Utubs.name == live_utub_name).one().id
+    trash_utub(app, 1, deleted_by=1)
+
+    response = api_client.get(
+        _get_utubs_url(app),
+        headers=bearer_headers_first_user,
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    utub_ids = [utub_item[MODELS.ID] for utub_item in response_json[_UTUBS_KEY]]
+    assert utub_ids == [live_utub_id]
+
+
 def test_get_utubs_empty_returns_empty_list(
     app: Flask,
     api_client: FlaskClient,

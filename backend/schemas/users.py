@@ -87,8 +87,15 @@ class UtubSummaryListSchema(BaseSchema):
 
     @classmethod
     def from_user(cls, user: Users) -> UtubSummaryListSchema:
+        # Trashed UTubs are hidden from every non-admin listing. Filtered in Python
+        # (not SQL) because schemas load before the models during package init.
+        live_memberships = [
+            membership
+            for membership in user.utubs_is_member_of
+            if not membership.to_utub.is_trashed
+        ]
         sorted_utubs = sorted(
-            user.utubs_is_member_of,
+            live_memberships,
             key=lambda membership: membership.to_utub.last_updated,
             reverse=True,
         )
