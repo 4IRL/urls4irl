@@ -1,5 +1,4 @@
 import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
-import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { restoreTooltipIfStillTargeted } from "../../../lib/tooltips.js";
@@ -16,14 +15,11 @@ import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { enableEditingURLTitle, isEmptyString } from "./utils.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { isValidURL } from "../validation.js";
-import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
   clearTimeoutIDAndHideLoadingIcon,
 } from "./loading.js";
-import { accessLink } from "./access.js";
-import { copyURLString } from "./copy.js";
 import {
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
@@ -40,12 +36,25 @@ import {
   bindURLStringEditClickHandler,
 } from "./options/edit-string-btn.js";
 import { closeURLEditPanel } from "./update-url-panel.js";
+import { isConfirmButtonDisabled } from "../confirm-btn-state.js";
+import { isTitleDirty, syncEditPanelDirtyState } from "./edit-panel-dirty.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
-import { getState, setState } from "../../../store/app-store.js";
+import {
+  expandParamTrimBlock,
+  flushParamTrim,
+  readTrimSubmit,
+  resetParamTrim,
+  type TrimSubmission,
+} from "../trim/param-trim-block.js";
+import { applyUpdatedURLString } from "./apply-url-string.js";
+import {
+  clearURLOutcomeBanner,
+  showTrimSavedBanner,
+  showURLUpdatedBanner,
+} from "../outcome-banner.js";
 import {
   HOME_FORM,
-  SEARCH_ACTIVE,
-  URL_ACCESS_TRIGGER,
+  URL_PARAMS_TRIMMED_FORM,
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
@@ -62,6 +71,17 @@ let stringSubmitInFlight = false;
 
 export function isURLStringSubmitInFlight(): boolean {
   return stringSubmitInFlight;
+}
+
+// Set by the mobile "Save URL" click for exactly the ✓ click it triggers. updateURL
+// consumes (reads + clears) it synchronously on entry and carries it as a local, so
+// it only ever applies to that one save and never leaks into a later ✓ or Enter save.
+let closePanelAfterNextURLSave = false;
+
+function consumeClosePanelAfterNextURLSave(): boolean {
+  const shouldClose = closePanelAfterNextURLSave;
+  closePanelAfterNextURLSave = false;
+  return shouldClose;
 }
 
 // Card panel-open predicate: on mobile the string field's morphed full-width
@@ -98,6 +118,30 @@ function isUpdateUrlStringFieldName(
   return (UPDATE_URL_STRING_FIELD_NAMES as readonly string[]).includes(key);
 }
 
+// Mobile "Save URL" button: CSS decides when it shows; click reuses the field's own submit.
+function mountTrimSaveButton({
+  urlCard,
+  closeBar,
+}: {
+  urlCard: JQuery;
+  closeBar: JQuery;
+}): void {
+  urlCard.find(".urlStringSaveBigBtnUpdate").remove();
+  const saveButton = $(document.createElement("button"))
+    .attr("type", "button")
+    .addClass("btn urlStringSaveBigBtnUpdate tabbable")
+    .text(APP_CONFIG.strings.URL_TRIM_SAVE_URL)
+    .on("click", function () {
+      // Mirrors the URL ✓: a no-op while nothing would change or a save is in flight.
+      if (isConfirmButtonDisabled(saveButton) || stringSubmitInFlight) return;
+      closePanelAfterNextURLSave = true;
+      urlCard.find(".urlStringSubmitBtnUpdate").trigger("click");
+      // updateURL consumes the flag synchronously; drop it if the ✓ handler bailed first.
+      closePanelAfterNextURLSave = false;
+    });
+  closeBar.after(saveButton);
+}
+
 // Shows update URL inputs
 export function showUpdateURLStringForm({
   urlCard,
@@ -124,6 +168,13 @@ export function showUpdateURLStringForm({
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
   updateURLStringWrap.showClassFlex();
+
+  // Render the trim control from the pre-filled value immediately (flush, not
+  // the debounced sync). It never takes focus, so the select-all below is safe.
+  flushParamTrim({
+    trimWrap: updateURLStringWrap.find(".urlParamTrimWrap"),
+    rawValue: getInputValue(updateURLStringWrap.find("input.urlStringUpdate")),
+  });
 
   // Handle case where iOS needs a direct focus not in a timeout, even with animation
   if (isMobile()) {
@@ -172,6 +223,10 @@ export function showUpdateURLStringForm({
       }
     });
 
+  if (isCoarsePointer()) {
+    mountTrimSaveButton({ urlCard, closeBar: urlStringBtnUpdate });
+  }
+
   disableTagRemovalInURLCard(urlCard);
   disableClickOnSelectedURLCardToHide(urlCard);
 }
@@ -205,7 +260,22 @@ export function hideAndResetUpdateURLStringForm({
   const urlStringElem = urlCard.find(".urlString");
   urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href") as string);
 
+  // Reset the card's trim block in place (cancels its pending debounce and
+  // re-collapses it). A kept-open field stays visible, so re-render it from the
+  // resynced value.
+  const trimWrap = urlCard.find(".urlParamTrimWrap");
+  resetParamTrim({ trimWrap });
+  if (keepOpen) {
+    flushParamTrim({
+      trimWrap,
+      rawValue: getInputValue(urlCard.find(".urlStringUpdate")),
+    });
+  }
+
   if (!keepOpen) {
+    // The panel's "Save URL" button goes away with the Close bar it sits beside
+    urlCard.find(".urlStringSaveBigBtnUpdate").remove();
+
     // Make the Update URL button now allow updating again
     const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
     urlStringBtnUpdate
@@ -259,18 +329,29 @@ export function hideAndResetUpdateURLStringForm({
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLSetup(
-  urlStringUpdateInput: JQuery,
-  utubID: number,
-  utubUrlID: number,
-): [string, UpdateUrlStringRequest] {
+function updateURLSetup({
+  urlStringUpdateInput,
+  utubID,
+  utubUrlID,
+  urlCard,
+}: {
+  urlStringUpdateInput: JQuery;
+  utubID: number;
+  utubUrlID: number;
+  urlCard: JQuery;
+}): [string, UpdateUrlStringRequest, TrimSubmission | null] {
   const postURL = APP_CONFIG.routes.updateURL(utubID, utubUrlID);
 
-  const updatedURL = getInputValue(urlStringUpdateInput).trim();
+  // Flushes the trim block's pending debounce so a submit within 200ms of the
+  // last keystroke trims against the input's current value, not a stale parse.
+  const { urlString, trimSubmission } = readTrimSubmit({
+    trimWrap: urlCard.find(".urlParamTrimWrap"),
+    rawValue: getInputValue(urlStringUpdateInput),
+  });
 
-  const data: UpdateUrlStringRequest = { urlString: updatedURL };
+  const data: UpdateUrlStringRequest = { urlString: urlString.trim() };
 
-  return [postURL, data];
+  return [postURL, data, trimSubmission];
 }
 
 // Handles update of an existing URL
@@ -283,6 +364,12 @@ export async function updateURL(
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   const panelOpen = isCardEditPanelOpen(urlCard);
   const stringSubmitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
+  const closePanelAfterSave = consumeClosePanelAfterNextURLSave();
+  // Clearing in-flight strips aria-disabled from the ✓, so re-sync the dirty state after it.
+  const finishSubmit = (): void => {
+    clearStringSubmitInFlight(stringSubmitBtn);
+    syncEditPanelDirtyState(urlCard);
+  };
   if (panelOpen) {
     // Accessible in-flight guard: mark the submit control aria-disabled (not
     // native disabled, which drops focus) so a second overlapping submit is
@@ -294,13 +381,18 @@ export async function updateURL(
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     // Extract data to submit in POST request
-    const [patchURL, data] = updateURLSetup(
+    const [patchURL, data, trimSubmission] = updateURLSetup({
       urlStringUpdateInput,
       utubID,
       utubUrlID,
-    );
+      urlCard,
+    });
 
-    if (data.urlString === urlCard.find(".urlString").attr("href")) {
+    // The stored string before this save: what the banner's Undo restores after a
+    // plain edit (captured now, before applyUpdatedURLString overwrites it).
+    const previousUrlString = urlCard.find(".urlString").attr("href") as string;
+
+    if (data.urlString === previousUrlString) {
       log("updateURL skipped — value unchanged", { utubUrlID });
       // Panel-aware: on mobile the title form can still be open alongside this
       // string field. Suppress the sibling restore so we don't re-arm the card
@@ -317,7 +409,7 @@ export async function updateURL(
         keepOpen: panelOpen,
       });
       if (panelOpen) setOpenForm(HOME_FORM.URL_STRING_EDIT);
-      clearStringSubmitInFlight(stringSubmitBtn);
+      finishSubmit();
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -333,7 +425,7 @@ export async function updateURL(
         APP_CONFIG.strings.INVALID_URL,
         urlCard,
       );
-      clearStringSubmitInFlight(stringSubmitBtn);
+      finishSubmit();
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -346,22 +438,29 @@ export async function updateURL(
       xhr: JQuery.jqXHR,
     ) {
       if (xhr.status === 200) {
-        updateURLSuccess(response, urlCard);
+        updateURLSuccess({
+          response,
+          urlCard,
+          utubID,
+          trimSubmission,
+          previousUrlString,
+          closePanelAfterSave,
+        });
       }
     });
 
     request.fail(function (xhr: JQuery.jqXHR) {
       resetUpdateURLFailErrors(urlCard);
-      updateURLFail(xhr, urlCard, utubID);
+      updateURLFail({ xhr, urlCard, utubID, trimSubmission });
     });
 
     request.always(function () {
-      clearStringSubmitInFlight(stringSubmitBtn);
+      finishSubmit();
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
     log("updateURL aborted — pre-flight URL fetch rejected", { utubUrlID });
-    clearStringSubmitInFlight(stringSubmitBtn);
+    finishSubmit();
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
@@ -371,66 +470,22 @@ export async function updateURL(
 }
 
 // Displays changes related to a successful update of a URL
-function updateURLSuccess(
-  response: UpdateUrlStringResponse,
-  urlCard: JQuery,
-): void {
-  // Extract response data
-  const updatedURLString = response.URL.urlString;
-
-  setState({
-    urls: getState().urls.map((existingUrl: UtubUrlItem) =>
-      existingUrl.utubUrlID === response.URL.utubUrlID
-        ? {
-            ...existingUrl,
-            urlString: response.URL.urlString,
-            urlTitle: response.URL.urlTitle,
-            utubUrlTagIDs: response.URL.urlTags.map(
-              (urlTag) => urlTag.utubTagID,
-            ),
-          }
-        : existingUrl,
-    ),
-  });
-
-  // Update URL body with latest published data
-  urlCard
-    .find(".urlString")
-    .attr({ href: updatedURLString })
-    .text(updatedURLString);
-
-  // Update URL options. Dimensions (search_active, active_tag_count) are read
-  // at click time so values reflect the deck state at the moment the user
-  // activates the rebound button — not at updateURLSuccess time.
-  urlCard.find(".urlBtnAccess").offAndOnExact("click", function () {
-    emit({
-      event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: URL_ACCESS_TRIGGER.MAIN_BUTTON,
-      search_active: isURLSearchActive()
-        ? SEARCH_ACTIVE.TRUE
-        : SEARCH_ACTIVE.FALSE,
-      active_tag_count: getActiveTagCount(),
-    });
-    accessLink(updatedURLString);
-  });
-
-  urlCard.find(".goToUrlIcon").offAndOnExact("click", function () {
-    emit({
-      event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
-      search_active: isURLSearchActive()
-        ? SEARCH_ACTIVE.TRUE
-        : SEARCH_ACTIVE.FALSE,
-      active_tag_count: getActiveTagCount(),
-    });
-    accessLink(updatedURLString);
-  });
-
-  urlCard
-    .find(".urlBtnCopy")
-    .offAndOnExact("click", function (this: HTMLElement) {
-      copyURLString(updatedURLString, this);
-    });
+function updateURLSuccess({
+  response,
+  urlCard,
+  utubID,
+  trimSubmission,
+  previousUrlString,
+  closePanelAfterSave,
+}: {
+  response: UpdateUrlStringResponse;
+  urlCard: JQuery;
+  utubID: number;
+  trimSubmission: TrimSubmission | null;
+  previousUrlString: string;
+  closePanelAfterSave: boolean;
+}): void {
+  applyUpdatedURLString({ response, urlCard });
 
   // Panel-aware: on mobile the title form can still be open alongside this
   // string field. Suppress the sibling restore so submitting the string does
@@ -458,6 +513,41 @@ function updateURLSuccess(
       label: APP_CONFIG.strings.FIELD_SAVED_LABEL_URL,
     });
   }
+
+  if (trimSubmission !== null && trimSubmission.droppedCount > 0) {
+    showTrimSavedBanner({
+      trimSubmission,
+      utubID,
+      utubUrlID: response.URL.utubUrlID,
+      urlCard,
+      form: URL_PARAMS_TRIMMED_FORM.URL_STRING_EDIT,
+    });
+  } else if (response.status !== "No change") {
+    // A plain edit (nothing dropped) also gets an Undo banner, restoring the
+    // string the card showed before this save.
+    showURLUpdatedBanner({
+      utubID,
+      utubUrlID: response.URL.utubUrlID,
+      urlCard,
+      previousUrlString,
+    });
+  } else {
+    // Nothing actually changed server-side, so there is nothing to undo; the next
+    // save supersedes any earlier outcome banner.
+    clearURLOutcomeBanner();
+  }
+
+  // "Save URL" saves and closes the panel, but only when the title has no unsaved
+  // edits (closing would discard them). The outcome banner lives outside the card,
+  // so it survives the close.
+  if (
+    closePanelAfterSave &&
+    panelOpen &&
+    response.status !== "No change" &&
+    !isTitleDirty(urlCard)
+  ) {
+    closeURLEditPanel(urlCard);
+  }
 }
 
 // A 400 or 409 keeps the URL edit form open, so the tooltip the submit click
@@ -469,11 +559,17 @@ function restoreUpdateURLStringSubmitTooltip(urlCard: JQuery): void {
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
-function updateURLFail(
-  xhr: JQuery.jqXHR,
-  urlCard: JQuery,
-  utubID: number,
-): void {
+function updateURLFail({
+  xhr,
+  urlCard,
+  utubID,
+  trimSubmission,
+}: {
+  xhr: JQuery.jqXHR;
+  urlCard: JQuery;
+  utubID: number;
+  trimSubmission: TrimSubmission | null;
+}): void {
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
 
@@ -520,15 +616,26 @@ function updateURLFail(
         restoreUpdateURLStringSubmitTooltip(urlCard);
         break;
       }
-    case 409:
+    case 409: {
       checkForStaleDataOn409(responseJSON, utubID);
+      // The collision is caused by the user's trim: say so, and expand the
+      // section so the cause is on screen.
+      const trimCausedConflict = (trimSubmission?.droppedCount ?? 0) > 0;
+      if (trimCausedConflict) {
+        expandParamTrimBlock({
+          trimWrap: urlCard.find(".urlParamTrimWrap"),
+        });
+      }
       displayUpdateURLErrors(
         "urlString",
-        responseJSON.message as string,
+        trimCausedConflict
+          ? APP_CONFIG.strings.URL_TRIM_CONFLICT
+          : (responseJSON.message as string),
         urlCard,
       );
       restoreUpdateURLStringSubmitTooltip(urlCard);
       break;
+    }
     case 403:
     case 404:
     default:

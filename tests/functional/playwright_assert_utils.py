@@ -27,6 +27,19 @@ def assert_visible_css_selector(*, page: Page, css_selector: str) -> None:
     expect(page.locator(css_selector).first).to_be_visible()
 
 
+def assert_confirm_button_disabled(*, button: Locator) -> None:
+    """A mobile edit-panel confirm is aria-disabled (never the native attribute) and dimmed."""
+    expect(button).to_have_attribute("aria-disabled", "true")
+    expect(button).to_have_class(re.compile(r"\bunchanged\b"))
+    # Playwright's is-disabled honors aria-disabled, so check the native property.
+    expect(button).to_have_js_property("disabled", False)
+
+
+def assert_confirm_button_enabled(*, button: Locator) -> None:
+    expect(button).not_to_have_attribute("aria-disabled", "true")
+    expect(button).not_to_have_class(re.compile(r"\bunchanged\b"))
+
+
 def assert_panel_visibility_mobile(*, page: Page, visible_deck: Decks) -> None:
     wait_until_visible_css_selector(page=page, css_selector=HPL.MAIN_PANEL)
 

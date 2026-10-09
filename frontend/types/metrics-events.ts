@@ -27,6 +27,8 @@ export const UI_EVENTS = {
   UI_URL_COPY: "ui_url_copy",
   UI_URL_ACCESS_WARNING: "ui_url_access_warning",
   UI_URL_ACCESS_WARNING_DISMISS: "ui_url_access_warning_dismiss",
+  UI_URL_PARAMS_TRIMMED: "ui_url_params_trimmed",
+  UI_URL_EDIT_UNDONE: "ui_url_edit_undone",
   UI_UTUB_SEARCH_OPEN: "ui_utub_search_open",
   UI_UTUB_SEARCH_CLOSE: "ui_utub_search_close",
   UI_URL_SEARCH_OPEN: "ui_url_search_open",

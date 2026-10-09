@@ -9,6 +9,14 @@
     position: relative;
 }
 
+/* Buttons beside a TS-built `.text-input-container` (URL card edit forms) would
+   center on the input plus its error message and drift down when an error
+   shows. Pin them to the top, where the input is (their `my-2` + 30px icon
+   matches the 46px input). */
+.flex-row:has(> .text-input-container) > button {
+    align-self: flex-start;
+}
+
 .text-input[type="url"],
 .text-input[type="text"],
 .text-input[type="search"] {

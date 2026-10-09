@@ -14,6 +14,8 @@ import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { showFieldSavedTick } from "./field-saved-tick.js";
 import { isCoarsePointer } from "../mobile.js";
+import { isConfirmButtonDisabled } from "./confirm-btn-state.js";
+import { syncUTubEditPanelDirtyState } from "./utub-edit-panel-dirty.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import {
   isMultiSelectActive,
@@ -115,6 +117,8 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
     // Block an overlapping submit while a kept-open submit is in flight
     // (descriptionSubmitInFlight is only ever set on the mobile panelOpen path).
     if (descriptionSubmitInFlight) return;
+    // Mobile panel: the ✓ is aria-disabled while the description is unchanged.
+    if (isConfirmButtonDisabled(utubDescriptionSubmitBtnUpdate)) return;
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.UTUB_DESC_EDIT,
@@ -151,6 +155,9 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
             case KEYS.ENTER:
               // Block an overlapping submit while a kept-open submit is in flight.
               if (descriptionSubmitInFlight) return;
+              // Mobile panel: Enter honors the same unchanged gate as the ✓.
+              if (isConfirmButtonDisabled($("#utubDescriptionSubmitBtnUpdate")))
+                return;
               // Handle enter key pressed
               emit({
                 event: UI_EVENTS.UI_FORM_SUBMIT,
@@ -369,11 +376,14 @@ function updateUTubDescription(utubID: number): void {
     if (xhr.status === 200) {
       updateUTubDescriptionSuccess(response, utubID);
     }
+    // The clear above strips aria-disabled: re-derive the panel's dirty state.
+    syncUTubEditPanelDirtyState();
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
     clearDescriptionSubmitInFlight();
     updateUTubDescriptionFail(xhr);
+    syncUTubEditPanelDirtyState();
   });
 }
 

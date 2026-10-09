@@ -1,3 +1,4 @@
+import re
 from typing import Tuple
 
 import pytest
@@ -17,7 +18,13 @@ from backend.models.utub_urls import Utub_Urls
 from backend.utils.constants import CONSTANTS, TAG_CONSTANTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from backend.utils.strings.url_strs import URL_FAILURE
+from backend.utils.strings.url_strs import (
+    URL_FAILURE,
+    URL_TRIM_AUTO_ONLY_TITLE,
+    URL_TRIM_CONFLICT,
+    URL_TRIM_HEADER_DROPPED,
+    URL_TRIM_SAVED_BANNER_ONE,
+)
 from tests.functional.db_utils import (
     add_mock_urls,
     add_tag_to_single_url_in_utub,
@@ -56,8 +63,14 @@ from tests.functional.tags_ui.playwright_utils import (
     get_visible_urls_and_urls_with_tag_text_by_tag_id,
 )
 from tests.functional.urls_ui.playwright_utils import (
+    CLOSED_CLASS,
+    TRIM_BASE_URL,
+    TRIM_DROPPED_PARAM,
+    TRIM_URL_KEEP_ONLY,
+    TRIM_URL_TWO_PARAMS,
     create_url,
     fill_create_url_form,
+    set_trim_section_expanded,
     stage_new_tag_in_create_form,
     stage_tag_suggestion_in_create_form,
 )
@@ -1317,4 +1330,324 @@ def test_create_url_tracking_params_collision_shows_error(
     assert (
         invalid_url_string_error.inner_text()
         == UTS.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+    )
+
+
+# Query-parameter trim control (create form). These inspect the form BEFORE
+# submit, and count chips with `expect(...).to_have_count(n)` so every assertion
+# auto-waits out the control's 200ms debounced re-parse.
+def _open_create_form_and_type_url(
+    *, app: Flask, page: Page, url_string: str, url_title: str = "Trim test"
+) -> int:
+    """Log in, open the create form and fill it (without submitting)."""
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+    fill_create_url_form(page=page, url_title=url_title, url_string=url_string)
+    return utub_user_created.id
+
+
+def test_create_url_trim_section_absent_without_query(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user filling the create-URL form
+    WHEN the typed URL has no query string (after first having one, so the
+        debounced re-parse is proven to have run)
+    THEN the query-parameter trim section is not shown
+    """
+    _open_create_form_and_type_url(
+        app=provide_app, page=page, url_string=TRIM_URL_TWO_PARAMS
+    )
+    expect(page.locator(HPL.CREATE_FORM_TRIM_HEADER)).to_be_visible()
+
+    clear_then_send_keys(
+        locator=page.locator(HPL.INPUT_URL_STRING_CREATE), input_text=TRIM_BASE_URL
+    )
+
+    expect(page.locator(HPL.CREATE_FORM_TRIM_WRAP)).to_be_hidden()
+
+
+def test_create_url_trim_section_appears_collapsed_then_toggles(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user filling the create-URL form
+    WHEN they type a URL with a query string
+    THEN the trim section appears collapsed with its chips hidden, and clicking
+        the header expands it (caret loses .closed) and clicking again collapses
+        it (caret regains .closed)
+    """
+    _open_create_form_and_type_url(
+        app=provide_app, page=page, url_string=TRIM_BASE_URL + "?a=1&b=2&c=3"
+    )
+
+    header = page.locator(HPL.CREATE_FORM_TRIM_HEADER)
+    caret = page.locator(HPL.CREATE_FORM_TRIM_CARET)
+    expect(header).to_be_visible()
+    expect(header).to_have_attribute("aria-expanded", "false")
+    expect(caret).to_have_class(CLOSED_CLASS)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+    expect(caret).not_to_have_class(CLOSED_CLASS)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)).to_have_count(3)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_visible()
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=False
+    )
+    expect(caret).to_have_class(CLOSED_CLASS)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
+
+
+def test_create_url_trim_chip_toggle_updates_preview_and_dropped_count(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user with the trim section expanded for a URL with two parameters
+    WHEN they drop one parameter and collapse the section
+    THEN the chip reads as dropped, the "Saves as" preview omits it, and the
+        collapsed header still shows the dropped count
+    """
+    _open_create_form_and_type_url(
+        app=provide_app, page=page, url_string=TRIM_URL_TWO_PARAMS
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+    chips = page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)
+    expect(chips).to_have_count(2)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_PREVIEW)).to_have_text(TRIM_URL_TWO_PARAMS)
+
+    chips.nth(1).click()
+
+    expect(chips.nth(1)).to_have_attribute("aria-pressed", "false")
+    expect(page.locator(HPL.CREATE_FORM_TRIM_PREVIEW)).to_have_text(TRIM_URL_KEEP_ONLY)
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=False
+    )
+    expect(page.locator(HPL.CREATE_FORM_TRIM_DROPPED_COUNT)).to_have_text(
+        URL_TRIM_HEADER_DROPPED.format(n=1)
+    )
+
+
+def test_create_url_trim_drop_all_and_keep_all(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user with the trim section expanded for a URL with two parameters
+    WHEN they click "Drop all" and then "Keep all"
+    THEN every chip reads as dropped (preview is the bare URL, header counts 2
+        dropped), and then every chip is kept again (dropped count hidden)
+    """
+    _open_create_form_and_type_url(
+        app=provide_app, page=page, url_string=TRIM_URL_TWO_PARAMS
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+    chips = page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)
+    expect(chips).to_have_count(2)
+
+    page.locator(HPL.CREATE_FORM_TRIM_DROP_ALL).click()
+
+    expect(chips.nth(0)).to_have_attribute("aria-pressed", "false")
+    expect(chips.nth(1)).to_have_attribute("aria-pressed", "false")
+    expect(page.locator(HPL.CREATE_FORM_TRIM_PREVIEW)).to_have_text(TRIM_BASE_URL)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_DROPPED_COUNT)).to_have_text(
+        URL_TRIM_HEADER_DROPPED.format(n=2)
+    )
+
+    page.locator(HPL.CREATE_FORM_TRIM_KEEP_ALL).click()
+
+    expect(chips.nth(0)).to_have_attribute("aria-pressed", "true")
+    expect(chips.nth(1)).to_have_attribute("aria-pressed", "true")
+    expect(page.locator(HPL.CREATE_FORM_TRIM_PREVIEW)).to_have_text(TRIM_URL_TWO_PARAMS)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_DROPPED_COUNT)).to_be_hidden()
+
+
+def test_create_url_trim_state_resets_after_cancel_and_reopen(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user who expanded the trim section and dropped a parameter
+    WHEN they cancel the create form and reopen it with the same URL
+    THEN the section is collapsed again with every parameter kept
+    """
+    _open_create_form_and_type_url(
+        app=provide_app, page=page, url_string=TRIM_URL_TWO_PARAMS
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+    chips = page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)
+    expect(chips).to_have_count(2)
+    chips.nth(1).click()
+    expect(chips.nth(1)).to_have_attribute("aria-pressed", "false")
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_URL_CANCEL_CREATE)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_URL_STRING_CREATE)
+
+    fill_create_url_form(
+        page=page, url_title="Trim reopen", url_string=TRIM_URL_TWO_PARAMS
+    )
+
+    header = page.locator(HPL.CREATE_FORM_TRIM_HEADER)
+    expect(header).to_be_visible()
+    expect(header).to_have_attribute("aria-expanded", "false")
+    expect(page.locator(HPL.CREATE_FORM_TRIM_DROPPED_COUNT)).to_be_hidden()
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+    expect(chips.nth(1)).to_have_attribute("aria-pressed", "true")
+
+
+def test_create_url_trim_auto_chips_present_but_not_clickable(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a URL mixing a server-stripped tracking param with a normal param
+    WHEN the section is expanded and the tracking chip is clicked
+    THEN the tracking chip is an inert "auto" chip (not a toggle button), the
+        click changes nothing, and only the normal param is actionable
+    """
+    _open_create_form_and_type_url(
+        app=provide_app, page=page, url_string=TRIM_BASE_URL + "?utm_source=x&keep=1"
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+
+    auto_chip = page.locator(HPL.CREATE_FORM_TRIM_CHIP_AUTO)
+    expect(auto_chip).to_have_count(1)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)).to_have_count(1)
+    expect(auto_chip).not_to_have_attribute("aria-pressed", re.compile(r".*"))
+
+    auto_chip.click()
+
+    expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)).to_have_attribute(
+        "aria-pressed", "true"
+    )
+    expect(auto_chip).to_have_count(1)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_DROPPED_COUNT)).to_be_hidden()
+
+
+def test_create_url_trim_auto_only_variant_has_no_warning_or_controls(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a URL whose only parameters are ones the server strips itself
+    WHEN the section is expanded
+    THEN it shows the auto-only title (no "(0)"), the auto chip, and neither the
+        breakage warning nor the Drop all / Keep all row
+    """
+    _open_create_form_and_type_url(
+        app=provide_app, page=page, url_string=TRIM_BASE_URL + "?utm_source=x"
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+
+    expect(page.locator(HPL.CREATE_FORM_TRIM_TITLE)).to_have_text(
+        URL_TRIM_AUTO_ONLY_TITLE
+    )
+    expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_AUTO)).to_have_count(1)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)).to_have_count(0)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_WARNING)).to_be_hidden()
+    expect(page.locator(HPL.CREATE_FORM_TRIM_ACTIONS)).to_be_hidden()
+
+
+def test_create_url_trim_saves_trimmed_url_and_undo_restores_original(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user who drops one of two parameters while creating a URL
+    WHEN they submit
+    THEN the saved row's href is the trimmed string, the outcome banner reports
+        the dropped parameter, and Undo restores the original untrimmed string
+    """
+    app = provide_app
+    utub_id = _open_create_form_and_type_url(
+        app=app, page=page, url_string=TRIM_URL_TWO_PARAMS
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+    chips = page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)
+    expect(chips).to_have_count(2)
+    chips.nth(1).click()
+    expect(chips.nth(1)).to_have_attribute("aria-pressed", "false")
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_URL_SUBMIT_CREATE)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_URL_STRING_CREATE)
+
+    trimmed_url = TRIM_URL_KEEP_ONLY
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(app, utub_id, trimmed_url)
+    url_row = get_url_row_by_id(page=page, utub_url_id=utub_url_id)
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, trimmed_url
+    )
+
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_TRIM_SAVED_BANNER_ONE
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_DETAIL)).to_have_text(TRIM_DROPPED_PARAM)
+
+    page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
+
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, TRIM_URL_TWO_PARAMS
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
+
+
+def test_create_url_trim_conflict_shows_trim_message_and_expands_section(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub that already holds a URL
+    WHEN the user submits that URL plus a parameter they dropped (so the trimmed
+        string collides with the stored one)
+    THEN the trim-specific conflict message replaces the plain one and the
+        trim section is force-expanded so the cause is on screen
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    with app.app_context():
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_created.id
+        ).first()
+        stored_url_string = utub_url.standalone_url.url_string
+
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+    fill_create_url_form(
+        page=page, url_title="Trim conflict", url_string=stored_url_string + "?ref=x"
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=True
+    )
+    conflict_chip = page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE).first
+    conflict_chip.click()
+    expect(conflict_chip).to_have_attribute("aria-pressed", "false")
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.CREATE_FORM_TRIM_HEADER, expanded=False
+    )
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_URL_SUBMIT_CREATE)
+
+    url_string_error = page.locator(
+        HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX
+    )
+    expect(url_string_error).to_have_text(URL_TRIM_CONFLICT)
+    expect(page.locator(HPL.CREATE_FORM_TRIM_HEADER)).to_have_attribute(
+        "aria-expanded", "true"
     )

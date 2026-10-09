@@ -1,11 +1,12 @@
 import random
+import re
 from typing import Tuple
 from urllib.parse import urlsplit
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from backend.cli.mock_constants import (
     MOCK_URL_STRINGS,
@@ -18,7 +19,13 @@ from backend.models.utubs import Utubs
 from backend.utils.constants import STRINGS, URL_CONSTANTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from backend.utils.strings.url_strs import URL_FAILURE
+from backend.utils.strings.url_strs import (
+    URL_FAILURE,
+    URL_TRIM_CONFLICT,
+    URL_TRIM_HEADER_DROPPED,
+    URL_TRIM_SAVED_BANNER_ONE,
+    URL_UPDATED_BANNER,
+)
 from tests.functional.db_utils import (
     add_mock_urls,
     get_url_in_utub,
@@ -40,6 +47,7 @@ from tests.functional.playwright_login_utils import (
 )
 from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
+    clear_then_send_keys,
     get_selected_url,
     invalidate_csrf_token_on_page,
     open_update_url_title,
@@ -53,6 +61,12 @@ from tests.functional.urls_ui.playwright_assert_utils import (
     assert_select_url_as_utub_owner_or_url_creator,
 )
 from tests.functional.urls_ui.playwright_utils import (
+    CLOSED_CLASS,
+    TRIM_BASE_URL,
+    TRIM_DROPPED_PARAM,
+    TRIM_URL_KEEP_ONLY,
+    TRIM_URL_TWO_PARAMS,
+    set_trim_section_expanded,
     update_url_string,
     update_url_title,
 )
@@ -1410,3 +1424,361 @@ def test_update_url_string_cancel_btn_tooltip_animates(
     cancel_btn = wait_then_get_element(page=page, css_selector=parent_css_selector)
     assert cancel_btn is not None
     assert cancel_btn.get_attribute("aria-label") == STRINGS.CANCEL_URL_EDIT_TOOLTIP
+
+
+# Query-parameter trim control (edit-URL-string form). Chips are counted with
+# `expect(...).to_have_count(n)` so assertions auto-wait out the 200ms debounce.
+
+
+def _select_first_mock_url_and_type(
+    *, app: Flask, page: Page, typed_url: str
+) -> Locator:
+    """Select the seeded URL, open its string-edit form and type `typed_url`
+    without submitting. Returns the selected URL row."""
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_string(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=MOCK_URL_STRINGS[0],
+    )
+    url_row = get_selected_url(page=page)
+    update_url_string(page=page, url_string=typed_url)
+    return url_row
+
+
+def test_update_url_string_trim_section_absent_without_query(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user editing a URL's string
+    WHEN the typed URL has no query string (after first having one, so the
+        debounced re-parse is proven to have run)
+    THEN the query-parameter trim section is not shown
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+
+    _select_first_mock_url_and_type(
+        app=provide_app, page=page, typed_url=TRIM_URL_TWO_PARAMS
+    )
+    expect(page.locator(HPL.EDIT_FORM_TRIM_HEADER)).to_be_visible()
+
+    clear_then_send_keys(
+        locator=page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"),
+        input_text=TRIM_BASE_URL,
+    )
+
+    expect(page.locator(HPL.EDIT_FORM_TRIM_WRAP)).to_be_hidden()
+
+
+def test_update_url_string_trim_auto_chips_present_but_not_clickable(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user editing a URL's string to one mixing a server-stripped
+        tracking param with a normal param
+    WHEN the section is expanded and the tracking chip is clicked
+    THEN the tracking chip is an inert "auto" chip, the click changes nothing,
+        and only the normal param is actionable
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+
+    _select_first_mock_url_and_type(
+        app=provide_app, page=page, typed_url=f"{TRIM_BASE_URL}?utm_source=x&keep=1"
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+
+    auto_chip = page.locator(HPL.EDIT_FORM_TRIM_CHIP_AUTO)
+    expect(auto_chip).to_have_count(1)
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE)).to_have_count(1)
+    expect(auto_chip).not_to_have_attribute("aria-pressed", re.compile(r".*"))
+
+    auto_chip.click()
+
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE)).to_have_attribute(
+        "aria-pressed", "true"
+    )
+    expect(auto_chip).to_have_count(1)
+    expect(page.locator(HPL.EDIT_FORM_TRIM_DROPPED_COUNT)).to_be_hidden()
+
+
+def test_update_url_string_trim_collapsed_toggle_drop_save_and_undo(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user editing a URL's string to one with two parameters
+    WHEN the section appears it is collapsed; expanding it and dropping one
+        parameter updates the preview and the (re-collapsed) header's count
+    THEN saving stores the trimmed string, the outcome banner reports the
+        dropped parameter, and Undo restores the original untrimmed string
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+
+    url_row = _select_first_mock_url_and_type(
+        app=provide_app, page=page, typed_url=TRIM_URL_TWO_PARAMS
+    )
+
+    header = page.locator(HPL.EDIT_FORM_TRIM_HEADER)
+    caret = page.locator(HPL.EDIT_FORM_TRIM_CARET)
+    expect(header).to_be_visible()
+    expect(header).to_have_attribute("aria-expanded", "false")
+    expect(caret).to_have_class(CLOSED_CLASS)
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+    expect(caret).not_to_have_class(CLOSED_CLASS)
+    chips = page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE)
+    expect(chips).to_have_count(2)
+
+    chips.nth(1).click()
+    expect(chips.nth(1)).to_have_attribute("aria-pressed", "false")
+    expect(page.locator(HPL.EDIT_FORM_TRIM_PREVIEW)).to_have_text(TRIM_URL_KEEP_ONLY)
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=False
+    )
+    expect(page.locator(HPL.EDIT_FORM_TRIM_DROPPED_COUNT)).to_have_text(
+        URL_TRIM_HEADER_DROPPED.format(n=1)
+    )
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    url_string_elem = url_row.locator(HPL.URL_STRING_READ)
+    expect(url_string_elem).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, TRIM_URL_KEEP_ONLY
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_TRIM_SAVED_BANNER_ONE
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_DETAIL)).to_have_text(TRIM_DROPPED_PARAM)
+
+    # Undo is the banner's one action: a solid fill, splashGreen mixed 75% with
+    # black (rgb(36, 167, 69) * 0.75); Chromium serializes color-mix as color(srgb).
+    undo_button = page.locator(HPL.URL_OUTCOME_BANNER_UNDO)
+    expect(undo_button).to_have_css(
+        "background-color", "color(srgb 0.105882 0.491176 0.202941)"
+    )
+    undo_button.click()
+
+    expect(url_string_elem).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, TRIM_URL_TWO_PARAMS
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
+    # The (closed) edit input must not keep the trimmed string it was saved with:
+    # opening the form again should show the restored original.
+    expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_have_value(
+        TRIM_URL_TWO_PARAMS
+    )
+
+
+def test_update_url_string_plain_edit_shows_updated_banner_and_undo_restores(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user editing a URL's string to a different URL with no parameters
+    WHEN the edit is saved
+    THEN the outcome banner reports "URL updated." (no dropped-parameter detail),
+        and Undo restores the string the card showed before the edit, in both the
+        card and the (closed) edit input
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    plain_new_url = "https://plain-edit.example.com/path"
+
+    url_row = _select_first_mock_url_and_type(
+        app=provide_app, page=page, typed_url=plain_new_url
+    )
+    url_string_elem = url_row.locator(HPL.URL_STRING_READ)
+    original_url = url_string_elem.get_attribute(HPL.URL_STRING_IN_DATA)
+    assert original_url is not None
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    expect(url_string_elem).to_have_attribute(HPL.URL_STRING_IN_DATA, plain_new_url)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_UPDATED_BANNER
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_DETAIL)).to_have_count(0)
+
+    page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
+
+    expect(url_string_elem).to_have_attribute(HPL.URL_STRING_IN_DATA, original_url)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
+    expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_have_value(original_url)
+
+
+def test_update_url_string_enter_key_plain_edit_shows_updated_banner(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user editing a URL's string to a different URL with no parameters
+    WHEN the edit is submitted with the Enter key
+    THEN the outcome banner reports "URL updated." with an Undo
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    plain_new_url = "https://plain-edit.example.com/path"
+
+    url_row = _select_first_mock_url_and_type(
+        app=provide_app, page=page, typed_url=plain_new_url
+    )
+    page.keyboard.press("Enter")
+
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, plain_new_url
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_UPDATED_BANNER
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_UNDO)).to_be_visible()
+
+
+def _show_updated_banner_with_fake_clock(*, app: Flask, page: Page) -> Locator:
+    """Install Playwright's fake clock, submit a plain edit and return the shown
+    outcome banner with the pointer parked away from it."""
+    _select_first_mock_url_and_type(
+        app=app, page=page, typed_url="https://plain-edit.example.com/path"
+    )
+    # Installed before the banner shows, so its countdown runs on the fake clock.
+    page.clock.install()
+    page.keyboard.press("Enter")
+
+    banner = page.locator(HPL.URL_OUTCOME_BANNER)
+    expect(banner).to_be_visible()
+    # A pointer resting where the banner appears would hold the countdown; moving
+    # it away either releases that hold or is a no-op.
+    page.mouse.move(1, 1)
+    return banner
+
+
+def test_outcome_banner_hides_itself_after_countdown(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN the "URL updated." banner is showing
+    WHEN the 10s countdown elapses with the pointer elsewhere
+    THEN the banner hides itself
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+
+    banner = _show_updated_banner_with_fake_clock(app=provide_app, page=page)
+    expect(banner).to_be_visible()
+
+    page.clock.fast_forward(11_000)
+
+    expect(banner).to_be_hidden()
+
+
+def test_outcome_banner_stays_while_hovered_and_hides_after_leaving(
+    page: Page,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN the "URL updated." banner is showing
+    WHEN the pointer hovers it past the countdown, then leaves
+    THEN the banner stays up while hovered and hides one countdown after leaving
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+
+    banner = _show_updated_banner_with_fake_clock(app=provide_app, page=page)
+
+    banner.hover()
+    page.clock.fast_forward(30_000)
+    expect(banner).to_be_visible()
+
+    page.mouse.move(1, 1)
+    page.clock.fast_forward(11_000)
+    expect(banner).to_be_hidden()
+
+
+def test_update_url_string_trim_conflict_shows_trim_message_and_expands_section(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub with two distinct URLs
+    WHEN the user edits one to the other's string plus a parameter they drop
+        (so the trimmed string collides)
+    THEN the trim-specific conflict message replaces the plain one and the trim
+        section is force-expanded so the cause is on screen
+    """
+    app = provide_app
+    user_id_for_test = 1
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == user_id_for_test).first()
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub.id
+        ).first()
+        colliding_url_string: str = utub_url.standalone_url.url_string
+        another_utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.url_title != utub_url.url_title
+        ).first()
+
+    login_user_select_utub_by_name_and_url_by_title(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=utub.name,
+        url_title=another_utub_url.url_title,
+    )
+    get_selected_url(page=page)
+    update_url_string(page=page, url_string=colliding_url_string + "?ref=x")
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+    conflict_chip = page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first
+    conflict_chip.click()
+    expect(conflict_chip).to_have_attribute("aria-pressed", "false")
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=False
+    )
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+
+    error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
+    expect(page.locator(error_css_selector)).to_have_text(URL_TRIM_CONFLICT)
+    expect(page.locator(HPL.EDIT_FORM_TRIM_HEADER)).to_have_attribute(
+        "aria-expanded", "true"
+    )

@@ -1,5 +1,10 @@
 import pytest
 
+from backend.extensions.url_validation.constants import (
+    TRACKING_QUERY_PARAM_PREFIXES,
+    TRACKING_QUERY_PARAMS,
+    WEB_SCHEMES_FOR_TRACKING_STRIP,
+)
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DeviceType
 from backend.utils.constants import generate_constants_js
@@ -27,6 +32,17 @@ def test_metrics_config_envs_exist():
 def test_generate_constants_js_includes_dimension_keys():
     constants = generate_constants_js()
     assert constants["DIMENSION_KEYS"] == list(get_all_dimension_keys())
+
+
+def test_generate_constants_js_includes_tracking_blocklist():
+    """The client blocklist mirrors the server's, so a blocklist edit cannot desync it."""
+    constants = generate_constants_js()
+    assert set(constants["TRACKING_QUERY_PARAMS"]) == TRACKING_QUERY_PARAMS
+    assert constants["TRACKING_QUERY_PARAMS"] == sorted(TRACKING_QUERY_PARAMS)
+    assert constants["TRACKING_QUERY_PARAM_PREFIXES"] == list(
+        TRACKING_QUERY_PARAM_PREFIXES
+    )
+    assert set(constants["TRACKING_STRIP_SCHEMES"]) == WEB_SCHEMES_FOR_TRACKING_STRIP
 
 
 def test_generate_constants_js_device_type_shape():

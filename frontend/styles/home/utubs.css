@@ -226,6 +226,17 @@
     padding-block: 1rem;
 }
 
+/* Coarse-pointer only: the name field's 20px `.field-saved-tick-slot` already
+   sits above the description input, so the 1rem top padding stacked ~36px
+   between the two inputs. Trim it to 4px (tick slot + 4px = ~24px) so the
+   name→description gap matches the URL card's title→string gap (urls.css).
+   Placed after the base rule so it wins by source order. */
+@media (any-pointer: coarse) {
+    #UTubDescriptionSubheaderWrap~.createDiv {
+        padding-top: 4px;
+    }
+}
+
 #UTubDescriptionSubheaderOuterWrap {
     width: 100%;
 }

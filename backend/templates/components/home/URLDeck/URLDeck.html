@@ -7,6 +7,9 @@
 		{% include 'components/home/URLDeck/URLDeckSubheader.html' %}
 	</div>
 
+	<!-- Trim outcome banner (with Undo). Outside #listURLs and every container that is emptied or rebuilt, so it survives card changes. -->
+	<div id="URLDeckOutcomeBanner" class="urlOutcomeBanner hidden" role="status"></div>
+
 	<!-- URLs -->
 	<div class="flex-column content">
 		<!-- URLs above selected URL will be displayed here -->

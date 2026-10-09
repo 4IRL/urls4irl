@@ -3021,6 +3021,164 @@ def test_update_url_same_target_with_tracking_params_is_no_change(
         assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
 
+@pytest.mark.parametrize(
+    "client_trimmed_url",
+    [
+        "https://example.com/p?ref=x",
+        "https://example.com/p?sort=date",
+        "https://example.com/p?page=2",
+        "https://example.com/p?q=1&q=2",
+        "https://example.com/search?q=hello%20world",
+        "https://example.com/?continue=https://gogle.cm",
+    ],
+)
+def test_update_url_stores_exactly_what_client_sent_for_non_blocklisted_params(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    client_trimmed_url,
+):
+    """
+    GIVEN a valid creator of a UTub that has a single URL with tags
+    WHEN the creator PATCHes that URL to a string whose query holds only
+        non-blocklisted params (what the client-side trim control submits)
+    THEN the response echoes, and the Urls row stores, exactly that string.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        utub_url_id = url_in_this_utub.id
+
+        assert Urls.query.filter(Urls.url_string == client_trimmed_url).count() == 0
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=utub_url_id,
+        ),
+        json={URL_FORM.URL_STRING: client_trimmed_url},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_string_form.status_code == 200
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == client_trimmed_url
+
+    with app.app_context():
+        assert Urls.query.filter(Urls.url_string == client_trimmed_url).count() == 1
+
+
+def test_update_url_trimmed_back_to_stored_value_is_no_change(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub whose URL was updated to a string with a
+        non-blocklisted query ("...?ref=x")
+    WHEN the creator PATCHes that URL with the exact stored string again (what
+        the edit form submits after the user drops an extra param they had typed)
+    THEN the response is 200 with status "No change" and the stored echo, never
+        a 409, and no new Urls or Utub_Urls rows are created.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+    stored_with_query = "https://example.com/p?ref=x"
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        utub_id = utub_creator_of.id
+        utub_url_id = url_in_this_utub.id
+
+    seed_response = client.patch(
+        url_for(ROUTES.URLS.UPDATE_URL, utub_id=utub_id, utub_url_id=utub_url_id),
+        json={URL_FORM.URL_STRING: stored_with_query},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+    assert seed_response.status_code == 200
+
+    with app.app_context():
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    trimmed_response = client.patch(
+        url_for(ROUTES.URLS.UPDATE_URL, utub_id=utub_id, utub_url_id=utub_url_id),
+        json={URL_FORM.URL_STRING: stored_with_query},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert trimmed_response.status_code == 200
+    json_response = trimmed_response.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
+    assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_NOT_MODIFIED
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == stored_with_query
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == utub_url_id
+
+    with app.app_context():
+        assert Urls.query.count() == num_of_urls
+        assert Utub_Urls.query.count() == num_of_url_utubs_assocs
+
+
+def test_update_user_trimmed_url_collision_returns_plain_in_utub_message(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub containing multiple distinct stored URLs
+    WHEN the creator PATCHes one URL to the exact stored string of another URL
+        in the UTub (the client-trimmed form of "<other>?ref=x")
+    THEN the server responds 409 with URL_ALREADY_IN_UTUB_ERROR and the plain
+        URL_IN_UTUB message, because it cannot tell a user trim happened. This is
+        why the friendlier trim-conflict message is substituted client-side.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        target_url_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id
+        ).first()
+        target_url_id = target_url_in_utub.url_id
+        target_url_string: str = target_url_in_utub.standalone_url.url_string
+
+        other_url_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id,
+            Utub_Urls.url_id != target_url_id,
+        ).first()
+        other_utub_url_id_to_update = other_url_in_utub.id
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_member_of.id,
+            utub_url_id=other_utub_url_id_to_update,
+        ),
+        json={URL_FORM.URL_STRING: target_url_string},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_string_form.status_code == 409
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert (
+        int(json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
+
+
 def test_update_url_tracking_param_collision_returns_informative_message(
     add_all_urls_and_users_to_each_utub_with_all_tags,
     login_first_user_without_register,

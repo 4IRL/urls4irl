@@ -33,7 +33,20 @@ import {
   STAGED_RESET_KEY,
 } from "../tags/combobox.js";
 import { renderAppliedTagsForUrl } from "../tags/tag-render.js";
+import {
+  TrimMode,
+  createParamTrimBlock,
+  expandParamTrimBlock,
+  readTrimSubmit,
+  resetParamTrim,
+  syncParamTrim,
+  type TrimSubmission,
+} from "../trim/param-trim-block.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
+import {
+  clearURLOutcomeBanner,
+  showTrimSavedBanner,
+} from "../outcome-banner.js";
 import { isATagSelected } from "../../tags/utils.js";
 import { getState, setState } from "../../../store/app-store.js";
 import {
@@ -46,6 +59,7 @@ import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
   HOME_FORM,
+  URL_PARAMS_TRIMMED_FORM,
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
@@ -59,6 +73,8 @@ type CreateUrlError = Schema<"ErrorResponse_URLErrorCodes">;
 const CREATE_URL_FIELD_NAMES = ["urlString", "urlTitle"] as const;
 
 type CreateUrlFieldName = (typeof CREATE_URL_FIELD_NAMES)[number];
+
+const TRIM_INPUT_EVENT = "input.createURLTrim";
 
 function isCreateUrlFieldName(key: string): key is CreateUrlFieldName {
   return (CREATE_URL_FIELD_NAMES as readonly string[]).includes(key);
@@ -81,7 +97,7 @@ export function bindCreateURLFocusEventListeners(
           trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
         });
         clearOpenForm();
-        createURL(createURLTitleInput, createURLInput, utubID);
+        createURL({ createURLTitleInput, createURLInput, utubID });
         break;
       case KEYS.ESCAPE:
         // Handle escape key pressed
@@ -109,10 +125,22 @@ export function resetNewURLForm(): void {
   $("#urlStringCreate").val("");
   $("#createURLWrap").hideClass();
   newURLInputRemoveEventListeners();
+  resetCreateURLParamTrim();
   resetCreateURLTagCombobox();
+  clearURLOutcomeBanner();
   $("#urlBtnCreate").showClassNormal();
   // Restore the multi-select toggle (guarded on the UTub still having URLs).
   refreshMultiSelectToggleVisibility();
+}
+
+// Cancels any pending debounced re-parse (via the block's reset callback) and
+// removes the mounted trim block. The block is destroyed and rebuilt on every
+// open, so it always starts hidden and collapsed; no collapse reset is needed.
+function resetCreateURLParamTrim(): void {
+  const trimWrap = $("#createURLWrap").find(".urlParamTrimWrap");
+  resetParamTrim({ trimWrap });
+  trimWrap.remove();
+  $("#urlStringCreate").off(TRIM_INPUT_EVENT);
 }
 
 // Clears the staged-tags backing state (via the combobox's exposed reset
@@ -142,6 +170,8 @@ export function createURLShowInput(utubID: number): void {
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();
   newURLInputAddEventListeners(createURLInputForm, utubID);
+  // Param trim mounts first so tab order is title, URL, params, tags, Add URL.
+  mountCreateURLParamTrim();
   mountCreateURLTagCombobox(utubID);
   // Keep initial focus on the URL Title input — the combobox must NOT steal focus
   // on form-open (it is a staging-only sub-control of the create form).
@@ -149,6 +179,33 @@ export function createURLShowInput(utubID: number): void {
   $("#urlBtnCreate").hideClass();
   $("#urlBtnMultiSelect").hideClass();
   temporarilyHideSearchForEdit();
+}
+
+// Mounts the opt-in query-parameter trim block between the URL input and the
+// tag combobox. Removes any stale block first so re-opening the form does not
+// stack duplicates. Never focuses the block: it appears mid-typing and must not
+// steal focus from the URL input.
+function mountCreateURLParamTrim(): void {
+  const createURLInputForm = $("#createURLWrap");
+  createURLInputForm.find(".urlParamTrimWrap").remove();
+  const trimWrap = createParamTrimBlock({
+    mode: TrimMode.CREATE,
+    urlCard: null,
+  });
+  $("#urlSubmitBtnCreate").closest(".flex-row").before(trimWrap);
+
+  // The block owns the debounce, so this handler is a direct call. It uses its
+  // own namespace rather than `.createURL`: the URL input's blur handler runs
+  // `.off(".createURL")` on that element, which would drop this listener the
+  // first time focus moved to a chip. resetCreateURLParamTrim removes it.
+  $("#urlStringCreate")
+    .off(TRIM_INPUT_EVENT)
+    .on(TRIM_INPUT_EVENT, function () {
+      syncParamTrim({
+        trimWrap,
+        rawValue: getInputValue($("#urlStringCreate")),
+      });
+    });
 }
 
 // Mounts the staging-only tag combobox inline in the Create URL form, between
@@ -169,17 +226,27 @@ function mountCreateURLTagCombobox(utubID: number): void {
 }
 
 // Prepares post request inputs for addition of a new URL
-function createURLSetup(
-  createURLTitleInput: JQuery,
-  createURLInput: JQuery,
-  utubID: number,
-): [string, CreateUrlRequest] {
+function createURLSetup({
+  createURLTitleInput,
+  createURLInput,
+  utubID,
+}: {
+  createURLTitleInput: JQuery;
+  createURLInput: JQuery;
+  utubID: number;
+}): [string, CreateUrlRequest, TrimSubmission | null] {
   // Assemble post request route
   const postURL = APP_CONFIG.routes.createURL(utubID);
 
   // Assemble submission data
   const urlTitle = getInputValue(createURLTitleInput);
-  const urlString = getInputValue(createURLInput);
+
+  // Flushes the trim block's pending debounce so a submit within 200ms of the
+  // last keystroke trims against the input's current value, not a stale parse.
+  const { urlString, trimSubmission } = readTrimSubmit({
+    trimWrap: $("#createURLWrap").find(".urlParamTrimWrap"),
+    rawValue: getInputValue(createURLInput),
+  });
 
   // Fold any staged tags from the inline combobox into the create request. The
   // getter returns a defensive copy; defaults to [] when the combobox is absent.
@@ -195,21 +262,25 @@ function createURLSetup(
     tagStrings,
   };
 
-  return [postURL, data];
+  return [postURL, data, trimSubmission];
 }
 
 // Handles addition of new URL after user submission
-export function createURL(
-  createURLTitleInput: JQuery,
-  createURLInput: JQuery,
-  utubID: number,
-): void {
+export function createURL({
+  createURLTitleInput,
+  createURLInput,
+  utubID,
+}: {
+  createURLTitleInput: JQuery;
+  createURLInput: JQuery;
+  utubID: number;
+}): void {
   // Extract data to submit in POST request
-  const [postURL, data] = createURLSetup(
+  const [postURL, data, trimSubmission] = createURLSetup({
     createURLTitleInput,
     createURLInput,
     utubID,
-  );
+  });
 
   if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
     log("createURL rejected by client-side validation", {
@@ -237,13 +308,13 @@ export function createURL(
     xhr: JQuery.jqXHR,
   ) {
     if (xhr.status === 200) {
-      createURLSuccess(response, utubID);
+      createURLSuccess({ response, utubID, trimSubmission });
     }
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
     resetCreateURLFailErrors();
-    createURLFail(xhr, utubID);
+    createURLFail({ xhr, utubID, trimSubmission });
   });
 
   request.always(function () {
@@ -254,7 +325,15 @@ export function createURL(
 }
 
 // Displays changes related to a successful addition of a new URL
-function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
+function createURLSuccess({
+  response,
+  utubID,
+  trimSubmission,
+}: {
+  response: CreateUrlResponse;
+  utubID: number;
+  trimSubmission: TrimSubmission | null;
+}): void {
   // Resets and hides the form and combobox (clears staged tags via STAGED_RESET_KEY)
   resetNewURLForm();
   const url = response.URL;
@@ -325,6 +404,19 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
 
   closeURLSearchAndEraseInput();
   showURLSearchIcon();
+
+  // Last, so the form reset and card selection above (which clear any banner)
+  // cannot wipe it. A save with nothing dropped relies on that same reset to
+  // clear a stale banner.
+  if (trimSubmission !== null && trimSubmission.droppedCount > 0) {
+    showTrimSavedBanner({
+      trimSubmission,
+      utubID,
+      utubUrlID: url.utubUrlID,
+      urlCard: newUrlCard,
+      form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
+    });
+  }
 }
 
 // DD-36's sanctioned client-side visual exception: the ONLY place the client
@@ -387,7 +479,15 @@ function reorderNewURLCardBySortPreference(
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
-function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
+function createURLFail({
+  xhr,
+  utubID,
+  trimSubmission,
+}: {
+  xhr: JQuery.jqXHR;
+  utubID: number;
+  trimSubmission: TrimSubmission | null;
+}): void {
   if (is429Handled(xhr)) return;
 
   if (!("responseJSON" in xhr)) {
@@ -447,9 +547,20 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
         conflictMessage: responseJSON.message,
       });
       checkForStaleDataOn409(responseJSON, utubID);
+      if ((trimSubmission?.droppedCount ?? 0) > 0) {
+        // The collision is caused by the user's trim: say so, and expand the
+        // section (same three-part move as the header toggle) so the cause is
+        // on screen.
+        expandParamTrimBlock({
+          trimWrap: $("#createURLWrap").find(".urlParamTrimWrap"),
+        });
+      }
       displayCreateUrlFailErrors({
         key: "urlString",
-        errorMessage: responseJSON.message as string,
+        errorMessage:
+          (trimSubmission?.droppedCount ?? 0) > 0
+            ? APP_CONFIG.strings.URL_TRIM_CONFLICT
+            : (responseJSON.message as string),
       });
       break;
     case 403:

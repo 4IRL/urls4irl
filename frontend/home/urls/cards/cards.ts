@@ -474,7 +474,7 @@ export function newURLInputAddEventListeners(
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     clearOpenForm();
-    createURL(createURLTitleInput, createURLInput, utubID);
+    createURL({ createURLTitleInput, createURLInput, utubID });
   });
 
   $(urlBtnDelete).onExact("click.createURL", function () {

@@ -337,6 +337,17 @@ a.urlString {
     .updateUrlStringWrap.flex-row {
         flex-direction: column !important;
     }
+
+    /* Tighten the dead space between the URL field and the Cancel bar while the
+       edit panel is open: the tick slot (20px) + 4px matches the ~24px
+       field-to-field gap below. Closed cards keep their padding. */
+    .urlRow[filterable="true"][urlSelected="true"] .urlRowContent:has(.updateUrlStringWrap:not(.hidden)) .urlTags:not(:has(.tagBadge)) {
+        padding: 0;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlRowContent:has(.updateUrlStringWrap:not(.hidden)) .urlOptions {
+        padding-top: 4px;
+    }
 }
 
 /* Descendant (space) combinator, not direct-child (>): the Step 3 two-level
@@ -360,6 +371,13 @@ a.urlString {
    so only mobile widens and desktop is untouched. */
 @media (any-pointer: coarse) {
     .urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap .text-input-container {
+        width: 100%;
+    }
+
+    /* Title and URL edit rows sit in separate 95% `.ninetyfive-width` wrappers and
+       ended at different right edges; make both full width while the panel is open. */
+    .urlRow[filterable="true"][urlSelected="true"] .ninetyfive-width:has(> .updateUrlTitleWrap:not(.hidden)),
+    .urlRow[filterable="true"][urlSelected="true"] .ninetyfive-width:has(> .updateUrlStringWrap:not(.hidden)) {
         width: 100%;
     }
 }
@@ -421,22 +439,20 @@ a.urlString {
     padding-top: 20px;
 }
 
-/* Coarse-pointer (mobile) only: match the vertical gap between the URL card's
-   Title and URL-string inputs to the gap between the UTub header's name and
-   description inputs (measured ~36px). On touch, each field also reserves a
-   ~1.25rem (20px) `.field-saved-tick-slot` below its input, so the desktop
-   20px+20px inter-wrap padding pushes the visual title→string gap to ~60px —
-   24px wider than the UTub panel. Drop the title wrap's bottom padding and trim
-   the string wrap's top padding to 16px so tick-slot(20px) + 16px = ~36px,
-   matching the UTub name→description gap. Desktop (no tick slot, side-by-side
-   layout) keeps the 20/20 padding above and is untouched. */
+/* Coarse-pointer (mobile) only: keep the Title-to-URL input gap at ~24px, equal
+   to the UTub header's name-to-description gap (utubs.css). Each field reserves a
+   20px `.field-saved-tick-slot`, so the string wrap's top padding is 4px
+   (tick slot + 4px) and the title's and string's bottom padding is dropped.
+   Must stay after the base `.updateUrlStringWrap` rule (source-order win);
+   desktop keeps its 20/20 padding. */
 @media (any-pointer: coarse) {
     .updateUrlTitleWrap {
         padding-bottom: 0;
     }
 
     .updateUrlStringWrap {
-        padding-top: 16px;
+        padding-top: 4px;
+        padding-bottom: 0;
     }
 }
 
@@ -590,6 +606,61 @@ a.urlString {
     .urlStringCancelBigBtnUpdate:active {
         background-color: var(--removeIconColorHover) !important;
         border-color: var(--removeIconColorHover) !important;
+        color: white !important;
+    }
+}
+
+/* Mobile "Save URL" beside the Close bar (only mounted on coarse pointers by
+   update-string.ts); shown only while the trim section is open. Darkened green
+   so the white label meets 4.5:1; every state is pinned against touch-sticky
+   :hover/:focus, like the Close bar. */
+.urlStringSaveBigBtnUpdate {
+    display: none;
+}
+
+.urlRowContent:has(.updateUrlStringWrap:not(.hidden) .urlParamTrimWrap:not(.hidden):not(.collapsed)) .urlStringSaveBigBtnUpdate {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* No margin of its own: `.urlOptions` spaces its buttons with gap-15p. */
+    color: white;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.urlStringSaveBigBtnUpdate,
+.urlStringSaveBigBtnUpdate:hover,
+.urlStringSaveBigBtnUpdate:focus,
+.urlStringSaveBigBtnUpdate:focus-visible {
+    background-color: var(--splashGreenSolid) !important;
+    border-color: var(--splashGreenSolid) !important;
+    color: white !important;
+}
+
+.urlStringSaveBigBtnUpdate:active {
+    background-color: var(--splashGreenSolidActive) !important;
+    border-color: var(--splashGreenSolidActive) !important;
+    color: white !important;
+}
+
+/* Mobile edit panels (URL card + UTub header): a confirm button whose field is
+   unchanged carries `.unchanged` + aria-disabled (see confirm-btn-state.ts).
+   Dimmed, not-allowed and without hover/active feedback; the colors are the
+   resting ones, so it reads the same in light and dark themes. */
+@media (any-pointer: coarse) {
+    button.unchanged[aria-disabled="true"] {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .green-clickable.unchanged[aria-disabled="true"]:hover,
+    .green-clickable.unchanged[aria-disabled="true"]:active {
+        color: var(--splashGreen);
+    }
+
+    .urlStringSaveBigBtnUpdate.unchanged[aria-disabled="true"]:hover,
+    .urlStringSaveBigBtnUpdate.unchanged[aria-disabled="true"]:active {
+        background-color: var(--splashGreenSolid) !important;
+        border-color: var(--splashGreenSolid) !important;
         color: white !important;
     }
 }

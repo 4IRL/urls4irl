@@ -117,6 +117,8 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_URL_COPY: Resource.URL,
     EventName.UI_URL_ACCESS_WARNING: Resource.URL,
     EventName.UI_URL_ACCESS_WARNING_DISMISS: Resource.URL,
+    EventName.UI_URL_PARAMS_TRIMMED: Resource.URL,
+    EventName.UI_URL_EDIT_UNDONE: Resource.URL,
     # UI — Search
     EventName.UI_UTUB_SEARCH_OPEN: Resource.SEARCH,
     EventName.UI_UTUB_SEARCH_CLOSE: Resource.SEARCH,

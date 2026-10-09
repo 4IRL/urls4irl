@@ -150,6 +150,8 @@ button {
         justify-content: flex-start;
         min-height: 1.25rem;
         height: auto;
+        /* A little air under the "Saved" text so it never touches what follows. */
+        padding-bottom: 4px;
     }
 }
 

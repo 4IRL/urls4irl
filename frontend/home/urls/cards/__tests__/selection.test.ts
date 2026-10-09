@@ -7,6 +7,7 @@ import {
   setURLCardSelectionEventListener,
 } from "../selection.js";
 import { enableTabbingOnURLCardElements } from "../utils.js";
+import { clearURLOutcomeBanner } from "../../outcome-banner.js";
 import { resetURLEditPanelState } from "../update-url-panel.js";
 import { hideAndResetUpdateURLTitleForm } from "../update-title.js";
 import { hideAndResetUpdateURLStringForm } from "../update-string.js";
@@ -27,6 +28,11 @@ vi.mock("../update-url-panel.js", () => ({
 }));
 vi.mock("../../tags/combobox.js", () => ({
   hideAndResetTagCombobox: vi.fn(),
+}));
+// outcome-banner.js transitively imports search.js (see the delete.js note
+// below); only its clear call matters to selection.
+vi.mock("../../outcome-banner.js", () => ({
+  clearURLOutcomeBanner: vi.fn(),
 }));
 vi.mock("../cards.js", () => ({
   setFocusEventListenersOnURLCard: vi.fn(),
@@ -184,6 +190,18 @@ describe("URL Card Selection", () => {
       selectURLCard(urlCard);
       deselectAllURLs();
       expect(urlCard.find(".goToUrlIcon").hasClass("visible-flex")).toBe(false);
+    });
+
+    it("clears the trim outcome banner when a card is deselected", () => {
+      selectURLCard(urlCard);
+      vi.mocked(clearURLOutcomeBanner).mockClear();
+      deselectAllURLs();
+      expect(clearURLOutcomeBanner).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not clear the banner when nothing was selected", () => {
+      deselectAllURLs();
+      expect(clearURLOutcomeBanner).not.toHaveBeenCalled();
     });
   });
 

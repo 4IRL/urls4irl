@@ -2,6 +2,7 @@ import re
 
 from playwright.sync_api import BrowserContext, Locator, Page, Route, expect
 
+from backend.cli.mock_constants import MOCK_URL_STRINGS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import assert_visible_css_selector
 from tests.functional.playwright_utils import (
@@ -34,6 +35,15 @@ SWIPE_SNAP_BACK_PX = 60
 # 40ms/step is ~0.25 px/ms — below the fling threshold — so only the (uncrossed)
 # distance threshold governs, and the row correctly snaps back.
 SWIPE_SNAP_BACK_STEP_DELAY_MS = 40
+
+
+# Query-parameter trim control test data shared by the create/update/mobile UI
+# suites: a two-param URL whose second param ("drop=2") the tests drop.
+TRIM_BASE_URL = MOCK_URL_STRINGS[0] + "p"
+TRIM_DROPPED_PARAM = "drop=2"
+TRIM_URL_TWO_PARAMS = f"{TRIM_BASE_URL}?keep=1&{TRIM_DROPPED_PARAM}"
+TRIM_URL_KEEP_ONLY = f"{TRIM_BASE_URL}?keep=1"
+CLOSED_CLASS = re.compile(r"(^|\s)closed(\s|$)")
 
 
 def _fulfill_with_stub_page(route: Route) -> None:
@@ -887,3 +897,19 @@ def expect_cant_delete_cue_on_row(*, page: Page, utub_url_id: int) -> None:
         f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}'] .bulkCardResultCue--skipped"
     )
     expect(page.locator(cue_selector)).to_be_visible()
+
+
+def set_trim_section_expanded(
+    *, page: Page, header_selector: str, expanded: bool
+) -> None:
+    """
+    Clicks the query-parameter trim disclosure header when it is not already in
+    the requested state, then asserts `aria-expanded` (the stable contract; it
+    also proves the ARIA stays in sync with the `.collapsed` / `.closed` classes).
+    """
+    header = page.locator(header_selector).first
+    expect(header).to_be_visible()
+    wanted = str(expanded).lower()
+    if header.get_attribute("aria-expanded") != wanted:
+        header.click()
+    expect(header).to_have_attribute("aria-expanded", wanted)
