@@ -24,7 +24,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub
 
 pytestmark = pytest.mark.urls
 
@@ -379,6 +379,78 @@ def test_service_non_member_destination_aborts_404(
         source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
         target_id = source_by_url_id[1].id
 
+        dest2_before = _dest_url_row_count(DEST_UTUB_ID)
+        dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
+
+        with pytest.raises(NotFound):
+            copy_urls_into_utubs(
+                source_utub_id=SOURCE_UTUB_ID,
+                dest_utub_ids=[DEST_UTUB_ID, THIRD_UTUB_ID],
+                utub_url_ids=[target_id],
+                current_user_id=copier_id,
+            )
+
+        assert _dest_url_row_count(DEST_UTUB_ID) == dest2_before
+        assert _dest_url_row_count(THIRD_UTUB_ID) == dest3_before
+
+
+def test_service_trashed_destination_aborts_404(
+    add_multi_dest_state_for_copy,
+    login_first_user_without_register,
+):
+    """
+    GIVEN the copier is a member of destination UTubs 2 and 3, but UTub 3 is trashed
+    WHEN a copy into [2, 3] is attempted
+    THEN the service aborts 404 (masking the trashed destination like a non-member
+        one) before any write, and no rows are written to any destination.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        assert Utub_Members.query.get((THIRD_UTUB_ID, copier_id)) is not None
+        source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
+        target_id = source_by_url_id[1].id
+
+    trash_utub(app, THIRD_UTUB_ID, copier_id)
+
+    with app.app_context():
+        dest2_before = _dest_url_row_count(DEST_UTUB_ID)
+        dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
+
+        with pytest.raises(NotFound):
+            copy_urls_into_utubs(
+                source_utub_id=SOURCE_UTUB_ID,
+                dest_utub_ids=[DEST_UTUB_ID, THIRD_UTUB_ID],
+                utub_url_ids=[target_id],
+                current_user_id=copier_id,
+            )
+
+        assert _dest_url_row_count(DEST_UTUB_ID) == dest2_before
+        assert _dest_url_row_count(THIRD_UTUB_ID) == dest3_before
+
+
+def test_service_trashed_source_aborts_404(
+    add_multi_dest_state_for_copy,
+    login_first_user_without_register,
+):
+    """
+    GIVEN the copier is a member of the source UTub 1, but UTub 1 is trashed
+    WHEN a copy out of it into [2, 3] is attempted
+    THEN the service aborts 404 (masking the trashed source like a non-member
+        source) before any write, and no rows are written to any destination.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        assert Utub_Members.query.get((SOURCE_UTUB_ID, copier_id)) is not None
+        source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
+        target_id = source_by_url_id[1].id
+
+    trash_utub(app, SOURCE_UTUB_ID, copier_id)
+
+    with app.app_context():
         dest2_before = _dest_url_row_count(DEST_UTUB_ID)
         dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
 

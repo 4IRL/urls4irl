@@ -22,7 +22,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub
 
 pytestmark = pytest.mark.urls
 
@@ -556,6 +556,84 @@ def test_route_non_member_of_destination_returns_404(
         target_id = source_by_url_id[1].id
         dest2_before = _dest_url_row_count(DEST_UTUB_ID)
         dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
+
+    response = client.post(
+        url_for(ROUTES.URLS.COPY_URLS_MULTI),
+        json={
+            SOURCE_UTUB_ID_FIELD: SOURCE_UTUB_ID,
+            DEST_UTUB_IDS_FIELD: [DEST_UTUB_ID, THIRD_UTUB_ID],
+            UTUB_URL_IDS_FIELD: [target_id],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 404
+
+    with app.app_context():
+        assert _dest_url_row_count(DEST_UTUB_ID) == dest2_before
+        assert _dest_url_row_count(THIRD_UTUB_ID) == dest3_before
+
+
+def test_route_trashed_source_returns_404(
+    add_multi_dest_state_for_copy,
+    login_first_user_without_register,
+):
+    """
+    GIVEN the copier is a member of source UTub 1, but UTub 1 is trashed
+    WHEN a copy out of it into [2, 3] is attempted
+    THEN the service masks the trashed source as 404 before any write, and no rows
+        are written to any destination.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        assert Utub_Members.query.get((SOURCE_UTUB_ID, copier_id)) is not None
+        source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
+        target_id = source_by_url_id[1].id
+        dest2_before = _dest_url_row_count(DEST_UTUB_ID)
+        dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
+
+    trash_utub(app, SOURCE_UTUB_ID, copier_id)
+
+    response = client.post(
+        url_for(ROUTES.URLS.COPY_URLS_MULTI),
+        json={
+            SOURCE_UTUB_ID_FIELD: SOURCE_UTUB_ID,
+            DEST_UTUB_IDS_FIELD: [DEST_UTUB_ID, THIRD_UTUB_ID],
+            UTUB_URL_IDS_FIELD: [target_id],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 404
+
+    with app.app_context():
+        assert _dest_url_row_count(DEST_UTUB_ID) == dest2_before
+        assert _dest_url_row_count(THIRD_UTUB_ID) == dest3_before
+
+
+def test_route_trashed_destination_returns_404(
+    add_multi_dest_state_for_copy,
+    login_first_user_without_register,
+):
+    """
+    GIVEN the copier is a member of destination UTubs 2 and 3, but UTub 3 is trashed
+    WHEN a copy into [2, 3] is attempted
+    THEN the service masks the trashed destination as 404 before any write, and no
+        rows are written to any destination.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        assert Utub_Members.query.get((THIRD_UTUB_ID, copier_id)) is not None
+        source_by_url_id = _source_rows_by_url_id(SOURCE_UTUB_ID)
+        target_id = source_by_url_id[1].id
+        dest2_before = _dest_url_row_count(DEST_UTUB_ID)
+        dest3_before = _dest_url_row_count(THIRD_UTUB_ID)
+
+    trash_utub(app, THIRD_UTUB_ID, copier_id)
 
     response = client.post(
         url_for(ROUTES.URLS.COPY_URLS_MULTI),

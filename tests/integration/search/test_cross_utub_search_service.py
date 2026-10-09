@@ -13,6 +13,7 @@ from backend.search.constants import MatchedField
 from backend.search.services.cross_utub_search import search_across_user_utubs
 from tests.integration.search.helpers import seed_single_utub_with_one_url
 from tests.models_for_test import all_tag_strings
+from tests.utils_for_test import trash_utub
 
 pytestmark = pytest.mark.urls
 
@@ -127,6 +128,35 @@ def test_search_excludes_non_member_utubs(
 
         returned_utub_ids = {group.utub_id for group in results.results}
         assert returned_utub_ids.isdisjoint(non_member_utub_ids)
+
+
+def test_search_excludes_urls_in_trashed_utub(
+    register_multiple_users,
+    app: Flask,
+):
+    query = "trashsearchmatch"
+    with app.app_context():
+        live_utub_id = seed_single_utub_with_one_url(
+            user_id=FIRST_USER_ID,
+            utub_name="Live UTub",
+            url_string="https://live.trashsearchmatch.com/",
+            url_title="Live",
+        )
+        trashed_utub_id = seed_single_utub_with_one_url(
+            user_id=FIRST_USER_ID,
+            utub_name="Trashed UTub",
+            url_string="https://trashed.trashsearchmatch.com/",
+            url_title="Trashed",
+        )
+
+    trash_utub(app, trashed_utub_id, FIRST_USER_ID)
+
+    with app.app_context():
+        results = search_across_user_utubs(query=query, user_id=FIRST_USER_ID)
+
+        returned_utub_ids = {group.utub_id for group in results.results}
+        assert trashed_utub_id not in returned_utub_ids
+        assert returned_utub_ids == {live_utub_id}
 
 
 def test_search_groups_by_source_utub(

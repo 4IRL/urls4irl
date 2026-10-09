@@ -8,6 +8,7 @@ from backend.members.services.co_member_search import get_co_member_candidates
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
+from tests.utils_for_test import trash_utub
 
 pytestmark = pytest.mark.members
 
@@ -45,6 +46,51 @@ def _add_member(utub: Utubs, user: Users) -> None:
     membership.user_id = user.id
     db.session.add(membership)
     db.session.commit()
+
+
+def test_candidates_ignore_trashed_shared_utub(app: Flask) -> None:
+    """A user who shares only a trashed UTub with the requester is not a candidate."""
+    with app.app_context():
+        requester = _make_user("requester")
+        trashed_only = _make_user("trashedonly")
+
+        target = _make_utub(requester, "Target")
+        trashed_shared = _make_utub(requester, "TrashedShared")
+        _add_member(trashed_shared, trashed_only)
+        requester_id = requester.id
+        target_id = target.id
+        trashed_shared_id = trashed_shared.id
+
+    trash_utub(app, trashed_shared_id, requester_id)
+
+    with app.app_context():
+        result = get_co_member_candidates(requester_id, Utubs.query.get(target_id))
+
+        assert result.members == []
+
+
+def test_shared_count_excludes_trashed_utub(app: Flask) -> None:
+    """A candidate sharing one live and one trashed UTub has shared_utub_count 1."""
+    with app.app_context():
+        requester = _make_user("requester")
+        alice = _make_user("alice")
+
+        target = _make_utub(requester, "Target")
+        live_shared = _make_utub(requester, "LiveShared")
+        trashed_shared = _make_utub(requester, "TrashedShared")
+        _add_member(live_shared, alice)
+        _add_member(trashed_shared, alice)
+        requester_id = requester.id
+        target_id = target.id
+        trashed_shared_id = trashed_shared.id
+
+    trash_utub(app, trashed_shared_id, requester_id)
+
+    with app.app_context():
+        result = get_co_member_candidates(requester_id, Utubs.query.get(target_id))
+
+        assert [member.username for member in result.members] == ["alice"]
+        assert result.members[0].shared_utub_count == 1
 
 
 def test_co_members_computed_with_shared_counts(app: Flask) -> None:

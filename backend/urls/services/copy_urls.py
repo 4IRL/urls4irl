@@ -121,7 +121,8 @@ def copy_urls_into_utubs(
             + `totalCopied`/`totalSkipped`) at HTTP 200 (including the all-skipped and
             all-locked no-op cases), or 400 (same-UTub copy, or one or more ids are not
             URLs in the source UTub). Raises a 404 (via `abort`) when the acting user is
-            not a member of the source UTub or of any destination UTub.
+            not a member of the source UTub or of any destination UTub, or when the
+            source or any destination UTub is trashed.
     """
     # Same-UTub guard (DD-4) — copying a UTub into itself is a no-op request.
     if source_utub_id in dest_utub_ids:
@@ -136,6 +137,15 @@ def copy_urls_into_utubs(
     if source_membership is None:
         abort(404)
 
+    # A trashed source UTub is masked as a 404, exactly like a non-member source.
+    if (
+        Utubs.query.filter(
+            Utubs.id == source_utub_id, Utubs.deleted_at.is_(None)
+        ).first()
+        is None
+    ):
+        abort(404)
+
     # Defensively de-dup ids (order-preserving), mirroring the request schema's own
     # dedup, so a direct/in-code caller cannot copy the same source row or target the
     # same destination twice.
@@ -144,13 +154,16 @@ def copy_urls_into_utubs(
 
     # All-destination membership (masking 404), ONE query (DD-4). Any destination the
     # user is not a member of masks the whole request as 404 — spoof/IDOR parity with
-    # the source check.
+    # the source check. A trashed destination is masked the same way (all-or-nothing
+    # 404, unlike the locked-destination skip-and-report).
     member_dest_ids = {
         row[0]
         for row in db.session.query(Utub_Members.utub_id)
+        .join(Utubs, Utubs.id == Utub_Members.utub_id)
         .filter(
             Utub_Members.user_id == current_user_id,
             Utub_Members.utub_id.in_(dest_utub_ids),
+            Utubs.deleted_at.is_(None),
         )
         .all()
     }
