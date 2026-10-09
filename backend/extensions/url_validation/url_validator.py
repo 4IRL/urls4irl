@@ -116,16 +116,17 @@ class UrlValidator:
         1) Removing leading/trailing whitespace/tabs
 
         Then a lowercased URL is checked.
-        If a host and numeric port are found in the URL, prefix http if DEV scheme else https
+        If a host and numeric port are found in the URL, prefix http if the host is a
+        dev URL (localhost, 127.0.0.1, 0.0.0.0) else https
 
         The scheme of the URL is parsed with a regex:
-        1) If no scheme is found: prepend http if not a localhost URL, else https
+        1) If no scheme is found: prepend http if it is a dev URL, else https
         2) If scheme is found that is invalid, raise InvalidURLError
         3) If scheme is found that is a dev URL, prepend http
         4) If scheme not in scheme whitelist, raise InvalidURLError
         5) If scheme does not start with mailto, contains an @, most likely of the format
             user:pass@example.com - We deny these here.
-        5) Otherwise, return the normalized URL as it contains a valid white-listed scheme
+        6) Otherwise, return the normalized URL as it contains a valid white-listed scheme
 
         Args:
             url (str): The URL to normalize
