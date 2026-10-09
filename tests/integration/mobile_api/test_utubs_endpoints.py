@@ -24,10 +24,12 @@ from backend.models.utub_members import Member_Role
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
+from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import UTUB_NAME, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
+from tests.utils_for_test import trash_utub
 
 pytestmark = pytest.mark.mobile_api
 
@@ -388,6 +390,30 @@ def test_get_single_utub_not_member_is_404(
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
+def test_get_single_utub_trashed_is_404(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN the creator of UTub id=1, where the UTub has been moved to trash
+    WHEN GET /api/v1/utubs/1
+    THEN 404 with the generic not-found envelope, exactly as for a deleted UTub
+    """
+    trash_utub(app, 1, deleted_by=1)
+
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=1),
+        headers=bearer_headers_first_user,
+    )
+
+    assert response.status_code == 404
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+
 # ===========================================================================
 # PATCH /api/v1/utubs/<utub_id>/name
 # ===========================================================================
@@ -678,3 +704,36 @@ def test_delete_utub_nonexistent_is_404(
     assert response.status_code == 404
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_delete_utub_already_trashed_is_404(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN the creator of UTub id=1, where the UTub is already in trash
+    WHEN DELETE /api/v1/utubs/1 again
+    THEN 404 with the generic not-found envelope, and the original trash
+        flags are left untouched
+    """
+    trash_utub(app, 1, deleted_by=1)
+
+    with app.app_context():
+        original_deleted_at = Utubs.query.get(1).deleted_at
+
+    response = api_client.delete(
+        _delete_utub_url(app, utub_id=1),
+        headers=bearer_headers_first_user,
+    )
+
+    assert response.status_code == 404
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        trashed_utub: Utubs = Utubs.query.get(1)
+        assert trashed_utub.deleted_at == original_deleted_at
+        assert trashed_utub.deleted_by == 1

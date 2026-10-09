@@ -96,6 +96,10 @@ def utub_membership_required(func: Callable) -> Callable:
             Member_Role.CO_CREATOR,
         )
         utub: Utubs = Utubs.query.get_or_404(utub_id)
+        # A trashed UTub 404s exactly like a deleted one; membership rows survive soft delete,
+        # so the check must be on the Utubs row, not the membership lookup above.
+        if utub.is_trashed:
+            abort(404)
         g.utub_id = utub.id
         kwargs["current_utub"] = utub
 
@@ -402,6 +406,10 @@ def api_utub_membership_required(func: Callable) -> Callable:
             Member_Role.CO_CREATOR,
         )
         utub: Utubs = Utubs.query.get_or_404(utub_id)
+        # A trashed UTub 404s exactly like a deleted one; membership rows survive soft delete,
+        # so the check must be on the Utubs row, not the membership lookup above.
+        if utub.is_trashed:
+            abort(404)
         g.utub_id = utub.id
         kwargs["current_utub"] = utub
 

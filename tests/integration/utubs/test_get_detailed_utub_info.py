@@ -16,6 +16,8 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
+from backend.utils.strings.json_strs import FAILURE_GENERAL
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.integration.system.metrics_helpers import count_counter_keys
@@ -23,6 +25,7 @@ from tests.utils_for_test import (
     count_tag_instances_in_utub,
     is_string_in_logs,
     set_member_role,
+    trash_utub,
 )
 
 pytestmark = pytest.mark.utubs
@@ -339,6 +342,32 @@ def test_get_valid_utub_as_not_member(
     )
 
     assert response.status_code == 404
+
+
+def test_get_trashed_utub_as_creator_is_404(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN the creator of a UTub that has been moved to trash
+    WHEN the creator requests the details of that UTub
+    THEN verify the server responds with a 404, exactly as for a deleted UTub
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        creator_user_id = current_user.id
+
+    trash_utub(app, utub_id, deleted_by=creator_user_id)
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 404
+    json_response = response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
 
 def test_get_valid_utub_with_members_urls_no_tags(
