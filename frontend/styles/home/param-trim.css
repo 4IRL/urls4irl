@@ -340,37 +340,27 @@
 }
 
 /* Touch only (the "Saved ✓" slot exists only there). The URL string field
-   reserves a 20px row for its transient "Saved ✓" tick. With the trim
-   disclosure showing, that row is an empty strip either above or below the
-   disclosure, whichever order the markup uses. So share one row: the disclosure
-   on the left and the tick overlaid at the right of the same row, vertically
-   centered on the 44px header. With no query string the disclosure is hidden and
-   the layout is unchanged (the tick sits directly under the input). `!important`
-   on `display` because the edit wrap is shown with `.visible-flex`
-   (`display: flex !important`, layout.css). */
+   reserves a 20px row for its transient "Saved ✓" tick, directly under the
+   input. With the trim disclosure showing, that reserved row is an empty strip
+   between the input and the disclosure. Keep the tick right under the input but
+   stop it reserving height: the slot collapses to zero and the tick is
+   positioned from the slot's top edge, so it fades in over the disclosure
+   row's own padding (the 44px header leaves ~11px above its text) instead of
+   pushing the disclosure down. With no query string the disclosure is hidden
+   and the full 20px row stays, so layout there is unchanged. */
 @media (any-pointer: coarse) {
-    .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) {
-        display: grid !important;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: start;
-    }
-
-    .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) > :first-child {
-        grid-column: 1 / -1;
-        grid-row: 1;
-    }
-
-    .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) > .urlParamTrimWrap {
-        grid-column: 1 / -1;
-        grid-row: 2;
-    }
-
     .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) > .field-saved-tick-slot {
-        grid-column: 2;
-        grid-row: 2;
-        z-index: 1;
+        position: relative;
+        height: 0;
+        min-height: 0;
         pointer-events: none;
-        margin-top: calc((2.75rem - 1.25rem) / 2);
+    }
+
+    .updateUrlStringWrap:not(.hidden):has(> .urlParamTrimWrap:not(.hidden)) > .field-saved-tick-slot > .field-saved-tick {
+        position: absolute;
+        top: 0;
+        left: 0;
+        white-space: nowrap;
     }
 }
 

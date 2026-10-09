@@ -434,9 +434,10 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).first).to_be_hidden()
 
     # The reserved "Saved" tick row must not become an empty strip above or below
-    # the disclosure: with the disclosure showing, the tick shares the
-    # disclosure's row (right side), so the disclosure sits right under the input
-    # and right above Close with only the small row gaps around it.
+    # the disclosure: with the disclosure showing, the tick stays directly under
+    # the input but reserves no height (it fades in over the disclosure row's own
+    # top padding), so the disclosure sits right under the input and right above
+    # Close with only the small row gaps around it.
     wait_until_vertical_gap(
         page=page,
         upper_selector=HPL.EDIT_FORM_TRIM_HEADER,
@@ -449,18 +450,19 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     tick_slot_box = selected_url.locator(
         ".updateUrlStringWrap .field-saved-tick-slot"
     ).bounding_box()
+    tick_box = selected_url.locator(
+        ".updateUrlStringWrap .field-saved-tick"
+    ).bounding_box()
     string_input_box = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE).bounding_box()
     assert tick_slot_box is not None and string_input_box is not None
-    header_bottom = header_box["y"] + header_box["height"]
-    assert header_box["y"] <= tick_slot_box["y"], "tick must share the trim row"
-    assert tick_slot_box["y"] + tick_slot_box["height"] <= header_bottom + 1
-    assert tick_slot_box["x"] >= header_box["x"] + header_box["width"], (
-        "tick must sit to the right of the disclosure text, not over it"
-    )
-    gap_above_header = header_box["y"] - (
-        string_input_box["y"] + string_input_box["height"]
-    )
-    assert gap_above_header <= 12, f"dead space above the trim: {gap_above_header}px"
+    assert tick_box is not None
+    input_bottom = string_input_box["y"] + string_input_box["height"]
+    assert tick_slot_box["height"] <= 1, "tick slot must not reserve a row"
+    assert 0 <= tick_slot_box["y"] - input_bottom <= 8, "tick must sit under the input"
+    assert header_box["y"] - input_bottom <= 12, "no dead space above the trim"
+    # The (faded) tick must clear the disclosure's caret/text (they start ~14px
+    # into the 44px header), so it never overlaps them when it shows.
+    assert tick_box["y"] + tick_box["height"] <= header_box["y"] + 16
 
     set_trim_section_expanded(
         page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
