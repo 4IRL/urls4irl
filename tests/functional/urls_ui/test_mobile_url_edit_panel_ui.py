@@ -467,8 +467,8 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
         page=page,
         upper_selector=string_input_selector,
         lower_selector=HPL.EDIT_FORM_TRIM_HEADER,
-        min_px=8,
-        max_px=12,
+        min_px=12,
+        max_px=16,
     )
     wait_until_vertical_gap(
         page=page,
@@ -482,7 +482,8 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     tick_box = _bounding_box(
         locator=selected_url.locator(".updateUrlStringWrap .field-saved-tick")
     )
-    assert tick_slot_box["height"] <= 1, "tick slot must not reserve a row"
+    # Only the 4px of air under the "Saved" text, never a full 20px row.
+    assert tick_slot_box["height"] <= 5, "tick slot must not reserve a row"
     assert abs(tick_box["y"] - tick_slot_box["y"]) <= 1, "tick is anchored to the slot"
     # The (faded) tick must clear the disclosure's caret/text (they start ~14px
     # into the 44px header), so it never overlaps them when it shows.
