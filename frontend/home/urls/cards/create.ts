@@ -45,6 +45,7 @@ import {
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import {
   clearURLOutcomeBanner,
+  showReviveBanner,
   showTrimSavedBanner,
 } from "../outcome-banner.js";
 import { isATagSelected } from "../../tags/utils.js";
@@ -342,6 +343,9 @@ function createURLSuccess({
     hiddenByTagFilter: isATagSelected(),
   });
   const utubUrlTagIDs = url.utubUrlTagIDs ?? [];
+  // Absent on a payload from before the revive fields existed: treat as a plain add.
+  const revivedFromTrash = response.revivedFromTrash ?? false;
+  const lostTagCount = response.lostTagCount ?? 0;
 
   const newUrl: UtubUrlItem = {
     utubUrlID: url.utubUrlID,
@@ -400,14 +404,21 @@ function createURLSuccess({
     selectURLCard(newUrlCard);
   }
 
-  reorderNewURLCardBySortPreference(newUrl, newUrlCard);
+  // A revive is announced by the visible outcome banner below (role=status), so
+  // the "URL added" live-region write is skipped to avoid a double announcement.
+  reorderNewURLCardBySortPreference({
+    newUrl,
+    newUrlCard,
+    announce: !revivedFromTrash,
+  });
 
   closeURLSearchAndEraseInput();
   showURLSearchIcon();
 
   // Last, so the form reset and card selection above (which clear any banner)
   // cannot wipe it. A save with nothing dropped relies on that same reset to
-  // clear a stale banner.
+  // clear a stale banner. A revive that also trimmed params folds into the trim
+  // banner (which carries Undo) so there is never a second banner.
   if (trimSubmission !== null && trimSubmission.droppedCount > 0) {
     showTrimSavedBanner({
       trimSubmission,
@@ -415,7 +426,10 @@ function createURLSuccess({
       utubUrlID: url.utubUrlID,
       urlCard: newUrlCard,
       form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
+      revive: revivedFromTrash ? { lostTagCount } : undefined,
     });
+  } else if (revivedFromTrash) {
+    showReviveBanner({ lostTagCount, utubUrlID: url.utubUrlID });
   }
 }
 
@@ -426,10 +440,15 @@ function createURLSuccess({
 // the stored sort order (the detach/re-append idiom sortTagFiltersInPlace uses),
 // then — only when the reorder actually relocated the new card away from its
 // top-of-list insertion point — scrolls it into view and announces the add.
-function reorderNewURLCardBySortPreference(
-  newUrl: UtubUrlItem,
-  newUrlCard: JQuery,
-): void {
+function reorderNewURLCardBySortPreference({
+  newUrl,
+  newUrlCard,
+  announce,
+}: {
+  newUrl: UtubUrlItem;
+  newUrlCard: JQuery;
+  announce: boolean;
+}): void {
   const HIGHLIGHT_CLASS = "url-card-created-highlight";
   const HIGHLIGHT_DURATION_MS = 700;
 
@@ -468,9 +487,11 @@ function reorderNewURLCardBySortPreference(
         : "smooth",
       block: "center",
     });
-    $("#fieldSavedAnnouncement").text(
-      APP_CONFIG.strings.URL_ADDED_ANNOUNCEMENT,
-    );
+    if (announce) {
+      $("#fieldSavedAnnouncement").text(
+        APP_CONFIG.strings.URL_ADDED_ANNOUNCEMENT,
+      );
+    }
   }
 
   // Swipe-nudge fires LAST so its viewport-visibility check reads the card's

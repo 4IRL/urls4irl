@@ -174,6 +174,9 @@ URL_TRIM_ANNOUNCE = "{verb} {param}. {kept} of {total} parameters kept."
 URL_TRIM_BULK_ANNOUNCE = "{kept} of {total} parameters kept."
 URL_TRIM_SAVED_BANNER = "Saved without {n} parameters."
 URL_TRIM_SAVED_BANNER_ONE = "Saved without 1 parameter."
+URL_REVIVED_FROM_TRASH = "Restored from trash."
+URL_REVIVED_LOST_TAGS = "Restored from trash. {n} tags no longer exist."
+URL_REVIVED_LOST_TAGS_ONE = "Restored from trash. 1 tag no longer exists."
 # Mobile edit panel: saves the URL field (same as its green check) while the trim
 # section is open, so the trimmed result has an obvious save control by Close.
 URL_TRIM_SAVE_URL = "Save URL"

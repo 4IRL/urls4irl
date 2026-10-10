@@ -11,6 +11,7 @@ import { createURLBlock } from "../cards.js";
 import { selectURLCard } from "../selection.js";
 import {
   clearURLOutcomeBanner,
+  showReviveBanner,
   showTrimSavedBanner,
 } from "../../outcome-banner.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
@@ -64,6 +65,7 @@ vi.mock("../conflict-handler.js", () => ({
 }));
 
 vi.mock("../../outcome-banner.js", () => ({
+  showReviveBanner: vi.fn(),
   showTrimSavedBanner: vi.fn(),
   clearURLOutcomeBanner: vi.fn(),
 }));
@@ -556,6 +558,152 @@ describe("createURL - client-side validation", () => {
     });
   });
 
+  describe("createURLSuccess revive feedback", () => {
+    let newCard: JQuery;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `
+        <div id="listURLs">
+          <div id="createURLWrap"></div>
+          <div class="urlRow" utuburlid="10"></div>
+          <div class="urlRow" utuburlid="11"></div>
+        </div>
+        <input id="urlStringCreate" />
+        <input id="urlTitleCreate" />
+        <button id="urlBtnCreate"></button>
+        <div id="urlCreateDualLoadingRing"></div>
+        <span id="fieldSavedAnnouncement"></span>
+      `;
+      vi.mocked(getState).mockReturnValue({
+        urls: [{ utubUrlID: 10 }, { utubUrlID: 11 }, { utubUrlID: 42 }],
+        preferences: {
+          theme: "system",
+          defaultView: "list",
+          defaultSort: "oldest",
+          density: "comfortable",
+          dateFormat: "iso",
+        },
+      } as unknown as ReturnType<typeof getState>);
+      newCard = $('<div class="urlRow" utuburlid="42"></div>');
+      (newCard[0] as HTMLElement).scrollIntoView = vi.fn();
+      vi.mocked(createURLBlock).mockReturnValue(newCard);
+      // Default: the new card sorts first, so the reorder is a no-op.
+      sortNewCardFirst();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function sortNewCardFirst(): void {
+      vi.mocked(applyDefaultUrlSort).mockReturnValue([
+        { utubUrlID: 42 },
+        { utubUrlID: 10 },
+        { utubUrlID: 11 },
+      ] as unknown as ReturnType<typeof applyDefaultUrlSort>);
+    }
+
+    function sortNewCardLast(): void {
+      vi.mocked(applyDefaultUrlSort).mockReturnValue([
+        { utubUrlID: 10 },
+        { utubUrlID: 11 },
+        { utubUrlID: 42 },
+      ] as unknown as ReturnType<typeof applyDefaultUrlSort>);
+    }
+
+    function addWith(extra: Record<string, unknown>): void {
+      $("#urlStringCreate").val("https://example.com");
+      $("#urlTitleCreate").val("Example");
+      const response = {
+        utubID: 1,
+        addedByUserID: 1,
+        URL: {
+          utubUrlID: 42,
+          urlString: "https://example.com",
+          urlTitle: "Example",
+          utubUrlTagIDs: [],
+          addedAt: "2024-03-09T12:00:00+00:00",
+        },
+        appliedTags: [],
+        ...extra,
+      };
+      vi.mocked(ajaxCall).mockReturnValue(
+        createMockJqXHRChainable({
+          done: (callback: unknown) =>
+            (callback as (r: unknown, t: unknown, x: unknown) => void)(
+              response,
+              "success",
+              { status: 200 },
+            ),
+        }),
+      );
+      createURL({
+        createURLTitleInput: $("#urlTitleCreate"),
+        createURLInput: $("#urlStringCreate"),
+        utubID: 1,
+      });
+    }
+
+    it("shows the revive banner with no lost tags and stays silent for screen readers on a no-op reorder", () => {
+      addWith({ revivedFromTrash: true, lostTagCount: 0 });
+
+      expect(showReviveBanner).toHaveBeenCalledTimes(1);
+      expect(showReviveBanner).toHaveBeenCalledWith({
+        lostTagCount: 0,
+        utubUrlID: 42,
+      });
+      expect($("#fieldSavedAnnouncement").text()).toBe("");
+    });
+
+    it.each([1, 2])(
+      "passes lostTagCount %i through to the revive banner",
+      (lostTagCount) => {
+        addWith({ revivedFromTrash: true, lostTagCount });
+
+        expect(showReviveBanner).toHaveBeenCalledTimes(1);
+        expect(showReviveBanner).toHaveBeenCalledWith({
+          lostTagCount,
+          utubUrlID: 42,
+        });
+      },
+    );
+
+    it("does not write the URL added announcement when the reorder moves a revived card", () => {
+      sortNewCardLast();
+
+      addWith({ revivedFromTrash: true, lostTagCount: 0 });
+
+      expect(showReviveBanner).toHaveBeenCalledTimes(1);
+      expect((newCard[0] as HTMLElement).scrollIntoView).toHaveBeenCalledTimes(
+        1,
+      );
+      expect($("#fieldSavedAnnouncement").text()).toBe("");
+    });
+
+    it("keeps the URL added announcement and shows no revive banner for a plain add", () => {
+      sortNewCardLast();
+
+      addWith({ revivedFromTrash: false, lostTagCount: 0 });
+
+      expect(showReviveBanner).not.toHaveBeenCalled();
+      expect($("#fieldSavedAnnouncement").text()).toBe(
+        APP_CONFIG.strings.URL_ADDED_ANNOUNCEMENT,
+      );
+    });
+
+    it("treats a payload without the revive fields as a plain add", () => {
+      sortNewCardLast();
+
+      addWith({});
+
+      expect(showReviveBanner).not.toHaveBeenCalled();
+      expect($("#fieldSavedAnnouncement").text()).toBe(
+        APP_CONFIG.strings.URL_ADDED_ANNOUNCEMENT,
+      );
+    });
+  });
+
   describe("createURLFail - tagStrings error routes to combobox message", () => {
     it("writes the tagStrings error into the inline combobox message element", () => {
       $("#createURLWrap").append(
@@ -857,7 +1005,10 @@ describe("createURL - query-parameter trim block", () => {
   });
 
   describe("outcome banner", () => {
-    function succeedWith(urlString: string): void {
+    function succeedWith(
+      urlString: string,
+      extra: Record<string, unknown> = {},
+    ): void {
       const response = {
         utubID: 1,
         addedByUserID: 1,
@@ -869,6 +1020,7 @@ describe("createURL - query-parameter trim block", () => {
           addedAt: "2024-03-09T12:00:00+00:00",
         },
         appliedTags: [],
+        ...extra,
       };
       mockCreateRequest({
         done: (callback: unknown) =>
@@ -932,6 +1084,37 @@ describe("createURL - query-parameter trim block", () => {
       const showOrder =
         vi.mocked(showTrimSavedBanner).mock.invocationCallOrder[0];
       expect(Math.max(...clearOrders)).toBeLessThan(showOrder);
+    });
+
+    it("folds a revive into the trim banner instead of showing a second banner", () => {
+      typeURL(QUERY_URL);
+      vi.advanceTimersByTime(200);
+      trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+      succeedWith("https://example.com/p?a=1&c=3", {
+        revivedFromTrash: true,
+        lostTagCount: 2,
+      });
+
+      submit();
+
+      expect(showTrimSavedBanner).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(showTrimSavedBanner).mock.calls[0][0].revive).toEqual({
+        lostTagCount: 2,
+      });
+      expect(showReviveBanner).not.toHaveBeenCalled();
+    });
+
+    it("passes no revive to the trim banner for a plain add", () => {
+      typeURL(QUERY_URL);
+      vi.advanceTimersByTime(200);
+      trimWrap().find(".urlParamTrimChip").eq(1).trigger("click");
+      succeedWith("https://example.com/p?a=1&c=3");
+
+      submit();
+
+      expect(
+        vi.mocked(showTrimSavedBanner).mock.calls[0][0].revive,
+      ).toBeUndefined();
     });
 
     it("shows no banner when the trim block is absent", () => {
