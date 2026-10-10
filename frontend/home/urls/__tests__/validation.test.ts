@@ -1,4 +1,27 @@
-import { isValidURL, generateURLObj } from "../validation.js";
+import {
+  isValidURL,
+  generateURLObj,
+  isSupportedURLScheme,
+} from "../validation.js";
+
+describe("isSupportedURLScheme", () => {
+  it.each(["foo://x", "ftpx://x", "javascript:alert(1)"])(
+    "rejects unsupported scheme prefix %s",
+    (urlString) => {
+      expect(isSupportedURLScheme({ urlString })).toBe(false);
+    },
+  );
+
+  it.each([
+    "https://x",
+    "example.com",
+    "localhost:8080",
+    "mailto:a@b.com",
+    "https://user:pass@host.com",
+  ])("accepts %s", (urlString) => {
+    expect(isSupportedURLScheme({ urlString })).toBe(true);
+  });
+});
 
 describe("isValidURL", () => {
   describe("returns false for non-string or empty inputs", () => {
