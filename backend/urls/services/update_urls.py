@@ -113,6 +113,7 @@ def update_url_in_utub(
         ).to_response()
 
     if validated_new_url.url_state == URLState.EXISTING_URL_TRASHED_IN_UTUB:
+        # Type narrowing for mypy only; not validation or verification (asserts are stripped under -O).
         assert validated_new_url.utub_url is not None
         return _revive_trashed_url_on_edit(
             current_utub=current_utub,

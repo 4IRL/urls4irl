@@ -90,6 +90,7 @@ def create_url_in_utub(
         return build_response_for_invalidated_url(validated_new_url.normalized_url)
 
     if validated_new_url.url_state == URLState.EXISTING_URL_TRASHED_IN_UTUB:
+        # Type narrowing for mypy only; not validation or verification (asserts are stripped under -O).
         assert validated_new_url.utub_url is not None
         return _revive_trashed_url_in_utub(
             current_utub=current_utub,
