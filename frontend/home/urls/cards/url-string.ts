@@ -205,7 +205,7 @@ function createUpdateURLStringInput(
   urlStringTextInput.on(TRIM_INPUT_EVENT, function () {
     syncParamTrim({
       trimWrap,
-      rawValue: getInputValue(urlStringTextInput),
+      text: getInputValue(urlStringTextInput),
     });
   });
 

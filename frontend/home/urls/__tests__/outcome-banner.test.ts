@@ -670,7 +670,7 @@ describe("outcome banner", () => {
         expect($(".urlStringUpdate").val()).toBe(ORIGINAL);
         expect(flushParamTrim).toHaveBeenCalledTimes(1);
         const flushed = vi.mocked(flushParamTrim).mock.calls[0][0];
-        expect(flushed.rawValue).toBe(ORIGINAL);
+        expect(flushed.text).toBe(ORIGINAL);
         expect(flushed.trimWrap[0]).toBe($(".urlParamTrimWrap")[0]);
       });
 

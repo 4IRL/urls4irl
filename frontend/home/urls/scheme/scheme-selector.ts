@@ -69,6 +69,12 @@ function fillTemplate({
 // even one mounted with the same idPrefix.
 let mountCounter = 0;
 
+// The toggle's visible text is the scheme, so its accessible name carries the
+// current value too ("URL scheme: https") rather than only the control's role.
+function toggleAccessibleName({ scheme }: { scheme: string }): string {
+  return `${APP_CONFIG.strings.URL_SCHEME_TOGGLE_LABEL}: ${scheme}`;
+}
+
 // Ids and event namespaces must not contain spaces or dots.
 function sanitizeIdPrefix({ idPrefix }: { idPrefix: string }): string {
   return idPrefix.replace(/[^A-Za-z0-9_-]/g, "-");
@@ -97,6 +103,7 @@ export function mountSchemeSelector({
   let destroyed = false;
   let rowsBuilt = false;
   let refocusTimer: ReturnType<typeof setTimeout> | null = null;
+  let announceTimer: ReturnType<typeof setTimeout> | null = null;
   // Enter on the filter activates on KEYUP (like the rows), but only when its
   // keydown also landed on the filter: opening the list with Enter on the toggle
   // moves focus to the filter mid-press, and that Enter keyup must not select.
@@ -116,7 +123,7 @@ export function mountSchemeSelector({
       "aria-haspopup": "listbox",
       "aria-expanded": "false",
       "aria-controls": listboxId,
-      "aria-label": APP_CONFIG.strings.URL_SCHEME_TOGGLE_LABEL,
+      "aria-label": toggleAccessibleName({ scheme: currentScheme }),
     })
     .append(toggleLabel)
     .append(toggleCaret);
@@ -268,6 +275,7 @@ export function mountSchemeSelector({
     currentScheme = scheme;
     explicit = isExplicit;
     toggleLabel.text(scheme);
+    toggle.attr("aria-label", toggleAccessibleName({ scheme }));
     syncSelectedRows();
   }
 
@@ -337,10 +345,35 @@ export function mountSchemeSelector({
     }, 0);
   }
 
+  function clearAnnounceTimer(): void {
+    if (announceTimer === null) return;
+    clearTimeout(announceTimer);
+    announceTimer = null;
+  }
+
+  // Cleared first, then set on a deferred tick: a repeat of the same text is
+  // otherwise not a change, so a screen reader would not re-read it.
+  function announceScheme({ scheme }: { scheme: string }): void {
+    clearAnnounceTimer();
+    announceRegion.text("");
+    announceTimer = setTimeout(() => {
+      announceTimer = null;
+      if (destroyed) return;
+      announceRegion.text(
+        fillTemplate({
+          template: APP_CONFIG.strings.URL_SCHEME_SET_ANNOUNCE,
+          token: "{scheme}",
+          value: scheme,
+        }),
+      );
+    }, 0);
+  }
+
   function selectRow(row: JQuery<HTMLElement>): void {
     const scheme = row.attr("data-scheme");
     if (scheme === undefined) return;
     applyScheme({ scheme, isExplicit: true });
+    announceScheme({ scheme });
     closeList({ restoreFocus: false });
     // Armed before onChange: if the owner closes/resets/destroys the selector
     // from its callback, that cancels the pending refocus instead of arming one
@@ -360,15 +393,7 @@ export function mountSchemeSelector({
     isExplicit: () => explicit,
     setScheme({ scheme, explicit: isExplicit, announce = false }) {
       applyScheme({ scheme, isExplicit });
-      if (announce) {
-        announceRegion.text(
-          fillTemplate({
-            template: APP_CONFIG.strings.URL_SCHEME_SET_ANNOUNCE,
-            token: "{scheme}",
-            value: scheme,
-          }),
-        );
-      }
+      if (announce) announceScheme({ scheme });
     },
     setInvalid({ invalid }) {
       toggle.toggleClass("invalid-field", invalid);
@@ -379,6 +404,7 @@ export function mountSchemeSelector({
         scheme: APP_CONFIG.constants.URL_DEFAULT_SCHEME,
         isExplicit: false,
       });
+      clearAnnounceTimer();
       announceRegion.text("");
     },
     close() {
@@ -390,6 +416,7 @@ export function mountSchemeSelector({
       // Cancels the pending refocus and unbinds this instance's own document,
       // focusout and key listeners (each carries a per-mount namespace).
       closeList({ restoreFocus: false });
+      clearAnnounceTimer();
       toggle.off(".urlSchemeToggle .urlSchemeToggleEscape");
       filterInput.off(".urlSchemeFilter");
       options.off(".urlSchemeSelect");

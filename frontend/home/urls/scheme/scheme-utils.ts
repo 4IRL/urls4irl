@@ -118,6 +118,16 @@ export function hasUnsupportedSchemePrefix({
   return true;
 }
 
+// Dev hosts (localhost, 127.0.0.1, ...) rarely serve TLS, so a non-explicit
+// selector shows `http` for them and the app default for everything else.
+const DEV_HOST_SCHEME = "http";
+
+export function defaultSchemeForText({ text }: { text: string }): string {
+  return isDevHostText({ text })
+    ? DEV_HOST_SCHEME
+    : APP_CONFIG.constants.URL_DEFAULT_SCHEME;
+}
+
 export function isDevHostText({ text }: { text: string }): boolean {
   const hosts = APP_CONFIG.constants.URL_DEV_HOSTS;
   if (hosts.length === 0) return false;

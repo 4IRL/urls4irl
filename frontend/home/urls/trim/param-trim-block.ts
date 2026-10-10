@@ -16,6 +16,7 @@ import {
   type ParsedQuery,
   type QueryParamSegment,
 } from "../query-params.js";
+import { composeURL } from "../scheme/scheme-utils.js";
 
 /**
  * The two flows the trim block serves. `CREATE` is the single Add-URL form
@@ -53,27 +54,35 @@ export interface TrimSubmission {
  * Typed accessors over the `wrap.data(KEY)` callbacks. Each is a no-op when the
  * block is absent (an empty `trimWrap` jQuery set has no data).
  */
-export function syncParamTrim({
-  trimWrap,
-  rawValue,
-}: {
+interface TrimInput {
   trimWrap: JQuery;
-  rawValue: string;
-}): void {
+  /** The URL input's text. A full URL when `scheme` is omitted. */
+  text: string;
+  /** The selected scheme to compose with `text`; omit when `text` is already a full URL. */
+  scheme?: string;
+}
+
+// Absent scheme means `text` is already a full URL (the same convention
+// `composeURL` uses for text carrying its own scheme).
+function composeTrimInput({
+  text,
+  scheme,
+}: {
+  text: string;
+  scheme?: string;
+}): string {
+  return scheme === undefined ? text : composeURL({ scheme, text });
+}
+
+export function syncParamTrim({ trimWrap, text, scheme }: TrimInput): void {
   (trimWrap.data(TRIM_SYNC_KEY) as ((value: string) => void) | undefined)?.(
-    rawValue,
+    composeTrimInput({ text, scheme }),
   );
 }
 
-export function flushParamTrim({
-  trimWrap,
-  rawValue,
-}: {
-  trimWrap: JQuery;
-  rawValue: string;
-}): void {
+export function flushParamTrim({ trimWrap, text, scheme }: TrimInput): void {
   (trimWrap.data(TRIM_FLUSH_KEY) as ((value: string) => void) | undefined)?.(
-    rawValue,
+    composeTrimInput({ text, scheme }),
   );
 }
 
@@ -86,14 +95,12 @@ export function resetParamTrim({ trimWrap }: { trimWrap: JQuery }): void {
  * string to submit and the drop summary. With no block (or nothing dropped) the
  * string is the raw input value and the submission is null.
  */
-export function readTrimSubmit({
-  trimWrap,
-  rawValue,
-}: {
-  trimWrap: JQuery;
-  rawValue: string;
-}): { urlString: string; trimSubmission: TrimSubmission | null } {
-  flushParamTrim({ trimWrap, rawValue });
+export function readTrimSubmit({ trimWrap, text, scheme }: TrimInput): {
+  urlString: string;
+  trimSubmission: TrimSubmission | null;
+} {
+  const rawValue = composeTrimInput({ text, scheme });
+  flushParamTrim({ trimWrap, text: rawValue });
   const getTrimmed = trimWrap.data(TRIM_GET_KEY) as (() => string) | undefined;
   const getSubmission = trimWrap.data(TRIM_SUBMISSION_KEY) as
     | (() => TrimSubmission)

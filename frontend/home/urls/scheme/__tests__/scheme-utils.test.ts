@@ -1,6 +1,7 @@
 import { APP_CONFIG } from "../../../../lib/config.js";
 import {
   composeURL,
+  defaultSchemeForText,
   hasUnsupportedSchemePrefix,
   isAuthorityScheme,
   isDevHostText,
@@ -176,6 +177,24 @@ describe("isDevHostText", () => {
     "false for %j",
     (text) => {
       expect(isDevHostText({ text })).toBe(false);
+    },
+  );
+});
+
+describe("defaultSchemeForText", () => {
+  it.each(["localhost:3000", "127.0.0.1/x", "0.0.0.0"])(
+    "is http for dev host %j",
+    (text) => {
+      expect(defaultSchemeForText({ text })).toBe("http");
+    },
+  );
+
+  it.each(["example.com", "", "localhostx.com"])(
+    "is the app default for %j",
+    (text) => {
+      expect(defaultSchemeForText({ text })).toBe(
+        APP_CONFIG.constants.URL_DEFAULT_SCHEME,
+      );
     },
   );
 });

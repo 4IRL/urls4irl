@@ -240,7 +240,7 @@ export function performUndo({
         input.val(restoredURLString);
         flushParamTrim({
           trimWrap: urlCard.find(".urlParamTrimWrap"),
-          rawValue: restoredURLString,
+          text: restoredURLString,
         });
       }
       // The stored value changed (and the input may have been resynced): re-derive

@@ -173,7 +173,7 @@ export function showUpdateURLStringForm({
   // the debounced sync). It never takes focus, so the select-all below is safe.
   flushParamTrim({
     trimWrap: updateURLStringWrap.find(".urlParamTrimWrap"),
-    rawValue: getInputValue(updateURLStringWrap.find("input.urlStringUpdate")),
+    text: getInputValue(updateURLStringWrap.find("input.urlStringUpdate")),
   });
 
   // Handle case where iOS needs a direct focus not in a timeout, even with animation
@@ -268,7 +268,7 @@ export function hideAndResetUpdateURLStringForm({
   if (keepOpen) {
     flushParamTrim({
       trimWrap,
-      rawValue: getInputValue(urlCard.find(".urlStringUpdate")),
+      text: getInputValue(urlCard.find(".urlStringUpdate")),
     });
   }
 
@@ -346,7 +346,7 @@ function updateURLSetup({
   // last keystroke trims against the input's current value, not a stale parse.
   const { urlString, trimSubmission } = readTrimSubmit({
     trimWrap: urlCard.find(".urlParamTrimWrap"),
-    rawValue: getInputValue(urlStringUpdateInput),
+    text: getInputValue(urlStringUpdateInput),
   });
 
   const data: UpdateUrlStringRequest = { urlString: urlString.trim() };

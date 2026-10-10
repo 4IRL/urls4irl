@@ -205,7 +205,7 @@ describe("scheme-selector", () => {
       expect(toggle.attr("aria-haspopup")).toBe("listbox");
       expect(toggle.attr("aria-expanded")).toBe("false");
       expect(toggle.attr("aria-label")).toBe(
-        APP_CONFIG.strings.URL_SCHEME_TOGGLE_LABEL,
+        `${APP_CONFIG.strings.URL_SCHEME_TOGGLE_LABEL}: ${APP_CONFIG.constants.URL_DEFAULT_SCHEME}`,
       );
       expect(toggle.text()).toContain(APP_CONFIG.constants.URL_DEFAULT_SCHEME);
 
@@ -614,6 +614,22 @@ describe("scheme-selector", () => {
       expect($(TOGGLE).text()).toContain("mailto");
     });
 
+    it("selecting a row announces the pick in the live region", () => {
+      vi.useFakeTimers();
+      const region = $(".visually-hidden[aria-live='polite']");
+      expect(region.text()).toBe("");
+
+      rowFor({ scheme: "mailto" }).click();
+      vi.advanceTimersByTime(0);
+
+      expect(region.text()).toBe(
+        APP_CONFIG.strings.URL_SCHEME_SET_ANNOUNCE.replace(
+          "{scheme}",
+          "mailto",
+        ),
+      );
+    });
+
     it("keyboard Enter on a row selects it", () => {
       const row = rowFor({ scheme: "ftp" });
       row.focus();
@@ -676,7 +692,8 @@ describe("scheme-selector", () => {
       row.focus();
       pressKey({ target: row, key: "Enter" });
 
-      expect(vi.getTimerCount()).toBe(0);
+      // Only the pick's announcement is pending; close() cancelled the refocus.
+      expect(vi.getTimerCount()).toBe(1);
       vi.runAllTimers();
       expect(focusSpy).not.toHaveBeenCalled();
       expect(document.activeElement).not.toBe(urlInput[0]);
@@ -911,6 +928,13 @@ describe("scheme-selector", () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
+    it("setScheme keeps the toggle's accessible name in step with the scheme", () => {
+      handle.setScheme({ scheme: "mailto", explicit: true });
+      expect($(TOGGLE).attr("aria-label")).toBe(
+        `${APP_CONFIG.strings.URL_SCHEME_TOGGLE_LABEL}: mailto`,
+      );
+    });
+
     it("setScheme with explicit marks it explicit", () => {
       handle.setScheme({ scheme: "ftp", explicit: true });
       expect(handle.isExplicit()).toBe(true);
@@ -940,7 +964,9 @@ describe("scheme-selector", () => {
     });
 
     it("announce writes the set-scheme message into a polite hidden region", () => {
+      vi.useFakeTimers();
       handle.setScheme({ scheme: "mailto", explicit: true, announce: true });
+      vi.advanceTimersByTime(0);
       const region = $(".visually-hidden[aria-live='polite']");
       expect(region).toHaveLength(1);
       expect(region.text()).toBe(
@@ -951,31 +977,72 @@ describe("scheme-selector", () => {
       );
     });
 
-    it("reset clears the announce region", () => {
+    it("announce clears the region first and sets the text on a deferred tick", () => {
+      vi.useFakeTimers();
       handle.setScheme({ scheme: "mailto", explicit: true, announce: true });
+      vi.advanceTimersByTime(0);
+      const region = $(".visually-hidden[aria-live='polite']");
+      expect(region.text()).not.toBe("");
+
+      // A repeat of the same text must pass through an empty state so a screen
+      // reader sees a change.
+      handle.setScheme({ scheme: "mailto", explicit: true, announce: true });
+      expect(region.text()).toBe("");
+      vi.advanceTimersByTime(0);
+      expect(region.text()).toBe(
+        APP_CONFIG.strings.URL_SCHEME_SET_ANNOUNCE.replace(
+          "{scheme}",
+          "mailto",
+        ),
+      );
+    });
+
+    it("destroy cancels a pending announcement", () => {
+      vi.useFakeTimers();
+      handle.setScheme({ scheme: "mailto", explicit: true, announce: true });
+      expect(vi.getTimerCount()).toBe(1);
+      handle.destroy();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("reset clears the announce region and cancels a pending announcement", () => {
+      vi.useFakeTimers();
+      handle.setScheme({ scheme: "mailto", explicit: true, announce: true });
+      vi.advanceTimersByTime(0);
       expect($(".visually-hidden[aria-live='polite']").text()).not.toBe("");
       handle.reset();
+      expect($(".visually-hidden[aria-live='polite']").text()).toBe("");
+
+      handle.setScheme({ scheme: "ftp", explicit: true, announce: true });
+      handle.reset();
+      vi.advanceTimersByTime(0);
       expect($(".visually-hidden[aria-live='polite']").text()).toBe("");
     });
 
     it("renders a scheme containing markup as text, never as elements", () => {
+      vi.useFakeTimers();
       handle.setScheme({
         scheme: "<img src=x onerror=1>",
         explicit: false,
         announce: true,
       });
+      vi.advanceTimersByTime(0);
       expect($(TOGGLE).find("img")).toHaveLength(0);
       expect($(TOGGLE).text()).toContain("<img src=x onerror=1>");
       expect($(".urlSchemeAnnounce").find("img")).toHaveLength(0);
     });
 
     it("does not announce unless asked", () => {
+      vi.useFakeTimers();
       handle.setScheme({ scheme: "mailto", explicit: true });
+      vi.advanceTimersByTime(0);
       expect($(".visually-hidden[aria-live='polite']").text()).toBe("");
     });
 
     it("inserts a scheme containing $& literally into the live region", () => {
+      vi.useFakeTimers();
       handle.setScheme({ scheme: "a$&b", explicit: false, announce: true });
+      vi.advanceTimersByTime(0);
       expect($(".visually-hidden[aria-live='polite']").text()).toBe(
         APP_CONFIG.strings.URL_SCHEME_SET_ANNOUNCE.replace(
           "{scheme}",
