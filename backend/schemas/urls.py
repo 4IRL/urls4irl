@@ -137,6 +137,16 @@ class UrlCreatedResponseSchema(BaseSchema):
         alias=MODELS.APPLIED_TAGS,
         description="Tags applied to the URL on creation, with UTub-wide counts",
     )
+    revived_from_trash: bool = Field(
+        default=False,
+        alias=MODELS.REVIVED_FROM_TRASH,
+        description="True when the add revived this UTub's trashed row for the URL instead of inserting a new one.",
+    )
+    lost_tag_count: int = Field(
+        default=0,
+        alias=MODELS.LOST_TAG_COUNT,
+        description="On a revive, how many of the URL's tags were deleted from the UTub while it was trashed.",
+    )
 
 
 class UrlDeletedResponseSchema(BaseSchema):

@@ -1908,6 +1908,16 @@ export interface components {
       URL: components["schemas"]["UrlCreatedItemSchema"];
       /** @description Tags applied to the URL on creation, with UTub-wide counts */
       appliedTags?: components["schemas"]["UtubTagSchema"][];
+      /**
+       * @description True when the add revived this UTub's trashed row for the URL instead of inserting a new one.
+       * @default false
+       */
+      revivedFromTrash: boolean;
+      /**
+       * @description On a revive, how many of the URL's tags were deleted from the UTub while it was trashed.
+       * @default 0
+       */
+      lostTagCount: number;
     };
     ErrorResponse_URLErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["URLErrorCodes"];

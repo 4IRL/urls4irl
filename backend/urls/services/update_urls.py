@@ -94,6 +94,16 @@ def update_url_in_utub(
             ),
         ).to_response()
 
+    if validated_new_url.url_state == URLState.EXISTING_URL_TRASHED_IN_UTUB:
+        warning_log(
+            f"User={current_user.id} tried editing UTubURL.id={current_utub_url.id} to URL.id={validated_new_url.url.id} which is trashed in UTub.id={current_utub.id}"
+        )
+        return build_message_error_response(
+            message=URL_FAILURE.URL_IN_UTUB_TRASHED,
+            error_code=URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
+            status_code=409,
+        )
+
     if validated_new_url.url_state == URLState.EXISTING_URL_IN_UTUB:
         assert validated_new_url.url is not None
         warning_log(

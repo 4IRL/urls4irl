@@ -43,7 +43,11 @@ from tests.unit.test_url_validation import (
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
     INVALID_URLS_TO_VALIDATE,
 )
-from tests.utils_for_test import is_string_in_logs, is_string_in_logs_regex
+from tests.utils_for_test import (
+    is_string_in_logs,
+    is_string_in_logs_regex,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.urls
 
@@ -2411,6 +2415,65 @@ def test_update_utub_url_with_url_already_in_utub(
             ).first()
             is not None
         )
+
+
+def test_update_url_to_trashed_url_in_utub_is_409_without_url_string(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub whose URL B is trashed (soft-deleted) and a live URL A in the same UTub
+    WHEN the user edits URL A's URL string to URL B's string
+    THEN the server responds 409 with URL_IN_UTUB_TRASHED and URL_ALREADY_IN_UTUB_ERROR, does not echo
+        a urlString (it would point at an invisible row), leaves the trashed row trashed, and does not
+        change URL A
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_member_of.id
+
+        utub_urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).all()
+        edited_utub_url = utub_urls_in_utub[0]
+        trashed_utub_url = utub_urls_in_utub[1]
+        edited_utub_url_id = edited_utub_url.id
+        edited_url_id = edited_utub_url.url_id
+        trashed_utub_url_id = trashed_utub_url.id
+        trashed_url_string = trashed_utub_url.standalone_url.url_string
+
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=1)
+
+    with app.app_context():
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_id,
+            utub_url_id=edited_utub_url_id,
+        ),
+        json={URL_FORM.URL_STRING: trashed_url_string},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 409
+    json_response = response.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB_TRASHED
+    assert json_response[STD_JSON.ERROR_CODE] == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    assert json_response.get(MODEL_STRS.URL_STRING) is None
+
+    with app.app_context():
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+        assert Utub_Urls.query.get(trashed_utub_url_id).is_trashed
+        assert Utub_Urls.query.get(edited_utub_url_id).url_id == edited_url_id
 
 
 def test_update_valid_url_with_fresh_valid_url_log(

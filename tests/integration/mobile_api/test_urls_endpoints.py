@@ -27,7 +27,7 @@ from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
-from backend.utils.strings.url_strs import URL_SUCCESS
+from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_NAME
 from tests.models_for_test import valid_url_strings
 from tests.utils_for_test import trash_utub, trash_utub_url
@@ -255,6 +255,49 @@ def test_create_url_duplicate_is_409(
         assert Utub_Urls.query.count() == initial_count
 
 
+def test_create_url_revives_trashed_row(
+    app: Flask,
+    api_client: FlaskClient,
+    add_one_url_to_each_utub_no_tags,
+    make_bearer_headers: Callable[[str], dict[str, str]],
+):
+    """
+    GIVEN UTub 1's row for "https://www.abc.com/" (added by user 1) is trashed
+    WHEN user 1 POSTs the same URL string again
+    THEN 200 with the SAME utubUrlID, revivedFromTrash True and lostTagCount 0; the row is live again
+        and no new row was inserted
+    """
+    user_1_token = _token_for_user(app, user_id=1)
+
+    with app.app_context():
+        trashed_utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == 1
+        ).one()
+        trashed_utub_url_id = trashed_utub_url.id
+        initial_count = Utub_Urls.query.count()
+
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=1)
+
+    response = api_client.post(
+        _create_url_url(app, utub_id=1),
+        json={MODELS.URL_STRING: _UTUB_1_URL_STRING, MODELS.URL_TITLE: _TEST_URL_TITLE},
+        headers=make_bearer_headers(user_1_token),
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[MODELS.URL][URL_SUCCESS.UTUB_URL_ID] == trashed_utub_url_id
+    assert response_json[MODELS.REVIVED_FROM_TRASH] is True
+    assert response_json[MODELS.LOST_TAG_COUNT] == 0
+
+    with app.app_context():
+        assert Utub_Urls.query.count() == initial_count
+        revived_utub_url: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
+        assert revived_utub_url.deleted_at is None
+        assert revived_utub_url.url_title == _TEST_URL_TITLE
+
+
 # ===========================================================================
 # GET /api/v1/utubs/<utub_id>/urls/<utub_url_id> — retrieve URL
 # ===========================================================================
@@ -469,6 +512,44 @@ def test_update_url_non_adder_member_is_403(
     assert response.status_code == 403
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_update_url_to_trashed_url_in_utub_is_409(
+    app: Flask,
+    api_client: FlaskClient,
+    add_mixed_delete_permission_urls_in_first_utub,
+    make_bearer_headers: Callable[[str], dict[str, str]],
+):
+    """
+    GIVEN UTub 1 holds live URL 1 and a trashed URL 2
+    WHEN user 1 PATCHes URL 1's urlString to URL 2's string
+    THEN 409 with the URL_IN_UTUB_TRASHED message and no urlString echoed; the trashed row stays trashed
+    """
+    user_1_token = _token_for_user(app, user_id=1)
+
+    with app.app_context():
+        trashed_utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == 1, Utub_Urls.url_id == 2
+        ).one()
+        trashed_utub_url_id = trashed_utub_url.id
+        trashed_url_string = trashed_utub_url.standalone_url.url_string
+
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=2)
+
+    response = api_client.patch(
+        _update_url_url(app, utub_id=1, utub_url_id=1),
+        json={MODELS.URL_STRING: trashed_url_string},
+        headers=make_bearer_headers(user_1_token),
+    )
+
+    assert response.status_code == 409
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB_TRASHED
+    assert response_json.get(MODELS.URL_STRING) is None
+
+    with app.app_context():
+        assert Utub_Urls.query.get(trashed_utub_url_id).is_trashed
 
 
 def test_update_url_no_token_is_401(
