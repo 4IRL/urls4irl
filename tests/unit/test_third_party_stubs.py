@@ -1,7 +1,8 @@
 """Unit tests for the UI-test helper that answers the page's CDN scripts from local vendor files."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 import pytest
 from playwright.sync_api import BrowserContext, Route
@@ -15,10 +16,17 @@ from tests.functional.third_party_stubs import (
 
 pytestmark = pytest.mark.unit
 
-JQUERY_URL = "https://code.jquery.com/jquery-3.7.1.min.js"
-BOOTSTRAP_URL = (
-    "https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+JQUERY_URL, BOOTSTRAP_URL = CDN_SCRIPT_URLS_TO_VENDOR_FILES
+JQUERY_FILE_NAME = CDN_SCRIPT_URLS_TO_VENDOR_FILES[JQUERY_URL]
+BUNDLES_TEMPLATE = (
+    Path(__file__).resolve().parents[2]
+    / "backend"
+    / "templates"
+    / "components"
+    / "head"
+    / "bundles.html"
 )
+LOCAL_FALLBACK_PATH = "/static/dist/vendor"
 
 
 class FakeContext:
@@ -63,11 +71,19 @@ def _write_vendor_files(vendor_dir: Path, file_names: list[str]) -> None:
 
 def test_cdn_urls_match_the_page_template():
     """
-    GIVEN the CDN URLs the helper stubs
-    WHEN compared with the URLs the production template requests
-    THEN they are identical, so the stub intercepts the real requests
+    GIVEN the production head template that requests the CDN scripts
+    WHEN the URLs the helper stubs are looked up in its text
+    THEN each CDN URL, the analytics beacon URL and the local fallback path appear in it,
+        so the stub still intercepts the real requests
     """
-    assert set(CDN_SCRIPT_URLS_TO_VENDOR_FILES) == {JQUERY_URL, BOOTSTRAP_URL}
+    template_text = BUNDLES_TEMPLATE.read_text()
+
+    for url in (
+        *CDN_SCRIPT_URLS_TO_VENDOR_FILES,
+        ANALYTICS_BEACON_URL,
+        LOCAL_FALLBACK_PATH,
+    ):
+        assert url in template_text
 
 
 def test_cdn_scripts_are_served_from_their_vendor_files(tmp_path: Path):
@@ -93,7 +109,7 @@ def test_cdn_script_is_left_on_the_real_cdn_without_its_vendor_file(tmp_path: Pa
     WHEN the helper is applied
     THEN jQuery is stubbed and Bootstrap keeps using the real CDN
     """
-    _write_vendor_files(tmp_path, ["jquery-3.7.1.min.js"])
+    _write_vendor_files(tmp_path, [JQUERY_FILE_NAME])
 
     context = _stub(tmp_path)
 

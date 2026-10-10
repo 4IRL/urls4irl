@@ -125,6 +125,8 @@ Lifecycle: the entrypoint (`docker/playwright-entrypoint.sh`) supervises the ser
 
 Every failing UI test (desktop or mobile) writes its evidence automatically, so the first read after a red run is the evidence, not a guess. Capture lives in `tests/functional/failure_artifacts.py`: the two page fixtures (`page_without_cookie_banner_cookie`, `page_mobile_portrait_without_cookie_banner_cookie`) wrap their browser context in `recorded_context` right after `new_context()`, so it also covers a failure before the fixture yields (e.g. a `page.goto()` timeout). The module is registered as a root pytest plugin (`tests/conftest.py` `pytest_plugins`), so its session hooks also run on the xdist controller. Read the result with `make test-artifacts`.
 
+The same page fixtures also apply `tests/functional/third_party_stubs.py` to their context. When `frontend/public/vendor` is populated by `frontend/setup-vendor.sh` (CI and host runs), the UI tests serve the jQuery/Bootstrap CDN scripts from it, keeping the production markup; local container runs do not mount that directory, so they keep using the real CDN. The script exits non-zero on any download failure.
+
 Layout, under `tmp/test-artifacts/` (gitignored; `web` bind-mounts it, and every stack-start target pre-creates it host-owned, so the files are yours):
 
 ```

@@ -1,15 +1,12 @@
 """Keep the UI tests off the public CDNs without changing the page under test.
 
-The page loads jQuery and Bootstrap from CDNs as parser-blocking scripts (see
-`backend/templates/components/head/bundles.html`). A hung CDN request holds the `load` event
-until it times out, which fails the shared fixture's `page.goto`. Instead of switching the page
-to its local-bundle mode, the browser still requests the production CDN URLs and Playwright
-answers them from the files `frontend/setup-vendor.sh` downloads. The production markup, the
-integrity check on the served bytes and the request origins all stay in play.
+A hung parser-blocking CDN script holds the `load` event and fails the fixture's `page.goto`.
+Rather than switching the page to its local-bundle mode, the production CDN URLs are stubbed
+from the vendor files, so the production markup and integrity checks stay in play.
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from playwright.sync_api import BrowserContext, Route
 
@@ -43,8 +40,9 @@ def stub_third_party_requests(
 ) -> None:
     """Answer the page's CDN scripts from `vendor_dir` and neutralize the analytics beacon.
 
-    A CDN script is only stubbed when its vendor file exists, so a checkout that never ran
-    `frontend/setup-vendor.sh` (a local run) keeps using the real CDN as before.
+    Stubbing applies where `frontend/public/vendor` exists (CI and host runs); local container
+    runs do not mount it and keep using the real CDN. A script is only stubbed when its vendor
+    file exists.
     """
     for url, file_name in CDN_SCRIPT_URLS_TO_VENDOR_FILES.items():
         vendor_file = vendor_dir / file_name

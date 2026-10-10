@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import pytest
 from playwright.sync_api import Page
 
@@ -10,18 +12,23 @@ from tests.functional.third_party_stubs import (
 
 pytestmark = pytest.mark.splash_ui
 
+# The template's `vendor_base` fallback in backend/templates/components/head/bundles.html.
 LOCAL_VENDOR_FALLBACK_PATH = "/static/dist/vendor/"
 
-requires_vendor_files = pytest.mark.skipif(
-    not all(
+
+def _require_vendor_files() -> None:
+    """Fail in CI, skip elsewhere, when the vendor files the CDN stubs serve are missing."""
+    if all(
         (VENDOR_DIR / name).is_file()
         for name in CDN_SCRIPT_URLS_TO_VENDOR_FILES.values()
-    ),
-    reason="frontend/setup-vendor.sh has not been run; CDN scripts are not stubbed",
-)
+    ):
+        return
+    message = "frontend/setup-vendor.sh has not been run; CDN scripts are not stubbed"
+    if os.environ.get("CI"):
+        pytest.fail(message)
+    pytest.skip(message)
 
 
-@requires_vendor_files
 def test_stubbed_cdn_scripts_load_without_the_local_fallback(page: Page):
     """
     GIVEN the UI-test context answers the jQuery and Bootstrap CDN URLs from the vendor files
@@ -29,6 +36,7 @@ def test_stubbed_cdn_scripts_load_without_the_local_fallback(page: Page):
     THEN both libraries are defined and the template's local fallback is never requested,
         proving the browser accepted the stubbed bytes (integrity hash and CORS) as the CDN scripts
     """
+    _require_vendor_files()
     requested_urls: list[str] = []
     page.on("request", lambda request: requested_urls.append(request.url))
 
