@@ -92,9 +92,7 @@ URL_BULK_DELETE_DISABLED_REASON = (
 )
 URL_BULK_DELETE_CONFIRM_TITLE = "Delete {n} URLs from this UTub?"
 URL_BULK_DELETE_CONFIRM_TITLE_ONE = "Delete 1 URL from this UTub?"
-URL_BULK_DELETE_CONFIRM_BODY = (
-    "This permanently removes them from this UTub for everyone. It can't be undone."
-)
+URL_BULK_DELETE_CONFIRM_BODY = "This removes them from this UTub for everyone."
 URL_BULK_DELETE_HIDDEN_WARNING = (
     "{n} selected URLs are hidden by your filter and will still be deleted."
 )
