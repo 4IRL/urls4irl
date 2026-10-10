@@ -47,6 +47,11 @@ Pydantic models for request parsing and response serialization used by the AJAX 
 
 - `@email_validation_required` - requires login + validated email
 - `@utub_membership_required` - requires membership in target UTub
+- **UTub row lock** (`backend/utubs/guards.py`) - every writer of `Utubs.utub_creator`, `Utub_Members.member_role` or `Utubs.is_locked` must take the per-UTub lock **first**, before any mutation: `lock_and_reauthorize` in user routes (locks, re-reads fresh state with `populate_existing`, re-checks the caller's role and the locked/trashed flags) or `lock_utub_for_update` in admin/internal code (`backend/admin/moderation_service.py`, `account_data_service.py`).
+  - The lock is `SELECT ... FOR NO KEY UPDATE` on the `Utubs` row, the weakest row lock that still serializes writers of that row. It does not block the FK `KEY SHARE` check taken by child inserts, but every URL/tag/member writer and `GET /utubs/<id>` also UPDATEs `Utubs.last_updated` via `set_last_updated()`, so they queue behind the lock until commit.
+  - Lock order: the `Utubs` row before any `UtubMembers` row. Code locking several UTubs (`erase_user_core`) does so in ascending id order. Re-reads must use `populate_existing()`, since the session identity map otherwise returns stale cached roles.
+  - Single-CREATOR backstop: the partial unique index `uq_utub_members_single_creator` (see Models) allows one CREATOR row per UTub, checked per statement, so promote paths demote/delete the old CREATOR and `flush()` before promoting the new one.
+  - Hold time: no `lock_timeout` is set (Postgres defaults). The lock is held until commit/rollback, so keep the locked section short. Add-member's Redis calls are bounded to ~1s by `socket_timeout=1, socket_connect_timeout=1`; without them a Redis hang would hold the lock until gunicorn's default 30s worker timeout. A stalled holder blocks other writers to that UTub, and URL/tag writes and UTub opens on a locked UTub wait too, so `erase_user_core` stalls them for every UTub it locks.
 - `@no_authenticated_users_allowed` - splash pages (logged-out only)
 - **`backend/api_common/parse_request.py`** - `@api_route(request_schema, response_schema, error_message, error_code, ajax_required)`: unified decorator for API routes. Enforces AJAX (`X-Requested-With: XMLHttpRequest`) by default (`ajax_required=True`); splash POST routes, contact, and health opt out with `ajax_required=False`. When `request_schema` is provided, validates `request.get_json()` against a Pydantic schema and injects a kwarg named after the schema (e.g. `LoginRequest` → `login_request`); returns 400 on missing body or validation failure. `response_schema` declares the expected response type for future OpenAPI generation.
 
@@ -55,6 +60,8 @@ Pydantic models for request parsing and response serialization used by the AJAX 
 Core domain: `Users` -> `Utub_Members` (with `Member_Role`: MEMBER/CREATOR/CO_CREATOR) -> `Utubs` -> `Utub_Urls` -> `Urls`. Tags: `Utub_Tags` <-> `Utub_Url_Tags` <-> `Utub_Urls`.
 
 ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.3.
+
+`Utub_Members` carries the partial unique index `uq_utub_members_single_creator` (one CREATOR row per UTub); the locking and flush-ordering rules that keep writers compatible with it are in the UTub row lock note under Key Decorators.
 
 `Utubs` and `Utub_Urls` carry nullable soft-delete columns (`deletedAt`, `deletedBy`; `Utub_Urls` also has the `trashedTagIds` tag snapshot), where `NULL` means live. The `Utubs` columns are live: deleting a UTub sets them (a 30-day trash), and the membership gates, deck list, co-member/cross-UTub search, URL copy and Settings stats exclude trashed UTubs (admin, data export, account erasure and the anonymous gauges still see them by design). The `Utub_Urls` columns remain unused until URL soft-delete lands.
 
