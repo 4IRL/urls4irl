@@ -597,7 +597,7 @@ export interface paths {
     delete: operations["apiV1DeleteUrl"];
     options?: never;
     head?: never;
-    /** @description Update a URL string in a UTub */
+    /** @description Update a URL string in a UTub. When the new link matches a URL trashed in this UTub, that trashed row is revived and the edited row is trashed: the response then has revivedFromTrash true and replacedUtubUrlID set to the edited card's id. Clients must swap that card id for the returned url.utubUrlID whenever replacedUtubUrlID is non-null. */
     patch: operations["apiV1UpdateUrl"];
     trace?: never;
   };
@@ -1300,7 +1300,7 @@ export interface paths {
     delete: operations["deleteUrl"];
     options?: never;
     head?: never;
-    /** @description Update a URL string in a UTub */
+    /** @description Update a URL string in a UTub. When the new link matches a URL trashed in this UTub, that trashed row is revived and the edited row is trashed: the response then has revivedFromTrash true and replacedUtubUrlID set to the edited card's id. Clients must swap that card id for the returned url.utubUrlID whenever replacedUtubUrlID is non-null. */
     patch: operations["updateUrl"];
     trace?: never;
   };
@@ -1908,6 +1908,16 @@ export interface components {
       URL: components["schemas"]["UrlCreatedItemSchema"];
       /** @description Tags applied to the URL on creation, with UTub-wide counts */
       appliedTags?: components["schemas"]["UtubTagSchema"][];
+      /**
+       * @description True when the add revived this UTub's trashed row for the URL instead of inserting a new one.
+       * @default false
+       */
+      revivedFromTrash: boolean;
+      /**
+       * @description On a revive, how many of the URL's tags were deleted from the UTub while it was trashed.
+       * @default 0
+       */
+      lostTagCount: number;
     };
     ErrorResponse_URLErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["URLErrorCodes"];
@@ -1943,8 +1953,29 @@ export interface components {
       utubID: number;
       /** @description Name of the UTub containing the URL */
       utubName: string;
-      /** @description Detailed URL item with updated URL string */
+      /** @description Detailed URL item with updated URL string. On a revive-on-edit this is the revived row, not the edited one. */
       URL: components["schemas"]["UtubUrlDetailSchema"];
+      /**
+       * @description True when the edit revived this UTub's trashed row for the new URL and trashed the edited row.
+       * @default false
+       */
+      revivedFromTrash: boolean;
+      /**
+       * @description On a revive, how many of the trashed row's tags were deleted from the UTub while it was trashed.
+       * @default 0
+       */
+      lostTagCount: number;
+      /**
+       * @description On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise. When non-null, clients must swap this card id for the returned url.utubUrlID.
+       * @default null
+       */
+      replacedUtubUrlID: number | null;
+      /** @description On a revive, every tag on the revived row with its UTub-wide count; empty otherwise. */
+      appliedTags?: components["schemas"]["UtubTagSchema"][];
+      /** @description On a revive, map of tag ID to new UTub-wide applied count for the trashed row's tags; empty otherwise. */
+      tagCountsInUtub?: {
+        [key: string]: number;
+      };
     };
     UpdateURLTitleRequest: {
       /** @description New display title for the URL */

@@ -15,9 +15,11 @@ import {
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import {
   clearURLOutcomeBanner,
+  showReviveBanner,
   showTrimSavedBanner,
   showURLUpdatedBanner,
 } from "../../outcome-banner.js";
+import { insertURLCardIntoDeck, removeURLCardFromDeck } from "../card-deck.js";
 import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
@@ -31,7 +33,11 @@ import { createURLStringAndUpdateBlock } from "../url-string.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { isCoarsePointer } from "../../../mobile.js";
-import { openURLEditPanel, closeURLEditPanel } from "../update-url-panel.js";
+import {
+  openURLEditPanel,
+  closeURLEditPanel,
+  resetURLEditPanelState,
+} from "../update-url-panel.js";
 import { bindEditPanelDirtyState } from "../edit-panel-dirty.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
@@ -81,12 +87,24 @@ vi.mock("../get.js", () => ({
 vi.mock("../../outcome-banner.js", () => ({
   showTrimSavedBanner: vi.fn(),
   showURLUpdatedBanner: vi.fn(),
+  showReviveBanner: vi.fn(),
   clearURLOutcomeBanner: vi.fn(),
 }));
 
 vi.mock("../selection.js", () => ({
   disableClickOnSelectedURLCardToHide: vi.fn(),
   enableClickOnSelectedURLCardToHide: vi.fn(),
+  deselectAllURLs: vi.fn(),
+}));
+
+vi.mock("../card-deck.js", () => ({
+  insertURLCardIntoDeck: vi.fn(() => window.jQuery("<div></div>")),
+  removeURLCardFromDeck: vi.fn(),
+}));
+
+vi.mock("../../empty-state.js", () => ({
+  hideURLsEmptyState: vi.fn(),
+  showURLsEmptyState: vi.fn(),
 }));
 
 vi.mock("../options/edit-string-btn.js", () => ({
@@ -97,6 +115,7 @@ vi.mock("../options/edit-string-btn.js", () => ({
 vi.mock("../update-url-panel.js", () => ({
   openURLEditPanel: vi.fn(),
   closeURLEditPanel: vi.fn(),
+  resetURLEditPanelState: vi.fn(),
 }));
 
 vi.mock("../../tags/tags.js", () => ({
@@ -282,6 +301,278 @@ describe("updateURLSuccess - tag ID mapping regression guard", () => {
       (existingUrl) => existingUrl.utubUrlID === 1,
     );
     expect(updatedUrl!.utubUrlTagIDs).toEqual([10, 20]);
+  });
+});
+
+describe("updateURLSuccess - revive on edit", () => {
+  const EDITED_UTUB_URL_ID = 1;
+  const REVIVED_UTUB_URL_ID = 55;
+  const REVIVED_URL = "https://revived.example.com";
+  const UTUB_ID = 7;
+  let urlCard: JQuery, urlStringInput: JQuery;
+
+  function revivedResponse({ lostTagCount }: { lostTagCount: number }) {
+    return {
+      status: "Success",
+      revivedFromTrash: true,
+      lostTagCount,
+      replacedUtubUrlID: EDITED_UTUB_URL_ID,
+      appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],
+      URL: {
+        utubUrlID: REVIVED_UTUB_URL_ID,
+        urlString: REVIVED_URL,
+        urlTitle: "Edited Title",
+        urlTags: [
+          { utubTagID: 4, tagString: "kept" },
+          { utubTagID: 9, tagString: "trashed-only" },
+        ],
+      },
+    };
+  }
+
+  function mockSuccess(response: unknown): void {
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = URL_CARD_HTML;
+    urlCard = $(".urlRow");
+    urlStringInput = urlCard.find(".urlStringUpdate");
+    vi.clearAllMocks();
+    vi.mocked(ajaxCall).mockReset();
+    vi.mocked(is429Handled).mockReturnValue(false);
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: EDITED_UTUB_URL_ID,
+          urlString: "https://example.com",
+          urlTitle: "Edited Title",
+          utubUrlTagIDs: [],
+          canDelete: true,
+          addedAt: "2026-01-02T03:04:05",
+          addedByUserID: 3,
+        },
+      ],
+    } as unknown as AppState);
+  });
+
+  it("replaces the edited card with the revived one and shows the revive banner (no lost tags)", async () => {
+    urlStringInput.val(REVIVED_URL);
+    mockSuccess(revivedResponse({ lostTagCount: 0 }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(removeURLCardFromDeck).toHaveBeenCalledTimes(1);
+    expect(removeURLCardFromDeck).toHaveBeenCalledWith({
+      urlCard,
+      utubUrlID: EDITED_UTUB_URL_ID,
+      animate: false,
+    });
+    expect(insertURLCardIntoDeck).toHaveBeenCalledTimes(1);
+    expect(insertURLCardIntoDeck).toHaveBeenCalledWith({
+      newUrl: {
+        utubUrlID: REVIVED_UTUB_URL_ID,
+        urlString: REVIVED_URL,
+        urlTitle: "Edited Title",
+        utubUrlTagIDs: [4, 9],
+        canDelete: true,
+        addedAt: "2026-01-02T03:04:05",
+        addedByUserID: 3,
+      },
+      utubID: UTUB_ID,
+      appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],
+      announce: false,
+    });
+    expect(showReviveBanner).toHaveBeenCalledTimes(1);
+    expect(showReviveBanner).toHaveBeenCalledWith({
+      lostTagCount: 0,
+      utubUrlID: REVIVED_UTUB_URL_ID,
+    });
+    expect(showURLUpdatedBanner).not.toHaveBeenCalled();
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+  });
+
+  it("passes the lost tag count through to the revive banner", async () => {
+    urlStringInput.val(REVIVED_URL);
+    mockSuccess(revivedResponse({ lostTagCount: 2 }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(showReviveBanner).toHaveBeenCalledWith({
+      lostTagCount: 2,
+      utubUrlID: REVIVED_UTUB_URL_ID,
+    });
+  });
+
+  it("treats an absent lostTagCount as 0 and still completes the swap", async () => {
+    urlStringInput.val(REVIVED_URL);
+    const response: Partial<ReturnType<typeof revivedResponse>> =
+      revivedResponse({ lostTagCount: 5 });
+    delete response.lostTagCount;
+    mockSuccess(response);
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(removeURLCardFromDeck).toHaveBeenCalledTimes(1);
+    expect(insertURLCardIntoDeck).toHaveBeenCalledTimes(1);
+    expect(showReviveBanner).toHaveBeenCalledTimes(1);
+    expect(showReviveBanner).toHaveBeenCalledWith({
+      lostTagCount: 0,
+      utubUrlID: REVIVED_UTUB_URL_ID,
+    });
+  });
+
+  it("completes the swap with fallback adder fields when the edited card is missing from the store", async () => {
+    urlStringInput.val(REVIVED_URL);
+    vi.mocked(getState).mockReturnValue({
+      urls: [],
+    } as unknown as AppState);
+    mockSuccess(revivedResponse({ lostTagCount: 1 }));
+
+    await expect(
+      updateURL(urlStringInput, urlCard, UTUB_ID),
+    ).resolves.not.toThrow();
+
+    expect(removeURLCardFromDeck).toHaveBeenCalledTimes(1);
+    expect(insertURLCardIntoDeck).toHaveBeenCalledTimes(1);
+    expect(insertURLCardIntoDeck).toHaveBeenCalledWith({
+      newUrl: {
+        utubUrlID: REVIVED_UTUB_URL_ID,
+        urlString: REVIVED_URL,
+        urlTitle: "Edited Title",
+        utubUrlTagIDs: [4, 9],
+        canDelete: true,
+        addedAt: expect.any(String),
+        addedByUserID: 0,
+      },
+      utubID: UTUB_ID,
+      appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],
+      announce: false,
+    });
+    expect(showReviveBanner).toHaveBeenCalledWith({
+      lostTagCount: 1,
+      utubUrlID: REVIVED_UTUB_URL_ID,
+    });
+  });
+
+  it("tears down the edit panel and selection before swapping, and the banner comes last", async () => {
+    urlStringInput.val(REVIVED_URL);
+    mockSuccess(revivedResponse({ lostTagCount: 1 }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(resetURLEditPanelState).toHaveBeenCalledWith(urlCard);
+    const resetOrder = vi.mocked(resetURLEditPanelState).mock
+      .invocationCallOrder[0];
+    const removeOrder = vi.mocked(removeURLCardFromDeck).mock
+      .invocationCallOrder[0];
+    const insertOrder = vi.mocked(insertURLCardIntoDeck).mock
+      .invocationCallOrder[0];
+    const bannerOrder = vi.mocked(showReviveBanner).mock.invocationCallOrder[0];
+    expect(resetOrder).toBeLessThan(removeOrder);
+    expect(removeOrder).toBeLessThan(insertOrder);
+    expect(insertOrder).toBeLessThan(bannerOrder);
+  });
+
+  it("does not run the in-place update path (no store merge, no form reset)", async () => {
+    urlStringInput.val(REVIVED_URL);
+    mockSuccess(revivedResponse({ lostTagCount: 0 }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(setState).not.toHaveBeenCalled();
+    expect(urlCard.find(".urlString").attr("href")).toBe("https://example.com");
+  });
+
+  it("folds the revive into the trim banner when query params were dropped", async () => {
+    const trimUrl = "https://revived.example.com/p?a=1&b=2";
+    document.body.innerHTML = `
+      <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+        <a class="urlString" href="${trimUrl}">${trimUrl}</a>
+        <div class="updateUrlStringWrap hidden">
+          <input class="urlStringUpdate" type="text" value="${trimUrl}" />
+          <div class="urlStringUpdate-error"></div>
+        </div>
+        <div class="updateUrlTitleWrap hidden"></div>
+        <button class="urlStringBtnUpdate"></button>
+      </div>`;
+    urlCard = $(".urlRow");
+    urlStringInput = urlCard.find(".urlStringUpdate");
+    const trimWrap = createParamTrimBlock({ mode: TrimMode.URL, urlCard });
+    urlCard.find(".updateUrlStringWrap").append(trimWrap);
+    (trimWrap.data(TRIM_FLUSH_KEY) as (rawValue: string) => void)(trimUrl);
+    trimWrap.find('.urlParamTrimChip[data-index="0"]').trigger("click");
+    mockSuccess(revivedResponse({ lostTagCount: 3 }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(showReviveBanner).not.toHaveBeenCalled();
+    expect(showTrimSavedBanner).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(showTrimSavedBanner).mock.calls[0][0];
+    expect(args.trimSubmission.droppedCount).toBe(1);
+    expect(args.utubID).toBe(UTUB_ID);
+    expect(args.utubUrlID).toBe(REVIVED_UTUB_URL_ID);
+    expect(args.revive).toEqual({ lostTagCount: 3 });
+  });
+
+  it("keeps the edited card and shows the message in the edit form on a 400 at-tag-limit error", async () => {
+    urlStringInput.val(REVIVED_URL);
+    const xhr = {
+      status: 400,
+      responseJSON: {
+        status: "Failure",
+        message: "Reviving this URL would exceed the UTub's tag limit.",
+      },
+    } as unknown as JQuery.jqXHR;
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        fail: (cb: unknown) => (cb as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      }),
+    );
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    const errorElem = urlCard.find(".urlStringUpdate-error");
+    expect(errorElem.hasClass("visible")).toBe(true);
+    expect(errorElem.text()).toBe(
+      "Reviving this URL would exceed the UTub's tag limit.",
+    );
+    expect(urlStringInput.hasClass("invalid-field")).toBe(true);
+    expect(removeURLCardFromDeck).not.toHaveBeenCalled();
+    expect(insertURLCardIntoDeck).not.toHaveBeenCalled();
+    expect(showReviveBanner).not.toHaveBeenCalled();
+    expect(urlCard.closest("body").length).toBe(1);
+  });
+
+  it("keeps the in-place path for a normal edit (revivedFromTrash false)", async () => {
+    urlStringInput.val("https://plain-edit.example.com");
+    mockSuccess({
+      status: "Success",
+      revivedFromTrash: false,
+      lostTagCount: 0,
+      replacedUtubUrlID: null,
+      URL: {
+        utubUrlID: EDITED_UTUB_URL_ID,
+        urlString: "https://plain-edit.example.com",
+        urlTitle: "Edited Title",
+        urlTags: [],
+      },
+    });
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(removeURLCardFromDeck).not.toHaveBeenCalled();
+    expect(insertURLCardIntoDeck).not.toHaveBeenCalled();
+    expect(showReviveBanner).not.toHaveBeenCalled();
+    expect(showURLUpdatedBanner).toHaveBeenCalledTimes(1);
+    expect(setState).toHaveBeenCalled();
   });
 });
 

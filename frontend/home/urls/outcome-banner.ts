@@ -333,6 +333,46 @@ export function showURLUpdatedBanner({
   });
 }
 
+/** Message for an add that revived a trashed URL; `lostTagCount` tags no longer exist. */
+export function buildReviveMessage({
+  lostTagCount,
+}: {
+  lostTagCount: number;
+}): string {
+  if (lostTagCount === 0) {
+    return APP_CONFIG.strings.URL_REVIVED_FROM_TRASH;
+  }
+  if (lostTagCount === 1) {
+    return APP_CONFIG.strings.URL_REVIVED_LOST_TAGS_ONE;
+  }
+  return fillTemplate({
+    template: APP_CONFIG.strings.URL_REVIVED_LOST_TAGS,
+    values: { n: String(lostTagCount) },
+  });
+}
+
+/**
+ * Shows the "Restored from trash." banner after an add revived a trashed URL.
+ * Partial (yellow) when some of its tags no longer exist. No Undo: reviving is
+ * not reversible from the deck. Used when the add also dropped no parameters;
+ * otherwise `showTrimSavedBanner` carries the revive sentence.
+ */
+export function showReviveBanner({
+  lostTagCount,
+  utubUrlID,
+}: {
+  lostTagCount: number;
+  utubUrlID: number;
+}): void {
+  showURLOutcomeBanner({
+    variant: lostTagCount > 0 ? "partial" : "success",
+    message: buildReviveMessage({ lostTagCount }),
+    returnFocusTo: $(`.urlRow[utuburlid=${utubUrlID}]`).find(
+      ".urlStringBtnUpdate",
+    ),
+  });
+}
+
 /**
  * Shows the "Saved without N parameters" banner with Undo after a trim-and-save.
  * The focus destination is the just-saved card's edit button, looked up fresh
@@ -344,26 +384,36 @@ export function showTrimSavedBanner({
   utubUrlID,
   urlCard,
   form,
+  revive,
 }: {
   trimSubmission: TrimSubmission;
   utubID: number;
   utubUrlID: number;
   urlCard: JQuery;
   form: UrlParamsTrimmedForm;
+  revive?: { lostTagCount: number };
 }): void {
   const returnFocusTo = $(`.urlRow[utuburlid=${utubUrlID}]`).find(
     ".urlStringBtnUpdate",
   );
-  const message =
+  const trimMessage =
     trimSubmission.droppedCount === 1
       ? APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE
       : fillTemplate({
           template: APP_CONFIG.strings.URL_TRIM_SAVED_BANNER,
           values: { n: String(trimSubmission.droppedCount) },
         });
+  // An add that both revived a trashed URL and trimmed params gets one banner:
+  // the revive sentence leads, and lost tags make it a partial outcome.
+  const message =
+    revive === undefined
+      ? trimMessage
+      : `${buildReviveMessage(revive)} ${trimMessage}`;
+  const variant: OutcomeBannerVariant =
+    revive !== undefined && revive.lostTagCount > 0 ? "partial" : "success";
 
   showURLOutcomeBanner({
-    variant: "success",
+    variant,
     message,
     detail: trimSubmission.droppedSegments.join(", "),
     actionLabel: APP_CONFIG.strings.URL_TRIM_UNDO,

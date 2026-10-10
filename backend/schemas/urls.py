@@ -137,6 +137,16 @@ class UrlCreatedResponseSchema(BaseSchema):
         alias=MODELS.APPLIED_TAGS,
         description="Tags applied to the URL on creation, with UTub-wide counts",
     )
+    revived_from_trash: bool = Field(
+        default=False,
+        alias=MODELS.REVIVED_FROM_TRASH,
+        description="True when the add revived this UTub's trashed row for the URL instead of inserting a new one.",
+    )
+    lost_tag_count: int = Field(
+        default=0,
+        alias=MODELS.LOST_TAG_COUNT,
+        description="On a revive, how many of the URL's tags were deleted from the UTub while it was trashed.",
+    )
 
 
 class UrlDeletedResponseSchema(BaseSchema):
@@ -171,7 +181,33 @@ class UrlUpdatedResponseSchema(BaseSchema):
         alias=UTUB_NAME, description="Name of the UTub containing the URL"
     )
     url: UtubUrlDetailSchema = Field(
-        alias=MODELS.URL, description="Detailed URL item with updated URL string"
+        alias=MODELS.URL,
+        description="Detailed URL item with updated URL string. On a revive-on-edit this is the revived row, not the edited one.",
+    )
+    revived_from_trash: bool = Field(
+        default=False,
+        alias=MODELS.REVIVED_FROM_TRASH,
+        description="True when the edit revived this UTub's trashed row for the new URL and trashed the edited row.",
+    )
+    lost_tag_count: int = Field(
+        default=0,
+        alias=MODELS.LOST_TAG_COUNT,
+        description="On a revive, how many of the trashed row's tags were deleted from the UTub while it was trashed.",
+    )
+    replaced_utub_url_id: int | None = Field(
+        default=None,
+        alias=MODELS.REPLACED_UTUB_URL_ID,
+        description="On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise. When non-null, clients must swap this card id for the returned url.utubUrlID.",
+    )
+    applied_tags: list[UtubTagSchema] = Field(
+        default_factory=list,
+        alias=MODELS.APPLIED_TAGS,
+        description="On a revive, every tag on the revived row with its UTub-wide count; empty otherwise.",
+    )
+    tag_counts_modified: dict[int, int] = Field(
+        default_factory=dict,
+        alias=TAG_COUNTS_MODIFIED,
+        description="On a revive, map of tag ID to new UTub-wide applied count for the trashed row's tags; empty otherwise.",
     )
 
 

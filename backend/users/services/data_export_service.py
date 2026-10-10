@@ -134,9 +134,9 @@ def build_user_data_export_core(
         density=resolved_preferences.density.value,
         date_format=resolved_preferences.date_format.value,
     )
-    # Trashed UTubs are included deliberately: their data is still held during
-    # the retention window, so the export must cover it. No trashed indicator
-    # is exported yet.
+    # Trashed UTubs and trashed URLs are included deliberately: their data is
+    # still held during the retention window, so the export must cover it. No
+    # trashed indicator is exported yet.
     memberships = user.utubs_is_member_of
     username_by_id = _resolve_contributor_usernames(memberships)
     utubs = [

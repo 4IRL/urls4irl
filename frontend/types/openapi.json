@@ -2972,7 +2972,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Update a URL string in a UTub",
+        "description": "Update a URL string in a UTub. When the new link matches a URL trashed in this UTub, that trashed row is revived and the edited row is trashed: the response then has revivedFromTrash true and replacedUtubUrlID set to the edited card's id. Clients must swap that card id for the returned url.utubUrlID whenever replacedUtubUrlID is non-null.",
         "parameters": [
           {
             "name": "utub_id",
@@ -7011,7 +7011,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Update a URL string in a UTub",
+        "description": "Update a URL string in a UTub. When the new link matches a URL trashed in this UTub, that trashed row is revived and the edited row is trashed: the response then has revivedFromTrash true and replacedUtubUrlID set to the edited card's id. Clients must swap that card id for the returned url.utubUrlID whenever replacedUtubUrlID is non-null.",
         "parameters": [
           {
             "name": "utub_id",
@@ -9410,6 +9410,16 @@
               "$ref": "#/components/schemas/UtubTagSchema"
             },
             "type": "array"
+          },
+          "revivedFromTrash": {
+            "default": false,
+            "description": "True when the add revived this UTub's trashed row for the URL instead of inserting a new one.",
+            "type": "boolean"
+          },
+          "lostTagCount": {
+            "default": 0,
+            "description": "On a revive, how many of the URL's tags were deleted from the UTub while it was trashed.",
+            "type": "integer"
           }
         },
         "required": ["utubID", "addedByUserID", "URL"],
@@ -9507,7 +9517,43 @@
           },
           "URL": {
             "$ref": "#/components/schemas/UtubUrlDetailSchema",
-            "description": "Detailed URL item with updated URL string"
+            "description": "Detailed URL item with updated URL string. On a revive-on-edit this is the revived row, not the edited one."
+          },
+          "revivedFromTrash": {
+            "default": false,
+            "description": "True when the edit revived this UTub's trashed row for the new URL and trashed the edited row.",
+            "type": "boolean"
+          },
+          "lostTagCount": {
+            "default": 0,
+            "description": "On a revive, how many of the trashed row's tags were deleted from the UTub while it was trashed.",
+            "type": "integer"
+          },
+          "replacedUtubUrlID": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise. When non-null, clients must swap this card id for the returned url.utubUrlID."
+          },
+          "appliedTags": {
+            "description": "On a revive, every tag on the revived row with its UTub-wide count; empty otherwise.",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
+          },
+          "tagCountsInUtub": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "On a revive, map of tag ID to new UTub-wide applied count for the trashed row's tags; empty otherwise.",
+            "type": "object"
           }
         },
         "required": ["utubID", "utubName", "URL"],

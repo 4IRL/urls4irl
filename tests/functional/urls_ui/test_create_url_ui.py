@@ -20,6 +20,7 @@ from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import (
     URL_FAILURE,
+    URL_REVIVED_FROM_TRASH,
     URL_TRIM_AUTO_ONLY_TITLE,
     URL_TRIM_CONFLICT,
     URL_TRIM_HEADER_DROPPED,
@@ -29,10 +30,12 @@ from tests.functional.db_utils import (
     add_mock_urls,
     add_tag_to_single_url_in_utub,
     add_tag_to_utub_user_created,
+    add_tags_to_utub_url,
     count_urls_with_tag_applied_by_tag_string,
     get_newly_added_utub_url_id_by_url_string,
     get_tag_in_utub_by_tag_string,
     get_utub_this_user_created,
+    trash_utub_url,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
@@ -881,6 +884,51 @@ def test_create_url_duplicate_url(page: Page, create_test_urls, provide_app: Fla
         css_selector=HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX,
     )
     assert invalid_url_string_error.inner_text() == URL_FAILURE.URL_IN_UTUB
+
+
+def test_readd_trashed_url_shows_restored_banner(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub holding a trashed URL that carried two tags
+    WHEN the user adds the same URL string through the create form
+    THEN the trashed card is revived in place with both tag badges and the
+        outcome banner reports it was restored from trash
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    utub_id = utub_user_created.id
+    with app.app_context():
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).first()
+        utub_url_id = utub_url.id
+        url_string = utub_url.standalone_url.url_string
+
+    tag_ids = add_tags_to_utub_url(
+        app, utub_id, utub_url_id, user_id_for_test, ["revivea", "reviveb"]
+    )
+    trash_utub_url(app, utub_url_id, user_id_for_test, tag_ids)
+
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_id
+    )
+    expect(page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']")).to_have_count(0)
+
+    create_url(page=page, url_title="Revived", url_string=url_string)
+
+    url_row = get_url_row_by_id(page=page, utub_url_id=utub_url_id)
+    expect(url_row).to_be_visible()
+    expect(page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']")).to_have_count(1)
+    expect(url_row.locator(HPL.TAG_BADGES)).to_have_count(2)
+
+    banner = page.locator(HPL.URL_OUTCOME_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"\bsuccess\b"))
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_REVIVED_FROM_TRASH
+    )
 
 
 def test_create_url_invalid_csrf_token(

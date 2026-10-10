@@ -19,7 +19,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub_url
 
 pytestmark = pytest.mark.urls
 
@@ -44,6 +44,14 @@ def _utub_url_rows_by_url_id(utub_id: int) -> dict[int, Utub_Urls]:
 
 
 def _utub_url_row_count(utub_id: int) -> int:
+    """Count the live (non-trashed) URL rows in a UTub."""
+    return Utub_Urls.query.filter(
+        Utub_Urls.utub_id == utub_id, Utub_Urls.deleted_at.is_(None)
+    ).count()
+
+
+def _utub_url_raw_row_count(utub_id: int) -> int:
+    """Count every URL row in a UTub, trashed or not."""
     return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).count()
 
 
@@ -68,8 +76,8 @@ def test_service_creator_deletes_own_urls_happy(
     """
     GIVEN the literal creator (user 1) of a UTub holding three URLs
     WHEN two of those URLs are bulk-deleted
-    THEN both rows are removed, total_deleted==2, nothing is skipped, and the response
-        is 200.
+    THEN both rows are trashed (flagged, not removed) by the acting user,
+        total_deleted==2, nothing is skipped, and the response is 200.
     """
     _, _, _, app = login_first_user_without_register
 
@@ -77,6 +85,7 @@ def test_service_creator_deletes_own_urls_happy(
         rows_by_url_id = _utub_url_rows_by_url_id(FIRST_UTUB_ID)
         target_ids = [rows_by_url_id[1].id, rows_by_url_id[2].id]
         count_before = _utub_url_row_count(FIRST_UTUB_ID)
+        raw_count_before = _utub_url_raw_row_count(FIRST_UTUB_ID)
 
         response, status_code = delete_urls_in_utub(
             utub_url_ids=target_ids,
@@ -96,8 +105,12 @@ def test_service_creator_deletes_own_urls_happy(
         } == (set(target_ids))
 
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before - 2
+        assert _utub_url_raw_row_count(FIRST_UTUB_ID) == raw_count_before
         for deleted_id in target_ids:
-            assert Utub_Urls.query.get(deleted_id) is None
+            trashed_row = Utub_Urls.query.get(deleted_id)
+            assert trashed_row is not None
+            assert trashed_row.is_trashed
+            assert trashed_row.deleted_by == CREATOR_USER_ID
 
 
 def test_service_member_partial_permission_skip(
@@ -107,8 +120,8 @@ def test_service_member_partial_permission_skip(
     """
     GIVEN a plain member (user 2) who added only URL 2 in a UTub they do not own
     WHEN they bulk-delete all three URLs (theirs + two added by others)
-    THEN only their own URL is deleted; the other two come back FORBIDDEN-skipped with
-        correct totals, and only one row is removed.
+    THEN only their own URL is trashed; the other two come back FORBIDDEN-skipped with
+        correct totals and are not trashed.
     """
     _, _, _, app = login_first_user_without_register
 
@@ -143,9 +156,12 @@ def test_service_member_partial_permission_skip(
         }
 
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before - 1
-        assert Utub_Urls.query.get(own_id) is None
-        assert Utub_Urls.query.get(creators_id) is not None
-        assert Utub_Urls.query.get(third_members_id) is not None
+        assert Utub_Urls.query.get(own_id).is_trashed
+        assert Utub_Urls.query.get(own_id).deleted_by == MEMBER_USER_ID
+        assert not Utub_Urls.query.get(creators_id).is_trashed
+        assert not Utub_Urls.query.get(third_members_id).is_trashed
+        assert Utub_Urls.query.get(creators_id).deleted_by is None
+        assert Utub_Urls.query.get(third_members_id).deleted_by is None
 
 
 def test_service_all_skipped_is_noop(
@@ -246,6 +262,138 @@ def test_service_rejects_unknown_id_spoofing(
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before
 
 
+def test_service_already_trashed_id_is_skipped_idempotently(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+) -> None:
+    """
+    GIVEN a utubUrlId in the UTub whose row is already in the trash
+    WHEN it is included in a bulk-delete request alongside a live id
+    THEN the request is 200: only the live row is trashed and reported as deleted,
+        the already-trashed id is neither counted nor reported, and its
+        deleted_at/deleted_by are unchanged.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        rows_by_url_id = _utub_url_rows_by_url_id(FIRST_UTUB_ID)
+        live_id: int = rows_by_url_id[1].id
+        trashed_id: int = rows_by_url_id[2].id
+
+    trash_utub_url(app, trashed_id, deleted_by=MEMBER_USER_ID)
+
+    with app.app_context():
+        trashed_row: Utub_Urls = Utub_Urls.query.get(trashed_id)
+        trashed_deleted_at = trashed_row.deleted_at
+        count_before = _utub_url_row_count(FIRST_UTUB_ID)
+
+        response, status_code = delete_urls_in_utub(
+            utub_url_ids=[live_id, trashed_id],
+            utub=Utubs.query.get(FIRST_UTUB_ID),
+            current_user_id=CREATOR_USER_ID,
+        )
+        body = response.get_json()
+
+        assert status_code == 200
+        assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        assert body[MODEL_STRS.TOTAL_DELETED] == 1
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+        assert body[MODEL_STRS.SKIPPED] == []
+        assert [
+            entry[MODEL_STRS.UTUB_URL_ID] for entry in body[MODEL_STRS.DELETED]
+        ] == [live_id]
+        assert _utub_url_row_count(FIRST_UTUB_ID) == count_before - 1
+        assert Utub_Urls.query.get(live_id).is_trashed
+        assert Utub_Urls.query.get(live_id).deleted_by == CREATOR_USER_ID
+        untouched: Utub_Urls = Utub_Urls.query.get(trashed_id)
+        assert untouched.deleted_at == trashed_deleted_at
+        assert untouched.deleted_by == MEMBER_USER_ID
+
+
+def test_service_all_already_trashed_ids_is_idempotent_noop(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+) -> None:
+    """
+    GIVEN every requested utubUrlId is already in the trash
+    WHEN they are bulk-deleted again
+    THEN the response is a 200 no-op (nothing deleted, nothing skipped, no tag
+        counts), last_updated is not bumped, no metric is emitted, and the trashed
+        rows are unchanged.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        rows_by_url_id = _utub_url_rows_by_url_id(FIRST_UTUB_ID)
+        target_ids: list[int] = [rows_by_url_id[1].id, rows_by_url_id[2].id]
+
+    for target_id in target_ids:
+        trash_utub_url(app, target_id, deleted_by=CREATOR_USER_ID)
+
+    with app.app_context():
+        first_utub: Utubs = Utubs.query.get(FIRST_UTUB_ID)
+        last_updated_before = first_utub.last_updated
+        deleted_at_before = {
+            target_id: Utub_Urls.query.get(target_id).deleted_at
+            for target_id in target_ids
+        }
+
+        response, status_code = delete_urls_in_utub(
+            utub_url_ids=target_ids,
+            utub=first_utub,
+            current_user_id=CREATOR_USER_ID,
+        )
+        body = response.get_json()
+
+        assert status_code == 200
+        assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        assert body[MODEL_STRS.TOTAL_DELETED] == 0
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+        assert body[MODEL_STRS.DELETED] == []
+        assert body[MODEL_STRS.SKIPPED] == []
+        assert body[TAG_COUNTS_MODIFIED] == {}
+        assert first_utub.last_updated == last_updated_before
+        for target_id in target_ids:
+            assert (
+                Utub_Urls.query.get(target_id).deleted_at
+                == (deleted_at_before[target_id])
+            )
+
+
+def test_service_unknown_id_beside_trashed_id_still_rejected_400(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+) -> None:
+    """
+    GIVEN an already-trashed id of the UTub plus an id that does not exist
+    WHEN they are bulk-deleted
+    THEN the unknown id still rejects the whole request with 400 URLS_NOT_IN_UTUB
+        and INVALID_FORM_INPUT, and the trashed row is unchanged.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        trashed_id: int = _utub_url_rows_by_url_id(FIRST_UTUB_ID)[2].id
+
+    trash_utub_url(app, trashed_id, deleted_by=CREATOR_USER_ID)
+
+    with app.app_context():
+        trashed_deleted_at = Utub_Urls.query.get(trashed_id).deleted_at
+
+        response, status_code = delete_urls_in_utub(
+            utub_url_ids=[trashed_id, 999_999],
+            utub=Utubs.query.get(FIRST_UTUB_ID),
+            current_user_id=CREATOR_USER_ID,
+        )
+        body = response.get_json()
+
+        assert status_code == 400
+        assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert body[STD_JSON.MESSAGE] == URL_FAILURE.URLS_NOT_IN_UTUB
+        assert body[STD_JSON.ERROR_CODE] == URLErrorCodes.INVALID_FORM_INPUT
+        assert Utub_Urls.query.get(trashed_id).deleted_at == trashed_deleted_at
+
+
 def test_service_locked_utub_is_403(
     add_mixed_delete_permission_urls_in_first_utub,
     login_first_user_without_register,
@@ -279,36 +427,52 @@ def test_service_locked_utub_is_403(
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before
 
 
-def test_service_cascade_removes_url_tags(
+def test_service_keeps_url_tags_and_snapshots_trashed_tag_ids(
     add_mixed_delete_permission_urls_in_first_utub,
     login_first_user_without_register,
 ):
     """
-    GIVEN a deleted URL carrying tag associations
-    WHEN it is bulk-deleted
-    THEN its Utub_Url_Tags rows are removed alongside the Utub_Urls row.
+    GIVEN URLs carrying tag associations
+    WHEN they are bulk-deleted
+    THEN each URL's Utub_Url_Tags rows survive and each trashed row's trashed_tag_ids
+        is its own pre-delete tag-id snapshot (differing per row).
     """
     _, _, _, app = login_first_user_without_register
 
     with app.app_context():
         rows_by_url_id = _utub_url_rows_by_url_id(FIRST_UTUB_ID)
-        target_row = rows_by_url_id[1]
-        target_id = target_row.id
-        assert (
-            Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == target_id).count()
-            > 0
-        )
+        target_ids = [rows_by_url_id[1].id, rows_by_url_id[2].id]
+        tag_ids_before = {
+            target_id: sorted(Utub_Urls.query.get(target_id).associated_tag_ids)
+            for target_id in target_ids
+        }
+        tag_row_counts_before = {
+            target_id: Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_url_id == target_id
+            ).count()
+            for target_id in target_ids
+        }
+        assert all(count > 0 for count in tag_row_counts_before.values())
+        # The per-row snapshots differ (URL 1 carries the solo tag as well)
+        assert tag_ids_before[target_ids[0]] != tag_ids_before[target_ids[1]]
 
         delete_urls_in_utub(
-            utub_url_ids=[target_id],
+            utub_url_ids=target_ids,
             utub=Utubs.query.get(FIRST_UTUB_ID),
             current_user_id=CREATOR_USER_ID,
         )
 
-        assert (
-            Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == target_id).count()
-            == 0
-        )
+        for target_id in target_ids:
+            assert (
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_url_id == target_id
+                ).count()
+                == tag_row_counts_before[target_id]
+            )
+            assert (
+                Utub_Urls.query.get(target_id).trashed_tag_ids
+                == tag_ids_before[target_id]
+            )
 
 
 def test_service_shared_tag_recompute_and_zero_backfill(
@@ -427,10 +591,11 @@ def test_service_mid_loop_exception_rolls_back_all(
     caplog,
 ):
     """
-    GIVEN a bulk-delete of two URLs where the per-row delete raises on the SECOND row
+    GIVEN a bulk-delete of two URLs where the post-flush tag-count recompute raises
+        after BOTH rows were flagged and flushed
     WHEN the service processes the batch
-    THEN the exception propagates, the already-removed FIRST row is rolled back too
-        (single terminal commit never reached), no rows are deleted, and the rollback
+    THEN the exception propagates, both already-flagged rows are rolled back (single
+        terminal commit never reached), neither row is trashed, and the rollback
         breadcrumb is logged.
     """
     _, _, _, app = login_first_user_without_register
@@ -440,16 +605,10 @@ def test_service_mid_loop_exception_rolls_back_all(
         target_ids = [rows_by_url_id[1].id, rows_by_url_id[2].id]
         count_before = _utub_url_row_count(FIRST_UTUB_ID)
 
-        real_delete = db.session.delete
-        call_count = {"value": 0}
-
-        def failing_delete(instance):
-            call_count["value"] += 1
-            if call_count["value"] == 2:
-                raise RuntimeError("simulated mid-loop failure")
-            return real_delete(instance)
-
-        with patch.object(db.session, "delete", side_effect=failing_delete):
+        with patch(
+            "backend.urls.services.delete_urls.recompute_tag_counts_after_delete",
+            side_effect=RuntimeError("simulated mid-loop failure"),
+        ) as mock_recompute:
             with pytest.raises(RuntimeError, match="simulated mid-loop failure"):
                 delete_urls_in_utub(
                     utub_url_ids=target_ids,
@@ -457,9 +616,14 @@ def test_service_mid_loop_exception_rolls_back_all(
                     current_user_id=CREATOR_USER_ID,
                 )
 
+        mock_recompute.assert_called_once()
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before
         for target_id in target_ids:
-            assert Utub_Urls.query.get(target_id) is not None
+            rolled_back_row = Utub_Urls.query.get(target_id)
+            assert rolled_back_row is not None
+            assert rolled_back_row.deleted_at is None
+            assert rolled_back_row.deleted_by is None
+            assert rolled_back_row.trashed_tag_ids is None
 
     assert is_string_in_logs("Bulk URL delete failed", caplog.records)
     assert is_string_in_logs(f"UTub.id={FIRST_UTUB_ID}", caplog.records)
@@ -500,5 +664,7 @@ def test_service_co_creator_can_delete_third_members_url(
             entry[MODEL_STRS.UTUB_URL_ID] for entry in body[MODEL_STRS.DELETED]
         } == {co_creators_own_id, third_members_id}
 
-        assert Utub_Urls.query.get(co_creators_own_id) is None
-        assert Utub_Urls.query.get(third_members_id) is None
+        assert Utub_Urls.query.get(co_creators_own_id).is_trashed
+        assert Utub_Urls.query.get(third_members_id).is_trashed
+        assert Utub_Urls.query.get(co_creators_own_id).deleted_by == MEMBER_USER_ID
+        assert Utub_Urls.query.get(third_members_id).deleted_by == MEMBER_USER_ID

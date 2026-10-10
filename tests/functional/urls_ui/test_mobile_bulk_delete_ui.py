@@ -62,9 +62,11 @@ def _seed_url_in_utub(
         return new_id
 
 
-def _utub_url_row_exists(*, app: Flask, utub_url_id: int) -> bool:
+def _utub_url_row_is_live(*, app: Flask, utub_url_id: int) -> bool:
+    """True when the row exists and has not been trashed (deleted_at is NULL)."""
     with app.app_context():
-        return Utub_Urls.query.get(utub_url_id) is not None
+        row = Utub_Urls.query.get(utub_url_id)
+        return row is not None and not row.is_trashed
 
 
 def _computed_z_index(*, page: Page, css_selector: str) -> int:
@@ -189,8 +191,8 @@ def test_mobile_bulk_delete_bottom_drawer_confirm_stacks_and_deletes(
     expect(banner).to_be_visible()
     expect(banner).to_have_class(re.compile(r"(^|\s)success(\s|$)"))
 
-    assert not _utub_url_row_exists(app=app, utub_url_id=utub_url_id_a)
-    assert not _utub_url_row_exists(app=app, utub_url_id=utub_url_id_b)
+    assert not _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_a)
+    assert not _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_b)
 
 
 def test_mobile_bulk_delete_cancel_leaves_urls_intact(
@@ -237,5 +239,5 @@ def test_mobile_bulk_delete_cancel_leaves_urls_intact(
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
     assert get_num_url_rows(page=page) == initial_rows
-    assert _utub_url_row_exists(app=app, utub_url_id=utub_url_id_a)
-    assert _utub_url_row_exists(app=app, utub_url_id=utub_url_id_b)
+    assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_a)
+    assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_b)
