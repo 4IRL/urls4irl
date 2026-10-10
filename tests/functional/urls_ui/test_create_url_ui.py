@@ -4,7 +4,7 @@ from typing import Tuple
 import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from backend.cli.mock_constants import (
     MOCK_URL_STRINGS,
@@ -15,6 +15,7 @@ from backend.cli.mock_constants import (
 from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.utils.constants import CONSTANTS, TAG_CONSTANTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -64,15 +65,20 @@ from tests.functional.tags_ui.playwright_utils import (
 )
 from tests.functional.urls_ui.playwright_utils import (
     CLOSED_CLASS,
+    NO_REQUEST_WAIT_MS,
     TRIM_BASE_URL,
     TRIM_DROPPED_PARAM,
     TRIM_URL_KEEP_ONLY,
     TRIM_URL_TWO_PARAMS,
     create_url,
+    expect_selected_scheme,
     fill_create_url_form,
+    get_selected_scheme,
+    select_url_scheme,
     set_trim_section_expanded,
     stage_new_tag_in_create_form,
     stage_tag_suggestion_in_create_form,
+    track_create_url_requests,
 )
 
 pytestmark = pytest.mark.create_urls_ui
@@ -1651,3 +1657,412 @@ def test_create_url_trim_conflict_shows_trim_message_and_expands_section(
     expect(page.locator(HPL.CREATE_FORM_TRIM_HEADER)).to_have_attribute(
         "aria-expanded", "true"
     )
+
+
+def _login_to_utub_with_no_urls(*, app: Flask, page: Page) -> Utubs:
+    """Log in as user 1 and select the UTub they created (it has no URLs)."""
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+    return utub_user_created
+
+
+def _open_create_url_form(*, page: Page) -> None:
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE)
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_visible()
+
+
+def _submit_create_url_form_and_get_row(
+    *, app: Flask, page: Page, utub_id: int, stored_url: str
+) -> Locator:
+    """Submit the create form and return the new card's row once it is rendered."""
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_URL_SUBMIT_CREATE)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_URL_STRING_CREATE)
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_hidden()
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(app, utub_id, stored_url)
+    return get_url_row_by_id(page=page, utub_url_id=utub_url_id)
+
+
+def test_create_url_scheme_selector_defaults_to_https_and_resets(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create-URL form
+    WHEN it opens, a different scheme is picked, the form is cancelled and reopened,
+        and then a URL is created with a typed http:// prefix
+    THEN the selector shows https every time the form opens (including after a
+        successful create), and the URL input is a plain text input
+
+    Covers the type="text" / inputmode="url" change that lets a scheme-less value
+    (and a pasted full URL) sit in the field without native URL validation.
+    """
+    app = provide_app
+    utub_user_created = _login_to_utub_with_no_urls(app=app, page=page)
+
+    _open_create_url_form(page=page)
+    url_input = page.locator(HPL.INPUT_URL_STRING_CREATE)
+    expect(url_input).to_have_attribute("type", "text")
+    expect(url_input).to_have_attribute("inputmode", "url")
+    expect(page.locator(HPL.SCHEME_SELECTOR_CREATE)).to_have_count(1)
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="https"
+    )
+    expect(page.locator(HPL.SCHEME_LISTBOX_CREATE)).to_be_hidden()
+
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, option_scheme="ftp"
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="ftp"
+    )
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_URL_CANCEL_CREATE)
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_hidden()
+    _open_create_url_form(page=page)
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="https"
+    )
+
+    typed_url = "http://example.com/a"
+    clear_then_send_keys(
+        locator=page.locator(HPL.INPUT_URL_TITLE_CREATE), input_text=MOCK_URL_TITLES[0]
+    )
+    clear_then_send_keys(
+        locator=page.locator(HPL.INPUT_URL_STRING_CREATE), input_text=typed_url
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="http"
+    )
+    _submit_create_url_form_and_get_row(
+        app=app, page=page, utub_id=utub_user_created.id, stored_url=typed_url
+    )
+
+    _open_create_url_form(page=page)
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="https"
+    )
+    expect(page.locator(HPL.INPUT_URL_STRING_CREATE)).to_have_value("")
+
+
+def test_create_url_scheme_selector_mailto_composes_opaque_scheme(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create-URL form
+    WHEN mailto is picked from the filtered list and a bare address is typed
+    THEN the created card links to mailto:<address> (no // is inserted)
+    """
+    app = provide_app
+    utub_user_created = _login_to_utub_with_no_urls(app=app, page=page)
+
+    _open_create_url_form(page=page)
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, option_scheme="mailto"
+    )
+    clear_then_send_keys(
+        locator=page.locator(HPL.INPUT_URL_TITLE_CREATE), input_text="Mail me"
+    )
+    clear_then_send_keys(
+        locator=page.locator(HPL.INPUT_URL_STRING_CREATE), input_text="a@b.com"
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="mailto"
+    )
+
+    url_row = _submit_create_url_form_and_get_row(
+        app=app, page=page, utub_id=utub_user_created.id, stored_url="mailto:a@b.com"
+    )
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, "mailto:a@b.com"
+    )
+
+
+def test_create_url_typed_scheme_prefix_moves_into_selector(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create-URL form
+    WHEN a full http:// URL is typed into the URL input
+    THEN the scheme moves into the selector and the input keeps only the rest
+    """
+    app = provide_app
+    _login_to_utub_with_no_urls(app=app, page=page)
+
+    _open_create_url_form(page=page)
+    url_input = page.locator(HPL.INPUT_URL_STRING_CREATE)
+    clear_then_send_keys(locator=url_input, input_text="http://example.com/a")
+
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="http"
+    )
+    expect(url_input).to_have_value("example.com/a")
+    selected_scheme = get_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE
+    )
+    assert selected_scheme == "http"
+
+
+def test_create_url_dev_host_text_flips_selector_to_http(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create-URL form with the default selector
+    WHEN a dev host with a port (localhost:8080) is typed
+    THEN the selector shows http, and the stored URL is http://localhost:8080/
+        (canonicalised with a trailing slash; not the https:// the default
+        scheme would have produced)
+    """
+    app = provide_app
+    utub_user_created = _login_to_utub_with_no_urls(app=app, page=page)
+
+    fill_create_url_form(
+        page=page, url_title=MOCK_URL_TITLES[0], url_string="localhost:8080"
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="http"
+    )
+    # localhost:8080 is host:port, not a scheme prefix: the text stays whole.
+    expect(page.locator(HPL.INPUT_URL_STRING_CREATE)).to_have_value("localhost:8080")
+
+    url_row = _submit_create_url_form_and_get_row(
+        app=app,
+        page=page,
+        utub_id=utub_user_created.id,
+        stored_url="http://localhost:8080/",
+    )
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, "http://localhost:8080/"
+    )
+
+
+def test_create_url_unsupported_scheme_prefix_shows_error(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create-URL form
+    WHEN a URL with a scheme outside the whitelist (foo://example.com) is submitted
+    THEN the standard invalid-URL error shows, the text is left as typed (not
+        stripped into the selector) and the selector toggle is marked invalid
+    """
+    app = provide_app
+    _login_to_utub_with_no_urls(app=app, page=page)
+
+    create_url(page=page, url_title="Unsupported", url_string="foo://example.com")
+
+    url_string_error = page.locator(
+        HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX
+    )
+    expect(url_string_error).to_have_text(URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL)
+    expect(page.locator(HPL.INPUT_URL_STRING_CREATE)).to_have_value("foo://example.com")
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="https"
+    )
+    expect(page.locator(HPL.SCHEME_TOGGLE_CREATE)).to_have_class(
+        re.compile(rf"\b{HPL.INVALID_FIELD_CLASS}\b")
+    )
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_visible()
+
+
+def test_create_url_javascript_text_is_not_stripped_and_still_errors(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create-URL form
+    WHEN javascript:alert(1) is typed and submitted
+    THEN it is not mistaken for a supported scheme (the selector stays https and
+        the text is untouched) and the invalid-URL error shows
+    """
+    app = provide_app
+    _login_to_utub_with_no_urls(app=app, page=page)
+
+    create_url(page=page, url_title="Test", url_string="javascript:alert(1)")
+
+    url_string_error = page.locator(
+        HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX
+    )
+    expect(url_string_error).to_have_text(URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL)
+    expect(page.locator(HPL.INPUT_URL_STRING_CREATE)).to_have_value(
+        "javascript:alert(1)"
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="https"
+    )
+
+
+def test_create_url_scheme_selector_keyboard_path_does_not_submit(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a create form whose title and URL are filled in (so a submit would send
+        a request)
+    WHEN a scheme is picked keyboard-only (Enter on the toggle, type to filter,
+        ArrowDown, Enter)
+    THEN the scheme changes, focus returns to the URL input, the form stays open
+        and no create request is sent
+    """
+    app = provide_app
+    _login_to_utub_with_no_urls(app=app, page=page)
+
+    fill_create_url_form(
+        page=page, url_title=MOCK_URL_TITLES[0], url_string="example.com/kb"
+    )
+
+    with track_create_url_requests(page=page) as create_requests:
+        select_url_scheme(
+            page=page,
+            toggle_locator=HPL.SCHEME_TOGGLE_CREATE,
+            option_scheme="ftp",
+            via_keyboard=True,
+        )
+        expect(page.locator(HPL.INPUT_URL_STRING_CREATE)).to_be_focused()
+        page.wait_for_timeout(NO_REQUEST_WAIT_MS)
+        assert create_requests == []
+
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="ftp"
+    )
+    expect(page.locator(HPL.INPUT_URL_STRING_CREATE)).to_have_value("example.com/kb")
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_visible()
+
+
+def test_create_url_scheme_selector_escape_closes_list_before_form(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create form with the scheme list open
+    WHEN Escape is pressed once, then again
+    THEN the first Escape closes only the list (focus back on the toggle) and the
+        second closes the form
+    """
+    app = provide_app
+    _login_to_utub_with_no_urls(app=app, page=page)
+
+    _open_create_url_form(page=page)
+    toggle = page.locator(HPL.SCHEME_TOGGLE_CREATE)
+    listbox = page.locator(HPL.SCHEME_LISTBOX_CREATE)
+
+    toggle.click()
+    expect(listbox).to_be_visible()
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+
+    page.keyboard.press("Escape")
+    expect(listbox).to_be_hidden()
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(toggle).to_be_focused()
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_visible()
+
+    page.keyboard.press("Escape")
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_hidden()
+
+
+def test_create_url_scheme_selector_explicit_choice_survives_dev_host_text(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create form where ftp was picked from the selector
+    WHEN a dev host with a port (localhost:8080) is typed
+    THEN the selector stays on ftp (only a non-explicit selector follows the text
+        to http) and the text is left as typed
+    """
+    app = provide_app
+    _login_to_utub_with_no_urls(app=app, page=page)
+    _open_create_url_form(page=page)
+
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, option_scheme="ftp"
+    )
+    url_input = page.locator(HPL.INPUT_URL_STRING_CREATE)
+    url_input.press_sequentially("localhost:8080")
+
+    expect(url_input).to_have_value("localhost:8080")
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="ftp"
+    )
+
+
+def test_create_url_scheme_selector_list_closes_on_outside_click_and_tab_away(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create form with the scheme list open
+    WHEN a field outside the selector is clicked, and later the list is reopened
+        and Tab moves focus out of the selector
+    THEN each time the list closes (aria-expanded false) with the form still open
+        and the scheme unchanged
+    """
+    app = provide_app
+    _login_to_utub_with_no_urls(app=app, page=page)
+    _open_create_url_form(page=page)
+    toggle = page.locator(HPL.SCHEME_TOGGLE_CREATE)
+    listbox = page.locator(HPL.SCHEME_LISTBOX_CREATE)
+
+    toggle.click()
+    expect(listbox).to_be_visible()
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+
+    page.locator(HPL.INPUT_URL_TITLE_CREATE).click()
+    expect(listbox).to_be_hidden()
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_visible()
+
+    toggle.click()
+    expect(listbox).to_be_visible()
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+    # Focus moving between the selector's own parts (toggle, filter, rows, the URL
+    # input sharing its container) keeps the list open; only focus leaving the
+    # container closes it. The listbox follows the URL input in tab order, so
+    # Tab from its roving-entry row is the first step out of the container.
+    entry_row = listbox.locator(f"{HPL.SCHEME_OPTION_VISIBLE}[tabindex='0']")
+    entry_row.focus()
+    expect(entry_row).to_be_focused()
+    expect(listbox).to_be_visible()
+
+    page.keyboard.press("Tab")
+    expect(listbox).to_be_hidden()
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_visible()
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="https"
+    )
+
+
+def test_create_url_scheme_selector_filter_enter_selects_first_match(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN the create form with the scheme list open and a filled-in title and URL
+    WHEN "mail" is typed in the filter and Enter is pressed (no ArrowDown)
+    THEN the first (only) match, mailto, is selected, the list closes, focus
+        returns to the URL input and no create request is sent
+    """
+    app = provide_app
+    _login_to_utub_with_no_urls(app=app, page=page)
+    fill_create_url_form(
+        page=page, url_title=MOCK_URL_TITLES[0], url_string="example.com/kb"
+    )
+    toggle = page.locator(HPL.SCHEME_TOGGLE_CREATE)
+    listbox = page.locator(HPL.SCHEME_LISTBOX_CREATE)
+    filter_input = page.locator(HPL.SCHEME_FILTER_CREATE)
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="https"
+    )
+
+    toggle.click()
+    expect(listbox).to_be_visible()
+    filter_input.focus()
+    filter_input.fill("mail")
+    expect(page.locator(HPL.SCHEME_OPTION_VISIBLE)).to_have_count(1)
+
+    with track_create_url_requests(page=page) as create_requests:
+        page.keyboard.press("Enter")
+        expect(listbox).to_be_hidden()
+        expect(page.locator(HPL.INPUT_URL_STRING_CREATE)).to_be_focused()
+        page.wait_for_timeout(NO_REQUEST_WAIT_MS)
+        assert create_requests == []
+
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="mailto"
+    )
+    expect(page.locator(HPL.WRAP_URL_CREATE)).to_be_visible()
