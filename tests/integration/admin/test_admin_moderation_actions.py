@@ -15,11 +15,13 @@ Lock gate:
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Any, Tuple
 
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from backend import db
 from backend.models.audit_log import AuditLog
@@ -1200,6 +1202,81 @@ def test_lock_gate_rejects_creator_deleting_locked_utub(
     assert body[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
     with app.app_context():
         assert Utubs.query.get(utub_id) is not None
+
+
+def _seed_member(app: Flask, utub_id: int, username: str, role: Member_Role) -> int:
+    """Create an email-validated user, add them to the UTub with ``role``."""
+    with app.app_context():
+        member_user = Users(
+            username=username,
+            email=f"{username}@test.com",
+            plaintext_password="TestPass1!",
+        )
+        member_user.email_validated = True
+        db.session.add(member_user)
+        db.session.flush()
+        db.session.add(
+            Utub_Members(utub_id=utub_id, user_id=member_user.id, member_role=role)
+        )
+        db.session.commit()
+        return member_user.id
+
+
+@pytest.mark.parametrize(
+    "action_url_template, preset_locked",
+    [
+        (_MOD_UTUB_LOCK_URL, False),
+        (_MOD_UTUB_UNLOCK_URL, True),
+        (_MOD_UTUB_DELETE_URL, False),
+        (_MOD_MEMBER_REMOVE_URL, False),
+    ],
+    ids=["lock_utub", "unlock_utub", "delete_utub_admin", "remove_member_admin"],
+)
+def test_admin_writers_take_utub_row_lock(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    action_url_template: str,
+    preset_locked: bool,
+) -> None:
+    """
+    GIVEN a UTub (the admin is its creator, with another member for the
+          remove-member case) and a SQL-capture listener
+    WHEN each admin writer performs its action
+    THEN a ``SELECT ... FROM "Utubs" ... FOR NO KEY UPDATE`` was emitted, so a
+         future writer that drops the lock fails this test.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    utub_id: int = utub.id
+    _seed_member(app, utub_id, "lock_probe_member", Member_Role.MEMBER)
+    if preset_locked:
+        with app.app_context():
+            Utubs.query.get(utub_id).is_locked = True
+            db.session.commit()
+
+    url = action_url_template.format(utub_id=utub_id, user_id=admin_user.id)
+    lock_statements: list[str] = []
+
+    def record_statement(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool,
+    ) -> None:
+        normalized = " ".join(statement.split())
+        if 'FROM "Utubs"' in normalized and "FOR NO KEY UPDATE" in normalized:
+            lock_statements.append(normalized)
+
+    # Class-level listener: the request runs in its own app context/session.
+    event.listen(Engine, "before_cursor_execute", record_statement)
+    try:
+        response = _post_mod(client, url, csrf)
+    finally:
+        event.remove(Engine, "before_cursor_execute", record_statement)
+
+    assert response.status_code == 200
+    assert len(lock_statements) >= 1
 
 
 def test_admin_mod_url_delete_mismatched_utub_returns_404(

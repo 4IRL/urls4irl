@@ -38,6 +38,7 @@ from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utubs.guards import lock_utub_for_update
 
 # Tombstone identity applied by erasure. Users.username (max 25 chars) and
 # Users.email are NOT NULL + unique, so erasure writes unique non-PII values
@@ -100,6 +101,10 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
     Shared by the admin path (``erase_user``) and the self-service delete flow
     so all callers exercise one tested implementation.
 
+    Every affected UTub is row-locked (``lock_utub_for_update``) in ascending id
+    before any membership is resolved; the locks are held until the caller
+    commits.
+
     UTub membership lifecycle, per-UTub:
 
     - **solo UTub** (erased user is the only member): the UTub is hard-deleted
@@ -116,9 +121,31 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
     ownerships_transferred_count: int = 0
     memberships_removed_count: int = 0
 
-    # Snapshot: deleting UTubs/memberships mutates the relationship in-place.
+    # Lock every affected UTub first, in ascending id, so concurrent multi-UTub
+    # erasures cannot deadlock and no owner/role writer can interleave.
+    utub_ids: list[int] = sorted(
+        {membership.utub_id for membership in target_user.utubs_is_member_of}
+    )
+    for utub_id in utub_ids:
+        lock_utub_for_update(utub_id=utub_id)
+    locked_utub_ids: set[int] = set(utub_ids)
+
+    # Re-snapshot after locking (committed membership changes are now visible).
+    # Deleting UTubs/memberships mutates the relationship in-place.
+    db.session.expire(target_user, ["utubs_is_member_of"])
     memberships: list[Utub_Members] = list(target_user.utubs_is_member_of)
     for membership in memberships:
+        if membership.utub_id not in locked_utub_ids:
+            # Membership added between the first read and the lock. Residual
+            # caveat: this lock is taken out of ascending order, so a concurrent
+            # multi-UTub erasure could in theory deadlock (Postgres aborts one).
+            late_locked_utub: Utubs | None = lock_utub_for_update(
+                utub_id=membership.utub_id
+            )
+            locked_utub_ids.add(membership.utub_id)
+            if late_locked_utub is None:
+                # Deleted between the re-snapshot and the lock.
+                continue
         containing_utub: Utubs = membership.to_utub
         other_members: list[Utub_Members] = [
             utub_member
