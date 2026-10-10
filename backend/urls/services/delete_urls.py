@@ -117,8 +117,8 @@ def _recompute_tag_counts_after_bulk_delete(
 ) -> dict[int, int]:
     """
     Recompute the UTub-wide applied count for every tag touched by a URL delete (single
-    or bulk), in a single grouped query, AFTER the deleted URLs have been removed or
-    trashed (flushed). Counts are live-only: trashed URLs are excluded.
+    or bulk), in a single grouped query, AFTER the URLs have been trashed (flushed).
+    Counts are live-only: trashed URLs are excluded.
 
     A bare grouped ``COUNT`` cannot report ``0`` for a tag whose last associated URL was
     just deleted — ``GROUP BY`` simply omits rows with no matches (the same trap
@@ -171,8 +171,9 @@ def delete_urls_in_utub(
     *, utub_url_ids: list[int], utub: Utubs, current_user_id: int
 ) -> FlaskResponse:
     """
-    Bulk-delete selected URLs from a single UTub in one transaction, skipping and
-    reporting any URL the acting user may not delete (partial-with-report).
+    Bulk-delete (soft-delete: flag as trashed) selected URLs from a single UTub in one
+    transaction, skipping and reporting any URL the acting user may not delete
+    (partial-with-report).
 
     Per-URL permission is the *manager* predicate
     ``current_user_id == utub_url.user_id or current_user_is_manager`` — where a
@@ -184,7 +185,9 @@ def delete_urls_in_utub(
     The whole batch is one transaction with a single terminal commit: unknown or
     cross-UTub ids reject the entire request as a 400 before any write (a foreign id is
     a spoof, not a skip); a locked UTub rejects the whole request as a 403; an
-    unexpected mid-loop exception rolls back every removed row via an explicit rollback.
+    unexpected mid-loop exception rolls back every trashed row via an explicit rollback.
+    Each trashed row records ``deleted_at``/``deleted_by`` and its own ``trashed_tag_ids``
+    snapshot; its ``Utub_Url_Tags`` rows are kept.
     Affected tag counts are recomputed ONCE post-batch to avoid the shared-tag
     double-decrement.
 
@@ -252,7 +255,7 @@ def delete_urls_in_utub(
                 }
             )
 
-    # Capture serialized delete data + every affected tag id BEFORE deletion.
+    # Capture serialized delete data + every affected tag id BEFORE trashing.
     deleted_url_schemas: list[UtubUrlDeleteSchema] = []
     affected_utub_tag_ids: set[int] = set()
     for row in deletable_rows:
@@ -263,20 +266,22 @@ def delete_urls_in_utub(
     total_skipped = len(skipped)
 
     # The explicit rollback mirrors the single-delete + copy services: a mid-loop
-    # exception discards every removed row rather than relying on the request-teardown
+    # exception discards every trashed row rather than relying on the request-teardown
     # rollback (which the test harness's SAVEPOINT does not trigger on a propagated
     # exception).
     tag_counts: dict[int, int] = {}
     try:
+        # Trash each row with per-row attribute sets (not one bulk UPDATE) because each
+        # row snapshots its own tag ids. Utub_Url_Tags rows are kept so a restore can
+        # bring the tags back.
         for row in deletable_rows:
-            db.session.query(Utub_Url_Tags).filter(
-                Utub_Url_Tags.utub_id == utub.id,
-                Utub_Url_Tags.utub_url_id == row.id,
-            ).delete()
-            db.session.delete(row)
+            trashed_at = utc_now()
+            row.deleted_at = trashed_at
+            row.deleted_by = current_user_id
+            row.trashed_tag_ids = sorted(row.associated_tag_ids)
 
         if total_deleted >= 1:
-            # Flush the pending removals so the grouped recompute counts post-delete
+            # Flush the pending flags so the grouped recompute counts live-only
             # state, then recompute affected tag counts ONCE.
             db.session.flush()
             tag_counts = _recompute_tag_counts_after_bulk_delete(
@@ -297,7 +302,7 @@ def delete_urls_in_utub(
     if total_deleted >= 1:
         safe_add_many_logs(
             [
-                "Bulk-deleted UTubURLs and associated UTubURLTags",
+                "Bulk-deleted UTubURLs",
                 f"User.id={current_user_id}",
                 f"UTub.id={utub.id}",
                 f"URLsDeleted={total_deleted}",
