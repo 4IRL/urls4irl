@@ -443,6 +443,10 @@ class HomePageLocators(GenericPageLocator):
     UPDATE_URL_TITLE_WRAP = ".updateUrlTitleWrap"
     BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
     INPUT_URL_STRING_UPDATE = ".urlStringUpdate"
+    # Scheme toggle + URL input row of the selected card's edit form
+    SCHEME_INPUT_ROW_UPDATE = (
+        f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeInputRow"
+    )
     BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
     BUTTON_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBtnUpdate"
     BUTTON_BIG_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBigBtnUpdate"

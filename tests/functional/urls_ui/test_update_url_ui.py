@@ -1586,7 +1586,8 @@ def test_update_url_string_trim_collapsed_toggle_drop_save_and_undo(
     )
     expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
     # The (closed) edit input must not keep the trimmed string it was saved with:
-    # opening the form again should show the restored original.
+    # opening the form again should show the restored original. (The closed form's
+    # selector is destroyed, so the input holds the whole URL, not the stripped rest.)
     expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_have_value(
         TRIM_URL_TWO_PARAMS
     )

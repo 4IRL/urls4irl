@@ -16,7 +16,7 @@ import {
   mountSchemeSelector,
   type SchemeSelectorHandle,
 } from "../scheme/scheme-selector.js";
-import { defaultSchemeForText, splitScheme } from "../scheme/scheme-utils.js";
+import { handleSchemePrefixInput } from "../scheme/scheme-prefix-handler.js";
 import { getNumOfVisibleURLs, getNumOfURLs } from "../utils.js";
 import {
   createURLBlock,
@@ -182,31 +182,15 @@ function mountCreateSchemeSelector(): void {
   urlInput.offAndOnExact(SCHEME_PREFIX_EVENT, handleCreateURLInput);
 }
 
-// Runs on every URL input: clears a stale URL error, moves a typed or pasted
-// scheme prefix into the selector (an explicit choice), and otherwise keeps a
-// non-explicit selector on the scheme the text implies (http for dev hosts).
+// Runs on every URL input (see handleSchemePrefixInput).
 function handleCreateURLInput(): void {
   const selector = getCreateSchemeSelector();
   if (!selector) return;
-  clearCreateURLStringError();
-  const urlInput = $("#urlStringCreate");
-  const text = getInputValue(urlInput);
-  const split = splitScheme({ urlString: text });
-  if (split) {
-    urlInput.val(split.rest);
-    selector.setScheme({
-      scheme: split.scheme,
-      explicit: true,
-      announce: true,
-    });
-    return;
-  }
-  if (!selector.isExplicit()) {
-    selector.setScheme({
-      scheme: defaultSchemeForText({ text }),
-      explicit: false,
-    });
-  }
+  handleSchemePrefixInput({
+    input: $("#urlStringCreate"),
+    selector,
+    onChange: clearCreateURLStringError,
+  });
 }
 
 // Cancels any pending debounced re-parse (via the block's reset callback) and

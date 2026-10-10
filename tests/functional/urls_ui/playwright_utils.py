@@ -46,6 +46,13 @@ TRIM_URL_KEEP_ONLY = f"{TRIM_BASE_URL}?keep=1"
 CLOSED_CLASS = re.compile(r"(^|\s)closed(\s|$)")
 
 
+def without_scheme(url: str) -> str:
+    """The text the edit form's input holds for ``url``: with the scheme selector
+    mounted, the scheme (``https://``) lives in the selector and the input keeps
+    only the rest."""
+    return url.split("://", 1)[-1]
+
+
 def _fulfill_with_stub_page(route: Route) -> None:
     route.fulfill(
         status=200,

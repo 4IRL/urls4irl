@@ -10,11 +10,21 @@ import {
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { setOpenForm } from "../../../lib/modal-tracking.js";
+import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { enableEditingURLTitle, isEmptyString } from "./utils.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
-import { isValidURL } from "../validation.js";
+import { isSupportedURLScheme, isValidURL } from "../validation.js";
+import {
+  mountSchemeSelector,
+  type SchemeSelectorHandle,
+} from "../scheme/scheme-selector.js";
+import {
+  UPDATE_SCHEME_CONTAINER_SELECTOR,
+  currentUpdateScheme,
+  getUpdateSchemeSelector,
+  syncUpdateInputFromHref,
+} from "../scheme/update-input-scheme.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -53,6 +63,7 @@ import {
   showURLUpdatedBanner,
 } from "../outcome-banner.js";
 import {
+  FORM_CANCEL_TRIGGER,
   HOME_FORM,
   URL_PARAMS_TRIMMED_FORM,
   VALIDATION_FORM,
@@ -142,6 +153,51 @@ function mountTrimSaveButton({
   closeBar.after(saveButton);
 }
 
+// Escape on the string field (the input itself, or the scheme toggle with its list
+// closed): reports the cancel and closes the form. Desktop only; on mobile the
+// panel-level Escape handler closes both fields.
+export function cancelUpdateURLStringFormOnEscape({
+  urlCard,
+}: {
+  urlCard: JQuery;
+}): void {
+  emit({
+    event: UI_EVENTS.UI_FORM_CANCEL,
+    form: HOME_FORM.URL_STRING_EDIT,
+    trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+  });
+  clearOpenForm();
+  hideAndResetUpdateURLStringForm({ urlCard });
+}
+
+// Mounts the scheme selector on the edit input's container and prefills it from
+// the stored href. A card without that container (older markup) degrades to the
+// plain text input.
+function mountUpdateSchemeSelector({
+  urlCard,
+}: {
+  urlCard: JQuery;
+}): SchemeSelectorHandle | null {
+  const inputContainer = urlCard.find(UPDATE_SCHEME_CONTAINER_SELECTOR);
+  if (inputContainer.length === 0) return null;
+  const urlInput = urlCard.find("input.urlStringUpdate");
+  const selector = mountSchemeSelector({
+    inputContainer,
+    urlInput,
+    idPrefix: "update-" + (urlCard.attr("utuburlid") ?? "card"),
+    onChange: () => {
+      resetUpdateURLFailErrors(urlCard);
+      urlInput.trigger("input.urlStringTrim");
+      urlInput.trigger("input.editPanelDirty");
+    },
+    onEscapeWhenClosed: isCoarsePointer()
+      ? undefined
+      : () => cancelUpdateURLStringFormOnEscape({ urlCard }),
+  });
+  syncUpdateInputFromHref({ urlCard, selector });
+  return selector;
+}
+
 // Shows update URL inputs
 export function showUpdateURLStringForm({
   urlCard,
@@ -169,21 +225,26 @@ export function showUpdateURLStringForm({
   enableTabbableChildElements(updateURLStringWrap);
   updateURLStringWrap.showClassFlex();
 
+  // Mounted before the focus below: the selector moves the input into its row,
+  // which drops the input's focus.
+  const selector = mountUpdateSchemeSelector({ urlCard });
+
   // Render the trim control from the pre-filled value immediately (flush, not
   // the debounced sync). It never takes focus, so the select-all below is safe.
   flushParamTrim({
     trimWrap: updateURLStringWrap.find(".urlParamTrimWrap"),
     text: getInputValue(updateURLStringWrap.find("input.urlStringUpdate")),
+    scheme: selector?.getScheme() ?? "",
   });
 
   // Handle case where iOS needs a direct focus not in a timeout, even with animation
   if (isMobile()) {
-    updateURLStringWrap.find("input").focus();
+    updateURLStringWrap.find("input.urlStringUpdate").focus();
   }
 
   // Set timeout in case user pressed enter to avoid propagation through to URL string update
   setTimeout(function () {
-    highlightInput(updateURLStringWrap.find("input"));
+    highlightInput(updateURLStringWrap.find("input.urlStringUpdate"));
   }, 100);
 
   // Disable URL Buttons as URL is being edited
@@ -256,9 +317,11 @@ export function hideAndResetUpdateURLStringForm({
     urlCard.find(".urlString").showClassNormal();
   }
 
-  // Update the input with current value of url string element
-  const urlStringElem = urlCard.find(".urlString");
-  urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href") as string);
+  // Update the input with current value of url string element. A kept-open field
+  // keeps its selector and resyncs the split; a closed one restores the full href
+  // (the selector is destroyed below, so no scheme is composed in).
+  const selector = getUpdateSchemeSelector({ urlCard });
+  syncUpdateInputFromHref({ urlCard, selector: keepOpen ? selector : null });
 
   // Reset the card's trim block in place (cancels its pending debounce and
   // re-collapses it). A kept-open field stays visible, so re-render it from the
@@ -269,10 +332,13 @@ export function hideAndResetUpdateURLStringForm({
     flushParamTrim({
       trimWrap,
       text: getInputValue(urlCard.find(".urlStringUpdate")),
+      scheme: selector?.getScheme() ?? "",
     });
   }
 
   if (!keepOpen) {
+    selector?.destroy();
+
     // The panel's "Save URL" button goes away with the Close bar it sits beside
     urlCard.find(".urlStringSaveBigBtnUpdate").remove();
 
@@ -347,6 +413,7 @@ function updateURLSetup({
   const { urlString, trimSubmission } = readTrimSubmit({
     trimWrap: urlCard.find(".urlParamTrimWrap"),
     text: getInputValue(urlStringUpdateInput),
+    scheme: currentUpdateScheme({ urlCard }),
   });
 
   const data: UpdateUrlStringRequest = { urlString: urlString.trim() };
@@ -414,7 +481,11 @@ export async function updateURL(
       return;
     }
 
-    if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+    if (
+      !isEmptyString(data.urlString) &&
+      (!isValidURL(data.urlString) ||
+        !isSupportedURLScheme({ urlString: data.urlString }))
+    ) {
       log("updateURL rejected by client-side URL validation", { utubUrlID });
       emit({
         event: UI_EVENTS.UI_VALIDATION_ERROR,
@@ -666,9 +737,13 @@ function displayUpdateURLErrors(
     .addClass("visible")
     .text(errorMessage);
   urlCard.find("." + key + "Update").addClass("invalid-field");
+  if (key === "urlString") {
+    getUpdateSchemeSelector({ urlCard })?.setInvalid({ invalid: true });
+  }
 }
 
-function resetUpdateURLFailErrors(urlCard: JQuery): void {
+export function resetUpdateURLFailErrors(urlCard: JQuery): void {
   urlCard.find(".urlStringUpdate").removeClass("invalid-field");
   urlCard.find(".urlStringUpdate-error").removeClass("visible");
+  getUpdateSchemeSelector({ urlCard })?.setInvalid({ invalid: false });
 }

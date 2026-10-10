@@ -9,6 +9,8 @@ import {
   TRIM_SUBMISSION_KEY,
   type TrimSubmission,
 } from "../trim/param-trim-block.js";
+import { currentUpdateScheme } from "../scheme/update-input-scheme.js";
+import { composeURL } from "../scheme/scheme-utils.js";
 
 // Mobile consolidated edit panel: the Title ✓, URL ✓ and "Save URL" buttons stay
 // disabled (aria-disabled + `unchanged`) until their field would actually change
@@ -45,10 +47,11 @@ export function isURLStringDirty(urlCard: JQuery): boolean {
     .find(TRIM_WRAP_SELECTOR)
     .data(TRIM_SUBMISSION_KEY) as (() => TrimSubmission) | undefined;
   if (getSubmission && getSubmission().droppedCount > 0) return true;
-  return (
-    getInputValue(urlCard.find(STRING_INPUT_SELECTOR)).trim() !==
-    urlCard.find(".urlString").attr("href")
-  );
+  const submitted = composeURL({
+    scheme: currentUpdateScheme({ urlCard }),
+    text: getInputValue(urlCard.find(STRING_INPUT_SELECTOR)).trim(),
+  });
+  return submitted !== urlCard.find(".urlString").attr("href");
 }
 
 /** Syncs the three confirm buttons of `urlCard`. No-op unless the panel is bound. */

@@ -9,6 +9,10 @@ import { URL_PARAMS_TRIMMED_FORM } from "../../../types/metrics-dim-values.js";
 import { flushParamTrim } from "../trim/param-trim-block.js";
 import { isCoarsePointer } from "../../mobile.js";
 import {
+  mountSchemeSelector,
+  type SchemeSelectorHandle,
+} from "../scheme/scheme-selector.js";
+import {
   bindEditPanelDirtyState,
   unbindEditPanelDirtyState,
 } from "../cards/edit-panel-dirty.js";
@@ -616,7 +620,7 @@ describe("outcome banner", () => {
         closed = false,
       }: { closed?: boolean } = {}): void {
         $(".urlRow[utuburlid=42]").append(`
-          <a class="urlString">${TRIMMED}</a>
+          <a class="urlString" href="${TRIMMED}">${TRIMMED}</a>
           <div class="updateUrlStringWrap${closed ? " hidden" : ""}">
             <input class="urlStringUpdate" value="${TRIMMED}" />
             <div class="urlParamTrimWrap"></div>
@@ -696,6 +700,82 @@ describe("outcome banner", () => {
         runUndo();
 
         expect($(".urlStringUpdate").val()).toBe(TRIMMED);
+        expect(flushParamTrim).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("edit form resync with the scheme selector mounted", () => {
+      const SAVED = "https://example.com/p?a=1";
+      const RESTORED = "ftp://files.example.com/p?a=1&b=2";
+      let selectorHandle: SchemeSelectorHandle;
+
+      // With the selector mounted the input holds the scheme-stripped rest, so the
+      // saved href is only recoverable by composing it with the selected scheme.
+      function addMountedEditForm(): void {
+        $(".urlRow[utuburlid=42]").append(`
+          <a class="urlString" href="${SAVED}">${SAVED}</a>
+          <div class="updateUrlStringWrap">
+            <div class="text-input-container">
+              <input class="urlStringUpdate" value="example.com/p?a=1" />
+            </div>
+            <div class="urlParamTrimWrap"></div>
+          </div>
+        `);
+        selectorHandle = mountSchemeSelector({
+          inputContainer: $(".updateUrlStringWrap .text-input-container"),
+          urlInput: $(".urlStringUpdate"),
+          idPrefix: "undo-test",
+          onChange: vi.fn(),
+        });
+        selectorHandle.setScheme({ scheme: "https", explicit: true });
+      }
+
+      function mockUndoToRestored(): void {
+        showExistingBanner();
+        mockDone({
+          status: "Success",
+          URL: { utubUrlID: 42, urlString: RESTORED },
+        });
+      }
+
+      afterEach(() => {
+        selectorHandle?.destroy();
+      });
+
+      it("resyncs the input and the selector from the restored href and flushes the trim block with the scheme", () => {
+        addMountedEditForm();
+        mockUndoToRestored();
+
+        runUndo();
+
+        expect($(".urlStringUpdate").val()).toBe("files.example.com/p?a=1&b=2");
+        expect(selectorHandle.getScheme()).toBe("ftp");
+        expect(flushParamTrim).toHaveBeenCalledTimes(1);
+        const flushed = vi.mocked(flushParamTrim).mock.calls[0][0];
+        expect(flushed.text).toBe("files.example.com/p?a=1&b=2");
+        expect(flushed.scheme).toBe("ftp");
+      });
+
+      it("leaves text typed since the save alone, even though it is not the full href", () => {
+        addMountedEditForm();
+        $(".urlStringUpdate").val("example.com/typed");
+        mockUndoToRestored();
+
+        runUndo();
+
+        expect($(".urlStringUpdate").val()).toBe("example.com/typed");
+        expect(selectorHandle.getScheme()).toBe("https");
+        expect(flushParamTrim).not.toHaveBeenCalled();
+      });
+
+      it("leaves a scheme changed since the save alone", () => {
+        addMountedEditForm();
+        selectorHandle.setScheme({ scheme: "ftp", explicit: true });
+        mockUndoToRestored();
+
+        runUndo();
+
+        expect($(".urlStringUpdate").val()).toBe("example.com/p?a=1");
         expect(flushParamTrim).not.toHaveBeenCalled();
       });
     });

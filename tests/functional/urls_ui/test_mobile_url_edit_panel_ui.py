@@ -44,6 +44,7 @@ from tests.functional.urls_ui.playwright_utils import (
     TRIM_URL_KEEP_ONLY,
     TRIM_URL_TWO_PARAMS,
     set_trim_section_expanded,
+    without_scheme,
 )
 
 pytestmark = pytest.mark.mobile_ui
@@ -552,8 +553,9 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     )
     expect(header).to_have_attribute("aria-expanded", "false")
 
-    # The kept-open form shows the saved (trimmed) string until Undo restores the
-    # original: the field and the trim block must follow it, not the stale value.
+    # "Save URL" closed the panel, which destroyed the scheme selector, so the
+    # (hidden) field holds the FULL saved string until Undo restores the original:
+    # the field and the trim block must follow it, not the stale value.
     string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
     expect(string_input).to_have_value(TRIM_URL_KEEP_ONLY)
     page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
@@ -645,12 +647,12 @@ def test_url_string_plain_edit_undo_restores_kept_open_input_mobile(
     expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
         URL_UPDATED_BANNER
     )
-    expect(string_input).to_have_value(PLAIN_EDIT_URL)
+    expect(string_input).to_have_value(without_scheme(PLAIN_EDIT_URL))
 
     page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
 
     expect(url_string_elem).to_have_attribute(HPL.URL_STRING_IN_DATA, original_url)
-    expect(string_input).to_have_value(original_url)
+    expect(string_input).to_have_value(without_scheme(original_url))
     expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
 
 
@@ -690,12 +692,12 @@ def test_url_edit_panel_field_spacing_and_errored_submit_centering_mobile(
     title_input = selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)
     string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
 
-    # The Title and URL inputs (and their check buttons) are the same width and
-    # end at the same right edge.
+    # The Title input and the URL field (the scheme toggle + URL input row) are the
+    # same width and end at the same right edge, as do their check buttons.
     wait_until_same_width_and_right_edge(
         page=page,
         first_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}",
-        second_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+        second_selector=HPL.SCHEME_INPUT_ROW_UPDATE,
     )
     title_check_box = selected_url.locator(
         HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE
@@ -922,7 +924,7 @@ def test_url_edit_panel_dropped_chip_enables_url_buttons_mobile(
     chip = page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).nth(1)
     chip.click()
     expect(chip).to_have_attribute("aria-pressed", "false")
-    expect(string_input).to_have_value(TRIM_URL_TWO_PARAMS)
+    expect(string_input).to_have_value(without_scheme(TRIM_URL_TWO_PARAMS))
     assert_confirm_button_enabled(button=string_check)
     assert_confirm_button_enabled(button=save_button)
 

@@ -1,6 +1,6 @@
 import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { isUtubLockedHandled } from "../utub-locked.js";
@@ -9,10 +9,14 @@ import { deleteURLOnStale } from "./cards/get.js";
 import { applyUpdatedURLString } from "./cards/apply-url-string.js";
 import { syncEditPanelDirtyState } from "./cards/edit-panel-dirty.js";
 import {
-  flushParamTrim,
   type TrimSubmission,
   type UrlParamsTrimmedForm,
 } from "./trim/param-trim-block.js";
+import { composeURL } from "./scheme/scheme-utils.js";
+import {
+  currentUpdateScheme,
+  resyncUpdateInputAfterUndo,
+} from "./scheme/update-input-scheme.js";
 import { fillTemplate } from "../../lib/string-template.js";
 import { debug } from "../../lib/debug.js";
 import { emit } from "../../lib/metrics-client.js";
@@ -225,22 +229,25 @@ export function performUndo({
         returnFocusTo,
       });
     } else {
-      const savedURLString = urlCard.find(".urlString").text();
+      const savedURLString = urlCard.find(".urlString").attr("href");
       applyUpdatedURLString({ response, urlCard });
       // The edit form's input still holds the string it was saved with (a
-      // kept-open mobile form shows it right now; a closed one on its next
-      // open). Restore it and re-render the trim block, so the field reads as it
-      // did before the save — unless the user has since typed something else.
-      const restoredURLString = response.URL.urlString;
+      // kept-open mobile form shows it right now, split across its scheme
+      // selector; a closed one on its next open). Restore it and re-render the
+      // trim block, so the field reads as it did before the save — unless the
+      // user has since typed something else.
       const input = urlCard.find(".urlStringUpdate");
       const formClosed = urlCard
         .find(".updateUrlStringWrap")
         .hasClass("hidden");
-      if (formClosed || input.val() === savedURLString) {
-        input.val(restoredURLString);
-        flushParamTrim({
-          trimWrap: urlCard.find(".urlParamTrimWrap"),
-          text: restoredURLString,
+      const composedInput = composeURL({
+        scheme: currentUpdateScheme({ urlCard }),
+        text: input.length > 0 ? getInputValue(input) : "",
+      });
+      if (formClosed || composedInput === savedURLString) {
+        resyncUpdateInputAfterUndo({
+          urlCard,
+          restoredURLString: response.URL.urlString,
         });
       }
       // The stored value changed (and the input may have been resynced): re-derive
