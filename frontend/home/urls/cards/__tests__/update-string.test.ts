@@ -31,6 +31,7 @@ import { createURLStringAndUpdateBlock } from "../url-string.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { isCoarsePointer } from "../../../mobile.js";
+import { highlightInput } from "../../../btns-forms.js";
 import { openURLEditPanel, closeURLEditPanel } from "../update-url-panel.js";
 import { bindEditPanelDirtyState } from "../edit-panel-dirty.js";
 import { getSchemeSelector } from "../../scheme/scheme-selector.js";
@@ -1954,6 +1955,37 @@ describe("edit-URL scheme selector", () => {
       expect(urlInput.attr("autocapitalize")).toBe("none");
       expect(urlInput.attr("autocorrect")).toBe("off");
       expect(urlInput.attr("spellcheck")).toBe("false");
+    });
+  });
+
+  describe("delayed select-all on open", () => {
+    it("selects the URL input once the open window elapses", () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com" });
+
+      vi.advanceTimersByTime(100);
+
+      expect(highlightInput).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not pull focus back when the scheme toggle was focused inside the window", () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com" });
+      (urlCard.find(".urlSchemeToggle")[0] as HTMLElement).focus();
+
+      vi.advanceTimersByTime(100);
+
+      expect(highlightInput).not.toHaveBeenCalled();
+    });
+
+    it("still selects the URL input when it is already focused", () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com" });
+      (urlInput[0] as HTMLElement).focus();
+
+      vi.advanceTimersByTime(100);
+
+      expect(highlightInput).toHaveBeenCalledTimes(1);
     });
   });
 

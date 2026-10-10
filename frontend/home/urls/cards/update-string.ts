@@ -244,7 +244,22 @@ export function showUpdateURLStringForm({
 
   // Set timeout in case user pressed enter to avoid propagation through to URL string update
   setTimeout(function () {
-    highlightInput(updateURLStringWrap.find("input.urlStringUpdate"));
+    const urlStringInput = updateURLStringWrap.find<HTMLInputElement>(
+      "input.urlStringUpdate",
+    );
+    // A fast interaction with the scheme selector (toggle, filter, options)
+    // inside this window keeps its focus instead of having it pulled back to
+    // the URL input. The URL input itself sits inside the wrapper, so it is
+    // excluded: it may already be focused (mobile) and still needs select-all.
+    if (
+      urlStringInput
+        .closest(".urlSchemeSelector")
+        .find(":focus")
+        .not(urlStringInput).length > 0
+    ) {
+      return;
+    }
+    highlightInput(urlStringInput);
   }, 100);
 
   // Disable URL Buttons as URL is being edited
