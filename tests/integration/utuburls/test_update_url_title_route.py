@@ -24,7 +24,7 @@ from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub_url
 
 pytestmark = pytest.mark.urls
 
@@ -1157,6 +1157,55 @@ def test_update_url_title_of_nonexistent_url(
         assert num_of_urls == Urls.query.count()
         assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
         assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+
+
+def test_update_title_of_trashed_url_is_404(
+    add_two_users_and_all_urls_to_each_utub_with_one_tag,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that holds a URL that has been moved to trash
+    WHEN the creator attempts to modify that URL's title via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data
+    THEN verify the server sends back a 404 HTTP status code with the not-found
+        JSON, and the trashed row's title is unchanged
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_TITLE = "This is my newest facebook.com."
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_creator_of.id
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).first()
+        utub_url_id = utub_url.id
+        original_title = utub_url.url_title
+        creator_user_id = current_user.id
+
+    trash_utub_url(app, utub_url_id, deleted_by=creator_user_id)
+
+    update_title_response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        json={URL_FORM.URL_TITLE: NEW_TITLE},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_title_response.status_code == 404
+    json_response = update_title_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        trashed_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert trashed_row.is_trashed
+        assert trashed_row.url_title == original_title
 
 
 def test_update_url_title_in_nonexistent_utub(

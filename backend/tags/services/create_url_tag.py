@@ -348,7 +348,8 @@ def add_tags_to_urls_in_utub(
     # single query fetches all requested rows; any id that is unknown or belongs
     # to a different UTub rejects the whole request before any write occurs.
     url_rows: list[Utub_Urls] = Utub_Urls.query.filter(
-        Utub_Urls.id.in_(utub_url_ids)
+        Utub_Urls.id.in_(utub_url_ids),
+        Utub_Urls.deleted_at.is_(None),
     ).all()
     url_rows_by_id: dict[int, Utub_Urls] = {row.id: row for row in url_rows}
     if any(

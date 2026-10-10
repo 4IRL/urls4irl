@@ -166,7 +166,8 @@ def copy_urls_into_utubs(
     # OR belongs to a UTub other than the claimed SOURCE rejects the whole request
     # before any write.
     source_rows: list[Utub_Urls] = Utub_Urls.query.filter(
-        Utub_Urls.id.in_(utub_url_ids)
+        Utub_Urls.id.in_(utub_url_ids),
+        Utub_Urls.deleted_at.is_(None),
     ).all()
     rows_by_id: dict[int, Utub_Urls] = {row.id: row for row in source_rows}
     if any(
@@ -189,6 +190,8 @@ def copy_urls_into_utubs(
 
     # Prefetch existing (dest, url) pairs across ALL destinations in ONE query, so the
     # per-destination duplicate check is a set membership test, not a query per pair.
+    # Trashed rows are kept (unfiltered) so a trashed occupant becomes a DUPLICATE
+    # skip instead of tripping ``unique_url_per_utub``.
     source_url_ids = [row.url_id for row in source_rows_in_order]
     existing_pairs: set[tuple[int, int]] = {
         (row.utub_id, row.url_id)

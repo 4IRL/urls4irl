@@ -264,7 +264,8 @@ def delete_urls_in_utub(
     # One-query all-or-nothing id validation: any unknown id OR any id belonging to a
     # UTub other than this one rejects the whole request BEFORE any write.
     requested_rows: list[Utub_Urls] = Utub_Urls.query.filter(
-        Utub_Urls.id.in_(utub_url_ids)
+        Utub_Urls.id.in_(utub_url_ids),
+        Utub_Urls.deleted_at.is_(None),
     ).all()
     rows_by_id: dict[int, Utub_Urls] = {row.id: row for row in requested_rows}
     if any(

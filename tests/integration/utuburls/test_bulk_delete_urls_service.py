@@ -19,7 +19,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub_url
 
 pytestmark = pytest.mark.urls
 
@@ -244,6 +244,45 @@ def test_service_rejects_unknown_id_spoofing(
         assert status_code == 400
         assert body[STD_JSON.MESSAGE] == URL_FAILURE.URLS_NOT_IN_UTUB
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before
+
+
+def test_service_rejects_trashed_url_id(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a utubUrlId in the UTub whose row is already in the trash
+    WHEN it is included in a bulk-delete request alongside a live id
+    THEN the whole request is rejected 400 with URLS_NOT_IN_UTUB + INVALID_FORM_INPUT,
+        the live row survives, and the trashed row's deleted_at is unchanged.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        rows_by_url_id = _utub_url_rows_by_url_id(FIRST_UTUB_ID)
+        live_id = rows_by_url_id[1].id
+        trashed_id = rows_by_url_id[2].id
+
+    trash_utub_url(app, trashed_id, deleted_by=CREATOR_USER_ID)
+
+    with app.app_context():
+        trashed_deleted_at = Utub_Urls.query.get(trashed_id).deleted_at
+        count_before = _utub_url_row_count(FIRST_UTUB_ID)
+
+        response, status_code = delete_urls_in_utub(
+            utub_url_ids=[live_id, trashed_id],
+            utub=Utubs.query.get(FIRST_UTUB_ID),
+            current_user_id=CREATOR_USER_ID,
+        )
+        body = response.get_json()
+
+        assert status_code == 400
+        assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert body[STD_JSON.MESSAGE] == URL_FAILURE.URLS_NOT_IN_UTUB
+        assert body[STD_JSON.ERROR_CODE] == URLErrorCodes.INVALID_FORM_INPUT
+        assert _utub_url_row_count(FIRST_UTUB_ID) == count_before
+        assert Utub_Urls.query.get(live_id).deleted_at is None
+        assert Utub_Urls.query.get(trashed_id).deleted_at == trashed_deleted_at
 
 
 def test_service_locked_utub_is_403(

@@ -26,6 +26,7 @@ from tests.utils_for_test import (
     is_string_in_logs,
     set_member_role,
     trash_utub,
+    trash_utub_url,
 )
 
 pytestmark = pytest.mark.utubs
@@ -683,6 +684,61 @@ def test_get_valid_utub_with_members_urls_tags(
         assert (
             utub_user_is_creator_of.last_updated - initial_last_updated
         ).total_seconds() > 0
+
+
+def test_get_utub_excludes_trashed_url(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a member of a UTub whose URLs all carry every tag, where one URL is in the
+        trash
+    WHEN the user requests the details of that UTub
+    THEN verify the trashed URL is absent from the URL list, and each tag's
+        tagApplied count counts only the live URLs
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_user_is_creator_of.id
+        creator_user_id = current_user.id
+        utub_urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).all()
+        trashed_utub_url_id = utub_urls_in_utub[0].id
+        live_utub_url_ids = sorted(utub_url.id for utub_url in utub_urls_in_utub[1:])
+        tag_ids_on_trashed_url = utub_urls_in_utub[0].associated_tag_ids
+        assert len(tag_ids_on_trashed_url) > 0
+        raw_counts_before = {
+            tag_id: count_tag_instances_in_utub(utub_id, tag_id)
+            for tag_id in tag_ids_on_trashed_url
+        }
+
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=creator_user_id)
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json is not None
+
+    returned_url_ids = sorted(
+        url[MODELS.UTUB_URL_ID] for url in response_json[MODELS.URLS]
+    )
+    assert trashed_utub_url_id not in returned_url_ids
+    assert returned_url_ids == live_utub_url_ids
+
+    tags_by_id = {tag[MODELS.ID]: tag for tag in response_json[MODELS.TAGS]}
+    for tag_id in tag_ids_on_trashed_url:
+        # count_tag_instances_in_utub is a raw count, so the trashed row is excluded
+        # by hand
+        assert tags_by_id[tag_id][MODELS.TAG_APPLIED] == raw_counts_before[tag_id] - 1
 
 
 def test_get_utub_detail_reflects_locked_state(

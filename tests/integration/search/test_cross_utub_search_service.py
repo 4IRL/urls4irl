@@ -13,7 +13,7 @@ from backend.search.constants import MatchedField
 from backend.search.services.cross_utub_search import search_across_user_utubs
 from tests.integration.search.helpers import seed_single_utub_with_one_url
 from tests.models_for_test import all_tag_strings
-from tests.utils_for_test import trash_utub
+from tests.utils_for_test import trash_utub, trash_utub_url
 
 pytestmark = pytest.mark.urls
 
@@ -128,6 +128,47 @@ def test_search_excludes_non_member_utubs(
 
         returned_utub_ids = {group.utub_id for group in results.results}
         assert returned_utub_ids.isdisjoint(non_member_utub_ids)
+
+
+def test_search_excludes_trashed_url_in_live_utub(
+    register_multiple_users,
+    app: Flask,
+):
+    query = "trashurlmatch"
+    with app.app_context():
+        live_utub_id = seed_single_utub_with_one_url(
+            user_id=FIRST_USER_ID,
+            utub_name="Mixed UTub",
+            url_string="https://live.trashurlmatch.com/",
+            url_title="Live",
+        )
+        _add_url_to_utub(
+            utub=Utubs.query.get(live_utub_id),
+            url_string="https://trashed.trashurlmatch.com/",
+            url_title="Trashed",
+            user_id=FIRST_USER_ID,
+        )
+        utub_url_ids_by_title = {
+            utub_url.url_title: utub_url.id
+            for utub_url in Utub_Urls.query.filter(
+                Utub_Urls.utub_id == live_utub_id
+            ).all()
+        }
+        trashed_utub_url_id = utub_url_ids_by_title["Trashed"]
+        live_utub_url_id = utub_url_ids_by_title["Live"]
+
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=FIRST_USER_ID)
+
+    with app.app_context():
+        results = search_across_user_utubs(query=query, user_id=FIRST_USER_ID)
+
+        assert [group.utub_id for group in results.results] == [live_utub_id]
+        returned_utub_url_ids = {
+            matched_url.utub_url_id
+            for group in results.results
+            for matched_url in group.urls
+        }
+        assert returned_utub_url_ids == {live_utub_url_id}
 
 
 def test_search_excludes_urls_in_trashed_utub(

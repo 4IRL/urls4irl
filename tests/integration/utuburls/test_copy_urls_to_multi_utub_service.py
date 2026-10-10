@@ -24,7 +24,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs, trash_utub
+from tests.utils_for_test import is_string_in_logs, trash_utub, trash_utub_url
 
 pytestmark = pytest.mark.urls
 
@@ -533,6 +533,91 @@ def test_service_rejects_cross_utub_id_spoofing(
         assert body[STD_JSON.MESSAGE] == URL_FAILURE.URL_NOT_IN_UTUB
         assert body[STD_JSON.ERROR_CODE] == URLErrorCodes.INVALID_FORM_INPUT
         assert _dest_url_row_count(DEST_UTUB_ID) == dest_count_before
+
+
+def test_service_trashed_source_url_rejected_400(
+    add_multi_dest_state_for_copy,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a source UTub whose URL 1 row is in the trash
+    WHEN that trashed row is included in a copy request
+    THEN the whole request is rejected 400 with URL_NOT_IN_UTUB + INVALID_FORM_INPUT,
+        and no rows are written to the destination.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        trashed_id = _source_rows_by_url_id(SOURCE_UTUB_ID)[1].id
+        dest_count_before = _dest_url_row_count(DEST_UTUB_ID)
+
+    trash_utub_url(app, trashed_id, deleted_by=copier_id)
+
+    with app.app_context():
+        response, status_code = copy_urls_into_utubs(
+            source_utub_id=SOURCE_UTUB_ID,
+            dest_utub_ids=[DEST_UTUB_ID],
+            utub_url_ids=[trashed_id],
+            current_user_id=copier_id,
+        )
+        body = response.get_json()
+
+        assert status_code == 400
+        assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert body[STD_JSON.MESSAGE] == URL_FAILURE.URL_NOT_IN_UTUB
+        assert body[STD_JSON.ERROR_CODE] == URLErrorCodes.INVALID_FORM_INPUT
+        assert _dest_url_row_count(DEST_UTUB_ID) == dest_count_before
+
+
+def test_service_trashed_destination_occupant_is_duplicate_skip(
+    add_multi_dest_with_one_dup,
+    login_first_user_without_register,
+):
+    """
+    GIVEN source URL 1 pre-seeded into destination UTub 3, where that row is in the
+        trash
+    WHEN URL 1 is copied into [2, 3]
+    THEN destination 3 reports a DUPLICATE skip (not an IntegrityError on
+        unique_url_per_utub), destination 2 copies cleanly, and the trashed
+        occupant stays trashed.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        target_id = _source_rows_by_url_id(SOURCE_UTUB_ID)[1].id
+        occupant_id = _source_rows_by_url_id(THIRD_UTUB_ID)[1].id
+
+    trash_utub_url(app, occupant_id, deleted_by=copier_id)
+
+    with app.app_context():
+        response, status_code = copy_urls_into_utubs(
+            source_utub_id=SOURCE_UTUB_ID,
+            dest_utub_ids=[DEST_UTUB_ID, THIRD_UTUB_ID],
+            utub_url_ids=[target_id],
+            current_user_id=copier_id,
+        )
+        body = response.get_json()
+
+        assert status_code == 200
+        assert body[MODEL_STRS.TOTAL_COPIED] == 1
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 1
+
+        results = _result_by_dest(body)
+        assert results[DEST_UTUB_ID][MODEL_STRS.STATUS] == DestCopyStatus.OK.value
+        dest3_skipped = results[THIRD_UTUB_ID][MODEL_STRS.SKIPPED]
+        assert results[THIRD_UTUB_ID][MODEL_STRS.COPIED] == []
+        assert len(dest3_skipped) == 1
+        assert dest3_skipped[0][MODEL_STRS.UTUB_URL_ID] == target_id
+        assert (
+            dest3_skipped[0][MODEL_STRS.SKIP_REASON]
+            == BulkCopySkipReason.DUPLICATE.value
+        )
+
+        occupant = Utub_Urls.query.get(occupant_id)
+        assert occupant is not None
+        assert occupant.is_trashed
 
 
 def test_service_rejects_same_utub_copy(

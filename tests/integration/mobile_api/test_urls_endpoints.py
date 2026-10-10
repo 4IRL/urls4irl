@@ -30,7 +30,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_NAME
 from tests.models_for_test import valid_url_strings
-from tests.utils_for_test import trash_utub
+from tests.utils_for_test import trash_utub, trash_utub_url
 
 pytestmark = pytest.mark.mobile_api
 
@@ -379,6 +379,33 @@ def test_get_url_in_trashed_utub_is_404(
     assert response_json[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
 
+def test_get_trashed_url_is_404(
+    app: Flask,
+    api_client: FlaskClient,
+    add_one_url_to_each_utub_no_tags,
+    make_bearer_headers: Callable[[str], dict[str, str]],
+):
+    """
+    GIVEN user 1 created UTub 1, which holds utub_url_id=1, and that URL is trashed
+    WHEN user 1 GETs /api/v1/utubs/1/urls/1
+    THEN 404 with the generic not-found envelope (the api URL gate treats it as missing)
+    """
+    trash_utub_url(app, 1, deleted_by=1)
+    with app.app_context():
+        assert Utub_Urls.query.get(1).is_trashed
+    user_1_token = _token_for_user(app, user_id=1)
+
+    response = api_client.get(
+        _get_url_url(app, utub_id=1, utub_url_id=1),
+        headers=make_bearer_headers(user_1_token),
+    )
+
+    assert response.status_code == 404
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+
 # ===========================================================================
 # PATCH /api/v1/utubs/<utub_id>/urls/<utub_url_id> — update URL string
 # ===========================================================================
@@ -685,6 +712,38 @@ def test_delete_url_no_token_is_401(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == API_AUTH_FAILURE.AUTHENTICATION_REQUIRED
+
+
+def test_delete_trashed_url_is_404(
+    app: Flask,
+    api_client: FlaskClient,
+    add_one_url_to_each_utub_no_tags,
+    make_bearer_headers: Callable[[str], dict[str, str]],
+):
+    """
+    GIVEN user 1 created UTub 1, which holds utub_url_id=1, and that URL is already
+        trashed
+    WHEN user 1 DELETEs /api/v1/utubs/1/urls/1
+    THEN 404 with the generic not-found envelope and the row's deleted_at is unchanged
+    """
+    trash_utub_url(app, 1, deleted_by=1)
+    with app.app_context():
+        original_deleted_at = Utub_Urls.query.get(1).deleted_at
+        assert original_deleted_at is not None
+    user_1_token = _token_for_user(app, user_id=1)
+
+    response = api_client.delete(
+        _delete_url_url(app, utub_id=1, utub_url_id=1),
+        headers=make_bearer_headers(user_1_token),
+    )
+
+    assert response.status_code == 404
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        assert Utub_Urls.query.get(1).deleted_at == original_deleted_at
 
 
 def test_delete_url_nonexistent_utub_url_is_404(

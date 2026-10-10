@@ -23,7 +23,7 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.url_strs import URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.utils_for_test import is_string_in_logs, set_member_role
+from tests.utils_for_test import is_string_in_logs, set_member_role, trash_utub_url
 
 pytestmark = pytest.mark.urls
 
@@ -581,6 +581,50 @@ def test_remove_invalid_nonexistant_url_as_utub_member(
         # Ensure not in UTub and nonexistant
         assert Utub_Urls.query.get(NONEXISTENT_URL_IN_UTUB_ID) is None
         assert Utub_Urls.query.count() == initial_utub_urls
+
+
+def test_delete_already_trashed_url_is_404(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub that holds a URL that is already in the trash
+    WHEN the user makes a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>" for it
+    THEN the server responds with a 404 and the row's original deleted_at and
+        deleted_by are unchanged, so the retention clock is not reset
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_creator_of.id
+        utub_url_id = Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first().id
+        creator_user_id = current_user.id
+
+    trash_utub_url(app, utub_url_id, deleted_by=creator_user_id)
+
+    with app.app_context():
+        trashed_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert trashed_row is not None
+        assert trashed_row.is_trashed
+        original_deleted_at = trashed_row.deleted_at
+        original_deleted_by = trashed_row.deleted_by
+
+    delete_url_response = client.delete(
+        url_for(ROUTES.URLS.DELETE_URL, utub_id=utub_id, utub_url_id=utub_url_id),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert delete_url_response.status_code == 404
+    json_response = delete_url_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        row_after: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert row_after.deleted_at == original_deleted_at
+        assert row_after.deleted_by == original_deleted_by
 
 
 def test_delete_url_as_utub_creator_with_tag(
