@@ -256,6 +256,14 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_BULK_CARD_CANT_DELETE = URL_BULK_CARD_CANT_DELETE
 
 
+# Short hint text shown beside a scheme in the URL scheme selector (keys must be whitelisted schemes)
+URL_SCHEME_HINT_STRS: dict[str, str] = {
+    "mailto": "email",
+    "tel": "phone",
+    "sms": "text message",
+    "magnet": "torrent",
+}
+
 # Strings for URL failure
 UNABLE_TO_DELETE_URL = "Unable to remove this URL."
 UNABLE_TO_ADD_URL = "Unable to add this URL."

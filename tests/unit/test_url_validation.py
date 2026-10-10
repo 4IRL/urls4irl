@@ -680,3 +680,24 @@ def test_strip_tracking_params(href: str, expected: str):
 def test_contains_tracking_params(url: str, expected: bool):
     url_validator = UrlValidator(skip_logs=True)
     assert url_validator.contains_tracking_params(url) is expected
+
+
+def test_authority_url_schemes_are_whitelisted():
+    """Typo guard: every authority scheme must exist in the validator whitelist."""
+    whitelist = url_constants.CORE_SCHEMES | url_constants.OTHER_VALID_SCHEMES
+    assert url_constants.AUTHORITY_URL_SCHEMES <= whitelist
+
+
+def test_ordered_url_schemes_has_no_duplicates():
+    ordered_schemes = url_constants.ordered_url_schemes()
+    assert len(ordered_schemes) == len(set(ordered_schemes))
+
+
+def test_ordered_url_schemes_avoid_invalid_scheme_prefixes():
+    """The selector must not offer a scheme the validator would reject."""
+    offending_schemes: list[str] = [
+        scheme
+        for scheme in url_constants.ordered_url_schemes()
+        if scheme.startswith(url_constants.INVALID_SCHEME_PREFIXES)
+    ]
+    assert offending_schemes == []

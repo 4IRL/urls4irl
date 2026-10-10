@@ -2,9 +2,13 @@ from flask import current_app
 from flask_login import current_user
 
 from backend.extensions.url_validation.constants import (
+    AUTHORITY_URL_SCHEMES,
+    DEFAULT_URL_SCHEME,
+    DEV_URLS,
     TRACKING_QUERY_PARAM_PREFIXES,
     TRACKING_QUERY_PARAMS,
     WEB_SCHEMES_FOR_TRACKING_STRIP,
+    ordered_url_schemes,
 )
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType
@@ -186,6 +190,7 @@ from backend.utils.strings.url_strs import (
     URL_BULK_SELECTED_COUNT_ONE,
     URL_DATE_ADDED_ARIA,
     URL_DATE_ADDED_LABEL,
+    URL_SCHEME_HINT_STRS,
     URL_SEARCH_NO_RESULTS,
     URL_TRIM_ANNOUNCE,
     URL_TRIM_AUTO_ONLY_TITLE,
@@ -1101,6 +1106,13 @@ def generate_constants_js() -> dict[
         "TRACKING_QUERY_PARAMS": sorted(TRACKING_QUERY_PARAMS),
         "TRACKING_QUERY_PARAM_PREFIXES": list(TRACKING_QUERY_PARAM_PREFIXES),
         "TRACKING_STRIP_SCHEMES": sorted(WEB_SCHEMES_FOR_TRACKING_STRIP),
+        # URL scheme selector: the backend whitelist is the source of truth; order is
+        # made deterministic (the whitelist itself is a set).
+        "URL_SCHEMES": ordered_url_schemes(),
+        "URL_DEFAULT_SCHEME": DEFAULT_URL_SCHEME,
+        "URL_AUTHORITY_SCHEMES": sorted(AUTHORITY_URL_SCHEMES),
+        "URL_DEV_HOSTS": list(DEV_URLS),
+        "URL_SCHEME_HINTS": dict(URL_SCHEME_HINT_STRS),
         # Tag constants
         "TAGS_MIN_LENGTH": CONSTANTS.TAGS.MIN_TAG_LENGTH,
         "TAGS_MAX_LENGTH": CONSTANTS.TAGS.MAX_TAG_LENGTH,
