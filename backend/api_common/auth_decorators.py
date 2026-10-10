@@ -166,6 +166,9 @@ def utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
                 f"Invalid UTubURL.id={utub_url_id} for UTub.id={g.utub_id} by UTubUser={current_user.id}"
             )
             abort(404)
+        # Rows survive soft delete, so a trashed URL must 404 on the Utub_Urls row.
+        if current_utub_url.is_trashed:
+            abort(404)
 
         kwargs["current_utub_url"] = current_utub_url
         g.user_added_url = current_utub_url.user_id == current_user.id
@@ -474,6 +477,9 @@ def api_utub_membership_with_valid_url_in_utub_required(func: Callable) -> Calla
             critical_log(
                 f"Invalid UTubURL.id={utub_url_id} for UTub.id={g.utub_id} by UTubUser={current_user.id}"
             )
+            abort(404)
+        # Rows survive soft delete, so a trashed URL must 404 on the Utub_Urls row.
+        if current_utub_url.is_trashed:
             abort(404)
 
         kwargs["current_utub_url"] = current_utub_url

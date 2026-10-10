@@ -47,6 +47,14 @@ def _utub_url_rows_by_url_id(utub_id: int) -> dict[int, Utub_Urls]:
 
 
 def _utub_url_row_count(utub_id: int) -> int:
+    """Count the live (non-trashed) URL rows in a UTub."""
+    return Utub_Urls.query.filter(
+        Utub_Urls.utub_id == utub_id, Utub_Urls.deleted_at.is_(None)
+    ).count()
+
+
+def _utub_url_raw_row_count(utub_id: int) -> int:
+    """Count every URL row in a UTub, trashed or not."""
     return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).count()
 
 
@@ -65,8 +73,9 @@ def test_route_creator_bulk_deletes_own_urls_happy_path(
     GIVEN the literal creator (user 1) of a UTub holding three URLs
     WHEN two of those URLs are bulk-deleted via the endpoint
     THEN the server returns 200 with the full report shape (deleted/skipped/
-        tagCountsInUtub/totalDeleted/totalSkipped), both rows are removed, nothing is
-        skipped, and the success breadcrumb is logged.
+        tagCountsInUtub/totalDeleted/totalSkipped), both rows are trashed (flagged, not
+        removed) by the acting user, nothing is skipped, and the success breadcrumb is
+        logged.
     """
     client, csrf_token, _, app = login_first_user_without_register
 
@@ -74,6 +83,7 @@ def test_route_creator_bulk_deletes_own_urls_happy_path(
         rows_by_url_id = _utub_url_rows_by_url_id(FIRST_UTUB_ID)
         target_ids = [rows_by_url_id[1].id, rows_by_url_id[2].id]
         count_before = _utub_url_row_count(FIRST_UTUB_ID)
+        raw_count_before = _utub_url_raw_row_count(FIRST_UTUB_ID)
 
     response = client.post(
         url_for(ROUTES.URLS.DELETE_URLS_BULK, utub_id=FIRST_UTUB_ID),
@@ -95,12 +105,14 @@ def test_route_creator_bulk_deletes_own_urls_happy_path(
 
     with app.app_context():
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before - 2
+        assert _utub_url_raw_row_count(FIRST_UTUB_ID) == raw_count_before
         for deleted_id in target_ids:
-            assert Utub_Urls.query.get(deleted_id) is None
+            trashed_row = Utub_Urls.query.get(deleted_id)
+            assert trashed_row is not None
+            assert trashed_row.is_trashed
+            assert trashed_row.deleted_by == CREATOR_USER_ID
 
-    assert is_string_in_logs(
-        "Bulk-deleted UTubURLs and associated UTubURLTags", caplog.records
-    )
+    assert is_string_in_logs("Bulk-deleted UTubURLs", caplog.records)
     assert is_string_in_logs(f"UTub.id={FIRST_UTUB_ID}", caplog.records)
     assert is_string_in_logs("URLsDeleted=2", caplog.records)
 
@@ -112,9 +124,9 @@ def test_route_partial_permission_skip_body_shape(
     """
     GIVEN a plain member (user 2) who added only URL 2 in a UTub they do not own
     WHEN they bulk-delete all three URLs (theirs + two added by others)
-    THEN only their own URL is deleted; the other two come back FORBIDDEN-skipped with
+    THEN only their own URL is trashed; the other two come back FORBIDDEN-skipped with
         the correct DELETED/SKIPPED/SKIP_REASON/TOTAL_DELETED/TOTAL_SKIPPED shape and a
-        tagCountsInUtub map, and only one row is removed.
+        tagCountsInUtub map, and the skipped rows are not trashed.
     """
     client, csrf_token, _, app = login_second_user_without_register
 
@@ -151,21 +163,25 @@ def test_route_partial_permission_skip_body_shape(
 
     with app.app_context():
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before - 1
-        assert Utub_Urls.query.get(own_id) is None
-        assert Utub_Urls.query.get(creators_id) is not None
-        assert Utub_Urls.query.get(third_members_id) is not None
+        assert Utub_Urls.query.get(own_id).is_trashed
+        assert Utub_Urls.query.get(own_id).deleted_by == MEMBER_USER_ID
+        assert not Utub_Urls.query.get(creators_id).is_trashed
+        assert not Utub_Urls.query.get(third_members_id).is_trashed
+        assert Utub_Urls.query.get(creators_id).deleted_by is None
+        assert Utub_Urls.query.get(third_members_id).deleted_by is None
 
 
-def test_route_tag_cascade_and_tag_counts_modified(
+def test_route_keeps_url_tags_and_reports_live_tag_counts(
     add_mixed_delete_permission_urls_in_first_utub,
     login_first_user_without_register,
 ):
     """
     GIVEN a UTub where a `shared` tag is on URLs 1, 2, 3 and a `solo` tag is on URL 1
     WHEN the creator bulk-deletes URLs 1 and 2
-    THEN each deleted URL's Utub_Url_Tags rows are removed, the shared tag's returned
-        count is the aggregate remaining (1, still on URL 3), and the solo tag whose
-        last URL was deleted is present in tagCountsInUtub with count 0 (not omitted).
+    THEN each deleted URL's Utub_Url_Tags rows survive, the shared tag's returned
+        count is the live aggregate remaining (1, still on URL 3), and the solo tag
+        whose last live URL was deleted is present in tagCountsInUtub with count 0
+        (not omitted).
     """
     client, csrf_token, _, app = login_first_user_without_register
 
@@ -179,6 +195,13 @@ def test_route_tag_cascade_and_tag_counts_modified(
         solo_tag_id = next(
             tag_id for tag_id in url_one.associated_tag_ids if tag_id != shared_tag_id
         )
+        tag_row_counts_before = {
+            target_id: Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_url_id == target_id
+            ).count()
+            for target_id in target_ids
+        }
+        assert all(count > 0 for count in tag_row_counts_before.values())
 
     response = client.post(
         url_for(ROUTES.URLS.DELETE_URLS_BULK, utub_id=FIRST_UTUB_ID),
@@ -198,7 +221,7 @@ def test_route_tag_cascade_and_tag_counts_modified(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_url_id == deleted_id
                 ).count()
-                == 0
+                == tag_row_counts_before[deleted_id]
             )
 
 
@@ -602,8 +625,10 @@ def test_route_co_creator_can_delete_third_members_url(
     }
 
     with app.app_context():
-        assert Utub_Urls.query.get(co_creators_own_id) is None
-        assert Utub_Urls.query.get(third_members_id) is None
+        assert Utub_Urls.query.get(co_creators_own_id).is_trashed
+        assert Utub_Urls.query.get(third_members_id).is_trashed
+        assert Utub_Urls.query.get(co_creators_own_id).deleted_by == MEMBER_USER_ID
+        assert Utub_Urls.query.get(third_members_id).deleted_by == MEMBER_USER_ID
 
 
 # Route Disambiguation Smoke Test

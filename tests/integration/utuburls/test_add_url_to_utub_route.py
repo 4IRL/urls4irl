@@ -3,8 +3,10 @@ from unittest import mock
 
 import ada_url
 import pytest
-from flask import url_for
+from flask import Flask, url_for
+from flask.testing import FlaskClient
 from flask_login import current_user
+from werkzeug.test import TestResponse
 
 from backend import db
 from backend.extensions.url_validation.url_validator import (
@@ -19,6 +21,7 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.urls.constants import URLErrorCodes
+from backend.urls.services.create_urls import validate_new_url_for_utub
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.form_strs import URL_FORM
@@ -31,6 +34,7 @@ from backend.utils.strings.json_strs import (
     STD_JSON_RESPONSE as STD_JSON,
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.tag_strs import TAGS_FAILURE
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE
@@ -49,7 +53,11 @@ from tests.unit.test_url_validation import (
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
     INVALID_URLS_TO_VALIDATE,
 )
-from tests.utils_for_test import is_string_in_logs, is_string_in_logs_regex
+from tests.utils_for_test import (
+    is_string_in_logs,
+    is_string_in_logs_regex,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.urls
 
@@ -491,6 +499,70 @@ def test_add_url_with_mix_of_new_and_existing_tags(
             Utub_Tags.query.filter(Utub_Tags.utub_id == utub_id_to_add_to).count()
             == initial_vocab_count + 1
         )
+
+
+def test_add_url_with_tag_applied_count_excludes_trashed_urls(
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub whose tag still has a Utub_Url_Tags row on a trashed URL
+    WHEN a member adds a fresh live URL carrying that tag
+    THEN appliedTags reports tagApplied == 1 (only the new live URL), not 2
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    existing_tag_string = "trashedcountexcluded"
+
+    with app.app_context():
+        utub_id_to_add_to, url_string_to_add, url_title_to_add = (
+            _member_utub_and_fresh_url()
+        )
+        existing_tag = Utub_Tags(
+            utub_id=utub_id_to_add_to,
+            tag_string=existing_tag_string,
+            created_by=current_user.id,
+        )
+        db.session.add(existing_tag)
+        trashed_backing_url: Urls = Urls.query.filter(
+            Urls.url_string != url_string_to_add
+        ).first()
+        trashed_utub_url = Utub_Urls()
+        trashed_utub_url.standalone_url = trashed_backing_url
+        trashed_utub_url.url_id = trashed_backing_url.id
+        trashed_utub_url.utub_id = utub_id_to_add_to
+        trashed_utub_url.user_id = current_user.id
+        trashed_utub_url.url_title = "A trashed URL"
+        db.session.add(trashed_utub_url)
+        db.session.flush()
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=utub_id_to_add_to,
+                utub_url_id=trashed_utub_url.id,
+                utub_tag_id=existing_tag.id,
+                user_id=current_user.id,
+            )
+        )
+        db.session.commit()
+        trashed_utub_url_id = trashed_utub_url.id
+        current_user_id = current_user.id
+
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=current_user_id)
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+            TAG_STRINGS_FIELD: [existing_tag_string],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    applied_tags = add_url_response.json[MODEL_STRS.APPLIED_TAGS]
+    assert len(applied_tags) == 1
+    assert applied_tags[0][MODEL_STRS.TAG_APPLIED] == 1
 
 
 def test_add_url_with_tags_mid_apply_exception_leaves_zero_rows(
@@ -2214,6 +2286,535 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         assert Urls.query.count() == number_of_urls_in_db
 
         assert Utub_Urls.query.count() == initial_utub_urls
+
+
+def _first_utub_url_row_info(app: Flask, url_id: int) -> tuple[int, str]:
+    """Returns (utub_url_id, url_string) of the given URL's row in UTub 1."""
+    with app.app_context():
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == 1, Utub_Urls.url_id == url_id
+        ).one()
+        return utub_url.id, utub_url.standalone_url.url_string
+
+
+def _post_readd(
+    client: FlaskClient,
+    csrf_token: str,
+    url_string: str,
+    url_title: str,
+    **extra: list[str],
+) -> TestResponse:
+    """POSTs a URL add to UTub 1, with optional extra JSON fields (e.g. tag strings)."""
+    return client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=1),
+        json={
+            URL_FORM.URL_STRING: url_string,
+            URL_FORM.URL_TITLE: url_title,
+            **extra,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+
+def test_readd_trashed_url_as_adder_revives_row_with_tags(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 in UTub 1 (added by user 1, with the shared and solo tags) is trashed
+    WHEN user 1 re-adds the same URL with a new title
+    THEN the SAME row is revived in place: 200, same utubUrlID, revivedFromTrash True,
+        lostTagCount 0, trash columns cleared, new title, later timestamps, and
+        appliedTags holds both surviving tags with live counts including the revived row
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+
+    with app.app_context():
+        seeded_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        seeded_added_at = seeded_row.added_at
+        seeded_last_accessed = seeded_row.last_accessed
+        surviving_tag_ids = seeded_row.associated_tag_ids
+        initial_row_count = Utub_Urls.query.count()
+        initial_url_tag_count = Utub_Url_Tags.query.count()
+    assert len(surviving_tag_ids) == 2
+
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+    new_title = "Brand new title after trash"
+
+    response = _post_readd(client, csrf_token, url_string, new_title)
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_ADDED
+    assert response_json[MODEL_STRS.URL][MODEL_STRS.UTUB_URL_ID] == utub_url_id
+    assert response_json[MODEL_STRS.URL][MODEL_STRS.URL_TITLE] == new_title
+    assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
+    assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 0
+    assert (
+        sorted(response_json[MODEL_STRS.URL][MODEL_STRS.URL_TAG_IDS])
+        == surviving_tag_ids
+    )
+
+    applied_tag_counts = {
+        applied_tag[MODEL_STRS.ID]: applied_tag[MODEL_STRS.TAG_APPLIED]
+        for applied_tag in response_json[MODEL_STRS.APPLIED_TAGS]
+    }
+    # Shared tag is on URLs 1-3 (all live again); solo tag is only on the revived URL
+    shared_tag_id, solo_tag_id = surviving_tag_ids
+    assert applied_tag_counts == {shared_tag_id: 3, solo_tag_id: 1}
+
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert revived_row.deleted_at is None
+        assert revived_row.deleted_by is None
+        assert revived_row.trashed_tag_ids is None
+        assert revived_row.user_id == 1
+        assert revived_row.url_title == new_title
+        assert revived_row.added_at > seeded_added_at
+        assert revived_row.last_accessed > seeded_last_accessed
+        assert revived_row.associated_tag_ids == surviving_tag_ids
+        assert Utub_Urls.query.count() == initial_row_count
+        assert Utub_Url_Tags.query.count() == initial_url_tag_count
+
+
+def test_readd_trashed_url_as_manager_keeps_tags(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 2 in UTub 1 (added by member user 2, shared tag) is trashed
+    WHEN the UTub creator (user 1, a manager but not the adder) re-adds it
+    THEN the row is revived with its surviving tag kept and re-attributed to user 1
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=2)
+
+    with app.app_context():
+        surviving_tag_ids = Utub_Urls.query.get(utub_url_id).associated_tag_ids
+    assert len(surviving_tag_ids) == 1
+
+    trash_utub_url(app, utub_url_id, deleted_by=2)
+
+    response = _post_readd(client, csrf_token, url_string, "Manager re-add")
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json[MODEL_STRS.URL][MODEL_STRS.UTUB_URL_ID] == utub_url_id
+    assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
+    assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 0
+    applied_tag_counts = {
+        applied_tag[MODEL_STRS.ID]: applied_tag[MODEL_STRS.TAG_APPLIED]
+        for applied_tag in response_json[MODEL_STRS.APPLIED_TAGS]
+    }
+    # Shared tag is on URLs 1-3, all live again
+    assert applied_tag_counts == {surviving_tag_ids[0]: 3}
+
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert revived_row.deleted_at is None
+        assert revived_row.user_id == 1
+        assert revived_row.associated_tag_ids == surviving_tag_ids
+
+
+def test_readd_trashed_url_as_non_adder_member_revives_clean(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_second_user_without_register,
+):
+    """
+    GIVEN URL 3 in UTub 1 (added by user 3, shared tag) is trashed
+    WHEN plain member user 2 (neither the adder nor a manager) re-adds it
+    THEN the row is revived without its old tags: the row's Utub_Url_Tags are gone,
+        appliedTags is empty, lostTagCount is 0 and the row now belongs to user 2
+    """
+    client, csrf_token, _, app = login_second_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=3)
+
+    with app.app_context():
+        assert len(Utub_Urls.query.get(utub_url_id).associated_tag_ids) == 1
+        initial_url_tag_count = Utub_Url_Tags.query.count()
+
+    trash_utub_url(app, utub_url_id, deleted_by=3)
+
+    response = _post_readd(client, csrf_token, url_string, "Member re-add")
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json[MODEL_STRS.URL][MODEL_STRS.UTUB_URL_ID] == utub_url_id
+    assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
+    assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 0
+    assert response_json[MODEL_STRS.APPLIED_TAGS] == []
+    assert response_json[MODEL_STRS.URL][MODEL_STRS.URL_TAG_IDS] == []
+
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert revived_row.deleted_at is None
+        assert revived_row.deleted_by is None
+        assert revived_row.trashed_tag_ids is None
+        assert revived_row.user_id == 2
+        assert (
+            Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == utub_url_id).count()
+            == 0
+        )
+        assert Utub_Url_Tags.query.count() == initial_url_tag_count - 1
+
+
+def test_readd_trashed_url_reports_lost_tags(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 (shared + solo tags) is trashed and the solo UTub tag is then deleted
+        from the UTub (cascading its Utub_Url_Tags)
+    WHEN user 1 re-adds the URL
+    THEN lostTagCount is 1 and only the shared tag is in appliedTags
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+
+    with app.app_context():
+        shared_tag_id, solo_tag_id = Utub_Urls.query.get(utub_url_id).associated_tag_ids
+
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+
+    with app.app_context():
+        solo_tag: Utub_Tags = Utub_Tags.query.get(solo_tag_id)
+        db.session.delete(solo_tag)
+        db.session.commit()
+
+    response = _post_readd(client, csrf_token, url_string, "Lost a tag")
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
+    assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 1
+    applied_tag_ids = [
+        applied_tag[MODEL_STRS.ID]
+        for applied_tag in response_json[MODEL_STRS.APPLIED_TAGS]
+    ]
+    assert applied_tag_ids == [shared_tag_id]
+    assert response_json[MODEL_STRS.URL][MODEL_STRS.URL_TAG_IDS] == [shared_tag_id]
+
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert revived_row.deleted_at is None
+        assert revived_row.trashed_tag_ids is None
+        assert revived_row.associated_tag_ids == [shared_tag_id]
+
+
+def test_readd_trashed_url_with_new_tag_strings(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 (shared + solo tags) is trashed
+    WHEN user 1 re-adds it with one new tag string
+    THEN the new tag is applied on top of the two surviving tags, and appliedTags holds all three
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+    new_tag_string = "revivenewtag"
+
+    with app.app_context():
+        surviving_tag_ids = Utub_Urls.query.get(utub_url_id).associated_tag_ids
+
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+
+    response = _post_readd(
+        client,
+        csrf_token,
+        url_string,
+        "With a new tag",
+        **{TAG_STRINGS_FIELD: [new_tag_string]},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
+    assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 0
+    applied_tags = response_json[MODEL_STRS.APPLIED_TAGS]
+    assert len(applied_tags) == 3
+    applied_tag_ids = {applied_tag[MODEL_STRS.ID] for applied_tag in applied_tags}
+
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        new_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == 1, Utub_Tags.tag_string == new_tag_string
+        ).one()
+        assert new_tag_string in {
+            applied_tag[MODEL_STRS.TAG_STRING] for applied_tag in applied_tags
+        }
+        assert applied_tag_ids == {*surviving_tag_ids, new_tag.id}
+        assert revived_row.associated_tag_ids == sorted(
+            [*surviving_tag_ids, new_tag.id]
+        )
+
+
+def test_readd_trashed_url_over_tag_limit_is_400_and_row_stays_trashed(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 is trashed with enough surviving tags that two new tags exceed the limit
+    WHEN user 1 re-adds it with two new tag strings
+    THEN the request is the existing tag-limit 400, the row is still trashed with its
+        snapshot intact, and no new tag or association was written
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+
+    with app.app_context():
+        for tag_index in range(TAG_CONSTANTS.MAX_URL_TAGS - 3):
+            filler_tag = Utub_Tags(
+                utub_id=1, tag_string=f"fillertag{tag_index}", created_by=1
+            )
+            db.session.add(filler_tag)
+            db.session.flush()
+            db.session.add(
+                Utub_Url_Tags(
+                    utub_id=1,
+                    utub_url_id=utub_url_id,
+                    utub_tag_id=filler_tag.id,
+                    user_id=1,
+                )
+            )
+        db.session.commit()
+        snapshot_tag_ids = Utub_Urls.query.get(utub_url_id).associated_tag_ids
+    assert len(snapshot_tag_ids) == TAG_CONSTANTS.MAX_URL_TAGS - 1
+
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+
+    with app.app_context():
+        initial_tag_vocab_count = Utub_Tags.query.count()
+        initial_url_tag_count = Utub_Url_Tags.query.count()
+        trashed_at = Utub_Urls.query.get(utub_url_id).deleted_at
+        original_title = Utub_Urls.query.get(utub_url_id).url_title
+
+    response = _post_readd(
+        client,
+        csrf_token,
+        url_string,
+        "Over the limit",
+        **{TAG_STRINGS_FIELD: ["overlimita", "overlimitb"]},
+    )
+
+    assert response.status_code == 400
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.MAX_URL_TAGS_REACHED.format(
+        max_tags=TAG_CONSTANTS.MAX_URL_TAGS
+    )
+
+    with app.app_context():
+        still_trashed_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert still_trashed_row.is_trashed
+        assert still_trashed_row.deleted_at == trashed_at
+        assert still_trashed_row.deleted_by == 1
+        assert still_trashed_row.trashed_tag_ids == snapshot_tag_ids
+        assert still_trashed_row.url_title == original_title
+        assert still_trashed_row.associated_tag_ids == snapshot_tag_ids
+        assert Utub_Tags.query.count() == initial_tag_vocab_count
+        assert Utub_Url_Tags.query.count() == initial_url_tag_count
+
+
+def test_readd_live_duplicate_still_409(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 is live in UTub 1 (not trashed)
+    WHEN user 1 adds the same URL again
+    THEN it is still the 409 URL_IN_UTUB conflict, with no revive fields set
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+
+    with app.app_context():
+        initial_row_count = Utub_Urls.query.count()
+
+    response = _post_readd(client, csrf_token, url_string, "Live duplicate")
+
+    assert response.status_code == 409
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
+    assert response_json[URL_FAILURE.URL_STRING] == url_string
+    assert MODEL_STRS.REVIVED_FROM_TRASH not in response_json
+
+    with app.app_context():
+        assert Utub_Urls.query.count() == initial_row_count
+        assert Utub_Urls.query.get(utub_url_id).deleted_at is None
+
+
+def test_readd_trashed_url_records_url_added_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 in UTub 1 is trashed and metrics are enabled
+    WHEN user 1 re-adds it with no new tags
+    THEN exactly one URL_ADDED_TO_UTUB counter key is written, with tag_count_bucket "0"
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 0
+
+    response = _post_readd(client, csrf_token, url_string, "Metric re-add")
+
+    assert response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 1
+    url_added_counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_ADDED_TO_UTUB
+    )
+    assert parse_dims(url_added_counter_keys[0])["tag_count_bucket"] == "0"
+
+
+def test_readd_trashed_url_revived_concurrently_after_validation_is_409(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 is trashed and, between validation and the row lock, another
+        request revives that same row
+    WHEN user 1 re-adds the URL
+    THEN the locked re-check sees a live row, so the response is the 409 URL_IN_UTUB
+        conflict and the re-add overwrites nothing (title and adder stay the winner's)
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+
+    real_validate = validate_new_url_for_utub
+    winner_title = "Winner of the race"
+
+    def validate_then_revive_concurrently(
+        url_string_to_validate: str | None, utub_id: int
+    ):
+        validated = real_validate(url_string_to_validate, utub_id)
+        with app.app_context():
+            raced_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+            raced_row.deleted_at = None
+            raced_row.deleted_by = None
+            raced_row.trashed_tag_ids = None
+            raced_row.url_title = winner_title
+            db.session.commit()
+        return validated
+
+    with mock.patch(
+        "backend.urls.services.create_urls.validate_new_url_for_utub",
+        side_effect=validate_then_revive_concurrently,
+    ):
+        response = _post_readd(client, csrf_token, url_string, "Loser of the race")
+
+    assert response.status_code == 409
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
+    assert MODEL_STRS.REVIVED_FROM_TRASH not in response_json
+
+    with app.app_context():
+        raced_row = Utub_Urls.query.get(utub_url_id)
+        assert raced_row.deleted_at is None
+        assert raced_row.url_title == winner_title
+
+
+def test_readd_trashed_url_exception_mid_revive_rolls_back_and_logs(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN URL 1 is trashed
+    WHEN the revive transaction raises after the row lock is taken
+    THEN the exception propagates, the transaction is rolled back (the row is still
+        trashed with its original fields and snapshot), and "URL revive failed" is logged
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+
+    with app.app_context():
+        trashed_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        original_deleted_at = trashed_row.deleted_at
+        original_title = trashed_row.url_title
+        original_user_id = trashed_row.user_id
+        original_snapshot = trashed_row.trashed_tag_ids
+        initial_url_tag_count = Utub_Url_Tags.query.count()
+
+    with mock.patch(
+        "backend.urls.services.create_urls.apply_tags_core",
+        side_effect=RuntimeError("simulated revive failure"),
+    ):
+        with pytest.raises(RuntimeError, match="simulated revive failure"):
+            _post_readd(
+                client,
+                csrf_token,
+                url_string,
+                "Never persisted",
+                **{TAG_STRINGS_FIELD: ["neverpersistedtag"]},
+            )
+
+    with app.app_context():
+        still_trashed_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert still_trashed_row.is_trashed
+        assert still_trashed_row.deleted_at == original_deleted_at
+        assert still_trashed_row.url_title == original_title
+        assert still_trashed_row.user_id == original_user_id
+        assert still_trashed_row.trashed_tag_ids == original_snapshot
+        assert Utub_Url_Tags.query.count() == initial_url_tag_count
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.tag_string == "neverpersistedtag").count()
+            == 0
+        )
+
+    assert is_string_in_logs("URL revive failed", caplog.records)
+    assert is_string_in_logs(f"UTubURL.id={utub_url_id}", caplog.records)
+    assert is_string_in_logs("error_type=RuntimeError", caplog.records)
+
+
+def test_add_fresh_url_response_has_revive_defaults(
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a member of a UTub and a URL not yet in it
+    WHEN they add the URL
+    THEN the response reports revivedFromTrash False and lostTagCount 0
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id_to_add_to, url_string_to_add, url_title_to_add = (
+            _member_utub_and_fresh_url()
+        )
+
+    response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is False
+    assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 0
 
 
 def test_add_url_missing_url(

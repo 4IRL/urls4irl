@@ -3,6 +3,7 @@ import { getUpdatedURL } from "../get.js";
 import { hideURLSearchIcon } from "../../search.js";
 import { showURLsEmptyState } from "../../empty-state.js";
 import { showURLDeckBannerError } from "../../deck.js";
+import { getState, setState } from "../../../../store/app-store.js";
 import { deleteURLShowModal } from "../delete.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
@@ -134,6 +135,23 @@ describe("deleteURLSuccess — empty-state branches", () => {
 
     expect(showURLsEmptyState).not.toHaveBeenCalled();
     expect(hideURLSearchIcon).not.toHaveBeenCalled();
+  });
+
+  it("removes the deleted URL from the store through the shared deck removal", async () => {
+    const urlCardToDelete = buildUrlCard(42);
+    const urlCardRemaining = buildUrlCard(99);
+    $("#listURLs").append(urlCardToDelete).append(urlCardRemaining);
+    vi.mocked(getState).mockReturnValueOnce({
+      urls: [{ utubUrlID: 42 }, { utubUrlID: 99 }],
+    } as unknown as ReturnType<typeof getState>);
+
+    triggerDeleteFlow(42, urlCardToDelete, 1, { URL: { utubUrlID: 42 } });
+
+    await vi.waitFor(() => {
+      expect($("#listURLs .urlRow").length).toBe(1);
+    });
+
+    expect(setState).toHaveBeenCalledWith({ urls: [{ utubUrlID: 99 }] });
   });
 });
 

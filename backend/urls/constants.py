@@ -32,6 +32,7 @@ class URLState(IntEnum):
     EXISTING_URL_IN_U4I = 2
     EXISTING_URL_IN_UTUB = 3
     INVALID_URL_STRING = 4
+    EXISTING_URL_TRASHED_IN_UTUB = 5
 
 
 class URLNormalizationResult(IntEnum):

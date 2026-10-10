@@ -8,6 +8,7 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 from playwright.sync_api import Locator, Page, expect
 
+from backend import db
 from backend.cli.mock_constants import (
     MOCK_URL_STRINGS,
     MOCK_URL_TRACKING_STRIPPED,
@@ -16,11 +17,13 @@ from backend.cli.mock_constants import (
 from backend.models.users import Users
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.utils.constants import STRINGS, URL_CONSTANTS
+from backend.utils.constants import STRINGS, TAG_CONSTANTS, URL_CONSTANTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
+from backend.utils.strings.tag_strs import TAGS_FAILURE
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import (
     URL_FAILURE,
+    URL_REVIVED_FROM_TRASH,
     URL_TRIM_CONFLICT,
     URL_TRIM_HEADER_DROPPED,
     URL_TRIM_SAVED_BANNER_ONE,
@@ -28,8 +31,10 @@ from backend.utils.strings.url_strs import (
 )
 from tests.functional.db_utils import (
     add_mock_urls,
+    add_tags_to_utub_url,
     get_url_in_utub,
     get_utub_this_user_created,
+    trash_utub_url,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
@@ -49,6 +54,7 @@ from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     clear_then_send_keys,
     get_selected_url,
+    get_url_row_by_id,
     invalidate_csrf_token_on_page,
     open_update_url_title,
     wait_then_click_element,
@@ -1663,6 +1669,194 @@ def test_update_url_string_enter_key_plain_edit_shows_updated_banner(
         URL_UPDATED_BANNER
     )
     expect(page.locator(HPL.URL_OUTCOME_BANNER_UNDO)).to_be_visible()
+
+
+def test_update_url_string_to_trashed_url_revives_it_and_replaces_edited_card(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub with a trashed URL carrying two tags, and a live URL carrying one
+        other tag
+    WHEN the user edits the live URL's string to the trashed URL's link
+    THEN the trashed URL's card reappears with the union of both tag sets, the
+        edited card is gone, the edited card's title carries over, and the
+        outcome banner reports it was restored from trash
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_id = get_utub_this_user_created(app, user_id_for_test).id
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).all()
+        edited_utub_url_id = utub_urls[0].id
+        edited_url_title = utub_urls[0].url_title
+        trashed_utub_url_id = utub_urls[1].id
+        trashed_url_string = utub_urls[1].standalone_url.url_string
+
+    trashed_tag_ids = add_tags_to_utub_url(
+        app, utub_id, trashed_utub_url_id, user_id_for_test, ["revivea", "reviveb"]
+    )
+    trash_utub_url(app, trashed_utub_url_id, user_id_for_test, trashed_tag_ids)
+    add_tags_to_utub_url(app, utub_id, edited_utub_url_id, user_id_for_test, ["editc"])
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_id,
+        utub_url_id=edited_utub_url_id,
+    )
+    expect(
+        page.locator(f"{HPL.ROWS_URLS}[utuburlid='{trashed_utub_url_id}']")
+    ).to_have_count(0)
+
+    update_url_string(page=page, url_string=trashed_url_string)
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+
+    revived_row = get_url_row_by_id(page=page, utub_url_id=trashed_utub_url_id)
+    expect(
+        page.locator(f"{HPL.ROWS_URLS}[utuburlid='{edited_utub_url_id}']")
+    ).to_have_count(0)
+    expect(revived_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, trashed_url_string
+    )
+    expect(revived_row.locator(HPL.URL_TITLE_READ)).to_have_text(edited_url_title)
+    expect(revived_row.locator(HPL.TAG_BADGES)).to_have_count(3)
+
+    banner = page.locator(HPL.URL_OUTCOME_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"\bsuccess\b"))
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_REVIVED_FROM_TRASH
+    )
+
+
+def test_update_url_string_to_trashed_url_over_tag_limit_shows_error_and_keeps_edited_card(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub with a trashed URL carrying 15 tags, and a live URL carrying 10
+        other tags, so their union exceeds the per-URL tag limit
+    WHEN the user edits the live URL's string to the trashed URL's link
+    THEN the at-tag-limit error shows in the edit form, the edited card keeps its
+        original link, and the trashed URL is not revived
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_id = get_utub_this_user_created(app, user_id_for_test).id
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).all()
+        edited_utub_url_id = utub_urls[0].id
+        edited_url_string = utub_urls[0].standalone_url.url_string
+        trashed_utub_url_id = utub_urls[1].id
+        trashed_url_string = utub_urls[1].standalone_url.url_string
+
+    trashed_tag_ids = add_tags_to_utub_url(
+        app,
+        utub_id,
+        trashed_utub_url_id,
+        user_id_for_test,
+        [f"trashedtag{index}" for index in range(15)],
+    )
+    trash_utub_url(app, trashed_utub_url_id, user_id_for_test, trashed_tag_ids)
+    add_tags_to_utub_url(
+        app,
+        utub_id,
+        edited_utub_url_id,
+        user_id_for_test,
+        [f"editedtag{index}" for index in range(10)],
+    )
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_id,
+        utub_url_id=edited_utub_url_id,
+    )
+
+    update_url_string(page=page, url_string=trashed_url_string)
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+
+    error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
+    wait_until_visible_css_selector(page=page, css_selector=error_css_selector)
+    expect(page.locator(error_css_selector)).to_have_text(
+        TAGS_FAILURE.MAX_URL_TAGS_REACHED.format(max_tags=TAG_CONSTANTS.MAX_URL_TAGS)
+    )
+
+    expect(
+        page.locator(f"{HPL.ROWS_URLS}[utuburlid='{trashed_utub_url_id}']")
+    ).to_have_count(0)
+    edited_row = get_url_row_by_id(page=page, utub_url_id=edited_utub_url_id)
+    expect(edited_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, edited_url_string
+    )
+    expect(edited_row.locator(HPL.TAG_BADGES)).to_have_count(10)
+
+
+def test_update_url_string_to_trashed_url_as_non_adder_member_drops_trashed_tags(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a UTub with a trashed URL carrying two tags that another user added, and
+        a live URL the member added carrying one other tag
+    WHEN that member, who is neither the trashed URL's adder nor a UTub manager,
+        edits the live URL's string to the trashed URL's link
+    THEN the trashed URL is revived carrying only the edited URL's tag
+    """
+    app = provide_app
+    creator_user_id = 1
+    member_user_id = 2
+    utub_id = get_utub_this_user_created(app, creator_user_id).id
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).all()
+        edited_utub_url_id = utub_urls[0].id
+        trashed_utub_url_id = utub_urls[1].id
+        trashed_url_string = utub_urls[1].standalone_url.url_string
+        utub_urls[0].user_id = member_user_id
+        utub_urls[1].user_id = creator_user_id
+        db.session.commit()
+
+    trashed_tag_ids = add_tags_to_utub_url(
+        app, utub_id, trashed_utub_url_id, creator_user_id, ["revivea", "reviveb"]
+    )
+    trash_utub_url(app, trashed_utub_url_id, creator_user_id, trashed_tag_ids)
+    add_tags_to_utub_url(app, utub_id, edited_utub_url_id, member_user_id, ["editc"])
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app=app,
+        page=page,
+        user_id=member_user_id,
+        utub_id=utub_id,
+        utub_url_id=edited_utub_url_id,
+    )
+
+    update_url_string(page=page, url_string=trashed_url_string)
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+
+    revived_row = get_url_row_by_id(page=page, utub_url_id=trashed_utub_url_id)
+    expect(
+        page.locator(f"{HPL.ROWS_URLS}[utuburlid='{edited_utub_url_id}']")
+    ).to_have_count(0)
+    expect(revived_row.locator(HPL.TAG_BADGES)).to_have_count(1)
+    expect(revived_row.locator(HPL.TAG_BADGES)).to_have_text("editc")
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_REVIVED_FROM_TRASH
+    )
 
 
 def _show_updated_banner_with_fake_clock(*, app: Flask, page: Page) -> Locator:

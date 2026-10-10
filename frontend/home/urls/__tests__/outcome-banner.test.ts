@@ -13,8 +13,10 @@ import {
   unbindEditPanelDirtyState,
 } from "../cards/edit-panel-dirty.js";
 import {
+  buildReviveMessage,
   clearURLOutcomeBanner,
   performUndo,
+  showReviveBanner,
   showTrimSavedBanner,
   showURLOutcomeBanner,
   showURLUpdatedBanner,
@@ -494,8 +496,54 @@ describe("outcome banner", () => {
     });
   });
 
+  describe("buildReviveMessage", () => {
+    it("returns the plain restored message when no tags were lost", () => {
+      expect(buildReviveMessage({ lostTagCount: 0 })).toBe(
+        APP_CONFIG.strings.URL_REVIVED_FROM_TRASH,
+      );
+    });
+
+    it("returns the singular lost-tag message for one lost tag", () => {
+      expect(buildReviveMessage({ lostTagCount: 1 })).toBe(
+        APP_CONFIG.strings.URL_REVIVED_LOST_TAGS_ONE,
+      );
+    });
+
+    it("fills the plural lost-tag message with the count", () => {
+      expect(buildReviveMessage({ lostTagCount: 2 })).toBe(
+        "Restored from trash. 2 tags no longer exist.",
+      );
+    });
+  });
+
+  describe("showReviveBanner", () => {
+    it("shows a success banner with no action when no tags were lost", () => {
+      showReviveBanner({ lostTagCount: 0, utubUrlID: 42 });
+
+      expect(banner().hasClass("success")).toBe(true);
+      expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
+        APP_CONFIG.strings.URL_REVIVED_FROM_TRASH,
+      );
+      expect(banner().find(".urlOutcomeBannerAction")).toHaveLength(0);
+    });
+
+    it("shows a partial banner with no action when tags were lost", () => {
+      showReviveBanner({ lostTagCount: 2, utubUrlID: 42 });
+
+      expect(banner().hasClass("partial")).toBe(true);
+      expect(banner().hasClass("success")).toBe(false);
+      expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
+        "Restored from trash. 2 tags no longer exist.",
+      );
+      expect(banner().find(".urlOutcomeBannerAction")).toHaveLength(0);
+    });
+  });
+
   describe("showTrimSavedBanner", () => {
-    function show(droppedSegments: string[]): void {
+    function show(
+      droppedSegments: string[],
+      revive?: { lostTagCount: number },
+    ): void {
       showTrimSavedBanner({
         trimSubmission: {
           originalUrlString: ORIGINAL,
@@ -506,8 +554,30 @@ describe("outcome banner", () => {
         utubUrlID: 42,
         urlCard: $(".urlRow[utuburlid=42]"),
         form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
+        revive,
       });
     }
+
+    it("prefixes the revive sentence, goes partial and keeps Undo when a revive lost tags", () => {
+      show(["a=1"], { lostTagCount: 1 });
+
+      expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
+        `${APP_CONFIG.strings.URL_REVIVED_LOST_TAGS_ONE} ${APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE}`,
+      );
+      expect(banner().hasClass("partial")).toBe(true);
+      expect(banner().find(".urlOutcomeBannerAction").text()).toBe(
+        APP_CONFIG.strings.URL_TRIM_UNDO,
+      );
+    });
+
+    it("stays a success banner when a revive lost no tags", () => {
+      show(["a=1"], { lostTagCount: 0 });
+
+      expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
+        `${APP_CONFIG.strings.URL_REVIVED_FROM_TRASH} ${APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE}`,
+      );
+      expect(banner().hasClass("success")).toBe(true);
+    });
 
     it("uses the singular message and lists the dropped segment", () => {
       show(["a=1"]);

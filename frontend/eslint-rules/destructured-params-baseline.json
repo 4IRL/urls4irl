@@ -52,7 +52,6 @@
   "home/urls/cards/conflict-handler.ts:checkForStaleDataOn409",
   "home/urls/cards/copy.ts:copyURLString",
   "home/urls/cards/create.ts:bindCreateURLFocusEventListeners",
-  "home/urls/cards/create.ts:reorderNewURLCardBySortPreference",
   "home/urls/cards/delete.ts:deleteURL",
   "home/urls/cards/delete.ts:deleteURLShowModal",
   "home/urls/cards/delete.ts:deleteURLSuccess",

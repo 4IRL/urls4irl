@@ -29,7 +29,11 @@ from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import all_tag_strings
-from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
+from tests.utils_for_test import (
+    count_tag_instances_in_utub,
+    is_string_in_logs,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.tags
 
@@ -1065,6 +1069,119 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
 
         # Ensure correct count of Url-Tag associations
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations
+
+
+def test_add_tag_to_trashed_url_is_404(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a UTub creator and a URL in their UTub that has been moved to trash
+    WHEN the user tries to add a tag to that URL via a POST to
+        "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags"
+    THEN ensure the server responds with a 404 and the not-found JSON, and no
+        Tag-URL association or tag is created
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    tag_to_add = all_tag_strings[0]
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_user_is_creator_of.id
+        trashed_url_id = (
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == utub_id,
+                Utub_Urls.user_id == current_user.id,
+            )
+            .first()
+            .id
+        )
+        creator_user_id = current_user.id
+
+    trash_utub_url(app, trashed_url_id, deleted_by=creator_user_id)
+
+    with app.app_context():
+        assert Utub_Urls.query.get(trashed_url_id).is_trashed
+        initial_num_url_tag_associations = Utub_Url_Tags.query.count()
+        initial_num_utub_tags = Utub_Tags.query.count()
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id,
+            utub_url_id=trashed_url_id,
+        ),
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
+    )
+
+    assert add_tag_response.status_code == 404
+    json_response = add_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations
+        assert Utub_Tags.query.count() == initial_num_utub_tags
+
+
+def test_count_of_url_tag_excludes_trashed_urls(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub where the `solo` tag is only on live URL 1, URL 2 also carries it but
+        has been moved to trash (its Utub_Url_Tags row survives), and live URL 3 has none
+    WHEN the creator adds the `solo` tag to URL 3
+    THEN the returned tagCountsInUtub counts only live URLs (URL 1 and URL 3 = 2), not
+        the trashed URL 2's surviving row
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    first_utub_id = 1
+    creator_user_id = 1
+
+    with app.app_context():
+        url_rows_by_url_id = {
+            row.url_id: row
+            for row in Utub_Urls.query.filter(Utub_Urls.utub_id == first_utub_id).all()
+        }
+        url_two_id = url_rows_by_url_id[2].id
+        url_three_id = url_rows_by_url_id[3].id
+        solo_tag: Utub_Tags = (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == first_utub_id)
+            .order_by(Utub_Tags.id)
+            .all()[1]
+        )
+        solo_tag_string = solo_tag.tag_string
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=first_utub_id,
+                utub_url_id=url_two_id,
+                utub_tag_id=solo_tag.id,
+                user_id=creator_user_id,
+            )
+        )
+        db.session.commit()
+        assert count_tag_instances_in_utub(first_utub_id, solo_tag.id) == 2
+
+    trash_utub_url(app, url_two_id, deleted_by=creator_user_id)
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=first_utub_id,
+            utub_url_id=url_three_id,
+        ),
+        json={TAG_FORM.TAG_STRING: solo_tag_string},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_tag_response.status_code == 200
+    assert add_tag_response.json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED] == 2
 
 
 def test_add_tag_to_nonexistent_url_as_utub_member(

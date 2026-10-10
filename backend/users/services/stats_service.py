@@ -48,7 +48,8 @@ def build_user_stats_context() -> dict[str, Any]:
     member-since values. Every count is a ``COUNT`` query filtered on the acting
     user's id; NULL-attributed legacy ``Utub_Url_Tags`` rows are excluded from
     the "tags applied" count automatically. Rows inside a trashed UTub are
-    excluded, as is the trashed UTub itself.
+    excluded, as is the trashed UTub itself, and trashed URLs (and the tag
+    applications on them) are excluded from "URLs added" and "tags applied".
     """
     stats_utubs_created = Utubs.query.filter_by(
         utub_creator=current_user.id, deleted_at=None
@@ -64,7 +65,11 @@ def build_user_stats_context() -> dict[str, Any]:
     )
     stats_urls_added = (
         Utub_Urls.query.join(Utubs, Utubs.id == Utub_Urls.utub_id)
-        .filter(Utub_Urls.user_id == current_user.id, Utubs.deleted_at.is_(None))
+        .filter(
+            Utub_Urls.user_id == current_user.id,
+            Utubs.deleted_at.is_(None),
+            Utub_Urls.deleted_at.is_(None),
+        )
         .count()
     )
     stats_tags_created = (
@@ -74,7 +79,12 @@ def build_user_stats_context() -> dict[str, Any]:
     )
     stats_tags_applied = (
         Utub_Url_Tags.query.join(Utubs, Utubs.id == Utub_Url_Tags.utub_id)
-        .filter(Utub_Url_Tags.user_id == current_user.id, Utubs.deleted_at.is_(None))
+        .join(Utub_Urls, Utub_Urls.id == Utub_Url_Tags.utub_url_id)
+        .filter(
+            Utub_Url_Tags.user_id == current_user.id,
+            Utubs.deleted_at.is_(None),
+            Utub_Urls.deleted_at.is_(None),
+        )
         .count()
     )
 
