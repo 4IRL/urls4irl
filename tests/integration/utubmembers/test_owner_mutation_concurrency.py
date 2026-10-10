@@ -22,11 +22,13 @@ from sqlalchemy import text
 
 from backend import db
 from backend.api_common.request_utils import is_current_utub_owner
+from backend.members.services.create_members import _check_if_member_already_in_utub
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings import model_strs
+from backend.utils.strings.form_strs import ADD_USER_FORM
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER_FAILURE
@@ -380,3 +382,66 @@ def test_concurrent_double_remove_member_one_success_one_404(
     creator_ids, utub_creator = _creator_state(app, utub_id)
     assert creator_ids == [user_ids[0]]
     assert utub_creator == user_ids[0]
+
+
+def _barriered_membership_check() -> Callable[..., Any]:
+    """Wrap the real ``_check_if_member_already_in_utub`` so both requests
+    rendezvous AFTER the (possibly stale) membership check and before the insert."""
+    barrier = threading.Barrier(2)
+
+    def _wrapper(*args: Any, **kwargs: Any) -> Any:
+        result = _check_if_member_already_in_utub(*args, **kwargs)
+        try:
+            barrier.wait(timeout=BARRIER_TIMEOUT_SECONDS)
+        except threading.BrokenBarrierError:
+            pass
+        return result
+
+    return _wrapper
+
+
+def test_concurrent_double_add_member_one_success_one_400(
+    committed_owner_utub: Tuple[Flask, int, list[int]],
+) -> None:
+    """
+    GIVEN a UTub owned by user 1 and a non-member user 4
+    WHEN user 1 double-fires POST of user 4 and both requests see "not a member"
+        before either inserts
+    THEN exactly one add succeeds (200) and the other gets 400
+        MEMBER_ALREADY_IN_UTUB (no unhandled PK IntegrityError), leaving exactly
+        one membership row for user 4
+
+    With the row lock the loser blocks inside ``lock_and_reauthorize`` while the
+    winner waits at the barrier; the barrier times out (swallowed), the winner
+    commits, and the loser's fresh membership check sees the winner's row.
+    """
+    app, utub_id, user_ids = committed_owner_utub
+    with app.test_request_context():
+        add_url = url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id)
+    body = {ADD_USER_FORM.USERNAME: _NON_MEMBER_USER[model_strs.USERNAME]}
+
+    with mock.patch(
+        "backend.members.services.create_members._check_if_member_already_in_utub",
+        _barriered_membership_check(),
+    ):
+        results = _run_concurrently(
+            {
+                "first": lambda: _request_as_owner(
+                    app, OWNER_USER_ID, "post", add_url, body
+                ),
+                "second": lambda: _request_as_owner(
+                    app, OWNER_USER_ID, "post", add_url, body
+                ),
+            }
+        )
+
+    statuses = sorted(status for status, _ in results.values())
+    assert statuses == [200, 400]
+    loser_body = next(body for status, body in results.values() if status == 400)
+    assert loser_body[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB
+
+    with app.app_context():
+        added_rows = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_ids[3]
+        ).count()
+    assert added_rows == 1

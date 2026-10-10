@@ -26,7 +26,7 @@ from backend.schemas.errors import (
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS, USER_FAILURE
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import UtubAccess, get_fresh_membership, lock_and_reauthorize
 
 # Shared enforcement Redis in-memory-stub sentinel — a `memory://` URI (or an
 # absent URI) means no real Redis is wired, so the daily-cap counter fails open.
@@ -44,12 +44,15 @@ def _build_member_rate_limit_redis() -> Redis | None:
     duplicated rather than importing the underscore-prefixed
     ``_build_rate_limit_redis`` from ``account_service.py`` cross-module. Returns
     ``None`` when the URI is absent or the in-memory stub, so callers fail open
-    (the add-member daily cap is anti-abuse, not a security boundary).
+    (the add-member daily cap is anti-abuse, not a security boundary). The client
+    uses 1s socket and connect timeouts so a Redis hang raises quickly (caught and
+    failed open by the caller) instead of holding the UTub row lock for the
+    worker timeout.
     """
     redis_uri: str | None = current_app.config.get(CONFIG_ENVS.REDIS_URI)
     if not redis_uri or redis_uri == _MEMORY_URI:
         return None
-    return Redis.from_url(redis_uri)
+    return Redis.from_url(redis_uri, socket_timeout=1, socket_connect_timeout=1)
 
 
 def create_utub_member(
@@ -64,17 +67,26 @@ def create_utub_member(
         source (MemberAddSource): Where the add originated (typeahead pick vs
             exact-username outsider path); threaded into the MEMBER_ADDED metric
 
+    The per-UTub ``Utubs`` row lock taken by ``lock_and_reauthorize`` is held
+    until the request commits or rolls back, including across the Redis
+    daily-cap calls and the early returns (rate-limited, nonexistent username,
+    already a member). Those Redis calls are bounded to ~1s by the client socket
+    timeouts and fail open.
+
     Returns:
         tuple[Response, int]:
         - Response: JSON response on create
         - int: HTTP status code 200 (Success), 400 (User not found, already a
-          member, or the per-user daily add cap was reached)
+          member, or the per-user daily add cap was reached), 403 (the caller is
+          no longer a manager once the UTub row is locked, or the UTub is locked)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        current_utub, error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED
+    auth_error: FlaskResponse | None = lock_and_reauthorize(
+        current_utub,
+        required_access=UtubAccess.MANAGER,
+        error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED,
     )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    if auth_error is not None:
+        return auth_error
 
     # Per-user fail-open Redis daily counter. Placed BEFORE the username lookup
     # so every attempt reaching the oracle burns a slot regardless of outcome
@@ -130,7 +142,9 @@ def _check_if_member_already_in_utub(
     Returns:
         ValidatedMember: Containing the User object and whether they are already in the UTub
     """
-    already_in_utub = Utub_Members.query.get((current_utub.id, user.id)) is not None
+    already_in_utub = (
+        get_fresh_membership(utub_id=current_utub.id, user_id=user.id) is not None
+    )
 
     if already_in_utub:
         warning_log(

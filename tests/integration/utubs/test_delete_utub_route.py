@@ -581,8 +581,14 @@ def test_delete_utub_trashed_concurrently_does_not_overwrite_deletion(
     """
     GIVEN a UTub loaded as live by one request while a concurrent request trashes it
     WHEN the first request's delete service then runs against its stale UTub row
-    THEN the conditional write updates no rows, a 404 is raised, and the
+    THEN the UTub row lock plus populate_existing re-read in lock_and_reauthorize
+        (not a conditional UPDATE) raises a 404 for the trashed UTub, and the
         winning request's deleted_at / deleted_by are left unchanged
+
+    The patch targets only the service's current_user: lock_and_reauthorize
+    aborts 404 on the trashed re-check BEFORE it reads current_user for the
+    membership lookup. If that order changes, also patch
+    backend.utubs.guards.current_user.
     """
     _, utub_id, _, app = add_single_utub_as_user_after_logging_in
 

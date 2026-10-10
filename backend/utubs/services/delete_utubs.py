@@ -1,4 +1,3 @@
-from flask import abort
 from flask_login import current_user
 
 from backend import db
@@ -11,7 +10,7 @@ from backend.schemas.utubs import UtubDeletedResponseSchema
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.utub_strs import UTUB_SUCCESS
 from backend.utubs.constants import UTubErrorCodes
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import UtubAccess, lock_and_reauthorize
 
 
 def delete_utub_for_user(current_utub: Utubs) -> FlaskResponse:
@@ -28,25 +27,23 @@ def delete_utub_for_user(current_utub: Utubs) -> FlaskResponse:
         - Response: JSON response on delete
         - int: HTTP status code 200 (Success)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        current_utub, error_code=UTubErrorCodes.UTUB_IS_LOCKED
+    auth_error: FlaskResponse | None = lock_and_reauthorize(
+        current_utub,
+        required_access=UtubAccess.OWNER,
+        error_code=UTubErrorCodes.UTUB_IS_LOCKED,
     )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    if auth_error is not None:
+        return auth_error
 
     utub_id = current_utub.id
     utub_name = current_utub.name
     utub_description = current_utub.utub_description
 
-    rows_trashed: int = Utubs.query.filter(
-        Utubs.id == utub_id, Utubs.deleted_at.is_(None)
-    ).update(
-        {Utubs.deleted_at: utc_now(), Utubs.deleted_by: current_user.id},
-        synchronize_session=False,
-    )
-    if rows_trashed == 0:
-        db.session.rollback()
-        abort(404)
+    # The row lock + fresh re-read in lock_and_reauthorize already aborted 404
+    # for an already-trashed UTub, so this assignment cannot overwrite an
+    # earlier deletion's deleted_at / deleted_by.
+    current_utub.deleted_at = utc_now()
+    current_utub.deleted_by = current_user.id
     db.session.commit()
 
     safe_add_many_logs(
