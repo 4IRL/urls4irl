@@ -13,7 +13,7 @@ from backend.extensions.url_validation.constants import (
 )
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DeviceType
-from backend.utils.constants import generate_constants_js
+from backend.utils.constants import generate_constants_js, generate_strings_js
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 pytestmark = pytest.mark.unit
@@ -93,6 +93,25 @@ def test_generate_constants_js_url_scheme_hints_shape():
     assert hints
     assert set(hints) <= whitelist
     assert all(isinstance(hint, str) and hint for hint in hints.values())
+
+
+def test_generate_strings_js_includes_url_scheme_selector_strings():
+    """Every selector label is read by TS (the selector DOM is built in JS), so all are bridged."""
+    strings = generate_strings_js()
+    expected_keys = (
+        "URL_SCHEME_TOGGLE_LABEL",
+        "URL_SCHEME_FILTER_LABEL",
+        "URL_SCHEME_NO_MATCHES",
+        "URL_SCHEME_MATCH_ONE",
+        "URL_SCHEME_MATCH_MANY",
+        "URL_SCHEME_SET_ANNOUNCE",
+    )
+    for key in expected_keys:
+        assert key in strings, f"generate_strings_js() is missing {key}"
+        assert strings[key]
+
+    assert "{count}" in strings["URL_SCHEME_MATCH_MANY"]
+    assert "{scheme}" in strings["URL_SCHEME_SET_ANNOUNCE"]
 
 
 def test_generate_constants_js_device_type_shape():
