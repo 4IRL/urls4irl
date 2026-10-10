@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from flask import url_for
 from flask_login import current_user
@@ -12,6 +14,7 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.urls import UtubUrlDeleteSchema
 from backend.urls.constants import URLErrorCodes
+from backend.urls.services.delete_urls import delete_url_in_utub, trash_live_utub_url
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
@@ -655,6 +658,94 @@ def test_delete_already_trashed_url_is_404(
         row_after: Utub_Urls = Utub_Urls.query.get(utub_url_id)
         assert row_after.deleted_at == original_deleted_at
         assert row_after.deleted_by == original_deleted_by
+
+
+def test_delete_url_trashed_between_gate_and_service_is_404(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+) -> None:
+    """
+    GIVEN a live URL that passes the route's ownership decorator
+    WHEN another request trashes the row after the decorator but before the delete
+        service's conditional trash UPDATE runs
+    THEN the delete responds 404 NOT_FOUND and the first request's deleted_at and
+        deleted_by are not overwritten
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id: int = utub_creator_of.id
+        utub_url_id: int = (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first().id
+        )
+        creator_user_id: int = current_user.id
+        other_user_id: int = creator_user_id + 1
+
+    def trash_concurrently_then_delete(**kwargs: object) -> object:
+        trash_utub_url(app, utub_url_id, deleted_by=other_user_id)
+        return delete_url_in_utub(**kwargs)
+
+    with patch(
+        "backend.urls.routes.delete_url_in_utub",
+        side_effect=trash_concurrently_then_delete,
+    ):
+        delete_url_response = client.delete(
+            url_for(ROUTES.URLS.DELETE_URL, utub_id=utub_id, utub_url_id=utub_url_id),
+            headers={"X-CSRFToken": csrf_token_string},
+        )
+
+    assert delete_url_response.status_code == 404
+    json_response = delete_url_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        row_after: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert row_after.is_trashed
+        assert row_after.deleted_by == other_user_id
+
+
+def test_trash_live_utub_url_returns_false_for_already_trashed_row(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+) -> None:
+    """
+    GIVEN a URL row that is already in the trash
+    WHEN the conditional trash helper is called for it
+    THEN it returns False and leaves deleted_at, deleted_by and trashed_tag_ids as the
+        first trash wrote them
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id: int = utub_creator_of.id
+        utub_url_id: int = (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first().id
+        )
+        creator_user_id: int = current_user.id
+
+    trash_utub_url(app, utub_url_id, deleted_by=creator_user_id, trashed_tag_ids=[])
+
+    with app.app_context():
+        trashed_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        original_deleted_at = trashed_row.deleted_at
+        original_deleted_by = trashed_row.deleted_by
+        original_trashed_tag_ids = trashed_row.trashed_tag_ids
+
+        was_trashed: bool = trash_live_utub_url(
+            utub_id=utub_id, utub_url_id=utub_url_id, snapshot_tag_ids={999}
+        )
+        db.session.expire_all()
+
+        assert was_trashed is False
+        row_after: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert row_after.deleted_at == original_deleted_at
+        assert row_after.deleted_by == original_deleted_by
+        assert row_after.trashed_tag_ids == original_trashed_tag_ids
 
 
 def test_delete_url_as_utub_creator_with_tag(

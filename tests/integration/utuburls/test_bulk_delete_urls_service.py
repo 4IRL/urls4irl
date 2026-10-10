@@ -10,7 +10,6 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.urls.constants import BulkDeleteSkipReason, URLErrorCodes
 from backend.urls.services.delete_urls import delete_urls_in_utub
-from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.model_strs import TAG_COUNTS_MODIFIED
@@ -263,27 +262,29 @@ def test_service_rejects_unknown_id_spoofing(
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before
 
 
-def test_service_rejects_trashed_url_id(
+def test_service_already_trashed_id_is_skipped_idempotently(
     add_mixed_delete_permission_urls_in_first_utub,
     login_first_user_without_register,
-):
+) -> None:
     """
     GIVEN a utubUrlId in the UTub whose row is already in the trash
     WHEN it is included in a bulk-delete request alongside a live id
-    THEN the whole request is rejected 400 with URLS_NOT_IN_UTUB + INVALID_FORM_INPUT,
-        the live row survives, and the trashed row's deleted_at is unchanged.
+    THEN the request is 200: only the live row is trashed and reported as deleted,
+        the already-trashed id is neither counted nor reported, and its
+        deleted_at/deleted_by are unchanged.
     """
     _, _, _, app = login_first_user_without_register
 
     with app.app_context():
         rows_by_url_id = _utub_url_rows_by_url_id(FIRST_UTUB_ID)
-        live_id = rows_by_url_id[1].id
-        trashed_id = rows_by_url_id[2].id
+        live_id: int = rows_by_url_id[1].id
+        trashed_id: int = rows_by_url_id[2].id
 
-    trash_utub_url(app, trashed_id, deleted_by=CREATOR_USER_ID)
+    trash_utub_url(app, trashed_id, deleted_by=MEMBER_USER_ID)
 
     with app.app_context():
-        trashed_deleted_at = Utub_Urls.query.get(trashed_id).deleted_at
+        trashed_row: Utub_Urls = Utub_Urls.query.get(trashed_id)
+        trashed_deleted_at = trashed_row.deleted_at
         count_before = _utub_url_row_count(FIRST_UTUB_ID)
 
         response, status_code = delete_urls_in_utub(
@@ -293,12 +294,103 @@ def test_service_rejects_trashed_url_id(
         )
         body = response.get_json()
 
+        assert status_code == 200
+        assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        assert body[MODEL_STRS.TOTAL_DELETED] == 1
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+        assert body[MODEL_STRS.SKIPPED] == []
+        assert [
+            entry[MODEL_STRS.UTUB_URL_ID] for entry in body[MODEL_STRS.DELETED]
+        ] == [live_id]
+        assert _utub_url_row_count(FIRST_UTUB_ID) == count_before - 1
+        assert Utub_Urls.query.get(live_id).is_trashed
+        assert Utub_Urls.query.get(live_id).deleted_by == CREATOR_USER_ID
+        untouched: Utub_Urls = Utub_Urls.query.get(trashed_id)
+        assert untouched.deleted_at == trashed_deleted_at
+        assert untouched.deleted_by == MEMBER_USER_ID
+
+
+def test_service_all_already_trashed_ids_is_idempotent_noop(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+) -> None:
+    """
+    GIVEN every requested utubUrlId is already in the trash
+    WHEN they are bulk-deleted again
+    THEN the response is a 200 no-op (nothing deleted, nothing skipped, no tag
+        counts), last_updated is not bumped, no metric is emitted, and the trashed
+        rows are unchanged.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        rows_by_url_id = _utub_url_rows_by_url_id(FIRST_UTUB_ID)
+        target_ids: list[int] = [rows_by_url_id[1].id, rows_by_url_id[2].id]
+
+    for target_id in target_ids:
+        trash_utub_url(app, target_id, deleted_by=CREATOR_USER_ID)
+
+    with app.app_context():
+        first_utub: Utubs = Utubs.query.get(FIRST_UTUB_ID)
+        last_updated_before = first_utub.last_updated
+        deleted_at_before = {
+            target_id: Utub_Urls.query.get(target_id).deleted_at
+            for target_id in target_ids
+        }
+
+        response, status_code = delete_urls_in_utub(
+            utub_url_ids=target_ids,
+            utub=first_utub,
+            current_user_id=CREATOR_USER_ID,
+        )
+        body = response.get_json()
+
+        assert status_code == 200
+        assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        assert body[MODEL_STRS.TOTAL_DELETED] == 0
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+        assert body[MODEL_STRS.DELETED] == []
+        assert body[MODEL_STRS.SKIPPED] == []
+        assert body[TAG_COUNTS_MODIFIED] == {}
+        assert first_utub.last_updated == last_updated_before
+        for target_id in target_ids:
+            assert (
+                Utub_Urls.query.get(target_id).deleted_at
+                == (deleted_at_before[target_id])
+            )
+
+
+def test_service_unknown_id_beside_trashed_id_still_rejected_400(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+) -> None:
+    """
+    GIVEN an already-trashed id of the UTub plus an id that does not exist
+    WHEN they are bulk-deleted
+    THEN the unknown id still rejects the whole request with 400 URLS_NOT_IN_UTUB
+        and INVALID_FORM_INPUT, and the trashed row is unchanged.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        trashed_id: int = _utub_url_rows_by_url_id(FIRST_UTUB_ID)[2].id
+
+    trash_utub_url(app, trashed_id, deleted_by=CREATOR_USER_ID)
+
+    with app.app_context():
+        trashed_deleted_at = Utub_Urls.query.get(trashed_id).deleted_at
+
+        response, status_code = delete_urls_in_utub(
+            utub_url_ids=[trashed_id, 999_999],
+            utub=Utubs.query.get(FIRST_UTUB_ID),
+            current_user_id=CREATOR_USER_ID,
+        )
+        body = response.get_json()
+
         assert status_code == 400
         assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
         assert body[STD_JSON.MESSAGE] == URL_FAILURE.URLS_NOT_IN_UTUB
         assert body[STD_JSON.ERROR_CODE] == URLErrorCodes.INVALID_FORM_INPUT
-        assert _utub_url_row_count(FIRST_UTUB_ID) == count_before
-        assert Utub_Urls.query.get(live_id).deleted_at is None
         assert Utub_Urls.query.get(trashed_id).deleted_at == trashed_deleted_at
 
 
@@ -499,12 +591,12 @@ def test_service_mid_loop_exception_rolls_back_all(
     caplog,
 ):
     """
-    GIVEN a bulk-delete of two URLs where the per-row trash timestamp raises on the
-        SECOND row
+    GIVEN a bulk-delete of two URLs where the post-flush tag-count recompute raises
+        after BOTH rows were flagged and flushed
     WHEN the service processes the batch
-    THEN the exception propagates, the already-flagged FIRST row is rolled back too
-        (single terminal commit never reached), neither row is trashed, and the
-        rollback breadcrumb is logged.
+    THEN the exception propagates, both already-flagged rows are rolled back (single
+        terminal commit never reached), neither row is trashed, and the rollback
+        breadcrumb is logged.
     """
     _, _, _, app = login_first_user_without_register
 
@@ -513,18 +605,10 @@ def test_service_mid_loop_exception_rolls_back_all(
         target_ids = [rows_by_url_id[1].id, rows_by_url_id[2].id]
         count_before = _utub_url_row_count(FIRST_UTUB_ID)
 
-        real_utc_now = utc_now
-        call_count = {"value": 0}
-
-        def failing_utc_now():
-            call_count["value"] += 1
-            if call_count["value"] == 2:
-                raise RuntimeError("simulated mid-loop failure")
-            return real_utc_now()
-
         with patch(
-            "backend.urls.services.delete_urls.utc_now", side_effect=failing_utc_now
-        ):
+            "backend.urls.services.delete_urls.recompute_tag_counts_after_delete",
+            side_effect=RuntimeError("simulated mid-loop failure"),
+        ) as mock_recompute:
             with pytest.raises(RuntimeError, match="simulated mid-loop failure"):
                 delete_urls_in_utub(
                     utub_url_ids=target_ids,
@@ -532,7 +616,7 @@ def test_service_mid_loop_exception_rolls_back_all(
                     current_user_id=CREATOR_USER_ID,
                 )
 
-        assert call_count["value"] == 2
+        mock_recompute.assert_called_once()
         assert _utub_url_row_count(FIRST_UTUB_ID) == count_before
         for target_id in target_ids:
             rolled_back_row = Utub_Urls.query.get(target_id)

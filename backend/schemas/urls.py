@@ -197,7 +197,7 @@ class UrlUpdatedResponseSchema(BaseSchema):
     replaced_utub_url_id: int | None = Field(
         default=None,
         alias=MODELS.REPLACED_UTUB_URL_ID,
-        description="On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise.",
+        description="On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise. When non-null, clients must swap this card id for the returned url.utubUrlID.",
     )
     applied_tags: list[UtubTagSchema] = Field(
         default_factory=list,

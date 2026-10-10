@@ -2,7 +2,6 @@ from datetime import datetime
 
 from flask import abort, current_app
 from flask_login import current_user
-from werkzeug.exceptions import HTTPException
 
 from backend import db
 from backend.api_common.request_utils import is_current_utub_manager
@@ -212,30 +211,32 @@ def _revive_trashed_url_on_edit(
 ) -> FlaskResponse:
     """
     Edit a card's link to a URL that is trashed in the same UTub: revive the trashed
-    row T and trash the edited row A, in one transaction.
+    row and trash the edited row, in one transaction.
 
-    The unique constraint `unique_url_per_utub` covers trashed rows, so T (which owns
-    the slot for the new link) is revived in place and A is soft-deleted exactly like a
-    normal delete (so it stays recoverable). T takes A's identity (title, adder,
-    `added_at`) so the card the user edited appears to simply change link. T's tags
-    are kept only when the editor is T's original adder or a UTub manager (the same
-    rule as add-revive); A's tags are then unioned on top. Tags deleted from the UTub
-    while T was trashed are reported as `lostTagCount`. If the union exceeds the
-    per-URL tag limit, nothing changes and the at-tag-limit 400 is returned.
+    The unique constraint `unique_url_per_utub` covers trashed rows, so the trashed
+    row (which owns the slot for the new link) is revived in place and the edited row
+    is soft-deleted exactly like a normal delete (so it stays recoverable). The
+    revived row takes the edited row's identity (title, adder, `added_at`) so the card
+    the user edited appears to simply change link. The trashed row's tags are kept
+    only when the editor is its original adder or a UTub manager (the same rule as
+    add-revive); the edited row's tags are then unioned on top. Tags deleted from the
+    UTub while the row was trashed are reported as `lostTagCount`. If the union
+    exceeds the per-URL tag limit, nothing changes and the at-tag-limit 400 is
+    returned.
 
-    Both rows are locked ordered by id (no deadlock between concurrent edits). If T
-    was concurrently revived the live-conflict 409 is returned; if A was concurrently
-    trashed the request aborts with 404.
+    Both rows are locked ordered by id (no deadlock between concurrent edits). If the
+    trashed row was concurrently revived the live-conflict 409 is returned; if the
+    edited row was concurrently trashed the request aborts with 404.
 
     Args:
         current_utub (Utubs): The UTub containing both rows.
-        edited_utub_url (Utub_Urls): The row A the user is editing (live).
-        trashed_utub_url (Utub_Urls): The trashed row T holding the new link.
+        edited_utub_url (Utub_Urls): The live row the user is editing.
+        trashed_utub_url (Utub_Urls): The trashed row holding the new link.
         had_tracking (bool): Whether the raw input URL carried tracking params.
 
     Returns:
-        FlaskResponse: 200 with `revivedFromTrash` set, 400 on tag limit, 409 when T
-        is no longer trashed.
+        FlaskResponse: 200 with `revivedFromTrash` set, 400 on tag limit, 409 when the
+        trashed row is no longer trashed.
     """
     edited_utub_url_id: int = edited_utub_url.id
     trashed_utub_url_id: int = trashed_utub_url.id
@@ -280,16 +281,17 @@ def _revive_trashed_url_on_edit(
     edited_adder_id: int = locked_edited.user_id
     edited_added_at: datetime = locked_edited.added_at
 
+    # Kept out of the try below so the 404 abort needs no HTTPException passthrough.
+    if not trash_live_utub_url(
+        utub_id=current_utub.id,
+        utub_url_id=edited_utub_url_id,
+        snapshot_tag_ids=edited_tag_ids,
+    ):
+        db.session.rollback()
+        abort(404)
+
     to_apply: list[Utub_Tags] = []
     try:
-        if not trash_live_utub_url(
-            utub_id=current_utub.id,
-            utub_url_id=edited_utub_url_id,
-            snapshot_tag_ids=edited_tag_ids,
-        ):
-            db.session.rollback()
-            abort(404)
-
         if not can_keep_tags:
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_url_id == trashed_utub_url_id
@@ -314,8 +316,6 @@ def _revive_trashed_url_on_edit(
             to_apply = result.to_apply
 
         db.session.commit()
-    except HTTPException:
-        raise
     except Exception as exc:
         db.session.rollback()
         warning_log(

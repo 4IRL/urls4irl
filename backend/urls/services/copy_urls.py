@@ -6,7 +6,7 @@ from backend.app_logger import safe_add_many_logs, warning_log
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.metrics.tag_batch import bucket_bulk_tag_url_count
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
@@ -17,6 +17,7 @@ from backend.schemas.urls import (
     UrlCopySkippedSchema,
 )
 from backend.urls.constants import BulkCopySkipReason, DestCopyStatus, URLErrorCodes
+from backend.urls.services.create_urls import make_locked_trashed_url_live
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
@@ -26,23 +27,28 @@ def _copy_source_rows_into_dest(
     source_rows_in_order: list[Utub_Urls],
     dest_utub: Utubs,
     current_user_id: int,
-    existing_pairs: set[tuple[int, int]],
+    existing_rows: dict[tuple[int, int], Utub_Urls],
 ) -> tuple[list[UrlCopiedItemSchema], list[dict]]:
     """Copy validated source rows into ONE destination. Adds+flushes rows (NO commit).
 
-    Reads the already-present check from the prefetched `existing_pairs` set
-    (`(dest_utub.id, source_row.url_id)`) rather than issuing a per-pair query, so
-    the whole multi-destination request costs ONE existing-pairs prefetch instead of
-    N destinations × M urls lookups. A duplicate (already in the destination) becomes
-    a reported skip, not a write.
+    Reads the already-present check from the prefetched `existing_rows` map
+    (`(dest_utub.id, source_row.url_id)` to the destination's row) rather than issuing
+    a per-pair query, so the whole multi-destination request costs ONE prefetch instead
+    of N destinations × M urls lookups. A live duplicate (already in the destination)
+    becomes a reported skip, not a write. A trashed occupant is revived in place
+    (the unique constraint `unique_url_per_utub` covers trashed rows, so a second row
+    cannot be inserted) and reported as copied: it is re-locked, re-checked as still
+    trashed, and becomes live under the acting user with the source row's title; its
+    old tags stay attached only when the acting user was its adder or manages the
+    destination UTub (the same rule as add-revive), otherwise it comes back clean.
 
     Args:
         source_rows_in_order (list[Utub_Urls]): Validated source `Utub_Urls` rows, in
             request order.
         dest_utub (Utubs): The destination UTub to copy the rows into.
         current_user_id (int): The acting user, attributed as the adder of each copy.
-        existing_pairs (set[tuple[int, int]]): Prefetched `(utub_id, url_id)` pairs
-            already present across all destinations.
+        existing_rows (dict[tuple[int, int], Utub_Urls]): Prefetched rows (live and
+            trashed) keyed by `(utub_id, url_id)` across all destinations.
 
     Returns:
         tuple[list[UrlCopiedItemSchema], list[dict]]:
@@ -51,14 +57,51 @@ def _copy_source_rows_into_dest(
     """
     copied_results: list[UrlCopiedItemSchema] = []
     skipped_results: list[dict] = []
+    current_user_is_dest_manager: bool = (
+        current_user_id == dest_utub.utub_creator
+        or any(
+            member.user_id == current_user_id
+            and member.member_role == Member_Role.CO_CREATOR
+            for member in dest_utub.members
+        )
+    )
 
     for source_row in source_rows_in_order:
-        if (dest_utub.id, source_row.url_id) in existing_pairs:
-            skipped_results.append(
-                {
-                    MODELS.UTUB_URL_ID: source_row.id,
-                    MODELS.SKIP_REASON: BulkCopySkipReason.DUPLICATE,
-                }
+        occupant = existing_rows.get((dest_utub.id, source_row.url_id))
+        if occupant is not None:
+            locked_occupant: Utub_Urls | None = (
+                Utub_Urls.query.filter(Utub_Urls.id == occupant.id)
+                .with_for_update()
+                .populate_existing()
+                .first()
+                if occupant.is_trashed
+                else None
+            )
+            if locked_occupant is None or not locked_occupant.is_trashed:
+                skipped_results.append(
+                    {
+                        MODELS.UTUB_URL_ID: source_row.id,
+                        MODELS.SKIP_REASON: BulkCopySkipReason.DUPLICATE,
+                    }
+                )
+                continue
+
+            make_locked_trashed_url_live(
+                locked_utub_url=locked_occupant,
+                adder_id=current_user_id,
+                url_title=source_row.url_title,
+                keep_tags=(
+                    locked_occupant.user_id == current_user_id
+                    or current_user_is_dest_manager
+                ),
+            )
+            copied_results.append(
+                UrlCopiedItemSchema(
+                    source_utub_url_id=source_row.id,
+                    utub_url_id=locked_occupant.id,
+                    url_string=source_row.standalone_url.url_string,
+                    url_title=locked_occupant.url_title,
+                )
             )
             continue
 
@@ -188,13 +231,13 @@ def copy_urls_into_utubs(
         for dest_utub in Utubs.query.filter(Utubs.id.in_(dest_utub_ids)).all()
     }
 
-    # Prefetch existing (dest, url) pairs across ALL destinations in ONE query, so the
-    # per-destination duplicate check is a set membership test, not a query per pair.
-    # Trashed rows are kept (unfiltered) so a trashed occupant becomes a DUPLICATE
-    # skip instead of tripping ``unique_url_per_utub``.
+    # Prefetch existing (dest, url) rows across ALL destinations in ONE query, so the
+    # per-destination duplicate check is a dict lookup, not a query per pair. Trashed
+    # rows are kept (unfiltered) because they still occupy the ``unique_url_per_utub``
+    # slot: a live occupant is a DUPLICATE skip, a trashed one is revived.
     source_url_ids = [row.url_id for row in source_rows_in_order]
-    existing_pairs: set[tuple[int, int]] = {
-        (row.utub_id, row.url_id)
+    existing_rows: dict[tuple[int, int], Utub_Urls] = {
+        (row.utub_id, row.url_id): row
         for row in Utub_Urls.query.filter(
             Utub_Urls.utub_id.in_(dest_utub_ids),
             Utub_Urls.url_id.in_(source_url_ids),
@@ -228,7 +271,7 @@ def copy_urls_into_utubs(
                 source_rows_in_order=source_rows_in_order,
                 dest_utub=dest_utub,
                 current_user_id=current_user_id,
-                existing_pairs=existing_pairs,
+                existing_rows=existing_rows,
             )
             if copied_items:
                 dest_utub.set_last_updated()

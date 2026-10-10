@@ -99,8 +99,8 @@ export function insertURLCardIntoDeck({
 
 // DD-36's sanctioned client-side visual exception: the ONLY place the client
 // re-sorts URLs. The deck is server-ordered on every full load; here we merely
-// keep the just-created card from visually contradicting the active sort for the
-// brief pre-refetch window. Detaches/re-appends the URL cards into #listURLs in
+// keep the newly inserted or revived card from visually contradicting the active
+// sort for the brief pre-refetch window. Detaches/re-appends the URL cards into #listURLs in
 // the stored sort order (the detach/re-append idiom sortTagFiltersInPlace uses),
 // then — only when the reorder actually relocated the new card away from its
 // top-of-list insertion point — scrolls it into view and announces the add.
@@ -130,7 +130,7 @@ function reorderURLCardBySortPreference({
   // against the new order so striping stays consistent in the pre-refetch window.
   reapplyAlternatingURLCardBackgroundAfterFilter();
 
-  // Transient background flash on the freshly-created card (distinct from the
+  // Transient background flash on the newly inserted or revived card (distinct from the
   // persistent urlSelected styling), removed after ~0.7s — mirrors
   // showURLDeckBannerError()'s setTimeout-driven class removal.
   newUrlCard.addClass(HIGHLIGHT_CLASS);

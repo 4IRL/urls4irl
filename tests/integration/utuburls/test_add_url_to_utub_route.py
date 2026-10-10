@@ -6,6 +6,7 @@ import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from flask_login import current_user
+from werkzeug.test import TestResponse
 
 from backend import db
 from backend.extensions.url_validation.url_validator import (
@@ -20,6 +21,7 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.urls.constants import URLErrorCodes
+from backend.urls.services.create_urls import validate_new_url_for_utub
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.form_strs import URL_FORM
@@ -2296,8 +2298,12 @@ def _first_utub_url_row_info(app: Flask, url_id: int) -> tuple[int, str]:
 
 
 def _post_readd(
-    client: FlaskClient, csrf_token: str, url_string: str, url_title: str, **extra
-):
+    client: FlaskClient,
+    csrf_token: str,
+    url_string: str,
+    url_title: str,
+    **extra: list[str],
+) -> TestResponse:
     """POSTs a URL add to UTub 1, with optional extra JSON fields (e.g. tag strings)."""
     return client.post(
         url_for(ROUTES.URLS.CREATE_URL, utub_id=1),
@@ -2670,6 +2676,113 @@ def test_readd_trashed_url_records_url_added_metric(
         provide_metrics_redis, EventName.URL_ADDED_TO_UTUB
     )
     assert parse_dims(url_added_counter_keys[0])["tag_count_bucket"] == "0"
+
+
+def test_readd_trashed_url_revived_concurrently_after_validation_is_409(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 is trashed and, between validation and the row lock, another
+        request revives that same row
+    WHEN user 1 re-adds the URL
+    THEN the locked re-check sees a live row, so the response is the 409 URL_IN_UTUB
+        conflict and the re-add overwrites nothing (title and adder stay the winner's)
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+
+    real_validate = validate_new_url_for_utub
+    winner_title = "Winner of the race"
+
+    def validate_then_revive_concurrently(
+        url_string_to_validate: str | None, utub_id: int
+    ):
+        validated = real_validate(url_string_to_validate, utub_id)
+        with app.app_context():
+            raced_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+            raced_row.deleted_at = None
+            raced_row.deleted_by = None
+            raced_row.trashed_tag_ids = None
+            raced_row.url_title = winner_title
+            db.session.commit()
+        return validated
+
+    with mock.patch(
+        "backend.urls.services.create_urls.validate_new_url_for_utub",
+        side_effect=validate_then_revive_concurrently,
+    ):
+        response = _post_readd(client, csrf_token, url_string, "Loser of the race")
+
+    assert response.status_code == 409
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
+    assert MODEL_STRS.REVIVED_FROM_TRASH not in response_json
+
+    with app.app_context():
+        raced_row = Utub_Urls.query.get(utub_url_id)
+        assert raced_row.deleted_at is None
+        assert raced_row.url_title == winner_title
+
+
+def test_readd_trashed_url_exception_mid_revive_rolls_back_and_logs(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN URL 1 is trashed
+    WHEN the revive transaction raises after the row lock is taken
+    THEN the exception propagates, the transaction is rolled back (the row is still
+        trashed with its original fields and snapshot), and "URL revive failed" is logged
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+
+    with app.app_context():
+        trashed_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        original_deleted_at = trashed_row.deleted_at
+        original_title = trashed_row.url_title
+        original_user_id = trashed_row.user_id
+        original_snapshot = trashed_row.trashed_tag_ids
+        initial_url_tag_count = Utub_Url_Tags.query.count()
+
+    with mock.patch(
+        "backend.urls.services.create_urls.apply_tags_core",
+        side_effect=RuntimeError("simulated revive failure"),
+    ):
+        with pytest.raises(RuntimeError, match="simulated revive failure"):
+            _post_readd(
+                client,
+                csrf_token,
+                url_string,
+                "Never persisted",
+                **{TAG_STRINGS_FIELD: ["neverpersistedtag"]},
+            )
+
+    with app.app_context():
+        still_trashed_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert still_trashed_row.is_trashed
+        assert still_trashed_row.deleted_at == original_deleted_at
+        assert still_trashed_row.url_title == original_title
+        assert still_trashed_row.user_id == original_user_id
+        assert still_trashed_row.trashed_tag_ids == original_snapshot
+        assert Utub_Url_Tags.query.count() == initial_url_tag_count
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.tag_string == "neverpersistedtag").count()
+            == 0
+        )
+
+    assert is_string_in_logs("URL revive failed", caplog.records)
+    assert is_string_in_logs(f"UTubURL.id={utub_url_id}", caplog.records)
+    assert is_string_in_logs("error_type=RuntimeError", caplog.records)
 
 
 def test_add_fresh_url_response_has_revive_defaults(

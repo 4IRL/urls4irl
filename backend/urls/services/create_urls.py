@@ -102,10 +102,10 @@ def create_url_in_utub(
 
     if validated_new_url.url_state == URLState.EXISTING_URL_IN_UTUB:
         return _build_url_already_in_utub_response(
-            current_utub,
-            validated_new_url.url.id,
-            validated_new_url.url.url_string,
-            had_tracking,
+            current_utub=current_utub,
+            url_id=validated_new_url.url.id,
+            url_string=validated_new_url.url.url_string,
+            had_tracking=had_tracking,
         )
 
     url, url_state = validated_new_url.url, validated_new_url.url_state
@@ -538,7 +538,7 @@ def _associate_url_with_utub(
 
 
 def _build_url_already_in_utub_response(
-    current_utub: Utubs, url_id: int, url_string: str, had_tracking: bool
+    *, current_utub: Utubs, url_id: int, url_string: str, had_tracking: bool
 ) -> FlaskResponse:
     """Log, record and build the 409 for a URL that is already live in the UTub."""
     warning_log(
@@ -558,6 +558,44 @@ def _build_url_already_in_utub_response(
         url_string=url_string,
         error_code=URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
     )
+
+
+def make_locked_trashed_url_live(
+    *,
+    locked_utub_url: Utub_Urls,
+    adder_id: int,
+    url_title: str,
+    keep_tags: bool,
+) -> None:
+    """
+    Make a trashed, row-locked Utub_Urls row live again under a new adder.
+
+    Clears the trash flags and the tag snapshot, sets the adder, title and fresh
+    `added_at`/`last_accessed`, and flushes. When `keep_tags` is False the row's
+    `Utub_Url_Tags` rows are deleted so it comes back clean. Does not commit or roll
+    back; the caller owns the transaction and must hold the row lock.
+
+    Args:
+        locked_utub_url (Utub_Urls): The trashed row, locked `FOR UPDATE`.
+        adder_id (int): The user to attribute the revived row to.
+        url_title (str): The title for the revived row.
+        keep_tags (bool): Whether the tags it had when trashed stay attached.
+    """
+    if not keep_tags:
+        Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_url_id == locked_utub_url.id
+        ).delete(synchronize_session=False)
+        db.session.expire(locked_utub_url, ["url_tags"])
+
+    now = utc_now()
+    locked_utub_url.deleted_at = None
+    locked_utub_url.deleted_by = None
+    locked_utub_url.trashed_tag_ids = None
+    locked_utub_url.user_id = adder_id
+    locked_utub_url.url_title = url_title
+    locked_utub_url.added_at = now
+    locked_utub_url.last_accessed = now
+    db.session.flush()
 
 
 def _revive_trashed_url_in_utub(
@@ -606,42 +644,33 @@ def _revive_trashed_url_in_utub(
     if locked_utub_url is None or not locked_utub_url.is_trashed:
         db.session.rollback()
         return _build_url_already_in_utub_response(
-            current_utub, url_id, url_string, had_tracking
+            current_utub=current_utub,
+            url_id=url_id,
+            url_string=url_string,
+            had_tracking=had_tracking,
         )
 
     can_keep_tags: bool = (
-        trashed_utub_url.user_id == current_user.id or is_current_utub_manager()
+        locked_utub_url.user_id == current_user.id or is_current_utub_manager()
     )
 
     # Read everything that depends on the trashed state before any write.
     lost_tag_count: int = (
-        count_lost_trashed_tags(trashed_utub_url) if can_keep_tags else 0
-    )
-    surviving_tag_ids: list[int] = (
-        list(trashed_utub_url.associated_tag_ids) if can_keep_tags else []
+        count_lost_trashed_tags(locked_utub_url) if can_keep_tags else 0
     )
 
     to_apply: list[Utub_Tags] = []
     try:
-        if not can_keep_tags:
-            Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == utub_url_id).delete(
-                synchronize_session=False
-            )
-            db.session.expire(trashed_utub_url, ["url_tags"])
-
-        now = utc_now()
-        trashed_utub_url.deleted_at = None
-        trashed_utub_url.deleted_by = None
-        trashed_utub_url.trashed_tag_ids = None
-        trashed_utub_url.user_id = current_user.id
-        trashed_utub_url.url_title = url_title
-        trashed_utub_url.added_at = now
-        trashed_utub_url.last_accessed = now
-        db.session.flush()
+        make_locked_trashed_url_live(
+            locked_utub_url=locked_utub_url,
+            adder_id=current_user.id,
+            url_title=url_title,
+            keep_tags=can_keep_tags,
+        )
         current_utub.set_last_updated()
 
         if tag_strings:
-            result = apply_tags_core(tag_strings, current_utub, trashed_utub_url)
+            result = apply_tags_core(tag_strings, current_utub, locked_utub_url)
             if result.over_limit:
                 db.session.rollback()
                 return build_url_at_tag_limit_response(utub_url_id)
@@ -652,7 +681,7 @@ def _revive_trashed_url_in_utub(
         db.session.rollback()
         warning_log(
             f"URL revive failed | UTub.id={current_utub.id} "
-            f"| UTubURL.id={utub_url_id} | RequestedTagCount={len(tag_strings or [])} "
+            f"| UTubURL.id={utub_url_id} | RequestedTagCount={len(tag_strings)} "
             f"| error_type={type(exc).__name__}"
         )
         raise
@@ -676,16 +705,13 @@ def _revive_trashed_url_in_utub(
         ]
     )
 
+    revived_tag_ids: list[int] = locked_utub_url.associated_tag_ids
     response_tags: list[Utub_Tags] = (
-        Utub_Tags.query.filter(Utub_Tags.id.in_(surviving_tag_ids))
+        Utub_Tags.query.filter(Utub_Tags.id.in_(revived_tag_ids))
         .order_by(Utub_Tags.id)
         .all()
-        if surviving_tag_ids
+        if revived_tag_ids
         else []
-    )
-    response_tag_ids: set[int] = {utub_tag.id for utub_tag in response_tags}
-    response_tags.extend(
-        utub_tag for utub_tag in to_apply if utub_tag.id not in response_tag_ids
     )
 
     tag_counts = get_tag_applied_counts(
@@ -709,8 +735,8 @@ def _revive_trashed_url_in_utub(
                 utub_url_id=utub_url_id,
                 url_string=url_string,
                 url_title=url_title,
-                utub_url_tag_ids=trashed_utub_url.associated_tag_ids,
-                added_at=trashed_utub_url.added_at,
+                utub_url_tag_ids=locked_utub_url.associated_tag_ids,
+                added_at=locked_utub_url.added_at,
             ),
             applied_tags=applied_tags,
             revived_from_trash=True,

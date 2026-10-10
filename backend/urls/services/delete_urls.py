@@ -208,8 +208,11 @@ def delete_urls_in_utub(
 
     The whole batch is one transaction with a single terminal commit: unknown or
     cross-UTub ids reject the entire request as a 400 before any write (a foreign id is
-    a spoof, not a skip); a locked UTub rejects the whole request as a 403; an
-    unexpected mid-loop exception rolls back every trashed row via an explicit rollback.
+    a spoof, not a skip); ids of this UTub that are already trashed are ignored (the
+    delete is idempotent): they are neither trashed again nor counted in
+    ``deleted``/``skipped``, and the remaining live ids are trashed; a locked UTub
+    rejects the whole request as a 403; an unexpected mid-loop exception rolls back
+    every trashed row via an explicit rollback.
     Each trashed row records ``deleted_at``/``deleted_by`` and its own ``trashed_tag_ids``
     snapshot; its ``Utub_Url_Tags`` rows are kept.
     Affected tag counts are recomputed ONCE post-batch to avoid the shared-tag
@@ -240,10 +243,11 @@ def delete_urls_in_utub(
     utub_url_ids = list(dict.fromkeys(utub_url_ids))
 
     # One-query all-or-nothing id validation: any unknown id OR any id belonging to a
-    # UTub other than this one rejects the whole request BEFORE any write.
+    # UTub other than this one rejects the whole request BEFORE any write. Trashed rows
+    # are fetched too so that an already-trashed id of this UTub is told apart from an
+    # unknown one: it is skipped silently (idempotent), not a 400.
     requested_rows: list[Utub_Urls] = Utub_Urls.query.filter(
         Utub_Urls.id.in_(utub_url_ids),
-        Utub_Urls.deleted_at.is_(None),
     ).all()
     rows_by_id: dict[int, Utub_Urls] = {row.id: row for row in requested_rows}
     if any(
@@ -268,6 +272,8 @@ def delete_urls_in_utub(
     skipped: list[dict] = []
     for utub_url_id in utub_url_ids:
         row = rows_by_id[utub_url_id]
+        if row.is_trashed:
+            continue
         can_delete = row.user_id == current_user_id or current_user_is_manager
         if can_delete:
             deletable_rows.append(row)
@@ -298,8 +304,8 @@ def delete_urls_in_utub(
         # Trash each row with per-row attribute sets (not one bulk UPDATE) because each
         # row snapshots its own tag ids. Utub_Url_Tags rows are kept so a restore can
         # bring the tags back.
+        trashed_at = utc_now()
         for row in deletable_rows:
-            trashed_at = utc_now()
             row.deleted_at = trashed_at
             row.deleted_by = current_user_id
             row.trashed_tag_ids = sorted(row.associated_tag_ids)

@@ -6,6 +6,7 @@ import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from flask_login import current_user
+from werkzeug.test import TestResponse
 
 from backend import db
 from backend.extensions.url_validation.url_validator import (
@@ -20,6 +21,7 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.urls import UtubUrlDetailSchema
 from backend.urls.constants import URLErrorCodes
+from backend.urls.data_models import ValidatedUrl
 from backend.urls.services.create_urls import validate_new_url_for_utub
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import TAG_CONSTANTS
@@ -2435,7 +2437,7 @@ def _first_utub_row_info(app: Flask, url_id: int) -> tuple[int, str]:
 
 def _patch_url_string(
     client: FlaskClient, csrf_token: str, utub_url_id: int, url_string: str
-):
+) -> TestResponse:
     """PATCHes the URL string of the given row in UTub 1."""
     return client.patch(
         url_for(ROUTES.URLS.UPDATE_URL, utub_id=1, utub_url_id=utub_url_id),
@@ -2643,6 +2645,11 @@ def test_update_url_to_trashed_url_reports_lost_tags(
         applied_tag[MODEL_STRS.ID]
         for applied_tag in response_json[MODEL_STRS.APPLIED_TAGS]
     ] == [shared_tag_id]
+    # The edited row's only tag is the shared one, now on URL 3 + the revived row
+    assert {
+        int(tag_id): count
+        for tag_id, count in response_json[TAG_COUNTS_MODIFIED].items()
+    } == {shared_tag_id: 2}
 
     with app.app_context():
         revived_row: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
@@ -2684,6 +2691,11 @@ def test_update_url_to_trashed_url_as_non_adder_member_drops_trashed_tags(
         applied_tag[MODEL_STRS.ID]
         for applied_tag in response_json[MODEL_STRS.APPLIED_TAGS]
     ] == [shared_tag_id]
+    # The edited row's only tag is the shared one, now on URL 3 + the revived row
+    assert {
+        int(tag_id): count
+        for tag_id, count in response_json[TAG_COUNTS_MODIFIED].items()
+    } == {shared_tag_id: 2}
 
     with app.app_context():
         revived_row: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
@@ -2813,7 +2825,9 @@ def test_update_url_to_concurrently_revived_url_is_live_conflict_409(
 
     trash_utub_url(app, trashed_utub_url_id, deleted_by=3)
 
-    def validate_then_revive_concurrently(url_string: str, utub_id: int):
+    def validate_then_revive_concurrently(
+        url_string: str, utub_id: int
+    ) -> ValidatedUrl:
         validated_new_url = validate_new_url_for_utub(url_string, utub_id)
         with app.app_context():
             concurrent_row: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
@@ -2849,6 +2863,58 @@ def test_update_url_to_concurrently_revived_url_is_live_conflict_409(
         concurrently_revived_row: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
         assert not concurrently_revived_row.is_trashed
         assert concurrently_revived_row.url_title == trashed_title
+        assert Utub_Url_Tags.query.count() == initial_url_tag_count
+
+
+def test_update_url_to_trashed_url_when_edited_row_concurrently_trashed_is_404(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+) -> None:
+    """
+    GIVEN UTub 1 where URL 3 is trashed when the edit of URL 1 to URL 3's string is validated
+    WHEN another request trashes the edited row (URL 1) before the edit takes its row locks
+    THEN the edit aborts with 404 NOT_FOUND, the trashed target row is still trashed with
+        its original deleted_at and trashed_tag_ids, and no Utub_Url_Tags rows are added
+        or removed
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    edited_utub_url_id, _ = _first_utub_row_info(app, url_id=1)
+    trashed_utub_url_id, trashed_url_string = _first_utub_row_info(app, url_id=3)
+
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=3)
+
+    with app.app_context():
+        target_row: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
+        original_deleted_at = target_row.deleted_at
+        original_trashed_tag_ids = list(target_row.trashed_tag_ids)
+        initial_url_tag_count = Utub_Url_Tags.query.count()
+
+    def validate_then_trash_edited_row_concurrently(
+        url_string: str, utub_id: int
+    ) -> ValidatedUrl:
+        validated_new_url = validate_new_url_for_utub(url_string, utub_id)
+        trash_utub_url(app, edited_utub_url_id, deleted_by=2)
+        return validated_new_url
+
+    with mock.patch(
+        "backend.urls.services.update_urls.validate_new_url_for_utub",
+        side_effect=validate_then_trash_edited_row_concurrently,
+    ):
+        response = _patch_url_string(
+            client, csrf_token, edited_utub_url_id, trashed_url_string
+        )
+
+    assert response.status_code == 404
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
+
+    with app.app_context():
+        still_trashed_target: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
+        assert still_trashed_target.is_trashed
+        assert still_trashed_target.deleted_at == original_deleted_at
+        assert still_trashed_target.trashed_tag_ids == original_trashed_tag_ids
+        assert Utub_Urls.query.get(edited_utub_url_id).is_trashed
         assert Utub_Url_Tags.query.count() == initial_url_tag_count
 
 

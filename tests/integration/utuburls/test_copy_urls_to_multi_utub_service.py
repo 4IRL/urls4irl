@@ -570,24 +570,28 @@ def test_service_trashed_source_url_rejected_400(
         assert _dest_url_row_count(DEST_UTUB_ID) == dest_count_before
 
 
-def test_service_trashed_destination_occupant_is_duplicate_skip(
+def test_service_trashed_destination_occupant_is_revived_and_copied(
     add_multi_dest_with_one_dup,
     login_first_user_without_register,
-):
+) -> None:
     """
     GIVEN source URL 1 pre-seeded into destination UTub 3, where that row is in the
         trash
     WHEN URL 1 is copied into [2, 3]
-    THEN destination 3 reports a DUPLICATE skip (not an IntegrityError on
-        unique_url_per_utub), destination 2 copies cleanly, and the trashed
-        occupant stays trashed.
+    THEN destination 3 revives the trashed occupant in place (same row id, no
+        IntegrityError on unique_url_per_utub) and reports it as copied, destination
+        2 copies cleanly, nothing is skipped, and the revived row is live under the
+        copier with the source title and no trash flags.
     """
     _, _, _, app = login_first_user_without_register
 
     with app.app_context():
-        copier_id = current_user.id
-        target_id = _source_rows_by_url_id(SOURCE_UTUB_ID)[1].id
-        occupant_id = _source_rows_by_url_id(THIRD_UTUB_ID)[1].id
+        copier_id: int = current_user.id
+        source_row: Utub_Urls = _source_rows_by_url_id(SOURCE_UTUB_ID)[1]
+        target_id: int = source_row.id
+        source_title: str = source_row.url_title
+        occupant_id: int = _source_rows_by_url_id(THIRD_UTUB_ID)[1].id
+        third_count_before: int = _dest_url_row_count(THIRD_UTUB_ID)
 
     trash_utub_url(app, occupant_id, deleted_by=copier_id)
 
@@ -601,23 +605,28 @@ def test_service_trashed_destination_occupant_is_duplicate_skip(
         body = response.get_json()
 
         assert status_code == 200
-        assert body[MODEL_STRS.TOTAL_COPIED] == 1
-        assert body[MODEL_STRS.TOTAL_SKIPPED] == 1
+        assert body[MODEL_STRS.TOTAL_COPIED] == 2
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
 
         results = _result_by_dest(body)
         assert results[DEST_UTUB_ID][MODEL_STRS.STATUS] == DestCopyStatus.OK.value
-        dest3_skipped = results[THIRD_UTUB_ID][MODEL_STRS.SKIPPED]
-        assert results[THIRD_UTUB_ID][MODEL_STRS.COPIED] == []
-        assert len(dest3_skipped) == 1
-        assert dest3_skipped[0][MODEL_STRS.UTUB_URL_ID] == target_id
-        assert (
-            dest3_skipped[0][MODEL_STRS.SKIP_REASON]
-            == BulkCopySkipReason.DUPLICATE.value
-        )
+        assert results[THIRD_UTUB_ID][MODEL_STRS.STATUS] == DestCopyStatus.OK.value
+        assert results[THIRD_UTUB_ID][MODEL_STRS.SKIPPED] == []
+        dest3_copied = results[THIRD_UTUB_ID][MODEL_STRS.COPIED]
+        assert len(dest3_copied) == 1
+        assert dest3_copied[0][MODEL_STRS.SOURCE_UTUB_URL_ID] == target_id
+        assert dest3_copied[0][MODEL_STRS.UTUB_URL_ID] == occupant_id
+        assert dest3_copied[0][MODEL_STRS.URL_TITLE] == source_title
 
-        occupant = Utub_Urls.query.get(occupant_id)
-        assert occupant is not None
-        assert occupant.is_trashed
+        revived: Utub_Urls = Utub_Urls.query.get(occupant_id)
+        assert revived is not None
+        assert not revived.is_trashed
+        assert revived.deleted_at is None
+        assert revived.deleted_by is None
+        assert revived.trashed_tag_ids is None
+        assert revived.user_id == copier_id
+        assert revived.url_title == source_title
+        assert _dest_url_row_count(THIRD_UTUB_ID) == third_count_before
 
 
 def test_service_rejects_same_utub_copy(

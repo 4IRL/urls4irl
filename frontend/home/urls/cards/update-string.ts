@@ -588,7 +588,7 @@ function replaceEditedCardWithRevivedURL({
 }): void {
   const editedUtubUrlID = parseInt(urlCard.attr("utuburlid") as string);
   const revivedUrl = response.URL;
-  const lostTagCount = response.lostTagCount;
+  const lostTagCount = response.lostTagCount ?? 0;
   log("updateURL revived a trashed URL — swapping cards", {
     editedUtubUrlID,
     revivedUtubUrlID: revivedUrl.utubUrlID,
@@ -599,6 +599,8 @@ function replaceEditedCardWithRevivedURL({
   const editedUrl = getState().urls.find(
     (url: UtubUrlItem) => url.utubUrlID === editedUtubUrlID,
   );
+  if (!editedUrl)
+    log("revive: edited card missing from store", { editedUtubUrlID });
   const revivedUrlItem: UtubUrlItem = {
     utubUrlID: revivedUrl.utubUrlID,
     urlString: revivedUrl.urlString,

@@ -1300,7 +1300,7 @@ export interface paths {
     delete: operations["deleteUrl"];
     options?: never;
     head?: never;
-    /** @description Update a URL string in a UTub */
+    /** @description Update a URL string in a UTub. When the new link matches a URL trashed in this UTub, that trashed row is revived and the edited row is trashed: the response then has revivedFromTrash true and replacedUtubUrlID set to the edited card's id. Clients must swap that card id for the returned url.utubUrlID whenever replacedUtubUrlID is non-null. */
     patch: operations["updateUrl"];
     trace?: never;
   };
@@ -1966,7 +1966,7 @@ export interface components {
        */
       lostTagCount: number;
       /**
-       * @description On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise.
+       * @description On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise. When non-null, clients must swap this card id for the returned url.utubUrlID.
        * @default null
        */
       replacedUtubUrlID: number | null;
