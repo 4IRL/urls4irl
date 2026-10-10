@@ -128,27 +128,30 @@ def lock_and_reauthorize(
         An error response tuple to return from the service, or None when the
         caller is still authorized and the UTub is not locked.
     """
-    utub = lock_utub_for_update(utub_id=current_utub.id)
+    utub: Utubs | None = lock_utub_for_update(utub_id=current_utub.id)
     if utub is None or utub.is_trashed:
         abort(404)
 
-    actor = get_fresh_membership(utub_id=utub.id, user_id=current_user.id)
+    actor: Utub_Members | None = get_fresh_membership(
+        utub_id=utub.id, user_id=current_user.id
+    )
     if actor is None:
         abort(404)
 
     g.is_manager = actor.member_role in (Member_Role.CREATOR, Member_Role.CO_CREATOR)
 
-    if required_access is UtubAccess.OWNER and current_user.id != utub.utub_creator:
-        critical_log(
-            f"User={current_user.id} not owner: UTub.id={utub.id} | UTub.name={utub.name}"
-        )
-        return build_message_error_response(
-            message=UTUB_FAILURE.NOT_AUTHORIZED, status_code=403
-        )
+    authorized: bool = True
+    role_label: str = ""
+    if required_access is UtubAccess.OWNER:
+        authorized = current_user.id == utub.utub_creator
+        role_label = "owner"
+    elif required_access is UtubAccess.MANAGER:
+        authorized = g.is_manager
+        role_label = "manager"
 
-    if required_access is UtubAccess.MANAGER and not g.is_manager:
+    if not authorized:
         critical_log(
-            f"User={current_user.id} not manager: UTub.id={utub.id} | UTub.name={utub.name}"
+            f"User={current_user.id} not {role_label}: UTub.id={utub.id} | UTub.name={utub.name}"
         )
         return build_message_error_response(
             message=UTUB_FAILURE.NOT_AUTHORIZED, status_code=403

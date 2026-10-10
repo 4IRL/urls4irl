@@ -443,6 +443,56 @@ def test_admin_mod_remove_creator_only_members_transfers_to_lowest_member(
         assert new_owner_membership.member_role == Member_Role.CREATOR
 
 
+def test_admin_mod_remove_creator_successor_has_lower_user_id(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a UTub whose creator has a higher user id than the only other member
+        (the admin, who becomes the successor)
+    WHEN the admin removes the creator
+    THEN the request succeeds, the lower-id successor is the owner, and exactly
+        one CREATOR row remains (demote/delete is flushed before the promote).
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+
+    with app.app_context():
+        creator = Users(
+            username="mod_high_id_creator",
+            email="mod_high_creator@test.com",
+            plaintext_password="TestPass1!",
+        )
+        creator.email_validated = True
+        db.session.add(creator)
+        db.session.commit()
+        creator_id = creator.id
+    assert admin_user.id < creator_id
+
+    utub = _seed_utub(app, creator_id)
+    with app.app_context():
+        db.session.add(
+            Utub_Members(
+                utub_id=utub.id,
+                user_id=admin_user.id,
+                member_role=Member_Role.MEMBER,
+            )
+        )
+        db.session.commit()
+
+    response = _post_mod(
+        client,
+        _MOD_MEMBER_REMOVE_URL.format(utub_id=utub.id, user_id=creator_id),
+        csrf,
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert Utubs.query.get(utub.id).utub_creator == admin_user.id
+        creator_rows = Utub_Members.query.filter_by(
+            utub_id=utub.id, member_role=Member_Role.CREATOR
+        ).all()
+        assert [row.user_id for row in creator_rows] == [admin_user.id]
+
+
 def test_admin_mod_remove_sole_creator_deletes_utub(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:

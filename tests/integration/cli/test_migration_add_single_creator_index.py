@@ -15,7 +15,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect, text
+from sqlalchemy import func, inspect, select, table, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
@@ -59,7 +59,7 @@ def _capture_row_counts(connection: Connection) -> dict[str, int]:
         if table_name == _ALEMBIC_VERSION_TABLE:
             continue
         row_counts[table_name] = connection.execute(
-            text(f'SELECT COUNT(*) FROM "{table_name}"')
+            select(func.count()).select_from(table(table_name))
         ).scalar_one()
     return row_counts
 

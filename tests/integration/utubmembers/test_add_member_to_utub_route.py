@@ -11,6 +11,7 @@ from backend.members.constants import (
     MemberAddSource,
     UTubMembersErrorCodes,
 )
+from backend.members.services.create_members import _build_member_rate_limit_redis
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -1391,3 +1392,29 @@ def test_add_member_failed_probe_burns_a_slot_with_ttl(
     ttl = redis_client.ttl(rate_limit_key)
     assert 0 < ttl <= 86400
     redis_client.close()
+
+
+def test_member_rate_limit_redis_client_uses_one_second_timeouts(app, monkeypatch):
+    """
+    GIVEN a real (non-memory) REDIS_URI configured
+    WHEN the member rate-limit Redis client is built
+    THEN it is created with 1s socket and connect timeouts, bounding how long a
+        Redis hang can hold the UTub row lock.
+    """
+    captured: dict = {}
+
+    def fake_from_url(url, **kwargs):
+        captured["url"] = url
+        captured["kwargs"] = kwargs
+        return "client"
+
+    monkeypatch.setattr(Redis, "from_url", fake_from_url)
+    monkeypatch.setitem(
+        app.config, CONFIG_ENVS.REDIS_URI, "redis://example.invalid:6379/0"
+    )
+
+    with app.app_context():
+        client = _build_member_rate_limit_redis()
+
+    assert client == "client"
+    assert captured["kwargs"] == {"socket_timeout": 1, "socket_connect_timeout": 1}
