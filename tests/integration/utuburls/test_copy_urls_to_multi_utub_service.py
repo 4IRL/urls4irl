@@ -1,13 +1,15 @@
 from unittest.mock import patch
 
 import pytest
+from flask import Flask
 from flask_login import current_user
 from sqlalchemy import event
 from werkzeug.exceptions import NotFound
 
 from backend import db
 from backend.metrics.events import EventName
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -24,7 +26,12 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs, trash_utub, trash_utub_url
+from tests.utils_for_test import (
+    is_string_in_logs,
+    set_member_role,
+    trash_utub,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.urls
 
@@ -627,6 +634,214 @@ def test_service_trashed_destination_occupant_is_revived_and_copied(
         assert revived.user_id == copier_id
         assert revived.url_title == source_title
         assert _dest_url_row_count(THIRD_UTUB_ID) == third_count_before
+
+
+def _tag_and_trash_dest_occupant(app: Flask, occupant_adder_id: int) -> tuple[int, int]:
+    """Give destination UTub 3's URL 1 row a tag and adder, then trash it.
+
+    Args:
+        app (Flask): The Flask app providing an app context
+        occupant_adder_id (int): The user recorded as the occupant row's adder
+
+    Returns:
+        tuple[int, int]: The occupant's `Utub_Urls` id and the id of the tag applied to it
+    """
+    with app.app_context():
+        occupant: Utub_Urls = _source_rows_by_url_id(THIRD_UTUB_ID)[1]
+        occupant.user_id = occupant_adder_id
+        occupant_tag: Utub_Tags = (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == THIRD_UTUB_ID)
+            .order_by(Utub_Tags.id)
+            .first()
+        )
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=THIRD_UTUB_ID,
+                utub_url_id=occupant.id,
+                utub_tag_id=occupant_tag.id,
+                user_id=occupant_adder_id,
+            )
+        )
+        db.session.commit()
+        occupant_id: int = occupant.id
+        occupant_tag_id: int = occupant_tag.id
+
+    trash_utub_url(app, occupant_id, deleted_by=occupant_adder_id)
+    return occupant_id, occupant_tag_id
+
+
+@pytest.mark.parametrize(
+    "copier_id, occupant_adder_id, copier_role",
+    [
+        pytest.param(1, 1, Member_Role.MEMBER, id="original_adder"),
+        pytest.param(3, 2, Member_Role.CREATOR, id="destination_creator"),
+        pytest.param(1, 2, Member_Role.CO_CREATOR, id="destination_co_creator"),
+    ],
+)
+def test_service_revived_occupant_keeps_tags_for_adder_or_manager(
+    add_multi_dest_with_one_dup,
+    add_tags_to_utubs,
+    login_first_user_without_register,
+    copier_id: int,
+    occupant_adder_id: int,
+    copier_role: Member_Role,
+) -> None:
+    """
+    GIVEN destination UTub 3 holds a tagged, trashed occupant of source URL 1, and the
+        copier is the occupant's original adder, the destination UTub's creator or its
+        co-creator
+    WHEN URL 1 is copied into [3]
+    THEN the occupant is revived in place under the copier with its Utub_Url_Tags row
+        retained.
+    """
+    _, _, _, app = login_first_user_without_register
+    if copier_role == Member_Role.CO_CREATOR:
+        set_member_role(app, THIRD_UTUB_ID, copier_id, copier_role)
+    occupant_id, occupant_tag_id = _tag_and_trash_dest_occupant(
+        app, occupant_adder_id=occupant_adder_id
+    )
+
+    with app.app_context():
+        target_id: int = _source_rows_by_url_id(SOURCE_UTUB_ID)[1].id
+
+        response, status_code = copy_urls_into_utubs(
+            source_utub_id=SOURCE_UTUB_ID,
+            dest_utub_ids=[THIRD_UTUB_ID],
+            utub_url_ids=[target_id],
+            current_user_id=copier_id,
+        )
+        body = response.get_json()
+
+        assert status_code == 200
+        assert body[MODEL_STRS.TOTAL_COPIED] == 1
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+
+        revived: Utub_Urls = Utub_Urls.query.get(occupant_id)
+        assert not revived.is_trashed
+        assert revived.trashed_tag_ids is None
+        assert revived.user_id == copier_id
+        assert revived.associated_tag_ids == [occupant_tag_id]
+        assert (
+            Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == occupant_id).count()
+            == 1
+        )
+
+
+def test_service_revived_occupant_drops_tags_for_non_adder_member(
+    add_multi_dest_with_one_dup,
+    add_tags_to_utubs,
+    login_first_user_without_register,
+) -> None:
+    """
+    GIVEN destination UTub 3 holds a tagged, trashed occupant of source URL 1 added by
+        user 2, and the copier (user 1) is neither its adder nor a manager of UTub 3
+    WHEN URL 1 is copied into [3]
+    THEN the occupant is revived in place under the copier but comes back clean: its
+        Utub_Url_Tags rows are deleted and the revived row has no tags.
+    """
+    _, _, _, app = login_first_user_without_register
+    occupant_id, _ = _tag_and_trash_dest_occupant(app, occupant_adder_id=2)
+
+    with app.app_context():
+        copier_id: int = current_user.id
+        target_id: int = _source_rows_by_url_id(SOURCE_UTUB_ID)[1].id
+        assert (
+            Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == occupant_id).count()
+            == 1
+        )
+
+        response, status_code = copy_urls_into_utubs(
+            source_utub_id=SOURCE_UTUB_ID,
+            dest_utub_ids=[THIRD_UTUB_ID],
+            utub_url_ids=[target_id],
+            current_user_id=copier_id,
+        )
+        body = response.get_json()
+
+        assert status_code == 200
+        assert body[MODEL_STRS.TOTAL_COPIED] == 1
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+
+        revived: Utub_Urls = Utub_Urls.query.get(occupant_id)
+        assert not revived.is_trashed
+        assert revived.trashed_tag_ids is None
+        assert revived.user_id == copier_id
+        assert revived.associated_tag_ids == []
+        assert (
+            Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == occupant_id).count()
+            == 0
+        )
+
+
+def test_service_occupant_revived_concurrently_after_prefetch_is_duplicate_skip(
+    add_multi_dest_with_one_dup,
+    login_first_user_without_register,
+) -> None:
+    """
+    GIVEN destination UTub 3's occupant of source URL 1 is trashed when the occupants
+        are prefetched, but another request revives it before the row lock is taken
+    WHEN URL 1 is copied into [2, 3]
+    THEN the locked re-read sees a live row, so destination 3 is a DUPLICATE skip that
+        overwrites nothing (title and adder stay the winner's), destination 2 still
+        copies and totalCopied counts only destination 2.
+    """
+    _, _, _, app = login_first_user_without_register
+    winner_title: str = "Winner of the race"
+    winner_user_id: int = 2
+
+    with app.app_context():
+        copier_id: int = current_user.id
+        target_id: int = _source_rows_by_url_id(SOURCE_UTUB_ID)[1].id
+        occupant_id: int = _source_rows_by_url_id(THIRD_UTUB_ID)[1].id
+
+    trash_utub_url(app, occupant_id, deleted_by=copier_id)
+
+    def revive_behind_the_prefetch(**kwargs):
+        # Bypass the session's identity map so the prefetched occupant still reads as
+        # trashed while the database row is already live.
+        Utub_Urls.query.filter(Utub_Urls.id == occupant_id).update(
+            {
+                Utub_Urls.deleted_at: None,
+                Utub_Urls.deleted_by: None,
+                Utub_Urls.trashed_tag_ids: None,
+                Utub_Urls.url_title: winner_title,
+                Utub_Urls.user_id: winner_user_id,
+            },
+            synchronize_session=False,
+        )
+        return _copy_source_rows_into_dest(**kwargs)
+
+    with app.app_context():
+        with patch(
+            "backend.urls.services.copy_urls._copy_source_rows_into_dest",
+            side_effect=revive_behind_the_prefetch,
+        ):
+            response, status_code = copy_urls_into_utubs(
+                source_utub_id=SOURCE_UTUB_ID,
+                dest_utub_ids=[THIRD_UTUB_ID, DEST_UTUB_ID],
+                utub_url_ids=[target_id],
+                current_user_id=copier_id,
+            )
+        body = response.get_json()
+
+        assert status_code == 200
+        assert body[MODEL_STRS.TOTAL_COPIED] == 1
+        assert body[MODEL_STRS.TOTAL_SKIPPED] == 1
+
+        results = _result_by_dest(body)
+        assert results[THIRD_UTUB_ID][MODEL_STRS.COPIED] == []
+        assert results[THIRD_UTUB_ID][MODEL_STRS.SKIPPED] == [
+            {
+                MODEL_STRS.UTUB_URL_ID: target_id,
+                MODEL_STRS.SKIP_REASON: BulkCopySkipReason.DUPLICATE.value,
+            }
+        ]
+        assert len(results[DEST_UTUB_ID][MODEL_STRS.COPIED]) == 1
+
+        raced_row: Utub_Urls = Utub_Urls.query.get(occupant_id)
+        assert not raced_row.is_trashed
+        assert raced_row.url_title == winner_title
+        assert raced_row.user_id == winner_user_id
 
 
 def test_service_rejects_same_utub_copy(

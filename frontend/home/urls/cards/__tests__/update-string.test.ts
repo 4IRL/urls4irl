@@ -411,6 +411,57 @@ describe("updateURLSuccess - revive on edit", () => {
     });
   });
 
+  it("treats an absent lostTagCount as 0 and still completes the swap", async () => {
+    urlStringInput.val(REVIVED_URL);
+    const response: Partial<ReturnType<typeof revivedResponse>> =
+      revivedResponse({ lostTagCount: 5 });
+    delete response.lostTagCount;
+    mockSuccess(response);
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(removeURLCardFromDeck).toHaveBeenCalledTimes(1);
+    expect(insertURLCardIntoDeck).toHaveBeenCalledTimes(1);
+    expect(showReviveBanner).toHaveBeenCalledTimes(1);
+    expect(showReviveBanner).toHaveBeenCalledWith({
+      lostTagCount: 0,
+      utubUrlID: REVIVED_UTUB_URL_ID,
+    });
+  });
+
+  it("completes the swap with fallback adder fields when the edited card is missing from the store", async () => {
+    urlStringInput.val(REVIVED_URL);
+    vi.mocked(getState).mockReturnValue({
+      urls: [],
+    } as unknown as AppState);
+    mockSuccess(revivedResponse({ lostTagCount: 1 }));
+
+    await expect(
+      updateURL(urlStringInput, urlCard, UTUB_ID),
+    ).resolves.not.toThrow();
+
+    expect(removeURLCardFromDeck).toHaveBeenCalledTimes(1);
+    expect(insertURLCardIntoDeck).toHaveBeenCalledTimes(1);
+    expect(insertURLCardIntoDeck).toHaveBeenCalledWith({
+      newUrl: {
+        utubUrlID: REVIVED_UTUB_URL_ID,
+        urlString: REVIVED_URL,
+        urlTitle: "Edited Title",
+        utubUrlTagIDs: [4, 9],
+        canDelete: true,
+        addedAt: expect.any(String),
+        addedByUserID: 0,
+      },
+      utubID: UTUB_ID,
+      appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],
+      announce: false,
+    });
+    expect(showReviveBanner).toHaveBeenCalledWith({
+      lostTagCount: 1,
+      utubUrlID: REVIVED_UTUB_URL_ID,
+    });
+  });
+
   it("tears down the edit panel and selection before swapping, and the banner comes last", async () => {
     urlStringInput.val(REVIVED_URL);
     mockSuccess(revivedResponse({ lostTagCount: 1 }));

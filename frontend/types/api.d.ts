@@ -597,7 +597,7 @@ export interface paths {
     delete: operations["apiV1DeleteUrl"];
     options?: never;
     head?: never;
-    /** @description Update a URL string in a UTub */
+    /** @description Update a URL string in a UTub. When the new link matches a URL trashed in this UTub, that trashed row is revived and the edited row is trashed: the response then has revivedFromTrash true and replacedUtubUrlID set to the edited card's id. Clients must swap that card id for the returned url.utubUrlID whenever replacedUtubUrlID is non-null. */
     patch: operations["apiV1UpdateUrl"];
     trace?: never;
   };
