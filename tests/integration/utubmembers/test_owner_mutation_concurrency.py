@@ -4,7 +4,7 @@ The standard ``db_transaction`` harness runs every test on ONE connection inside
 a SAVEPOINT, so a genuine lock race cannot happen there. These tests run on
 ``build_app`` with real commits and two request threads (each with its own
 SQLAlchemy session/connection). A ``threading.Barrier(2)`` patched into the
-route's pre-lock owner check makes both requests deterministically pass the
+route's pre-lock check (the owner check, or ``lock_and_reauthorize`` itself) makes both requests deterministically pass the
 stale, unlocked authorization before either one mutates.
 """
 
@@ -29,7 +29,9 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings import model_strs
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
+from backend.utils.strings.user_strs import MEMBER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_FAILURE
+from backend.utubs.guards import lock_and_reauthorize
 from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.utils import flush_member_add_lookup_keys
 from tests.models_for_test import valid_user_1, valid_user_2, valid_user_3
@@ -319,3 +321,62 @@ def test_concurrent_transfer_and_demote_new_owner_keeps_one_creator(
     creator_ids, utub_creator = _creator_state(app, utub_id)
     assert creator_ids == [user_ids[1]]
     assert utub_creator == user_ids[1]
+
+
+def _barriered_lock_and_reauthorize() -> Callable[..., Any]:
+    """Wrap the real ``lock_and_reauthorize`` so both requests rendezvous BEFORE
+    taking the row lock, i.e. after passing the stale route guard."""
+    barrier = threading.Barrier(2)
+
+    def _wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            barrier.wait(timeout=BARRIER_TIMEOUT_SECONDS)
+        except threading.BrokenBarrierError:
+            pass
+        return lock_and_reauthorize(*args, **kwargs)
+
+    return _wrapper
+
+
+def test_concurrent_double_remove_member_one_success_one_404(
+    committed_owner_utub: Tuple[Flask, int, list[int]],
+) -> None:
+    """
+    GIVEN a UTub owned by user 1 with plain member 3
+    WHEN user 1 double-fires DELETE of member 3 and both requests pass the stale
+        membership guard before either takes the UTub row lock
+    THEN exactly one removal succeeds (200) and the other gets 404
+        MEMBER_NOT_IN_UTUB, with no unhandled exception in either request
+        thread, member 3 gone and user 1 still the single CREATOR
+    """
+    app, utub_id, user_ids = committed_owner_utub
+    with app.test_request_context():
+        remove_url = url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=utub_id, user_id=user_ids[2]
+        )
+
+    with mock.patch(
+        "backend.members.services.delete_members.lock_and_reauthorize",
+        _barriered_lock_and_reauthorize(),
+    ):
+        results = _run_concurrently(
+            {
+                "first": lambda: _request_as_owner(
+                    app, OWNER_USER_ID, "delete", remove_url, {}
+                ),
+                "second": lambda: _request_as_owner(
+                    app, OWNER_USER_ID, "delete", remove_url, {}
+                ),
+            }
+        )
+
+    statuses = sorted(status for status, _ in results.values())
+    assert statuses == [200, 404]
+    loser_body = next(body for status, body in results.values() if status == 404)
+    assert loser_body[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_NOT_IN_UTUB
+
+    with app.app_context():
+        assert Utub_Members.query.get((utub_id, user_ids[2])) is None
+    creator_ids, utub_creator = _creator_state(app, utub_id)
+    assert creator_ids == [user_ids[0]]
+    assert utub_creator == user_ids[0]

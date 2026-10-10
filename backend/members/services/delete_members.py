@@ -15,7 +15,7 @@ from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import UtubAccess, get_fresh_membership, lock_and_reauthorize
 
 
 def remove_member_or_self_from_utub(
@@ -42,13 +42,17 @@ def remove_member_or_self_from_utub(
             - 400 (on the literal owner trying to remove themselves)
             - 403 (on a non-owner trying to remove the literal owner, or a member trying to
               remove someone else)
-            - 404 (on member being removed not existing in UTub)
+            - 403 (also when the UTub is locked)
+            - 404 (on member being removed not existing in UTub, or the caller's
+              membership or the UTub is gone once the row is locked)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        current_utub, error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED
+    auth_error: FlaskResponse | None = lock_and_reauthorize(
+        current_utub,
+        required_access=UtubAccess.MEMBER,
+        error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED,
     )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    if auth_error is not None:
+        return auth_error
 
     is_manager = is_current_utub_manager()
     is_owner = is_current_utub_owner(current_utub)
@@ -82,8 +86,8 @@ def remove_member_or_self_from_utub(
             status_code=403,
         )
 
-    user_to_remove_in_utub: Utub_Members | None = Utub_Members.query.get(
-        (current_utub.id, user_id_to_remove)
+    user_to_remove_in_utub: Utub_Members | None = get_fresh_membership(
+        utub_id=current_utub.id, user_id=user_id_to_remove
     )
 
     if user_to_remove_in_utub is None:
