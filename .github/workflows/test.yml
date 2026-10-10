@@ -170,6 +170,9 @@ jobs:
     env:
       FLASK_DEBUG: 'false'
       PRODUCTION: 'false'
+      # Serve jQuery/Bootstrap from /static/dist/vendor (fetched by frontend/setup-vendor.sh below)
+      # instead of the CDNs: a hung CDN script blocks the page `load` event and times out setup.
+      USE_LOCAL_BUNDLES: 'true'
       SECRET_KEY: 'ABCDEFGH12345678'
       MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
       MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
