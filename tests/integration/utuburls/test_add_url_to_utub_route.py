@@ -49,7 +49,11 @@ from tests.unit.test_url_validation import (
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
     INVALID_URLS_TO_VALIDATE,
 )
-from tests.utils_for_test import is_string_in_logs, is_string_in_logs_regex
+from tests.utils_for_test import (
+    is_string_in_logs,
+    is_string_in_logs_regex,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.urls
 
@@ -491,6 +495,70 @@ def test_add_url_with_mix_of_new_and_existing_tags(
             Utub_Tags.query.filter(Utub_Tags.utub_id == utub_id_to_add_to).count()
             == initial_vocab_count + 1
         )
+
+
+def test_add_url_with_tag_applied_count_excludes_trashed_urls(
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub whose tag still has a Utub_Url_Tags row on a trashed URL
+    WHEN a member adds a fresh live URL carrying that tag
+    THEN appliedTags reports tagApplied == 1 (only the new live URL), not 2
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    existing_tag_string = "trashedcountexcluded"
+
+    with app.app_context():
+        utub_id_to_add_to, url_string_to_add, url_title_to_add = (
+            _member_utub_and_fresh_url()
+        )
+        existing_tag = Utub_Tags(
+            utub_id=utub_id_to_add_to,
+            tag_string=existing_tag_string,
+            created_by=current_user.id,
+        )
+        db.session.add(existing_tag)
+        trashed_backing_url: Urls = Urls.query.filter(
+            Urls.url_string != url_string_to_add
+        ).first()
+        trashed_utub_url = Utub_Urls()
+        trashed_utub_url.standalone_url = trashed_backing_url
+        trashed_utub_url.url_id = trashed_backing_url.id
+        trashed_utub_url.utub_id = utub_id_to_add_to
+        trashed_utub_url.user_id = current_user.id
+        trashed_utub_url.url_title = "A trashed URL"
+        db.session.add(trashed_utub_url)
+        db.session.flush()
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=utub_id_to_add_to,
+                utub_url_id=trashed_utub_url.id,
+                utub_tag_id=existing_tag.id,
+                user_id=current_user.id,
+            )
+        )
+        db.session.commit()
+        trashed_utub_url_id = trashed_utub_url.id
+        current_user_id = current_user.id
+
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=current_user_id)
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+            TAG_STRINGS_FIELD: [existing_tag_string],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    applied_tags = add_url_response.json[MODEL_STRS.APPLIED_TAGS]
+    assert len(applied_tags) == 1
+    assert applied_tags[0][MODEL_STRS.TAG_APPLIED] == 1
 
 
 def test_add_url_with_tags_mid_apply_exception_leaves_zero_rows(

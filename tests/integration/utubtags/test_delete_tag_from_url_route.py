@@ -25,7 +25,11 @@ from backend.utils.strings.tag_strs import TAGS_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
+from tests.utils_for_test import (
+    count_tag_instances_in_utub,
+    is_string_in_logs,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.tags
 
@@ -154,6 +158,51 @@ def test_delete_tag_from_url_as_utub_creator(
             delete_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
             == num_urls_with_tag_in_utub
         )
+
+
+def test_delete_tag_from_url_count_excludes_trashed_urls(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub where the `shared` tag is on live URLs 1 and 3 and on trashed URL 2
+        (its Utub_Url_Tags row survives the trash)
+    WHEN the creator removes the `shared` tag from URL 1
+    THEN the returned tagCountsInUtub counts only the remaining live URL (URL 3 = 1),
+        not the trashed URL 2's surviving row
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    first_utub_id = 1
+    creator_user_id = 1
+
+    with app.app_context():
+        url_rows_by_url_id = {
+            row.url_id: row
+            for row in Utub_Urls.query.filter(Utub_Urls.utub_id == first_utub_id).all()
+        }
+        url_one_id = url_rows_by_url_id[1].id
+        url_two_id = url_rows_by_url_id[2].id
+        shared_tag_id = (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == first_utub_id)
+            .order_by(Utub_Tags.id)
+            .first()
+            .id
+        )
+
+    trash_utub_url(app, url_two_id, deleted_by=creator_user_id)
+
+    delete_tag_response = client.delete(
+        url_for(
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
+            utub_id=first_utub_id,
+            utub_url_id=url_one_id,
+            utub_tag_id=shared_tag_id,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_tag_response.status_code == 200
+    assert delete_tag_response.json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED] == 1
 
 
 def test_remove_tag_from_url_in_locked_utub_is_rejected(

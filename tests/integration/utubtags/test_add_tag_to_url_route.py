@@ -1129,6 +1129,61 @@ def test_add_tag_to_trashed_url_is_404(
         assert Utub_Tags.query.count() == initial_num_utub_tags
 
 
+def test_count_of_url_tag_excludes_trashed_urls(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub where the `solo` tag is only on live URL 1, URL 2 also carries it but
+        has been moved to trash (its Utub_Url_Tags row survives), and live URL 3 has none
+    WHEN the creator adds the `solo` tag to URL 3
+    THEN the returned tagCountsInUtub counts only live URLs (URL 1 and URL 3 = 2), not
+        the trashed URL 2's surviving row
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    first_utub_id = 1
+    creator_user_id = 1
+
+    with app.app_context():
+        url_rows_by_url_id = {
+            row.url_id: row
+            for row in Utub_Urls.query.filter(Utub_Urls.utub_id == first_utub_id).all()
+        }
+        url_two_id = url_rows_by_url_id[2].id
+        url_three_id = url_rows_by_url_id[3].id
+        solo_tag: Utub_Tags = (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == first_utub_id)
+            .order_by(Utub_Tags.id)
+            .all()[1]
+        )
+        solo_tag_string = solo_tag.tag_string
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=first_utub_id,
+                utub_url_id=url_two_id,
+                utub_tag_id=solo_tag.id,
+                user_id=creator_user_id,
+            )
+        )
+        db.session.commit()
+        assert count_tag_instances_in_utub(first_utub_id, solo_tag.id) == 2
+
+    trash_utub_url(app, url_two_id, deleted_by=creator_user_id)
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=first_utub_id,
+            utub_url_id=url_three_id,
+        ),
+        json={TAG_FORM.TAG_STRING: solo_tag_string},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_tag_response.status_code == 200
+    assert add_tag_response.json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED] == 2
+
+
 def test_add_tag_to_nonexistent_url_as_utub_member(
     add_tags_to_utubs, every_user_in_every_utub, login_first_user_without_register
 ):
