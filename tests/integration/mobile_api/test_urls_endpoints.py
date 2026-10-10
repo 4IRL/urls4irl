@@ -636,12 +636,15 @@ def test_delete_url_happy_path(
     """
     GIVEN user 1 is the creator of UTub 1 and added utub_url_id=1; 3 Utub_Urls rows total
     WHEN user 1 DELETEs /api/v1/utubs/1/urls/1
-    THEN 200 with utubID, URL object, and tagCountsInUtub; Utub_Urls count decreases by 1
+    THEN 200 with utubID, URL object, and tagCountsInUtub; the row is trashed (flagged, not deleted)
     """
     user_1_token = _token_for_user(app, user_id=1)
 
     with app.app_context():
         initial_utub_urls_count = Utub_Urls.query.count()
+        initial_live_utub_urls_count = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == 1, Utub_Urls.deleted_at.is_(None)
+        ).count()
 
     assert initial_utub_urls_count == 3
 
@@ -663,8 +666,20 @@ def test_delete_url_happy_path(
     assert url_object[MODELS.URL_STRING] == _UTUB_1_URL_STRING
 
     with app.app_context():
-        assert Utub_Urls.query.count() == initial_utub_urls_count - 1
-        assert Utub_Urls.query.get(1) is None
+        # Soft delete: the row survives, flagged as trashed by the acting user
+        assert Utub_Urls.query.count() == initial_utub_urls_count
+        trashed_row: Utub_Urls = Utub_Urls.query.get(1)
+        assert trashed_row is not None
+        assert trashed_row.is_trashed
+        assert trashed_row.deleted_by == 1
+        # No tags on this URL, so none are snapshotted for a restore
+        assert trashed_row.trashed_tag_ids == []
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == 1, Utub_Urls.deleted_at.is_(None)
+            ).count()
+            == initial_live_utub_urls_count - 1
+        )
 
 
 def test_delete_url_non_adder_member_is_403(
