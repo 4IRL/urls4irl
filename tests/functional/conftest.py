@@ -244,7 +244,9 @@ def page_without_cookie_banner_cookie(
         ):
             context.set_default_timeout(10_000)
             context.set_default_navigation_timeout(30_000)
-            stub_third_party_requests(context=context)
+            stub_third_party_requests(
+                context=context, test_fixture_names=request.fixturenames
+            )
 
             page: Page = context.new_page()
             page.goto(base_url + "/")
@@ -309,7 +311,9 @@ def page_mobile_portrait_without_cookie_banner_cookie(
         ):
             context.set_default_timeout(10_000)
             context.set_default_navigation_timeout(30_000)
-            stub_third_party_requests(context=context)
+            stub_third_party_requests(
+                context=context, test_fixture_names=request.fixturenames
+            )
 
             page: Page = context.new_page()
             page.goto(base_url + "/")

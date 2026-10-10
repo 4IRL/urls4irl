@@ -328,7 +328,7 @@ CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 10 parallel 
 - `playwright_assert_utils.py` — 23 common assertion utilities
 - `playwright_login_utils.py` — 8 login/authentication helpers
 - `ui_test_setup.py` — App initialization and server setup
-- `third_party_stubs.py` — answers the page's jQuery/Bootstrap CDN requests from `frontend/public/vendor` (when `setup-vendor.sh` has run) and neutralizes the Cloudflare analytics beacon; applied by the two page fixtures on their context
+- `third_party_stubs.py` — answers the page's jQuery/Bootstrap CDN requests from `frontend/public/vendor` (when `setup-vendor.sh` has run) and neutralizes the Cloudflare analytics beacon; applied by the two page fixtures on their context, except for tests that request `metrics_redis_client` (interception can abort the unload `sendBeacon` those tests assert on)
 
 **Feature-specific test directories** (each `*_ui/` has its own `playwright_utils.py`; some add `playwright_assert_utils.py` / `playwright_login_utils.py` / `db_utils.py`). The `mobile_ui` marker has no directory; its tests sit in `urls_ui/`, `utubs_ui/`, `tags_ui/`, `home_ui/`, and `splash_ui/`:
 - `splash_ui/` (marker: `splash_ui`) — Login, register, password reset, email validation

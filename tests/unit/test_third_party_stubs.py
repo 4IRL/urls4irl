@@ -11,6 +11,7 @@ from tests.functional.third_party_stubs import (
     ANALYTICS_BEACON_URL,
     CDN_SCRIPT_URLS_TO_VENDOR_FILES,
     JS_CONTENT_TYPE,
+    UNLOAD_BEACON_TEST_FIXTURE,
     stub_third_party_requests,
 )
 
@@ -27,6 +28,7 @@ BUNDLES_TEMPLATE = (
     / "bundles.html"
 )
 LOCAL_FALLBACK_PATH = "/static/dist/vendor"
+FUNCTIONAL_TESTS_DIR = Path(__file__).resolve().parents[1] / "functional"
 
 
 class FakeContext:
@@ -49,10 +51,12 @@ class FakeRoute:
         self.fulfilled = kwargs
 
 
-def _stub(vendor_dir: Path) -> FakeContext:
+def _stub(vendor_dir: Path, test_fixture_names: tuple[str, ...] = ()) -> FakeContext:
     context = FakeContext()
     stub_third_party_requests(
-        context=cast(BrowserContext, context), vendor_dir=vendor_dir
+        context=cast(BrowserContext, context),
+        test_fixture_names=test_fixture_names,
+        vendor_dir=vendor_dir,
     )
     return context
 
@@ -141,3 +145,34 @@ def test_analytics_beacon_is_answered_with_an_empty_script(tmp_path: Path):
         "content_type": JS_CONTENT_TYPE,
         "body": "",
     }
+
+
+def test_nothing_is_intercepted_for_a_test_that_reads_the_unload_beacon(tmp_path: Path):
+    """
+    GIVEN both vendor files exist and the test requests the metrics fixture
+    WHEN the helper is applied
+    THEN no route is registered, so Chromium never pauses requests and the page's
+        `sendBeacon` on unload cannot be aborted by interception
+    """
+    _write_vendor_files(tmp_path, list(CDN_SCRIPT_URLS_TO_VENDOR_FILES.values()))
+
+    context = _stub(tmp_path, test_fixture_names=("page", UNLOAD_BEACON_TEST_FIXTURE))
+
+    assert context.routes == {}
+
+
+def test_every_metrics_ui_test_module_requests_the_unload_beacon_fixture():
+    """
+    GIVEN the metrics UI test modules, which assert on the real `sendBeacon` flush
+    WHEN each is searched for the fixture the helper keys its opt-out on
+    THEN every one requests it, so none is silently stubbed and left flaky
+    """
+    metrics_ui_modules = sorted(FUNCTIONAL_TESTS_DIR.glob("*/test_*_metrics_ui.py"))
+    assert metrics_ui_modules, "no metrics UI test modules found"
+
+    missing_fixture = [
+        module.name
+        for module in metrics_ui_modules
+        if UNLOAD_BEACON_TEST_FIXTURE not in module.read_text()
+    ]
+    assert missing_fixture == []
