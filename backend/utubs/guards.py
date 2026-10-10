@@ -140,7 +140,8 @@ def lock_and_reauthorize(
 
     g.is_manager = actor.member_role in (Member_Role.CREATOR, Member_Role.CO_CREATOR)
 
-    authorized: bool = True
+    # Fail closed: only an explicitly handled access level can authorize.
+    authorized: bool = False
     role_label: str = ""
     if required_access is UtubAccess.OWNER:
         authorized = current_user.id == utub.utub_creator
@@ -148,6 +149,10 @@ def lock_and_reauthorize(
     elif required_access is UtubAccess.MANAGER:
         authorized = g.is_manager
         role_label = "manager"
+    elif required_access is UtubAccess.MEMBER:
+        # Current membership was already verified by the fresh lookup above.
+        authorized = True
+        role_label = "member"
 
     if not authorized:
         critical_log(
