@@ -190,7 +190,8 @@ def remove_member_admin(
     a. Target is not the creator: delete the membership row and audit.
     b. Target is the creator with other members: transfer ownership to the
        lowest-user-id CO_CREATOR (or lowest-user-id MEMBER if none), delete
-       the old creator's membership, and audit with ownership_transferred_to.
+       (and flush) the old creator's membership BEFORE promoting the new
+       creator (single-CREATOR index), and audit with ownership_transferred_to.
     c. Target is the creator and is the sole member: delete the whole UTub via
        ORM cascade and audit with utub_deleted=True.
 
@@ -269,8 +270,11 @@ def remove_member_admin(
     )
     new_owner_id: int = new_owner_membership.user_id
     utub.utub_creator = new_owner_id
-    new_owner_membership.member_role = Member_Role.CREATOR
     db.session.delete(membership)
+    # Flush the old creator's delete before promoting: the single-CREATOR unique
+    # index is checked per statement and UPDATEs would otherwise flush first.
+    db.session.flush()
+    new_owner_membership.member_role = Member_Role.CREATOR
     utub.set_last_updated()
     audit.record(
         actor_id=actor_id,

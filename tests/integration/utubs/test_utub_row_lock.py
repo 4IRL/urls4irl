@@ -8,6 +8,7 @@ import pytest
 from flask import g
 from sqlalchemy import event, text
 from sqlalchemy.engine import Connection
+from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import NotFound
 
 from backend import db
@@ -365,3 +366,29 @@ def test_lock_and_reauthorize_no_log_on_happy_path(
 
         assert not is_string_in_logs("not owner", caplog.records)
         assert not is_string_in_logs("not manager", caplog.records)
+
+
+def test_single_creator_index_rejects_second_creator(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a UTub whose user 1 is CREATOR
+    WHEN a second member is also set to CREATOR and flushed
+    THEN the uq_utub_members_single_creator partial unique index rejects it
+    """
+    with app.app_context():
+        second: Utub_Members = Utub_Members.query.get((UTUB_ID, 2))
+        second.member_role = Member_Role.CREATOR
+
+        with pytest.raises(IntegrityError) as exc_info:
+            db.session.flush()
+
+        assert "uq_utub_members_single_creator" in str(exc_info.value)
+        db.session.rollback()
+
+        # The index is partial: several CO_CREATOR rows remain allowed.
+        for user_id in (2, 3):
+            member: Utub_Members = Utub_Members.query.get((UTUB_ID, user_id))
+            member.member_role = Member_Role.CO_CREATOR
+        db.session.flush()
+        db.session.rollback()

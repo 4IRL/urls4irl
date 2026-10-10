@@ -165,10 +165,15 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
                 other_members=other_members
             )
             containing_utub.utub_creator = new_owner_membership.user_id
+            # Delete and flush the erased creator's row BEFORE promoting: the
+            # single-CREATOR unique index is checked per statement and UPDATEs
+            # would otherwise flush before the DELETE.
+            db.session.delete(membership)
+            db.session.flush()
             new_owner_membership.member_role = Member_Role.CREATOR
             ownerships_transferred_count += 1
-
-        db.session.delete(membership)
+        else:
+            db.session.delete(membership)
         containing_utub.set_last_updated()
         memberships_removed_count += 1
 
@@ -229,7 +234,8 @@ def erase_user(*, actor_id: int, target_user_id: int, reason: str) -> FlaskRespo
       via ORM cascade
     - **created UTub with other members**: ownership transfers to the
       deterministic remaining member (lowest-user-id CO_CREATOR, else lowest
-      user id), then the erased user's membership row is removed
+      user id); the erased user's membership row is deleted and flushed BEFORE
+      the new owner is promoted (single-CREATOR index)
     - **non-creator membership**: the membership row is removed; contributed
       URLs/tags stay under the tombstone identity
 
