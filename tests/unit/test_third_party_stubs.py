@@ -1,5 +1,6 @@
 """Unit tests for the UI-test helper that answers the page's CDN scripts from local vendor files."""
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -164,15 +165,20 @@ def test_nothing_is_intercepted_for_a_test_that_reads_the_unload_beacon(tmp_path
 def test_every_metrics_ui_test_module_requests_the_unload_beacon_fixture():
     """
     GIVEN the metrics UI test modules, which assert on the real `sendBeacon` flush
-    WHEN each is searched for the fixture the helper keys its opt-out on
+        (a metrics test outside the `test_*_metrics_ui.py` naming is not guarded)
+    WHEN each is searched for the fixture the helper keys its opt-out on, as a
+        test parameter (a comment or import does not count)
     THEN every one requests it, so none is silently stubbed and left flaky
     """
     metrics_ui_modules = sorted(FUNCTIONAL_TESTS_DIR.glob("*/test_*_metrics_ui.py"))
     assert metrics_ui_modules, "no metrics UI test modules found"
+    requests_fixture = re.compile(
+        rf"^\s+{UNLOAD_BEACON_TEST_FIXTURE}\s*:", flags=re.MULTILINE
+    )
 
     missing_fixture = [
         module.name
         for module in metrics_ui_modules
-        if UNLOAD_BEACON_TEST_FIXTURE not in module.read_text()
+        if not requests_fixture.search(module.read_text())
     ]
     assert missing_fixture == []
