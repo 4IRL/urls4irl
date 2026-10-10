@@ -29,6 +29,7 @@ from tests.functional.playwright_utils import (
 from tests.functional.playwright_utils import (
     add_cookie_banner_cookie as add_playwright_cookie_banner_cookie,
 )
+from tests.functional.third_party_stubs import stub_third_party_requests
 from tests.functional.ui_test_setup import (
     clear_db,
     connect_to_browser_server,
@@ -243,6 +244,9 @@ def page_without_cookie_banner_cookie(
         ):
             context.set_default_timeout(10_000)
             context.set_default_navigation_timeout(30_000)
+            stub_third_party_requests(
+                context=context, test_fixture_names=request.fixturenames
+            )
 
             page: Page = context.new_page()
             page.goto(base_url + "/")
@@ -307,6 +311,9 @@ def page_mobile_portrait_without_cookie_banner_cookie(
         ):
             context.set_default_timeout(10_000)
             context.set_default_navigation_timeout(30_000)
+            stub_third_party_requests(
+                context=context, test_fixture_names=request.fixturenames
+            )
 
             page: Page = context.new_page()
             page.goto(base_url + "/")
