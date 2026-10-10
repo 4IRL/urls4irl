@@ -61,29 +61,17 @@ def delete_url_in_utub(
     url_schema = UtubUrlDeleteSchema.from_orm_url(current_utub_url)
     affected_tag_ids: set[int] = set(current_utub_url.associated_tag_ids)
 
-    rows_trashed: int = (
-        db.session.query(Utub_Urls)
-        .filter(
-            Utub_Urls.id == utub_url_id,
-            Utub_Urls.utub_id == current_utub.id,
-            Utub_Urls.deleted_at.is_(None),
-        )
-        .update(
-            {
-                Utub_Urls.deleted_at: utc_now(),
-                Utub_Urls.deleted_by: current_user.id,
-                Utub_Urls.trashed_tag_ids: sorted(affected_tag_ids),
-            },
-            synchronize_session=False,
-        )
-    )
-    if rows_trashed == 0:
+    if not trash_live_utub_url(
+        utub_id=current_utub.id,
+        utub_url_id=utub_url_id,
+        snapshot_tag_ids=affected_tag_ids,
+    ):
         db.session.rollback()
         abort(404)
 
     # Flush so the live-only recompute sees the row as trashed
     db.session.flush()
-    tag_ids_and_updated_count = _recompute_tag_counts_after_bulk_delete(
+    tag_ids_and_updated_count = recompute_tag_counts_after_delete(
         utub_id=current_utub.id, affected_utub_tag_ids=affected_tag_ids
     )
     current_utub.set_last_updated()
@@ -112,7 +100,43 @@ def delete_url_in_utub(
     ).to_response()
 
 
-def _recompute_tag_counts_after_bulk_delete(
+def trash_live_utub_url(
+    *, utub_id: int, utub_url_id: int, snapshot_tag_ids: set[int]
+) -> bool:
+    """
+    Soft-deletes (trashes) one live Utub_Urls row on behalf of the current user, with a
+    conditional ``UPDATE ... WHERE deleted_at IS NULL`` so a concurrent trash is never
+    overwritten. Does not flush, commit or roll back; the caller owns the transaction.
+
+    Args:
+        utub_id (int): The UTub the row must belong to.
+        utub_url_id (int): The Utub_Urls row to trash.
+        snapshot_tag_ids (set[int]): The row's tag ids at trash time, stored in
+            ``trashed_tag_ids`` so a later restore can bring the tags back.
+
+    Returns:
+        bool: True if the row was live and is now trashed; False if no live row matched.
+    """
+    rows_trashed: int = (
+        db.session.query(Utub_Urls)
+        .filter(
+            Utub_Urls.id == utub_url_id,
+            Utub_Urls.utub_id == utub_id,
+            Utub_Urls.deleted_at.is_(None),
+        )
+        .update(
+            {
+                Utub_Urls.deleted_at: utc_now(),
+                Utub_Urls.deleted_by: current_user.id,
+                Utub_Urls.trashed_tag_ids: sorted(snapshot_tag_ids),
+            },
+            synchronize_session=False,
+        )
+    )
+    return rows_trashed > 0
+
+
+def recompute_tag_counts_after_delete(
     *, utub_id: int, affected_utub_tag_ids: set[int]
 ) -> dict[int, int]:
     """
@@ -284,7 +308,7 @@ def delete_urls_in_utub(
             # Flush the pending flags so the grouped recompute counts live-only
             # state, then recompute affected tag counts ONCE.
             db.session.flush()
-            tag_counts = _recompute_tag_counts_after_bulk_delete(
+            tag_counts = recompute_tag_counts_after_delete(
                 utub_id=utub.id, affected_utub_tag_ids=affected_utub_tag_ids
             )
             utub.set_last_updated()

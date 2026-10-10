@@ -9517,7 +9517,43 @@
           },
           "URL": {
             "$ref": "#/components/schemas/UtubUrlDetailSchema",
-            "description": "Detailed URL item with updated URL string"
+            "description": "Detailed URL item with updated URL string. On a revive-on-edit this is the revived row, not the edited one."
+          },
+          "revivedFromTrash": {
+            "default": false,
+            "description": "True when the edit revived this UTub's trashed row for the new URL and trashed the edited row.",
+            "type": "boolean"
+          },
+          "lostTagCount": {
+            "default": 0,
+            "description": "On a revive, how many of the trashed row's tags were deleted from the UTub while it was trashed.",
+            "type": "integer"
+          },
+          "replacedUtubUrlID": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise."
+          },
+          "appliedTags": {
+            "description": "On a revive, every tag on the revived row with its UTub-wide count; empty otherwise.",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
+          },
+          "tagCountsInUtub": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "On a revive, map of tag ID to new UTub-wide applied count for the trashed row's tags; empty otherwise.",
+            "type": "object"
           }
         },
         "required": ["utubID", "utubName", "URL"],

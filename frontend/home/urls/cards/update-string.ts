@@ -1,4 +1,5 @@
 import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
+import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { restoreTooltipIfStillTargeted } from "../../../lib/tooltips.js";
@@ -21,9 +22,13 @@ import {
   clearTimeoutIDAndHideLoadingIcon,
 } from "./loading.js";
 import {
+  deselectAllURLs,
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
+import { insertURLCardIntoDeck, removeURLCardFromDeck } from "./card-deck.js";
+import { getState } from "../../../store/app-store.js";
+import { hideURLsEmptyState } from "../empty-state.js";
 import { isMobile, isCoarsePointer } from "../../mobile.js";
 import { showFieldSavedTick } from "../field-saved-tick.js";
 import { highlightInput } from "../../btns-forms.js";
@@ -35,7 +40,10 @@ import {
   createEditURLIcon,
   bindURLStringEditClickHandler,
 } from "./options/edit-string-btn.js";
-import { closeURLEditPanel } from "./update-url-panel.js";
+import {
+  closeURLEditPanel,
+  resetURLEditPanelState,
+} from "./update-url-panel.js";
 import { isConfirmButtonDisabled } from "../confirm-btn-state.js";
 import { isTitleDirty, syncEditPanelDirtyState } from "./edit-panel-dirty.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
@@ -49,6 +57,7 @@ import {
 import { applyUpdatedURLString } from "./apply-url-string.js";
 import {
   clearURLOutcomeBanner,
+  showReviveBanner,
   showTrimSavedBanner,
   showURLUpdatedBanner,
 } from "../outcome-banner.js";
@@ -485,6 +494,16 @@ function updateURLSuccess({
   previousUrlString: string;
   closePanelAfterSave: boolean;
 }): void {
+  if (response.revivedFromTrash) {
+    replaceEditedCardWithRevivedURL({
+      response,
+      urlCard,
+      utubID,
+      trimSubmission,
+    });
+    return;
+  }
+
   applyUpdatedURLString({ response, urlCard });
 
   // Panel-aware: on mobile the title form can still be open alongside this
@@ -547,6 +566,85 @@ function updateURLSuccess({
     !isTitleDirty(urlCard)
   ) {
     closeURLEditPanel(urlCard);
+  }
+}
+
+// The edit landed on a link that was trashed in this UTub: the server revived
+// that row (taking over the edited card's title, adder and added-at) and trashed
+// the edited one. The deck mirrors that swap: the edited card goes away and the
+// revived URL appears as a freshly-inserted card, exactly like an add that
+// revived it. The edited card's string is never rewritten, since it no longer
+// exists.
+function replaceEditedCardWithRevivedURL({
+  response,
+  urlCard,
+  utubID,
+  trimSubmission,
+}: {
+  response: UpdateUrlStringResponse;
+  urlCard: JQuery;
+  utubID: number;
+  trimSubmission: TrimSubmission | null;
+}): void {
+  const editedUtubUrlID = parseInt(urlCard.attr("utuburlid") as string);
+  const revivedUrl = response.URL;
+  const lostTagCount = response.lostTagCount;
+  log("updateURL revived a trashed URL — swapping cards", {
+    editedUtubUrlID,
+    revivedUtubUrlID: revivedUrl.utubUrlID,
+  });
+
+  // The revived row inherits the edited card's adder and added-at server-side
+  // (the response omits them), so carry them over from the card being replaced.
+  const editedUrl = getState().urls.find(
+    (url: UtubUrlItem) => url.utubUrlID === editedUtubUrlID,
+  );
+  const revivedUrlItem: UtubUrlItem = {
+    utubUrlID: revivedUrl.utubUrlID,
+    urlString: revivedUrl.urlString,
+    urlTitle: revivedUrl.urlTitle,
+    utubUrlTagIDs: revivedUrl.urlTags.map((urlTag) => urlTag.utubTagID),
+    canDelete: editedUrl?.canDelete ?? true,
+    addedAt: editedUrl?.addedAt ?? new Date().toISOString(),
+    addedByUserID: editedUrl?.addedByUserID ?? 0,
+  };
+
+  // Tear down the edited card's edit panel and selection first, so no open-form
+  // registry entry, in-flight flag or selection id outlives the card.
+  resetURLEditPanelState(urlCard);
+  deselectAllURLs();
+
+  removeURLCardFromDeck({
+    urlCard,
+    utubUrlID: editedUtubUrlID,
+    animate: false,
+  });
+  // The removal shows the empty state when the edited card was the only one.
+  hideURLsEmptyState();
+
+  // The visible outcome banner below announces the revive, so skip the
+  // "URL added" live-region write.
+  const revivedUrlCard = insertURLCardIntoDeck({
+    newUrl: revivedUrlItem,
+    utubID,
+    appliedTags: response.appliedTags ?? [],
+    announce: false,
+  });
+
+  // Last, so the selection above (which clears any banner) cannot wipe it. A
+  // revive that also trimmed params folds into the trim banner (which carries
+  // Undo) so there is never a second banner.
+  if (trimSubmission !== null && trimSubmission.droppedCount > 0) {
+    showTrimSavedBanner({
+      trimSubmission,
+      utubID,
+      utubUrlID: revivedUrl.utubUrlID,
+      urlCard: revivedUrlCard,
+      form: URL_PARAMS_TRIMMED_FORM.URL_STRING_EDIT,
+      revive: { lostTagCount },
+    });
+  } else {
+    showReviveBanner({ lostTagCount, utubUrlID: revivedUrl.utubUrlID });
   }
 }
 

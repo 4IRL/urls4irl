@@ -27,7 +27,7 @@ from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
-from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from backend.utils.strings.url_strs import URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_NAME
 from tests.models_for_test import valid_url_strings
 from tests.utils_for_test import trash_utub, trash_utub_url
@@ -514,7 +514,7 @@ def test_update_url_non_adder_member_is_403(
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
-def test_update_url_to_trashed_url_in_utub_is_409(
+def test_update_url_to_trashed_url_in_utub_revives_trashed_row(
     app: Flask,
     api_client: FlaskClient,
     add_mixed_delete_permission_urls_in_first_utub,
@@ -522,12 +522,17 @@ def test_update_url_to_trashed_url_in_utub_is_409(
 ):
     """
     GIVEN UTub 1 holds live URL 1 and a trashed URL 2
-    WHEN user 1 PATCHes URL 1's urlString to URL 2's string
-    THEN 409 with the URL_IN_UTUB_TRASHED message and no urlString echoed; the trashed row stays trashed
+    WHEN user 1 (the UTub creator) PATCHes URL 1's urlString to URL 2's string
+    THEN 200: the trashed row is revived (returned as the URL, revivedFromTrash true) and the edited
+        row is trashed, with its id in replacedUtubUrlID
     """
     user_1_token = _token_for_user(app, user_id=1)
 
     with app.app_context():
+        edited_utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == 1, Utub_Urls.url_id == 1
+        ).one()
+        edited_utub_url_id = edited_utub_url.id
         trashed_utub_url: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == 1, Utub_Urls.url_id == 2
         ).one()
@@ -537,19 +542,22 @@ def test_update_url_to_trashed_url_in_utub_is_409(
     trash_utub_url(app, trashed_utub_url_id, deleted_by=2)
 
     response = api_client.patch(
-        _update_url_url(app, utub_id=1, utub_url_id=1),
+        _update_url_url(app, utub_id=1, utub_url_id=edited_utub_url_id),
         json={MODELS.URL_STRING: trashed_url_string},
         headers=make_bearer_headers(user_1_token),
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 200
     response_json = response.get_json()
-    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert response_json[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB_TRASHED
-    assert response_json.get(MODELS.URL_STRING) is None
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[MODELS.REVIVED_FROM_TRASH] is True
+    assert response_json[MODELS.REPLACED_UTUB_URL_ID] == edited_utub_url_id
+    assert response_json[MODELS.URL][MODELS.UTUB_URL_ID] == trashed_utub_url_id
+    assert response_json[MODELS.URL][MODELS.URL_STRING] == trashed_url_string
 
     with app.app_context():
-        assert Utub_Urls.query.get(trashed_utub_url_id).is_trashed
+        assert not Utub_Urls.query.get(trashed_utub_url_id).is_trashed
+        assert Utub_Urls.query.get(edited_utub_url_id).is_trashed
 
 
 def test_update_url_no_token_is_401(

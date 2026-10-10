@@ -1953,8 +1953,29 @@ export interface components {
       utubID: number;
       /** @description Name of the UTub containing the URL */
       utubName: string;
-      /** @description Detailed URL item with updated URL string */
+      /** @description Detailed URL item with updated URL string. On a revive-on-edit this is the revived row, not the edited one. */
       URL: components["schemas"]["UtubUrlDetailSchema"];
+      /**
+       * @description True when the edit revived this UTub's trashed row for the new URL and trashed the edited row.
+       * @default false
+       */
+      revivedFromTrash: boolean;
+      /**
+       * @description On a revive, how many of the trashed row's tags were deleted from the UTub while it was trashed.
+       * @default 0
+       */
+      lostTagCount: number;
+      /**
+       * @description On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise.
+       * @default null
+       */
+      replacedUtubUrlID: number | null;
+      /** @description On a revive, every tag on the revived row with its UTub-wide count; empty otherwise. */
+      appliedTags?: components["schemas"]["UtubTagSchema"][];
+      /** @description On a revive, map of tag ID to new UTub-wide applied count for the trashed row's tags; empty otherwise. */
+      tagCountsInUtub?: {
+        [key: string]: number;
+      };
     };
     UpdateURLTitleRequest: {
       /** @description New display title for the URL */

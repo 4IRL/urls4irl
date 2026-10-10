@@ -6,33 +6,23 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
-import { getNumOfVisibleURLs, getNumOfURLs } from "../utils.js";
+import { getNumOfURLs } from "../utils.js";
 import {
-  createURLBlock,
   newURLInputRemoveEventListeners,
   newURLInputAddEventListeners,
 } from "./cards.js";
-import { selectURLCard } from "./selection.js";
+import { insertURLCardIntoDeck } from "./card-deck.js";
 import { refreshMultiSelectToggleVisibility } from "../bulk-actions/bulk-mode.js";
-import { triggerURLSwipeNudgeIfEligible } from "./swipe.js";
-import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
-import {
-  applyDefaultUrlSort,
-  reapplyAlternatingURLCardBackgroundAfterFilter,
-  updateURLsAndTagSubheaderWhenTagSelected,
-} from "./filtering.js";
 import {
   ComboboxMode,
   createTagComboboxBlock,
   STAGED_GET_KEY,
   STAGED_RESET_KEY,
 } from "../tags/combobox.js";
-import { renderAppliedTagsForUrl } from "../tags/tag-render.js";
 import {
   TrimMode,
   createParamTrimBlock,
@@ -49,12 +39,7 @@ import {
   showTrimSavedBanner,
 } from "../outcome-banner.js";
 import { isATagSelected } from "../../tags/utils.js";
-import { getState, setState } from "../../../store/app-store.js";
-import {
-  closeURLSearchAndEraseInput,
-  temporarilyHideSearchForEdit,
-  showURLSearchIcon,
-} from "../search.js";
+import { temporarilyHideSearchForEdit, showURLSearchIcon } from "../search.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "../empty-state.js";
 import {
   FORM_CANCEL_TRIGGER,
@@ -363,57 +348,14 @@ function createURLSuccess({
     addedByUserID: response.addedByUserID,
   };
 
-  // Capture visible-URL count BEFORE DOM insertion (drives alternating stripes).
-  const currentNumOfURLs = getNumOfVisibleURLs();
-
-  // Single combined store append with the complete entry (incl. tag IDs).
-  setState({
-    urls: [...getState().urls, newUrl],
-  });
-  // Notify the onboarding nudge system (and any future url-deck consumer) that
-  // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
-  emitAppEvent(AppEvents.URL_DECK_CHANGED);
-
-  const newUrlCard = createURLBlock(
-    newUrl,
-    [], // Mimics an empty array of tags to match against
-    utubID,
-  ).addClass("even");
-
-  newUrlCard.insertAfter($("#createURLWrap"));
-
-  if (currentNumOfURLs !== 0) {
-    updateColorOfFollowingURLCardsAfterURLCreated();
-  }
-
-  // Render any tags applied at creation onto the now-attached card and sync the
-  // tag deck (badges, deck filters, #unselectAllTagFilters, #utubTagBtnUpdateAllOpen).
-  renderAppliedTagsForUrl({
-    appliedTags: response.appliedTags ?? [],
-    utubUrlTagIDs,
-    urlCard: newUrlCard,
-    utubID,
-  });
-
-  // Re-evaluate visibility for all URLs (incl. the new one): a URL created with
-  // tags matching the active filter stays visible; non-matching ones are hidden.
-  updateURLsAndTagSubheaderWhenTagSelected();
-
-  // Auto-select the new card only when no filter would suppress it.
-  if (!isATagSelected()) {
-    selectURLCard(newUrlCard);
-  }
-
   // A revive is announced by the visible outcome banner below (role=status), so
   // the "URL added" live-region write is skipped to avoid a double announcement.
-  reorderNewURLCardBySortPreference({
+  const newUrlCard = insertURLCardIntoDeck({
     newUrl,
-    newUrlCard,
+    utubID,
+    appliedTags: response.appliedTags ?? [],
     announce: !revivedFromTrash,
   });
-
-  closeURLSearchAndEraseInput();
-  showURLSearchIcon();
 
   // Last, so the form reset and card selection above (which clear any banner)
   // cannot wipe it. A save with nothing dropped relies on that same reset to
@@ -431,72 +373,6 @@ function createURLSuccess({
   } else if (revivedFromTrash) {
     showReviveBanner({ lostTagCount, utubUrlID: url.utubUrlID });
   }
-}
-
-// DD-36's sanctioned client-side visual exception: the ONLY place the client
-// re-sorts URLs. The deck is server-ordered on every full load; here we merely
-// keep the just-created card from visually contradicting the active sort for the
-// brief pre-refetch window. Detaches/re-appends the URL cards into #listURLs in
-// the stored sort order (the detach/re-append idiom sortTagFiltersInPlace uses),
-// then — only when the reorder actually relocated the new card away from its
-// top-of-list insertion point — scrolls it into view and announces the add.
-function reorderNewURLCardBySortPreference({
-  newUrl,
-  newUrlCard,
-  announce,
-}: {
-  newUrl: UtubUrlItem;
-  newUrlCard: JQuery;
-  announce: boolean;
-}): void {
-  const HIGHLIGHT_CLASS = "url-card-created-highlight";
-  const HIGHLIGHT_DURATION_MS = 700;
-
-  const storedSortOrder = getState().preferences.defaultSort;
-  const sortedURLIDs = applyDefaultUrlSort(
-    getState().urls,
-    storedSortOrder,
-  ).map((sortedURL) => sortedURL.utubUrlID);
-  const listURLs = $("#listURLs");
-  sortedURLIDs.forEach((sortedURLID) => {
-    listURLs.append($(`.urlRow[utuburlid=${sortedURLID}]`).detach());
-  });
-  // The detach/re-append changes DOM order, so the alternating even/odd stripe
-  // classes (assigned by the pre-reorder order) are now stale — recompute them
-  // against the new order so striping stays consistent in the pre-refetch window.
-  reapplyAlternatingURLCardBackgroundAfterFilter();
-
-  // Transient background flash on the freshly-created card (distinct from the
-  // persistent urlSelected styling), removed after ~0.7s — mirrors
-  // showURLDeckBannerError()'s setTimeout-driven class removal.
-  newUrlCard.addClass(HIGHLIGHT_CLASS);
-  setTimeout(() => {
-    newUrlCard.removeClass(HIGHLIGHT_CLASS);
-  }, HIGHLIGHT_DURATION_MS);
-
-  // The reorder relocated the new card iff it is no longer the first sorted URL.
-  // A no-op top insert (e.g. the default newest sort) needs neither a scroll nor
-  // an announcement — the card lands visibly at the top of the deck and is
-  // auto-selected; the polite announcement is reserved for the relocate case,
-  // where the card can move off-screen and most needs the SR cue.
-  const reorderMovedNewCard = sortedURLIDs[0] !== newUrl.utubUrlID;
-  if (reorderMovedNewCard) {
-    newUrlCard[0].scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-      block: "center",
-    });
-    if (announce) {
-      $("#fieldSavedAnnouncement").text(
-        APP_CONFIG.strings.URL_ADDED_ANNOUNCEMENT,
-      );
-    }
-  }
-
-  // Swipe-nudge fires LAST so its viewport-visibility check reads the card's
-  // final sorted/scrolled position rather than its transient top-of-list insert.
-  triggerURLSwipeNudgeIfEligible({ urlRow: newUrlCard });
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
