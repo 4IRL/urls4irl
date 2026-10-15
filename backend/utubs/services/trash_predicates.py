@@ -9,8 +9,9 @@ from backend.models.utubs import Utubs
 def trashed_url_rows_actionable_by(*, user_id: int) -> Select:
     """Select the trashed URL rows ``user_id`` may list, restore or permanently delete.
 
-    Single source of truth for the Trash list and every Trash action: later steps narrow
-    and lock this exact ``Select`` instead of re-deriving the rule in Python.
+    Single source of truth for the Trash list and every Trash action: the list, URL
+    restore/purge and Empty trash narrow and lock this exact ``Select`` instead of
+    re-deriving the rule in Python.
 
     A row is actionable when either:
       * its UTub is trashed and ``user_id`` created it (the whole UTub's URLs ride along

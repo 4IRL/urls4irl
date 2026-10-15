@@ -122,6 +122,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="A trashed UTub restored by its creator",
         category=EventCategory.DOMAIN,
     ),
+    EventName.UTUBS_EMPTIED_FROM_TRASH: EventRegistryEntry(
+        description="The Trash UTubs tab emptied in one bulk action",
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "purged_count_bucket": BULK_TAG_URL_BUCKETS,
+            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+        },
+    ),
     EventName.URL_ACCESSED: EventRegistryEntry(
         description="URL click-through (distinct from list)",
         category=EventCategory.DOMAIN,
@@ -251,14 +259,6 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     ),
     EventName.URLS_EMPTIED_FROM_TRASH: EventRegistryEntry(
         description="The Trash URLs tab emptied in one bulk action",
-        category=EventCategory.DOMAIN,
-        dimensions={
-            "purged_count_bucket": BULK_TAG_URL_BUCKETS,
-            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
-        },
-    ),
-    EventName.UTUBS_EMPTIED_FROM_TRASH: EventRegistryEntry(
-        description="The Trash UTubs tab emptied in one bulk action",
         category=EventCategory.DOMAIN,
         dimensions={
             "purged_count_bucket": BULK_TAG_URL_BUCKETS,

@@ -1,5 +1,3 @@
-from sqlalchemy import func
-
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs, warning_log
@@ -114,12 +112,9 @@ def restore_trashed_utub(*, utub_id: int, current_user_id: int) -> FlaskResponse
         )
         raise
 
-    restored_url_count: int = (
-        db.session.query(func.count(Utub_Urls.id))
-        .filter(Utub_Urls.utub_id == utub_id, Utub_Urls.deleted_at.is_(None))
-        .scalar()
-        or 0
-    )
+    restored_url_count: int = Utub_Urls.query.filter(
+        Utub_Urls.utub_id == utub_id, Utub_Urls.deleted_at.is_(None)
+    ).count()
 
     record_event(EventName.UTUB_RESTORED_FROM_TRASH)
     safe_add_many_logs(

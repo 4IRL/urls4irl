@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
-
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, Field
 
 from backend.utubs.constants import TrashScope
 
@@ -27,7 +25,7 @@ class EmptyTrashRequest(BaseModel):
         description="Which Trash tab to empty: 'urls' or 'utubs'",
         examples=["urls"],
     )
-    listedAt: datetime = Field(
+    listedAt: AwareDatetime = Field(
         description=(
             "The listedAt of the Trash list the user was looking at (timezone-aware "
             "ISO 8601). Only items that entered Trash at or before it are deleted, so "
@@ -35,10 +33,3 @@ class EmptyTrashRequest(BaseModel):
         ),
         examples=["2026-10-15T12:00:00+00:00"],
     )
-
-    @field_validator("listedAt", mode="after")
-    @classmethod
-    def listed_at_is_timezone_aware(cls, value: datetime) -> datetime:
-        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
-            raise ValueError("listedAt must include a timezone offset")
-        return value

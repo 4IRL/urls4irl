@@ -200,17 +200,13 @@ def lock_trashed_utub_for_creator(
         utub_id=utub_id, user_id=current_user.id
     )
 
-    # Fail closed: every condition must hold explicitly for the creator to act.
-    authorized: bool = False
+    # Fail closed: any unmet condition denies with the same masked 404.
     if (
-        utub is not None
-        and utub.is_trashed
-        and actor is not None
-        and utub.utub_creator == current_user.id
+        utub is None
+        or not utub.is_trashed
+        or actor is None
+        or utub.utub_creator != current_user.id
     ):
-        authorized = True
-
-    if not authorized or utub is None:
         return build_message_error_response(
             message=TRASH_FAILURE.NOT_IN_TRASH,
             error_code=not_in_trash_code,

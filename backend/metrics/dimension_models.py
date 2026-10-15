@@ -567,7 +567,6 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.URLS_COPIED_TO_UTUB: _DimUrlsCopiedToUtub,
     EventName.URLS_DELETED_FROM_UTUB: _DimUrlsDeletedFromUtub,
     EventName.URLS_EMPTIED_FROM_TRASH: _DimTrashEmptied,
-    EventName.UTUBS_EMPTIED_FROM_TRASH: _DimTrashEmptied,
     EventName.UTUB_CREATED: _DimDeviceOnly,
     EventName.UTUB_DELETED: _DimDeviceOnly,
     EventName.UTUB_DESC_UPDATED: _DimDeviceOnly,
@@ -576,6 +575,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UTUB_RESTORED_FROM_TRASH: _DimDeviceOnly,
     EventName.UTUB_TAG_CREATED: _DimDeviceOnly,
     EventName.UTUB_TITLE_UPDATED: _DimDeviceOnly,
+    EventName.UTUBS_EMPTIED_FROM_TRASH: _DimTrashEmptied,
     # UI — UTubs
     EventName.UI_UTUB_SELECT: _DimUtubSelect,
     EventName.UI_UTUB_CREATE_OPEN: _DimDeviceOnly,

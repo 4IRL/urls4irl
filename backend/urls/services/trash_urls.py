@@ -229,7 +229,7 @@ def _restore_url_into_destination(
 
     record_event(
         EventName.URL_RESTORED_FROM_TRASH,
-        dimensions={"restore_target": UrlRestoreTarget.DESTINATION.value},
+        dimensions={"restore_target": UrlRestoreTarget.DESTINATION},
     )
     safe_add_many_logs(
         [
@@ -254,8 +254,6 @@ def _restore_url_into_destination(
                 utub_url, current_user_id, viewer_is_manager
             ),
             restored_to_destination=True,
-            applied_tags=[],
-            tag_counts_modified={},
             lost_tag_count=lost_tag_count,
         ),
     ).to_response()
@@ -309,8 +307,6 @@ def restore_trashed_url(
             status_code=400,
         )
 
-    lost_tag_count: int
-
     try:
         # Read BEFORE the snapshot is cleared.
         lost_tag_count = count_lost_trashed_tags(utub_url)
@@ -338,7 +334,7 @@ def restore_trashed_url(
 
     record_event(
         EventName.URL_RESTORED_FROM_TRASH,
-        dimensions={"restore_target": UrlRestoreTarget.ORIGIN.value},
+        dimensions={"restore_target": UrlRestoreTarget.ORIGIN},
     )
     safe_add_many_logs(
         [
@@ -373,7 +369,6 @@ def restore_trashed_url(
             url=UtubUrlSchema.from_orm_url(
                 utub_url, current_user_id, viewer_is_manager
             ),
-            restored_to_destination=False,
             applied_tags=[
                 UtubTagSchema(
                     id=utub_tag.id,

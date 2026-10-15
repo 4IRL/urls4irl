@@ -169,7 +169,7 @@ def _empty_utubs_tab(
 
         # Fresh state under the row lock: a UTub restored and trashed again after the
         # caller's list was read belongs to a later Trash view, not this one.
-        if utub.deleted_at is None or utub.deleted_at > listed_at:
+        if utub.deleted_at > listed_at:
             continue
         if utub.is_locked:
             total_skipped_locked += 1

@@ -71,9 +71,9 @@ class EventName(StrEnum):
     UTUB_OPENED = "utub_opened"
     UTUB_PURGED_FROM_TRASH = "utub_purged_from_trash"
     UTUB_RESTORED_FROM_TRASH = "utub_restored_from_trash"
-    UTUBS_EMPTIED_FROM_TRASH = "utubs_emptied_from_trash"
     UTUB_TAG_CREATED = "utub_tag_created"
     UTUB_TITLE_UPDATED = "utub_title_updated"
+    UTUBS_EMPTIED_FROM_TRASH = "utubs_emptied_from_trash"
 
     # UI — browser-side emit() shipped to POST /api/metrics
     # — UTubs

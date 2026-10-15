@@ -323,7 +323,7 @@ Organized by domain with per-feature conftest files:
 - `mobile_api/` (marker: `mobile_api`) — `/api/v1` mobile bearer-token API: auth (login/refresh/logout/Google), UTubs/URLs/tags/members endpoints
 - `search/` (marker: `urls`, shared with `utuburls/`) — Cross-UTub search: query schema, route, metrics
 - `system/` (marker: `cli`, shared with `cli/`) — Metrics/latency pipeline, health checks, gauges, admin-route gating (ops/observability)
-- `trash/` (marker: `trash`) — Trash API: list of soft-deleted URLs and UTubs
+- `trash/` (marker: `trash`) — Trash API: list, restore, purge (delete forever) and empty-trash routes for soft-deleted URLs and UTubs
 
 CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 11 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
 
