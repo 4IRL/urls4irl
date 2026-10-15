@@ -8,7 +8,6 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.trash import UtubPurgedResponseSchema, UtubRestoredResponseSchema
 from backend.utils.strings.trash_strs import TRASH_SUCCESS
-from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.guards import lock_trashed_utub_for_creator
 
 
@@ -28,11 +27,7 @@ def purge_trashed_utub(*, utub_id: int, current_user_id: int) -> FlaskResponse:
         FlaskResponse: 200 with the purged UTub summary on success; 404 when the UTub
         is not an actionable trashed UTub of the caller; 403 when the UTub is locked.
     """
-    guarded: Utubs | FlaskResponse = lock_trashed_utub_for_creator(
-        utub_id=utub_id,
-        error_code=UTubErrorCodes.UTUB_IS_LOCKED,
-        not_in_trash_code=UTubErrorCodes.NOT_IN_TRASH,
-    )
+    guarded: Utubs | FlaskResponse = lock_trashed_utub_for_creator(utub_id=utub_id)
     if not isinstance(guarded, Utubs):
         db.session.rollback()
         return guarded
@@ -89,11 +84,7 @@ def restore_trashed_utub(*, utub_id: int, current_user_id: int) -> FlaskResponse
         UTub is not an actionable trashed UTub of the caller (live, missing, already
         restored, or the caller is not its creator); 403 when the UTub is locked.
     """
-    guarded: Utubs | FlaskResponse = lock_trashed_utub_for_creator(
-        utub_id=utub_id,
-        error_code=UTubErrorCodes.UTUB_IS_LOCKED,
-        not_in_trash_code=UTubErrorCodes.NOT_IN_TRASH,
-    )
+    guarded: Utubs | FlaskResponse = lock_trashed_utub_for_creator(utub_id=utub_id)
     if not isinstance(guarded, Utubs):
         db.session.rollback()
         return guarded

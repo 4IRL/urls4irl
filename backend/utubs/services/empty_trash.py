@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql.expression import Select
 
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
@@ -19,22 +20,45 @@ from backend.utils.strings.trash_strs import TRASH_FAILURE, TRASH_SUCCESS
 from backend.utubs.constants import TrashScope, UTubErrorCodes
 from backend.utubs.guards import lock_trashed_utub_for_creator
 from backend.utubs.services.trash_predicates import (
+    effective_deleted_at,
+    join_url_row_deleter,
+    join_utub_deleter,
     trashed_url_rows_actionable_by,
     trashed_utubs_actionable_by,
 )
 
 
-def _purge_trashed_url_ids(*, ids: list[int], listed_at: datetime) -> list[int]:
-    """Delete the given ``Utub_Urls`` rows still in Trash as listed, in one statement.
+def _emptiable_url_rows(*, listed_at: datetime, current_user_id: int) -> Select:
+    """Select ``(Utub_Urls.id, Utubs.is_locked)`` of the rows Empty trash may consider.
 
-    The list's own semantics are re-applied inside the ``DELETE`` itself: the row's
-    effective trash time (its own ``deleted_at``, else its UTub's) must be set and
-    ``<= listed_at`` (a NULL effective time never matches, which is what "in Trash"
-    means), and its UTub must not be locked. A row restored, re-trashed after
-    ``listed_at``, or whose UTub was restored or locked since the caller selected its id
-    is simply not matched. That makes the returned ids, not the caller's candidate list,
-    the truth about what was deleted. Fail closed: anything the condition cannot prove
-    is left in Trash.
+    The same ``trashed_url_rows_actionable_by`` select the Trash list uses (and its
+    inner join to the deleter), bounded by the shared effective trash time, so exactly
+    the rows the caller can see and that entered Trash by ``listed_at`` qualify.
+    """
+    return join_url_row_deleter(
+        trashed_url_rows_actionable_by(user_id=current_user_id).with_only_columns(
+            Utub_Urls.id, Utubs.is_locked
+        ),
+        aliased(Users),
+    ).where(effective_deleted_at <= listed_at)
+
+
+def purge_trashed_url_ids(
+    *, ids: list[int], listed_at: datetime, current_user_id: int
+) -> list[int]:
+    """Delete the given ``Utub_Urls`` rows still emptiable by the caller, in one statement.
+
+    Actionability is re-proved inside the ``DELETE`` itself, on the state it sees at
+    write time rather than the candidate select's: a row is deleted only if it is still
+    in the caller's ``_emptiable_url_rows`` (visible to them under the shared
+    ``trash_predicates`` rule, so a member who was removed or demoted since the
+    candidate select no longer qualifies; its effective trash time set and
+    ``<= listed_at``, where a NULL time never matches, which is what "in Trash" means)
+    and its UTub is not locked. A row restored, re-trashed after ``listed_at``, no
+    longer the caller's to act on, or whose UTub was restored or locked since the
+    caller selected its id is simply not matched. That makes the returned ids, not the
+    caller's candidate list, the truth about what was deleted. Fail closed: anything the
+    condition cannot prove is left in Trash.
 
     ``Utub_Url_Tags.utub_url_id`` is ``ON DELETE CASCADE`` to ``Utub_Urls.id``, so the
     database removes the deleted rows' tag associations in the same statement; a row
@@ -46,6 +70,7 @@ def _purge_trashed_url_ids(*, ids: list[int], listed_at: datetime) -> list[int]:
     Args:
         ids (list[int]): Candidate ``Utub_Urls`` ids selected as purgeable
         listed_at (datetime): Upper bound (inclusive) on the effective trash time
+        current_user_id (int): The acting user, whose actionability is re-proved
 
     Returns:
         list[int]: The ids actually deleted, ascending.
@@ -53,17 +78,20 @@ def _purge_trashed_url_ids(*, ids: list[int], listed_at: datetime) -> list[int]:
     if not ids:
         return []
 
-    utub_deleted_at = (
-        select(Utubs.deleted_at).where(Utubs.id == Utub_Urls.utub_id).scalar_subquery()
+    # correlate(None): the subquery selects Utub_Urls itself, so it must not be
+    # correlated to the Utub_Urls the DELETE targets.
+    still_emptiable_ids = (
+        _emptiable_url_rows(listed_at=listed_at, current_user_id=current_user_id)
+        .with_only_columns(Utub_Urls.id)
+        .where(Utubs.is_locked.is_(False))
+        .correlate(None)
     )
-    locked_utub_ids = select(Utubs.id).where(Utubs.is_locked.is_(True))
     deleted_ids: list[int] = (
         db.session.execute(
             delete(Utub_Urls)
             .where(
                 Utub_Urls.id.in_(ids),
-                func.coalesce(Utub_Urls.deleted_at, utub_deleted_at) <= listed_at,
-                Utub_Urls.utub_id.not_in(locked_utub_ids),
+                Utub_Urls.id.in_(still_emptiable_ids),
             )
             .returning(Utub_Urls.id)
             .execution_options(synchronize_session=False)
@@ -74,14 +102,33 @@ def _purge_trashed_url_ids(*, ids: list[int], listed_at: datetime) -> list[int]:
     return sorted(deleted_ids)
 
 
+def _count_locked_still_in_trash(
+    *, ids: list[int], listed_at: datetime, current_user_id: int
+) -> int:
+    """Count the given rows that are still emptiable by the caller but sit in a locked UTub."""
+    if not ids:
+        return 0
+
+    locked_ids = (
+        _emptiable_url_rows(listed_at=listed_at, current_user_id=current_user_id)
+        .with_only_columns(Utub_Urls.id)
+        .where(Utub_Urls.id.in_(ids), Utubs.is_locked.is_(True))
+        .subquery()
+    )
+    return db.session.execute(select(func.count()).select_from(locked_ids)).scalar_one()
+
+
 def _empty_urls_tab(
     *, listed_at: datetime, current_user_id: int
 ) -> tuple[list[int], int]:
     """Delete the caller's actionable trashed URLs that entered Trash by ``listed_at``.
 
-    Candidates come from the same ``trashed_url_rows_actionable_by`` select the Trash
-    list uses (and its inner join to the deleter), so exactly the rows the caller can
-    see are considered. Rows of a locked UTub are counted, never purged.
+    Candidates come from ``_emptiable_url_rows``, the same select the Trash list uses,
+    so exactly the rows the caller can see are considered. Rows of a locked UTub are
+    never purged; they are counted once the ``DELETE`` has run, as the candidates it
+    did not delete that are still emptiable by the caller and in a locked UTub, so the
+    count reflects the state the ``DELETE`` saw rather than the earlier candidate
+    select.
 
     Args:
         listed_at (datetime): Upper bound (inclusive) on the effective trash time
@@ -91,33 +138,29 @@ def _empty_urls_tab(
         tuple[list[int], int]: The purged ``Utub_Urls`` ids and the number of rows
         skipped because their UTub is locked. Nothing is committed here.
     """
-    deleter = aliased(Users)
-    effective_deleted_at = func.coalesce(Utub_Urls.deleted_at, Utubs.deleted_at)
-    effective_deleted_by = func.coalesce(Utub_Urls.deleted_by, Utubs.deleted_by)
-
     candidates = db.session.execute(
-        trashed_url_rows_actionable_by(user_id=current_user_id)
-        .with_only_columns(Utub_Urls.id, Utubs.is_locked)
-        .join(deleter, deleter.id == effective_deleted_by)
-        .where(effective_deleted_at <= listed_at)
+        _emptiable_url_rows(listed_at=listed_at, current_user_id=current_user_id)
         .order_by(Utub_Urls.id)
         # Lock the candidate Utub_Urls rows in ascending id order (the order_by above),
         # as _lock_actionable_trashed_url does; of= keeps the joined tables unlocked.
         .with_for_update(of=Utub_Urls)
-        .execution_options(populate_existing=True)
     ).all()
 
-    purgeable_ids: list[int] = []
-    total_skipped_locked: int = 0
-    for utub_url_id, utub_is_locked in candidates:
-        if utub_is_locked:
-            total_skipped_locked += 1
-        else:
-            purgeable_ids.append(utub_url_id)
+    candidate_ids: list[int] = [utub_url_id for utub_url_id, _ in candidates]
+    purgeable_ids: list[int] = [
+        utub_url_id for utub_url_id, utub_is_locked in candidates if not utub_is_locked
+    ]
 
-    return (
-        _purge_trashed_url_ids(ids=purgeable_ids, listed_at=listed_at),
-        total_skipped_locked,
+    purged_ids: list[int] = purge_trashed_url_ids(
+        ids=purgeable_ids, listed_at=listed_at, current_user_id=current_user_id
+    )
+    purged_id_set: set[int] = set(purged_ids)
+    not_purged_ids: list[int] = [
+        utub_url_id for utub_url_id in candidate_ids if utub_url_id not in purged_id_set
+    ]
+
+    return purged_ids, _count_locked_still_in_trash(
+        ids=not_purged_ids, listed_at=listed_at, current_user_id=current_user_id
     )
 
 
@@ -141,12 +184,14 @@ def _empty_utubs_tab(
         tuple[list[int], int]: The purged UTub ids and the number of UTubs skipped
         because they are locked. Nothing is committed here.
     """
-    deleter = aliased(Users)
     candidate_ids: list[int] = list(
         db.session.execute(
-            trashed_utubs_actionable_by(user_id=current_user_id)
-            .with_only_columns(Utubs.id)
-            .join(deleter, deleter.id == Utubs.deleted_by)
+            join_utub_deleter(
+                trashed_utubs_actionable_by(user_id=current_user_id).with_only_columns(
+                    Utubs.id
+                ),
+                aliased(Users),
+            )
             .where(Utubs.deleted_at <= listed_at)
             .order_by(Utubs.id)
         )
@@ -158,10 +203,7 @@ def _empty_utubs_tab(
     total_skipped_locked: int = 0
     for candidate_id in candidate_ids:
         guarded = lock_trashed_utub_for_creator(
-            utub_id=candidate_id,
-            error_code=UTubErrorCodes.UTUB_IS_LOCKED,
-            not_in_trash_code=UTubErrorCodes.NOT_IN_TRASH,
-            reject_locked=False,
+            utub_id=candidate_id, reject_locked=False
         )
         if not isinstance(guarded, Utubs):
             continue
@@ -189,8 +231,10 @@ def empty_trash_for_user(
     Only items that entered Trash at or before ``listed_at`` are deleted, so an item
     trashed after the user read the list is never swept. The bound is clamped to the
     server clock, so a future timestamp cannot widen it. Items in a locked UTub are
-    skipped and reported. ``total_purged`` and ``total_skipped_locked`` are the
-    post-operation counts, never the pre-delete candidate counts. Emptying the URLs
+    skipped and reported. ``total_purged`` is the number of items the deleting
+    statements actually removed, and ``total_skipped_locked`` is derived from the
+    state after those deletes (a candidate that was not deleted and is still in a
+    locked UTub), never from the pre-delete candidate select. Emptying the URLs
     tab never deletes a UTub.
 
     Args:

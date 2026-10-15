@@ -18,6 +18,9 @@ from backend.schemas.trash import (
 )
 from backend.utils.datetime_utils import utc_now
 from backend.utubs.services.trash_predicates import (
+    effective_deleted_at,
+    join_url_row_deleter,
+    join_utub_deleter,
     trashed_url_rows_actionable_by,
     trashed_utubs_actionable_by,
 )
@@ -55,16 +58,15 @@ def get_trash_for_user(*, current_user_id: int) -> FlaskResponse:
     listed_at: datetime = utc_now()
     adder = aliased(Users)
     deleter = aliased(Users)
-    effective_deleted_at = func.coalesce(Utub_Urls.deleted_at, Utubs.deleted_at)
-    effective_deleted_by = func.coalesce(Utub_Urls.deleted_by, Utubs.deleted_by)
 
     url_rows = db.session.execute(
-        trashed_url_rows_actionable_by(user_id=current_user_id)
-        .add_columns(Urls.url_string, adder.username, deleter.username)
-        .join(Urls, Urls.id == Utub_Urls.url_id)
-        .join(adder, adder.id == Utub_Urls.user_id)
-        .join(deleter, deleter.id == effective_deleted_by)
-        .order_by(effective_deleted_at.desc(), Utub_Urls.id.desc())
+        join_url_row_deleter(
+            trashed_url_rows_actionable_by(user_id=current_user_id)
+            .add_columns(Urls.url_string, adder.username, deleter.username)
+            .join(Urls, Urls.id == Utub_Urls.url_id)
+            .join(adder, adder.id == Utub_Urls.user_id),
+            deleter,
+        ).order_by(effective_deleted_at.desc(), Utub_Urls.id.desc())
     ).all()
 
     urls: list[TrashedUrlItemSchema] = []
@@ -117,16 +119,17 @@ def get_trash_for_user(*, current_user_id: int) -> FlaskResponse:
         .subquery()
     )
     utub_rows = db.session.execute(
-        trashed_utubs_actionable_by(user_id=current_user_id)
-        .add_columns(
-            func.coalesce(live_url_counts.c.live_url_count, 0),
-            func.coalesce(member_counts.c.members, 0),
-            deleter.username,
-        )
-        .outerjoin(live_url_counts, live_url_counts.c.utub_id == Utubs.id)
-        .outerjoin(member_counts, member_counts.c.utub_id == Utubs.id)
-        .join(deleter, deleter.id == Utubs.deleted_by)
-        .order_by(Utubs.deleted_at.desc(), Utubs.id.desc())
+        join_utub_deleter(
+            trashed_utubs_actionable_by(user_id=current_user_id)
+            .add_columns(
+                func.coalesce(live_url_counts.c.live_url_count, 0),
+                func.coalesce(member_counts.c.members, 0),
+                deleter.username,
+            )
+            .outerjoin(live_url_counts, live_url_counts.c.utub_id == Utubs.id)
+            .outerjoin(member_counts, member_counts.c.utub_id == Utubs.id),
+            deleter,
+        ).order_by(Utubs.deleted_at.desc(), Utubs.id.desc())
     ).all()
 
     utubs: list[TrashedUtubItemSchema] = [

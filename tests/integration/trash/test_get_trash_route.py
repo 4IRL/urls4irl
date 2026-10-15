@@ -5,6 +5,7 @@ import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
+from backend import db
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role
 from backend.models.utub_urls import Utub_Urls
@@ -15,6 +16,7 @@ from backend.schemas.trash import (
     TrashListResponseSchema,
 )
 from backend.utils.all_routes import ROUTES
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
@@ -115,13 +117,19 @@ def test_get_trash_when_nothing_is_trashed(
     """
     client, _, user, _ = login_first_user_with_register
 
+    before_request = utc_now()
     response_json = get_trash(client)
+    after_request = utc_now()
 
     assert response_json[MODELS.URLS] == []
     assert response_json[MODELS.UTUBS] == []
     assert response_json[MODELS.RETENTION_DAYS] == TRASH_RETENTION_DAYS == 30
     assert response_json[MODELS.CURRENT_USER] == user.id
-    assert datetime.fromisoformat(response_json[MODELS.LISTED_AT])
+    assert (
+        before_request
+        <= datetime.fromisoformat(response_json[MODELS.LISTED_AT])
+        <= after_request
+    )
 
 
 def test_get_trash_ignores_live_rows(
@@ -265,6 +273,50 @@ def test_get_trash_departed_members_url_still_visible_to_creator(
 
     assert trashed_url_ids(response_json) == [row_id]
     assert response_json[MODELS.URLS][0][MODELS.ADDED_BY] == SECOND_USER_ID
+
+
+def test_get_trash_hides_trashed_url_with_null_deleted_by(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a trashed URL row whose deleted_by is NULL (never written by the services)
+        next to a properly trashed one
+    WHEN the UTub creator requests their Trash
+    THEN only the properly trashed row is listed: the deleter join fails closed
+    """
+    client, _, _, app = login_first_user_without_register
+    orphan_row_id = get_utub_url_id(app, FIRST_UTUB_ID, 1)
+    listed_row_id = get_utub_url_id(app, FIRST_UTUB_ID, 2)
+    trash_utub_url(app, orphan_row_id, FIRST_USER_ID)
+    trash_utub_url(app, listed_row_id, FIRST_USER_ID)
+    with app.app_context():
+        orphan_row: Utub_Urls = Utub_Urls.query.get(orphan_row_id)
+        orphan_row.deleted_by = None
+        db.session.commit()
+
+    response_json = get_trash(client)
+
+    assert trashed_url_ids(response_json) == [listed_row_id]
+
+
+def test_get_trash_hides_trashed_utub_whose_creator_membership_is_gone(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN UTub 1 is trashed and its creator's membership row is then removed
+    WHEN the creator requests their Trash
+    THEN neither the UTub nor its URLs are listed: the membership join fails closed
+    """
+    client, _, _, app = login_first_user_without_register
+    trash_utub(app, FIRST_UTUB_ID, FIRST_USER_ID)
+    remove_member(app, FIRST_UTUB_ID, FIRST_USER_ID)
+
+    response_json = get_trash(client)
+
+    assert response_json[MODELS.UTUBS] == []
+    assert response_json[MODELS.URLS] == []
 
 
 def test_get_trash_lists_trashed_utub_and_its_live_urls(

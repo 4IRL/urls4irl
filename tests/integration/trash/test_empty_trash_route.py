@@ -6,7 +6,7 @@ import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from flask.wrappers import Response
-from sqlalchemy import update
+from sqlalchemy import delete, update
 
 from backend import db
 from backend.metrics.events import EventName
@@ -27,7 +27,7 @@ from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_ID
 from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.guards import lock_trashed_utub_for_creator
-from backend.utubs.services.empty_trash import _purge_trashed_url_ids
+from backend.utubs.services.empty_trash import purge_trashed_url_ids
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
@@ -56,11 +56,6 @@ from tests.utils_for_test import (
 )
 
 pytestmark = pytest.mark.trash
-
-PURGED_URL_IDS_KEY = "purgedUtubUrlIDs"
-PURGED_UTUB_IDS_KEY = "purgedUtubIDs"
-TOTAL_PURGED_KEY = "totalPurged"
-TOTAL_SKIPPED_LOCKED_KEY = "totalSkippedLocked"
 
 
 def post_empty_trash(
@@ -194,6 +189,38 @@ def lock_utub_behind_the_session(utub_id: int) -> None:
     )
 
 
+def remove_member_behind_the_session(utub_id: int, user_id: int) -> None:
+    """Remove a member the same way as ``restore_row_behind_the_session``."""
+    db.session.get_bind().execute(
+        delete(Utub_Members).where(
+            Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_id
+        )
+    )
+
+
+def set_member_role_behind_the_session(
+    utub_id: int, user_id: int, member_role: Member_Role
+) -> None:
+    """Change a member's role the same way as ``restore_row_behind_the_session``."""
+    db.session.get_bind().execute(
+        update(Utub_Members)
+        .where(Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_id)
+        .values(member_role=member_role)
+    )
+
+
+def add_member_to_utub(
+    app: Flask, utub_id: int, user_id: int, member_role: Member_Role
+) -> None:
+    """Add an existing user to a UTub with the given role."""
+    with app.app_context():
+        membership = Utub_Members(
+            utub_id=utub_id, user_id=user_id, member_role=member_role
+        )
+        db.session.add(membership)
+        db.session.commit()
+
+
 def restore_utub_behind_the_session(utub_id: int) -> None:
     """Un-trash a UTub the same way as ``restore_row_behind_the_session``."""
     db.session.get_bind().execute(
@@ -224,12 +251,14 @@ def assert_emptied_response(
     assert response_json[STD_JSON_RESPONSE.MESSAGE] == TRASH_SUCCESS.TRASH_EMPTIED
     TrashEmptiedResponseSchema.model_validate(response_json)
     assert response_json[MODELS.SCOPE] == scope
-    assert sorted(response_json[PURGED_URL_IDS_KEY]) == sorted(purged_utub_url_ids)
-    assert sorted(response_json[PURGED_UTUB_IDS_KEY]) == sorted(purged_utub_ids)
-    assert response_json[TOTAL_PURGED_KEY] == len(purged_utub_url_ids) + len(
+    assert sorted(response_json[MODELS.PURGED_UTUB_URL_IDS]) == sorted(
+        purged_utub_url_ids
+    )
+    assert sorted(response_json[MODELS.PURGED_UTUB_IDS]) == sorted(purged_utub_ids)
+    assert response_json[MODELS.TOTAL_PURGED] == len(purged_utub_url_ids) + len(
         purged_utub_ids
     )
-    assert response_json[TOTAL_SKIPPED_LOCKED_KEY] == total_skipped_locked
+    assert response_json[MODELS.TOTAL_SKIPPED_LOCKED] == total_skipped_locked
 
 
 def assert_bad_request(response: Response, *, error_fields: list[str]) -> None:
@@ -650,13 +679,17 @@ def test_row_restored_during_empty_survives_with_its_tags(
     assert restored_tags_before
     listed_at = get_listed_at(client)
 
-    def restore_then_purge(*, ids: list[int], listed_at: datetime) -> list[int]:
+    def restore_then_purge(
+        *, ids: list[int], listed_at: datetime, current_user_id: int
+    ) -> list[int]:
         assert sorted(ids) == sorted([restored_row_id, purged_row_id])
         restore_row_behind_the_session(restored_row_id)
-        return _purge_trashed_url_ids(ids=ids, listed_at=listed_at)
+        return purge_trashed_url_ids(
+            ids=ids, listed_at=listed_at, current_user_id=current_user_id
+        )
 
     with patch(
-        "backend.utubs.services.empty_trash._purge_trashed_url_ids",
+        "backend.utubs.services.empty_trash.purge_trashed_url_ids",
         side_effect=restore_then_purge,
     ):
         response = post_empty_trash(
@@ -670,8 +703,8 @@ def test_row_restored_during_empty_survives_with_its_tags(
         purged_utub_ids=[],
         total_skipped_locked=0,
     )
-    assert response.json[TOTAL_PURGED_KEY] == 1
-    assert restored_row_id not in response.json[PURGED_URL_IDS_KEY]
+    assert response.json[MODELS.TOTAL_PURGED] == 1
+    assert restored_row_id not in response.json[MODELS.PURGED_UTUB_URL_IDS]
     assert row_exists(app, restored_row_id)
     assert get_row_state(app, restored_row_id)["deleted_at"] is None
     assert get_url_tag_ids_of_row(app, restored_row_id) == restored_tags_before
@@ -700,13 +733,17 @@ def test_row_retrashed_after_listed_at_during_empty_survives(
     listed_at = get_listed_at(client)
     retrashed_at = datetime.fromisoformat(listed_at) + timedelta(seconds=1)
 
-    def retrash_then_purge(*, ids: list[int], listed_at: datetime) -> list[int]:
+    def retrash_then_purge(
+        *, ids: list[int], listed_at: datetime, current_user_id: int
+    ) -> list[int]:
         assert sorted(ids) == sorted([retrashed_row_id, purged_row_id])
         retrash_row_behind_the_session(retrashed_row_id, retrashed_at)
-        return _purge_trashed_url_ids(ids=ids, listed_at=listed_at)
+        return purge_trashed_url_ids(
+            ids=ids, listed_at=listed_at, current_user_id=current_user_id
+        )
 
     with patch(
-        "backend.utubs.services.empty_trash._purge_trashed_url_ids",
+        "backend.utubs.services.empty_trash.purge_trashed_url_ids",
         side_effect=retrash_then_purge,
     ):
         response = post_empty_trash(
@@ -735,7 +772,8 @@ def test_utub_locked_during_empty_keeps_its_urls(
         between the candidate select and the DELETE
     WHEN the creator empties the URLs tab
     THEN the DELETE's own locked-UTub exclusion deletes nothing: both rows and their
-        url-tags survive still trashed
+        url-tags survive still trashed, and both are reported as skipped-locked
+        because that count is derived after the DELETE, not from the candidate select
     """
     client, csrf_token, _, app = login_first_user_without_register
     row_ids = [get_utub_url_id(app, FIRST_UTUB_ID, url_id) for url_id in (1, 2)]
@@ -745,13 +783,17 @@ def test_utub_locked_during_empty_keeps_its_urls(
     url_tags_before = count_url_tags_in_utub(app, FIRST_UTUB_ID)
     listed_at = get_listed_at(client)
 
-    def lock_then_purge(*, ids: list[int], listed_at: datetime) -> list[int]:
+    def lock_then_purge(
+        *, ids: list[int], listed_at: datetime, current_user_id: int
+    ) -> list[int]:
         assert sorted(ids) == sorted(row_ids)
         lock_utub_behind_the_session(FIRST_UTUB_ID)
-        return _purge_trashed_url_ids(ids=ids, listed_at=listed_at)
+        return purge_trashed_url_ids(
+            ids=ids, listed_at=listed_at, current_user_id=current_user_id
+        )
 
     with patch(
-        "backend.utubs.services.empty_trash._purge_trashed_url_ids",
+        "backend.utubs.services.empty_trash.purge_trashed_url_ids",
         side_effect=lock_then_purge,
     ):
         response = post_empty_trash(
@@ -763,7 +805,7 @@ def test_utub_locked_during_empty_keeps_its_urls(
         scope="urls",
         purged_utub_url_ids=[],
         purged_utub_ids=[],
-        total_skipped_locked=0,
+        total_skipped_locked=len(row_ids),
     )
     assert [get_row_state(app, row_id) for row_id in row_ids] == before
     assert count_url_tags_in_utub(app, FIRST_UTUB_ID) == url_tags_before
@@ -786,13 +828,17 @@ def test_parent_utub_restored_during_empty_keeps_all_its_rows(
     assert url_tags_before > 0
     listed_at = get_listed_at(client)
 
-    def restore_then_purge(*, ids: list[int], listed_at: datetime) -> list[int]:
+    def restore_then_purge(
+        *, ids: list[int], listed_at: datetime, current_user_id: int
+    ) -> list[int]:
         assert sorted(ids) == sorted(row_ids)
         restore_utub_behind_the_session(FIRST_UTUB_ID)
-        return _purge_trashed_url_ids(ids=ids, listed_at=listed_at)
+        return purge_trashed_url_ids(
+            ids=ids, listed_at=listed_at, current_user_id=current_user_id
+        )
 
     with patch(
-        "backend.utubs.services.empty_trash._purge_trashed_url_ids",
+        "backend.utubs.services.empty_trash.purge_trashed_url_ids",
         side_effect=restore_then_purge,
     ):
         response = post_empty_trash(
@@ -809,6 +855,152 @@ def test_parent_utub_restored_during_empty_keeps_all_its_rows(
     assert all(row_exists(app, row_id) for row_id in row_ids)
     assert get_utub_deleted_at(app, FIRST_UTUB_ID) is None
     assert count_url_tags_in_utub(app, FIRST_UTUB_ID) == url_tags_before
+
+
+def test_member_removed_during_empty_keeps_their_trashed_rows(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN user 2 trashed the URL they added to UTub 1, and is removed from the UTub
+        (by a concurrent request) between the candidate select and the DELETE
+    WHEN user 2 empties the URLs tab
+    THEN the DELETE re-proves membership and deletes nothing: the row and its
+        url-tags survive still trashed
+    """
+    client, csrf_token, _, app = login_second_user_without_register
+    own_row_id = get_utub_url_id(app, FIRST_UTUB_ID, 2)
+    trash_utub_url(app, own_row_id, deleted_by=SECOND_USER_ID)
+    before = get_row_state(app, own_row_id)
+    tags_before = count_url_tags_of_row(app, own_row_id)
+    listed_at = get_listed_at(client)
+
+    def remove_then_purge(
+        *, ids: list[int], listed_at: datetime, current_user_id: int
+    ) -> list[int]:
+        assert ids == [own_row_id]
+        remove_member_behind_the_session(FIRST_UTUB_ID, SECOND_USER_ID)
+        return purge_trashed_url_ids(
+            ids=ids, listed_at=listed_at, current_user_id=current_user_id
+        )
+
+    with patch(
+        "backend.utubs.services.empty_trash.purge_trashed_url_ids",
+        side_effect=remove_then_purge,
+    ):
+        response = post_empty_trash(
+            client, csrf_token, {"scope": "urls", "listedAt": listed_at}
+        )
+
+    assert_emptied_response(
+        response,
+        scope="urls",
+        purged_utub_url_ids=[],
+        purged_utub_ids=[],
+        total_skipped_locked=0,
+    )
+    assert get_row_state(app, own_row_id) == before
+    assert count_url_tags_of_row(app, own_row_id) == tags_before
+
+
+def test_member_demoted_during_empty_keeps_rows_they_no_longer_manage(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN user 2 is a co-creator who trashed URL 1 (added by user 1), and is demoted
+        to plain member (by a concurrent request) between the candidate select and
+        the DELETE
+    WHEN user 2 empties the URLs tab
+    THEN the DELETE re-proves the manager rule and deletes nothing: the row and its
+        url-tags survive still trashed
+    """
+    client, csrf_token, _, app = login_second_user_without_register
+    managed_row_id = get_utub_url_id(app, FIRST_UTUB_ID, 1)
+    with app.app_context():
+        db.session.execute(
+            update(Utub_Members)
+            .where(
+                Utub_Members.utub_id == FIRST_UTUB_ID,
+                Utub_Members.user_id == SECOND_USER_ID,
+            )
+            .values(member_role=Member_Role.CO_CREATOR)
+        )
+        db.session.commit()
+    trash_utub_url(app, managed_row_id, deleted_by=SECOND_USER_ID)
+    before = get_row_state(app, managed_row_id)
+    tags_before = count_url_tags_of_row(app, managed_row_id)
+    assert get_trash_url_ids(client) == [managed_row_id]
+    listed_at = get_listed_at(client)
+
+    def demote_then_purge(
+        *, ids: list[int], listed_at: datetime, current_user_id: int
+    ) -> list[int]:
+        assert ids == [managed_row_id]
+        set_member_role_behind_the_session(
+            FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.MEMBER
+        )
+        return purge_trashed_url_ids(
+            ids=ids, listed_at=listed_at, current_user_id=current_user_id
+        )
+
+    with patch(
+        "backend.utubs.services.empty_trash.purge_trashed_url_ids",
+        side_effect=demote_then_purge,
+    ):
+        response = post_empty_trash(
+            client, csrf_token, {"scope": "urls", "listedAt": listed_at}
+        )
+
+    assert_emptied_response(
+        response,
+        scope="urls",
+        purged_utub_url_ids=[],
+        purged_utub_ids=[],
+        total_skipped_locked=0,
+    )
+    assert get_row_state(app, managed_row_id) == before
+    assert count_url_tags_of_row(app, managed_row_id) == tags_before
+
+
+def test_creator_empties_rows_another_member_trashed_and_leaves_non_actionable_rows(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN user 2 trashed the URL they added to UTub 1 (which user 1 created), and in a
+        second UTub that user 2 created and where user 1 is a plain member, user 2
+        trashed a row that user 1 neither added nor manages
+    WHEN the creator (user 1) empties the URLs tab
+    THEN the member-trashed row in their own UTub is purged, while the row they cannot
+        act on in the other UTub survives untouched with its row state
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    member_trashed_row_id = get_utub_url_id(app, FIRST_UTUB_ID, 2)
+    trash_utub_url(app, member_trashed_row_id, deleted_by=SECOND_USER_ID)
+    other_utub_id = create_extra_utub(app, SECOND_USER_ID, "Second user's UTub")
+    add_member_to_utub(app, other_utub_id, FIRST_USER_ID, Member_Role.MEMBER)
+    foreign_row_id = add_url_row_to_utub(
+        app,
+        other_utub_id,
+        get_url_id_of_row(app, get_utub_url_id(app, FIRST_UTUB_ID, 1)),
+        SECOND_USER_ID,
+    )
+    trash_utub_url(app, foreign_row_id, deleted_by=SECOND_USER_ID)
+    foreign_before = get_row_state(app, foreign_row_id)
+    assert get_trash_url_ids(client) == [member_trashed_row_id]
+
+    response = empty_tab(client, csrf_token, "urls")
+
+    assert_emptied_response(
+        response,
+        scope="urls",
+        purged_utub_url_ids=[member_trashed_row_id],
+        purged_utub_ids=[],
+        total_skipped_locked=0,
+    )
+    assert not row_exists(app, member_trashed_row_id)
+    assert get_row_state(app, foreign_row_id) == foreign_before
 
 
 # UTubs tab
@@ -995,7 +1187,7 @@ def test_utub_restored_during_empty_survives_and_is_not_counted_as_locked(
         purged_utub_ids=[other_extra_id],
         total_skipped_locked=1,
     )
-    assert response.json[TOTAL_PURGED_KEY] == 1
+    assert response.json[MODELS.TOTAL_PURGED] == 1
     assert utub_exists(app, FIRST_UTUB_ID)
     assert get_utub_deleted_at(app, FIRST_UTUB_ID) is None
     assert count_urls_in_utub(app, FIRST_UTUB_ID) == urls_before
@@ -1293,7 +1485,7 @@ def test_empty_trash_with_only_locked_items_records_no_metric(
     response = empty_tab(client, csrf_token, "urls")
 
     assert response.status_code == 200
-    assert response.json[TOTAL_SKIPPED_LOCKED_KEY] == 1
+    assert response.json[MODELS.TOTAL_SKIPPED_LOCKED] == 1
     assert (
         count_counter_keys(provide_metrics_redis, EventName.URLS_EMPTIED_FROM_TRASH)
         == 0

@@ -1,9 +1,40 @@
-from sqlalchemy import and_, or_, select
-from sqlalchemy.sql.expression import Select
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.expression import ColumnElement, Select
 
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+
+# The shared Trash clock and deleter of a URL row: a row trashed only because its UTub
+# was (its own ``deleted_at`` is NULL) inherits the UTub's, while a URL trashed on its
+# own earlier keeps its own. The Trash list and Empty trash both bound and order by
+# these exact expressions, so they cannot disagree on when or by whom a row was trashed.
+# Only valid in a statement that selects ``Utub_Urls`` joined to ``Utubs``.
+effective_deleted_at: ColumnElement = func.coalesce(
+    Utub_Urls.deleted_at, Utubs.deleted_at
+)
+effective_deleted_by: ColumnElement = func.coalesce(
+    Utub_Urls.deleted_by, Utubs.deleted_by
+)
+
+
+def join_url_row_deleter(statement: Select, deleter: AliasedClass) -> Select:
+    """Inner-join ``deleter`` (an alias of ``Users``) to a trashed URL row's deleter.
+
+    Deliberately an inner join: services always set ``deleted_by`` together with
+    ``deleted_at``, so a trashed row with a NULL ``deleted_by`` matches no user and is
+    dropped (fail closed) from the list and from Empty trash alike.
+    """
+    return statement.join(deleter, deleter.id == effective_deleted_by)
+
+
+def join_utub_deleter(statement: Select, deleter: AliasedClass) -> Select:
+    """Inner-join ``deleter`` (an alias of ``Users``) to a trashed UTub's deleter.
+
+    Inner for the same fail-closed reason as ``join_url_row_deleter``.
+    """
+    return statement.join(deleter, deleter.id == Utubs.deleted_by)
 
 
 def trashed_url_rows_actionable_by(*, user_id: int) -> Select:

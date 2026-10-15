@@ -378,10 +378,7 @@ def _lock_trashed(
 ) -> Utubs | FlaskResponse:
     with mock.patch("backend.utubs.guards.current_user", SimpleNamespace(id=caller_id)):
         return lock_trashed_utub_for_creator(
-            utub_id=UTUB_ID,
-            error_code=ERROR_CODE,
-            not_in_trash_code=NOT_IN_TRASH_CODE,
-            reject_locked=reject_locked,
+            utub_id=UTUB_ID, reject_locked=reject_locked
         )
 
 
@@ -418,11 +415,7 @@ def test_lock_trashed_utub_for_creator_missing_utub_denied(
     with app.app_context():
         with app.test_request_context():
             with mock.patch("backend.utubs.guards.current_user", SimpleNamespace(id=1)):
-                result = lock_trashed_utub_for_creator(
-                    utub_id=99999,
-                    error_code=ERROR_CODE,
-                    not_in_trash_code=NOT_IN_TRASH_CODE,
-                )
+                result = lock_trashed_utub_for_creator(utub_id=99999)
             _assert_not_in_trash(result)
 
 
@@ -440,6 +433,73 @@ def test_lock_trashed_utub_for_creator_non_creator_denied(
 
         with app.test_request_context():
             _assert_not_in_trash(_lock_trashed(caller_id))
+
+
+def _statements_while(action: Any) -> list[str]:
+    """Run ``action`` and return the SQL statements emitted on the session connection."""
+    statements: list[str] = []
+
+    def capture(
+        conn: Connection,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool,
+    ) -> None:
+        statements.append(statement)
+
+    connection = db.session.connection()
+    event.listen(connection, "before_cursor_execute", capture)
+    try:
+        action()
+    finally:
+        event.remove(connection, "before_cursor_execute", capture)
+    return statements
+
+
+@pytest.mark.parametrize("caller_id", (2, 3, 99999))
+def test_lock_trashed_utub_for_creator_non_creator_never_takes_row_lock(
+    app, add_multiple_users_to_utub_without_logging_in, caller_id
+):
+    """
+    GIVEN a trashed UTub
+    WHEN a non-creator (a member or a stranger) calls the guard
+    THEN the masking 404 is returned and no FOR NO KEY UPDATE statement is emitted
+    """
+    with app.app_context():
+        _raw('UPDATE "Utubs" SET "deletedAt" = now(), "deletedBy" = 1 WHERE id = 1')
+
+        with app.test_request_context():
+            results: list[Utubs | FlaskResponse] = []
+            statements = _statements_while(
+                lambda: results.append(_lock_trashed(caller_id))
+            )
+
+            _assert_not_in_trash(results[0])
+            assert not any("FOR NO KEY UPDATE" in statement for statement in statements)
+
+
+def test_lock_trashed_utub_for_creator_creator_takes_row_lock(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a trashed UTub
+    WHEN its creator calls the guard
+    THEN the UTub row is locked with FOR NO KEY UPDATE
+    """
+    with app.app_context():
+        _raw('UPDATE "Utubs" SET "deletedAt" = now(), "deletedBy" = 1 WHERE id = 1')
+
+        with app.test_request_context():
+            results: list[Utubs | FlaskResponse] = []
+            statements = _statements_while(lambda: results.append(_lock_trashed(1)))
+
+            assert isinstance(results[0], Utubs)
+            assert any(
+                'FROM "Utubs"' in statement and "FOR NO KEY UPDATE" in statement
+                for statement in statements
+            )
 
 
 def test_lock_trashed_utub_for_creator_removed_creator_membership_denied(

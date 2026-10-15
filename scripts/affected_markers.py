@@ -96,7 +96,9 @@ def _union(*groups: tuple[str, ...]) -> tuple[str, ...]:
 
 _SPLASH: tuple[str, ...] = ("splash", "splash_ui", "mobile_ui")
 _UTUBS: tuple[str, ...] = ("utubs", "utubs_ui", "home_ui", "mobile_ui", "trash")
-_MEMBERS: tuple[str, ...] = ("members", "members_ui")
+# The trash tests depend on member-removal state and tag-deletion semantics, so
+# members/tags changes also select ``trash``.
+_MEMBERS: tuple[str, ...] = ("members", "members_ui", "trash")
 _URLS: tuple[str, ...] = (
     "urls",
     "urls_ui",
@@ -105,7 +107,7 @@ _URLS: tuple[str, ...] = (
     "mobile_ui",
     "trash",
 )
-_TAGS: tuple[str, ...] = ("tags", "tags_ui", "mobile_ui")
+_TAGS: tuple[str, ...] = ("tags", "tags_ui", "mobile_ui", "trash")
 _SEARCH: tuple[str, ...] = ("urls", "search_ui")
 _USERS: tuple[str, ...] = ("account_and_support", "settings_ui")
 _CONTACT: tuple[str, ...] = ("account_and_support",)

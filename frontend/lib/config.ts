@@ -29,6 +29,8 @@ export interface AppRoutes {
   home: string;
   createUTub: string;
   getUTubs: string;
+  getTrash: string;
+  emptyTrash: string;
   copyURLsToUtubs: string;
   login: string;
   register: string;
@@ -43,10 +45,6 @@ export interface AppRoutes {
   contactUs: string;
   crossUtubSearch: string;
   metricsIngest: string;
-
-  // No-param routes (function-valued)
-  getTrash: () => string;
-  emptyTrash: () => string;
 
   // Dynamic single-param routes
   getUTub: (id: number) => string;
@@ -68,8 +66,8 @@ export interface AppRoutes {
   deleteURL: (utubId: number, urlId: number) => string;
   updateURL: (utubId: number, urlId: number) => string;
   updateURLTitle: (utubId: number, urlId: number) => string;
-  restoreURL: ({ utubId, urlId }: { utubId: number; urlId: number }) => string;
-  purgeURL: ({ utubId, urlId }: { utubId: number; urlId: number }) => string;
+  restoreURL: (utubId: number, urlId: number) => string;
+  purgeURL: (utubId: number, urlId: number) => string;
   createURLTag: (utubId: number, urlId: number) => string;
   createURLTagsBatch: (utubId: number, urlId: number) => string;
   deleteUTubTag: (utubId: number, tagId: number) => string;
@@ -157,6 +155,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     home: rawConfig.routes.home,
     createUTub: rawConfig.routes.createUTub,
     getUTubs: rawConfig.routes.getUTubs,
+    getTrash: rawConfig.routes.getTrash,
+    emptyTrash: rawConfig.routes.emptyTrash,
     copyURLsToUtubs: rawConfig.routes.copyURLsToUtubs,
     login: rawConfig.routes.login,
     register: rawConfig.routes.register,
@@ -168,10 +168,6 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     oauthGithubLogin: rawConfig.routes.oauthGithubLogin,
     errorPage: rawConfig.routes.errorPage,
     logout: rawConfig.routes.logout,
-
-    // No-param routes
-    getTrash: () => rawConfig.routes.getTrash,
-    emptyTrash: () => rawConfig.routes.emptyTrash,
 
     getUTub: (id: number) => rawConfig.routes.getUTub.replace("-1", String(id)),
     deleteUTub: (id: number) =>
@@ -205,11 +201,11 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.updateURLTitle
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
-    restoreURL: ({ utubId, urlId }: { utubId: number; urlId: number }) =>
+    restoreURL: (utubId: number, urlId: number) =>
       rawConfig.routes.restoreURL
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
-    purgeURL: ({ utubId, urlId }: { utubId: number; urlId: number }) =>
+    purgeURL: (utubId: number, urlId: number) =>
       rawConfig.routes.purgeURL
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
