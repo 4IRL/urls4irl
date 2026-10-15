@@ -54,6 +54,20 @@ def set_utub_locked_state(app: Flask, utub_id: int, is_locked: bool) -> None:
         db.session.commit()
 
 
+def set_member_role_in_utub(
+    app: Flask, user_id: int, utub_id: int, member_role: Member_Role
+) -> None:
+    """Set ``user_id``'s role in ``utub_id`` and commit, so the running Flask
+    server serves the new role on the next request."""
+    with app.app_context():
+        membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id, Utub_Members.utub_id == utub_id
+        ).first()
+        assert membership is not None
+        membership.member_role = member_role
+        db.session.commit()
+
+
 def remove_user_from_utub(app: Flask, user_id: int, utub_id: int) -> None:
     """Delete ``user_id``'s ``Utub_Members`` row for ``utub_id`` and commit, so
     the running Flask server treats the user as no longer a member."""

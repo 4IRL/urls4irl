@@ -106,7 +106,6 @@ export function initUTubRefreshOnFocus({
     if (
       !isUTubSelected() ||
       utubID === null ||
-      isCrossUtubSearchActive() ||
       refreshInFlight ||
       isUserBusyOnHome()
     ) {
@@ -145,22 +144,19 @@ export function initUTubRefreshOnFocus({
     }
   };
 
-  const onVisibilityChange = (): void => {
-    void handleReturn();
-  };
-  const onWindowFocus = (): void => {
+  const onReturn = (): void => {
     void handleReturn();
   };
 
-  document.addEventListener("visibilitychange", onVisibilityChange);
-  $(window).on(FOCUS_EVENT, onWindowFocus);
+  document.addEventListener("visibilitychange", onReturn);
+  $(window).on(FOCUS_EVENT, onReturn);
   const offUTubSelected = on(AppEvents.UTUB_SELECTED, () => {
     lastRefreshAt = performance.now();
   });
 
   const disposer = (): void => {
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-    $(window).off(FOCUS_EVENT, onWindowFocus);
+    document.removeEventListener("visibilitychange", onReturn);
+    $(window).off(FOCUS_EVENT, onReturn);
     offUTubSelected();
     if (activeDisposer === disposer) {
       activeDisposer = null;

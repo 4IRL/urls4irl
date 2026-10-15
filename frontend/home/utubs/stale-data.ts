@@ -170,6 +170,7 @@ export async function updateUTubOnFindingStaleData({
     activeUTubName: utub.name,
     activeUTubDescription: utub.description,
   });
+  syncSidebarUTubName({ utubID: utub.id, utubName: utub.name });
 
   // Re-evaluate onboarding tips against the new store. There is no lock event,
   // so a lock change rides on URL_DECK_CHANGED (its listener re-runs the tips).
@@ -330,6 +331,32 @@ function syncSidebarUTubEntry({ data }: { data: UtubDetail }): void {
   );
 }
 
+// Patches the matching utubs summary name in the store (no-op when unchanged).
+function syncSidebarUTubName({
+  utubID,
+  utubName,
+}: {
+  utubID: number;
+  utubName: string;
+}): void {
+  const { utubs } = getState();
+  if (
+    !utubs.some(
+      (utubSummary) =>
+        utubSummary.id === utubID && utubSummary.name !== utubName,
+    )
+  ) {
+    return;
+  }
+  setState({
+    utubs: utubs.map((utubSummary) =>
+      utubSummary.id === utubID
+        ? { ...utubSummary, name: utubName }
+        : utubSummary,
+    ),
+  });
+}
+
 // Additive: the caller continues into the normal diff afterwards.
 function applyLockChange({ data }: { data: UtubDetail }): void {
   setState({ isCurrentUTubLocked: data.isLocked });
@@ -381,12 +408,13 @@ function updateUTubNameAndDescription({
   isCurrentUserOwner: boolean;
 }): void {
   const utubNameElem = $("#URLDeckHeader");
-  const utubNameInUTubDeckElem = $(
-    `.UTubSelector[utubid=${utubID}] > .UTubName`,
-  );
+  const utubNameInUTubDeckElem = $(`.UTubSelector[utubid=${utubID}] .UTubName`);
 
   if (utubNameElem.text() !== utubName) {
     utubNameElem.text(utubName);
+  }
+  // Independent of the header: the sidebar entry can drift on its own.
+  if (utubNameInUTubDeckElem.text() !== utubName) {
     utubNameInUTubDeckElem.text(utubName);
   }
 

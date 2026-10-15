@@ -478,6 +478,17 @@ describe("updateUTubOnFindingStaleData", () => {
       expect($("#URLDeckHeader").text()).toBe("Renamed");
       expect($(".UTubSelector[utubid=1] > .UTubName").text()).toBe("Renamed");
     });
+
+    it("syncs the sidebar name and utubs store entry even when the header already matches", async () => {
+      $("#URLDeckHeader").text("Renamed");
+
+      await refreshWith(ok(makeDetail({ name: "Renamed" })));
+
+      expect($(".UTubSelector[utubid=1] .UTubName").text()).toBe("Renamed");
+      expect(
+        (storeState.value.utubs as { id: number; name: string }[])[0].name,
+      ).toBe("Renamed");
+    });
   });
 
   describe("description visibility", () => {

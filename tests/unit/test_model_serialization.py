@@ -335,7 +335,7 @@ def test_user_utub_data_serialized_on_initial_load():
     )
 
 
-def test_user_utub_data_serialization_sorts_by_later_of_opened_and_updated():
+def test_user_utub_data_serialization_sorts_by_later_of_opened_and_updated() -> None:
     """
     GIVEN a user in three UTubs, where the oldest-updated UTub has a last_opened_at
         later than every last_updated, and another has a last_opened_at older than

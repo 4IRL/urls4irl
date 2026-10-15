@@ -1,9 +1,11 @@
 import re
+from collections.abc import Callable
 
 import pytest
 from flask import Flask
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, Request, expect
 
+from backend.models.utub_members import Member_Role
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.utub_strs import UTUB_SELECT
 from tests.functional.db_utils import (
@@ -12,6 +14,7 @@ from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
     remove_user_from_utub,
+    set_member_role_in_utub,
     set_utub_locked_state,
     update_utub_name_and_description,
 )
@@ -57,7 +60,7 @@ def _track_refresh_requests(*, page: Page, utub_id: int) -> list[str]:
     return seen
 
 
-def _is_refresh_request(*, utub_id: int):
+def _is_refresh_request(*, utub_id: int) -> Callable[[Request], bool]:
     refresh_suffix = f"/utubs/{utub_id}/refresh"
     return lambda request: request.url.endswith(refresh_suffix)
 
@@ -155,6 +158,64 @@ def test_refresh_on_focus_applies_utub_lock_from_other_member(
     _refocus(page=page)
 
     expect(page.locator("body")).to_have_class(re.compile(r"\butub-locked\b"))
+
+
+def test_refresh_on_focus_removes_utub_lock_from_other_member(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a member viewing a locked UTub
+    WHEN it is unlocked elsewhere and the viewer returns to the tab
+    THEN the body loses the utub-locked class and the header lock icon is hidden
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    set_utub_locked_state(app, utub.id, True)
+    _login_with_clock(app=app, page=page, utub_id=utub.id)
+    expect(page.locator("body")).to_have_class(re.compile(r"\butub-locked\b"))
+    expect(page.locator(HPL.URL_DECK_LOCK_ICON)).to_be_visible()
+
+    set_utub_locked_state(app, utub.id, False)
+    page.clock.fast_forward(REFRESH_INTERVAL_PASSED_MS)
+    _refocus(page=page)
+
+    expect(page.locator("body")).not_to_have_class(re.compile(r"\butub-locked\b"))
+    expect(page.locator(HPL.URL_DECK_LOCK_ICON)).not_to_be_visible()
+    expect(
+        page.locator(f"{HPL.SELECTOR_SELECTED_UTUB} {HPL.UTUB_LOCKED_ICON}")
+    ).to_have_count(0)
+
+
+def test_refresh_on_focus_applies_role_change_from_other_member(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a plain member viewing a UTub they did not create
+    WHEN they are promoted to co-creator elsewhere and return to the tab
+    THEN the selected UTub shows the co-creator icon; after a demotion and
+        another refocus it shows the member icon again
+    """
+    app = provide_app
+    utub = get_utub_this_user_did_not_create(app, USER_ID_FOR_TEST)
+    set_member_role_in_utub(app, USER_ID_FOR_TEST, utub.id, Member_Role.MEMBER)
+    _login_with_clock(app=app, page=page, utub_id=utub.id)
+    selected = page.locator(HPL.SELECTOR_SELECTED_UTUB)
+    expect(selected.locator(HPL.MEMBER_ICON)).to_have_count(1)
+    expect(selected.locator(HPL.CO_CREATOR_ICON)).to_have_count(0)
+
+    set_member_role_in_utub(app, USER_ID_FOR_TEST, utub.id, Member_Role.CO_CREATOR)
+    page.clock.fast_forward(REFRESH_INTERVAL_PASSED_MS)
+    _refocus(page=page)
+
+    expect(selected.locator(HPL.CO_CREATOR_ICON)).to_have_count(1)
+    expect(selected.locator(HPL.MEMBER_ICON)).to_have_count(0)
+
+    set_member_role_in_utub(app, USER_ID_FOR_TEST, utub.id, Member_Role.MEMBER)
+    page.clock.fast_forward(REFRESH_INTERVAL_PASSED_MS)
+    _refocus(page=page)
+
+    expect(selected.locator(HPL.MEMBER_ICON)).to_have_count(1)
+    expect(selected.locator(HPL.CO_CREATOR_ICON)).to_have_count(0)
 
 
 def test_refresh_on_focus_is_debounced(
