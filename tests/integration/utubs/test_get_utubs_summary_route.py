@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Tuple
 
 import pytest
@@ -277,13 +278,115 @@ def test_get_utubs_sorted_based_on_last_updated(
     assert utub_summary[MODELS.UTUBS][0][MODELS.ID] == middle_utub_id
 
 
+def test_null_last_opened_at_falls_back_to_last_updated(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user who is a member of several UTubs, none opened (last_opened_at is NULL)
+    WHEN the user requests a summary of all their UTubs
+    THEN the order falls back to Utubs.last_updated, most recent first
+    """
+    client, _, user, app = login_first_user_without_register
+
+    with app.app_context():
+        memberships = Utub_Members.query.filter(Utub_Members.user_id == user.id).all()
+        assert len(memberships) >= 2
+        assert all(membership.last_opened_at is None for membership in memberships)
+        expected_ids = [
+            membership.utub_id
+            for membership in sorted(
+                memberships,
+                key=lambda membership: membership.to_utub.last_updated,
+                reverse=True,
+            )
+        ]
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    assert response.json is not None
+    assert [item[MODELS.ID] for item in response.json[MODELS.UTUBS]] == expected_ids
+
+
+def test_content_change_moves_utub_above_later_opened_utub(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user whose membership in one UTub has a last_opened_at later than every
+        Utubs.last_updated, set directly in the DB (not via GET)
+    WHEN a content change (name PATCH) later bumps a different UTub's last_updated
+    THEN the changed UTub sorts above the opened one, since the key is the later of
+        last_opened_at and last_updated
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        created_utub_ids = [
+            membership.utub_id
+            for membership in Utub_Members.query.filter(
+                Utub_Members.user_id == user.id,
+                Utub_Members.member_role == Member_Role.CREATOR,
+            ).all()
+        ]
+        all_utubs = Utubs.query.join(
+            Utub_Members, Utubs.id == Utub_Members.utub_id
+        ).filter(Utub_Members.user_id == user.id)
+        latest_last_updated = max(utub.last_updated for utub in all_utubs)
+        changed_utub_id = created_utub_ids[0]
+        opened_membership = Utub_Members.query.filter(
+            Utub_Members.user_id == user.id,
+            Utub_Members.utub_id != changed_utub_id,
+        ).first()
+        assert opened_membership is not None
+        opened_utub_id = opened_membership.utub_id
+        opened_membership.last_opened_at = latest_last_updated + timedelta(
+            microseconds=1
+        )
+        changed_name = Utubs.query.get(changed_utub_id).name + "88"
+        db.session.commit()
+
+    # Before the content change, the opened UTub is first
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+    assert response.json is not None
+    assert response.json[MODELS.UTUBS][0][MODELS.ID] == opened_utub_id
+
+    response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=changed_utub_id),
+        json={UTUB_FORM.UTUB_NAME: changed_name},
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert response.status_code == 200
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+    assert response.json is not None
+    utub_ids = [item[MODELS.ID] for item in response.json[MODELS.UTUBS]]
+    assert utub_ids[0] == changed_utub_id
+    assert utub_ids.index(changed_utub_id) < utub_ids.index(opened_utub_id)
+
+
 def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str]:
-    all_utubs: list[Tuple[Utubs, Member_Role]] = (
-        db.session.query(Utubs, Utub_Members.member_role)
+    all_utubs: list[Tuple[Utubs, Member_Role, datetime | None]] = (
+        db.session.query(Utubs, Utub_Members.member_role, Utub_Members.last_opened_at)
         .join(Utub_Members, Utubs.id == Utub_Members.utub_id)
         .filter(Utub_Members.user_id == current_user.id)
-        .order_by(Utubs.last_updated.desc())
         .all()
+    )
+    all_utubs.sort(
+        key=lambda row: max(row[2] or row[0].last_updated, row[0].last_updated),
+        reverse=True,
     )
     return {
         STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
@@ -294,7 +397,7 @@ def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str]:
                 MODELS.MEMBER_ROLE: member.value,
                 MODELS.IS_LOCKED: utub.is_locked,
             }
-            for utub, member in all_utubs
+            for utub, member, _ in all_utubs
         ],
     }
 
