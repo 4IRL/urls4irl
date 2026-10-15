@@ -6,24 +6,13 @@ import { hideTooltip } from "../../lib/tooltips.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { isUtubLockedHandled } from "../utub-locked.js";
-import { hideInputs } from "../btns-forms.js";
-import {
-  isMobile,
-  setMobileUIWhenUTubNotSelectedOrUTubDeleted,
-} from "../mobile.js";
-import { setUIWhenNoUTubSelected } from "../init.js";
-import { closeTagSheet, isTagSheetOpen } from "../tags/sheet.js";
-import { hideInputsAndUpdateUTubDeck, resetUTubDeckIfNoUTubs } from "./deck.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
-import { TAG_SHEET_TOGGLE_TRIGGER } from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
-import { getNumOfUTubs, updateUTubDeckCount } from "./utils.js";
-import { getState, setState } from "../../store/app-store.js";
-import {
-  applyAlternatingUTubSelectorBackground,
-  resetUTubSearch,
-} from "./search.js";
+import { getNumOfUTubs } from "./utils.js";
+import { getState } from "../../store/app-store.js";
+import { removeUTubLocally } from "./remove-local.js";
+import { resetUTubSearch } from "./search.js";
 import { debug } from "../../lib/debug.js";
 
 const log = debug("utubs");
@@ -159,67 +148,8 @@ function deleteUTubSuccess(utubID: number): void {
     utubID,
     remainingUtubCount: getNumOfUTubs() - 1,
   });
-  hideInputs();
-
-  // Close modal
-  $("#confirmModal").modal("hide");
   $("#utubBtnDelete").hideClass();
-
-  // Update UTub Deck
-  const utubSelector = $(".UTubSelector[utubid=" + utubID + "]");
-
-  // Consume the tag sheet's own history entry (via history.back()) while it is
-  // still on top of the stack, BEFORE the pushState/replaceState pair below —
-  // otherwise the sheet's entry is orphaned under the freshly-pushed /home entry.
-  if (isTagSheetOpen())
-    closeTagSheet({
-      returnFocus: false,
-      trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
-    });
-
-  setTimeout(function () {
-    window.history.pushState(null, "", "/home");
-    window.history.replaceState(null, "", "/home");
-  }, 0);
-
-  utubSelector.fadeOut("slow", () => {
-    utubSelector.remove();
-    updateUTubDeckCount();
-    applyAlternatingUTubSelectorBackground();
-
-    setState({
-      utubs: getState().utubs.filter((utub) => utub.id !== utubID),
-      activeUTubID: null,
-      activeUTubName: null,
-      activeUTubDescription: null,
-      isCurrentUserOwner: false,
-      isCoCreator: false,
-      urls: [],
-      tags: [],
-      members: [],
-      selectedTagIDs: [],
-      selectedURLCardID: null,
-      // Defense-in-depth: the UTUB_DELETED subscriber in bulk-actions/index.ts
-      // already exits multi-select mode; clear the store here too so a future
-      // call site mutating activeUTubID/urls off this path can't strand a
-      // stale selection.
-      multiSelectMode: false,
-      selectedURLCardIDs: [],
-    });
-
-    // Reset all panels
-    setUIWhenNoUTubSelected();
-
-    if (getNumOfUTubs() === 0) {
-      resetUTubDeckIfNoUTubs();
-      $("#utubTagBtnCreate").hideClass();
-    } else {
-      hideInputsAndUpdateUTubDeck();
-    }
-    emit(AppEvents.UTUB_DELETED, { utubID });
-
-    if (isMobile()) setMobileUIWhenUTubNotSelectedOrUTubDeleted();
-  });
+  removeUTubLocally({ utubID, pushHistoryEntry: true });
 }
 
 function deleteUTubFail(xhr: JQuery.jqXHR): void {

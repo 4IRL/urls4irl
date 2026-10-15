@@ -3,6 +3,7 @@ import type { UtubDetail } from "../../types/utub.js";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { is429Handled } from "../../lib/ajax.js";
 import { setState } from "../../store/app-store.js";
 import { KEYS } from "../../lib/constants.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
@@ -72,6 +73,44 @@ function fetchUTubInfo(
       hideUTubLoadingIconAndClearTimeout(timeoutID);
     });
   return deferred.promise();
+}
+
+export type RefreshResult =
+  | { kind: "ok"; data: UtubDetail }
+  | { kind: "gone" }
+  | { kind: "error" };
+
+// Background fetch for refresh-on-focus: unlike fetchUTubInfo it never shows the
+// loading spinner, never rewrites history and never rejects, so a failure cannot
+// disturb the UTub the user is looking at. Fails closed: only an explicit 200 is
+// `ok`, only a 404 (non-member or trashed UTub) is `gone`, all else is `error`.
+export function fetchUTubForRefresh({
+  utubID,
+}: {
+  utubID: number;
+}): Promise<RefreshResult> {
+  return new Promise<RefreshResult>((resolve) => {
+    $.getJSON(APP_CONFIG.routes.refreshUTub(utubID))
+      .done(
+        (
+          data: GetSingleUtubResponse,
+          _textStatus: JQuery.Ajax.SuccessTextStatus,
+          xhr: JQuery.jqXHR,
+        ) => {
+          resolve(
+            xhr.status === 200 ? { kind: "ok", data } : { kind: "error" },
+          );
+        },
+      )
+      .fail((xhr: JQuery.jqXHR) => {
+        if (is429Handled(xhr)) {
+          resolve({ kind: "error" });
+          return;
+        }
+        log("fetchUTubForRefresh failed", { utubID, status: xhr.status });
+        resolve(xhr.status === 404 ? { kind: "gone" } : { kind: "error" });
+      });
+  });
 }
 
 // Pushes a browser-history entry for a UTub selection so the back/forward
