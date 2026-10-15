@@ -1,12 +1,10 @@
-from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Iterator, Tuple
+from typing import Any, Tuple
 from unittest.mock import patch
 
 import pytest
-from flask import Flask, g, url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
-from flask.wrappers import Response
 
 from backend import db
 from backend.metrics.events import EventName
@@ -24,17 +22,28 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.model_strs import MODELS, TAG_COUNTS_MODIFIED
 from backend.utils.strings.trash_strs import TRASH_FAILURE, TRASH_SUCCESS
-from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
-from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
     parse_dims,
 )
+from tests.integration.trash.trash_helpers import (
+    AJAX_HEADERS,
+    FIRST_USER_ID,
+    FIRST_UTUB_ID,
+    NONEXISTENT_ID,
+    SECOND_USER_ID,
+    SECOND_UTUB_ID,
+    THIRD_USER_ID,
+    assert_not_in_trash_response,
+    get_row_state,
+    get_trash_url_ids,
+    login_as_user,
+    post_restore,
+)
 from tests.utils_for_test import (
     count_tag_instances_in_utub,
-    get_csrf_token,
     get_utub_url_id,
     lock_utub,
     remove_member,
@@ -44,34 +53,6 @@ from tests.utils_for_test import (
 
 pytestmark = pytest.mark.trash
 
-AJAX_HEADERS = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
-FIRST_UTUB_ID = 1
-SECOND_UTUB_ID = 2
-FIRST_USER_ID = 1
-SECOND_USER_ID = 2
-THIRD_USER_ID = 3
-NONEXISTENT_ID = 99999
-
-
-def post_restore(
-    client: FlaskClient,
-    csrf_token: str,
-    utub_id: int,
-    utub_url_id: int,
-    body: dict[str, Any] | None = None,
-) -> Response:
-    return client.post(
-        url_for(ROUTES.URLS.RESTORE_URL, utub_id=utub_id, utub_url_id=utub_url_id),
-        json={} if body is None else body,
-        headers={**AJAX_HEADERS, "X-CSRFToken": csrf_token},
-    )
-
-
-def get_trash_url_ids(client: FlaskClient) -> list[int]:
-    response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
-    assert response.status_code == 200
-    return [item[MODELS.UTUB_URL_ID] for item in response.json[MODELS.URLS]]
-
 
 def get_trash_can_restore(client: FlaskClient) -> dict[int, bool]:
     response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
@@ -80,59 +61,6 @@ def get_trash_can_restore(client: FlaskClient) -> dict[int, bool]:
         item[MODELS.UTUB_URL_ID]: item[MODELS.CAN_RESTORE]
         for item in response.json[MODELS.URLS]
     }
-
-
-@contextmanager
-def login_as_user(app: Flask, user_id: int) -> Iterator[Tuple[FlaskClient, str]]:
-    """Log an arbitrary seeded user in; yields their client and CSRF token.
-
-    The client is used as a context manager (like the login fixtures) so the session
-    cookie holding the CSRF secret survives across requests. The harness keeps one app
-    context alive for the whole test, so request-scoped values on ``g`` would carry the
-    first client's identity and CSRF token into this one; they are cleared on entry and
-    again on exit so the fixture client is not left seeing this user.
-    """
-    app.test_client_class = AjaxFlaskLoginClient
-    with app.app_context():
-        user_to_login: Users = Users.query.get(user_id)
-    clear_shared_request_caches()
-    try:
-        with app.test_client(user=user_to_login) as logged_in_client:
-            csrf_token = get_csrf_token(
-                logged_in_client.get("/home").get_data(), meta_tag=True
-            )
-            yield logged_in_client, csrf_token
-    finally:
-        clear_shared_request_caches()
-
-
-def clear_shared_request_caches() -> None:
-    """Drop Flask-Login's and Flask-WTF's per-request caches on ``g``."""
-    for cached_attribute in ("_login_user", "csrf_token"):
-        if hasattr(g, cached_attribute):
-            delattr(g, cached_attribute)
-
-
-def assert_not_in_trash_response(response: Response) -> None:
-    assert response.status_code == 404
-    response_json = response.json
-    assert response_json[STD_JSON_RESPONSE.STATUS] == STD_JSON_RESPONSE.FAILURE
-    assert response_json[STD_JSON_RESPONSE.MESSAGE] == TRASH_FAILURE.NOT_IN_TRASH
-    assert response_json[STD_JSON_RESPONSE.ERROR_CODE] == URLErrorCodes.NOT_IN_TRASH
-
-
-def get_row_state(app: Flask, utub_url_id: int) -> dict[str, Any]:
-    with app.app_context():
-        utub_url: Utub_Urls = Utub_Urls.query.get(utub_url_id)
-        return {
-            "deleted_at": utub_url.deleted_at,
-            "deleted_by": utub_url.deleted_by,
-            "trashed_tag_ids": utub_url.trashed_tag_ids,
-            "user_id": utub_url.user_id,
-            "added_at": utub_url.added_at,
-            "url_title": utub_url.url_title,
-            "last_accessed": utub_url.last_accessed,
-        }
 
 
 def test_adder_restores_own_url_in_place(
@@ -606,15 +534,16 @@ def test_restore_without_json_body_is_bad_request(
     assert get_row_state(app, row_id)["deleted_at"] is not None
 
 
-@pytest.mark.parametrize("bad_destination", [0, -1])
-def test_restore_with_non_positive_destination_is_bad_request(
+@pytest.mark.parametrize("bad_destination", [0, -1, 2147483648])
+def test_restore_with_out_of_range_destination_is_bad_request(
     add_mixed_delete_permission_urls_in_first_utub,
     login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
     bad_destination: int,
 ):
     """
     GIVEN a URL trashed in UTub 1
-    WHEN user 1 restores it with a non-positive destUtubId
+    WHEN user 1 restores it with a destUtubId that is non-positive or above the
+        32-bit integer id range
     THEN the schema rejects it with a 400 whose field errors are keyed on destUtubId,
         not the service's INVALID_DESTINATION, and the row is still trashed
     """

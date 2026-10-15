@@ -1,5 +1,8 @@
 from typing import NamedTuple
 
+from flask import abort
+from sqlalchemy.exc import IntegrityError
+
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs, warning_log
@@ -7,16 +10,22 @@ from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.schemas.errors import build_message_error_response
+from backend.schemas.errors import (
+    build_message_error_response,
+    build_url_conflict_error_response,
+)
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.trash import UrlRestoredResponseSchema
 from backend.schemas.urls import UtubUrlSchema
 from backend.tags.services.create_url_tag import get_tag_applied_counts
 from backend.urls.constants import URLErrorCodes, UrlRestoreTarget
+from backend.urls.services.create_urls import check_url_already_in_utub
 from backend.urls.services.delete_urls import recompute_tag_counts_after_delete
 from backend.urls.services.trashed_url_tags import count_lost_trashed_tags
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.trash_strs import TRASH_FAILURE, TRASH_SUCCESS
 from backend.utubs.guards import reject_if_utub_locked
 from backend.utubs.services.trash_predicates import trashed_url_rows_actionable_by
@@ -90,6 +99,168 @@ def _lock_actionable_trashed_url(
     )
 
 
+def _is_unique_url_per_utub_violation(integrity_error: IntegrityError) -> bool:
+    """Whether ``integrity_error`` is a collision on the ``unique_url_per_utub`` constraint."""
+    diagnostics = getattr(integrity_error.orig, "diag", None)
+    return getattr(diagnostics, "constraint_name", None) == "unique_url_per_utub"
+
+
+def _restore_url_into_destination(
+    *, locked: LockedTrashedUrl, dest_utub_id: int | None, current_user_id: int
+) -> FlaskResponse:
+    """Move a URL out of its trashed UTub into a live UTub the restorer belongs to.
+
+    Tags are per-UTub, so none come along: the row's tag associations are deleted and
+    their count is reported as ``lostTagCount``. The restorer is credited as the adder
+    (``user_id`` and ``added_at``), the title is kept, and the origin UTub stays trashed.
+    The destination is not row-locked: a concurrent add of the same URL into it is
+    caught by the ``unique_url_per_utub`` constraint on the flush instead, which keeps
+    the lock order to the single URL row.
+
+    Args:
+        locked (LockedTrashedUrl): The row-locked trashed URL, its trashed origin UTub
+            and the actor's membership of that origin
+        dest_utub_id (int | None): The requested destination UTub, if any
+        current_user_id (int): The acting user
+
+    Returns:
+        FlaskResponse: 200 with the moved URL card; 400 when no destination is given or
+        it is the origin itself; 403 when the destination is locked; 409 when the
+        destination already holds the URL (live or trashed). A destination that is
+        missing, trashed or not the actor's aborts with the masked 404 instead.
+    """
+    utub_url, origin_utub, _origin_membership = locked
+    origin_utub_id: int = origin_utub.id
+    utub_url_id: int = utub_url.id
+
+    if dest_utub_id is None:
+        db.session.rollback()
+        return build_message_error_response(
+            message=TRASH_FAILURE.DESTINATION_REQUIRED,
+            error_code=URLErrorCodes.DESTINATION_REQUIRED,
+            status_code=400,
+        )
+
+    if dest_utub_id == origin_utub_id:
+        db.session.rollback()
+        return build_message_error_response(
+            message=TRASH_FAILURE.INVALID_DESTINATION,
+            error_code=URLErrorCodes.INVALID_DESTINATION,
+            status_code=400,
+        )
+
+    # Any member may add URLs, so membership is the only requirement. A missing, trashed
+    # or non-member destination is one masked 404, the copy-URLs precedent.
+    destination_row: tuple[Utubs, Utub_Members] | None = (
+        db.session.query(Utubs, Utub_Members)
+        .join(Utub_Members, Utub_Members.utub_id == Utubs.id)
+        .filter(
+            Utubs.id == dest_utub_id,
+            Utubs.deleted_at.is_(None),
+            Utub_Members.user_id == current_user_id,
+        )
+        .populate_existing()
+        .one_or_none()
+    )
+    if destination_row is None:
+        db.session.rollback()
+        abort(404)
+    dest_utub, dest_membership = destination_row
+
+    dest_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        dest_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if dest_locked_error is not None:
+        db.session.rollback()
+        return dest_locked_error
+
+    url_string: str = utub_url.standalone_url.url_string
+    url_id: int = utub_url.url_id
+
+    def build_already_in_destination_response() -> FlaskResponse:
+        """The 409 naming the URL, shared by the pre-check and the lost-race path."""
+        return build_url_conflict_error_response(
+            message=TRASH_FAILURE.URL_ALREADY_IN_DESTINATION,
+            url_string=url_string,
+            error_code=URLErrorCodes.URL_ALREADY_IN_DESTINATION,
+        )
+
+    # Counts a trashed occupant too: the unique constraint covers trashed rows.
+    if check_url_already_in_utub(dest_utub_id, url_id) is not None:
+        db.session.rollback()
+        return build_already_in_destination_response()
+
+    try:
+        # Every tag the URL had in its origin; read BEFORE the associations are deleted.
+        lost_tag_count: int = len(
+            set(utub_url.trashed_tag_ids or []) | set(utub_url.associated_tag_ids)
+        )
+
+        Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == utub_url_id).delete(
+            synchronize_session=False
+        )
+        db.session.expire(utub_url, ["url_tags"])
+
+        # Reassign (never mutate) the JSONB snapshot. The title is kept; the restorer
+        # is credited as the adder, unlike an in-place restore.
+        utub_url.utub_id = dest_utub_id
+        utub_url.user_id = current_user_id
+        utub_url.added_at = utc_now()
+        utub_url.deleted_at = None
+        utub_url.deleted_by = None
+        utub_url.trashed_tag_ids = None
+        db.session.flush()
+
+        dest_utub.set_last_updated()
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        if isinstance(exc, IntegrityError) and _is_unique_url_per_utub_violation(exc):
+            warning_log(
+                f"User={current_user_id} lost a race restoring UTubURL.id={utub_url_id} "
+                f"into UTub.id={dest_utub_id}"
+            )
+            return build_already_in_destination_response()
+        warning_log(
+            f"Restore trashed URL into destination failed | UTub.id={origin_utub_id} "
+            f"| UTubURL.id={utub_url_id} | error_type={type(exc).__name__}"
+        )
+        raise
+
+    record_event(
+        EventName.URL_RESTORED_FROM_TRASH,
+        dimensions={"restore_target": UrlRestoreTarget.DESTINATION.value},
+    )
+    safe_add_many_logs(
+        [
+            "Restored trashed UTubURL into a destination UTub",
+            f"User.id={current_user_id}",
+            f"Origin UTub.id={origin_utub_id}",
+            f"Destination UTub.id={dest_utub_id}",
+            f"UTubURL.id={utub_url_id}",
+        ]
+    )
+
+    viewer_is_manager: bool = dest_membership.member_role in (
+        Member_Role.CREATOR,
+        Member_Role.CO_CREATOR,
+    )
+    return APIResponse(
+        message=TRASH_SUCCESS.URL_RESTORED,
+        data=UrlRestoredResponseSchema(
+            utub_id=dest_utub_id,
+            utub_name=dest_utub.name,
+            url=UtubUrlSchema.from_orm_url(
+                utub_url, current_user_id, viewer_is_manager
+            ),
+            restored_to_destination=True,
+            applied_tags=[],
+            tag_counts_modified={},
+            lost_tag_count=lost_tag_count,
+        ),
+    ).to_response()
+
+
 def restore_trashed_url(
     *,
     utub_id: int,
@@ -126,12 +297,8 @@ def restore_trashed_url(
     utub_url, origin_utub, membership = resolved
 
     if origin_utub.deleted_at is not None:
-        # Step 3: replace with the move-into-destination branch.
-        db.session.rollback()
-        return build_message_error_response(
-            message=TRASH_FAILURE.DESTINATION_REQUIRED,
-            error_code=URLErrorCodes.DESTINATION_REQUIRED,
-            status_code=400,
+        return _restore_url_into_destination(
+            locked=resolved, dest_utub_id=dest_utub_id, current_user_id=current_user_id
         )
 
     if dest_utub_id not in (None, utub_id):

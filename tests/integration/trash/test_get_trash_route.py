@@ -20,6 +20,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
 from scripts.trash_retention import TRASH_RETENTION_DAYS
+from tests.integration.trash.trash_helpers import AJAX_HEADERS
 from tests.utils_for_test import (
     get_utub_url_id,
     lock_utub,
@@ -31,7 +32,6 @@ from tests.utils_for_test import (
 
 pytestmark = pytest.mark.trash
 
-AJAX_HEADERS = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
 FIRST_UTUB_ID = 1
 FIRST_USER_ID = 1
 SECOND_USER_ID = 2
