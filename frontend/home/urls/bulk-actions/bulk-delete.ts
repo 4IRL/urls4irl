@@ -77,6 +77,12 @@ let bulkDeleteConfirmOpen = false;
 // close, and reset to false on each confirm open + after each handled close.
 let suppressFocusReturn = false;
 let submitInFlight = false;
+
+// Read-only view of the flag for the refresh-on-focus busy gate.
+export function isBulkDeleteSubmitInFlight(): boolean {
+  return submitInFlight;
+}
+
 let loadingTimeoutID: number | null = null;
 
 /** Whether the bulk-delete confirm modal is currently open. */

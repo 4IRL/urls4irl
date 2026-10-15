@@ -62,7 +62,7 @@ Core domain: `Users` -> `Utub_Members` (with `Member_Role`: MEMBER/CREATOR/CO_CR
 
 ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.3.
 
-`Utub_Members` carries the partial unique index `uq_utub_members_single_creator` (one CREATOR row per UTub); the locking and flush-ordering rules that keep writers compatible with it are in the UTub row lock note under Key Decorators.
+`Utub_Members` carries the partial unique index `uq_utub_members_single_creator` (one CREATOR row per UTub); the locking and flush-ordering rules that keep writers compatible with it are in the UTub row lock note under Key Decorators. `last_opened_at` (serialized as `lastOpenedAt`) is the per-member last-open time: opening a UTub writes it instead of `Utubs.last_updated`, and the sidebar sorts by the later of it and the UTub's `last_updated`.
 
 `Utubs` and `Utub_Urls` carry nullable soft-delete columns (`deletedAt`, `deletedBy`; `Utub_Urls` also has the `trashedTagIds` tag snapshot), where `NULL` means live. The `Utubs` columns are live: deleting a UTub sets them (a 30-day trash), and the membership gates, deck list, co-member/cross-UTub search, URL copy and Settings stats exclude trashed UTubs (admin, data export, account erasure and the anonymous gauges still see them by design). The `Utub_Urls` columns are live too: deleting a URL sets them and snapshots `trashedTagIds` while keeping its `Utub_Url_Tags`. The URL gates, deck, search, copy, bulk tag/delete targets, every tag count and Settings stats exclude trashed URLs, and re-adding a trashed URL revives the row in place. Editing a card's link to a URL trashed in the same UTub revives that row and trashes the edited one, copy-to-UTub revives a trashed destination row, and bulk delete silently skips already-trashed ids. Admin, data export, account erasure and the gauges still see trashed URLs.
 
@@ -135,7 +135,10 @@ All app-owned `localStorage` keys are prefixed `u4i:` to avoid collisions with t
 - **create.ts** — UTub creation form and AJAX POST
 - **delete.ts** — UTub deletion with confirmation
 - **search.ts** — UTub name search with show/hide
-- **stale-data.ts** — Stale data detection and handling
+- **stale-data.ts** — Stale data detection and handling; also the apply path of refresh-on-focus (`isBackgroundRefresh`: read-only fetch, stale/busy/mid-flight guards, no-op short-circuit)
+- **remove-local.ts** — `removeUTubLocally()`, the shared local removal of a UTub (sidebar entry, state, lock state, history), used by `deleteUTubSuccess` and by a background refresh that finds the UTub gone
+- **background-refresh-flag.ts** — dependency-free leaf holding the "background refresh active" flag, so refresh-time code paths can skip user-facing side effects (e.g. the swipe nudge) without an import cycle
+- **refresh-on-focus.ts** — `initUTubRefreshOnFocus()`: on return to the tab (visibilitychange/window focus) refreshes the selected UTub at most once per 30s (`UTUB_REFRESH_MIN_INTERVAL_MS`), skipped while `isUserBusyOnHome()` (open form/modal/picker/panel, multi-select, in-flight submit, cross-UTub search); the debounce clock advances at dispatch
 - **utils.ts** — `isValidUTubID()`, `getActiveUTubID()`, `isUTubSelected()`, `getNumOfUTubs()`, `getAllUTubs()`
 
 **frontend/home/urls/ — URL Deck:**

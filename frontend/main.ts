@@ -31,6 +31,7 @@ import { initURLDeck } from "./home/urls/deck.js";
 import { initBulkActions } from "./home/urls/bulk-actions/index.js";
 import { initSwipe } from "./home/urls/cards/swipe.js";
 import { initURLDeckHeaderFit } from "./home/utubs/header-fit.js";
+import { initUTubRefreshOnFocus } from "./home/utubs/refresh-on-focus.js";
 import { initTagSheet } from "./home/tags/sheet.js";
 import {
   applyDefaultDensity,
@@ -54,6 +55,8 @@ $(document).ready(() => {
 
   initBtnsForms();
   initVisibilityHandlers();
+  // Right after initVisibilityHandlers(): focus restoration runs first.
+  initUTubRefreshOnFocus();
   initNavbar();
   initMobileLayout();
   initCollapsibleDecks();

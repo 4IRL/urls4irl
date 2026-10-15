@@ -40,6 +40,11 @@ let descEditOpenedViaKeyboard = false;
 // aria-disabled (never native `disabled`, which would drop focus).
 let descriptionSubmitInFlight = false;
 
+// Read-only view of the flag for the refresh-on-focus busy gate.
+export function isUTubDescriptionSubmitInFlight(): boolean {
+  return descriptionSubmitInFlight;
+}
+
 export function clearDescriptionSubmitInFlight(): void {
   descriptionSubmitInFlight = false;
   $("#utubDescriptionSubmitBtnUpdate").removeAttr("aria-disabled");
