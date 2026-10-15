@@ -1511,6 +1511,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/trash": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description List the trashed URLs and UTubs the current user can restore or delete */
+    get: operations["getTrash"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/name": {
     parameters: {
       query?: never;
@@ -1926,7 +1943,22 @@ export interface components {
      * @description Error codes for URLErrorCodes
      * @enum {integer}
      */
-    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+    URLErrorCodes:
+      | 1
+      | 2
+      | 3
+      | 4
+      | 5
+      | 6
+      | 7
+      | 8
+      | 9
+      | 10
+      | 11
+      | 12
+      | 13
+      | 14
+      | 15;
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -2155,7 +2187,7 @@ export interface components {
      * @description Error codes for UTubErrorCodes
      * @enum {integer}
      */
-    UTubErrorCodes: 1 | 2 | 3;
+    UTubErrorCodes: 1 | 2 | 3 | 4 | 5;
     UtubSummaryItemSchema: {
       /** @description Unique UTub ID */
       id: number;
@@ -3443,6 +3475,96 @@ export interface components {
        * @default null
        */
       password: string | null;
+    };
+    /** @description One URL row in the current user's Trash (trashed on its own or with its UTub) */
+    TrashedUrlItemSchema: {
+      /** @description ID of the trashed UTub-URL row */
+      utubUrlID: number;
+      /** @description The URL string */
+      urlString: string;
+      /** @description Title of the URL in its origin UTub */
+      urlTitle: string;
+      /** @description ID of the origin UTub */
+      utubID: number;
+      /** @description Name of the origin UTub */
+      utubName: string;
+      /** @description Whether the origin UTub is itself in Trash */
+      originUtubTrashed: boolean;
+      /** @description Whether the origin UTub is locked (frozen to mutations) */
+      originUtubLocked: boolean;
+      /** @description Whether the URL was trashed only because its UTub was trashed */
+      trashedWithUtub: boolean;
+      /**
+       * Format: date-time
+       * @description Effective time the URL entered Trash (ISO 8601)
+       */
+      deletedAt: string;
+      /**
+       * Format: date-time
+       * @description When the URL is permanently deleted (ISO 8601)
+       */
+      expiresAt: string;
+      /** @description User ID of whoever put the URL in Trash (effective) */
+      deletedByUserID: number;
+      /** @description Username of whoever put the URL in Trash (effective) */
+      deletedByUsername: string;
+      /** @description User ID of the member who added the URL */
+      addedByUserID: number;
+      /** @description Username of the member who added the URL */
+      addedByUsername: string;
+      /** @description Whether the current user can restore this URL right now */
+      canRestore: boolean;
+      /** @description Whether the current user can permanently delete this URL right now */
+      canDelete: boolean;
+    };
+    /** @description One trashed UTub in the current creator's Trash */
+    TrashedUtubItemSchema: {
+      /** @description ID of the trashed UTub */
+      utubID: number;
+      /** @description Name of the trashed UTub */
+      utubName: string;
+      /** @description Description of the trashed UTub */
+      utubDescription: string | null;
+      /**
+       * Format: date-time
+       * @description When the UTub entered Trash (ISO 8601)
+       */
+      deletedAt: string;
+      /**
+       * Format: date-time
+       * @description When the UTub is permanently deleted (ISO 8601)
+       */
+      expiresAt: string;
+      /** @description User ID of whoever put the UTub in Trash */
+      deletedByUserID: number;
+      /** @description Username of whoever put the UTub in Trash */
+      deletedByUsername: string;
+      /** @description Number of live URLs a restore would bring back */
+      urlCount: number;
+      /** @description Number of members in the UTub */
+      memberCount: number;
+      /** @description Whether the UTub is locked (frozen to mutations) */
+      isLocked: boolean;
+      /** @description Whether the current user can restore this UTub right now */
+      canRestore: boolean;
+      /** @description Whether the current user can permanently delete this UTub right now */
+      canDelete: boolean;
+    };
+    /** @description The current user's Trash: actionable URL rows and trashed UTubs */
+    TrashListResponseSchema: {
+      /** @description Trashed URLs the user may act on, newest first */
+      urls: components["schemas"]["TrashedUrlItemSchema"][];
+      /** @description Trashed UTubs the user created, newest first */
+      utubs: components["schemas"]["TrashedUtubItemSchema"][];
+      /** @description ID of the currently authenticated user */
+      currentUser: number;
+      /** @description Days an item stays in Trash before permanent deletion */
+      retentionDays: number;
+      /**
+       * Format: date-time
+       * @description Server time the list was read (ISO 8601)
+       */
+      listedAt: string;
     };
     AddTagsToUrlsRequest: {
       /**
@@ -9053,6 +9175,27 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getTrash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The current user's Trash: actionable URL rows and trashed UTubs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["TrashListResponseSchema"];
         };
       };
     };

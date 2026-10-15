@@ -1254,3 +1254,12 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubNameRequest`; response: `backend.schemas.utubs.UtubNameUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubNameUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `updateUTubName`
+
+### `GET /utubs/trash` — `utubs.get_trash`
+
+- **Handler:** `backend/utubs/routes.py:get_trash`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.utubs.services.read_trash:get_trash_for_user`
+- **Schema:** response: `backend.schemas.trash.TrashListResponseSchema`; status: 200 `backend.schemas.trash.TrashListResponseSchema`
+- **Template:** —
+- **JS:** keys: `getTrash`

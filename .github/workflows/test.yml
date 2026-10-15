@@ -74,6 +74,7 @@ jobs:
           - ['CLI Integration Tests', 'cli', 3]
           - ['Mobile API Integration Tests', 'mobile_api', 3]
           - ['Admin Integration Tests', 'admin', 3]
+          - ['Trash Integration Tests', 'trash', 3]
 
     name: ${{ format('{0}', matrix.worker[0]) }}
 

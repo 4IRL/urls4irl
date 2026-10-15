@@ -12,6 +12,16 @@ class URLErrorCodes(IntEnum):
     UTUB_IS_LOCKED = 8
     UNABLE_TO_COPY_URLS_ERROR = 9
     UNABLE_TO_DELETE_URLS_ERROR = 10
+    NOT_IN_TRASH = 11
+    DESTINATION_REQUIRED = 12
+    INVALID_DESTINATION = 13
+    URL_ALREADY_IN_DESTINATION = 14
+    UNABLE_TO_RESTORE_URL_ERROR = 15
+
+
+class UrlRestoreTarget(StrEnum):
+    ORIGIN = "origin"
+    DESTINATION = "destination"
 
 
 class BulkCopySkipReason(StrEnum):

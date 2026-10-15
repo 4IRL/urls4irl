@@ -43,7 +43,7 @@ from tests.unit.stdlib_only_utils import assert_module_is_stdlib_only
 pytestmark = pytest.mark.unit
 
 DECLARED_MARKERS: set[str] = read_declared_markers(PYTEST_INI)
-DECLARED_MARKER_COUNT: int = 23
+DECLARED_MARKER_COUNT: int = 24
 MERGE_BASE_SHA: str = "abc123"
 
 
@@ -796,7 +796,11 @@ def test_selection_splits_integration_and_ui_markers() -> None:
     """
     selection = _resolve(["backend/urls/services/create_urls.py"])
 
-    assert selection.integration_markers(DECLARED_MARKERS) == ["mobile_api", "urls"]
+    assert selection.integration_markers(DECLARED_MARKERS) == [
+        "mobile_api",
+        "trash",
+        "urls",
+    ]
     assert selection.ui_markers(DECLARED_MARKERS) == [
         "create_urls_ui",
         "mobile_ui",
@@ -830,7 +834,7 @@ def test_read_declared_markers_reads_the_committed_pytest_ini() -> None:
     """
     GIVEN the committed pytest.ini
     WHEN its markers block is parsed
-    THEN all 23 declared markers come back
+    THEN all 24 declared markers come back
     """
     assert len(DECLARED_MARKERS) == DECLARED_MARKER_COUNT
     assert {"unit", "mobile_api", "create_urls_ui", "admin_ui"} <= DECLARED_MARKERS
@@ -1388,7 +1392,7 @@ def test_main_expr_joins_several_markers_with_or(
         capsys,
     )
 
-    assert (exit_code, out) == (0, "mobile_api or urls\n")
+    assert (exit_code, out) == (0, "mobile_api or trash or urls\n")
 
 
 @pytest.mark.parametrize("files", [[], ["README.md"]])

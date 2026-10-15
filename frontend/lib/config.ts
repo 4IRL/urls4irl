@@ -20,7 +20,8 @@ export type RouteId =
   | "contactUs"
   | "crossUtubSearch"
   | "copyURLsToUtubs"
-  | "bulkDeleteURLs";
+  | "bulkDeleteURLs"
+  | "getTrash";
 
 export interface AppRoutes {
   // Static routes (string values)
@@ -41,6 +42,9 @@ export interface AppRoutes {
   contactUs: string;
   crossUtubSearch: string;
   metricsIngest: string;
+
+  // No-param routes (function-valued)
+  getTrash: () => string;
 
   // Dynamic single-param routes
   getUTub: (id: number) => string;
@@ -158,6 +162,9 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     oauthGithubLogin: rawConfig.routes.oauthGithubLogin,
     errorPage: rawConfig.routes.errorPage,
     logout: rawConfig.routes.logout,
+
+    // No-param routes
+    getTrash: () => rawConfig.routes.getTrash,
 
     getUTub: (id: number) => rawConfig.routes.getUTub.replace("-1", String(id)),
     deleteUTub: (id: number) =>

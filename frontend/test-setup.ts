@@ -67,6 +67,7 @@ const appConfig = {
     forgotPassword: "/forgot-password",
     errorPage: "/error",
     logout: "/logout",
+    getTrash: "/utubs/trash",
     getUTub: "/utubs/-1",
     deleteUTub: "/utubs/-1",
     transferUtubOwnership: "/utubs/-1/owner",

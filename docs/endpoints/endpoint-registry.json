@@ -4447,6 +4447,39 @@
       "templates": []
     },
     {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.get_trash",
+      "handler": "backend/utubs/routes.py:get_trash",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "getTrash"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/utubs/trash",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.trash.TrashListResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.TrashListResponseSchema"
+        }
+      },
+      "services": [
+        "backend.utubs.services.read_trash:get_trash_for_user"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "urls",
       "decorators": [
         "email_validation_required",

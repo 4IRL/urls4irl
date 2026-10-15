@@ -5,6 +5,7 @@ from flask import (
     request,
     url_for,
 )
+from flask_login import current_user
 from werkzeug.wrappers import Response as WerkzeugResponse
 
 from backend.api_common.auth_decorators import (
@@ -22,6 +23,7 @@ from backend.schemas.requests.utubs import (
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
 )
+from backend.schemas.trash import TrashListResponseSchema
 from backend.schemas.users import UtubSummaryListSchema
 from backend.schemas.utubs import (
     UtubCreatedResponseSchema,
@@ -49,6 +51,7 @@ from backend.utubs.services.home_page import (
     validate_home_query_params,
     validate_user_is_member_of_utub_on_home_page_with_query_param,
 )
+from backend.utubs.services.read_trash import get_trash_for_user
 from backend.utubs.services.read_utubs import (
     get_all_utubs_of_user,
     get_single_utub_for_user,
@@ -174,6 +177,21 @@ def get_utubs() -> FlaskResponse:
     User wants a summary of their UTubs in JSON format.
     """
     return get_all_utubs_of_user()
+
+
+@utubs.route("/utubs/trash", methods=["GET"])
+@email_validation_required
+@api_route(
+    response_schema=TrashListResponseSchema,
+    tags=[OPEN_API.UTUBS],
+    description="List the trashed URLs and UTubs the current user can restore or delete",
+    status_codes={200: TrashListResponseSchema},
+)
+def get_trash() -> FlaskResponse:
+    """
+    User wants the contents of their Trash: URLs they may act on and UTubs they created.
+    """
+    return get_trash_for_user(current_user_id=current_user.id)
 
 
 @utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])

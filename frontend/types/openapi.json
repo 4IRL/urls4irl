@@ -8203,6 +8203,37 @@
         }
       }
     },
+    "/utubs/trash": {
+      "get": {
+        "operationId": "getTrash",
+        "tags": ["utubs"],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "List the trashed URLs and UTubs the current user can restore or delete",
+        "responses": {
+          "200": {
+            "description": "The current user's Trash: actionable URL rows and trashed UTubs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TrashListResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/name": {
       "patch": {
         "operationId": "updateUtubName",
@@ -9442,7 +9473,7 @@
       },
       "URLErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -9453,7 +9484,12 @@
           "EMPTY_URL",
           "UTUB_IS_LOCKED",
           "UNABLE_TO_COPY_URLS_ERROR",
-          "UNABLE_TO_DELETE_URLS_ERROR"
+          "UNABLE_TO_DELETE_URLS_ERROR",
+          "NOT_IN_TRASH",
+          "DESTINATION_REQUIRED",
+          "INVALID_DESTINATION",
+          "URL_ALREADY_IN_DESTINATION",
+          "UNABLE_TO_RESTORE_URL_ERROR"
         ],
         "description": "Error codes for URLErrorCodes"
       },
@@ -9938,11 +9974,13 @@
       },
       "UTubErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3],
+        "enum": [1, 2, 3, 4, 5],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
-          "UTUB_IS_LOCKED"
+          "UTUB_IS_LOCKED",
+          "NOT_IN_TRASH",
+          "UNABLE_TO_EMPTY_TRASH_ERROR"
         ],
         "description": "Error codes for UTubErrorCodes"
       },
@@ -12340,6 +12378,213 @@
             "description": "Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead"
           }
         },
+        "type": "object"
+      },
+      "TrashedUrlItemSchema": {
+        "description": "One URL row in the current user's Trash (trashed on its own or with its UTub)",
+        "properties": {
+          "utubUrlID": {
+            "description": "ID of the trashed UTub-URL row",
+            "type": "integer"
+          },
+          "urlString": {
+            "description": "The URL string",
+            "type": "string"
+          },
+          "urlTitle": {
+            "description": "Title of the URL in its origin UTub",
+            "type": "string"
+          },
+          "utubID": {
+            "description": "ID of the origin UTub",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the origin UTub",
+            "type": "string"
+          },
+          "originUtubTrashed": {
+            "description": "Whether the origin UTub is itself in Trash",
+            "type": "boolean"
+          },
+          "originUtubLocked": {
+            "description": "Whether the origin UTub is locked (frozen to mutations)",
+            "type": "boolean"
+          },
+          "trashedWithUtub": {
+            "description": "Whether the URL was trashed only because its UTub was trashed",
+            "type": "boolean"
+          },
+          "deletedAt": {
+            "description": "Effective time the URL entered Trash (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "When the URL is permanently deleted (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "deletedByUserID": {
+            "description": "User ID of whoever put the URL in Trash (effective)",
+            "type": "integer"
+          },
+          "deletedByUsername": {
+            "description": "Username of whoever put the URL in Trash (effective)",
+            "type": "string"
+          },
+          "addedByUserID": {
+            "description": "User ID of the member who added the URL",
+            "type": "integer"
+          },
+          "addedByUsername": {
+            "description": "Username of the member who added the URL",
+            "type": "string"
+          },
+          "canRestore": {
+            "description": "Whether the current user can restore this URL right now",
+            "type": "boolean"
+          },
+          "canDelete": {
+            "description": "Whether the current user can permanently delete this URL right now",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "utubUrlID",
+          "urlString",
+          "urlTitle",
+          "utubID",
+          "utubName",
+          "originUtubTrashed",
+          "originUtubLocked",
+          "trashedWithUtub",
+          "deletedAt",
+          "expiresAt",
+          "deletedByUserID",
+          "deletedByUsername",
+          "addedByUserID",
+          "addedByUsername",
+          "canRestore",
+          "canDelete"
+        ],
+        "type": "object"
+      },
+      "TrashedUtubItemSchema": {
+        "description": "One trashed UTub in the current creator's Trash",
+        "properties": {
+          "utubID": {
+            "description": "ID of the trashed UTub",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the trashed UTub",
+            "type": "string"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the trashed UTub"
+          },
+          "deletedAt": {
+            "description": "When the UTub entered Trash (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "When the UTub is permanently deleted (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "deletedByUserID": {
+            "description": "User ID of whoever put the UTub in Trash",
+            "type": "integer"
+          },
+          "deletedByUsername": {
+            "description": "Username of whoever put the UTub in Trash",
+            "type": "string"
+          },
+          "urlCount": {
+            "description": "Number of live URLs a restore would bring back",
+            "type": "integer"
+          },
+          "memberCount": {
+            "description": "Number of members in the UTub",
+            "type": "integer"
+          },
+          "isLocked": {
+            "description": "Whether the UTub is locked (frozen to mutations)",
+            "type": "boolean"
+          },
+          "canRestore": {
+            "description": "Whether the current user can restore this UTub right now",
+            "type": "boolean"
+          },
+          "canDelete": {
+            "description": "Whether the current user can permanently delete this UTub right now",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "utubID",
+          "utubName",
+          "utubDescription",
+          "deletedAt",
+          "expiresAt",
+          "deletedByUserID",
+          "deletedByUsername",
+          "urlCount",
+          "memberCount",
+          "isLocked",
+          "canRestore",
+          "canDelete"
+        ],
+        "type": "object"
+      },
+      "TrashListResponseSchema": {
+        "description": "The current user's Trash: actionable URL rows and trashed UTubs",
+        "properties": {
+          "urls": {
+            "description": "Trashed URLs the user may act on, newest first",
+            "items": {
+              "$ref": "#/components/schemas/TrashedUrlItemSchema"
+            },
+            "type": "array"
+          },
+          "utubs": {
+            "description": "Trashed UTubs the user created, newest first",
+            "items": {
+              "$ref": "#/components/schemas/TrashedUtubItemSchema"
+            },
+            "type": "array"
+          },
+          "currentUser": {
+            "description": "ID of the currently authenticated user",
+            "type": "integer"
+          },
+          "retentionDays": {
+            "description": "Days an item stays in Trash before permanent deletion",
+            "type": "integer"
+          },
+          "listedAt": {
+            "description": "Server time the list was read (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "urls",
+          "utubs",
+          "currentUser",
+          "retentionDays",
+          "listedAt"
+        ],
         "type": "object"
       },
       "AddTagsToUrlsRequest": {
