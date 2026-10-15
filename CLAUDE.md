@@ -254,7 +254,7 @@ All `make`/`docker`/`docker compose` targets used by this repo are already liste
 
 **CRITICAL:** Never run `make up` or `make up-built` without `d=1`. Without the detached flag, these commands stream Docker logs to stdout indefinitely and never exit. Always use `make up [p=ui|full] d=1` (or `make up-built [p=full] d=1`). With `d=1`, `make up` returns once the containers are started; `up-built d=1`, `start-built` and `tunnel` also wait for the vite build and a healthy `web` (see "Running the App"). Before starting containers, check what is already running with `make stack-info` (this checkout's project names, cached ports/URLs, hub `db` and `playwright` state and attached spokes). This spoke's container/health state is `docker ps --filter label=com.docker.compose.project=<project from stack-info>`; poll it until healthy.
 
-**Local Postgres:** one `db` cluster in the per-user hub holds every spoke's dev DB and every per-run test DB, and runs `fsync=off`, so a host crash may corrupt `pgdata`. Recovery **deletes all dev data in every spoke**: read `docs/development.md` → "Hub and spokes" (Local Postgres recovery) before running it.
+**Local Postgres:** one `db` cluster in the per-user hub holds every spoke's dev DB and every per-run test DB, and runs `fsync=off`, so a host crash may corrupt `pgdata`. Recovery **deletes all dev data in every spoke**: read `docs/development.md` → "Local Postgres recovery" (under "Hub and spokes") before running it.
 
 ### Running the App (Docker - recommended)
 
