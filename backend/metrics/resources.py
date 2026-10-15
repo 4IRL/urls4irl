@@ -69,6 +69,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.URL_ADDED_TO_UTUB: Resource.URL,
     EventName.URL_CREATE_REJECTED: Resource.URL,
     EventName.URL_REMOVED_FROM_UTUB: Resource.URL,
+    EventName.URL_RESTORED_FROM_TRASH: Resource.URL,
     EventName.URL_STRING_UPDATED: Resource.URL,
     EventName.URL_TITLE_UPDATED: Resource.URL,
     EventName.URL_TRACKING_PARAMS_STRIPPED: Resource.URL,

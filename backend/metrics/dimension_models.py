@@ -21,6 +21,7 @@ from backend.metrics.tag_batch import (
     URL_TAG_COUNT_BUCKETS,
 )
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
+from backend.urls.constants import URL_RESTORE_TARGETS
 
 # ---------------------------------------------------------------------------
 # Shared dimension literal aliases — extracted only when a literal appears in
@@ -490,6 +491,15 @@ class _DimMemberAddCandidatesLoaded(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimUrlRestoredFromTrash(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Closed set sourced from the same `URL_RESTORE_TARGETS` constant fed to the
+    # registry, so the audit set-compare between this Literal and the registry
+    # tuple can never drift.
+    restore_target: Literal[URL_RESTORE_TARGETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimMemberRoleChanged(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # Closed set sourced from the same `MEMBER_ROLE_CHANGE_VALUES` constant fed to
@@ -539,6 +549,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.URL_ADDED_TO_UTUB: _DimUrlAddedToUtub,
     EventName.URL_CREATE_REJECTED: _DimUrlCreateRejected,
     EventName.URL_REMOVED_FROM_UTUB: _DimDeviceOnly,
+    EventName.URL_RESTORED_FROM_TRASH: _DimUrlRestoredFromTrash,
     EventName.URL_STRING_UPDATED: _DimDeviceOnly,
     EventName.URL_TITLE_UPDATED: _DimDeviceOnly,
     EventName.URL_TRACKING_PARAMS_STRIPPED: _DimUrlTrackingParamsStripped,

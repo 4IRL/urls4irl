@@ -4235,6 +4235,43 @@
       "templates": []
     },
     {
+      "blueprint": "urls",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "urls.restore_url",
+      "handler": "backend/urls/routes.py:restore_url",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "restoreURL"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/restore",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.trash.RestoreUrlRequest",
+        "response": "backend.schemas.trash.UrlRestoredResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.UrlRestoredResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.trash_urls:restore_trashed_url"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "utub_url_tags",
       "decorators": [
         "utub_membership_with_valid_url_in_utub_required",

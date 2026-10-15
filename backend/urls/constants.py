@@ -24,6 +24,11 @@ class UrlRestoreTarget(StrEnum):
     DESTINATION = "destination"
 
 
+URL_RESTORE_TARGETS: tuple[str, ...] = tuple(
+    target.value for target in UrlRestoreTarget
+)
+
+
 class BulkCopySkipReason(StrEnum):
     DUPLICATE = "duplicate"
 

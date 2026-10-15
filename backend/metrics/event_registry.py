@@ -34,6 +34,7 @@ from backend.metrics.tag_batch import (
     URL_TAG_COUNT_BUCKETS,
 )
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
+from backend.urls.constants import URL_RESTORE_TARGETS
 
 
 @dataclass(frozen=True)
@@ -170,6 +171,11 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.URL_TITLE_UPDATED: EventRegistryEntry(
         description="URL title edited",
         category=EventCategory.DOMAIN,
+    ),
+    EventName.URL_RESTORED_FROM_TRASH: EventRegistryEntry(
+        description="A trashed URL restored, in place or into a destination UTub",
+        category=EventCategory.DOMAIN,
+        dimensions={"restore_target": URL_RESTORE_TARGETS},
     ),
     EventName.UTUB_TITLE_UPDATED: EventRegistryEntry(
         description="UTub name changed",

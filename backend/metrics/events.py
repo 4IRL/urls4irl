@@ -57,6 +57,7 @@ class EventName(StrEnum):
     URL_ADDED_TO_UTUB = "url_added_to_utub"
     URL_CREATE_REJECTED = "url_create_rejected"
     URL_REMOVED_FROM_UTUB = "url_removed_from_utub"
+    URL_RESTORED_FROM_TRASH = "url_restored_from_trash"
     URL_STRING_UPDATED = "url_string_updated"
     URL_TITLE_UPDATED = "url_title_updated"
     URL_TRACKING_PARAMS_STRIPPED = "url_tracking_params_stripped"

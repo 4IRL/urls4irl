@@ -38,6 +38,7 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
         EventName.URL_REMOVED_FROM_UTUB,
+        EventName.URL_RESTORED_FROM_TRASH,
         EventName.URL_STRING_UPDATED,
         EventName.URL_TRACKING_PARAMS_STRIPPED,
         EventName.UTUB_TAG_CREATED,

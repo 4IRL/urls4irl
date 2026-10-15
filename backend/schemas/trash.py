@@ -5,7 +5,9 @@ from datetime import datetime
 from pydantic import Field, field_serializer
 
 from backend.schemas.base import BaseSchema
-from backend.utils.strings.model_strs import MODELS
+from backend.schemas.tags import UtubTagSchema
+from backend.schemas.urls import UtubUrlSchema
+from backend.utils.strings.model_strs import MODELS, TAG_COUNTS_MODIFIED
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
 
 
@@ -166,3 +168,40 @@ class TrashListResponseSchema(BaseSchema):
     @field_serializer("listed_at")
     def serialize_listed_at(self, value: datetime) -> str:
         return value.isoformat()
+
+
+class UrlRestoredResponseSchema(BaseSchema):
+    """A trashed URL restored, in place or into a destination UTub"""
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub the URL is now live in",
+    )
+    utub_name: str = Field(
+        alias=UTUB_NAME,
+        description="Name of the UTub the URL is now live in",
+    )
+    url: UtubUrlSchema = Field(
+        alias=MODELS.URL,
+        description="The restored URL card, with its original adder and added-at time",
+    )
+    restored_to_destination: bool = Field(
+        default=False,
+        alias=MODELS.RESTORED_TO_DESTINATION,
+        description="True when the URL was moved into a destination UTub instead of restored in place",
+    )
+    applied_tags: list[UtubTagSchema] = Field(
+        default_factory=list,
+        alias=MODELS.APPLIED_TAGS,
+        description="Tags that survived on the restored URL, with UTub-wide applied counts",
+    )
+    tag_counts_modified: dict[int, int] = Field(
+        default_factory=dict,
+        alias=TAG_COUNTS_MODIFIED,
+        description="Map of tag ID to new UTub-wide applied count after the restore",
+    )
+    lost_tag_count: int = Field(
+        default=0,
+        alias=MODELS.LOST_TAG_COUNT,
+        description="How many of the URL's tags were deleted from the UTub while it sat in Trash",
+    )

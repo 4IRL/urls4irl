@@ -64,6 +64,7 @@ export interface AppRoutes {
   deleteURL: (utubId: number, urlId: number) => string;
   updateURL: (utubId: number, urlId: number) => string;
   updateURLTitle: (utubId: number, urlId: number) => string;
+  restoreURL: ({ utubId, urlId }: { utubId: number; urlId: number }) => string;
   createURLTag: (utubId: number, urlId: number) => string;
   createURLTagsBatch: (utubId: number, urlId: number) => string;
   deleteUTubTag: (utubId: number, tagId: number) => string;
@@ -192,6 +193,10 @@ export const APP_CONFIG: AppConfig = Object.freeze({
         .replace("-2", String(urlId)),
     updateURLTitle: (utubId: number, urlId: number) =>
       rawConfig.routes.updateURLTitle
+        .replace("-1", String(utubId))
+        .replace("-2", String(urlId)),
+    restoreURL: ({ utubId, urlId }: { utubId: number; urlId: number }) =>
+      rawConfig.routes.restoreURL
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
 

@@ -67,6 +67,7 @@ class URL_ROUTES:
     UPDATE_URL_TITLE = _URLS + "update_url_title"
     COPY_URLS_MULTI = _URLS + "copy_urls_to_utubs"
     DELETE_URLS_BULK = _URLS + "delete_urls_from_utub"
+    RESTORE_URL = _URLS + "restore_url"
 
 
 class USER_ROUTES:
@@ -251,6 +252,7 @@ JS_ROUTES: dict[str, JsRoute] = {
     ),
     "copyURLsToUtubs": JsRoute(URL_ROUTES.COPY_URLS_MULTI, {}),
     "bulkDeleteURLs": JsRoute(URL_ROUTES.DELETE_URLS_BULK, {"utub_id": -1}),
+    "restoreURL": JsRoute(URL_ROUTES.RESTORE_URL, {"utub_id": -1, "utub_url_id": -2}),
     # UTub URL Tag routes
     "createURLTag": JsRoute(
         URL_TAG_ROUTES.CREATE_URL_TAG, {"utub_id": -1, "utub_url_id": -2}

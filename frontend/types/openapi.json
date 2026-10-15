@@ -4987,6 +4987,7 @@
                 "url_added_to_utub",
                 "url_create_rejected",
                 "url_removed_from_utub",
+                "url_restored_from_trash",
                 "url_string_updated",
                 "url_title_updated",
                 "url_tracking_params_stripped",
@@ -5345,6 +5346,7 @@
                 "url_added_to_utub",
                 "url_create_rejected",
                 "url_removed_from_utub",
+                "url_restored_from_trash",
                 "url_string_updated",
                 "url_title_updated",
                 "url_tracking_params_stripped",
@@ -7341,6 +7343,110 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLErrorCodes": {
+            "$ref": "#/components/schemas/URLErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls/{utub_url_id}/restore": {
+      "post": {
+        "operationId": "restoreUrl",
+        "tags": ["urls"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Restore a trashed URL in place, or into a destination UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreUrlRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A trashed URL restored, in place or into a destination UTub",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlRestoredResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
                 }
               }
             }
@@ -11739,6 +11845,68 @@
           "totalDeleted",
           "totalSkipped"
         ],
+        "type": "object"
+      },
+      "RestoreUrlRequest": {
+        "properties": {
+          "destUtubId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Live UTub to restore into; required only when the origin UTub is trashed. The body itself is mandatory, so send {} when restoring in place.",
+            "examples": [2]
+          }
+        },
+        "type": "object"
+      },
+      "UrlRestoredResponseSchema": {
+        "description": "A trashed URL restored, in place or into a destination UTub",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub the URL is now live in",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the UTub the URL is now live in",
+            "type": "string"
+          },
+          "URL": {
+            "$ref": "#/components/schemas/UtubUrlSchema",
+            "description": "The restored URL card, with its original adder and added-at time"
+          },
+          "restoredToDestination": {
+            "default": false,
+            "description": "True when the URL was moved into a destination UTub instead of restored in place",
+            "type": "boolean"
+          },
+          "appliedTags": {
+            "description": "Tags that survived on the restored URL, with UTub-wide applied counts",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
+          },
+          "tagCountsInUtub": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Map of tag ID to new UTub-wide applied count after the restore",
+            "type": "object"
+          },
+          "lostTagCount": {
+            "default": 0,
+            "description": "How many of the URL's tags were deleted from the UTub while it sat in Trash",
+            "type": "integer"
+          }
+        },
+        "required": ["utubID", "utubName", "URL"],
         "type": "object"
       },
       "ChangeUsernameRequest": {

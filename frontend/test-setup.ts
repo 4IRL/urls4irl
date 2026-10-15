@@ -85,6 +85,7 @@ const appConfig = {
     applyTagsToURLs: "/utubs/-1/urls/tags/batch",
     copyURLsToUtubs: "/utubs/urls/copy",
     bulkDeleteURLs: "/utubs/-1/urls/delete",
+    restoreURL: "/utubs/-1/urls/-2/restore",
     deleteUTubTag: "/utubs/-1/tags/-2",
     createMember: "/utubs/-1/members",
     coMemberCandidates: "/utubs/-1/co-members",

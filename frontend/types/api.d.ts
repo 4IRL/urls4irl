@@ -1338,6 +1338,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/urls/{utub_url_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Restore a trashed URL in place, or into a destination UTub */
+    post: operations["restoreUrl"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/username": {
     parameters: {
       query?: never;
@@ -3112,6 +3129,39 @@ export interface components {
       totalDeleted: number;
       /** @description Total number of URLs skipped during the bulk delete */
       totalSkipped: number;
+    };
+    RestoreUrlRequest: {
+      /**
+       * @description Live UTub to restore into; required only when the origin UTub is trashed. The body itself is mandatory, so send {} when restoring in place.
+       * @default null
+       * @example 2
+       */
+      destUtubId: number | null;
+    };
+    /** @description A trashed URL restored, in place or into a destination UTub */
+    UrlRestoredResponseSchema: {
+      /** @description ID of the UTub the URL is now live in */
+      utubID: number;
+      /** @description Name of the UTub the URL is now live in */
+      utubName: string;
+      /** @description The restored URL card, with its original adder and added-at time */
+      URL: components["schemas"]["UtubUrlSchema"];
+      /**
+       * @description True when the URL was moved into a destination UTub instead of restored in place
+       * @default false
+       */
+      restoredToDestination: boolean;
+      /** @description Tags that survived on the restored URL, with UTub-wide applied counts */
+      appliedTags?: components["schemas"]["UtubTagSchema"][];
+      /** @description Map of tag ID to new UTub-wide applied count after the restore */
+      tagCountsInUtub?: {
+        [key: string]: number;
+      };
+      /**
+       * @description How many of the URL's tags were deleted from the UTub while it sat in Trash
+       * @default 0
+       */
+      lostTagCount: number;
     };
     ChangeUsernameRequest: {
       /**
@@ -7015,6 +7065,7 @@ export interface operations {
           | "url_added_to_utub"
           | "url_create_rejected"
           | "url_removed_from_utub"
+          | "url_restored_from_trash"
           | "url_string_updated"
           | "url_title_updated"
           | "url_tracking_params_stripped"
@@ -7257,6 +7308,7 @@ export interface operations {
           | "url_added_to_utub"
           | "url_create_rejected"
           | "url_removed_from_utub"
+          | "url_restored_from_trash"
           | "url_string_updated"
           | "url_title_updated"
           | "url_tracking_params_stripped"
@@ -8554,6 +8606,70 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  restoreUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["RestoreUrlRequest"];
+      };
+    };
+    responses: {
+      /** @description A trashed URL restored, in place or into a destination UTub */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlRestoredResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
         };
       };
     };
