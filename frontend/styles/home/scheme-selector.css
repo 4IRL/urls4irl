@@ -38,8 +38,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 6px;
-    min-width: 5.5rem;
-    /* Long schemes (e.g. "microsoft-edge") ellipsize instead of squeezing the
+    /* Sized to the scheme text (short schemes like "ftp" shrink the toggle).
+       Long schemes (e.g. "microsoft-edge") ellipsize instead of squeezing the
        URL input. */
     max-width: 40%;
     padding: 10px;
@@ -63,8 +63,9 @@
 
 .urlSchemeToggleCaret {
     flex: 0 0 auto;
-    font-size: 0.7rem;
-    color: var(--grayBadgeSelection);
+    font-size: 1.1rem;
+    line-height: 1;
+    color: var(--textPrimary);
 }
 
 /* Touch: the toggle must not hold a sticky tap state. Hover rules live only in
