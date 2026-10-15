@@ -34,6 +34,7 @@ from tests.integration.trash.trash_helpers import (
     THIRD_USER_ID,
     get_row_state,
     get_trash_url_ids,
+    get_trashed_utub_ids,
     login_as_user,
 )
 from tests.utils_for_test import (
@@ -84,12 +85,6 @@ def get_listed_utub_ids(client: FlaskClient) -> list[int]:
     response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS), headers=AJAX_HEADERS)
     assert response.status_code == 200
     return [item[MODELS.ID] for item in response.json[MODELS.UTUBS]]
-
-
-def get_trashed_utub_ids(client: FlaskClient) -> list[int]:
-    response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
-    assert response.status_code == 200
-    return [item[UTUB_ID] for item in response.json[MODELS.UTUBS]]
 
 
 def transfer_creator_by_erasure(app: Flask, utub_id: int, new_creator_id: int) -> None:

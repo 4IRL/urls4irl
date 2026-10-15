@@ -38,9 +38,14 @@ from tests.integration.trash.trash_helpers import (
     SECOND_UTUB_ID,
     THIRD_USER_ID,
     assert_not_in_trash_response,
+    count_url_tags_in_utub,
+    count_url_tags_of_row,
     get_row_state,
     get_trash_url_ids,
+    get_trashed_utub_ids,
     login_as_user,
+    row_exists,
+    utub_exists,
 )
 from tests.utils_for_test import (
     get_utub_url_id,
@@ -79,12 +84,6 @@ def assert_utub_not_in_trash_response(response: Response) -> None:
     assert response_json[STD_JSON_RESPONSE.ERROR_CODE] == UTubErrorCodes.NOT_IN_TRASH
 
 
-def get_trashed_utub_ids(client: FlaskClient) -> list[int]:
-    response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
-    assert response.status_code == 200
-    return [item[UTUB_ID] for item in response.json[MODELS.UTUBS]]
-
-
 def count_children(app: Flask, utub_id: int) -> dict[str, int]:
     with app.app_context():
         return {
@@ -98,28 +97,6 @@ def count_children(app: Flask, utub_id: int) -> dict[str, int]:
             ).count(),
             "urls": Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).count(),
         }
-
-
-def count_url_tags_of_row(app: Flask, utub_url_id: int) -> int:
-    with app.app_context():
-        return Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_url_id == utub_url_id
-        ).count()
-
-
-def count_url_tags_in_utub(app: Flask, utub_id: int) -> int:
-    with app.app_context():
-        return Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_id == utub_id).count()
-
-
-def row_exists(app: Flask, utub_url_id: int) -> bool:
-    with app.app_context():
-        return Utub_Urls.query.get(utub_url_id) is not None
-
-
-def utub_exists(app: Flask, utub_id: int) -> bool:
-    with app.app_context():
-        return Utubs.query.get(utub_id) is not None
 
 
 # URL purge

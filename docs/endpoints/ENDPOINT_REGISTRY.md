@@ -1299,3 +1299,12 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Schema:** response: `backend.schemas.trash.TrashListResponseSchema`; status: 200 `backend.schemas.trash.TrashListResponseSchema`
 - **Template:** —
 - **JS:** keys: `getTrash`
+
+### `POST /utubs/trash/empty` — `utubs.empty_trash`
+
+- **Handler:** `backend/utubs/routes.py:empty_trash`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.utubs.services.empty_trash:empty_trash_for_user`
+- **Schema:** request: `backend.schemas.requests.trash.EmptyTrashRequest`; response: `backend.schemas.trash.TrashEmptiedResponseSchema`; status: 200 `backend.schemas.trash.TrashEmptiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `emptyTrash`

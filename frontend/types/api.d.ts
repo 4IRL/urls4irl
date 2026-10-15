@@ -1562,6 +1562,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/trash/empty": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Permanently delete everything in one Trash tab that was listed by listedAt (items in locked UTubs are skipped and counted) */
+    post: operations["emptyTrash"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/restore": {
     parameters: {
       query?: never;
@@ -3673,6 +3690,34 @@ export interface components {
        * @description Server time the list was read (ISO 8601)
        */
       listedAt: string;
+    };
+    /** @enum {string} */
+    TrashScope: "urls" | "utubs";
+    EmptyTrashRequest: {
+      /**
+       * @description Which Trash tab to empty: 'urls' or 'utubs'
+       * @example urls
+       */
+      scope: components["schemas"]["TrashScope"];
+      /**
+       * Format: date-time
+       * @description The listedAt of the Trash list the user was looking at (timezone-aware ISO 8601). Only items that entered Trash at or before it are deleted, so an item trashed after the list was read is never swept.
+       * @example 2026-10-15T12:00:00+00:00
+       */
+      listedAt: string;
+    };
+    /** @description One Trash tab emptied: what was deleted forever, and what a lock kept in Trash */
+    TrashEmptiedResponseSchema: {
+      /** @description The tab that was emptied: 'urls' or 'utubs' */
+      scope: string;
+      /** @description IDs of the UTub-URL rows deleted forever (empty for the utubs scope) */
+      purgedUtubUrlIDs: number[];
+      /** @description IDs of the UTubs deleted forever (empty for the urls scope) */
+      purgedUtubIDs: number[];
+      /** @description Number of items deleted forever */
+      totalPurged: number;
+      /** @description Number of items left in Trash because their UTub is locked */
+      totalSkippedLocked: number;
     };
     /** @description A trashed UTub restored to the creator's live UTubs */
     UtubRestoredResponseSchema: {
@@ -7154,12 +7199,14 @@ export interface operations {
           | "url_tracking_params_stripped"
           | "urls_copied_to_utub"
           | "urls_deleted_from_utub"
+          | "urls_emptied_from_trash"
           | "utub_created"
           | "utub_deleted"
           | "utub_desc_updated"
           | "utub_opened"
           | "utub_purged_from_trash"
           | "utub_restored_from_trash"
+          | "utubs_emptied_from_trash"
           | "utub_tag_created"
           | "utub_title_updated"
           | "ui_utub_select"
@@ -7400,12 +7447,14 @@ export interface operations {
           | "url_tracking_params_stripped"
           | "urls_copied_to_utub"
           | "urls_deleted_from_utub"
+          | "urls_emptied_from_trash"
           | "utub_created"
           | "utub_deleted"
           | "utub_desc_updated"
           | "utub_opened"
           | "utub_purged_from_trash"
           | "utub_restored_from_trash"
+          | "utubs_emptied_from_trash"
           | "utub_tag_created"
           | "utub_title_updated"
           | "ui_utub_select"
@@ -9442,6 +9491,40 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["TrashListResponseSchema"];
+        };
+      };
+    };
+  };
+  emptyTrash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["EmptyTrashRequest"];
+      };
+    };
+    responses: {
+      /** @description One Trash tab emptied: what was deleted forever, and what a lock kept in Trash */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["TrashEmptiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
         };
       };
     };

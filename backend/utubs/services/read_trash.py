@@ -46,7 +46,13 @@ def get_trash_for_user(*, current_user_id: int) -> FlaskResponse:
 
     Known limit: the list is not paginated. The 30-day retention window bounds it, so a
     user's Trash stays small enough to return in one response.
+
+    ``listedAt`` is read before the first query, so a row committed after the list's
+    snapshot is never covered by it. Residual window: a row committed between this clock
+    read and the first query's snapshot is listed yet has a ``deleted_at`` after
+    ``listedAt``, so Empty Trash skips it (fail closed: it stays for the next list).
     """
+    listed_at: datetime = utc_now()
     adder = aliased(Users)
     deleter = aliased(Users)
     effective_deleted_at = func.coalesce(Utub_Urls.deleted_at, Utubs.deleted_at)
@@ -148,7 +154,7 @@ def get_trash_for_user(*, current_user_id: int) -> FlaskResponse:
             utubs=utubs,
             current_user=current_user_id,
             retention_days=TRASH_RETENTION_DAYS,
-            listed_at=utc_now(),
+            listed_at=listed_at,
         ),
         status_code=200,
     ).to_response()

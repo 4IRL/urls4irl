@@ -264,3 +264,28 @@ class UtubPurgedResponseSchema(BaseSchema):
         alias=MODELS.PURGED_URL_COUNT,
         description="Number of URL rows (live and trashed) deleted with the UTub",
     )
+
+
+class TrashEmptiedResponseSchema(BaseSchema):
+    """One Trash tab emptied: what was deleted forever, and what a lock kept in Trash"""
+
+    scope: str = Field(
+        alias=MODELS.SCOPE,
+        description="The tab that was emptied: 'urls' or 'utubs'",
+    )
+    purged_utub_url_ids: list[int] = Field(
+        alias=MODELS.PURGED_UTUB_URL_IDS,
+        description="IDs of the UTub-URL rows deleted forever (empty for the utubs scope)",
+    )
+    purged_utub_ids: list[int] = Field(
+        alias=MODELS.PURGED_UTUB_IDS,
+        description="IDs of the UTubs deleted forever (empty for the urls scope)",
+    )
+    total_purged: int = Field(
+        alias=MODELS.TOTAL_PURGED,
+        description="Number of items deleted forever",
+    )
+    total_skipped_locked: int = Field(
+        alias=MODELS.TOTAL_SKIPPED_LOCKED,
+        description="Number of items left in Trash because their UTub is locked",
+    )

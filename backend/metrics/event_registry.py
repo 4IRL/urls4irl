@@ -249,6 +249,22 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
             "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
         },
     ),
+    EventName.URLS_EMPTIED_FROM_TRASH: EventRegistryEntry(
+        description="The Trash URLs tab emptied in one bulk action",
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "purged_count_bucket": BULK_TAG_URL_BUCKETS,
+            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+        },
+    ),
+    EventName.UTUBS_EMPTIED_FROM_TRASH: EventRegistryEntry(
+        description="The Trash UTubs tab emptied in one bulk action",
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "purged_count_bucket": BULK_TAG_URL_BUCKETS,
+            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+        },
+    ),
     EventName.UTUB_TAG_CREATED: EventRegistryEntry(
         description=("New tag vocabulary added to a UTub (distinct from TAG_APPLIED)"),
         category=EventCategory.DOMAIN,

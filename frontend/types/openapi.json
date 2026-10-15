@@ -4994,12 +4994,14 @@
                 "url_tracking_params_stripped",
                 "urls_copied_to_utub",
                 "urls_deleted_from_utub",
+                "urls_emptied_from_trash",
                 "utub_created",
                 "utub_deleted",
                 "utub_desc_updated",
                 "utub_opened",
                 "utub_purged_from_trash",
                 "utub_restored_from_trash",
+                "utubs_emptied_from_trash",
                 "utub_tag_created",
                 "utub_title_updated",
                 "ui_utub_select",
@@ -5356,12 +5358,14 @@
                 "url_tracking_params_stripped",
                 "urls_copied_to_utub",
                 "urls_deleted_from_utub",
+                "urls_emptied_from_trash",
                 "utub_created",
                 "utub_deleted",
                 "utub_desc_updated",
                 "utub_opened",
                 "utub_purged_from_trash",
                 "utub_restored_from_trash",
+                "utubs_emptied_from_trash",
                 "utub_tag_created",
                 "utub_title_updated",
                 "ui_utub_select",
@@ -8412,6 +8416,62 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/utubs/trash/empty": {
+      "post": {
+        "operationId": "emptyTrash",
+        "tags": ["utubs"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Permanently delete everything in one Trash tab that was listed by listedAt (items in locked UTubs are skipped and counted)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyTrashRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One Trash tab emptied: what was deleted forever, and what a lock kept in Trash",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TrashEmptiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
           }
         }
       }
@@ -12968,6 +13028,66 @@
           "currentUser",
           "retentionDays",
           "listedAt"
+        ],
+        "type": "object"
+      },
+      "TrashScope": {
+        "enum": ["urls", "utubs"],
+        "type": "string"
+      },
+      "EmptyTrashRequest": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/TrashScope",
+            "description": "Which Trash tab to empty: 'urls' or 'utubs'",
+            "examples": ["urls"]
+          },
+          "listedAt": {
+            "description": "The listedAt of the Trash list the user was looking at (timezone-aware ISO 8601). Only items that entered Trash at or before it are deleted, so an item trashed after the list was read is never swept.",
+            "examples": ["2026-10-15T12:00:00+00:00"],
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": ["scope", "listedAt"],
+        "type": "object"
+      },
+      "TrashEmptiedResponseSchema": {
+        "description": "One Trash tab emptied: what was deleted forever, and what a lock kept in Trash",
+        "properties": {
+          "scope": {
+            "description": "The tab that was emptied: 'urls' or 'utubs'",
+            "type": "string"
+          },
+          "purgedUtubUrlIDs": {
+            "description": "IDs of the UTub-URL rows deleted forever (empty for the utubs scope)",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "purgedUtubIDs": {
+            "description": "IDs of the UTubs deleted forever (empty for the urls scope)",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "totalPurged": {
+            "description": "Number of items deleted forever",
+            "type": "integer"
+          },
+          "totalSkippedLocked": {
+            "description": "Number of items left in Trash because their UTub is locked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "purgedUtubUrlIDs",
+          "purgedUtubIDs",
+          "totalPurged",
+          "totalSkippedLocked"
         ],
         "type": "object"
       },

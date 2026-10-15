@@ -153,6 +153,7 @@ class UTUB_ROUTES:
     GET_SINGLE_UTUB = _UTUBS + "get_single_utub"
     GET_UTUBS = _UTUBS + "get_utubs"
     GET_TRASH = _UTUBS + "get_trash"
+    EMPTY_TRASH = _UTUBS + "empty_trash"
     CREATE_UTUB = _UTUBS + "create_utub"
     DELETE_UTUB = _UTUBS + "delete_utub"
     RESTORE_UTUB = _UTUBS + "restore_utub"
@@ -242,6 +243,7 @@ JS_ROUTES: dict[str, JsRoute] = {
     "getUTubs": JsRoute(UTUB_ROUTES.GET_UTUBS, {}),
     "getUTub": JsRoute(UTUB_ROUTES.GET_SINGLE_UTUB, {"utub_id": -1}),
     "getTrash": JsRoute(UTUB_ROUTES.GET_TRASH, {}),
+    "emptyTrash": JsRoute(UTUB_ROUTES.EMPTY_TRASH, {}),
     "deleteUTub": JsRoute(UTUB_ROUTES.DELETE_UTUB, {"utub_id": -1}),
     "restoreUTub": JsRoute(UTUB_ROUTES.RESTORE_UTUB, {"utub_id": -1}),
     "purgeUTub": JsRoute(UTUB_ROUTES.PURGE_UTUB, {"utub_id": -1}),

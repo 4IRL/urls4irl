@@ -4622,6 +4622,40 @@
       "templates": []
     },
     {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.empty_trash",
+      "handler": "backend/utubs/routes.py:empty_trash",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "emptyTrash"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/trash/empty",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.trash.EmptyTrashRequest",
+        "response": "backend.schemas.trash.TrashEmptiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.TrashEmptiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.empty_trash:empty_trash_for_user"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "urls",
       "decorators": [
         "email_validation_required",

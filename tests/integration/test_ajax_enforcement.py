@@ -75,6 +75,14 @@ CSRF_HEADER_KEY = "X-CSRFToken"
             id="get_trash",
         ),
         pytest.param(
+            "empty_trash",
+            "POST",
+            ROUTES.UTUBS.EMPTY_TRASH,
+            {},
+            {"scope": "urls", "listedAt": "2026-10-15T12:00:00+00:00"},
+            id="empty_trash",
+        ),
+        pytest.param(
             "update_utub_name",
             "PATCH",
             ROUTES.UTUBS.UPDATE_UTUB_NAME,

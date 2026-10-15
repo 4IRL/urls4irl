@@ -18,12 +18,14 @@ from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.models.utubs import Utubs
 from backend.schemas.errors import ErrorResponse
+from backend.schemas.requests.trash import EmptyTrashRequest
 from backend.schemas.requests.utubs import (
     CreateUTubRequest,
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
 )
 from backend.schemas.trash import (
+    TrashEmptiedResponseSchema,
     TrashListResponseSchema,
     UtubPurgedResponseSchema,
     UtubRestoredResponseSchema,
@@ -46,10 +48,12 @@ from backend.users.services.preferences_service import (
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.openapi_strs import OPEN_API
+from backend.utils.strings.trash_strs import TRASH_FAILURE
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID_QUERY_PARAM
 from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.services.create_utubs import create_new_utub
 from backend.utubs.services.delete_utubs import delete_utub_for_user
+from backend.utubs.services.empty_trash import empty_trash_for_user
 from backend.utubs.services.home_page import (
     render_home_page,
     validate_home_query_params,
@@ -200,6 +204,31 @@ def get_trash() -> FlaskResponse:
     User wants the contents of their Trash: URLs they may act on and UTubs they created.
     """
     return get_trash_for_user(current_user_id=current_user.id)
+
+
+@utubs.route("/utubs/trash/empty", methods=["POST"])
+@email_validation_required
+@api_route(
+    request_schema=EmptyTrashRequest,
+    response_schema=TrashEmptiedResponseSchema,
+    error_message=TRASH_FAILURE.UNABLE_TO_EMPTY_TRASH,
+    error_code=UTubErrorCodes.UNABLE_TO_EMPTY_TRASH_ERROR,
+    tags=[OPEN_API.UTUBS],
+    description=(
+        "Permanently delete everything in one Trash tab that was listed by listedAt "
+        "(items in locked UTubs are skipped and counted)"
+    ),
+    status_codes={200: TrashEmptiedResponseSchema, 400: ErrorResponse},
+)
+def empty_trash(empty_trash_request: EmptyTrashRequest) -> FlaskResponse:
+    """
+    User empties one Trash tab. Only items that entered Trash by the list's listedAt are deleted.
+    """
+    return empty_trash_for_user(
+        scope=empty_trash_request.scope,
+        listed_at=empty_trash_request.listedAt,
+        current_user_id=current_user.id,
+    )
 
 
 @utubs.route("/utubs/<int:utub_id>/restore", methods=["POST"])

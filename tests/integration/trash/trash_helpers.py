@@ -6,13 +6,16 @@ from flask.testing import FlaskClient
 from flask.wrappers import Response
 
 from backend.models.users import Users
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.urls.constants import URLErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.trash_strs import TRASH_FAILURE
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.utils.strings.utub_strs import UTUB_ID
 from tests.conftest import AjaxFlaskLoginClient
 from tests.utils_for_test import get_csrf_token
 
@@ -97,3 +100,31 @@ def get_row_state(app: Flask, utub_url_id: int) -> dict[str, Any]:
             "url_title": utub_url.url_title,
             "last_accessed": utub_url.last_accessed,
         }
+
+
+def get_trashed_utub_ids(client: FlaskClient) -> list[int]:
+    response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
+    assert response.status_code == 200
+    return [item[UTUB_ID] for item in response.json[MODELS.UTUBS]]
+
+
+def count_url_tags_of_row(app: Flask, utub_url_id: int) -> int:
+    with app.app_context():
+        return Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_url_id == utub_url_id
+        ).count()
+
+
+def count_url_tags_in_utub(app: Flask, utub_id: int) -> int:
+    with app.app_context():
+        return Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_id == utub_id).count()
+
+
+def row_exists(app: Flask, utub_url_id: int) -> bool:
+    with app.app_context():
+        return Utub_Urls.query.get(utub_url_id) is not None
+
+
+def utub_exists(app: Flask, utub_id: int) -> bool:
+    with app.app_context():
+        return Utubs.query.get(utub_id) is not None

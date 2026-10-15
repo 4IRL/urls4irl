@@ -68,6 +68,7 @@ const appConfig = {
     errorPage: "/error",
     logout: "/logout",
     getTrash: "/utubs/trash",
+    emptyTrash: "/utubs/trash/empty",
     getUTub: "/utubs/-1",
     deleteUTub: "/utubs/-1",
     restoreUTub: "/utubs/-1/restore",
