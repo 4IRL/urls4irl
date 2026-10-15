@@ -116,7 +116,7 @@ export function bindCreateURLFocusEventListeners(
   });
 }
 
-// Shared by the URL input's Escape and the scheme toggle's Escape-when-closed.
+// Closes the create-URL form and emits the cancel metric.
 function cancelCreateURLViaEscape(): void {
   emit({
     event: UI_EVENTS.UI_FORM_CANCEL,

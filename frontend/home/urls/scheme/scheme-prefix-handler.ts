@@ -2,7 +2,7 @@ import { getInputValue } from "../../../lib/globals.js";
 import type { SchemeSelectorHandle } from "./scheme-selector.js";
 import { defaultSchemeForText, splitScheme } from "./scheme-utils.js";
 
-// Shared by the create and edit URL inputs. Runs on every input event: calls
+// Runs on every URL input event: calls
 // onChange (clears a stale URL error), moves a typed or pasted scheme prefix
 // into the selector (an explicit choice), and otherwise keeps a non-explicit
 // selector on the scheme the text implies (http for dev hosts).

@@ -379,13 +379,6 @@ def wait_for_update_input_highlight(*, page: Page, input_css_selector: str) -> N
     )
 
 
-def get_selected_scheme(*, page: Page, toggle_locator: str) -> str:
-    """The scheme currently shown on a scheme-selector toggle (for example
-    ``HPL.SCHEME_TOGGLE_CREATE``), read without waiting."""
-    label = page.locator(toggle_locator).first.locator(HPL.SCHEME_TOGGLE_LABEL)
-    return label.inner_text()
-
-
 def expect_selected_scheme(*, page: Page, toggle_locator: str, scheme: str) -> None:
     """Auto-waiting assertion that a scheme-selector toggle shows ``scheme`` (its
     visible label and its "URL scheme: <scheme>" accessible name)."""

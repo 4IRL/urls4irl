@@ -6,8 +6,8 @@ import {
 } from "./scheme-selector.js";
 import { splitScheme } from "./scheme-utils.js";
 
-// Leaf module (no card/panel imports) so the edit form, the dirty-state check and
-// the Undo banner can all share one lookup without circular imports.
+// Leaf module (no card/panel imports) so the lookup of the edit form's scheme
+// selector cannot introduce circular imports.
 
 export const UPDATE_SCHEME_CONTAINER_SELECTOR =
   ".updateUrlStringWrap .text-input-container";

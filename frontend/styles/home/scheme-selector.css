@@ -191,7 +191,7 @@
     color: var(--deckSelectionGreen);
 }
 
-/* Check mark drawn here so no display glyph lives in TS. The second
+/* Check mark for the selected option, drawn via ::after. The second
    declaration gives it empty alt text where supported (aria-selected already
    conveys the state); older engines keep the first. */
 .urlSchemeOption[aria-selected="true"]::after {

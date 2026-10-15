@@ -73,7 +73,6 @@ from tests.functional.urls_ui.playwright_utils import (
     create_url,
     expect_selected_scheme,
     fill_create_url_form,
-    get_selected_scheme,
     select_url_scheme,
     set_trim_section_expanded,
     stage_new_tag_in_create_form,
@@ -1798,10 +1797,6 @@ def test_create_url_typed_scheme_prefix_moves_into_selector(
         page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE, scheme="http"
     )
     expect(url_input).to_have_value("example.com/a")
-    selected_scheme = get_selected_scheme(
-        page=page, toggle_locator=HPL.SCHEME_TOGGLE_CREATE
-    )
-    assert selected_scheme == "http"
 
 
 def test_create_url_dev_host_text_flips_selector_to_http(

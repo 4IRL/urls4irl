@@ -19,7 +19,10 @@ import {
   isURLStringSubmitInFlight,
   resetUpdateURLFailErrors,
 } from "./update-string.js";
-import { getUpdateSchemeSelector } from "../scheme/update-input-scheme.js";
+import {
+  currentUpdateScheme,
+  getUpdateSchemeSelector,
+} from "../scheme/update-input-scheme.js";
 import { handleSchemePrefixInput } from "../scheme/scheme-prefix-handler.js";
 import { isCoarsePointer } from "../../mobile.js";
 import { isConfirmButtonDisabled } from "../confirm-btn-state.js";
@@ -231,7 +234,7 @@ function createUpdateURLStringInput(
     syncParamTrim({
       trimWrap,
       text: getInputValue(urlStringTextInput),
-      scheme: getUpdateSchemeSelector({ urlCard })?.getScheme() ?? "",
+      scheme: currentUpdateScheme({ urlCard }),
     });
   });
 

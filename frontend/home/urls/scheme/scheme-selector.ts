@@ -2,6 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS } from "../../../lib/constants.js";
 import { createRovingListbox } from "../../../lib/roving-listbox.js";
+import { fillTemplate } from "../../../lib/string-template.js";
 import { isCoarsePointer } from "../../mobile.js";
 
 export interface SchemeSelectorHandle {
@@ -48,20 +49,6 @@ export function getSchemeSelector({
     | SchemeSelectorHandle
     | undefined;
   return handle ?? null;
-}
-
-// Fills a `{token}` placeholder. A replacer function (not a string) so a `$&`
-// or `$1` inside `value` is inserted literally instead of being expanded.
-function fillTemplate({
-  template,
-  token,
-  value,
-}: {
-  template: string;
-  token: string;
-  value: string;
-}): string {
-  return template.replace(token, () => value);
 }
 
 // Each mount takes the next number, so its document/container event namespaces
@@ -238,8 +225,7 @@ export function mountSchemeSelector({
         ? APP_CONFIG.strings.URL_SCHEME_MATCH_ONE
         : fillTemplate({
             template: APP_CONFIG.strings.URL_SCHEME_MATCH_MANY,
-            token: "{count}",
-            value: String(visibleCount),
+            values: { count: String(visibleCount) },
           }),
     );
   }
@@ -362,8 +348,7 @@ export function mountSchemeSelector({
       announceRegion.text(
         fillTemplate({
           template: APP_CONFIG.strings.URL_SCHEME_SET_ANNOUNCE,
-          token: "{scheme}",
-          value: scheme,
+          values: { scheme },
         }),
       );
     }, 0);
