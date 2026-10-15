@@ -52,6 +52,7 @@ from backend.utubs.services.home_page import (
 from backend.utubs.services.read_utubs import (
     get_all_utubs_of_user,
     get_single_utub_for_user,
+    refresh_single_utub_for_user,
 )
 from backend.utubs.services.update_utubs import (
     update_utub_desc_if_new,
@@ -159,6 +160,21 @@ def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     Retrieves data for a single UTub, and returns it in a serialized format
     """
     return get_single_utub_for_user(current_utub)
+
+
+@utubs.route("/utubs/<int:utub_id>/refresh", methods=["GET"])
+@utub_membership_required
+@api_route(
+    response_schema=UtubDetailSchema,
+    tags=[OPEN_API.UTUBS],
+    description="Refresh data for a single UTub without recording an open",
+    status_codes={200: UtubDetailSchema, 404: ErrorResponse},
+)
+def refresh_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
+    """
+    Returns the same payload as `get_single_utub` without recording an open
+    """
+    return refresh_single_utub_for_user(current_utub)
 
 
 @utubs.route("/utubs", methods=["GET"])

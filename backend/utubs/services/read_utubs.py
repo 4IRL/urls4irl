@@ -24,7 +24,7 @@ def _record_utub_opened_by(*, utub_id: int, user_id: int) -> None:
     ).update({Utub_Members.last_opened_at: utc_now()}, synchronize_session=False)
 
 
-def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
+def _build_utub_detail_for_user(current_utub: Utubs) -> UtubDetailSchema:
     # DD-36: order the returned URL list server-side by the viewing user's saved
     # ``default_sort`` preference (defaulting to NEWEST when no UserPreferences
     # row exists). ``utub_urls`` is a fully-materializing list relationship
@@ -54,15 +54,26 @@ def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
             reverse=True,
         )
 
-    utub_schema = UtubDetailSchema.from_utub(
-        current_utub, current_user.id, ordered_utub_urls
-    )
+    return UtubDetailSchema.from_utub(current_utub, current_user.id, ordered_utub_urls)
+
+
+def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
+    utub_schema = _build_utub_detail_for_user(current_utub)
 
     _record_utub_opened_by(utub_id=current_utub.id, user_id=current_user.id)
     db.session.commit()
 
     safe_add_log(f"Retrieving UTub.id={current_utub.id} from direct route")
     record_event(EventName.UTUB_OPENED)
+    return APIResponse(data=utub_schema, status_code=200).to_response()
+
+
+def refresh_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
+    # Read-only twin of ``get_single_utub_for_user``: no ``last_opened_at``
+    # write, no commit and no ``UTUB_OPENED`` event (a refresh is not an open).
+    utub_schema = _build_utub_detail_for_user(current_utub)
+
+    safe_add_log(f"Refreshed UTub={current_utub.id}")
     return APIResponse(data=utub_schema, status_code=200).to_response()
 
 

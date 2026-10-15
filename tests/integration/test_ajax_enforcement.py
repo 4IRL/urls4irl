@@ -59,6 +59,14 @@ CSRF_HEADER_KEY = "X-CSRFToken"
             id="get_single_utub",
         ),
         pytest.param(
+            "refresh_single_utub",
+            "GET",
+            ROUTES.UTUBS.REFRESH_SINGLE_UTUB,
+            {"utub_id": "utub_id"},
+            None,
+            id="refresh_single_utub",
+        ),
+        pytest.param(
             "get_utubs",
             "GET",
             ROUTES.UTUBS.GET_UTUBS,

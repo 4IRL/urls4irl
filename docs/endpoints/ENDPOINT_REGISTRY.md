@@ -1254,3 +1254,12 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubNameRequest`; response: `backend.schemas.utubs.UtubNameUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubNameUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `updateUTubName`
+
+### `GET /utubs/<int:utub_id>/refresh` — `utubs.refresh_single_utub`
+
+- **Handler:** `backend/utubs/routes.py:refresh_single_utub`
+- **Decorators:** `utub_membership_required`, `api_route`
+- **Service:** `backend.utubs.services.read_utubs:refresh_single_utub_for_user`
+- **Schema:** response: `backend.schemas.utubs.UtubDetailSchema`; status: 200 `backend.schemas.utubs.UtubDetailSchema`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `refreshUTub`

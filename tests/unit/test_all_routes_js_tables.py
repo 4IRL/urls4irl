@@ -21,6 +21,7 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "createUTub": "/utubs",
     "getUTubs": "/utubs",
     "getUTub": "/utubs/-1",
+    "refreshUTub": "/utubs/-1/refresh",
     "deleteUTub": "/utubs/-1",
     "updateUTubName": "/utubs/-1/name",
     "updateUTubDescription": "/utubs/-1/description",
