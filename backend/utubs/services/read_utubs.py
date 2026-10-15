@@ -6,10 +6,22 @@ from backend.app_logger import safe_add_log
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.models.user_preferences import SortOrder, resolve_preferences
+from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.users import UtubSummaryListSchema
 from backend.schemas.utubs import UtubDetailSchema
+from backend.utils.datetime_utils import utc_now
+
+
+def _record_utub_opened_by(*, utub_id: int, user_id: int) -> None:
+    # Bulk UPDATE of only the caller's own membership row: no ``Utubs`` lock or
+    # write, and no ORM attribute set, so a membership deleted concurrently
+    # updates 0 rows instead of raising ``StaleDataError``.
+    Utub_Members.query.filter(
+        Utub_Members.utub_id == utub_id,
+        Utub_Members.user_id == user_id,
+    ).update({Utub_Members.last_opened_at: utc_now()}, synchronize_session=False)
 
 
 def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
@@ -46,7 +58,7 @@ def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
         current_utub, current_user.id, ordered_utub_urls
     )
 
-    current_utub.set_last_updated()
+    _record_utub_opened_by(utub_id=current_utub.id, user_id=current_user.id)
     db.session.commit()
 
     safe_add_log(f"Retrieving UTub.id={current_utub.id} from direct route")

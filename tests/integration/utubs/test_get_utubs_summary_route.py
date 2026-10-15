@@ -10,6 +10,7 @@ from backend import db
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
+from backend.schemas.users import UtubSummaryListSchema
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
@@ -375,6 +376,52 @@ def test_content_change_moves_utub_above_later_opened_utub(
     utub_ids = [item[MODELS.ID] for item in response.json[MODELS.UTUBS]]
     assert utub_ids[0] == changed_utub_id
     assert utub_ids.index(changed_utub_id) < utub_ids.index(opened_utub_id)
+
+
+def test_opening_utub_moves_it_to_top_for_opener_only(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN three users who are all members of all three UTubs
+    WHEN user 1 opens the UTub that is currently last in their sidebar
+    THEN that UTub is first for user 1, and user 2's order is unchanged
+    """
+    client, _, _, app = login_first_user_without_register
+
+    def _get_utub_ids() -> list[int]:
+        response = client.get(
+            url_for(ROUTES.UTUBS.GET_UTUBS),
+            headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+        )
+        assert response.status_code == 200
+        assert response.json is not None
+        return [item[MODELS.ID] for item in response.json[MODELS.UTUBS]]
+
+    user_1_order_before = _get_utub_ids()
+    utub_to_open = user_1_order_before[-1]
+    assert user_1_order_before[0] != utub_to_open
+
+    with app.app_context():
+        user_2 = Users.query.get(2)
+        user_2_order_before = [
+            item.id for item in UtubSummaryListSchema.from_user(user_2).utubs
+        ]
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_to_open),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+
+    assert _get_utub_ids()[0] == utub_to_open
+
+    with app.app_context():
+        user_2 = Users.query.get(2)
+        user_2_order_after = [
+            item.id for item in UtubSummaryListSchema.from_user(user_2).utubs
+        ]
+    assert user_2_order_after == user_2_order_before
 
 
 def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str]:

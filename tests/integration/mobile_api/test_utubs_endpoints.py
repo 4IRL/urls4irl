@@ -20,7 +20,7 @@ from flask.testing import FlaskClient
 
 from backend.api_v1.services.tokens import create_access_token
 from backend.models.users import Users
-from backend.models.utub_members import Member_Role
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
@@ -321,12 +321,25 @@ def test_get_single_utub_happy_path(
     """
     GIVEN a validated user who is a member of UTub with id=1
     WHEN GET /api/v1/utubs/1
-    THEN 200 with members, urls, tags, isCreator, isCoCreator fields
+    THEN 200 with members, urls, tags, isCreator, isCoCreator fields, and the
+        open is recorded on the caller's membership (last_opened_at) without
+        touching Utubs.last_updated
     """
+    with app.app_context():
+        last_opened_before = Utub_Members.query.get((1, 1)).last_opened_at
+        last_updated_before = Utubs.query.get(1).last_updated
+
     response = api_client.get(
         _get_single_utub_url(app, utub_id=1),
         headers=bearer_headers_first_user,
     )
+
+    with app.app_context():
+        last_opened_after = Utub_Members.query.get((1, 1)).last_opened_at
+        last_updated_after = Utubs.query.get(1).last_updated
+    assert last_opened_after is not None
+    assert last_opened_before is None or last_opened_after > last_opened_before
+    assert last_updated_after == last_updated_before
 
     assert response.status_code == 200
     response_json = response.get_json()
