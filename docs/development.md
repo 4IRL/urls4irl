@@ -173,7 +173,6 @@ To get a trace for one failure, rerun just that test traced. The `*-built` targe
 
 Performance/latency **is** measured. `backend/extensions/request_timing.py` records per-request durations into `Anonymous_Latency_Samples` (raw, ~35-day retention via `LATENCY_RAW_RETENTION_DAYS`), which the Flask-less flush worker rolls up nightly into `Anonymous_Latency_Daily_Rollups` (stored p50/p95/p99 per endpoint×method). Query it via `backend/metrics/query_service.py` `latency_percentiles(...)` (rows ordered by p95 desc; `.approximate=True` when served from rollups) / `latency_timeseries(...)`. It surfaces in the metrics dashboard's "Backend Performance" tab and, as a "slowest endpoint (p95)" headline stat, on the admin system-health dashboard (`backend/admin/health_service.py`). The single latency metric today is `LatencyMetricName.API_REQUEST_DURATION` (`"api_request_duration"`).
 
-
 ## GitHub issue linking (maintainer workflow)
 
 **Maintainer workflow (requires the stronghold's `/plan-creator`, `/master-plan-creator` and `/git-push`; optional for other contributors).** Every plan and every PR has a linked GitHub issue. The **issue** carries the public-facing WHY (Problem / Why / Outcome — read at a glance); the **plan** is the source of truth for HOW (detailed steps, file paths, code shapes).
@@ -192,8 +191,6 @@ Performance/latency **is** measured. `backend/extensions/request_timing.py` reco
 **Issue metadata:** category labels (from the existing 16) + `URLS4IRL -> Real Life` project board + bot assignee. No milestone — that stays PR-only.
 
 **Repo for `gh` commands:** always `--repo 4IRL/urls4irl`. (`GPropersi/urls4irl` redirects but is not canonical.)
-
-
 
 ## Test infrastructure mechanics
 
@@ -222,7 +219,6 @@ Moved out of `CLAUDE.md` → "Testing Best Practices" items 5 and 7; the rules s
 ### Local Postgres recovery
 
 **Local Postgres:** one `db` cluster in the per-user hub (`u4i-hub-<uid>`) holds every spoke's dev DB (`U4I_DEV_DB`, provisioned by each spoke's one-shot `db-init`) and every per-run test DB. The hub's one-shot `cluster-init` owns the cluster-wide objects (the test role and the base test DB). It runs `fsync=off`, so a host crash may corrupt `pgdata`. Recovery **deletes all dev data in every spoke**: `make down` in every spoke, `make hub-down`, `docker volume rm u4i-hub-$(id -u)_pgdata`, `make up d=1`, then `make reset-db` to reseed (in each spoke you use).
-
 
 ## Configuration surface
 
