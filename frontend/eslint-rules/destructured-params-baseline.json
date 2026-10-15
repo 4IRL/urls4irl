@@ -116,7 +116,6 @@
   "home/utubs/deck.ts:buildUTubDeck",
   "home/utubs/deck.ts:setUTubDeckOnUTubSelected",
   "home/utubs/selectors.ts:selectUTub",
-  "home/utubs/stale-data.ts:updateUTubNameAndDescription",
   "lib/ajax.ts:ajaxCall",
   "lib/ajax.ts:ajaxCallFragment",
   "lib/config.ts:createURLTag",

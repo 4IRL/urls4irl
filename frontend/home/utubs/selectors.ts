@@ -212,6 +212,26 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
   // LH panels — UTub deck (same domain, direct call)
   setUTubDeckOnUTubSelected(selectedUTub.id, isCurrentUserOwner);
 
+  applyUTubDescriptionVisibility({
+    utubID: selectedUTub.id,
+    utubDescription,
+    isCurrentUserOwner,
+  });
+
+  fitUTubHeaderAndSubheader();
+}
+
+// Shows/hides the description block for a UTub's description. Shared by
+// buildSelectedUTub and the background stale-data refresh.
+export function applyUTubDescriptionVisibility({
+  utubID,
+  utubDescription,
+  isCurrentUserOwner,
+}: {
+  utubID: number;
+  utubDescription: string;
+  isCurrentUserOwner: boolean;
+}): void {
   // UTub Description
   const utubDescriptionHeader = $("#URLDeckSubheader");
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
@@ -224,7 +244,7 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
     utubDescriptionHeader.text("");
     $("#UTubDescriptionSubheaderWrap").hideClass();
     if (isCurrentUserOwner) {
-      showCreateDescriptionButtonAlways(selectedUTub.id);
+      showCreateDescriptionButtonAlways(utubID);
       $("#URLDeckNoDescription").hideClass();
     } else {
       $("#URLDeckNoDescription").showClassNormal();
@@ -234,8 +254,6 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
   if (isCurrentUserOwner) {
     $("#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
   }
-
-  fitUTubHeaderAndSubheader();
 }
 
 // Handles progagating changes across page related to a UTub selection

@@ -44,7 +44,9 @@ describe("checkForStaleDataOn409", () => {
     expect(isURLCurrentlyVisibleInURLDeck).toHaveBeenCalledWith(
       "https://example.com",
     );
-    expect(updateUTubOnFindingStaleData).toHaveBeenCalledWith(42);
+    expect(updateUTubOnFindingStaleData).toHaveBeenCalledWith({
+      utubID: 42,
+    });
   });
 
   it("does NOT call updateUTubOnFindingStaleData when urlString is present and URL IS already in the deck", () => {

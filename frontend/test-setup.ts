@@ -336,6 +336,7 @@ const appConfig = {
     REGISTRATION_EMAIL_RESEND_ERROR:
       "Something went wrong resending your email. Please try again.",
     UTUB_IS_LOCKED: "This UTub is locked and cannot be modified.",
+    UTUB_UNLOCKED_ANNOUNCEMENT: "This UTub has been unlocked.",
     UTUB_SEARCH_NO_RESULTS: "No UTubs found",
     UTUB_SEARCH_PLACEHOLDER: "Filter UTubs",
     UTUB_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} UTubs shown",
