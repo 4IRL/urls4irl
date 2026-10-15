@@ -40,6 +40,12 @@ export function isValidURL(inputURL: string): boolean {
   return true;
 }
 
+// A URL is submittable when it parses safely and its scheme prefix (if any) is
+// in the whitelist.
+export function isAcceptableURL({ urlString }: { urlString: string }): boolean {
+  return isValidURL(urlString) && isSupportedURLScheme({ urlString });
+}
+
 export function generateURLObj(inputURL: string): URL | null {
   try {
     return new URL(inputURL);

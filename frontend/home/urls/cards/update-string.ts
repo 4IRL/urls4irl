@@ -14,7 +14,8 @@ import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { enableEditingURLTitle, isEmptyString } from "./utils.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
-import { isSupportedURLScheme, isValidURL } from "../validation.js";
+import { isAcceptableURL } from "../validation.js";
+import { TRIM_INPUT_EVENT } from "./url-string.js";
 import {
   mountSchemeSelector,
   type SchemeSelectorHandle,
@@ -47,7 +48,11 @@ import {
 } from "./options/edit-string-btn.js";
 import { closeURLEditPanel } from "./update-url-panel.js";
 import { isConfirmButtonDisabled } from "../confirm-btn-state.js";
-import { isTitleDirty, syncEditPanelDirtyState } from "./edit-panel-dirty.js";
+import {
+  DIRTY_INPUT_EVENT,
+  isTitleDirty,
+  syncEditPanelDirtyState,
+} from "./edit-panel-dirty.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import {
   expandParamTrimBlock,
@@ -187,8 +192,8 @@ function mountUpdateSchemeSelector({
     idPrefix: "update-" + (urlCard.attr("utuburlid") ?? "card"),
     onChange: () => {
       resetUpdateURLFailErrors(urlCard);
-      urlInput.trigger("input.urlStringTrim");
-      urlInput.trigger("input.editPanelDirty");
+      urlInput.trigger(TRIM_INPUT_EVENT);
+      urlInput.trigger(DIRTY_INPUT_EVENT);
     },
     onEscapeWhenClosed: isCoarsePointer()
       ? undefined
@@ -498,8 +503,7 @@ export async function updateURL(
 
     if (
       !isEmptyString(data.urlString) &&
-      (!isValidURL(data.urlString) ||
-        !isSupportedURLScheme({ urlString: data.urlString }))
+      !isAcceptableURL({ urlString: data.urlString })
     ) {
       log("updateURL rejected by client-side URL validation", { utubUrlID });
       emit({

@@ -45,7 +45,7 @@ import {
   URL_ACCESS_TRIGGER,
 } from "../../../types/metrics-dim-values.js";
 
-const TRIM_INPUT_EVENT = "input.urlStringTrim";
+export const TRIM_INPUT_EVENT = "input.urlStringTrim";
 const SCHEME_PREFIX_EVENT = "input.urlSchemePrefix";
 
 // Element to displayu the URL string

@@ -56,33 +56,25 @@ export interface TrimSubmission {
  */
 interface TrimInput {
   trimWrap: JQuery;
-  /** The URL input's text. A full URL when `scheme` is omitted. */
+  /** The URL input's text. A full URL when `scheme` is `""`. */
   text: string;
-  /** The selected scheme to compose with `text`; omit when `text` is already a full URL. */
-  scheme?: string;
-}
-
-// Absent scheme means `text` is already a full URL (the same convention
-// `composeURL` uses for text carrying its own scheme).
-function composeTrimInput({
-  text,
-  scheme,
-}: {
-  text: string;
-  scheme?: string;
-}): string {
-  return scheme === undefined ? text : composeURL({ scheme, text });
+  /**
+   * The selected scheme to compose with `text`; `""` when no selector is
+   * mounted or `text` is already a full URL (`composeURL` passes a
+   * non-whitelisted scheme through, trimmed).
+   */
+  scheme: string;
 }
 
 export function syncParamTrim({ trimWrap, text, scheme }: TrimInput): void {
   (trimWrap.data(TRIM_SYNC_KEY) as ((value: string) => void) | undefined)?.(
-    composeTrimInput({ text, scheme }),
+    composeURL({ scheme, text }),
   );
 }
 
 export function flushParamTrim({ trimWrap, text, scheme }: TrimInput): void {
   (trimWrap.data(TRIM_FLUSH_KEY) as ((value: string) => void) | undefined)?.(
-    composeTrimInput({ text, scheme }),
+    composeURL({ scheme, text }),
   );
 }
 
@@ -99,8 +91,8 @@ export function readTrimSubmit({ trimWrap, text, scheme }: TrimInput): {
   urlString: string;
   trimSubmission: TrimSubmission | null;
 } {
-  const rawValue = composeTrimInput({ text, scheme });
-  flushParamTrim({ trimWrap, text: rawValue });
+  const rawValue = composeURL({ scheme, text });
+  flushParamTrim({ trimWrap, text: rawValue, scheme: "" });
   const getTrimmed = trimWrap.data(TRIM_GET_KEY) as (() => string) | undefined;
   const getSubmission = trimWrap.data(TRIM_SUBMISSION_KEY) as
     | (() => TrimSubmission)

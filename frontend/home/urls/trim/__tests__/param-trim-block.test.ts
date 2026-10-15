@@ -639,12 +639,20 @@ describe("createParamTrimBlock", () => {
     it("readTrimSubmit flushes the input value and reports the drops", () => {
       const wrap = mount();
       sync(wrap, "https://a.com/p?stale=1");
-      let result = readTrimSubmit({ trimWrap: wrap, text: URL_WITH_AUTO });
+      let result = readTrimSubmit({
+        trimWrap: wrap,
+        text: URL_WITH_AUTO,
+        scheme: "",
+      });
       expect(result.urlString).toBe(URL_WITH_AUTO);
       expect(result.trimSubmission?.droppedCount).toBe(0);
 
       chipButtons(wrap).first().trigger("click");
-      result = readTrimSubmit({ trimWrap: wrap, text: URL_WITH_AUTO });
+      result = readTrimSubmit({
+        trimWrap: wrap,
+        text: URL_WITH_AUTO,
+        scheme: "",
+      });
       expect(result.urlString).toBe("https://a.com/p?utm_source=x&size=L");
       expect(result.trimSubmission).toEqual({
         originalUrlString: URL_WITH_AUTO,
@@ -661,6 +669,7 @@ describe("createParamTrimBlock", () => {
         readTrimSubmit({
           trimWrap: window.jQuery(),
           text: "https://a.com/?x=1",
+          scheme: "",
         }),
       ).toEqual({ urlString: "https://a.com/?x=1", trimSubmission: null });
     });
@@ -687,12 +696,16 @@ describe("createParamTrimBlock", () => {
 
     it("syncParamTrim is debounced, flushParamTrim is immediate", () => {
       const wrap = mount();
-      syncParamTrim({ trimWrap: wrap, text: URL_WITH_AUTO });
+      syncParamTrim({ trimWrap: wrap, text: URL_WITH_AUTO, scheme: "" });
       expect(wrap.hasClass("hidden")).toBe(true);
       vi.advanceTimersByTime(200);
       expect(wrap.hasClass("hidden")).toBe(false);
 
-      flushParamTrim({ trimWrap: wrap, text: "https://a.com/p?z=1" });
+      flushParamTrim({
+        trimWrap: wrap,
+        text: "https://a.com/p?z=1",
+        scheme: "",
+      });
       expect(getTrimmed(wrap)).toBe("https://a.com/p?z=1");
     });
 
@@ -710,9 +723,9 @@ describe("createParamTrimBlock", () => {
         expected: "mailto:user@a.com?subject=1",
       },
       {
-        label: "scheme omitted leaves a full URL untouched",
+        label: "empty scheme leaves a full URL untouched",
         text: "https://a.com/p?z=1",
-        scheme: undefined,
+        scheme: "",
         expected: "https://a.com/p?z=1",
       },
       {
@@ -767,7 +780,7 @@ describe("createParamTrimBlock", () => {
 
     it("resetParamTrim clears the block", () => {
       const wrap = mount();
-      flushParamTrim({ trimWrap: wrap, text: URL_WITH_AUTO });
+      flushParamTrim({ trimWrap: wrap, text: URL_WITH_AUTO, scheme: "" });
       resetParamTrim({ trimWrap: wrap });
       expect(wrap.hasClass("hidden")).toBe(true);
       expect(getTrimmed(wrap)).toBe("");
@@ -776,7 +789,7 @@ describe("createParamTrimBlock", () => {
     it("accessors are no-ops on an empty jQuery set", () => {
       const empty = window.jQuery();
       expect(() => {
-        syncParamTrim({ trimWrap: empty, text: "x" });
+        syncParamTrim({ trimWrap: empty, text: "x", scheme: "" });
         flushParamTrim({ trimWrap: empty, text: "x", scheme: "https" });
         resetParamTrim({ trimWrap: empty });
       }).not.toThrow();

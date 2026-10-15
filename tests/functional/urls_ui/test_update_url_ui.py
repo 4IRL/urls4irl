@@ -1888,6 +1888,64 @@ def test_update_url_string_scheme_only_change_saves_new_scheme(
     )
 
 
+def test_update_url_string_scheme_change_undo_restores_selector_and_input(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a saved scheme-only change (https to http) with the outcome banner showing
+    WHEN Undo is clicked
+    THEN the card's link returns to the https URL, the closed form's input holds
+        the restored full URL (its selector is destroyed on close), and the
+        reopened form shows the selector toggle at https with the scheme-less
+        text, the unchanged stored URL (not a pending edit)
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_STRINGS[0]
+    )
+    url_row = get_selected_url(page=page)
+    url_string_elem = url_row.locator(HPL.URL_STRING_READ)
+    string_input = url_row.locator(HPL.INPUT_URL_STRING_UPDATE)
+
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, option_scheme="http"
+    )
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    expect(url_string_elem).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, MOCK_URL_STRINGS[0].replace("https://", "http://", 1)
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_UPDATED_BANNER
+    )
+
+    page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
+
+    expect(url_string_elem).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, MOCK_URL_STRINGS[0]
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
+    expect(string_input).to_have_value(MOCK_URL_STRINGS[0])
+
+    _open_update_url_string_form(page=page)
+    wait_for_update_input_highlight(
+        page=page,
+        input_css_selector=HPL.INPUT_URL_STRING_UPDATE_SELECTED,
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="https"
+    )
+    expect(string_input).to_have_value(without_scheme(MOCK_URL_STRINGS[0]))
+    expect(page.locator(HPL.SCHEME_LISTBOX_UPDATE)).to_be_hidden()
+
+
 def test_update_url_string_scheme_escape_closes_list_before_form(
     page: Page,
     create_test_utubs,

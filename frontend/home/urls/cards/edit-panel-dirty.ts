@@ -17,7 +17,7 @@ import { composeURL } from "../scheme/scheme-utils.js";
 // the stored value. Coarse-pointer only; desktop never binds or syncs.
 
 const DIRTY_NAMESPACE = "editPanelDirty";
-const INPUT_EVENT = `input.${DIRTY_NAMESPACE}`;
+export const DIRTY_INPUT_EVENT = `input.${DIRTY_NAMESPACE}`;
 const TRIM_EVENT = `${TRIM_RENDERED_EVENT}.${DIRTY_NAMESPACE}`;
 const BOUND_KEY = "editPanelDirtyBound";
 
@@ -77,8 +77,14 @@ export function bindEditPanelDirtyState(urlCard: JQuery): void {
   if (!isCoarsePointer()) return;
   urlCard.data(BOUND_KEY, true);
   const resync = (): void => syncEditPanelDirtyState(urlCard);
-  urlCard.find(TITLE_INPUT_SELECTOR).off(INPUT_EVENT).on(INPUT_EVENT, resync);
-  urlCard.find(STRING_INPUT_SELECTOR).off(INPUT_EVENT).on(INPUT_EVENT, resync);
+  urlCard
+    .find(TITLE_INPUT_SELECTOR)
+    .off(DIRTY_INPUT_EVENT)
+    .on(DIRTY_INPUT_EVENT, resync);
+  urlCard
+    .find(STRING_INPUT_SELECTOR)
+    .off(DIRTY_INPUT_EVENT)
+    .on(DIRTY_INPUT_EVENT, resync);
   urlCard.find(TRIM_WRAP_SELECTOR).off(TRIM_EVENT).on(TRIM_EVENT, resync);
   syncEditPanelDirtyState(urlCard);
 }
@@ -86,8 +92,8 @@ export function bindEditPanelDirtyState(urlCard: JQuery): void {
 /** Panel close: unbinds the triggers and removes the disabled state. Idempotent. */
 export function unbindEditPanelDirtyState(urlCard: JQuery): void {
   urlCard.removeData(BOUND_KEY);
-  urlCard.find(TITLE_INPUT_SELECTOR).off(INPUT_EVENT);
-  urlCard.find(STRING_INPUT_SELECTOR).off(INPUT_EVENT);
+  urlCard.find(TITLE_INPUT_SELECTOR).off(DIRTY_INPUT_EVENT);
+  urlCard.find(STRING_INPUT_SELECTOR).off(DIRTY_INPUT_EVENT);
   urlCard.find(TRIM_WRAP_SELECTOR).off(TRIM_EVENT);
   clearConfirmButtonState(
     urlCard.find(

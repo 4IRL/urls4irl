@@ -10,7 +10,7 @@ import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
-import { isSupportedURLScheme, isValidURL } from "../validation.js";
+import { isAcceptableURL } from "../validation.js";
 import {
   getSchemeSelector,
   mountSchemeSelector,
@@ -152,9 +152,9 @@ function getCreateSchemeSelector(): SchemeSelectorHandle | null {
   });
 }
 
-// Undefined when no selector is mounted, so the typed text is submitted as is.
-function currentCreateScheme(): string | undefined {
-  return getCreateSchemeSelector()?.getScheme();
+// Empty when no selector is mounted, so the typed text is submitted as is.
+function currentCreateScheme(): string {
+  return getCreateSchemeSelector()?.getScheme() ?? "";
 }
 
 function resetCreateSchemeSelector(): void {
@@ -349,8 +349,7 @@ export function createURL({
 
   if (
     !isEmptyString(data.urlString) &&
-    (!isValidURL(data.urlString) ||
-      !isSupportedURLScheme({ urlString: data.urlString }))
+    !isAcceptableURL({ urlString: data.urlString })
   ) {
     log("createURL rejected by client-side validation", {
       urlStringLength: data.urlString.length,

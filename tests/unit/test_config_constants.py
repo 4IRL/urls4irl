@@ -1,4 +1,5 @@
-import json
+import re
+from pathlib import Path
 
 import pytest
 
@@ -66,10 +67,67 @@ def test_generate_constants_js_includes_url_scheme_whitelist():
     assert constants["URL_DEFAULT_SCHEME"] == "https"
 
 
-def test_generate_constants_js_url_scheme_order_is_deterministic():
-    first = json.dumps(generate_constants_js()["URL_SCHEMES"], sort_keys=False)
-    second = json.dumps(generate_constants_js()["URL_SCHEMES"], sort_keys=False)
-    assert first == second
+def test_generate_constants_js_url_scheme_order_matches_contract():
+    """
+    GIVEN the backend scheme whitelist (core and other valid schemes)
+    WHEN generate_constants_js() builds URL_SCHEMES
+    THEN https and http come first, then the remaining core schemes, then the
+        other valid schemes, each group alphabetical
+    """
+    expected_order = [
+        "https",
+        "http",
+        *sorted(CORE_SCHEMES - {"https", "http"}),
+        *sorted(OTHER_VALID_SCHEMES),
+    ]
+
+    assert generate_constants_js()["URL_SCHEMES"] == expected_order
+
+
+def _read_test_setup_list(key: str) -> list[str]:
+    """Return the string entries of a `key: [...]` list in the vitest APP_CONFIG mock."""
+    test_setup = Path(__file__).resolve().parents[2] / "frontend" / "test-setup.ts"
+    if not test_setup.is_file():
+        # The local `web` container mounts only frontend/types, not the TS sources;
+        # CI and host runs check out the whole tree, so the guard still runs there.
+        pytest.skip("frontend/test-setup.ts is not available in this environment")
+    source = test_setup.read_text(encoding="utf-8")
+    list_match = re.search(rf"\b{key}:\s*\[(.*?)\]", source, re.DOTALL)
+    assert list_match, f"frontend/test-setup.ts has no `{key}: [...]` list"
+    return re.findall(r'"([^"]+)"', list_match.group(1))
+
+
+def test_frontend_test_mock_scheme_lists_match_backend():
+    """
+    GIVEN the hand-maintained URL scheme lists in frontend/test-setup.ts
+    WHEN they are compared with the backend constants
+    THEN each mock list is a subset of its backend counterpart and no mock
+        opaque scheme is an authority scheme on the backend
+    """
+    whitelist = CORE_SCHEMES | OTHER_VALID_SCHEMES
+    mock_schemes = _read_test_setup_list("URL_SCHEMES")
+    mock_authority = _read_test_setup_list("URL_AUTHORITY_SCHEMES")
+    mock_dev_hosts = _read_test_setup_list("URL_DEV_HOSTS")
+
+    drifted_schemes = set(mock_schemes) - whitelist
+    drifted_authority = set(mock_authority) - AUTHORITY_URL_SCHEMES
+    drifted_dev_hosts = set(mock_dev_hosts) - set(DEV_URLS)
+    reclassified_opaque = (set(mock_schemes) - set(mock_authority)) & (
+        AUTHORITY_URL_SCHEMES
+    )
+
+    assert not drifted_schemes, (
+        f"test-setup.ts URL_SCHEMES drifted from the backend whitelist: {sorted(drifted_schemes)}"
+    )
+    assert not drifted_authority, (
+        f"test-setup.ts URL_AUTHORITY_SCHEMES drifted from the backend: {sorted(drifted_authority)}"
+    )
+    assert not drifted_dev_hosts, (
+        f"test-setup.ts URL_DEV_HOSTS drifted from the backend: {sorted(drifted_dev_hosts)}"
+    )
+    assert not reclassified_opaque, (
+        f"test-setup.ts treats these backend authority schemes as opaque: {sorted(reclassified_opaque)}"
+    )
 
 
 def test_generate_constants_js_includes_url_authority_schemes():

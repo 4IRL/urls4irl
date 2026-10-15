@@ -87,6 +87,35 @@ describe("handleSchemePrefixInput", () => {
     expect(handle.isExplicit()).toBe(true);
   });
 
+  it("keeps a prefilled opaque edit intact when a keystroke follows", () => {
+    handle.setScheme({ scheme: "feed", explicit: true });
+    urlInput.val("https://example.com/rss");
+
+    type("https://example.com/rssx");
+
+    expect(urlInput.val()).toBe("https://example.com/rssx");
+    expect(handle.getScheme()).toBe("feed");
+    expect(handle.isExplicit()).toBe(true);
+  });
+
+  it("leaves a nested whitelisted scheme verbatim after an explicit opaque pick", () => {
+    handle.setScheme({ scheme: "mailto", explicit: true });
+
+    type("http://example.com");
+
+    expect(urlInput.val()).toBe("http://example.com");
+    expect(handle.getScheme()).toBe("mailto");
+  });
+
+  it("still splits a pasted prefix under an explicit authority scheme", () => {
+    handle.setScheme({ scheme: "http", explicit: true });
+
+    type("https://example.com");
+
+    expect(urlInput.val()).toBe("example.com");
+    expect(handle.getScheme()).toBe("https");
+  });
+
   it("leaves text with an unsupported prefix untouched", () => {
     type("foo://x");
 

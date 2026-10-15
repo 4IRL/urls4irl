@@ -179,6 +179,33 @@ describe("isDevHostText", () => {
       expect(isDevHostText({ text })).toBe(false);
     },
   );
+
+  describe("with no configured dev hosts", () => {
+    // APP_CONFIG.constants is frozen shallowly, so the host list is emptied in
+    // place and refilled afterwards.
+    const hosts = APP_CONFIG.constants.URL_DEV_HOSTS as string[];
+    let originalHosts: string[] = [];
+
+    beforeEach(() => {
+      originalHosts = [...hosts];
+      hosts.splice(0, hosts.length);
+    });
+
+    afterEach(() => {
+      hosts.splice(0, hosts.length, ...originalHosts);
+    });
+
+    it("matches no text, so the guard never builds an empty alternation", () => {
+      expect(isDevHostText({ text: "localhost" })).toBe(false);
+      expect(isDevHostText({ text: "" })).toBe(false);
+    });
+
+    it("falls back to the app default scheme", () => {
+      expect(defaultSchemeForText({ text: "localhost" })).toBe(
+        APP_CONFIG.constants.URL_DEFAULT_SCHEME,
+      );
+    });
+  });
 });
 
 describe("defaultSchemeForText", () => {

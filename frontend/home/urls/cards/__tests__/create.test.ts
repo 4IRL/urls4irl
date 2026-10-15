@@ -1289,10 +1289,11 @@ describe("createURL - scheme selector", () => {
     // Pins the bind order in mountCreateSchemeSelector: the prefix handler must
     // run before the trim handler. The trim handler reads the input text and the
     // selector scheme synchronously, so if it ran first it would see
-    // "http://<query>" with the "mailto" scheme still selected and compose
-    // "mailto:http://<query>" (and syncParamTrim would debounce that stale pair).
+    // "http://<query>" with the "ftp" scheme still selected and compose a stale
+    // pair. An authority scheme is picked because an explicit opaque pick (e.g.
+    // "mailto") deliberately keeps a typed prefix verbatim and never splits it.
     it("strips a typed prefix before the trim handler reads text and scheme", () => {
-      pickScheme("mailto");
+      pickScheme("ftp");
 
       typeText(`http://${QUERY_TEXT}`);
       vi.advanceTimersByTime(200);

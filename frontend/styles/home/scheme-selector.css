@@ -1,8 +1,10 @@
 /* ---------------------------------------------------------------------------
    Searchable URL scheme selector (create + edit panels). The DOM is built by
    frontend/home/urls/scheme/scheme-selector.ts; the look clones the tag listbox
-   (tags.css) and uses design tokens only, so it is correct in both themes.
-   Mocks: plans/urls4irl/open/url-scheme-selector/mocks/scheme-selector-*.html
+   (tags.css). Colors come from design tokens so both themes work; the toggle
+   and input corner radii (4px, narrower than --radius-sm) and the neutral
+   rgba(126,130,130,...) fills (as in tags.css) are literals.
+   Mocks: plans/urls4irl/completed/url-scheme-selector/mocks/scheme-selector-*.html
 
    `.urlSchemeSelector` is a class on the existing `.text-input-container`
    (no extra wrapper). Inside it: `.urlSchemeInputRow` (toggle + the original

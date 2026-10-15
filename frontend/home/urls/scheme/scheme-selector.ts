@@ -6,7 +6,6 @@ import { fillTemplate } from "../../../lib/string-template.js";
 import { isCoarsePointer } from "../../mobile.js";
 
 export interface SchemeSelectorHandle {
-  element: JQuery<HTMLElement>;
   getScheme(): string;
   setScheme(args: {
     scheme: string;
@@ -373,7 +372,6 @@ export function mountSchemeSelector({
   }
 
   const handle: SchemeSelectorHandle = {
-    element: inputContainer,
     getScheme: () => currentScheme,
     isExplicit: () => explicit,
     setScheme({ scheme, explicit: isExplicit, announce = false }) {
