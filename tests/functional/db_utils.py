@@ -54,6 +54,42 @@ def set_utub_locked_state(app: Flask, utub_id: int, is_locked: bool) -> None:
         db.session.commit()
 
 
+def remove_user_from_utub(app: Flask, user_id: int, utub_id: int) -> None:
+    """Delete ``user_id``'s ``Utub_Members`` row for ``utub_id`` and commit, so
+    the running Flask server treats the user as no longer a member."""
+    with app.app_context():
+        membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id, Utub_Members.utub_id == utub_id
+        ).first()
+        assert membership is not None
+        db.session.delete(membership)
+        db.session.commit()
+
+
+def add_url_to_utub_as_other_member(
+    app: Flask, utub_id: int, author_user_id: int, url_string: str, url_title: str
+) -> int:
+    """Insert a ``Utub_Urls`` row authored by ``author_user_id`` (another member,
+    not the logged-in user) and bump the UTub's ``last_updated``. Returns the new
+    ``Utub_Urls`` id."""
+    with app.app_context():
+        url = Urls(normalized_url=url_string, current_user_id=author_user_id)
+        db.session.add(url)
+        db.session.flush()
+
+        utub_url = Utub_Urls()
+        utub_url.url_title = url_title
+        utub_url.url_id = url.id
+        utub_url.utub_id = utub_id
+        utub_url.user_id = author_user_id
+        db.session.add(utub_url)
+
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.set_last_updated()
+        db.session.commit()
+        return utub_url.id
+
+
 def get_other_utub_this_user_is_member_of(
     app: Flask, user_id: int, source_utub_id: int
 ) -> Utubs:
