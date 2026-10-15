@@ -24,6 +24,7 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "getTrash": "/utubs/trash",
     "deleteUTub": "/utubs/-1",
     "restoreUTub": "/utubs/-1/restore",
+    "purgeUTub": "/utubs/-1/purge",
     "updateUTubName": "/utubs/-1/name",
     "updateUTubDescription": "/utubs/-1/description",
     # URL routes
@@ -35,6 +36,7 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "copyURLsToUtubs": "/utubs/urls/copy",
     "bulkDeleteURLs": "/utubs/-1/urls/delete",
     "restoreURL": "/utubs/-1/urls/-2/restore",
+    "purgeURL": "/utubs/-1/urls/-2/purge",
     # UTub URL Tag routes
     "createURLTag": "/utubs/-1/urls/-2/tags",
     "createURLTagsBatch": "/utubs/-1/urls/-2/tags/batch",

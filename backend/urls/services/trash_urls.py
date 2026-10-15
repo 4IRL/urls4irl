@@ -18,7 +18,7 @@ from backend.schemas.errors import (
     build_url_conflict_error_response,
 )
 from backend.schemas.tags import UtubTagSchema
-from backend.schemas.trash import UrlRestoredResponseSchema
+from backend.schemas.trash import UrlPurgedResponseSchema, UrlRestoredResponseSchema
 from backend.schemas.urls import UtubUrlSchema
 from backend.tags.services.create_url_tag import get_tag_applied_counts
 from backend.urls.constants import URLErrorCodes, UrlRestoreTarget
@@ -385,4 +385,67 @@ def restore_trashed_url(
             tag_counts_modified=tag_counts,
             lost_tag_count=lost_tag_count,
         ),
+    ).to_response()
+
+
+def purge_trashed_url(
+    *, utub_id: int, utub_url_id: int, current_user_id: int
+) -> FlaskResponse:
+    """Permanently delete a trashed URL ("Delete forever").
+
+    Shares restore's actionability predicate and lock guard, so a URL the caller may
+    not restore is a 404 here too, and a locked origin UTub is a 403. The
+    ``Utub_Url_Tags`` rows are deleted explicitly first (``Utub_Urls.url_tags`` has no
+    ORM cascade; the admin hard-delete order), then the ``Utub_Urls`` row. The shared
+    ``Urls`` row is kept: other UTubs may reference it. Live tag counts are unchanged
+    because trashed rows never count, so the response carries no tag counts.
+
+    Like restore, only the ``Utub_Urls`` row is locked: a membership, role, trash or
+    lock change committed while this request waits on that row lock is not
+    re-evaluated (the accepted race documented on ``restore_trashed_url``).
+
+    Args:
+        utub_id (int): The origin UTub id from the path
+        utub_url_id (int): The Utub_Urls id from the path
+        current_user_id (int): The acting user
+
+    Returns:
+        FlaskResponse: 200 with the purged ids on success; 404 when the URL is not
+        actionable in Trash, 403 when its UTub is locked.
+    """
+    resolved = _lock_actionable_trashed_url(
+        utub_id=utub_id, utub_url_id=utub_url_id, current_user_id=current_user_id
+    )
+    if not isinstance(resolved, LockedTrashedUrl):
+        return resolved
+    utub_url = resolved.utub_url
+
+    try:
+        Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == utub_url.id).delete(
+            synchronize_session=False
+        )
+        db.session.delete(utub_url)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        warning_log(
+            f"Purge trashed URL failed | UTub.id={utub_id} "
+            f"| UTubURL.id={utub_url_id} "
+            f"| error_type={type(exc).__name__}"
+        )
+        raise
+
+    record_event(EventName.URL_PURGED_FROM_TRASH)
+    safe_add_many_logs(
+        [
+            "Permanently deleted trashed UTubURL",
+            f"User.id={current_user_id}",
+            f"UTub.id={utub_id}",
+            f"UTubURL.id={utub_url_id}",
+        ]
+    )
+
+    return APIResponse(
+        message=TRASH_SUCCESS.URL_PURGED,
+        data=UrlPurgedResponseSchema(utub_id=utub_id, utub_url_id=utub_url_id),
     ).to_response()

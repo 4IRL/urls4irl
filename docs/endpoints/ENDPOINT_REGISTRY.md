@@ -986,6 +986,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `updateURL`
 
+### `DELETE /utubs/<int:utub_id>/urls/<int:utub_url_id>/purge` — `urls.purge_url`
+
+- **Handler:** `backend/urls/routes.py:purge_url`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.urls.services.trash_urls:purge_trashed_url`
+- **Schema:** response: `backend.schemas.trash.UrlPurgedResponseSchema`; status: 200 `backend.schemas.trash.UrlPurgedResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `purgeURL`
+
 ### `POST /utubs/<int:utub_id>/urls/<int:utub_url_id>/restore` — `urls.restore_url`
 
 - **Handler:** `backend/urls/routes.py:restore_url`
@@ -1263,6 +1272,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubNameRequest`; response: `backend.schemas.utubs.UtubNameUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubNameUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `updateUTubName`
+
+### `DELETE /utubs/<int:utub_id>/purge` — `utubs.purge_utub`
+
+- **Handler:** `backend/utubs/routes.py:purge_utub`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.utubs.services.trash_utubs:purge_trashed_utub`
+- **Schema:** response: `backend.schemas.trash.UtubPurgedResponseSchema`; status: 200 `backend.schemas.trash.UtubPurgedResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `purgeUTub`
 
 ### `POST /utubs/<int:utub_id>/restore` — `utubs.restore_utub`
 

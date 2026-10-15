@@ -4028,6 +4028,41 @@
         "email_validation_required",
         "api_route"
       ],
+      "endpoint": "utubs.purge_utub",
+      "handler": "backend/utubs/routes.py:purge_utub",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "purgeUTub"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/purge",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.trash.UtubPurgedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.UtubPurgedResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.trash_utubs:purge_trashed_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
       "endpoint": "utubs.restore_utub",
       "handler": "backend/utubs/routes.py:restore_utub",
       "js": {
@@ -4266,6 +4301,41 @@
       },
       "services": [
         "backend.urls.services.update_urls:update_url_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "urls.purge_url",
+      "handler": "backend/urls/routes.py:purge_url",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "purgeURL"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/purge",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.trash.UrlPurgedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.UrlPurgedResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.trash_urls:purge_trashed_url"
       ],
       "templates": []
     },

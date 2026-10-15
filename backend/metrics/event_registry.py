@@ -114,6 +114,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="UTub explicitly opened/selected",
         category=EventCategory.DOMAIN,
     ),
+    EventName.UTUB_PURGED_FROM_TRASH: EventRegistryEntry(
+        description="A trashed UTub permanently deleted by its creator",
+        category=EventCategory.DOMAIN,
+    ),
     EventName.UTUB_RESTORED_FROM_TRASH: EventRegistryEntry(
         description="A trashed UTub restored by its creator",
         category=EventCategory.DOMAIN,
@@ -174,6 +178,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     ),
     EventName.URL_TITLE_UPDATED: EventRegistryEntry(
         description="URL title edited",
+        category=EventCategory.DOMAIN,
+    ),
+    EventName.URL_PURGED_FROM_TRASH: EventRegistryEntry(
+        description="A trashed URL permanently deleted",
         category=EventCategory.DOMAIN,
     ),
     EventName.URL_RESTORED_FROM_TRASH: EventRegistryEntry(

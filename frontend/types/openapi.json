@@ -4986,6 +4986,7 @@
                 "url_accessed",
                 "url_added_to_utub",
                 "url_create_rejected",
+                "url_purged_from_trash",
                 "url_removed_from_utub",
                 "url_restored_from_trash",
                 "url_string_updated",
@@ -4997,6 +4998,7 @@
                 "utub_deleted",
                 "utub_desc_updated",
                 "utub_opened",
+                "utub_purged_from_trash",
                 "utub_restored_from_trash",
                 "utub_tag_created",
                 "utub_title_updated",
@@ -5346,6 +5348,7 @@
                 "url_accessed",
                 "url_added_to_utub",
                 "url_create_rejected",
+                "url_purged_from_trash",
                 "url_removed_from_utub",
                 "url_restored_from_trash",
                 "url_string_updated",
@@ -5357,6 +5360,7 @@
                 "utub_deleted",
                 "utub_desc_updated",
                 "utub_opened",
+                "utub_purged_from_trash",
                 "utub_restored_from_trash",
                 "utub_tag_created",
                 "utub_title_updated",
@@ -7461,6 +7465,76 @@
         }
       }
     },
+    "/utubs/{utub_id}/urls/{utub_url_id}/purge": {
+      "delete": {
+        "operationId": "purgeUrl",
+        "tags": ["urls"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Permanently delete a trashed URL (refused while its UTub is locked)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlPurgedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/{user_id}/username": {
       "put": {
         "operationId": "changeUsername",
@@ -8375,6 +8449,68 @@
                     },
                     {
                       "$ref": "#/components/schemas/UtubRestoredResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/purge": {
+      "delete": {
+        "operationId": "purgeUtub",
+        "tags": ["utubs"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Permanently delete a trashed UTub (creator only; refused while the UTub is locked)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A trashed UTub permanently deleted by its creator, with all of its children",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubPurgedResponseSchema"
                     }
                   ]
                 }
@@ -11974,6 +12110,21 @@
         "required": ["utubID", "utubName", "URL"],
         "type": "object"
       },
+      "UrlPurgedResponseSchema": {
+        "description": "A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count.",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub the URL was deleted from",
+            "type": "integer"
+          },
+          "utubUrlID": {
+            "description": "ID of the permanently deleted UTub-URL row",
+            "type": "integer"
+          }
+        },
+        "required": ["utubID", "utubUrlID"],
+        "type": "object"
+      },
       "ChangeUsernameRequest": {
         "properties": {
           "username": {
@@ -12863,6 +13014,25 @@
           "isLocked",
           "restoredUrlCount"
         ],
+        "type": "object"
+      },
+      "UtubPurgedResponseSchema": {
+        "description": "A trashed UTub permanently deleted by its creator, with all of its children",
+        "properties": {
+          "utubID": {
+            "description": "ID of the permanently deleted UTub",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the permanently deleted UTub",
+            "type": "string"
+          },
+          "purgedUrlCount": {
+            "description": "Number of URL rows (live and trashed) deleted with the UTub",
+            "type": "integer"
+          }
+        },
+        "required": ["utubID", "utubName", "purgedUrlCount"],
         "type": "object"
       },
       "AddTagsToUrlsRequest": {

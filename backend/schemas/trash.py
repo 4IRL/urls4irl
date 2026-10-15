@@ -234,3 +234,33 @@ class UtubRestoredResponseSchema(BaseSchema):
         alias=MODELS.RESTORED_URL_COUNT,
         description="Number of live URLs that came back with the UTub",
     )
+
+
+class UrlPurgedResponseSchema(BaseSchema):
+    """A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count."""
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub the URL was deleted from",
+    )
+    utub_url_id: int = Field(
+        alias=MODELS.UTUB_URL_ID,
+        description="ID of the permanently deleted UTub-URL row",
+    )
+
+
+class UtubPurgedResponseSchema(BaseSchema):
+    """A trashed UTub permanently deleted by its creator, with all of its children"""
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the permanently deleted UTub",
+    )
+    utub_name: str = Field(
+        alias=UTUB_NAME,
+        description="Name of the permanently deleted UTub",
+    )
+    purged_url_count: int = Field(
+        alias=MODELS.PURGED_URL_COUNT,
+        description="Number of URL rows (live and trashed) deleted with the UTub",
+    )

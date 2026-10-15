@@ -1355,6 +1355,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/urls/{utub_url_id}/purge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Permanently delete a trashed URL (refused while its UTub is locked) */
+    delete: operations["purgeUrl"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/username": {
     parameters: {
       query?: never;
@@ -1557,6 +1574,23 @@ export interface paths {
     /** @description Restore a trashed UTub (creator only; refused while the UTub is locked) */
     post: operations["restoreUtub"];
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/utubs/{utub_id}/purge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Permanently delete a trashed UTub (creator only; refused while the UTub is locked) */
+    delete: operations["purgeUtub"];
     options?: never;
     head?: never;
     patch?: never;
@@ -3180,6 +3214,13 @@ export interface components {
        */
       lostTagCount: number;
     };
+    /** @description A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count. */
+    UrlPurgedResponseSchema: {
+      /** @description ID of the UTub the URL was deleted from */
+      utubID: number;
+      /** @description ID of the permanently deleted UTub-URL row */
+      utubUrlID: number;
+    };
     ChangeUsernameRequest: {
       /**
        * @description The new username for the authenticated account
@@ -3647,6 +3688,15 @@ export interface components {
       isLocked: boolean;
       /** @description Number of live URLs that came back with the UTub */
       restoredUrlCount: number;
+    };
+    /** @description A trashed UTub permanently deleted by its creator, with all of its children */
+    UtubPurgedResponseSchema: {
+      /** @description ID of the permanently deleted UTub */
+      utubID: number;
+      /** @description Name of the permanently deleted UTub */
+      utubName: string;
+      /** @description Number of URL rows (live and trashed) deleted with the UTub */
+      purgedUrlCount: number;
     };
     AddTagsToUrlsRequest: {
       /**
@@ -7096,6 +7146,7 @@ export interface operations {
           | "url_accessed"
           | "url_added_to_utub"
           | "url_create_rejected"
+          | "url_purged_from_trash"
           | "url_removed_from_utub"
           | "url_restored_from_trash"
           | "url_string_updated"
@@ -7107,6 +7158,7 @@ export interface operations {
           | "utub_deleted"
           | "utub_desc_updated"
           | "utub_opened"
+          | "utub_purged_from_trash"
           | "utub_restored_from_trash"
           | "utub_tag_created"
           | "utub_title_updated"
@@ -7340,6 +7392,7 @@ export interface operations {
           | "url_accessed"
           | "url_added_to_utub"
           | "url_create_rejected"
+          | "url_purged_from_trash"
           | "url_removed_from_utub"
           | "url_restored_from_trash"
           | "url_string_updated"
@@ -7351,6 +7404,7 @@ export interface operations {
           | "utub_deleted"
           | "utub_desc_updated"
           | "utub_opened"
+          | "utub_purged_from_trash"
           | "utub_restored_from_trash"
           | "utub_tag_created"
           | "utub_title_updated"
@@ -8708,6 +8762,48 @@ export interface operations {
       };
     };
   };
+  purgeUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlPurgedResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   changeUsername: {
     parameters: {
       query?: never;
@@ -9369,6 +9465,47 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["UtubRestoredResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  purgeUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A trashed UTub permanently deleted by its creator, with all of its children */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubPurgedResponseSchema"];
         };
       };
       /** @description Forbidden */

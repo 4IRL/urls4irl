@@ -50,6 +50,7 @@ export interface AppRoutes {
   getUTub: (id: number) => string;
   deleteUTub: (id: number) => string;
   restoreUTub: (id: number) => string;
+  purgeUTub: (id: number) => string;
   transferUtubOwnership: (id: number) => string;
   updateUTubName: (id: number) => string;
   updateUTubDescription: (id: number) => string;
@@ -66,6 +67,7 @@ export interface AppRoutes {
   updateURL: (utubId: number, urlId: number) => string;
   updateURLTitle: (utubId: number, urlId: number) => string;
   restoreURL: ({ utubId, urlId }: { utubId: number; urlId: number }) => string;
+  purgeURL: ({ utubId, urlId }: { utubId: number; urlId: number }) => string;
   createURLTag: (utubId: number, urlId: number) => string;
   createURLTagsBatch: (utubId: number, urlId: number) => string;
   deleteUTubTag: (utubId: number, tagId: number) => string;
@@ -173,6 +175,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.deleteUTub.replace("-1", String(id)),
     restoreUTub: (id: number) =>
       rawConfig.routes.restoreUTub.replace("-1", String(id)),
+    purgeUTub: (id: number) =>
+      rawConfig.routes.purgeUTub.replace("-1", String(id)),
     transferUtubOwnership: (id: number) =>
       rawConfig.routes.transferUtubOwnership.replace("-1", String(id)),
     updateUTubName: (id: number) =>
@@ -200,6 +204,10 @@ export const APP_CONFIG: AppConfig = Object.freeze({
         .replace("-2", String(urlId)),
     restoreURL: ({ utubId, urlId }: { utubId: number; urlId: number }) =>
       rawConfig.routes.restoreURL
+        .replace("-1", String(utubId))
+        .replace("-2", String(urlId)),
+    purgeURL: ({ utubId, urlId }: { utubId: number; urlId: number }) =>
+      rawConfig.routes.purgeURL
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
 

@@ -23,7 +23,11 @@ from backend.schemas.requests.utubs import (
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
 )
-from backend.schemas.trash import TrashListResponseSchema, UtubRestoredResponseSchema
+from backend.schemas.trash import (
+    TrashListResponseSchema,
+    UtubPurgedResponseSchema,
+    UtubRestoredResponseSchema,
+)
 from backend.schemas.users import UtubSummaryListSchema
 from backend.schemas.utubs import (
     UtubCreatedResponseSchema,
@@ -56,7 +60,10 @@ from backend.utubs.services.read_utubs import (
     get_all_utubs_of_user,
     get_single_utub_for_user,
 )
-from backend.utubs.services.trash_utubs import restore_trashed_utub
+from backend.utubs.services.trash_utubs import (
+    purge_trashed_utub,
+    restore_trashed_utub,
+)
 from backend.utubs.services.update_utubs import (
     update_utub_desc_if_new,
     update_utub_name_if_new,
@@ -212,6 +219,25 @@ def restore_utub(utub_id: int) -> FlaskResponse:
     The creator of a trashed UTub restores it to their live UTubs.
     """
     return restore_trashed_utub(utub_id=utub_id, current_user_id=current_user.id)
+
+
+@utubs.route("/utubs/<int:utub_id>/purge", methods=["DELETE"])
+@email_validation_required
+@api_route(
+    response_schema=UtubPurgedResponseSchema,
+    tags=[OPEN_API.UTUBS],
+    description="Permanently delete a trashed UTub (creator only; refused while the UTub is locked)",
+    status_codes={
+        200: UtubPurgedResponseSchema,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def purge_utub(utub_id: int) -> FlaskResponse:
+    """
+    The creator of a trashed UTub deletes it forever, along with its members, tags and URLs.
+    """
+    return purge_trashed_utub(utub_id=utub_id, current_user_id=current_user.id)
 
 
 @utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])

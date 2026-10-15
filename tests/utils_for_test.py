@@ -231,6 +231,19 @@ def lock_utub(app: Flask, utub_id: int) -> None:
         db.session.commit()
 
 
+def unlock_utub(app: Flask, utub_id: int) -> None:
+    """Unfreeze a locked UTub, in place.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub to unlock
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.is_locked = False
+        db.session.commit()
+
+
 def remove_member(app: Flask, utub_id: int, user_id: int) -> None:
     """Remove a member from a UTub, in place, leaving their Utub_Urls rows behind.
 
