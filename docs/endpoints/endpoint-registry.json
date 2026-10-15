@@ -4023,6 +4023,41 @@
       "templates": []
     },
     {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.restore_utub",
+      "handler": "backend/utubs/routes.py:restore_utub",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "restoreUTub"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/restore",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.trash.UtubRestoredResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.UtubRestoredResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.trash_utubs:restore_trashed_utub"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "utub_tags",
       "decorators": [
         "utub_membership_required",

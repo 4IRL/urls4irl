@@ -63,6 +63,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UTUB_CREATED: Resource.UTUB,
     EventName.UTUB_DELETED: Resource.UTUB,
     EventName.UTUB_OPENED: Resource.UTUB,
+    EventName.UTUB_RESTORED_FROM_TRASH: Resource.UTUB,
     EventName.UTUB_TITLE_UPDATED: Resource.UTUB,
     EventName.UTUB_DESC_UPDATED: Resource.UTUB,
     EventName.URL_ACCESSED: Resource.URL,

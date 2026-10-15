@@ -1545,6 +1545,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Restore a trashed UTub (creator only; refused while the UTub is locked) */
+    post: operations["restoreUtub"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/name": {
     parameters: {
       query?: never;
@@ -3615,6 +3632,21 @@ export interface components {
        * @description Server time the list was read (ISO 8601)
        */
       listedAt: string;
+    };
+    /** @description A trashed UTub restored to the creator's live UTubs */
+    UtubRestoredResponseSchema: {
+      /** @description ID of the restored UTub */
+      utubID: number;
+      /** @description Name of the restored UTub */
+      utubName: string;
+      /** @description Description of the restored UTub, or null if not set */
+      utubDescription: string | null;
+      /** @description The restoring user's role in the UTub (always the creator role) */
+      memberRole: string;
+      /** @description Whether the UTub is locked (frozen to mutations) */
+      isLocked: boolean;
+      /** @description Number of live URLs that came back with the UTub */
+      restoredUrlCount: number;
     };
     AddTagsToUrlsRequest: {
       /**
@@ -7075,6 +7107,7 @@ export interface operations {
           | "utub_deleted"
           | "utub_desc_updated"
           | "utub_opened"
+          | "utub_restored_from_trash"
           | "utub_tag_created"
           | "utub_title_updated"
           | "ui_utub_select"
@@ -7318,6 +7351,7 @@ export interface operations {
           | "utub_deleted"
           | "utub_desc_updated"
           | "utub_opened"
+          | "utub_restored_from_trash"
           | "utub_tag_created"
           | "utub_title_updated"
           | "ui_utub_select"
@@ -9312,6 +9346,47 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["TrashListResponseSchema"];
+        };
+      };
+    };
+  };
+  restoreUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A trashed UTub restored to the creator's live UTubs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubRestoredResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };

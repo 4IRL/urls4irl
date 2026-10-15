@@ -67,6 +67,7 @@ class EventName(StrEnum):
     UTUB_DELETED = "utub_deleted"
     UTUB_DESC_UPDATED = "utub_desc_updated"
     UTUB_OPENED = "utub_opened"
+    UTUB_RESTORED_FROM_TRASH = "utub_restored_from_trash"
     UTUB_TAG_CREATED = "utub_tag_created"
     UTUB_TITLE_UPDATED = "utub_title_updated"
 

@@ -205,3 +205,32 @@ class UrlRestoredResponseSchema(BaseSchema):
         alias=MODELS.LOST_TAG_COUNT,
         description="How many of the URL's tags were deleted from the UTub while it sat in Trash",
     )
+
+
+class UtubRestoredResponseSchema(BaseSchema):
+    """A trashed UTub restored to the creator's live UTubs"""
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the restored UTub",
+    )
+    utub_name: str = Field(
+        alias=UTUB_NAME,
+        description="Name of the restored UTub",
+    )
+    utub_description: str | None = Field(
+        alias=MODELS.UTUB_DESCRIPTION,
+        description="Description of the restored UTub, or null if not set",
+    )
+    member_role: str = Field(
+        alias=MODELS.MEMBER_ROLE,
+        description="The restoring user's role in the UTub (always the creator role)",
+    )
+    is_locked: bool = Field(
+        alias=MODELS.IS_LOCKED,
+        description="Whether the UTub is locked (frozen to mutations)",
+    )
+    restored_url_count: int = Field(
+        alias=MODELS.RESTORED_URL_COUNT,
+        description="Number of live URLs that came back with the UTub",
+    )

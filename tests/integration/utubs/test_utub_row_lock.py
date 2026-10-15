@@ -16,12 +16,14 @@ from backend.api_common.responses import FlaskResponse
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.trash_strs import TRASH_FAILURE
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.guards import (
     UtubAccess,
     get_fresh_membership,
     lock_and_reauthorize,
+    lock_trashed_utub_for_creator,
     lock_utub_for_update,
 )
 from tests.utils_for_test import is_string_in_logs, set_member_role
@@ -366,6 +368,164 @@ def test_lock_and_reauthorize_no_log_on_happy_path(
 
         assert not is_string_in_logs("not owner", caplog.records)
         assert not is_string_in_logs("not manager", caplog.records)
+
+
+NOT_IN_TRASH_CODE = UTubErrorCodes.NOT_IN_TRASH
+
+
+def _lock_trashed(
+    caller_id: int, *, reject_locked: bool = True
+) -> Utubs | FlaskResponse:
+    with mock.patch("backend.utubs.guards.current_user", SimpleNamespace(id=caller_id)):
+        return lock_trashed_utub_for_creator(
+            utub_id=UTUB_ID,
+            error_code=ERROR_CODE,
+            not_in_trash_code=NOT_IN_TRASH_CODE,
+            reject_locked=reject_locked,
+        )
+
+
+def _assert_not_in_trash(result: Utubs | FlaskResponse) -> None:
+    assert not isinstance(result, Utubs)
+    response, status_code = result
+    assert status_code == 404
+    json_response = response.get_json()
+    assert json_response[STD_JSON.MESSAGE] == TRASH_FAILURE.NOT_IN_TRASH
+    assert json_response[STD_JSON.ERROR_CODE] == NOT_IN_TRASH_CODE
+
+
+def test_lock_trashed_utub_for_creator_live_utub_denied(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a live (not trashed) UTub
+    WHEN its creator calls the trashed-UTub guard
+    THEN the masking 404 NOT_IN_TRASH response is returned
+    """
+    with app.app_context():
+        with app.test_request_context():
+            _assert_not_in_trash(_lock_trashed(1))
+
+
+def test_lock_trashed_utub_for_creator_missing_utub_denied(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a UTub that does not exist
+    WHEN the guard runs
+    THEN the masking 404 NOT_IN_TRASH response is returned
+    """
+    with app.app_context():
+        with app.test_request_context():
+            with mock.patch("backend.utubs.guards.current_user", SimpleNamespace(id=1)):
+                result = lock_trashed_utub_for_creator(
+                    utub_id=99999,
+                    error_code=ERROR_CODE,
+                    not_in_trash_code=NOT_IN_TRASH_CODE,
+                )
+            _assert_not_in_trash(result)
+
+
+@pytest.mark.parametrize("caller_id", (2, 3))
+def test_lock_trashed_utub_for_creator_non_creator_denied(
+    app, add_multiple_users_to_utub_without_logging_in, caller_id
+):
+    """
+    GIVEN a trashed UTub
+    WHEN a member who is not the creator calls the guard
+    THEN the masking 404 NOT_IN_TRASH response is returned
+    """
+    with app.app_context():
+        _raw('UPDATE "Utubs" SET "deletedAt" = now(), "deletedBy" = 1 WHERE id = 1')
+
+        with app.test_request_context():
+            _assert_not_in_trash(_lock_trashed(caller_id))
+
+
+def test_lock_trashed_utub_for_creator_removed_creator_membership_denied(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a trashed UTub whose creator's membership row no longer exists
+    WHEN the creator calls the guard
+    THEN the masking 404 NOT_IN_TRASH response is returned (fail closed)
+    """
+    with app.app_context():
+        _raw('UPDATE "Utubs" SET "deletedAt" = now(), "deletedBy" = 1 WHERE id = 1')
+        _raw('DELETE FROM "UtubMembers" WHERE "utubID" = 1 AND "userID" = 1')
+
+        with app.test_request_context():
+            _assert_not_in_trash(_lock_trashed(1))
+
+
+def test_lock_trashed_utub_for_creator_allows_creator_of_trashed_utub(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a trashed UTub
+    WHEN its creator calls the guard
+    THEN the locked, trashed UTub is returned and g.is_manager is True
+    """
+    with app.app_context():
+        _raw('UPDATE "Utubs" SET "deletedAt" = now(), "deletedBy" = 1 WHERE id = 1')
+
+        with app.test_request_context():
+            g.is_manager = False
+            result = _lock_trashed(1)
+
+            assert isinstance(result, Utubs)
+            assert result.id == UTUB_ID
+            assert result.is_trashed
+            assert g.is_manager is True
+
+
+@pytest.mark.parametrize(
+    "reject_locked,expect_rejected", ((True, True), (False, False))
+)
+def test_lock_trashed_utub_for_creator_locked_utub_only_rejected_when_requested(
+    app, add_multiple_users_to_utub_without_logging_in, reject_locked, expect_rejected
+):
+    """
+    GIVEN a trashed, admin-locked UTub
+    WHEN its creator calls the guard
+    THEN a 403 UTUB_IS_LOCKED response is returned only when reject_locked is True
+    """
+    with app.app_context():
+        _raw(
+            'UPDATE "Utubs" SET "deletedAt" = now(), "deletedBy" = 1, '
+            '"isLocked" = true WHERE id = 1'
+        )
+
+        with app.test_request_context():
+            result = _lock_trashed(1, reject_locked=reject_locked)
+
+            if expect_rejected:
+                assert not isinstance(result, Utubs)
+                response, status_code = result
+                assert status_code == 403
+                json_response = response.get_json()
+                assert json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+                assert json_response[STD_JSON.ERROR_CODE] == ERROR_CODE
+            else:
+                assert isinstance(result, Utubs)
+
+
+def test_lock_trashed_utub_for_creator_locked_utub_non_creator_not_disclosed(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a trashed, admin-locked UTub
+    WHEN a non-creator calls the guard
+    THEN the masking 404 NOT_IN_TRASH response is returned, not the locked 403
+    """
+    with app.app_context():
+        _raw(
+            'UPDATE "Utubs" SET "deletedAt" = now(), "deletedBy" = 1, '
+            '"isLocked" = true WHERE id = 1'
+        )
+
+        with app.test_request_context():
+            _assert_not_in_trash(_lock_trashed(2))
 
 
 def test_single_creator_index_rejects_second_creator(

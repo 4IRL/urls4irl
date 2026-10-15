@@ -559,6 +559,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UTUB_DELETED: _DimDeviceOnly,
     EventName.UTUB_DESC_UPDATED: _DimDeviceOnly,
     EventName.UTUB_OPENED: _DimDeviceOnly,
+    EventName.UTUB_RESTORED_FROM_TRASH: _DimDeviceOnly,
     EventName.UTUB_TAG_CREATED: _DimDeviceOnly,
     EventName.UTUB_TITLE_UPDATED: _DimDeviceOnly,
     # UI — UTubs

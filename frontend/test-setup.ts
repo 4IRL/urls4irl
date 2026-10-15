@@ -70,6 +70,7 @@ const appConfig = {
     getTrash: "/utubs/trash",
     getUTub: "/utubs/-1",
     deleteUTub: "/utubs/-1",
+    restoreUTub: "/utubs/-1/restore",
     transferUtubOwnership: "/utubs/-1/owner",
     updateUTubName: "/utubs/-1/name",
     updateUTubDescription: "/utubs/-1/description",

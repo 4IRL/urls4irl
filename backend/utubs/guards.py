@@ -11,6 +11,7 @@ from backend.app_logger import critical_log
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
+from backend.utils.strings.trash_strs import TRASH_FAILURE
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 
 
@@ -163,3 +164,65 @@ def lock_and_reauthorize(
         )
 
     return reject_if_utub_locked(utub, error_code=error_code)
+
+
+def lock_trashed_utub_for_creator(
+    *, utub_id: int, error_code: int, not_in_trash_code: int, reject_locked: bool = True
+) -> Utubs | FlaskResponse:
+    """Lock a TRASHED UTub row and re-authorize its creator on fresh state.
+
+    Counterpart of ``lock_and_reauthorize`` for the Trash flows, where the UTub is
+    expected to be trashed (so the live-UTub 404 does not apply) and only its
+    creator may act.
+
+    Check order (authorization precedes the locked-UTub check, so a non-creator
+    never learns whether a UTub is locked or even exists):
+
+    1. Lock the UTub row via ``lock_utub_for_update``, then re-read the caller's
+       membership on fresh state.
+    2. Mask every non-actionable case with the same 404 ``NOT_IN_TRASH``: the
+       UTub is missing, live (not trashed), the caller is no longer a member, or
+       the caller is not the creator.
+    3. Last, when ``reject_locked`` is set, ``reject_if_utub_locked``.
+
+    Args:
+        utub_id (int): ID of the UTub to lock.
+        error_code (int): Domain error code for the locked-UTub response.
+        not_in_trash_code (int): Domain error code for the masking 404.
+        reject_locked (bool): Whether a locked UTub is refused with a 403.
+
+    Returns:
+        The locked, refreshed trashed ``Utubs`` row (with ``g.is_manager`` set),
+        or an error response to return from the service.
+    """
+    utub: Utubs | None = lock_utub_for_update(utub_id=utub_id)
+    actor: Utub_Members | None = get_fresh_membership(
+        utub_id=utub_id, user_id=current_user.id
+    )
+
+    # Fail closed: every condition must hold explicitly for the creator to act.
+    authorized: bool = False
+    if (
+        utub is not None
+        and utub.is_trashed
+        and actor is not None
+        and utub.utub_creator == current_user.id
+    ):
+        authorized = True
+
+    if not authorized or utub is None:
+        return build_message_error_response(
+            message=TRASH_FAILURE.NOT_IN_TRASH,
+            error_code=not_in_trash_code,
+            status_code=404,
+        )
+
+    if reject_locked:
+        locked_response: FlaskResponse | None = reject_if_utub_locked(
+            utub, error_code=error_code
+        )
+        if locked_response is not None:
+            return locked_response
+
+    g.is_manager = True
+    return utub

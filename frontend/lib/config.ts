@@ -49,6 +49,7 @@ export interface AppRoutes {
   // Dynamic single-param routes
   getUTub: (id: number) => string;
   deleteUTub: (id: number) => string;
+  restoreUTub: (id: number) => string;
   transferUtubOwnership: (id: number) => string;
   updateUTubName: (id: number) => string;
   updateUTubDescription: (id: number) => string;
@@ -170,6 +171,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     getUTub: (id: number) => rawConfig.routes.getUTub.replace("-1", String(id)),
     deleteUTub: (id: number) =>
       rawConfig.routes.deleteUTub.replace("-1", String(id)),
+    restoreUTub: (id: number) =>
+      rawConfig.routes.restoreUTub.replace("-1", String(id)),
     transferUtubOwnership: (id: number) =>
       rawConfig.routes.transferUtubOwnership.replace("-1", String(id)),
     updateUTubName: (id: number) =>

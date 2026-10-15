@@ -4997,6 +4997,7 @@
                 "utub_deleted",
                 "utub_desc_updated",
                 "utub_opened",
+                "utub_restored_from_trash",
                 "utub_tag_created",
                 "utub_title_updated",
                 "ui_utub_select",
@@ -5356,6 +5357,7 @@
                 "utub_deleted",
                 "utub_desc_updated",
                 "utub_opened",
+                "utub_restored_from_trash",
                 "utub_tag_created",
                 "utub_title_updated",
                 "ui_utub_select",
@@ -8333,6 +8335,68 @@
                       "$ref": "#/components/schemas/TrashListResponseSchema"
                     }
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/restore": {
+      "post": {
+        "operationId": "restoreUtub",
+        "tags": ["utubs"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Restore a trashed UTub (creator only; refused while the UTub is locked)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A trashed UTub restored to the creator's live UTubs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubRestoredResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -12753,6 +12817,51 @@
           "currentUser",
           "retentionDays",
           "listedAt"
+        ],
+        "type": "object"
+      },
+      "UtubRestoredResponseSchema": {
+        "description": "A trashed UTub restored to the creator's live UTubs",
+        "properties": {
+          "utubID": {
+            "description": "ID of the restored UTub",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the restored UTub",
+            "type": "string"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the restored UTub, or null if not set"
+          },
+          "memberRole": {
+            "description": "The restoring user's role in the UTub (always the creator role)",
+            "type": "string"
+          },
+          "isLocked": {
+            "description": "Whether the UTub is locked (frozen to mutations)",
+            "type": "boolean"
+          },
+          "restoredUrlCount": {
+            "description": "Number of live URLs that came back with the UTub",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "utubID",
+          "utubName",
+          "utubDescription",
+          "memberRole",
+          "isLocked",
+          "restoredUrlCount"
         ],
         "type": "object"
       },

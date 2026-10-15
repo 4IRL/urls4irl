@@ -114,6 +114,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="UTub explicitly opened/selected",
         category=EventCategory.DOMAIN,
     ),
+    EventName.UTUB_RESTORED_FROM_TRASH: EventRegistryEntry(
+        description="A trashed UTub restored by its creator",
+        category=EventCategory.DOMAIN,
+    ),
     EventName.URL_ACCESSED: EventRegistryEntry(
         description="URL click-through (distinct from list)",
         category=EventCategory.DOMAIN,

@@ -99,6 +99,14 @@ CSRF_HEADER_KEY = "X-CSRFToken"
             id="delete_utub",
         ),
         pytest.param(
+            "restore_utub",
+            "POST",
+            ROUTES.UTUBS.RESTORE_UTUB,
+            {"utub_id": "utub_id"},
+            {},
+            id="restore_utub",
+        ),
+        pytest.param(
             "create_url",
             "POST",
             ROUTES.URLS.CREATE_URL,

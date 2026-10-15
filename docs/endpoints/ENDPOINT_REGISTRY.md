@@ -1264,6 +1264,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `updateUTubName`
 
+### `POST /utubs/<int:utub_id>/restore` — `utubs.restore_utub`
+
+- **Handler:** `backend/utubs/routes.py:restore_utub`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.utubs.services.trash_utubs:restore_trashed_utub`
+- **Schema:** response: `backend.schemas.trash.UtubRestoredResponseSchema`; status: 200 `backend.schemas.trash.UtubRestoredResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `restoreUTub`
+
 ### `GET /utubs/trash` — `utubs.get_trash`
 
 - **Handler:** `backend/utubs/routes.py:get_trash`
