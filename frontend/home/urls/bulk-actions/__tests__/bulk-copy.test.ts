@@ -12,6 +12,9 @@ import { APP_CONFIG } from "../../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
+import { refreshTrashCount } from "../../../trash/count.js";
+
+vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -650,6 +653,7 @@ describe("confirm (Copy) — resolve flows", () => {
       1,
     );
     expect(isBulkCopyPickerOpen()).toBe(false);
+    expect(refreshTrashCount).toHaveBeenCalledTimes(1);
   });
 
   it("partial across destinations (green-if-any) → URLS_COPIED_MULTI_PARTIAL; banner has no URL title", () => {
@@ -756,6 +760,8 @@ describe("confirm (Copy) — resolve flows", () => {
     expect(banner.text()).toContain(APP_CONFIG.strings.UNABLE_TO_COPY_URLS);
     // Cues suppressed — a lock-block must not paint a misleading amber cue.
     expect($('.urlRow[utuburlid="10"] .bulkCardResultCue').length).toBe(0);
+    // Nothing copied, so nothing could have been revived.
+    expect(refreshTrashCount).not.toHaveBeenCalled();
   });
 
   it("all-duplicate, no locks, 2+ destinations → URLS_COPY_MULTI_NONE_NEW AND amber cues DO fire (DD-13)", () => {
@@ -848,6 +854,7 @@ describe("confirm (Copy) — resolve flows", () => {
     expect(banner.attr("aria-live")).toBe("assertive");
     expect(banner.text()).toContain(APP_CONFIG.strings.UNABLE_TO_COPY_URLS);
     expect(isBulkCopyPickerOpen()).toBe(false);
+    expect(refreshTrashCount).not.toHaveBeenCalled();
   });
 
   it("redirects to the error page on a JSON 403 (auth/lock lost mid-flight)", () => {

@@ -14,6 +14,7 @@ import { TAG_SHEET_TOGGLE_TRIGGER } from "../../types/metrics-dim-values.js";
 import { getNumOfUTubs, updateUTubDeckCount } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
 import { applyAlternatingUTubSelectorBackground } from "./search.js";
+import { refreshTrashCount } from "../trash/count.js";
 
 // Purges a UTub from the store and UI without any server call: used after a
 // successful delete and when a refresh finds the UTub is gone. Showing a banner
@@ -89,6 +90,7 @@ export function removeUTubLocally({
       hideInputsAndUpdateUTubDeck();
     }
     emit(AppEvents.UTUB_DELETED, { utubID });
+    void refreshTrashCount();
 
     if (isMobile()) {
       setMobileUIWhenUTubNotSelectedOrUTubDeleted();

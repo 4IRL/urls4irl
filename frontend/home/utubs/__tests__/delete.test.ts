@@ -17,6 +17,9 @@ import { emit as recordUIEvent } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { setDeleteEventListeners } from "../delete.js";
 import { bootstrap } from "../../../lib/globals.js";
+import { refreshTrashCount } from "../../trash/count.js";
+
+vi.mock("../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
 // The ambient test-setup Bootstrap mock returns null from getInstance(), which
 // would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
@@ -146,6 +149,7 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
 
     expect(vi.mocked(resetUTubDeckIfNoUTubs)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(hideInputsAndUpdateUTubDeck)).not.toHaveBeenCalled();
+    expect(refreshTrashCount).toHaveBeenCalledTimes(1);
     expect(setState).toHaveBeenCalled();
     // The delete clears the multi-select fields defense-in-depth.
     expect(setState).toHaveBeenCalledWith(

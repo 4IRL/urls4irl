@@ -55,6 +55,7 @@ import {
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
+import { refreshTrashCount } from "../../trash/count.js";
 
 const log = debug("urls:cards");
 
@@ -399,6 +400,7 @@ function createURLSuccess({
   // Absent on a payload from before the revive fields existed: treat as a plain add.
   const revivedFromTrash = response.revivedFromTrash ?? false;
   const lostTagCount = response.lostTagCount ?? 0;
+  if (revivedFromTrash) void refreshTrashCount();
 
   const newUrl: UtubUrlItem = {
     utubUrlID: url.utubUrlID,

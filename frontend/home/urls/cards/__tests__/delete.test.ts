@@ -4,7 +4,10 @@ import { hideURLSearchIcon } from "../../search.js";
 import { showURLsEmptyState } from "../../empty-state.js";
 import { showURLDeckBannerError } from "../../deck.js";
 import { getState, setState } from "../../../../store/app-store.js";
+import { refreshTrashCount } from "../../../trash/count.js";
 import { deleteURLShowModal } from "../delete.js";
+
+vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -152,6 +155,7 @@ describe("deleteURLSuccess — empty-state branches", () => {
     });
 
     expect(setState).toHaveBeenCalledWith({ urls: [{ utubUrlID: 99 }] });
+    expect(refreshTrashCount).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -207,5 +211,6 @@ describe("deleteURLFail — locked UTub 403", () => {
 
     expect(showURLDeckBannerError).toHaveBeenCalledWith(LOCKED_MESSAGE);
     expect(locationAssignSpy).not.toHaveBeenCalled();
+    expect(refreshTrashCount).not.toHaveBeenCalled();
   });
 });

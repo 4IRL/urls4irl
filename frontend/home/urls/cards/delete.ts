@@ -9,6 +9,7 @@ import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { removeURLCardFromDeck } from "./card-deck.js";
 import { debug } from "../../../lib/debug.js";
+import { refreshTrashCount } from "../../trash/count.js";
 
 const log = debug("urls:cards");
 
@@ -122,6 +123,7 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
       .split(",")
       .filter(Boolean).length,
   });
+  void refreshTrashCount();
   // Close modal
   $("#confirmModal").modal("hide");
   removeURLCardFromDeck({

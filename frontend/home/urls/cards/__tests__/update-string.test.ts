@@ -49,6 +49,7 @@ import {
 } from "../../../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { emit as emitMetric } from "../../../../lib/metrics-client.js";
+import { refreshTrashCount } from "../../../trash/count.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -56,6 +57,7 @@ const { mockMetricsClient } = await vi.hoisted(
 );
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
+vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
 const { globalsMock } = await vi.hoisted(async () => {
   const { mockGlobalsWithTooltipInstance } =
@@ -404,6 +406,8 @@ describe("updateURLSuccess - revive on edit", () => {
     });
     expect(showURLUpdatedBanner).not.toHaveBeenCalled();
     expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    // Trashes the edited row and revives another, yet still one refresh.
+    expect(refreshTrashCount).toHaveBeenCalledTimes(1);
   });
 
   it("passes the lost tag count through to the revive banner", async () => {
@@ -555,6 +559,7 @@ describe("updateURLSuccess - revive on edit", () => {
     expect(removeURLCardFromDeck).not.toHaveBeenCalled();
     expect(insertURLCardIntoDeck).not.toHaveBeenCalled();
     expect(showReviveBanner).not.toHaveBeenCalled();
+    expect(refreshTrashCount).not.toHaveBeenCalled();
     expect(urlCard.closest("body").length).toBe(1);
   });
 
@@ -580,6 +585,7 @@ describe("updateURLSuccess - revive on edit", () => {
     expect(showReviveBanner).not.toHaveBeenCalled();
     expect(showURLUpdatedBanner).toHaveBeenCalledTimes(1);
     expect(setState).toHaveBeenCalled();
+    expect(refreshTrashCount).not.toHaveBeenCalled();
   });
 });
 

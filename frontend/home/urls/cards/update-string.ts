@@ -83,6 +83,7 @@ import {
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
+import { refreshTrashCount } from "../../trash/count.js";
 
 const log = debug("urls:cards");
 
@@ -585,6 +586,8 @@ function updateURLSuccess({
   closePanelAfterSave: boolean;
 }): void {
   if (response.revivedFromTrash) {
+    // Trashes the edited row and revives another: one authoritative refresh.
+    void refreshTrashCount();
     replaceEditedCardWithRevivedURL({
       response,
       urlCard,

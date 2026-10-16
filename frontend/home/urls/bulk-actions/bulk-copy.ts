@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { debug } from "../../../lib/debug.js";
+import { refreshTrashCount } from "../../trash/count.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { createRovingListbox } from "../../../lib/roving-listbox.js";
@@ -628,6 +629,9 @@ function handleCopySuccess({
   response: CopyUrlsResponse;
   snapshot: number[];
 }): void {
+  // A copy can revive a trashed duplicate, but the response does not say so:
+  // re-read the authoritative count after any copy that landed.
+  if (response.totalCopied > 0) void refreshTrashCount();
   const results = response.results;
   // Destinations that actually received ≥1 copy, and destinations skipped whole
   // because they were locked at write time (DD-8/DD-13). Both feed the banner;
