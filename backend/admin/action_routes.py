@@ -38,6 +38,7 @@ from backend.admin.ops_service import (
     trigger_gauge_sample,
     trigger_metrics_flush,
     trigger_short_urls_sync,
+    trigger_trash_purge,
     trigger_verify_tables,
 )
 from backend.admin.routes import admin
@@ -121,6 +122,30 @@ def admin_ops_audit_purge(
 ) -> FlaskResponse:
     """Run the 90-day audit-log retention purge and return the deleted row count."""
     return trigger_audit_purge(
+        actor_id=current_user.id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route("/admin/ops/trash-purge", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Run the Trash retention purge now (skips locked UTubs). "
+        "The purge trigger itself is always recorded in the audit log first."
+    ),
+    status_codes=_OPS_STATUS_CODES,
+)
+def admin_ops_trash_purge(
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Run the 30-day Trash retention purge and return the deleted row count."""
+    return trigger_trash_purge(
         actor_id=current_user.id,
         reason=admin_reason_required_request.reason,
     )

@@ -494,6 +494,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("scripts/purge_audit_log.py", ("admin",)),
     ("scripts/run_backup_if_requested.py", ("admin",)),
     ("scripts/trash_retention.py", ("unit", "trash")),
+    ("scripts/purge_trash.py", ("unit", "trash")),
     ("scripts/*.py", ("unit",)),
     ("scripts/*.sh", ("unit", "admin")),
 )

@@ -276,6 +276,96 @@
         }
       }
     },
+    "/admin/ops/trash-purge": {
+      "post": {
+        "operationId": "adminOpsTrashPurge",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Run the Trash retention purge now (skips locked UTubs). The purge trigger itself is always recorded in the audit log first.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
     "/admin/ops/verify-tables": {
       "post": {
         "operationId": "adminOpsVerifyTables",

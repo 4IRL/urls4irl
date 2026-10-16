@@ -1,6 +1,15 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    text,
+)
 
 from backend import db
 from backend.models.utub_members import Utub_Members
@@ -47,6 +56,15 @@ class Utubs(db.Model):
     deleted_by: int | None = Column(
         Integer, ForeignKey("Users.id"), nullable=True, default=None, name="deletedBy"
     )
+    # Partial index over trashed rows only, for the purge sweep and Trash list.
+    __table_args__ = (
+        Index(
+            "idx_utubs_deleted_at",
+            "deletedAt",
+            postgresql_where=text('"deletedAt" IS NOT NULL'),
+        ),
+    )
+
     utub_tags: list[Utub_Tags] = db.relationship(
         "Utub_Tags", cascade="all, delete, delete-orphan", passive_deletes=True
     )

@@ -99,6 +99,44 @@ def test_admin_ops_backup_trigger_button_renders(
     expect(trigger_button_locator).to_be_visible()
 
 
+def test_admin_ops_trash_purge_button_opens_confirm_modal(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin user on /admin/system-operations
+    WHEN the Operations panel renders and the admin clicks the Purge Expired
+         Trash ops button
+    THEN the button is visible and the confirm modal opens with the Trash purge
+         title.
+    """
+    login_admin_and_open_system_operations(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    purge_button_locator = wait_then_get_element(
+        page=page, css_selector=APL.OPS_TRASH_PURGE_BTN
+    )
+    expect(purge_button_locator).to_be_visible()
+
+    purge_button_locator.click()
+
+    modal_title_locator = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_MODAL_TITLE
+    )
+    expect(modal_title_locator).to_have_text(
+        UI_TEST_STRINGS.ADMIN_OPS_TRASH_PURGE_CONFIRM_TITLE
+    )
+
+
 def test_admin_ops_cards_render_descriptions(
     page: Page,
     create_test_users,

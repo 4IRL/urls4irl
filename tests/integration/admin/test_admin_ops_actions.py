@@ -23,6 +23,7 @@ from flask.testing import FlaskClient
 from redis import Redis
 
 import backend.admin.ops_service as ops_service
+from backend import db
 from backend.models.audit_log import AuditLog
 from backend.models.users import Users
 from backend.utils.strings.admin_portal_strs import (
@@ -32,6 +33,8 @@ from backend.utils.strings.admin_portal_strs import (
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from backend.utils.strings.url_validation_strs import SHORT_URLS
+from scripts.purge_trash import TrashPurgeResult
+from scripts.trash_retention import TRASH_RETENTION_DAYS
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.admin
@@ -39,6 +42,7 @@ pytestmark = pytest.mark.admin
 _OPS_METRICS_FLUSH_URL: str = "/admin/ops/metrics-flush"
 _OPS_GAUGE_SAMPLE_URL: str = "/admin/ops/gauge-sample"
 _OPS_AUDIT_PURGE_URL: str = "/admin/ops/audit-purge"
+_OPS_TRASH_PURGE_URL: str = "/admin/ops/trash-purge"
 _OPS_VERIFY_TABLES_URL: str = "/admin/ops/verify-tables"
 _OPS_SHORT_URLS_SYNC_URL: str = "/admin/ops/short-urls-sync"
 _OPS_BACKUP_TRIGGER_URL: str = "/admin/ops/backup-trigger"
@@ -47,6 +51,7 @@ _ALL_OPS_URLS: list[str] = [
     _OPS_METRICS_FLUSH_URL,
     _OPS_GAUGE_SAMPLE_URL,
     _OPS_AUDIT_PURGE_URL,
+    _OPS_TRASH_PURGE_URL,
     _OPS_VERIFY_TABLES_URL,
     _OPS_SHORT_URLS_SYNC_URL,
     _OPS_BACKUP_TRIGGER_URL,
@@ -96,6 +101,20 @@ def _post_ops(
     if reason is not None:
         payload["reason"] = reason
     return client.post(url, json=payload, headers={"X-CSRFToken": csrf})
+
+
+def _patch_raw_connection(app: Flask, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Replace the engine's ``raw_connection`` with a mock and return that mock connection.
+
+    Lets a test assert how the trash-purge trigger manages the raw psycopg2
+    connection it opens, while ``run_trash_purge`` itself stays mocked.
+    """
+    mock_connection = MagicMock()
+    with app.app_context():
+        monkeypatch.setattr(
+            db.engine, "raw_connection", MagicMock(return_value=mock_connection)
+        )
+    return mock_connection
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +229,55 @@ def test_admin_ops_audit_purge_happy_path(
     assert audit_row.log_metadata is not None
     # The single row is the self-audit written BEFORE the delete ran.
     assert "retention_days" in audit_row.log_metadata
+
+
+def test_admin_ops_trash_purge_happy_path(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN a logged-in admin user and run_trash_purge mocked to return 2 UTubs, 7 URLs
+    WHEN POST /admin/ops/trash-purge
+    THEN the response is 200 JSON with count=9 and the formatted message, one
+         audit row (the self-audit written before the purge) is created, and the
+         raw connection handed to the purge is closed exactly once.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+
+    mock_run_trash_purge = MagicMock(return_value=TrashPurgeResult(utubs=2, urls=7))
+    monkeypatch.setattr(ops_service, "run_trash_purge", mock_run_trash_purge)
+    mock_connection = _patch_raw_connection(app, monkeypatch)
+
+    with app.app_context():
+        rows_before: int = AuditLog.query.count()
+    assert rows_before == 0
+
+    response = _post_ops(client, _OPS_TRASH_PURGE_URL, csrf)
+
+    assert response.status_code == 200
+    mock_run_trash_purge.assert_called_once()
+    assert (
+        mock_run_trash_purge.call_args.kwargs["retention_days"] == TRASH_RETENTION_DAYS
+    )
+    assert mock_run_trash_purge.call_args.kwargs["pg_conn"] is mock_connection
+    mock_connection.close.assert_called_once()
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert body["count"] == 9
+    assert body[
+        STD_JSON.MESSAGE
+    ] == ADMIN_ACTION_STRINGS.OPS_TRASH_PURGE_SUCCESS.format(utubs=2, urls=7)
+
+    with app.app_context():
+        assert AuditLog.query.count() == 1
+        audit_row: AuditLog | None = AuditLog.query.first()
+    assert audit_row is not None
+    assert audit_row.action == ADMIN_AUDIT_ACTIONS.OPS_TRASH_PURGE
+    assert audit_row.actor_id == admin_user.id
+    assert audit_row.log_metadata == {
+        "reason": _MOCK_REASON,
+        "retention_days": TRASH_RETENTION_DAYS,
+    }
 
 
 def test_admin_ops_verify_tables_happy_path(
@@ -445,6 +513,47 @@ def test_admin_ops_purge_self_audit_precedes_delete(
     assert first_row.log_metadata is not None
     # Self-audit metadata has retention_days, not "error"
     assert "retention_days" in first_row.log_metadata
+
+
+def test_admin_ops_trash_purge_self_audit_precedes_delete(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN a logged-in admin user and run_trash_purge monkeypatched to raise
+    WHEN POST /admin/ops/trash-purge
+    THEN the response is 500 with OPS_TRASH_PURGE_ERROR and two audit rows exist:
+         the self-audit written before the purge, then an error row carrying "error".
+         The raw connection is still closed exactly once.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+
+    monkeypatch.setattr(
+        ops_service,
+        "run_trash_purge",
+        MagicMock(side_effect=RuntimeError("simulated trash purge failure")),
+    )
+    mock_connection = _patch_raw_connection(app, monkeypatch)
+
+    response = _post_ops(client, _OPS_TRASH_PURGE_URL, csrf)
+
+    assert response.status_code == 500
+    mock_connection.close.assert_called_once()
+    body = response.get_json()
+    assert body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.OPS_TRASH_PURGE_ERROR
+
+    with app.app_context():
+        audit_rows: list[AuditLog] = AuditLog.query.order_by(AuditLog.id).all()
+        assert len(audit_rows) == 2
+        first_metadata = audit_rows[0].log_metadata
+        second_metadata = audit_rows[1].log_metadata
+        assert audit_rows[0].action == ADMIN_AUDIT_ACTIONS.OPS_TRASH_PURGE
+        assert audit_rows[1].action == ADMIN_AUDIT_ACTIONS.OPS_TRASH_PURGE
+        assert audit_rows[0].actor_id == admin_user.id
+    assert first_metadata is not None
+    assert "error" not in first_metadata
+    assert second_metadata is not None
+    assert "error" in second_metadata
 
 
 # ---------------------------------------------------------------------------

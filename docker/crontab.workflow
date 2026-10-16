@@ -54,3 +54,6 @@ MAILTO=""
 
 # Admin audit-log retention purge — daily at 2 AM, deletes AuditLogs rows older than 90 days (uses the set -a env pattern above)
 0 2 * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/purge_audit_log.py >> /app/workflow_logs/audit-purge.log 2>&1
+
+# Trash retention purge — daily at 3 AM, hard-deletes Trash rows past TRASH_RETENTION_DAYS (30), skipping locked UTubs (uses the set -a env pattern above)
+0 3 * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/purge_trash.py >> /app/workflow_logs/trash-purge.log 2>&1

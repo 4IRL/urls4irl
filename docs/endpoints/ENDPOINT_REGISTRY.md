@@ -133,6 +133,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** template url_for: `admin_portal/system_operations/index.html`
 
+### `POST /admin/ops/trash-purge` — `admin.admin_ops_trash_purge`
+
+- **Handler:** `backend/admin/action_routes.py:admin_ops_trash_purge`
+- **Decorators:** `admin_required`, `api_route`
+- **Service:** `backend.admin.ops_service:trigger_trash_purge`
+- **Schema:** request: `backend.schemas.requests.admin_actions.AdminReasonRequiredRequest`; response: `backend.schemas.admin_actions.AdminActionResponseSchema`; status: 200 `backend.schemas.admin_actions.AdminActionResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 500 `backend.schemas.errors.ErrorResponse`, 503 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** template url_for: `admin_portal/system_operations/index.html`
+
 ### `POST /admin/ops/verify-tables` — `admin.admin_ops_verify_tables`
 
 - **Handler:** `backend/admin/action_routes.py:admin_ops_verify_tables`
