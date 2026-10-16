@@ -43,7 +43,7 @@ from tests.unit.stdlib_only_utils import assert_module_is_stdlib_only
 pytestmark = pytest.mark.unit
 
 DECLARED_MARKERS: set[str] = read_declared_markers(PYTEST_INI)
-DECLARED_MARKER_COUNT: int = 23
+DECLARED_MARKER_COUNT: int = 24
 MERGE_BASE_SHA: str = "abc123"
 
 
@@ -163,7 +163,7 @@ def test_route_file_resolves_through_its_registry_handler() -> None:
     """
     selection = _resolve(["backend/members/routes.py"])
 
-    assert selection.markers == {"members", "members_ui"}
+    assert selection.markers == {"members", "members_ui", "trash"}
     assert not selection.everything
     assert "registry handler members.add_member" in _reason_for(
         selection, "backend/members/routes.py"
@@ -796,7 +796,11 @@ def test_selection_splits_integration_and_ui_markers() -> None:
     """
     selection = _resolve(["backend/urls/services/create_urls.py"])
 
-    assert selection.integration_markers(DECLARED_MARKERS) == ["mobile_api", "urls"]
+    assert selection.integration_markers(DECLARED_MARKERS) == [
+        "mobile_api",
+        "trash",
+        "urls",
+    ]
     assert selection.ui_markers(DECLARED_MARKERS) == [
         "create_urls_ui",
         "mobile_ui",
@@ -830,7 +834,7 @@ def test_read_declared_markers_reads_the_committed_pytest_ini() -> None:
     """
     GIVEN the committed pytest.ini
     WHEN its markers block is parsed
-    THEN all 23 declared markers come back
+    THEN all 24 declared markers come back
     """
     assert len(DECLARED_MARKERS) == DECLARED_MARKER_COUNT
     assert {"unit", "mobile_api", "create_urls_ui", "admin_ui"} <= DECLARED_MARKERS
@@ -1241,10 +1245,10 @@ def test_format_report_lists_each_file_then_the_footer() -> None:
 
     assert report.splitlines() == [
         "README.md  →  — (no test impact)",
-        "backend/members/routes.py  →  members, members_ui "
+        "backend/members/routes.py  →  members, members_ui, trash "
         "(registry handler members.add_member; path backend/members/*)",
         "",
-        "Integration: members",
+        "Integration: members or trash",
         "UI: members_ui",
         "Host-static: no",
     ]
@@ -1337,7 +1341,7 @@ def _run_main(
 
 @pytest.mark.parametrize(
     ("kind", "expected"),
-    [("integration", "members\n"), ("ui", "members_ui\n")],
+    [("integration", "members or trash\n"), ("ui", "members_ui\n")],
 )
 def test_main_expr_prints_the_markers_of_one_kind(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], kind: str, expected: str
@@ -1388,7 +1392,7 @@ def test_main_expr_joins_several_markers_with_or(
         capsys,
     )
 
-    assert (exit_code, out) == (0, "mobile_api or urls\n")
+    assert (exit_code, out) == (0, "mobile_api or trash or urls\n")
 
 
 @pytest.mark.parametrize("files", [[], ["README.md"]])
@@ -1497,8 +1501,10 @@ def test_main_report_prints_the_report_and_warns_on_a_stale_registry(
     )
 
     assert exit_code == 0
-    assert out.startswith("backend/members/routes.py  →  members, members_ui (")
-    assert out.endswith("Integration: members\nUI: members_ui\nHost-static: no\n")
+    assert out.startswith("backend/members/routes.py  →  members, members_ui, trash (")
+    assert out.endswith(
+        "Integration: members or trash\nUI: members_ui\nHost-static: no\n"
+    )
     assert err == (
         "WARNING: route file changed but endpoint registry not regenerated"
         " — run make generate-endpoints\n"
@@ -1561,7 +1567,7 @@ def test_main_collects_the_diff_when_no_files_are_given(
         run=fake_git,
     )
 
-    assert (exit_code, out) == (0, "members\n")
+    assert (exit_code, out) == (0, "members or trash\n")
     assert fake_git.calls[0][0] == ["git", "merge-base", "origin/dev", "HEAD"]
 
 

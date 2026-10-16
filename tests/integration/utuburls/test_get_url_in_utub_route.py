@@ -301,8 +301,9 @@ def test_get_url_in_utub_non_ajax_request(
 
     UTUB_ID = 1
     with app.app_context():
-        # Get the UTub this user is member of
-        valid_url_in_utub = Utub_Urls.query.first()
+        valid_url_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == UTUB_ID
+        ).first()
 
     get_url_response = client.get(
         url_for(

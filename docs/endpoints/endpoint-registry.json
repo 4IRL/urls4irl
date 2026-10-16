@@ -4025,6 +4025,41 @@
     {
       "blueprint": "utubs",
       "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.purge_utub",
+      "handler": "backend/utubs/routes.py:purge_utub",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "purgeUTub"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/purge",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.trash.UtubPurgedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.UtubPurgedResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.trash_utubs:purge_trashed_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
         "utub_membership_required",
         "api_route"
       ],
@@ -4053,6 +4088,41 @@
       },
       "services": [
         "backend.utubs.services.read_utubs:refresh_single_utub_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.restore_utub",
+      "handler": "backend/utubs/routes.py:restore_utub",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "restoreUTub"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/restore",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.trash.UtubRestoredResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.UtubRestoredResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.trash_utubs:restore_trashed_utub"
       ],
       "templates": []
     },
@@ -4269,6 +4339,78 @@
       "templates": []
     },
     {
+      "blueprint": "urls",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "urls.purge_url",
+      "handler": "backend/urls/routes.py:purge_url",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "purgeURL"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/purge",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.trash.UrlPurgedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.UrlPurgedResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.trash_urls:purge_trashed_url"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "urls.restore_url",
+      "handler": "backend/urls/routes.py:restore_url",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "restoreURL"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/restore",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.trash.RestoreUrlRequest",
+        "response": "backend.schemas.trash.UrlRestoredResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.UrlRestoredResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.urls.services.trash_urls:restore_trashed_url"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "utub_url_tags",
       "decorators": [
         "utub_membership_with_valid_url_in_utub_required",
@@ -4477,6 +4619,73 @@
       },
       "services": [
         "backend.tags.services.create_url_tag:add_tags_to_urls_in_utub"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.get_trash",
+      "handler": "backend/utubs/routes.py:get_trash",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "getTrash"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/utubs/trash",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.trash.TrashListResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.TrashListResponseSchema"
+        }
+      },
+      "services": [
+        "backend.utubs.services.read_trash:get_trash_for_user"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.empty_trash",
+      "handler": "backend/utubs/routes.py:empty_trash",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "emptyTrash"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/trash/empty",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.trash.EmptyTrashRequest",
+        "response": "backend.schemas.trash.TrashEmptiedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.trash.TrashEmptiedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.empty_trash:empty_trash_for_user"
       ],
       "templates": []
     },

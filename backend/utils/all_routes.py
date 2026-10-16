@@ -67,6 +67,8 @@ class URL_ROUTES:
     UPDATE_URL_TITLE = _URLS + "update_url_title"
     COPY_URLS_MULTI = _URLS + "copy_urls_to_utubs"
     DELETE_URLS_BULK = _URLS + "delete_urls_from_utub"
+    RESTORE_URL = _URLS + "restore_url"
+    PURGE_URL = _URLS + "purge_url"
 
 
 class USER_ROUTES:
@@ -151,8 +153,12 @@ class UTUB_ROUTES:
     GET_SINGLE_UTUB = _UTUBS + "get_single_utub"
     REFRESH_SINGLE_UTUB = _UTUBS + "refresh_single_utub"
     GET_UTUBS = _UTUBS + "get_utubs"
+    GET_TRASH = _UTUBS + "get_trash"
+    EMPTY_TRASH = _UTUBS + "empty_trash"
     CREATE_UTUB = _UTUBS + "create_utub"
     DELETE_UTUB = _UTUBS + "delete_utub"
+    RESTORE_UTUB = _UTUBS + "restore_utub"
+    PURGE_UTUB = _UTUBS + "purge_utub"
     UPDATE_UTUB_NAME = _UTUBS + "update_utub_name"
     UPDATE_UTUB_DESC = _UTUBS + "update_utub_desc"
 
@@ -238,7 +244,11 @@ JS_ROUTES: dict[str, JsRoute] = {
     "getUTubs": JsRoute(UTUB_ROUTES.GET_UTUBS, {}),
     "getUTub": JsRoute(UTUB_ROUTES.GET_SINGLE_UTUB, {"utub_id": -1}),
     "refreshUTub": JsRoute(UTUB_ROUTES.REFRESH_SINGLE_UTUB, {"utub_id": -1}),
+    "getTrash": JsRoute(UTUB_ROUTES.GET_TRASH, {}),
+    "emptyTrash": JsRoute(UTUB_ROUTES.EMPTY_TRASH, {}),
     "deleteUTub": JsRoute(UTUB_ROUTES.DELETE_UTUB, {"utub_id": -1}),
+    "restoreUTub": JsRoute(UTUB_ROUTES.RESTORE_UTUB, {"utub_id": -1}),
+    "purgeUTub": JsRoute(UTUB_ROUTES.PURGE_UTUB, {"utub_id": -1}),
     "updateUTubName": JsRoute(UTUB_ROUTES.UPDATE_UTUB_NAME, {"utub_id": -1}),
     "updateUTubDescription": JsRoute(UTUB_ROUTES.UPDATE_UTUB_DESC, {"utub_id": -1}),
     # URL routes
@@ -251,6 +261,8 @@ JS_ROUTES: dict[str, JsRoute] = {
     ),
     "copyURLsToUtubs": JsRoute(URL_ROUTES.COPY_URLS_MULTI, {}),
     "bulkDeleteURLs": JsRoute(URL_ROUTES.DELETE_URLS_BULK, {"utub_id": -1}),
+    "restoreURL": JsRoute(URL_ROUTES.RESTORE_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "purgeURL": JsRoute(URL_ROUTES.PURGE_URL, {"utub_id": -1, "utub_url_id": -2}),
     # UTub URL Tag routes
     "createURLTag": JsRoute(
         URL_TAG_ROUTES.CREATE_URL_TAG, {"utub_id": -1, "utub_url_id": -2}

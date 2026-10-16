@@ -66,6 +66,10 @@ ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.
 
 `Utubs` and `Utub_Urls` carry nullable soft-delete columns (`deletedAt`, `deletedBy`; `Utub_Urls` also has the `trashedTagIds` tag snapshot), where `NULL` means live. The `Utubs` columns are live: deleting a UTub sets them (a 30-day trash), and the membership gates, deck list, co-member/cross-UTub search, URL copy and Settings stats exclude trashed UTubs (admin, data export, account erasure and the anonymous gauges still see them by design). The `Utub_Urls` columns are live too: deleting a URL sets them and snapshots `trashedTagIds` while keeping its `Utub_Url_Tags`. The URL gates, deck, search, copy, bulk tag/delete targets, every tag count and Settings stats exclude trashed URLs, and re-adding a trashed URL revives the row in place. Editing a card's link to a URL trashed in the same UTub revives that row and trashes the edited one, copy-to-UTub revives a trashed destination row, and bulk delete silently skips already-trashed ids. Admin, data export, account erasure and the gauges still see trashed URLs.
 
+**Trash API.** `GET /utubs/trash`, restore and delete-forever for URLs and UTubs, and one scoped Empty trash route (`POST /utubs/trash/empty`, per tab via `scope`) act on rows in Trash (web surface only, on the `utubs` / `urls` blueprints). A URL is in Trash in two ways: its own `Utub_Urls.deleted_at` is set, or it is still live inside a trashed UTub (deleting a UTub is flag-only and does not stamp its URLs). The effective trashed-at clock and deleter are therefore `COALESCE(Utub_Urls.deleted_at, Utubs.deleted_at)` / `COALESCE(Utub_Urls.deleted_by, Utubs.deleted_by)`, used by the list and Empty trash's `listedAt` bound; the future retention sweep must use the same clock.
+
+`backend/utubs/services/trash_predicates.py` (`trashed_url_rows_actionable_by`, `trashed_utubs_actionable_by`) is the one place that defines visibility: inside a trashed UTub only its current creator sees or acts on its URLs, otherwise the adder or a creator/co-creator does, and the viewer must still hold a membership row. The list, URL restore and delete-forever, and both Empty trash tabs' candidate selection build on those selects. UTub restore and delete-forever re-check creator-only on the locked row in `lock_trashed_utub_for_creator` (`backend/utubs/guards.py`), so a change to the creator rule goes in both places. The routes carry `@email_validation_required` only (the membership decorators 404 trashed rows) and the services fail closed, answering every non-actionable case with one 404 `NOT_IN_TRASH`; an admin lock on the origin UTub then blocks restore and delete-forever with 403 (Empty trash skips and counts locked rows instead). `TRASH_RETENTION_DAYS` (30) lives in the Flask-less `scripts/trash_retention.py`: the list's `expiresAt` countdown reads it today, and the planned purge sweep (`scripts/purge_trash.py`) will import it so the two cannot disagree.
+
 ## Frontend Structure
 
 TypeScript ES6 modules in `frontend/` built by Vite. jQuery (3.7.1) and Bootstrap (5.2.3) loaded as global `<script>` tags and re-exported from `frontend/lib/globals.ts`. Templates are Jinja2 in `backend/templates/`. `init_vite_app()` in `backend/__init__.py` handles manifest-based asset resolution.
@@ -292,7 +296,7 @@ A *flow* is an ordered, variable-length list of steps (2..N) joining the three m
 
 ## Testing (`tests/`)
 
-Config: `ConfigTest` (integration) / `ConfigTestUI` (Playwright UI tests against the shared `playwright` browser-server, `SESSION_COOKIE_SECURE=False`). CI (`.github/workflows/test.yml`) runs 23 parallel matrix jobs split by marker (10 in `Tests-Integration`, 13 in `Tests-UI`).
+Config: `ConfigTest` (integration) / `ConfigTestUI` (Playwright UI tests against the shared `playwright` browser-server, `SESSION_COOKIE_SECURE=False`). CI (`.github/workflows/test.yml`) runs 24 parallel matrix jobs split by marker (11 in `Tests-Integration`, 13 in `Tests-UI`).
 
 **Per-run isolation:** every test resource is keyed on xdist's `testrun_uid`, so concurrent pytest invocations never collide: databases are `{POSTGRES_TEST_DB}_{uid8}_{worker}` and Redis indices are leased (see Redis DB Allocation). Locally, tests connect as `POSTGRES_TEST_USER` (the `u4i_test` role); CI leaves it unset, so tests fall back to the `POSTGRES_USER` superuser. Leaks replace collisions, so `make reset-test-dbs` (`python -m scripts.testrun_resources reap`, `ttl=<minutes>`, default 10) reclaims them. It connects as `POSTGRES_TEST_USER`, not the superuser, so it structurally cannot drop `u4i_dev_*`. It drops only prefix-matching per-run DBs that have no connections and are older than the TTL (or have no creation epoch), and it requires two listings 1s apart to agree before dropping. It never uses `DROP DATABASE … WITH (FORCE)`. It then deletes only the `u4i:test_lease:*` keys whose run has no remaining DB.
 
@@ -322,8 +326,9 @@ Organized by domain with per-feature conftest files:
 - `mobile_api/` (marker: `mobile_api`) — `/api/v1` mobile bearer-token API: auth (login/refresh/logout/Google), UTubs/URLs/tags/members endpoints
 - `search/` (marker: `urls`, shared with `utuburls/`) — Cross-UTub search: query schema, route, metrics
 - `system/` (marker: `cli`, shared with `cli/`) — Metrics/latency pipeline, health checks, gauges, admin-route gating (ops/observability)
+- `trash/` (marker: `trash`) — Trash API: list, restore, purge (delete forever) and empty-trash routes for soft-deleted URLs and UTubs
 
-CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 10 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
+CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 11 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
 
 ### tests/functional/ — UI/Playwright Tests
 
