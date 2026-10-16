@@ -704,3 +704,185 @@ def test_lock_wait_times_out_and_rolls_back_the_whole_purge(
     finally:
         blocker_conn.close()
         pg_conn.close()
+
+
+def test_url_with_own_expired_clock_inside_expired_utub_is_counted_once(
+    runner: tuple[Flask, FlaskCliRunner],
+) -> None:
+    """
+    GIVEN a UTub trashed 31 days ago holding a URL individually trashed 45 days ago
+        and another URL with no clock of its own
+    WHEN run_trash_purge runs
+    THEN the UTub and both URLs are gone, and the counts are exactly utubs=1, urls=2
+        (the pass-A URL is not counted again by the cascade count)
+    """
+    app, _ = runner
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        user_id = _seed_user(pg_conn, "double_count_user")
+        utub_id = _seed_utub(
+            pg_conn,
+            name="expired",
+            creator_id=user_id,
+            deleted_at=_ago(days=31),
+            deleted_by=user_id,
+        )
+        _seed_member(pg_conn, utub_id, user_id, "CREATOR")
+        own_clock_url_id = _seed_url(pg_conn, "https://own-clock.example.com", user_id)
+        no_clock_url_id = _seed_url(pg_conn, "https://no-clock.example.com", user_id)
+        own_clock_utub_url_id = _seed_utub_url(
+            pg_conn,
+            utub_id=utub_id,
+            url_id=own_clock_url_id,
+            user_id=user_id,
+            deleted_at=_ago(days=45),
+            deleted_by=user_id,
+        )
+        no_clock_utub_url_id = _seed_utub_url(
+            pg_conn, utub_id=utub_id, url_id=no_clock_url_id, user_id=user_id
+        )
+
+        result = run_trash_purge(pg_conn=pg_conn)
+
+        assert result == TrashPurgeResult(utubs=1, urls=2)
+        assert _count(pg_conn, "Utubs", "id", utub_id) == 0
+        assert _count(pg_conn, "UtubUrls", "id", own_clock_utub_url_id) == 0
+        assert _count(pg_conn, "UtubUrls", "id", no_clock_utub_url_id) == 0
+    finally:
+        pg_conn.close()
+
+
+def test_locked_trashed_utub_keeps_its_individually_expired_url(
+    runner: tuple[Flask, FlaskCliRunner],
+) -> None:
+    """
+    GIVEN a locked UTub trashed 31 days ago holding a URL individually trashed 40
+        days ago
+    WHEN run_trash_purge runs
+    THEN pass A's isLocked join skips the URL too: nothing is deleted
+    """
+    app, _ = runner
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        user_id = _seed_user(pg_conn, "locked_url_user")
+        utub_id = _seed_utub(
+            pg_conn,
+            name="locked trashed",
+            creator_id=user_id,
+            deleted_at=_ago(days=31),
+            deleted_by=user_id,
+            is_locked=True,
+        )
+        _seed_member(pg_conn, utub_id, user_id, "CREATOR")
+        url_id = _seed_url(pg_conn, "https://locked-expired.example.com", user_id)
+        utub_url_id = _seed_utub_url(
+            pg_conn,
+            utub_id=utub_id,
+            url_id=url_id,
+            user_id=user_id,
+            deleted_at=_ago(days=40),
+            deleted_by=user_id,
+        )
+
+        result = run_trash_purge(pg_conn=pg_conn)
+
+        assert result == TrashPurgeResult(utubs=0, urls=0)
+        assert _count(pg_conn, "Utubs", "id", utub_id) == 1
+        assert _count(pg_conn, "UtubMembers", "utubID", utub_id) == 1
+        assert _count(pg_conn, "UtubUrls", "id", utub_url_id) == 1
+    finally:
+        pg_conn.close()
+
+
+def test_locked_utub_is_swept_on_the_first_run_after_unlock(
+    runner: tuple[Flask, FlaskCliRunner],
+) -> None:
+    """
+    GIVEN a locked UTub trashed 31 days ago holding a live-clock URL
+    WHEN run_trash_purge runs, the UTub is unlocked, and it runs again
+    THEN the first run deletes nothing and the second sweeps the UTub, its member
+        and its URL
+    """
+    app, _ = runner
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        user_id = _seed_user(pg_conn, "unlock_user")
+        utub_id = _seed_utub(
+            pg_conn,
+            name="locked then unlocked",
+            creator_id=user_id,
+            deleted_at=_ago(days=31),
+            deleted_by=user_id,
+            is_locked=True,
+        )
+        _seed_member(pg_conn, utub_id, user_id, "CREATOR")
+        url_id = _seed_url(pg_conn, "https://unlock.example.com", user_id)
+        utub_url_id = _seed_utub_url(
+            pg_conn, utub_id=utub_id, url_id=url_id, user_id=user_id
+        )
+
+        locked_result = run_trash_purge(pg_conn=pg_conn)
+
+        assert locked_result == TrashPurgeResult(utubs=0, urls=0)
+        assert _count(pg_conn, "Utubs", "id", utub_id) == 1
+        assert _count(pg_conn, "UtubUrls", "id", utub_url_id) == 1
+
+        with pg_conn.cursor() as cursor:
+            cursor.execute(
+                'UPDATE "Utubs" SET "isLocked" = false WHERE id = %s', (utub_id,)
+            )
+        pg_conn.commit()
+
+        unlocked_result = run_trash_purge(pg_conn=pg_conn)
+
+        assert unlocked_result == TrashPurgeResult(utubs=1, urls=1)
+        assert _count(pg_conn, "Utubs", "id", utub_id) == 0
+        assert _count(pg_conn, "UtubMembers", "utubID", utub_id) == 0
+        assert _count(pg_conn, "UtubUrls", "id", utub_url_id) == 0
+    finally:
+        pg_conn.close()
+
+
+def test_utub_boundary_is_one_hour_either_side_of_retention(
+    runner: tuple[Flask, FlaskCliRunner],
+) -> None:
+    """
+    GIVEN one UTub trashed an hour short of the retention window and another trashed
+        an hour past it
+    WHEN run_trash_purge runs
+    THEN only the UTub past the window (and its member) is purged
+    """
+    app, _ = runner
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        user_id = _seed_user(pg_conn, "boundary_user")
+        within_window_utub_id = _seed_utub(
+            pg_conn,
+            name="an hour short",
+            creator_id=user_id,
+            deleted_at=_ago(days=TRASH_RETENTION_DAYS) + timedelta(hours=1),
+            deleted_by=user_id,
+        )
+        _seed_member(pg_conn, within_window_utub_id, user_id, "CREATOR")
+        past_window_utub_id = _seed_utub(
+            pg_conn,
+            name="an hour past",
+            creator_id=user_id,
+            deleted_at=_ago(days=TRASH_RETENTION_DAYS, hours=1),
+            deleted_by=user_id,
+        )
+        _seed_member(pg_conn, past_window_utub_id, user_id, "CREATOR")
+
+        result = run_trash_purge(pg_conn=pg_conn)
+
+        assert result == TrashPurgeResult(utubs=1, urls=0)
+        assert _count(pg_conn, "Utubs", "id", within_window_utub_id) == 1
+        assert _count(pg_conn, "UtubMembers", "utubID", within_window_utub_id) == 1
+        assert _count(pg_conn, "Utubs", "id", past_window_utub_id) == 0
+        assert _count(pg_conn, "UtubMembers", "utubID", past_window_utub_id) == 0
+    finally:
+        pg_conn.close()
