@@ -280,6 +280,15 @@
        full-width row below the description. Collapse the (font-fitted, possibly
        multi-line) description to a single truncated line so the header band does
        not grow taller. The wrapping state returns when search closes. */
+    #UTubDescriptionSubheaderOuterWrap.url-search-open {
+        flex-wrap: wrap;
+    }
+
+    #UTubDescriptionSubheaderOuterWrap.url-search-open #UTubDescriptionSubheaderWrap {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
     #UTubDescriptionSubheaderOuterWrap.url-search-open #URLDeckSubheader {
         flex: 1;
         min-width: 0;
@@ -331,14 +340,16 @@
         flex: 0 1 auto;
         min-width: 0;
     }
+}
 
-    /* The invisible "Add a description?" button keeps its layout width
-       (opa-0 height-0), so drop it from layout while a description exists or
-       while it is still invisible (the visible state swaps opa-0 for opa-1). */
-    #UTubDescriptionSubheaderWrap:not(.hidden) ~ #URLDeckSubheaderCreateDescription,
-    #URLDeckSubheaderCreateDescription.opa-0 {
-        display: none;
-    }
+/* The invisible "Add a description?" button keeps its layout width
+   (opa-0 height-0), so drop it from layout while a description exists or
+   while it is still invisible (the visible state swaps opa-0 for opa-1). At
+   every width: on mobile, where the search box is hidden until opened, the
+   leftover width otherwise makes the description wrap early. */
+#UTubDescriptionSubheaderWrap:not(.hidden) ~ #URLDeckSubheaderCreateDescription,
+#URLDeckSubheaderCreateDescription.opa-0 {
+    display: none;
 }
 
 @media (max-width: 767.98px) {

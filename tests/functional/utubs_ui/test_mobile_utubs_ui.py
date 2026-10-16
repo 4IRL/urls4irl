@@ -5,7 +5,10 @@ from playwright.sync_api import Page
 from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.db_utils import (
+    get_utub_this_user_created,
+    update_utub_name_and_description,
+)
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_not_visible_css_selector,
@@ -180,3 +183,102 @@ def test_open_update_utub_description_hides_add_url_btn_and_search_mobile(
     assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE)
     wait_until_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
     assert_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
+
+
+_DESCRIPTION_WIDTH_TOLERANCE_PX = 4
+
+
+def test_long_description_uses_full_width_while_search_hidden_mobile(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN an owner views a UTub with a long description on mobile, where the URL
+        search box is hidden until opened
+    WHEN the UTub is selected
+    THEN the invisible "Add a description?" button takes no layout space and the
+        description wrap spans the full content width of the subheader row
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id = 1
+    utub: Utubs = get_utub_this_user_created(app, user_id)
+    update_utub_name_and_description(
+        app, utub.id, utub.name, UTS.LONG_FIT_UTUB_DESCRIPTION
+    )
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id, utub_id=utub.id
+    )
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
+
+    layout = page.evaluate(
+        """
+        () => {
+            const outer = document.querySelector("#UTubDescriptionSubheaderOuterWrap");
+            const style = window.getComputedStyle(outer);
+            return {
+                contentWidth:
+                    outer.clientWidth -
+                    parseFloat(style.paddingLeft) -
+                    parseFloat(style.paddingRight),
+                descWidth: document
+                    .querySelector("#UTubDescriptionSubheaderWrap")
+                    .getBoundingClientRect().width,
+                ghostDisplay: window.getComputedStyle(
+                    document.querySelector("#URLDeckSubheaderCreateDescription")
+                ).display,
+            };
+        }
+        """
+    )
+
+    assert layout["ghostDisplay"] == "none"
+    assert (
+        abs(layout["descWidth"] - layout["contentWidth"])
+        <= _DESCRIPTION_WIDTH_TOLERANCE_PX
+    )
+
+
+def test_long_description_stays_visible_above_search_when_search_open_mobile(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN an owner views a UTub with a long description on mobile
+    WHEN the URL filter box is opened
+    THEN the description stays visible on a single truncated line and the filter
+        box sits on its own row below it
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id = 1
+    utub: Utubs = get_utub_this_user_created(app, user_id)
+    update_utub_name_and_description(
+        app, utub.id, utub.name, UTS.LONG_FIT_UTUB_DESCRIPTION
+    )
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id, utub_id=utub.id
+    )
+    wait_then_click_element(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
+
+    layout = page.evaluate(
+        """
+        () => {
+            const rect = (selector) =>
+                document.querySelector(selector).getBoundingClientRect();
+            const text = document.querySelector("#URLDeckSubheader");
+            const textStyle = window.getComputedStyle(text);
+            return {
+                descWidth: rect("#UTubDescriptionSubheaderWrap").width,
+                descBottom: rect("#UTubDescriptionSubheaderWrap").bottom,
+                searchTop: rect("#SearchURLWrap").top,
+                textOverflow: textStyle.textOverflow,
+                whiteSpace: textStyle.whiteSpace,
+            };
+        }
+        """
+    )
+
+    assert layout["descWidth"] > 0
+    assert layout["searchTop"] >= layout["descBottom"] - _DESCRIPTION_WIDTH_TOLERANCE_PX
+    assert layout["whiteSpace"] == "nowrap"
+    assert layout["textOverflow"] == "ellipsis"
