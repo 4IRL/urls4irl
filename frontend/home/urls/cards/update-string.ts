@@ -65,6 +65,7 @@ import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import {
   expandParamTrimBlock,
   flushParamTrim,
+  hasAutoStrippedParams,
   readTrimSubmit,
   resetParamTrim,
   type TrimSubmission,
@@ -488,7 +489,12 @@ export async function updateURL(
     // plain edit (captured now, before applyUpdatedURLString overwrites it).
     const previousUrlString = urlCard.find(".urlString").attr("href") as string;
 
-    if (data.urlString === previousUrlString) {
+    // A stored href that still carries an auto-removable param is not a no-op:
+    // the server strips it, so the PATCH must go out.
+    if (
+      data.urlString === previousUrlString &&
+      !hasAutoStrippedParams({ trimWrap: urlCard.find(".urlParamTrimWrap") })
+    ) {
       log("updateURL skipped — value unchanged", { utubUrlID });
       // Panel-aware: on mobile the title form can still be open alongside this
       // string field. Suppress the sibling restore so we don't re-arm the card

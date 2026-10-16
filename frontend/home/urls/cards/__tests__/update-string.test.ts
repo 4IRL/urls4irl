@@ -1380,6 +1380,20 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     });
   });
 
+  it("sends the PATCH when the stored href carries an auto-stripped param and the input equals it", async () => {
+    const autoUrl = "https://example.com/p?utm_source=x";
+    urlCard.find(".urlString").attr("href", autoUrl);
+    syncFromInput(autoUrl);
+    mockSuccess("https://example.com/p");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
+      urlString: autoUrl,
+    });
+  });
+
   it("submits the URL with the dropped parameters removed", async () => {
     syncFromInput(TRIM_URL);
     dropChip(0);

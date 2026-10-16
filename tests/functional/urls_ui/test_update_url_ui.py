@@ -2172,6 +2172,37 @@ def test_update_url_string_scheme_escape_closes_list_before_form(
     wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
 
 
+def test_update_url_string_auto_removable_param_unchanged_input_saves(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a stored URL whose href still carries auto-removable (tracking) params
+    WHEN its string-edit form is opened and submitted with the input unchanged
+    THEN the update request fires and the href ends stripped
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_WITH_TRACKING_PARAMS])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_WITH_TRACKING_PARAMS
+    )
+    url_row = get_selected_url(page=page)
+
+    with track_update_url_string_requests(page=page) as update_requests:
+        wait_then_click_element(
+            page=page,
+            css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+        )
+        wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    assert len(update_requests) == 1
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, MOCK_URL_TRACKING_STRIPPED
+    )
+
+
 def test_update_url_string_scheme_clicks_keep_card_selected(
     page: Page,
     create_test_utubs,

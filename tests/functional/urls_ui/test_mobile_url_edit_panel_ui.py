@@ -9,7 +9,10 @@ from flask.testing import FlaskCliRunner
 from playwright.sync_api import Locator, Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from backend.cli.mock_constants import MOCK_URL_STRINGS
+from backend.cli.mock_constants import (
+    MOCK_URL_STRINGS,
+    MOCK_URL_WITH_TRACKING_PARAMS,
+)
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import URL_UPDATED_BANNER
@@ -1131,6 +1134,39 @@ def test_url_edit_panel_scheme_selector_prefill_and_scheme_only_change_mobile(
         page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, option_scheme="https"
     )
     assert_confirm_button_disabled(button=string_check)
+
+
+def test_url_edit_panel_auto_removable_param_enables_save_buttons_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the consolidated edit panel for a stored URL that still carries an
+        auto-removable (tracking) param, with the input left unchanged
+    WHEN the panel opens and the trim section is expanded
+    THEN the URL's green check and Save URL are enabled (the server strips the
+        param, so saving is a real change)
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    selected_url = _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=MOCK_URL_WITH_TRACKING_PARAMS,
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+
+    assert_confirm_button_enabled(
+        button=selected_url.locator(HPL.BUTTON_URL_STRING_SUBMIT_UPDATE)
+    )
+    assert_confirm_button_enabled(
+        button=selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)
+    )
 
 
 def test_url_edit_panel_scheme_selector_tap_targets_and_no_autofocus_mobile(

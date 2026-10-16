@@ -34,6 +34,7 @@ export const TRIM_RESET_KEY = "urlParamTrimReset";
 export const TRIM_SYNC_KEY = "urlParamTrimSync";
 export const TRIM_SUBMISSION_KEY = "urlParamTrimSubmission";
 export const TRIM_FLUSH_KEY = "urlParamTrimFlush";
+export const TRIM_HAS_AUTO_KEY = "urlParamTrimHasAutoStripped";
 // Custom jQuery event triggered (non-bubbling) on the trim wrap at the end of
 // every render: chip toggle, Drop all / Keep all, and each (debounced) re-parse.
 export const TRIM_RENDERED_EVENT = "urlParamTrimRendered";
@@ -101,6 +102,22 @@ export function readTrimSubmit({ trimWrap, text, scheme }: TrimInput): {
     urlString: getTrimmed ? getTrimmed() : rawValue,
     trimSubmission: getSubmission ? getSubmission() : null,
   };
+}
+
+/**
+ * Whether the last render's input still carries an auto-removable param. Reads
+ * without flushing the debounce, so it is safe on every keystroke. `false` when
+ * the block is absent.
+ */
+export function hasAutoStrippedParams({
+  trimWrap,
+}: {
+  trimWrap: JQuery;
+}): boolean {
+  const hasAuto = trimWrap.data(TRIM_HAS_AUTO_KEY) as
+    | (() => boolean)
+    | undefined;
+  return hasAuto ? hasAuto() : false;
 }
 
 const REPARSE_DEBOUNCE_MS = 200;
@@ -565,6 +582,12 @@ export function createParamTrimBlock({
       droppedCount: refs.dropped.size,
     };
   });
+
+  wrap.data(
+    TRIM_HAS_AUTO_KEY,
+    (): boolean =>
+      refs.parsed?.segments.some((segment) => segment.isAutoStripped) ?? false,
+  );
 
   wrap.data(TRIM_SYNC_KEY, (rawValue: string): void => {
     refs.pendingRawValue = rawValue;
