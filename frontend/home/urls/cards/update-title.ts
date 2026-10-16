@@ -21,9 +21,9 @@ import {
 } from "./selection.js";
 import {
   enableEditingURLString,
-  hideUrlTags,
-  isUrlEditFormOpen,
-  restoreUrlTagsIfNotEditing,
+  hideURLTags,
+  isURLEditFormOpen,
+  restoreURLTagsIfNotEditing,
 } from "./utils.js";
 import { hideAndResetTagCombobox } from "../tags/combobox.js";
 import { hideAndResetUpdateURLStringForm } from "./update-string.js";
@@ -128,7 +128,7 @@ export function showUpdateURLTitleForm({
 
   // Tags are hidden while editing, and Add-tag must not open the combobox
   // under them (mirrors the string form).
-  hideUrlTags({ urlCard });
+  hideURLTags({ urlCard });
   urlCard.find(".urlTagBtnCreate").hideClass();
 
   disableClickOnSelectedURLCardToHide(urlCard);
@@ -153,10 +153,10 @@ export function hideAndResetUpdateURLTitleForm({
     urlCard.find(".urlTitleAndUpdateIconWrap").showClassFlex();
     // Both guards run after this form's wrap is hidden: restore only when the
     // sibling (string) form is not still open (mobile panel).
-    if (!isUrlEditFormOpen({ urlCard })) {
+    if (!isURLEditFormOpen({ urlCard })) {
       urlCard.find(".urlTagBtnCreate").showClassFlex();
     }
-    restoreUrlTagsIfNotEditing({ urlCard });
+    restoreURLTagsIfNotEditing({ urlCard });
   }
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
 

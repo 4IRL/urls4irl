@@ -323,14 +323,14 @@ def _assert_search_beside(*, page: Page, anchor_selector: str) -> None:
     assert search_top < anchor_bottom
 
 
-def _select_long_description_utub(*, app: Flask, page: Page) -> None:
+def _select_utub_with_description(*, app: Flask, page: Page, description: str) -> None:
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
     update_utub_name_and_description(
         app,
         utub_user_created.id,
         UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME,
-        UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+        description,
     )
     login_user_and_select_utub_by_name(
         app=app,
@@ -349,7 +349,11 @@ def test_long_description_takes_full_row_and_search_drops_below(
     WHEN the owner selects it
     THEN the description fills the row and the search box renders below it.
     """
-    _select_long_description_utub(app=provide_app, page=page)
+    _select_utub_with_description(
+        app=provide_app,
+        page=page,
+        description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+    )
     _assert_search_below_full_width_description(page=page)
 
 
@@ -361,22 +365,11 @@ def test_short_description_keeps_search_beside(
     WHEN the owner selects it
     THEN the search box stays beside the description on the same row.
     """
-    app = provide_app
-    user_id = 1
-    utub_user_created = get_utub_this_user_created(app, user_id)
-    update_utub_name_and_description(
-        app,
-        utub_user_created.id,
-        UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME,
-        UI_TEST_STRINGS.SHORT_FIT_UTUB_DESCRIPTION,
-    )
-    login_user_and_select_utub_by_name(
-        app=app,
+    _select_utub_with_description(
+        app=provide_app,
         page=page,
-        user_id=user_id,
-        utub_name=UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME,
+        description=UI_TEST_STRINGS.SHORT_FIT_UTUB_DESCRIPTION,
     )
-    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
 
     _assert_search_beside(page=page, anchor_selector=HPL.WRAP_UTUB_DESCRIPTION_UPDATE)
     rects = _layout_rects(page=page)
@@ -436,7 +429,11 @@ def test_description_edit_form_keeps_unwrapped_row_layout(
     WHEN the owner opens the description edit form
     THEN the outer row is not wrapping (the pre-change edit layout).
     """
-    _select_long_description_utub(app=provide_app, page=page)
+    _select_utub_with_description(
+        app=provide_app,
+        page=page,
+        description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+    )
     open_update_utub_desc_input(page=page)
     wait_until_visible_css_selector(
         page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
@@ -457,7 +454,11 @@ def test_long_description_layout_after_narrowing_viewport_matches_fresh_select(
     THEN the layout and fitted font equal those of a fresh select at that width.
     """
     app = provide_app
-    _select_long_description_utub(app=app, page=page)
+    _select_utub_with_description(
+        app=app,
+        page=page,
+        description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+    )
 
     viewport_height = page.evaluate("window.innerHeight")
     page.set_viewport_size(
@@ -487,7 +488,11 @@ def test_long_description_font_after_widening_viewport_matches_fresh_select(
     THEN the fitted font equals that of a fresh select at the wider width.
     """
     app = provide_app
-    _select_long_description_utub(app=app, page=page)
+    _select_utub_with_description(
+        app=app,
+        page=page,
+        description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+    )
 
     viewport_height = page.evaluate("window.innerHeight")
     page.set_viewport_size(

@@ -15,10 +15,10 @@ import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   enableEditingURLTitle,
-  hideUrlTags,
+  hideURLTags,
   isEmptyString,
-  isUrlEditFormOpen,
-  restoreUrlTagsIfNotEditing,
+  isURLEditFormOpen,
+  restoreURLTagsIfNotEditing,
 } from "./utils.js";
 import { hideAndResetTagCombobox } from "../tags/combobox.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
@@ -307,7 +307,7 @@ export function showUpdateURLStringForm({
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
-  hideUrlTags({ urlCard });
+  hideURLTags({ urlCard });
 
   const tooltipElement = urlStringBtnUpdate.get(0);
   const tooltip = tooltipElement
@@ -416,7 +416,7 @@ export function hideAndResetUpdateURLStringForm({
     // Enable URL Buttons
     urlCard.find(".urlBtnAccess").showClassFlex();
     // Not while the title form is still open (mobile panel).
-    if (!isUrlEditFormOpen({ urlCard })) {
+    if (!isURLEditFormOpen({ urlCard })) {
       urlCard.find(".urlTagBtnCreate").showClassFlex();
     }
     urlCard.find(".urlBtnDelete").showClassFlex();
@@ -434,7 +434,7 @@ export function hideAndResetUpdateURLStringForm({
 
     // Enable hovering on tags for deletion
     urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
-    restoreUrlTagsIfNotEditing({ urlCard });
+    restoreURLTagsIfNotEditing({ urlCard });
   }
 
   resetUpdateURLFailErrors(urlCard);

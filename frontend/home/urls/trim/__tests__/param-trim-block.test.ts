@@ -1,6 +1,7 @@
 import {
   createParamTrimBlock,
   flushParamTrim,
+  hasAutoStrippedParams,
   readTrimSubmit,
   resetParamTrim,
   syncParamTrim,
@@ -297,7 +298,7 @@ describe("createParamTrimBlock", () => {
       );
     });
 
-    it("leaves the auto-only variant when a normal parameter is typed", () => {
+    it("shows the warning and bulk row once a normal parameter is typed alongside auto ones", () => {
       const wrap = mount();
       flush(wrap, "https://a.com/p?utm_source=x");
       flush(wrap, "https://a.com/p?utm_source=x&ref=1");
@@ -658,6 +659,32 @@ describe("createParamTrimBlock", () => {
       vi.advanceTimersByTime(500);
       expect(getTrimmed(wrap)).toBe("");
       expect(wrap.hasClass("hidden")).toBe(true);
+    });
+  });
+
+  describe("hasAutoStrippedParams", () => {
+    it("is false when the block is absent", () => {
+      expect(hasAutoStrippedParams({ trimWrap: window.jQuery() })).toBe(false);
+    });
+
+    it("is true after flushing a URL with an auto-stripped parameter", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?utm_source=x");
+      expect(hasAutoStrippedParams({ trimWrap: wrap })).toBe(true);
+    });
+
+    it("is false after flushing a URL with only normal parameters", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?a=1&b=2");
+      expect(hasAutoStrippedParams({ trimWrap: wrap })).toBe(false);
+    });
+
+    it("is false after a reset", () => {
+      const wrap = mount();
+      flush(wrap, URL_WITH_AUTO);
+      expect(hasAutoStrippedParams({ trimWrap: wrap })).toBe(true);
+      reset(wrap);
+      expect(hasAutoStrippedParams({ trimWrap: wrap })).toBe(false);
     });
   });
 

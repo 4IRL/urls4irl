@@ -40,6 +40,7 @@ import {
   resetURLEditPanelState,
 } from "../update-url-panel.js";
 import { bindEditPanelDirtyState } from "../edit-panel-dirty.js";
+import { hideAndResetTagCombobox } from "../../tags/combobox.js";
 import { getSchemeSelector } from "../../scheme/scheme-selector.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
@@ -124,6 +125,17 @@ vi.mock("../update-url-panel.js", () => ({
   closeURLEditPanel: vi.fn(),
   resetURLEditPanelState: vi.fn(),
 }));
+
+// Spy-wrapped: the real reset still runs, so tests can assert whether the
+// open-combobox guard in showUpdateURLStringForm invoked it.
+vi.mock("../../tags/combobox.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../tags/combobox.js")>();
+  return {
+    ...actual,
+    hideAndResetTagCombobox: vi.fn(actual.hideAndResetTagCombobox),
+  };
+});
 
 vi.mock("../../tags/tags.js", () => ({
   disableTagRemovalInURLCard: vi.fn(),
@@ -1401,6 +1413,22 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
 
     expect(trimWrap.hasClass("hidden")).toBe(false);
     expect(trimWrap.hasClass("collapsed")).toBe(false);
+  });
+
+  it("keepOpen does not force-expand the block when the resynced value has no params", () => {
+    urlStringInput.val(TRIM_URL);
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+    // The stored href (what the input resyncs to) carries no query params.
+    urlCard.find(".urlString").attr("href", "https://example.com");
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
   });
 
   it("keepOpen keeps a user-collapsed block collapsed", () => {
@@ -2762,10 +2790,16 @@ describe("URL string form hides the tags while editing", () => {
   it("does not run the combobox reset when no combobox wrap exists", () => {
     openString();
 
-    // hideAndResetTagCombobox would re-show these.
-    expect(urlCard.find(".urlBtnAccess").hasClass("hidden")).toBe(true);
-    expect(urlCard.find(".urlBtnDelete").hasClass("hidden")).toBe(true);
-    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(true);
+    expect(hideAndResetTagCombobox).not.toHaveBeenCalled();
     expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+  });
+
+  it("runs the combobox reset exactly once when an open combobox wrap exists", () => {
+    urlCard.append('<div class="urlTagComboboxWrap visible-flex"></div>');
+
+    openString();
+
+    expect(hideAndResetTagCombobox).toHaveBeenCalledTimes(1);
+    expect(hideAndResetTagCombobox).toHaveBeenCalledWith(urlCard);
   });
 });

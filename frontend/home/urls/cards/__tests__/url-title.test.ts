@@ -161,6 +161,40 @@ describe("urlTitleAndUpdateIconWrap - row-level click (UTub edit pattern)", () =
     expect(vi.mocked(showUpdateURLTitleForm)).not.toHaveBeenCalled();
   });
 
+  it("still invokes showUpdateURLTitleForm when the selection lies outside the title wrap", () => {
+    const { urlCard, wrap } = mountTitleBlock(true);
+    urlCard.after('<p class="elsewhere">unrelated text</p>');
+
+    const range = document.createRange();
+    range.selectNodeContents($(".elsewhere")[0]);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    expect(selection?.isCollapsed).toBe(false);
+
+    wrap.trigger("click");
+
+    expect(vi.mocked(showUpdateURLTitleForm)).toHaveBeenCalledOnce();
+  });
+
+  it("does NOT invoke showUpdateURLTitleForm when only the selection focus ends inside the title wrap", () => {
+    const { urlCard, wrap } = mountTitleBlock(true);
+    urlCard.before('<p class="elsewhere">unrelated text</p>');
+
+    const range = document.createRange();
+    range.setStart($(".elsewhere")[0].firstChild as Node, 0);
+    range.setEnd(urlCard.find(".urlTitle")[0].firstChild as Node, 2);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    expect(wrap[0].contains(selection?.anchorNode ?? null)).toBe(false);
+    expect(wrap[0].contains(selection?.focusNode ?? null)).toBe(true);
+
+    wrap.trigger("click");
+
+    expect(vi.mocked(showUpdateURLTitleForm)).not.toHaveBeenCalled();
+  });
+
   it("invokes showUpdateURLTitleForm when wrap is clicked on a selected card", () => {
     const { wrap } = mountTitleBlock(true);
 

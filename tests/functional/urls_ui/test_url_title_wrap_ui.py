@@ -171,6 +171,38 @@ def test_selected_url_title_not_underlined_while_pressed_mobile(
         page.mouse.up()
 
 
+def test_selected_url_title_underlined_while_pressed_desktop(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a selected URL card on a fine-pointer (desktop) device
+    WHEN the title is pressed (mouse down, :active)
+    THEN the title is underlined (the edit affordance), and stays so on release
+    """
+    app = provide_app
+    utub_id, utub_url_id = _seed_long_title_url(app=app)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub_id
+    )
+
+    wait_then_click_element(
+        page=page, css_selector=f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+    )
+    title_selector = f"{HPL.ROW_SELECTED_URL} {HPL.URL_TITLE_READ}"
+    wait_until_visible_css_selector(page=page, css_selector=title_selector)
+    title = page.locator(title_selector).first
+
+    _wait_until_layout_stable(title)
+    box = title.bounding_box()
+    assert box is not None
+    page.mouse.move(box["x"] + 1, box["y"] + box["height"] / 4)
+    page.mouse.down()
+    try:
+        expect(title).to_have_css("text-decoration-line", "underline")
+    finally:
+        page.mouse.up()
+
+
 def test_selecting_url_title_text_does_not_open_edit_form(
     page: Page, create_test_utubs, provide_app: Flask
 ):

@@ -26,7 +26,7 @@ export function disableTabbingOnURLCardElements(urlCard: JQuery): void {
 }
 
 // A URL edit form (string or title) is open. An absent wrap counts as closed.
-export function isUrlEditFormOpen({ urlCard }: { urlCard: JQuery }): boolean {
+export function isURLEditFormOpen({ urlCard }: { urlCard: JQuery }): boolean {
   return (
     urlCard.find(
       ".updateUrlStringWrap:not(.hidden), .updateUrlTitleWrap:not(.hidden)",
@@ -36,24 +36,22 @@ export function isUrlEditFormOpen({ urlCard }: { urlCard: JQuery }): boolean {
 
 // Hide the tags while a URL is being edited. The container is hidden, never
 // removed: tag renderers re-find `.urlTagsContainer` to rebuild badges.
-export function hideUrlTags({ urlCard }: { urlCard: JQuery }): void {
+export function hideURLTags({ urlCard }: { urlCard: JQuery }): void {
   urlCard.find(".urlTagsContainer").hideClass();
   urlCard.find(".urlTags").addClass("urlTagsHiddenForEdit");
 }
 
-// Undo hideUrlTags once no URL edit form remains open. removeHideClass is the
+// Undo hideURLTags once no URL edit form remains open. removeHideClass is the
 // exact inverse of hideClass; showClassFlex would leave a permanent
 // visible-flex on every deselect.
-export function restoreUrlTagsIfNotEditing({
+export function restoreURLTagsIfNotEditing({
   urlCard,
 }: {
   urlCard: JQuery;
 }): void {
-  if (isUrlEditFormOpen({ urlCard })) return;
+  if (isURLEditFormOpen({ urlCard })) return;
   urlCard.find(".urlTags").removeClass("urlTagsHiddenForEdit");
-  const container = urlCard.find(".urlTagsContainer");
-  if (!container.hasClass("hidden")) return;
-  container.removeHideClass();
+  urlCard.find(".urlTagsContainer").removeHideClass();
 }
 
 // Prevent editing URL title when needed
