@@ -1,4 +1,48 @@
-import { isValidURL, generateURLObj } from "../validation.js";
+import {
+  isValidURL,
+  generateURLObj,
+  isSupportedURLScheme,
+  isAcceptableURL,
+} from "../validation.js";
+
+describe("isAcceptableURL", () => {
+  it.each(["https://example.com", "example.com", "mailto:a@b.com"])(
+    "accepts a valid URL with a supported scheme: %s",
+    (urlString) => {
+      expect(isAcceptableURL({ urlString })).toBe(true);
+    },
+  );
+
+  it.each(["", "not a url with spaces", "javascript:alert(1)"])(
+    "rejects an invalid URL: %s",
+    (urlString) => {
+      expect(isAcceptableURL({ urlString })).toBe(false);
+    },
+  );
+
+  it("rejects a parseable URL with an unsupported scheme", () => {
+    expect(isAcceptableURL({ urlString: "foo://x" })).toBe(false);
+  });
+});
+
+describe("isSupportedURLScheme", () => {
+  it.each(["foo://x", "ftpx://x", "javascript:alert(1)"])(
+    "rejects unsupported scheme prefix %s",
+    (urlString) => {
+      expect(isSupportedURLScheme({ urlString })).toBe(false);
+    },
+  );
+
+  it.each([
+    "https://x",
+    "example.com",
+    "localhost:8080",
+    "mailto:a@b.com",
+    "https://user:pass@host.com",
+  ])("accepts %s", (urlString) => {
+    expect(isSupportedURLScheme({ urlString })).toBe(true);
+  });
+});
 
 describe("isValidURL", () => {
   describe("returns false for non-string or empty inputs", () => {

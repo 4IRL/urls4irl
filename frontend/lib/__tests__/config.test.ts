@@ -114,6 +114,39 @@ describe("APP_CONFIG shape", () => {
       expect(APP_CONFIG.strings).not.toBeNull();
     });
 
+    it("exposes the bridged URL scheme constants", () => {
+      const constants = APP_CONFIG.constants;
+      expect(constants.URL_SCHEMES[0]).toBe("https");
+      expect(constants.URL_SCHEMES.slice(0, 2)).toEqual(["https", "http"]);
+      expect(constants.URL_DEFAULT_SCHEME).toBe("https");
+      expect(constants.URL_SCHEMES).toContain(constants.URL_DEFAULT_SCHEME);
+      expect(Array.isArray(constants.URL_AUTHORITY_SCHEMES)).toBe(true);
+      expect(constants.URL_AUTHORITY_SCHEMES).toContain("https");
+      expect(Array.isArray(constants.URL_DEV_HOSTS)).toBe(true);
+      expect(constants.URL_DEV_HOSTS).toContain("localhost");
+      expect(typeof constants.URL_SCHEME_HINTS).toBe("object");
+      expect(constants.URL_SCHEME_HINTS).not.toBeNull();
+      expect(Array.isArray(constants.URL_SCHEME_HINTS)).toBe(false);
+      expect(constants.URL_SCHEME_HINTS.mailto).toBe("email");
+    });
+
+    it.each([
+      "URL_SCHEME_TOGGLE_LABEL",
+      "URL_SCHEME_FILTER_LABEL",
+      "URL_SCHEME_NO_MATCHES",
+      "URL_SCHEME_MATCH_ONE",
+      "URL_SCHEME_MATCH_MANY",
+      "URL_SCHEME_SET_ANNOUNCE",
+    ])("strings.%s is a non-empty string", (key) => {
+      expect(typeof APP_CONFIG.strings[key]).toBe("string");
+      expect(APP_CONFIG.strings[key].length).toBeGreaterThan(0);
+    });
+
+    it("URL scheme templated strings keep their placeholders", () => {
+      expect(APP_CONFIG.strings.URL_SCHEME_MATCH_MANY).toContain("{count}");
+      expect(APP_CONFIG.strings.URL_SCHEME_SET_ANNOUNCE).toContain("{scheme}");
+    });
+
     it("debugEnabled is a boolean", () => {
       expect(typeof APP_CONFIG.debugEnabled).toBe("boolean");
     });

@@ -1,0 +1,277 @@
+/* ---------------------------------------------------------------------------
+   Searchable URL scheme selector (create + edit panels). The DOM is built by
+   frontend/home/urls/scheme/scheme-selector.ts; the look clones the tag listbox
+   (tags.css). Colors come from design tokens so both themes work; the toggle
+   and input corner radii (4px, narrower than --radius-sm) and the neutral
+   rgba(126,130,130,...) fills (as in tags.css) are literals.
+   Mocks: plans/urls4irl/completed/url-scheme-selector/mocks/scheme-selector-*.html
+
+   `.urlSchemeSelector` is a class on the existing `.text-input-container`
+   (no extra wrapper). Inside it: `.urlSchemeInputRow` (toggle + the original
+   `.text-input-inner-container`), then the in-flow `.urlSchemeListbox`, then a
+   visually-hidden announce region. The listbox is IN-FLOW (grows the card)
+   because `.urlRow` is overflow:hidden and would clip an overlay.
+   --------------------------------------------------------------------------- */
+
+/* Toggle on the left, the original URL input filling the rest of the row. */
+.urlSchemeInputRow {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+/* The input fills the rest of the row; min-width:0 lets it shrink below its
+   intrinsic width. */
+.urlSchemeInputRow .text-input-inner-container {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* (0,3,0): out-specifies the base `.text-input[type=...]` rules (0,2,0) in
+   forms.css regardless of import order. The toggle supplies the left border
+   and radius; the input squares off its left corners. */
+.urlSchemeInputRow .text-input-inner-container > .text-input {
+    border-radius: 0 4px 4px 0;
+}
+
+.urlSchemeToggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    /* Sized to the scheme text (short schemes like "ftp" shrink the toggle).
+       Long schemes (e.g. "microsoft-edge") ellipsize instead of squeezing the
+       URL input. */
+    max-width: 40%;
+    padding: 10px;
+    font: inherit;
+    font-size: 16px;
+    color: var(--textPrimary);
+    background: var(--pageBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.urlSchemeToggleLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.urlSchemeToggleCaret {
+    flex: 0 0 auto;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: var(--textPrimary);
+}
+
+/* Touch: the toggle must not hold a sticky tap state. Hover rules live only in
+   the fine-pointer block below; here the tap-time :active/:focus colors are
+   pinned to the resting look (before the expanded/invalid rules so those still
+   win on equal specificity). */
+@media (any-pointer: coarse) {
+    .urlSchemeToggle {
+        min-height: 46px;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlSchemeToggle:hover,
+    .urlSchemeToggle:focus,
+    .urlSchemeToggle:active {
+        color: var(--textPrimary);
+        background: var(--pageBackgroundColor);
+        border-color: var(--borderColor);
+    }
+}
+
+.urlSchemeToggle[aria-expanded="true"] {
+    border-color: var(--deckSelectionGreen);
+}
+
+.urlSchemeToggle:focus-visible {
+    border-color: var(--deckSelectionGreen);
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+/* Even URL cards paint their text inputs with the card color (urls.css); match
+   it so the joined toggle + input control is one color. Includes the coarse
+   :hover/:focus/:active pin, which sets `background` at (0,2,0). */
+#listURLs .urlRow.even[filterable="true"] .urlSchemeToggle,
+#listURLs .urlRow.even[filterable="true"] .urlSchemeToggle:hover,
+#listURLs .urlRow.even[filterable="true"] .urlSchemeToggle:focus,
+#listURLs .urlRow.even[filterable="true"] .urlSchemeToggle:active {
+    background-color: var(--cardBackgroundColor);
+}
+
+/* In-flow dropdown: grows the card rather than overlaying it. */
+.urlSchemeListbox {
+    margin-top: 4px;
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.urlSchemeFilterWrap {
+    padding: 8px;
+    border-bottom: 1px solid var(--borderColor);
+}
+
+/* (0,3,0) over the base `.text-input[type="search"]` (0,2,0). */
+.urlSchemeFilterWrap .text-input.urlSchemeFilter {
+    padding: 7px 10px;
+    border-radius: 4px;
+}
+
+/* The app has no search-clear affordance here; the UA's (often blue) one would
+   duplicate Escape/backspace. */
+.urlSchemeFilter::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+}
+
+/* Vertical scroll only: a horizontal scroller would fight the card swipe
+   gesture's `touch-action: pan-y` (same reasoning as .urlParamTrimChips). */
+.urlSchemeOptions {
+    max-height: 13.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* Row: scheme name left, optional muted hint pill, then a check slot. The
+   check slot is always reserved so hint pills line up in one column whether or
+   not the row is the selected one. */
+.urlSchemeOption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--textPrimary);
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.2s ease;
+}
+
+/* Separator above every visible row after the first. Not a bottom border: the
+   `.urlSchemeHint` div is always the last child (so no row is ever the last
+   one) and filter-hidden rows would leave a trailing border. */
+.urlSchemeOption:not(.hidden) ~ .urlSchemeOption:not(.hidden) {
+    border-top: 1px solid var(--borderColor);
+}
+
+.urlSchemeOptionLabel {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The listbox roves real DOM focus between rows (no `.active` class), so the
+   focused row IS the highlighted row. */
+.urlSchemeOption:focus {
+    background: rgba(126, 130, 130, 0.35);
+}
+
+.urlSchemeOption:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+.urlSchemeOption::after {
+    content: "";
+    flex: 0 0 1em;
+    text-align: center;
+    color: var(--deckSelectionGreen);
+}
+
+/* Check mark for the selected option, drawn via ::after. The second
+   declaration gives it empty alt text where supported (aria-selected already
+   conveys the state); older engines keep the first. */
+.urlSchemeOption[aria-selected="true"]::after {
+    content: "\2713";
+    content: "\2713" / "";
+}
+
+.urlSchemeOptionHint {
+    flex: 0 0 auto;
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: var(--grayBadgeSelection);
+    background: var(--cardBackgroundColor);
+    border-radius: var(--radius-pill);
+    padding: 1px 9px;
+}
+
+/* "N schemes match" helper line (polite live region). Empty when no query, so
+   it takes no vertical space until it has text. */
+.urlSchemeMsg {
+    font-size: 0.78rem;
+    color: var(--grayBadgeSelection);
+}
+
+.urlSchemeMsg:not(:empty) {
+    padding: 6px 12px 8px;
+}
+
+.urlSchemeHint {
+    padding: 9px 12px;
+    font-size: 0.85rem;
+    color: var(--grayBadgeSelection);
+    font-style: italic;
+}
+
+/* Hover only where a real hover exists, so touch has no sticky tap state. */
+@media not all and (any-pointer: coarse) {
+    .urlSchemeToggle:hover {
+        border-color: var(--deckSelectionGreenHover);
+    }
+
+    /* After :hover so a keyboard-focused toggle under the mouse keeps the
+       bright focus border. */
+    .urlSchemeToggle[aria-expanded="true"]:hover,
+    .urlSchemeToggle:focus-visible:hover {
+        border-color: var(--deckSelectionGreen);
+    }
+
+    .urlSchemeOption:hover {
+        background: rgba(126, 130, 130, 0.18);
+    }
+
+    /* Re-declared after :hover (equal specificity, later wins) so the roving
+       keyboard highlight is not downgraded to the weaker hover tint. */
+    .urlSchemeOption:focus {
+        background: rgba(126, 130, 130, 0.35);
+    }
+}
+
+/* Touch: 44px rows. Focus stays on the toggle on touch, so the current scheme
+   is shown by a tint on the selected row instead of a roving highlight. */
+@media (any-pointer: coarse) {
+    .urlSchemeOption {
+        min-height: 44px;
+    }
+
+    .urlSchemeOption[aria-selected="true"] {
+        background: rgba(126, 130, 130, 0.25);
+    }
+
+    .urlSchemeOptions {
+        max-height: 15rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .urlSchemeToggle,
+    .urlSchemeOption {
+        transition: none;
+    }
+}

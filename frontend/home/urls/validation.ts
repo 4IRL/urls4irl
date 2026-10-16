@@ -1,3 +1,15 @@
+import { hasUnsupportedSchemePrefix } from "./scheme/scheme-utils.js";
+
+// Instant client-side whitelist check: rejects `foo://x`-style prefixes that
+// are not in the backend scheme whitelist. Scheme-less text and host:port pass.
+export function isSupportedURLScheme({
+  urlString,
+}: {
+  urlString: string;
+}): boolean {
+  return !hasUnsupportedSchemePrefix({ text: urlString });
+}
+
 export function isValidURL(inputURL: string): boolean {
   if (!inputURL || typeof inputURL !== "string") {
     return false;
@@ -26,6 +38,12 @@ export function isValidURL(inputURL: string): boolean {
   if (invalidProtocols.includes(protocol)) return false;
 
   return true;
+}
+
+// A URL is submittable when it parses safely and its scheme prefix (if any) is
+// in the whitelist.
+export function isAcceptableURL({ urlString }: { urlString: string }): boolean {
+  return isValidURL(urlString) && isSupportedURLScheme({ urlString });
 }
 
 export function generateURLObj(inputURL: string): URL | null {

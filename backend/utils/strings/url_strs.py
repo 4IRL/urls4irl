@@ -257,6 +257,23 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_BULK_CARD_CANT_DELETE = URL_BULK_CARD_CANT_DELETE
 
 
+# Short hint text shown beside a scheme in the URL scheme selector (keys must be whitelisted schemes)
+URL_SCHEME_HINT_STRS: dict[str, str] = {
+    "mailto": "email",
+    "tel": "phone",
+    "sms": "text message",
+    "magnet": "torrent",
+}
+
+# URL scheme selector UI text. The selector DOM is built in TS, so every label is
+# bridged to APP_CONFIG.strings. The {count} and {scheme} placeholders are replaced client-side.
+URL_SCHEME_TOGGLE_LABEL = "URL scheme"
+URL_SCHEME_FILTER_LABEL = "Filter schemes"
+URL_SCHEME_NO_MATCHES = "No matching schemes"
+URL_SCHEME_MATCH_ONE = "1 scheme matches"
+URL_SCHEME_MATCH_MANY = "{count} schemes match"
+URL_SCHEME_SET_ANNOUNCE = "Scheme set to {scheme}"
+
 # Strings for URL failure
 UNABLE_TO_DELETE_URL = "Unable to remove this URL."
 UNABLE_TO_ADD_URL = "Unable to add this URL."

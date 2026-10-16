@@ -120,6 +120,11 @@ export interface AppConstants {
   readonly TRACKING_QUERY_PARAMS: readonly string[];
   readonly TRACKING_QUERY_PARAM_PREFIXES: readonly string[];
   readonly TRACKING_STRIP_SCHEMES: readonly string[];
+  readonly URL_SCHEMES: readonly string[];
+  readonly URL_DEFAULT_SCHEME: string;
+  readonly URL_AUTHORITY_SCHEMES: readonly string[];
+  readonly URL_DEV_HOSTS: readonly string[];
+  readonly URL_SCHEME_HINTS: Readonly<Record<string, string>>;
   readonly DEVICE_TYPE: DeviceTypeValues;
   readonly DEVICE_TYPE_DIM_KEY: string;
 }
