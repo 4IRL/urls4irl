@@ -17,7 +17,12 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
 
-from scripts.purge_trash import TrashPurgeResult, run_trash_purge
+from scripts.purge_trash import (
+    DELETE_UTUBS_SQL,
+    PURGE_EXPIRED_URLS_SQL,
+    TrashPurgeResult,
+    run_trash_purge,
+)
 from scripts.trash_retention import TRASH_RETENTION_DAYS
 from tests.integration.system.metrics_helpers import build_pg_conn
 
@@ -167,6 +172,47 @@ def _count(pg_conn: Any, table: str, column: str, value: int) -> int:
             f'SELECT count(*) FROM "{table}" WHERE "{column}" = %s', (value,)
         )
         return cursor.fetchone()[0]
+
+
+class _FailingCursor:
+    """Cursor proxy that records executed SQL and raises on one chosen statement."""
+
+    def __init__(self, cursor: Any, executed_sql: list[str], failing_sql: str) -> None:
+        self._cursor = cursor
+        self._executed_sql = executed_sql
+        self._failing_sql = failing_sql
+
+    def __enter__(self) -> _FailingCursor:
+        return self
+
+    def __exit__(self, *exc_info: Any) -> None:
+        self._cursor.close()
+
+    def execute(self, sql: str, params: Any = None) -> None:
+        self._executed_sql.append(sql)
+        if sql == self._failing_sql:
+            raise RuntimeError("simulated failure on the final purge statement")
+        self._cursor.execute(sql, params)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._cursor, name)
+
+
+class _FailingConnection:
+    """Connection proxy whose cursors fail on ``failing_sql``; the rest is delegated."""
+
+    def __init__(self, pg_conn: Any, failing_sql: str) -> None:
+        self._pg_conn = pg_conn
+        self._failing_sql = failing_sql
+        self.executed_sql: list[str] = []
+
+    def cursor(self) -> _FailingCursor:
+        return _FailingCursor(
+            self._pg_conn.cursor(), self.executed_sql, self._failing_sql
+        )
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._pg_conn, name)
 
 
 def test_run_trash_purge_empty_returns_zero(
@@ -482,5 +528,53 @@ def test_retention_days_override(runner: tuple[Flask, FlaskCliRunner]) -> None:
 
         assert result == TrashPurgeResult(utubs=0, urls=1)
         assert _count(pg_conn, "UtubUrls", "id", utub_url_id) == 0
+    finally:
+        pg_conn.close()
+
+
+def test_rolls_back_every_delete_when_the_final_statement_fails(
+    runner: tuple[Flask, FlaskCliRunner],
+) -> None:
+    """
+    GIVEN a live UTub holding an expired URL (pass A) and a UTub trashed 31 days ago
+        with a member (pass B), and a connection whose UTub delete raises
+    WHEN run_trash_purge runs
+    THEN the error is re-raised, pass A's deleted URL row is restored by the rollback,
+        and the UTub and its members all still exist
+    """
+    app, _ = runner
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        user_id = _seed_user(pg_conn, "rollback_user")
+        live_utub_id = _seed_utub(pg_conn, name="live", creator_id=user_id)
+        _seed_member(pg_conn, live_utub_id, user_id, "CREATOR")
+        expired_url_id = _seed_url(pg_conn, "https://rollback1.example.com", user_id)
+        expired_utub_url_id = _seed_utub_url(
+            pg_conn,
+            utub_id=live_utub_id,
+            url_id=expired_url_id,
+            user_id=user_id,
+            deleted_at=_ago(days=TRASH_RETENTION_DAYS, hours=1),
+            deleted_by=user_id,
+        )
+        trashed_utub_id = _seed_utub(
+            pg_conn,
+            name="trashed",
+            creator_id=user_id,
+            deleted_at=_ago(days=31),
+            deleted_by=user_id,
+        )
+        _seed_member(pg_conn, trashed_utub_id, user_id, "CREATOR")
+
+        failing_conn = _FailingConnection(pg_conn, DELETE_UTUBS_SQL)
+        with pytest.raises(RuntimeError, match="simulated failure"):
+            run_trash_purge(pg_conn=failing_conn)
+
+        # Pass A really ran inside the transaction before the failure.
+        assert PURGE_EXPIRED_URLS_SQL in failing_conn.executed_sql
+        assert _count(pg_conn, "UtubUrls", "id", expired_utub_url_id) == 1
+        assert _count(pg_conn, "Utubs", "id", trashed_utub_id) == 1
+        assert _count(pg_conn, "UtubMembers", "utubID", trashed_utub_id) == 1
     finally:
         pg_conn.close()
