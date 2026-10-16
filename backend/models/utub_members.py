@@ -1,6 +1,15 @@
+from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Column, ForeignKey, Index, Integer, UniqueConstraint, text
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy import Enum as SQLEnum
 
 from backend import db
@@ -27,6 +36,10 @@ class Utub_Members(db.Model):
         name="memberRole",
     )
     # TODO: Add time when member was added
+    # Per-member "last opened this UTub" time; NULL = never recorded.
+    last_opened_at: datetime | None = Column(
+        DateTime(timezone=True), nullable=True, default=None, name="lastOpenedAt"
+    )
 
     to_user = db.relationship("Users", back_populates="utubs_is_member_of")
     to_utub = db.relationship("Utubs", back_populates="members")

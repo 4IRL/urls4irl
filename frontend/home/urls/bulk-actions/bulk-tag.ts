@@ -101,6 +101,12 @@ let currentSnapshot: number[] = [];
 let currentUtubID: number | null = null;
 let currentWrap: JQuery | null = null;
 let submitInFlight = false;
+
+// Read-only view of the flag for the refresh-on-focus busy gate.
+export function isBulkTagSubmitInFlight(): boolean {
+  return submitInFlight;
+}
+
 let loadingTimeoutID: number | null = null;
 let escapeListener: ((event: KeyboardEvent) => void) | null = null;
 

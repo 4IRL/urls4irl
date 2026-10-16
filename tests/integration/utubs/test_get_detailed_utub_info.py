@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta, timezone
 from typing import Tuple
+from unittest import mock
 
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from flask_login import current_user
+from sqlalchemy import text
 
 from backend import db
 from backend.metrics.events import EventName
@@ -20,6 +22,7 @@ from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.utubs.services import read_utubs
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import (
     count_tag_instances_in_utub,
@@ -30,6 +33,43 @@ from tests.utils_for_test import (
 )
 
 pytestmark = pytest.mark.utubs
+
+
+def _capture_open_state(
+    *, app: Flask, utub_id: int
+) -> Tuple[datetime, dict[int, datetime | None]]:
+    """Snapshot ``Utubs.last_updated`` and every member's ``last_opened_at``."""
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        members: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id
+        ).all()
+        return utub.last_updated, {
+            member.user_id: member.last_opened_at for member in members
+        }
+
+
+def _assert_open_recorded_only_for_caller(
+    *,
+    app: Flask,
+    utub_id: int,
+    caller_id: int,
+    before: Tuple[datetime, dict[int, datetime | None]],
+) -> None:
+    """An open leaves ``Utubs.last_updated`` alone and stamps only the caller's row."""
+    last_updated_before, opened_before = before
+    after_last_updated, opened_after = _capture_open_state(app=app, utub_id=utub_id)
+
+    assert after_last_updated == last_updated_before
+
+    caller_before = opened_before[caller_id]
+    caller_after = opened_after[caller_id]
+    assert caller_after is not None
+    assert caller_before is None or caller_after > caller_before
+
+    for user_id, opened_at_before in opened_before.items():
+        if user_id != caller_id:
+            assert opened_after[user_id] == opened_at_before
 
 
 def test_get_valid_utub_as_creator(
@@ -50,9 +90,10 @@ def test_get_valid_utub_as_creator(
             Utubs.utub_creator == current_user.id
         ).first()
         id_of_utub = utub_user_creator_of.id
-        initial_last_updated = utub_user_creator_of.last_updated
         current_user_id = current_user.id
         current_user_username = current_user.username
+
+    before_open = _capture_open_state(app=app, utub_id=id_of_utub)
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=id_of_utub),
@@ -82,11 +123,9 @@ def test_get_valid_utub_as_creator(
     assert len(response_json[MODELS.TAGS]) == 0
     assert len(response_json[MODELS.URLS]) == 0
 
-    with app.app_context():
-        utub_user_creator_of = Utubs.query.get(id_of_utub)
-        assert (
-            utub_user_creator_of.last_updated - initial_last_updated
-        ).total_seconds() > 0
+    _assert_open_recorded_only_for_caller(
+        app=app, utub_id=id_of_utub, caller_id=current_user_id, before=before_open
+    )
 
 
 def test_get_single_utub_records_metric(
@@ -138,9 +177,10 @@ def test_get_valid_utub_as_member(
             Utubs.utub_creator != current_user.id
         ).first()
         id_of_utub = utub_user_member_of.id
-        initial_last_updated = utub_user_member_of.last_updated
         current_user_id = current_user.id
         current_user_username = current_user.username
+
+    before_open = _capture_open_state(app=app, utub_id=id_of_utub)
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=id_of_utub),
@@ -170,11 +210,9 @@ def test_get_valid_utub_as_member(
     assert len(response_json[MODELS.TAGS]) == 0
     assert len(response_json[MODELS.URLS]) == 0
 
-    with app.app_context():
-        utub_user_member_of = Utubs.query.get(id_of_utub)
-        assert (
-            utub_user_member_of.last_updated - initial_last_updated
-        ).total_seconds() > 0
+    _assert_open_recorded_only_for_caller(
+        app=app, utub_id=id_of_utub, caller_id=current_user_id, before=before_open
+    )
 
 
 def test_get_valid_utub_as_co_creator(
@@ -427,8 +465,9 @@ def test_get_valid_utub_with_members_urls_no_tags(
         all_urls_in_utub: list[Utub_Urls] = utub_user_is_member_of.utub_urls
         only_url_in_utub: Utub_Urls = all_urls_in_utub[-1]
         standalone_url: Urls = only_url_in_utub.standalone_url
-        initial_last_updated = utub_user_is_member_of.last_updated
         current_user_id = current_user.id
+
+    before_open = _capture_open_state(app=app, utub_id=id_of_utub)
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_user_is_member_of.id),
@@ -465,11 +504,9 @@ def test_get_valid_utub_with_members_urls_no_tags(
         }
         assert url_dict in response_json[MODELS.URLS]
 
-    with app.app_context():
-        utub_user_member_of = Utubs.query.get(id_of_utub)
-        assert (
-            utub_user_member_of.last_updated - initial_last_updated
-        ).total_seconds() > 0
+    _assert_open_recorded_only_for_caller(
+        app=app, utub_id=id_of_utub, caller_id=current_user_id, before=before_open
+    )
 
 
 def _assign_distinct_sort_values(utub: Utubs) -> None:
@@ -615,8 +652,9 @@ def test_get_valid_utub_with_members_urls_tags(
         all_tags: list[Utub_Tags] = Utub_Tags.query.filter(
             Utub_Tags.utub_id == utub_user_is_creator_of.id
         ).all()
-        initial_last_updated = utub_user_is_creator_of.last_updated
         current_user_id = current_user.id
+
+    before_open = _capture_open_state(app=app, utub_id=id_of_utub)
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_user_is_creator_of.id),
@@ -679,11 +717,43 @@ def test_get_valid_utub_with_members_urls_tags(
         }
         assert tag_dict in response_json[MODELS.TAGS]
 
-    with app.app_context():
-        utub_user_is_creator_of = Utubs.query.get(id_of_utub)
-        assert (
-            utub_user_is_creator_of.last_updated - initial_last_updated
-        ).total_seconds() > 0
+    _assert_open_recorded_only_for_caller(
+        app=app, utub_id=id_of_utub, caller_id=current_user_id, before=before_open
+    )
+
+
+def test_get_single_utub_when_membership_deleted_concurrently_does_not_500(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a logged-in member whose UtubMembers row is deleted after the auth
+        decorator loads it but before the service records the open
+    WHEN they GET "/utubs/<utub_id>"
+    THEN the bulk UPDATE affects 0 rows and the response is still 200
+    """
+    client, utub_id, _, _ = add_single_utub_as_user_after_logging_in
+    real_record_open = read_utubs._record_utub_opened_by
+
+    def delete_membership_then_record(*, utub_id: int, user_id: int) -> None:
+        db.session.execute(
+            text(
+                'DELETE FROM "UtubMembers" '
+                'WHERE "utubID" = :utub_id AND "userID" = :user_id'
+            ),
+            {"utub_id": utub_id, "user_id": user_id},
+        )
+        real_record_open(utub_id=utub_id, user_id=user_id)
+
+    with mock.patch(
+        "backend.utubs.services.read_utubs._record_utub_opened_by",
+        side_effect=delete_membership_then_record,
+    ):
+        response = client.get(
+            url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+            headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+        )
+
+    assert response.status_code == 200
 
 
 def test_get_utub_excludes_trashed_url(

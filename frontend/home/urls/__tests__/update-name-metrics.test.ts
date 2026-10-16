@@ -1,5 +1,6 @@
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
+  isUTubNameSubmitInFlight,
   setupUpdateUTubNameEventListeners,
   updateUTubNameHideInput,
   updateUTubNameShowInput,
@@ -390,6 +391,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
       expect(submitBtn.attr("aria-disabled")).toBe("true");
       expect(submitBtn.prop("disabled")).toBe(false);
+      expect(isUTubNameSubmitInFlight()).toBe(true);
 
       // Second submit while in flight → blocked (no second PATCH).
       submitBtn.trigger("click.updateUTubname");
@@ -401,6 +403,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       });
       expect(submitBtn.attr("aria-disabled")).toBeUndefined();
       expect(submitBtn.prop("disabled")).toBe(false);
+      expect(isUTubNameSubmitInFlight()).toBe(false);
 
       // Exactly one UI_FORM_SUBMIT (the guard returns before the second emit).
       expect(

@@ -48,6 +48,11 @@ export function insertURLCardIntoDeck({
   appliedTags: UtubTag[];
   announce: boolean;
 }): JQuery {
+  // A background refresh may already have rendered this URL before the create
+  // response landed: never duplicate the card, and skip every other side effect.
+  const existingCard = $(".urlRow[utuburlid=" + newUrl.utubUrlID + "]");
+  if (existingCard.length > 0) return existingCard;
+
   // Capture visible-URL count BEFORE DOM insertion (drives alternating stripes).
   const currentNumOfURLs = getNumOfVisibleURLs();
 

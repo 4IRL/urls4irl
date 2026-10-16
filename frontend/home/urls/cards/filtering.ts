@@ -50,15 +50,25 @@ function applyURLVisibilityToDOM(visibility: UrlVisibility[]): void {
   });
 }
 
-export function updateURLsAndTagSubheaderWhenTagSelected(): void {
+export function updateURLsAndTagSubheaderWhenTagSelected({
+  urls = getState().urls,
+}: { urls?: UtubUrlItem[] } = {}): void {
   const selectedTagIDs = getState().selectedTagIDs;
-  const urlsWithTagIDs = getState().urls.map((url) => ({
+  const urlsWithTagIDs = urls.map((url) => ({
     urlId: url.utubUrlID,
     tagIDs: url.utubUrlTagIDs,
   }));
   const visibility = computeURLVisibility(selectedTagIDs, urlsWithTagIDs);
   applyURLVisibilityToDOM(visibility);
-  const totalURLs = getState().urls.length;
+  // A card still mid-fadeOut after a removal is in the DOM but not in `urls`:
+  // never count it as visible.
+  const knownURLIDs = new Set(urls.map((url) => url.utubUrlID));
+  $(".urlRow").each((_, urlCard) => {
+    if (!knownURLIDs.has(Number($(urlCard).attr("utuburlid")))) {
+      $(urlCard).attr({ filterable: false });
+    }
+  });
+  const totalURLs = urls.length;
   const visibleURLs = getNumOfVisibleURLs();
   log("tag filter applied to URL visibility", {
     selectedTagIDs,
@@ -207,9 +217,11 @@ export function isURLCurrentlyVisibleInURLDeck(urlString: string): boolean {
   return false;
 }
 
-export function updateTagFilteringOnURLOrURLTagDeletion(): void {
+export function updateTagFilteringOnURLOrURLTagDeletion({
+  urls = getState().urls,
+}: { urls?: UtubUrlItem[] } = {}): void {
   if (isATagSelected()) {
-    updateURLsAndTagSubheaderWhenTagSelected();
+    updateURLsAndTagSubheaderWhenTagSelected({ urls });
     return;
   }
   reapplyAlternatingURLCardBackgroundAfterFilter();
@@ -286,7 +298,7 @@ on(AppEvents.URL_SEARCH_VISIBILITY_CHANGED, () =>
   reapplyAlternatingURLCardBackgroundAfterFilter(),
 );
 
-on(AppEvents.STALE_DATA_DETECTED, ({ tags }) => {
+on(AppEvents.STALE_DATA_DETECTED, ({ tags, urls }) => {
   log("stale-data: pruning selectedTagIDs of tags no longer in UTub", {
     previousSelected: getState().selectedTagIDs,
     retained: getState().selectedTagIDs.filter((id) =>
@@ -298,5 +310,5 @@ on(AppEvents.STALE_DATA_DETECTED, ({ tags }) => {
       tags.some((tag) => tag.id === id),
     ),
   });
-  updateTagFilteringOnURLOrURLTagDeletion();
+  updateTagFilteringOnURLOrURLTagDeletion({ urls });
 });

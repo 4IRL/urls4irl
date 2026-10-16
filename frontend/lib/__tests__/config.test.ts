@@ -25,6 +25,7 @@ describe("APP_CONFIG shape", () => {
   describe("single-param dynamic routes", () => {
     const SINGLE_PARAM_ROUTE_KEYS = [
       "getUTub",
+      "refreshUTub",
       "deleteUTub",
       "transferUtubOwnership",
       "updateUTubName",

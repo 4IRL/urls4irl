@@ -21,6 +21,6 @@ export function checkForStaleDataOn409(
       "checkForStaleDataOn409 — server reports duplicate URL not visible locally, triggering stale-data refresh",
       { utubID, conflictingUrlStringLength: responseJSON.urlString.length },
     );
-    updateUTubOnFindingStaleData(utubID);
+    updateUTubOnFindingStaleData({ utubID });
   }
 }

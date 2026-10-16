@@ -17,7 +17,9 @@ import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { reapplyURLSearchFilter } from "../search.js";
 import { updateUTubNameHideInput } from "../update-name.js";
 import { getNumOfURLs } from "../utils.js";
-import { showURLsEmptyState } from "../empty-state.js";
+import { showURLsEmptyState, hideURLsEmptyState } from "../empty-state.js";
+import { showURLSearchIcon } from "../search.js";
+import { setBackgroundRefreshActive } from "../../utubs/background-refresh-flag.js";
 import { exitMultiSelectMode } from "../bulk-actions/bulk-mode.js";
 import {
   pruneRemovedFromSelection,
@@ -103,6 +105,14 @@ vi.mock("../../../store/app-store.js", () => ({
 
 vi.mock("../cards/swipe.js", () => ({
   triggerURLSwipeNudgeIfEligible: vi.fn(),
+}));
+
+vi.mock("../cards/filtering.js", () => ({
+  updateURLsAndTagSubheaderWhenTagSelected: vi.fn(),
+}));
+
+vi.mock("../../tags/utils.js", () => ({
+  isATagSelected: vi.fn(() => false),
 }));
 
 // Mocked rather than asserted through the ambient Bootstrap mock: that mock's
@@ -391,6 +401,60 @@ describe("updateURLDeck", () => {
     expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledWith({
       urlRow: newURLBlock,
     });
+  });
+
+  it("skips the swipe nudge for an added card while a background refresh is active", () => {
+    const newURLBlock = $('<div class="urlRow" utuburlid="2"></div>');
+    vi.mocked(createURLBlock).mockReturnValueOnce(newURLBlock);
+    updateURLDeck([SAMPLE_URL_1, SAMPLE_URL_2], SAMPLE_TAGS, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    setBackgroundRefreshActive({ active: true });
+    try {
+      config.addElement(SAMPLE_URL_2);
+    } finally {
+      setBackgroundRefreshActive({ active: false });
+    }
+
+    expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).not.toHaveBeenCalled();
+  });
+
+  it("still nudges for an added card when no background refresh is active", () => {
+    const newURLBlock = $('<div class="urlRow" utuburlid="2"></div>');
+    vi.mocked(createURLBlock).mockReturnValueOnce(newURLBlock);
+    updateURLDeck([SAMPLE_URL_1, SAMPLE_URL_2], SAMPLE_TAGS, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    setBackgroundRefreshActive({ active: false });
+    config.addElement(SAMPLE_URL_2);
+
+    expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledWith({
+      urlRow: newURLBlock,
+    });
+  });
+
+  it("going from 0 to n URLs hides the empty state and reveals the multi-select toggle and search icon", () => {
+    document.body.innerHTML = `
+      <div id="SearchURLWrap"></div>
+      <div id="listURLs"></div>
+      <button id="urlBtnMultiSelect" class="hidden"></button>
+    `;
+    vi.mocked(getState).mockReturnValue({
+      urls: [],
+    } as unknown as ReturnType<typeof getState>);
+
+    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+
+    expect(vi.mocked(hideURLsEmptyState)).toHaveBeenCalledTimes(1);
+    expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(false);
+    expect(vi.mocked(showURLSearchIcon)).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not touch the empty state when the store already had URLs", () => {
+    updateURLDeck([SAMPLE_URL_1, SAMPLE_URL_2], SAMPLE_TAGS, 42);
+
+    expect(vi.mocked(hideURLsEmptyState)).not.toHaveBeenCalled();
+    expect(vi.mocked(showURLSearchIcon)).not.toHaveBeenCalled();
   });
 
   it("delegates updateElement to refreshURLBlock for the matching URL", () => {

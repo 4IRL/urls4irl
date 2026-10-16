@@ -103,6 +103,12 @@ let currentSourceUtubID: number | null = null;
 // the module-level reference stays stable across the picker lifecycle.
 const stagedDestUtubIDs = new Set<number>();
 let submitInFlight = false;
+
+// Read-only view of the flag for the refresh-on-focus busy gate.
+export function isBulkCopySubmitInFlight(): boolean {
+  return submitInFlight;
+}
+
 let loadingTimeoutID: number | null = null;
 // Pending deferred bind of the mobile tap-outside listener (see openBulkCopyPicker).
 let outsideTapBindTimeoutID: ReturnType<typeof setTimeout> | null = null;

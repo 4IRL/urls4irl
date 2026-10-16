@@ -1,6 +1,7 @@
 import {
   initBulkTag,
   isBulkTagPickerOpen,
+  isBulkTagSubmitInFlight,
   setBulkTagPickerOpen,
 } from "../bulk-tag.js";
 import { getAvailableBulkActions } from "../bulk-action-registry.js";
@@ -841,9 +842,11 @@ describe("submitBulkTags — in-flight button + message state (DD-19, DD-20)", (
 
     const deferred = createMockJqXHR();
     vi.mocked(ajaxCall).mockReturnValue(deferred);
+    expect(isBulkTagSubmitInFlight()).toBe(false);
     comboboxState.lastOnSubmit!(["python"]);
 
     // In flight: both buttons disabled, transient live-region message posted.
+    expect(isBulkTagSubmitInFlight()).toBe(true);
     expect(submitBtn.prop("disabled")).toBe(true);
     expect(cancelBtn.prop("disabled")).toBe(true);
     expect(wrap.find(".urlTagComboboxMsg").text()).toBe(
@@ -871,6 +874,7 @@ describe("submitBulkTags — in-flight button + message state (DD-19, DD-20)", (
 
     // Settled: buttons re-enabled, spinner gone, transient message cleared by
     // the reset (the outcome now lives in the result banner).
+    expect(isBulkTagSubmitInFlight()).toBe(false);
     expect(submitBtn.prop("disabled")).toBe(false);
     expect(cancelBtn.prop("disabled")).toBe(false);
     expect(submitBtn.hasClass("bulkTagSubmitLoading")).toBe(false);

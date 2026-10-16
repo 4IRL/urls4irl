@@ -96,7 +96,12 @@ class UtubSummaryListSchema(BaseSchema):
         ]
         sorted_utubs = sorted(
             live_memberships,
-            key=lambda membership: membership.to_utub.last_updated,
+            # Per-viewer recency: the later of the viewer's own last open and the
+            # UTub's last content change (NULL last_opened_at falls back to the latter).
+            key=lambda membership: max(
+                membership.last_opened_at or membership.to_utub.last_updated,
+                membership.to_utub.last_updated,
+            ),
             reverse=True,
         )
         return cls(
