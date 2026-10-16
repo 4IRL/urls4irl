@@ -55,6 +55,9 @@ CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
 # ``now()`` is fixed for the whole transaction, so every statement agrees on the cutoff.
 _CUTOFF: str = "now() - %s * INTERVAL '1 day'"
 
+# Best-effort lock check: ``isLocked`` is read via ``USING`` with no row lock on Utubs
+# (unlike SELECT_EXPIRED_UTUBS_SQL's FOR UPDATE), so a lock committed mid-statement may
+# not be observed. See the ``run_trash_purge`` docstring.
 PURGE_EXPIRED_URLS_SQL: str = (
     'DELETE FROM "UtubUrls" AS u USING "Utubs" AS t '
     'WHERE u."utubID" = t.id '
@@ -93,6 +96,12 @@ def run_trash_purge(
     Runs both passes in one transaction and returns how many UTubs and URL rows were
     deleted (URLs cascaded with an expired UTub are included). On any failure, rolls
     back and re-raises, so there is no partial-purge state.
+
+    The admin-lock skip is best-effort for pass A: ``PURGE_EXPIRED_URLS_SQL`` reads
+    ``isLocked`` through ``DELETE ... USING`` without a row lock on ``Utubs``, so a
+    lock committed after that statement's snapshot is not observed and can let one
+    expired URL in a just-locked UTub be purged. Pass B locks the expired UTub rows
+    with ``FOR UPDATE``, so a lock cannot slip in once a UTub is selected.
 
     Example: with ``retention_days=30``, a URL trashed 31 days ago is deleted and one
     trashed 29 days ago is kept; a UTub trashed 31 days ago is deleted with its members,
