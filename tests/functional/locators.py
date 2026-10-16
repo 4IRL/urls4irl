@@ -958,6 +958,7 @@ class AdminPortalLocators(GenericPageLocator):
     OPS_VERIFY_TABLES_BTN = "#AdminOpsVerifyTablesBtn"
     OPS_METRICS_FLUSH_BTN = "#AdminOpsMetricsFlushBtn"
     OPS_BACKUP_TRIGGER_BTN = "#AdminOpsBackupTriggerBtn"
+    OPS_TRASH_PURGE_BTN = "#AdminOpsTrashPurgeBtn"
     OPS_CARD_DESC = ".admin-ops-card-desc"
     HEALTH_BACKUP_CARD = "#AdminHealthBackup"
     # Non-reloading actions render their result inline, immediately after the

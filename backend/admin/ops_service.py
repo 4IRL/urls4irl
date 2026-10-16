@@ -26,7 +26,9 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from scripts.flush_metrics import run_flush
 from scripts.purge_audit_log import AUDIT_LOG_RETENTION_DAYS, run_purge
+from scripts.purge_trash import run_trash_purge
 from scripts.sample_gauges import run_sample
+from scripts.trash_retention import TRASH_RETENTION_DAYS
 
 _MEMORY_URI: str = "memory://"
 # A pending backup request older than this has clearly been missed by the
@@ -240,6 +242,65 @@ def trigger_audit_purge(*, actor_id: int, reason: str) -> FlaskResponse:
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.OPS_PURGE_SUCCESS.format(count=deleted_count),
         count=deleted_count,
+    ).to_response()
+
+
+def trigger_trash_purge(*, actor_id: int, reason: str) -> FlaskResponse:
+    """Run the Trash retention purge now (skips admin-locked UTubs).
+
+    Writes the purge's own audit row and commits BEFORE running
+    run_trash_purge(), so the trigger is always on record even if the purge
+    fails. run_trash_purge() uses a raw psycopg2 connection and commits
+    internally. Like every ops trigger, it emits no metrics DOMAIN event
+    (API_HIT already counts the request).
+
+    The window is always TRASH_RETENTION_DAYS; the request schema carries no
+    retention parameter so callers cannot extend or shrink it.
+
+    Args:
+        actor_id: ID of the admin user triggering the purge.
+        reason: Required human-readable reason recorded in the audit log.
+
+    Returns:
+        200 JSON envelope with count=UTubs + URLs deleted on success.
+        500 on unexpected purge error.
+    """
+    # SELF-AUDIT FIRST: always on record, even if the purge subsequently fails.
+    audit.record(
+        actor_id=actor_id,
+        action=ADMIN_AUDIT_ACTIONS.OPS_TRASH_PURGE,
+        metadata={"reason": reason, "retention_days": TRASH_RETENTION_DAYS},
+    )
+    db.session.commit()
+
+    raw_conn = db.engine.raw_connection()
+    try:
+        result = run_trash_purge(pg_conn=raw_conn, retention_days=TRASH_RETENTION_DAYS)
+    except Exception as purge_error:
+        warning_log(f"admin ops: trash purge failed: {purge_error}")
+        audit.record(
+            actor_id=actor_id,
+            action=ADMIN_AUDIT_ACTIONS.OPS_TRASH_PURGE,
+            metadata={"reason": reason, "error": str(purge_error)},
+        )
+        db.session.commit()
+        return build_message_error_response(
+            message=ADMIN_ACTION_STRINGS.OPS_TRASH_PURGE_ERROR,
+            error_code=AdminActionErrorCodes.UNKNOWN_ERROR,
+            status_code=500,
+        )
+    finally:
+        try:
+            raw_conn.close()
+        except Exception:
+            pass
+
+    return AdminActionResponseSchema(
+        status=STD_JSON.SUCCESS,
+        message=ADMIN_ACTION_STRINGS.OPS_TRASH_PURGE_SUCCESS.format(
+            utubs=result.utubs, urls=result.urls
+        ),
+        count=result.utubs + result.urls,
     ).to_response()
 
 

@@ -471,6 +471,44 @@
         "admin_required",
         "api_route"
       ],
+      "endpoint": "admin.admin_ops_trash_purge",
+      "handler": "backend/admin/action_routes.py:admin_ops_trash_purge",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [],
+        "template_url_for": [
+          "admin_portal/system_operations/index.html"
+        ]
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/ops/trash-purge",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.admin_actions.AdminReasonRequiredRequest",
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "500": "backend.schemas.errors.ErrorResponse",
+          "503": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.ops_service:trigger_trash_purge"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
       "endpoint": "admin.admin_ops_verify_tables",
       "handler": "backend/admin/action_routes.py:admin_ops_verify_tables",
       "js": {
