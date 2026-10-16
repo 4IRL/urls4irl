@@ -1284,3 +1284,46 @@ class SettingsPageLocators(GenericPageLocator):
     DELETE_PASSWORD_INVALID_FEEDBACK = (
         "#SettingsDeleteCurrentPassword ~ .invalid-feedback"
     )
+
+
+class TrashPanelLocators(GenericPageLocator):
+    """A collector class for the desktop Trash destination locators.
+
+    Selectors mirror the IDs in `backend/templates/components/home/TrashPanel/`
+    and the classes built by `frontend/home/trash/render.ts`.
+    """
+
+    # Deck entry
+    SELECTOR = "#TrashSelector"
+    SELECTOR_COUNT = "#TrashSelectorCount"
+
+    # Panel and tabs
+    PANEL = "#TrashPanel"
+    TAB_URLS = "#TrashTabUrls"
+    TAB_UTUBS = "#TrashTabUtubs"
+    PANEL_URLS = "#TrashPanelUrls"
+    PANEL_UTUBS = "#TrashPanelUtubs"
+
+    # Rows and row actions
+    ROWS_URLS = "#listTrashURLs .trashRow"
+    ROWS_UTUBS = "#listTrashUTubs .trashRow"
+    BUTTON_RESTORE = ".trashBtnRestore"
+    BUTTON_PURGE = ".trashBtnPurge"
+    CHIP_ORIGIN = ".chip-origin"
+
+    # Panel-level controls and states
+    BUTTON_EMPTY = "#TrashBtnEmpty"
+    EMPTY_STATE_URLS = "#TrashUrlsEmptyState"
+    EMPTY_STATE_UTUBS = "#TrashUtubsEmptyState"
+    OUTCOME_BANNER = "#TrashOutcomeBanner"
+
+    # Destination picker (inline listbox inside a row)
+    DESTINATION_PICKER = ".trashDestinationPicker"
+    DESTINATION_OPTION = ".trashDestinationOption[role='option']"
+
+    # Confirm modal (shared #confirmModal)
+    CONFIRM_MODAL = "#confirmModal"
+    CONFIRM_MODAL_TITLE = "#confirmModalTitle"
+    CONFIRM_MODAL_BODY = "#confirmModalBody"
+    CONFIRM_MODAL_SUBMIT = "#modalSubmit"
+    CONFIRM_MODAL_DISMISS = "#modalDismiss"
