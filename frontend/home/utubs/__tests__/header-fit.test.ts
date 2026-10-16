@@ -1,4 +1,164 @@
-import { computeFittedFontPx } from "../header-fit.js";
+import {
+  computeFittedFontPx,
+  descriptionNeedsFullRow,
+  fitUTubHeaderAndSubheader,
+  DESCRIPTION_FILLS_ROW_CLASS,
+} from "../header-fit.js";
+
+describe("descriptionNeedsFullRow", () => {
+  it("is false when the description fits beside the search box", () => {
+    expect(
+      descriptionNeedsFullRow({
+        naturalWidthPx: 400,
+        availableBesideSearchPx: 700,
+      }),
+    ).toBe(false);
+  });
+
+  it("is false when the description exactly fills the space beside the search box", () => {
+    expect(
+      descriptionNeedsFullRow({
+        naturalWidthPx: 700,
+        availableBesideSearchPx: 700,
+      }),
+    ).toBe(false);
+  });
+
+  it("is true when the description is wider than the space beside the search box", () => {
+    expect(
+      descriptionNeedsFullRow({
+        naturalWidthPx: 701,
+        availableBesideSearchPx: 700,
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["zero natural width", 0, 700],
+    ["zero available width", 400, 0],
+    ["negative available width", 400, -10],
+    ["NaN natural width", NaN, 700],
+    ["Infinity available width", 400, Infinity],
+  ])("is false for degenerate input (%s)", (_label, naturalWidthPx, avail) => {
+    expect(
+      descriptionNeedsFullRow({
+        naturalWidthPx,
+        availableBesideSearchPx: avail,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("fitUTubHeaderAndSubheader - description fills-row state class", () => {
+  const OUTER_CONTENT_WIDTH_PX = 1000;
+  // 30% of the row is reserved for the search box, leaving 700px beside it.
+  const WIDTH_BESIDE_SEARCH_PX = 700;
+
+  function defineGeometry({
+    element,
+    props,
+  }: {
+    element: HTMLElement;
+    props: Record<string, number | HTMLElement | null>;
+  }): void {
+    for (const [name, value] of Object.entries(props))
+      Object.defineProperty(element, name, { value, configurable: true });
+  }
+
+  function mountDescription({
+    naturalWidthPx,
+  }: {
+    naturalWidthPx: number;
+  }): HTMLElement {
+    document.body.innerHTML = `
+      <div id="UTubDescriptionSubheaderOuterWrap" style="padding-left: 0px; padding-right: 0px">
+        <div id="UTubDescriptionSubheaderWrap">
+          <h5 id="URLDeckSubheader">A description</h5>
+          <span class="edit-pencil-icon"></span>
+        </div>
+      </div>`;
+    const outer = document.getElementById(
+      "UTubDescriptionSubheaderOuterWrap",
+    ) as HTMLElement;
+    const wrap = document.getElementById(
+      "UTubDescriptionSubheaderWrap",
+    ) as HTMLElement;
+    const subheader = document.getElementById(
+      "URLDeckSubheader",
+    ) as HTMLElement;
+    defineGeometry({
+      element: outer,
+      props: { clientWidth: OUTER_CONTENT_WIDTH_PX },
+    });
+    defineGeometry({
+      element: wrap,
+      props: { offsetParent: document.body, clientWidth: 1000 },
+    });
+    defineGeometry({
+      element: subheader,
+      props: { offsetParent: document.body, scrollWidth: naturalWidthPx },
+    });
+    return wrap;
+  }
+
+  it("adds the class when the description does not fit beside the search box", () => {
+    const wrap = mountDescription({
+      naturalWidthPx: WIDTH_BESIDE_SEARCH_PX + 100,
+    });
+
+    fitUTubHeaderAndSubheader();
+
+    expect(wrap.classList.contains(DESCRIPTION_FILLS_ROW_CLASS)).toBe(true);
+  });
+
+  it("leaves the class off when the description fits beside the search box", () => {
+    const wrap = mountDescription({
+      naturalWidthPx: WIDTH_BESIDE_SEARCH_PX - 100,
+    });
+
+    fitUTubHeaderAndSubheader();
+
+    expect(wrap.classList.contains(DESCRIPTION_FILLS_ROW_CLASS)).toBe(false);
+  });
+
+  it("removes the class on re-fit once the description shrinks to fit", () => {
+    const wrap = mountDescription({
+      naturalWidthPx: WIDTH_BESIDE_SEARCH_PX + 100,
+    });
+    fitUTubHeaderAndSubheader();
+    expect(wrap.classList.contains(DESCRIPTION_FILLS_ROW_CLASS)).toBe(true);
+
+    defineGeometry({
+      element: document.getElementById("URLDeckSubheader") as HTMLElement,
+      props: { scrollWidth: WIDTH_BESIDE_SEARCH_PX - 100 },
+    });
+    fitUTubHeaderAndSubheader();
+
+    expect(wrap.classList.contains(DESCRIPTION_FILLS_ROW_CLASS)).toBe(false);
+  });
+
+  it("leaves the class untouched while the description wrap is hidden", () => {
+    const wrap = mountDescription({
+      naturalWidthPx: WIDTH_BESIDE_SEARCH_PX + 100,
+    });
+    fitUTubHeaderAndSubheader();
+    defineGeometry({ element: wrap, props: { offsetParent: null } });
+    defineGeometry({
+      element: document.getElementById("URLDeckSubheader") as HTMLElement,
+      props: { scrollWidth: 10 },
+    });
+
+    fitUTubHeaderAndSubheader();
+
+    expect(wrap.classList.contains(DESCRIPTION_FILLS_ROW_CLASS)).toBe(true);
+  });
+
+  it("is a no-op when the subheader markup is absent", () => {
+    document.body.innerHTML = "";
+
+    expect(() => fitUTubHeaderAndSubheader()).not.toThrow();
+  });
+});
 
 describe("computeFittedFontPx", () => {
   const baseFontPx = 32;

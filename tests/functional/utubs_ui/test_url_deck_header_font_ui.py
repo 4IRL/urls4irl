@@ -260,14 +260,20 @@ _RESIZE_DEBOUNCE_WAIT_MS = 400
 
 
 def _layout_rects(*, page: Page) -> dict[str, Any]:
-    """Return the outer wrap content width and the bounding rects (top/bottom/width)
-    of the description wrap and the search wrap."""
+    """Return the outer wrap content width, the bounding rects (top/bottom/right/
+    width) of the description wrap, its text, its pencil and the search wrap, and
+    whether the description wrap carries the full-row state class."""
     return page.evaluate(
         """
         () => {
             const rect = (selector) => {
                 const r = document.querySelector(selector).getBoundingClientRect();
-                return { top: r.top, bottom: r.bottom, width: r.width };
+                return {
+                    top: r.top,
+                    bottom: r.bottom,
+                    right: r.right,
+                    width: r.width,
+                };
             };
             const outer = document.querySelector("#UTubDescriptionSubheaderOuterWrap");
             const style = window.getComputedStyle(outer);
@@ -280,6 +286,11 @@ def _layout_rects(*, page: Page) -> dict[str, Any]:
                 outerHeight: outer.getBoundingClientRect().height,
                 desc: rect("#UTubDescriptionSubheaderWrap"),
                 search: rect("#SearchURLWrap"),
+                descText: rect("#URLDeckSubheader"),
+                descPencil: rect("#UTubDescriptionSubheaderWrap .edit-pencil-icon"),
+                descFillsRow: document
+                    .querySelector("#UTubDescriptionSubheaderWrap")
+                    .classList.contains("descriptionFillsRow"),
                 descFontPx: parseFloat(
                     window.getComputedStyle(
                         document.querySelector("#URLDeckSubheader")
@@ -311,6 +322,17 @@ def _assert_search_below_full_width_description(*, page: Page) -> None:
         abs(rects["desc"]["width"] - rects["outerContentWidth"]) <= _LAYOUT_TOLERANCE_PX
     )
     assert rects["search"]["top"] >= rects["desc"]["bottom"] - 1
+    assert rects["descFillsRow"]
+
+
+def _assert_description_click_target_is_text_width(*, page: Page) -> None:
+    """The description wrap (the owner's click-to-edit target) must not extend
+    past its text plus the edit pencil."""
+    rects = _layout_rects(page=page)
+    content_right = max(rects["descText"]["right"], rects["descPencil"]["right"])
+    assert rects["desc"]["right"] - content_right <= _LAYOUT_TOLERANCE_PX
+    assert rects["desc"]["width"] < rects["outerContentWidth"] / 2
+    assert not rects["descFillsRow"]
 
 
 def _assert_search_beside(*, page: Page, anchor_selector: str) -> None:
@@ -363,7 +385,8 @@ def test_short_description_keeps_search_beside(
     """
     GIVEN a desktop viewport and a UTub with a short description
     WHEN the owner selects it
-    THEN the search box stays beside the description on the same row.
+    THEN the search box stays beside the description on the same row, and the
+    description's click target does not extend past its text.
     """
     _select_utub_with_description(
         app=provide_app,
@@ -372,6 +395,7 @@ def test_short_description_keeps_search_beside(
     )
 
     _assert_search_beside(page=page, anchor_selector=HPL.WRAP_UTUB_DESCRIPTION_UPDATE)
+    _assert_description_click_target_is_text_width(page=page)
     rects = _layout_rects(page=page)
     desc_height = rects["desc"]["bottom"] - rects["desc"]["top"]
     assert rects["outerHeight"] < 2 * desc_height

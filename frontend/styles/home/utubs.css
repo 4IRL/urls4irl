@@ -315,9 +315,11 @@
     }
 }
 
-/* Desktop, non-edit state: let the description grow to the full row. A short or
-   empty description (auto basis = content width) leaves the search box beside it;
-   a long one no longer fits beside the 30% search box, so the search wraps onto
+/* Desktop, non-edit state: the description wrap stays content-sized (it is also
+   the owner's click-to-edit target, so a short description's hit area must not
+   stretch to the search box), leaving the search box beside it. header-fit.ts
+   adds .descriptionFillsRow when the description (at its base font) does not fit
+   beside the search box; it then takes the full row and the search wraps onto
    its own line below. The edit form keeps the original single-line layout. */
 @media (min-width: 992px) {
     #URLDeck:not(.multiSelectActive) #UTubDescriptionSubheaderOuterWrap:not(:has(#UTubDescriptionUpdateWrap:not(.hidden))) {
@@ -325,8 +327,12 @@
     }
 
     #URLDeck:not(.multiSelectActive) #UTubDescriptionSubheaderOuterWrap:not(:has(#UTubDescriptionUpdateWrap:not(.hidden))) #UTubDescriptionSubheaderWrap {
-        flex: 1 1 auto;
+        flex: 0 1 auto;
         min-width: 0;
+    }
+
+    #URLDeck:not(.multiSelectActive) #UTubDescriptionSubheaderOuterWrap:not(:has(#UTubDescriptionUpdateWrap:not(.hidden))) #UTubDescriptionSubheaderWrap.descriptionFillsRow {
+        flex-basis: 100%;
     }
 
     /* The invisible "Add a description?" button keeps its layout width
