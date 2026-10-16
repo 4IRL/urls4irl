@@ -228,11 +228,8 @@ def test_admin_ops_trash_purge_happy_path(
     """
     client, csrf, admin_user, app = login_admin_user_with_register
 
-    monkeypatch.setattr(
-        ops_service,
-        "run_trash_purge",
-        MagicMock(return_value=TrashPurgeResult(utubs=2, urls=7)),
-    )
+    mock_run_trash_purge = MagicMock(return_value=TrashPurgeResult(utubs=2, urls=7))
+    monkeypatch.setattr(ops_service, "run_trash_purge", mock_run_trash_purge)
 
     with app.app_context():
         rows_before: int = AuditLog.query.count()
@@ -241,6 +238,10 @@ def test_admin_ops_trash_purge_happy_path(
     response = _post_ops(client, _OPS_TRASH_PURGE_URL, csrf)
 
     assert response.status_code == 200
+    mock_run_trash_purge.assert_called_once()
+    assert (
+        mock_run_trash_purge.call_args.kwargs["retention_days"] == TRASH_RETENTION_DAYS
+    )
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert body["count"] == 9

@@ -72,7 +72,7 @@ class Utub_Urls(db.Model):
     # Partial index over trashed rows only, for the purge sweep and Trash list.
     __table_args__ = (
         Index(
-            "ix_utub_urls_deleted_at",
+            "idx_utub_urls_deleted_at",
             "deletedAt",
             postgresql_where=text('"deletedAt" IS NOT NULL'),
         ),

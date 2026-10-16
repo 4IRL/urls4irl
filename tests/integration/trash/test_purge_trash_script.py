@@ -23,8 +23,8 @@ from tests.integration.system.metrics_helpers import build_pg_conn
 
 pytestmark = pytest.mark.trash
 
-_SEED_PASSWORD = "hashed-placeholder"
-_SEED_TIMESTAMP = "2025-01-01 00:00:00+00"
+_SEED_PASSWORD: str = "hashed-placeholder"
+_SEED_TIMESTAMP: str = "2025-01-01 00:00:00+00"
 
 
 def _ago(*, days: int = 0, hours: int = 0) -> datetime:
@@ -169,12 +169,6 @@ def _count(pg_conn: Any, table: str, column: str, value: int) -> int:
         return cursor.fetchone()[0]
 
 
-def _count_where_id(pg_conn: Any, table: str, row_id: int) -> int:
-    with pg_conn.cursor() as cursor:
-        cursor.execute(f'SELECT count(*) FROM "{table}" WHERE id = %s', (row_id,))
-        return cursor.fetchone()[0]
-
-
 def test_run_trash_purge_empty_returns_zero(
     runner: tuple[Flask, FlaskCliRunner],
 ) -> None:
@@ -215,7 +209,7 @@ def test_purges_expired_standalone_url_in_live_utub(
         recent_url_id = _seed_url(pg_conn, "https://recent.example.com", user_id)
         live_url_id = _seed_url(pg_conn, "https://live.example.com", user_id)
 
-        expired = _seed_utub_url(
+        expired_utub_url_id = _seed_utub_url(
             pg_conn,
             utub_id=utub_id,
             url_id=expired_url_id,
@@ -223,7 +217,7 @@ def test_purges_expired_standalone_url_in_live_utub(
             deleted_at=_ago(days=TRASH_RETENTION_DAYS, hours=1),
             deleted_by=user_id,
         )
-        recent = _seed_utub_url(
+        recent_utub_url_id = _seed_utub_url(
             pg_conn,
             utub_id=utub_id,
             url_id=recent_url_id,
@@ -231,10 +225,14 @@ def test_purges_expired_standalone_url_in_live_utub(
             deleted_at=_ago(days=TRASH_RETENTION_DAYS) + timedelta(hours=1),
             deleted_by=user_id,
         )
-        live = _seed_utub_url(
+        live_utub_url_id = _seed_utub_url(
             pg_conn, utub_id=utub_id, url_id=live_url_id, user_id=user_id
         )
-        for utub_url_id in (expired, recent, live):
+        for utub_url_id in (
+            expired_utub_url_id,
+            recent_utub_url_id,
+            live_utub_url_id,
+        ):
             _seed_url_tag(
                 pg_conn,
                 utub_id=utub_id,
@@ -246,13 +244,13 @@ def test_purges_expired_standalone_url_in_live_utub(
         result = run_trash_purge(pg_conn=pg_conn)
 
         assert result == TrashPurgeResult(utubs=0, urls=1)
-        assert _count_where_id(pg_conn, "UtubUrls", expired) == 0
-        assert _count(pg_conn, "UtubUrlTags", "utubUrlID", expired) == 0
-        assert _count_where_id(pg_conn, "UtubUrls", recent) == 1
-        assert _count_where_id(pg_conn, "UtubUrls", live) == 1
+        assert _count(pg_conn, "UtubUrls", "id", expired_utub_url_id) == 0
+        assert _count(pg_conn, "UtubUrlTags", "utubUrlID", expired_utub_url_id) == 0
+        assert _count(pg_conn, "UtubUrls", "id", recent_utub_url_id) == 1
+        assert _count(pg_conn, "UtubUrls", "id", live_utub_url_id) == 1
         assert _count(pg_conn, "UtubUrlTags", "utubID", utub_id) == 2
-        assert _count_where_id(pg_conn, "Urls", expired_url_id) == 1
-        assert _count_where_id(pg_conn, "Utubs", utub_id) == 1
+        assert _count(pg_conn, "Urls", "id", expired_url_id) == 1
+        assert _count(pg_conn, "Utubs", "id", utub_id) == 1
     finally:
         pg_conn.close()
 
@@ -286,10 +284,10 @@ def test_purges_expired_utub_with_all_children(
 
         first_url_id = _seed_url(pg_conn, "https://first.example.com", creator_id)
         second_url_id = _seed_url(pg_conn, "https://second.example.com", creator_id)
-        first = _seed_utub_url(
+        first_utub_url_id = _seed_utub_url(
             pg_conn, utub_id=utub_id, url_id=first_url_id, user_id=creator_id
         )
-        second = _seed_utub_url(
+        second_utub_url_id = _seed_utub_url(
             pg_conn,
             utub_id=utub_id,
             url_id=second_url_id,
@@ -297,7 +295,7 @@ def test_purges_expired_utub_with_all_children(
             deleted_at=_ago(days=10),
             deleted_by=creator_id,
         )
-        for utub_url_id in (first, second):
+        for utub_url_id in (first_utub_url_id, second_utub_url_id):
             _seed_url_tag(
                 pg_conn,
                 utub_id=utub_id,
@@ -309,11 +307,11 @@ def test_purges_expired_utub_with_all_children(
         result = run_trash_purge(pg_conn=pg_conn)
 
         assert result == TrashPurgeResult(utubs=1, urls=2)
-        assert _count_where_id(pg_conn, "Utubs", utub_id) == 0
+        assert _count(pg_conn, "Utubs", "id", utub_id) == 0
         for table in ("UtubMembers", "UtubTags", "UtubUrls", "UtubUrlTags"):
             assert _count(pg_conn, table, "utubID", utub_id) == 0, table
-        assert _count_where_id(pg_conn, "Urls", first_url_id) == 1
-        assert _count_where_id(pg_conn, "Urls", second_url_id) == 1
+        assert _count(pg_conn, "Urls", "id", first_url_id) == 1
+        assert _count(pg_conn, "Urls", "id", second_url_id) == 1
     finally:
         pg_conn.close()
 
@@ -350,9 +348,9 @@ def test_keeps_utub_within_retention(runner: tuple[Flask, FlaskCliRunner]) -> No
         result = run_trash_purge(pg_conn=pg_conn)
 
         assert result == TrashPurgeResult(utubs=0, urls=0)
-        assert _count_where_id(pg_conn, "Utubs", utub_id) == 1
+        assert _count(pg_conn, "Utubs", "id", utub_id) == 1
         assert _count(pg_conn, "UtubMembers", "utubID", utub_id) == 1
-        assert _count_where_id(pg_conn, "UtubUrls", utub_url_id) == 1
+        assert _count(pg_conn, "UtubUrls", "id", utub_url_id) == 1
     finally:
         pg_conn.close()
 
@@ -382,7 +380,7 @@ def test_url_own_earlier_clock_expires_inside_live_trashed_utub(
         _seed_member(pg_conn, utub_id, user_id, "CREATOR")
         old_url_id = _seed_url(pg_conn, "https://old.example.com", user_id)
         other_url_id = _seed_url(pg_conn, "https://other.example.com", user_id)
-        old = _seed_utub_url(
+        old_utub_url_id = _seed_utub_url(
             pg_conn,
             utub_id=utub_id,
             url_id=old_url_id,
@@ -390,16 +388,16 @@ def test_url_own_earlier_clock_expires_inside_live_trashed_utub(
             deleted_at=_ago(days=40),
             deleted_by=user_id,
         )
-        other = _seed_utub_url(
+        other_utub_url_id = _seed_utub_url(
             pg_conn, utub_id=utub_id, url_id=other_url_id, user_id=user_id
         )
 
         result = run_trash_purge(pg_conn=pg_conn)
 
         assert result == TrashPurgeResult(utubs=0, urls=1)
-        assert _count_where_id(pg_conn, "UtubUrls", old) == 0
-        assert _count_where_id(pg_conn, "UtubUrls", other) == 1
-        assert _count_where_id(pg_conn, "Utubs", utub_id) == 1
+        assert _count(pg_conn, "UtubUrls", "id", old_utub_url_id) == 0
+        assert _count(pg_conn, "UtubUrls", "id", other_utub_url_id) == 1
+        assert _count(pg_conn, "Utubs", "id", utub_id) == 1
     finally:
         pg_conn.close()
 
@@ -448,11 +446,11 @@ def test_skips_locked_utub(runner: tuple[Flask, FlaskCliRunner]) -> None:
         result = run_trash_purge(pg_conn=pg_conn)
 
         assert result == TrashPurgeResult(utubs=0, urls=0)
-        assert _count_where_id(pg_conn, "Utubs", trashed_utub_id) == 1
+        assert _count(pg_conn, "Utubs", "id", trashed_utub_id) == 1
         assert _count(pg_conn, "UtubMembers", "utubID", trashed_utub_id) == 1
-        assert _count_where_id(pg_conn, "UtubUrls", trashed_utub_url) == 1
-        assert _count_where_id(pg_conn, "Utubs", live_utub_id) == 1
-        assert _count_where_id(pg_conn, "UtubUrls", live_locked_utub_url) == 1
+        assert _count(pg_conn, "UtubUrls", "id", trashed_utub_url) == 1
+        assert _count(pg_conn, "Utubs", "id", live_utub_id) == 1
+        assert _count(pg_conn, "UtubUrls", "id", live_locked_utub_url) == 1
     finally:
         pg_conn.close()
 
@@ -483,6 +481,6 @@ def test_retention_days_override(runner: tuple[Flask, FlaskCliRunner]) -> None:
         result = run_trash_purge(pg_conn=pg_conn, retention_days=5)
 
         assert result == TrashPurgeResult(utubs=0, urls=1)
-        assert _count_where_id(pg_conn, "UtubUrls", utub_url_id) == 0
+        assert _count(pg_conn, "UtubUrls", "id", utub_url_id) == 0
     finally:
         pg_conn.close()

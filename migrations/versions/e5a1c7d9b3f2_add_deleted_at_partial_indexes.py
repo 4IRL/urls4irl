@@ -4,7 +4,7 @@ Revision ID: e5a1c7d9b3f2
 Revises: c4e8a1f3b7d2
 Create Date: 2026-10-16 12:00:00.000000
 
-Adds ``ix_utubs_deleted_at`` and ``ix_utub_urls_deleted_at``, partial indexes on
+Adds ``idx_utubs_deleted_at`` and ``idx_utub_urls_deleted_at``, partial indexes on
 ``"deletedAt"`` restricted to ``WHERE "deletedAt" IS NOT NULL``. Only trashed
 rows are indexed, so the indexes stay tiny while letting the trash purge sweep
 and the Trash list avoid scanning the full tables. This closes the index
@@ -24,8 +24,8 @@ down_revision = "c4e8a1f3b7d2"
 branch_labels = None
 depends_on = None
 
-_UTUBS_INDEX = "ix_utubs_deleted_at"
-_UTUB_URLS_INDEX = "ix_utub_urls_deleted_at"
+_UTUBS_INDEX = "idx_utubs_deleted_at"
+_UTUB_URLS_INDEX = "idx_utub_urls_deleted_at"
 
 
 def upgrade() -> None:

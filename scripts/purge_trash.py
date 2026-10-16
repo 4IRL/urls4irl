@@ -112,7 +112,10 @@ def run_trash_purge(
                 cursor.execute(DELETE_UTUBS_SQL, (expired_utub_ids,))
         pg_conn.commit()
     except Exception:
-        pg_conn.rollback()
+        try:
+            pg_conn.rollback()
+        except Exception as rollback_error:
+            logger.warning("trash purge rollback failed: %s", rollback_error)
         raise
     return TrashPurgeResult(utubs=len(expired_utub_ids), urls=purged_urls)
 
