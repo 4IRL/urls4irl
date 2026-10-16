@@ -18,11 +18,14 @@ import {
 } from "../cards/edit-panel-dirty.js";
 import {
   buildReviveMessage,
+  clearOutcomeBanner,
   clearURLOutcomeBanner,
   performUndo,
+  showOutcomeBanner,
   showReviveBanner,
   showTrimSavedBanner,
   showURLOutcomeBanner,
+  URL_DECK_BANNER_MOUNT,
   showURLUpdatedBanner,
 } from "../outcome-banner.js";
 
@@ -497,6 +500,120 @@ describe("outcome banner", () => {
           returnFocusTo: $(),
         }),
       ).not.toThrow();
+    });
+  });
+
+  describe("showOutcomeBanner / clearOutcomeBanner (generic mount)", () => {
+    const TEST_MOUNT = {
+      bannerSelector: "#TestOutcomeBanner",
+      rootSelector: "#TestRoot",
+    };
+    const AUTO_HIDE_MS = 10000;
+
+    function testBanner(): JQuery {
+      return $("#TestOutcomeBanner");
+    }
+
+    function showOn({
+      mount,
+      message = "m",
+    }: {
+      mount: typeof TEST_MOUNT;
+      message?: string;
+    }): void {
+      showOutcomeBanner({
+        mount,
+        variant: "success",
+        message,
+        returnFocusTo: $(),
+      });
+    }
+
+    beforeEach(() => {
+      document.body.innerHTML = `${PAGE_HTML}
+        <div id="TestRoot" tabindex="-1">
+          <div id="TestOutcomeBanner" role="status" class="hidden"></div>
+        </div>`;
+    });
+
+    it("shows on a second mount without touching the URL deck banner", () => {
+      showOn({ mount: TEST_MOUNT, message: "trash" });
+
+      expect(testBanner().hasClass("hidden")).toBe(false);
+      expect(testBanner().find(".urlOutcomeBannerMessage").text()).toBe(
+        "trash",
+      );
+      expect(banner().hasClass("hidden")).toBe(true);
+    });
+
+    it("dismiss falls back to the mount's own root", () => {
+      showOn({ mount: TEST_MOUNT });
+
+      testBanner().find(".urlOutcomeBannerDismiss").trigger("click");
+
+      expect(testBanner().hasClass("hidden")).toBe(true);
+      expect(document.activeElement).toBe($("#TestRoot")[0]);
+    });
+
+    it("auto-hides on its own timer", () => {
+      vi.useFakeTimers();
+      showOn({ mount: TEST_MOUNT });
+
+      vi.advanceTimersByTime(AUTO_HIDE_MS - 1);
+      expect(testBanner().hasClass("hidden")).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(testBanner().hasClass("hidden")).toBe(true);
+    });
+
+    it("clearing one mount leaves the other's banner and timer running", () => {
+      vi.useFakeTimers();
+      showOn({ mount: URL_DECK_BANNER_MOUNT });
+      showOn({ mount: TEST_MOUNT });
+
+      clearOutcomeBanner({ mount: TEST_MOUNT });
+      expect(testBanner().hasClass("hidden")).toBe(true);
+      expect(banner().hasClass("hidden")).toBe(false);
+
+      vi.advanceTimersByTime(AUTO_HIDE_MS - 1);
+      expect(banner().hasClass("hidden")).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(banner().hasClass("hidden")).toBe(true);
+    });
+
+    it("one mount's auto-hide does not hide the other", () => {
+      vi.useFakeTimers();
+      showOn({ mount: URL_DECK_BANNER_MOUNT });
+      vi.advanceTimersByTime(6000);
+      showOn({ mount: TEST_MOUNT });
+
+      vi.advanceTimersByTime(AUTO_HIDE_MS - 6000);
+      expect(banner().hasClass("hidden")).toBe(true);
+      expect(testBanner().hasClass("hidden")).toBe(false);
+    });
+
+    it.each([
+      ["generic", TEST_MOUNT],
+      ["URL deck", URL_DECK_BANNER_MOUNT],
+    ])(
+      "show and clear are no-ops when the %s banner element is missing",
+      (_name, mount) => {
+        vi.useFakeTimers();
+        document.body.innerHTML = "";
+
+        expect(() => showOn({ mount })).not.toThrow();
+        expect(() => clearOutcomeBanner({ mount })).not.toThrow();
+        expect(vi.getTimerCount()).toBe(0);
+      },
+    );
+
+    it("clearing a mount whose element vanished cancels its pending timer", () => {
+      vi.useFakeTimers();
+      showOn({ mount: TEST_MOUNT });
+      document.body.innerHTML = "";
+
+      clearOutcomeBanner({ mount: TEST_MOUNT });
+
+      expect(vi.getTimerCount()).toBe(0);
     });
   });
 
