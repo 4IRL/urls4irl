@@ -13,6 +13,12 @@ import {
   createParamTrimBlock,
 } from "../../trim/param-trim-block.js";
 import { isConfirmButtonDisabled } from "../../confirm-btn-state.js";
+import {
+  getSchemeSelector,
+  mountSchemeSelector,
+  type SchemeSelectorHandle,
+} from "../../scheme/scheme-selector.js";
+import { splitScheme } from "../../scheme/scheme-utils.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -228,6 +234,138 @@ describe("edit panel dirty state (mobile)", () => {
         .trigger("input");
       syncEditPanelDirtyState(urlCard);
       expect(url.attr("aria-disabled")).toBeUndefined();
+    });
+  });
+
+  describe("scheme selector", () => {
+    // Mounts the real selector the way showUpdateURLStringForm does: the input
+    // holds the scheme-less rest and the selector holds the scheme.
+    function mountCardWithSelector({ href }: { href: string }): {
+      urlCard: JQuery;
+      handle: SchemeSelectorHandle;
+    } {
+      const urlCard = mountCard();
+      urlCard.find(".urlString").attr("href", href);
+      urlCard.find(".updateUrlStringWrap").prepend(`
+        <div class="text-input-container">
+          <div class="text-input-inner-container">
+            <input class="urlStringUpdate text-input" type="text" />
+          </div>
+        </div>`);
+      urlCard.find("input.urlStringUpdate").not(".text-input").remove();
+      const input = urlCard.find("input.urlStringUpdate");
+      const handle = mountSchemeSelector({
+        inputContainer: urlCard.find(".text-input-container"),
+        urlInput: input,
+        idPrefix: "dirty-test",
+        onChange: () => input.trigger("input.editPanelDirty"),
+      });
+      const split = splitScheme({ urlString: href });
+      if (split) {
+        handle.setScheme({ scheme: split.scheme, explicit: true });
+        input.val(split.rest);
+      } else {
+        input.val(href);
+      }
+      return { urlCard, handle };
+    }
+
+    afterEach(() => {
+      getSchemeSelector({ container: $(".text-input-container") })?.destroy();
+    });
+
+    it("is not dirty on open for a split href", () => {
+      const { urlCard } = mountCardWithSelector({
+        href: "http://intranet.example.com/wiki",
+      });
+
+      expect(isURLStringDirty(urlCard)).toBe(false);
+    });
+
+    it("is not dirty on open for an opaque href (mailto:)", () => {
+      const { urlCard } = mountCardWithSelector({ href: "mailto:a@b.com" });
+
+      expect(urlCard.find("input.urlStringUpdate").val()).toBe("a@b.com");
+      expect(isURLStringDirty(urlCard)).toBe(false);
+    });
+
+    it("is not dirty on open for an ssh:// href", () => {
+      const { urlCard } = mountCardWithSelector({ href: "ssh://h/p" });
+
+      expect(urlCard.find("input.urlStringUpdate").val()).toBe("h/p");
+      expect(isURLStringDirty(urlCard)).toBe(false);
+    });
+
+    it("is not dirty with trim chips present, none dropped, and a split href", () => {
+      const { urlCard } = mountCardWithSelector({ href: STORED_URL });
+      const trimWrap = flushTrim({ urlCard, rawValue: STORED_URL });
+
+      expect(trimWrap.find(".urlParamTrimChip").length).toBe(2);
+      expect(urlCard.find("input.urlStringUpdate").val()).toBe(
+        "example.com/page?keep=1&drop=2",
+      );
+      expect(isURLStringDirty(urlCard)).toBe(false);
+    });
+
+    it("is not dirty on open for a legacy unsupported href kept whole", () => {
+      const { urlCard } = mountCardWithSelector({ href: "foo://x" });
+
+      expect(isURLStringDirty(urlCard)).toBe(false);
+    });
+
+    it("is dirty after a scheme-only change and clean again when changed back", () => {
+      const { urlCard, handle } = mountCardWithSelector({
+        href: "http://intranet.example.com/wiki",
+      });
+
+      handle.setScheme({ scheme: "https", explicit: true });
+      expect(isURLStringDirty(urlCard)).toBe(true);
+
+      handle.setScheme({ scheme: "http", explicit: true });
+      expect(isURLStringDirty(urlCard)).toBe(false);
+    });
+
+    it("un-dims all three confirm buttons on a scheme-only change", () => {
+      const { urlCard, handle } = mountCardWithSelector({
+        href: "http://intranet.example.com/wiki",
+      });
+      bindEditPanelDirtyState(urlCard);
+      const { title, url, save } = buttons(urlCard);
+      expect(url.attr("aria-disabled")).toBe("true");
+
+      handle.setScheme({ scheme: "https", explicit: true });
+      urlCard.find("input.urlStringUpdate").trigger("input");
+
+      expect(url.attr("aria-disabled")).toBeUndefined();
+      expect(save.attr("aria-disabled")).toBeUndefined();
+      expect(title.attr("aria-disabled")).toBe("true");
+    });
+
+    it("re-dims when the scheme is changed back", () => {
+      const { urlCard, handle } = mountCardWithSelector({
+        href: "http://intranet.example.com/wiki",
+      });
+      bindEditPanelDirtyState(urlCard);
+      const { url, save } = buttons(urlCard);
+
+      handle.setScheme({ scheme: "https", explicit: true });
+      urlCard.find("input.urlStringUpdate").trigger("input");
+      handle.setScheme({ scheme: "http", explicit: true });
+      urlCard.find("input.urlStringUpdate").trigger("input");
+
+      expect(url.attr("aria-disabled")).toBe("true");
+      expect(save.attr("aria-disabled")).toBe("true");
+    });
+
+    it("still reports a dropped chip as dirty with a split href", () => {
+      const { urlCard } = mountCardWithSelector({
+        href: "https://example.com/page?keep=1&drop=2",
+      });
+      const trimWrap = flushTrim({ urlCard, rawValue: STORED_URL });
+
+      trimWrap.find('.urlParamTrimChip[data-index="1"]').trigger("click");
+
+      expect(isURLStringDirty(urlCard)).toBe(true);
     });
   });
 

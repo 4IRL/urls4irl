@@ -33,15 +33,22 @@ import { createURLStringAndUpdateBlock } from "../url-string.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { isCoarsePointer } from "../../../mobile.js";
+import { highlightInput } from "../../../btns-forms.js";
 import {
   openURLEditPanel,
   closeURLEditPanel,
   resetURLEditPanelState,
 } from "../update-url-panel.js";
 import { bindEditPanelDirtyState } from "../edit-panel-dirty.js";
+import { getSchemeSelector } from "../../scheme/scheme-selector.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
-import { HOME_FORM } from "../../../../types/metrics-dim-values.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  HOME_FORM,
+} from "../../../../types/metrics-dim-values.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
+import { emit as emitMetric } from "../../../../lib/metrics-client.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -2099,6 +2106,451 @@ describe("Save URL closes the panel after a successful save when the title is cl
 
       expect(ajaxCall).toHaveBeenCalledTimes(1);
       expect(closeURLEditPanel).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("edit-URL scheme selector", () => {
+  const CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlOptions">
+        <button class="urlStringBtnUpdate fourty-p-width"></button>
+      </div>
+      <div class="urlCardDualLoadingRing"></div>
+    </div>
+  `;
+
+  let urlCard: JQuery;
+  let urlInput: JQuery;
+
+  // Builds the real URL block for `href` and opens its form.
+  function openForm({ href }: { href: string }): void {
+    document.body.innerHTML = CARD_HTML;
+    urlCard = $(".urlRow");
+    urlCard.append(createURLStringAndUpdateBlock(href, urlCard, 1));
+    urlInput = urlCard.find(".urlStringUpdate");
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+  }
+
+  function selector(): ReturnType<typeof getSchemeSelector> {
+    return getSchemeSelector({
+      container: urlCard.find(".updateUrlStringWrap .text-input-container"),
+    });
+  }
+
+  function mockSuccess(urlString: string): void {
+    const response = {
+      URL: { utubUrlID: 1, urlString, urlTitle: "t", urlTags: [] },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+      }),
+    );
+  }
+
+  function submittedURLString(): string {
+    return (vi.mocked(ajaxCall).mock.calls[0][2] as { urlString: string })
+      .urlString;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(ajaxCall).mockReset();
+    vi.mocked(is429Handled).mockReturnValue(false);
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+  });
+
+  function mockFailure({
+    status,
+    responseJSON,
+  }: {
+    status: number;
+    responseJSON: unknown;
+  }): void {
+    const xhr = { status, responseJSON } as unknown as JQuery.jqXHR;
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        fail: (callback: unknown) =>
+          (callback as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      }),
+    );
+  }
+
+  // The user path: only a picked option fires onChange (trim re-sync), unlike a
+  // programmatic setScheme.
+  function pickScheme({ scheme }: { scheme: string }): void {
+    $(".urlSchemeToggle").trigger("click");
+    $(`.urlSchemeOption[data-scheme="${scheme}"]`).trigger("click");
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    selector()?.destroy();
+    $(document).off();
+    document.body.innerHTML = "";
+  });
+
+  describe("prefill split on open", () => {
+    it("splits an authority scheme into the selector as an explicit choice", () => {
+      openForm({ href: "http://intranet.example.com/wiki" });
+
+      expect(urlInput.val()).toBe("intranet.example.com/wiki");
+      expect(selector()!.getScheme()).toBe("http");
+      expect(selector()!.isExplicit()).toBe(true);
+    });
+
+    it("splits an opaque scheme", () => {
+      openForm({ href: "mailto:a@b.com" });
+
+      expect(urlInput.val()).toBe("a@b.com");
+      expect(selector()!.getScheme()).toBe("mailto");
+    });
+
+    it("splits ssh://", () => {
+      openForm({ href: "ssh://h/p" });
+
+      expect(urlInput.val()).toBe("h/p");
+      expect(selector()!.getScheme()).toBe("ssh");
+    });
+
+    it("leaves a legacy unsupported scheme whole, with the selector at its default", () => {
+      openForm({ href: "foo://x" });
+
+      expect(urlInput.val()).toBe("foo://x");
+      expect(selector()!.getScheme()).toBe(
+        APP_CONFIG.constants.URL_DEFAULT_SCHEME,
+      );
+      expect(selector()!.isExplicit()).toBe(false);
+    });
+
+    it("mounts the toggle inside the string field's container", () => {
+      openForm({ href: "https://example.com" });
+
+      expect(urlCard.find(".updateUrlStringWrap .urlSchemeToggle").length).toBe(
+        1,
+      );
+    });
+
+    it("builds the input as a text input with URL keyboard hints", () => {
+      openForm({ href: "https://example.com" });
+
+      expect(urlInput.attr("type")).toBe("text");
+      expect(urlInput.attr("inputmode")).toBe("url");
+      expect(urlInput.attr("autocapitalize")).toBe("none");
+      expect(urlInput.attr("autocorrect")).toBe("off");
+      expect(urlInput.attr("spellcheck")).toBe("false");
+    });
+  });
+
+  describe("delayed select-all on open", () => {
+    it("selects the URL input once the open window elapses", () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com" });
+
+      vi.advanceTimersByTime(100);
+
+      expect(highlightInput).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not pull focus back when the scheme toggle was focused inside the window", () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com" });
+      (urlCard.find(".urlSchemeToggle")[0] as HTMLElement).focus();
+
+      vi.advanceTimersByTime(100);
+
+      expect(highlightInput).not.toHaveBeenCalled();
+    });
+
+    it("still selects the URL input when it is already focused", () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com" });
+      (urlInput[0] as HTMLElement).focus();
+
+      vi.advanceTimersByTime(100);
+
+      expect(highlightInput).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("typing a scheme prefix", () => {
+    it("moves a typed prefix into the selector", () => {
+      openForm({ href: "https://example.com" });
+
+      urlInput.val("ftp://files.example.com").trigger("input");
+
+      expect(urlInput.val()).toBe("files.example.com");
+      expect(selector()!.getScheme()).toBe("ftp");
+    });
+
+    it("keeps the trim block parsing the composed URL after the prefix is split off", async () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com" });
+      const trimWrap = urlCard.find(".urlParamTrimWrap");
+
+      urlInput.val("https://example.com/p?a=1&b=2").trigger("input");
+      vi.advanceTimersByTime(500);
+
+      expect(urlInput.val()).toBe("example.com/p?a=1&b=2");
+      // The block parsed the composed (scheme-bearing) URL, not the stripped text.
+      const chipTexts = trimWrap
+        .find(".urlParamTrimChipText")
+        .map((_index, chip) => $(chip).text())
+        .get();
+      expect(chipTexts).toEqual(["a=1", "b=2"]);
+      const getTrimmed = trimWrap.data(TRIM_GET_KEY) as () => string;
+      expect(getTrimmed()).toBe("https://example.com/p?a=1&b=2");
+
+      trimWrap.find('.urlParamTrimChip[data-index="1"]').trigger("click");
+      mockSuccess("https://example.com/p?a=1");
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(submittedURLString()).toBe("https://example.com/p?a=1");
+    });
+  });
+
+  describe("selector changes", () => {
+    it("triggers the trim sync and the dirty-state recompute", () => {
+      openForm({ href: "https://example.com" });
+      const trimSpy = vi.fn();
+      const dirtySpy = vi.fn();
+      urlInput.on("input.urlStringTrim", trimSpy);
+      urlInput.on("input.editPanelDirty", dirtySpy);
+
+      $(".urlSchemeToggle").trigger("click");
+      $('.urlSchemeOption[data-scheme="ftp"]').trigger("click");
+
+      expect(trimSpy).toHaveBeenCalled();
+      expect(dirtySpy).toHaveBeenCalled();
+    });
+
+    it("clears a stale URL error", () => {
+      openForm({ href: "https://example.com" });
+      urlCard.find(".urlStringUpdate-error").addClass("visible");
+      urlInput.addClass("invalid-field");
+
+      $(".urlSchemeToggle").trigger("click");
+      $('.urlSchemeOption[data-scheme="ftp"]').trigger("click");
+
+      expect(urlCard.find(".urlStringUpdate-error").hasClass("visible")).toBe(
+        false,
+      );
+      expect(urlInput.hasClass("invalid-field")).toBe(false);
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(false);
+    });
+  });
+
+  describe("updateURL", () => {
+    it("short-circuits with no request when the composed string is unchanged", async () => {
+      openForm({ href: "http://intranet.example.com/wiki" });
+
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+    });
+
+    it("sends the new composed URL for a scheme-only change", async () => {
+      openForm({ href: "http://intranet.example.com/wiki" });
+      selector()!.setScheme({ scheme: "https", explicit: true });
+      mockSuccess("https://intranet.example.com/wiki");
+
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(submittedURLString()).toBe("https://intranet.example.com/wiki");
+    });
+
+    it("composes typed scheme-less text with the selected scheme", async () => {
+      openForm({ href: "https://example.com" });
+      urlInput.val("files.example.com");
+      selector()!.setScheme({ scheme: "ftp", explicit: true });
+      mockSuccess("ftp://files.example.com");
+
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(submittedURLString()).toBe("ftp://files.example.com");
+    });
+
+    it("rejects an unsupported scheme prefix without a request, flagging the field and toggle", async () => {
+      openForm({ href: "https://example.com" });
+      urlInput.val("foo://x");
+
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+      const errorElem = urlCard.find(".urlStringUpdate-error");
+      expect(errorElem.text()).toBe(APP_CONFIG.strings.INVALID_URL);
+      expect(errorElem.hasClass("visible")).toBe(true);
+      expect(urlInput.hasClass("invalid-field")).toBe(true);
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(true);
+    });
+
+    it("submits a legacy unsupported href unchanged as a no-op", async () => {
+      openForm({ href: "foo://x" });
+
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(ajaxCall).not.toHaveBeenCalled();
+    });
+
+    it("flags the toggle when the server rejects the URL field", async () => {
+      openForm({ href: "https://example.com" });
+      selector()!.setScheme({ scheme: "ftp", explicit: true });
+      mockFailure({
+        status: 400,
+        responseJSON: { errors: { urlString: ["Invalid URL"] } },
+      });
+
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(true);
+      expect(urlInput.hasClass("invalid-field")).toBe(true);
+    });
+
+    it("submits the composed URL with trim chips dropped after a scheme change", async () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com/p?a=1&b=2" });
+      pickScheme({ scheme: "ftp" });
+      // The scheme change re-parses the block (clearing drops), so drop afterwards.
+      vi.advanceTimersByTime(500);
+      urlCard.find('.urlParamTrimChip[data-index="0"]').trigger("click");
+      mockSuccess("ftp://example.com/p?b=2");
+
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(submittedURLString()).toBe("ftp://example.com/p?b=2");
+    });
+
+    it("drops stale trim choices when the scheme changes after dropping, submitting the full composed URL", async () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com/p?a=1&b=2" });
+      urlCard.find('.urlParamTrimChip[data-index="0"]').trigger("click");
+      pickScheme({ scheme: "ftp" });
+      vi.advanceTimersByTime(500);
+      mockSuccess("ftp://example.com/p?a=1&b=2");
+
+      await updateURL(urlInput, urlCard, 1);
+
+      expect(submittedURLString()).toBe("ftp://example.com/p?a=1&b=2");
+    });
+  });
+
+  describe("hideAndResetUpdateURLStringForm", () => {
+    it("restores the prefill and destroys the selector on cancel", () => {
+      openForm({ href: "http://intranet.example.com/wiki" });
+      urlInput.val("changed");
+      selector()!.setScheme({ scheme: "ftp", explicit: true });
+
+      hideAndResetUpdateURLStringForm({ urlCard });
+
+      expect(selector()).toBeNull();
+      expect(urlCard.find(".urlSchemeToggle").length).toBe(0);
+      expect(urlInput.val()).toBe("http://intranet.example.com/wiki");
+    });
+
+    it("remounts a fresh split on reopen", () => {
+      openForm({ href: "http://intranet.example.com/wiki" });
+      hideAndResetUpdateURLStringForm({ urlCard });
+
+      showUpdateURLStringForm({
+        urlCard,
+        urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+      });
+
+      expect(urlInput.val()).toBe("intranet.example.com/wiki");
+      expect(selector()!.getScheme()).toBe("http");
+    });
+
+    it("keepOpen keeps the selector and resyncs the split from the stored href", () => {
+      openForm({ href: "https://example.com" });
+      urlInput.val("changed");
+      selector()!.setScheme({ scheme: "ftp", explicit: true });
+
+      hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+      expect(selector()).not.toBeNull();
+      expect(urlInput.val()).toBe("example.com");
+      expect(selector()!.getScheme()).toBe("https");
+    });
+
+    it("keepOpen resyncing an unsupported stored href shows it whole and leaves the selector scheme alone", () => {
+      openForm({ href: "https://example.com" });
+      selector()!.setScheme({ scheme: "ftp", explicit: true });
+      urlInput.val("changed");
+      urlCard.find(".urlString").attr("href", "foo://x");
+
+      hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+      expect(selector()).not.toBeNull();
+      expect(urlInput.val()).toBe("foo://x");
+      expect(selector()!.getScheme()).toBe("ftp");
+    });
+  });
+
+  describe("Escape handling", () => {
+    function pressEscapeOnToggle(): KeyboardEvent {
+      const event = new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true,
+      });
+      $(".urlSchemeToggle")[0].dispatchEvent(event);
+      return event;
+    }
+
+    it("closes only the list on the first Escape and the form on the second (fine pointer)", () => {
+      openForm({ href: "https://example.com" });
+      $(".urlSchemeToggle").trigger("click");
+      expect($(".urlSchemeToggle").attr("aria-expanded")).toBe("true");
+
+      pressEscapeOnToggle();
+      expect($(".urlSchemeToggle").attr("aria-expanded")).toBe("false");
+      expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(
+        false,
+      );
+
+      pressEscapeOnToggle();
+      expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(
+        true,
+      );
+    });
+
+    it("reports the cancel and clears the open form when Escape closes the form from the closed toggle (fine pointer)", () => {
+      openForm({ href: "https://example.com" });
+      expect(getOpenForm()).toBe(HOME_FORM.URL_STRING_EDIT);
+      vi.mocked(emitMetric).mockClear();
+
+      pressEscapeOnToggle();
+
+      expect(emitMetric).toHaveBeenCalledTimes(1);
+      expect(emitMetric).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.URL_STRING_EDIT,
+        trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+      });
+      expect(getOpenForm()).toBeNull();
+      expect(selector()).toBeNull();
+    });
+
+    it("lets Escape bubble to the panel handler on a coarse pointer", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      openForm({ href: "https://example.com" });
+      const documentSpy = vi.fn();
+      $(document).on("keydown.escapeBubbleProbe", documentSpy);
+
+      pressEscapeOnToggle();
+
+      expect(documentSpy).toHaveBeenCalled();
+      expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(
+        false,
+      );
     });
   });
 });

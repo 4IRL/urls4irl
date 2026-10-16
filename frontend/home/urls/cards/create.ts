@@ -9,7 +9,13 @@ import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
-import { isValidURL } from "../validation.js";
+import { isAcceptableURL } from "../validation.js";
+import {
+  getSchemeSelector,
+  mountSchemeSelector,
+  type SchemeSelectorHandle,
+} from "../scheme/scheme-selector.js";
+import { handleSchemePrefixInput } from "../scheme/scheme-prefix-handler.js";
 import { getNumOfURLs } from "../utils.js";
 import {
   newURLInputRemoveEventListeners,
@@ -61,6 +67,7 @@ const CREATE_URL_FIELD_NAMES = ["urlString", "urlTitle"] as const;
 type CreateUrlFieldName = (typeof CREATE_URL_FIELD_NAMES)[number];
 
 const TRIM_INPUT_EVENT = "input.createURLTrim";
+const SCHEME_PREFIX_EVENT = "input.urlSchemePrefix";
 
 function isCreateUrlFieldName(key: string): key is CreateUrlFieldName {
   return (CREATE_URL_FIELD_NAMES as readonly string[]).includes(key);
@@ -87,18 +94,23 @@ export function bindCreateURLFocusEventListeners(
         break;
       case KEYS.ESCAPE:
         // Handle escape key pressed
-        emit({
-          event: UI_EVENTS.UI_FORM_CANCEL,
-          form: HOME_FORM.URL_CREATE,
-          trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
-        });
-        clearOpenForm();
-        createURLHideInput();
+        cancelCreateURLViaEscape();
         break;
       default:
       /* no-op */
     }
   });
+}
+
+// Closes the create-URL form and emits the cancel metric.
+function cancelCreateURLViaEscape(): void {
+  emit({
+    event: UI_EVENTS.UI_FORM_CANCEL,
+    form: HOME_FORM.URL_CREATE,
+    trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+  });
+  clearOpenForm();
+  createURLHideInput();
 }
 
 export function unbindCreateURLFocusEventListeners(inputElem: JQuery): void {
@@ -111,12 +123,60 @@ export function resetNewURLForm(): void {
   $("#urlStringCreate").val("");
   $("#createURLWrap").hideClass();
   newURLInputRemoveEventListeners();
+  resetCreateSchemeSelector();
   resetCreateURLParamTrim();
   resetCreateURLTagCombobox();
   clearURLOutcomeBanner();
   $("#urlBtnCreate").showClassNormal();
   // Restore the multi-select toggle (guarded on the UTub still having URLs).
   refreshMultiSelectToggleVisibility();
+}
+
+function getCreateSchemeSelector(): SchemeSelectorHandle | null {
+  return getSchemeSelector({
+    container: $("#urlStringCreate").closest(".text-input-container"),
+  });
+}
+
+// Empty when no selector is mounted, so the typed text is submitted as is.
+function currentCreateScheme(): string {
+  return getCreateSchemeSelector()?.getScheme() ?? "";
+}
+
+function resetCreateSchemeSelector(): void {
+  $("#urlStringCreate").off(SCHEME_PREFIX_EVENT);
+  getCreateSchemeSelector()?.destroy();
+}
+
+// Mounts the scheme selector on the URL input's container. A page without that
+// container (older markup) degrades to the plain text input.
+function mountCreateSchemeSelector(): void {
+  const urlInput = $("#urlStringCreate");
+  const inputContainer = urlInput.closest(".text-input-container");
+  if (inputContainer.length === 0) return;
+  mountSchemeSelector({
+    inputContainer,
+    urlInput,
+    idPrefix: "create",
+    onChange: () => {
+      clearCreateURLStringError();
+      urlInput.trigger(TRIM_INPUT_EVENT);
+    },
+    onEscapeWhenClosed: cancelCreateURLViaEscape,
+  });
+  // Bound before the trim handler so the trim block reads the stripped text.
+  urlInput.offAndOnExact(SCHEME_PREFIX_EVENT, handleCreateURLInput);
+}
+
+// Runs on every URL input (see handleSchemePrefixInput).
+function handleCreateURLInput(): void {
+  const selector = getCreateSchemeSelector();
+  if (!selector) return;
+  handleSchemePrefixInput({
+    input: $("#urlStringCreate"),
+    selector,
+    onChange: clearCreateURLStringError,
+  });
 }
 
 // Cancels any pending debounced re-parse (via the block's reset callback) and
@@ -156,6 +216,9 @@ export function createURLShowInput(utubID: number): void {
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();
   newURLInputAddEventListeners(createURLInputForm, utubID);
+  // The selector moves the URL input into its row, which drops the input's
+  // focus, so it mounts before the title input takes the initial focus below.
+  mountCreateSchemeSelector();
   // Param trim mounts first so tab order is title, URL, params, tags, Add URL.
   mountCreateURLParamTrim();
   mountCreateURLTagCombobox(utubID);
@@ -189,7 +252,8 @@ function mountCreateURLParamTrim(): void {
     .on(TRIM_INPUT_EVENT, function () {
       syncParamTrim({
         trimWrap,
-        rawValue: getInputValue($("#urlStringCreate")),
+        text: getInputValue($("#urlStringCreate")),
+        scheme: currentCreateScheme(),
       });
     });
 }
@@ -231,7 +295,8 @@ function createURLSetup({
   // last keystroke trims against the input's current value, not a stale parse.
   const { urlString, trimSubmission } = readTrimSubmit({
     trimWrap: $("#createURLWrap").find(".urlParamTrimWrap"),
-    rawValue: getInputValue(createURLInput),
+    text: getInputValue(createURLInput),
+    scheme: currentCreateScheme(),
   });
 
   // Fold any staged tags from the inline combobox into the create request. The
@@ -268,7 +333,10 @@ export function createURL({
     utubID,
   });
 
-  if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+  if (
+    !isEmptyString(data.urlString) &&
+    !isAcceptableURL({ urlString: data.urlString })
+  ) {
     log("createURL rejected by client-side validation", {
       urlStringLength: data.urlString.length,
     });
@@ -498,6 +566,17 @@ function displayCreateUrlFailErrors({
     .addClass("visible")
     .text(errorMessage);
   $("#" + key + "Create").addClass("invalid-field");
+  if (key === "urlString") {
+    getCreateSchemeSelector()?.setInvalid({ invalid: true });
+  }
+}
+
+// Clears only the URL string error, for the handlers that fire on every
+// keystroke or scheme change (the title error is not theirs to clear).
+function clearCreateURLStringError(): void {
+  $("#urlStringCreate").removeClass("invalid-field");
+  $("#urlStringCreate-error").removeClass("visible");
+  getCreateSchemeSelector()?.setInvalid({ invalid: false });
 }
 
 export function resetCreateURLFailErrors(): void {
@@ -506,6 +585,7 @@ export function resetCreateURLFailErrors(): void {
     $("#" + fieldName + "Create").removeClass("invalid-field");
     $("#" + fieldName + "Create-error").removeClass("visible");
   });
+  getCreateSchemeSelector()?.setInvalid({ invalid: false });
   // Clear any stale tagStrings error rendered in the inline combobox message
   // (mirrors the combobox message reset in hideAndResetTagCombobox).
   $("#createURLWrap .urlTagComboboxWrap .urlTagComboboxMsg")
