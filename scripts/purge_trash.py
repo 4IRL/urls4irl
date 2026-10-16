@@ -74,6 +74,12 @@ SELECT_EXPIRED_UTUBS_SQL: str = (
     "FOR UPDATE"
 )
 
+# Bounds how long any statement waits on a row lock held by another transaction (e.g. a
+# contended expired UTub). ``SET LOCAL`` scopes it to this transaction.
+LOCK_TIMEOUT_MS: int = 30_000
+
+SET_LOCK_TIMEOUT_SQL: str = "SET LOCAL lock_timeout = %s"
+
 COUNT_UTUB_URLS_SQL: str = 'SELECT count(*) FROM "UtubUrls" WHERE "utubID" = ANY(%s)'
 
 DELETE_UTUB_MEMBERS_SQL: str = 'DELETE FROM "UtubMembers" WHERE "utubID" = ANY(%s)'
@@ -95,7 +101,9 @@ def run_trash_purge(
 
     Runs both passes in one transaction and returns how many UTubs and URL rows were
     deleted (URLs cascaded with an expired UTub are included). On any failure, rolls
-    back and re-raises, so there is no partial-purge state.
+    back and re-raises, so there is no partial-purge state. A row lock held by another
+    transaction for longer than ``LOCK_TIMEOUT_MS`` fails the run the same way (psycopg2
+    ``LockNotAvailable``) instead of stalling; the next run retries.
 
     The admin-lock skip is best-effort for pass A: ``PURGE_EXPIRED_URLS_SQL`` reads
     ``isLocked`` through ``DELETE ... USING`` without a row lock on ``Utubs``, so a
@@ -109,6 +117,7 @@ def run_trash_purge(
     """
     try:
         with pg_conn.cursor() as cursor:
+            cursor.execute(SET_LOCK_TIMEOUT_SQL, (LOCK_TIMEOUT_MS,))
             cursor.execute(PURGE_EXPIRED_URLS_SQL, (retention_days,))
             purged_urls = cursor.rowcount
 

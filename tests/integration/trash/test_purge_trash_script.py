@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import psycopg2.errors
 import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
@@ -20,6 +21,7 @@ from flask.testing import FlaskCliRunner
 from scripts.purge_trash import (
     DELETE_UTUBS_SQL,
     PURGE_EXPIRED_URLS_SQL,
+    SET_LOCK_TIMEOUT_SQL,
     TrashPurgeResult,
     run_trash_purge,
 )
@@ -577,4 +579,80 @@ def test_rolls_back_every_delete_when_the_final_statement_fails(
         assert _count(pg_conn, "Utubs", "id", trashed_utub_id) == 1
         assert _count(pg_conn, "UtubMembers", "utubID", trashed_utub_id) == 1
     finally:
+        pg_conn.close()
+
+
+def test_sets_a_transaction_local_lock_timeout_before_any_delete(
+    runner: tuple[Flask, FlaskCliRunner],
+) -> None:
+    """
+    GIVEN a database with no trashed rows
+    WHEN run_trash_purge runs
+    THEN the first statement executed is the transaction-local lock_timeout, ahead of
+        the pass-A delete
+    """
+    app, _ = runner
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        recording_conn = _FailingConnection(pg_conn, failing_sql="")
+
+        run_trash_purge(pg_conn=recording_conn)
+
+        assert recording_conn.executed_sql[0] == SET_LOCK_TIMEOUT_SQL
+        assert recording_conn.executed_sql[1] == PURGE_EXPIRED_URLS_SQL
+    finally:
+        pg_conn.close()
+
+
+def test_lock_wait_times_out_and_rolls_back_the_whole_purge(
+    runner: tuple[Flask, FlaskCliRunner], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    GIVEN an expired UTub whose row is locked by another open transaction, plus an
+        expired URL in a live UTub (pass A) and a shortened lock timeout
+    WHEN run_trash_purge runs
+    THEN it raises LockNotAvailable instead of blocking, and pass A's deleted URL row
+        is restored by the rollback
+    """
+    monkeypatch.setattr("scripts.purge_trash.LOCK_TIMEOUT_MS", 300)
+    app, _ = runner
+    pg_conn = build_pg_conn(app)
+    blocker_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        user_id = _seed_user(pg_conn, "timeout_user")
+        live_utub_id = _seed_utub(pg_conn, name="live", creator_id=user_id)
+        _seed_member(pg_conn, live_utub_id, user_id, "CREATOR")
+        url_id = _seed_url(pg_conn, "https://timeout.example.com", user_id)
+        expired_utub_url_id = _seed_utub_url(
+            pg_conn,
+            utub_id=live_utub_id,
+            url_id=url_id,
+            user_id=user_id,
+            deleted_at=_ago(days=TRASH_RETENTION_DAYS, hours=1),
+            deleted_by=user_id,
+        )
+        trashed_utub_id = _seed_utub(
+            pg_conn,
+            name="contended",
+            creator_id=user_id,
+            deleted_at=_ago(days=31),
+            deleted_by=user_id,
+        )
+        _seed_member(pg_conn, trashed_utub_id, user_id, "CREATOR")
+
+        with blocker_conn.cursor() as blocker_cursor:
+            blocker_cursor.execute(
+                'SELECT id FROM "Utubs" WHERE id = %s FOR UPDATE', (trashed_utub_id,)
+            )
+
+        with pytest.raises(psycopg2.errors.LockNotAvailable):
+            run_trash_purge(pg_conn=pg_conn)
+
+        blocker_conn.rollback()
+        assert _count(pg_conn, "UtubUrls", "id", expired_utub_url_id) == 1
+        assert _count(pg_conn, "Utubs", "id", trashed_utub_id) == 1
+    finally:
+        blocker_conn.close()
         pg_conn.close()
