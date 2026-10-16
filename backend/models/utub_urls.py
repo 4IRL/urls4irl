@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 
 from backend import db
@@ -59,6 +68,15 @@ class Utub_Urls(db.Model):
     url_tags = db.relationship("Utub_Url_Tags", back_populates="tagged_url")
 
     UniqueConstraint(utub_id, url_id, name="unique_url_per_utub")
+
+    # Partial index over trashed rows only, for the purge sweep and Trash list.
+    __table_args__ = (
+        Index(
+            "ix_utub_urls_deleted_at",
+            "deletedAt",
+            postgresql_where=text('"deletedAt" IS NOT NULL'),
+        ),
+    )
 
     @property
     def is_trashed(self) -> bool:
