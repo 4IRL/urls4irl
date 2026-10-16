@@ -13,6 +13,7 @@ import {
   type TrimSubmission,
 } from "../param-trim-block.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
+import { fillTemplate } from "../../../../lib/string-template.js";
 
 const URL_WITH_AUTO = "https://a.com/p?ref=1&utm_source=x&size=L";
 const UNPARSEABLE = "http://exa mple.com/?a=1";
@@ -76,6 +77,18 @@ describe("createParamTrimBlock", () => {
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
+  });
+
+  describe("create mode", () => {
+    it("stays collapsed when a flushed value reveals the block", () => {
+      const wrap = mount({ mode: TrimMode.CREATE });
+      flush(wrap, "https://a.com/p?a=1&b=2");
+      expect(wrap.hasClass("hidden")).toBe(false);
+      expect(wrap.hasClass("collapsed")).toBe(true);
+      expect(wrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+        "false",
+      );
+    });
   });
 
   describe("initial shape", () => {
@@ -230,8 +243,10 @@ describe("createParamTrimBlock", () => {
         "Parameter utm_source=x is removed automatically",
       );
       expect(chipButtons(wrap).length).toBe(2);
+      // The header counts every visible chip (auto included); the kept totals
+      // stay on the actionable segments only.
       expect(wrap.find(".urlParamTrimTitle").text()).toBe(
-        "Trim URL parameters (2)",
+        "Trim URL parameters (3)",
       );
       expect(wrap.find(".urlParamTrimCount").text()).toBe("2 of 2 kept");
     });
@@ -253,12 +268,15 @@ describe("createParamTrimBlock", () => {
       expect(chipButtons(wrap).eq(1).attr("aria-pressed")).toBe("true");
     });
 
-    it("renders an auto-only variant when every parameter is auto-stripped", () => {
+    it("keeps the normal header label when every parameter is auto-stripped", () => {
       const wrap = mount();
       flush(wrap, "https://a.com/p?utm_source=x&gclid=2");
       expect(wrap.hasClass("hidden")).toBe(false);
       expect(wrap.find(".urlParamTrimTitle").text()).toBe(
-        APP_CONFIG.strings.URL_TRIM_AUTO_ONLY_TITLE,
+        fillTemplate({
+          template: APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL,
+          values: { n: "2" },
+        }),
       );
       expect(wrap.find(".urlParamTrimTitle").text()).not.toContain("(0)");
       expect(wrap.find('.urlParamTrimChip[data-auto="true"]').length).toBe(2);
@@ -271,12 +289,20 @@ describe("createParamTrimBlock", () => {
       );
     });
 
+    it("uses the singular label for a single auto-only parameter", () => {
+      const wrap = mount();
+      flush(wrap, "https://a.com/p?utm_source=x");
+      expect(wrap.find(".urlParamTrimTitle").text()).toBe(
+        APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL_ONE,
+      );
+    });
+
     it("leaves the auto-only variant when a normal parameter is typed", () => {
       const wrap = mount();
       flush(wrap, "https://a.com/p?utm_source=x");
       flush(wrap, "https://a.com/p?utm_source=x&ref=1");
       expect(wrap.find(".urlParamTrimTitle").text()).toBe(
-        "Trim URL parameter (1)",
+        "Trim URL parameters (2)",
       );
       expect(wrap.find(".urlParamTrimMsg").hasClass("hidden")).toBe(false);
       expect(wrap.find(".urlParamTrimActions").hasClass("hidden")).toBe(false);
@@ -415,7 +441,7 @@ describe("createParamTrimBlock", () => {
       const wrap = mount();
       flush(wrap, "https://a.com/p?ref=1&utm_source=x");
       expect(wrap.find(".urlParamTrimTitle").text()).toBe(
-        APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL_ONE,
+        "Trim URL parameters (2)",
       );
       expect(wrap.find(".urlParamTrimBtn").length).toBe(2);
       wrap.find(".urlParamTrimBtn").each((_, button) => {

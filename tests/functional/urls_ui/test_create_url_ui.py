@@ -22,9 +22,9 @@ from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import (
     URL_FAILURE,
     URL_REVIVED_FROM_TRASH,
-    URL_TRIM_AUTO_ONLY_TITLE,
     URL_TRIM_CONFLICT,
     URL_TRIM_HEADER_DROPPED,
+    URL_TRIM_PARAMS_LABEL_ONE,
     URL_TRIM_SAVED_BANNER_ONE,
 )
 from tests.functional.db_utils import (
@@ -1597,8 +1597,8 @@ def test_create_url_trim_auto_only_variant_has_no_warning_or_controls(
     """
     GIVEN a URL whose only parameters are ones the server strips itself
     WHEN the section is expanded
-    THEN it shows the auto-only title (no "(0)"), the auto chip, and neither the
-        breakage warning nor the Drop all / Keep all row
+    THEN it shows the normal "Trim URL parameter (1)" title with the auto chip,
+        and neither the breakage warning nor the Drop all / Keep all row
     """
     _open_create_form_and_type_url(
         app=provide_app, page=page, url_string=TRIM_BASE_URL + "?utm_source=x"
@@ -1608,7 +1608,7 @@ def test_create_url_trim_auto_only_variant_has_no_warning_or_controls(
     )
 
     expect(page.locator(HPL.CREATE_FORM_TRIM_TITLE)).to_have_text(
-        URL_TRIM_AUTO_ONLY_TITLE
+        URL_TRIM_PARAMS_LABEL_ONE
     )
     expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_AUTO)).to_have_count(1)
     expect(page.locator(HPL.CREATE_FORM_TRIM_CHIP_ACTIONABLE)).to_have_count(0)

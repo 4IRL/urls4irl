@@ -246,11 +246,17 @@ export function showUpdateURLStringForm({
 
   // Render the trim control from the pre-filled value immediately (flush, not
   // the debounced sync). It never takes focus, so the select-all below is safe.
+  const trimWrap = updateURLStringWrap.find(".urlParamTrimWrap");
   flushParamTrim({
-    trimWrap: updateURLStringWrap.find(".urlParamTrimWrap"),
+    trimWrap,
     text: getInputValue(updateURLStringWrap.find("input.urlStringUpdate")),
     scheme: selector?.getScheme() ?? "",
   });
+  // Open the section when the stored URL already carries params. A block that
+  // stays hidden (no params) or is revealed later by typing stays collapsed.
+  if (!trimWrap.hasClass("hidden")) {
+    expandParamTrimBlock({ trimWrap });
+  }
 
   // Handle case where iOS needs a direct focus not in a timeout, even with animation
   if (isMobile()) {
@@ -357,6 +363,8 @@ export function hideAndResetUpdateURLStringForm({
   // re-collapses it). A kept-open field stays visible, so re-render it from the
   // resynced value.
   const trimWrap = urlCard.find(".urlParamTrimWrap");
+  // Read before the reset re-collapses it, so a kept-open field keeps its state.
+  const wasExpanded = !trimWrap.hasClass("collapsed");
   resetParamTrim({ trimWrap });
   if (keepOpen) {
     flushParamTrim({
@@ -364,6 +372,9 @@ export function hideAndResetUpdateURLStringForm({
       text: getInputValue(urlCard.find(".urlStringUpdate")),
       scheme: selector?.getScheme() ?? "",
     });
+    if (wasExpanded && !trimWrap.hasClass("hidden")) {
+      expandParamTrimBlock({ trimWrap });
+    }
   }
 
   if (!keepOpen) {

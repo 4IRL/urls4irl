@@ -418,18 +418,18 @@ export function createParamTrimBlock({
     const total = actionable.length;
     const dropped = refs.dropped.size;
     // Every shown parameter is one the server removes itself: nothing to decide,
-    // so the warning, the count and the bulk row give way to an explanatory title.
+    // so the warning and the bulk row are hidden; the header label stays normal.
     const isAutoOnly = total === 0;
+    // The header counts every visible chip, auto-removed ones included.
+    const visibleCount = visibleSegments(parsed).length;
 
     title.text(
-      isAutoOnly
-        ? APP_CONFIG.strings.URL_TRIM_AUTO_ONLY_TITLE
-        : total === 1
-          ? APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL_ONE
-          : fillTemplate({
-              template: APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL,
-              values: { n: String(total) },
-            }),
+      visibleCount === 1
+        ? APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL_ONE
+        : fillTemplate({
+            template: APP_CONFIG.strings.URL_TRIM_PARAMS_LABEL,
+            values: { n: String(visibleCount) },
+          }),
     );
     message.toggleClass("hidden", isAutoOnly);
     actions.toggleClass("hidden", isAutoOnly);

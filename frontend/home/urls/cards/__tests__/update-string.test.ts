@@ -1303,7 +1303,7 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     vi.useRealTimers();
   });
 
-  it("renders the pre-filled value immediately on open, collapsed", () => {
+  it("renders the pre-filled value immediately on open, expanded", () => {
     urlStringInput.val(TRIM_URL);
 
     showUpdateURLStringForm({
@@ -1312,8 +1312,27 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     });
 
     expect(trimWrap.hasClass("hidden")).toBe(false);
-    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "true",
+    );
     expect(trimWrap.find(".urlParamTrimChip").length).toBe(3);
+  });
+
+  it("keeps a block typed after open collapsed", () => {
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+
+    syncFromInput(TRIM_URL);
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "false",
+    );
   });
 
   it("re-collapses and resets the block in place when the form is cancelled", () => {
@@ -1365,6 +1384,37 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
 
     expect(urlCard.find(".urlParamTrimWrap").length).toBe(1);
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+  });
+
+  it("keepOpen keeps an expanded block expanded", () => {
+    urlCard.find(".urlString").attr("href", TRIM_URL);
+    urlStringInput.val(TRIM_URL);
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+  });
+
+  it("keepOpen keeps a user-collapsed block collapsed", () => {
+    urlCard.find(".urlString").attr("href", TRIM_URL);
+    urlStringInput.val(TRIM_URL);
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    trimWrap.find(".urlParamTrimHeader").trigger("click");
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
     expect(trimWrap.hasClass("hidden")).toBe(false);
     expect(trimWrap.hasClass("collapsed")).toBe(true);
   });

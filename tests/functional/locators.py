@@ -450,6 +450,7 @@ class HomePageLocators(GenericPageLocator):
     EDIT_FORM_TRIM_CHIP_AUTO = f"{ROW_SELECTED_URL} {TRIM_CHIP_AUTO}"
     EDIT_FORM_TRIM_CHIP_ACTIONABLE = f"{ROW_SELECTED_URL} {TRIM_CHIP_ACTIONABLE}"
     EDIT_FORM_TRIM_PREVIEW = f"{ROW_SELECTED_URL} {TRIM_PREVIEW}"
+    EDIT_FORM_TRIM_TITLE = f"{ROW_SELECTED_URL} {TRIM_TITLE}"
 
     # Outcome banner shown after a trim-and-save (shared deck-level container)
     URL_OUTCOME_BANNER = "#URLDeckOutcomeBanner"

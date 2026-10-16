@@ -452,6 +452,11 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
 
     header = page.locator(HPL.EDIT_FORM_TRIM_HEADER)
     expect(header).to_be_visible()
+    # Pin the collapsed state the geometry checks below assume, whatever the
+    # open-time default is.
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=False
+    )
     expect(header).to_have_attribute("aria-expanded", "false")
     # The caret is the only open/closed cue; layout.css hides `.title-caret` on mobile.
     expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).to_be_visible()
@@ -1167,6 +1172,32 @@ def test_url_edit_panel_auto_removable_param_enables_save_buttons_mobile(
     assert_confirm_button_enabled(
         button=selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)
     )
+
+
+def test_url_string_trim_section_open_by_default_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a stored URL that already carries a query string
+    WHEN the consolidated edit panel opens on a mobile device
+    THEN the trim section is expanded and the Save URL button is visible at once
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    selected_url = _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=UTS.URL_WITH_NON_TRACKING_PARAMS,
+    )
+
+    expect(page.locator(HPL.EDIT_FORM_TRIM_HEADER)).to_have_attribute(
+        "aria-expanded", "true"
+    )
+    expect(selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)).to_be_visible()
 
 
 def test_url_edit_panel_scheme_selector_tap_targets_and_no_autofocus_mobile(

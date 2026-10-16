@@ -26,6 +26,7 @@ from backend.utils.strings.url_strs import (
     URL_REVIVED_FROM_TRASH,
     URL_TRIM_CONFLICT,
     URL_TRIM_HEADER_DROPPED,
+    URL_TRIM_PARAMS_LABEL,
     URL_TRIM_SAVED_BANNER_ONE,
     URL_UPDATED_BANNER,
 )
@@ -2201,6 +2202,54 @@ def test_update_url_string_auto_removable_param_unchanged_input_saves(
     expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
         HPL.URL_STRING_IN_DATA, MOCK_URL_TRACKING_STRIPPED
     )
+
+
+def test_update_url_string_trim_section_open_on_edit_for_stored_query(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a stored URL that already carries a query string
+    WHEN its string-edit form is opened
+    THEN the query-parameter trim section is expanded without a click
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [UTS.URL_WITH_NON_TRACKING_PARAMS])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=UTS.URL_WITH_NON_TRACKING_PARAMS
+    )
+
+    expect(page.locator(HPL.EDIT_FORM_TRIM_HEADER)).to_have_attribute(
+        "aria-expanded", "true"
+    )
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).not_to_have_class(CLOSED_CLASS)
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE)).to_have_count(2)
+
+
+def test_update_url_string_trim_auto_only_keeps_normal_header_label(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a stored URL whose only parameters are server-stripped tracking params
+    WHEN its string-edit form is opened
+    THEN the section header shows the normal "Trim URL parameters (N)" label
+        counting the auto chips
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_WITH_TRACKING_PARAMS])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_WITH_TRACKING_PARAMS
+    )
+
+    expect(page.locator(HPL.EDIT_FORM_TRIM_TITLE)).to_have_text(
+        URL_TRIM_PARAMS_LABEL.format(n=2)
+    )
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_AUTO)).to_have_count(2)
 
 
 def test_update_url_string_scheme_clicks_keep_card_selected(
