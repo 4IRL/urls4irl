@@ -121,6 +121,9 @@ vi.mock("../home/trash/tabs.js", () => ({
 vi.mock("../home/trash/panel.js", () => ({
   initTrashPanel: track("initTrashPanel"),
 }));
+vi.mock("../home/trash/actions.js", () => ({
+  initTrashActions: track("initTrashActions"),
+}));
 
 import "../main.js";
 

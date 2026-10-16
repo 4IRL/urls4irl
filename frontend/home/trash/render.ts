@@ -20,7 +20,7 @@ import type { TrashScope } from "./tabs.js";
 const MS_PER_DAY = 86_400_000;
 const URGENT_DAYS = 3;
 
-const SCOPE_IDS: Record<
+export const TRASH_SCOPE_IDS: Record<
   TrashScope,
   { list: string; emptyState: string; tab: string }
 > = {
@@ -331,13 +331,13 @@ export function buildTrashUtubRow({
 }
 
 export function showTrashEmptyState({ scope }: { scope: TrashScope }): void {
-  $(SCOPE_IDS[scope].emptyState).removeClass("hidden");
-  $(SCOPE_IDS[scope].list).addClass("hidden");
+  $(TRASH_SCOPE_IDS[scope].emptyState).removeClass("hidden");
+  $(TRASH_SCOPE_IDS[scope].list).addClass("hidden");
 }
 
 export function hideTrashEmptyState({ scope }: { scope: TrashScope }): void {
-  $(SCOPE_IDS[scope].emptyState).addClass("hidden");
-  $(SCOPE_IDS[scope].list).removeClass("hidden");
+  $(TRASH_SCOPE_IDS[scope].emptyState).addClass("hidden");
+  $(TRASH_SCOPE_IDS[scope].list).removeClass("hidden");
 }
 
 /**
@@ -358,6 +358,55 @@ export function updateEmptyTrashButton(): void {
   }
 }
 
+function renderTabLabel({
+  scope,
+  count,
+}: {
+  scope: TrashScope;
+  count: number;
+}): void {
+  const tabTemplate =
+    scope === "urls"
+      ? APP_CONFIG.strings.TRASH_TAB_URLS
+      : APP_CONFIG.strings.TRASH_TAB_UTUBS;
+  $(TRASH_SCOPE_IDS[scope].tab).text(
+    fillTemplate({ template: tabTemplate, values: { n: String(count) } }),
+  );
+}
+
+/**
+ * Drops one row from the DOM and the list state, updates the tab count and the
+ * empty state, and returns the row's index (for focus placement).
+ */
+export function removeTrashRow({
+  scope,
+  row,
+}: {
+  scope: TrashScope;
+  row: JQuery;
+}): number {
+  const removedIndex = $(`${TRASH_SCOPE_IDS[scope].list} .trashRow`).index(row);
+  if (scope === "urls") {
+    const utubUrlID = Number(row.attr("data-utub-url-id"));
+    trashListState.urls = trashListState.urls.filter(
+      (item) => item.utubUrlID !== utubUrlID,
+    );
+  } else {
+    const utubID = Number(row.attr("data-utub-id"));
+    trashListState.utubs = trashListState.utubs.filter(
+      (item) => item.utubID !== utubID,
+    );
+  }
+  row.remove();
+
+  const remaining =
+    scope === "urls" ? trashListState.urls.length : trashListState.utubs.length;
+  renderTabLabel({ scope, count: remaining });
+  if (remaining === 0) showTrashEmptyState({ scope });
+  updateEmptyTrashButton();
+  return removedIndex;
+}
+
 function renderScope<Item>({
   scope,
   items,
@@ -367,17 +416,8 @@ function renderScope<Item>({
   items: Item[];
   buildRow: (item: Item) => JQuery;
 }): void {
-  const ids = SCOPE_IDS[scope];
-  const tabTemplate =
-    scope === "urls"
-      ? APP_CONFIG.strings.TRASH_TAB_URLS
-      : APP_CONFIG.strings.TRASH_TAB_UTUBS;
-  $(ids.tab).text(
-    fillTemplate({
-      template: tabTemplate,
-      values: { n: String(items.length) },
-    }),
-  );
+  const ids = TRASH_SCOPE_IDS[scope];
+  renderTabLabel({ scope, count: items.length });
   $(ids.list).empty().append(items.map(buildRow));
   if (items.length === 0) {
     showTrashEmptyState({ scope });
