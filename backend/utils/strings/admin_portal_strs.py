@@ -75,6 +75,9 @@ class ADMIN_PORTAL_STRINGS:
     OPS_METRICS_FLUSH_DESC: str = "Force an immediate Redis-to-Postgres metrics flush."
     OPS_GAUGE_SAMPLE_DESC: str = "Sample all registered gauges to the database now."
     OPS_AUDIT_PURGE_DESC: str = "Delete audit log entries older than 90 days."
+    OPS_TRASH_PURGE_DESC: str = (
+        "Permanently delete UTubs and URLs in Trash for more than 30 days."
+    )
     OPS_VERIFY_TABLES_DESC: str = "Check for missing database tables (read-only)."
     OPS_SHORT_URLS_SYNC_DESC: str = (
         "Rebuild the short-URL domain set from the canonical list."
@@ -103,6 +106,15 @@ class ADMIN_PORTAL_STRINGS:
         "The purge trigger is always recorded in the audit log first."
     )
     OPS_AUDIT_PURGE_SUBMIT: str = "Purge"
+    OPS_TRASH_PURGE_LABEL: str = "Purge Expired Trash"
+    OPS_TRASH_PURGE_CONFIRM_TITLE: str = "Purge Expired Trash?"
+    OPS_TRASH_PURGE_CONFIRM_BODY: str = (
+        "Permanently delete every UTub and URL that has been in Trash for more than "
+        "30 days. This runs the same sweep as the daily cron job. Items whose UTub "
+        "is locked are skipped. The purge trigger is always recorded in the audit "
+        "log first."
+    )
+    OPS_TRASH_PURGE_SUBMIT: str = "Purge"
     OPS_VERIFY_TABLES_LABEL: str = "Verify Tables"
     OPS_VERIFY_TABLES_CONFIRM_TITLE: str = "Verify Tables?"
     OPS_VERIFY_TABLES_CONFIRM_BODY: str = (
@@ -288,6 +300,10 @@ class ADMIN_ACTION_STRINGS:
     OPS_GAUGE_ERROR: str = "Gauge sample failed. Check the server logs."
     OPS_PURGE_SUCCESS: str = "Audit log purged: {count} row(s) deleted."
     OPS_PURGE_ERROR: str = "Audit log purge failed. Check the server logs."
+    OPS_TRASH_PURGE_SUCCESS: str = (
+        "Trash purged: {utubs} UTub(s) and {urls} URL(s) deleted."
+    )
+    OPS_TRASH_PURGE_ERROR: str = "Trash purge failed. Check the server logs."
     OPS_VERIFY_OK: str = "All tables present."
     OPS_VERIFY_MISSING: str = "Missing tables: {tables}"
     OPS_VERIFY_ERROR: str = "Table verification failed. Check the server logs."
@@ -378,6 +394,7 @@ class ADMIN_AUDIT_ACTIONS:
     OPS_METRICS_FLUSH: str = "admin.ops.metrics_flush"
     OPS_GAUGE_SAMPLE: str = "admin.ops.gauge_sample"
     OPS_AUDIT_PURGE: str = "admin.ops.audit_purge"
+    OPS_TRASH_PURGE: str = "admin.ops.trash_purge"
     OPS_VERIFY_TABLES: str = "admin.ops.verify_tables"
     OPS_SHORT_URLS_SYNC: str = "admin.ops.short_urls_sync"
     OPS_BACKUP_TRIGGER: str = "admin.ops.backup_trigger"

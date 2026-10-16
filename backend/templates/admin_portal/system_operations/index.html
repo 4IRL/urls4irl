@@ -57,6 +57,22 @@
             </button>
         </div>
         <div class="admin-ops-card">
+            <h3>{{ ADMIN_PORTAL_STRINGS.OPS_TRASH_PURGE_LABEL }}</h3>
+            <p class="admin-ops-card-desc">{{ ADMIN_PORTAL_STRINGS.OPS_TRASH_PURGE_DESC }}</p>
+            <button type="button"
+                    id="AdminOpsTrashPurgeBtn"
+                    class="admin-action-btn admin-action-btn--danger"
+                    data-admin-action="trash-purge"
+                    data-action-url="{{ url_for('admin.admin_ops_trash_purge') }}"
+                    data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_TRASH_PURGE_CONFIRM_TITLE }}"
+                    data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_TRASH_PURGE_CONFIRM_BODY }}"
+                    data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_TRASH_PURGE_SUBMIT }}"
+                    data-reason-required="true"
+                    data-timeout-ms="60000">
+                {{ ADMIN_PORTAL_STRINGS.OPS_TRASH_PURGE_SUBMIT }}
+            </button>
+        </div>
+        <div class="admin-ops-card">
             <h3>{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_LABEL }}</h3>
             <p class="admin-ops-card-desc">{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_DESC }}</p>
             <button type="button"

@@ -112,6 +112,7 @@ class ADMIN_ROUTES:
     OPS_METRICS_FLUSH = _ADMIN + "admin_ops_metrics_flush"
     OPS_GAUGE_SAMPLE = _ADMIN + "admin_ops_gauge_sample"
     OPS_AUDIT_PURGE = _ADMIN + "admin_ops_audit_purge"
+    OPS_TRASH_PURGE = _ADMIN + "admin_ops_trash_purge"
     OPS_VERIFY_TABLES = _ADMIN + "admin_ops_verify_tables"
     OPS_SHORT_URLS_SYNC = _ADMIN + "admin_ops_short_urls_sync"
     OPS_BACKUP_TRIGGER = _ADMIN + "admin_ops_backup_trigger"
