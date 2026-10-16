@@ -195,6 +195,22 @@ describe("urlTitleAndUpdateIconWrap - row-level click (UTub edit pattern)", () =
     expect(vi.mocked(showUpdateURLTitleForm)).not.toHaveBeenCalled();
   });
 
+  it("still invokes showUpdateURLTitleForm when the selection is collapsed inside the title wrap", () => {
+    const { urlCard, wrap } = mountTitleBlock(true);
+
+    const range = document.createRange();
+    range.setStart(urlCard.find(".urlTitle")[0].firstChild as Node, 2);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    expect(selection?.isCollapsed).toBe(true);
+
+    wrap.trigger("click");
+
+    expect(vi.mocked(showUpdateURLTitleForm)).toHaveBeenCalledOnce();
+  });
+
   it("invokes showUpdateURLTitleForm when wrap is clicked on a selected card", () => {
     const { wrap } = mountTitleBlock(true);
 
