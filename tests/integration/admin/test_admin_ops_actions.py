@@ -23,6 +23,7 @@ from flask.testing import FlaskClient
 from redis import Redis
 
 import backend.admin.ops_service as ops_service
+from backend import db
 from backend.models.audit_log import AuditLog
 from backend.models.users import Users
 from backend.utils.strings.admin_portal_strs import (
@@ -100,6 +101,20 @@ def _post_ops(
     if reason is not None:
         payload["reason"] = reason
     return client.post(url, json=payload, headers={"X-CSRFToken": csrf})
+
+
+def _patch_raw_connection(app: Flask, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Replace the engine's ``raw_connection`` with a mock and return that mock connection.
+
+    Lets a test assert how the trash-purge trigger manages the raw psycopg2
+    connection it opens, while ``run_trash_purge`` itself stays mocked.
+    """
+    mock_connection = MagicMock()
+    with app.app_context():
+        monkeypatch.setattr(
+            db.engine, "raw_connection", MagicMock(return_value=mock_connection)
+        )
+    return mock_connection
 
 
 # ---------------------------------------------------------------------------
@@ -223,13 +238,15 @@ def test_admin_ops_trash_purge_happy_path(
     """
     GIVEN a logged-in admin user and run_trash_purge mocked to return 2 UTubs, 7 URLs
     WHEN POST /admin/ops/trash-purge
-    THEN the response is 200 JSON with count=9 and the formatted message, and one
-         audit row (the self-audit written before the purge) is created.
+    THEN the response is 200 JSON with count=9 and the formatted message, one
+         audit row (the self-audit written before the purge) is created, and the
+         raw connection handed to the purge is closed exactly once.
     """
     client, csrf, admin_user, app = login_admin_user_with_register
 
     mock_run_trash_purge = MagicMock(return_value=TrashPurgeResult(utubs=2, urls=7))
     monkeypatch.setattr(ops_service, "run_trash_purge", mock_run_trash_purge)
+    mock_connection = _patch_raw_connection(app, monkeypatch)
 
     with app.app_context():
         rows_before: int = AuditLog.query.count()
@@ -242,6 +259,8 @@ def test_admin_ops_trash_purge_happy_path(
     assert (
         mock_run_trash_purge.call_args.kwargs["retention_days"] == TRASH_RETENTION_DAYS
     )
+    assert mock_run_trash_purge.call_args.kwargs["pg_conn"] is mock_connection
+    mock_connection.close.assert_called_once()
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert body["count"] == 9
@@ -505,6 +524,7 @@ def test_admin_ops_trash_purge_self_audit_precedes_delete(
     WHEN POST /admin/ops/trash-purge
     THEN the response is 500 with OPS_TRASH_PURGE_ERROR and two audit rows exist:
          the self-audit written before the purge, then an error row carrying "error".
+         The raw connection is still closed exactly once.
     """
     client, csrf, admin_user, app = login_admin_user_with_register
 
@@ -513,10 +533,12 @@ def test_admin_ops_trash_purge_self_audit_precedes_delete(
         "run_trash_purge",
         MagicMock(side_effect=RuntimeError("simulated trash purge failure")),
     )
+    mock_connection = _patch_raw_connection(app, monkeypatch)
 
     response = _post_ops(client, _OPS_TRASH_PURGE_URL, csrf)
 
     assert response.status_code == 500
+    mock_connection.close.assert_called_once()
     body = response.get_json()
     assert body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.OPS_TRASH_PURGE_ERROR
 
