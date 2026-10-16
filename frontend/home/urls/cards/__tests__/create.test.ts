@@ -9,6 +9,8 @@ import { getNumOfURLs } from "../../utils.js";
 import { getState } from "../../../../store/app-store.js";
 import { createURLBlock } from "../cards.js";
 import { selectURLCard } from "../selection.js";
+import { getSchemeSelector } from "../../scheme/scheme-selector.js";
+import { TRIM_GET_KEY } from "../../trim/param-trim-block.js";
 import {
   clearURLOutcomeBanner,
   showReviveBanner,
@@ -20,9 +22,24 @@ import {
   createURLHideInput,
   createURLShowInput,
   resetCreateURLFailErrors,
+  resetNewURLForm,
 } from "../create.js";
 import { applyDefaultUrlSort } from "../filtering.js";
 import { triggerURLSwipeNudgeIfEligible } from "../swipe.js";
+import { emit as emitMetric } from "../../../../lib/metrics-client.js";
+import { getOpenForm } from "../../../../lib/modal-tracking.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  HOME_FORM,
+} from "../../../../types/metrics-dim-values.js";
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () =>
+    await import("../../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -1146,5 +1163,400 @@ describe("createURL - query-parameter trim block", () => {
     typeURL(QUERY_URL);
     vi.advanceTimersByTime(200);
     expect(trimWrap()).toHaveLength(0);
+  });
+});
+
+describe("createURL - scheme selector", () => {
+  const SCHEME_FORM_HTML = `
+    <div id="createURLWrap">
+      <div class="text-input-container">
+        <div class="text-input-inner-container">
+          <input class="text-input" type="text" id="urlTitleCreate" />
+        </div>
+        <span id="urlTitleCreate-error"></span>
+      </div>
+      <div class="text-input-container">
+        <div class="text-input-inner-container">
+          <input class="text-input" type="text" id="urlStringCreate" />
+        </div>
+        <span id="urlStringCreate-error"></span>
+      </div>
+      <div class="flex-row"><button id="urlSubmitBtnCreate"></button></div>
+    </div>
+    <button id="urlBtnCreate"></button>
+    <button id="urlBtnMultiSelect" class="visible"></button>
+    <div id="urlCreateDualLoadingRing"></div>
+  `;
+  const QUERY_TEXT = "example.com/p?a=1&b=2&c=3";
+  let urlStringInput: JQuery, urlTitleInput: JQuery;
+
+  function selector(): ReturnType<typeof getSchemeSelector> {
+    return getSchemeSelector({
+      container: $("#urlStringCreate").closest(".text-input-container"),
+    });
+  }
+
+  function typeText(value: string): void {
+    urlStringInput.val(value);
+    urlStringInput.trigger("input");
+  }
+
+  function pickScheme(scheme: string): void {
+    $(".urlSchemeToggle").trigger("click");
+    $(`.urlSchemeOption[data-scheme="${scheme}"]`).trigger("click");
+    vi.advanceTimersByTime(0);
+  }
+
+  function mockCreateRequest(): void {
+    vi.mocked(ajaxCall).mockReturnValue(createMockJqXHRChainable());
+  }
+
+  function submittedURLString(): string {
+    return (vi.mocked(ajaxCall).mock.calls[0][2] as { urlString: string })
+      .urlString;
+  }
+
+  function submit(): void {
+    createURL({
+      createURLTitleInput: urlTitleInput,
+      createURLInput: urlStringInput,
+      utubID: 1,
+    });
+  }
+
+  function trimmedValue(): string {
+    const wrap = $("#createURLWrap").find(".urlParamTrimWrap");
+    return (wrap.data(TRIM_GET_KEY) as () => string)();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    document.body.innerHTML = SCHEME_FORM_HTML;
+    urlStringInput = $("#urlStringCreate");
+    urlTitleInput = $("#urlTitleCreate");
+    createURLShowInput(1);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe("mount", () => {
+    it("mounts a selector on the URL input's container, defaulting to https", () => {
+      const handle = selector();
+      expect(handle).not.toBeNull();
+      expect(handle?.getScheme()).toBe("https");
+      expect(handle?.isExplicit()).toBe(false);
+      expect($("#urlStringCreate").closest(".urlSchemeSelector")).toHaveLength(
+        1,
+      );
+    });
+
+    it("keeps tab order title, scheme toggle, URL input", () => {
+      const order = $("#createURLWrap")
+        .find("input, button")
+        .toArray()
+        .map((el) => el.id || el.className);
+      const titleAt = order.indexOf("urlTitleCreate");
+      const toggleAt = order.findIndex((entry) =>
+        entry.includes("urlSchemeToggle"),
+      );
+      const urlAt = order.indexOf("urlStringCreate");
+      expect(titleAt).toBeLessThan(toggleAt);
+      expect(toggleAt).toBeLessThan(urlAt);
+    });
+
+    it("leaves initial focus on the URL title input", () => {
+      expect(document.activeElement).toBe(urlTitleInput[0]);
+    });
+
+    it("a second Escape on the closed toggle closes the create form", () => {
+      expect(getOpenForm()).toBe(HOME_FORM.URL_CREATE);
+      // Drop the form-open event emitted by createURLShowInput in beforeEach.
+      vi.mocked(emitMetric).mockClear();
+
+      $(".urlSchemeToggle").trigger(
+        $.Event("keydown", { key: "Escape" }) as JQuery.TriggeredEvent,
+      );
+
+      expect(emitMetric).toHaveBeenCalledTimes(1);
+      expect(emitMetric).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.URL_CREATE,
+        trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+      });
+      expect(getOpenForm()).toBeNull();
+      expect($("#createURLWrap").hasClass("hidden")).toBe(true);
+      expect(selector()).toBeNull();
+    });
+  });
+
+  describe("composing the submitted URL", () => {
+    it("defaults to https for scheme-less text", () => {
+      typeText("example.com/a");
+      mockCreateRequest();
+
+      submit();
+
+      expect(submittedURLString()).toBe("https://example.com/a");
+    });
+
+    it.each([
+      ["mailto", "a@b.com", "mailto:a@b.com"],
+      ["ssh", "host/p", "ssh://host/p"],
+    ])("selector %s + '%s' submits %s", (scheme, text, expected) => {
+      pickScheme(scheme);
+      typeText(text);
+      mockCreateRequest();
+
+      submit();
+
+      expect(submittedURLString()).toBe(expected);
+    });
+
+    it("never submits a bare scheme for empty text", () => {
+      typeText("");
+      mockCreateRequest();
+
+      submit();
+
+      expect(submittedURLString()).toBe("");
+      expect(submittedURLString()).not.toBe("https://");
+    });
+  });
+
+  describe("pasted or typed scheme prefix", () => {
+    it("strips http:// into the selector as an explicit choice and announces it", () => {
+      typeText("http://example.com/a?x=1");
+
+      expect(urlStringInput.val()).toBe("example.com/a?x=1");
+      expect(selector()?.getScheme()).toBe("http");
+      expect(selector()?.isExplicit()).toBe(true);
+      // The announcement lands on a deferred tick (cleared first, then set).
+      vi.advanceTimersByTime(0);
+      expect($(".urlSchemeAnnounce").text()).toBe("Scheme set to http");
+    });
+
+    it("does not strip host:port text such as localhost:3000", () => {
+      typeText("localhost:3000");
+
+      expect(urlStringInput.val()).toBe("localhost:3000");
+      expect(selector()?.isExplicit()).toBe(false);
+    });
+
+    it("an unrecognised prefix is left in the input", () => {
+      typeText("foo://example.com");
+
+      expect(urlStringInput.val()).toBe("foo://example.com");
+    });
+  });
+
+  describe("dev host auto-flip", () => {
+    it("flips the non-explicit display to http for a dev host and submits http", () => {
+      typeText("localhost:8080");
+
+      expect(selector()?.getScheme()).toBe("http");
+      expect(selector()?.isExplicit()).toBe(false);
+      mockCreateRequest();
+
+      submit();
+
+      expect(submittedURLString()).toBe("http://localhost:8080");
+    });
+
+    it("restores https when the text is cleared", () => {
+      typeText("localhost:8080");
+      typeText("");
+
+      expect(selector()?.getScheme()).toBe("https");
+    });
+
+    it("never overrides an explicitly chosen scheme", () => {
+      pickScheme("https");
+      typeText("localhost:8080");
+
+      expect(selector()?.getScheme()).toBe("https");
+      expect(selector()?.isExplicit()).toBe(true);
+    });
+  });
+
+  describe("client-side validation with the selector mounted", () => {
+    it.each([
+      ["foo://example.com"],
+      ["javascript:alert(1)"],
+      ["data:text/html,<h1>x</h1>"],
+      ["vbscript:msgbox('x')"],
+    ])(
+      "blocks '%s', flags the input and the toggle, and skips ajaxCall",
+      (invalidUrl) => {
+        typeText(invalidUrl);
+
+        submit();
+
+        expect($("#urlStringCreate-error").text()).toBe(
+          APP_CONFIG.strings.INVALID_URL,
+        );
+        expect($("#urlStringCreate-error").hasClass("visible")).toBe(true);
+        expect($("#urlStringCreate").hasClass("invalid-field")).toBe(true);
+        expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(true);
+        expect(ajaxCall).not.toHaveBeenCalled();
+      },
+    );
+
+    it("clears the error and the toggle flag when the text changes", () => {
+      typeText("foo://example.com");
+      submit();
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(true);
+
+      typeText("example.com");
+
+      expect($("#urlStringCreate-error").hasClass("visible")).toBe(false);
+      expect($("#urlStringCreate").hasClass("invalid-field")).toBe(false);
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(false);
+    });
+
+    it("clears the error and the toggle flag when the selector changes", () => {
+      typeText("foo://example.com");
+      submit();
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(true);
+
+      pickScheme("http");
+
+      expect($("#urlStringCreate-error").hasClass("visible")).toBe(false);
+      expect($("#urlStringCreate").hasClass("invalid-field")).toBe(false);
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(false);
+    });
+
+    it("resetCreateURLFailErrors clears the toggle flag", () => {
+      selector()?.setInvalid({ invalid: true });
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(true);
+
+      resetCreateURLFailErrors();
+
+      expect($(".urlSchemeToggle").hasClass("invalid-field")).toBe(false);
+    });
+  });
+
+  describe("query-parameter trim with a scheme", () => {
+    it("trims against the composed URL when the selector is at its default", () => {
+      typeText(QUERY_TEXT);
+      vi.advanceTimersByTime(200);
+      $("#createURLWrap").find(".urlParamTrimChip").eq(1).trigger("click");
+      mockCreateRequest();
+
+      submit();
+
+      expect(submittedURLString()).toBe("https://example.com/p?a=1&c=3");
+    });
+
+    it("live preview tracks the scheme on each keystroke", () => {
+      typeText(QUERY_TEXT);
+      vi.advanceTimersByTime(200);
+
+      expect(trimmedValue()).toBe(`https://${QUERY_TEXT}`);
+    });
+
+    it("re-runs the trim parse with the new scheme when the selector changes", () => {
+      typeText(QUERY_TEXT);
+      vi.advanceTimersByTime(200);
+      $("#createURLWrap").find(".urlParamTrimChip").eq(1).trigger("click");
+      expect(trimmedValue()).toBe("https://example.com/p?a=1&c=3");
+
+      pickScheme("mailto");
+      vi.advanceTimersByTime(200);
+
+      expect(trimmedValue()).toBe(`mailto:${QUERY_TEXT}`);
+    });
+
+    // Pins the bind order in mountCreateSchemeSelector: the prefix handler must
+    // run before the trim handler. The trim handler reads the input text and the
+    // selector scheme synchronously, so if it ran first it would see
+    // "http://<query>" with the "ftp" scheme still selected and compose a stale
+    // pair. An authority scheme is picked because an explicit opaque pick (e.g.
+    // "mailto") deliberately keeps a typed prefix verbatim and never splits it.
+    it("strips a typed prefix before the trim handler reads text and scheme", () => {
+      pickScheme("ftp");
+
+      typeText(`http://${QUERY_TEXT}`);
+      vi.advanceTimersByTime(200);
+
+      expect(selector()?.getScheme()).toBe("http");
+      expect(selector()?.isExplicit()).toBe(true);
+      expect(urlStringInput.val()).toBe(QUERY_TEXT);
+      expect(trimmedValue()).toBe(`http://${QUERY_TEXT}`);
+      mockCreateRequest();
+
+      submit();
+
+      expect(submittedURLString()).toBe(`http://${QUERY_TEXT}`);
+    });
+  });
+
+  describe("teardown", () => {
+    function hasDocumentSchemeClickHandler(): boolean {
+      const jq = window.jQuery as unknown as {
+        _data: (
+          element: Document,
+          key: string,
+        ) => Record<string, { namespace: string }[]> | undefined;
+      };
+      const clicks = jq._data(document, "events")?.click ?? [];
+      return clicks.some((entry) =>
+        entry.namespace.startsWith("urlSchemeSelector"),
+      );
+    }
+
+    it.each([
+      ["createURLHideInput", () => createURLHideInput()],
+      ["resetNewURLForm", () => resetNewURLForm()],
+    ])("%s destroys the selector and its handlers", (_label, hide) => {
+      $(".urlSchemeToggle").trigger("click");
+      expect(hasDocumentSchemeClickHandler()).toBe(true);
+
+      hide();
+
+      expect($(".urlSchemeSelector")).toHaveLength(0);
+      expect($(".urlSchemeToggle")).toHaveLength(0);
+      expect(selector()).toBeNull();
+      expect(hasDocumentSchemeClickHandler()).toBe(false);
+      expect(
+        $("#urlStringCreate").closest(".text-input-container"),
+      ).toHaveLength(1);
+    });
+
+    it("the next open starts at https, non-explicit", () => {
+      pickScheme("mailto");
+      expect(selector()?.isExplicit()).toBe(true);
+
+      createURLHideInput();
+      createURLShowInput(1);
+
+      expect(selector()?.getScheme()).toBe("https");
+      expect(selector()?.isExplicit()).toBe(false);
+    });
+
+    it("stops stripping prefixes once the form is closed", () => {
+      createURLHideInput();
+
+      typeText("http://example.com/a");
+
+      expect(urlStringInput.val()).toBe("http://example.com/a");
+    });
+  });
+
+  // The no-`.text-input-container` degrade path (older markup) is covered by
+  // the older describes above, whose form HTML has no container; this one
+  // covers a container whose selector was destroyed.
+  describe("without a mounted selector", () => {
+    it("submits the typed text as is", () => {
+      selector()?.destroy();
+      typeText("https://example.com/a");
+      mockCreateRequest();
+
+      submit();
+
+      expect(submittedURLString()).toBe("https://example.com/a");
+    });
   });
 });

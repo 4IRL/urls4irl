@@ -4,6 +4,10 @@ import {
   closeURLEditPanel,
 } from "../update-url-panel.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
+import {
+  getSchemeSelector,
+  type SchemeSelectorHandle,
+} from "../../scheme/scheme-selector.js";
 
 // This suite runs the real URL-panel orchestrator together with the real
 // update-title/update-string show/hide functions and the real cards/utils
@@ -199,6 +203,111 @@ describe("URL edit panel orchestrator", () => {
       expect(titleTick.hasClass("opa-0")).toBe(true);
       expect(stringTick.hasClass("opa-1")).toBe(false);
       expect(stringTick.hasClass("opa-0")).toBe(true);
+    });
+  });
+
+  describe("URL scheme selector lifecycle", () => {
+    function mountCardWithInputContainer(): JQuery {
+      const urlCard = mountCard(true);
+      const stringWrap = urlCard.find(".updateUrlStringWrap");
+      const input = stringWrap.find("input.urlStringUpdate");
+      input.wrap(
+        '<div class="text-input-container"><div class="text-input-inner-container"></div></div>',
+      );
+      return urlCard;
+    }
+
+    function selectorOf(urlCard: JQuery): SchemeSelectorHandle | null {
+      return getSchemeSelector({
+        container: urlCard.find(".updateUrlStringWrap .text-input-container"),
+      });
+    }
+
+    type JQueryInternals = {
+      _data: (
+        element: Document,
+        key: string,
+      ) => Record<string, Array<{ namespace: string }>> | undefined;
+    };
+
+    /** Selector-owned document handlers (click/focusout) still bound. */
+    function leakedSelectorDocumentHandlers(): string[] {
+      const events =
+        ($ as unknown as JQueryInternals)._data(document, "events") ?? {};
+      return ["click", "focusout", "keyup"].flatMap((type) =>
+        (events[type] ?? [])
+          .filter((handler) => handler.namespace.includes("urlScheme"))
+          .map((handler) => `${type}.${handler.namespace}`),
+      );
+    }
+
+    it("mounts the selector when the panel opens, splitting the stored href", () => {
+      const urlCard = mountCardWithInputContainer();
+
+      openURLEditPanel(urlCard);
+
+      expect(selectorOf(urlCard)).not.toBeNull();
+      expect(selectorOf(urlCard)!.getScheme()).toBe("https");
+      expect(urlCard.find(".urlStringUpdate").val()).toBe("example.com");
+    });
+
+    it("lets Escape on the toggle bubble to the panel-level handler, which closes the panel and the selector", () => {
+      const urlCard = mountCardWithInputContainer();
+      openURLEditPanel(urlCard);
+
+      urlCard.find(".urlSchemeToggle")[0].dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Escape",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(
+        true,
+      );
+      expect(selectorOf(urlCard)).toBeNull();
+    });
+
+    it("destroys the selector on resetURLEditPanelState and restores the full href", () => {
+      const urlCard = mountCardWithInputContainer();
+      openURLEditPanel(urlCard);
+
+      resetURLEditPanelState(urlCard);
+
+      expect(selectorOf(urlCard)).toBeNull();
+      expect(leakedSelectorDocumentHandlers()).toEqual([]);
+      expect(urlCard.find(".urlSchemeToggle").length).toBe(0);
+      expect(urlCard.find(".urlStringUpdate").val()).toBe(
+        "https://example.com",
+      );
+    });
+
+    it("destroys the selector on closeURLEditPanel", () => {
+      const urlCard = mountCardWithInputContainer();
+      openURLEditPanel(urlCard);
+
+      closeURLEditPanel(urlCard);
+
+      expect(selectorOf(urlCard)).toBeNull();
+      expect(leakedSelectorDocumentHandlers()).toEqual([]);
+    });
+
+    it("leaves no selector document handler behind after opening the list and closing the panel", () => {
+      const urlCard = mountCardWithInputContainer();
+      openURLEditPanel(urlCard);
+      urlCard.find(".urlSchemeToggle").trigger("click");
+      expect(leakedSelectorDocumentHandlers().length).toBeGreaterThan(0);
+
+      closeURLEditPanel(urlCard);
+
+      expect(leakedSelectorDocumentHandlers()).toEqual([]);
+    });
+
+    it("reset is safe when no selector was ever mounted", () => {
+      const urlCard = mountCard(true);
+
+      expect(() => resetURLEditPanelState(urlCard)).not.toThrow();
     });
   });
 

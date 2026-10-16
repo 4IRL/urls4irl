@@ -1,8 +1,12 @@
 import re
+from contextlib import contextmanager
+from typing import Iterator, List
+from urllib.parse import urlsplit
 
-from playwright.sync_api import BrowserContext, Locator, Page, Route, expect
+from playwright.sync_api import BrowserContext, Locator, Page, Request, Route, expect
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
+from backend.utils.strings.url_strs import URL_SCHEME_TOGGLE_LABEL
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import assert_visible_css_selector
 from tests.functional.playwright_utils import (
@@ -36,6 +40,15 @@ SWIPE_SNAP_BACK_PX = 60
 # distance threshold governs, and the row correctly snaps back.
 SWIPE_SNAP_BACK_STEP_DELAY_MS = 40
 
+# How long a negative "no request is sent" check waits for a request to appear.
+NO_REQUEST_WAIT_MS = 2000
+
+# POST /utubs/<utub_id>/urls: the create-URL route (the path ends right after
+# "urls", so per-URL routes such as /urls/<id> or /urls/<id>/tags never match).
+_CREATE_URL_PATH = re.compile(r"/utubs/\d+/urls/?$")
+# PATCH /utubs/<utub_id>/urls/<utub_url_id>: the update-URL-string route (the
+# /title and /tags sub-routes never match).
+_UPDATE_URL_STRING_PATH = re.compile(r"/utubs/\d+/urls/\d+/?$")
 
 # Query-parameter trim control test data shared by the create/update/mobile UI
 # suites: a two-param URL whose second param ("drop=2") the tests drop.
@@ -44,6 +57,13 @@ TRIM_DROPPED_PARAM = "drop=2"
 TRIM_URL_TWO_PARAMS = f"{TRIM_BASE_URL}?keep=1&{TRIM_DROPPED_PARAM}"
 TRIM_URL_KEEP_ONLY = f"{TRIM_BASE_URL}?keep=1"
 CLOSED_CLASS = re.compile(r"(^|\s)closed(\s|$)")
+
+
+def without_scheme(url: str) -> str:
+    """The text the edit form's input holds for ``url``: with the scheme selector
+    mounted, the scheme (``https://``) lives in the selector and the input keeps
+    only the rest."""
+    return url.split("://", 1)[-1]
 
 
 def _fulfill_with_stub_page(route: Route) -> None:
@@ -281,6 +301,160 @@ def update_url_string(*, page: Page, url_string: str) -> None:
         page=page, css_selector=update_url_string_input_css_selector
     )
     clear_then_send_keys(locator=update_url_string_input, input_text=url_string)
+
+
+_SCHEME_SELECTOR_ANCESTOR_XPATH = (
+    "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '),"
+    " ' urlSchemeSelector ')][1]"
+)
+
+
+@contextmanager
+def _track_requests(
+    *, page: Page, method: str, path_pattern: re.Pattern[str]
+) -> Iterator[List[Request]]:
+    """Collect the requests with ``method`` whose URL path matches
+    ``path_pattern`` while the context is active; other traffic (metrics
+    beacons, ...) is ignored. The listener is removed on exit."""
+    collected: List[Request] = []
+
+    def collect(request: Request) -> None:
+        if request.method == method and path_pattern.search(urlsplit(request.url).path):
+            collected.append(request)
+
+    page.on("request", collect)
+    try:
+        yield collected
+    finally:
+        page.remove_listener("request", collect)
+
+
+@contextmanager
+def track_create_url_requests(*, page: Page) -> Iterator[List[Request]]:
+    """
+    Track the create-URL requests (``POST /utubs/<id>/urls``) the page sends.
+
+    Yields the live list, so a negative check reads: perform the actions, wait
+    ``NO_REQUEST_WAIT_MS``, then assert the list is empty.
+    """
+    with _track_requests(
+        page=page, method="POST", path_pattern=_CREATE_URL_PATH
+    ) as create_requests:
+        yield create_requests
+
+
+@contextmanager
+def track_update_url_string_requests(*, page: Page) -> Iterator[List[Request]]:
+    """
+    Track the update-URL-string requests (``PATCH /utubs/<id>/urls/<id>``) the
+    page sends. Same usage as ``track_create_url_requests``.
+    """
+    with _track_requests(
+        page=page, method="PATCH", path_pattern=_UPDATE_URL_STRING_PATH
+    ) as update_requests:
+        yield update_requests
+
+
+def wait_for_update_input_highlight(*, page: Page, input_css_selector: str) -> None:
+    """
+    Wait until the edit form's delayed highlight (``highlightInput``, ~100ms after
+    the form opens) has focused the URL input and selected its whole value.
+
+    It would otherwise steal focus from the scheme selector if a test (or a very
+    fast user) interacts with the selector before it fires. A prefilled value only
+    ends up fully selected through that timer, so the selection is the signal.
+    """
+    page.wait_for_function(
+        """selector => {
+            const el = document.querySelector(selector);
+            return (
+                el !== null &&
+                el === document.activeElement &&
+                el.value.length > 0 &&
+                el.selectionStart === 0 &&
+                el.selectionEnd === el.value.length
+            );
+        }""",
+        arg=input_css_selector,
+    )
+
+
+def expect_selected_scheme(*, page: Page, toggle_locator: str, scheme: str) -> None:
+    """Auto-waiting assertion that a scheme-selector toggle shows ``scheme`` (its
+    visible label and its "URL scheme: <scheme>" accessible name)."""
+    toggle = page.locator(toggle_locator).first
+    expect(toggle.locator(HPL.SCHEME_TOGGLE_LABEL)).to_have_text(scheme)
+    expect(toggle).to_have_attribute(
+        "aria-label", f"{URL_SCHEME_TOGGLE_LABEL}: {scheme}"
+    )
+
+
+def select_url_scheme(
+    *,
+    page: Page,
+    toggle_locator: str,
+    option_scheme: str,
+    via_keyboard: bool = False,
+) -> None:
+    """
+    Open a scheme selector, filter its list to ``option_scheme`` and pick that
+    exact option, then wait for the list to close and for the post-select focus
+    to settle (the URL input on fine pointers, the toggle on coarse ones), so a
+    caller never races the selector's deferred refocus.
+
+    Args:
+        page: Page with the create form or a selected card's edit form open
+        toggle_locator: CSS selector of the selector's toggle button
+            (``HPL.SCHEME_TOGGLE_CREATE`` / ``HPL.SCHEME_TOGGLE_UPDATE``)
+        option_scheme: The scheme to pick (for example ``mailto``)
+        via_keyboard: When True, drive it keyboard-only (Enter on the toggle,
+            type in the filter, ArrowDown to the option, Enter) instead of clicking
+    """
+    toggle = page.locator(toggle_locator).first
+    selector = toggle.locator(_SCHEME_SELECTOR_ANCESTOR_XPATH)
+    listbox = selector.locator(HPL.SCHEME_LISTBOX)
+    filter_input = selector.locator(HPL.SCHEME_FILTER)
+    option = selector.locator(
+        HPL.SCHEME_OPTION_BY_SCHEME_FORMAT.format(scheme=option_scheme)
+    )
+
+    if via_keyboard:
+        toggle.focus()
+        page.keyboard.press("Enter")
+    else:
+        toggle.click()
+    expect(listbox).to_be_visible()
+
+    # Fine pointers focus the filter on open, coarse ones deliberately do not.
+    filter_input.focus()
+    filter_input.fill(option_scheme)
+    expect(option).to_be_visible()
+
+    if via_keyboard:
+        # ArrowDown roves across the rows the filter left (e.g. "http" matches
+        # "https" first), so step until the wanted row holds focus.
+        for _ in range(selector.locator(HPL.SCHEME_OPTION_VISIBLE).count()):
+            page.keyboard.press("ArrowDown")
+            if option.evaluate("element => element === document.activeElement"):
+                break
+        expect(option).to_be_focused()
+        page.keyboard.press("Enter")
+    else:
+        option.click()
+
+    expect(listbox).to_be_hidden()
+
+    # The row activates on keyup, so the selector refocuses on a deferred tick
+    # (fine pointers: the URL input; coarse pointers: the toggle, synchronously).
+    is_coarse_pointer = page.evaluate(
+        "window.matchMedia('(any-pointer: coarse)').matches"
+    )
+    focus_target = (
+        toggle
+        if is_coarse_pointer
+        else selector.locator(HPL.SCHEME_INPUT_ROW_URL_INPUT)
+    )
+    expect(focus_target).to_be_focused()
 
 
 def update_url_title(

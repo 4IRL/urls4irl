@@ -1,6 +1,6 @@
 import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { createURL, createURLShowInput } from "../create.js";
-import { isValidURL } from "../../validation.js";
+import { isAcceptableURL } from "../../validation.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { VALIDATION_FORM } from "../../../../types/metrics-dim-values.js";
 
@@ -56,7 +56,7 @@ vi.mock("../../../../store/app-store.js", () => ({
 }));
 
 vi.mock("../../validation.js", () => ({
-  isValidURL: vi.fn(() => true),
+  isAcceptableURL: vi.fn(() => true),
 }));
 
 vi.mock("../../../../lib/ajax.js", () => ({
@@ -69,7 +69,7 @@ vi.mock("../../../../lib/config.js", () => ({
     routes: {
       createURL: vi.fn(() => "/api/utubs/1/urls"),
     },
-    constants: {},
+    constants: { URL_SCHEMES: [], URL_AUTHORITY_SCHEMES: [] },
     strings: {
       INVALID_URL: "Invalid URL",
     },
@@ -129,7 +129,7 @@ describe("create metrics — UI_VALIDATION_ERROR (url_create sad path)", () => {
   beforeEach(() => {
     document.body.innerHTML = INVALID_URL_FORM_HTML;
     vi.clearAllMocks();
-    vi.mocked(isValidURL).mockReturnValue(false);
+    vi.mocked(isAcceptableURL).mockReturnValue(false);
   });
 
   afterEach(() => {

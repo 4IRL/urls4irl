@@ -15,8 +15,15 @@ import { accessLink } from "./access.js";
 import {
   updateURL,
   hideAndResetUpdateURLStringForm,
+  cancelUpdateURLStringFormOnEscape,
   isURLStringSubmitInFlight,
+  resetUpdateURLFailErrors,
 } from "./update-string.js";
+import {
+  currentUpdateScheme,
+  getUpdateSchemeSelector,
+} from "../scheme/update-input-scheme.js";
+import { handleSchemePrefixInput } from "../scheme/scheme-prefix-handler.js";
 import { isCoarsePointer } from "../../mobile.js";
 import { isConfirmButtonDisabled } from "../confirm-btn-state.js";
 import {
@@ -38,7 +45,8 @@ import {
   URL_ACCESS_TRIGGER,
 } from "../../../types/metrics-dim-values.js";
 
-const TRIM_INPUT_EVENT = "input.urlStringTrim";
+export const TRIM_INPUT_EVENT = "input.urlStringTrim";
+const SCHEME_PREFIX_EVENT = "input.urlSchemePrefix";
 
 // Element to displayu the URL string
 export function createURLString(urlStringText: string): JQuery<HTMLElement> {
@@ -97,16 +105,24 @@ function createUpdateURLStringInput(
   const urlStringUpdateTextInputContainer = makeTextInput(
     "urlString",
     METHOD_TYPES.UPDATE.description!,
-    INPUT_TYPES.URL.description!,
+    INPUT_TYPES.TEXT.description!,
   ).addClass("updateUrlStringWrap hidden gap-5p");
 
   urlStringUpdateTextInputContainer.find("label").text("URL");
 
-  // Customize the input text box for the Url title
+  // Customize the input text box for the Url title. A text input (not url) so
+  // the scheme-less text the selector leaves in it is not rejected by the
+  // browser.
   const urlStringTextInput = urlStringUpdateTextInputContainer
     .find("input")
     .prop("minLength", APP_CONFIG.constants.URLS_MIN_LENGTH)
     .prop("maxLength", APP_CONFIG.constants.URLS_MAX_LENGTH)
+    .attr({
+      inputmode: "url",
+      autocapitalize: "none",
+      autocorrect: "off",
+      spellcheck: "false",
+    })
     .val(urlStringText);
 
   setFocusEventListenersOnUpdateURLStringInput(
@@ -201,11 +217,24 @@ function createUpdateURLStringInput(
     mode: TrimMode.URL,
     urlCard,
   });
+  // The selector is mounted when the form opens, after this input is built, so
+  // it is looked up per event. Bound before the trim handler (jQuery fires in
+  // bind order) so the trim block reads the prefix-stripped text.
+  urlStringTextInput.on(SCHEME_PREFIX_EVENT, function () {
+    const selector = getUpdateSchemeSelector({ urlCard });
+    if (!selector) return;
+    handleSchemePrefixInput({
+      input: urlStringTextInput,
+      selector,
+      onChange: () => resetUpdateURLFailErrors(urlCard),
+    });
+  });
   // Own namespace: nothing else `.off()`s it, and it must survive input blur.
   urlStringTextInput.on(TRIM_INPUT_EVENT, function () {
     syncParamTrim({
       trimWrap,
-      rawValue: getInputValue(urlStringTextInput),
+      text: getInputValue(urlStringTextInput),
+      scheme: currentUpdateScheme({ urlCard }),
     });
   });
 
@@ -250,13 +279,7 @@ function setFocusEventListenersOnUpdateURLStringInput(
             // two mechanisms don't double-fire.
             if (isCoarsePointer()) break;
             // Handle escape key pressed
-            emit({
-              event: UI_EVENTS.UI_FORM_CANCEL,
-              form: HOME_FORM.URL_STRING_EDIT,
-              trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
-            });
-            clearOpenForm();
-            hideAndResetUpdateURLStringForm({ urlCard });
+            cancelUpdateURLStringFormOnEscape({ urlCard });
             break;
           default:
           /* no-op */

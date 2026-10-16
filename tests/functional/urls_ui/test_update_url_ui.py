@@ -68,13 +68,19 @@ from tests.functional.urls_ui.playwright_assert_utils import (
 )
 from tests.functional.urls_ui.playwright_utils import (
     CLOSED_CLASS,
+    NO_REQUEST_WAIT_MS,
     TRIM_BASE_URL,
     TRIM_DROPPED_PARAM,
     TRIM_URL_KEEP_ONLY,
     TRIM_URL_TWO_PARAMS,
+    expect_selected_scheme,
+    select_url_scheme,
     set_trim_section_expanded,
+    track_update_url_string_requests,
     update_url_string,
     update_url_title,
+    wait_for_update_input_highlight,
+    without_scheme,
 )
 
 pytestmark = pytest.mark.update_urls_ui
@@ -1592,7 +1598,8 @@ def test_update_url_string_trim_collapsed_toggle_drop_save_and_undo(
     )
     expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
     # The (closed) edit input must not keep the trimmed string it was saved with:
-    # opening the form again should show the restored original.
+    # opening the form again should show the restored original. (The closed form's
+    # selector is destroyed, so the input holds the whole URL, not the stripped rest.)
     expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_have_value(
         TRIM_URL_TWO_PARAMS
     )
@@ -1976,3 +1983,312 @@ def test_update_url_string_trim_conflict_shows_trim_message_and_expands_section(
     expect(page.locator(HPL.EDIT_FORM_TRIM_HEADER)).to_have_attribute(
         "aria-expanded", "true"
     )
+
+
+def _select_seeded_url_and_open_string_form(
+    *, app: Flask, page: Page, seeded_url: str
+) -> None:
+    """Select the seeded URL (by its stored string) and open its string-edit form."""
+    login_user_select_utub_by_name_and_url_by_string(
+        app=app,
+        page=page,
+        user_id=1,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=seeded_url,
+    )
+    get_selected_url(page=page)
+    _open_update_url_string_form(page=page)
+    # showUpdateURLStringForm re-focuses (and selects) the URL input ~100ms after the
+    # reveal. Wait for that so it cannot steal focus from the selector mid-test.
+    wait_for_update_input_highlight(
+        page=page,
+        input_css_selector=HPL.INPUT_URL_STRING_UPDATE_SELECTED,
+    )
+
+
+@pytest.mark.parametrize(
+    "seeded_url, expected_scheme, expected_text",
+    [
+        (MOCK_URL_STRINGS[0], "https", without_scheme(MOCK_URL_STRINGS[0])),
+        ("http://insecure.example.com/x", "http", "insecure.example.com/x"),
+        ("ftp://files.example.com/a", "ftp", "files.example.com/a"),
+        ("mailto:someone@example.com", "mailto", "someone@example.com"),
+    ],
+)
+def test_update_url_string_form_prefills_scheme_selector(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+    seeded_url: str,
+    expected_scheme: str,
+    expected_text: str,
+):
+    """
+    GIVEN a stored URL with an https, http, ftp or opaque mailto scheme
+    WHEN its string-edit form opens
+    THEN the stored scheme is shown in the selector and the input holds only the
+        rest (nothing is left behind as a double prefix), as a plain text input
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [seeded_url])
+
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=seeded_url
+    )
+
+    expect(page.locator(HPL.SCHEME_SELECTOR_UPDATE)).to_have_count(1)
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme=expected_scheme
+    )
+    string_input = page.locator(HPL.INPUT_URL_STRING_UPDATE_SELECTED)
+    expect(string_input).to_have_value(expected_text)
+    expect(string_input).to_have_attribute("type", "text")
+    expect(page.locator(HPL.SCHEME_LISTBOX_UPDATE)).to_be_hidden()
+
+
+def test_update_url_string_scheme_only_change_saves_new_scheme(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the string-edit form of an https URL
+    WHEN only the scheme is changed (to http) and the form is submitted
+    THEN the card's link becomes the same URL under http
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_STRINGS[0]
+    )
+    url_row = get_selected_url(page=page)
+
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, option_scheme="http"
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="http"
+    )
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, MOCK_URL_STRINGS[0].replace("https://", "http://", 1)
+    )
+
+
+def test_update_url_string_scheme_change_undo_restores_selector_and_input(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a saved scheme-only change (https to http) with the outcome banner showing
+    WHEN Undo is clicked
+    THEN the card's link returns to the https URL, the closed form's input holds
+        the restored full URL (its selector is destroyed on close), and the
+        reopened form shows the selector toggle at https with the scheme-less
+        text, the unchanged stored URL (not a pending edit)
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_STRINGS[0]
+    )
+    url_row = get_selected_url(page=page)
+    url_string_elem = url_row.locator(HPL.URL_STRING_READ)
+    string_input = url_row.locator(HPL.INPUT_URL_STRING_UPDATE)
+
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, option_scheme="http"
+    )
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    expect(url_string_elem).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, MOCK_URL_STRINGS[0].replace("https://", "http://", 1)
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_UPDATED_BANNER
+    )
+
+    page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
+
+    expect(url_string_elem).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, MOCK_URL_STRINGS[0]
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
+    expect(string_input).to_have_value(MOCK_URL_STRINGS[0])
+
+    _open_update_url_string_form(page=page)
+    wait_for_update_input_highlight(
+        page=page,
+        input_css_selector=HPL.INPUT_URL_STRING_UPDATE_SELECTED,
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="https"
+    )
+    expect(string_input).to_have_value(without_scheme(MOCK_URL_STRINGS[0]))
+    expect(page.locator(HPL.SCHEME_LISTBOX_UPDATE)).to_be_hidden()
+
+
+def test_update_url_string_scheme_escape_closes_list_before_form(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the string-edit form with the scheme list open
+    WHEN Escape is pressed once, then again
+    THEN the first Escape closes only the list and the form stays open (the
+        Escape keyup must not cancel it), and the second closes the form
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_STRINGS[0]
+    )
+    toggle = page.locator(HPL.SCHEME_TOGGLE_UPDATE)
+    listbox = page.locator(HPL.SCHEME_LISTBOX_UPDATE)
+
+    toggle.click()
+    expect(listbox).to_be_visible()
+
+    page.keyboard.press("Escape")
+    expect(listbox).to_be_hidden()
+    expect(toggle).to_be_focused()
+    expect(page.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_visible()
+
+    page.keyboard.press("Escape")
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+
+def test_update_url_string_scheme_clicks_keep_card_selected(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the string-edit form of the selected card
+    WHEN the scheme toggle and an option inside the open list are clicked
+    THEN the card stays selected with its edit form open (the clicks are not
+        treated as clicks outside the card)
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_STRINGS[0]
+    )
+    toggle = page.locator(HPL.SCHEME_TOGGLE_UPDATE)
+    listbox = page.locator(HPL.SCHEME_LISTBOX_UPDATE)
+
+    toggle.click()
+    expect(listbox).to_be_visible()
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(1)
+
+    page.locator(HPL.SCHEME_FILTER_UPDATE).click()
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(1)
+
+    page.locator(
+        f"{HPL.SCHEME_LISTBOX_UPDATE} "
+        + HPL.SCHEME_OPTION_BY_SCHEME_FORMAT.format(scheme="ftp")
+    ).click()
+    expect(listbox).to_be_hidden()
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(1)
+    expect(page.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_visible()
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="ftp"
+    )
+
+
+def test_update_url_string_scheme_keyboard_selection_keeps_selected_card(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the string-edit form of the selected card, with other cards in the UTub
+    WHEN a scheme is picked keyboard-only (Enter on the toggle, type to filter,
+        ArrowDown, Enter)
+    THEN the same card stays selected with its form open (the arrow keyups must
+        not reach the card navigator), the scheme changes, focus returns to the
+        URL input and no update request is sent (the Enter keyup must not submit)
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0], MOCK_URL_STRINGS[1]])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_STRINGS[0]
+    )
+    selected_url_id = get_selected_url(page=page).get_attribute("utuburlid")
+
+    with track_update_url_string_requests(page=page) as update_requests:
+        select_url_scheme(
+            page=page,
+            toggle_locator=HPL.SCHEME_TOGGLE_UPDATE,
+            option_scheme="ftp",
+            via_keyboard=True,
+        )
+        expect(page.locator(HPL.INPUT_URL_STRING_UPDATE_SELECTED)).to_be_focused()
+        page.wait_for_timeout(NO_REQUEST_WAIT_MS)
+        assert update_requests == []
+
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(1)
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_attribute(
+        "utuburlid", selected_url_id
+    )
+    expect(
+        page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.UPDATE_URL_STRING_WRAP}")
+    ).to_be_visible()
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="ftp"
+    )
+    expect(page.locator(HPL.INPUT_URL_STRING_UPDATE_SELECTED)).to_have_value(
+        without_scheme(MOCK_URL_STRINGS[0])
+    )
+
+
+def test_update_url_string_cancel_restores_prefilled_scheme(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the string-edit form where the scheme and the text were both changed
+    WHEN it is cancelled and reopened
+    THEN the selector and the input show the stored URL again
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_STRINGS[0]])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_STRINGS[0]
+    )
+    string_input = page.locator(HPL.INPUT_URL_STRING_UPDATE_SELECTED)
+
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, option_scheme="ftp"
+    )
+    clear_then_send_keys(locator=string_input, input_text="changed.example.com/z")
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_CANCEL_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    _open_update_url_string_form(page=page)
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="https"
+    )
+    expect(string_input).to_have_value(without_scheme(MOCK_URL_STRINGS[0]))
