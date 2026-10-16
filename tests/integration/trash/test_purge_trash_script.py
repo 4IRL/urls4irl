@@ -534,6 +534,54 @@ def test_retention_days_override(runner: tuple[Flask, FlaskCliRunner]) -> None:
         pg_conn.close()
 
 
+@pytest.mark.parametrize("invalid_retention_days", [0, -1])
+def test_rejects_retention_days_below_one_without_touching_the_database(
+    runner: tuple[Flask, FlaskCliRunner], invalid_retention_days: int
+) -> None:
+    """
+    GIVEN a UTub trashed 31 days ago and a URL trashed 31 days ago in a live UTub
+    WHEN run_trash_purge runs with retention_days of 0 or a negative value
+    THEN it raises ValueError before executing any statement and nothing is deleted
+    """
+    app, _ = runner
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        user_id = _seed_user(pg_conn, "invalid_retention_user")
+        live_utub_id = _seed_utub(pg_conn, name="live", creator_id=user_id)
+        _seed_member(pg_conn, live_utub_id, user_id, "CREATOR")
+        url_id = _seed_url(pg_conn, "https://invalid.example.com", user_id)
+        trashed_utub_url_id = _seed_utub_url(
+            pg_conn,
+            utub_id=live_utub_id,
+            url_id=url_id,
+            user_id=user_id,
+            deleted_at=_ago(days=31),
+            deleted_by=user_id,
+        )
+        trashed_utub_id = _seed_utub(
+            pg_conn,
+            name="trashed",
+            creator_id=user_id,
+            deleted_at=_ago(days=31),
+            deleted_by=user_id,
+        )
+        _seed_member(pg_conn, trashed_utub_id, user_id, "CREATOR")
+        recording_conn = _FailingConnection(pg_conn, failing_sql="")
+
+        with pytest.raises(ValueError, match="retention_days"):
+            run_trash_purge(
+                pg_conn=recording_conn, retention_days=invalid_retention_days
+            )
+
+        assert recording_conn.executed_sql == []
+        assert _count(pg_conn, "UtubUrls", "id", trashed_utub_url_id) == 1
+        assert _count(pg_conn, "Utubs", "id", trashed_utub_id) == 1
+        assert _count(pg_conn, "UtubMembers", "utubID", trashed_utub_id) == 1
+    finally:
+        pg_conn.close()
+
+
 def test_rolls_back_every_delete_when_the_final_statement_fails(
     runner: tuple[Flask, FlaskCliRunner],
 ) -> None:

@@ -114,7 +114,14 @@ def run_trash_purge(
     Example: with ``retention_days=30``, a URL trashed 31 days ago is deleted and one
     trashed 29 days ago is kept; a UTub trashed 31 days ago is deleted with its members,
     tags and URLs, unless it is admin-locked.
+
+    Raises:
+        ValueError: ``retention_days`` is below 1, checked before touching the DB. A
+            zero or negative window puts the cutoff at or after now and would
+            hard-delete every trashed row.
     """
+    if retention_days < 1:
+        raise ValueError(f"retention_days must be at least 1, got {retention_days}")
     try:
         with pg_conn.cursor() as cursor:
             cursor.execute(SET_LOCK_TIMEOUT_SQL, (LOCK_TIMEOUT_MS,))
