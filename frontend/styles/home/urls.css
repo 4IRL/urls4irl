@@ -231,6 +231,13 @@
     padding: 20px 0 15px 0;
 }
 
+/* While a URL edit hides the tags, drop the row padding so no empty band is left
+   (the :not(:has(.tagBadge)) override below ignores a hidden container that still
+   holds badges). Higher specificity than the base rule above. */
+.urlRow[filterable="true"][urlSelected="true"] .urlTags.urlTagsHiddenForEdit {
+    padding: 0;
+}
+
 .urlRow[filterable="true"][urlSelected="true"] .urlOptions {
     padding: 15px 0 0 0;
     align-items: center;

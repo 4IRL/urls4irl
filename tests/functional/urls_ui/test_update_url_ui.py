@@ -2372,3 +2372,79 @@ def test_update_url_string_cancel_restores_prefilled_scheme(
         page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="https"
     )
     expect(string_input).to_have_value(without_scheme(MOCK_URL_STRINGS[0]))
+
+
+def _select_tagged_url(*, app: Flask, page: Page) -> Locator:
+    """Log in, select the first (tagged) URL and return its row after checking it
+    shows tag badges, so a later not-visible assertion is falsifiable."""
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    url_in_utub = get_url_in_utub(app, utub_user_created.id)
+    login_user_select_utub_by_id_and_url_by_id(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
+    )
+    selected_url = get_selected_url(page=page)
+    assert selected_url.locator(HPL.TAG_BADGES).count() > 0
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+    return selected_url
+
+
+def _expect_no_dead_band_above_tags(*, selected_url: Locator) -> None:
+    tags_row = selected_url.locator(HPL.URL_TAGS_READ)
+    expect(tags_row).to_have_css("padding-top", "0px")
+    expect(tags_row).to_have_css("padding-bottom", "0px")
+
+
+def test_update_url_string_form_hides_tags_until_closed(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected URL that has tags
+    WHEN its string-edit form is opened and then cancelled
+    THEN the tags (and their row padding) are hidden while editing and shown again after
+    """
+    selected_url = _select_tagged_url(app=provide_app, page=page)
+
+    _open_update_url_string_form(page=page)
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_hidden()
+    _expect_no_dead_band_above_tags(selected_url=selected_url)
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_CANCEL_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+    expect(selected_url.locator(HPL.TAG_BADGES).first).to_be_visible()
+
+
+def test_update_url_title_form_hides_tags_and_add_tag_until_closed(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected URL that has tags
+    WHEN its title-edit form is opened and then cancelled
+    THEN the tags and the Add-tag button are hidden while editing and shown again after
+    """
+    selected_url = _select_tagged_url(app=provide_app, page=page)
+    expect(selected_url.locator(HPL.BUTTON_TAG_CREATE)).to_be_visible()
+
+    open_update_url_title(page=page, selected_url_row=selected_url)
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_hidden()
+    expect(selected_url.locator(HPL.BUTTON_TAG_CREATE)).to_be_hidden()
+    _expect_no_dead_band_above_tags(selected_url=selected_url)
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_CANCEL_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
+
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+    expect(selected_url.locator(HPL.TAG_BADGES).first).to_be_visible()
+    expect(selected_url.locator(HPL.BUTTON_TAG_CREATE)).to_be_visible()

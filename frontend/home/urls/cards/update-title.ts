@@ -19,7 +19,13 @@ import {
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
-import { enableEditingURLString } from "./utils.js";
+import {
+  enableEditingURLString,
+  hideUrlTags,
+  isUrlEditFormOpen,
+  restoreUrlTagsIfNotEditing,
+} from "./utils.js";
+import { hideAndResetTagCombobox } from "../tags/combobox.js";
 import { hideAndResetUpdateURLStringForm } from "./update-string.js";
 import { isMobile, isCoarsePointer } from "../../mobile.js";
 import { showFieldSavedTick } from "../field-saved-tick.js";
@@ -95,6 +101,12 @@ export function showUpdateURLTitleForm({
   ) {
     hideAndResetUpdateURLStringForm({ urlCard });
   }
+  // The tag combobox and URL edit are exclusive modes: close the combobox first
+  // (it re-shows sibling buttons this form then disables). An absent wrap
+  // counts as closed.
+  if (urlCard.find(".urlTagComboboxWrap:not(.hidden)").length > 0) {
+    hideAndResetTagCombobox(urlCard);
+  }
   emit({ event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN });
   setOpenForm(HOME_FORM.URL_TITLE_EDIT);
   urlTitleAndShowUpdateIconWrap.hideClass();
@@ -113,6 +125,11 @@ export function showUpdateURLTitleForm({
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
+
+  // Tags are hidden while editing, and Add-tag must not open the combobox
+  // under them (mirrors the string form).
+  hideUrlTags({ urlCard });
+  urlCard.find(".urlTagBtnCreate").hideClass();
 
   disableClickOnSelectedURLCardToHide(urlCard);
 }
@@ -134,6 +151,12 @@ export function hideAndResetUpdateURLTitleForm({
   if (!keepOpen) {
     urlCard.find(".updateUrlTitleWrap").hideClass();
     urlCard.find(".urlTitleAndUpdateIconWrap").showClassFlex();
+    // Both guards run after this form's wrap is hidden: restore only when the
+    // sibling (string) form is not still open (mobile panel).
+    if (!isUrlEditFormOpen({ urlCard })) {
+      urlCard.find(".urlTagBtnCreate").showClassFlex();
+    }
+    restoreUrlTagsIfNotEditing({ urlCard });
   }
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
 

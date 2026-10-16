@@ -365,6 +365,7 @@ class HomePageLocators(GenericPageLocator):
     URL_STRING_READ = ".urlString"
 
     URL_TAGS_READ = ".urlTags"
+    URL_TAGS_CONTAINER = ".urlTagsContainer"
     TAG_BADGES = ".tagBadge"
     TAG_BADGE_NAME_READ = ".tagBadge > span"
     TAG_BADGE_ID_ATTRIB = "data-utub-tag-id"

@@ -13,7 +13,14 @@ import {
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
-import { enableEditingURLTitle, isEmptyString } from "./utils.js";
+import {
+  enableEditingURLTitle,
+  hideUrlTags,
+  isEmptyString,
+  isUrlEditFormOpen,
+  restoreUrlTagsIfNotEditing,
+} from "./utils.js";
+import { hideAndResetTagCombobox } from "../tags/combobox.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { isAcceptableURL } from "../validation.js";
 import { TRIM_INPUT_EVENT } from "./url-string.js";
@@ -233,6 +240,12 @@ export function showUpdateURLStringForm({
   ) {
     hideAndResetUpdateURLTitleForm({ urlCard });
   }
+  // The tag combobox and URL edit are exclusive modes: close the combobox first
+  // (it re-shows sibling buttons this form then disables). An absent wrap
+  // counts as closed.
+  if (urlCard.find(".urlTagComboboxWrap:not(.hidden)").length > 0) {
+    hideAndResetTagCombobox(urlCard);
+  }
   emit({ event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN });
   setOpenForm(HOME_FORM.URL_STRING_EDIT);
   urlCard.find(".urlString").hideClass();
@@ -294,6 +307,7 @@ export function showUpdateURLStringForm({
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
+  hideUrlTags({ urlCard });
 
   const tooltipElement = urlStringBtnUpdate.get(0);
   const tooltip = tooltipElement
@@ -401,7 +415,10 @@ export function hideAndResetUpdateURLStringForm({
 
     // Enable URL Buttons
     urlCard.find(".urlBtnAccess").showClassFlex();
-    urlCard.find(".urlTagBtnCreate").showClassFlex();
+    // Not while the title form is still open (mobile panel).
+    if (!isUrlEditFormOpen({ urlCard })) {
+      urlCard.find(".urlTagBtnCreate").showClassFlex();
+    }
     urlCard.find(".urlBtnDelete").showClassFlex();
     urlCard.find(".urlBtnCopy").showClassFlex();
     if (!suppressSiblingDisable) enableEditingURLTitle(urlCard);
@@ -417,6 +434,7 @@ export function hideAndResetUpdateURLStringForm({
 
     // Enable hovering on tags for deletion
     urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
+    restoreUrlTagsIfNotEditing({ urlCard });
   }
 
   resetUpdateURLFailErrors(urlCard);

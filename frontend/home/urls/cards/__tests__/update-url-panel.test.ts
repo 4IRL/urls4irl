@@ -4,6 +4,7 @@ import {
   closeURLEditPanel,
 } from "../update-url-panel.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
+import { hideAndResetUpdateURLTitleForm } from "../update-title.js";
 import {
   getSchemeSelector,
   type SchemeSelectorHandle,
@@ -153,6 +154,68 @@ describe("URL edit panel orchestrator", () => {
 
       expect(focusSpy).toHaveBeenCalled();
       focusSpy.mockRestore();
+    });
+  });
+
+  describe("tags are hidden for the lifetime of the panel", () => {
+    function mountTaggedCard(): JQuery {
+      const urlCard = mountCard(true);
+      urlCard.append(
+        '<div class="urlTags"><div class="urlTagsContainer"><div class="tagBadge"></div></div></div>',
+      );
+      return urlCard;
+    }
+
+    it("hides tags and Add-tag on open, restores both on closeURLEditPanel", () => {
+      const urlCard = mountTaggedCard();
+
+      openURLEditPanel(urlCard);
+
+      expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+      expect(urlCard.find(".urlTagBtnCreate").hasClass("hidden")).toBe(true);
+
+      closeURLEditPanel(urlCard);
+
+      expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(false);
+      expect(urlCard.find(".urlTagsContainer").hasClass("visible-flex")).toBe(
+        false,
+      );
+      expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+        false,
+      );
+      expect(urlCard.find(".urlTagBtnCreate").hasClass("hidden")).toBe(false);
+    });
+
+    it("keeps tags hidden when one field closes with keepOpen, restores on reset", () => {
+      const urlCard = mountTaggedCard();
+      openURLEditPanel(urlCard);
+
+      hideAndResetUpdateURLTitleForm({
+        urlCard,
+        suppressSiblingDisable: true,
+        keepOpen: true,
+      });
+      expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+
+      resetURLEditPanelState(urlCard);
+
+      expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(false);
+      expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+        false,
+      );
+    });
+
+    it("closing only the title field keeps the tags and Add-tag hidden", () => {
+      const urlCard = mountTaggedCard();
+      openURLEditPanel(urlCard);
+
+      hideAndResetUpdateURLTitleForm({
+        urlCard,
+        suppressSiblingDisable: true,
+      });
+
+      expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+      expect(urlCard.find(".urlTagBtnCreate").hasClass("hidden")).toBe(true);
     });
   });
 

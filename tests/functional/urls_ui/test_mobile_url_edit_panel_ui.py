@@ -1011,6 +1011,43 @@ def test_url_edit_panel_save_url_closes_only_when_title_untouched_mobile(
         expect(page.locator(HPL.URL_OUTCOME_BANNER_UNDO)).to_be_visible()
 
 
+def test_url_edit_panel_hides_tags_while_open_mobile(
+    page_mobile_portrait: Page,
+    create_test_tags,
+    provide_app: Flask,
+):
+    """
+    GIVEN a tagged URL card is selected on a mobile device
+    WHEN the user opens the consolidated edit panel and then closes it
+    THEN the tags are hidden while the panel is open and visible again after it closes
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    # Precondition, so the not-visible check below is falsifiable.
+    assert selected_url.locator(HPL.TAG_BADGES).count() > 0
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+
+    _open_url_edit_panel_mobile(page=page)
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_hidden()
+
+    selected_url.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE).click()
+    wait_until_hidden(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+    )
+
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+    expect(selected_url.locator(HPL.TAG_BADGES).first).to_be_visible()
+
+
 def test_url_edit_button_hidden_and_unreachable_when_not_selected_mobile(
     page_mobile_portrait: Page,
     create_test_utubs,

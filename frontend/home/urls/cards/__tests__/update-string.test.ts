@@ -2618,3 +2618,154 @@ describe("edit-URL scheme selector", () => {
     });
   });
 });
+
+describe("URL string form hides the tags while editing", () => {
+  const TAGS_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">My Title</span>
+        <button class="urlTitleBtnUpdate"></button>
+      </div>
+      <div class="updateUrlTitleWrap hidden">
+        <input class="urlTitleUpdate" value="My Title" />
+      </div>
+      <a class="urlString" href="https://example.com">https://example.com</a>
+      <div class="updateUrlStringWrap hidden">
+        <input class="urlStringUpdate" type="text" value="https://example.com" />
+        <div class="urlStringUpdate-error"></div>
+      </div>
+      <button class="urlStringBtnUpdate"></button>
+      <button class="urlBtnAccess"></button>
+      <button class="urlBtnDelete"></button>
+      <button class="urlBtnCopy"></button>
+      <button class="urlTagBtnCreate visible-flex"></button>
+      <div class="urlTags">
+        <div class="urlTagsContainer"><div class="tagBadge"></div></div>
+      </div>
+    </div>
+  `;
+
+  let urlCard: JQuery;
+
+  function openString(suppressSiblingDisable: boolean = false): void {
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+      suppressSiblingDisable,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+    document.body.innerHTML = TAGS_CARD_HTML;
+    urlCard = $(".urlRow");
+  });
+
+  it("hides .urlTagsContainer and adds the state class when the form opens", () => {
+    openString();
+
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      true,
+    );
+  });
+
+  it("restores the tags on close without leaving visible-flex behind", () => {
+    openString();
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    const container = urlCard.find(".urlTagsContainer");
+    expect(container.hasClass("hidden")).toBe(false);
+    expect(container.hasClass("visible-flex")).toBe(false);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      false,
+    );
+  });
+
+  it("keeps the tags hidden across a keepOpen submit", () => {
+    openString();
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+  });
+
+  it("keeps the tags hidden while the title form is still open (mobile panel)", () => {
+    openString(true);
+    urlCard.find(".updateUrlTitleWrap").removeClass("hidden");
+
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      true,
+    );
+  });
+
+  it("restores the tags once both forms of the panel are closed", () => {
+    openString(true);
+    urlCard.find(".updateUrlTitleWrap").removeClass("hidden");
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    urlCard.find(".updateUrlTitleWrap").addClass("hidden");
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      false,
+    );
+  });
+
+  it("restoring on an untouched card is a no-op", () => {
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    const container = urlCard.find(".urlTagsContainer");
+    expect(container.hasClass("hidden")).toBe(false);
+    expect(container.hasClass("visible-flex")).toBe(false);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      false,
+    );
+  });
+
+  it("does not restore the Add-tag button while the title form is still open", () => {
+    openString(true);
+    urlCard.find(".updateUrlTitleWrap").removeClass("hidden");
+
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlTagBtnCreate").hasClass("hidden")).toBe(true);
+  });
+
+  it("restores the Add-tag button when the title form is closed", () => {
+    openString();
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    expect(urlCard.find(".urlTagBtnCreate").hasClass("hidden")).toBe(false);
+  });
+
+  it("closes an open tag combobox before hiding the tags", () => {
+    urlCard.append('<div class="urlTagComboboxWrap visible-flex"></div>');
+    urlCard
+      .find(".urlTagBtnCreate")
+      .addClass("cancel urlTagCancelBigBtnCreate");
+
+    openString();
+
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTagBtnCreate").hasClass("cancel")).toBe(false);
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+  });
+
+  it("does not run the combobox reset when no combobox wrap exists", () => {
+    openString();
+
+    // hideAndResetTagCombobox would re-show these.
+    expect(urlCard.find(".urlBtnAccess").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlBtnDelete").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+  });
+});
