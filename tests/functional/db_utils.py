@@ -551,6 +551,24 @@ def trash_utub_url(
         db.session.commit()
 
 
+def trash_utub(app: Flask, utub_id: int, deleted_by: int) -> None:
+    """
+    Soft-deletes (trashes) an existing UTub in place, mirroring what the UTub
+    delete service records: ``deleted_at`` and ``deleted_by``. Its URLs, members
+    and tags are untouched.
+
+    Args:
+        app (Flask): The Flask app for providing an app context
+        utub_id (int): The Utubs row to trash
+        deleted_by (int): The user recorded as having trashed it
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.deleted_at = utc_now()
+        utub.deleted_by = deleted_by
+        db.session.commit()
+
+
 def add_two_tags_across_urls_in_utub(
     app: Flask, utub_id: int, first_tag_id: int, second_tag_id: int
 ) -> Tuple[int, int, int]:
