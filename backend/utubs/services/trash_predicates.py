@@ -1,7 +1,11 @@
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql.expression import ColumnElement, Select
 
+from backend import db
+from backend.models.urls import Urls
+from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -102,3 +106,30 @@ def trashed_utubs_actionable_by(*, user_id: int) -> Select:
             Utubs.utub_creator == user_id,
         )
     )
+
+
+def count_trash_rows_for_user(*, user_id: int) -> int:
+    """Count the Trash URL rows plus Trash UTub rows ``user_id`` may act on.
+
+    Invariant: the result always equals ``len(urls) + len(utubs)`` of the Trash list for
+    the same user. It wraps the same predicates and the same inner joins (deleter, adder,
+    URL) that ``read_trash.get_trash_for_user`` uses, so a row the list drops (for
+    example one with a NULL ``deleted_by``) is not counted either.
+    """
+    adder = aliased(Users)
+    url_statement = join_url_row_deleter(
+        trashed_url_rows_actionable_by(user_id=user_id)
+        .join(Urls, Urls.id == Utub_Urls.url_id)
+        .join(adder, adder.id == Utub_Urls.user_id),
+        aliased(Users),
+    )
+    utub_statement = join_utub_deleter(
+        trashed_utubs_actionable_by(user_id=user_id), aliased(Users)
+    )
+    url_count = db.session.scalar(
+        select(func.count()).select_from(url_statement.subquery())
+    )
+    utub_count = db.session.scalar(
+        select(func.count()).select_from(utub_statement.subquery())
+    )
+    return (url_count or 0) + (utub_count or 0)

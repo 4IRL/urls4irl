@@ -76,7 +76,8 @@ def test_utub_summary_list_schema_dump():
                 MODELS.MEMBER_ROLE: "editor",
                 MODELS.IS_LOCKED: False,
             },
-        ]
+        ],
+        MODELS.TRASH_COUNT: 0,
     }
 
 

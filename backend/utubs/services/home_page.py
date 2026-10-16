@@ -9,10 +9,12 @@ from backend.schemas.users import UtubSummaryListSchema
 from backend.splash.services.change_email import EMAIL_CHANGE_STATUS_QUERY_PARAM
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.model_strs import MODELS
+from backend.utils.strings.trash_strs import VIEW_QUERY_PARAM
 from backend.utils.strings.utub_strs import (
     MOBILE_PANEL_QUERY_PARAM,
     UTUB_ID_QUERY_PARAM,
 )
+from backend.utubs.services.trash_predicates import count_trash_rows_for_user
 
 # The only query params the /home route recognizes: the UTub to preselect, the
 # mobile panel to restore (mobile back/forward panel feature), and the
@@ -22,7 +24,12 @@ from backend.utils.strings.utub_strs import (
 # validate_home_query_params() would abort(404) the very redirect meant to carry
 # the banner.
 RECOGNIZED_HOME_QUERY_PARAMS = frozenset(
-    {UTUB_ID_QUERY_PARAM, MOBILE_PANEL_QUERY_PARAM, EMAIL_CHANGE_STATUS_QUERY_PARAM}
+    {
+        UTUB_ID_QUERY_PARAM,
+        MOBILE_PANEL_QUERY_PARAM,
+        EMAIL_CHANGE_STATUS_QUERY_PARAM,
+        VIEW_QUERY_PARAM,
+    }
 )
 
 
@@ -30,13 +37,15 @@ def render_home_page(
     email_change_banner: dict[str, str] | None = None,
     preferences_context: dict[str, str] | None = None,
 ) -> str:
-    utubs_for_this_user = UtubSummaryListSchema.from_user(current_user).model_dump(
-        by_alias=True
-    )[MODELS.UTUBS]
+    summary = UtubSummaryListSchema.from_user(
+        current_user,
+        trash_count=count_trash_rows_for_user(user_id=current_user.id),
+    ).model_dump(by_alias=True)
 
     return render_template(
         "pages/home.html",
-        utubs_for_this_user=utubs_for_this_user,
+        utubs_for_this_user=summary[MODELS.UTUBS],
+        trash_count=summary[MODELS.TRASH_COUNT],
         is_prod_or_testing=current_app.config.get(CONFIG_ENVS.TESTING_OR_PROD, True),
         email_change_banner=email_change_banner,
         preferences_context=preferences_context,

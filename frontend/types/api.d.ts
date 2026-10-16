@@ -2321,6 +2321,11 @@ export interface components {
     UtubSummaryListSchema: {
       /** @description List of UTubs the user is a member of */
       utubs: components["schemas"]["UtubSummaryItemSchema"][];
+      /**
+       * @description Trash URL rows plus Trash UTub rows the user may act on
+       * @default 0
+       */
+      trashCount: number;
     };
     UtubUrlSchema: {
       /** @description Unique ID of the URL within the UTub */

@@ -4,6 +4,9 @@ from backend.utils.strings.json_strs import FAILURE_GENERAL
 # These are server messages only: no APP_CONFIG.strings bridge until a TypeScript
 # consumer renders them.
 
+# Query param that opens the Trash destination on /home (``/home?view=trash``)
+VIEW_QUERY_PARAM = "view"
+
 # Strings for Trash success
 URL_RESTORED = "URL restored from Trash."
 UTUB_RESTORED = "UTub restored from Trash."

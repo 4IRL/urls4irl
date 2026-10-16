@@ -330,8 +330,12 @@ def test_user_utub_data_serialized_on_initial_load():
 
     # Reverse considering the serialized values will be sorted by most recently updated
     valid_utubs.reverse()
-    assert json.dumps({MODEL_STRS.UTUBS: valid_utubs}) == json.dumps(
-        UtubSummaryListSchema.from_user(new_user).model_dump(by_alias=True)
+    assert json.dumps(
+        {MODEL_STRS.UTUBS: valid_utubs, MODEL_STRS.TRASH_COUNT: 0}
+    ) == json.dumps(
+        UtubSummaryListSchema.from_user(new_user, trash_count=0).model_dump(
+            by_alias=True
+        )
     )
 
 
@@ -374,7 +378,8 @@ def test_user_utub_data_serialization_sorts_by_later_of_opened_and_updated() -> 
     memberships[3].last_opened_at = base_time
 
     serialized_ids = [
-        utub_item.id for utub_item in UtubSummaryListSchema.from_user(new_user).utubs
+        utub_item.id
+        for utub_item in UtubSummaryListSchema.from_user(new_user, trash_count=0).utubs
     ]
 
     assert serialized_ids == [1, 3, 2]
@@ -419,7 +424,8 @@ def test_user_utub_data_serialization_omits_trashed_utub():
     trashed_utub_id = trashed_membership.to_utub.id
 
     serialized_ids = [
-        utub_item.id for utub_item in UtubSummaryListSchema.from_user(new_user).utubs
+        utub_item.id
+        for utub_item in UtubSummaryListSchema.from_user(new_user, trash_count=0).utubs
     ]
 
     assert trashed_utub_id not in serialized_ids

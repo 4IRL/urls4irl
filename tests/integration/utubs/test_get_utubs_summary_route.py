@@ -16,7 +16,18 @@ from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
-from tests.utils_for_test import is_string_in_logs, trash_utub
+from tests.utils_for_test import (
+    get_utub_url_id,
+    is_string_in_logs,
+    remove_member,
+    trash_utub,
+    trash_utub_url,
+)
+
+FIRST_UTUB_ID = 1
+FIRST_USER_ID = 1
+SECOND_USER_ID = 2
+AJAX_HEADERS = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
 
 pytestmark = pytest.mark.utubs
 
@@ -41,6 +52,7 @@ def test_get_utubs_if_has_no_utubs(
     response_json = response.json
     assert response_json == {
         MODELS.UTUBS: [],
+        MODELS.TRASH_COUNT: 0,
         STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
     }
 
@@ -71,6 +83,7 @@ def test_get_utubs_if_has_one_utub(
                 }
                 for member in all_utubs_in
             ],
+            MODELS.TRASH_COUNT: 0,
             STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
         }
 
@@ -208,6 +221,128 @@ def test_get_utubs_excludes_trashed_utub(
     )
     assert trashed_utub_id not in response_utub_ids
     assert response_utub_ids == live_utub_ids
+
+
+def _get_trash_count(client: FlaskClient) -> int:
+    response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS), headers=AJAX_HEADERS)
+    assert response.status_code == 200
+    assert response.json is not None
+    return response.json[MODELS.TRASH_COUNT]
+
+
+def _get_trash_list_length(client: FlaskClient) -> int:
+    response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
+    assert response.status_code == 200
+    assert response.json is not None
+    return len(response.json[MODELS.URLS]) + len(response.json[MODELS.UTUBS])
+
+
+def test_get_utubs_trash_count_is_zero_with_nothing_trashed(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user with live UTubs and URLs only
+    WHEN the user requests a summary of all their UTubs
+    THEN verify trashCount is 0
+    """
+    client, _, _, _ = login_first_user_without_register
+
+    assert _get_trash_count(client) == 0
+
+
+def test_get_utubs_trash_count_matches_trash_list_length(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a UTub creator who trashed one URL individually, then the whole UTub
+    WHEN the user requests a summary of all their UTubs
+    THEN verify trashCount is every URL row (the UTub rides its URLs along) plus the
+        UTub row, and equals the length of the Trash list for the same user
+    """
+    client, _, user, app = login_first_user_without_register
+    first_row_id = get_utub_url_id(app, FIRST_UTUB_ID, 1)
+    trash_utub_url(app, first_row_id, deleted_by=user.id)
+    assert _get_trash_count(client) == 1
+
+    trash_utub(app, FIRST_UTUB_ID, deleted_by=user.id)
+
+    trash_count = _get_trash_count(client)
+    assert trash_count == 4
+    assert trash_count == _get_trash_list_length(client)
+
+
+def test_get_utubs_trash_count_ignores_trashed_utub_for_non_creator(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN UTub 1 is trashed by its creator, user 1
+    WHEN member user 2 requests a summary of all their UTubs
+    THEN verify neither the UTub nor its ride-along URLs count for user 2
+    """
+    client, _, _, app = login_second_user_without_register
+    trash_utub(app, FIRST_UTUB_ID, deleted_by=FIRST_USER_ID)
+
+    assert _get_trash_count(client) == _get_trash_list_length(client) == 0
+
+
+def test_get_utubs_trash_count_ignores_utub_the_user_left(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN UTub 1 is trashed by its creator, who is then no longer a member row
+    WHEN the user requests a summary of all their UTubs
+    THEN verify nothing from that UTub counts
+    """
+    client, _, user, app = login_first_user_without_register
+    trash_utub(app, FIRST_UTUB_ID, deleted_by=user.id)
+    remove_member(app, FIRST_UTUB_ID, user.id)
+
+    assert _get_trash_count(client) == _get_trash_list_length(client) == 0
+
+
+def test_home_page_embeds_trash_count(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a UTub creator who trashed one URL individually, then the whole UTub
+    WHEN the user loads /home
+    THEN verify the trash count is embedded in its own JSON script tag
+    """
+    client, _, user, app = login_first_user_without_register
+    trash_utub_url(app, get_utub_url_id(app, FIRST_UTUB_ID, 1), deleted_by=user.id)
+    trash_utub(app, FIRST_UTUB_ID, deleted_by=user.id)
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+
+    assert response.status_code == 200
+    assert (
+        b'<script id="trash-count-data" type="application/json">4</script>'
+        in response.data
+    )
+
+
+def test_home_page_accepts_trash_view_query_param(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user
+    WHEN the user loads /home?view=trash
+    THEN verify the normal home page renders, with a zero trash count
+    """
+    client, _, _, _ = login_first_user_with_register
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME, view="trash"))
+
+    assert response.status_code == 200
+    assert (
+        b'<script id="trash-count-data" type="application/json">0</script>'
+        in response.data
+    )
 
 
 def test_get_utubs_sorted_based_on_last_updated(
@@ -405,7 +540,8 @@ def test_opening_utub_moves_it_to_top_for_opener_only(
     with app.app_context():
         user_2 = Users.query.get(2)
         user_2_order_before = [
-            item.id for item in UtubSummaryListSchema.from_user(user_2).utubs
+            item.id
+            for item in UtubSummaryListSchema.from_user(user_2, trash_count=0).utubs
         ]
 
     response = client.get(
@@ -419,12 +555,13 @@ def test_opening_utub_moves_it_to_top_for_opener_only(
     with app.app_context():
         user_2 = Users.query.get(2)
         user_2_order_after = [
-            item.id for item in UtubSummaryListSchema.from_user(user_2).utubs
+            item.id
+            for item in UtubSummaryListSchema.from_user(user_2, trash_count=0).utubs
         ]
     assert user_2_order_after == user_2_order_before
 
 
-def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str]:
+def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str | int]:
     all_utubs: list[Tuple[Utubs, Member_Role, datetime | None]] = (
         db.session.query(Utubs, Utub_Members.member_role, Utub_Members.last_opened_at)
         .join(Utub_Members, Utubs.id == Utub_Members.utub_id)
@@ -446,6 +583,7 @@ def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str]:
             }
             for utub, member, _ in all_utubs
         ],
+        MODELS.TRASH_COUNT: 0,
     }
 
 
