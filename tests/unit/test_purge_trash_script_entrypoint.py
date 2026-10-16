@@ -8,6 +8,7 @@ integration tests under ``tests/integration/trash/``.
 
 from __future__ import annotations
 
+import logging
 import os
 import runpy
 from pathlib import Path
@@ -245,6 +246,30 @@ def test_main_exits_one_and_closes_the_connection_when_the_purge_fails(
 
     mock_connection.rollback.assert_called_once()
     mock_connection.close.assert_called_once()
+
+
+def test_run_trash_purge_reraises_the_original_error_when_rollback_also_fails(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """
+    GIVEN a connection whose cursor raises RuntimeError("boom") and whose rollback
+        raises a different error
+    WHEN run_trash_purge runs
+    THEN it re-raises the original RuntimeError (not the rollback error) and logs a
+        warning about the failed rollback
+    """
+    mock_connection = MagicMock()
+    mock_cursor = mock_connection.cursor.return_value.__enter__.return_value
+    mock_cursor.execute.side_effect = RuntimeError("boom")
+    mock_connection.rollback.side_effect = ConnectionError("rollback failed")
+
+    with caplog.at_level(logging.WARNING, logger="trash_purge"):
+        with pytest.raises(RuntimeError, match="boom"):
+            purge_trash.run_trash_purge(pg_conn=mock_connection)
+
+    mock_connection.rollback.assert_called_once()
+    mock_connection.commit.assert_not_called()
+    assert "trash purge rollback failed: rollback failed" in caplog.text
 
 
 def test_main_exits_one_when_the_connection_cannot_be_built(
