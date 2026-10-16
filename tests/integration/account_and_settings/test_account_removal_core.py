@@ -13,8 +13,12 @@ caller and the self-service caller are proven against the same core behavior.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from flask import Flask
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from backend import db
 from backend.admin.account_data_service import (
@@ -314,6 +318,87 @@ def test_erase_core_non_creator_membership_removed(app: Flask) -> None:
             Utub_Members.query.filter_by(utub_id=utub_id, user_id=target_id).first()
             is None
         )
+
+
+def test_erase_core_locks_utubs_in_ascending_id_order(app: Flask) -> None:
+    """erase_user_core takes the per-UTub row lock in ascending id order.
+
+    The erased user is a member of two UTubs whose ids collide so a plain
+    ``set`` of the ids iterates the HIGHER id first (CPython hashes small ints
+    to themselves; with 8 slots, id % 8 picks the slot). Dropping ``sorted``
+    from the implementation therefore locks them in descending order and fails
+    this test.
+    """
+    target = _seed_user(app, username="core_lockord", email="core_lockord@test.com")
+    other = _seed_user(app, username="core_lockown", email="core_lockown@test.com")
+    target_id: int = target.id
+    other_id: int = other.id
+
+    # Filler UTubs (owned by ``other``) with consecutive ids: 16 of them always
+    # contain a pair lo < hi with hi % 8 < lo % 8, i.e. a descending set order.
+    filler_ids: list[int] = []
+    with app.app_context():
+        for index in range(16):
+            filler = Utubs(
+                name=f"LockOrder{index}", utub_creator=other_id, utub_description=""
+            )
+            db.session.add(filler)
+            db.session.flush()
+            db.session.add(
+                Utub_Members(
+                    utub_id=filler.id,
+                    user_id=other_id,
+                    member_role=Member_Role.CREATOR,
+                )
+            )
+            filler_ids.append(filler.id)
+        db.session.commit()
+
+    low_id, high_id = next(
+        (low, high)
+        for low in filler_ids
+        for high in filler_ids
+        if low < high and list({low, high}) == [high, low]
+    )
+
+    with app.app_context():
+        for member_utub_id in (low_id, high_id):
+            db.session.add(
+                Utub_Members(
+                    utub_id=member_utub_id,
+                    user_id=target_id,
+                    member_role=Member_Role.MEMBER,
+                )
+            )
+        db.session.commit()
+
+    locked_ids: list[int] = []
+
+    def record_statement(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool,
+    ) -> None:
+        normalized = " ".join(statement.split())
+        if 'FROM "Utubs"' in normalized and "FOR NO KEY UPDATE" in normalized:
+            locked_ids.append(next(iter(parameters.values())))
+
+    with app.app_context():
+        target_refreshed: Users = Users.query.get(target_id)
+        # Class-level listener so it sees the session's connection whichever
+        # way the test harness checked it out.
+        event.listen(Engine, "before_cursor_execute", record_statement)
+        try:
+            erase_user_core(target_user=target_refreshed)
+        finally:
+            event.remove(Engine, "before_cursor_execute", record_statement)
+        db.session.commit()
+
+    assert list({low_id, high_id}) == [high_id, low_id]  # precondition
+    assert locked_ids == [low_id, high_id]
 
 
 def test_erase_core_child_rows_deleted_and_tokens_revoked(app: Flask) -> None:

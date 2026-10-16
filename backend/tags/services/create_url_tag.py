@@ -348,7 +348,8 @@ def add_tags_to_urls_in_utub(
     # single query fetches all requested rows; any id that is unknown or belongs
     # to a different UTub rejects the whole request before any write occurs.
     url_rows: list[Utub_Urls] = Utub_Urls.query.filter(
-        Utub_Urls.id.in_(utub_url_ids)
+        Utub_Urls.id.in_(utub_url_ids),
+        Utub_Urls.deleted_at.is_(None),
     ).all()
     url_rows_by_id: dict[int, Utub_Urls] = {row.id: row for row in url_rows}
     if any(
@@ -616,24 +617,29 @@ def _add_url_tag(utub_url: Utub_Urls, utub_tag: Utub_Tags) -> Utub_Url_Tags:
 
 def get_count_of_url_tag_in_utub(utub_tag: Utub_Tags) -> int:
     """
-    Counts the number of URL Tags for a given UTub tag in a UTub.
+    Counts the number of live (non-trashed) URLs a given UTub tag is applied to in a UTub.
 
     Args:
         utub_tag (Utub_Tags): The tag to check for in the UTub
 
     Returns:
-        (int): The number of URL tags for this UTub Tag
+        (int): The number of live URL tags for this UTub Tag
     """
-    return Utub_Url_Tags.query.filter(
-        Utub_Url_Tags.utub_id == utub_tag.utub_id,
-        Utub_Url_Tags.utub_tag_id == utub_tag.id,
-    ).count()
+    return (
+        Utub_Url_Tags.query.join(Utub_Urls, Utub_Urls.id == Utub_Url_Tags.utub_url_id)
+        .filter(
+            Utub_Url_Tags.utub_id == utub_tag.utub_id,
+            Utub_Url_Tags.utub_tag_id == utub_tag.id,
+            Utub_Urls.deleted_at.is_(None),
+        )
+        .count()
+    )
 
 
 def get_tag_applied_counts(utub_id: int, tag_ids: list[int]) -> dict[int, int]:
     """
-    Counts, per tag, how many URLs in a UTub the tag is applied to, in a single
-    bulk query (avoids an N+1 of per-tag count queries).
+    Counts, per tag, how many live (non-trashed) URLs in a UTub the tag is applied
+    to, in a single bulk query (avoids an N+1 of per-tag count queries).
 
     Args:
         utub_id (int): The UTub whose tag applications are being counted
@@ -658,9 +664,11 @@ def get_tag_applied_counts(utub_id: int, tag_ids: list[int]) -> dict[int, int]:
         db.session.query(
             Utub_Url_Tags.utub_tag_id, func.count(Utub_Url_Tags.utub_tag_id)
         )
+        .join(Utub_Urls, Utub_Urls.id == Utub_Url_Tags.utub_url_id)
         .filter(
             Utub_Url_Tags.utub_id == utub_id,
             Utub_Url_Tags.utub_tag_id.in_(tag_ids),
+            Utub_Urls.deleted_at.is_(None),
         )
         .group_by(Utub_Url_Tags.utub_tag_id)
         .all()

@@ -9,7 +9,7 @@ from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import OwnershipTransferredResponseSchema, UtubMemberSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import UtubAccess, get_fresh_membership, lock_and_reauthorize
 
 
 def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskResponse:
@@ -21,10 +21,13 @@ def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskRespon
     ``Member_Role.CO_CREATOR`` — the outgoing owner stays in the UTub (DD-3).
 
     The mutations commit as one atomic unit, and in a mandatory order:
-    ``utub_creator`` is reassigned to the new owner BEFORE the old owner is
-    demoted, so at no intermediate step is the row being role-changed still the
-    literal owner. This keeps every ownership-keyed integrity guard (e.g.
-    ``_someone_removing_the_owner``) pointed at the reassigned creator.
+    ``utub_creator`` is reassigned to the new owner, THEN the old owner is
+    demoted and flushed, THEN the new owner is promoted. At no intermediate step
+    is the row being role-changed still the literal owner (keeping every
+    ownership-keyed guard such as ``_someone_removing_the_owner`` pointed at the
+    reassigned creator), and the flush guarantees the demotion reaches the DB
+    before the promotion, since the single-CREATOR unique index is checked per
+    statement.
 
     Args:
         new_owner_id (int): The ID of the member to promote to UTub owner
@@ -34,17 +37,21 @@ def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskRespon
         FlaskResponse: JSON response and HTTP status code
             - 200 (on a successful transfer)
             - 400 (the target member is already the UTub owner)
-            - 403 (the UTub is locked)
-            - 404 (the target user is not a member of the UTub)
+            - 403 (the caller is no longer the owner once the UTub row is locked,
+              or the UTub is locked)
+            - 404 (the target user is not a member of the UTub, or the caller's
+              membership or the UTub is gone once the row is locked)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        current_utub, error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED
+    auth_error: FlaskResponse | None = lock_and_reauthorize(
+        current_utub,
+        required_access=UtubAccess.OWNER,
+        error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED,
     )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    if auth_error is not None:
+        return auth_error
 
-    new_owner_membership: Utub_Members | None = Utub_Members.query.get(
-        (current_utub.id, new_owner_id)
+    new_owner_membership: Utub_Members | None = get_fresh_membership(
+        utub_id=current_utub.id, user_id=new_owner_id
     )
     if new_owner_membership is None:
         return build_message_error_response(
@@ -63,16 +70,18 @@ def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskRespon
 
     # The literal owner is always a member (the utub_owner_required guard's
     # membership check resolves it), so this lookup never returns None.
-    outgoing_owner_membership: Utub_Members | None = Utub_Members.query.get(
-        (current_utub.id, outgoing_owner_id)
+    outgoing_owner_membership: Utub_Members | None = get_fresh_membership(
+        utub_id=current_utub.id, user_id=outgoing_owner_id
     )
 
-    # Mandatory ordering: reassign the creator BEFORE demoting the old owner so
-    # no intermediate state leaves the row being role-changed as the literal
-    # owner (see the docstring's atomicity note).
+    # Mandatory ordering: reassign the creator, demote and FLUSH the old owner,
+    # then promote the new one. The single-CREATOR unique index is checked per
+    # statement and the unit of work orders UPDATEs by primary key, so without
+    # the flush a lower-id promotion would reach the DB before the demotion.
     current_utub.utub_creator = new_owner_id
-    new_owner_membership.member_role = Member_Role.CREATOR
     outgoing_owner_membership.member_role = Member_Role.CO_CREATOR
+    db.session.flush()
+    new_owner_membership.member_role = Member_Role.CREATOR
     current_utub.set_last_updated()
     db.session.commit()
 

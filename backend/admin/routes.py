@@ -288,6 +288,7 @@ def admin_utub_detail(utub_id: int) -> FlaskResponse:
     members_total_unfiltered = Utub_Members.query.filter_by(
         utub_id=detail_utub.id
     ).count()
+    # Admin moderation sees trashed URLs too, so no deleted_at filter here.
     urls_total_unfiltered = Utub_Urls.query.filter_by(utub_id=detail_utub.id).count()
 
     members_query = Utub_Members.query.filter_by(utub_id=detail_utub.id)

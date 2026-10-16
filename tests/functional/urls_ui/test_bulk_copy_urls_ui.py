@@ -8,6 +8,7 @@ from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.models.urls import Urls
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -15,10 +16,12 @@ from backend.models.utubs import Utubs
 from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import (
+    add_tags_to_utub_url,
     get_n_other_utubs_this_user_is_member_of,
     get_other_utub_this_user_is_member_of,
     get_utub_this_user_created,
     set_utub_locked_state,
+    trash_utub_url,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_login_utils import (
@@ -26,6 +29,8 @@ from tests.functional.playwright_login_utils import (
 )
 from tests.functional.playwright_utils import (
     get_all_url_ids_in_selected_utub,
+    get_url_row_by_id,
+    select_utub_by_name,
     wait_until_hidden,
 )
 from tests.functional.urls_ui.playwright_utils import (
@@ -129,6 +134,48 @@ def _count_tags_on_dest_url(*, app: Flask, utub_id: int, url_id: int) -> int:
             .filter(Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id)
             .count()
         )
+
+
+def _seed_trashed_dest_row(
+    *,
+    app: Flask,
+    dest_utub_id: int,
+    url_id: int,
+    adder_id: int,
+    old_title: str,
+    tag_strings: list[str],
+) -> int:
+    """Insert a destination `Utub_Urls` row for `url_id` added by `adder_id`, tag it,
+    then trash it (as `adder_id`), snapshotting the tags. Returns the row's id."""
+    _add_existing_url_to_utub(
+        app=app,
+        utub_id=dest_utub_id,
+        user_id=adder_id,
+        url_id=url_id,
+        url_title=old_title,
+    )
+    with app.app_context():
+        trashed_row_id: int = (
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == dest_utub_id, Utub_Urls.url_id == url_id
+            )
+            .one()
+            .id
+        )
+    tag_ids = add_tags_to_utub_url(
+        app, dest_utub_id, trashed_row_id, adder_id, tag_strings
+    )
+    trash_utub_url(app, trashed_row_id, adder_id, tag_ids)
+    return trashed_row_id
+
+
+def _set_member_role(
+    *, app: Flask, utub_id: int, user_id: int, member_role: Member_Role
+) -> None:
+    with app.app_context():
+        membership = Utub_Members.query.get((utub_id, user_id))
+        membership.member_role = member_role
+        db.session.commit()
 
 
 def _lock_all_other_utubs(*, app: Flask, source_utub_id: int) -> None:
@@ -689,3 +736,161 @@ def test_bulk_copy_all_other_utubs_locked_shows_message_and_disables_copy(
     expect(
         page.locator(f"{HPL.BULK_COPY_PICKER_MOUNT} {HPL.BUTTON_BULK_COPY_CONFIRM}")
     ).to_be_disabled()
+
+
+def test_bulk_copy_revives_trashed_destination_row_in_place(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the destination UTub holds a TRASHED row (with a tag) for a URL, added by
+        the copying user
+    WHEN the user copies that URL from the source UTub through the bulk-copy UI
+    THEN the copy is reported as a success (not a duplicate skip), the trashed row
+        is revived in place (same row id, trash flags cleared, source title, tag
+        kept), and the destination UTub shows the URL's card again.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    dest = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
+    dest_id, dest_name = dest.id, dest.name
+
+    source_title = "Copy Revive Source Title"
+    utub_url_id, url_id = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-revive.test/",
+        url_title=source_title,
+    )
+    trashed_row_id = _seed_trashed_dest_row(
+        app=app,
+        dest_utub_id=dest_id,
+        url_id=url_id,
+        adder_id=USER_ID_FOR_TEST,
+        old_title="Copy Revive Old Title",
+        tag_strings=["ReviveTag"],
+    )
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id) == 1
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
+    open_bulk_copy_picker(page=page)
+    stage_copy_destination(page=page, utub_name=dest_name)
+    submit_bulk_copy(page=page)
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+
+    # Reported as a clean copy, not a duplicate skip. The per-card cue is transient
+    # (~3s), so assert it before the persistent banner.
+    expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id, kind="copied")
+    banner = page.locator(HPL.BULK_COPY_BANNER)
+    expect(banner).to_be_visible()
+    expect(banner).to_have_class(re.compile(r"(^|\s)success(\s|$)"))
+    expect(page.locator(HPL.BULK_COPY_BANNER_BODY)).to_have_text(STRINGS.URLS_COPIED)
+
+    # Revived in place: still ONE row for the URL, with the original row id.
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id) == 1
+    with app.app_context():
+        revived: Utub_Urls = Utub_Urls.query.get(trashed_row_id)
+        assert revived is not None
+        assert revived.deleted_at is None
+        assert revived.deleted_by is None
+        assert revived.user_id == USER_ID_FOR_TEST
+        assert revived.url_title == source_title
+    assert _count_tags_on_dest_url(app=app, utub_id=dest_id, url_id=url_id) == 1
+
+    # The destination UTub now shows the card again, under the trashed row's id.
+    select_utub_by_name(page=page, utub_name=dest_name)
+    revived_row = get_url_row_by_id(page=page, utub_url_id=trashed_row_id)
+    expect(revived_row.locator(HPL.URL_TITLE_READ)).to_have_text(source_title)
+    expect(revived_row.locator(HPL.TAG_BADGES)).to_have_count(1)
+
+
+@pytest.mark.parametrize(
+    "copier_is_occupant_adder, copier_role, expected_tag_count",
+    [
+        pytest.param(True, Member_Role.MEMBER, 1, id="adder_keeps_tags"),
+        pytest.param(False, Member_Role.CO_CREATOR, 1, id="manager_keeps_tags"),
+        pytest.param(False, Member_Role.MEMBER, 0, id="plain_member_drops_tags"),
+    ],
+)
+def test_bulk_copy_revive_tag_retention_depends_on_adder_or_manager(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+    copier_is_occupant_adder: bool,
+    copier_role: Member_Role,
+    expected_tag_count: int,
+):
+    """
+    GIVEN a trashed, tagged destination row and a copier whose standing in the
+        destination varies (the row's original adder / a co-creator manager / a
+        plain member who neither added it nor manages the UTub)
+    WHEN the copier copies the URL into the destination through the bulk-copy UI
+    THEN the row is revived in place and keeps its tags for the adder or a manager,
+        but comes back with NO tags for the plain member.
+    """
+    app = provide_app
+    source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    dest = get_other_utub_this_user_is_member_of(app, USER_ID_FOR_TEST, source.id)
+    dest_id, dest_name, dest_creator_id = dest.id, dest.name, dest.utub_creator
+    # The copier must not already be the destination's creator, or every case
+    # would count as a manager.
+    assert dest_creator_id != USER_ID_FOR_TEST
+
+    _set_member_role(
+        app=app, utub_id=dest_id, user_id=USER_ID_FOR_TEST, member_role=copier_role
+    )
+    occupant_adder_id = (
+        USER_ID_FOR_TEST if copier_is_occupant_adder else dest_creator_id
+    )
+
+    source_title = "Copy Revive Tags Source"
+    utub_url_id, url_id = _seed_source_url(
+        app=app,
+        utub_id=source.id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://copy-revive-tags.test/",
+        url_title=source_title,
+    )
+    trashed_row_id = _seed_trashed_dest_row(
+        app=app,
+        dest_utub_id=dest_id,
+        url_id=url_id,
+        adder_id=occupant_adder_id,
+        old_title="Copy Revive Tags Old",
+        tag_strings=["ReviveKeepTag"],
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
+    open_bulk_copy_picker(page=page)
+    stage_copy_destination(page=page, utub_name=dest_name)
+    submit_bulk_copy(page=page)
+    wait_until_hidden(page=page, css_selector=HPL.BULK_COPY_PICKER_MOUNT)
+
+    expect_copy_cue_on_row(page=page, utub_url_id=utub_url_id, kind="copied")
+    expect(page.locator(HPL.BULK_COPY_BANNER)).to_have_class(
+        re.compile(r"(^|\s)success(\s|$)")
+    )
+
+    assert _count_dest_rows_for_url(app=app, utub_id=dest_id, url_id=url_id) == 1
+    with app.app_context():
+        revived: Utub_Urls = Utub_Urls.query.get(trashed_row_id)
+        assert revived is not None
+        assert revived.deleted_at is None
+        assert revived.user_id == USER_ID_FOR_TEST
+    assert (
+        _count_tags_on_dest_url(app=app, utub_id=dest_id, url_id=url_id)
+        == expected_tag_count
+    )
+
+    # The revived card renders with (or without) its tag badges.
+    select_utub_by_name(page=page, utub_name=dest_name)
+    revived_row = get_url_row_by_id(page=page, utub_url_id=trashed_row_id)
+    expect(revived_row.locator(HPL.TAG_BADGES)).to_have_count(expected_tag_count)

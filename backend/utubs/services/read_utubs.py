@@ -20,20 +20,24 @@ def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
     # issuing a second parallel query. Both GET /utubs/<id> and its api_v1 mirror
     # share this service, so ordering here covers both surfaces.
     default_sort = resolve_preferences(current_user.preferences).default_sort
+    # Trashed URLs stay in the relationship; drop them before sorting and serializing.
+    live_utub_urls: list[Utub_Urls] = [
+        utub_url for utub_url in current_utub.utub_urls if not utub_url.is_trashed
+    ]
     if default_sort == SortOrder.TITLE_AZ:
         # ``url_title`` is DB-nullable (Python default ``""`` only), so coalesce
         # to ``""`` before ``.lower()`` — a NULL title can never raise here.
         ordered_utub_urls: list[Utub_Urls] = sorted(
-            current_utub.utub_urls,
+            live_utub_urls,
             key=lambda utub_url: (utub_url.url_title or "").lower(),
         )
     elif default_sort == SortOrder.OLDEST:
         ordered_utub_urls = sorted(
-            current_utub.utub_urls, key=lambda utub_url: utub_url.added_at
+            live_utub_urls, key=lambda utub_url: utub_url.added_at
         )
     else:  # SortOrder.NEWEST (default)
         ordered_utub_urls = sorted(
-            current_utub.utub_urls,
+            live_utub_urls,
             key=lambda utub_url: utub_url.added_at,
             reverse=True,
         )

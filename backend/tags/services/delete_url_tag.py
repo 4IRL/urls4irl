@@ -55,18 +55,24 @@ def delete_url_tag(
 
 def _count_tag_in_utub_after_url_tag_delete(utub: Utubs, utub_tag: Utub_Tags) -> int:
     """
-    Calculates the count of URLs that have this UTub Tag applied to them.
+    Calculates the count of live (non-trashed) URLs that have this UTub Tag applied to them.
 
     Args:
         utub (Utubs): The UTub object containing the UTub Tag and URLs to count
         utub_tag (Utub_Tags): The tag that may be associated with URLs
 
     Returns:
-        (int): The number of URLs associated with this Tag in this UTub
+        (int): The number of live URLs associated with this Tag in this UTub
     """
-    return Utub_Url_Tags.query.filter(
-        Utub_Url_Tags.utub_id == utub.id, Utub_Url_Tags.utub_tag_id == utub_tag.id
-    ).count()
+    return (
+        Utub_Url_Tags.query.join(Utub_Urls, Utub_Urls.id == Utub_Url_Tags.utub_url_id)
+        .filter(
+            Utub_Url_Tags.utub_id == utub.id,
+            Utub_Url_Tags.utub_tag_id == utub_tag.id,
+            Utub_Urls.deleted_at.is_(None),
+        )
+        .count()
+    )
 
 
 def _build_delete_url_tag_response(

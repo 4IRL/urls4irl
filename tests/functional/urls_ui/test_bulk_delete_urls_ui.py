@@ -85,13 +85,18 @@ def _seed_url_in_utub(
 
 
 def _count_url_rows_in_utub(*, app: Flask, utub_id: int) -> int:
+    """Count the live (non-trashed) URL rows in a UTub."""
     with app.app_context():
-        return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).count()
+        return Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id, Utub_Urls.deleted_at.is_(None)
+        ).count()
 
 
-def _utub_url_row_exists(*, app: Flask, utub_url_id: int) -> bool:
+def _utub_url_row_is_live(*, app: Flask, utub_url_id: int) -> bool:
+    """True when the row exists and has not been trashed (deleted_at is NULL)."""
     with app.app_context():
-        return Utub_Urls.query.get(utub_url_id) is not None
+        row = Utub_Urls.query.get(utub_url_id)
+        return row is not None and not row.is_trashed
 
 
 # --- Tests --------------------------------------------------------------------
@@ -166,8 +171,8 @@ def test_bulk_delete_happy_removes_selected_and_shows_banner(
     expect(page.locator(HPL.BULK_SELECT_EXIT)).to_be_focused()
 
     # DB: exactly the two selected rows are gone.
-    assert not _utub_url_row_exists(app=app, utub_url_id=utub_url_id_a)
-    assert not _utub_url_row_exists(app=app, utub_url_id=utub_url_id_b)
+    assert not _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_a)
+    assert not _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_b)
     assert _count_url_rows_in_utub(app=app, utub_id=utub_id) == initial_count
 
 
@@ -241,8 +246,8 @@ def test_bulk_delete_cancel_paths_leave_urls_intact(
     expect(
         page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id_b}']")
     ).to_be_visible()
-    assert _utub_url_row_exists(app=app, utub_url_id=utub_url_id_a)
-    assert _utub_url_row_exists(app=app, utub_url_id=utub_url_id_b)
+    assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_a)
+    assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_b)
     expect(page.locator(HPL.BULK_SELECT_EXIT)).to_be_focused()
 
 
@@ -329,8 +334,8 @@ def test_bulk_delete_partial_permission_skips_others_url(
     expect(banner).to_have_class(re.compile(r"(^|\s)partial(\s|$)"))
 
     # DB: only the acting user's URL was deleted.
-    assert not _utub_url_row_exists(app=app, utub_url_id=deletable_id)
-    assert _utub_url_row_exists(app=app, utub_url_id=non_deletable_id)
+    assert not _utub_url_row_is_live(app=app, utub_url_id=deletable_id)
+    assert _utub_url_row_is_live(app=app, utub_url_id=non_deletable_id)
 
 
 def test_bulk_delete_button_disabled_until_deletable_url_selected(
@@ -537,7 +542,7 @@ def test_bulk_delete_invalid_csrf_token_reloads(
     assert_login_with_username(page=page, username=username)
     assert_active_utub(page=page, utub_name=utub.name)
 
-    assert _utub_url_row_exists(app=app, utub_url_id=utub_url_id)
+    assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id)
 
 
 def test_bulk_delete_rate_limited_shows_429(
@@ -570,7 +575,7 @@ def test_bulk_delete_rate_limited_shows_429(
     submit_bulk_delete(page=page)
 
     assert_on_429_page(page=page)
-    assert _utub_url_row_exists(app=app, utub_url_id=utub_url_id)
+    assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id)
 
 
 def test_bulk_delete_submit_reenables_on_server_error(
@@ -607,4 +612,4 @@ def test_bulk_delete_submit_reenables_on_server_error(
 
     # The always() handler re-enables the submit button after the failure.
     expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
-    assert _utub_url_row_exists(app=app, utub_url_id=utub_url_id)
+    assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id)

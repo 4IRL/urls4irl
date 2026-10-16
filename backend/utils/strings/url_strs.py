@@ -92,9 +92,7 @@ URL_BULK_DELETE_DISABLED_REASON = (
 )
 URL_BULK_DELETE_CONFIRM_TITLE = "Delete {n} URLs from this UTub?"
 URL_BULK_DELETE_CONFIRM_TITLE_ONE = "Delete 1 URL from this UTub?"
-URL_BULK_DELETE_CONFIRM_BODY = (
-    "This permanently removes them from this UTub for everyone. It can't be undone."
-)
+URL_BULK_DELETE_CONFIRM_BODY = "This removes them from this UTub for everyone."
 URL_BULK_DELETE_HIDDEN_WARNING = (
     "{n} selected URLs are hidden by your filter and will still be deleted."
 )
@@ -174,6 +172,9 @@ URL_TRIM_ANNOUNCE = "{verb} {param}. {kept} of {total} parameters kept."
 URL_TRIM_BULK_ANNOUNCE = "{kept} of {total} parameters kept."
 URL_TRIM_SAVED_BANNER = "Saved without {n} parameters."
 URL_TRIM_SAVED_BANNER_ONE = "Saved without 1 parameter."
+URL_REVIVED_FROM_TRASH = "Restored from trash."
+URL_REVIVED_LOST_TAGS = "Restored from trash. {n} tags no longer exist."
+URL_REVIVED_LOST_TAGS_ONE = "Restored from trash. 1 tag no longer exists."
 # Mobile edit panel: saves the URL field (same as its green check) while the trim
 # section is open, so the trimmed result has an obvious save control by Close.
 URL_TRIM_SAVE_URL = "Save URL"

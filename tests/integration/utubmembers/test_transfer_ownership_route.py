@@ -575,3 +575,40 @@ def test_former_owner_can_no_longer_transfer(
     assert second_transfer.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
     with app.app_context():
         assert Utubs.query.get(utub_id).utub_creator == SECOND_USER_ID
+
+
+def test_transfer_to_lower_user_id_succeeds(
+    register_multiple_users,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Transfer to a member whose user id is LOWER than the outgoing owner's.
+
+    SQLAlchemy flushes UPDATEs in primary-key order, so the promote UPDATE (user 1)
+    would reach the DB before the demote UPDATE (user 2) unless the demote is
+    flushed first; the single-CREATOR unique index is checked per statement.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        owner = Users.query.get(SECOND_USER_ID)
+        lower_id_member = Users.query.get(FIRST_USER_ID)
+        utub = _make_utub(owner, "Target")
+        _add_member(utub, lower_id_member, Member_Role.MEMBER)
+        utub_id = utub.id
+        owner_user: Users = Users.query.get(SECOND_USER_ID)
+
+    app.test_client_class = AjaxFlaskLoginClient
+    _clear_shared_request_caches()
+    with app.test_client(user=owner_user) as owner_client:
+        owner_csrf = get_csrf_token(owner_client.get("/home").get_data(), meta_tag=True)
+        response = owner_client.patch(
+            url_for(ROUTES.MEMBERS.TRANSFER_UTUB_OWNERSHIP, utub_id=utub_id),
+            json={"new_owner_id": FIRST_USER_ID},
+            headers={"X-CSRFToken": owner_csrf},
+        )
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert Utubs.query.get(utub_id).utub_creator == FIRST_USER_ID
+    assert _role_of(app, utub_id, FIRST_USER_ID) == Member_Role.CREATOR
+    assert _role_of(app, utub_id, SECOND_USER_ID) == Member_Role.CO_CREATOR

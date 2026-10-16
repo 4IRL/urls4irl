@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sqlalchemy import Column, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Index, Integer, UniqueConstraint, text
 from sqlalchemy import Enum as SQLEnum
 
 from backend import db
@@ -32,3 +32,15 @@ class Utub_Members(db.Model):
     to_utub = db.relationship("Utubs", back_populates="members")
 
     UniqueConstraint(utub_id, user_id, name="unique_member")
+
+    # At most one CREATOR row per UTub. Checked per statement, so writers must
+    # demote/delete the outgoing CREATOR and flush before promoting a new one.
+    # The predicate uses the enum NAME 'CREATOR' (not the value "creator").
+    __table_args__ = (
+        Index(
+            "uq_utub_members_single_creator",
+            "utubID",
+            unique=True,
+            postgresql_where=text("\"memberRole\" = 'CREATOR'"),
+        ),
+    )

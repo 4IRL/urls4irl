@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from backend.models.urls import Urls
+from backend.models.utub_urls import Utub_Urls
 from backend.urls.constants import URLNormalizationResult, URLState
 
 
@@ -18,6 +19,7 @@ class ValidatedUrl:
     url_state: URLState
     normalized_url: NormalizedUrl
     url: Urls | None = None
+    utub_url: Utub_Urls | None = None
 
     def get_validated_url(self) -> str:
         if self.url is None:

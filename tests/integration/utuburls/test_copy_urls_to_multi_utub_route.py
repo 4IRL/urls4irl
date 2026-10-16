@@ -22,7 +22,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs, trash_utub
+from tests.utils_for_test import is_string_in_logs, trash_utub, trash_utub_url
 
 pytestmark = pytest.mark.urls
 
@@ -131,6 +131,60 @@ def test_route_copies_urls_into_two_destinations_happy_path(
 
     assert is_string_in_logs("Copied bulk URLs into multiple UTubs", caplog.records)
     assert is_string_in_logs(f"SourceUTub.id={SOURCE_UTUB_ID}", caplog.records)
+
+
+def test_route_trashed_destination_occupant_is_revived_not_duplicate(
+    add_multi_dest_with_one_dup,
+    login_first_user_without_register,
+):
+    """
+    GIVEN source URL 1 is already in destination UTub 3 but that row is trashed
+    WHEN URL 1 is copied into [2, 3]
+    THEN destination 3 revives the trashed row (copied, same id, now live, no new
+        row, no DUPLICATE skip) and totalCopied==2 / totalSkipped==0.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        copier_id = current_user.id
+        target_row = _source_rows_by_url_id(SOURCE_UTUB_ID)[1]
+        target_id = target_row.id
+        occupant: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == THIRD_UTUB_ID,
+            Utub_Urls.url_id == target_row.url_id,
+        ).one()
+        occupant_id = occupant.id
+        dest3_rows_before = _dest_url_row_count(THIRD_UTUB_ID)
+
+    trash_utub_url(app, occupant_id, deleted_by=copier_id)
+
+    response = client.post(
+        url_for(ROUTES.URLS.COPY_URLS_MULTI),
+        json={
+            SOURCE_UTUB_ID_FIELD: SOURCE_UTUB_ID,
+            DEST_UTUB_IDS_FIELD: [DEST_UTUB_ID, THIRD_UTUB_ID],
+            UTUB_URL_IDS_FIELD: [target_id],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    body = response.json
+    assert body[MODEL_STRS.TOTAL_COPIED] == 2
+    assert body[MODEL_STRS.TOTAL_SKIPPED] == 0
+
+    dest3_result = _result_by_dest(body)[THIRD_UTUB_ID]
+    assert dest3_result[MODEL_STRS.STATUS] == DestCopyStatus.OK.value
+    assert dest3_result[MODEL_STRS.SKIPPED] == []
+    assert len(dest3_result[MODEL_STRS.COPIED]) == 1
+    assert dest3_result[MODEL_STRS.COPIED][0][MODEL_STRS.UTUB_URL_ID] == occupant_id
+
+    with app.app_context():
+        assert _dest_url_row_count(THIRD_UTUB_ID) == dest3_rows_before
+        revived_row: Utub_Urls = Utub_Urls.query.get(occupant_id)
+        assert not revived_row.is_trashed
+        assert revived_row.deleted_by is None
+        assert revived_row.user_id == copier_id
 
 
 def test_route_partial_success_skips_per_destination_duplicate(

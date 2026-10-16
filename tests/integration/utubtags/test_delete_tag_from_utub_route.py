@@ -6,6 +6,7 @@ from backend import db
 from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.tags import UtubTagOnAddDeleteSchema
 from backend.tags.constants import UTubTagErrorCodes
@@ -22,7 +23,7 @@ from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub_url
 
 pytestmark = pytest.mark.tags
 
@@ -280,6 +281,58 @@ def test_delete_tag_from_utub_with_url_associations(
         assert Utub_Tags.query.count() == num_of_utub_tags - 1
         assert Utub_Tags.query.get(utub_tag_id) is None
         assert Utub_Url_Tags.query.count() == total_utub_url_tags - num_of_utub_url_tags
+
+
+def test_delete_tag_from_utub_url_ids_exclude_trashed_urls(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub where the `shared` tag is on live URLs 1 and 3 and on trashed URL 2
+    WHEN the creator deletes the `shared` tag from the UTub
+    THEN utubUrlIDs lists only the live URLs (1 and 3), the trashed URL's id is omitted,
+        and the tag's associations (including the trashed URL's) are all deleted
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    first_utub_id = 1
+    creator_user_id = 1
+
+    with app.app_context():
+        url_rows_by_url_id = {
+            row.url_id: row
+            for row in Utub_Urls.query.filter(Utub_Urls.utub_id == first_utub_id).all()
+        }
+        url_one_id = url_rows_by_url_id[1].id
+        url_two_id = url_rows_by_url_id[2].id
+        url_three_id = url_rows_by_url_id[3].id
+        shared_tag_id = (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == first_utub_id)
+            .order_by(Utub_Tags.id)
+            .first()
+            .id
+        )
+
+    trash_utub_url(app, url_two_id, deleted_by=creator_user_id)
+
+    delete_tag_response = client.delete(
+        url_for(
+            ROUTES.UTUB_TAGS.DELETE_UTUB_TAG,
+            utub_id=first_utub_id,
+            utub_tag_id=shared_tag_id,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_tag_response.status_code == 200
+    assert sorted(delete_tag_response.json[TAGS_SUCCESS.UTUB_URL_IDS]) == sorted(
+        [url_one_id, url_three_id]
+    )
+
+    with app.app_context():
+        remaining_url_tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_tag_id == shared_tag_id
+        ).count()
+        assert remaining_url_tags == 0
 
 
 def test_delete_tag_from_utub_not_member_of(

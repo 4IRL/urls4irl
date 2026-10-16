@@ -14,16 +14,17 @@ def _mock_query_returning(count_rows: list[tuple[int, int]]) -> MagicMock:
     """Builds a mock `db.session.query(...)` chain whose `.all()` yields rows.
 
     The chain mirrors the production access pattern
-    `db.session.query(...).filter(...).group_by(...).all()`, so every
+    `db.session.query(...).join(...).filter(...).group_by(...).all()`, so every
     intermediate call returns the same chainable mock and `.all()` returns the
     provided `(tag_id, count)` rows.
 
     Examples:
         >>> chain = _mock_query_returning([(7, 3)])
-        >>> chain.filter().group_by().all()
+        >>> chain.join().filter().group_by().all()
         [(7, 3)]
     """
     chain = MagicMock()
+    chain.join.return_value = chain
     chain.filter.return_value = chain
     chain.group_by.return_value = chain
     chain.all.return_value = count_rows

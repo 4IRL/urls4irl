@@ -1,19 +1,13 @@
 import type { SuccessResponse } from "../../../types/api-helpers.d.ts";
-import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
-import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
-import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
-import { getState, setState } from "../../../store/app-store.js";
-import { hideURLSearchIcon } from "../search.js";
-import { showURLsEmptyState } from "../empty-state.js";
+import { removeURLCardFromDeck } from "./card-deck.js";
 import { debug } from "../../../lib/debug.js";
 
 const log = debug("urls:cards");
@@ -130,46 +124,10 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
   });
   // Close modal
   $("#confirmModal").modal("hide");
-  setState({
-    urls: getState().urls.filter(
-      (url: UtubUrlItem) => url.utubUrlID !== response.URL.utubUrlID,
-    ),
-  });
-  // Notify the onboarding nudge system (and any future url-deck consumer) that
-  // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
-  emitAppEvent(AppEvents.URL_DECK_CHANGED);
-  const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
-  if (currentURLTagIDs.trim()) {
-    const tagIDs = currentURLTagIDs.split(",").map((part) => part.trim());
-    let tagCountElem: JQuery;
-    let tagID: string;
-    let tagCountText: string[];
-    for (let tagIdIndex = 0; tagIdIndex < tagIDs.length; tagIdIndex++) {
-      tagID = tagIDs[tagIdIndex];
-      tagCountElem = $(
-        `.tagFilter[data-utub-tag-id=${tagID}]` + " .tagAppliedToUrlsCount",
-      );
-      tagCountText = tagCountElem.text().split(" / ");
-      if (!tagCountText || tagCountText.length !== 2) continue;
-      tagCountElem.text(
-        `${parseInt(tagCountText[0]) - 1}` +
-          " / " +
-          `${parseInt(tagCountText[1]) - 1}`,
-      );
-    }
-  }
-
-  urlCard.fadeOut("slow", function () {
-    // Tear down the card's own tooltips (and its tag badges') before detaching —
-    // Bootstrap's instance map would otherwise pin the whole subtree.
-    disposeTooltipsWithin(urlCard);
-    urlCard.remove();
-    if ($("#listURLs .urlRow").length === 0) {
-      showURLsEmptyState();
-      hideURLSearchIcon();
-    } else {
-      updateTagFilteringOnURLOrURLTagDeletion();
-    }
+  removeURLCardFromDeck({
+    urlCard,
+    utubUrlID: response.URL.utubUrlID,
+    animate: true,
   });
 }
 

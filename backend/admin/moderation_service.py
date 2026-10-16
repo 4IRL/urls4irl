@@ -27,6 +27,7 @@ from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utubs.guards import get_fresh_membership, lock_utub_for_update
 
 
 def select_ownership_transfer_target(
@@ -70,7 +71,7 @@ def lock_utub(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
         200 JSON envelope on success or no-op.
         404 when the UTub does not exist.
     """
-    utub: Utubs | None = Utubs.query.get(utub_id)
+    utub: Utubs | None = lock_utub_for_update(utub_id=utub_id)
     if utub is None:
         return build_message_error_response(
             message=ADMIN_ACTION_STRINGS.MOD_TARGET_NOT_FOUND,
@@ -113,7 +114,7 @@ def unlock_utub(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
         200 JSON envelope on success or no-op.
         404 when the UTub does not exist.
     """
-    utub: Utubs | None = Utubs.query.get(utub_id)
+    utub: Utubs | None = lock_utub_for_update(utub_id=utub_id)
     if utub is None:
         return build_message_error_response(
             message=ADMIN_ACTION_STRINGS.MOD_TARGET_NOT_FOUND,
@@ -156,7 +157,7 @@ def delete_utub_admin(*, actor_id: int, utub_id: int, reason: str) -> FlaskRespo
         200 JSON envelope on success.
         404 when the UTub does not exist.
     """
-    utub: Utubs | None = Utubs.query.get(utub_id)
+    utub: Utubs | None = lock_utub_for_update(utub_id=utub_id)
     if utub is None:
         return build_message_error_response(
             message=ADMIN_ACTION_STRINGS.MOD_TARGET_NOT_FOUND,
@@ -189,7 +190,8 @@ def remove_member_admin(
     a. Target is not the creator: delete the membership row and audit.
     b. Target is the creator with other members: transfer ownership to the
        lowest-user-id CO_CREATOR (or lowest-user-id MEMBER if none), delete
-       the old creator's membership, and audit with ownership_transferred_to.
+       (and flush) the old creator's membership BEFORE promoting the new
+       creator (single-CREATOR index), and audit with ownership_transferred_to.
     c. Target is the creator and is the sole member: delete the whole UTub via
        ORM cascade and audit with utub_deleted=True.
 
@@ -201,17 +203,28 @@ def remove_member_admin(
 
     Returns:
         200 JSON envelope on success.
-        404 when the membership (utub_id, target_user_id) does not exist.
+        404 when the UTub or the membership (utub_id, target_user_id) does not
+        exist.
     """
-    membership: Utub_Members | None = Utub_Members.query.get((utub_id, target_user_id))
-    if membership is None:
+    # Lock the Utubs row before reading the membership so the creator/role
+    # state read below cannot be stale against a concurrent owner mutation.
+    utub: Utubs | None = lock_utub_for_update(utub_id=utub_id)
+    if utub is None:
         return build_message_error_response(
             message=ADMIN_ACTION_STRINGS.MOD_TARGET_NOT_FOUND,
             error_code=AdminActionErrorCodes.TARGET_NOT_FOUND,
             status_code=404,
         )
 
-    utub: Utubs = membership.to_utub
+    membership: Utub_Members | None = get_fresh_membership(
+        utub_id=utub_id, user_id=target_user_id
+    )
+    if membership is None:
+        return build_message_error_response(
+            message=ADMIN_ACTION_STRINGS.MOD_TARGET_NOT_FOUND,
+            error_code=AdminActionErrorCodes.TARGET_NOT_FOUND,
+            status_code=404,
+        )
 
     if utub.utub_creator != target_user_id:
         # Case a: non-creator removal
@@ -257,8 +270,11 @@ def remove_member_admin(
     )
     new_owner_id: int = new_owner_membership.user_id
     utub.utub_creator = new_owner_id
-    new_owner_membership.member_role = Member_Role.CREATOR
     db.session.delete(membership)
+    # Flush the old creator's delete before promoting: the single-CREATOR unique
+    # index is checked per statement and UPDATEs would otherwise flush first.
+    db.session.flush()
+    new_owner_membership.member_role = Member_Role.CREATOR
     utub.set_last_updated()
     audit.record(
         actor_id=actor_id,

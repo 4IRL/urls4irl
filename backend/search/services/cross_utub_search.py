@@ -163,8 +163,7 @@ def search_across_user_utubs(
 
     escaped = _escape_ilike(query)
     query_lower = query.lower()
-    # Excludes trashed parent UTubs only; per-URL trashed filtering lands with URL
-    # soft-delete.
+    # Trashed parent UTubs are excluded here; trashed URLs in the main query below.
     member_utub_ids = (
         db.session.query(Utub_Members.utub_id)
         .join(Utubs, Utubs.id == Utub_Members.utub_id)
@@ -192,6 +191,7 @@ def search_across_user_utubs(
             subqueryload(Utub_Urls.url_tags).joinedload(Utub_Url_Tags.utub_tag_item),
         )
         .filter(Utub_Urls.utub_id.in_(member_utub_ids))
+        .filter(Utub_Urls.deleted_at.is_(None))
         .filter(or_(*predicates))
         .all()
     )

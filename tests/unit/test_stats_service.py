@@ -16,7 +16,11 @@ from backend.users.services.stats_service import (
     _humanize_account_age,
     build_user_stats_context,
 )
-from tests.utils_for_test import seed_distinct_stats_for_user_one, trash_utub
+from tests.utils_for_test import (
+    seed_distinct_stats_for_user_one,
+    trash_utub,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -145,6 +149,46 @@ def test_build_user_stats_context_excludes_null_attributed_tags(app: Flask):
         # Sanity: the other per-user distinct counts hold under this seed.
         assert context["stats_tags_created"] == 7
         assert context["stats_urls_added"] == 5
+
+
+def test_build_user_stats_context_excludes_trashed_urls(app: Flask):
+    """
+    GIVEN user 1's distinct-stats seed (5 URLs added, 11 tags applied), where the
+        first URL carries 7 of the applied tags, then that URL is trashed (its
+        Utub_Url_Tags rows survive)
+    WHEN build_user_stats_context builds the Stats panel context
+    THEN "URLs added" drops by the 1 trashed URL and "tags applied" drops by the 7
+        rows on it, while "tags created" is unchanged (tags are not URL-scoped)
+    """
+    with app.app_context():
+        user_one, _user_two, _user_three = _create_sequential_users(3)
+        distinct_stats_seed = seed_distinct_stats_for_user_one()
+        db.session.commit()
+        trashed_utub_url_id = distinct_stats_seed.user_one_utub_urls[0].id
+        expected_tags_applied_drop = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_url_id == trashed_utub_url_id,
+            Utub_Url_Tags.user_id == 1,
+        ).count()
+        assert expected_tags_applied_drop == 7
+
+        with patch(_CURRENT_USER_TARGET, user_one):
+            context_before = build_user_stats_context()
+
+        trash_utub_url(app, trashed_utub_url_id, deleted_by=1)
+
+        with patch(_CURRENT_USER_TARGET, user_one):
+            context_after = build_user_stats_context()
+
+        assert (
+            context_after["stats_urls_added"] == context_before["stats_urls_added"] - 1
+        )
+        assert (
+            context_after["stats_tags_applied"]
+            == context_before["stats_tags_applied"] - expected_tags_applied_drop
+        )
+        assert (
+            context_after["stats_tags_created"] == context_before["stats_tags_created"]
+        )
 
 
 def test_build_user_stats_context_excludes_trashed_utub(app: Flask):

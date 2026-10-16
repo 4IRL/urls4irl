@@ -114,7 +114,13 @@ def api_v1_get_url(
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
     tags=[OPEN_API.MOBILE_API],
-    description="Update a URL string in a UTub",
+    description=(
+        "Update a URL string in a UTub. When the new link matches a URL trashed in "
+        "this UTub, that trashed row is revived and the edited row is trashed: the "
+        "response then has revivedFromTrash true and replacedUtubUrlID set to the "
+        "edited card's id. Clients must swap that card id for the returned "
+        "url.utubUrlID whenever replacedUtubUrlID is non-null."
+    ),
     status_codes={
         200: UrlUpdatedResponseSchema,
         400: ErrorResponse,

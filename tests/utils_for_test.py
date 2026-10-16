@@ -186,6 +186,38 @@ def trash_utub(app: Flask, utub_id: int, deleted_by: int) -> None:
         db.session.commit()
 
 
+def trash_utub_url(
+    app: Flask,
+    utub_url_id: int,
+    deleted_by: int,
+    trashed_tag_ids: list[int] | None = None,
+) -> None:
+    """Soft-delete (trash) an existing UTub URL in place.
+
+    Sets ``deleted_at`` to now, ``deleted_by`` to the given user and
+    ``trashed_tag_ids`` to the snapshot, mirroring what the URL delete service
+    does, without going through the route. The URL's ``Utub_Url_Tags`` rows are
+    left untouched.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_url_id (int): The ID of the Utub_Urls row to trash
+        deleted_by (int): The ID of the User recorded as having trashed it
+        trashed_tag_ids (list[int] | None): The tag ids to snapshot. Defaults to
+            the row's current associated tag ids, sorted
+    """
+    with app.app_context():
+        utub_url: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        utub_url.deleted_at = utc_now()
+        utub_url.deleted_by = deleted_by
+        utub_url.trashed_tag_ids = (
+            list(trashed_tag_ids)
+            if trashed_tag_ids is not None
+            else sorted(utub_url.associated_tag_ids)
+        )
+        db.session.commit()
+
+
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
     """
     Reads in the html byte response from a GET of a page, finds the CSRF token using regex, returns it.

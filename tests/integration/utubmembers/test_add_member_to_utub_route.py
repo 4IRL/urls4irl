@@ -2,6 +2,7 @@ import pytest
 from flask import Flask, url_for
 from flask_login import current_user
 from redis import Redis
+from sqlalchemy import event
 
 from backend import db, limiter
 from backend.members.constants import (
@@ -10,6 +11,7 @@ from backend.members.constants import (
     MemberAddSource,
     UTubMembersErrorCodes,
 )
+from backend.members.services.create_members import _build_member_rate_limit_redis
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -1305,6 +1307,50 @@ def test_add_member_daily_cap_fails_open_on_live_redis_error(
     assert add_member_response.status_code == 200
 
 
+def test_add_member_locks_utub_row_for_no_key_update(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
+    """
+    GIVEN a creator of a UTub and a non-member user
+    WHEN the creator adds the non-member to the UTub
+    THEN the add succeeds and a SELECT on "Utubs" with FOR NO KEY UPDATE was
+        emitted (guards against a future change dropping the per-UTub row lock)
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_user_is_creator_of.id
+        non_member: Users = Users.query.filter(Users.id != current_user.id).first()
+        non_member_username = non_member.username
+        add_member_url = url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id)
+
+    lock_statements: list[str] = []
+
+    def record_lock_statement(
+        conn, cursor, statement, parameters, context, executemany
+    ):
+        normalized = " ".join(statement.split())
+        if 'FROM "Utubs"' in normalized and "FOR NO KEY UPDATE" in normalized:
+            lock_statements.append(normalized)
+
+    connection = db.session.connection()
+    event.listen(connection, "before_cursor_execute", record_lock_statement)
+    try:
+        add_member_response = client.post(
+            add_member_url,
+            json={ADD_USER_FORM.USERNAME: non_member_username},
+            headers={"X-CSRFToken": csrf_token},
+        )
+    finally:
+        event.remove(connection, "before_cursor_execute", record_lock_statement)
+
+    assert add_member_response.status_code == 200
+    assert lock_statements != []
+
+
 def test_add_member_failed_probe_burns_a_slot_with_ttl(
     every_user_makes_a_unique_utub, login_first_user_without_register
 ):
@@ -1346,3 +1392,29 @@ def test_add_member_failed_probe_burns_a_slot_with_ttl(
     ttl = redis_client.ttl(rate_limit_key)
     assert 0 < ttl <= 86400
     redis_client.close()
+
+
+def test_member_rate_limit_redis_client_uses_one_second_timeouts(app, monkeypatch):
+    """
+    GIVEN a real (non-memory) REDIS_URI configured
+    WHEN the member rate-limit Redis client is built
+    THEN it is created with 1s socket and connect timeouts, bounding how long a
+        Redis hang can hold the UTub row lock.
+    """
+    captured: dict = {}
+
+    def fake_from_url(url, **kwargs):
+        captured["url"] = url
+        captured["kwargs"] = kwargs
+        return "client"
+
+    monkeypatch.setattr(Redis, "from_url", fake_from_url)
+    monkeypatch.setitem(
+        app.config, CONFIG_ENVS.REDIS_URI, "redis://example.invalid:6379/0"
+    )
+
+    with app.app_context():
+        client = _build_member_rate_limit_redis()
+
+    assert client == "client"
+    assert captured["kwargs"] == {"socket_timeout": 1, "socket_connect_timeout": 1}

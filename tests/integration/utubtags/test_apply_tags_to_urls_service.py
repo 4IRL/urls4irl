@@ -21,7 +21,7 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
     sum_counter_values,
 )
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import is_string_in_logs, trash_utub_url
 
 pytestmark = pytest.mark.tags
 
@@ -442,6 +442,43 @@ def test_service_rejects_nonexistent_url_id(
         assert status_code == 400
         assert body[STD_JSON.MESSAGE] == TAGS_FAILURE.URL_NOT_IN_UTUB
         assert Utub_Url_Tags.query.count() == assoc_count_before
+
+
+def test_service_rejects_trashed_url_id(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a utubUrlId in the caller's UTub whose row is in the trash
+    WHEN it is included in the multi-URL apply request
+    THEN the whole request is rejected 400 with URL_NOT_IN_UTUB and zero rows are
+        written.
+    """
+    _, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id, url_ids = _get_creator_utub_and_url_ids()
+        creator_id = current_user.id
+
+    trash_utub_url(app, url_ids[1], deleted_by=creator_id)
+
+    with app.app_context():
+        assoc_count_before = Utub_Url_Tags.query.count()
+        vocab_count_before = Utub_Tags.query.count()
+        utub: Utubs = Utubs.query.get(utub_id)
+
+        response, status_code = add_tags_to_urls_in_utub(
+            tag_strings=[FRESH_TAG_ALPHA],
+            utub_url_ids=[url_ids[0], url_ids[1]],
+            utub=utub,
+        )
+        body = response.get_json()
+
+        assert status_code == 400
+        assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert body[STD_JSON.MESSAGE] == TAGS_FAILURE.URL_NOT_IN_UTUB
+        assert Utub_Url_Tags.query.count() == assoc_count_before
+        assert Utub_Tags.query.count() == vocab_count_before
 
 
 def test_service_mid_loop_exception_rolls_back_all_urls(

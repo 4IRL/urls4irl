@@ -9,7 +9,7 @@ from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import UtubAccess, get_fresh_membership, lock_and_reauthorize
 
 
 def modify_member_role(
@@ -35,17 +35,21 @@ def modify_member_role(
         FlaskResponse: JSON response and HTTP status code
             - 200 (on successful role change or no-op)
             - 400 (targeting the UTub's literal owner)
-            - 403 (the UTub is locked)
-            - 404 (the target user is not a member of the UTub)
+            - 403 (the caller is no longer the owner once the UTub row is locked,
+              or the UTub is locked)
+            - 404 (the target user is not a member of the UTub, or the caller's
+              membership or the UTub is gone once the row is locked)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        current_utub, error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED
+    auth_error: FlaskResponse | None = lock_and_reauthorize(
+        current_utub,
+        required_access=UtubAccess.OWNER,
+        error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED,
     )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    if auth_error is not None:
+        return auth_error
 
-    member: Utub_Members | None = Utub_Members.query.get(
-        (current_utub.id, user_id_to_modify)
+    member: Utub_Members | None = get_fresh_membership(
+        utub_id=current_utub.id, user_id=user_id_to_modify
     )
     if member is None:
         return build_message_error_response(

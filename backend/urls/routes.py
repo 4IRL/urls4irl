@@ -155,7 +155,13 @@ def get_url(
     error_message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.URLS],
-    description="Update a URL string in a UTub",
+    description=(
+        "Update a URL string in a UTub. When the new link matches a URL trashed in "
+        "this UTub, that trashed row is revived and the edited row is trashed: the "
+        "response then has revivedFromTrash true and replacedUtubUrlID set to the "
+        "edited card's id. Clients must swap that card id for the returned "
+        "url.utubUrlID whenever replacedUtubUrlID is non-null."
+    ),
     status_codes={
         200: UrlUpdatedResponseSchema,
         400: ErrorResponse,

@@ -11,6 +11,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 
 
@@ -442,6 +443,62 @@ def add_tag_to_single_url_in_utub(
         return Utub_Tags.query.filter(
             Utub_Tags.utub_id == utub_id, Utub_Tags.tag_string == tag_string
         ).first()
+
+
+def add_tags_to_utub_url(
+    app: Flask, utub_id: int, utub_url_id: int, user_id: int, tag_strings: list[str]
+) -> list[int]:
+    """
+    Creates each tag in the UTub and applies it to the given UTub URL.
+
+    Args:
+        app (Flask): The Flask app for providing an app context
+        utub_id (int): The UTub the URL and the new tags belong to
+        utub_url_id (int): The Utub_Urls row to tag
+        user_id (int): The user recorded as having created the tags
+        tag_strings (list[str]): The tag strings to create and apply
+
+    Returns:
+        The new tags' ids, in the order given.
+    """
+    with app.app_context():
+        tag_ids: list[int] = []
+        for tag_string in tag_strings:
+            new_tag = Utub_Tags(
+                utub_id=utub_id, tag_string=tag_string, created_by=user_id
+            )
+            db.session.add(new_tag)
+            db.session.flush()
+            db.session.add(
+                Utub_Url_Tags(
+                    utub_id=utub_id, utub_url_id=utub_url_id, utub_tag_id=new_tag.id
+                )
+            )
+            tag_ids.append(new_tag.id)
+        db.session.commit()
+        return tag_ids
+
+
+def trash_utub_url(
+    app: Flask, utub_url_id: int, deleted_by: int, trashed_tag_ids: list[int]
+) -> None:
+    """
+    Soft-deletes (trashes) an existing UTub URL in place, mirroring what the URL
+    delete service records: ``deleted_at``, ``deleted_by`` and the
+    ``trashed_tag_ids`` snapshot. The URL's ``Utub_Url_Tags`` rows are untouched.
+
+    Args:
+        app (Flask): The Flask app for providing an app context
+        utub_url_id (int): The Utub_Urls row to trash
+        deleted_by (int): The user recorded as having trashed it
+        trashed_tag_ids (list[int]): The tag ids to snapshot
+    """
+    with app.app_context():
+        utub_url: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        utub_url.deleted_at = utc_now()
+        utub_url.deleted_by = deleted_by
+        utub_url.trashed_tag_ids = list(trashed_tag_ids)
+        db.session.commit()
 
 
 def add_two_tags_across_urls_in_utub(
