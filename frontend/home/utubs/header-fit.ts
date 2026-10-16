@@ -13,17 +13,6 @@ export const DESC_MIN_FONT_PX = 14; // 0.875rem
 // Debounce window (ms) for the resize listener that re-fits the header/subheader.
 const RESIZE_DEBOUNCE_MS = 150;
 
-// State class on #UTubDescriptionSubheaderWrap while the description (at its
-// base font) does not fit beside the URL search box. utubs.css keys the
-// full-row flex-basis on it (desktop, non-edit only); without it the wrap stays
-// content-sized so its click-to-edit target is no wider than the text.
-export const DESCRIPTION_FILLS_ROW_CLASS = "descriptionFillsRow";
-
-// Share of the subheader row's content width reserved for #SearchURLWrap on
-// desktop. Mirrors `#SearchURLWrap.search-ready { width: 30% }` in
-// frontend/styles/home/utubs.css — keep both in sync.
-const SEARCH_WRAP_WIDTH_RATIO = 0.3;
-
 // Guards initURLDeckHeaderFit() so the single window resize listener is
 // attached exactly once even if init is called more than once.
 let headerFitInitialized = false;
@@ -128,77 +117,11 @@ export function fitElementFont({
 }
 
 /**
- * Whether a description of the given single-line width cannot sit beside the
- * search box and so must take the full row. Pure and layout-free for
- * deterministic unit tests. Degenerate (non-finite or non-positive) widths
- * return false: with nothing measurable the wrap stays content-sized.
- */
-export function descriptionNeedsFullRow({
-  naturalWidthPx,
-  availableBesideSearchPx,
-}: {
-  naturalWidthPx: number;
-  availableBesideSearchPx: number;
-}): boolean {
-  const hasMeasurableWidths =
-    Number.isFinite(naturalWidthPx) &&
-    Number.isFinite(availableBesideSearchPx) &&
-    naturalWidthPx > 0 &&
-    availableBesideSearchPx > 0;
-  return hasMeasurableWidths && naturalWidthPx > availableBesideSearchPx;
-}
-
-/**
- * Toggle DESCRIPTION_FILLS_ROW_CLASS on the description wrap by measuring the
- * description's single-line width at its base font against the row space left
- * beside the search box. Decided at the base font (not the fitted one) so the
- * result does not depend on a previous fit; the font is reset to base here and
- * fitElementFont then re-fits it against the final layout.
- */
-function updateDescriptionFillsRow(): void {
-  const wrapElement = document.getElementById("UTubDescriptionSubheaderWrap");
-  const subheaderElement = document.getElementById("URLDeckSubheader");
-  const outerElement = document.getElementById(
-    "UTubDescriptionSubheaderOuterWrap",
-  );
-  if (!wrapElement || !subheaderElement || !outerElement) return;
-  // Same hidden/disconnected skip as fitElementFont: leave the state untouched.
-  if (wrapElement.offsetParent === null) return;
-
-  // Measure in the neutral (content-sized) layout at the base font.
-  wrapElement.classList.remove(DESCRIPTION_FILLS_ROW_CLASS);
-  subheaderElement.style.fontSize = DESC_MAX_FONT_PX + "px";
-  const previousWhiteSpace = subheaderElement.style.whiteSpace;
-  subheaderElement.style.whiteSpace = "nowrap";
-  let naturalWidthPx = subheaderElement.scrollWidth;
-  subheaderElement.style.whiteSpace = previousWhiteSpace;
-  for (const child of wrapElement.children) {
-    if (child !== subheaderElement)
-      naturalWidthPx += (child as HTMLElement).offsetWidth;
-  }
-
-  const outerStyle = window.getComputedStyle(outerElement);
-  const outerContentWidthPx =
-    outerElement.clientWidth -
-    parseFloat(outerStyle.paddingLeft) -
-    parseFloat(outerStyle.paddingRight);
-  const availableBesideSearchPx =
-    outerContentWidthPx * (1 - SEARCH_WRAP_WIDTH_RATIO);
-
-  wrapElement.classList.toggle(
-    DESCRIPTION_FILLS_ROW_CLASS,
-    descriptionNeedsFullRow({ naturalWidthPx, availableBesideSearchPx }),
-  );
-}
-
-/**
  * Re-fit both the selected UTub's title (#URLDeckHeader) and description
  * (#URLDeckSubheader) to their current container width. The single no-arg entry
  * point every text-write call site invokes after changing the displayed text.
  */
 export function fitUTubHeaderAndSubheader(): void {
-  updateDescriptionFillsRow();
-
   const headerElement = document.getElementById("URLDeckHeader");
   if (headerElement)
     fitElementFont({

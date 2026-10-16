@@ -315,24 +315,21 @@
     }
 }
 
-/* Desktop, non-edit state: the description wrap stays content-sized (it is also
-   the owner's click-to-edit target, so a short description's hit area must not
-   stretch to the search box), leaving the search box beside it. header-fit.ts
-   adds .descriptionFillsRow when the description (at its base font) does not fit
-   beside the search box; it then takes the full row and the search wraps onto
-   its own line below. The edit form keeps the original single-line layout. */
+/* Desktop, non-edit state: one row. The description wrap is content-sized (it is
+   also the owner's click-to-edit target, so a short description's hit area must
+   not stretch to the search box) but may shrink (min-width: 0), so a long
+   description wraps before it reaches the search box instead of entering its
+   space; the search box stays beside it, vertically centered in the row. */
 @media (min-width: 992px) {
     #URLDeck:not(.multiSelectActive) #UTubDescriptionSubheaderOuterWrap:not(:has(#UTubDescriptionUpdateWrap:not(.hidden))) {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        align-items: center;
+        column-gap: 0.75rem;
     }
 
     #URLDeck:not(.multiSelectActive) #UTubDescriptionSubheaderOuterWrap:not(:has(#UTubDescriptionUpdateWrap:not(.hidden))) #UTubDescriptionSubheaderWrap {
         flex: 0 1 auto;
         min-width: 0;
-    }
-
-    #URLDeck:not(.multiSelectActive) #UTubDescriptionSubheaderOuterWrap:not(:has(#UTubDescriptionUpdateWrap:not(.hidden))) #UTubDescriptionSubheaderWrap.descriptionFillsRow {
-        flex-basis: 100%;
     }
 
     /* The invisible "Add a description?" button keeps its layout width

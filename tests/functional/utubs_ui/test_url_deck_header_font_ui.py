@@ -260,9 +260,9 @@ _RESIZE_DEBOUNCE_WAIT_MS = 400
 
 
 def _layout_rects(*, page: Page) -> dict[str, Any]:
-    """Return the outer wrap content width, the bounding rects (top/bottom/right/
-    width) of the description wrap, its text, its pencil and the search wrap, and
-    whether the description wrap carries the full-row state class."""
+    """Return the outer wrap content width and vertical extent, plus the bounding
+    rects (top/bottom/left/right/width) of the description wrap, its text, its
+    pencil and the search wrap."""
     return page.evaluate(
         """
         () => {
@@ -271,6 +271,7 @@ def _layout_rects(*, page: Page) -> dict[str, Any]:
                 return {
                     top: r.top,
                     bottom: r.bottom,
+                    left: r.left,
                     right: r.right,
                     width: r.width,
                 };
@@ -284,13 +285,12 @@ def _layout_rects(*, page: Page) -> dict[str, Any]:
             return {
                 outerContentWidth: contentWidth,
                 outerHeight: outer.getBoundingClientRect().height,
+                outerTop: outer.getBoundingClientRect().top,
+                outerBottom: outer.getBoundingClientRect().bottom,
                 desc: rect("#UTubDescriptionSubheaderWrap"),
                 search: rect("#SearchURLWrap"),
                 descText: rect("#URLDeckSubheader"),
                 descPencil: rect("#UTubDescriptionSubheaderWrap .edit-pencil-icon"),
-                descFillsRow: document
-                    .querySelector("#UTubDescriptionSubheaderWrap")
-                    .classList.contains("descriptionFillsRow"),
                 descFontPx: parseFloat(
                     window.getComputedStyle(
                         document.querySelector("#URLDeckSubheader")
@@ -315,14 +315,16 @@ def _wait_for_font_fit_settled(*, page: Page) -> None:
     raise AssertionError("Description font fit did not settle")
 
 
-def _assert_search_below_full_width_description(*, page: Page) -> None:
+def _assert_description_wraps_before_centered_search(*, page: Page) -> None:
+    """The description never enters the search box's space (it wraps before it)
+    and the search box stays on the same row, vertically centered in the row."""
     _wait_for_font_fit_settled(page=page)
     rects = _layout_rects(page=page)
-    assert (
-        abs(rects["desc"]["width"] - rects["outerContentWidth"]) <= _LAYOUT_TOLERANCE_PX
-    )
-    assert rects["search"]["top"] >= rects["desc"]["bottom"] - 1
-    assert rects["descFillsRow"]
+    assert rects["desc"]["right"] <= rects["search"]["left"] + 1
+    assert rects["search"]["top"] < rects["desc"]["bottom"]
+    search_center = (rects["search"]["top"] + rects["search"]["bottom"]) / 2
+    outer_center = (rects["outerTop"] + rects["outerBottom"]) / 2
+    assert abs(search_center - outer_center) <= _LAYOUT_TOLERANCE_PX
 
 
 def _assert_description_click_target_is_text_width(*, page: Page) -> None:
@@ -332,7 +334,6 @@ def _assert_description_click_target_is_text_width(*, page: Page) -> None:
     content_right = max(rects["descText"]["right"], rects["descPencil"]["right"])
     assert rects["desc"]["right"] - content_right <= _LAYOUT_TOLERANCE_PX
     assert rects["desc"]["width"] < rects["outerContentWidth"] / 2
-    assert not rects["descFillsRow"]
 
 
 def _assert_search_beside(*, page: Page, anchor_selector: str) -> None:
@@ -363,20 +364,21 @@ def _select_utub_with_description(*, app: Flask, page: Page, description: str) -
     wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
 
 
-def test_long_description_takes_full_row_and_search_drops_below(
+def test_long_description_wraps_before_search_and_search_stays_centered(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a desktop viewport and a UTub with a long description
     WHEN the owner selects it
-    THEN the description fills the row and the search box renders below it.
+    THEN the description wraps before the search box (never entering its space)
+    and the search box stays beside it, vertically centered in the row.
     """
     _select_utub_with_description(
         app=provide_app,
         page=page,
         description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
     )
-    _assert_search_below_full_width_description(page=page)
+    _assert_description_wraps_before_centered_search(page=page)
 
 
 def test_short_description_keeps_search_beside(
@@ -489,7 +491,7 @@ def test_long_description_layout_after_narrowing_viewport_matches_fresh_select(
         {"width": _NARROW_DESKTOP_WIDTH_PX, "height": viewport_height}
     )
 
-    _assert_search_below_full_width_description(page=page)
+    _assert_description_wraps_before_centered_search(page=page)
     resized_font_px = _layout_rects(page=page)["descFontPx"]
 
     other_utub = get_utub_this_user_did_not_create(app, 1)
@@ -497,7 +499,7 @@ def test_long_description_layout_after_narrowing_viewport_matches_fresh_select(
     select_utub_by_name(page=page, utub_name=UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME)
     wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
 
-    _assert_search_below_full_width_description(page=page)
+    _assert_description_wraps_before_centered_search(page=page)
     assert _layout_rects(page=page)["descFontPx"] == pytest.approx(
         resized_font_px, abs=0.5
     )
@@ -522,11 +524,11 @@ def test_long_description_font_after_widening_viewport_matches_fresh_select(
     page.set_viewport_size(
         {"width": _NARROW_DESKTOP_WIDTH_PX, "height": viewport_height}
     )
-    _assert_search_below_full_width_description(page=page)
+    _assert_description_wraps_before_centered_search(page=page)
     page.set_viewport_size(
         {"width": _WIDENED_DESKTOP_WIDTH_PX, "height": viewport_height}
     )
-    _assert_search_below_full_width_description(page=page)
+    _assert_description_wraps_before_centered_search(page=page)
     widened_font_px = _layout_rects(page=page)["descFontPx"]
 
     other_utub = get_utub_this_user_did_not_create(app, 1)
@@ -534,7 +536,7 @@ def test_long_description_font_after_widening_viewport_matches_fresh_select(
     select_utub_by_name(page=page, utub_name=UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME)
     wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
 
-    _assert_search_below_full_width_description(page=page)
+    _assert_description_wraps_before_centered_search(page=page)
     assert _layout_rects(page=page)["descFontPx"] == pytest.approx(
         widened_font_px, abs=0.5
     )
