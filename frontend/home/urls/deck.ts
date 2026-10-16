@@ -27,6 +27,9 @@ import {
 } from "./cards/cards.js";
 import { resetNewURLForm } from "./cards/create.js";
 import { triggerURLSwipeNudgeIfEligible } from "./cards/swipe.js";
+import { updateURLsAndTagSubheaderWhenTagSelected } from "./cards/filtering.js";
+import { isATagSelected } from "../tags/utils.js";
+import { isBackgroundRefreshActive } from "../utubs/background-refresh-flag.js";
 import {
   pruneRemovedFromSelection,
   reapplyMultiSelectMark,
@@ -96,9 +99,10 @@ export function updateURLDeck(
   updatedUTubTags: UtubTag[],
   utubID: number,
 ): void {
+  const oldCount = getState().urls.length;
   log("updateURLDeck — applying deck diff for stale URLs", {
     utubID,
-    oldCount: getState().urls.length,
+    oldCount,
     newCount: updatedUTubUrls.length,
   });
   applyDeckDiff<UtubUrlItem>({
@@ -135,7 +139,11 @@ export function updateURLDeck(
       // belt-and-suspenders re-mark that keeps the reconcile contract explicit
       // at the adapter boundary.
       reapplyMultiSelectMark(urlBlock);
-      triggerURLSwipeNudgeIfEligible({ urlRow: urlBlock });
+      // A card another member added while the user was away is not a new
+      // affordance the user just earned: skip the swipe nudge for it.
+      if (!isBackgroundRefreshActive()) {
+        triggerURLSwipeNudgeIfEligible({ urlRow: urlBlock });
+      }
     },
     updateElement: (urlID, url) => {
       const urlCard = $(".urlRow[utuburlid=" + urlID + "]");
@@ -145,9 +153,74 @@ export function updateURLDeck(
     },
   });
 
+  // 0 -> n: leave the empty state and reveal the controls that need URLs
+  // (mirrors setURLDeckOnUTubSelected).
+  if (oldCount === 0 && updatedUTubUrls.length > 0) {
+    hideURLsEmptyState();
+    $("#urlBtnMultiSelect").showClassNormal();
+    showURLSearchIcon();
+  }
+
+  reorderURLCardsToPayloadOrder(updatedUTubUrls);
+
   if ($("#SearchURLWrap").hasClass("visible-flex")) {
     reapplyURLSearchFilter();
   }
+
+  // The filtering.ts STALE_DATA_DETECTED listener runs before cards are added
+  // (new cards default to filterable=true), so re-apply the active tag filter
+  // now that the new cards exist.
+  if (isATagSelected()) {
+    updateURLsAndTagSubheaderWhenTagSelected({ urls: updatedUTubUrls });
+  }
+
+  restripeURLCardsInDOMOrder();
+}
+
+// Reorders the existing `.urlRow` cards to the payload (server, i.e. viewer's
+// sort) order. Skipped when the order already matches, so a refresh that only
+// edits a title never moves the DOM or blurs a focused element.
+function reorderURLCardsToPayloadOrder(updatedUTubUrls: UtubUrlItem[]): void {
+  const cardsByID = new Map<number, HTMLElement>();
+  const domIDs: number[] = [];
+  const knownIDs = new Set(updatedUTubUrls.map((url) => url.utubUrlID));
+  $("#listURLs .urlRow").each((_, urlCard) => {
+    const urlID = Number($(urlCard).attr("utuburlid"));
+    if (!knownIDs.has(urlID)) return;
+    cardsByID.set(urlID, urlCard);
+    domIDs.push(urlID);
+  });
+
+  const orderedIDs = updatedUTubUrls
+    .map((url) => url.utubUrlID)
+    .filter((urlID) => cardsByID.has(urlID));
+  if (domIDs.every((urlID, index) => urlID === orderedIDs[index])) return;
+
+  const previouslyFocused = document.activeElement;
+  const listURLs = $("#listURLs");
+  orderedIDs.forEach((urlID) => {
+    listURLs.append($(cardsByID.get(urlID)!).detach());
+  });
+  if (
+    previouslyFocused instanceof HTMLElement &&
+    previouslyFocused.isConnected &&
+    document.activeElement !== previouslyFocused
+  ) {
+    previouslyFocused.focus({ preventScroll: true });
+  }
+}
+
+// Visibility-independent alternating stripes in DOM order. Unlike
+// reapplyAlternatingURLCardBackgroundAfterFilter this has no `:visible`, which
+// matches nothing while the centre panel is hidden on mobile.
+function restripeURLCardsInDOMOrder(): void {
+  $("#listURLs .urlRow[filterable=true][searchable!=false]").each(
+    (idx, urlCard) => {
+      $(urlCard)
+        .removeClass("odd even")
+        .addClass(idx % 2 == 0 ? "even" : "odd");
+    },
+  );
 }
 
 // Build center panel URL list for selectedUTub

@@ -237,6 +237,8 @@ class HomePageLocators(GenericPageLocator):
 
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
+    URL_DECK_ERROR_INDICATOR = "#URLDeckErrorIndicator"
+    MOBILE_PANEL_ANNOUNCEMENT = "#MobilePanelAnnouncement"
     SUBHEADER_NO_URLS = "#noURLsSubheader"
     INPUT_UTUB_DESCRIPTION_UPDATE = "#utubDescriptionUpdate"
     BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE = "#utubDescriptionSubmitBtnUpdate"

@@ -56,16 +56,19 @@ def lock_utub_for_update(*, utub_id: int) -> Utubs | None:
     ``key_share=True`` renders ``SELECT ... FOR NO KEY UPDATE``, the weakest row
     lock that still serializes writers of the ``Utubs`` row. It does not block
     the FK ``KEY SHARE`` check taken by child inserts, but every URL/tag/member
-    writer (and ``GET /utubs/<id>``) also UPDATEs ``Utubs.last_updated`` via
-    ``set_last_updated()``, so they queue behind the lock until commit.
+    writer also UPDATEs ``Utubs.last_updated`` via ``set_last_updated()``, so
+    they queue behind the lock until commit. ``GET /utubs/<id>`` does not: an
+    open updates only the caller's ``UtubMembers.lastOpenedAt`` row, takes no
+    ``Utubs`` lock, and cannot deadlock against ``lock_and_reauthorize`` because
+    it never locks ``Utubs``.
 
     Hold-time expectations: no ``lock_timeout`` is set (Postgres defaults
     apply). Keep the work between lock and commit short, with no external I/O
     beyond what ``create_utub_member`` already does with Redis (bounded to ~1s
     by client socket timeouts). Erasure holds several UTub locks for the length
     of ``erase_user_core``; a stalled holder makes other writers to that UTub
-    wait until the web worker timeout, and URL/tag writes and UTub opens wait
-    too.
+    wait until the web worker timeout, and URL/tag writes wait too (UTub opens
+    do not: they never touch the ``Utubs`` row).
 
     ``populate_existing()`` is required because the auth guard already loaded
     these rows into the session identity map; without it the re-query returns

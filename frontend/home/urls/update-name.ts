@@ -51,6 +51,11 @@ let nameEditOpenedViaKeyboard = false;
 // `disabled`, which would drop focus and pull it from the a11y tree.
 let nameSubmitInFlight = false;
 
+// Read-only view of the flag for the refresh-on-focus busy gate.
+export function isUTubNameSubmitInFlight(): boolean {
+  return nameSubmitInFlight;
+}
+
 export function clearNameSubmitInFlight(): void {
   nameSubmitInFlight = false;
   $("#utubNameSubmitBtnUpdate").removeAttr("aria-disabled");

@@ -63,6 +63,7 @@ from backend.utubs.services.read_trash import get_trash_for_user
 from backend.utubs.services.read_utubs import (
     get_all_utubs_of_user,
     get_single_utub_for_user,
+    refresh_single_utub_for_user,
 )
 from backend.utubs.services.trash_utubs import (
     purge_trashed_utub,
@@ -174,6 +175,21 @@ def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     Retrieves data for a single UTub, and returns it in a serialized format
     """
     return get_single_utub_for_user(current_utub)
+
+
+@utubs.route("/utubs/<int:utub_id>/refresh", methods=["GET"])
+@utub_membership_required
+@api_route(
+    response_schema=UtubDetailSchema,
+    tags=[OPEN_API.UTUBS],
+    description="Refresh data for a single UTub without recording an open",
+    status_codes={200: UtubDetailSchema, 404: ErrorResponse},
+)
+def refresh_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
+    """
+    Returns the same payload as `get_single_utub` without recording an open
+    """
+    return refresh_single_utub_for_user(current_utub)
 
 
 @utubs.route("/utubs", methods=["GET"])

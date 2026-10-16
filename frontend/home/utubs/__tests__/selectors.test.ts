@@ -1,6 +1,8 @@
 import type { UtubDetail } from "../../../types/utub.js";
 
-import { selectUTub } from "../selectors.js";
+import { fetchUTubForRefresh, selectUTub } from "../selectors.js";
+import { showUTubLoadingIconAndSetTimeout } from "../deck.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, resetStore } from "../../../store/app-store.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
@@ -215,5 +217,91 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
     });
 
     assignSpy.mockRestore();
+  });
+});
+
+describe("fetchUTubForRefresh — background-safe fetch", () => {
+  let getJSONSpy: ReturnType<typeof vi.spyOn>;
+  let request: ReturnType<typeof createMockJqXHR>;
+  let replaceStateSpy: ReturnType<typeof vi.spyOn>;
+  let assignSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    document.body.innerHTML = SELECTORS_HTML;
+    resetStore();
+    vi.clearAllMocks();
+    request = createMockJqXHR();
+    getJSONSpy = vi.spyOn($, "getJSON").mockReturnValue(request);
+    replaceStateSpy = vi
+      .spyOn(window.history, "replaceState")
+      .mockImplementation(() => {});
+    assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    getJSONSpy.mockRestore();
+    replaceStateSpy.mockRestore();
+    assignSpy.mockRestore();
+    document.body.innerHTML = "";
+    resetStore();
+  });
+
+  function expectNoSideEffects(): void {
+    expect(showUTubLoadingIconAndSetTimeout).not.toHaveBeenCalled();
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+    expect(assignSpy).not.toHaveBeenCalled();
+  }
+
+  it("requests the refresh route and resolves ok on a 200", async () => {
+    const detail = makeUtubDetail({ id: 7 });
+    const resultPromise = fetchUTubForRefresh({ utubID: 7 });
+
+    request.resolve(detail, "success", { status: 200 });
+
+    await expect(resultPromise).resolves.toEqual({ kind: "ok", data: detail });
+    expect(getJSONSpy).toHaveBeenCalledWith(APP_CONFIG.routes.refreshUTub(7));
+    expectNoSideEffects();
+  });
+
+  it("resolves error on a success callback that is not an explicit 200", async () => {
+    const resultPromise = fetchUTubForRefresh({ utubID: 7 });
+
+    request.resolve(makeUtubDetail({ id: 7 }), "success", { status: 204 });
+
+    await expect(resultPromise).resolves.toEqual({ kind: "error" });
+    expectNoSideEffects();
+  });
+
+  it("resolves gone on a 404", async () => {
+    const resultPromise = fetchUTubForRefresh({ utubID: 7 });
+
+    request.reject({ status: 404 });
+
+    await expect(resultPromise).resolves.toEqual({ kind: "gone" });
+    await flushDeferredCallbacks();
+    expectNoSideEffects();
+  });
+
+  it.each([403, 500, 0])("resolves error on status %i", async (status) => {
+    const resultPromise = fetchUTubForRefresh({ utubID: 7 });
+
+    request.reject({ status });
+
+    await expect(resultPromise).resolves.toEqual({ kind: "error" });
+    await flushDeferredCallbacks();
+    expectNoSideEffects();
+  });
+
+  it("resolves error without replacing the page when the 429 was already handled", async () => {
+    const resultPromise = fetchUTubForRefresh({ utubID: 7 });
+
+    request.reject({ status: 429, _429Handled: true });
+
+    await expect(resultPromise).resolves.toEqual({ kind: "error" });
+    await flushDeferredCallbacks();
+    expectNoSideEffects();
+    expect(document.body.innerHTML).toContain("listUTubs");
   });
 });

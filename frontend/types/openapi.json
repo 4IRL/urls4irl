@@ -8389,6 +8389,57 @@
         }
       }
     },
+    "/utubs/{utub_id}/refresh": {
+      "get": {
+        "operationId": "refreshSingleUtub",
+        "tags": ["utubs"],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "Refresh data for a single UTub without recording an open",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full UTub detail with members, URLs, and tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubDetailSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/utubs/trash": {
       "get": {
         "operationId": "getTrash",

@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import timedelta
 from typing import Tuple
 
 import pytest
@@ -262,6 +263,45 @@ def test_get_home_page_excludes_trashed_utub_from_deck(
     assert response.status_code == 200
     assert trashed_utub_name.encode() not in response.data
     assert live_utub_name.encode() in response.data
+
+
+def test_get_home_page_deck_orders_most_recently_opened_utub_first(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user whose membership in the least recently updated UTub has a
+        last_opened_at later than every Utubs.last_updated
+    WHEN the user requests /home
+    THEN the server-rendered deck lists that UTub first, and the rest in
+        last_updated order
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        memberships = Utub_Members.query.filter(Utub_Members.user_id == user.id).all()
+        by_updated = sorted(
+            memberships, key=lambda membership: membership.to_utub.last_updated
+        )
+        oldest_membership = by_updated[0]
+        oldest_utub_id = oldest_membership.utub_id
+        oldest_membership.last_opened_at = by_updated[-1].to_utub.last_updated + (
+            timedelta(microseconds=1)
+        )
+        expected_ids = [oldest_utub_id] + [
+            membership.utub_id for membership in reversed(by_updated[1:])
+        ]
+        db.session.commit()
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    rendered_ids = [
+        int(utub_id)
+        for utub_id in re.findall(
+            r'class="UTubSelector[^"]*"\s+utubid="(\d+)"', response.text
+        )
+    ]
+    assert rendered_ids == expected_ids
 
 
 def test_get_home_page_when_in_utub(

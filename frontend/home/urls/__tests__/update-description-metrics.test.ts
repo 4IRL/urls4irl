@@ -1,5 +1,6 @@
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
+  isUTubDescriptionSubmitInFlight,
   setupUpdateUTubDescriptionEventListeners,
   showCreateDescriptionButtonAlways,
   updateUTubDescriptionHideInput,
@@ -401,6 +402,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
       expect(submitBtn.attr("aria-disabled")).toBe("true");
       expect(submitBtn.prop("disabled")).toBe(false);
+      expect(isUTubDescriptionSubmitInFlight()).toBe(true);
 
       // Second submit while in flight → blocked (no second PATCH).
       submitBtn.trigger("click");
@@ -412,6 +414,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       });
       expect(submitBtn.attr("aria-disabled")).toBeUndefined();
       expect(submitBtn.prop("disabled")).toBe(false);
+      expect(isUTubDescriptionSubmitInFlight()).toBe(false);
 
       // Exactly one UI_FORM_SUBMIT (the guard returns before the second emit).
       expect(

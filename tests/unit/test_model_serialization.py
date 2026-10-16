@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from flask import Flask
@@ -333,6 +333,51 @@ def test_user_utub_data_serialized_on_initial_load():
     assert json.dumps({MODEL_STRS.UTUBS: valid_utubs}) == json.dumps(
         UtubSummaryListSchema.from_user(new_user).model_dump(by_alias=True)
     )
+
+
+def test_user_utub_data_serialization_sorts_by_later_of_opened_and_updated() -> None:
+    """
+    GIVEN a user in three UTubs, where the oldest-updated UTub has a last_opened_at
+        later than every last_updated, and another has a last_opened_at older than
+        its own last_updated
+    WHEN the UTub summary list is built for that user
+    THEN the opened UTub sorts first, and a stale last_opened_at never lowers a
+        UTub below its last_updated
+    """
+    valid_user = v_models.valid_user_1
+    new_user = Users(
+        username=valid_user[MODEL_STRS.USERNAME],
+        email=valid_user[REGISTER_FORM.EMAIL],
+        plaintext_password=valid_user[REGISTER_FORM.PASSWORD],
+    )
+    base_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    updated_offsets = {1: 0, 2: 10, 3: 20}  # UTub id -> days after base_time
+    memberships = {}
+    for utub_id, offset in updated_offsets.items():
+        new_utub = Utubs(
+            name=f"utub {utub_id}",
+            utub_creator=valid_user[MODEL_STRS.ID],
+            utub_description="",
+        )
+        new_utub.id = utub_id
+        new_utub.is_locked = False
+        new_utub.last_updated = base_time + timedelta(days=offset)
+
+        new_utub_user = Utub_Members()
+        new_utub_user.member_role = Member_Role.CREATOR
+        new_utub_user.to_user = new_user
+        new_utub.members.append(new_utub_user)
+        memberships[utub_id] = new_utub_user
+
+    # UTub 1 opened after every update; UTub 3 opened long before its last update
+    memberships[1].last_opened_at = base_time + timedelta(days=30)
+    memberships[3].last_opened_at = base_time
+
+    serialized_ids = [
+        utub_item.id for utub_item in UtubSummaryListSchema.from_user(new_user).utubs
+    ]
+
+    assert serialized_ids == [1, 3, 2]
 
 
 def test_user_utub_data_serialization_omits_trashed_utub():

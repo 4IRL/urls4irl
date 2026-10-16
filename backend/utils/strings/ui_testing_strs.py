@@ -71,7 +71,10 @@ from backend.utils.strings.user_strs import (
     USERNAME_CHANGE_NO_CHANGE,
     USERNAME_CHANGE_SUCCESS,
 )
-from backend.utils.strings.utub_strs import UTUB_SEARCH_NO_RESULTS
+from backend.utils.strings.utub_strs import (
+    UTUB_NO_LONGER_AVAILABLE,
+    UTUB_SEARCH_NO_RESULTS,
+)
 
 
 class UI_TEST_STRINGS:
@@ -79,6 +82,8 @@ class UI_TEST_STRINGS:
     # The hub browser reaches this spoke's web via its `web-<slug>` alias on the
     # shared network; bare `web` is the single-stack default (CI, legacy local).
     DOCKER_BASE_URL = f"http://{environ.get('U4I_WEB_HOST') or 'web'}:"
+
+    UTUB_NO_LONGER_AVAILABLE = UTUB_NO_LONGER_AVAILABLE
 
     TEST_USERNAME_1 = USERNAME_BASE + "1"
     TEST_USERNAME_2 = USERNAME_BASE + "2"

@@ -215,6 +215,35 @@ describe("insertURLCardIntoDeck", () => {
     expect(showURLSearchIcon).toHaveBeenCalledTimes(1);
   });
 
+  it("returns the existing card and skips all other work when the URL is already in the deck", () => {
+    const existingCard = $(
+      `<div class="urlRow" utuburlid="${NEW_URL_ID}"></div>`,
+    );
+    $("#listURLs").append(existingCard);
+
+    const returnedCard = insertCard({
+      announce: true,
+      appliedTags: [{ id: 7, tagString: "tag", tagApplied: 1 }],
+    });
+
+    expect(returnedCard[0]).toBe(existingCard[0]);
+    expect($(`.urlRow[utuburlid=${NEW_URL_ID}]`)).toHaveLength(1);
+    expect(setState).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+    expect(createURLBlock).not.toHaveBeenCalled();
+    expect(renderAppliedTagsForUrl).not.toHaveBeenCalled();
+    expect(updateURLsAndTagSubheaderWhenTagSelected).not.toHaveBeenCalled();
+    expect(selectURLCard).not.toHaveBeenCalled();
+    expect(closeURLSearchAndEraseInput).not.toHaveBeenCalled();
+  });
+
+  it("still inserts a URL that is not yet in the deck", () => {
+    insertCard({ announce: true });
+
+    expect($(`.urlRow[utuburlid=${NEW_URL_ID}]`)).toHaveLength(1);
+    expect(setState).toHaveBeenCalledTimes(1);
+  });
+
   it("selects the new card when no tag filter is active", () => {
     insertCard({ announce: true });
 

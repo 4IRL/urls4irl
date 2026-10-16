@@ -216,6 +216,73 @@ describe("Tag Filter Empty State", () => {
   });
 });
 
+describe("updateURLsAndTagSubheaderWhenTagSelected - explicit urls (stale refresh)", () => {
+  beforeEach(() => {
+    document.body.innerHTML = FIXTURE_HTML;
+    vi.clearAllMocks();
+    vi.mocked(computeURLVisibility).mockReturnValue([]);
+    // The store still holds the OLD urls (the emit precedes setState).
+    vi.mocked(getState).mockReturnValue({
+      selectedTagIDs: [99],
+      tags: [],
+      urls: [{ utubUrlID: 1, utubUrlTagIDs: [99] }],
+    } as unknown as ReturnType<typeof getState>);
+  });
+
+  it("computes visibility against the passed urls, not the store", () => {
+    const refreshedUrls = [
+      { utubUrlID: 1, utubUrlTagIDs: [99] },
+      { utubUrlID: 2, utubUrlTagIDs: [] },
+    ] as unknown as UtubUrlItem[];
+
+    updateURLsAndTagSubheaderWhenTagSelected({ urls: refreshedUrls });
+
+    expect(computeURLVisibility).toHaveBeenCalledWith(
+      [99],
+      [
+        { urlId: 1, tagIDs: [99] },
+        { urlId: 2, tagIDs: [] },
+      ],
+    );
+  });
+
+  it("does not count a card absent from the payload (fading out) as visible nor suppress the no-results message", () => {
+    // Cards 1-3 are in the DOM; only 1 is still in the payload and it is
+    // filtered out. 2 and 3 are mid-fadeOut and must not count as visible.
+    vi.mocked(computeURLVisibility).mockReturnValue([
+      { urlId: 1, visible: false },
+    ]);
+
+    updateURLsAndTagSubheaderWhenTagSelected({
+      urls: [{ utubUrlID: 1, utubUrlTagIDs: [] }] as unknown as UtubUrlItem[],
+    });
+
+    expect($(".urlRow[utuburlid=2]").attr("filterable")).toBe("false");
+    expect($(".urlRow[utuburlid=3]").attr("filterable")).toBe("false");
+    expect($("#URLTagFilterNoResults").hasClass("hidden")).toBe(false);
+  });
+
+  it("does not trigger the no-results message when the payload is empty", () => {
+    updateURLsAndTagSubheaderWhenTagSelected({ urls: [] });
+
+    expect($(".urlRow[filterable=true]")).toHaveLength(0);
+    expect($("#URLTagFilterNoResults").hasClass("hidden")).toBe(true);
+  });
+
+  it("forwards urls from updateTagFilteringOnURLOrURLTagDeletion", () => {
+    const refreshedUrls = [
+      { utubUrlID: 7, utubUrlTagIDs: [99] },
+    ] as unknown as UtubUrlItem[];
+
+    updateTagFilteringOnURLOrURLTagDeletion({ urls: refreshedUrls });
+
+    expect(computeURLVisibility).toHaveBeenCalledWith(
+      [99],
+      [{ urlId: 7, tagIDs: [99] }],
+    );
+  });
+});
+
 describe("updateTagFilteringOnURLOrURLTagDeletion - TAG_FILTER_CHANGED", () => {
   // Every filter-state indicator (the collapsed Tag deck's pill + its SR
   // announcement, the mobile sheet handle's count badge) is driven purely by

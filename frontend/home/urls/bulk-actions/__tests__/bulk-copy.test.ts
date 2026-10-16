@@ -1,6 +1,7 @@
 import {
   initBulkCopy,
   isBulkCopyPickerOpen,
+  isBulkCopySubmitInFlight,
   setBulkCopyPickerOpen,
 } from "../bulk-copy.js";
 import { getAvailableBulkActions } from "../bulk-action-registry.js";
@@ -1009,6 +1010,7 @@ describe("in-flight guards", () => {
     mount().find("#bulkCopyOption-2").trigger("click");
     mount().find(".bulkCopyConfirmBtn").trigger("click");
     expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+    expect(isBulkCopySubmitInFlight()).toBe(true);
 
     // Cancel is a no-op while in flight (picker stays open).
     mount().find(".bulkCopyCancelBtn").trigger("click");
@@ -1030,5 +1032,6 @@ describe("in-flight guards", () => {
 
     // Settle so the module's in-flight state resets for the next test.
     deferred.resolve(multiResponse([]), "success", { status: 200 });
+    expect(isBulkCopySubmitInFlight()).toBe(false);
   });
 });

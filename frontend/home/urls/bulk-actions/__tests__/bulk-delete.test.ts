@@ -1,6 +1,7 @@
 import {
   initBulkDelete,
   isBulkDeleteConfirmOpen,
+  isBulkDeleteSubmitInFlight,
   setBulkDeleteConfirmOpen,
 } from "../bulk-delete.js";
 import { getAvailableBulkActions } from "../bulk-action-registry.js";
@@ -367,7 +368,7 @@ describe("confirm submit + success (active-deck mutation)", () => {
   it("posts only the deletable snapshot to bulkDeleteURLs(activeUTubID)", () => {
     seedUrlRows([10, 20, 30]);
     storeState.urls = [url(10, true), url(20, true), url(30, false)];
-    openAndSubmit([10, 20, 30], storeState.urls);
+    const deferred = openAndSubmit([10, 20, 30], storeState.urls);
 
     expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
     const [method, requestUrl, body] = vi.mocked(ajaxCall).mock.calls[0];
@@ -375,6 +376,24 @@ describe("confirm submit + success (active-deck mutation)", () => {
     expect(requestUrl).toBe(APP_CONFIG.routes.bulkDeleteURLs(1));
     // Only the two deletable ids travel; id 30 (not deletable) is skipped client-side.
     expect(body).toEqual({ utubUrlIds: [10, 20] });
+
+    // Settle the request so the module-private submitInFlight flag does not leak
+    // into later tests.
+    deferred.resolve(deleteResponse({ deletedIds: [10, 20] }), "success", {
+      status: 200,
+    });
+  });
+
+  it("isBulkDeleteSubmitInFlight is true while the delete is pending and false after it settles", () => {
+    seedUrlRows([10]);
+    storeState.urls = [url(10, true)];
+    expect(isBulkDeleteSubmitInFlight()).toBe(false);
+    const deferred = openAndSubmit([10], storeState.urls);
+    expect(isBulkDeleteSubmitInFlight()).toBe(true);
+    deferred.resolve(deleteResponse({ deletedIds: [10] }), "success", {
+      status: 200,
+    });
+    expect(isBulkDeleteSubmitInFlight()).toBe(false);
   });
 
   it("clean delete → success banner, survivors remain, tag numerators recomputed once", async () => {
