@@ -20,13 +20,17 @@ export type RouteId =
   | "contactUs"
   | "crossUtubSearch"
   | "copyURLsToUtubs"
-  | "bulkDeleteURLs";
+  | "bulkDeleteURLs"
+  | "getTrash"
+  | "emptyTrash";
 
 export interface AppRoutes {
   // Static routes (string values)
   home: string;
   createUTub: string;
   getUTubs: string;
+  getTrash: string;
+  emptyTrash: string;
   copyURLsToUtubs: string;
   login: string;
   register: string;
@@ -45,6 +49,8 @@ export interface AppRoutes {
   // Dynamic single-param routes
   getUTub: (id: number) => string;
   deleteUTub: (id: number) => string;
+  restoreUTub: (id: number) => string;
+  purgeUTub: (id: number) => string;
   transferUtubOwnership: (id: number) => string;
   updateUTubName: (id: number) => string;
   updateUTubDescription: (id: number) => string;
@@ -60,6 +66,8 @@ export interface AppRoutes {
   deleteURL: (utubId: number, urlId: number) => string;
   updateURL: (utubId: number, urlId: number) => string;
   updateURLTitle: (utubId: number, urlId: number) => string;
+  restoreURL: (utubId: number, urlId: number) => string;
+  purgeURL: (utubId: number, urlId: number) => string;
   createURLTag: (utubId: number, urlId: number) => string;
   createURLTagsBatch: (utubId: number, urlId: number) => string;
   deleteUTubTag: (utubId: number, tagId: number) => string;
@@ -152,6 +160,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     home: rawConfig.routes.home,
     createUTub: rawConfig.routes.createUTub,
     getUTubs: rawConfig.routes.getUTubs,
+    getTrash: rawConfig.routes.getTrash,
+    emptyTrash: rawConfig.routes.emptyTrash,
     copyURLsToUtubs: rawConfig.routes.copyURLsToUtubs,
     login: rawConfig.routes.login,
     register: rawConfig.routes.register,
@@ -167,6 +177,10 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     getUTub: (id: number) => rawConfig.routes.getUTub.replace("-1", String(id)),
     deleteUTub: (id: number) =>
       rawConfig.routes.deleteUTub.replace("-1", String(id)),
+    restoreUTub: (id: number) =>
+      rawConfig.routes.restoreUTub.replace("-1", String(id)),
+    purgeUTub: (id: number) =>
+      rawConfig.routes.purgeUTub.replace("-1", String(id)),
     transferUtubOwnership: (id: number) =>
       rawConfig.routes.transferUtubOwnership.replace("-1", String(id)),
     updateUTubName: (id: number) =>
@@ -190,6 +204,14 @@ export const APP_CONFIG: AppConfig = Object.freeze({
         .replace("-2", String(urlId)),
     updateURLTitle: (utubId: number, urlId: number) =>
       rawConfig.routes.updateURLTitle
+        .replace("-1", String(utubId))
+        .replace("-2", String(urlId)),
+    restoreURL: (utubId: number, urlId: number) =>
+      rawConfig.routes.restoreURL
+        .replace("-1", String(utubId))
+        .replace("-2", String(urlId)),
+    purgeURL: (utubId: number, urlId: number) =>
+      rawConfig.routes.purgeURL
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
 

@@ -9,7 +9,8 @@ def count_lost_trashed_tags(utub_url: Utub_Urls) -> int:
     trashed URL's live associations can shrink after its `trashed_tag_ids` snapshot was taken.
     The lost tags are the snapshot ids that no longer have an association row.
 
-    Used by the revive flows (re-adding a trashed URL, and editing a card's link to one).
+    Used by the revive flows (re-adding a trashed URL, and editing a card's link to one) and by
+    the restore flow (restoring a trashed URL from the Trash).
 
     Args:
         utub_url (Utub_Urls): The trashed row, with its snapshot in `trashed_tag_ids`

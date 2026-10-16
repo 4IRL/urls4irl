@@ -21,6 +21,7 @@ from backend.metrics.tag_batch import (
     URL_TAG_COUNT_BUCKETS,
 )
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
+from backend.urls.constants import URL_RESTORE_TARGETS
 
 # ---------------------------------------------------------------------------
 # Shared dimension literal aliases — extracted only when a literal appears in
@@ -408,6 +409,16 @@ class _DimUrlsDeletedFromUtub(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimTrashEmptied(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Shared by the URLs-tab and UTubs-tab events. Both closed sets source the same
+    # `BULK_TAG_URL_BUCKETS` constant fed to the registry, so the audit set-compare
+    # between these Literals and the registry tuples can never drift.
+    purged_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
+    skipped_count_bucket: Literal[BULK_TAG_URL_BUCKETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimCrossUtubSearchPerformed(BaseModel):
     model_config = ConfigDict(extra="forbid")
     has_results: Literal["true", "false"]
@@ -490,6 +501,15 @@ class _DimMemberAddCandidatesLoaded(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimUrlRestoredFromTrash(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Closed set sourced from the same `URL_RESTORE_TARGETS` constant fed to the
+    # registry, so the audit set-compare between this Literal and the registry
+    # tuple can never drift.
+    restore_target: Literal[URL_RESTORE_TARGETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimMemberRoleChanged(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # Closed set sourced from the same `MEMBER_ROLE_CHANGE_VALUES` constant fed to
@@ -538,18 +558,24 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.URL_ACCESSED: _DimDeviceOnly,
     EventName.URL_ADDED_TO_UTUB: _DimUrlAddedToUtub,
     EventName.URL_CREATE_REJECTED: _DimUrlCreateRejected,
+    EventName.URL_PURGED_FROM_TRASH: _DimDeviceOnly,
     EventName.URL_REMOVED_FROM_UTUB: _DimDeviceOnly,
+    EventName.URL_RESTORED_FROM_TRASH: _DimUrlRestoredFromTrash,
     EventName.URL_STRING_UPDATED: _DimDeviceOnly,
     EventName.URL_TITLE_UPDATED: _DimDeviceOnly,
     EventName.URL_TRACKING_PARAMS_STRIPPED: _DimUrlTrackingParamsStripped,
     EventName.URLS_COPIED_TO_UTUB: _DimUrlsCopiedToUtub,
     EventName.URLS_DELETED_FROM_UTUB: _DimUrlsDeletedFromUtub,
+    EventName.URLS_EMPTIED_FROM_TRASH: _DimTrashEmptied,
     EventName.UTUB_CREATED: _DimDeviceOnly,
     EventName.UTUB_DELETED: _DimDeviceOnly,
     EventName.UTUB_DESC_UPDATED: _DimDeviceOnly,
     EventName.UTUB_OPENED: _DimDeviceOnly,
+    EventName.UTUB_PURGED_FROM_TRASH: _DimDeviceOnly,
+    EventName.UTUB_RESTORED_FROM_TRASH: _DimDeviceOnly,
     EventName.UTUB_TAG_CREATED: _DimDeviceOnly,
     EventName.UTUB_TITLE_UPDATED: _DimDeviceOnly,
+    EventName.UTUBS_EMPTIED_FROM_TRASH: _DimTrashEmptied,
     # UI — UTubs
     EventName.UI_UTUB_SELECT: _DimUtubSelect,
     EventName.UI_UTUB_CREATE_OPEN: _DimDeviceOnly,

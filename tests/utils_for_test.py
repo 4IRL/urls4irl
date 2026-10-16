@@ -218,6 +218,64 @@ def trash_utub_url(
         db.session.commit()
 
 
+def lock_utub(app: Flask, utub_id: int) -> None:
+    """Freeze an existing UTub to mutations, in place.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub to lock
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.is_locked = True
+        db.session.commit()
+
+
+def unlock_utub(app: Flask, utub_id: int) -> None:
+    """Unfreeze a locked UTub, in place.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub to unlock
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.is_locked = False
+        db.session.commit()
+
+
+def remove_member(app: Flask, utub_id: int, user_id: int) -> None:
+    """Remove a member from a UTub, in place, leaving their Utub_Urls rows behind.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub to remove the member from
+        user_id (int): The ID of the member to remove
+    """
+    with app.app_context():
+        member: Utub_Members = Utub_Members.query.get((utub_id, user_id))
+        db.session.delete(member)
+        db.session.commit()
+
+
+def get_utub_url_id(app: Flask, utub_id: int, url_id: int) -> int:
+    """Look up the Utub_Urls row ID for a URL inside a UTub.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub holding the URL
+        url_id (int): The ID of the standalone URL
+
+    Returns:
+        (int): The ID of the Utub_Urls row
+    """
+    with app.app_context():
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id
+        ).one()
+        return utub_url.id
+
+
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
     """
     Reads in the html byte response from a GET of a page, finds the CSRF token using regex, returns it.

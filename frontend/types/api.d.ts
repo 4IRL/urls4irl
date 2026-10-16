@@ -1338,6 +1338,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/urls/{utub_url_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Restore a trashed URL in place, or into a destination UTub */
+    post: operations["restoreUrl"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/utubs/{utub_id}/urls/{utub_url_id}/purge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Permanently delete a trashed URL (refused while its UTub is locked) */
+    delete: operations["purgeUrl"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/{user_id}/username": {
     parameters: {
       query?: never;
@@ -1506,6 +1540,74 @@ export interface paths {
     post?: never;
     /** @description Delete a UTub */
     delete: operations["deleteUtub"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/utubs/trash": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description List the trashed URLs and UTubs the current user can restore or delete */
+    get: operations["getTrash"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/utubs/trash/empty": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Permanently delete everything in one Trash tab that was listed by listedAt (items in locked UTubs are skipped and counted) */
+    post: operations["emptyTrash"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/utubs/{utub_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Restore a trashed UTub (creator only; refused while the UTub is locked) */
+    post: operations["restoreUtub"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/utubs/{utub_id}/purge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Permanently delete a trashed UTub (creator only; refused while the UTub is locked) */
+    delete: operations["purgeUtub"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1926,7 +2028,22 @@ export interface components {
      * @description Error codes for URLErrorCodes
      * @enum {integer}
      */
-    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+    URLErrorCodes:
+      | 1
+      | 2
+      | 3
+      | 4
+      | 5
+      | 6
+      | 7
+      | 8
+      | 9
+      | 10
+      | 11
+      | 12
+      | 13
+      | 14
+      | 15;
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -2155,7 +2272,7 @@ export interface components {
      * @description Error codes for UTubErrorCodes
      * @enum {integer}
      */
-    UTubErrorCodes: 1 | 2 | 3;
+    UTubErrorCodes: 1 | 2 | 3 | 4 | 5;
     UtubSummaryItemSchema: {
       /** @description Unique UTub ID */
       id: number;
@@ -3081,6 +3198,46 @@ export interface components {
       /** @description Total number of URLs skipped during the bulk delete */
       totalSkipped: number;
     };
+    RestoreUrlRequest: {
+      /**
+       * @description Live UTub to restore into; required only when the origin UTub is trashed. The body itself is mandatory, so send {} when restoring in place.
+       * @default null
+       * @example 2
+       */
+      destUtubId: number | null;
+    };
+    /** @description A trashed URL restored, in place or into a destination UTub */
+    UrlRestoredResponseSchema: {
+      /** @description ID of the UTub the URL is now live in */
+      utubID: number;
+      /** @description Name of the UTub the URL is now live in */
+      utubName: string;
+      /** @description The restored URL card, with its original adder and added-at time */
+      URL: components["schemas"]["UtubUrlSchema"];
+      /**
+       * @description True when the URL was moved into a destination UTub instead of restored in place
+       * @default false
+       */
+      restoredToDestination: boolean;
+      /** @description Tags that survived on the restored URL, with UTub-wide applied counts */
+      appliedTags?: components["schemas"]["UtubTagSchema"][];
+      /** @description Map of tag ID to new UTub-wide applied count after the restore */
+      tagCountsInUtub?: {
+        [key: string]: number;
+      };
+      /**
+       * @description How many of the URL's tags were deleted from the UTub while it sat in Trash
+       * @default 0
+       */
+      lostTagCount: number;
+    };
+    /** @description A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count. */
+    UrlPurgedResponseSchema: {
+      /** @description ID of the UTub the URL was deleted from */
+      utubID: number;
+      /** @description ID of the permanently deleted UTub-URL row */
+      utubUrlID: number;
+    };
     ChangeUsernameRequest: {
       /**
        * @description The new username for the authenticated account
@@ -3443,6 +3600,148 @@ export interface components {
        * @default null
        */
       password: string | null;
+    };
+    /** @description One URL row in the current user's Trash (trashed on its own or with its UTub) */
+    TrashedUrlItemSchema: {
+      /** @description ID of the trashed UTub-URL row */
+      utubUrlID: number;
+      /** @description The URL string */
+      urlString: string;
+      /** @description Title of the URL in its origin UTub */
+      urlTitle: string;
+      /** @description ID of the origin UTub */
+      utubID: number;
+      /** @description Name of the origin UTub */
+      utubName: string;
+      /** @description Whether the origin UTub is itself in Trash */
+      originUtubTrashed: boolean;
+      /** @description Whether the origin UTub is locked (frozen to mutations) */
+      originUtubLocked: boolean;
+      /** @description Whether the URL was trashed only because its UTub was trashed */
+      trashedWithUtub: boolean;
+      /**
+       * Format: date-time
+       * @description Effective time the URL entered Trash (ISO 8601)
+       */
+      deletedAt: string;
+      /**
+       * Format: date-time
+       * @description When the URL is permanently deleted (ISO 8601)
+       */
+      expiresAt: string;
+      /** @description User ID of whoever put the URL in Trash (effective) */
+      deletedByUserID: number;
+      /** @description Username of whoever put the URL in Trash (effective) */
+      deletedByUsername: string;
+      /** @description User ID of the member who added the URL */
+      addedByUserID: number;
+      /** @description Username of the member who added the URL */
+      addedByUsername: string;
+      /** @description Whether the current user can restore this URL right now */
+      canRestore: boolean;
+      /** @description Whether the current user can permanently delete this URL right now */
+      canDelete: boolean;
+    };
+    /** @description One trashed UTub in the current creator's Trash */
+    TrashedUtubItemSchema: {
+      /** @description ID of the trashed UTub */
+      utubID: number;
+      /** @description Name of the trashed UTub */
+      utubName: string;
+      /** @description Description of the trashed UTub */
+      utubDescription: string | null;
+      /**
+       * Format: date-time
+       * @description When the UTub entered Trash (ISO 8601)
+       */
+      deletedAt: string;
+      /**
+       * Format: date-time
+       * @description When the UTub is permanently deleted (ISO 8601)
+       */
+      expiresAt: string;
+      /** @description User ID of whoever put the UTub in Trash */
+      deletedByUserID: number;
+      /** @description Username of whoever put the UTub in Trash */
+      deletedByUsername: string;
+      /** @description Number of live URLs a restore would bring back */
+      urlCount: number;
+      /** @description Number of members in the UTub */
+      memberCount: number;
+      /** @description Whether the UTub is locked (frozen to mutations) */
+      isLocked: boolean;
+      /** @description Whether the current user can restore this UTub right now */
+      canRestore: boolean;
+      /** @description Whether the current user can permanently delete this UTub right now */
+      canDelete: boolean;
+    };
+    /** @description The current user's Trash: actionable URL rows and trashed UTubs */
+    TrashListResponseSchema: {
+      /** @description Trashed URLs the user may act on, newest first */
+      urls: components["schemas"]["TrashedUrlItemSchema"][];
+      /** @description Trashed UTubs the user created, newest first */
+      utubs: components["schemas"]["TrashedUtubItemSchema"][];
+      /** @description ID of the currently authenticated user */
+      currentUser: number;
+      /** @description Days an item stays in Trash before permanent deletion */
+      retentionDays: number;
+      /**
+       * Format: date-time
+       * @description Server time the list was read (ISO 8601)
+       */
+      listedAt: string;
+    };
+    /** @enum {string} */
+    TrashScope: "urls" | "utubs";
+    EmptyTrashRequest: {
+      /**
+       * @description Which Trash tab to empty: 'urls' or 'utubs'
+       * @example urls
+       */
+      scope: components["schemas"]["TrashScope"];
+      /**
+       * Format: date-time
+       * @description The listedAt of the Trash list the user was looking at (timezone-aware ISO 8601). Only items that entered Trash at or before it are deleted, so an item trashed after the list was read is never swept.
+       * @example 2026-10-15T12:00:00+00:00
+       */
+      listedAt: string;
+    };
+    /** @description One Trash tab emptied: what was deleted forever, and what a lock kept in Trash */
+    TrashEmptiedResponseSchema: {
+      /** @description The tab that was emptied: 'urls' or 'utubs' */
+      scope: string;
+      /** @description IDs of the UTub-URL rows deleted forever (empty for the utubs scope) */
+      purgedUtubUrlIDs: number[];
+      /** @description IDs of the UTubs deleted forever (empty for the urls scope) */
+      purgedUtubIDs: number[];
+      /** @description Number of items deleted forever */
+      totalPurged: number;
+      /** @description Number of items left in Trash because their UTub is locked */
+      totalSkippedLocked: number;
+    };
+    /** @description A trashed UTub restored to the creator's live UTubs */
+    UtubRestoredResponseSchema: {
+      /** @description ID of the restored UTub */
+      utubID: number;
+      /** @description Name of the restored UTub */
+      utubName: string;
+      /** @description Description of the restored UTub, or null if not set */
+      utubDescription: string | null;
+      /** @description The restoring user's role in the UTub (always the creator role) */
+      memberRole: string;
+      /** @description Whether the UTub is locked (frozen to mutations) */
+      isLocked: boolean;
+      /** @description Number of live URLs that came back with the UTub */
+      restoredUrlCount: number;
+    };
+    /** @description A trashed UTub permanently deleted by its creator, with all of its children */
+    UtubPurgedResponseSchema: {
+      /** @description ID of the permanently deleted UTub */
+      utubID: number;
+      /** @description Name of the permanently deleted UTub */
+      utubName: string;
+      /** @description Number of URL rows (live and trashed) deleted with the UTub */
+      purgedUrlCount: number;
     };
     AddTagsToUrlsRequest: {
       /**
@@ -6892,18 +7191,24 @@ export interface operations {
           | "url_accessed"
           | "url_added_to_utub"
           | "url_create_rejected"
+          | "url_purged_from_trash"
           | "url_removed_from_utub"
+          | "url_restored_from_trash"
           | "url_string_updated"
           | "url_title_updated"
           | "url_tracking_params_stripped"
           | "urls_copied_to_utub"
           | "urls_deleted_from_utub"
+          | "urls_emptied_from_trash"
           | "utub_created"
           | "utub_deleted"
           | "utub_desc_updated"
           | "utub_opened"
+          | "utub_purged_from_trash"
+          | "utub_restored_from_trash"
           | "utub_tag_created"
           | "utub_title_updated"
+          | "utubs_emptied_from_trash"
           | "ui_utub_select"
           | "ui_utub_create_open"
           | "ui_utub_delete_open"
@@ -7134,18 +7439,24 @@ export interface operations {
           | "url_accessed"
           | "url_added_to_utub"
           | "url_create_rejected"
+          | "url_purged_from_trash"
           | "url_removed_from_utub"
+          | "url_restored_from_trash"
           | "url_string_updated"
           | "url_title_updated"
           | "url_tracking_params_stripped"
           | "urls_copied_to_utub"
           | "urls_deleted_from_utub"
+          | "urls_emptied_from_trash"
           | "utub_created"
           | "utub_deleted"
           | "utub_desc_updated"
           | "utub_opened"
+          | "utub_purged_from_trash"
+          | "utub_restored_from_trash"
           | "utub_tag_created"
           | "utub_title_updated"
+          | "utubs_emptied_from_trash"
           | "ui_utub_select"
           | "ui_utub_create_open"
           | "ui_utub_delete_open"
@@ -8436,6 +8747,112 @@ export interface operations {
       };
     };
   };
+  restoreUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["RestoreUrlRequest"];
+      };
+    };
+    responses: {
+      /** @description A trashed URL restored, in place or into a destination UTub */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlRestoredResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+    };
+  };
+  purgeUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlPurgedResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   changeUsername: {
     parameters: {
       query?: never;
@@ -9035,6 +9452,143 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["UtubDeletedResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getTrash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The current user's Trash: actionable URL rows and trashed UTubs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["TrashListResponseSchema"];
+        };
+      };
+    };
+  };
+  emptyTrash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["EmptyTrashRequest"];
+      };
+    };
+    responses: {
+      /** @description One Trash tab emptied: what was deleted forever, and what a lock kept in Trash */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["TrashEmptiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
+        };
+      };
+    };
+  };
+  restoreUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A trashed UTub restored to the creator's live UTubs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubRestoredResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  purgeUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A trashed UTub permanently deleted by its creator, with all of its children */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubPurgedResponseSchema"];
         };
       };
       /** @description Forbidden */

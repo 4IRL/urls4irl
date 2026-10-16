@@ -38,13 +38,24 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
         EventName.URL_REMOVED_FROM_UTUB,
+        # Covered by tests/integration/trash/test_purge_route.py (counter 0 -> 1).
+        EventName.URL_PURGED_FROM_TRASH,
+        # Covered by test_restore_url_route.py and test_restore_url_to_destination_route.py.
+        EventName.URL_RESTORED_FROM_TRASH,
         EventName.URL_STRING_UPDATED,
         EventName.URL_TRACKING_PARAMS_STRIPPED,
+        # Covered by tests/integration/trash/test_purge_route.py (counter 0 -> 1).
+        EventName.UTUB_PURGED_FROM_TRASH,
+        # Covered by tests/integration/trash/test_restore_utub_route.py (counter 0 -> 1).
+        EventName.UTUB_RESTORED_FROM_TRASH,
         EventName.UTUB_TAG_CREATED,
         EventName.TAGS_APPLIED_BATCH,
         EventName.TAGS_APPLIED_MULTI_URL,
         EventName.URLS_COPIED_TO_UTUB,
         EventName.URLS_DELETED_FROM_UTUB,
+        # Covered by tests/integration/trash/test_empty_trash_route.py (counter 0 -> 1).
+        EventName.URLS_EMPTIED_FROM_TRASH,
+        EventName.UTUBS_EMPTIED_FROM_TRASH,
         EventName.REGISTER_SUCCESS,
         EventName.REGISTER_REJECTED,
         EventName.LOGIN_SUCCESS,

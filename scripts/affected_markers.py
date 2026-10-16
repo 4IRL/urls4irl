@@ -95,16 +95,19 @@ def _union(*groups: tuple[str, ...]) -> tuple[str, ...]:
 
 
 _SPLASH: tuple[str, ...] = ("splash", "splash_ui", "mobile_ui")
-_UTUBS: tuple[str, ...] = ("utubs", "utubs_ui", "home_ui", "mobile_ui")
-_MEMBERS: tuple[str, ...] = ("members", "members_ui")
+_UTUBS: tuple[str, ...] = ("utubs", "utubs_ui", "home_ui", "mobile_ui", "trash")
+# The trash tests depend on member-removal state and tag-deletion semantics, so
+# members/tags changes also select ``trash``.
+_MEMBERS: tuple[str, ...] = ("members", "members_ui", "trash")
 _URLS: tuple[str, ...] = (
     "urls",
     "urls_ui",
     "create_urls_ui",
     "update_urls_ui",
     "mobile_ui",
+    "trash",
 )
-_TAGS: tuple[str, ...] = ("tags", "tags_ui", "mobile_ui")
+_TAGS: tuple[str, ...] = ("tags", "tags_ui", "mobile_ui", "trash")
 _SEARCH: tuple[str, ...] = ("urls", "search_ui")
 _USERS: tuple[str, ...] = ("account_and_support", "settings_ui")
 _CONTACT: tuple[str, ...] = ("account_and_support",)
@@ -314,6 +317,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("tests/integration/search/*", ("urls",)),
     ("tests/integration/splash/*", ("splash",)),
     ("tests/integration/system/*", ("cli",)),
+    ("tests/integration/trash/*", ("trash",)),
     ("tests/integration/utubmembers/*", ("members",)),
     ("tests/integration/utubs/*", ("utubs",)),
     ("tests/integration/utubtags/*", ("tags",)),
@@ -378,6 +382,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("backend/utils/strings/url_strs.py", _union(("unit",), _URLS)),
     ("backend/utils/strings/user_settings_strs.py", _union(("unit",), _USERS)),
     ("backend/utils/strings/user_strs.py", _union(("unit",), _USERS)),
+    ("backend/utils/strings/trash_strs.py", _union(("unit",), _UTUBS)),
     ("backend/utils/strings/utub_strs.py", _union(("unit",), _UTUBS)),
     # --- per-domain schemas (response + request modules) --------------------
     ("backend/schemas/admin_actions.py", ("unit", "admin")),
@@ -398,6 +403,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("backend/schemas/requests/urls.py", ("unit", "urls")),
     ("backend/schemas/users.py", ("unit", "account_and_support")),
     ("backend/schemas/requests/users.py", ("unit", "account_and_support")),
+    ("backend/schemas/trash.py", ("unit", "trash")),
     ("backend/schemas/utubs.py", ("unit", "utubs")),
     ("backend/schemas/requests/utubs.py", ("unit", "utubs")),
     ("backend/schemas/requests/members.py", ("unit", "members")),
@@ -487,6 +493,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("scripts/sample_gauges.py", ("cli",)),
     ("scripts/purge_audit_log.py", ("admin",)),
     ("scripts/run_backup_if_requested.py", ("admin",)),
+    ("scripts/trash_retention.py", ("unit", "trash")),
     ("scripts/*.py", ("unit",)),
     ("scripts/*.sh", ("unit", "admin")),
 )

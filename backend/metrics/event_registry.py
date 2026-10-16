@@ -34,6 +34,7 @@ from backend.metrics.tag_batch import (
     URL_TAG_COUNT_BUCKETS,
 )
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
+from backend.urls.constants import URL_RESTORE_TARGETS
 
 
 @dataclass(frozen=True)
@@ -113,6 +114,22 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="UTub explicitly opened/selected",
         category=EventCategory.DOMAIN,
     ),
+    EventName.UTUB_PURGED_FROM_TRASH: EventRegistryEntry(
+        description="A trashed UTub permanently deleted by its creator",
+        category=EventCategory.DOMAIN,
+    ),
+    EventName.UTUB_RESTORED_FROM_TRASH: EventRegistryEntry(
+        description="A trashed UTub restored by its creator",
+        category=EventCategory.DOMAIN,
+    ),
+    EventName.UTUBS_EMPTIED_FROM_TRASH: EventRegistryEntry(
+        description="The Trash UTubs tab emptied in one bulk action",
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "purged_count_bucket": BULK_TAG_URL_BUCKETS,
+            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+        },
+    ),
     EventName.URL_ACCESSED: EventRegistryEntry(
         description="URL click-through (distinct from list)",
         category=EventCategory.DOMAIN,
@@ -171,6 +188,15 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="URL title edited",
         category=EventCategory.DOMAIN,
     ),
+    EventName.URL_PURGED_FROM_TRASH: EventRegistryEntry(
+        description="A trashed URL permanently deleted",
+        category=EventCategory.DOMAIN,
+    ),
+    EventName.URL_RESTORED_FROM_TRASH: EventRegistryEntry(
+        description="A trashed URL restored, in place or into a destination UTub",
+        category=EventCategory.DOMAIN,
+        dimensions={"restore_target": URL_RESTORE_TARGETS},
+    ),
     EventName.UTUB_TITLE_UPDATED: EventRegistryEntry(
         description="UTub name changed",
         category=EventCategory.DOMAIN,
@@ -228,6 +254,14 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         category=EventCategory.DOMAIN,
         dimensions={
             "url_count_bucket": BULK_TAG_URL_BUCKETS,
+            "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
+        },
+    ),
+    EventName.URLS_EMPTIED_FROM_TRASH: EventRegistryEntry(
+        description="The Trash URLs tab emptied in one bulk action",
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "purged_count_bucket": BULK_TAG_URL_BUCKETS,
             "skipped_count_bucket": BULK_TAG_URL_BUCKETS,
         },
     ),

@@ -4,6 +4,7 @@ from enum import Enum
 
 from flask import abort, g
 from flask_login import current_user
+from sqlalchemy import and_
 
 from backend import db
 from backend.api_common.responses import FlaskResponse
@@ -11,7 +12,9 @@ from backend.app_logger import critical_log
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
+from backend.utils.strings.trash_strs import TRASH_FAILURE
 from backend.utils.strings.utub_strs import UTUB_FAILURE
+from backend.utubs.constants import UTubErrorCodes
 
 
 class UtubAccess(Enum):
@@ -163,3 +166,91 @@ def lock_and_reauthorize(
         )
 
     return reject_if_utub_locked(utub, error_code=error_code)
+
+
+def _trashed_utub_not_actionable_response() -> FlaskResponse:
+    """The one masked 404 every non-actionable trashed-UTub case answers with."""
+    return build_message_error_response(
+        message=TRASH_FAILURE.NOT_IN_TRASH,
+        error_code=UTubErrorCodes.NOT_IN_TRASH,
+        status_code=404,
+    )
+
+
+def lock_trashed_utub_for_creator(
+    *, utub_id: int, reject_locked: bool = True
+) -> Utubs | FlaskResponse:
+    """Lock a TRASHED UTub row and re-authorize its creator on fresh state.
+
+    Counterpart of ``lock_and_reauthorize`` for the Trash flows, where the UTub is
+    expected to be trashed (so the live-UTub 404 does not apply) and only its
+    creator may act.
+
+    Check order (authorization precedes both the lock and the locked-UTub check, so
+    a non-creator never learns whether a UTub is locked or even exists, and never
+    takes the row lock):
+
+    1. Authorize before locking: a plain non-locking read must show the UTub
+       trashed, created by the caller, with the caller's membership row still
+       present. Anything else gets the masked 404 without touching the row lock, so
+       an arbitrary authenticated user cannot queue writers behind another UTub.
+    2. Only then lock the UTub row via ``lock_utub_for_update`` and re-check the
+       same conditions on fresh state under the lock (the pre-check is a filter,
+       not the authority).
+    3. Mask every non-actionable case with the same 404 ``NOT_IN_TRASH``: the
+       UTub is missing, live (not trashed), the caller is no longer a member, or
+       the caller is not the creator.
+    4. Last, when ``reject_locked`` is set, ``reject_if_utub_locked`` (403
+       ``UTUB_IS_LOCKED``).
+
+    Args:
+        utub_id (int): ID of the UTub to lock.
+        reject_locked (bool): Whether a locked UTub is refused with a 403.
+
+    Returns:
+        The locked, refreshed trashed ``Utubs`` row (with ``g.is_manager`` set),
+        or an error response to return from the service.
+    """
+    # Fail closed: the cheap pre-check lets only a plausible actor reach the lock.
+    prefilter_hit = (
+        db.session.query(Utubs.id)
+        .join(
+            Utub_Members,
+            and_(
+                Utub_Members.utub_id == Utubs.id,
+                Utub_Members.user_id == current_user.id,
+            ),
+        )
+        .filter(
+            Utubs.id == utub_id,
+            Utubs.deleted_at.isnot(None),
+            Utubs.utub_creator == current_user.id,
+        )
+        .first()
+    )
+    if prefilter_hit is None:
+        return _trashed_utub_not_actionable_response()
+
+    utub: Utubs | None = lock_utub_for_update(utub_id=utub_id)
+    actor: Utub_Members | None = get_fresh_membership(
+        utub_id=utub_id, user_id=current_user.id
+    )
+
+    # Fail closed: any unmet condition denies with the same masked 404.
+    if (
+        utub is None
+        or not utub.is_trashed
+        or actor is None
+        or utub.utub_creator != current_user.id
+    ):
+        return _trashed_utub_not_actionable_response()
+
+    if reject_locked:
+        locked_response: FlaskResponse | None = reject_if_utub_locked(
+            utub, error_code=UTubErrorCodes.UTUB_IS_LOCKED
+        )
+        if locked_response is not None:
+            return locked_response
+
+    g.is_manager = True
+    return utub
