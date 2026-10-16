@@ -280,15 +280,6 @@
        full-width row below the description. Collapse the (font-fitted, possibly
        multi-line) description to a single truncated line so the header band does
        not grow taller. The wrapping state returns when search closes. */
-    #UTubDescriptionSubheaderOuterWrap.url-search-open {
-        flex-wrap: wrap;
-    }
-
-    #UTubDescriptionSubheaderOuterWrap.url-search-open #UTubDescriptionSubheaderWrap {
-        flex: 1 1 100%;
-        min-width: 0;
-    }
-
     #UTubDescriptionSubheaderOuterWrap.url-search-open #URLDeckSubheader {
         flex: 1;
         min-width: 0;
