@@ -16,7 +16,7 @@
     font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
-    color: var(--cautionText);
+    color: var(--cardURLTextColor);
     border-block: 1px solid transparent;
     background-color: var(--cardBackgroundColor);
     transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
@@ -29,8 +29,8 @@
 }
 
 .TrashSelector.active {
-    background-color: var(--memberOutsiderAmberTint);
-    color: var(--cautionText);
+    background-color: var(--selectedUTubColorBackground);
+    color: var(--deckSelectionGreen);
     border-block: 2px solid var(--deckSelectionGreenHover);
 }
 
@@ -98,19 +98,48 @@
     outline-offset: 2px;
 }
 
+#TrashBtnEmpty {
+    color: var(--textPrimary);
+    border: 1px solid var(--borderColor);
+    background-color: transparent;
+}
+
+#TrashBtnEmpty:hover:not(:disabled) {
+    color: var(--removeIconColor);
+    border-color: var(--removeIconColor);
+}
+
 #TrashBtnEmpty:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
 #TrashRetentionNotice {
-    margin: 10px 0 0;
-    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0 0;
+    padding: 11px 14px;
     border-radius: var(--radius-sm);
     background-color: var(--memberOutsiderAmberTint);
     border: 1px solid var(--utubLockedIconColor);
-    color: var(--cautionText);
-    font-size: 0.85rem;
+    border-left-width: 5px;
+    color: var(--textPrimary);
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+#TrashRetentionNotice[hidden] {
+    display: none;
+}
+
+/* Decorative warning glyph; the empty alt keeps it out of the accessible name. */
+#TrashRetentionNotice::before {
+    content: "\26A0" / "";
+    flex-shrink: 0;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--utubLockedIconColor);
 }
 
 .TrashEmptyState {
@@ -127,8 +156,13 @@
 .trashRow {
     padding: 10px 14px;
     border-bottom: 1px solid var(--borderColor);
-    border-left: 3px dashed var(--utubLockedIconColor);
-    background-color: var(--memberOutsiderAmberTint);
+    border-left: 3px solid transparent;
+    background-color: var(--cardBackgroundColor);
+    transition: background-color 0.15s ease-in-out;
+}
+
+.trashRow:hover {
+    background-color: var(--selectedUTubColorBackground);
 }
 
 /* Same ring as the focused URL card (urls.css). */
@@ -151,7 +185,7 @@
 }
 
 .trashRow .t-title {
-    color: var(--cardURLTextColor);
+    color: var(--textPrimary);
     font-weight: 700;
     font-size: 0.9rem;
     overflow-wrap: anywhere;
@@ -196,13 +230,13 @@
 .chip-origin.dashed {
     border-style: dashed;
     border-color: var(--utubLockedIconColor);
-    color: var(--cautionText);
+    color: var(--cardURLTextColor);
 }
 
 .chip-expiry {
-    background-color: var(--memberOutsiderAmberTint);
-    border: 1px solid var(--utubLockedIconColor);
-    color: var(--cautionText);
+    background-color: transparent;
+    border: 1px solid var(--borderColor);
+    color: var(--cardURLTextColor);
 }
 
 .chip-expiry.urgent {
