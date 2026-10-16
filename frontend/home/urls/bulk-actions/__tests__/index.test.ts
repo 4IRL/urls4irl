@@ -205,4 +205,9 @@ describe("bulk-actions index — mobile deck switch exits mode conditionally", (
     emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
     expect(vi.mocked(exitMultiSelectMode)).not.toHaveBeenCalled();
   });
+
+  it("exits mode when the Trash panel opens", () => {
+    emit(AppEvents.TRASH_OPENED);
+    expect(vi.mocked(exitMultiSelectMode)).toHaveBeenCalled();
+  });
 });

@@ -41,6 +41,9 @@ import "./home/members/deck.js";
 import "./home/tags/deck.js";
 import { initTransferPicker } from "./home/members/transfer-picker.js";
 import { initOnboardingNudges } from "./home/onboarding/nudges.js";
+import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
+import { initTrashTabs } from "./home/trash/tabs.js";
+import { initTrashPanel } from "./home/trash/panel.js";
 
 // Register jQuery plugins and setup CSRF before DOM ready
 registerJQueryPlugins();
@@ -70,6 +73,10 @@ $(document).ready(() => {
   initURLDeck();
   initBulkActions();
   initTransferPicker();
+  loadInitialTrashCount();
+  renderTrashCount();
+  initTrashTabs();
+  initTrashPanel();
   initSwipe();
   initURLDeckHeaderFit();
   initCookieBanner();

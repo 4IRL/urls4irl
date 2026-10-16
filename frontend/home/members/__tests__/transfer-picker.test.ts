@@ -452,6 +452,17 @@ describe("event-bus wiring", () => {
     expect(isTransferPickerOpen()).toBe(false);
   });
 
+  it("TRASH_OPENED tears down an open modal", () => {
+    openTransferPicker("#memberBtnTransferOwner");
+    expect(isTransferPickerOpen()).toBe(true);
+
+    emit(AppEvents.TRASH_OPENED);
+    expect(modalSpy).toHaveBeenCalledWith("hide");
+
+    fireHidden();
+    expect(isTransferPickerOpen()).toBe(false);
+  });
+
   it("the delete-flow TRANSFER_PICKER_REQUESTED event opens the modal with its opener", () => {
     emit(AppEvents.TRANSFER_PICKER_REQUESTED, { opener: "#utubBtnDelete" });
     expect(isTransferPickerOpen()).toBe(true);

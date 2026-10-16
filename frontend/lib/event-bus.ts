@@ -43,6 +43,7 @@ export interface AppEventMap {
   "member:deck-changed": void;
   "tag:deck-changed": void;
   "tag-sheet:toggled": { active: boolean };
+  "trash:opened": void;
 }
 
 export const AppEvents = Object.freeze({
@@ -67,6 +68,7 @@ export const AppEvents = Object.freeze({
   MEMBER_DECK_CHANGED: "member:deck-changed",
   TAG_DECK_CHANGED: "tag:deck-changed",
   TAG_SHEET_TOGGLED: "tag-sheet:toggled",
+  TRASH_OPENED: "trash:opened",
 } as const);
 
 const _handlers = new Map<string, Set<(payload: unknown) => void>>();

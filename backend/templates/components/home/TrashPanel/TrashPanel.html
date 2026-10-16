@@ -1,0 +1,36 @@
+<div id="TrashPanel" class="deck h-100 flex-column align-stretch hidden" tabindex="-1">
+	<div class="flex-column" id="TrashPanelHeaderWrap">
+		<div id="TrashPanelHeader" class="flex-row gap-5p">
+			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+				<path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
+				<path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" />
+			</svg>
+			<h2>Trash</h2>
+		</div>
+		<div id="TrashTabRow" class="flex-row">
+			<div id="TrashTablist" class="TrashTablist" role="tablist" aria-label="Trash">
+				<button type="button" id="TrashTabUrls" class="TrashTab" role="tab" aria-selected="true"
+					aria-controls="TrashPanelUrls" tabindex="0">{{ CONSTANTS.STRINGS.TRASH_TAB_URLS.replace('{n}', '0') }}</button>
+				<button type="button" id="TrashTabUtubs" class="TrashTab" role="tab" aria-selected="false"
+					aria-controls="TrashPanelUtubs" tabindex="-1">{{ CONSTANTS.STRINGS.TRASH_TAB_UTUBS.replace('{n}', '0') }}</button>
+			</div>
+			<button type="button" id="TrashBtnEmpty" class="btn" disabled>Empty trash</button>
+		</div>
+		<!-- Retention copy is filled from the list response (Step 5). -->
+		<p id="TrashRetentionNotice" class="hidden"></p>
+	</div>
+
+	<!-- Outcome banner. Outside both tabpanels so it survives tab switches and list rebuilds. -->
+	<div id="TrashOutcomeBanner" class="urlOutcomeBanner hidden" role="status"></div>
+
+	<div class="flex-column content">
+		<div id="TrashPanelUrls" role="tabpanel" aria-labelledby="TrashTabUrls" tabindex="0">
+			<div id="listTrashURLs"></div>
+			<p id="TrashUrlsEmptyState" class="TrashEmptyState hidden" tabindex="-1">{{ CONSTANTS.STRINGS.TRASH_EMPTY_STATE }}</p>
+		</div>
+		<div id="TrashPanelUtubs" role="tabpanel" aria-labelledby="TrashTabUtubs" tabindex="0" hidden>
+			<div id="listTrashUTubs"></div>
+			<p id="TrashUtubsEmptyState" class="TrashEmptyState hidden" tabindex="-1">{{ CONSTANTS.STRINGS.TRASH_EMPTY_STATE }}</p>
+		</div>
+	</div>
+</div>

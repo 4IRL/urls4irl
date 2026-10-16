@@ -1,0 +1,131 @@
+/* Trash destination: the pinned left-deck entry and the center panel shell. */
+
+/* The Trash entry is its own wrapper after #listUTubs (not a .UTubSelector), so the
+   UTub list's counting, search, striping and rebuilds never touch it. `margin-top:
+   auto` pins it to the bottom of the UTub deck's content when the list is short. */
+#TrashSelectorWrap {
+    margin-top: auto;
+    border-top: 2px solid var(--borderColor);
+}
+
+.TrashSelector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--cautionText);
+    border-block: 1px solid transparent;
+    background-color: var(--cardBackgroundColor);
+    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+.TrashSelector .TrashSelectorCount {
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: inherit;
+}
+
+.TrashSelector.active {
+    background-color: var(--memberOutsiderAmberTint);
+    color: var(--cautionText);
+    border-block: 2px solid var(--deckSelectionGreenHover);
+}
+
+/* Same focus ring as .UTubSelector:focus. */
+.TrashSelector:focus {
+    outline: none;
+    border-block: 2px solid var(--deckSelectionGreenHover);
+}
+
+#TrashPanel {
+    padding-inline: 15px;
+}
+
+#TrashPanel[hidden],
+#TrashPanel [role="tabpanel"][hidden] {
+    display: none;
+}
+
+#TrashPanel:focus {
+    outline: none;
+}
+
+#TrashPanelHeader {
+    align-items: center;
+    padding-top: 0.5rem;
+    color: var(--deckHeaderGreen);
+}
+
+#TrashPanelHeader h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+#TrashTabRow {
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.TrashTablist {
+    display: flex;
+    gap: 4px;
+}
+
+.TrashTab {
+    padding: 6px 14px;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--cardURLTextColor);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.TrashTab[aria-selected="true"] {
+    background-color: var(--selectedUTubColorBackground);
+    border-color: var(--deckSelectionGreen);
+    color: var(--deckSelectionGreen);
+}
+
+.TrashTab:focus-visible {
+    outline: 2px solid var(--deckSelectionGreenHover);
+    outline-offset: 2px;
+}
+
+#TrashBtnEmpty:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#TrashRetentionNotice {
+    margin: 10px 0 0;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background-color: var(--memberOutsiderAmberTint);
+    border: 1px solid var(--utubLockedIconColor);
+    color: var(--cautionText);
+    font-size: 0.85rem;
+}
+
+.TrashEmptyState {
+    padding: 2rem 0;
+    text-align: center;
+    color: var(--cardURLTextColor);
+}
+
+.TrashEmptyState:focus {
+    outline: none;
+}
+
+/* Step 8 removes this rule when the mobile Trash panel lands. */
+@media (max-width: 991.98px) {
+    #TrashSelectorWrap {
+        display: none;
+    }
+}

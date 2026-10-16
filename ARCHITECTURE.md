@@ -217,6 +217,7 @@ All inter-module communication uses typed events:
 | `MEMBER_DECK_CHANGED` | void | members/member-combobox-submit, members/delete | onboarding |
 | `TAG_DECK_CHANGED` | void | tags/create, tags/delete | onboarding |
 | `TAG_SHEET_TOGGLED` | `{active: boolean}` | tags/sheet.ts | onboarding |
+| `TRASH_OPENED` | void | trash/panel.ts | urls/bulk-actions, members/transfer-picker |
 
 ### Established TypeScript Patterns
 
