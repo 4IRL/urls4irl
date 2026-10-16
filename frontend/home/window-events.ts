@@ -44,6 +44,7 @@ import {
   endPopstateClose,
   consumeTagSheetSelfBackClose,
 } from "./tags/sheet.js";
+import { closeTrash, isTrashOpen, openTrash } from "./trash/panel.js";
 import type { MatchedField } from "../types/search.js";
 import { debug } from "../lib/debug.js";
 
@@ -189,6 +190,7 @@ function handlePopState(event: PopStateEvent): void {
     | { UTubID: number; mobilePanel: MobilePanel }
     | { UTubID: number; mobilePanel: MobilePanel; tagSheetOpen: true }
     | { crossSearch: { query: string; fields: MatchedField[] } }
+    | { trash: true }
     | null;
 
   // Returning to a recorded cross-UTub search: re-open search mode and re-run
@@ -205,6 +207,19 @@ function handlePopState(event: PopStateEvent): void {
     exitCrossUtubSearchMode({
       trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.HISTORY_NAV,
     });
+  }
+
+  // Trash view entry (pushed by openTrash). Desktop only: Step 8 owns mobile,
+  // so below the breakpoint fall back to the no-UTub landing. Checked before
+  // every UTubID branch; opening Trash never consults UTub validity.
+  if (state !== null && "trash" in state) {
+    if (($(window).width() ?? 0) >= TABLET_WIDTH) {
+      openTrash({ fromHistory: true });
+    } else {
+      resetHomePageToInitialState();
+    }
+    endPopstateClose();
+    return;
   }
 
   // Sheet-open entry restore. Checked BEFORE the mobilePanel branch (a
@@ -350,6 +365,7 @@ function handlePopState(event: PopStateEvent): void {
     );
   } else {
     // If does not contain query parameter, user is at /home - then update UTub titles/IDs
+    if (isTrashOpen()) closeTrash();
     resetHomePageToInitialState();
     endPopstateClose();
   }
@@ -404,10 +420,14 @@ function handlePageShow(): void {
   // Reject only when a genuinely-unrecognized param is present. A UTubID-absent
   // request (only `panel` supplied) is no longer treated as malformed here — it
   // falls through (DD-24); Step 5 owns the graceful no-UTub degradation.
+  const isTrashView =
+    searchParams.get(APP_CONFIG.strings.TRASH_VIEW_QUERY_PARAM) ===
+    APP_CONFIG.strings.TRASH_VIEW;
   const recognizedParamCount =
     (utubId !== null ? 1 : 0) +
     (panel !== null ? 1 : 0) +
-    (hasEmailChangeStatus ? 1 : 0);
+    (hasEmailChangeStatus ? 1 : 0) +
+    (isTrashView ? 1 : 0);
   if (searchParams.size > recognizedParamCount) {
     log(
       "pageshow: rejecting malformed query params, redirecting to error page",
@@ -419,6 +439,25 @@ function handlePageShow(): void {
       },
     );
     window.location.assign(APP_CONFIG.routes.errorPage);
+    return;
+  }
+
+  // Trash wins over any UTubID (dropped) and never consults UTub validity.
+  // Desktop only: below the breakpoint Step 8 owns mobile, so degrade to /home.
+  if (isTrashView) {
+    if (($(window).width() ?? 0) >= TABLET_WIDTH) {
+      window.history.replaceState(
+        { trash: true },
+        "",
+        `/home?${APP_CONFIG.strings.TRASH_VIEW_QUERY_PARAM}=${APP_CONFIG.strings.TRASH_VIEW}`,
+      );
+      openTrash({ fromHistory: true });
+    } else {
+      window.history.replaceState(null, "", "/home");
+      setUIWhenNoUTubSelected();
+      setMemberDeckWhenNoUTubSelected();
+      setTagDeckSubheaderWhenNoUTubSelected();
+    }
     return;
   }
 

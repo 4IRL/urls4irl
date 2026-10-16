@@ -33,6 +33,9 @@ const mockBeginPopstateClose = vi.fn();
 const mockEndPopstateClose = vi.fn();
 const mockConsumeTagSheetSelfBackClose = vi.fn(() => false);
 const mockShowURLDeckBannerError = vi.fn();
+const mockOpenTrash = vi.fn();
+const mockCloseTrash = vi.fn();
+const mockIsTrashOpen = vi.fn(() => false);
 
 vi.mock("../../lib/config.js", () => ({
   APP_CONFIG: {
@@ -42,6 +45,8 @@ vi.mock("../../lib/config.js", () => ({
       UTUB_QUERY_PARAM: "UTubID",
       MOBILE_PANEL_QUERY_PARAM: "panel",
       EMAIL_CHANGE_STATUS_QUERY_PARAM: "email_change_status",
+      TRASH_VIEW_QUERY_PARAM: "view",
+      TRASH_VIEW: "trash",
       MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
       MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
       MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
@@ -110,6 +115,11 @@ vi.mock("../search/cross-utub-search.js", () => ({
   restoreCrossUtubSearchFromHistory: (...args: unknown[]) =>
     mockRestoreCrossUtubSearchFromHistory(...args),
 }));
+vi.mock("../trash/panel.js", () => ({
+  openTrash: (...args: unknown[]) => mockOpenTrash(...args),
+  closeTrash: (...args: unknown[]) => mockCloseTrash(...args),
+  isTrashOpen: () => mockIsTrashOpen(),
+}));
 vi.mock("../tags/sheet.js", () => ({
   openTagSheet: (...args: unknown[]) => mockOpenTagSheet(...args),
   closeTagSheet: (...args: unknown[]) => mockCloseTagSheet(...args),
@@ -135,6 +145,7 @@ describe("window-events", () => {
     mockIsTagSheetOpen.mockReturnValue(false);
     mockGetTagSheetOriginPanel.mockReturnValue(null);
     mockConsumeTagSheetSelfBackClose.mockReturnValue(false);
+    mockIsTrashOpen.mockReturnValue(false);
     popstateHandler = undefined;
     pageshowHandler = undefined;
 
@@ -180,6 +191,62 @@ describe("window-events", () => {
       popstateHandler!(event);
 
       expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+    });
+
+    it("opens Trash from history when state is { trash: true }", () => {
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+      popstateHandler!(
+        new PopStateEvent("popstate", { state: { trash: true } }),
+      );
+
+      expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+      expect(mockGetUTubInfo).not.toHaveBeenCalled();
+      expect(mockEndPopstateClose).toHaveBeenCalled();
+
+      widthSpy.mockRestore();
+    });
+
+    it("does not open Trash below the desktop breakpoint", () => {
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+      popstateHandler!(
+        new PopStateEvent("popstate", { state: { trash: true } }),
+      );
+
+      expect(mockOpenTrash).not.toHaveBeenCalled();
+      expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+
+      widthSpy.mockRestore();
+    });
+
+    it("closes Trash when Back lands on /home (null state) while Trash is open", () => {
+      mockIsTrashOpen.mockReturnValue(true);
+
+      popstateHandler!(new PopStateEvent("popstate", { state: null }));
+
+      expect(mockCloseTrash).toHaveBeenCalled();
+      expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+    });
+
+    it("selects the UTub when popping to a { UTubID } state while Trash is open", async () => {
+      const fakeUTub = { id: 7, name: "Back To UTub" };
+      mockIsTrashOpen.mockReturnValue(true);
+      mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+      popstateHandler!(new PopStateEvent("popstate", { state: { UTubID: 7 } }));
+
+      // Trash closes through the UTUB_SELECTED path inside buildSelectedUTub,
+      // not via an explicit closeTrash() call here.
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+      });
+      expect(mockOpenTrash).not.toHaveBeenCalled();
+      expect(mockCloseTrash).not.toHaveBeenCalled();
+
+      widthSpy.mockRestore();
     });
 
     it("swallows the self-initiated tag-sheet back-close popstate without rebuilding", () => {
@@ -802,6 +869,94 @@ describe("window-events", () => {
       pageshowHandler!(event);
 
       expect(assignMock).toHaveBeenCalledWith("/error");
+    });
+
+    describe("?view=trash cold load", () => {
+      function coldLoad({ search }: { search: string }): void {
+        Object.defineProperty(history, "state", {
+          value: null,
+          writable: true,
+          configurable: true,
+        });
+        Object.defineProperty(window, "location", {
+          value: { search, assign: vi.fn() },
+          writable: true,
+          configurable: true,
+        });
+        pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+      }
+
+      it("opens Trash from history and rewrites the entry on desktop", () => {
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+        coldLoad({ search: "?view=trash" });
+
+        expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+        expect(window.history.replaceState).toHaveBeenCalledWith(
+          { trash: true },
+          "",
+          "/home?view=trash",
+        );
+        expect(window.location.assign).not.toHaveBeenCalled();
+        expect(mockGetUTubInfo).not.toHaveBeenCalled();
+        expect(mockIsUtubIdValidOnPageLoad).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+
+      it("replaces history with /home and lands on the no-UTub state below 992px", () => {
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        coldLoad({ search: "?view=trash" });
+
+        expect(mockOpenTrash).not.toHaveBeenCalled();
+        expect(window.history.replaceState).toHaveBeenCalledWith(
+          null,
+          "",
+          "/home",
+        );
+        expect(mockSetUIWhenNoUTubSelected).toHaveBeenCalled();
+        expect(mockSetMemberDeckWhenNoUTubSelected).toHaveBeenCalled();
+        expect(mockSetTagDeckSubheaderWhenNoUTubSelected).toHaveBeenCalled();
+        expect(window.location.assign).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+
+      it("prefers Trash over UTubID and drops UTubID", () => {
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+        coldLoad({ search: "?view=trash&UTubID=3" });
+
+        expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+        expect(window.history.replaceState).toHaveBeenCalledWith(
+          { trash: true },
+          "",
+          "/home?view=trash",
+        );
+        expect(mockGetUTubInfo).not.toHaveBeenCalled();
+        expect(window.location.assign).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+
+      it("still rejects an unrecognized extra param", () => {
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+        coldLoad({ search: "?view=trash&extra=1" });
+
+        expect(window.location.assign).toHaveBeenCalledWith("/error");
+        expect(mockOpenTrash).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+
+      it("ignores an unrecognized view value", () => {
+        coldLoad({ search: "?view=bogus" });
+
+        expect(window.location.assign).toHaveBeenCalledWith("/error");
+        expect(mockOpenTrash).not.toHaveBeenCalled();
+      });
     });
 
     it("does not redirect to error page when only email_change_status is present (DD-9 authenticated confirm-forward), degrading to the no-UTub state", () => {
