@@ -144,6 +144,21 @@ describe("createShowUpdateURLTitleIcon - keyboard activation", () => {
 describe("urlTitleAndUpdateIconWrap - row-level click (UTub edit pattern)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.getSelection()?.removeAllRanges();
+  });
+
+  it("does NOT invoke showUpdateURLTitleForm when the title text is selected", () => {
+    const { urlCard, wrap } = mountTitleBlock(true);
+
+    const range = document.createRange();
+    range.selectNodeContents(urlCard.find(".urlTitle")[0]);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    wrap.trigger("click");
+
+    expect(vi.mocked(showUpdateURLTitleForm)).not.toHaveBeenCalled();
   });
 
   it("invokes showUpdateURLTitleForm when wrap is clicked on a selected card", () => {

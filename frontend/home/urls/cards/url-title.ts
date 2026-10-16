@@ -57,6 +57,19 @@ export function createURLTitleAndUpdateBlock(
         // the only entry point — tapping the title row is a no-op there.
         if (isCoarsePointer()) return;
         if (urlCard.attr("urlSelected") !== "true") return;
+        // The click that ends a drag-selection of the title text (e.g. to copy
+        // it) must not open the edit form.
+        const selection = window.getSelection();
+        if (
+          selection &&
+          !selection.isCollapsed &&
+          selection.toString() !== "" &&
+          ((selection.anchorNode !== null &&
+            event.currentTarget.contains(selection.anchorNode)) ||
+            (selection.focusNode !== null &&
+              event.currentTarget.contains(selection.focusNode)))
+        )
+          return;
         const wrapEl = $(event.currentTarget) as JQuery;
         showUpdateURLTitleForm({
           urlTitleAndShowUpdateIconWrap: wrapEl,
