@@ -78,6 +78,7 @@ export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
       ".urlParamTrimHeader",
       ".urlParamTrimChip",
       ".urlParamTrimBtn",
+      ".urlSchemeSelector",
     ];
 
     for (

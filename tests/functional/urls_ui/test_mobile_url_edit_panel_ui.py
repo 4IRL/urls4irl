@@ -41,17 +41,22 @@ from tests.functional.playwright_utils import (
     wait_until_visible_css_selector,
 )
 from tests.functional.urls_ui.playwright_utils import (
+    NO_REQUEST_WAIT_MS,
     TRIM_URL_KEEP_ONLY,
     TRIM_URL_TWO_PARAMS,
+    expect_selected_scheme,
+    select_url_scheme,
     set_trim_section_expanded,
+    wait_for_update_input_highlight,
+    without_scheme,
 )
 
 pytestmark = pytest.mark.mobile_ui
 
 PLAIN_EDIT_URL = "https://plain-edit.example.com/path"
 
-# How long a negative "no update request is sent" check waits for a request.
-NO_REQUEST_WAIT_MS = 2000
+# Minimum touch target height (px) for the scheme toggle and each option.
+MIN_TAP_TARGET_PX = 44
 
 # The four sibling option buttons that collapse away while the consolidated edit
 # panel is open, leaving only the full-width "Cancel" button in the options row.
@@ -552,8 +557,9 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
     )
     expect(header).to_have_attribute("aria-expanded", "false")
 
-    # The kept-open form shows the saved (trimmed) string until Undo restores the
-    # original: the field and the trim block must follow it, not the stale value.
+    # "Save URL" closed the panel, which destroyed the scheme selector, so the
+    # (hidden) field holds the FULL saved string until Undo restores the original:
+    # the field and the trim block must follow it, not the stale value.
     string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
     expect(string_input).to_have_value(TRIM_URL_KEEP_ONLY)
     page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
@@ -645,12 +651,12 @@ def test_url_string_plain_edit_undo_restores_kept_open_input_mobile(
     expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
         URL_UPDATED_BANNER
     )
-    expect(string_input).to_have_value(PLAIN_EDIT_URL)
+    expect(string_input).to_have_value(without_scheme(PLAIN_EDIT_URL))
 
     page.locator(HPL.URL_OUTCOME_BANNER_UNDO).click()
 
     expect(url_string_elem).to_have_attribute(HPL.URL_STRING_IN_DATA, original_url)
-    expect(string_input).to_have_value(original_url)
+    expect(string_input).to_have_value(without_scheme(original_url))
     expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
 
 
@@ -690,12 +696,12 @@ def test_url_edit_panel_field_spacing_and_errored_submit_centering_mobile(
     title_input = selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)
     string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
 
-    # The Title and URL inputs (and their check buttons) are the same width and
-    # end at the same right edge.
+    # The Title input and the URL field (the scheme toggle + URL input row) are the
+    # same width and end at the same right edge, as do their check buttons.
     wait_until_same_width_and_right_edge(
         page=page,
         first_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}",
-        second_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+        second_selector=HPL.SCHEME_INPUT_ROW_UPDATE,
     )
     title_check_box = selected_url.locator(
         HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE
@@ -922,7 +928,7 @@ def test_url_edit_panel_dropped_chip_enables_url_buttons_mobile(
     chip = page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE).nth(1)
     chip.click()
     expect(chip).to_have_attribute("aria-pressed", "false")
-    expect(string_input).to_have_value(TRIM_URL_TWO_PARAMS)
+    expect(string_input).to_have_value(without_scheme(TRIM_URL_TWO_PARAMS))
     assert_confirm_button_enabled(button=string_check)
     assert_confirm_button_enabled(button=save_button)
 
@@ -1054,3 +1060,234 @@ def test_url_edit_button_hidden_and_unreachable_when_not_selected_mobile(
 
     expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_be_hidden()
     expect(url_row.locator(HPL.INPUT_URL_TITLE_UPDATE)).to_be_hidden()
+
+
+def _open_edit_panel_for_first_url_mobile(
+    *, page: Page, app: Flask, cli_runner: FlaskCliRunner, url_string: str
+) -> Locator:
+    """Seed ``url_string``, log in on mobile, select its card and open the
+    consolidated edit panel. Returns the selected card."""
+    user_id_for_test = 1
+    add_mock_urls(cli_runner, [url_string])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    _open_url_edit_panel_mobile(page=page)
+    # The edit form's delayed highlight (~100ms) refocuses the URL input; let it
+    # settle so it cannot steal focus from the selector mid-test.
+    wait_for_update_input_highlight(
+        page=page,
+        input_css_selector=HPL.INPUT_URL_STRING_UPDATE_SELECTED,
+    )
+    return selected_url
+
+
+def test_url_edit_panel_scheme_selector_prefill_and_scheme_only_change_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the consolidated edit panel opened on a mobile device for an https URL
+    WHEN it opens, then only the scheme is changed to ftp
+    THEN the selector shows https with the scheme-less rest in the input and the
+        URL's green check disabled; changing only the scheme enables the check
+        (and not the title's), and picking https again disables it
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    selected_url = _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=MOCK_URL_STRINGS[0],
+    )
+    string_check = selected_url.locator(HPL.BUTTON_URL_STRING_SUBMIT_UPDATE)
+    title_check = selected_url.locator(HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+
+    expect(page.locator(HPL.SCHEME_SELECTOR_UPDATE)).to_have_count(1)
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="https"
+    )
+    expect(selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)).to_have_value(
+        without_scheme(MOCK_URL_STRINGS[0])
+    )
+    assert_confirm_button_disabled(button=string_check)
+    assert_confirm_button_disabled(button=title_check)
+
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, option_scheme="ftp"
+    )
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="ftp"
+    )
+    assert_confirm_button_enabled(button=string_check)
+    assert_confirm_button_disabled(button=title_check)
+
+    select_url_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, option_scheme="https"
+    )
+    assert_confirm_button_disabled(button=string_check)
+
+
+def test_url_edit_panel_scheme_selector_tap_targets_and_no_autofocus_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the scheme selector inside the consolidated edit panel on a touch device
+    WHEN the list is opened by tapping the toggle
+    THEN the filter is not autofocused (so the on-screen keyboard stays down),
+        the toggle and every visible option are at least 44px tall, and the list
+        stays inside the viewport width
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=MOCK_URL_STRINGS[0],
+    )
+    toggle = page.locator(HPL.SCHEME_TOGGLE_UPDATE)
+    listbox = page.locator(HPL.SCHEME_LISTBOX_UPDATE)
+    expect(toggle).to_be_visible()
+    assert _bounding_box(locator=toggle)["height"] >= MIN_TAP_TARGET_PX
+
+    toggle.tap()
+    expect(listbox).to_be_visible()
+    expect(page.locator(HPL.SCHEME_FILTER_UPDATE)).not_to_be_focused()
+
+    options = page.locator(f"{HPL.SCHEME_LISTBOX_UPDATE} {HPL.SCHEME_OPTION_VISIBLE}")
+    visible_count = options.count()
+    assert visible_count > 0
+    for index in range(visible_count):
+        assert _bounding_box(locator=options.nth(index))["height"] >= MIN_TAP_TARGET_PX
+
+    listbox_box = _bounding_box(locator=listbox)
+    viewport = page.viewport_size
+    assert viewport is not None
+    assert listbox_box["x"] >= 0
+    assert listbox_box["x"] + listbox_box["width"] <= viewport["width"]
+
+
+def test_url_edit_panel_scheme_selector_with_trim_section_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the consolidated edit panel with the scheme selector mounted
+    WHEN a URL with two query parameters is typed into the input
+    THEN the typed scheme moves into the selector, and the collapsed trim
+        disclosure shows below the URL field and expands to both chips
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    selected_url = _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=MOCK_URL_STRINGS[0],
+    )
+    string_input = selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)
+    string_input.fill(TRIM_URL_TWO_PARAMS)
+
+    expect_selected_scheme(
+        page=page,
+        toggle_locator=HPL.SCHEME_TOGGLE_UPDATE,
+        scheme=TRIM_URL_TWO_PARAMS.split("://", 1)[0],
+    )
+    expect(string_input).to_have_value(without_scheme(TRIM_URL_TWO_PARAMS))
+
+    header = page.locator(HPL.EDIT_FORM_TRIM_HEADER)
+    expect(header).to_be_visible()
+    expect(header).to_have_attribute("aria-expanded", "false")
+    selector_box = _bounding_box(locator=page.locator(HPL.SCHEME_SELECTOR_UPDATE))
+    header_box = _bounding_box(locator=header)
+    assert header_box["y"] >= selector_box["y"] + selector_box["height"]
+
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE)).to_have_count(2)
+
+
+def test_url_edit_panel_scheme_selector_escape_closes_only_the_list_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the consolidated edit panel with the scheme list opened by a tap
+    WHEN Escape is pressed while the toggle holds focus
+    THEN only the list closes (focus stays on the toggle) and the edit panel stays
+        open; coarse pointers pass no escape-when-closed callback, so the first
+        Escape never reaches the panel-level handler
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    selected_url = _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=MOCK_URL_STRINGS[0],
+    )
+    toggle = page.locator(HPL.SCHEME_TOGGLE_UPDATE)
+    listbox = page.locator(HPL.SCHEME_LISTBOX_UPDATE)
+
+    toggle.tap()
+    expect(listbox).to_be_visible()
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+    expect(toggle).to_be_focused()
+
+    page.keyboard.press("Escape")
+
+    expect(listbox).to_be_hidden()
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(toggle).to_be_focused()
+    expect(selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)).to_be_visible()
+    expect(selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)).to_be_visible()
+
+
+def test_url_edit_panel_scheme_selector_tap_selection_focuses_toggle_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the consolidated edit panel with the scheme list opened by a tap
+    WHEN the ftp option is tapped
+    THEN the list closes, the toggle shows ftp and holds focus (not the URL
+        input, so the on-screen keyboard stays down), and the panel stays open
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    selected_url = _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=MOCK_URL_STRINGS[0],
+    )
+    toggle = page.locator(HPL.SCHEME_TOGGLE_UPDATE)
+    listbox = page.locator(HPL.SCHEME_LISTBOX_UPDATE)
+
+    toggle.tap()
+    expect(listbox).to_be_visible()
+    listbox.locator(HPL.SCHEME_OPTION_BY_SCHEME_FORMAT.format(scheme="ftp")).tap()
+
+    expect(listbox).to_be_hidden()
+    expect_selected_scheme(
+        page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="ftp"
+    )
+    expect(toggle).to_be_focused()
+    expect(selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)).not_to_be_focused()
+    expect(selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)).to_be_visible()

@@ -35,6 +35,8 @@ class HomePageLocators(GenericPageLocator):
     """A collector class for main page locators"""
 
     INVALID_FIELD_SUFFIX = "-error"
+    # Class marking an input (or the scheme toggle) as failing validation
+    INVALID_FIELD_CLASS = "invalid-field"
     EDITABLE_CLASS = "editable"
     TOOLTIP_SUFFIX = "-tooltip"
     # Bootstrap's shown-state class on a tooltip bubble. It is added when the
@@ -337,6 +339,22 @@ class HomePageLocators(GenericPageLocator):
 
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
+    # Searchable scheme selector mounted on the create form's URL input (the
+    # .urlSchemeSelector class sits on the input's .text-input-container).
+    SCHEME_SELECTOR_CREATE = f"{WRAP_URL_CREATE} .urlSchemeSelector"
+    SCHEME_TOGGLE_CREATE = f"{WRAP_URL_CREATE} .urlSchemeToggle"
+    SCHEME_FILTER_CREATE = f"{WRAP_URL_CREATE} .urlSchemeFilter"
+    SCHEME_LISTBOX_CREATE = f"{WRAP_URL_CREATE} .urlSchemeListbox"
+    SCHEME_OPTION_CREATE = f"{WRAP_URL_CREATE} .urlSchemeOption"
+    # Parts of a scheme selector, relative to the selector itself (shared by the
+    # create form and the edit form)
+    SCHEME_TOGGLE_LABEL = ".urlSchemeToggleLabel"
+    SCHEME_INPUT_ROW_URL_INPUT = ".urlSchemeInputRow input"
+    SCHEME_FILTER = ".urlSchemeFilter"
+    SCHEME_LISTBOX = ".urlSchemeListbox"
+    SCHEME_OPTION_VISIBLE = ".urlSchemeOption:not(.hidden)"
+    # str.format template: one option row by its scheme
+    SCHEME_OPTION_BY_SCHEME_FORMAT = '.urlSchemeOption[data-scheme="{scheme}"]'
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
     BUTTON_URL_CANCEL_CREATE = "#urlCancelBtnCreate"
 
@@ -443,6 +461,27 @@ class HomePageLocators(GenericPageLocator):
     UPDATE_URL_TITLE_WRAP = ".updateUrlTitleWrap"
     BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
     INPUT_URL_STRING_UPDATE = ".urlStringUpdate"
+    INPUT_URL_STRING_UPDATE_SELECTED = f"{ROW_SELECTED_URL} {INPUT_URL_STRING_UPDATE}"
+    # Scheme toggle + URL input row of the selected card's edit form
+    SCHEME_INPUT_ROW_UPDATE = (
+        f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeInputRow"
+    )
+    # Searchable scheme selector mounted on the selected card's edit form
+    SCHEME_SELECTOR_UPDATE = (
+        f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeSelector"
+    )
+    SCHEME_TOGGLE_UPDATE = (
+        f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeToggle"
+    )
+    SCHEME_FILTER_UPDATE = (
+        f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeFilter"
+    )
+    SCHEME_LISTBOX_UPDATE = (
+        f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeListbox"
+    )
+    SCHEME_OPTION_UPDATE = (
+        f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeOption"
+    )
     BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
     BUTTON_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBtnUpdate"
     BUTTON_BIG_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBigBtnUpdate"

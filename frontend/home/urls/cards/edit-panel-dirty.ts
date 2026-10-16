@@ -9,13 +9,15 @@ import {
   TRIM_SUBMISSION_KEY,
   type TrimSubmission,
 } from "../trim/param-trim-block.js";
+import { currentUpdateScheme } from "../scheme/update-input-scheme.js";
+import { composeURL } from "../scheme/scheme-utils.js";
 
 // Mobile consolidated edit panel: the Title ✓, URL ✓ and "Save URL" buttons stay
 // disabled (aria-disabled + `unchanged`) until their field would actually change
 // the stored value. Coarse-pointer only; desktop never binds or syncs.
 
 const DIRTY_NAMESPACE = "editPanelDirty";
-const INPUT_EVENT = `input.${DIRTY_NAMESPACE}`;
+export const DIRTY_INPUT_EVENT = `input.${DIRTY_NAMESPACE}`;
 const TRIM_EVENT = `${TRIM_RENDERED_EVENT}.${DIRTY_NAMESPACE}`;
 const BOUND_KEY = "editPanelDirtyBound";
 
@@ -45,10 +47,11 @@ export function isURLStringDirty(urlCard: JQuery): boolean {
     .find(TRIM_WRAP_SELECTOR)
     .data(TRIM_SUBMISSION_KEY) as (() => TrimSubmission) | undefined;
   if (getSubmission && getSubmission().droppedCount > 0) return true;
-  return (
-    getInputValue(urlCard.find(STRING_INPUT_SELECTOR)).trim() !==
-    urlCard.find(".urlString").attr("href")
-  );
+  const submitted = composeURL({
+    scheme: currentUpdateScheme({ urlCard }),
+    text: getInputValue(urlCard.find(STRING_INPUT_SELECTOR)).trim(),
+  });
+  return submitted !== urlCard.find(".urlString").attr("href");
 }
 
 /** Syncs the three confirm buttons of `urlCard`. No-op unless the panel is bound. */
@@ -74,8 +77,14 @@ export function bindEditPanelDirtyState(urlCard: JQuery): void {
   if (!isCoarsePointer()) return;
   urlCard.data(BOUND_KEY, true);
   const resync = (): void => syncEditPanelDirtyState(urlCard);
-  urlCard.find(TITLE_INPUT_SELECTOR).off(INPUT_EVENT).on(INPUT_EVENT, resync);
-  urlCard.find(STRING_INPUT_SELECTOR).off(INPUT_EVENT).on(INPUT_EVENT, resync);
+  urlCard
+    .find(TITLE_INPUT_SELECTOR)
+    .off(DIRTY_INPUT_EVENT)
+    .on(DIRTY_INPUT_EVENT, resync);
+  urlCard
+    .find(STRING_INPUT_SELECTOR)
+    .off(DIRTY_INPUT_EVENT)
+    .on(DIRTY_INPUT_EVENT, resync);
   urlCard.find(TRIM_WRAP_SELECTOR).off(TRIM_EVENT).on(TRIM_EVENT, resync);
   syncEditPanelDirtyState(urlCard);
 }
@@ -83,8 +92,8 @@ export function bindEditPanelDirtyState(urlCard: JQuery): void {
 /** Panel close: unbinds the triggers and removes the disabled state. Idempotent. */
 export function unbindEditPanelDirtyState(urlCard: JQuery): void {
   urlCard.removeData(BOUND_KEY);
-  urlCard.find(TITLE_INPUT_SELECTOR).off(INPUT_EVENT);
-  urlCard.find(STRING_INPUT_SELECTOR).off(INPUT_EVENT);
+  urlCard.find(TITLE_INPUT_SELECTOR).off(DIRTY_INPUT_EVENT);
+  urlCard.find(STRING_INPUT_SELECTOR).off(DIRTY_INPUT_EVENT);
   urlCard.find(TRIM_WRAP_SELECTOR).off(TRIM_EVENT);
   clearConfirmButtonState(
     urlCard.find(

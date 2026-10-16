@@ -76,6 +76,64 @@ OTHER_VALID_SCHEMES = {
     "gemini",
 }
 
+DEFAULT_URL_SCHEME = "https"
+
+PINNED_URL_SCHEMES = ("https", "http")
+
+# Schemes whose canonical form is `scheme://`. Every other whitelisted scheme is
+# opaque (`scheme:` followed by whatever the user typed), so new whitelist entries
+# default to the safe, lossless opaque handling.
+AUTHORITY_URL_SCHEMES: frozenset[str] = frozenset(
+    {
+        "https",
+        "http",
+        "ftp",
+        "ftps",
+        "ws",
+        "wss",
+        "webcal",
+        "sftp",
+        "ssh",
+        "git",
+        "irc",
+        "ircs",
+        "rtsp",
+        "ldap",
+        "mms",
+        "zoom",
+        "slack",
+        "discord",
+        "steam",
+        "vscode",
+        "obsidian",
+        "notion",
+        "figma",
+        "miro",
+        "itms",
+        "itms-apps",
+        "market",
+        "intent",
+        "youtube",
+        "netflix",
+        "twitch",
+        "ipfs",
+        "ipns",
+        "nntp",
+        "gopher",
+        "gemini",
+    }
+)
+
+
+def ordered_url_schemes() -> list[str]:
+    """The whitelist in display order: pinned first, then core, then other (each alphabetical)."""
+    return [
+        *PINNED_URL_SCHEMES,
+        *sorted(CORE_SCHEMES - set(PINNED_URL_SCHEMES)),
+        *sorted(OTHER_VALID_SCHEMES),
+    ]
+
+
 DEV_URLS = (
     "localhost",
     "127.0.0.1",

@@ -115,6 +115,40 @@ const COMBOBOX_CARD_HTML = `
   </div>
 `;
 
+// Mirrors the structure scheme-selector.ts builds: `.urlSchemeSelector` is the
+// input container; children must exist so a mistyped selector can't pass vacuously.
+const SCHEME_SELECTOR_CARD_HTML = `
+  <div class="urlRow" utuburlid="42" urlSelected="false" filterable="true">
+    <span class="goToUrlIcon"></span>
+    <div class="text-input-container urlSchemeSelector">
+      <div class="urlSchemeInputRow">
+        <button class="urlSchemeToggle" type="button">
+          <span class="urlSchemeToggleLabel">https</span>
+          <span class="urlSchemeToggleCaret">▾</span>
+        </button>
+        <div class="text-input-inner-container">
+          <input class="text-input urlStringInput" type="text" />
+        </div>
+      </div>
+      <div class="urlSchemeListbox">
+        <div class="urlSchemeFilterWrap">
+          <div class="text-input-inner-container">
+            <input class="text-input urlSchemeFilter" type="search" />
+          </div>
+        </div>
+        <div class="urlSchemeOptions">
+          <div class="urlSchemeOption" role="option">
+            <span class="urlSchemeOptionLabel">http</span>
+            <span class="urlSchemeOptionHint">web</span>
+          </div>
+        </div>
+        <div class="urlSchemeMsg"></div>
+      </div>
+    </div>
+    <a class="urlString" href="https://example.com"></a>
+  </div>
+`;
+
 const MULTI_CARD_HTML = `
   <div class="urlRow" utuburlid="10" urlSelected="false" filterable="true">
     <span class="goToUrlIcon"></span>
@@ -310,6 +344,43 @@ describe("URL Card Selection", () => {
         target.trigger("click");
 
         expect(urlCard.attr("urlSelected")).toBe("true");
+      });
+    });
+  });
+
+  describe("scheme selector elements never deselect the URL card", () => {
+    // Regression guard: one `.urlSchemeSelector` ignore-list entry covers every
+    // descendant via closest(), so clicks on the toggle, filter input and
+    // options must not reach deselectURL / resetURLEditPanelState.
+    beforeEach(() => {
+      document.body.innerHTML = SCHEME_SELECTOR_CARD_HTML;
+      urlCard = $(".urlRow");
+    });
+
+    const SCHEME_SELECTOR_CHILD_SELECTORS = [
+      ".urlSchemeSelector",
+      ".urlSchemeInputRow",
+      ".urlSchemeToggle",
+      ".urlSchemeToggleCaret",
+      ".urlStringInput",
+      "input.urlSchemeFilter",
+      ".urlSchemeOption",
+      ".urlSchemeOptionLabel",
+      ".urlSchemeOptionHint",
+    ];
+
+    SCHEME_SELECTOR_CHILD_SELECTORS.forEach((selector) => {
+      it(`clicking ${selector} does NOT deselect the URL card or reset the edit panel`, () => {
+        selectURLCard(urlCard);
+        vi.mocked(resetURLEditPanelState).mockClear();
+        const target = urlCard.find(selector);
+        expect(target.length).toBe(1);
+
+        target.trigger("click");
+
+        expect(urlCard.attr("urlSelected")).toBe("true");
+        expect(getSelectedURLCard()?.[0]).toBe(urlCard[0]);
+        expect(resetURLEditPanelState).not.toHaveBeenCalled();
       });
     });
   });

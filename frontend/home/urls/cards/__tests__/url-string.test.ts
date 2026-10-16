@@ -4,7 +4,18 @@ import {
   createURLStringAndUpdateBlock,
   modifyURLStringForDisplay,
 } from "../url-string.js";
-import { updateURL, isURLStringSubmitInFlight } from "../update-string.js";
+import {
+  updateURL,
+  cancelUpdateURLStringFormOnEscape,
+  isURLStringSubmitInFlight,
+  resetUpdateURLFailErrors,
+} from "../update-string.js";
+import {
+  getSchemeSelector,
+  mountSchemeSelector,
+  type SchemeSelectorHandle,
+} from "../../scheme/scheme-selector.js";
+import { TRIM_SYNC_KEY } from "../../trim/param-trim-block.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { isCoarsePointer } from "../../../mobile.js";
 import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
@@ -33,7 +44,9 @@ vi.mock("../../../../lib/globals.js", () => globalsMock);
 vi.mock("../update-string.js", () => ({
   updateURL: vi.fn(),
   hideAndResetUpdateURLStringForm: vi.fn(),
+  cancelUpdateURLStringFormOnEscape: vi.fn(),
   isURLStringSubmitInFlight: vi.fn(() => false),
+  resetUpdateURLFailErrors: vi.fn(),
 }));
 
 vi.mock("../access.js", () => ({ accessLink: vi.fn() }));
@@ -448,5 +461,141 @@ describe("createUpdateURLStringInput - query-parameter trim block", () => {
   it("marks the disclosure header tabbable so the card toggles its tab stop", () => {
     const urlCard = mountCard({ utubUrlId: 1 });
     expect(urlCard.find(".urlParamTrimHeader").hasClass("tabbable")).toBe(true);
+  });
+});
+
+describe("createUpdateURLStringInput - scheme selector support", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // clearAllMocks keeps mockReturnValue: an earlier describe leaves it true.
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    getSchemeSelector({ container: $(".text-input-container") })?.destroy();
+    document.body.innerHTML = "";
+  });
+
+  function mountCard(): JQuery {
+    document.body.innerHTML = `<div class="urlRow" utuburlid="1" urlSelected="true" filterable="true"></div>`;
+    const urlCard = $(".urlRow");
+    urlCard.append(
+      createURLStringAndUpdateBlock("https://example.com", urlCard, 1),
+    );
+    return urlCard;
+  }
+
+  function mountSelector({
+    urlCard,
+  }: {
+    urlCard: JQuery;
+  }): SchemeSelectorHandle {
+    return mountSchemeSelector({
+      inputContainer: urlCard.find(".text-input-container"),
+      urlInput: urlCard.find(".urlStringUpdate"),
+      idPrefix: "url-string-test",
+      onChange: vi.fn(),
+    });
+  }
+
+  it("builds the string input as text with URL keyboard hints, not type=url", () => {
+    const input = mountCard().find(".urlStringUpdate");
+
+    expect(input.attr("type")).toBe("text");
+    expect(input.attr("inputmode")).toBe("url");
+    expect(input.attr("autocapitalize")).toBe("none");
+    expect(input.attr("autocorrect")).toBe("off");
+    expect(input.attr("spellcheck")).toBe("false");
+  });
+
+  it("tolerates typing while no selector is mounted (the form has not been opened)", () => {
+    const input = mountCard().find(".urlStringUpdate");
+
+    expect(() => input.val("ssh://host/path").trigger("input")).not.toThrow();
+    expect(input.val()).toBe("ssh://host/path");
+    expect(resetUpdateURLFailErrors).not.toHaveBeenCalled();
+  });
+
+  it("moves a typed scheme prefix into the mounted selector and clears stale errors", () => {
+    const urlCard = mountCard();
+    const handle = mountSelector({ urlCard });
+    const input = urlCard.find(".urlStringUpdate");
+
+    input.val("ssh://host/path").trigger("input");
+
+    expect(input.val()).toBe("host/path");
+    expect(handle.getScheme()).toBe("ssh");
+    expect(handle.isExplicit()).toBe(true);
+    expect(resetUpdateURLFailErrors).toHaveBeenCalledWith(urlCard);
+  });
+
+  it("runs the prefix split before the trim sync so the trim sees the split text", () => {
+    const urlCard = mountCard();
+    const handle = mountSelector({ urlCard });
+    handle.setScheme({ scheme: "http", explicit: true });
+    const input = urlCard.find(".urlStringUpdate");
+    // Records the input at call time: only the split value proves the prefix
+    // handler ran first (the trim sync is handed the composed URL either way).
+    const syncCalls: { rawValue: string; inputValue: string }[] = [];
+    const trimSync = vi.fn((rawValue: string) => {
+      syncCalls.push({ rawValue, inputValue: input.val() as string });
+    });
+    urlCard.find(".urlParamTrimWrap").data(TRIM_SYNC_KEY, trimSync);
+
+    input.val("https://example.com/p?a=1").trigger("input");
+
+    expect(syncCalls).toEqual([
+      {
+        rawValue: "https://example.com/p?a=1",
+        inputValue: "example.com/p?a=1",
+      },
+    ]);
+  });
+
+  describe("Escape on the input", () => {
+    function pressEscapeOnFocusedInput(urlCard: JQuery): void {
+      urlCard.find(".urlStringUpdate").trigger("focus");
+      $(document).trigger($.Event("keyup", { key: "Escape" }));
+    }
+
+    afterEach(() => {
+      $(document).off("keyup.updateURLStringFocus");
+      vi.mocked(isCoarsePointer).mockReturnValue(false);
+    });
+
+    it("cancels the form through the shared Escape helper on a fine pointer", () => {
+      const urlCard = mountCard();
+
+      pressEscapeOnFocusedInput(urlCard);
+
+      expect(cancelUpdateURLStringFormOnEscape).toHaveBeenCalledTimes(1);
+      expect(cancelUpdateURLStringFormOnEscape).toHaveBeenCalledWith({
+        urlCard,
+      });
+    });
+
+    it("defers to the panel-level handler on a coarse pointer", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      const urlCard = mountCard();
+
+      pressEscapeOnFocusedInput(urlCard);
+
+      expect(cancelUpdateURLStringFormOnEscape).not.toHaveBeenCalled();
+    });
+  });
+
+  it("passes the selected scheme to the trim sync as a composed URL", () => {
+    const urlCard = mountCard();
+    const handle = mountSelector({ urlCard });
+    handle.setScheme({ scheme: "ftp", explicit: true });
+    const trimSync = vi.fn();
+    urlCard.find(".urlParamTrimWrap").data(TRIM_SYNC_KEY, trimSync);
+
+    urlCard
+      .find(".urlStringUpdate")
+      .val("files.example.com/p?a=1")
+      .trigger("input");
+
+    expect(trimSync).toHaveBeenCalledWith("ftp://files.example.com/p?a=1");
   });
 });
