@@ -25,6 +25,16 @@ import {
   HOME_FORM,
 } from "../../../types/metrics-dim-values.js";
 
+// True when a non-collapsed text selection starts or ends inside the element
+function isSelectionWithin(element: HTMLElement): boolean {
+  const selection = window.getSelection();
+  if (selection === null || selection.isCollapsed) return false;
+  return (
+    element.contains(selection.anchorNode) ||
+    element.contains(selection.focusNode)
+  );
+}
+
 // Element to display the URL title
 export function createURLTitle(urlTitleText: string): JQuery<HTMLElement> {
   return $(document.createElement("h6"))
@@ -57,6 +67,9 @@ export function createURLTitleAndUpdateBlock(
         // the only entry point — tapping the title row is a no-op there.
         if (isCoarsePointer()) return;
         if (urlCard.attr("urlSelected") !== "true") return;
+        // The click that ends a drag-selection of the title text (e.g. to copy
+        // it) must not open the edit form.
+        if (isSelectionWithin(event.currentTarget)) return;
         const wrapEl = $(event.currentTarget) as JQuery;
         showUpdateURLTitleForm({
           urlTitleAndShowUpdateIconWrap: wrapEl,

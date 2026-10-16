@@ -83,6 +83,8 @@ export function resetURLEditPanelState(urlCard: JQuery): void {
 
   hideAndResetUpdateURLTitleForm({ urlCard, suppressSiblingDisable: true });
   hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+  // The two non-keepOpen hides above also restore the tags (the second one runs
+  // with both wraps closed), so a deselect after a keepOpen submit is covered.
   $(document).off("keydown.urlEditPanelEscape");
 
   // Ownership-guarded open-form clear: resetURLEditPanelState is called directly

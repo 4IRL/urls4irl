@@ -231,6 +231,13 @@
     padding: 20px 0 15px 0;
 }
 
+/* While a URL edit hides the tags, drop the row padding so no empty band is left
+   (the :not(:has(.tagBadge)) override below ignores a hidden container that still
+   holds badges). Higher specificity than the base rule above. */
+.urlRow[filterable="true"][urlSelected="true"] .urlTags.urlTagsHiddenForEdit {
+    padding: 0;
+}
+
 .urlRow[filterable="true"][urlSelected="true"] .urlOptions {
     padding: 15px 0 0 0;
     align-items: center;
@@ -267,8 +274,14 @@ a.urlString {
     width: 95%;
 }
 
+/* Why 100% + min-width 0 (not max-content): a max-content wrapper grows to the
+   title's unwrapped width and overflows the card; capping it lets a long title
+   wrap beside the pencil/go-to icon. flex-start keeps the icon on the first
+   line of a multi-line title. */
 .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
-    width: max-content;
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
 }
 
 /* Editability affordance on the selected url-title row, mirroring the UTub
@@ -276,10 +289,6 @@ a.urlString {
    hover/active underline, .edit-pencil-icon opacity fade on hover). */
 .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap {
     cursor: pointer;
-}
-
-.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:active .urlTitle {
-    text-decoration: underline;
 }
 
 @media (any-pointer: coarse) {
@@ -290,16 +299,19 @@ a.urlString {
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
         width: 100%;
         justify-content: flex-start;
-        align-items: center;
+        align-items: flex-start;
         gap: 0.35rem;
     }
 
+    /* The selected title wraps (full text readable) instead of ellipsizing;
+       overflow-wrap: anywhere breaks one unbroken long token too. */
     .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
         flex: 0 1 auto;
         min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        overflow: visible;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        white-space: normal;
     }
 
     /* On coarse-pointer devices the consolidated URL edit panel has a single
@@ -460,6 +472,8 @@ a.urlString {
 @media not all and (any-pointer: coarse) {
     .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
         white-space: normal;
+        overflow: visible;
+        overflow-wrap: anywhere;
         text-overflow: unset;
     }
 }
@@ -860,6 +874,13 @@ a.urlString {
     }
 
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:hover .urlTitle {
+        text-decoration: underline;
+    }
+
+    /* Fine pointers only: touch devices keep :active latched after a tap (see the
+       sticky-:hover note above the button rules), which left the title underlined
+       until another tap elsewhere. */
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:active .urlTitle {
         text-decoration: underline;
     }
 

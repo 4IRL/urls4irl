@@ -200,7 +200,7 @@ def test_delete_tag_rate_limits(page: Page, create_test_tags, provide_app: Flask
     assert_on_429_page(page=page)
 
 
-def test_no_get_delete_tag_button_on_hover_update_url_title(
+def test_tag_badge_hidden_while_update_url_title_open(
     page: Page, create_test_tags, provide_app: Flask
 ):
     app = provide_app
@@ -216,19 +216,19 @@ def test_no_get_delete_tag_button_on_hover_update_url_title(
         utub_id=utub_user_created.id,
         utub_url_id=url_in_utub.id,
     )
-
-    open_update_url_title(page=page, selected_url_row=get_selected_url(page=page))
 
     tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
         url_tag_id=url_tag.id
     )
-    delete_tag_button = get_delete_tag_button_on_hover(
-        page=page, tag_badge_selector=tag_badge_selector, assert_visible=False
-    )
-    assert not delete_tag_button.is_visible()
+    # Precondition, so the not-visible check below is falsifiable.
+    expect(page.locator(tag_badge_selector).first).to_be_visible()
+
+    open_update_url_title(page=page, selected_url_row=get_selected_url(page=page))
+
+    expect(page.locator(tag_badge_selector).first).not_to_be_visible()
 
 
-def test_no_get_delete_tag_button_on_hover_update_url_string(
+def test_tag_badge_hidden_while_update_url_string_open(
     page: Page, create_test_tags, provide_app: Flask
 ):
     app = provide_app
@@ -244,17 +244,17 @@ def test_no_get_delete_tag_button_on_hover_update_url_string(
         utub_id=utub_user_created.id,
         utub_url_id=url_in_utub.id,
     )
+
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_tag.id
+    )
+    # Precondition, so the not-visible check below is falsifiable.
+    expect(page.locator(tag_badge_selector).first).to_be_visible()
 
     edit_url_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
     wait_then_click_element(page=page, css_selector=edit_url_selector)
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
-        url_tag_id=url_tag.id
-    )
-    delete_tag_button = get_delete_tag_button_on_hover(
-        page=page, tag_badge_selector=tag_badge_selector, assert_visible=False
-    )
-    assert not delete_tag_button.is_visible()
+    expect(page.locator(tag_badge_selector).first).not_to_be_visible()
 
 
 def test_no_get_delete_tag_button_on_hover_add_tag(

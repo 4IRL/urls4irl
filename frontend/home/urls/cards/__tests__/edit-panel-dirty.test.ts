@@ -116,6 +116,17 @@ describe("edit panel dirty state (mobile)", () => {
       expect(isURLStringDirty(urlCard)).toBe(true);
     });
 
+    it("url: dirty when the input carries an auto-stripped param", () => {
+      const urlCard = mountCard();
+      const autoUrl = "https://example.com/page?utm_source=x";
+      urlCard.find(".urlString").attr("href", autoUrl);
+      urlCard.find(".urlStringUpdate").val(autoUrl);
+
+      flushTrim({ urlCard, rawValue: autoUrl });
+
+      expect(isURLStringDirty(urlCard)).toBe(true);
+    });
+
     it("url: a dropped chip makes it dirty even though the text is unchanged", () => {
       const urlCard = mountCard();
       const input = urlCard.find(".urlStringUpdate");

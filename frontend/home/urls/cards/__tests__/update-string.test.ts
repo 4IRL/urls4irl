@@ -40,6 +40,7 @@ import {
   resetURLEditPanelState,
 } from "../update-url-panel.js";
 import { bindEditPanelDirtyState } from "../edit-panel-dirty.js";
+import { hideAndResetTagCombobox } from "../../tags/combobox.js";
 import { getSchemeSelector } from "../../scheme/scheme-selector.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
@@ -124,6 +125,17 @@ vi.mock("../update-url-panel.js", () => ({
   closeURLEditPanel: vi.fn(),
   resetURLEditPanelState: vi.fn(),
 }));
+
+// Spy-wrapped: the real reset still runs, so tests can assert whether the
+// open-combobox guard in showUpdateURLStringForm invoked it.
+vi.mock("../../tags/combobox.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../tags/combobox.js")>();
+  return {
+    ...actual,
+    hideAndResetTagCombobox: vi.fn(actual.hideAndResetTagCombobox),
+  };
+});
 
 vi.mock("../../tags/tags.js", () => ({
   disableTagRemovalInURLCard: vi.fn(),
@@ -1303,7 +1315,7 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     vi.useRealTimers();
   });
 
-  it("renders the pre-filled value immediately on open, collapsed", () => {
+  it("renders the pre-filled value immediately on open, expanded", () => {
     urlStringInput.val(TRIM_URL);
 
     showUpdateURLStringForm({
@@ -1312,8 +1324,27 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     });
 
     expect(trimWrap.hasClass("hidden")).toBe(false);
-    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "true",
+    );
     expect(trimWrap.find(".urlParamTrimChip").length).toBe(3);
+  });
+
+  it("keeps a block typed after open collapsed", () => {
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+
+    syncFromInput(TRIM_URL);
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+    expect(trimWrap.find(".urlParamTrimHeader").attr("aria-expanded")).toBe(
+      "false",
+    );
   });
 
   it("re-collapses and resets the block in place when the form is cancelled", () => {
@@ -1369,6 +1400,53 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
     expect(trimWrap.hasClass("collapsed")).toBe(true);
   });
 
+  it("keepOpen keeps an expanded block expanded", () => {
+    urlCard.find(".urlString").attr("href", TRIM_URL);
+    urlStringInput.val(TRIM_URL);
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+  });
+
+  it("keepOpen does not force-expand the block when the resynced value has no params", () => {
+    urlStringInput.val(TRIM_URL);
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    expect(trimWrap.hasClass("collapsed")).toBe(false);
+    // The stored href (what the input resyncs to) carries no query params.
+    urlCard.find(".urlString").attr("href", "https://example.com");
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(trimWrap.hasClass("hidden")).toBe(true);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+  });
+
+  it("keepOpen keeps a user-collapsed block collapsed", () => {
+    urlCard.find(".urlString").attr("href", TRIM_URL);
+    urlStringInput.val(TRIM_URL);
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+    });
+    trimWrap.find(".urlParamTrimHeader").trigger("click");
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(trimWrap.hasClass("hidden")).toBe(false);
+    expect(trimWrap.hasClass("collapsed")).toBe(true);
+  });
+
   it("submits the typed value byte-for-byte when nothing is dropped", async () => {
     syncFromInput("https://example.com/p?q=hello%20world&next=https://a.com/b");
     mockSuccess("https://example.com/p?q=hello%20world&next=https://a.com/b");
@@ -1377,6 +1455,20 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
 
     expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
       urlString: "https://example.com/p?q=hello%20world&next=https://a.com/b",
+    });
+  });
+
+  it("sends the PATCH when the stored href carries an auto-stripped param and the input equals it", async () => {
+    const autoUrl = "https://example.com/p?utm_source=x";
+    urlCard.find(".urlString").attr("href", autoUrl);
+    syncFromInput(autoUrl);
+    mockSuccess("https://example.com/p");
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({
+      urlString: autoUrl,
     });
   });
 
@@ -2552,5 +2644,162 @@ describe("edit-URL scheme selector", () => {
         false,
       );
     });
+  });
+});
+
+describe("URL string form hides the tags while editing", () => {
+  const TAGS_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">My Title</span>
+        <button class="urlTitleBtnUpdate"></button>
+      </div>
+      <div class="updateUrlTitleWrap hidden">
+        <input class="urlTitleUpdate" value="My Title" />
+      </div>
+      <a class="urlString" href="https://example.com">https://example.com</a>
+      <div class="updateUrlStringWrap hidden">
+        <input class="urlStringUpdate" type="text" value="https://example.com" />
+        <div class="urlStringUpdate-error"></div>
+      </div>
+      <button class="urlStringBtnUpdate"></button>
+      <button class="urlBtnAccess"></button>
+      <button class="urlBtnDelete"></button>
+      <button class="urlBtnCopy"></button>
+      <button class="urlTagBtnCreate visible-flex"></button>
+      <div class="urlTags">
+        <div class="urlTagsContainer"><div class="tagBadge"></div></div>
+      </div>
+    </div>
+  `;
+
+  let urlCard: JQuery;
+
+  function openString(suppressSiblingDisable: boolean = false): void {
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate: urlCard.find(".urlStringBtnUpdate"),
+      suppressSiblingDisable,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+    document.body.innerHTML = TAGS_CARD_HTML;
+    urlCard = $(".urlRow");
+  });
+
+  it("hides .urlTagsContainer and adds the state class when the form opens", () => {
+    openString();
+
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      true,
+    );
+  });
+
+  it("restores the tags on close without leaving visible-flex behind", () => {
+    openString();
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    const container = urlCard.find(".urlTagsContainer");
+    expect(container.hasClass("hidden")).toBe(false);
+    expect(container.hasClass("visible-flex")).toBe(false);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      false,
+    );
+  });
+
+  it("keeps the tags hidden across a keepOpen submit", () => {
+    openString();
+
+    hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
+
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+  });
+
+  it("keeps the tags hidden while the title form is still open (mobile panel)", () => {
+    openString(true);
+    urlCard.find(".updateUrlTitleWrap").removeClass("hidden");
+
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      true,
+    );
+  });
+
+  it("restores the tags once both forms of the panel are closed", () => {
+    openString(true);
+    urlCard.find(".updateUrlTitleWrap").removeClass("hidden");
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    urlCard.find(".updateUrlTitleWrap").addClass("hidden");
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      false,
+    );
+  });
+
+  it("restoring on an untouched card is a no-op", () => {
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    const container = urlCard.find(".urlTagsContainer");
+    expect(container.hasClass("hidden")).toBe(false);
+    expect(container.hasClass("visible-flex")).toBe(false);
+    expect(urlCard.find(".urlTags").hasClass("urlTagsHiddenForEdit")).toBe(
+      false,
+    );
+  });
+
+  it("does not restore the Add-tag button while the title form is still open", () => {
+    openString(true);
+    urlCard.find(".updateUrlTitleWrap").removeClass("hidden");
+
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlTagBtnCreate").hasClass("hidden")).toBe(true);
+  });
+
+  it("restores the Add-tag button when the title form is closed", () => {
+    openString();
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    expect(urlCard.find(".urlTagBtnCreate").hasClass("hidden")).toBe(false);
+  });
+
+  it("closes an open tag combobox before hiding the tags", () => {
+    urlCard.append('<div class="urlTagComboboxWrap visible-flex"></div>');
+    urlCard
+      .find(".urlTagBtnCreate")
+      .addClass("cancel urlTagCancelBigBtnCreate");
+
+    openString();
+
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTagBtnCreate").hasClass("cancel")).toBe(false);
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+  });
+
+  it("does not run the combobox reset when no combobox wrap exists", () => {
+    openString();
+
+    expect(hideAndResetTagCombobox).not.toHaveBeenCalled();
+    expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+  });
+
+  it("runs the combobox reset exactly once when an open combobox wrap exists", () => {
+    urlCard.append('<div class="urlTagComboboxWrap visible-flex"></div>');
+
+    openString();
+
+    expect(hideAndResetTagCombobox).toHaveBeenCalledTimes(1);
+    expect(hideAndResetTagCombobox).toHaveBeenCalledWith(urlCard);
   });
 });

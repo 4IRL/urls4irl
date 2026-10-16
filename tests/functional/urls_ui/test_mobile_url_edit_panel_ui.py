@@ -9,7 +9,10 @@ from flask.testing import FlaskCliRunner
 from playwright.sync_api import Locator, Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from backend.cli.mock_constants import MOCK_URL_STRINGS
+from backend.cli.mock_constants import (
+    MOCK_URL_STRINGS,
+    MOCK_URL_WITH_TRACKING_PARAMS,
+)
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import URL_UPDATED_BANNER
@@ -449,6 +452,11 @@ def test_url_string_trim_section_in_consolidated_panel_mobile(
 
     header = page.locator(HPL.EDIT_FORM_TRIM_HEADER)
     expect(header).to_be_visible()
+    # Pin the collapsed state the geometry checks below assume, whatever the
+    # open-time default is.
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=False
+    )
     expect(header).to_have_attribute("aria-expanded", "false")
     # The caret is the only open/closed cue; layout.css hides `.title-caret` on mobile.
     expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).to_be_visible()
@@ -1003,6 +1011,43 @@ def test_url_edit_panel_save_url_closes_only_when_title_untouched_mobile(
         expect(page.locator(HPL.URL_OUTCOME_BANNER_UNDO)).to_be_visible()
 
 
+def test_url_edit_panel_hides_tags_while_open_mobile(
+    page_mobile_portrait: Page,
+    create_test_tags,
+    provide_app: Flask,
+):
+    """
+    GIVEN a tagged URL card is selected on a mobile device
+    WHEN the user opens the consolidated edit panel and then closes it
+    THEN the tags are hidden while the panel is open and visible again after it closes
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+    # Precondition, so the not-visible check below is falsifiable.
+    assert selected_url.locator(HPL.TAG_BADGES).count() > 0
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+
+    _open_url_edit_panel_mobile(page=page)
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_hidden()
+
+    selected_url.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE).click()
+    wait_until_hidden(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+    )
+
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+    expect(selected_url.locator(HPL.TAG_BADGES).first).to_be_visible()
+
+
 def test_url_edit_button_hidden_and_unreachable_when_not_selected_mobile(
     page_mobile_portrait: Page,
     create_test_utubs,
@@ -1131,6 +1176,65 @@ def test_url_edit_panel_scheme_selector_prefill_and_scheme_only_change_mobile(
         page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, option_scheme="https"
     )
     assert_confirm_button_disabled(button=string_check)
+
+
+def test_url_edit_panel_auto_removable_param_enables_save_buttons_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN the consolidated edit panel for a stored URL that still carries an
+        auto-removable (tracking) param, with the input left unchanged
+    WHEN the panel opens and the trim section is expanded
+    THEN the URL's green check and Save URL are enabled (the server strips the
+        param, so saving is a real change)
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    selected_url = _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=MOCK_URL_WITH_TRACKING_PARAMS,
+    )
+    set_trim_section_expanded(
+        page=page, header_selector=HPL.EDIT_FORM_TRIM_HEADER, expanded=True
+    )
+
+    assert_confirm_button_enabled(
+        button=selected_url.locator(HPL.BUTTON_URL_STRING_SUBMIT_UPDATE)
+    )
+    assert_confirm_button_enabled(
+        button=selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)
+    )
+
+
+def test_url_string_trim_section_open_by_default_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a stored URL that already carries a query string
+    WHEN the consolidated edit panel opens on a mobile device
+    THEN the trim section is expanded and the Save URL button is visible at once
+    """
+    page = page_mobile_portrait
+    _, cli_runner = runner
+    selected_url = _open_edit_panel_for_first_url_mobile(
+        page=page,
+        app=provide_app,
+        cli_runner=cli_runner,
+        url_string=UTS.URL_WITH_NON_TRACKING_PARAMS,
+    )
+
+    expect(page.locator(HPL.EDIT_FORM_TRIM_HEADER)).to_have_attribute(
+        "aria-expanded", "true"
+    )
+    expect(selected_url.locator(HPL.BUTTON_BIG_URL_STRING_SAVE_UPDATE)).to_be_visible()
 
 
 def test_url_edit_panel_scheme_selector_tap_targets_and_no_autofocus_mobile(
