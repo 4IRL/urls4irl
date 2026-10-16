@@ -99,7 +99,6 @@ describe("composeURL", () => {
     (text) => {
       const composed = composeURL({ scheme: "https", text });
       expect(composed.startsWith("https://")).toBe(true);
-      expect(composed.startsWith("javascript:")).toBe(false);
     },
   );
 
