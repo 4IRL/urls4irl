@@ -24,7 +24,11 @@ import {
 } from "../urls/outcome-banner.js";
 import type { OutcomeBannerVariant } from "../urls/outcome-banner.js";
 import { TRASH_BANNER_MOUNT } from "./banner.js";
-import { refreshTrashCount, renderTrashCount } from "./count.js";
+import {
+  beginCountRequest,
+  refreshTrashCount,
+  renderTrashCount,
+} from "./count.js";
 import {
   closeDestinationPicker,
   initDestinationPicker,
@@ -283,10 +287,13 @@ export function restoreTrashedURL({
 }
 
 function refreshDeckAndCount(): Promise<void> {
+  const isCurrent = beginCountRequest();
   return new Promise((resolve) => {
     getAllUTubs()
       .done((response) => {
         buildUTubDeck(response.utubs);
+        // The deck is always rebuilt; only the count is dropped when superseded.
+        if (!isCurrent()) return;
         setState({ trashCount: response.trashCount });
         renderTrashCount();
       })

@@ -6,10 +6,10 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { debug } from "../../../lib/debug.js";
-import { refreshTrashCount } from "../../trash/count.js";
 import { AppEvents, emit as emitAppEvent, on } from "../../../lib/event-bus.js";
 import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { refreshTrashCount } from "../../trash/count.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
   updateTagFilteringOnURLOrURLTagDeletion,

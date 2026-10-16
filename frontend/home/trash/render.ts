@@ -40,14 +40,12 @@ interface TrashListState {
   listedAt: string | null;
   urls: TrashedUrlItem[];
   utubs: TrashedUtubItem[];
-  currentUser: number | null;
 }
 
 let trashListState: TrashListState = {
   listedAt: null,
   urls: [],
   utubs: [],
-  currentUser: null,
 };
 
 export function getTrashListState(): TrashListState {
@@ -132,17 +130,6 @@ export function formatDeletedBy({
   });
 }
 
-function setDisabled({
-  button,
-  disabled,
-}: {
-  button: JQuery;
-  disabled: boolean;
-}): void {
-  if (!disabled) return;
-  button.addClass("disabled").attr("aria-disabled", "true");
-}
-
 function buildActionButton({
   className,
   label,
@@ -158,7 +145,7 @@ function buildActionButton({
     .addClass(className)
     .text(label)
     .attr("aria-label", ariaLabel);
-  setDisabled({ button, disabled });
+  if (disabled) button.addClass("disabled").attr("aria-disabled", "true");
   return button;
 }
 
@@ -431,7 +418,6 @@ export function renderTrashList({ list }: { list: TrashList }): void {
     listedAt: list.listedAt,
     urls: list.urls,
     utubs: list.utubs,
-    currentUser: list.currentUser,
   };
   const now = Date.parse(list.listedAt);
 

@@ -204,6 +204,7 @@ jobs:
           - ['UI Settings Functional Tests', 'settings_ui', 2]
           - ['UI Cross-UTub Search Functional Tests', 'search_ui', 2]
           - ['UI Admin Functional Tests', 'admin_ui', 2]
+          - ['UI Trash Functional Tests', 'trash_ui', 2]
 
     name: ${{ format('{0}', matrix.worker[0]) }}
 

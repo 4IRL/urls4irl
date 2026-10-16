@@ -209,8 +209,8 @@ function handlePopState(event: PopStateEvent): void {
     });
   }
 
-  // Trash view entry (pushed by openTrash). Desktop only: Step 8 owns mobile,
-  // so below the breakpoint fall back to the no-UTub landing. Checked before
+  // Trash view entry (pushed by openTrash). Desktop only: mobile has no
+  // trash view yet, so below the breakpoint fall back to the no-UTub landing. Checked before
   // every UTubID branch; opening Trash never consults UTub validity.
   if (state !== null && "trash" in state) {
     if (($(window).width() ?? 0) >= TABLET_WIDTH) {
@@ -419,7 +419,7 @@ function handlePageShow(): void {
   );
   // Reject only when a genuinely-unrecognized param is present. A UTubID-absent
   // request (only `panel` supplied) is no longer treated as malformed here — it
-  // falls through (DD-24); Step 5 owns the graceful no-UTub degradation.
+  // falls through to the graceful no-UTub degradation.
   const isTrashView =
     searchParams.get(APP_CONFIG.strings.TRASH_VIEW_QUERY_PARAM) ===
     APP_CONFIG.strings.TRASH_VIEW;
@@ -443,7 +443,7 @@ function handlePageShow(): void {
   }
 
   // Trash wins over any UTubID (dropped) and never consults UTub validity.
-  // Desktop only: below the breakpoint Step 8 owns mobile, so degrade to /home.
+  // Desktop only: below the breakpoint mobile has no trash view, so degrade to /home.
   if (isTrashView) {
     if (($(window).width() ?? 0) >= TABLET_WIDTH) {
       window.history.replaceState(

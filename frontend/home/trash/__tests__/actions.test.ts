@@ -40,6 +40,7 @@ vi.mock("../../../lib/ajax.js", () => ({
 vi.mock("../../utubs/deck.js", () => ({ buildUTubDeck: vi.fn() }));
 vi.mock("../../utubs/utils.js", () => ({ getAllUTubs: vi.fn() }));
 vi.mock("../count.js", () => ({
+  beginCountRequest: vi.fn(() => () => true),
   refreshTrashCount: vi.fn(() => Promise.resolve()),
   renderTrashCount: vi.fn(),
 }));

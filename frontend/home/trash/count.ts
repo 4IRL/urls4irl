@@ -27,14 +27,27 @@ export function renderTrashCount(): void {
   $(`#${TRASH_COUNT_ID}`).text(`(${getState().trashCount})`);
 }
 
+// Bumped by every count-bearing `GET /utubs`: a response carrying an older token
+// was superseded by a later request and must not overwrite the store or badge.
+let countRequestToken = 0;
+
+/** Starts a count-bearing request; the returned check is false once superseded. */
+export function beginCountRequest(): () => boolean {
+  countRequestToken += 1;
+  const token = countRequestToken;
+  return () => token === countRequestToken;
+}
+
 /**
  * Re-reads the authoritative count from `GET /utubs`. A failed fetch keeps the
- * count already shown.
+ * count already shown; a superseded response is dropped.
  */
 export function refreshTrashCount(): Promise<void> {
+  const isCurrent = beginCountRequest();
   return new Promise((resolve) => {
     getAllUTubs()
       .done((response) => {
+        if (!isCurrent()) return;
         setState({ trashCount: response.trashCount });
         renderTrashCount();
       })

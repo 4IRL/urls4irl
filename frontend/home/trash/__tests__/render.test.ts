@@ -328,7 +328,6 @@ describe("renderTrashList", () => {
     expect(state.listedAt).toBe(list.listedAt);
     expect(state.urls.length).toBe(1);
     expect(state.utubs.length).toBe(1);
-    expect(state.currentUser).toBe(CURRENT_USER);
   });
 
   it("fills and shows the retention notice", () => {

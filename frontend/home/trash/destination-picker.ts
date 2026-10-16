@@ -91,7 +91,7 @@ function buildOption({
   return option;
 }
 
-function handleHomeEnd(event: KeyboardEvent): void {
+function handlePickerKeydown(event: KeyboardEvent): void {
   if (event.key === KEYS.ENTER || event.key === KEYS.SPACE) {
     activationArmed = true;
     return;
@@ -144,7 +144,7 @@ export function openDestinationPicker({
   activationArmed = false;
 
   const pickerElement = picker[0];
-  homeEndListener = handleHomeEnd;
+  homeEndListener = handlePickerKeydown;
   keyupResetListener = () => {
     activationArmed = false;
   };

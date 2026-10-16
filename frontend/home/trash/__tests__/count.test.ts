@@ -72,6 +72,31 @@ describe("trash count", () => {
       );
     });
 
+    it("drops a superseded response that lands after a newer one", async () => {
+      const resolvers: Array<(count: number) => void> = [];
+      vi.mocked(getAllUTubs).mockImplementation(() => {
+        const chain = {
+          done: (callback: Callback) => {
+            resolvers.push((count) => callback({ trashCount: count }));
+            return chain;
+          },
+          fail: () => chain,
+          always: () => chain,
+        };
+        return chain as unknown as ReturnType<typeof getAllUTubs>;
+      });
+
+      void refreshTrashCount();
+      void refreshTrashCount();
+      resolvers[1](2);
+      resolvers[0](9);
+
+      expect(getState().trashCount).toBe(2);
+      expect(document.getElementById("TrashSelectorCount")?.textContent).toBe(
+        "(2)",
+      );
+    });
+
     it("keeps the old count when the fetch fails", async () => {
       loadInitialTrashCount();
       renderTrashCount();

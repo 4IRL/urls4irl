@@ -6,13 +6,13 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { debug } from "../../../lib/debug.js";
-import { refreshTrashCount } from "../../trash/count.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { createRovingListbox } from "../../../lib/roving-listbox.js";
 import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { getState } from "../../../store/app-store.js";
 import { isMobile } from "../../mobile.js";
+import { refreshTrashCount } from "../../trash/count.js";
 import {
   type BulkAction,
   type BulkActionContext,
