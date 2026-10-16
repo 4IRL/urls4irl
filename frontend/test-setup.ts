@@ -369,6 +369,7 @@ const appConfig = {
     TRASH_DELETE_FOREVER: "Delete forever",
     TRASH_PICK_DESTINATION: "Restore to which UTub?",
     TRASH_PICKER_LOCKED: "Locked",
+    TRASH_NO_DESTINATION: "You have no unlocked UTub to restore into.",
     TRASH_RESTORED_TO: "Restored to {utub}.",
     TRASH_UTUB_RESTORED: "Restored {utub}.",
     TRASH_URL_PURGED: "Deleted forever.",

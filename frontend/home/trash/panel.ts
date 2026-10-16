@@ -6,6 +6,7 @@ import { setState } from "../../store/app-store.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
 import { clearOutcomeBanner } from "../urls/outcome-banner.js";
 import { TRASH_BANNER_MOUNT } from "./banner.js";
+import { closeDestinationPicker } from "./destination-picker.js";
 import { invalidateTrashListRequests, loadTrashList } from "./list.js";
 import { updateEmptyTrashButton } from "./render.js";
 import { onTrashTabChanged } from "./tabs.js";
@@ -62,6 +63,7 @@ export function openTrash({ fromHistory }: { fromHistory: boolean }): void {
 export function closeTrash(): void {
   log("closeTrash");
   invalidateTrashListRequests();
+  closeDestinationPicker({ returnFocus: false });
   $(TRASH_SELECTOR).removeClass("active").removeAttr("aria-current");
   $(TRASH_PANEL).addClass("hidden");
   $(URL_DECK).removeClass("hidden");

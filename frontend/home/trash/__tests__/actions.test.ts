@@ -29,7 +29,6 @@ import {
   focusAfterRowRemoval,
   handleTrashActionFailure,
   initTrashActions,
-  openDestinationPicker,
   restoreTrashedURL,
 } from "../actions.js";
 
@@ -281,7 +280,7 @@ describe("trash actions", () => {
       rowFor(21).find(".trashBtnRestore").trigger("click");
 
       expect(ajaxCall).not.toHaveBeenCalled();
-      expect(typeof openDestinationPicker).toBe("function");
+      expect($("#listTrashURLs .trashDestinationPicker")).toHaveLength(1);
     });
   });
 

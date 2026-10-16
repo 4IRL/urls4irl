@@ -68,6 +68,7 @@ class TRASH_UI:
     DELETE_FOREVER = "Delete forever"
     PICK_DESTINATION = "Restore to which UTub?"
     PICKER_LOCKED = "Locked"
+    NO_DESTINATION = "You have no unlocked UTub to restore into."
     RESTORED_TO = "Restored to {utub}."
     UTUB_RESTORED = "Restored {utub}."
     URL_PURGED = "Deleted forever."

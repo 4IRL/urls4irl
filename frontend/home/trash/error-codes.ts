@@ -9,6 +9,10 @@ export const URL_NOT_IN_TRASH = 11;
 export const UTUB_NOT_IN_TRASH = 4;
 // backend/urls/constants.py URLErrorCodes.URL_ALREADY_IN_DESTINATION
 export const URL_ALREADY_IN_DESTINATION = 14;
+// backend/urls/constants.py URLErrorCodes.DESTINATION_REQUIRED
+export const URL_DESTINATION_REQUIRED = 12;
+// backend/urls/constants.py URLErrorCodes.INVALID_DESTINATION
+export const URL_INVALID_DESTINATION = 13;
 
 export type TrashDomain = "url" | "utub";
 

@@ -16,3 +16,5 @@ def test_trash_error_codes_match_frontend_constants():
     assert URLErrorCodes.NOT_IN_TRASH == 11
     assert UTubErrorCodes.NOT_IN_TRASH == 4
     assert URLErrorCodes.URL_ALREADY_IN_DESTINATION == 14
+    assert URLErrorCodes.DESTINATION_REQUIRED == 12
+    assert URLErrorCodes.INVALID_DESTINATION == 13

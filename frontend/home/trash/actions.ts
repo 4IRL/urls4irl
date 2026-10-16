@@ -25,7 +25,18 @@ import {
 import type { OutcomeBannerVariant } from "../urls/outcome-banner.js";
 import { TRASH_BANNER_MOUNT } from "./banner.js";
 import { refreshTrashCount, renderTrashCount } from "./count.js";
-import { isNotInTrash } from "./error-codes.js";
+import {
+  closeDestinationPicker,
+  initDestinationPicker,
+  openDestinationPicker,
+  refocusDestinationPicker,
+} from "./destination-picker.js";
+import {
+  URL_ALREADY_IN_DESTINATION,
+  URL_DESTINATION_REQUIRED,
+  URL_INVALID_DESTINATION,
+  isNotInTrash,
+} from "./error-codes.js";
 import type { TrashDomain } from "./error-codes.js";
 import { loadTrashList } from "./list.js";
 import {
@@ -186,18 +197,35 @@ export function handleTrashActionFailure({
 }
 
 /**
- * Step 8 fills this in: the destination picker for a URL whose origin UTub is
- * trashed. Until then the Restore button on such a row does nothing.
+ * Destination-restore failures the picker flow handles itself. Returns true when
+ * the failure was consumed.
  */
-export function openDestinationPicker({
-  item,
-}: {
-  item: TrashedUrlItem;
-  row: JQuery;
-}): void {
-  log("openDestinationPicker (not yet implemented)", {
-    utubUrlID: item.utubUrlID,
-  });
+function handleDestinationFailure({ xhr }: { xhr: JQuery.jqXHR }): boolean {
+  if (xhr.status === 409) {
+    const errorCode = (xhr.responseJSON as { errorCode?: number } | undefined)
+      ?.errorCode;
+    if (errorCode !== URL_ALREADY_IN_DESTINATION) return false;
+    showTrashBanner({
+      variant: "partial",
+      message: APP_CONFIG.strings.TRASH_ALREADY_IN_DESTINATION,
+    });
+    refocusDestinationPicker();
+    return true;
+  }
+  if (xhr.status === 400) {
+    const errorCode = (xhr.responseJSON as { errorCode?: number } | undefined)
+      ?.errorCode;
+    if (
+      errorCode !== URL_DESTINATION_REQUIRED &&
+      errorCode !== URL_INVALID_DESTINATION
+    ) {
+      return false;
+    }
+    closeDestinationPicker({ returnFocus: false });
+    void loadTrashList();
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -245,6 +273,9 @@ export function restoreTrashedURL({
       })
       .fail((xhr: JQuery.jqXHR) => {
         release();
+        if (destUtubID !== undefined && handleDestinationFailure({ xhr })) {
+          return;
+        }
         handleTrashActionFailure({ xhr, domain: "url" });
       })
       .always(() => resolve());
@@ -573,6 +604,7 @@ function handleUtubRowClick(event: JQuery.TriggeredEvent): void {
 }
 
 export function initTrashActions(): void {
+  initDestinationPicker();
   $(TRASH_SCOPE_IDS.urls.list).offAndOnExact(
     "click.trashActions",
     handleUrlRowClick,
