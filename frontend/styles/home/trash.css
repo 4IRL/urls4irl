@@ -123,9 +123,135 @@
     outline: none;
 }
 
+/* Rows. Actions are always visible so every control is Tab-reachable. */
+.trashRow {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--borderColor);
+    border-left: 3px dashed var(--utubLockedIconColor);
+    background-color: var(--memberOutsiderAmberTint);
+}
+
+/* Same ring as the focused URL card (urls.css). */
+.trashRow:focus-visible,
+.trashRow:focus {
+    outline: none;
+    border-top: 1px solid var(--focusedUrlBorder);
+    border-bottom: 1px solid var(--focusedUrlBorder);
+}
+
+.trashRow .rowline {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.trashRow .rowline .right {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.trashRow .t-title {
+    color: var(--cardURLTextColor);
+    font-weight: 700;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
+.trashRow .t-url,
+.trashRow .t-meta {
+    color: var(--cardURLTextColor);
+    opacity: 0.75;
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+
+.trashRow .actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 10px;
+}
+
+.trashRow .actions .grow {
+    flex-grow: 1;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.chip-origin {
+    border: 1px solid var(--borderColor);
+    color: var(--cardURLTextColor);
+}
+
+.chip-origin.dashed {
+    border-style: dashed;
+    border-color: var(--utubLockedIconColor);
+    color: var(--cautionText);
+}
+
+.chip-expiry {
+    background-color: var(--memberOutsiderAmberTint);
+    border: 1px solid var(--utubLockedIconColor);
+    color: var(--cautionText);
+}
+
+.chip-expiry.urgent {
+    border-color: var(--removeIconColor);
+    color: var(--removeIconColor);
+}
+
+.btn-restore,
+.btn-forever {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.btn-restore {
+    background-color: var(--deckHeaderGreen);
+    border: 1px solid var(--deckHeaderGreen);
+    color: #fff;
+}
+
+.btn-forever {
+    background-color: transparent;
+    border: 1px solid var(--removeIconColor);
+    color: var(--removeIconColor);
+}
+
+.btn-restore:focus-visible,
+.btn-forever:focus-visible,
+#TrashBtnEmpty:focus-visible {
+    outline: 2px solid var(--deckSelectionGreenHover);
+    outline-offset: 2px;
+}
+
+.btn.disabled,
+.btn[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Step 8 removes this rule when the mobile Trash panel lands. */
 @media (max-width: 991.98px) {
     #TrashSelectorWrap {
         display: none;
+    }
+
+    /* The master's >=44px touch-target rule; inert until Step 8 shows the panel. */
+    .trashBtnRestore,
+    .trashBtnPurge,
+    #TrashBtnEmpty {
+        min-height: 2.75rem;
     }
 }

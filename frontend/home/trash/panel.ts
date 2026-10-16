@@ -2,11 +2,13 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
 import { AppEvents, emit, on } from "../../lib/event-bus.js";
-import { fillTemplate } from "../../lib/string-template.js";
 import { setState } from "../../store/app-store.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
 import { clearOutcomeBanner } from "../urls/outcome-banner.js";
 import { TRASH_BANNER_MOUNT } from "./banner.js";
+import { invalidateTrashListRequests, loadTrashList } from "./list.js";
+import { updateEmptyTrashButton } from "./render.js";
+import { onTrashTabChanged } from "./tabs.js";
 
 const log = debug("trash:panel");
 
@@ -17,27 +19,6 @@ const URL_DECK = "#URLDeck";
 /** True while the Trash panel is the visible center destination. */
 export function isTrashOpen(): boolean {
   return $(TRASH_SELECTOR).hasClass("active");
-}
-
-/**
- * Renders both tabs with `(0)` and shows both empty states. Step 5 replaces the
- * body with the real list fetch and row rendering.
- */
-export function loadTrashList(): void {
-  $("#TrashTabUrls").text(
-    fillTemplate({
-      template: APP_CONFIG.strings.TRASH_TAB_URLS,
-      values: { n: "0" },
-    }),
-  );
-  $("#TrashTabUtubs").text(
-    fillTemplate({
-      template: APP_CONFIG.strings.TRASH_TAB_UTUBS,
-      values: { n: "0" },
-    }),
-  );
-  $("#TrashUrlsEmptyState, #TrashUtubsEmptyState").removeClass("hidden");
-  $("#TrashBtnEmpty").prop("disabled", true);
 }
 
 /**
@@ -74,12 +55,13 @@ export function openTrash({ fromHistory }: { fromHistory: boolean }): void {
   }
 
   emit(AppEvents.TRASH_OPENED);
-  loadTrashList();
+  void loadTrashList();
 }
 
 /** Reverses the panel swap and clears the Trash banner. */
 export function closeTrash(): void {
   log("closeTrash");
+  invalidateTrashListRequests();
   $(TRASH_SELECTOR).removeClass("active").removeAttr("aria-current");
   $(TRASH_PANEL).addClass("hidden");
   $(URL_DECK).removeClass("hidden");
@@ -104,6 +86,7 @@ export function initTrashPanel(): void {
     "keydown.trashPanel",
     handleTrashSelectorKeydown,
   );
+  onTrashTabChanged(() => updateEmptyTrashButton());
   on(AppEvents.UTUB_SELECTED, () => {
     if (isTrashOpen()) closeTrash();
   });

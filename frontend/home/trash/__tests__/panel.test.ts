@@ -2,6 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { AppEvents, emit, on } from "../../../lib/event-bus.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { setUIWhenNoUTubSelected } from "../../init.js";
+import { invalidateTrashListRequests, loadTrashList } from "../list.js";
 import { buildSelectedUTub, selectUTub } from "../../utubs/selectors.js";
 import {
   closeTrash,
@@ -9,6 +10,11 @@ import {
   isTrashOpen,
   openTrash,
 } from "../panel.js";
+
+vi.mock("../list.js", () => ({
+  loadTrashList: vi.fn(() => Promise.resolve()),
+  invalidateTrashListRequests: vi.fn(),
+}));
 
 vi.mock("../../init.js", () => ({
   setUIWhenNoUTubSelected: vi.fn(),
@@ -112,14 +118,12 @@ describe("trash panel", () => {
     expect(window.history.pushState).not.toHaveBeenCalled();
   });
 
-  it("renders the stub list: tab labels with (0), empty states shown, Empty trash disabled", () => {
+  it("loads the Trash list on open and invalidates in-flight loads on close", () => {
     openTrash({ fromHistory: false });
+    expect(loadTrashList).toHaveBeenCalledTimes(1);
 
-    expect($("#TrashTabUrls").text()).toBe("URLs (0)");
-    expect($("#TrashTabUtubs").text()).toBe("UTubs (0)");
-    expect($("#TrashUrlsEmptyState").hasClass("hidden")).toBe(false);
-    expect($("#TrashUtubsEmptyState").hasClass("hidden")).toBe(false);
-    expect($("#TrashBtnEmpty").prop("disabled")).toBe(true);
+    closeTrash();
+    expect(invalidateTrashListRequests).toHaveBeenCalledTimes(1);
   });
 
   it("closeTrash restores the URL deck and clears the Trash banner", () => {
