@@ -13,7 +13,14 @@ import {
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
-import { enableEditingURLTitle, isEmptyString } from "./utils.js";
+import {
+  enableEditingURLTitle,
+  hideURLTags,
+  isEmptyString,
+  isURLEditFormOpen,
+  restoreURLTagsIfNotEditing,
+} from "./utils.js";
+import { hideAndResetTagCombobox } from "../tags/combobox.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { isAcceptableURL } from "../validation.js";
 import { TRIM_INPUT_EVENT } from "./url-string.js";
@@ -65,6 +72,7 @@ import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import {
   expandParamTrimBlock,
   flushParamTrim,
+  hasAutoStrippedParams,
   readTrimSubmit,
   resetParamTrim,
   type TrimSubmission,
@@ -233,6 +241,12 @@ export function showUpdateURLStringForm({
   ) {
     hideAndResetUpdateURLTitleForm({ urlCard });
   }
+  // The tag combobox and URL edit are exclusive modes: close the combobox first
+  // (it re-shows sibling buttons this form then disables). An absent wrap
+  // counts as closed.
+  if (urlCard.find(".urlTagComboboxWrap:not(.hidden)").length > 0) {
+    hideAndResetTagCombobox(urlCard);
+  }
   emit({ event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN });
   setOpenForm(HOME_FORM.URL_STRING_EDIT);
   urlCard.find(".urlString").hideClass();
@@ -246,11 +260,17 @@ export function showUpdateURLStringForm({
 
   // Render the trim control from the pre-filled value immediately (flush, not
   // the debounced sync). It never takes focus, so the select-all below is safe.
+  const trimWrap = updateURLStringWrap.find(".urlParamTrimWrap");
   flushParamTrim({
-    trimWrap: updateURLStringWrap.find(".urlParamTrimWrap"),
+    trimWrap,
     text: getInputValue(updateURLStringWrap.find("input.urlStringUpdate")),
     scheme: selector?.getScheme() ?? "",
   });
+  // Open the section when the stored URL already carries params. A block that
+  // stays hidden (no params) or is revealed later by typing stays collapsed.
+  if (!trimWrap.hasClass("hidden")) {
+    expandParamTrimBlock({ trimWrap });
+  }
 
   // Handle case where iOS needs a direct focus not in a timeout, even with animation
   if (isMobile()) {
@@ -288,6 +308,7 @@ export function showUpdateURLStringForm({
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
+  hideURLTags({ urlCard });
 
   const tooltipElement = urlStringBtnUpdate.get(0);
   const tooltip = tooltipElement
@@ -357,6 +378,8 @@ export function hideAndResetUpdateURLStringForm({
   // re-collapses it). A kept-open field stays visible, so re-render it from the
   // resynced value.
   const trimWrap = urlCard.find(".urlParamTrimWrap");
+  // Read before the reset re-collapses it, so a kept-open field keeps its state.
+  const wasExpanded = !trimWrap.hasClass("collapsed");
   resetParamTrim({ trimWrap });
   if (keepOpen) {
     flushParamTrim({
@@ -364,6 +387,9 @@ export function hideAndResetUpdateURLStringForm({
       text: getInputValue(urlCard.find(".urlStringUpdate")),
       scheme: selector?.getScheme() ?? "",
     });
+    if (wasExpanded && !trimWrap.hasClass("hidden")) {
+      expandParamTrimBlock({ trimWrap });
+    }
   }
 
   if (!keepOpen) {
@@ -390,7 +416,10 @@ export function hideAndResetUpdateURLStringForm({
 
     // Enable URL Buttons
     urlCard.find(".urlBtnAccess").showClassFlex();
-    urlCard.find(".urlTagBtnCreate").showClassFlex();
+    // Not while the title form is still open (mobile panel).
+    if (!isURLEditFormOpen({ urlCard })) {
+      urlCard.find(".urlTagBtnCreate").showClassFlex();
+    }
     urlCard.find(".urlBtnDelete").showClassFlex();
     urlCard.find(".urlBtnCopy").showClassFlex();
     if (!suppressSiblingDisable) enableEditingURLTitle(urlCard);
@@ -406,6 +435,7 @@ export function hideAndResetUpdateURLStringForm({
 
     // Enable hovering on tags for deletion
     urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
+    restoreURLTagsIfNotEditing({ urlCard });
   }
 
   resetUpdateURLFailErrors(urlCard);
@@ -489,7 +519,12 @@ export async function updateURL(
     // plain edit (captured now, before applyUpdatedURLString overwrites it).
     const previousUrlString = urlCard.find(".urlString").attr("href") as string;
 
-    if (data.urlString === previousUrlString) {
+    // A stored href that still carries an auto-removable param is not a no-op:
+    // the server strips it, so the PATCH must go out.
+    if (
+      data.urlString === previousUrlString &&
+      !hasAutoStrippedParams({ trimWrap: urlCard.find(".urlParamTrimWrap") })
+    ) {
       log("updateURL skipped — value unchanged", { utubUrlID });
       // Panel-aware: on mobile the title form can still be open alongside this
       // string field. Suppress the sibling restore so we don't re-arm the card

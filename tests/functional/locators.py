@@ -365,6 +365,7 @@ class HomePageLocators(GenericPageLocator):
     URL_STRING_READ = ".urlString"
 
     URL_TAGS_READ = ".urlTags"
+    URL_TAGS_CONTAINER = ".urlTagsContainer"
     TAG_BADGES = ".tagBadge"
     TAG_BADGE_NAME_READ = ".tagBadge > span"
     TAG_BADGE_ID_ATTRIB = "data-utub-tag-id"
@@ -450,6 +451,7 @@ class HomePageLocators(GenericPageLocator):
     EDIT_FORM_TRIM_CHIP_AUTO = f"{ROW_SELECTED_URL} {TRIM_CHIP_AUTO}"
     EDIT_FORM_TRIM_CHIP_ACTIONABLE = f"{ROW_SELECTED_URL} {TRIM_CHIP_ACTIONABLE}"
     EDIT_FORM_TRIM_PREVIEW = f"{ROW_SELECTED_URL} {TRIM_PREVIEW}"
+    EDIT_FORM_TRIM_TITLE = f"{ROW_SELECTED_URL} {TRIM_TITLE}"
 
     # Outcome banner shown after a trim-and-save (shared deck-level container)
     URL_OUTCOME_BANNER = "#URLDeckOutcomeBanner"

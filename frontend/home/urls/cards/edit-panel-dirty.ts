@@ -5,6 +5,7 @@ import {
   setConfirmButtonUnchanged,
 } from "../confirm-btn-state.js";
 import {
+  hasAutoStrippedParams,
   TRIM_RENDERED_EVENT,
   TRIM_SUBMISSION_KEY,
   type TrimSubmission,
@@ -47,6 +48,10 @@ export function isURLStringDirty(urlCard: JQuery): boolean {
     .find(TRIM_WRAP_SELECTOR)
     .data(TRIM_SUBMISSION_KEY) as (() => TrimSubmission) | undefined;
   if (getSubmission && getSubmission().droppedCount > 0) return true;
+  // An auto-removable param is stripped server-side, so saving it is a real change.
+  if (hasAutoStrippedParams({ trimWrap: urlCard.find(TRIM_WRAP_SELECTOR) })) {
+    return true;
+  }
   const submitted = composeURL({
     scheme: currentUpdateScheme({ urlCard }),
     text: getInputValue(urlCard.find(STRING_INPUT_SELECTOR)).trim(),

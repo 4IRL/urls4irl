@@ -26,6 +26,7 @@ from backend.utils.strings.url_strs import (
     URL_REVIVED_FROM_TRASH,
     URL_TRIM_CONFLICT,
     URL_TRIM_HEADER_DROPPED,
+    URL_TRIM_PARAMS_LABEL,
     URL_TRIM_SAVED_BANNER_ONE,
     URL_UPDATED_BANNER,
 )
@@ -2172,6 +2173,85 @@ def test_update_url_string_scheme_escape_closes_list_before_form(
     wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
 
 
+def test_update_url_string_auto_removable_param_unchanged_input_saves(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a stored URL whose href still carries auto-removable (tracking) params
+    WHEN its string-edit form is opened and submitted with the input unchanged
+    THEN the update request fires and the href ends stripped
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_WITH_TRACKING_PARAMS])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_WITH_TRACKING_PARAMS
+    )
+    url_row = get_selected_url(page=page)
+
+    with track_update_url_string_requests(page=page) as update_requests:
+        wait_then_click_element(
+            page=page,
+            css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
+        )
+        wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    assert len(update_requests) == 1
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_have_attribute(
+        HPL.URL_STRING_IN_DATA, MOCK_URL_TRACKING_STRIPPED
+    )
+
+
+def test_update_url_string_trim_section_open_on_edit_for_stored_query(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a stored URL that already carries a query string
+    WHEN its string-edit form is opened
+    THEN the query-parameter trim section is expanded without a click
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [UTS.URL_WITH_NON_TRACKING_PARAMS])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=UTS.URL_WITH_NON_TRACKING_PARAMS
+    )
+
+    expect(page.locator(HPL.EDIT_FORM_TRIM_HEADER)).to_have_attribute(
+        "aria-expanded", "true"
+    )
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CARET)).not_to_have_class(CLOSED_CLASS)
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_ACTIONABLE)).to_have_count(2)
+
+
+def test_update_url_string_trim_auto_only_keeps_normal_header_label(
+    page: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    GIVEN a stored URL whose only parameters are server-stripped tracking params
+    WHEN its string-edit form is opened
+    THEN the section header shows the normal "Trim URL parameters (N)" label
+        counting the auto chips
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [MOCK_URL_WITH_TRACKING_PARAMS])
+    _select_seeded_url_and_open_string_form(
+        app=provide_app, page=page, seeded_url=MOCK_URL_WITH_TRACKING_PARAMS
+    )
+
+    expect(page.locator(HPL.EDIT_FORM_TRIM_TITLE)).to_have_text(
+        URL_TRIM_PARAMS_LABEL.format(n=2)
+    )
+    expect(page.locator(HPL.EDIT_FORM_TRIM_CHIP_AUTO)).to_have_count(2)
+
+
 def test_update_url_string_scheme_clicks_keep_card_selected(
     page: Page,
     create_test_utubs,
@@ -2292,3 +2372,79 @@ def test_update_url_string_cancel_restores_prefilled_scheme(
         page=page, toggle_locator=HPL.SCHEME_TOGGLE_UPDATE, scheme="https"
     )
     expect(string_input).to_have_value(without_scheme(MOCK_URL_STRINGS[0]))
+
+
+def _select_tagged_url(*, app: Flask, page: Page) -> Locator:
+    """Log in, select the first (tagged) URL and return its row after checking it
+    shows tag badges, so a later not-visible assertion is falsifiable."""
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    url_in_utub = get_url_in_utub(app, utub_user_created.id)
+    login_user_select_utub_by_id_and_url_by_id(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
+    )
+    selected_url = get_selected_url(page=page)
+    assert selected_url.locator(HPL.TAG_BADGES).count() > 0
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+    return selected_url
+
+
+def _expect_no_dead_band_above_tags(*, selected_url: Locator) -> None:
+    tags_row = selected_url.locator(HPL.URL_TAGS_READ)
+    expect(tags_row).to_have_css("padding-top", "0px")
+    expect(tags_row).to_have_css("padding-bottom", "0px")
+
+
+def test_update_url_string_form_hides_tags_until_closed(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected URL that has tags
+    WHEN its string-edit form is opened and then cancelled
+    THEN the tags (and their row padding) are hidden while editing and shown again after
+    """
+    selected_url = _select_tagged_url(app=provide_app, page=page)
+
+    _open_update_url_string_form(page=page)
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_hidden()
+    _expect_no_dead_band_above_tags(selected_url=selected_url)
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_CANCEL_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+    expect(selected_url.locator(HPL.TAG_BADGES).first).to_be_visible()
+
+
+def test_update_url_title_form_hides_tags_and_add_tag_until_closed(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected URL that has tags
+    WHEN its title-edit form is opened and then cancelled
+    THEN the tags and the Add-tag button are hidden while editing and shown again after
+    """
+    selected_url = _select_tagged_url(app=provide_app, page=page)
+    expect(selected_url.locator(HPL.BUTTON_TAG_CREATE)).to_be_visible()
+
+    open_update_url_title(page=page, selected_url_row=selected_url)
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_hidden()
+    expect(selected_url.locator(HPL.BUTTON_TAG_CREATE)).to_be_hidden()
+    _expect_no_dead_band_above_tags(selected_url=selected_url)
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_CANCEL_UPDATE}",
+    )
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
+
+    expect(selected_url.locator(HPL.URL_TAGS_CONTAINER)).to_be_visible()
+    expect(selected_url.locator(HPL.TAG_BADGES).first).to_be_visible()
+    expect(selected_url.locator(HPL.BUTTON_TAG_CREATE)).to_be_visible()

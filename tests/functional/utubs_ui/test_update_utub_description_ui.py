@@ -472,6 +472,45 @@ def test_update_empty_utub_description_btn_shows_after_updating_to_empty(
     assert add_utub_desc is not None
 
 
+def test_create_description_btn_hidden_when_description_present_and_restored_on_delete(
+    page: Page, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests the invisible "Add a description?" button is removed from layout while a
+    description exists and restored once the description is deleted
+
+    GIVEN an owner of a UTub with a description (desktop viewport)
+    WHEN they view the UTub, then delete the description
+    THEN the button is not displayed, then visible and opens the description form
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
+
+    expect(page.locator(HPL.SUBHEADER_URL_DECK)).to_be_visible()
+    expect(page.locator(HPL.WRAP_UTUB_DESCRIPTION_UPDATE)).to_be_visible()
+    display = page.locator(HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY).evaluate(
+        "element => window.getComputedStyle(element).display"
+    )
+    assert display == "none"
+
+    update_utub_description(page=page, utub_description="")
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
+    )
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+    wait_for_add_utub_description_button(page=page)
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
+
+
 def test_update_empty_utub_description_btn_shows_after_selecting_utub(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):

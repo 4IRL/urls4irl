@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from flask import Flask
 from playwright.sync_api import Locator, Page
@@ -5,11 +7,17 @@ from playwright.sync_api import Locator, Page
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.db_utils import (
     get_utub_this_user_created,
+    get_utub_this_user_did_not_create,
     update_utub_name_and_description,
+    update_utub_to_empty_desc,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.playwright_login_utils import login_user_and_select_utub_by_name
+from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_name,
+    login_user_and_select_utub_by_utubid,
+)
 from tests.functional.playwright_utils import (
+    select_utub_by_name,
     wait_then_get_element,
     wait_until_utub_name_appears,
     wait_until_visible_css_selector,
@@ -242,3 +250,293 @@ def test_url_deck_header_edit_still_opens_after_font_fit(
     )
     assert desc_input is not None
     desc_input.wait_for(state="visible")
+
+
+_OUTER_WRAP = "#UTubDescriptionSubheaderOuterWrap"
+_LAYOUT_TOLERANCE_PX = 4
+_NARROW_DESKTOP_WIDTH_PX = 1000
+_WIDENED_DESKTOP_WIDTH_PX = 1500
+_RESIZE_DEBOUNCE_WAIT_MS = 400
+
+
+def _layout_rects(*, page: Page) -> dict[str, Any]:
+    """Return the outer wrap content width and vertical extent, plus the bounding
+    rects (top/bottom/left/right/width) of the description wrap, its text, its
+    pencil and the search wrap."""
+    return page.evaluate(
+        """
+        () => {
+            const rect = (selector) => {
+                const r = document.querySelector(selector).getBoundingClientRect();
+                return {
+                    top: r.top,
+                    bottom: r.bottom,
+                    left: r.left,
+                    right: r.right,
+                    width: r.width,
+                };
+            };
+            const outer = document.querySelector("#UTubDescriptionSubheaderOuterWrap");
+            const style = window.getComputedStyle(outer);
+            const contentWidth =
+                outer.clientWidth -
+                parseFloat(style.paddingLeft) -
+                parseFloat(style.paddingRight);
+            return {
+                outerContentWidth: contentWidth,
+                outerHeight: outer.getBoundingClientRect().height,
+                outerTop: outer.getBoundingClientRect().top,
+                outerBottom: outer.getBoundingClientRect().bottom,
+                desc: rect("#UTubDescriptionSubheaderWrap"),
+                search: rect("#SearchURLWrap"),
+                descText: rect("#URLDeckSubheader"),
+                descPencil: rect("#UTubDescriptionSubheaderWrap .edit-pencil-icon"),
+                descFontPx: parseFloat(
+                    window.getComputedStyle(
+                        document.querySelector("#URLDeckSubheader")
+                    ).fontSize
+                ),
+            };
+        }
+        """
+    )
+
+
+def _wait_for_font_fit_settled(*, page: Page) -> None:
+    """Poll until the fitted description font is unchanged across a window longer
+    than the resize debounce, so a pending re-fit cannot race the layout reads."""
+    previous_font_px = -1.0
+    for _ in range(20):
+        current_font_px = _layout_rects(page=page)["descFontPx"]
+        if current_font_px == previous_font_px:
+            return
+        previous_font_px = current_font_px
+        page.wait_for_timeout(_RESIZE_DEBOUNCE_WAIT_MS)
+    raise AssertionError("Description font fit did not settle")
+
+
+def _assert_description_wraps_before_centered_search(*, page: Page) -> None:
+    """The description never enters the search box's space (it wraps before it)
+    and the search box stays on the same row, vertically centered in the row."""
+    _wait_for_font_fit_settled(page=page)
+    rects = _layout_rects(page=page)
+    assert rects["desc"]["right"] <= rects["search"]["left"] + 1
+    assert rects["search"]["top"] < rects["desc"]["bottom"]
+    search_center = (rects["search"]["top"] + rects["search"]["bottom"]) / 2
+    outer_center = (rects["outerTop"] + rects["outerBottom"]) / 2
+    assert abs(search_center - outer_center) <= _LAYOUT_TOLERANCE_PX
+
+
+def _assert_description_click_target_is_text_width(*, page: Page) -> None:
+    """The description wrap (the owner's click-to-edit target) must not extend
+    past its text plus the edit pencil."""
+    rects = _layout_rects(page=page)
+    content_right = max(rects["descText"]["right"], rects["descPencil"]["right"])
+    assert rects["desc"]["right"] - content_right <= _LAYOUT_TOLERANCE_PX
+    assert rects["desc"]["width"] < rects["outerContentWidth"] / 2
+
+
+def _assert_search_beside(*, page: Page, anchor_selector: str) -> None:
+    search_top = page.locator(HPL.URL_SEARCH_WRAP).evaluate(
+        "element => element.getBoundingClientRect().top"
+    )
+    anchor_bottom = page.locator(anchor_selector).evaluate(
+        "element => element.getBoundingClientRect().bottom"
+    )
+    assert search_top < anchor_bottom
+
+
+def _select_utub_with_description(*, app: Flask, page: Page, description: str) -> None:
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    update_utub_name_and_description(
+        app,
+        utub_user_created.id,
+        UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME,
+        description,
+    )
+    login_user_and_select_utub_by_name(
+        app=app,
+        page=page,
+        user_id=user_id,
+        utub_name=UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME,
+    )
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
+
+
+def test_long_description_wraps_before_search_and_search_stays_centered(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a desktop viewport and a UTub with a long description
+    WHEN the owner selects it
+    THEN the description wraps before the search box (never entering its space)
+    and the search box stays beside it, vertically centered in the row.
+    """
+    _select_utub_with_description(
+        app=provide_app,
+        page=page,
+        description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+    )
+    _assert_description_wraps_before_centered_search(page=page)
+
+
+def test_short_description_keeps_search_beside(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a desktop viewport and a UTub with a short description
+    WHEN the owner selects it
+    THEN the search box stays beside the description on the same row, and the
+    description's click target does not extend past its text.
+    """
+    _select_utub_with_description(
+        app=provide_app,
+        page=page,
+        description=UI_TEST_STRINGS.SHORT_FIT_UTUB_DESCRIPTION,
+    )
+
+    _assert_search_beside(page=page, anchor_selector=HPL.WRAP_UTUB_DESCRIPTION_UPDATE)
+    _assert_description_click_target_is_text_width(page=page)
+    rects = _layout_rects(page=page)
+    desc_height = rects["desc"]["bottom"] - rects["desc"]["top"]
+    assert rects["outerHeight"] < 2 * desc_height
+
+
+def test_empty_description_owner_keeps_search_beside_add_button(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a desktop viewport and an owned UTub with an empty description
+    WHEN the owner selects it
+    THEN the "Add a description?" button is visible and the search stays beside it.
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    update_utub_to_empty_desc(app, utub_user_created.id)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
+
+    _assert_search_beside(page=page, anchor_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
+
+
+def test_empty_description_member_keeps_search_beside_no_description(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a desktop viewport and a UTub the user is a member of with no description
+    WHEN the member selects it
+    THEN the "No description" label is visible and the search stays beside it.
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_member_of = get_utub_this_user_did_not_create(app, user_id)
+    update_utub_to_empty_desc(app, utub_user_member_of.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_member_of.id
+    )
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.LABEL_NO_DESCRIPTION)
+
+    _assert_search_beside(page=page, anchor_selector=HPL.LABEL_NO_DESCRIPTION)
+
+
+def test_description_edit_form_keeps_unwrapped_row_layout(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a desktop viewport and a UTub with a long description
+    WHEN the owner opens the description edit form
+    THEN the outer row is not wrapping (the pre-change edit layout).
+    """
+    _select_utub_with_description(
+        app=provide_app,
+        page=page,
+        description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+    )
+    open_update_utub_desc_input(page=page)
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
+
+    flex_wrap = page.locator(_OUTER_WRAP).evaluate(
+        "element => window.getComputedStyle(element).flexWrap"
+    )
+    assert flex_wrap == "nowrap"
+
+
+def test_long_description_layout_after_narrowing_viewport_matches_fresh_select(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a long description selected at the default desktop width
+    WHEN the viewport narrows (still >=992px) and the resize debounce settles
+    THEN the layout and fitted font equal those of a fresh select at that width.
+    """
+    app = provide_app
+    _select_utub_with_description(
+        app=app,
+        page=page,
+        description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+    )
+
+    viewport_height = page.evaluate("window.innerHeight")
+    page.set_viewport_size(
+        {"width": _NARROW_DESKTOP_WIDTH_PX, "height": viewport_height}
+    )
+
+    _assert_description_wraps_before_centered_search(page=page)
+    resized_font_px = _layout_rects(page=page)["descFontPx"]
+
+    other_utub = get_utub_this_user_did_not_create(app, 1)
+    select_utub_by_name(page=page, utub_name=other_utub.name)
+    select_utub_by_name(page=page, utub_name=UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
+
+    _assert_description_wraps_before_centered_search(page=page)
+    assert _layout_rects(page=page)["descFontPx"] == pytest.approx(
+        resized_font_px, abs=0.5
+    )
+
+
+def test_long_description_font_after_widening_viewport_matches_fresh_select(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a long description fitted at a narrow desktop width
+    WHEN the viewport widens (still >=992px) and the resize debounce settles
+    THEN the fitted font equals that of a fresh select at the wider width.
+    """
+    app = provide_app
+    _select_utub_with_description(
+        app=app,
+        page=page,
+        description=UI_TEST_STRINGS.LONG_FIT_UTUB_DESCRIPTION,
+    )
+
+    viewport_height = page.evaluate("window.innerHeight")
+    page.set_viewport_size(
+        {"width": _NARROW_DESKTOP_WIDTH_PX, "height": viewport_height}
+    )
+    _assert_description_wraps_before_centered_search(page=page)
+    page.set_viewport_size(
+        {"width": _WIDENED_DESKTOP_WIDTH_PX, "height": viewport_height}
+    )
+    _assert_description_wraps_before_centered_search(page=page)
+    widened_font_px = _layout_rects(page=page)["descFontPx"]
+
+    other_utub = get_utub_this_user_did_not_create(app, 1)
+    select_utub_by_name(page=page, utub_name=other_utub.name)
+    select_utub_by_name(page=page, utub_name=UI_TEST_STRINGS.SHORT_FIT_UTUB_NAME)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_WRAP)
+
+    _assert_description_wraps_before_centered_search(page=page)
+    assert _layout_rects(page=page)["descFontPx"] == pytest.approx(
+        widened_font_px, abs=0.5
+    )
