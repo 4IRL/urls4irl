@@ -473,6 +473,10 @@ def test_service_keeps_url_tags_and_snapshots_trashed_tag_ids(
                 Utub_Urls.query.get(target_id).trashed_tag_ids
                 == tag_ids_before[target_id]
             )
+            assert Utub_Urls.query.get(target_id).trashed_tag_names == {
+                str(tag_id): Utub_Tags.query.get(tag_id).tag_string
+                for tag_id in tag_ids_before[target_id]
+            }
 
 
 def test_service_shared_tag_recompute_and_zero_backfill(

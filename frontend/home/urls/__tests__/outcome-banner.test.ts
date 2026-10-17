@@ -17,6 +17,7 @@ import {
   unbindEditPanelDirtyState,
 } from "../cards/edit-panel-dirty.js";
 import {
+  buildLostTagNamesDetail,
   buildReviveMessage,
   clearOutcomeBanner,
   clearURLOutcomeBanner,
@@ -639,31 +640,59 @@ describe("outcome banner", () => {
 
   describe("showReviveBanner", () => {
     it("shows a success banner with no action when no tags were lost", () => {
-      showReviveBanner({ lostTagCount: 0, utubUrlID: 42 });
+      showReviveBanner({ lostTagCount: 0, lostTagNames: [], utubUrlID: 42 });
 
       expect(banner().hasClass("success")).toBe(true);
       expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
         APP_CONFIG.strings.URL_REVIVED_FROM_TRASH,
       );
+      expect(banner().find(".urlOutcomeBannerDetail")).toHaveLength(0);
       expect(banner().find(".urlOutcomeBannerAction")).toHaveLength(0);
     });
 
-    it("shows a partial banner with no action when tags were lost", () => {
-      showReviveBanner({ lostTagCount: 2, utubUrlID: 42 });
+    it("shows a partial banner naming the lost tags on a second line", () => {
+      showReviveBanner({
+        lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
+        utubUrlID: 42,
+      });
 
       expect(banner().hasClass("partial")).toBe(true);
       expect(banner().hasClass("success")).toBe(false);
       expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
         "Restored from trash. 2 tags no longer exist.",
       );
+      expect(banner().find(".urlOutcomeBannerDetail").text()).toBe("Tool, Art");
       expect(banner().find(".urlOutcomeBannerAction")).toHaveLength(0);
+    });
+
+    it("shows only the count sentence when the lost tags have no saved names", () => {
+      showReviveBanner({ lostTagCount: 2, lostTagNames: [], utubUrlID: 42 });
+
+      expect(banner().hasClass("partial")).toBe(true);
+      expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
+        "Restored from trash. 2 tags no longer exist.",
+      );
+      expect(banner().find(".urlOutcomeBannerDetail")).toHaveLength(0);
+    });
+  });
+
+  describe("buildLostTagNamesDetail", () => {
+    it("joins the names with a comma and space", () => {
+      expect(buildLostTagNamesDetail({ lostTagNames: ["Tool", "Art"] })).toBe(
+        "Tool, Art",
+      );
+    });
+
+    it("returns undefined when there are no names", () => {
+      expect(buildLostTagNamesDetail({ lostTagNames: [] })).toBeUndefined();
     });
   });
 
   describe("showTrimSavedBanner", () => {
     function show(
       droppedSegments: string[],
-      revive?: { lostTagCount: number },
+      revive?: { lostTagCount: number; lostTagNames: string[] },
     ): void {
       showTrimSavedBanner({
         trimSubmission: {
@@ -680,7 +709,7 @@ describe("outcome banner", () => {
     }
 
     it("prefixes the revive sentence, goes partial and keeps Undo when a revive lost tags", () => {
-      show(["a=1"], { lostTagCount: 1 });
+      show(["a=1"], { lostTagCount: 1, lostTagNames: [] });
 
       expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
         `${APP_CONFIG.strings.URL_REVIVED_LOST_TAGS_ONE} ${APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE}`,
@@ -689,10 +718,24 @@ describe("outcome banner", () => {
       expect(banner().find(".urlOutcomeBannerAction").text()).toBe(
         APP_CONFIG.strings.URL_TRIM_UNDO,
       );
+      // Legacy row: no names, so the only detail line is the dropped parameters.
+      expect(banner().find(".urlOutcomeBannerDetail")).toHaveLength(1);
+      expect(banner().find(".urlOutcomeBannerDetail").text()).toBe("a=1");
+    });
+
+    it("lists the lost tags on their own line before the dropped parameters", () => {
+      show(["a=1", "b=2"], { lostTagCount: 2, lostTagNames: ["Tool", "Art"] });
+
+      const detailLines = banner()
+        .find(".urlOutcomeBannerDetail")
+        .map((_index, element) => $(element).text())
+        .get();
+      expect(detailLines).toEqual(["Tool, Art", "a=1, b=2"]);
+      expect(banner().hasClass("partial")).toBe(true);
     });
 
     it("stays a success banner when a revive lost no tags", () => {
-      show(["a=1"], { lostTagCount: 0 });
+      show(["a=1"], { lostTagCount: 0, lostTagNames: [] });
 
       expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
         `${APP_CONFIG.strings.URL_REVIVED_FROM_TRASH} ${APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE}`,

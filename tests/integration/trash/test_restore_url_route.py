@@ -22,6 +22,7 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.model_strs import MODELS, TAG_COUNTS_MODIFIED
 from backend.utils.strings.trash_strs import TRASH_FAILURE, TRASH_SUCCESS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
@@ -201,6 +202,7 @@ def test_restore_reports_lost_tags_and_live_tag_counts(
     with app.app_context():
         shared_tag_id, solo_tag_id = Utub_Urls.query.get(row_id).associated_tag_ids
         shared_tag_string: str = Utub_Tags.query.get(shared_tag_id).tag_string
+        solo_tag_string: str = Utub_Tags.query.get(solo_tag_id).tag_string
     trash_utub_url(app, row_id, deleted_by=FIRST_USER_ID)
     trash_utub_url(app, second_row_id, deleted_by=FIRST_USER_ID)
     with app.app_context():
@@ -212,6 +214,7 @@ def test_restore_reports_lost_tags_and_live_tag_counts(
     assert response.status_code == 200
     response_json = response.json
     assert response_json[MODELS.LOST_TAG_COUNT] == 1
+    assert response_json[MODELS.LOST_TAG_NAMES] == [solo_tag_string]
     assert [
         (tag[MODELS.ID], tag[MODELS.TAG_STRING])
         for tag in response_json[MODELS.APPLIED_TAGS]
@@ -227,6 +230,7 @@ def test_restore_reports_lost_tags_and_live_tag_counts(
         assert count_tag_instances_in_utub(FIRST_UTUB_ID, shared_tag_id) == 3
         restored_row: Utub_Urls = Utub_Urls.query.get(row_id)
         assert restored_row.trashed_tag_ids is None
+        assert restored_row.trashed_tag_names is None
         assert restored_row.associated_tag_ids == [shared_tag_id]
 
 
@@ -256,6 +260,7 @@ def test_restore_reports_zero_lost_tags_when_none_were_deleted(
     assert response.status_code == 200
     response_json = response.json
     assert response_json[MODELS.LOST_TAG_COUNT] == 0
+    assert response_json[MODELS.LOST_TAG_NAMES] == []
     assert {
         tag[MODELS.ID]: tag[MODELS.TAG_STRING]
         for tag in response_json[MODELS.APPLIED_TAGS]
@@ -296,6 +301,73 @@ def test_restore_url_without_tags_has_empty_tag_payload(
     assert response.json[MODELS.APPLIED_TAGS] == []
     assert response.json[TAG_COUNTS_MODIFIED] == {}
     assert response.json[MODELS.URL][MODELS.URL_TAG_IDS] == []
+
+
+def test_restore_names_all_lost_tags_alphabetically_after_real_trash_and_tag_delete(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN URL 1 (shared + solo tags) is trashed through the delete route, and both of
+        its UTub tags are then deleted from the UTub
+    WHEN user 1 restores it
+    THEN lostTagCount is 2 and lostTagNames lists both tag strings alphabetically
+        (case-insensitive), proving the names were saved at trash time
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    row_id = get_utub_url_id(app, FIRST_UTUB_ID, 1)
+    with app.app_context():
+        tag_ids: list[int] = Utub_Urls.query.get(row_id).associated_tag_ids
+        tag_strings: list[str] = [
+            Utub_Tags.query.get(tag_id).tag_string for tag_id in tag_ids
+        ]
+    delete_response = client.delete(
+        url_for(ROUTES.URLS.DELETE_URL, utub_id=FIRST_UTUB_ID, utub_url_id=row_id),
+        headers={**AJAX_HEADERS, URL_VALIDATION.X_CSRF_TOKEN: csrf_token},
+    )
+    assert delete_response.status_code == 200
+    with app.app_context():
+        assert Utub_Urls.query.get(row_id).trashed_tag_names == {
+            str(tag_id): tag_string for tag_id, tag_string in zip(tag_ids, tag_strings)
+        }
+        for tag_id in tag_ids:
+            db.session.delete(Utub_Tags.query.get(tag_id))
+        db.session.commit()
+
+    response = post_restore(client, csrf_token, FIRST_UTUB_ID, row_id)
+
+    assert response.status_code == 200
+    assert response.json[MODELS.LOST_TAG_COUNT] == 2
+    assert response.json[MODELS.LOST_TAG_NAMES] == sorted(
+        tag_strings, key=lambda tag_string: (tag_string.lower(), tag_string)
+    )
+
+
+def test_restore_of_row_trashed_before_names_were_saved_reports_count_only(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN URL 1 was trashed with no saved tag names (a legacy row) and its solo UTub
+        tag was then deleted
+    WHEN user 1 restores it
+    THEN lostTagCount is still 1 but lostTagNames is empty
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    row_id = get_utub_url_id(app, FIRST_UTUB_ID, 1)
+    with app.app_context():
+        _, solo_tag_id = Utub_Urls.query.get(row_id).associated_tag_ids
+    trash_utub_url(app, row_id, deleted_by=FIRST_USER_ID, record_tag_names=False)
+    assert get_row_state(app, row_id)["trashed_tag_names"] is None
+    with app.app_context():
+        db.session.delete(Utub_Tags.query.get(solo_tag_id))
+        db.session.commit()
+
+    response = post_restore(client, csrf_token, FIRST_UTUB_ID, row_id)
+
+    assert response.status_code == 200
+    assert response.json[MODELS.LOST_TAG_COUNT] == 1
+    assert response.json[MODELS.LOST_TAG_NAMES] == []
 
 
 def test_restore_live_row_is_not_in_trash(

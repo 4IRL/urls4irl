@@ -52,6 +52,10 @@ vi.mock("../../urls/outcome-banner.js", () => ({
   buildReviveMessage: vi.fn(
     ({ lostTagCount }: { lostTagCount: number }) => `revived:${lostTagCount}`,
   ),
+  buildLostTagNamesDetail: vi.fn(
+    ({ lostTagNames }: { lostTagNames: readonly string[] }) =>
+      lostTagNames.length > 0 ? lostTagNames.join(", ") : undefined,
+  ),
 }));
 
 const NOW = Date.parse("2026-10-16T12:00:00Z");
@@ -252,6 +256,42 @@ describe("trash actions", () => {
 
       expect(bannerCall().variant).toBe("partial");
       expect(bannerCall().message).toBe("revived:2");
+      expect(bannerCall().detail).toBeUndefined();
+    });
+
+    it("names the lost tags on a second line", async () => {
+      renderRows();
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({
+          done: {
+            lostTagCount: 2,
+            lostTagNames: ["Tool", "Art"],
+            restoredToDestination: false,
+          },
+        }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11 });
+
+      expect(bannerCall().variant).toBe("partial");
+      expect(bannerCall().detail).toBe("Tool, Art");
+    });
+
+    it("shows no detail when no tags were lost", async () => {
+      renderRows();
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({
+          done: {
+            lostTagCount: 0,
+            lostTagNames: [],
+            restoredToDestination: false,
+          },
+        }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11 });
+
+      expect(bannerCall().detail).toBeUndefined();
     });
 
     it("says where a destination restore landed and never reports lost tags", async () => {
@@ -260,6 +300,7 @@ describe("trash actions", () => {
         settled({
           done: {
             lostTagCount: 3,
+            lostTagNames: ["Tool"],
             restoredToDestination: true,
             utubName: "Inbox",
           },
@@ -271,6 +312,7 @@ describe("trash actions", () => {
       expect(vi.mocked(ajaxCall).mock.calls[0][2]).toEqual({ destUtubId: 8 });
       expect(bannerCall().message).toBe("Restored to Inbox.");
       expect(bannerCall().variant).toBe("success");
+      expect(bannerCall().detail).toBeUndefined();
     });
 
     it("opens the destination picker instead of posting for an origin-trashed row", () => {

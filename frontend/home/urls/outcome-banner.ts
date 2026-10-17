@@ -197,7 +197,7 @@ export function showURLOutcomeBanner({
 }: {
   variant: OutcomeBannerVariant;
   message: string;
-  detail?: string;
+  detail?: string | readonly string[];
   actionLabel?: string;
   onAction?: () => void;
   returnFocusTo: JQuery;
@@ -232,7 +232,7 @@ export function showOutcomeBanner({
   mount: OutcomeBannerMount;
   variant: OutcomeBannerVariant;
   message: string;
-  detail?: string;
+  detail?: string | readonly string[];
   actionLabel?: string;
   onAction?: () => void;
   returnFocusTo: JQuery;
@@ -246,8 +246,15 @@ export function showOutcomeBanner({
   const body = $("<div>", { class: "urlOutcomeBannerBody" }).append(
     $("<span>", { class: "urlOutcomeBannerMessage" }).text(message),
   );
-  if (detail) {
-    body.append($("<span>", { class: "urlOutcomeBannerDetail" }).text(detail));
+  // Each detail line gets its own span, so a revive banner can carry the lost tags
+  // and the dropped parameters on separate lines.
+  const detailLines = typeof detail === "string" ? [detail] : (detail ?? []);
+  for (const detailLine of detailLines) {
+    if (detailLine) {
+      body.append(
+        $("<span>", { class: "urlOutcomeBannerDetail" }).text(detailLine),
+      );
+    }
   }
 
   const actions = $("<div>", { class: "urlOutcomeBannerActions" });
@@ -466,21 +473,38 @@ export function buildReviveMessage({
 }
 
 /**
+ * The second banner line naming the tags that no longer exist ("Tool, Art"), or
+ * `undefined` when none are known. A URL trashed before tag names were saved has a
+ * lost-tag count but no names; its banner shows only the count sentence.
+ */
+export function buildLostTagNamesDetail({
+  lostTagNames,
+}: {
+  lostTagNames: readonly string[];
+}): string | undefined {
+  return lostTagNames.length > 0 ? lostTagNames.join(", ") : undefined;
+}
+
+/**
  * Shows the "Restored from trash." banner after an add revived a trashed URL.
- * Partial (yellow) when some of its tags no longer exist. No Undo: reviving is
- * not reversible from the deck. Used when the add also dropped no parameters;
- * otherwise `showTrimSavedBanner` carries the revive sentence.
+ * Partial (yellow) when some of its tags no longer exist, with a second line
+ * naming them when known. No Undo: reviving is not reversible from the deck.
+ * Used when the add also dropped no parameters; otherwise `showTrimSavedBanner`
+ * carries the revive sentence.
  */
 export function showReviveBanner({
   lostTagCount,
+  lostTagNames,
   utubUrlID,
 }: {
   lostTagCount: number;
+  lostTagNames: readonly string[];
   utubUrlID: number;
 }): void {
   showURLOutcomeBanner({
     variant: lostTagCount > 0 ? "partial" : "success",
     message: buildReviveMessage({ lostTagCount }),
+    detail: buildLostTagNamesDetail({ lostTagNames }),
     returnFocusTo: $(`.urlRow[utuburlid=${utubUrlID}]`).find(
       ".urlStringBtnUpdate",
     ),
@@ -505,7 +529,7 @@ export function showTrimSavedBanner({
   utubUrlID: number;
   urlCard: JQuery;
   form: UrlParamsTrimmedForm;
-  revive?: { lostTagCount: number };
+  revive?: { lostTagCount: number; lostTagNames: readonly string[] };
 }): void {
   const returnFocusTo = $(`.urlRow[utuburlid=${utubUrlID}]`).find(
     ".urlStringBtnUpdate",
@@ -525,11 +549,21 @@ export function showTrimSavedBanner({
       : `${buildReviveMessage(revive)} ${trimMessage}`;
   const variant: OutcomeBannerVariant =
     revive !== undefined && revive.lostTagCount > 0 ? "partial" : "success";
+  // Detail lines follow the message's sentence order: the lost tags (revive) first,
+  // then the dropped parameters (trim), each on its own line.
+  const lostTagNamesDetail =
+    revive === undefined
+      ? undefined
+      : buildLostTagNamesDetail({ lostTagNames: revive.lostTagNames });
+  const detail = [
+    lostTagNamesDetail,
+    trimSubmission.droppedSegments.join(", "),
+  ].filter((line): line is string => Boolean(line));
 
   showURLOutcomeBanner({
     variant,
     message,
-    detail: trimSubmission.droppedSegments.join(", "),
+    detail,
     actionLabel: APP_CONFIG.strings.URL_TRIM_UNDO,
     onAction: () => {
       emit({

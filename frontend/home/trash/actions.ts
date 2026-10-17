@@ -19,6 +19,7 @@ import { setState } from "../../store/app-store.js";
 import { buildUTubDeck } from "../utubs/deck.js";
 import { getAllUTubs } from "../utubs/utils.js";
 import {
+  buildLostTagNamesDetail,
   buildReviveMessage,
   showOutcomeBanner,
 } from "../urls/outcome-banner.js";
@@ -269,6 +270,9 @@ export function restoreTrashedURL({
             variant: response.lostTagCount > 0 ? "partial" : "success",
             message: buildReviveMessage({
               lostTagCount: response.lostTagCount,
+            }),
+            detail: buildLostTagNamesDetail({
+              lostTagNames: response.lostTagNames ?? [],
             }),
           });
         }

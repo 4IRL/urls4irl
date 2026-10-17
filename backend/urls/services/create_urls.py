@@ -43,7 +43,10 @@ from backend.tags.services.create_url_tag import (
 )
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
-from backend.urls.services.trashed_url_tags import count_lost_trashed_tags
+from backend.urls.services.trashed_url_tags import (
+    count_lost_trashed_tags,
+    list_lost_trashed_tag_names,
+)
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from backend.utubs.guards import reject_if_utub_locked
@@ -592,6 +595,7 @@ def make_locked_trashed_url_live(
     locked_utub_url.deleted_at = None
     locked_utub_url.deleted_by = None
     locked_utub_url.trashed_tag_ids = None
+    locked_utub_url.trashed_tag_names = None
     locked_utub_url.user_id = adder_id
     locked_utub_url.url_title = url_title
     locked_utub_url.added_at = now
@@ -658,6 +662,9 @@ def _revive_trashed_url_in_utub(
     # Read everything that depends on the trashed state before any write.
     lost_tag_count: int = (
         count_lost_trashed_tags(locked_utub_url) if can_keep_tags else 0
+    )
+    lost_tag_names: list[str] = (
+        list_lost_trashed_tag_names(locked_utub_url) if can_keep_tags else []
     )
 
     to_apply: list[Utub_Tags] = []
@@ -742,5 +749,6 @@ def _revive_trashed_url_in_utub(
             applied_tags=applied_tags,
             revived_from_trash=True,
             lost_tag_count=lost_tag_count,
+            lost_tag_names=lost_tag_names,
         ),
     ).to_response()

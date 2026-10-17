@@ -147,6 +147,11 @@ class UrlCreatedResponseSchema(BaseSchema):
         alias=MODELS.LOST_TAG_COUNT,
         description="On a revive, how many of the URL's tags were deleted from the UTub while it was trashed.",
     )
+    lost_tag_names: list[str] = Field(
+        default_factory=list,
+        alias=MODELS.LOST_TAG_NAMES,
+        description="On a revive, names of the lost tags, alphabetical. Empty when none are known, even if the count is above zero.",
+    )
 
 
 class UrlDeletedResponseSchema(BaseSchema):
@@ -193,6 +198,11 @@ class UrlUpdatedResponseSchema(BaseSchema):
         default=0,
         alias=MODELS.LOST_TAG_COUNT,
         description="On a revive, how many of the trashed row's tags were deleted from the UTub while it was trashed.",
+    )
+    lost_tag_names: list[str] = Field(
+        default_factory=list,
+        alias=MODELS.LOST_TAG_NAMES,
+        description="On a revive, names of the lost tags, alphabetical. Empty when none are known, even if the count is above zero.",
     )
     replaced_utub_url_id: int | None = Field(
         default=None,

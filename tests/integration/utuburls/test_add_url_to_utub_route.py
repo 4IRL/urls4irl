@@ -2352,6 +2352,7 @@ def test_readd_trashed_url_as_adder_revives_row_with_tags(
     assert response_json[MODEL_STRS.URL][MODEL_STRS.URL_TITLE] == new_title
     assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
     assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 0
+    assert response_json[MODEL_STRS.LOST_TAG_NAMES] == []
     assert (
         sorted(response_json[MODEL_STRS.URL][MODEL_STRS.URL_TAG_IDS])
         == surviving_tag_ids
@@ -2475,6 +2476,7 @@ def test_readd_trashed_url_reports_lost_tags(
 
     with app.app_context():
         shared_tag_id, solo_tag_id = Utub_Urls.query.get(utub_url_id).associated_tag_ids
+        solo_tag_string: str = Utub_Tags.query.get(solo_tag_id).tag_string
 
     trash_utub_url(app, utub_url_id, deleted_by=1)
 
@@ -2489,6 +2491,7 @@ def test_readd_trashed_url_reports_lost_tags(
     response_json = response.json
     assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
     assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 1
+    assert response_json[MODEL_STRS.LOST_TAG_NAMES] == [solo_tag_string]
     applied_tag_ids = [
         applied_tag[MODEL_STRS.ID]
         for applied_tag in response_json[MODEL_STRS.APPLIED_TAGS]
@@ -2500,7 +2503,37 @@ def test_readd_trashed_url_reports_lost_tags(
         revived_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
         assert revived_row.deleted_at is None
         assert revived_row.trashed_tag_ids is None
+        assert revived_row.trashed_tag_names is None
         assert revived_row.associated_tag_ids == [shared_tag_id]
+
+
+def test_readd_legacy_trashed_url_reports_lost_tag_count_without_names(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN URL 1 was trashed with no saved tag names (a legacy row) and its solo UTub
+        tag is then deleted
+    WHEN user 1 re-adds the URL
+    THEN lostTagCount is 1 but lostTagNames is empty
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=1)
+
+    with app.app_context():
+        _, solo_tag_id = Utub_Urls.query.get(utub_url_id).associated_tag_ids
+
+    trash_utub_url(app, utub_url_id, deleted_by=1, record_tag_names=False)
+
+    with app.app_context():
+        db.session.delete(Utub_Tags.query.get(solo_tag_id))
+        db.session.commit()
+
+    response = _post_readd(client, csrf_token, url_string, "Legacy row")
+
+    assert response.status_code == 200
+    assert response.json[MODEL_STRS.LOST_TAG_COUNT] == 1
+    assert response.json[MODEL_STRS.LOST_TAG_NAMES] == []
 
 
 def test_readd_trashed_url_with_new_tag_strings(

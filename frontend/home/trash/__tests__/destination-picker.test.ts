@@ -35,6 +35,7 @@ vi.mock("../list.js", () => ({
 vi.mock("../../urls/outcome-banner.js", () => ({
   showOutcomeBanner: vi.fn(),
   buildReviveMessage: vi.fn(() => "revived"),
+  buildLostTagNamesDetail: vi.fn(() => undefined),
 }));
 
 const NOW = Date.parse("2026-10-16T12:00:00Z");

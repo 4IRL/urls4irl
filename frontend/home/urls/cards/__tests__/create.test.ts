@@ -671,6 +671,7 @@ describe("createURL - client-side validation", () => {
       expect(showReviveBanner).toHaveBeenCalledTimes(1);
       expect(showReviveBanner).toHaveBeenCalledWith({
         lostTagCount: 0,
+        lostTagNames: [],
         utubUrlID: 42,
       });
       expect($("#fieldSavedAnnouncement").text()).toBe("");
@@ -685,10 +686,25 @@ describe("createURL - client-side validation", () => {
         expect(showReviveBanner).toHaveBeenCalledTimes(1);
         expect(showReviveBanner).toHaveBeenCalledWith({
           lostTagCount,
+          lostTagNames: [],
           utubUrlID: 42,
         });
       },
     );
+
+    it("passes the lost tag names through to the revive banner", () => {
+      addWith({
+        revivedFromTrash: true,
+        lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
+      });
+
+      expect(showReviveBanner).toHaveBeenCalledWith({
+        lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
+        utubUrlID: 42,
+      });
+    });
 
     it("does not write the URL added announcement when the reorder moves a revived card", () => {
       sortNewCardLast();
@@ -1115,6 +1131,7 @@ describe("createURL - query-parameter trim block", () => {
       succeedWith("https://example.com/p?a=1&c=3", {
         revivedFromTrash: true,
         lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
       });
 
       submit();
@@ -1122,6 +1139,7 @@ describe("createURL - query-parameter trim block", () => {
       expect(showTrimSavedBanner).toHaveBeenCalledTimes(1);
       expect(vi.mocked(showTrimSavedBanner).mock.calls[0][0].revive).toEqual({
         lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
       });
       expect(showReviveBanner).not.toHaveBeenCalled();
     });

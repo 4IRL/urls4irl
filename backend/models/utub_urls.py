@@ -63,6 +63,14 @@ class Utub_Urls(db.Model):
         JSONB(none_as_null=True), nullable=True, default=None, name="trashedTagIds"
     )
 
+    # Tag strings captured at the same moment as ``trashed_tag_ids``, as
+    # {str(tag_id): tag_string}. A deleted UTub tag's row is gone, so this is the only
+    # way to name a tag lost while the URL sat in the trash. NULL means "no names known"
+    # (rows trashed before this column existed). Reassign, never mutate in place.
+    trashed_tag_names: dict[str, str] | None = Column(
+        JSONB(none_as_null=True), nullable=True, default=None, name="trashedTagNames"
+    )
+
     standalone_url: Urls = db.relationship("Urls")
     utub = db.relationship("Utubs", back_populates="utub_urls")
     url_tags = db.relationship("Utub_Url_Tags", back_populates="tagged_url")

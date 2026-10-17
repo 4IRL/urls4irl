@@ -20,6 +20,10 @@ from backend.schemas.urls import (
     UtubUrlDeleteSchema,
 )
 from backend.urls.constants import BulkDeleteSkipReason, URLErrorCodes
+from backend.urls.services.trashed_url_tags import (
+    build_tag_name_snapshot,
+    build_tag_name_snapshot_from_ids,
+)
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
@@ -129,6 +133,9 @@ def trash_live_utub_url(
                 Utub_Urls.deleted_at: utc_now(),
                 Utub_Urls.deleted_by: current_user.id,
                 Utub_Urls.trashed_tag_ids: sorted(snapshot_tag_ids),
+                Utub_Urls.trashed_tag_names: build_tag_name_snapshot_from_ids(
+                    snapshot_tag_ids
+                ),
             },
             synchronize_session=False,
         )
@@ -309,6 +316,7 @@ def delete_urls_in_utub(
             row.deleted_at = trashed_at
             row.deleted_by = current_user_id
             row.trashed_tag_ids = sorted(row.associated_tag_ids)
+            row.trashed_tag_names = build_tag_name_snapshot(row)
 
         if total_deleted >= 1:
             # Flush the pending flags so the grouped recompute counts live-only

@@ -2626,6 +2626,7 @@ def test_update_url_to_trashed_url_reports_lost_tags(
         shared_tag_id, solo_tag_id = Utub_Urls.query.get(
             trashed_utub_url_id
         ).associated_tag_ids
+        solo_tag_string: str = Utub_Tags.query.get(solo_tag_id).tag_string
 
     trash_utub_url(app, trashed_utub_url_id, deleted_by=1)
 
@@ -2641,6 +2642,7 @@ def test_update_url_to_trashed_url_reports_lost_tags(
     response_json = response.json
     assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
     assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 1
+    assert response_json[MODEL_STRS.LOST_TAG_NAMES] == [solo_tag_string]
     assert [
         applied_tag[MODEL_STRS.ID]
         for applied_tag in response_json[MODEL_STRS.APPLIED_TAGS]
@@ -2687,6 +2689,7 @@ def test_update_url_to_trashed_url_as_non_adder_member_drops_trashed_tags(
     response_json = response.json
     assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
     assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 0
+    assert response_json[MODEL_STRS.LOST_TAG_NAMES] == []
     assert [
         applied_tag[MODEL_STRS.ID]
         for applied_tag in response_json[MODEL_STRS.APPLIED_TAGS]
@@ -2701,6 +2704,7 @@ def test_update_url_to_trashed_url_as_non_adder_member_drops_trashed_tags(
         revived_row: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
         assert revived_row.deleted_at is None
         assert revived_row.trashed_tag_ids is None
+        assert revived_row.trashed_tag_names is None
         assert revived_row.user_id == 2
         assert revived_row.associated_tag_ids == [shared_tag_id]
         assert (

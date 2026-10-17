@@ -205,6 +205,11 @@ class UrlRestoredResponseSchema(BaseSchema):
         alias=MODELS.LOST_TAG_COUNT,
         description="How many of the URL's tags were deleted from the UTub while it sat in Trash",
     )
+    lost_tag_names: list[str] = Field(
+        default_factory=list,
+        alias=MODELS.LOST_TAG_NAMES,
+        description="Names of the lost tags, alphabetical. Empty when none are known (e.g. the URL was trashed before names were saved), even if the count is above zero.",
+    )
 
 
 class UtubRestoredResponseSchema(BaseSchema):

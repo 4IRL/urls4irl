@@ -113,6 +113,8 @@ def test_restore_url_trashed_with_its_utub_into_destination(
     assert response_json[MODELS.APPLIED_TAGS] == []
     assert response_json[TAG_COUNTS_MODIFIED] == {}
     assert response_json[MODELS.LOST_TAG_COUNT] == 1
+    # A destination restore reports no names: the frontend shows no lost-tag text.
+    assert response_json[MODELS.LOST_TAG_NAMES] == []
     card = response_json[MODELS.URL]
     assert card[MODELS.UTUB_URL_ID] == row_id
     assert card[MODELS.ADDED_BY] == FIRST_USER_ID
@@ -129,6 +131,7 @@ def test_restore_url_trashed_with_its_utub_into_destination(
     assert after["deleted_at"] is None
     assert after["deleted_by"] is None
     assert after["trashed_tag_ids"] is None
+    assert after["trashed_tag_names"] is None
     assert count_url_tag_rows(app, row_id) == 0
     with app.app_context():
         assert Utubs.query.get(FIRST_UTUB_ID).deleted_at is not None
@@ -191,6 +194,7 @@ def test_restore_url_trashed_on_its_own_before_its_utub_into_destination(
     assert after["deleted_at"] is None
     assert after["deleted_by"] is None
     assert after["trashed_tag_ids"] is None
+    assert after["trashed_tag_names"] is None
     assert count_url_tag_rows(app, row_id) == 0
     with app.app_context():
         assert Utubs.query.get(FIRST_UTUB_ID).deleted_at is not None
