@@ -1,0 +1,340 @@
+/* Trash destination: the pinned left-deck entry and the center panel shell. */
+
+/* The Trash entry is its own wrapper after #listUTubs (not a .UTubSelector), so the
+   UTub list's counting, search, striping and rebuilds never touch it. `margin-top:
+   auto` pins it to the bottom of the UTub deck's content when the list is short. */
+#TrashSelectorWrap {
+    margin-top: auto;
+    border-top: 2px solid var(--borderColor);
+}
+
+.TrashSelector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--cardURLTextColor);
+    border-block: 1px solid transparent;
+    background-color: var(--cardBackgroundColor);
+    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+.TrashSelector .TrashSelectorCount {
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: inherit;
+}
+
+.TrashSelector.active {
+    background-color: var(--selectedUTubColorBackground);
+    color: var(--deckSelectionGreen);
+    border-block: 2px solid var(--deckSelectionGreenHover);
+}
+
+/* Same focus ring as .UTubSelector:focus. */
+.TrashSelector:focus {
+    outline: none;
+    border-block: 2px solid var(--deckSelectionGreenHover);
+}
+
+#TrashPanel {
+    padding-inline: 15px;
+}
+
+#TrashPanel[hidden],
+#TrashPanel [role="tabpanel"][hidden] {
+    display: none;
+}
+
+#TrashPanel:focus {
+    outline: none;
+}
+
+#TrashPanelHeader {
+    align-items: center;
+    padding-top: 0.5rem;
+    color: var(--deckHeaderGreen);
+}
+
+#TrashPanelHeader h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+#TrashTabRow {
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.TrashTablist {
+    display: flex;
+    gap: 4px;
+}
+
+.TrashTab {
+    padding: 6px 14px;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--cardURLTextColor);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.TrashTab[aria-selected="true"] {
+    background-color: var(--selectedUTubColorBackground);
+    border-color: var(--deckSelectionGreen);
+    color: var(--deckSelectionGreen);
+}
+
+.TrashTab:focus-visible {
+    outline: 2px solid var(--deckSelectionGreenHover);
+    outline-offset: 2px;
+}
+
+#TrashBtnEmpty {
+    color: var(--textPrimary);
+    border: 1px solid var(--borderColor);
+    background-color: transparent;
+}
+
+#TrashBtnEmpty:hover:not(:disabled) {
+    color: var(--removeIconColor);
+    border-color: var(--removeIconColor);
+}
+
+#TrashBtnEmpty:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#TrashRetentionNotice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0 0;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    background-color: var(--memberOutsiderAmberTint);
+    border: 1px solid var(--utubLockedIconColor);
+    border-left-width: 5px;
+    color: var(--textPrimary);
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+#TrashRetentionNotice[hidden] {
+    display: none;
+}
+
+/* Decorative warning glyph; the empty alt keeps it out of the accessible name. */
+#TrashRetentionNotice::before {
+    content: "\26A0" / "";
+    flex-shrink: 0;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--utubLockedIconColor);
+}
+
+.TrashEmptyState {
+    padding: 2rem 0;
+    text-align: center;
+    color: var(--cardURLTextColor);
+}
+
+.TrashEmptyState:focus {
+    outline: none;
+}
+
+/* Rows. Actions are always visible so every control is Tab-reachable. */
+.trashRow {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--borderColor);
+    border-left: 3px solid transparent;
+    background-color: var(--cardBackgroundColor);
+    transition: background-color 0.15s ease-in-out;
+}
+
+.trashRow:hover {
+    background-color: var(--selectedUTubColorBackground);
+}
+
+/* Same ring as the focused URL card (urls.css). */
+.trashRow:focus-visible,
+.trashRow:focus {
+    outline: none;
+    border-top: 1px solid var(--focusedUrlBorder);
+    border-bottom: 1px solid var(--focusedUrlBorder);
+}
+
+.trashRow .rowline {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.trashRow .rowline .right {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.trashRow .t-title {
+    color: var(--textPrimary);
+    font-weight: 700;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
+.trashRow .t-url,
+.trashRow .t-meta {
+    color: var(--cardURLTextColor);
+    opacity: 0.75;
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+
+.trashRow .actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 10px;
+}
+
+.trashRow .actions .grow {
+    flex-grow: 1;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.chip-origin {
+    border: 1px solid var(--borderColor);
+    color: var(--cardURLTextColor);
+}
+
+.chip-origin.dashed {
+    border-style: dashed;
+    border-color: var(--utubLockedIconColor);
+    color: var(--cardURLTextColor);
+}
+
+.chip-expiry {
+    background-color: transparent;
+    border: 1px solid var(--borderColor);
+    color: var(--cardURLTextColor);
+}
+
+.chip-expiry.urgent {
+    border-color: var(--removeIconColor);
+    color: var(--removeIconColor);
+}
+
+.btn-restore,
+.btn-forever {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.btn-restore {
+    background-color: var(--deckHeaderGreen);
+    border: 1px solid var(--deckHeaderGreen);
+    color: #fff;
+}
+
+.btn-forever {
+    background-color: transparent;
+    border: 1px solid var(--removeIconColor);
+    color: var(--removeIconColor);
+}
+
+.btn-restore:focus-visible,
+.btn-forever:focus-visible,
+#TrashBtnEmpty:focus-visible {
+    outline: 2px solid var(--deckSelectionGreenHover);
+    outline-offset: 2px;
+}
+
+.btn.disabled,
+.btn[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.trashDestinationPicker {
+    margin-top: 9px;
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    max-width: 330px;
+}
+
+.trashDestinationOption {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.trashDestinationOption:focus,
+.trashDestinationOption:focus-visible {
+    outline: none;
+    background-color: var(--selectedUTubColorBackground);
+    box-shadow: inset 0 0 0 2px var(--deckSelectionGreenHover);
+}
+
+.trashDestinationOption.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.trashDestinationRole,
+.trashDestinationLocked {
+    margin-left: auto;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.trashDestinationLocked {
+    color: var(--cautionText);
+}
+
+.trashDestinationNone {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    color: var(--cautionText);
+}
+
+.trashDestinationNone:focus {
+    outline: 2px solid var(--deckSelectionGreenHover);
+}
+
+/* Step 8 removes this rule when the mobile Trash panel lands. */
+@media (max-width: 991.98px) {
+    #TrashSelectorWrap {
+        display: none;
+    }
+
+    /* The master's >=44px touch-target rule; inert until Step 8 shows the panel. */
+    .trashBtnRestore,
+    .trashBtnPurge,
+    #TrashBtnEmpty {
+        min-height: 2.75rem;
+    }
+}

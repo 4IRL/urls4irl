@@ -43,7 +43,7 @@ from tests.unit.stdlib_only_utils import assert_module_is_stdlib_only
 pytestmark = pytest.mark.unit
 
 DECLARED_MARKERS: set[str] = read_declared_markers(PYTEST_INI)
-DECLARED_MARKER_COUNT: int = 24
+DECLARED_MARKER_COUNT: int = 25
 MERGE_BASE_SHA: str = "abc123"
 
 

@@ -13,6 +13,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.urls.services.trashed_url_tags import build_tag_name_snapshot_from_ids
 from backend.utils.datetime_utils import utc_now
 
 
@@ -191,13 +192,14 @@ def trash_utub_url(
     utub_url_id: int,
     deleted_by: int,
     trashed_tag_ids: list[int] | None = None,
+    record_tag_names: bool = True,
 ) -> None:
     """Soft-delete (trash) an existing UTub URL in place.
 
     Sets ``deleted_at`` to now, ``deleted_by`` to the given user and
-    ``trashed_tag_ids`` to the snapshot, mirroring what the URL delete service
-    does, without going through the route. The URL's ``Utub_Url_Tags`` rows are
-    left untouched.
+    ``trashed_tag_ids`` plus ``trashed_tag_names`` to the snapshot, mirroring what
+    the URL delete service does, without going through the route. The URL's
+    ``Utub_Url_Tags`` rows are left untouched.
 
     Args:
         app (Flask): The Flask client for providing an app context
@@ -205,6 +207,8 @@ def trash_utub_url(
         deleted_by (int): The ID of the User recorded as having trashed it
         trashed_tag_ids (list[int] | None): The tag ids to snapshot. Defaults to
             the row's current associated tag ids, sorted
+        record_tag_names (bool): False leaves ``trashed_tag_names`` NULL, simulating
+            a row trashed before tag names were saved
     """
     with app.app_context():
         utub_url: Utub_Urls = Utub_Urls.query.get(utub_url_id)
@@ -214,6 +218,11 @@ def trash_utub_url(
             list(trashed_tag_ids)
             if trashed_tag_ids is not None
             else sorted(utub_url.associated_tag_ids)
+        )
+        utub_url.trashed_tag_names = (
+            build_tag_name_snapshot_from_ids(utub_url.trashed_tag_ids)
+            if record_tag_names
+            else None
         )
         db.session.commit()
 

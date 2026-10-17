@@ -12,6 +12,7 @@ import { createRovingListbox } from "../../../lib/roving-listbox.js";
 import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { getState } from "../../../store/app-store.js";
 import { isMobile } from "../../mobile.js";
+import { refreshTrashCount } from "../../trash/count.js";
 import {
   type BulkAction,
   type BulkActionContext,
@@ -628,6 +629,9 @@ function handleCopySuccess({
   response: CopyUrlsResponse;
   snapshot: number[];
 }): void {
+  // A copy can revive a trashed duplicate, but the response does not say so:
+  // re-read the authoritative count after any copy that landed.
+  if (response.totalCopied > 0) void refreshTrashCount();
   const results = response.results;
   // Destinations that actually received ≥1 copy, and destinations skipped whole
   // because they were locked at write time (DD-8/DD-13). Both feed the banner;

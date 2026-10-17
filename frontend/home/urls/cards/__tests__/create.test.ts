@@ -29,6 +29,7 @@ import { triggerURLSwipeNudgeIfEligible } from "../swipe.js";
 import { emit as emitMetric } from "../../../../lib/metrics-client.js";
 import { getOpenForm } from "../../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../../types/metrics-events.js";
+import { refreshTrashCount } from "../../../trash/count.js";
 import {
   FORM_CANCEL_TRIGGER,
   HOME_FORM,
@@ -39,6 +40,7 @@ const { mockMetricsClient } = await vi.hoisted(
     await import("../../../../__tests__/helpers/mock-metrics-client.js"),
 );
 
+vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../../../lib/ajax.js", () => ({
@@ -322,6 +324,7 @@ describe("createURL - client-side validation", () => {
 
       expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
       expect(checkForStaleDataOn409).toHaveBeenCalledWith(responseJSON, 99);
+      expect(refreshTrashCount).not.toHaveBeenCalled();
     });
   });
 
@@ -668,9 +671,11 @@ describe("createURL - client-side validation", () => {
       expect(showReviveBanner).toHaveBeenCalledTimes(1);
       expect(showReviveBanner).toHaveBeenCalledWith({
         lostTagCount: 0,
+        lostTagNames: [],
         utubUrlID: 42,
       });
       expect($("#fieldSavedAnnouncement").text()).toBe("");
+      expect(refreshTrashCount).toHaveBeenCalledTimes(1);
     });
 
     it.each([1, 2])(
@@ -681,10 +686,25 @@ describe("createURL - client-side validation", () => {
         expect(showReviveBanner).toHaveBeenCalledTimes(1);
         expect(showReviveBanner).toHaveBeenCalledWith({
           lostTagCount,
+          lostTagNames: [],
           utubUrlID: 42,
         });
       },
     );
+
+    it("passes the lost tag names through to the revive banner", () => {
+      addWith({
+        revivedFromTrash: true,
+        lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
+      });
+
+      expect(showReviveBanner).toHaveBeenCalledWith({
+        lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
+        utubUrlID: 42,
+      });
+    });
 
     it("does not write the URL added announcement when the reorder moves a revived card", () => {
       sortNewCardLast();
@@ -704,6 +724,7 @@ describe("createURL - client-side validation", () => {
       addWith({ revivedFromTrash: false, lostTagCount: 0 });
 
       expect(showReviveBanner).not.toHaveBeenCalled();
+      expect(refreshTrashCount).not.toHaveBeenCalled();
       expect($("#fieldSavedAnnouncement").text()).toBe(
         APP_CONFIG.strings.URL_ADDED_ANNOUNCEMENT,
       );
@@ -1110,6 +1131,7 @@ describe("createURL - query-parameter trim block", () => {
       succeedWith("https://example.com/p?a=1&c=3", {
         revivedFromTrash: true,
         lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
       });
 
       submit();
@@ -1117,6 +1139,7 @@ describe("createURL - query-parameter trim block", () => {
       expect(showTrimSavedBanner).toHaveBeenCalledTimes(1);
       expect(vi.mocked(showTrimSavedBanner).mock.calls[0][0].revive).toEqual({
         lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
       });
       expect(showReviveBanner).not.toHaveBeenCalled();
     });

@@ -50,6 +50,7 @@ import {
 } from "../../../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { emit as emitMetric } from "../../../../lib/metrics-client.js";
+import { refreshTrashCount } from "../../../trash/count.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -57,6 +58,7 @@ const { mockMetricsClient } = await vi.hoisted(
 );
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
+vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
 const { globalsMock } = await vi.hoisted(async () => {
   const { mockGlobalsWithTooltipInstance } =
@@ -330,11 +332,18 @@ describe("updateURLSuccess - revive on edit", () => {
   const UTUB_ID = 7;
   let urlCard: JQuery, urlStringInput: JQuery;
 
-  function revivedResponse({ lostTagCount }: { lostTagCount: number }) {
+  function revivedResponse({
+    lostTagCount,
+    lostTagNames = [],
+  }: {
+    lostTagCount: number;
+    lostTagNames?: string[];
+  }) {
     return {
       status: "Success",
       revivedFromTrash: true,
       lostTagCount,
+      lostTagNames,
       replacedUtubUrlID: EDITED_UTUB_URL_ID,
       appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],
       URL: {
@@ -412,20 +421,26 @@ describe("updateURLSuccess - revive on edit", () => {
     expect(showReviveBanner).toHaveBeenCalledTimes(1);
     expect(showReviveBanner).toHaveBeenCalledWith({
       lostTagCount: 0,
+      lostTagNames: [],
       utubUrlID: REVIVED_UTUB_URL_ID,
     });
     expect(showURLUpdatedBanner).not.toHaveBeenCalled();
     expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    // Trashes the edited row and revives another, yet still one refresh.
+    expect(refreshTrashCount).toHaveBeenCalledTimes(1);
   });
 
   it("passes the lost tag count through to the revive banner", async () => {
     urlStringInput.val(REVIVED_URL);
-    mockSuccess(revivedResponse({ lostTagCount: 2 }));
+    mockSuccess(
+      revivedResponse({ lostTagCount: 2, lostTagNames: ["Tool", "Art"] }),
+    );
 
     await updateURL(urlStringInput, urlCard, UTUB_ID);
 
     expect(showReviveBanner).toHaveBeenCalledWith({
       lostTagCount: 2,
+      lostTagNames: ["Tool", "Art"],
       utubUrlID: REVIVED_UTUB_URL_ID,
     });
   });
@@ -435,6 +450,7 @@ describe("updateURLSuccess - revive on edit", () => {
     const response: Partial<ReturnType<typeof revivedResponse>> =
       revivedResponse({ lostTagCount: 5 });
     delete response.lostTagCount;
+    delete response.lostTagNames;
     mockSuccess(response);
 
     await updateURL(urlStringInput, urlCard, UTUB_ID);
@@ -444,6 +460,7 @@ describe("updateURLSuccess - revive on edit", () => {
     expect(showReviveBanner).toHaveBeenCalledTimes(1);
     expect(showReviveBanner).toHaveBeenCalledWith({
       lostTagCount: 0,
+      lostTagNames: [],
       utubUrlID: REVIVED_UTUB_URL_ID,
     });
   });
@@ -477,6 +494,7 @@ describe("updateURLSuccess - revive on edit", () => {
     });
     expect(showReviveBanner).toHaveBeenCalledWith({
       lostTagCount: 1,
+      lostTagNames: [],
       utubUrlID: REVIVED_UTUB_URL_ID,
     });
   });
@@ -528,7 +546,9 @@ describe("updateURLSuccess - revive on edit", () => {
     urlCard.find(".updateUrlStringWrap").append(trimWrap);
     (trimWrap.data(TRIM_FLUSH_KEY) as (rawValue: string) => void)(trimUrl);
     trimWrap.find('.urlParamTrimChip[data-index="0"]').trigger("click");
-    mockSuccess(revivedResponse({ lostTagCount: 3 }));
+    mockSuccess(
+      revivedResponse({ lostTagCount: 3, lostTagNames: ["Tool", "Art"] }),
+    );
 
     await updateURL(urlStringInput, urlCard, UTUB_ID);
 
@@ -538,7 +558,10 @@ describe("updateURLSuccess - revive on edit", () => {
     expect(args.trimSubmission.droppedCount).toBe(1);
     expect(args.utubID).toBe(UTUB_ID);
     expect(args.utubUrlID).toBe(REVIVED_UTUB_URL_ID);
-    expect(args.revive).toEqual({ lostTagCount: 3 });
+    expect(args.revive).toEqual({
+      lostTagCount: 3,
+      lostTagNames: ["Tool", "Art"],
+    });
   });
 
   it("keeps the edited card and shows the message in the edit form on a 400 at-tag-limit error", async () => {
@@ -567,6 +590,7 @@ describe("updateURLSuccess - revive on edit", () => {
     expect(removeURLCardFromDeck).not.toHaveBeenCalled();
     expect(insertURLCardIntoDeck).not.toHaveBeenCalled();
     expect(showReviveBanner).not.toHaveBeenCalled();
+    expect(refreshTrashCount).not.toHaveBeenCalled();
     expect(urlCard.closest("body").length).toBe(1);
   });
 
@@ -592,6 +616,7 @@ describe("updateURLSuccess - revive on edit", () => {
     expect(showReviveBanner).not.toHaveBeenCalled();
     expect(showURLUpdatedBanner).toHaveBeenCalledTimes(1);
     expect(setState).toHaveBeenCalled();
+    expect(refreshTrashCount).not.toHaveBeenCalled();
   });
 });
 

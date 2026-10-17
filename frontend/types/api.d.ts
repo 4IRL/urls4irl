@@ -2054,6 +2054,8 @@ export interface components {
        * @default 0
        */
       lostTagCount: number;
+      /** @description On a revive, names of the lost tags, alphabetical. Empty when none are known, even if the count is above zero. */
+      lostTagNames?: string[];
     };
     ErrorResponse_URLErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["URLErrorCodes"];
@@ -2116,6 +2118,8 @@ export interface components {
        * @default 0
        */
       lostTagCount: number;
+      /** @description On a revive, names of the lost tags, alphabetical. Empty when none are known, even if the count is above zero. */
+      lostTagNames?: string[];
       /**
        * @description On a revive, the id of the edited row that was trashed in favour of the revived one; null otherwise. When non-null, clients must swap this card id for the returned url.utubUrlID.
        * @default null
@@ -2321,6 +2325,11 @@ export interface components {
     UtubSummaryListSchema: {
       /** @description List of UTubs the user is a member of */
       utubs: components["schemas"]["UtubSummaryItemSchema"][];
+      /**
+       * @description Trash URL rows plus Trash UTub rows the user may act on
+       * @default 0
+       */
+      trashCount: number;
     };
     UtubUrlSchema: {
       /** @description Unique ID of the URL within the UTub */
@@ -3264,6 +3273,8 @@ export interface components {
        * @default 0
        */
       lostTagCount: number;
+      /** @description Names of the lost tags, alphabetical. Empty when none are known (e.g. the URL was trashed before names were saved), even if the count is above zero. */
+      lostTagNames?: string[];
     };
     /** @description A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count. */
     UrlPurgedResponseSchema: {

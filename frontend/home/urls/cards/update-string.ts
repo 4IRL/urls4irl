@@ -91,6 +91,7 @@ import {
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
+import { refreshTrashCount } from "../../trash/count.js";
 
 const log = debug("urls:cards");
 
@@ -620,6 +621,8 @@ function updateURLSuccess({
   closePanelAfterSave: boolean;
 }): void {
   if (response.revivedFromTrash) {
+    // Trashes the edited row and revives another: one authoritative refresh.
+    void refreshTrashCount();
     replaceEditedCardWithRevivedURL({
       response,
       urlCard,
@@ -714,6 +717,7 @@ function replaceEditedCardWithRevivedURL({
   const editedUtubUrlID = parseInt(urlCard.attr("utuburlid") as string);
   const revivedUrl = response.URL;
   const lostTagCount = response.lostTagCount ?? 0;
+  const lostTagNames = response.lostTagNames ?? [];
   log("updateURL revived a trashed URL — swapping cards", {
     editedUtubUrlID,
     revivedUtubUrlID: revivedUrl.utubUrlID,
@@ -768,10 +772,14 @@ function replaceEditedCardWithRevivedURL({
       utubUrlID: revivedUrl.utubUrlID,
       urlCard: revivedUrlCard,
       form: URL_PARAMS_TRIMMED_FORM.URL_STRING_EDIT,
-      revive: { lostTagCount },
+      revive: { lostTagCount, lostTagNames },
     });
   } else {
-    showReviveBanner({ lostTagCount, utubUrlID: revivedUrl.utubUrlID });
+    showReviveBanner({
+      lostTagCount,
+      lostTagNames,
+      utubUrlID: revivedUrl.utubUrlID,
+    });
   }
 }
 

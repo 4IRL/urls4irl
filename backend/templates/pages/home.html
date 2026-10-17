@@ -38,6 +38,7 @@
     <!-- Center Panel -->
     <div id="centerPanel" class="panel">
         {% include 'components/home/URLDeck/URLDeck.html' %}
+        {% include 'components/home/TrashPanel/TrashPanel.html' %}
     </div>
     <!-- End Center Panel -->
 
@@ -82,6 +83,7 @@
 </main>
 <!-- Initial UTub data for client-side store seeding -->
 <script id="utubs-data" type="application/json">{{ utubs_for_this_user | tojson }}</script>
+<script id="trash-count-data" type="application/json">{{ trash_count | tojson }}</script>
 
 <!-- Initial display/view preferences for client-side store seeding -->
 <script id="user-preferences-data" type="application/json">{{ preferences_context | tojson }}</script>

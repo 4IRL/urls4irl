@@ -294,8 +294,14 @@ _URLS_UI_DIR: tuple[str, ...] = (
     "mobile_ui",
 )
 _UTUBS_UI_DIR: tuple[str, ...] = ("utubs_ui", "mobile_ui")
+_TRASH_UI_DIR: tuple[str, ...] = ("trash_ui", "home_ui")
 _HOME_DECKS_UI: tuple[str, ...] = _union(
-    _HOME_UI_DIR, _UTUBS_UI_DIR, _URLS_UI_DIR, _TAGS_UI_DIR, _MEMBERS_UI_DIR
+    _HOME_UI_DIR,
+    _UTUBS_UI_DIR,
+    _URLS_UI_DIR,
+    _TAGS_UI_DIR,
+    _MEMBERS_UI_DIR,
+    _TRASH_UI_DIR,
 )
 
 # Ordered, first match wins: more specific globs come first.
@@ -355,6 +361,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("tests/functional/settings_ui/*", _SETTINGS_UI_DIR),
     ("tests/functional/splash_ui/*", _SPLASH_UI_DIR),
     ("tests/functional/tags_ui/*", _TAGS_UI_DIR),
+    ("tests/functional/trash_ui/*", _TRASH_UI_DIR),
     ("tests/functional/urls_ui/*", _URLS_UI_DIR),
     ("tests/functional/utubs_ui/*", _UTUBS_UI_DIR),
     # --- backend extensions ------------------------------------------------
@@ -464,6 +471,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("frontend/home/members/*", _MEMBERS_UI_DIR),
     ("frontend/home/utubs/*", _UTUBS_UI_DIR),
     ("frontend/home/search/*", _SEARCH_UI_DIR),
+    ("frontend/home/trash/*", _union(_TRASH_UI_DIR, ("utubs_ui",))),
     (
         "frontend/home/onboarding/*",
         _union(_UTUBS_UI_DIR, _MEMBERS_UI_DIR, _TAGS_UI_DIR),

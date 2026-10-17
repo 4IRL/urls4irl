@@ -111,6 +111,19 @@ vi.mock("../home/onboarding/nudges.js", () => ({
 vi.mock("../home/utubs/refresh-on-focus.js", () => ({
   initUTubRefreshOnFocus: track("initUTubRefreshOnFocus"),
 }));
+vi.mock("../home/trash/count.js", () => ({
+  loadInitialTrashCount: track("loadInitialTrashCount"),
+  renderTrashCount: track("renderTrashCount"),
+}));
+vi.mock("../home/trash/tabs.js", () => ({
+  initTrashTabs: track("initTrashTabs"),
+}));
+vi.mock("../home/trash/panel.js", () => ({
+  initTrashPanel: track("initTrashPanel"),
+}));
+vi.mock("../home/trash/actions.js", () => ({
+  initTrashActions: track("initTrashActions"),
+}));
 
 import "../main.js";
 

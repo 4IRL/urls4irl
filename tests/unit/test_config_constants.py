@@ -16,6 +16,7 @@ from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DeviceType
 from backend.utils.constants import generate_constants_js, generate_strings_js
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.trash_strs import TRASH_UI
 
 pytestmark = pytest.mark.unit
 
@@ -170,6 +171,32 @@ def test_generate_strings_js_includes_url_scheme_selector_strings():
 
     assert "{count}" in strings["URL_SCHEME_MATCH_MANY"]
     assert "{scheme}" in strings["URL_SCHEME_SET_ANNOUNCE"]
+
+
+def test_generate_strings_js_includes_trash_ui_strings():
+    """Every TRASH_UI constant is read by TS, so each is bridged with a TRASH_ prefix."""
+    strings = generate_strings_js()
+    for name, value in vars(TRASH_UI).items():
+        if name.startswith("_") or not isinstance(value, str):
+            continue
+        key = name if name.startswith("TRASH_") else f"TRASH_{name}"
+        assert key in strings, f"generate_strings_js() is missing {key}"
+        assert strings[key] == value
+
+    assert "{n}" in strings["TRASH_DAYS_LEFT"]
+    assert "{utub}" in strings["TRASH_FROM_UTUB"]
+    assert strings["TRASH_VIEW"] == "trash"
+
+    for plural_key in (
+        "TRASH_EMPTIED",
+        "TRASH_EMPTY_SKIPPED_LOCKED",
+        "TRASH_CONFIRM_PURGE_UTUB_BODY",
+        "TRASH_CONFIRM_EMPTY_URLS_BODY",
+        "TRASH_CONFIRM_EMPTY_UTUBS_BODY",
+    ):
+        assert "{n}" in strings[plural_key]
+        assert "{n}" not in strings[f"{plural_key}_ONE"]
+        assert "1" in strings[f"{plural_key}_ONE"]
 
 
 def test_generate_constants_js_device_type_shape():

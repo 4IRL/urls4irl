@@ -1,8 +1,12 @@
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 
 # Server-side messages for the Trash API (restore / delete forever / empty trash).
-# These are server messages only: no APP_CONFIG.strings bridge until a TypeScript
-# consumer renders them.
+# The TRASH_SUCCESS / TRASH_FAILURE classes are server messages only. The TRASH_UI
+# class holds the desktop Trash panel copy that TypeScript renders; it is bridged to
+# APP_CONFIG.strings with a TRASH_ key prefix (see STRINGS / generate_strings_js()).
+
+# Query param that opens the Trash destination on /home (``/home?view=trash``)
+VIEW_QUERY_PARAM = "view"
 
 # Strings for Trash success
 URL_RESTORED = "URL restored from Trash."
@@ -36,3 +40,64 @@ class TRASH_FAILURE(FAILURE_GENERAL):
     URL_ALREADY_IN_DESTINATION = URL_ALREADY_IN_DESTINATION
     UNABLE_TO_RESTORE_URL = UNABLE_TO_RESTORE_URL
     UNABLE_TO_EMPTY_TRASH = UNABLE_TO_EMPTY_TRASH
+
+
+# Desktop Trash panel copy, read by TypeScript through APP_CONFIG.strings.TRASH_<NAME>
+class TRASH_UI:
+    TAB_URLS = "URLs ({n})"
+    TAB_UTUBS = "UTubs ({n})"
+    RETENTION_NOTICE = (
+        "Items here are permanently deleted {n} days after they were removed."
+    )
+    EMPTY_STATE = "Nothing in Trash."
+    DAYS_LEFT = "{n} days left"
+    DAY_LEFT = "1 day left"
+    EXPIRES_TODAY = "Expires today"
+    FROM_UTUB = "from {utub}"
+    ORIGIN_DELETED = "Origin UTub deleted · choose a UTub on restore"
+    ORIGIN_LOCKED = "Origin UTub locked"
+    UTUB_LOCKED = "UTub locked"
+    DELETED_BY = "Deleted by {user} · {ago}"
+    DELETED_BY_YOU = "Deleted by you · {ago}"
+    AGO_TODAY = "today"
+    AGO_ONE_DAY = "1 day ago"
+    AGO_DAYS = "{n} days ago"
+    UTUB_SUMMARY = "URLs: {urls} · Members: {members}"
+    RESTORE = "Restore"
+    RESTORE_TO = "Restore to…"
+    DELETE_FOREVER = "Delete forever"
+    PICK_DESTINATION = "Restore to which UTub?"
+    PICKER_LOCKED = "Locked"
+    NO_DESTINATION = "You have no unlocked UTub to restore into."
+    RESTORED_TO = "Restored to {utub}."
+    UTUB_RESTORED = "Restored {utub}."
+    URL_PURGED = "Deleted forever."
+    UTUB_PURGED = "Deleted {utub} forever."
+    EMPTIED = "{n} items deleted forever."
+    EMPTIED_ONE = "1 item deleted forever."
+    EMPTY_SKIPPED_LOCKED = "{n} locked items were kept."
+    EMPTY_SKIPPED_LOCKED_ONE = "1 locked item was kept."
+    NOT_IN_TRASH = NOT_IN_TRASH
+    ALREADY_IN_DESTINATION = "That UTub already has this URL."
+    LOCKED = "That UTub is locked, so this item can't be changed."
+    CONFIRM_PURGE_TITLE = "Delete forever?"
+    CONFIRM_PURGE_URL_BODY = (
+        "“{title}” will be permanently deleted. This can't be undone."
+    )
+    CONFIRM_PURGE_UTUB_BODY = (
+        "“{utub}” and its {n} URLs will be permanently deleted. This can't be undone."
+    )
+    CONFIRM_PURGE_UTUB_BODY_ONE = (
+        "“{utub}” and its 1 URL will be permanently deleted. This can't be undone."
+    )
+    CONFIRM_EMPTY_TITLE = "Empty trash?"
+    CONFIRM_EMPTY_URLS_BODY = "Permanently delete {n} URLs? This can't be undone."
+    CONFIRM_EMPTY_URLS_BODY_ONE = "Permanently delete 1 URL? This can't be undone."
+    CONFIRM_EMPTY_UTUBS_BODY = (
+        "Permanently delete {n} UTubs and their URLs? This can't be undone."
+    )
+    CONFIRM_EMPTY_UTUBS_BODY_ONE = (
+        "Permanently delete 1 UTub and its URLs? This can't be undone."
+    )
+    VIEW_QUERY_PARAM = VIEW_QUERY_PARAM
+    TRASH_VIEW = "trash"

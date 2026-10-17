@@ -95,6 +95,7 @@ def get_row_state(app: Flask, utub_url_id: int) -> dict[str, Any]:
             "deleted_at": utub_url.deleted_at,
             "deleted_by": utub_url.deleted_by,
             "trashed_tag_ids": utub_url.trashed_tag_ids,
+            "trashed_tag_names": utub_url.trashed_tag_names,
             "user_id": utub_url.user_id,
             "added_at": utub_url.added_at,
             "url_title": utub_url.url_title,

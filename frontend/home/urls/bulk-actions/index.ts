@@ -147,6 +147,7 @@ export function initBulkActions(): void {
   // (clearing the store via exitMultiSelectMode()'s clearURLSelection()).
   on(AppEvents.UTUB_SELECTED, () => exitMultiSelectMode());
   on(AppEvents.UTUB_DELETED, () => exitMultiSelectMode());
+  on(AppEvents.TRASH_OPENED, () => exitMultiSelectMode());
 
   // Mobile: leaving the URL deck panel exits mode. Conditional on the target
   // (re-entering the url-deck panel must not itself exit mode).

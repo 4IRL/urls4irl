@@ -24,7 +24,10 @@ from backend.tags.services.create_url_tag import get_tag_applied_counts
 from backend.urls.constants import URLErrorCodes, UrlRestoreTarget
 from backend.urls.services.create_urls import check_url_already_in_utub
 from backend.urls.services.delete_urls import recompute_tag_counts_after_delete
-from backend.urls.services.trashed_url_tags import count_lost_trashed_tags
+from backend.urls.services.trashed_url_tags import (
+    count_lost_trashed_tags,
+    list_lost_trashed_tag_names,
+)
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.trash_strs import TRASH_FAILURE, TRASH_SUCCESS
 from backend.utubs.guards import reject_if_utub_locked
@@ -209,6 +212,7 @@ def _restore_url_into_destination(
         utub_url.deleted_at = None
         utub_url.deleted_by = None
         utub_url.trashed_tag_ids = None
+        utub_url.trashed_tag_names = None
         db.session.flush()
 
         dest_utub.set_last_updated()
@@ -310,12 +314,14 @@ def restore_trashed_url(
     try:
         # Read BEFORE the snapshot is cleared.
         lost_tag_count = count_lost_trashed_tags(utub_url)
+        lost_tag_names = list_lost_trashed_tag_names(utub_url)
 
         # Reassign (never mutate) the JSONB snapshot. user_id, added_at, url_title and
         # last_accessed stay untouched: restore is not revive.
         utub_url.deleted_at = None
         utub_url.deleted_by = None
         utub_url.trashed_tag_ids = None
+        utub_url.trashed_tag_names = None
         db.session.flush()
 
         tag_counts: dict[int, int] = recompute_tag_counts_after_delete(
@@ -379,6 +385,7 @@ def restore_trashed_url(
             ],
             tag_counts_modified=tag_counts,
             lost_tag_count=lost_tag_count,
+            lost_tag_names=lost_tag_names,
         ),
     ).to_response()
 

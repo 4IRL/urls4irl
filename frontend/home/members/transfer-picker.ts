@@ -96,6 +96,7 @@ export function initTransferPicker(): void {
   // UTub switch / delete tears the modal down even if the user never closed it.
   on(AppEvents.UTUB_SELECTED, () => closeTransferPicker());
   on(AppEvents.UTUB_DELETED, () => closeTransferPicker());
+  on(AppEvents.TRASH_OPENED, () => closeTransferPicker());
 
   // Delete-flow entry point: the "Transfer instead" button emits this with the
   // delete trigger as the opener, so a cancel returns focus there.

@@ -273,6 +273,7 @@ def test_utub_url_is_trashed_helper(app):
         assert utub_url_object.deleted_at is None
         assert utub_url_object.deleted_by is None
         assert utub_url_object.trashed_tag_ids is None
+        assert utub_url_object.trashed_tag_names is None
         assert utub_url_object.is_trashed is False
 
         utub_url_object.deleted_at = datetime.now(timezone.utc)

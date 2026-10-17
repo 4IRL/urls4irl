@@ -9,6 +9,7 @@ import { debug } from "../../../lib/debug.js";
 import { AppEvents, emit as emitAppEvent, on } from "../../../lib/event-bus.js";
 import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { refreshTrashCount } from "../../trash/count.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
   updateTagFilteringOnURLOrURLTagDeletion,
@@ -463,6 +464,7 @@ function handleDeleteSuccess({
   const skippedCount = skippedIds.length;
 
   log("bulk delete success", { deletedCount, skippedCount });
+  if (deletedCount > 0) void refreshTrashCount();
 
   // Store patch: drop the deleted URLs, then prune them from the selection
   // (pruneRemovedFromSelection emits URL_MULTISELECT_CHANGED via commitSelection).

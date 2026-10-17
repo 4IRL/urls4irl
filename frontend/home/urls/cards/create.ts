@@ -55,6 +55,7 @@ import {
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
+import { refreshTrashCount } from "../../trash/count.js";
 
 const log = debug("urls:cards");
 
@@ -399,6 +400,8 @@ function createURLSuccess({
   // Absent on a payload from before the revive fields existed: treat as a plain add.
   const revivedFromTrash = response.revivedFromTrash ?? false;
   const lostTagCount = response.lostTagCount ?? 0;
+  const lostTagNames = response.lostTagNames ?? [];
+  if (revivedFromTrash) void refreshTrashCount();
 
   const newUrl: UtubUrlItem = {
     utubUrlID: url.utubUrlID,
@@ -436,10 +439,10 @@ function createURLSuccess({
       utubUrlID: url.utubUrlID,
       urlCard: newUrlCard,
       form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
-      revive: revivedFromTrash ? { lostTagCount } : undefined,
+      revive: revivedFromTrash ? { lostTagCount, lostTagNames } : undefined,
     });
   } else if (revivedFromTrash) {
-    showReviveBanner({ lostTagCount, utubUrlID: url.utubUrlID });
+    showReviveBanner({ lostTagCount, lostTagNames, utubUrlID: url.utubUrlID });
   }
 }
 

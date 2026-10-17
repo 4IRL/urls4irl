@@ -25,8 +25,22 @@ import { URL_PARAMS_TRIMMED_ACTION } from "../../types/metrics-dim-values.js";
 
 const log = debug("urls:outcome-banner");
 
-const BANNER_SELECTOR = "#URLDeckOutcomeBanner";
-const DECK_SELECTOR = "#URLDeck";
+/**
+ * Where an outcome banner lives: the banner element and the `tabindex="-1"`
+ * root that receives focus when a dismissed banner's focus target is gone.
+ */
+export type OutcomeBannerMount = {
+  bannerSelector: string;
+  rootSelector: string;
+};
+
+export const URL_DECK_BANNER_MOUNT: OutcomeBannerMount = {
+  bannerSelector: "#URLDeckOutcomeBanner",
+  rootSelector: "#URLDeck",
+};
+
+const BANNER_SELECTOR = URL_DECK_BANNER_MOUNT.bannerSelector;
+const DECK_SELECTOR = URL_DECK_BANNER_MOUNT.rootSelector;
 const REQUEST_TIMEOUT_MS = 35000;
 
 type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
@@ -39,10 +53,20 @@ export type OutcomeBannerVariant = "success" | "partial";
  * programmatic-focus root) when the target is absent or not rendered — the card
  * may be gone, filtered out, or deselected so its buttons are hidden.
  */
-function returnFocus(target: JQuery): void {
+function returnFocusIn({
+  target,
+  mount,
+}: {
+  target: JQuery;
+  mount: OutcomeBannerMount;
+}): void {
   const destination =
-    target.length > 0 && target.is(":visible") ? target : $(DECK_SELECTOR);
+    target.length > 0 && target.is(":visible") ? target : $(mount.rootSelector);
   destination.trigger("focus");
+}
+
+function returnFocus(target: JQuery): void {
+  returnFocusIn({ target, mount: URL_DECK_BANNER_MOUNT });
 }
 
 // How long the banner stays up before hiding itself. Long enough to read the
@@ -58,13 +82,29 @@ const RESUME_EVENTS =
 // compatibility events from that touch (they would re-pause with no leave).
 const TOUCH_COMPAT_MOUSE_MS = 1000;
 
-let autoHideTimer: ReturnType<typeof setTimeout> | null = null;
-let lastTouchAt = Number.NEGATIVE_INFINITY;
+type MountTimers = {
+  autoHideTimer: ReturnType<typeof setTimeout> | null;
+  lastTouchAt: number;
+};
 
-function stopAutoHide(): void {
-  if (autoHideTimer !== null) {
-    clearTimeout(autoHideTimer);
-    autoHideTimer = null;
+// Per-mount timer state, keyed by `bannerSelector`, so banners never share a countdown.
+const timersByBanner = new Map<string, MountTimers>();
+
+function timersFor(mount: OutcomeBannerMount): MountTimers {
+  let timers = timersByBanner.get(mount.bannerSelector);
+  if (timers === undefined) {
+    timers = { autoHideTimer: null, lastTouchAt: Number.NEGATIVE_INFINITY };
+    timersByBanner.set(mount.bannerSelector, timers);
+  }
+  return timers;
+}
+
+function stopAutoHide(mount: OutcomeBannerMount): void {
+  const timers = timersByBanner.get(mount.bannerSelector);
+  if (timers === undefined) return;
+  if (timers.autoHideTimer !== null) {
+    clearTimeout(timers.autoHideTimer);
+    timers.autoHideTimer = null;
   }
 }
 
@@ -77,52 +117,76 @@ function bannerVariant(): OutcomeBannerVariant {
 // request is still in flight when it fires, the hide is deferred: the request's
 // 429 branch restarts the countdown, and every other outcome replaces or clears
 // the banner itself.
-function startAutoHide(variant: OutcomeBannerVariant): void {
-  stopAutoHide();
-  autoHideTimer = setTimeout(
+function startAutoHide({
+  mount,
+  variant,
+}: {
+  mount: OutcomeBannerMount;
+  variant: OutcomeBannerVariant;
+}): void {
+  stopAutoHide(mount);
+  const timers = timersFor(mount);
+  timers.autoHideTimer = setTimeout(
     () => {
-      autoHideTimer = null;
+      timers.autoHideTimer = null;
       const inFlight =
-        $(BANNER_SELECTOR)
+        $(mount.bannerSelector)
           .find(".urlOutcomeBannerAction")
           .attr("aria-disabled") === "true";
       if (inFlight) return;
-      clearURLOutcomeBanner();
+      clearOutcomeBanner({ mount });
     },
     variant === "partial" ? AUTO_HIDE_PARTIAL_MS : AUTO_HIDE_MS,
   );
 }
 
 // True for a mouse-type pointer event that follows a touch (compat event).
-function isCompatMouseEvent(event: JQuery.TriggeredEvent): boolean {
+function isCompatMouseEvent({
+  event,
+  mount,
+}: {
+  event: JQuery.TriggeredEvent;
+  mount: OutcomeBannerMount;
+}): boolean {
+  const timers = timersFor(mount);
   const pointerType = (event.originalEvent as PointerEvent | undefined)
     ?.pointerType;
   if (pointerType === "touch") {
-    lastTouchAt = Date.now();
+    timers.lastTouchAt = Date.now();
     return false;
   }
   return (
-    pointerType === "mouse" && Date.now() - lastTouchAt < TOUCH_COMPAT_MOUSE_MS
+    pointerType === "mouse" &&
+    Date.now() - timers.lastTouchAt < TOUCH_COMPAT_MOUSE_MS
   );
 }
 
-/** Hides and empties the banner. Safe to call when no banner is showing. */
-export function clearURLOutcomeBanner(): void {
-  stopAutoHide();
-  $(BANNER_SELECTOR)
+/** Hides and empties the mount's banner. Safe to call when none is showing. */
+export function clearOutcomeBanner({
+  mount,
+}: {
+  mount: OutcomeBannerMount;
+}): void {
+  stopAutoHide(mount);
+  const banner = $(mount.bannerSelector);
+  if (banner.length === 0) {
+    log("clearOutcomeBanner — container missing, skipped");
+    timersByBanner.delete(mount.bannerSelector);
+    return;
+  }
+  banner
     .off(".outcomeBannerPause")
     .addClass("hidden")
     .removeClass("success partial")
     .empty();
 }
 
-/**
- * Shows the deck's transient outcome banner. It hides itself after
- * `AUTO_HIDE_MS`; the countdown pauses while the banner is hovered, focused or
- * touched and restarts in full when released. No focus is stolen on show; it can
- * also be cleared by the next user action or its dismiss button (which returns
- * focus to `returnFocusTo`).
- */
+/** Hides and empties the URL deck's banner. Safe to call when none is showing. */
+export function clearURLOutcomeBanner(): void {
+  clearOutcomeBanner({ mount: URL_DECK_BANNER_MOUNT });
+}
+
+/** Shows the URL deck's transient outcome banner (see `showOutcomeBanner`). */
 export function showURLOutcomeBanner({
   variant,
   message,
@@ -133,22 +197,64 @@ export function showURLOutcomeBanner({
 }: {
   variant: OutcomeBannerVariant;
   message: string;
-  detail?: string;
+  detail?: string | readonly string[];
   actionLabel?: string;
   onAction?: () => void;
   returnFocusTo: JQuery;
 }): void {
-  const banner = $(BANNER_SELECTOR);
+  showOutcomeBanner({
+    mount: URL_DECK_BANNER_MOUNT,
+    variant,
+    message,
+    detail,
+    actionLabel,
+    onAction,
+    returnFocusTo,
+  });
+}
+
+/**
+ * Shows a transient outcome banner in `mount`. It hides itself after
+ * `AUTO_HIDE_MS`; the countdown pauses while the banner is hovered, focused or
+ * touched and restarts in full when released. No focus is stolen on show; it can
+ * also be cleared by the next user action or its dismiss button (which returns
+ * focus to `returnFocusTo`, else the mount's root).
+ */
+export function showOutcomeBanner({
+  mount,
+  variant,
+  message,
+  detail,
+  actionLabel,
+  onAction,
+  returnFocusTo,
+}: {
+  mount: OutcomeBannerMount;
+  variant: OutcomeBannerVariant;
+  message: string;
+  detail?: string | readonly string[];
+  actionLabel?: string;
+  onAction?: () => void;
+  returnFocusTo: JQuery;
+}): void {
+  const banner = $(mount.bannerSelector);
   if (banner.length === 0) {
-    log("showURLOutcomeBanner — container missing, skipped");
+    log("showOutcomeBanner — container missing, skipped");
     return;
   }
 
   const body = $("<div>", { class: "urlOutcomeBannerBody" }).append(
     $("<span>", { class: "urlOutcomeBannerMessage" }).text(message),
   );
-  if (detail) {
-    body.append($("<span>", { class: "urlOutcomeBannerDetail" }).text(detail));
+  // Each detail line gets its own span, so a revive banner can carry the lost tags
+  // and the dropped parameters on separate lines.
+  const detailLines = typeof detail === "string" ? [detail] : (detail ?? []);
+  for (const detailLine of detailLines) {
+    if (detailLine) {
+      body.append(
+        $("<span>", { class: "urlOutcomeBannerDetail" }).text(detailLine),
+      );
+    }
   }
 
   const actions = $("<div>", { class: "urlOutcomeBannerActions" });
@@ -173,8 +279,8 @@ export function showURLOutcomeBanner({
       class: "urlOutcomeBannerDismiss",
       "aria-label": APP_CONFIG.strings.URL_TRIM_DISMISS_ARIA,
     }).on("click", () => {
-      clearURLOutcomeBanner();
-      returnFocus(returnFocusTo);
+      clearOutcomeBanner({ mount });
+      returnFocusIn({ target: returnFocusTo, mount });
     }),
   );
 
@@ -185,14 +291,16 @@ export function showURLOutcomeBanner({
     .addClass(variant)
     .append(body, actions)
     .on(PAUSE_EVENTS, (event) => {
-      if (!isCompatMouseEvent(event)) stopAutoHide();
+      if (!isCompatMouseEvent({ event, mount })) stopAutoHide(mount);
     })
     .on(RESUME_EVENTS, (event) => {
-      if (!isCompatMouseEvent(event)) startAutoHide(variant);
+      if (!isCompatMouseEvent({ event, mount })) {
+        startAutoHide({ mount, variant });
+      }
     });
   // A banner replaced under a still-hovering pointer stays paused until the
   // pointer leaves (its pointerleave restarts the countdown).
-  if (!banner.is(":hover")) startAutoHide(variant);
+  if (!banner.is(":hover")) startAutoHide({ mount, variant });
 }
 
 /**
@@ -264,8 +372,14 @@ export function performUndo({
       const banner = $(BANNER_SELECTOR);
       banner.find(".urlOutcomeBannerAction").removeAttr("aria-disabled");
       // The countdown may have fired (and been deferred) while in flight.
-      if (autoHideTimer === null && !banner.is(":hover")) {
-        startAutoHide(bannerVariant());
+      if (
+        timersFor(URL_DECK_BANNER_MOUNT).autoHideTimer === null &&
+        !banner.is(":hover")
+      ) {
+        startAutoHide({
+          mount: URL_DECK_BANNER_MOUNT,
+          variant: bannerVariant(),
+        });
       }
       returnFocus(returnFocusTo);
       return;
@@ -359,21 +473,38 @@ export function buildReviveMessage({
 }
 
 /**
+ * The second banner line naming the tags that no longer exist ("Tool, Art"), or
+ * `undefined` when none are known. A URL trashed before tag names were saved has a
+ * lost-tag count but no names; its banner shows only the count sentence.
+ */
+export function buildLostTagNamesDetail({
+  lostTagNames,
+}: {
+  lostTagNames: readonly string[];
+}): string | undefined {
+  return lostTagNames.length > 0 ? lostTagNames.join(", ") : undefined;
+}
+
+/**
  * Shows the "Restored from trash." banner after an add revived a trashed URL.
- * Partial (yellow) when some of its tags no longer exist. No Undo: reviving is
- * not reversible from the deck. Used when the add also dropped no parameters;
- * otherwise `showTrimSavedBanner` carries the revive sentence.
+ * Partial (yellow) when some of its tags no longer exist, with a second line
+ * naming them when known. No Undo: reviving is not reversible from the deck.
+ * Used when the add also dropped no parameters; otherwise `showTrimSavedBanner`
+ * carries the revive sentence.
  */
 export function showReviveBanner({
   lostTagCount,
+  lostTagNames,
   utubUrlID,
 }: {
   lostTagCount: number;
+  lostTagNames: readonly string[];
   utubUrlID: number;
 }): void {
   showURLOutcomeBanner({
     variant: lostTagCount > 0 ? "partial" : "success",
     message: buildReviveMessage({ lostTagCount }),
+    detail: buildLostTagNamesDetail({ lostTagNames }),
     returnFocusTo: $(`.urlRow[utuburlid=${utubUrlID}]`).find(
       ".urlStringBtnUpdate",
     ),
@@ -398,7 +529,7 @@ export function showTrimSavedBanner({
   utubUrlID: number;
   urlCard: JQuery;
   form: UrlParamsTrimmedForm;
-  revive?: { lostTagCount: number };
+  revive?: { lostTagCount: number; lostTagNames: readonly string[] };
 }): void {
   const returnFocusTo = $(`.urlRow[utuburlid=${utubUrlID}]`).find(
     ".urlStringBtnUpdate",
@@ -418,11 +549,21 @@ export function showTrimSavedBanner({
       : `${buildReviveMessage(revive)} ${trimMessage}`;
   const variant: OutcomeBannerVariant =
     revive !== undefined && revive.lostTagCount > 0 ? "partial" : "success";
+  // Detail lines follow the message's sentence order: the lost tags (revive) first,
+  // then the dropped parameters (trim), each on its own line.
+  const lostTagNamesDetail =
+    revive === undefined
+      ? undefined
+      : buildLostTagNamesDetail({ lostTagNames: revive.lostTagNames });
+  const detail = [
+    lostTagNamesDetail,
+    trimSubmission.droppedSegments.join(", "),
+  ].filter((line): line is string => Boolean(line));
 
   showURLOutcomeBanner({
     variant,
     message,
-    detail: trimSubmission.droppedSegments.join(", "),
+    detail,
     actionLabel: APP_CONFIG.strings.URL_TRIM_UNDO,
     onAction: () => {
       emit({

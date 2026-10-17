@@ -19,8 +19,10 @@ import {
 } from "../../mobile.js";
 import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { showURLDeckBannerError } from "../../urls/deck.js";
+import { refreshTrashCount } from "../../trash/count.js";
 import { removeUTubLocally } from "../remove-local.js";
 
+vi.mock("../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 vi.mock("../deck.js", () => ({
   resetUTubDeckIfNoUTubs: vi.fn(),
   hideInputsAndUpdateUTubDeck: vi.fn(),
@@ -154,6 +156,7 @@ describe("removeUTubLocally", () => {
     });
     expect(setUIWhenNoUTubSelected).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith(AppEvents.UTUB_DELETED, { utubID: 42 });
+    expect(refreshTrashCount).toHaveBeenCalledTimes(1);
   });
 
   it("still purges the store when the UTub selector is already absent", () => {

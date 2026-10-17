@@ -15,6 +15,9 @@ import { hideURLSearchIcon } from "../../search.js";
 import { exitMultiSelectMode } from "../bulk-mode.js";
 import { showURLDeckBannerError } from "../../deck.js";
 import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
+import { refreshTrashCount } from "../../../trash/count.js";
+
+vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -422,6 +425,7 @@ describe("confirm submit + success (active-deck mutation)", () => {
     expect(vi.mocked(updateVisibleURLsForTagCount)).toHaveBeenCalledTimes(1);
     // Survivors remain → mode is NOT exited.
     expect(vi.mocked(exitMultiSelectMode)).not.toHaveBeenCalled();
+    expect(refreshTrashCount).toHaveBeenCalledTimes(1);
   });
 
   it("applyTagCountsInUtub writes the server denominator onto the affected tag chip", () => {
@@ -578,6 +582,7 @@ describe("confirm submit — failure paths", () => {
     expect(banner.attr("aria-live")).toBe("assertive");
     expect(banner.text()).toContain(APP_CONFIG.strings.UNABLE_TO_DELETE_URLS);
     expect(isBulkDeleteConfirmOpen()).toBe(false);
+    expect(refreshTrashCount).not.toHaveBeenCalled();
   });
 
   it("redirects to the error page on a JSON 403 (non-locked)", () => {

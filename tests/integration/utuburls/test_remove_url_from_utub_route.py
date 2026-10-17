@@ -854,6 +854,10 @@ def test_delete_url_as_utub_creator_with_tag(
         assert trashed_row.is_trashed
         assert trashed_row.deleted_by == acting_user_id
         assert trashed_row.trashed_tag_ids == tag_ids_before_delete
+        assert trashed_row.trashed_tag_names == {
+            str(tag_id): Utub_Tags.query.get(tag_id).tag_string
+            for tag_id in tag_ids_before_delete
+        }
 
         # Assert the UTUB-URL-TAG associations survive the trash
         assert (
@@ -976,6 +980,10 @@ def test_delete_url_as_utub_member_with_tags(
         assert trashed_row.is_trashed
         assert trashed_row.deleted_by == acting_user_id
         assert trashed_row.trashed_tag_ids == tag_ids_before_delete
+        assert trashed_row.trashed_tag_names == {
+            str(tag_id): Utub_Tags.query.get(tag_id).tag_string
+            for tag_id in tag_ids_before_delete
+        }
 
         # Assert the UTUB-URL-TAG associations survive the trash
         assert (

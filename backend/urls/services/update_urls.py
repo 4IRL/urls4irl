@@ -39,7 +39,10 @@ from backend.urls.services.delete_urls import (
     recompute_tag_counts_after_delete,
     trash_live_utub_url,
 )
-from backend.urls.services.trashed_url_tags import count_lost_trashed_tags
+from backend.urls.services.trashed_url_tags import (
+    count_lost_trashed_tags,
+    list_lost_trashed_tag_names,
+)
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
@@ -274,6 +277,9 @@ def _revive_trashed_url_on_edit(
     lost_tag_count: int = (
         count_lost_trashed_tags(locked_trashed) if can_keep_tags else 0
     )
+    lost_tag_names: list[str] = (
+        list_lost_trashed_tag_names(locked_trashed) if can_keep_tags else []
+    )
     edited_tag_ids: set[int] = set(locked_edited.associated_tag_ids)
     edited_tag_strings: list[str] = [
         str(tag[MODELS.TAG_STRING]) for tag in locked_edited.associated_tags
@@ -302,6 +308,7 @@ def _revive_trashed_url_on_edit(
         locked_trashed.deleted_at = None
         locked_trashed.deleted_by = None
         locked_trashed.trashed_tag_ids = None
+        locked_trashed.trashed_tag_names = None
         locked_trashed.user_id = edited_adder_id
         locked_trashed.url_title = edited_title
         locked_trashed.added_at = edited_added_at
@@ -369,6 +376,7 @@ def _revive_trashed_url_on_edit(
             url=UtubUrlDetailSchema.from_orm_url(locked_trashed),
             revived_from_trash=True,
             lost_tag_count=lost_tag_count,
+            lost_tag_names=lost_tag_names,
             replaced_utub_url_id=edited_utub_url_id,
             applied_tags=applied_tags,
             tag_counts_modified=recompute_tag_counts_after_delete(

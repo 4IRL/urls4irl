@@ -17,12 +17,16 @@ import {
   unbindEditPanelDirtyState,
 } from "../cards/edit-panel-dirty.js";
 import {
+  buildLostTagNamesDetail,
   buildReviveMessage,
+  clearOutcomeBanner,
   clearURLOutcomeBanner,
   performUndo,
+  showOutcomeBanner,
   showReviveBanner,
   showTrimSavedBanner,
   showURLOutcomeBanner,
+  URL_DECK_BANNER_MOUNT,
   showURLUpdatedBanner,
 } from "../outcome-banner.js";
 
@@ -500,6 +504,134 @@ describe("outcome banner", () => {
     });
   });
 
+  describe("showOutcomeBanner / clearOutcomeBanner (generic mount)", () => {
+    const TEST_MOUNT = {
+      bannerSelector: "#TestOutcomeBanner",
+      rootSelector: "#TestRoot",
+    };
+    const AUTO_HIDE_MS = 10000;
+
+    function testBanner(): JQuery {
+      return $("#TestOutcomeBanner");
+    }
+
+    function showOn({
+      mount,
+      message = "m",
+    }: {
+      mount: typeof TEST_MOUNT;
+      message?: string;
+    }): void {
+      showOutcomeBanner({
+        mount,
+        variant: "success",
+        message,
+        returnFocusTo: $(),
+      });
+    }
+
+    beforeEach(() => {
+      document.body.innerHTML = `${PAGE_HTML}
+        <div id="TestRoot" tabindex="-1">
+          <div id="TestOutcomeBanner" role="status" class="hidden"></div>
+        </div>`;
+    });
+
+    it("shows on a second mount without touching the URL deck banner", () => {
+      showOn({ mount: TEST_MOUNT, message: "trash" });
+
+      expect(testBanner().hasClass("hidden")).toBe(false);
+      expect(testBanner().find(".urlOutcomeBannerMessage").text()).toBe(
+        "trash",
+      );
+      expect(banner().hasClass("hidden")).toBe(true);
+    });
+
+    it("renders one detail span per non-empty line of an array detail", () => {
+      showOutcomeBanner({
+        mount: TEST_MOUNT,
+        variant: "success",
+        message: "m",
+        detail: ["", "x"],
+        returnFocusTo: $(),
+      });
+
+      const detailSpans = testBanner().find(".urlOutcomeBannerDetail");
+      expect(detailSpans).toHaveLength(1);
+      expect(detailSpans.text()).toBe("x");
+    });
+
+    it("dismiss falls back to the mount's own root", () => {
+      showOn({ mount: TEST_MOUNT });
+
+      testBanner().find(".urlOutcomeBannerDismiss").trigger("click");
+
+      expect(testBanner().hasClass("hidden")).toBe(true);
+      expect(document.activeElement).toBe($("#TestRoot")[0]);
+    });
+
+    it("auto-hides on its own timer", () => {
+      vi.useFakeTimers();
+      showOn({ mount: TEST_MOUNT });
+
+      vi.advanceTimersByTime(AUTO_HIDE_MS - 1);
+      expect(testBanner().hasClass("hidden")).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(testBanner().hasClass("hidden")).toBe(true);
+    });
+
+    it("clearing one mount leaves the other's banner and timer running", () => {
+      vi.useFakeTimers();
+      showOn({ mount: URL_DECK_BANNER_MOUNT });
+      showOn({ mount: TEST_MOUNT });
+
+      clearOutcomeBanner({ mount: TEST_MOUNT });
+      expect(testBanner().hasClass("hidden")).toBe(true);
+      expect(banner().hasClass("hidden")).toBe(false);
+
+      vi.advanceTimersByTime(AUTO_HIDE_MS - 1);
+      expect(banner().hasClass("hidden")).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(banner().hasClass("hidden")).toBe(true);
+    });
+
+    it("one mount's auto-hide does not hide the other", () => {
+      vi.useFakeTimers();
+      showOn({ mount: URL_DECK_BANNER_MOUNT });
+      vi.advanceTimersByTime(6000);
+      showOn({ mount: TEST_MOUNT });
+
+      vi.advanceTimersByTime(AUTO_HIDE_MS - 6000);
+      expect(banner().hasClass("hidden")).toBe(true);
+      expect(testBanner().hasClass("hidden")).toBe(false);
+    });
+
+    it.each([
+      ["generic", TEST_MOUNT],
+      ["URL deck", URL_DECK_BANNER_MOUNT],
+    ])(
+      "show and clear are no-ops when the %s banner element is missing",
+      (_name, mount) => {
+        vi.useFakeTimers();
+        document.body.innerHTML = "";
+
+        expect(() => showOn({ mount })).not.toThrow();
+        expect(() => clearOutcomeBanner({ mount })).not.toThrow();
+        expect(vi.getTimerCount()).toBe(0);
+      },
+    );
+
+    it("clearing a mount whose element vanished cancels its pending timer", () => {
+      vi.useFakeTimers();
+      showOn({ mount: TEST_MOUNT });
+      document.body.innerHTML = "";
+
+      clearOutcomeBanner({ mount: TEST_MOUNT });
+
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
   describe("buildReviveMessage", () => {
     it("returns the plain restored message when no tags were lost", () => {
       expect(buildReviveMessage({ lostTagCount: 0 })).toBe(
@@ -522,31 +654,59 @@ describe("outcome banner", () => {
 
   describe("showReviveBanner", () => {
     it("shows a success banner with no action when no tags were lost", () => {
-      showReviveBanner({ lostTagCount: 0, utubUrlID: 42 });
+      showReviveBanner({ lostTagCount: 0, lostTagNames: [], utubUrlID: 42 });
 
       expect(banner().hasClass("success")).toBe(true);
       expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
         APP_CONFIG.strings.URL_REVIVED_FROM_TRASH,
       );
+      expect(banner().find(".urlOutcomeBannerDetail")).toHaveLength(0);
       expect(banner().find(".urlOutcomeBannerAction")).toHaveLength(0);
     });
 
-    it("shows a partial banner with no action when tags were lost", () => {
-      showReviveBanner({ lostTagCount: 2, utubUrlID: 42 });
+    it("shows a partial banner naming the lost tags on a second line", () => {
+      showReviveBanner({
+        lostTagCount: 2,
+        lostTagNames: ["Tool", "Art"],
+        utubUrlID: 42,
+      });
 
       expect(banner().hasClass("partial")).toBe(true);
       expect(banner().hasClass("success")).toBe(false);
       expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
         "Restored from trash. 2 tags no longer exist.",
       );
+      expect(banner().find(".urlOutcomeBannerDetail").text()).toBe("Tool, Art");
       expect(banner().find(".urlOutcomeBannerAction")).toHaveLength(0);
+    });
+
+    it("shows only the count sentence when the lost tags have no saved names", () => {
+      showReviveBanner({ lostTagCount: 2, lostTagNames: [], utubUrlID: 42 });
+
+      expect(banner().hasClass("partial")).toBe(true);
+      expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
+        "Restored from trash. 2 tags no longer exist.",
+      );
+      expect(banner().find(".urlOutcomeBannerDetail")).toHaveLength(0);
+    });
+  });
+
+  describe("buildLostTagNamesDetail", () => {
+    it("joins the names with a comma and space", () => {
+      expect(buildLostTagNamesDetail({ lostTagNames: ["Tool", "Art"] })).toBe(
+        "Tool, Art",
+      );
+    });
+
+    it("returns undefined when there are no names", () => {
+      expect(buildLostTagNamesDetail({ lostTagNames: [] })).toBeUndefined();
     });
   });
 
   describe("showTrimSavedBanner", () => {
     function show(
       droppedSegments: string[],
-      revive?: { lostTagCount: number },
+      revive?: { lostTagCount: number; lostTagNames: string[] },
     ): void {
       showTrimSavedBanner({
         trimSubmission: {
@@ -563,7 +723,7 @@ describe("outcome banner", () => {
     }
 
     it("prefixes the revive sentence, goes partial and keeps Undo when a revive lost tags", () => {
-      show(["a=1"], { lostTagCount: 1 });
+      show(["a=1"], { lostTagCount: 1, lostTagNames: [] });
 
       expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
         `${APP_CONFIG.strings.URL_REVIVED_LOST_TAGS_ONE} ${APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE}`,
@@ -572,10 +732,24 @@ describe("outcome banner", () => {
       expect(banner().find(".urlOutcomeBannerAction").text()).toBe(
         APP_CONFIG.strings.URL_TRIM_UNDO,
       );
+      // Legacy row: no names, so the only detail line is the dropped parameters.
+      expect(banner().find(".urlOutcomeBannerDetail")).toHaveLength(1);
+      expect(banner().find(".urlOutcomeBannerDetail").text()).toBe("a=1");
+    });
+
+    it("lists the lost tags on their own line before the dropped parameters", () => {
+      show(["a=1", "b=2"], { lostTagCount: 2, lostTagNames: ["Tool", "Art"] });
+
+      const detailLines = banner()
+        .find(".urlOutcomeBannerDetail")
+        .map((_index, element) => $(element).text())
+        .get();
+      expect(detailLines).toEqual(["Tool, Art", "a=1, b=2"]);
+      expect(banner().hasClass("partial")).toBe(true);
     });
 
     it("stays a success banner when a revive lost no tags", () => {
-      show(["a=1"], { lostTagCount: 0 });
+      show(["a=1"], { lostTagCount: 0, lostTagNames: [] });
 
       expect(banner().find(".urlOutcomeBannerMessage").text()).toBe(
         `${APP_CONFIG.strings.URL_REVIVED_FROM_TRASH} ${APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE}`,

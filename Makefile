@@ -314,22 +314,22 @@ tunnel-stop: ## Stop and remove the Cloudflare tunnel (leaves the rest of the st
 	$(COMPOSE) --profile tunnel rm -sf cloudflared
 
 test-integration: _hub-capacity ## Run all integration (non-UI) tests
-	$(call BUDGETED,1,$@,1) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -v"
+	$(call BUDGETED,1,$@,1) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui and not trash_ui' -v"
 
 test-integration-parallel: _capacity-fresh _require-n-fits _hub-capacity ## Run integration tests in parallel (queues on the host token budget; shrinks to fit live memory unless n= is given): make test-integration-parallel [n=derived: see make capacity]
-	$(call BUDGETED,$(N_INT),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui' -n @TOKENS@ --dist=loadscope -v"
+	$(call BUDGETED,$(N_INT),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui and not trash_ui' -n @TOKENS@ --dist=loadscope -v"
 
 test-functional: _hub-capacity prune _ui-up ## Run all functional (UI/Playwright) tests
-	$(call BUDGETED,1,$@,1) $(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
+	$(call BUDGETED,1,$@,1) $(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui' -v"
 
 test-functional-built: _hub-capacity start-built ## Run all functional (UI/Playwright) tests against built assets
-	$(call BUDGETED,1,$@,1) $(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -v"
+	$(call BUDGETED,1,$@,1) $(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui' -v"
 
 test-ui-parallel: _capacity-fresh _require-n-fits _hub-capacity prune _ui-up ## Run UI tests in parallel (queues on the host token budget; shrinks to fit live memory unless n= is given): make test-ui-parallel [n=derived: see make capacity]
-	$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n @TOKENS@ --dist=loadscope"
+	$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui' -n @TOKENS@ --dist=loadscope"
 
 test-ui-parallel-built: _capacity-fresh _require-n-fits _hub-capacity start-built ## Run UI tests in parallel against built assets (queues on the host token budget; shrinks to fit live memory unless n= is given): make test-ui-parallel-built [n=derived: see make capacity]
-	$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui' -n @TOKENS@ --dist=loadscope"
+	$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui' -n @TOKENS@ --dist=loadscope"
 
 test-js: _require-tools ## Run all JS unit tests (vitest) on the host — no stack needed
 	$(MISE) $(FRONTEND_BIN)/vitest run --config frontend/vitest.config.ts

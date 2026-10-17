@@ -42,6 +42,8 @@ export interface AppState {
   // combobox can tell "haven't loaded yet" apart from "loaded and empty".
   coMemberCandidatesLoaded: boolean;
   preferences: UserPreferences;
+  // Trash rows across both tabs (the badge on the Trash entry).
+  trashCount: number;
 }
 
 function createInitialState(): AppState {
@@ -71,6 +73,7 @@ function createInitialState(): AppState {
       density: "comfortable",
       dateFormat: "iso",
     },
+    trashCount: 0,
   };
 }
 

@@ -85,8 +85,14 @@ class UtubSummaryListSchema(BaseSchema):
         description="List of UTubs the user is a member of",
     )
 
+    trash_count: int = Field(
+        default=0,
+        alias=MODELS.TRASH_COUNT,
+        description="Trash URL rows plus Trash UTub rows the user may act on",
+    )
+
     @classmethod
-    def from_user(cls, user: Users) -> UtubSummaryListSchema:
+    def from_user(cls, user: Users, *, trash_count: int) -> UtubSummaryListSchema:
         # Trashed UTubs are hidden from every non-admin listing. Filtered in Python
         # (not SQL) because schemas load before the models during package init.
         live_memberships = [
@@ -113,7 +119,8 @@ class UtubSummaryListSchema(BaseSchema):
                     is_locked=membership.to_utub.is_locked,
                 )
                 for membership in sorted_utubs
-            ]
+            ],
+            trash_count=trash_count,
         )
 
 
