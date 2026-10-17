@@ -187,6 +187,17 @@ def test_generate_strings_js_includes_trash_ui_strings():
     assert "{utub}" in strings["TRASH_FROM_UTUB"]
     assert strings["TRASH_VIEW"] == "trash"
 
+    for plural_key in (
+        "TRASH_EMPTIED",
+        "TRASH_EMPTY_SKIPPED_LOCKED",
+        "TRASH_CONFIRM_PURGE_UTUB_BODY",
+        "TRASH_CONFIRM_EMPTY_URLS_BODY",
+        "TRASH_CONFIRM_EMPTY_UTUBS_BODY",
+    ):
+        assert "{n}" in strings[plural_key]
+        assert "{n}" not in strings[f"{plural_key}_ONE"]
+        assert "1" in strings[f"{plural_key}_ONE"]
+
 
 def test_generate_constants_js_device_type_shape():
     """`generate_constants_js()["DEVICE_TYPE"]` mirrors the `DeviceType` enum exactly.

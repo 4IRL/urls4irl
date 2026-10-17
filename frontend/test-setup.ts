@@ -375,7 +375,9 @@ const appConfig = {
     TRASH_URL_PURGED: "Deleted forever.",
     TRASH_UTUB_PURGED: "Deleted {utub} forever.",
     TRASH_EMPTIED: "{n} items deleted forever.",
+    TRASH_EMPTIED_ONE: "1 item deleted forever.",
     TRASH_EMPTY_SKIPPED_LOCKED: "{n} locked items were kept.",
+    TRASH_EMPTY_SKIPPED_LOCKED_ONE: "1 locked item was kept.",
     TRASH_NOT_IN_TRASH: "This item is no longer in Trash.",
     TRASH_ALREADY_IN_DESTINATION: "That UTub already has this URL.",
     TRASH_LOCKED: "That UTub is locked, so this item can't be changed.",
@@ -385,10 +387,16 @@ const appConfig = {
     TRASH_CONFIRM_PURGE_UTUB_BODY:
       "“{utub}” and its {n} URLs will be permanently deleted. This can't be undone.",
     TRASH_CONFIRM_EMPTY_TITLE: "Empty trash?",
+    TRASH_CONFIRM_PURGE_UTUB_BODY_ONE:
+      "“{utub}” and its 1 URL will be permanently deleted. This can't be undone.",
     TRASH_CONFIRM_EMPTY_URLS_BODY:
       "Permanently delete {n} URLs? This can't be undone.",
+    TRASH_CONFIRM_EMPTY_URLS_BODY_ONE:
+      "Permanently delete 1 URL? This can't be undone.",
     TRASH_CONFIRM_EMPTY_UTUBS_BODY:
       "Permanently delete {n} UTubs and their URLs? This can't be undone.",
+    TRASH_CONFIRM_EMPTY_UTUBS_BODY_ONE:
+      "Permanently delete 1 UTub and its URLs? This can't be undone.",
     TRASH_VIEW_QUERY_PARAM: "view",
     TRASH_VIEW: "trash",
     URL_TRIM_SAVE_URL: "Save URL",

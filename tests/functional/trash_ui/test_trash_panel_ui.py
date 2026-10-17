@@ -544,7 +544,7 @@ def test_locked_origin_disables_row_actions_and_empty_trash_keeps_it(
     _confirm_in_modal(page)
 
     expect(page.locator(TPL.OUTCOME_BANNER)).to_contain_text(
-        TRASH_UI.EMPTY_SKIPPED_LOCKED.format(n=1)
+        TRASH_UI.EMPTY_SKIPPED_LOCKED_ONE
     )
     expect(page.locator(TPL.ROWS_URLS)).to_have_count(1)
     expect(locked_row).to_have_count(1)

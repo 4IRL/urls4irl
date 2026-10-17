@@ -74,7 +74,9 @@ class TRASH_UI:
     URL_PURGED = "Deleted forever."
     UTUB_PURGED = "Deleted {utub} forever."
     EMPTIED = "{n} items deleted forever."
+    EMPTIED_ONE = "1 item deleted forever."
     EMPTY_SKIPPED_LOCKED = "{n} locked items were kept."
+    EMPTY_SKIPPED_LOCKED_ONE = "1 locked item was kept."
     NOT_IN_TRASH = NOT_IN_TRASH
     ALREADY_IN_DESTINATION = "That UTub already has this URL."
     LOCKED = "That UTub is locked, so this item can't be changed."
@@ -85,10 +87,17 @@ class TRASH_UI:
     CONFIRM_PURGE_UTUB_BODY = (
         "“{utub}” and its {n} URLs will be permanently deleted. This can't be undone."
     )
+    CONFIRM_PURGE_UTUB_BODY_ONE = (
+        "“{utub}” and its 1 URL will be permanently deleted. This can't be undone."
+    )
     CONFIRM_EMPTY_TITLE = "Empty trash?"
     CONFIRM_EMPTY_URLS_BODY = "Permanently delete {n} URLs? This can't be undone."
+    CONFIRM_EMPTY_URLS_BODY_ONE = "Permanently delete 1 URL? This can't be undone."
     CONFIRM_EMPTY_UTUBS_BODY = (
         "Permanently delete {n} UTubs and their URLs? This can't be undone."
+    )
+    CONFIRM_EMPTY_UTUBS_BODY_ONE = (
+        "Permanently delete 1 UTub and its URLs? This can't be undone."
     )
     VIEW_QUERY_PARAM = VIEW_QUERY_PARAM
     TRASH_VIEW = "trash"

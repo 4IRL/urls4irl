@@ -372,6 +372,18 @@ describe("trash actions", () => {
     });
   });
 
+  describe("Purge UTub singular copy", () => {
+    it("says '1 URL' when the UTub holds exactly one URL", () => {
+      renderTrashList({
+        list: makeList({ utubs: [makeUtubItem({ urlCount: 1 })] }),
+      });
+
+      $("#listTrashUTubs .trashBtnPurge").trigger("click");
+
+      expect($("#confirmModalBody").text()).toContain("its 1 URL will be");
+    });
+  });
+
   describe("Empty trash", () => {
     it("counts only deletable rows, forwards listedAt verbatim and reports skipped locks", async () => {
       renderRows({
@@ -396,7 +408,7 @@ describe("trash actions", () => {
       );
       expect(bannerCall().variant).toBe("partial");
       expect(bannerCall().message).toBe("3 items deleted forever.");
-      expect(bannerCall().detail).toBe("1 locked items were kept.");
+      expect(bannerCall().detail).toBe("1 locked item was kept.");
       expect(refreshTrashCount).toHaveBeenCalledTimes(1);
     });
 
@@ -411,7 +423,9 @@ describe("trash actions", () => {
       );
 
       $("#TrashBtnEmpty").trigger("click");
-      expect($("#confirmModalBody").text()).toContain("1 UTubs");
+      expect($("#confirmModalBody").text()).toBe(
+        "Permanently delete 1 UTub and its URLs? This can't be undone.",
+      );
       $("#modalSubmit").trigger("click");
       await vi.waitFor(() => expect(loadTrashList).toHaveBeenCalled());
 
@@ -420,7 +434,25 @@ describe("trash actions", () => {
         listedAt: LISTED_AT,
       });
       expect(bannerCall().variant).toBe("success");
+      expect(bannerCall().message).toBe("1 item deleted forever.");
       expect(bannerCall().detail).toBeUndefined();
+    });
+
+    it("uses singular copy for exactly one deletable URL and one purged item", async () => {
+      renderRows({ urls: [makeUrlItem({ utubUrlID: 11 })] });
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({ done: { totalPurged: 1, totalSkippedLocked: 1 } }),
+      );
+
+      confirmAndEmptyTrash();
+      expect($("#confirmModalBody").text()).toBe(
+        "Permanently delete 1 URL? This can't be undone.",
+      );
+      $("#modalSubmit").trigger("click");
+      await vi.waitFor(() => expect(loadTrashList).toHaveBeenCalled());
+
+      expect(bannerCall().message).toBe("1 item deleted forever.");
+      expect(bannerCall().detail).toBe("1 locked item was kept.");
     });
   });
 

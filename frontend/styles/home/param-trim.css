@@ -279,6 +279,9 @@
 .urlOutcomeBanner.partial {
     background: rgba(253, 231, 76, 0.12);
     border: 1px solid var(--editURLColor);
+    /* Theme-aware primary text (near-black #1f2424 in light, white in dark) so the
+       message never inherits a green from its host (e.g. the Trash panel). */
+    color: var(--textPrimary);
 }
 
 .urlOutcomeBannerBody {
