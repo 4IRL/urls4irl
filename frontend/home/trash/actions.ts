@@ -587,7 +587,7 @@ function handleUrlRowClick(event: JQuery.TriggeredEvent): void {
     return;
   }
   if (item.originUtubTrashed) {
-    openDestinationPicker({ item, row });
+    openDestinationPicker({ item, row, onRestore: restoreTrashedURL });
     return;
   }
   void restoreTrashedURL({

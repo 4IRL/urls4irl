@@ -13,11 +13,17 @@ import { KEYS } from "../../lib/constants.js";
 import { debug } from "../../lib/debug.js";
 import { createRovingListbox } from "../../lib/roving-listbox.js";
 import { getState } from "../../store/app-store.js";
-import { restoreTrashedURL } from "./actions.js";
 import { onTrashTabChanged } from "./tabs.js";
 import type { TrashedUrlItem } from "../../types/trash.js";
 
 const log = debug("trash:destination-picker");
+
+/** Restores a trashed URL into a chosen UTub; supplied by actions.ts to avoid an import cycle. */
+export type RestoreCallback = (args: {
+  utubID: number;
+  utubUrlID: number;
+  destUtubID: number;
+}) => unknown;
 
 const PICKER_SELECTOR = ".trashDestinationPicker";
 const OPTION_SELECTOR = ".trashDestinationOption";
@@ -27,6 +33,7 @@ const RESTORE_BUTTON_SELECTOR = ".trashBtnRestore";
 
 let openRow: JQuery | null = null;
 let openItem: TrashedUrlItem | null = null;
+let openOnRestore: RestoreCallback | null = null;
 let homeEndListener: ((event: KeyboardEvent) => void) | null = null;
 let keyupResetListener: (() => void) | null = null;
 // Enter on the Restore button clicks on keydown, so its keyup lands on the
@@ -53,10 +60,15 @@ export function isDestinationPickerOpen(): boolean {
 }
 
 function activateOption({ option }: { option: JQuery }): void {
-  if (option.hasClass("disabled") || openItem === null) return;
+  if (
+    option.hasClass("disabled") ||
+    openItem === null ||
+    openOnRestore === null
+  )
+    return;
   const destUtubID = Number(option.attr("data-dest-utub-id"));
   const item = openItem;
-  void restoreTrashedURL({
+  void openOnRestore({
     utubID: item.utubID,
     utubUrlID: item.utubUrlID,
     destUtubID,
@@ -107,9 +119,11 @@ function handlePickerKeydown(event: KeyboardEvent): void {
 export function openDestinationPicker({
   item,
   row,
+  onRestore,
 }: {
   item: TrashedUrlItem;
   row: JQuery;
+  onRestore: RestoreCallback;
 }): void {
   const wasThisRow = openRow !== null && openRow[0] === row[0];
   closeDestinationPicker({ returnFocus: false });
@@ -141,6 +155,7 @@ export function openDestinationPicker({
   row.find(RESTORE_BUTTON_SELECTOR).attr("aria-expanded", "true");
   openRow = row;
   openItem = item;
+  openOnRestore = onRestore;
   activationArmed = false;
 
   const pickerElement = picker[0];
@@ -179,6 +194,7 @@ export function closeDestinationPicker({
   const row = openRow;
   openRow = null;
   openItem = null;
+  openOnRestore = null;
   homeEndListener = null;
   keyupResetListener = null;
   activationArmed = false;
