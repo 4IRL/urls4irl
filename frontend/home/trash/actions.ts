@@ -443,15 +443,29 @@ function purgeURL({ item }: { item: TrashedUrlItem }): void {
     });
 }
 
+/** Picks the singular template for a count of exactly one, else the plural. */
+function pickCountTemplate({
+  count,
+  one,
+  other,
+}: {
+  count: number;
+  one: string;
+  other: string;
+}): string {
+  return count === 1 ? one : other;
+}
+
 /** Confirms, then permanently deletes one trashed UTub with all its URLs. */
 export function confirmAndPurgeUTub({ item }: { item: TrashedUtubItem }): void {
   showConfirmModal({
     title: APP_CONFIG.strings.TRASH_CONFIRM_PURGE_TITLE,
     body: fillTemplate({
-      template:
-        item.urlCount === 1
-          ? APP_CONFIG.strings.TRASH_CONFIRM_PURGE_UTUB_BODY_ONE
-          : APP_CONFIG.strings.TRASH_CONFIRM_PURGE_UTUB_BODY,
+      template: pickCountTemplate({
+        count: item.urlCount,
+        one: APP_CONFIG.strings.TRASH_CONFIRM_PURGE_UTUB_BODY_ONE,
+        other: APP_CONFIG.strings.TRASH_CONFIRM_PURGE_UTUB_BODY,
+      }),
       values: { utub: item.utubName, n: String(item.urlCount) },
     }),
     submitLabel: APP_CONFIG.strings.TRASH_DELETE_FOREVER,
@@ -499,17 +513,18 @@ export function confirmAndEmptyTrash(): void {
   const rows: Array<{ canDelete: boolean }> =
     scope === "urls" ? state.urls : state.utubs;
   const deletableCount = rows.filter((row) => row.canDelete).length;
-  const isSingular = deletableCount === 1;
-  let bodyTemplate: string;
-  if (scope === "urls") {
-    bodyTemplate = isSingular
-      ? APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_URLS_BODY_ONE
-      : APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_URLS_BODY;
-  } else {
-    bodyTemplate = isSingular
-      ? APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_UTUBS_BODY_ONE
-      : APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_UTUBS_BODY;
-  }
+  const bodyTemplate =
+    scope === "urls"
+      ? pickCountTemplate({
+          count: deletableCount,
+          one: APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_URLS_BODY_ONE,
+          other: APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_URLS_BODY,
+        })
+      : pickCountTemplate({
+          count: deletableCount,
+          one: APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_UTUBS_BODY_ONE,
+          other: APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_UTUBS_BODY,
+        });
 
   showConfirmModal({
     title: APP_CONFIG.strings.TRASH_CONFIRM_EMPTY_TITLE,
@@ -547,19 +562,21 @@ function emptyTrash({
       showTrashBanner({
         variant: skipped > 0 ? "partial" : "success",
         message: fillTemplate({
-          template:
-            response.totalPurged === 1
-              ? APP_CONFIG.strings.TRASH_EMPTIED_ONE
-              : APP_CONFIG.strings.TRASH_EMPTIED,
+          template: pickCountTemplate({
+            count: response.totalPurged,
+            one: APP_CONFIG.strings.TRASH_EMPTIED_ONE,
+            other: APP_CONFIG.strings.TRASH_EMPTIED,
+          }),
           values: { n: String(response.totalPurged) },
         }),
         detail:
           skipped > 0
             ? fillTemplate({
-                template:
-                  skipped === 1
-                    ? APP_CONFIG.strings.TRASH_EMPTY_SKIPPED_LOCKED_ONE
-                    : APP_CONFIG.strings.TRASH_EMPTY_SKIPPED_LOCKED,
+                template: pickCountTemplate({
+                  count: skipped,
+                  one: APP_CONFIG.strings.TRASH_EMPTY_SKIPPED_LOCKED_ONE,
+                  other: APP_CONFIG.strings.TRASH_EMPTY_SKIPPED_LOCKED,
+                }),
                 values: { n: String(skipped) },
               })
             : undefined,
