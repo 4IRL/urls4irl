@@ -386,9 +386,9 @@ const appConfig = {
       "“{title}” will be permanently deleted. This can't be undone.",
     TRASH_CONFIRM_PURGE_UTUB_BODY:
       "“{utub}” and its {n} URLs will be permanently deleted. This can't be undone.",
-    TRASH_CONFIRM_EMPTY_TITLE: "Empty trash?",
     TRASH_CONFIRM_PURGE_UTUB_BODY_ONE:
       "“{utub}” and its 1 URL will be permanently deleted. This can't be undone.",
+    TRASH_CONFIRM_EMPTY_TITLE: "Empty trash?",
     TRASH_CONFIRM_EMPTY_URLS_BODY:
       "Permanently delete {n} URLs? This can't be undone.",
     TRASH_CONFIRM_EMPTY_URLS_BODY_ONE:

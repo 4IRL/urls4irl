@@ -6,8 +6,10 @@ from typing import cast
 import pytest
 
 from backend.models.utub_urls import Utub_Urls
+from backend.urls.services import trashed_url_tags
 from backend.urls.services.trashed_url_tags import (
     build_tag_name_snapshot,
+    build_tag_name_snapshot_from_ids,
     count_lost_trashed_tags,
     list_lost_trashed_tag_names,
 )
@@ -144,3 +146,55 @@ def test_build_tag_name_snapshot_maps_string_ids_to_tag_strings():
     )
 
     assert build_tag_name_snapshot(row) == {"7": "Tool", "9": "Art"}
+
+
+class _FakeTagQuery:
+    def __init__(self, tags: list[SimpleNamespace]):
+        self._tags = tags
+        self.filter_calls = 0
+
+    def filter(self, *_criteria: object) -> _FakeTagQuery:
+        self.filter_calls += 1
+        return self
+
+    def all(self) -> list[SimpleNamespace]:
+        return self._tags
+
+
+def _patch_utub_tags(
+    monkeypatch: pytest.MonkeyPatch, existing_tags: list[SimpleNamespace]
+) -> _FakeTagQuery:
+    # Stand-in for the Utub_Tags model: a real query needs an application context.
+    fake_query = _FakeTagQuery(existing_tags)
+    fake_model = SimpleNamespace(
+        query=fake_query, id=SimpleNamespace(in_=lambda ids: ids)
+    )
+    monkeypatch.setattr(trashed_url_tags, "Utub_Tags", fake_model)
+    return fake_query
+
+
+def test_build_tag_name_snapshot_from_ids_is_empty_without_querying_for_no_ids(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """
+    GIVEN an empty iterable of tag ids
+    WHEN the snapshot is built from ids
+    THEN it is an empty dict and the database is never queried
+    """
+    fake_query = _patch_utub_tags(monkeypatch, [])
+
+    assert build_tag_name_snapshot_from_ids([]) == {}
+    assert fake_query.filter_calls == 0
+
+
+def test_build_tag_name_snapshot_from_ids_omits_nonexistent_tag_ids(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """
+    GIVEN tag ids 7 and 99 where only tag 7 still exists
+    WHEN the snapshot is built from ids
+    THEN only tag 7 is mapped, keyed by its string id
+    """
+    _patch_utub_tags(monkeypatch, [SimpleNamespace(id=7, tag_string="Tool")])
+
+    assert build_tag_name_snapshot_from_ids([7, 99]) == {"7": "Tool"}

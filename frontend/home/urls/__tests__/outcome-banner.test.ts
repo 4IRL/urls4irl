@@ -547,6 +547,20 @@ describe("outcome banner", () => {
       expect(banner().hasClass("hidden")).toBe(true);
     });
 
+    it("renders one detail span per non-empty line of an array detail", () => {
+      showOutcomeBanner({
+        mount: TEST_MOUNT,
+        variant: "success",
+        message: "m",
+        detail: ["", "x"],
+        returnFocusTo: $(),
+      });
+
+      const detailSpans = testBanner().find(".urlOutcomeBannerDetail");
+      expect(detailSpans).toHaveLength(1);
+      expect(detailSpans.text()).toBe("x");
+    });
+
     it("dismiss falls back to the mount's own root", () => {
       showOn({ mount: TEST_MOUNT });
 
