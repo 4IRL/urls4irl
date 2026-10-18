@@ -9,6 +9,12 @@ import { URL_PARAMS_TRIMMED_FORM } from "../../../types/metrics-dim-values.js";
 import { flushParamTrim } from "../trim/param-trim-block.js";
 import { isCoarsePointer } from "../../mobile.js";
 import {
+  AppEvents,
+  emit,
+  type UtubSelectedPayload,
+} from "../../../lib/event-bus.js";
+import { OUTCOME_BANNER_AUTO_HIDE_COARSE_MS } from "../../../lib/constants.js";
+import {
   mountSchemeSelector,
   type SchemeSelectorHandle,
 } from "../scheme/scheme-selector.js";
@@ -21,6 +27,8 @@ import {
   buildReviveMessage,
   clearOutcomeBanner,
   clearURLOutcomeBanner,
+  currentBannerToken,
+  initURLOutcomeBannerLifecycle,
   performUndo,
   showOutcomeBanner,
   showReviveBanner,
@@ -132,6 +140,7 @@ describe("outcome banner", () => {
     });
     vi.mocked(is429Handled).mockReturnValue(false);
     vi.mocked(isUtubLockedHandled).mockReturnValue(false);
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -433,6 +442,59 @@ describe("outcome banner", () => {
 
         expect(vi.getTimerCount()).toBe(0);
       });
+
+      describe("coarse pointer", () => {
+        beforeEach(() => {
+          vi.mocked(isCoarsePointer).mockReturnValue(true);
+        });
+
+        it("keeps a success banner up past the fine-pointer duration, hides at the coarse one", () => {
+          show();
+
+          vi.advanceTimersByTime(AUTO_HIDE_MS);
+          expect(banner().hasClass("hidden")).toBe(false);
+
+          vi.advanceTimersByTime(
+            OUTCOME_BANNER_AUTO_HIDE_COARSE_MS - AUTO_HIDE_MS - 1,
+          );
+          expect(banner().hasClass("hidden")).toBe(false);
+
+          vi.advanceTimersByTime(1);
+          expect(banner().hasClass("hidden")).toBe(true);
+        });
+
+        it("hides a partial banner at the coarse duration", () => {
+          show("partial");
+
+          vi.advanceTimersByTime(OUTCOME_BANNER_AUTO_HIDE_COARSE_MS - 1);
+          expect(banner().hasClass("hidden")).toBe(false);
+
+          vi.advanceTimersByTime(1);
+          expect(banner().hasClass("hidden")).toBe(true);
+        });
+
+        it.each(["pointerenter", "focusin", "pointerdown"])(
+          "%s does not pause the countdown",
+          (pauseEvent) => {
+            show();
+
+            banner().trigger(pauseEvent);
+            vi.advanceTimersByTime(OUTCOME_BANNER_AUTO_HIDE_COARSE_MS);
+
+            expect(banner().hasClass("hidden")).toBe(true);
+          },
+        );
+
+        it("a real touch and mouse pointer event does not pause either", () => {
+          show();
+
+          firePointer({ type: "pointerdown", pointerType: "touch" });
+          firePointer({ type: "pointerover", pointerType: "mouse" });
+          vi.advanceTimersByTime(OUTCOME_BANNER_AUTO_HIDE_COARSE_MS);
+
+          expect(banner().hasClass("hidden")).toBe(true);
+        });
+      });
     });
 
     it("does not move focus when shown", () => {
@@ -501,6 +563,141 @@ describe("outcome banner", () => {
           returnFocusTo: $(),
         }),
       ).not.toThrow();
+    });
+
+    describe("actionAriaLabel", () => {
+      it("sets aria-label on the action button when passed", () => {
+        showURLOutcomeBanner({
+          variant: "success",
+          message: "m",
+          actionLabel: "Undo",
+          actionAriaLabel: "Undo delete of Example",
+          onAction: () => {},
+          returnFocusTo: editButton(),
+        });
+
+        const action = banner().find(".urlOutcomeBannerAction");
+        expect(action.attr("aria-label")).toBe("Undo delete of Example");
+        expect(action.text()).toBe("Undo");
+      });
+
+      it("leaves the action button without aria-label when omitted", () => {
+        showURLOutcomeBanner({
+          variant: "success",
+          message: "m",
+          actionLabel: "Undo",
+          onAction: () => {},
+          returnFocusTo: editButton(),
+        });
+
+        expect(
+          banner().find(".urlOutcomeBannerAction").attr("aria-label"),
+        ).toBeUndefined();
+      });
+    });
+
+    describe("ariaLive", () => {
+      it("sets aria-live on the banner when passed", () => {
+        showURLOutcomeBanner({
+          variant: "partial",
+          message: "m",
+          returnFocusTo: editButton(),
+          ariaLive: "assertive",
+        });
+
+        expect(banner().attr("aria-live")).toBe("assertive");
+      });
+
+      it("defaults to polite when omitted, including after an assertive banner", () => {
+        showURLOutcomeBanner({
+          variant: "partial",
+          message: "first",
+          returnFocusTo: editButton(),
+          ariaLive: "assertive",
+        });
+        showURLOutcomeBanner({
+          variant: "success",
+          message: "second",
+          returnFocusTo: editButton(),
+        });
+
+        expect(banner().attr("aria-live")).toBe("polite");
+      });
+    });
+  });
+
+  describe("initURLOutcomeBannerLifecycle", () => {
+    const OTHER_MOUNT = {
+      bannerSelector: "#TestOutcomeBanner",
+      rootSelector: "#TestRoot",
+    };
+
+    function showBoth(): void {
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        '<div id="TestRoot" tabindex="-1"><div id="TestOutcomeBanner" class="urlOutcomeBanner hidden"></div></div>',
+      );
+      showURLOutcomeBanner({
+        variant: "success",
+        message: "url deck",
+        returnFocusTo: editButton(),
+      });
+      showOutcomeBanner({
+        mount: OTHER_MOUNT,
+        variant: "success",
+        message: "other",
+        returnFocusTo: $("#TestRoot"),
+      });
+    }
+
+    beforeEach(() => {
+      // Keeps the banners' auto-hide timers from outliving a test.
+      vi.useFakeTimers();
+    });
+
+    beforeAll(() => {
+      initURLOutcomeBannerLifecycle();
+    });
+
+    it.each([
+      [AppEvents.UTUB_SELECTED, {} as UtubSelectedPayload],
+      [AppEvents.TRASH_OPENED, undefined],
+      [AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" as const }],
+    ])("%s clears the URL deck banner only", (event, payload) => {
+      showBoth();
+
+      (emit as (name: string, data?: unknown) => void)(event, payload);
+
+      expect(banner().hasClass("hidden")).toBe(true);
+      expect(banner().children()).toHaveLength(0);
+      expect($("#TestOutcomeBanner").hasClass("hidden")).toBe(false);
+    });
+
+    it("keeps the banner when the mobile deck switches to the url deck", () => {
+      showBoth();
+
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
+
+      expect(banner().hasClass("hidden")).toBe(false);
+    });
+
+    it("binds each subscription once however many times it is called", async () => {
+      vi.resetModules();
+      const freshBus = await import("../../../lib/event-bus.js");
+      const freshBanner = await import("../outcome-banner.js");
+      const emptySpy = vi.spyOn($.fn, "empty");
+
+      freshBanner.initURLOutcomeBannerLifecycle();
+      freshBanner.initURLOutcomeBannerLifecycle();
+      emptySpy.mockClear();
+      // The deck-switch handler is a fresh arrow per init call (the others share
+      // one function reference the bus's Set would dedupe), so only it can
+      // prove the guard.
+      freshBus.emit(freshBus.AppEvents.MOBILE_DECK_SWITCHED, {
+        target: "utub-deck",
+      });
+
+      expect(emptySpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -620,6 +817,24 @@ describe("outcome banner", () => {
         expect(vi.getTimerCount()).toBe(0);
       },
     );
+
+    it("currentBannerToken: show and clear bump it, the other mount is unaffected", () => {
+      const deckStart = currentBannerToken({ mount: URL_DECK_BANNER_MOUNT });
+      const testStart = currentBannerToken({ mount: TEST_MOUNT });
+
+      showOn({ mount: TEST_MOUNT });
+      const testShown = currentBannerToken({ mount: TEST_MOUNT });
+      expect(testShown).not.toBe(testStart);
+      expect(currentBannerToken({ mount: URL_DECK_BANNER_MOUNT })).toBe(
+        deckStart,
+      );
+
+      clearOutcomeBanner({ mount: TEST_MOUNT });
+      expect(currentBannerToken({ mount: TEST_MOUNT })).not.toBe(testShown);
+      expect(currentBannerToken({ mount: URL_DECK_BANNER_MOUNT })).toBe(
+        deckStart,
+      );
+    });
 
     it("clearing a mount whose element vanished cancels its pending timer", () => {
       vi.useFakeTimers();

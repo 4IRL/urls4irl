@@ -20,6 +20,13 @@ import {
 import { fillTemplate } from "../../lib/string-template.js";
 import { debug } from "../../lib/debug.js";
 import { emit } from "../../lib/metrics-client.js";
+import { AppEvents, on } from "../../lib/event-bus.js";
+import {
+  OUTCOME_BANNER_AUTO_HIDE_COARSE_MS,
+  OUTCOME_BANNER_AUTO_HIDE_MS,
+  OUTCOME_BANNER_AUTO_HIDE_PARTIAL_MS,
+} from "../../lib/constants.js";
+import { isCoarsePointer } from "../mobile.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { URL_PARAMS_TRIMMED_ACTION } from "../../types/metrics-dim-values.js";
 
@@ -53,7 +60,7 @@ export type OutcomeBannerVariant = "success" | "partial";
  * programmatic-focus root) when the target is absent or not rendered — the card
  * may be gone, filtered out, or deselected so its buttons are hidden.
  */
-function returnFocusIn({
+export function returnFocusIn({
   target,
   mount,
 }: {
@@ -69,11 +76,6 @@ function returnFocus(target: JQuery): void {
   returnFocusIn({ target, mount: URL_DECK_BANNER_MOUNT });
 }
 
-// How long the banner stays up before hiding itself. Long enough to read the
-// message and reach Undo on a phone; partial (error / no-change) banners get
-// longer since they are messages the user may need to read.
-const AUTO_HIDE_MS = 10000;
-const AUTO_HIDE_PARTIAL_MS = 20000;
 const PAUSE_EVENTS =
   "pointerenter.outcomeBannerPause pointerdown.outcomeBannerPause focusin.outcomeBannerPause";
 const RESUME_EVENTS =
@@ -97,6 +99,27 @@ function timersFor(mount: OutcomeBannerMount): MountTimers {
     timersByBanner.set(mount.bannerSelector, timers);
   }
   return timers;
+}
+
+// Per-mount generation, bumped by every show and clear. A delayed action (an
+// Undo's response) captures it at click time and writes its own completion banner
+// only if it is unchanged, so it never overwrites a newer action's banner.
+const tokensByBanner = new Map<string, number>();
+
+function bumpBannerToken(mount: OutcomeBannerMount): void {
+  tokensByBanner.set(
+    mount.bannerSelector,
+    (tokensByBanner.get(mount.bannerSelector) ?? 0) + 1,
+  );
+}
+
+/** The mount's current banner generation (see `tokensByBanner`). */
+export function currentBannerToken({
+  mount,
+}: {
+  mount: OutcomeBannerMount;
+}): number {
+  return tokensByBanner.get(mount.bannerSelector) ?? 0;
 }
 
 function stopAutoHide(mount: OutcomeBannerMount): void {
@@ -136,7 +159,11 @@ function startAutoHide({
       if (inFlight) return;
       clearOutcomeBanner({ mount });
     },
-    variant === "partial" ? AUTO_HIDE_PARTIAL_MS : AUTO_HIDE_MS,
+    isCoarsePointer()
+      ? OUTCOME_BANNER_AUTO_HIDE_COARSE_MS
+      : variant === "partial"
+        ? OUTCOME_BANNER_AUTO_HIDE_PARTIAL_MS
+        : OUTCOME_BANNER_AUTO_HIDE_MS,
   );
 }
 
@@ -167,6 +194,7 @@ export function clearOutcomeBanner({
 }: {
   mount: OutcomeBannerMount;
 }): void {
+  bumpBannerToken(mount);
   stopAutoHide(mount);
   const banner = $(mount.bannerSelector);
   if (banner.length === 0) {
@@ -186,21 +214,42 @@ export function clearURLOutcomeBanner(): void {
   clearOutcomeBanner({ mount: URL_DECK_BANNER_MOUNT });
 }
 
+let _lifecycleInitialized = false;
+
+/**
+ * Clears the URL deck's banner when the user leaves the deck's context (a UTub
+ * switch, opening Trash, or moving to another mobile deck), so an Undo can never
+ * target a deck that is no longer showing. Touches only the URL deck's own mount.
+ */
+export function initURLOutcomeBannerLifecycle(): void {
+  if (_lifecycleInitialized) return;
+  _lifecycleInitialized = true;
+  on(AppEvents.UTUB_SELECTED, clearURLOutcomeBanner);
+  on(AppEvents.TRASH_OPENED, clearURLOutcomeBanner);
+  on(AppEvents.MOBILE_DECK_SWITCHED, ({ target }) => {
+    if (target !== "url-deck") clearURLOutcomeBanner();
+  });
+}
+
 /** Shows the URL deck's transient outcome banner (see `showOutcomeBanner`). */
 export function showURLOutcomeBanner({
   variant,
   message,
   detail,
   actionLabel,
+  actionAriaLabel,
   onAction,
   returnFocusTo,
+  ariaLive,
 }: {
   variant: OutcomeBannerVariant;
   message: string;
   detail?: string | readonly string[];
   actionLabel?: string;
+  actionAriaLabel?: string;
   onAction?: () => void;
   returnFocusTo: JQuery;
+  ariaLive?: "polite" | "assertive";
 }): void {
   showOutcomeBanner({
     mount: URL_DECK_BANNER_MOUNT,
@@ -208,17 +257,21 @@ export function showURLOutcomeBanner({
     message,
     detail,
     actionLabel,
+    actionAriaLabel,
     onAction,
     returnFocusTo,
+    ariaLive,
   });
 }
 
 /**
  * Shows a transient outcome banner in `mount`. It hides itself after
- * `AUTO_HIDE_MS`; the countdown pauses while the banner is hovered, focused or
- * touched and restarts in full when released. No focus is stolen on show; it can
- * also be cleared by the next user action or its dismiss button (which returns
- * focus to `returnFocusTo`, else the mount's root).
+ * `OUTCOME_BANNER_AUTO_HIDE_MS` (`_PARTIAL_MS` for the partial variant); the
+ * countdown pauses while the banner is hovered, focused or touched and restarts
+ * in full when released. On a coarse pointer there is no pause: the countdown is
+ * a fixed `OUTCOME_BANNER_AUTO_HIDE_COARSE_MS` for both variants. No focus is
+ * stolen on show; it can also be cleared by the next user action or its dismiss
+ * button (which returns focus to `returnFocusTo`, else the mount's root).
  */
 export function showOutcomeBanner({
   mount,
@@ -226,17 +279,22 @@ export function showOutcomeBanner({
   message,
   detail,
   actionLabel,
+  actionAriaLabel,
   onAction,
   returnFocusTo,
+  ariaLive,
 }: {
   mount: OutcomeBannerMount;
   variant: OutcomeBannerVariant;
   message: string;
   detail?: string | readonly string[];
   actionLabel?: string;
+  actionAriaLabel?: string;
   onAction?: () => void;
   returnFocusTo: JQuery;
+  ariaLive?: "polite" | "assertive";
 }): void {
+  bumpBannerToken(mount);
   const banner = $(mount.bannerSelector);
   if (banner.length === 0) {
     log("showOutcomeBanner — container missing, skipped");
@@ -259,19 +317,19 @@ export function showOutcomeBanner({
 
   const actions = $("<div>", { class: "urlOutcomeBannerActions" });
   if (actionLabel && onAction) {
-    actions.append(
-      $("<button>", {
-        type: "button",
-        class: "urlOutcomeBannerAction",
-      })
-        .text(actionLabel)
-        .on("click", function () {
-          // One in-flight action at a time (aria-disabled keeps focus).
-          if ($(this).attr("aria-disabled") === "true") return;
-          $(this).attr("aria-disabled", "true");
-          onAction();
-        }),
-    );
+    const actionButton = $("<button>", {
+      type: "button",
+      class: "urlOutcomeBannerAction",
+    })
+      .text(actionLabel)
+      .on("click", function () {
+        // One in-flight action at a time (aria-disabled keeps focus).
+        if ($(this).attr("aria-disabled") === "true") return;
+        $(this).attr("aria-disabled", "true");
+        onAction();
+      });
+    if (actionAriaLabel) actionButton.attr("aria-label", actionAriaLabel);
+    actions.append(actionButton);
   }
   actions.append(
     $("<button>", {
@@ -289,15 +347,20 @@ export function showOutcomeBanner({
     .empty()
     .removeClass("hidden success partial")
     .addClass(variant)
-    .append(body, actions)
-    .on(PAUSE_EVENTS, (event) => {
-      if (!isCompatMouseEvent({ event, mount })) stopAutoHide(mount);
-    })
-    .on(RESUME_EVENTS, (event) => {
-      if (!isCompatMouseEvent({ event, mount })) {
-        startAutoHide({ mount, variant });
-      }
-    });
+    .attr("aria-live", ariaLive ?? "polite")
+    .append(body, actions);
+  // A coarse pointer gets a fixed countdown: hover/focus pause has no equivalent.
+  if (!isCoarsePointer()) {
+    banner
+      .on(PAUSE_EVENTS, (event) => {
+        if (!isCompatMouseEvent({ event, mount })) stopAutoHide(mount);
+      })
+      .on(RESUME_EVENTS, (event) => {
+        if (!isCompatMouseEvent({ event, mount })) {
+          startAutoHide({ mount, variant });
+        }
+      });
+  }
   // A banner replaced under a still-hovering pointer stays paused until the
   // pointer leaves (its pointerleave restarts the countdown).
   if (!banner.is(":hover")) startAutoHide({ mount, variant });
