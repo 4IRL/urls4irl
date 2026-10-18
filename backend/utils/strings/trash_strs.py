@@ -10,6 +10,7 @@ VIEW_QUERY_PARAM = "view"
 
 # Strings for Trash success
 URL_RESTORED = "URL restored from Trash."
+URLS_RESTORED = "URLs restored from Trash."
 UTUB_RESTORED = "UTub restored from Trash."
 URL_PURGED = "URL permanently deleted."
 UTUB_PURGED = "UTub permanently deleted."
@@ -18,6 +19,7 @@ TRASH_EMPTIED = "Trash emptied."
 
 class TRASH_SUCCESS:
     URL_RESTORED = URL_RESTORED
+    URLS_RESTORED = URLS_RESTORED
     UTUB_RESTORED = UTUB_RESTORED
     URL_PURGED = URL_PURGED
     UTUB_PURGED = UTUB_PURGED
@@ -30,6 +32,7 @@ DESTINATION_REQUIRED = "Choose a UTub to restore this URL into."
 INVALID_DESTINATION = "This URL can only be restored into its own UTub."
 URL_ALREADY_IN_DESTINATION = "That UTub already contains this URL."
 UNABLE_TO_RESTORE_URL = "Unable to restore this URL."
+UNABLE_TO_RESTORE_URLS = "Unable to restore these URLs."
 UNABLE_TO_EMPTY_TRASH = "Unable to empty Trash."
 
 
@@ -39,6 +42,7 @@ class TRASH_FAILURE(FAILURE_GENERAL):
     INVALID_DESTINATION = INVALID_DESTINATION
     URL_ALREADY_IN_DESTINATION = URL_ALREADY_IN_DESTINATION
     UNABLE_TO_RESTORE_URL = UNABLE_TO_RESTORE_URL
+    UNABLE_TO_RESTORE_URLS = UNABLE_TO_RESTORE_URLS
     UNABLE_TO_EMPTY_TRASH = UNABLE_TO_EMPTY_TRASH
 
 

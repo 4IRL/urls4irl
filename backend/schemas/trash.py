@@ -7,6 +7,7 @@ from pydantic import Field, field_serializer
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
+from backend.urls.constants import BulkRestoreSkipReason
 from backend.utils.strings.model_strs import MODELS, TAG_COUNTS_MODIFIED
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
 
@@ -209,6 +210,68 @@ class UrlRestoredResponseSchema(BaseSchema):
         default_factory=list,
         alias=MODELS.LOST_TAG_NAMES,
         description="Names of the lost tags, alphabetical. Empty when none are known (e.g. the URL was trashed before names were saved), even if the count is above zero.",
+    )
+
+
+class UrlRestoreSkippedSchema(BaseSchema):
+    """One requested URL a bulk in-place restore did not restore"""
+
+    utub_url_id: int = Field(
+        alias=MODELS.UTUB_URL_ID,
+        description="ID of the UTub-URL row that was skipped",
+    )
+    reason: BulkRestoreSkipReason = Field(
+        alias=MODELS.SKIP_REASON,
+        description=(
+            "Why it was skipped: 'not_in_trash' (restored elsewhere, purged, never "
+            "trashed or not actionable by the caller, deliberately not told apart) or "
+            "'destination_required' (its UTub is itself in Trash)"
+        ),
+    )
+
+
+class UrlsRestoredResponseSchema(BaseSchema):
+    """Many trashed URLs of one UTub restored in place, with the ones skipped"""
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub the URLs are now live in",
+    )
+    restored: list[UtubUrlSchema] = Field(
+        alias=MODELS.RESTORED,
+        description="The restored URL cards, with their original adders and added-at times",
+    )
+    skipped: list[UrlRestoreSkippedSchema] = Field(
+        alias=MODELS.SKIPPED,
+        description="Requested URLs that were not restored, with the reason",
+    )
+    applied_tags: list[UtubTagSchema] = Field(
+        default_factory=list,
+        alias=MODELS.APPLIED_TAGS,
+        description="Tags that survived on the restored URLs (union), with UTub-wide applied counts",
+    )
+    tag_counts_modified: dict[int, int] = Field(
+        default_factory=dict,
+        alias=TAG_COUNTS_MODIFIED,
+        description="Map of tag ID to new UTub-wide applied count after the restore",
+    )
+    lost_tag_count: int = Field(
+        default=0,
+        alias=MODELS.LOST_TAG_COUNT,
+        description="Total of the restored URLs' tags that were deleted from the UTub while in Trash",
+    )
+    lost_tag_names: list[str] = Field(
+        default_factory=list,
+        alias=MODELS.LOST_TAG_NAMES,
+        description="Deduplicated names of the lost tags, alphabetical. May be empty even if the count is above zero.",
+    )
+    total_restored: int = Field(
+        alias=MODELS.TOTAL_RESTORED,
+        description="Number of URLs restored",
+    )
+    total_skipped: int = Field(
+        alias=MODELS.TOTAL_SKIPPED,
+        description="Number of requested URLs skipped",
     )
 
 

@@ -42,6 +42,19 @@ def post_restore(
     )
 
 
+def post_restore_urls(
+    client: FlaskClient,
+    csrf_token: str,
+    utub_id: int,
+    utub_url_ids: list[int],
+) -> Response:
+    return client.post(
+        url_for(ROUTES.URLS.RESTORE_URLS, utub_id=utub_id),
+        json={"utubUrlIds": utub_url_ids},
+        headers={**AJAX_HEADERS, URL_VALIDATION.X_CSRF_TOKEN: csrf_token},
+    )
+
+
 def get_trash_url_ids(client: FlaskClient) -> list[int]:
     response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
     assert response.status_code == 200

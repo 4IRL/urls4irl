@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, field_validator
 
+from backend.schemas.requests.urls import dedup_and_reject_non_positive
+from backend.utils.constants import URL_CONSTANTS
+from backend.utils.strings.url_strs import URL_FAILURE
 from backend.utubs.constants import TrashScope
 
 
@@ -16,6 +19,20 @@ class RestoreUrlRequest(BaseModel):
         ),
         examples=[2],
     )
+
+
+class RestoreUrlsRequest(BaseModel):
+    utubUrlIds: list[int] = Field(
+        min_length=1,
+        max_length=URL_CONSTANTS.MAX_BULK_DELETE_URLS,
+        description="Trashed UTub-URL ids of this UTub to restore in place",
+        examples=[[1, 2, 3]],
+    )
+
+    @field_validator("utubUrlIds", mode="after")
+    @classmethod
+    def utub_url_ids_valid(cls, utub_url_ids: list[int]) -> list[int]:
+        return dedup_and_reject_non_positive(utub_url_ids, URL_FAILURE.INVALID_URL_ID)
 
 
 class EmptyTrashRequest(BaseModel):

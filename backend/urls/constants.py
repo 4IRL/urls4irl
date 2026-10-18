@@ -17,6 +17,7 @@ class URLErrorCodes(IntEnum):
     INVALID_DESTINATION = 13
     URL_ALREADY_IN_DESTINATION = 14
     UNABLE_TO_RESTORE_URL_ERROR = 15
+    UNABLE_TO_RESTORE_URLS_ERROR = 16
 
 
 class UrlRestoreTarget(StrEnum):
@@ -35,6 +36,11 @@ class BulkCopySkipReason(StrEnum):
 
 class BulkDeleteSkipReason(StrEnum):
     FORBIDDEN = "forbidden"
+
+
+class BulkRestoreSkipReason(StrEnum):
+    NOT_IN_TRASH = "not_in_trash"
+    DESTINATION_REQUIRED = "destination_required"
 
 
 class DestCopyStatus(StrEnum):
