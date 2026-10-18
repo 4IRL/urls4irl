@@ -18,10 +18,19 @@ from backend.schemas.errors import (
     build_url_conflict_error_response,
 )
 from backend.schemas.tags import UtubTagSchema
-from backend.schemas.trash import UrlPurgedResponseSchema, UrlRestoredResponseSchema
+from backend.schemas.trash import (
+    UrlPurgedResponseSchema,
+    UrlRestoredResponseSchema,
+    UrlRestoreSkippedSchema,
+    UrlsRestoredResponseSchema,
+)
 from backend.schemas.urls import UtubUrlSchema
 from backend.tags.services.create_url_tag import get_tag_applied_counts
-from backend.urls.constants import URLErrorCodes, UrlRestoreTarget
+from backend.urls.constants import (
+    BulkRestoreSkipReason,
+    URLErrorCodes,
+    UrlRestoreTarget,
+)
 from backend.urls.services.create_urls import check_url_already_in_utub
 from backend.urls.services.delete_urls import recompute_tag_counts_after_delete
 from backend.urls.services.trashed_url_tags import (
@@ -388,6 +397,207 @@ def restore_trashed_url(
             lost_tag_names=lost_tag_names,
         ),
     ).to_response()
+
+
+def _build_urls_restored_response(
+    *,
+    utub_id: int,
+    restored_rows: list[Utub_Urls],
+    skipped: dict[int, BulkRestoreSkipReason],
+    tag_counts: dict[int, int],
+    lost_tag_count: int,
+    lost_tag_names: set[str],
+    current_user_id: int,
+    viewer_is_manager: bool,
+) -> FlaskResponse:
+    """Build the 200 response for a bulk in-place restore (skipped may be non-empty)."""
+    surviving_tag_ids: set[int] = {
+        tag_id for row in restored_rows for tag_id in row.associated_tag_ids
+    }
+    surviving_tags: list[Utub_Tags] = (
+        Utub_Tags.query.filter(Utub_Tags.id.in_(surviving_tag_ids))
+        .order_by(Utub_Tags.id)
+        .all()
+        if surviving_tag_ids
+        else []
+    )
+    applied_counts: dict[int, int] = get_tag_applied_counts(
+        utub_id, [utub_tag.id for utub_tag in surviving_tags]
+    )
+
+    return APIResponse(
+        message=TRASH_SUCCESS.URLS_RESTORED,
+        data=UrlsRestoredResponseSchema(
+            utub_id=utub_id,
+            restored=[
+                UtubUrlSchema.from_orm_url(row, current_user_id, viewer_is_manager)
+                for row in restored_rows
+            ],
+            skipped=[
+                UrlRestoreSkippedSchema(utub_url_id=skipped_id, reason=str(reason))
+                for skipped_id, reason in skipped.items()
+            ],
+            applied_tags=[
+                UtubTagSchema(
+                    id=utub_tag.id,
+                    tag_string=utub_tag.tag_string,
+                    tag_applied=applied_counts.get(utub_tag.id, 0),
+                )
+                for utub_tag in surviving_tags
+            ],
+            tag_counts_modified=tag_counts,
+            lost_tag_count=lost_tag_count,
+            lost_tag_names=sorted(lost_tag_names),
+            total_restored=len(restored_rows),
+            total_skipped=len(skipped),
+        ),
+    ).to_response()
+
+
+def restore_trashed_urls_in_place(
+    *, utub_id: int, utub_url_ids: list[int], current_user_id: int
+) -> FlaskResponse:
+    """Restore many trashed URLs of one UTub in place, in one transaction.
+
+    Locks the actionable rows with the SAME predicate as the single restore
+    (``trashed_url_rows_actionable_by``), so every id that is not returned (live,
+    nonexistent, another UTub's, not the actor's to restore) is skipped with the one
+    masked ``not_in_trash`` reason, never a 400/404 that would leak existence. The UTub
+    lock check runs only once at least one row is proved actionable, so a viewer with
+    nothing to restore never learns the UTub is locked. A trashed origin UTub needs a
+    destination, which an in-place restore cannot give: those rows are skipped as
+    ``destination_required``.
+
+    Args:
+        utub_id (int): The origin UTub id from the path
+        utub_url_ids (list[int]): The requested trashed Utub_Urls ids (already deduped)
+        current_user_id (int): The acting user
+
+    Returns:
+        FlaskResponse: 200 with the restored cards and the skipped ids (also when all
+        were skipped); 403 when the UTub is locked and at least one row was actionable.
+    """
+    requested_ids: list[int] = utub_url_ids
+    locking_statement = (
+        trashed_url_rows_actionable_by(user_id=current_user_id)
+        .where(Utub_Urls.id.in_(requested_ids), Utub_Urls.utub_id == utub_id)
+        .order_by(Utub_Urls.id)
+        .with_for_update(of=Utub_Urls)
+        .execution_options(populate_existing=True)
+    )
+    locked_rows = db.session.execute(locking_statement).all()
+    actionable_ids: set[int] = {row[0].id for row in locked_rows}
+
+    skipped: dict[int, BulkRestoreSkipReason] = {
+        requested_id: BulkRestoreSkipReason.NOT_IN_TRASH
+        for requested_id in requested_ids
+        if requested_id not in actionable_ids
+    }
+
+    if not locked_rows:
+        db.session.rollback()
+        return _build_urls_restored_response(
+            utub_id=utub_id,
+            restored_rows=[],
+            skipped=skipped,
+            tag_counts={},
+            lost_tag_count=0,
+            lost_tag_names=set(),
+            current_user_id=current_user_id,
+            viewer_is_manager=False,
+        )
+
+    _first_url, origin_utub, membership = locked_rows[0]
+    viewer_is_manager: bool = membership.member_role in (
+        Member_Role.CREATOR,
+        Member_Role.CO_CREATOR,
+    )
+
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        origin_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        db.session.rollback()
+        return utub_locked_error
+
+    if origin_utub.deleted_at is not None:
+        db.session.rollback()
+        skipped = {
+            requested_id: (
+                BulkRestoreSkipReason.DESTINATION_REQUIRED
+                if requested_id in actionable_ids
+                else BulkRestoreSkipReason.NOT_IN_TRASH
+            )
+            for requested_id in requested_ids
+        }
+        return _build_urls_restored_response(
+            utub_id=utub_id,
+            restored_rows=[],
+            skipped=skipped,
+            tag_counts={},
+            lost_tag_count=0,
+            lost_tag_names=set(),
+            current_user_id=current_user_id,
+            viewer_is_manager=viewer_is_manager,
+        )
+
+    restored_rows: list[Utub_Urls] = [row[0] for row in locked_rows]
+    lost_tag_count: int = 0
+    lost_tag_names: set[str] = set()
+    try:
+        for restored_row in restored_rows:
+            # Read BEFORE the snapshot is cleared.
+            lost_tag_count += count_lost_trashed_tags(restored_row)
+            lost_tag_names.update(list_lost_trashed_tag_names(restored_row))
+
+            # Reassign (never mutate) the JSONB snapshot, exactly as restore_trashed_url.
+            restored_row.deleted_at = None
+            restored_row.deleted_by = None
+            restored_row.trashed_tag_ids = None
+            restored_row.trashed_tag_names = None
+        db.session.flush()
+
+        affected_tag_ids: set[int] = {
+            tag_id for row in restored_rows for tag_id in row.associated_tag_ids
+        }
+        tag_counts: dict[int, int] = recompute_tag_counts_after_delete(
+            utub_id=utub_id, affected_utub_tag_ids=affected_tag_ids
+        )
+        origin_utub.set_last_updated()
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        warning_log(
+            f"Restore trashed URLs failed | UTub.id={utub_id} "
+            f"| count={len(restored_rows)} | error_type={type(exc).__name__}"
+        )
+        raise
+
+    for _restored_row in restored_rows:
+        record_event(
+            EventName.URL_RESTORED_FROM_TRASH,
+            dimensions={"restore_target": UrlRestoreTarget.ORIGIN},
+        )
+    safe_add_many_logs(
+        [
+            "Restored trashed UTubURLs in place",
+            f"User.id={current_user_id}",
+            f"UTub.id={utub_id}",
+            f"URLsRestored={len(restored_rows)}",
+            f"URLsSkipped={len(skipped)}",
+        ]
+    )
+
+    return _build_urls_restored_response(
+        utub_id=utub_id,
+        restored_rows=restored_rows,
+        skipped=skipped,
+        tag_counts=tag_counts,
+        lost_tag_count=lost_tag_count,
+        lost_tag_names=lost_tag_names,
+        current_user_id=current_user_id,
+        viewer_is_manager=viewer_is_manager,
+    )
 
 
 def purge_trashed_url(

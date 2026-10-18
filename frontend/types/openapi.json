@@ -7559,6 +7559,82 @@
         }
       }
     },
+    "/utubs/{utub_id}/urls/restore": {
+      "post": {
+        "operationId": "restoreUrls",
+        "tags": ["urls"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Restore many trashed URLs of one UTub in place",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreUrlsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Many trashed URLs of one UTub restored in place, with the ones skipped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlsRestoredResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLErrorCodes": {
+            "$ref": "#/components/schemas/URLErrorCodes"
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/urls/{utub_url_id}/purge": {
       "delete": {
         "operationId": "purgeUrl",
@@ -9987,7 +10063,7 @@
       },
       "URLErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -10003,7 +10079,8 @@
           "DESTINATION_REQUIRED",
           "INVALID_DESTINATION",
           "URL_ALREADY_IN_DESTINATION",
-          "UNABLE_TO_RESTORE_URL_ERROR"
+          "UNABLE_TO_RESTORE_URL_ERROR",
+          "UNABLE_TO_RESTORE_URLS_ERROR"
         ],
         "description": "Error codes for URLErrorCodes"
       },
@@ -12335,6 +12412,106 @@
           }
         },
         "required": ["utubID", "utubName", "URL"],
+        "type": "object"
+      },
+      "RestoreUrlsRequest": {
+        "properties": {
+          "utubUrlIds": {
+            "description": "Trashed UTub-URL ids of this UTub to restore in place",
+            "examples": [[1, 2, 3]],
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": ["utubUrlIds"],
+        "type": "object"
+      },
+      "BulkRestoreSkipReason": {
+        "enum": ["not_in_trash", "destination_required"],
+        "type": "string"
+      },
+      "UrlRestoreSkippedSchema": {
+        "description": "One requested URL a bulk in-place restore did not restore",
+        "properties": {
+          "utubUrlID": {
+            "description": "ID of the UTub-URL row that was skipped",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/BulkRestoreSkipReason",
+            "description": "Why it was skipped: 'not_in_trash' (restored elsewhere, purged, never trashed or not actionable by the caller, deliberately not told apart) or 'destination_required' (its UTub is itself in Trash)"
+          }
+        },
+        "required": ["utubUrlID", "reason"],
+        "type": "object"
+      },
+      "UrlsRestoredResponseSchema": {
+        "description": "Many trashed URLs of one UTub restored in place, with the ones skipped",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub the URLs are now live in",
+            "type": "integer"
+          },
+          "restored": {
+            "description": "The restored URL cards, with their original adders and added-at times",
+            "items": {
+              "$ref": "#/components/schemas/UtubUrlSchema"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Requested URLs that were not restored, with the reason",
+            "items": {
+              "$ref": "#/components/schemas/UrlRestoreSkippedSchema"
+            },
+            "type": "array"
+          },
+          "appliedTags": {
+            "description": "Tags that survived on the restored URLs (union), with UTub-wide applied counts",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
+          },
+          "tagCountsInUtub": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Map of tag ID to new UTub-wide applied count after the restore",
+            "type": "object"
+          },
+          "lostTagCount": {
+            "default": 0,
+            "description": "Total of the restored URLs' tags that were deleted from the UTub while in Trash",
+            "type": "integer"
+          },
+          "lostTagNames": {
+            "description": "Deduplicated names of the lost tags, alphabetical. May be empty even if the count is above zero.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "totalRestored": {
+            "description": "Number of URLs restored",
+            "type": "integer"
+          },
+          "totalSkipped": {
+            "description": "Number of requested URLs skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "utubID",
+          "restored",
+          "skipped",
+          "totalRestored",
+          "totalSkipped"
+        ],
         "type": "object"
       },
       "UrlPurgedResponseSchema": {

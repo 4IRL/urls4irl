@@ -12,7 +12,7 @@ from backend.api_common.responses import FlaskResponse
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.trash import RestoreUrlRequest
+from backend.schemas.requests.trash import RestoreUrlRequest, RestoreUrlsRequest
 from backend.schemas.requests.urls import (
     CopyUrlsRequest,
     CreateURLRequest,
@@ -20,7 +20,11 @@ from backend.schemas.requests.urls import (
     UpdateURLStringRequest,
     UpdateURLTitleRequest,
 )
-from backend.schemas.trash import UrlPurgedResponseSchema, UrlRestoredResponseSchema
+from backend.schemas.trash import (
+    UrlPurgedResponseSchema,
+    UrlRestoredResponseSchema,
+    UrlsRestoredResponseSchema,
+)
 from backend.schemas.urls import (
     CopyUrlsResponseSchema,
     DeleteUrlsResponseSchema,
@@ -35,7 +39,11 @@ from backend.urls.services.copy_urls import copy_urls_into_utubs
 from backend.urls.services.create_urls import create_url_in_utub
 from backend.urls.services.delete_urls import delete_url_in_utub, delete_urls_in_utub
 from backend.urls.services.read_urls import get_url_in_utub
-from backend.urls.services.trash_urls import purge_trashed_url, restore_trashed_url
+from backend.urls.services.trash_urls import (
+    purge_trashed_url,
+    restore_trashed_url,
+    restore_trashed_urls_in_place,
+)
 from backend.urls.services.update_url_titles import update_url_title_if_new
 from backend.urls.services.update_urls import update_url_in_utub
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
@@ -343,6 +351,41 @@ def restore_url(
         utub_id=utub_id,
         utub_url_id=utub_url_id,
         dest_utub_id=restore_url_request.destUtubId,
+        current_user_id=current_user.id,
+    )
+
+
+@urls.route("/utubs/<int:utub_id>/urls/restore", methods=["POST"])
+@email_validation_required
+@api_route(
+    request_schema=RestoreUrlsRequest,
+    response_schema=UrlsRestoredResponseSchema,
+    error_message=TRASH_FAILURE.UNABLE_TO_RESTORE_URLS,
+    error_code=URLErrorCodes.UNABLE_TO_RESTORE_URLS_ERROR,
+    tags=[OPEN_API.URLS],
+    description="Restore many trashed URLs of one UTub in place",
+    status_codes={
+        200: UrlsRestoredResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+    },
+)
+def restore_urls(
+    utub_id: int, restore_urls_request: RestoreUrlsRequest
+) -> FlaskResponse:
+    """
+    User wants to restore many URLs from their Trash in place. Actionability (adder or
+    manager, still a member) is masked per row like the single restore: an id the user
+    cannot act on is skipped as not_in_trash, indistinguishable from one that is not in
+    Trash, so the response is 200 even when every id is skipped.
+
+    Args:
+        utub_id (int): The origin UTub of the trashed URLs
+        restore_urls_request (RestoreUrlsRequest): Validated request schema
+    """
+    return restore_trashed_urls_in_place(
+        utub_id=utub_id,
+        utub_url_ids=restore_urls_request.utubUrlIds,
         current_user_id=current_user.id,
     )
 

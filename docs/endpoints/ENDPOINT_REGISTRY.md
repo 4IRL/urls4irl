@@ -1031,6 +1031,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `bulkDeleteURLs`
 
+### `POST /utubs/<int:utub_id>/urls/restore` — `urls.restore_urls`
+
+- **Handler:** `backend/urls/routes.py:restore_urls`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.urls.services.trash_urls:restore_trashed_urls_in_place`
+- **Schema:** request: `backend.schemas.requests.trash.RestoreUrlsRequest`; response: `backend.schemas.trash.UrlsRestoredResponseSchema`; status: 200 `backend.schemas.trash.UrlsRestoredResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `restoreURLs`
+
 ### `POST /utubs/urls/copy` — `urls.copy_urls_to_utubs`
 
 - **Handler:** `backend/urls/routes.py:copy_urls_to_utubs`

@@ -1372,6 +1372,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/urls/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Restore many trashed URLs of one UTub in place */
+    post: operations["restoreUrls"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/urls/{utub_url_id}/purge": {
     parameters: {
       query?: never;
@@ -2079,7 +2096,8 @@ export interface components {
       | 12
       | 13
       | 14
-      | 15;
+      | 15
+      | 16;
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -3275,6 +3293,52 @@ export interface components {
       lostTagCount: number;
       /** @description Names of the lost tags, alphabetical. Empty when none are known (e.g. the URL was trashed before names were saved), even if the count is above zero. */
       lostTagNames?: string[];
+    };
+    RestoreUrlsRequest: {
+      /**
+       * @description Trashed UTub-URL ids of this UTub to restore in place
+       * @example [
+       *       1,
+       *       2,
+       *       3
+       *     ]
+       */
+      utubUrlIds: number[];
+    };
+    /** @enum {string} */
+    BulkRestoreSkipReason: "not_in_trash" | "destination_required";
+    /** @description One requested URL a bulk in-place restore did not restore */
+    UrlRestoreSkippedSchema: {
+      /** @description ID of the UTub-URL row that was skipped */
+      utubUrlID: number;
+      /** @description Why it was skipped: 'not_in_trash' (restored elsewhere, purged, never trashed or not actionable by the caller, deliberately not told apart) or 'destination_required' (its UTub is itself in Trash) */
+      reason: components["schemas"]["BulkRestoreSkipReason"];
+    };
+    /** @description Many trashed URLs of one UTub restored in place, with the ones skipped */
+    UrlsRestoredResponseSchema: {
+      /** @description ID of the UTub the URLs are now live in */
+      utubID: number;
+      /** @description The restored URL cards, with their original adders and added-at times */
+      restored: components["schemas"]["UtubUrlSchema"][];
+      /** @description Requested URLs that were not restored, with the reason */
+      skipped: components["schemas"]["UrlRestoreSkippedSchema"][];
+      /** @description Tags that survived on the restored URLs (union), with UTub-wide applied counts */
+      appliedTags?: components["schemas"]["UtubTagSchema"][];
+      /** @description Map of tag ID to new UTub-wide applied count after the restore */
+      tagCountsInUtub?: {
+        [key: string]: number;
+      };
+      /**
+       * @description Total of the restored URLs' tags that were deleted from the UTub while in Trash
+       * @default 0
+       */
+      lostTagCount: number;
+      /** @description Deduplicated names of the lost tags, alphabetical. May be empty even if the count is above zero. */
+      lostTagNames?: string[];
+      /** @description Number of URLs restored */
+      totalRestored: number;
+      /** @description Number of requested URLs skipped */
+      totalSkipped: number;
     };
     /** @description A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count. */
     UrlPurgedResponseSchema: {
@@ -8921,6 +8985,51 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+    };
+  };
+  restoreUrls: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["RestoreUrlsRequest"];
+      };
+    };
+    responses: {
+      /** @description Many trashed URLs of one UTub restored in place, with the ones skipped */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlsRestoredResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };

@@ -68,6 +68,7 @@ class URL_ROUTES:
     COPY_URLS_MULTI = _URLS + "copy_urls_to_utubs"
     DELETE_URLS_BULK = _URLS + "delete_urls_from_utub"
     RESTORE_URL = _URLS + "restore_url"
+    RESTORE_URLS = _URLS + "restore_urls"
     PURGE_URL = _URLS + "purge_url"
 
 
@@ -263,6 +264,7 @@ JS_ROUTES: dict[str, JsRoute] = {
     "copyURLsToUtubs": JsRoute(URL_ROUTES.COPY_URLS_MULTI, {}),
     "bulkDeleteURLs": JsRoute(URL_ROUTES.DELETE_URLS_BULK, {"utub_id": -1}),
     "restoreURL": JsRoute(URL_ROUTES.RESTORE_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "restoreURLs": JsRoute(URL_ROUTES.RESTORE_URLS, {"utub_id": -1}),
     "purgeURL": JsRoute(URL_ROUTES.PURGE_URL, {"utub_id": -1, "utub_url_id": -2}),
     # UTub URL Tag routes
     "createURLTag": JsRoute(
