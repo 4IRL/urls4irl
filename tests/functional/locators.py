@@ -240,6 +240,7 @@ class HomePageLocators(GenericPageLocator):
     URL_DECK_ERROR_INDICATOR = "#URLDeckErrorIndicator"
     MOBILE_PANEL_ANNOUNCEMENT = "#MobilePanelAnnouncement"
     SUBHEADER_NO_URLS = "#noURLsSubheader"
+    EMPTY_STATE_NO_URLS = "#noURLsEmptyState"
     INPUT_UTUB_DESCRIPTION_UPDATE = "#utubDescriptionUpdate"
     BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE = "#utubDescriptionSubmitBtnUpdate"
     BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE = "#utubDescriptionCancelBtnUpdate"
@@ -329,12 +330,10 @@ class HomePageLocators(GenericPageLocator):
     BULK_COPY_ALL_LOCKED = ".bulkCopyAllLocked"
 
     # Bulk multi-URL delete-from-UTub (Phase 5). The destructive "Delete" action
-    # button rendered into #bulkActionButtons by the bulk-action registry, and the
-    # result banner (reusing the shared .bulkTagBanner markup) that survives the
-    # action-button rebuild. The confirm reuses the shared #confirmModal
-    # (ACTION_CONFIRM_MODAL) rather than an in-deck picker.
+    # button rendered into #bulkActionButtons by the bulk-action registry. It
+    # deletes immediately; the result is the URL-deck outcome toast
+    # (URL_OUTCOME_BANNER), which survives the action-button rebuild.
     BUTTON_BULK_DELETE_URLS = '[data-bulk-action-id="bulk-delete"]'
-    BULK_DELETE_BANNER = "#bulkDeleteResultBanner"
     # Deck-level outcome announcer (subheader live region) used on the
     # deck-empties path, where the bulk-bar banner is torn down by mode exit.
     URL_DECK_OUTCOME_ANNOUNCEMENT = "#URLDeckOutcomeAnnouncement"
@@ -458,6 +457,7 @@ class HomePageLocators(GenericPageLocator):
     URL_OUTCOME_BANNER_MESSAGE = f"{URL_OUTCOME_BANNER} .urlOutcomeBannerMessage"
     URL_OUTCOME_BANNER_DETAIL = f"{URL_OUTCOME_BANNER} .urlOutcomeBannerDetail"
     URL_OUTCOME_BANNER_UNDO = f"{URL_OUTCOME_BANNER} .urlOutcomeBannerAction"
+    URL_OUTCOME_BANNER_DISMISS = f"{URL_OUTCOME_BANNER} .urlOutcomeBannerDismiss"
 
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 
@@ -608,7 +608,6 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_MODAL_SUBMIT = "#modalSubmit"
     BUTTON_X_CLOSE = ".btn-close"
     ACCESS_EXTERNAL_URL_MODAL = "#confirmModal.accessExternalURLModal"
-    DELETE_URL_MODAL = ".deleteUrlModal"
 
     # Decks
     UTUB_DECK = ".deck#UTubDeck"

@@ -14,7 +14,6 @@ from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import TAG_FORM
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from backend.utils.strings.url_strs import DELETE_URL_WARNING
 from tests.functional.db_utils import (
     add_tag_to_utub_user_created,
     add_two_tags_across_urls_in_utub,
@@ -29,6 +28,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid,
     login_user_select_utub_by_id_and_url_by_id,
+    login_user_select_utub_by_name_and_url_by_string,
 )
 from tests.functional.playwright_utils import (
     get_num_url_rows,
@@ -36,7 +36,6 @@ from tests.functional.playwright_utils import (
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_hidden,
 )
 from tests.functional.tags_ui.playwright_utils import (
@@ -45,7 +44,7 @@ from tests.functional.tags_ui.playwright_utils import (
     get_visible_urls_and_urls_with_tag_text_by_tag_id,
 )
 from tests.functional.urls_ui.playwright_login_utils import (
-    login_select_utub_select_url_click_delete_get_modal_url,
+    click_delete_on_selected_url_and_wait_for_toast,
 )
 
 pytestmark = pytest.mark.tags_ui
@@ -372,7 +371,7 @@ def test_delete_url_decrements_all_tag_counters(
     visible in the Tag Deck
 
     GIVEN a user, selected UTub and selected URL
-    WHEN deleteURL button is selected and confirmation modal confirmed
+    WHEN the deleteURL button is clicked
     THEN ensure the URL is deleted from the UTub, and the tag counters are decremented
     """
     user_id_for_test = 1
@@ -394,14 +393,12 @@ def test_delete_url_decrements_all_tag_counters(
 
         utub_tag_ids = [tag.utub_tag_id for tag in url_tags]
 
-    delete_modal, url_elem_to_delete = (
-        login_select_utub_select_url_click_delete_get_modal_url(
-            page=page,
-            app=app,
-            user_id=user_id_for_test,
-            utub_name=UTS.TEST_UTUB_NAME_1,
-            url_string=UTS.TEST_URL_STRING_CREATE,
-        )
+    login_user_select_utub_by_name_and_url_by_string(
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
     )
 
     init_vis_total = {}
@@ -415,22 +412,7 @@ def test_delete_url_decrements_all_tag_counters(
 
     init_num_url_rows = get_num_url_rows(page=page)
 
-    confirmation_modal_body_text = delete_modal.inner_text()
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == DELETE_URL_WARNING
-
-    # Wait for Bootstrap's show transition to complete before clicking submit.
-    # Clicking mid-fade-in drops the click handler's modal.hide() call
-    # (BS5 _isTransitioning guard), so the modal never becomes hidden.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    url_elem_to_delete = click_delete_on_selected_url_and_wait_for_toast(page=page)
 
     # Wait for animation to complete
     wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)

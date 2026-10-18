@@ -17,7 +17,6 @@ from tests.functional.playwright_utils import (
     wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
@@ -821,8 +820,8 @@ def swipe_url_card_delete(*, page: Page, url_row_selector: str) -> None:
     Drags the given URL row leftward by ``SWIPE_COMMIT_PX`` to commit the
     swipe-to-delete gesture. The drag starts near the row's right edge and ends
     ``SWIPE_COMMIT_PX`` to the left of it, exceeding the snap threshold so the
-    row commits (revealing the delete panel and opening the confirm modal)
-    rather than snapping back closed.
+    row commits (deleting it at once, with the undo toast) rather than
+    snapping back closed.
     """
     row = page.locator(url_row_selector).first
     bounding_box = row.bounding_box()
@@ -863,28 +862,11 @@ def swipe_url_card_below_threshold(*, page: Page, url_row_selector: str) -> None
     )
 
 
-def wait_until_url_card_swipe_committed(*, page: Page, timeout: int = 10) -> None:
-    """
-    Waits until a ``.urlRow`` carries the ``swipe-committed`` class, confirming
-    the swipe-to-delete gesture has committed. Only one row can be mid-gesture at
-    a time (the drag state is a single module-local object in ``swipe.ts``), so
-    this checks across all rows rather than a specific selector.
-    """
-    page.wait_for_function(
-        """(rowSelector) => {
-            const rows = Array.from(document.querySelectorAll(rowSelector));
-            return rows.some((row) => row.classList.contains("swipe-committed"));
-        }""",
-        arg=HPL.ROWS_URLS,
-        timeout=timeout * 1000,
-    )
-
-
 def wait_until_url_card_swipe_reset(*, page: Page, timeout: int = 10) -> None:
     """
     Waits until no ``.urlRow`` carries the ``swipe-dragging`` or
     ``swipe-committed`` class, confirming the swipe gesture has fully reset
-    (either snapped back below threshold, or its confirm modal was dismissed).
+    (snapped back below threshold, or the committed row was removed/restored).
     """
     page.wait_for_function(
         """(rowSelector) => {
@@ -1036,31 +1018,19 @@ def expect_copy_cue_on_row(*, page: Page, utub_url_id: int, kind: str) -> None:
 
 
 # --- Bulk multi-URL delete-from-UTub helpers ---------------------------------
-# Delete reuses the shared #confirmModal (a count-aware destructive confirm),
-# NOT an in-deck picker. These helpers open that confirm and drive its submit
-# with the same opacity-gated rhythm the single-URL delete confirm uses:
-# clicking #modalSubmit mid-fade makes Bootstrap drop the later modal("hide"), so
-# the modal never hides. Shared by the desktop and mobile bulk-delete suites.
+# Bulk delete has no confirm: the bar's Delete button deletes immediately and the
+# URL-deck outcome toast (with Undo) reports it. Shared by the desktop and mobile
+# bulk-delete suites.
 
 
-def open_bulk_delete_confirm(*, page: Page) -> None:
-    """Click the registry-rendered destructive "Delete" bulk-action button and
-    settle into the shared confirm modal (visible)."""
+def bulk_delete_selected(*, page: Page, expect_toast: bool = True) -> None:
+    """Click the registry-rendered destructive "Delete" bulk-action button and,
+    by default, wait for the URL-deck outcome toast to show. Pass
+    ``expect_toast=False`` for failure paths (invalid CSRF, 429, forced server
+    error) where the request fails and no toast is rendered."""
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_BULK_DELETE_URLS)
-    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
-
-
-def submit_bulk_delete(*, page: Page) -> None:
-    """Confirm the destructive delete. Gate the click on the modal fade-in being
-    fully settled (opacity == 1) so Bootstrap honors the subsequent modal("hide")
-    (mirrors the single-URL delete confirm rhythm in test_delete_url_ui)."""
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    if expect_toast:
+        expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_visible()
 
 
 def expect_cant_delete_cue_on_row(*, page: Page, utub_url_id: int) -> None:

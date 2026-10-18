@@ -244,14 +244,12 @@ export type UIEventDimensions = {
   ui_url_create_open: DimDeviceOnly;
   ui_url_title_edit_open: DimDeviceOnly;
   ui_url_string_edit_open: DimDeviceOnly;
-  ui_url_delete_open: DimDeviceOnly;
-  ui_url_delete_confirm: DimDeviceOnly;
-  ui_url_delete_cancel: DimDeviceOnly;
   ui_url_copy: DimUrlCopy;
   ui_url_access_warning: DimDeviceOnly;
   ui_url_access_warning_dismiss: DimDeviceOnly;
   ui_url_params_trimmed: DimUrlParamsTrimmed;
   ui_url_edit_undone: DimDeviceOnly;
+  ui_url_delete_undone: DimDeviceOnly;
   ui_utub_search_open: DimUtubSearchOpen;
   ui_utub_search_close: DimUtubSearchClose;
   ui_url_search_open: DimUrlSearchOpen;

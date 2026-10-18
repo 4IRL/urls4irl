@@ -42,11 +42,13 @@ export function insertURLCardIntoDeck({
   utubID,
   appliedTags,
   announce,
+  select = true,
 }: {
   newUrl: UtubUrlItem;
   utubID: number;
   appliedTags: UtubTag[];
   announce: boolean;
+  select?: boolean;
 }): JQuery {
   // A background refresh may already have rendered this URL before the create
   // response landed: never duplicate the card, and skip every other side effect.
@@ -89,8 +91,9 @@ export function insertURLCardIntoDeck({
   // matching the active filter stays visible; non-matching ones are hidden.
   updateURLsAndTagSubheaderWhenTagSelected();
 
-  // Auto-select the new card only when no filter would suppress it.
-  if (!isATagSelected()) {
+  // Auto-select the new card only when no filter would suppress it and the
+  // caller wants it (a bulk re-insert must not select, or it would clear banners).
+  if (select && !isATagSelected()) {
     selectURLCard(newUrlCard);
   }
 
@@ -169,6 +172,28 @@ function reorderURLCardBySortPreference({
 }
 
 /**
+ * Where focus should land after `urlCard` leaves the deck: the next visible row,
+ * else the previous visible row, else the empty state (the card is the only row)
+ * or the deck itself (every remaining row is hidden). Compute it BEFORE removal.
+ */
+export function focusTargetAfterURLRowRemoval({
+  urlCard,
+}: {
+  urlCard: JQuery;
+}): JQuery {
+  // Rows still fading out from an earlier delete are about to detach.
+  const visibleRows = $("#listURLs .urlRow")
+    .not('[filterable="false"],[searchable="false"]')
+    .not(":animated");
+  const index = visibleRows.index(urlCard);
+  const nextRow = visibleRows.eq(index + 1);
+  if (index >= 0 && nextRow.length > 0) return nextRow;
+  if (index > 0) return visibleRows.eq(index - 1);
+  if ($("#listURLs .urlRow").length === 1) return $("#noURLsEmptyState");
+  return $("#URLDeck");
+}
+
+/**
  * Removes a URL's card from the deck: drops it from the store, decrements the
  * visible/total count of every tag it carried, then detaches the card and
  * re-syncs the empty state / filtering.
@@ -180,10 +205,12 @@ export function removeURLCardFromDeck({
   urlCard,
   utubUrlID,
   animate,
+  onRemoved,
 }: {
   urlCard: JQuery;
   utubUrlID: number;
   animate: boolean;
+  onRemoved?: () => void;
 }): void {
   setState({
     urls: getState().urls.filter(
@@ -225,6 +252,7 @@ export function removeURLCardFromDeck({
     } else {
       updateTagFilteringOnURLOrURLTagDeletion();
     }
+    onRemoved?.();
   };
 
   if (animate) {

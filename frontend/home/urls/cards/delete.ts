@@ -4,10 +4,12 @@ import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
-import { emit } from "../../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
-import { removeURLCardFromDeck } from "./card-deck.js";
+import {
+  focusTargetAfterURLRowRemoval,
+  removeURLCardFromDeck,
+} from "./card-deck.js";
+import { showURLDeletedToast } from "./delete-undo.js";
 import { debug } from "../../../lib/debug.js";
 import { refreshTrashCount } from "../../trash/count.js";
 
@@ -15,70 +17,39 @@ const log = debug("urls:cards");
 
 type DeleteUrlResponse = SuccessResponse<"deleteUrl">;
 
-let _urlDeleteConfirmed: boolean = false;
+const _deletesInFlight = new Set<number>();
 
-// Hide confirmation modal for removal of the selected URL
-export function deleteURLHideModal(): void {
-  $("#confirmModal").modal("hide").removeClass("deleteUrlModal");
+/** True while any single-URL delete request is outstanding. */
+export function isURLDeleteInFlight(): boolean {
+  return _deletesInFlight.size > 0;
 }
 
-// Show confirmation modal for removal of the selected existing URL from current UTub
-export function deleteURLShowModal(
-  utubUrlID: number,
-  urlCard: JQuery,
-  utubID: number,
-): void {
-  _urlDeleteConfirmed = false;
-  emit({ event: UI_EVENTS.UI_URL_DELETE_OPEN });
+// Handles the request and response for moving an existing URL to Trash. Resolves
+// true once the URL was deleted, false on any failure or stale/duplicate attempt.
+export async function deleteURL({
+  utubUrlID,
+  urlCard,
+  utubID,
+  beforeFocus,
+}: {
+  utubUrlID: number;
+  urlCard: JQuery;
+  utubID: number;
+  beforeFocus?: (target: JQuery) => void;
+}): Promise<boolean> {
+  // A second DELETE for the same id would 404 into the error page.
+  if (_deletesInFlight.has(utubUrlID)) return false;
+  _deletesInFlight.add(utubUrlID);
+  // aria-disabled (not disabled) so the button keeps focus.
+  const deleteBtn = urlCard.find(".urlBtnDelete");
+  deleteBtn.attr("aria-disabled", "true");
 
-  const modalTitle = "Are you sure you want to delete this URL from the UTub?";
-  const modalText = `${APP_CONFIG.strings.DELETE_URL_WARNING}`;
-  const buttonTextDismiss = "Just kidding";
-  const buttonTextSubmit = "Delete URL";
-
-  $("#confirmModalTitle").text(modalTitle);
-  $("#confirmModalBody").text(modalText);
-
-  $("#modalDismiss")
-    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
-      event.preventDefault();
-      deleteURLHideModal();
-    })
-    .text(buttonTextDismiss);
-
-  $("#modalSubmit")
-    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
-      event.preventDefault();
-      _urlDeleteConfirmed = true;
-      emit({ event: UI_EVENTS.UI_URL_DELETE_CONFIRM });
-      deleteURL(utubUrlID, urlCard, utubID);
-    })
-    .text(buttonTextSubmit);
-
-  $("#confirmModal").offAndOnExact("hidden.bs.modal.urlDelete", function () {
-    if (!_urlDeleteConfirmed) {
-      emit({ event: UI_EVENTS.UI_URL_DELETE_CANCEL });
-    }
-  });
-
-  $("#modalSubmit").prop("disabled", false);
-  $("#confirmModal")
-    .addClass("deleteUrlModal")
-    .modal("show")
-    .offAndOn("hidden.bs.modal.deleteUrlCleanup", () => {
-      $("#confirmModal").removeClass("deleteUrlModal");
-    });
-  $("#modalRedirect").hide();
-  $("#modalRedirect").hideClass();
-}
-
-// Handles post request and response for removing an existing URL from current UTub, after confirmation
-async function deleteURL(
-  utubUrlID: number,
-  urlCard: JQuery,
-  utubID: number,
-): Promise<void> {
-  $("#modalSubmit").prop("disabled", true);
+  const settle = (): void => {
+    _deletesInFlight.delete(utubUrlID);
+  };
+  const reenable = (): void => {
+    deleteBtn.removeAttr("aria-disabled");
+  };
 
   try {
     log("deleteURL flow start — verifying URL still exists before delete", {
@@ -88,35 +59,64 @@ async function deleteURL(
     // Check for stale data
     await getUpdatedURL(utubID, utubUrlID, urlCard);
     // Extract data to submit in POST request
-    const deleteURL = APP_CONFIG.routes.deleteURL(utubID, utubUrlID);
+    const deleteURLRoute = APP_CONFIG.routes.deleteURL(utubID, utubUrlID);
 
-    const request = ajaxCall("delete", deleteURL, []);
+    const request = ajaxCall("delete", deleteURLRoute, []);
 
-    // Handle response
-    request.done(function (
-      response: DeleteUrlResponse,
-      _: JQuery.Ajax.SuccessTextStatus,
-      xhr: JQuery.jqXHR,
-    ) {
-      if (xhr.status === 200) {
-        deleteURLSuccess(response, urlCard);
-      }
-    });
+    return await new Promise<boolean>((resolve) => {
+      // Handle response
+      request.done(function (
+        response: DeleteUrlResponse,
+        _: JQuery.Ajax.SuccessTextStatus,
+        xhr: JQuery.jqXHR,
+      ) {
+        settle();
+        if (xhr.status === 200) {
+          try {
+            deleteURLSuccess({ response, urlCard, utubID, beforeFocus });
+          } catch (error) {
+            log("deleteURLSuccess threw", error);
+            reenable();
+            resolve(false);
+            return;
+          }
+          resolve(true);
+          return;
+        }
+        reenable();
+        resolve(false);
+      });
 
-    request.fail(function (xhr: JQuery.jqXHR) {
-      // Reroute to custom U4I 404 error page
-      deleteURLFail(xhr);
+      request.fail(function (xhr: JQuery.jqXHR) {
+        settle();
+        reenable();
+        // Reroute to custom U4I 404 error page
+        deleteURLFail(xhr);
+        resolve(false);
+      });
     });
   } catch (error) {
-    $("#modalSubmit").prop("disabled", false);
+    settle();
+    reenable();
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: false,
     });
+    return false;
   }
 }
 
 // Displays changes related to a successful removal of a URL
-function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
+function deleteURLSuccess({
+  response,
+  urlCard,
+  utubID,
+  beforeFocus,
+}: {
+  response: DeleteUrlResponse;
+  urlCard: JQuery;
+  utubID: number;
+  beforeFocus?: (target: JQuery) => void;
+}): void {
   log("deleteURLSuccess — removing card and decrementing tag counts", {
     utubUrlID: response.URL.utubUrlID,
     affectedTagCount: (urlCard.attr("data-utub-url-tag-ids") ?? "")
@@ -124,18 +124,37 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
       .filter(Boolean).length,
   });
   void refreshTrashCount();
-  // Close modal
-  $("#confirmModal").modal("hide");
+  const focusTarget = focusTargetAfterURLRowRemoval({ urlCard });
   removeURLCardFromDeck({
     urlCard,
     utubUrlID: response.URL.utubUrlID,
     animate: true,
+    onRemoved: () => {
+      // Only restore focus when the removed card held it (focus fell to body).
+      const active = document.activeElement;
+      const focusLost = active === null || active === document.body;
+      if (
+        focusTarget.length > 0 &&
+        document.contains(focusTarget[0]) &&
+        focusLost
+      ) {
+        beforeFocus?.(focusTarget);
+        focusTarget.trigger("focus");
+      }
+    },
+  });
+  // Shown after the removal is started: deselecting a card clears the banner.
+  showURLDeletedToast({
+    utubID,
+    deletedIDs: [response.URL.utubUrlID],
+    skippedCount: 0,
+    hiddenCount: 0,
+    returnFocusTo: focusTarget,
   });
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
 function deleteURLFail(xhr: JQuery.jqXHR): void {
-  $("#modalSubmit").prop("disabled", false);
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
 

@@ -6,7 +6,7 @@ import {
   _consumeSwipeClickSuppression,
   _resetURLSwipeGestureForTests,
 } from "../swipe.js";
-import { deleteURLShowModal } from "../delete.js";
+import { deleteURL } from "../delete.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { isMobile, isCoarsePointer } from "../../../mobile.js";
 import { setState, resetStore } from "../../../../store/app-store.js";
@@ -22,7 +22,9 @@ const { busHandlers, resetBus } = vi.hoisted(() => {
   };
 });
 
-vi.mock("../delete.js", () => ({ deleteURLShowModal: vi.fn() }));
+vi.mock("../delete.js", () => ({
+  deleteURL: vi.fn(() => Promise.resolve(true)),
+}));
 vi.mock("../../../../lib/event-bus.js", () => ({
   AppEvents: { MOBILE_DECK_SWITCHED: "mobile:deck-switched" },
   on: vi.fn((event: string, handler: (payload: unknown) => void) => {
@@ -185,7 +187,7 @@ describe("swipe gesture", () => {
     vi.mocked(isCoarsePointer).mockReturnValue(true);
   });
 
-  it("does not begin a swipe on a locked UTub: a past-threshold drag never opens the delete modal and adds no drag classes", () => {
+  it("does not begin a swipe on a locked UTub: a past-threshold drag never calls deleteURL and adds no drag classes", () => {
     setState({ isCurrentUTubLocked: true });
     const row = mountURLRow();
     const rowElement = row[0];
@@ -194,12 +196,12 @@ describe("swipe gesture", () => {
     dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
     dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
 
-    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(deleteURL).not.toHaveBeenCalled();
     expect(row.hasClass("swipe-dragging")).toBe(false);
     expect(row.hasClass("swipe-committed")).toBe(false);
   });
 
-  it("does not begin a swipe in multi-select mode: a past-threshold drag never opens the delete modal and adds no drag classes", () => {
+  it("does not begin a swipe in multi-select mode: a past-threshold drag never calls deleteURL and adds no drag classes", () => {
     setState({ multiSelectMode: true });
     const row = mountURLRow();
     const rowElement = row[0];
@@ -208,7 +210,7 @@ describe("swipe gesture", () => {
     dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
     dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
 
-    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(deleteURL).not.toHaveBeenCalled();
     expect(row.hasClass("swipe-dragging")).toBe(false);
     expect(row.hasClass("swipe-committed")).toBe(false);
   });
@@ -223,19 +225,19 @@ describe("swipe gesture", () => {
     expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
   });
 
-  it("a tap (pointerdown + pointerup with no move) does not call deleteURLShowModal or add drag classes", () => {
+  it("a tap (pointerdown + pointerup with no move) does not call deleteURL or add drag classes", () => {
     const row = mountURLRow();
     const rowElement = row[0];
 
     dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
     dispatchPointer({ target: rowElement, type: "pointerup", clientX: 100 });
 
-    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(deleteURL).not.toHaveBeenCalled();
     expect(row.hasClass("swipe-dragging")).toBe(false);
     expect(row.hasClass("swipe-committed")).toBe(false);
   });
 
-  it("a drag past the commit threshold calls deleteURLShowModal once with (utubUrlID, urlRow, utubID) and marks the row swipe-committed", () => {
+  it("a drag past the commit threshold calls deleteURL once with (utubUrlID, urlRow, utubID) and marks the row swipe-committed", () => {
     vi.useFakeTimers();
     try {
       const row = mountURLRow();
@@ -251,16 +253,80 @@ describe("swipe gesture", () => {
       dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
       dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
 
-      expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
-      const [calledUtubUrlID, calledUrlRow, calledUtubID] =
-        vi.mocked(deleteURLShowModal).mock.calls[0];
-      expect(calledUtubUrlID).toBe(UTUB_URL_ID);
-      expect(calledUrlRow).toBe(row);
-      expect(calledUtubID).toBe(UTUB_ID);
+      expect(deleteURL).toHaveBeenCalledTimes(1);
+      expect(deleteURL).toHaveBeenCalledWith({
+        utubUrlID: UTUB_URL_ID,
+        urlCard: row,
+        utubID: UTUB_ID,
+        beforeFocus: expect.any(Function),
+      });
       expect(row.hasClass("swipe-committed")).toBe(true);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("a failed delete (deleteURL resolves false) snaps the row back and returns focus with swipe-focus-return", async () => {
+    vi.mocked(deleteURL).mockResolvedValueOnce(false);
+    const row = mountURLRow();
+    const rowElement = row[0];
+    row.attr("tabindex", "-1");
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+    dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+    expect(row.hasClass("swipe-committed")).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(row.hasClass("swipe-committed")).toBe(false);
+    });
+    expect(row.hasClass("swipe-dragging")).toBe(false);
+    expect((row.find(".urlRowContent")[0] as HTMLElement).style.transform).toBe(
+      "",
+    );
+    expect(row.hasClass("swipe-focus-return")).toBe(true);
+    expect(document.activeElement).toBe(rowElement);
+
+    // The one-shot blur is re-armed by the failure path, so it clears the class.
+    row.trigger("blur");
+    expect(row.hasClass("swipe-focus-return")).toBe(false);
+  });
+
+  it("beforeFocus arms swipe-focus-return on a row target, and the one-shot blur removes it and the goToUrlIcon visible-on-focus", () => {
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+    dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+
+    const { beforeFocus } = vi.mocked(deleteURL).mock.calls[0][0];
+    const neighbour = $(URL_ROW_HTML);
+    $(document.body).append(neighbour);
+    neighbour.find(".goToUrlIcon").addClass("visible-on-focus");
+
+    beforeFocus?.(neighbour);
+    expect(neighbour.hasClass("swipe-focus-return")).toBe(true);
+
+    neighbour.trigger("blur");
+    expect(neighbour.hasClass("swipe-focus-return")).toBe(false);
+    expect(neighbour.find(".goToUrlIcon").hasClass("visible-on-focus")).toBe(
+      false,
+    );
+  });
+
+  it("beforeFocus does not arm the suppression on a non-row focus target", () => {
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+    dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+
+    const { beforeFocus } = vi.mocked(deleteURL).mock.calls[0][0];
+    const emptyState = $('<div id="noURLsEmptyState"></div>');
+    beforeFocus?.(emptyState);
+    expect(emptyState.hasClass("swipe-focus-return")).toBe(false);
   });
 
   it("a drag past the commit threshold arms swipe-click suppression, and consuming it is one-shot", () => {
@@ -284,7 +350,7 @@ describe("swipe gesture", () => {
     }
   });
 
-  it("a drag below the commit threshold does not call deleteURLShowModal and removes swipe-dragging on release (snap-back)", () => {
+  it("a drag below the commit threshold does not call deleteURL and removes swipe-dragging on release (snap-back)", () => {
     // Fake timers freeze performance.now() so velocity sampling is
     // deterministic (same-tick events => dt 0 => velocity stays 0), isolating
     // the distance-only threshold check.
@@ -303,7 +369,7 @@ describe("swipe gesture", () => {
       dispatchPointer({ target: rowElement, type: "pointermove", clientX: 85 });
       dispatchPointer({ target: rowElement, type: "pointerup", clientX: 85 });
 
-      expect(deleteURLShowModal).not.toHaveBeenCalled();
+      expect(deleteURL).not.toHaveBeenCalled();
       expect(row.hasClass("swipe-dragging")).toBe(false);
       expect(row.hasClass("swipe-committed")).toBe(false);
     } finally {
@@ -311,7 +377,7 @@ describe("swipe gesture", () => {
     }
   });
 
-  it("a rightward drag exceeding the threshold distance does not call deleteURLShowModal since only leftward movement can commit", () => {
+  it("a rightward drag exceeding the threshold distance does not call deleteURL since only leftward movement can commit", () => {
     vi.useFakeTimers();
     try {
       const row = mountURLRow();
@@ -333,7 +399,7 @@ describe("swipe gesture", () => {
       });
       dispatchPointer({ target: rowElement, type: "pointerup", clientX: 140 });
 
-      expect(deleteURLShowModal).not.toHaveBeenCalled();
+      expect(deleteURL).not.toHaveBeenCalled();
       expect(row.hasClass("swipe-committed")).toBe(false);
     } finally {
       vi.useRealTimers();
@@ -363,12 +429,13 @@ describe("swipe gesture", () => {
     dispatchPointer({ target: rowElement, type: "pointermove", clientX: 85 });
     dispatchPointer({ target: rowElement, type: "pointerup", clientX: 85 });
 
-    expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
-    const [calledUtubUrlID, calledUrlRow, calledUtubID] =
-      vi.mocked(deleteURLShowModal).mock.calls[0];
-    expect(calledUtubUrlID).toBe(UTUB_URL_ID);
-    expect(calledUrlRow).toBe(row);
-    expect(calledUtubID).toBe(UTUB_ID);
+    expect(deleteURL).toHaveBeenCalledTimes(1);
+    expect(deleteURL).toHaveBeenCalledWith({
+      utubUrlID: UTUB_URL_ID,
+      urlCard: row,
+      utubID: UTUB_ID,
+      beforeFocus: expect.any(Function),
+    });
     expect(row.hasClass("swipe-committed")).toBe(true);
   });
 
@@ -396,10 +463,10 @@ describe("swipe gesture", () => {
       "",
     );
     expect(row.hasClass("swipe-dragging")).toBe(false);
-    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(deleteURL).not.toHaveBeenCalled();
   });
 
-  it("pointercancel mid-drag resets state without calling deleteURLShowModal", () => {
+  it("pointercancel mid-drag resets state without calling deleteURL", () => {
     const row = mountURLRow();
     const rowElement = row[0];
 
@@ -409,7 +476,7 @@ describe("swipe gesture", () => {
 
     dispatchPointer({ target: rowElement, type: "pointercancel", clientX: 50 });
 
-    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(deleteURL).not.toHaveBeenCalled();
     expect(row.hasClass("swipe-dragging")).toBe(false);
     expect(row.hasClass("swipe-committed")).toBe(false);
     expect((row.find(".urlRowContent")[0] as HTMLElement).style.transform).toBe(
@@ -470,7 +537,7 @@ describe("swipe gesture", () => {
         pointerId: 2,
       });
 
-      expect(deleteURLShowModal).not.toHaveBeenCalled();
+      expect(deleteURL).not.toHaveBeenCalled();
       expect(
         (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
       ).toBe("translateX(-30px)");
@@ -485,7 +552,7 @@ describe("swipe gesture", () => {
         pointerId: 1,
       });
 
-      expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
+      expect(deleteURL).toHaveBeenCalledTimes(1);
       expect(row.hasClass("swipe-committed")).toBe(true);
     } finally {
       vi.useRealTimers();
@@ -515,7 +582,7 @@ describe("swipe gesture", () => {
         (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
       ).toBe("");
       expect(row.hasClass("swipe-dragging")).toBe(false);
-      expect(deleteURLShowModal).not.toHaveBeenCalled();
+      expect(deleteURL).not.toHaveBeenCalled();
     },
   );
 
@@ -542,7 +609,7 @@ describe("swipe gesture", () => {
       pointerType: "mouse",
     });
 
-    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(deleteURL).not.toHaveBeenCalled();
     expect(row.hasClass("swipe-dragging")).toBe(false);
   });
 
@@ -558,75 +625,7 @@ describe("swipe gesture", () => {
       "",
     );
     expect(row.hasClass("swipe-dragging")).toBe(false);
-    expect(deleteURLShowModal).not.toHaveBeenCalled();
-  });
-
-  describe("swipe-focus-return suppresses the visual focus ring on programmatic focus-return", () => {
-    // #confirmModal must exist before the commit's pointerup fires, since the
-    // modal-hidden listener is bound (not delegated) to the element(s)
-    // matched by $(CONFIRM_MODAL_SELECTOR) at that moment.
-    function mountConfirmModal(): JQuery {
-      const modal = $('<div id="confirmModal"></div>');
-      $(document.body).append(modal);
-      return modal;
-    }
-
-    function commitSwipe(rowElement: HTMLElement): void {
-      dispatchPointer({
-        target: rowElement,
-        type: "pointerdown",
-        clientX: 100,
-      });
-      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
-      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
-    }
-
-    it("adds swipe-focus-return to the row immediately after a committed swipe, before the modal-hidden event fires", () => {
-      mountConfirmModal();
-      const row = mountURLRow();
-
-      commitSwipe(row[0]);
-
-      expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
-      expect(row.hasClass("swipe-focus-return")).toBe(true);
-    });
-
-    it("keeps swipe-focus-return present after the modal-hidden event fires and focus is re-triggered", () => {
-      const modal = mountConfirmModal();
-      const row = mountURLRow();
-
-      commitSwipe(row[0]);
-      modal.trigger("hidden.bs.modal");
-
-      expect(row.hasClass("swipe-focus-return")).toBe(true);
-    });
-
-    it("removes swipe-focus-return once the row is genuinely blurred", () => {
-      mountConfirmModal();
-      const row = mountURLRow();
-
-      commitSwipe(row[0]);
-      expect(row.hasClass("swipe-focus-return")).toBe(true);
-
-      row.trigger("blur");
-
-      expect(row.hasClass("swipe-focus-return")).toBe(false);
-    });
-
-    it("re-arms the blur listener on modal-hidden so a second blur removes swipe-focus-return again", () => {
-      const modal = mountConfirmModal();
-      const row = mountURLRow();
-
-      commitSwipe(row[0]);
-      row.trigger("blur");
-      expect(row.hasClass("swipe-focus-return")).toBe(false);
-
-      modal.trigger("hidden.bs.modal");
-      expect(row.hasClass("swipe-focus-return")).toBe(true);
-
-      row.trigger("blur");
-      expect(row.hasClass("swipe-focus-return")).toBe(false);
-    });
+    expect(deleteURL).not.toHaveBeenCalled();
   });
 
   describe("triggerURLSwipeNudgeIfEligible", () => {
@@ -766,36 +765,6 @@ describe("swipe gesture", () => {
   });
 
   describe("deck-switch hardening (MOBILE_DECK_SWITCHED)", () => {
-    // A committed swipe opens #confirmModal via the real _endDrag flow; the
-    // modal-hidden namespace listener needs the element present at commit time.
-    function mountConfirmModal(): JQuery {
-      const modal = $('<div id="confirmModal"></div>');
-      $(document.body).append(modal);
-      return modal;
-    }
-
-    function trackModalHide(): ReturnType<typeof vi.fn> {
-      const modalSpy = vi.fn();
-      ($.fn as unknown as Record<string, unknown>).modal = function (
-        this: JQuery,
-        action: unknown,
-      ) {
-        if (action === "hide") modalSpy();
-        return this;
-      };
-      return modalSpy;
-    }
-
-    function commitSwipe(rowElement: HTMLElement): void {
-      dispatchPointer({
-        target: rowElement,
-        type: "pointerdown",
-        clientX: 100,
-      });
-      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
-      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
-    }
-
     it("resetSwipeStateOnDeckSwitch clears an in-flight drag: transform/classes cleared and drag state nulled", () => {
       const row = mountURLRow();
       const rowElement = row[0];
@@ -845,33 +814,6 @@ describe("swipe gesture", () => {
       expect(
         (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
       ).toBe("");
-    });
-
-    it("initSwipe: a MOBILE_DECK_SWITCHED emit dismisses #confirmModal when this swipe opened it", () => {
-      mountConfirmModal();
-      const modalSpy = trackModalHide();
-      initSwipe();
-      const row = mountURLRow();
-
-      commitSwipe(row[0]);
-      expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
-      modalSpy.mockClear();
-
-      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
-
-      expect(modalSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it("initSwipe: a MOBILE_DECK_SWITCHED emit leaves an unrelated #confirmModal (opened by another flow) alone", () => {
-      mountConfirmModal();
-      const modalSpy = trackModalHide();
-      initSwipe();
-      // No swipe committed, so _confirmModalOpenedBySwipe stays false — the modal
-      // is treated as belonging to another flow (e.g. UTub-delete confirm).
-
-      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "member-deck" });
-
-      expect(modalSpy).not.toHaveBeenCalled();
     });
 
     it("initSwipe registers the MOBILE_DECK_SWITCHED listener exactly once (idempotent on repeated calls)", () => {

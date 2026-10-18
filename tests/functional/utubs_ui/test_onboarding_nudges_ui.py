@@ -41,9 +41,7 @@ from tests.functional.playwright_utils import (
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_hidden,
-    wait_until_visible_css_selector,
 )
 from tests.functional.urls_ui.playwright_utils import create_url
 from tests.functional.utubs_ui.playwright_utils import (
@@ -506,8 +504,8 @@ def test_add_url_nudge_rearms_after_deleting_last_url(
     )
 
     # Delete the last URL via the desktop delete-URL flow (mirrors
-    # test_delete_url_ui.py rhythm): select the row, open the confirm modal, gate
-    # the submit on the fade-in settling, submit, then wait for the row to go.
+    # test_delete_url_ui.py rhythm): select the row, click delete (no confirmation),
+    # then wait for the row to go.
     url_row_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_id}']"
     wait_then_click_element(page=page, css_selector=url_row_selector)
     wait_for_animation_to_end_check_top_lhs_corner(
@@ -516,15 +514,6 @@ def test_add_url_nudge_rearms_after_deleting_last_url(
     wait_then_click_element(
         page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}"
     )
-    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_selector_to_be_removed(page=page, css_selector=url_row_selector)
 
     # Deleting the last URL emitted URL_DECK_CHANGED from the single-delete store

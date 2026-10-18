@@ -24,7 +24,11 @@ import {
   updateTagFilteringOnURLOrURLTagDeletion,
   updateURLsAndTagSubheaderWhenTagSelected,
 } from "../filtering.js";
-import { insertURLCardIntoDeck, removeURLCardFromDeck } from "../card-deck.js";
+import {
+  focusTargetAfterURLRowRemoval,
+  insertURLCardIntoDeck,
+  removeURLCardFromDeck,
+} from "../card-deck.js";
 
 // Partial mock: keep the real AppEvents enum but spy `emit` so the
 // URL_DECK_CHANGED notification can be asserted without a bus subscriber.
@@ -250,6 +254,19 @@ describe("insertURLCardIntoDeck", () => {
     expect(selectURLCard).toHaveBeenCalledWith(newUrlCard);
   });
 
+  it("does not select the new card when select is false", () => {
+    insertURLCardIntoDeck({
+      newUrl: buildUrlItem(NEW_URL_ID),
+      utubID: 1,
+      appliedTags: [],
+      announce: true,
+      select: false,
+    });
+
+    expect($(`.urlRow[utuburlid=${NEW_URL_ID}]`)).toHaveLength(1);
+    expect(selectURLCard).not.toHaveBeenCalled();
+  });
+
   it("leaves selection untouched when a tag filter is active", () => {
     vi.mocked(isATagSelected).mockReturnValue(true);
 
@@ -456,6 +473,26 @@ describe("removeURLCardFromDeck", () => {
     ).toBe("3 / 5");
   });
 
+  it("calls onRemoved after the card is detached, once the fade completes", () => {
+    $.fx.off = true;
+    const order: string[] = [];
+    const urlCard = getUrlCard(10);
+    const onRemoved = vi.fn(() => {
+      order.push(`removed:${getDeckOrder().join(",")}`);
+    });
+
+    removeURLCardFromDeck({
+      urlCard,
+      utubUrlID: 10,
+      animate: true,
+      onRemoved,
+    });
+    $.fx.off = false;
+
+    expect(onRemoved).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(["removed:11"]);
+  });
+
   it("leaves the other URLs in the store when the id is not present", () => {
     removeURLCardFromDeck({
       urlCard: getUrlCard(10),
@@ -466,5 +503,89 @@ describe("removeURLCardFromDeck", () => {
     expect(setState).toHaveBeenCalledWith({
       urls: [buildUrlItem(10), buildUrlItem(11)],
     });
+  });
+});
+
+describe("focusTargetAfterURLRowRemoval", () => {
+  function buildDeck(rowsHtml: string): void {
+    document.body.innerHTML = `
+      <div id="URLDeck" tabindex="-1">
+        <div id="noURLsEmptyState" class="hidden" tabindex="-1"></div>
+        <div id="listURLs">
+          <div id="createURLWrap"></div>
+          ${rowsHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  function row(id: number, attrs = ""): string {
+    return `<div class="urlRow" utuburlid="${id}" ${attrs}></div>`;
+  }
+
+  function targetFor(utubUrlID: number): JQuery {
+    return focusTargetAfterURLRowRemoval({
+      urlCard: $(`.urlRow[utuburlid=${utubUrlID}]`),
+    });
+  }
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("picks the next visible row", () => {
+    buildDeck(row(1) + row(2) + row(3));
+
+    expect(targetFor(2).attr("utuburlid")).toBe("3");
+  });
+
+  it("picks the previous row when the removed row is last", () => {
+    buildDeck(row(1) + row(2) + row(3));
+
+    expect(targetFor(3).attr("utuburlid")).toBe("2");
+  });
+
+  it("skips rows hidden by the tag filter or search", () => {
+    buildDeck(
+      row(1) +
+        row(2) +
+        row(3, 'filterable="false"') +
+        row(4, 'searchable="false"') +
+        row(5),
+    );
+
+    expect(targetFor(2).attr("utuburlid")).toBe("5");
+    expect(targetFor(5).attr("utuburlid")).toBe("2");
+  });
+
+  it("returns the empty state when the removed row is the only one", () => {
+    buildDeck(row(1));
+
+    expect(targetFor(1).attr("id")).toBe("noURLsEmptyState");
+  });
+
+  it("returns the deck when every remaining row is hidden", () => {
+    buildDeck(row(1) + row(2, 'filterable="false"'));
+
+    expect(targetFor(1).attr("id")).toBe("URLDeck");
+  });
+
+  it("returns the deck when the removed row is itself hidden", () => {
+    buildDeck(row(1) + row(2, 'filterable="false"') + row(3));
+
+    expect(targetFor(2).attr("id")).toBe("URLDeck");
+  });
+
+  it("skips a row still fading out from a previous delete", () => {
+    buildDeck(row(1) + row(2) + row(3));
+    $.fx.off = false;
+    const fadingRow = $(".urlRow[utuburlid=2]");
+    fadingRow.animate({ opacity: 0.5 }, 10000);
+
+    try {
+      expect(targetFor(1).attr("utuburlid")).toBe("3");
+    } finally {
+      fadingRow.stop(true);
+    }
   });
 });

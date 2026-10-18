@@ -15,6 +15,7 @@ from backend.extensions.url_validation.constants import (
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DeviceType
 from backend.utils.constants import generate_constants_js, generate_strings_js
+from backend.utils.strings import url_strs
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.trash_strs import TRASH_UI
 
@@ -197,6 +198,36 @@ def test_generate_strings_js_includes_trash_ui_strings():
         assert "{n}" in strings[plural_key]
         assert "{n}" not in strings[f"{plural_key}_ONE"]
         assert "1" in strings[f"{plural_key}_ONE"]
+
+
+def test_generate_strings_js_includes_delete_undo_strings():
+    """The delete Undo toast is built in TS, so each of its strings is bridged unchanged."""
+    strings = generate_strings_js()
+    expected = {
+        "URL_MOVED_TO_TRASH": url_strs.URL_MOVED_TO_TRASH,
+        "URL_MOVED_TO_TRASH_ONE": url_strs.URL_MOVED_TO_TRASH_ONE,
+        "URL_DELETE_HIDDEN_DETAIL": url_strs.URL_DELETE_HIDDEN_DETAIL,
+        "URL_DELETE_HIDDEN_DETAIL_ONE": url_strs.URL_DELETE_HIDDEN_DETAIL_ONE,
+        "URL_UNDO_RESTORED": url_strs.URL_UNDO_RESTORED,
+        "URL_UNDO_RESTORED_SOME": url_strs.URL_UNDO_RESTORED_SOME,
+        "URL_UNDO_LOST_TAGS": url_strs.URL_UNDO_LOST_TAGS,
+        "URL_UNDO_LOST_TAGS_ONE": url_strs.URL_UNDO_LOST_TAGS_ONE,
+        "URL_UNDO_NOT_IN_TRASH": url_strs.URL_UNDO_NOT_IN_TRASH,
+        "URL_UNDO_NOT_IN_TRASH_ONE": url_strs.URL_UNDO_NOT_IN_TRASH_ONE,
+        "URL_UNDO_DESTINATION_REQUIRED": url_strs.URL_UNDO_DESTINATION_REQUIRED,
+        "URL_UNDO_DESTINATION_REQUIRED_ONE": url_strs.URL_UNDO_DESTINATION_REQUIRED_ONE,
+        "URL_UNDO_DELETE_ARIA": url_strs.URL_UNDO_DELETE_ARIA,
+        "URL_UNDO_DELETE_ARIA_ONE": url_strs.URL_UNDO_DELETE_ARIA_ONE,
+    }
+    assert len(expected) == 14
+    for key, value in expected.items():
+        assert key in strings, f"generate_strings_js() is missing {key}"
+        assert strings[key] == value
+
+    assert "{n}" in strings["URL_MOVED_TO_TRASH"]
+    assert "{n}" not in strings["URL_MOVED_TO_TRASH_ONE"]
+    assert "{restored}" in strings["URL_UNDO_RESTORED_SOME"]
+    assert "{total}" in strings["URL_UNDO_RESTORED_SOME"]
 
 
 def test_generate_constants_js_device_type_shape():

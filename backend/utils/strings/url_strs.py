@@ -22,7 +22,6 @@ URL_OR_TITLE_MODIFIED = "URL and/or URL title modified."
 URL_MODIFIED = "URL modified."
 URL_FOUND_IN_UTUB = "URL found in UTub."
 TAG_IN_UTUB = "tagInUTub"
-DELETE_URL_WARNING = "You can always add it back again!"
 COPY_URL_TOOLTIP = "Copy URL"
 COPIED_URL_TOOLTIP = "Copied!"
 COPIED_URL_FAILURE_TOOLIP = "Copy failed!"
@@ -81,37 +80,18 @@ URL_BULK_COPY_ARIA = "Copy {n} selected URLs to…"
 URL_BULK_COPY_FILTER_PLACEHOLDER = "Filter UTubs…"
 URL_BULK_COPY_NO_MATCHES = "No UTubs match your filter."
 
-# Bulk delete-from-UTub confirm + banner + per-card cue strings — read by
-# bulk-actions/bulk-delete.ts. The confirm reuses the shared #confirmModal; the
-# result banner + card cue reuse the shared .bulkTagBanner / .bulkCardResultCue
-# styling. Every banner/cue string is count-only (XSS-safe): a URL title is never
-# interpolated. Singular vs plural forms are selected in TS by the relevant count.
+# Bulk delete-from-UTub label/skip/cue strings - read by bulk-delete.ts,
+# cards/delete-undo.ts and trash/actions.ts; deletion is immediate with an undo
+# toast (no confirm modal). Every banner/cue string is count-only (XSS-safe): a
+# URL title is never interpolated. Singular vs plural forms are selected in TS by
+# the relevant count.
 URL_BULK_DELETE_LABEL = "Delete"
 URL_BULK_DELETE_DISABLED_REASON = (
     "You can delete only URLs you added, or any URL in a UTub you created."
 )
-URL_BULK_DELETE_CONFIRM_TITLE = "Delete {n} URLs from this UTub?"
-URL_BULK_DELETE_CONFIRM_TITLE_ONE = "Delete 1 URL from this UTub?"
-URL_BULK_DELETE_CONFIRM_BODY = "This removes them from this UTub for everyone."
-URL_BULK_DELETE_HIDDEN_WARNING = (
-    "{n} selected URLs are hidden by your filter and will still be deleted."
-)
-URL_BULK_DELETE_HIDDEN_WARNING_ONE = (
-    "1 selected URL is hidden by your filter and will still be deleted."
-)
-URL_BULK_DELETE_SKIPPED_WARNING = (
-    "{n} selected URLs were added by another member and will be skipped."
-)
-URL_BULK_DELETE_SKIPPED_WARNING_ONE = (
-    "1 selected URL was added by another member and will be skipped."
-)
-URL_BULK_DELETE_SUBMIT = "Delete {n} URLs"
-URL_BULK_DELETE_SUBMIT_ONE = "Delete 1 URL"
 URL_BULK_DELETE_CANCEL = "Just kidding"
-URL_BULK_DELETED = "Deleted {n} URLs."
-URL_BULK_DELETED_ONE = "Deleted 1 URL."
-# Partial-outcome suffix appended after the deleted-count clause when some
-# selected URLs were skipped (not deletable by this user).
+# The toast's skipped-detail line (rendered by showURLDeletedToast in
+# delete-undo.ts) when some selected URLs were skipped (not deletable by this user).
 URL_BULK_DELETE_SKIPPED_SUFFIX = "{n} skipped because you can't delete them."
 URL_BULK_DELETE_SKIPPED_SUFFIX_ONE = "1 skipped because you can't delete it."
 # Shown when nothing was deleted (every selected URL was skipped as non-deletable).
@@ -173,6 +153,25 @@ URL_TRIM_SAVED_BANNER_ONE = "Saved without 1 parameter."
 URL_REVIVED_FROM_TRASH = "Restored from trash."
 URL_REVIVED_LOST_TAGS = "Restored from trash. {n} tags no longer exist."
 URL_REVIVED_LOST_TAGS_ONE = "Restored from trash. 1 tag no longer exists."
+# Delete undo toast (single/bulk/swipe URL delete moves to Trash, one-request Undo).
+URL_MOVED_TO_TRASH = "Moved {n} URLs to Trash."
+URL_MOVED_TO_TRASH_ONE = "Moved 1 URL to Trash."
+URL_DELETE_HIDDEN_DETAIL = "Includes {n} URLs hidden by your filters."
+URL_DELETE_HIDDEN_DETAIL_ONE = "Includes 1 URL hidden by your filters."
+URL_UNDO_RESTORED = "Restored {n} URLs from trash."
+URL_UNDO_RESTORED_SOME = "Restored {restored} of {total} URLs from trash."
+URL_UNDO_LOST_TAGS = "{n} tags no longer exist."
+URL_UNDO_LOST_TAGS_ONE = "1 tag no longer exists."
+URL_UNDO_NOT_IN_TRASH = "{n} are no longer in Trash."
+URL_UNDO_NOT_IN_TRASH_ONE = "1 is no longer in Trash."
+URL_UNDO_DESTINATION_REQUIRED = (
+    "{n} are still in Trash — pick a destination in the Trash panel."
+)
+URL_UNDO_DESTINATION_REQUIRED_ONE = (
+    "1 is still in Trash — pick a destination in the Trash panel."
+)
+URL_UNDO_DELETE_ARIA = "Undo delete of {n} URLs"
+URL_UNDO_DELETE_ARIA_ONE = "Undo delete of 1 URL"
 # Mobile edit panel: saves the URL field (same as its green check) while the trim
 # section is open, so the trimmed result has an obvious save control by Close.
 URL_TRIM_SAVE_URL = "Save URL"
@@ -237,22 +236,25 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_BULK_COPY_NO_MATCHES = URL_BULK_COPY_NO_MATCHES
     URL_BULK_DELETE_LABEL = URL_BULK_DELETE_LABEL
     URL_BULK_DELETE_DISABLED_REASON = URL_BULK_DELETE_DISABLED_REASON
-    URL_BULK_DELETE_CONFIRM_TITLE = URL_BULK_DELETE_CONFIRM_TITLE
-    URL_BULK_DELETE_CONFIRM_TITLE_ONE = URL_BULK_DELETE_CONFIRM_TITLE_ONE
-    URL_BULK_DELETE_CONFIRM_BODY = URL_BULK_DELETE_CONFIRM_BODY
-    URL_BULK_DELETE_HIDDEN_WARNING = URL_BULK_DELETE_HIDDEN_WARNING
-    URL_BULK_DELETE_HIDDEN_WARNING_ONE = URL_BULK_DELETE_HIDDEN_WARNING_ONE
-    URL_BULK_DELETE_SKIPPED_WARNING = URL_BULK_DELETE_SKIPPED_WARNING
-    URL_BULK_DELETE_SKIPPED_WARNING_ONE = URL_BULK_DELETE_SKIPPED_WARNING_ONE
-    URL_BULK_DELETE_SUBMIT = URL_BULK_DELETE_SUBMIT
-    URL_BULK_DELETE_SUBMIT_ONE = URL_BULK_DELETE_SUBMIT_ONE
     URL_BULK_DELETE_CANCEL = URL_BULK_DELETE_CANCEL
-    URL_BULK_DELETED = URL_BULK_DELETED
-    URL_BULK_DELETED_ONE = URL_BULK_DELETED_ONE
     URL_BULK_DELETE_SKIPPED_SUFFIX = URL_BULK_DELETE_SKIPPED_SUFFIX
     URL_BULK_DELETE_SKIPPED_SUFFIX_ONE = URL_BULK_DELETE_SKIPPED_SUFFIX_ONE
     URL_BULK_DELETE_NONE = URL_BULK_DELETE_NONE
     URL_BULK_CARD_CANT_DELETE = URL_BULK_CARD_CANT_DELETE
+    URL_MOVED_TO_TRASH = URL_MOVED_TO_TRASH
+    URL_MOVED_TO_TRASH_ONE = URL_MOVED_TO_TRASH_ONE
+    URL_DELETE_HIDDEN_DETAIL = URL_DELETE_HIDDEN_DETAIL
+    URL_DELETE_HIDDEN_DETAIL_ONE = URL_DELETE_HIDDEN_DETAIL_ONE
+    URL_UNDO_RESTORED = URL_UNDO_RESTORED
+    URL_UNDO_RESTORED_SOME = URL_UNDO_RESTORED_SOME
+    URL_UNDO_LOST_TAGS = URL_UNDO_LOST_TAGS
+    URL_UNDO_LOST_TAGS_ONE = URL_UNDO_LOST_TAGS_ONE
+    URL_UNDO_NOT_IN_TRASH = URL_UNDO_NOT_IN_TRASH
+    URL_UNDO_NOT_IN_TRASH_ONE = URL_UNDO_NOT_IN_TRASH_ONE
+    URL_UNDO_DESTINATION_REQUIRED = URL_UNDO_DESTINATION_REQUIRED
+    URL_UNDO_DESTINATION_REQUIRED_ONE = URL_UNDO_DESTINATION_REQUIRED_ONE
+    URL_UNDO_DELETE_ARIA = URL_UNDO_DELETE_ARIA
+    URL_UNDO_DELETE_ARIA_ONE = URL_UNDO_DELETE_ARIA_ONE
 
 
 # Short hint text shown beside a scheme in the URL scheme selector (keys must be whitelisted schemes)

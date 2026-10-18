@@ -1,6 +1,6 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
-import { deleteURLShowModal } from "../delete.js";
+import { deleteURL } from "../delete.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
 export function createDeleteURLIcon(): JQuery<SVGSVGElement> {
@@ -60,7 +60,7 @@ export function createDeleteURLBtn(
     })
     .disableTab()
     .onExact("click", function () {
-      deleteURLShowModal(url.utubUrlID, urlCard, utubID);
+      void deleteURL({ utubUrlID: url.utubUrlID, urlCard, utubID });
     })
     .append(createDeleteURLIcon());
 

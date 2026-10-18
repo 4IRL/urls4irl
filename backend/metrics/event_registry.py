@@ -411,18 +411,6 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="URL string edit form opened",
         category=EventCategory.UI,
     ),
-    EventName.UI_URL_DELETE_OPEN: EventRegistryEntry(
-        description="URL delete-confirm modal opened",
-        category=EventCategory.UI,
-    ),
-    EventName.UI_URL_DELETE_CONFIRM: EventRegistryEntry(
-        description="URL delete confirmed",
-        category=EventCategory.UI,
-    ),
-    EventName.UI_URL_DELETE_CANCEL: EventRegistryEntry(
-        description="URL delete-confirm modal dismissed",
-        category=EventCategory.UI,
-    ),
     EventName.UI_URL_COPY: EventRegistryEntry(
         description="URL copied to clipboard",
         category=EventCategory.UI,
@@ -446,6 +434,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     ),
     EventName.UI_URL_EDIT_UNDONE: EventRegistryEntry(
         description="Undo used on the banner after saving a URL-string edit",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_URL_DELETE_UNDONE: EventRegistryEntry(
+        description="URL delete undone from the undo toast",
         category=EventCategory.UI,
     ),
     EventName.UI_UTUB_SEARCH_OPEN: EventRegistryEntry(

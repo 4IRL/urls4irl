@@ -27,6 +27,11 @@ import { isAnyBulkPickerOpen } from "../urls/bulk-actions/picker-guard.js";
 import { isBulkCopySubmitInFlight } from "../urls/bulk-actions/bulk-copy.js";
 import { isBulkDeleteSubmitInFlight } from "../urls/bulk-actions/bulk-delete.js";
 import { isBulkTagSubmitInFlight } from "../urls/bulk-actions/bulk-tag.js";
+import { isURLDeleteInFlight } from "../urls/cards/delete.js";
+import {
+  isURLDeleteToastShowing,
+  isURLDeleteUndoInFlight,
+} from "../urls/cards/delete-undo.js";
 import { isURLStringSubmitInFlight } from "../urls/cards/update-string.js";
 import { isURLTitleSubmitInFlight } from "../urls/cards/update-title.js";
 import { isUTubDescriptionSubmitInFlight } from "../urls/update-description.js";
@@ -83,6 +88,9 @@ export function isUserBusyOnHome(): boolean {
     isUTubDescriptionSubmitInFlight() ||
     isBulkTagSubmitInFlight() ||
     isBulkDeleteSubmitInFlight() ||
+    isURLDeleteInFlight() ||
+    isURLDeleteUndoInFlight() ||
+    isURLDeleteToastShowing() ||
     isBulkCopySubmitInFlight() ||
     isCrossUtubSearchActive()
   );

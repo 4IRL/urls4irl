@@ -7,20 +7,27 @@ from flask.testing import FlaskCliRunner
 from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
+from backend.models.urls import Urls
 from backend.models.users import Users
 from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.utils.constants import STRINGS
+from backend.utils.strings.trash_strs import TRASH_UI
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from backend.utils.strings.url_strs import DELETE_URL_WARNING
+from backend.utils.strings.url_strs import (
+    URL_MOVED_TO_TRASH_ONE,
+    URL_REVIVED_FROM_TRASH,
+    URL_REVIVED_LOST_TAGS_ONE,
+)
 from tests.functional.db_utils import (
     add_mock_urls,
     get_url_in_utub,
     get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.locators import TrashPanelLocators as TrashPL
 from tests.functional.playwright_assert_utils import (
     assert_active_utub,
-    assert_elem_with_url_string_exists,
     assert_login_with_username,
     assert_on_429_page,
     assert_tooltip_animates,
@@ -28,28 +35,53 @@ from tests.functional.playwright_assert_utils import (
 )
 from tests.functional.playwright_login_utils import (
     login_user_select_utub_by_id_and_url_by_id,
+    login_user_select_utub_by_name_and_url_by_string,
 )
 from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
-    dismiss_modal_with_click_out,
     force_next_delete_ajax_failure_no_navigate,
     get_num_url_rows,
     invalidate_csrf_token_on_page,
-    wait_for_animation_to_end_check_top_lhs_corner,
+    select_utub_by_id,
     wait_for_element_to_be_removed,
-    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
-    wait_until_visible_css_selector,
+)
+from tests.functional.trash_ui.db_utils import (
+    add_tag_to_url,
+    delete_utub_tag,
+    purge_utub_url_row,
 )
 from tests.functional.urls_ui.playwright_login_utils import (
-    login_select_utub_select_url_click_delete_get_modal_url,
+    click_delete_on_selected_url,
+    click_delete_on_selected_url_and_wait_for_toast,
+    login_select_utub_select_url_click_delete,
 )
 
 pytestmark = pytest.mark.urls_ui
+
+
+def _get_trash_count(*, page: Page) -> int:
+    text = page.locator(TrashPL.SELECTOR_COUNT).inner_text()
+    return int(text.strip("()"))
+
+
+def _get_deck_url_ids(*, page: Page) -> list[str]:
+    return page.eval_on_selector_all(
+        HPL.ROWS_URLS, "rows => rows.map(row => row.getAttribute('utuburlid'))"
+    )
+
+
+def _get_utub_url_id(*, app: Flask, utub_name: str, url_string: str) -> int:
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.name == utub_name).first()
+        url: Urls = Urls.query.filter(Urls.url_string == url_string).first()
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url.id
+        ).first()
+        return utub_url.id
 
 
 def test_delete_url_tooltip_animates(
@@ -88,76 +120,22 @@ def test_delete_url_tooltip_animates(
     )
 
 
-def test_delete_url_submit(page: Page, create_test_urls, provide_app: Flask):
+def test_delete_url_moves_to_trash_and_shows_undo_toast(
+    page: Page, create_test_urls, provide_app: Flask
+):
     """
-    Tests user's ability to delete a URL
+    Tests user's ability to delete a URL without a confirmation step
 
     GIVEN a user, selected UTub and selected URL
-    WHEN deleteURL button is selected and confirmation modal confirmed
-    THEN ensure the URL is deleted from the UTub
+    WHEN the deleteURL button is clicked
+    THEN the URL leaves the deck at once, no confirm modal appears, the undo toast
+        reports it, focus moves to the next row and the Trash count goes up
     """
     user_id_for_test = 1
 
-    delete_modal, url_elem_to_delete = (
-        login_select_utub_select_url_click_delete_get_modal_url(
-            page=page,
-            app=provide_app,
-            user_id=user_id_for_test,
-            utub_name=UTS.TEST_UTUB_NAME_1,
-            url_string=UTS.TEST_URL_STRING_CREATE,
-        )
-    )
-
-    css_selector = f'{HPL.URL_STRING_READ}[href="{UTS.TEST_URL_STRING_CREATE}"]'
-    expect(page.locator(css_selector).first).to_be_attached()
-
-    init_num_url_rows = get_num_url_rows(page=page)
-
-    confirmation_modal_body_text = delete_modal.inner_text()
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == DELETE_URL_WARNING
-
-    # The confirmation modal fades in via a Bootstrap transition. Clicking
-    # submit while that fade-in is still running causes Bootstrap to drop the
-    # subsequent modal("hide") call (it ignores hide requests mid-transition),
-    # so the modal never becomes hidden. Gate the click on the fade-in being
-    # fully settled (opacity == 1) so the later hide is honored deterministically.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
-
-    # Assert submit button is disabled immediately after click to prevent double-submit
-    modal_submit_btn = page.locator(HPL.BUTTON_MODAL_SUBMIT).first
-    expect(modal_submit_btn).to_be_disabled()
-
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
-
-    # Wait for animation to complete
-    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
-
-    # Assert URL no longer exists in UTub
-    expect(page.locator(css_selector)).to_have_count(0)
-    assert init_num_url_rows - 1 == get_num_url_rows(page=page)
-
-
-def test_delete_url_rate_limits(page: Page, create_test_urls, provide_app: Flask):
-    """
-    Tests user's ability to delete a URL when they are rate limited
-
-    GIVEN a user, selected UTub and selected URL and they are rate limited
-    WHEN deleteURL button is selected and confirmation modal confirmed
-    THEN ensure the 429 error page is shown
-    """
-    user_id_for_test = 1
-
-    delete_modal, _ = login_select_utub_select_url_click_delete_get_modal_url(
-        page=page,
+    login_user_select_utub_by_name_and_url_by_string(
         app=provide_app,
+        page=page,
         user_id=user_id_for_test,
         utub_name=UTS.TEST_UTUB_NAME_1,
         url_string=UTS.TEST_URL_STRING_CREATE,
@@ -166,177 +144,141 @@ def test_delete_url_rate_limits(page: Page, create_test_urls, provide_app: Flask
     css_selector = f'{HPL.URL_STRING_READ}[href="{UTS.TEST_URL_STRING_CREATE}"]'
     expect(page.locator(css_selector).first).to_be_attached()
 
-    confirmation_modal_body_text = delete_modal.inner_text()
+    init_num_url_rows = get_num_url_rows(page=page)
+    init_trash_count = _get_trash_count(page=page)
+    deck_ids = _get_deck_url_ids(page=page)
+    deleted_id = page.locator(HPL.ROW_SELECTED_URL).first.get_attribute("utuburlid")
+    assert deleted_id is not None
+    deleted_index = deck_ids.index(deleted_id)
+    expected_focus_id = (
+        deck_ids[deleted_index + 1]
+        if deleted_index + 1 < len(deck_ids)
+        else deck_ids[deleted_index - 1]
+    )
 
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == DELETE_URL_WARNING
+    url_elem_to_delete = click_delete_on_selected_url_and_wait_for_toast(page=page)
+
+    expect(page.locator(HPL.HOME_MODAL)).not_to_be_visible()
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_MOVED_TO_TRASH_ONE
+    )
+
+    # Wait for animation to complete
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+
+    expect(page.locator(css_selector)).to_have_count(0)
+    assert init_num_url_rows - 1 == get_num_url_rows(page=page)
+    wait_until_in_focus(
+        page=page, css_selector=f"{HPL.ROWS_URLS}[utuburlid='{expected_focus_id}']"
+    )
+    expect(page.locator(TrashPL.SELECTOR_COUNT)).to_have_text(
+        f"({init_trash_count + 1})"
+    )
+
+
+def test_delete_url_undo_restores_row(page: Page, create_test_tags, provide_app: Flask):
+    """
+    Tests that Undo on the delete toast puts the URL back with its tags
+
+    GIVEN a user who just deleted a tagged URL
+    WHEN Undo is clicked on the toast
+    THEN the row is back with the same tags, the toast reports the restore and the
+        Trash count returns
+    """
+    user_id_for_test = 1
+
+    login_user_select_utub_by_name_and_url_by_string(
+        app=provide_app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+    deleted_id = page.locator(HPL.ROW_SELECTED_URL).first.get_attribute("utuburlid")
+    assert deleted_id is not None
+    row_selector = f"{HPL.ROWS_URLS}[utuburlid='{deleted_id}']"
+    init_num_tags = page.locator(f"{row_selector} {HPL.TAG_BADGES}").count()
+    assert init_num_tags > 0
+    init_trash_count = _get_trash_count(page=page)
+    init_num_url_rows = get_num_url_rows(page=page)
+
+    url_elem_to_delete = click_delete_on_selected_url_and_wait_for_toast(page=page)
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+    expect(page.locator(TrashPL.SELECTOR_COUNT)).to_have_text(
+        f"({init_trash_count + 1})"
+    )
+
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO)
+
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_REVIVED_FROM_TRASH
+    )
+    expect(page.locator(row_selector)).to_have_count(1)
+    expect(page.locator(f"{row_selector} {HPL.TAG_BADGES}")).to_have_count(
+        init_num_tags
+    )
+    assert init_num_url_rows == get_num_url_rows(page=page)
+    expect(page.locator(TrashPL.SELECTOR_COUNT)).to_have_text(f"({init_trash_count})")
+
+
+def test_delete_url_dismiss_keeps_url_in_trash(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    Tests that dismissing the delete toast leaves the URL in Trash
+
+    GIVEN a user who just deleted a URL
+    WHEN the toast's dismiss button is clicked
+    THEN the toast hides, the row stays gone and the Trash count stays incremented
+    """
+    user_id_for_test = 1
+
+    login_user_select_utub_by_name_and_url_by_string(
+        app=provide_app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+    init_trash_count = _get_trash_count(page=page)
+    init_num_url_rows = get_num_url_rows(page=page)
+
+    url_elem_to_delete = click_delete_on_selected_url_and_wait_for_toast(page=page)
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_DISMISS)
+    wait_until_hidden(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
+
+    assert init_num_url_rows - 1 == get_num_url_rows(page=page)
+    expect(page.locator(TrashPL.SELECTOR_COUNT)).to_have_text(
+        f"({init_trash_count + 1})"
+    )
+
+
+def test_delete_url_rate_limits(page: Page, create_test_urls, provide_app: Flask):
+    """
+    Tests user's ability to delete a URL when they are rate limited
+
+    GIVEN a user, selected UTub and selected URL and they are rate limited
+    WHEN the deleteURL button is clicked
+    THEN ensure the 429 error page is shown
+    """
+    user_id_for_test = 1
+
+    login_user_select_utub_by_name_and_url_by_string(
+        app=provide_app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+
+    css_selector = f'{HPL.URL_STRING_READ}[href="{UTS.TEST_URL_STRING_CREATE}"]'
+    expect(page.locator(css_selector).first).to_be_attached()
 
     add_forced_rate_limit_header(page=page)
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    click_delete_on_selected_url(page=page)
     assert_on_429_page(page=page)
-
-
-def test_delete_url_cancel_click_cancel_btn(
-    page: Page, create_test_urls, provide_app: Flask
-):
-    """
-    Tests user's ability to delete a URL
-
-    GIVEN a user, selected UTub and selected URL
-    WHEN deleteURL button is selected and confirmation modal is cancelled by clicking the cancel btn
-    THEN ensure the URL is not deleted from the UTub, and the modal is hidden
-    """
-    user_id_for_test = 1
-
-    delete_modal, url_elem_to_delete = (
-        login_select_utub_select_url_click_delete_get_modal_url(
-            page=page,
-            app=provide_app,
-            user_id=user_id_for_test,
-            utub_name=UTS.TEST_UTUB_NAME_1,
-            url_string=UTS.TEST_URL_STRING_CREATE,
-        )
-    )
-
-    init_num_url_rows = get_num_url_rows(page=page)
-
-    confirmation_modal_body_text = delete_modal.inner_text()
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == DELETE_URL_WARNING
-
-    # See test_delete_url_submit: gate the click on the fade-in being fully
-    # settled (opacity == 1), otherwise Bootstrap drops the subsequent
-    # modal("hide") call and the modal never becomes hidden.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
-    wait_until_hidden(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
-
-    # Assert URL still exists in UTub
-    assert_elem_with_url_string_exists(page=page, url_string=UTS.TEST_URL_STRING_CREATE)
-    assert init_num_url_rows == get_num_url_rows(page=page)
-    expect(url_elem_to_delete).to_be_visible()
-
-
-def test_delete_url_cancel_click_x_btn(
-    page: Page, create_test_urls, provide_app: Flask
-):
-    """
-    Tests user's ability to delete a URL
-
-    GIVEN a user, selected UTub and selected URL
-    WHEN deleteURL button is selected and confirmation modal is cancelled by clicking the x btn
-    THEN ensure the URL is not deleted from the UTub, and the modal is hidden
-    """
-    user_id_for_test = 1
-
-    delete_modal, url_elem_to_delete = (
-        login_select_utub_select_url_click_delete_get_modal_url(
-            page=page,
-            app=provide_app,
-            user_id=user_id_for_test,
-            utub_name=UTS.TEST_UTUB_NAME_1,
-            url_string=UTS.TEST_URL_STRING_CREATE,
-        )
-    )
-
-    init_num_url_rows = get_num_url_rows(page=page)
-
-    confirmation_modal_body_text = delete_modal.inner_text()
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == DELETE_URL_WARNING
-
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_X_CLOSE)
-    wait_until_hidden(page=page, css_selector=HPL.BUTTON_X_CLOSE)
-
-    # Assert URL still exists in UTub
-    assert_elem_with_url_string_exists(page=page, url_string=UTS.TEST_URL_STRING_CREATE)
-    assert init_num_url_rows == get_num_url_rows(page=page)
-    expect(url_elem_to_delete).to_be_visible()
-
-
-def test_delete_url_cancel_press_esc_key(
-    page: Page, create_test_urls, provide_app: Flask
-):
-    """
-    Tests user's ability to delete a URL
-
-    GIVEN a user, selected UTub and selected URL
-    WHEN deleteURL button is selected and confirmation modal is cancelled by pressing esc key
-    THEN ensure the URL is not deleted from the UTub, and the modal is hidden
-    """
-    user_id_for_test = 1
-
-    delete_modal, url_elem_to_delete = (
-        login_select_utub_select_url_click_delete_get_modal_url(
-            page=page,
-            app=provide_app,
-            user_id=user_id_for_test,
-            utub_name=UTS.TEST_UTUB_NAME_1,
-            url_string=UTS.TEST_URL_STRING_CREATE,
-        )
-    )
-
-    init_num_url_rows = get_num_url_rows(page=page)
-
-    confirmation_modal_body_text = delete_modal.inner_text()
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == DELETE_URL_WARNING
-
-    wait_until_in_focus(page=page, css_selector=HPL.HOME_MODAL)
-    page.keyboard.press("Escape")
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
-
-    # Assert URL still exists in UTub
-    assert_elem_with_url_string_exists(page=page, url_string=UTS.TEST_URL_STRING_CREATE)
-    assert init_num_url_rows == get_num_url_rows(page=page)
-    expect(url_elem_to_delete).to_be_visible()
-
-
-def test_delete_url_cancel_click_outside_modal(
-    page: Page, create_test_urls, provide_app: Flask
-):
-    """
-    Tests user's ability to delete a URL
-
-    GIVEN a user, selected UTub and selected URL
-    WHEN deleteURL button is selected and confirmation modal is cancelled by clicking outside the modal
-    THEN ensure the URL is not deleted from the UTub, and the modal is hidden
-    """
-    user_id_for_test = 1
-
-    delete_modal, url_elem_to_delete = (
-        login_select_utub_select_url_click_delete_get_modal_url(
-            page=page,
-            app=provide_app,
-            user_id=user_id_for_test,
-            utub_name=UTS.TEST_UTUB_NAME_1,
-            url_string=UTS.TEST_URL_STRING_CREATE,
-        )
-    )
-
-    init_num_url_rows = get_num_url_rows(page=page)
-
-    confirmation_modal_body_text = delete_modal.inner_text()
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == DELETE_URL_WARNING
-
-    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
-    dismiss_modal_with_click_out(page=page, modal_selector=HPL.HOME_MODAL)
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
-
-    # Assert URL still exists in UTub
-    assert_elem_with_url_string_exists(page=page, url_string=UTS.TEST_URL_STRING_CREATE)
-    assert init_num_url_rows == get_num_url_rows(page=page)
-    expect(url_elem_to_delete).to_be_visible()
 
 
 def test_delete_last_url(
@@ -350,7 +292,7 @@ def test_delete_last_url(
 
     GIVEN a user has URLs
     WHEN all URLs are deleted
-    THEN ensure the empty UTub prompts user to create a URL.
+    THEN ensure the empty UTub prompts user to create a URL and takes focus.
     """
     _, cli_runner = runner
 
@@ -365,7 +307,7 @@ def test_delete_last_url(
 
     user_id_for_test = 1
 
-    _, url_elem_to_delete = login_select_utub_select_url_click_delete_get_modal_url(
+    url_elem_to_delete = login_select_utub_select_url_click_delete(
         page=page,
         app=provide_app,
         user_id=user_id_for_test,
@@ -374,19 +316,6 @@ def test_delete_last_url(
     )
 
     css_selector = f'{HPL.URL_STRING_READ}[href="{random_url_to_add_as_last}"]'
-    expect(page.locator(css_selector).first).to_be_attached()
-
-    # See test_delete_url_submit: gate the click on the fade-in being fully
-    # settled (opacity == 1), otherwise Bootstrap drops the subsequent
-    # modal("hide") call and the modal never becomes hidden.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
     expect(page.locator(css_selector)).to_have_count(0)
 
@@ -394,6 +323,7 @@ def test_delete_last_url(
         page=page, css_selector=HPL.SUBHEADER_NO_URLS
     )
     expect(no_url_subheader).to_have_text(UTS.UTUB_NO_URLS)
+    wait_until_in_focus(page=page, css_selector=HPL.EMPTY_STATE_NO_URLS)
 
 
 def test_delete_url_invalid_csrf_token(
@@ -403,7 +333,7 @@ def test_delete_url_invalid_csrf_token(
     Tests a user's ability to attempt to delete a URL with an invalid CSRF token
 
     GIVEN a user attempting to delete a URL in a UTub
-    WHEN the deleteURL form is sent with an invalid CSRF token
+    WHEN the delete request is sent with an invalid CSRF token
     THEN ensure U4I responds with a proper error message
     """
     app = provide_app
@@ -416,16 +346,16 @@ def test_delete_url_invalid_csrf_token(
         ).first()
         url_string_to_delete = url_to_delete.standalone_url.url_string
 
-    login_select_utub_select_url_click_delete_get_modal_url(
+    login_user_select_utub_by_name_and_url_by_string(
+        app=app,
         page=page,
-        app=provide_app,
         user_id=user_id_for_test,
         utub_name=UTS.TEST_UTUB_NAME_1,
         url_string=url_string_to_delete,
     )
 
     invalidate_csrf_token_on_page(page=page)
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    click_delete_on_selected_url(page=page)
 
     assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
@@ -437,48 +367,51 @@ def test_delete_url_invalid_csrf_token(
     assert_active_utub(page=page, utub_name=utub_user_created.name)
 
 
-def test_delete_url_submit_button_reenables_on_server_error(
+def test_delete_url_button_reenables_on_server_error(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    Tests that the submit button re-enables after a server error so the user can retry.
+    Tests that the delete button re-enables after a server error so the user can retry.
 
-    GIVEN a user with a selected URL and the delete confirmation modal open
+    GIVEN a user with a selected URL
     WHEN the DELETE request fails with a 500 server error
-    THEN ensure the #modalSubmit button is re-enabled (not disabled)
+    THEN the row is still present and its delete button is not aria-disabled
     """
     user_id_for_test = 1
 
-    delete_modal, _ = login_select_utub_select_url_click_delete_get_modal_url(
-        page=page,
+    login_user_select_utub_by_name_and_url_by_string(
         app=provide_app,
+        page=page,
         user_id=user_id_for_test,
         utub_name=UTS.TEST_UTUB_NAME_1,
         url_string=UTS.TEST_URL_STRING_CREATE,
     )
-
-    confirmation_modal_body_text = delete_modal.inner_text()
-    assert confirmation_modal_body_text == DELETE_URL_WARNING
+    selected_row = page.locator(HPL.ROW_SELECTED_URL).first
+    selected_id = selected_row.get_attribute("utuburlid")
 
     # Force the next DELETE ajax call to fail (with early return to prevent navigation)
     force_next_delete_ajax_failure_no_navigate(page=page)
 
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    click_delete_on_selected_url(page=page)
 
-    # Poll until the async failure handler re-enables the submit button
-    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
+    delete_btn = page.locator(
+        f"{HPL.ROWS_URLS}[utuburlid='{selected_id}'] {HPL.BUTTON_URL_DELETE}"
+    )
+    # Poll until the async failure handler clears aria-disabled
+    expect(delete_btn).not_to_have_attribute("aria-disabled", "true")
+    expect(page.locator(f"{HPL.ROWS_URLS}[utuburlid='{selected_id}']")).to_have_count(1)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_count(0)
 
 
-def test_delete_url_submit_button_enabled_on_second_modal_open(
+def test_deleting_second_url_replaces_toast(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    Tests that the submit button is enabled when opening the delete modal for a
-    second URL after successfully deleting the first.
+    Tests that a second delete leaves exactly one fresh toast
 
-    GIVEN a user with a selected UTub containing at least 2 URLs
-    WHEN they successfully delete URL 1 and then open the delete modal for URL 2
-    THEN ensure the #modalSubmit button is NOT disabled
+    GIVEN a user who deleted URL A and sees its toast
+    WHEN they select URL B (which clears toast A) and delete it
+    THEN exactly one fresh toast is visible and Undo restores only B
     """
     app = provide_app
     user_id_for_test = 1
@@ -492,41 +425,140 @@ def test_delete_url_submit_button_enabled_on_second_modal_open(
         first_utub_url_string = utub_urls[0].standalone_url.url_string
         second_utub_url_id = utub_urls[1].id
 
-    login_select_utub_select_url_click_delete_get_modal_url(
-        page=page,
+    login_user_select_utub_by_name_and_url_by_string(
         app=app,
+        page=page,
         user_id=user_id_for_test,
         utub_name=utub_user_created.name,
         url_string=first_utub_url_string,
     )
+    first_row = click_delete_on_selected_url_and_wait_for_toast(page=page)
+    wait_for_element_to_be_removed(page=page, locator=first_row)
 
-    # See test_delete_url_submit: gate the click on the fade-in being fully
-    # settled (opacity == 1), otherwise Bootstrap drops the subsequent
-    # modal("hide") call and the modal never becomes hidden.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
-
-    # Wait for the first URL row to be removed from the DOM
-    first_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{first_utub_url_id}"]'
-    first_url_row_elem = page.locator(first_url_row_selector).first
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
-    wait_for_element_to_be_removed(page=page, locator=first_url_row_elem)
-
-    # Select the second URL and open its delete modal
+    # Select the second URL and delete it too
     second_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{second_utub_url_id}"]'
     wait_then_click_element(page=page, css_selector=second_url_row_selector)
-    wait_for_animation_to_end_check_top_lhs_corner(
-        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
-    )
-    wait_then_click_element(
-        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}"
-    )
-    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+    wait_until_hidden(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
+    second_row = click_delete_on_selected_url_and_wait_for_toast(page=page)
+    wait_for_element_to_be_removed(page=page, locator=second_row)
 
-    # Assert the submit button is NOT disabled when the modal opens for the second URL
-    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_count(1)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_MOVED_TO_TRASH_ONE
+    )
+
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO)
+
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_REVIVED_FROM_TRASH
+    )
+    expect(page.locator(second_url_row_selector)).to_have_count(1)
+    expect(
+        page.locator(f'{HPL.ROWS_URLS}[utuburlid="{first_utub_url_id}"]')
+    ).to_have_count(0)
+
+
+def test_delete_url_undo_after_purge_reports_not_in_trash(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    Tests the stale Undo message
+
+    GIVEN a user who deleted a URL
+    WHEN the URL leaves Trash elsewhere (here: purged) and Undo is clicked
+    THEN the toast says the item is no longer in Trash
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_url_id = _get_utub_url_id(
+        app=app, utub_name=UTS.TEST_UTUB_NAME_1, url_string=UTS.TEST_URL_STRING_CREATE
+    )
+
+    url_elem_to_delete = login_select_utub_select_url_click_delete(
+        page=page,
+        app=app,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+
+    purge_utub_url_row(app, utub_url_id)
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO)
+
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        TRASH_UI.NOT_IN_TRASH
+    )
+    expect(page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']")).to_have_count(0)
+
+
+def test_delete_url_undo_reports_lost_tags(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    Tests that Undo reports a tag deleted while the URL sat in Trash
+
+    GIVEN a user who deleted a URL carrying one tag
+    WHEN that UTub tag is deleted and Undo is clicked
+    THEN the toast reports the lost tag
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_url_id = _get_utub_url_id(
+        app=app, utub_name=UTS.TEST_UTUB_NAME_1, url_string=UTS.TEST_URL_STRING_CREATE
+    )
+    with app.app_context():
+        utub_id = Utub_Urls.query.get(utub_url_id).utub_id
+    tag_id = add_tag_to_url(
+        app, utub_id, utub_url_id, user_id_for_test, UTS.TEST_TAG_NAME_1
+    )
+
+    url_elem_to_delete = login_select_utub_select_url_click_delete(
+        page=page,
+        app=app,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+
+    delete_utub_tag(app, tag_id)
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO)
+
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_REVIVED_LOST_TAGS_ONE
+    )
+
+
+def test_delete_toast_clears_on_utub_switch(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    Tests that the delete toast does not outlive its UTub
+
+    GIVEN a user who deleted a URL and sees the toast
+    WHEN they switch to another UTub
+    THEN the toast is cleared
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    with app.app_context():
+        other_utub: Utubs = Utubs.query.filter(Utubs.id != utub_user_created.id).first()
+        other_utub_id = other_utub.id
+
+    url_elem_to_delete = login_select_utub_select_url_click_delete(
+        page=page,
+        app=app,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_MOVED_TO_TRASH_ONE
+    )
+
+    select_utub_by_id(page=page, utub_id=other_utub_id)
+
+    wait_until_hidden(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
