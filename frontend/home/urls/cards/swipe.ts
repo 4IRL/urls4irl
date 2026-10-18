@@ -10,18 +10,17 @@
  * `_endDrag` and pointercancel to a separate `_cancelDrag`, sharing teardown
  * logic via `_teardownDragListeners` — both are functionally equivalent.
  * Commit-threshold math is pure and lives in `logic/url-swipe-snap.ts`; this
- * module owns only DOM binding and reuses the existing `deleteURLShowModal`
- * confirm flow as the sole commit action — no new AJAX/CSRF logic here.
+ * module owns only DOM binding and reuses the existing `deleteURL` flow as the
+ * sole commit action — no new AJAX/CSRF logic here.
  */
 import { on, AppEvents } from "../../../lib/event-bus.js";
-import { $ } from "../../../lib/globals.js";
 import {
   clamp,
   shouldCommitSwipeGesture,
 } from "../../../logic/url-swipe-snap.js";
 import { getState } from "../../../store/app-store.js";
 import { isCoarsePointer, isMobile } from "../../mobile.js";
-import { deleteURLShowModal } from "./delete.js";
+import { deleteURL } from "./delete.js";
 
 // A press starting inside any of these must never begin a swipe: it would
 // race the existing tap-to-reveal tag-delete toggle, an open inline-edit
@@ -47,10 +46,10 @@ const SWIPE_COMMITTED_CLASS = "swipe-committed";
 // browser resized to mobile width for QA, not true touch emulation — can
 // never read as row hover/selection during the ~400ms peek.
 const SWIPE_NUDGE_PEEKING_CLASS = "swipe-nudge-peeking";
-// Applied only while focus is being programmatically returned to a row around
-// the swipe-to-delete confirm modal (WCAG 2.4.3); suppresses the visual focus
-// ring (see urls.css) so this native-focus side effect never reads as
-// urlSelected="true" on a row the user never tapped to select.
+// Applied only while focus is being programmatically moved to the neighbour row
+// after a swipe-delete (WCAG 2.4.3); suppresses the visual focus ring (see
+// urls.css) so this native-focus side effect never reads as urlSelected="true"
+// on a row the user never tapped to select.
 const SWIPE_FOCUS_RETURN_CLASS = "swipe-focus-return";
 const SWIPE_FOCUS_RETURN_NAMESPACE = "blur.swipeFocusReturn";
 // setFocusEventListenersOnURLCard (cards.ts) adds this to .goToUrlIcon on
@@ -65,8 +64,6 @@ const TAP_SLOP_PX = 8;
 // A drag is treated as vertical/ambiguous (native scroll wins) once the
 // vertical component is at least this fraction of the horizontal component.
 const VERTICAL_LOCK_RATIO = 1.5;
-const CONFIRM_MODAL_SELECTOR = "#confirmModal";
-const CONFIRM_MODAL_HIDDEN_NAMESPACE = "hidden.bs.modal.urlRowSwipeReset";
 
 const NUDGE_SESSION_STORAGE_KEY = "u4i:urlSwipeNudgeShown";
 const NUDGE_PEEK_PX = 12;
@@ -92,14 +89,9 @@ interface SwipeDragState {
 // sheet.ts's single-drag-state-object pattern) — only one row can be mid-drag
 // at a time.
 let _dragState: SwipeDragState | null = null;
-// Set true when a commit fires the confirm modal, so the trailing click does
+// Set true when a commit fires the delete, so the trailing click does
 // not also fire card selection. Consumed (read-and-reset) by selection.ts.
 let _suppressSwipeClick = false;
-// True only while a #confirmModal opened by *this* swipe-commit flow is live.
-// #confirmModal is shared with the UTub-delete confirm flow, so a deck switch
-// must only dismiss the modal when the swipe opened it — never one another flow
-// opened. Reset in the modal-hidden callback so it never leaks past one lifecycle.
-let _confirmModalOpenedBySwipe = false;
 // Guards initSwipe against double-binding the MOBILE_DECK_SWITCHED subscription
 // on a repeated call (event-bus subscriptions accumulate otherwise), mirroring
 // sheet.ts's GESTURE_BOUND_ATTR idempotency convention for its one-time binding.
@@ -270,8 +262,8 @@ function _clearDragState(state: SwipeDragState): void {
 /**
  * Release handler (pointerup): a non-moved release is a tap (native click
  * drives card selection normally). A moved release decides commit-or-snap-back
- * via the pure threshold math, and on commit opens the existing confirm-delete
- * modal exactly as `.urlBtnDelete` would.
+ * via the pure threshold math, and on commit deletes directly exactly as
+ * `.urlBtnDelete` would (the undo toast replaces the confirm modal).
  */
 function _endDrag(event: PointerEvent): void {
   if (_dragState === null) return;
@@ -314,34 +306,31 @@ function _endDrag(event: PointerEvent): void {
   // higher-specificity inline style _onDragMove just set.
   urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
 
-  // Self-removing: fires on cancel, dismiss, success, and the stale-404
-  // auto-delete path alike, since every modal-close route in delete.ts goes
-  // through Bootstrap's native .modal("hide") transition.
-  $(CONFIRM_MODAL_SELECTOR)
-    .off(CONFIRM_MODAL_HIDDEN_NAMESPACE)
-    .one(CONFIRM_MODAL_HIDDEN_NAMESPACE, () => {
-      _confirmModalOpenedBySwipe = false;
-      urlRow.removeClass(`${SWIPE_COMMITTED_CLASS} ${SWIPE_DRAGGING_CLASS}`);
-      urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
-      _armFocusReturnSuppression(urlRow);
-      urlRow.trigger("focus");
-    });
-
-  // Focus the row before the modal opens so it already has focus (WCAG 2.4.3).
-  _armFocusReturnSuppression(urlRow);
-  urlRow.trigger("focus");
-  _confirmModalOpenedBySwipe = true;
-  deleteURLShowModal(utubUrlID, urlRow, utubID);
+  void deleteURL({
+    utubUrlID,
+    urlCard: urlRow,
+    utubID,
+    beforeFocus: (target) => {
+      if (target.hasClass("urlRow")) _armFocusReturnSuppression(target);
+    },
+  }).then((deleted) => {
+    if (deleted) return;
+    // Every non-navigating failure (429, locked) leaves the row in place:
+    // snap it back and return focus to it (WCAG 2.4.3).
+    urlRow.removeClass(`${SWIPE_COMMITTED_CLASS} ${SWIPE_DRAGGING_CLASS}`);
+    urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
+    _armFocusReturnSuppression(urlRow);
+    urlRow.trigger("focus");
+  });
 }
 
 /**
  * Arm the WCAG 2.4.3 focus-return suppression: add `SWIPE_FOCUS_RETURN_CLASS`
- * so the programmatic focus-return never reads as "selected" (see
- * frontend/styles/home/urls.css), and (re)bind a one-shot blur listener that
- * removes it. Must be called every time the class is added — including after
- * the confirm modal re-adds it on close — because the one-shot listener
- * self-consumes on the first blur (e.g. the modal stealing focus) and is
- * never implicitly re-armed.
+ * so focus moving to the neighbour row after a delete (or back to the row after
+ * a failed one) never reads as "selected" (see frontend/styles/home/urls.css),
+ * and (re)bind a one-shot blur listener that removes it. Must be called every
+ * time the class is added, because the one-shot listener self-consumes on the
+ * first blur and is never implicitly re-armed.
  */
 function _armFocusReturnSuppression(urlRow: JQuery): void {
   urlRow.addClass(SWIPE_FOCUS_RETURN_CLASS);
@@ -379,19 +368,15 @@ export function resetSwipeStateOnDeckSwitch(): void {
 
 /**
  * Register the single `MOBILE_DECK_SWITCHED` subscription that hardens the swipe
- * feature against Back navigation: tear down any in-flight drag, and dismiss the
- * shared `#confirmModal` ONLY when this swipe flow opened it (never one another
- * flow, e.g. UTub-delete, opened). Mirrors `initTagSheet()`'s init role.
+ * feature against Back navigation: tear down any in-flight drag. The URL-deck
+ * toast is cleared by `initURLOutcomeBannerLifecycle()` on a deck switch.
+ * Mirrors `initTagSheet()`'s init role.
  */
 export function initSwipe(): void {
   if (_swipeInitialized) return;
   _swipeInitialized = true;
   on(AppEvents.MOBILE_DECK_SWITCHED, () => {
     resetSwipeStateOnDeckSwitch();
-    if (_confirmModalOpenedBySwipe) {
-      $(CONFIRM_MODAL_SELECTOR).modal("hide");
-      _confirmModalOpenedBySwipe = false;
-    }
   });
 }
 
@@ -482,6 +467,5 @@ export function triggerURLSwipeNudgeIfEligible({
 export function _resetURLSwipeGestureForTests(): void {
   _dragState = null;
   _suppressSwipeClick = false;
-  _confirmModalOpenedBySwipe = false;
   _swipeInitialized = false;
 }

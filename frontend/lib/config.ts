@@ -21,6 +21,7 @@ export type RouteId =
   | "crossUtubSearch"
   | "copyURLsToUtubs"
   | "bulkDeleteURLs"
+  | "restoreURLs"
   | "getTrash"
   | "emptyTrash";
 
@@ -68,6 +69,7 @@ export interface AppRoutes {
   updateURL: (utubId: number, urlId: number) => string;
   updateURLTitle: (utubId: number, urlId: number) => string;
   restoreURL: (utubId: number, urlId: number) => string;
+  restoreURLs: (utubId: number) => string;
   purgeURL: (utubId: number, urlId: number) => string;
   createURLTag: (utubId: number, urlId: number) => string;
   createURLTagsBatch: (utubId: number, urlId: number) => string;
@@ -236,6 +238,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.createUTubTag.replace("-1", String(id)),
     applyTagsToURLs: (utubId: number) =>
       rawConfig.routes.applyTagsToURLs.replace("-1", String(utubId)),
+    restoreURLs: (utubId: number) =>
+      rawConfig.routes.restoreURLs.replace("-1", String(utubId)),
     bulkDeleteURLs: (utubId: number) =>
       rawConfig.routes.bulkDeleteURLs.replace("-1", String(utubId)),
     deleteUTubTag: (utubId: number, tagId: number) =>

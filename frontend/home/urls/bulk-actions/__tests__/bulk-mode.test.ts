@@ -4,6 +4,7 @@ import {
   isMultiSelectActive,
 } from "../bulk-mode.js";
 import { deselectAllURLs } from "../../cards/selection.js";
+import { showURLDeletedToast } from "../../cards/delete-undo.js";
 import { resetStore, getState, setState } from "../../../../store/app-store.js";
 import { AppEvents, on } from "../../../../lib/event-bus.js";
 import {
@@ -14,6 +15,12 @@ import {
 
 vi.mock("../../cards/selection.js", () => ({
   deselectAllURLs: vi.fn(),
+}));
+vi.mock("../../cards/card-deck.js", () => ({
+  insertURLCardIntoDeck: vi.fn(),
+}));
+vi.mock("../../../trash/count.js", () => ({
+  refreshTrashCount: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -29,6 +36,7 @@ const DECK_HTML = `
   <main id="mainPanel">
     <div id="URLDeck">
       <button id="utubEditPanelToggle" type="button"></button>
+      <div id="URLDeckOutcomeBanner" class="urlOutcomeBanner hidden" role="status"></div>
       <div id="bulkTagResultBanner" class="bulkTagBanner hidden" role="status"></div>
       <div id="bulkCopyResultBanner" class="bulkTagBanner hidden" role="status"></div>
       <div class="urlRow multiSelected" utuburlid="1" aria-checked="true"></div>
@@ -65,6 +73,23 @@ describe("bulk-mode", () => {
       expect(handler).toHaveBeenCalledWith({ active: true });
 
       unsubscribe();
+    });
+
+    it("clears a showing delete-Undo toast, so Undo can't be actioned on a checkbox deck", () => {
+      showURLDeletedToast({
+        utubID: 1,
+        deletedIDs: [1],
+        skippedCount: 0,
+        hiddenCount: 0,
+        returnFocusTo: $(),
+      });
+      expect($("#URLDeckOutcomeBanner").hasClass("hidden")).toBe(false);
+      expect($("#URLDeckOutcomeBanner .urlOutcomeBannerAction").length).toBe(1);
+
+      enterMultiSelectMode();
+
+      expect($("#URLDeckOutcomeBanner").hasClass("hidden")).toBe(true);
+      expect($("#URLDeckOutcomeBanner").children().length).toBe(0);
     });
   });
 

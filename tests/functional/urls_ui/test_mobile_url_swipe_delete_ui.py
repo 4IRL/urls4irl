@@ -1,11 +1,12 @@
+import re
+
 import pytest
 from flask import Flask
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
-from backend.utils.strings.url_strs import DELETE_URL_WARNING
+from backend.utils.strings.url_strs import URL_MOVED_TO_TRASH_ONE
 from tests.functional.db_utils import (
     get_url_in_utub,
-    get_urls_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
 )
@@ -21,18 +22,17 @@ from tests.functional.playwright_login_utils import (
 )
 from tests.functional.playwright_utils import (
     Decks,
+    get_all_url_ids_in_selected_utub,
     get_num_url_rows,
     wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_until_css_property,
-    wait_until_hidden,
 )
 from tests.functional.urls_ui.playwright_utils import (
     get_url_row_selector,
     swipe_url_card_below_threshold,
     swipe_url_card_delete,
-    wait_until_url_card_swipe_committed,
     wait_until_url_card_swipe_reset,
 )
 
@@ -41,6 +41,8 @@ pytestmark = [pytest.mark.urls_ui, pytest.mark.mobile_ui]
 USER_ID_FOR_TEST = 1
 SWIPE_COMMITTED_CLASS = "swipe-committed"
 SWIPE_DRAGGING_CLASS = "swipe-dragging"
+SWIPE_FOCUS_RETURN_CLASS = "swipe-focus-return"
+MIN_TOUCH_TARGET_PX = 44
 # Reads the active theme's --borderColor (frontend/styles/tokens.css) and returns
 # it as a browser-normalized rgb() string. The value is theme-dependent (dark
 # #343c3d vs light #d5dbdb), and the default "system" theme resolves to light or
@@ -59,14 +61,14 @@ _RESOLVE_NEUTRAL_ROW_BORDER_COLOR_JS = """() => {
 }"""
 
 
-def test_url_swipe_commit_opens_confirm_modal(
+def test_url_swipe_commit_moves_to_trash_and_shows_undo_toast(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a logged-in mobile user on the URL deck with a deletable URL
     WHEN they swipe the URL row left past the commit threshold
-    THEN the row commits (swipe-committed class) and the delete confirmation
-        modal opens, proving the real browser commits the drag gesture end-to-end
+    THEN the URL is moved to Trash at once with no confirm modal: the row is
+        removed and the undo toast reports URL_MOVED_TO_TRASH_ONE
     """
     page = page_mobile_portrait
     app = provide_app
@@ -80,72 +82,26 @@ def test_url_swipe_commit_opens_confirm_modal(
 
     row_selector = get_url_row_selector(utub_url_id=utub_url.id)
     assert_visible_css_selector(page=page, css_selector=row_selector)
-
-    swipe_url_card_delete(page=page, url_row_selector=row_selector)
-    wait_until_url_card_swipe_committed(page=page)
-
-    assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
-    modal_body = page.locator(HPL.BODY_MODAL).first
-    assert modal_body.inner_text() == DELETE_URL_WARNING
-
-
-def test_url_swipe_commit_confirm_deletes_and_removes_row(
-    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
-):
-    """
-    GIVEN a committed swipe-to-delete gesture with the confirm modal open
-    WHEN the user confirms the deletion
-    THEN the URL is deleted and its row is removed from the DOM
-    """
-    page = page_mobile_portrait
-    app = provide_app
-    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
-    utub_url = get_url_in_utub(app, utub.id)
-
-    login_user_and_select_utub_by_utubid_mobile(
-        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
-    )
-    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
-
-    row_selector = get_url_row_selector(utub_url_id=utub_url.id)
-    url_row = page.locator(row_selector).first
     init_num_url_rows = get_num_url_rows(page=page)
 
     swipe_url_card_delete(page=page, url_row_selector=row_selector)
-    wait_until_url_card_swipe_committed(page=page)
-    assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
 
-    # assert_visible_css_selector only confirms the modal is attached and
-    # visible, not that its Bootstrap fade-in transition has finished.
-    # Clicking submit mid-transition causes Bootstrap to drop the subsequent
-    # modal("hide") call, so the modal never becomes hidden. Gate on the
-    # fade-in being fully settled (opacity == 1) before clicking.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
+    assert_visible_css_selector(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_MOVED_TO_TRASH_ONE
     )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
-
-    wait_for_element_to_be_removed(page=page, locator=url_row)
-    assert page.locator(row_selector).count() == 0
+    expect(page.locator(HPL.HOME_MODAL)).not_to_be_visible()
+    wait_for_element_to_be_removed(page=page, locator=page.locator(row_selector))
     assert init_num_url_rows - 1 == get_num_url_rows(page=page)
 
 
-def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
+def test_url_swipe_undo_restores_row(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN a committed swipe-to-delete gesture with the confirm modal open
-    WHEN the user dismisses the modal instead of confirming
-    THEN the URL is not deleted, the row resets to a clean state with no
-        leftover swipe-committed/swipe-dragging class, and the WCAG
-        focus-return suppression actually renders a neutral border rather
-        than the focus-ring green (regression coverage for a CSS-specificity
-        bug where the suppression rule lost the cascade to the pre-existing
-        focus-ring rule despite the suppression class being correctly applied)
+    GIVEN a URL moved to Trash by a swipe-delete
+    WHEN the user taps Undo on the toast
+    THEN the row is restored to the deck
     """
     page = page_mobile_portrait
     app = provide_app
@@ -161,98 +117,140 @@ def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
     init_num_url_rows = get_num_url_rows(page=page)
 
     swipe_url_card_delete(page=page, url_row_selector=row_selector)
-    wait_until_url_card_swipe_committed(page=page)
-    assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+    wait_for_element_to_be_removed(page=page, locator=page.locator(row_selector))
 
-    # assert_visible_css_selector only confirms the modal is attached and
-    # visible, not that its Bootstrap fade-in transition has finished.
-    # Clicking dismiss mid-transition causes Bootstrap to drop the subsequent
-    # modal("hide") call, so the modal never becomes hidden. Gate on the
-    # fade-in being fully settled (opacity == 1) before clicking.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO)
 
-    wait_until_url_card_swipe_reset(page=page)
-    url_row = page.locator(row_selector).first
-    row_class = url_row.get_attribute("class") or ""
-    assert SWIPE_COMMITTED_CLASS not in row_class
-    assert SWIPE_DRAGGING_CLASS not in row_class
+    expect(page.locator(row_selector)).to_have_count(1)
     assert init_num_url_rows == get_num_url_rows(page=page)
+
+
+def test_url_swipe_delete_focus_return_has_no_selected_ring(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a deck with 3+ URLs
+    WHEN the user swipe-deletes the middle row
+    THEN focus moves to the next row, which carries swipe-focus-return and a
+        neutral border-bottom-color rather than the focus-ring green
+        (regression coverage for a CSS-specificity bug where the suppression
+        rule lost the cascade to the pre-existing focus-ring rule despite the
+        suppression class being correctly applied)
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    url_ids = get_all_url_ids_in_selected_utub(page=page)
+    assert len(url_ids) >= 3, "Test premise violated: need 3+ URLs in the UTub"
+    middle_selector = get_url_row_selector(utub_url_id=url_ids[1])
+    next_selector = get_url_row_selector(utub_url_id=url_ids[2])
+
+    swipe_url_card_delete(page=page, url_row_selector=middle_selector)
+    wait_for_element_to_be_removed(page=page, locator=page.locator(middle_selector))
+
+    next_row = page.locator(next_selector)
+    expect(next_row).to_be_focused()
+    expect(next_row).to_have_class(re.compile(rf"\b{SWIPE_FOCUS_RETURN_CLASS}\b"))
 
     neutral_row_border_color = page.evaluate(_RESOLVE_NEUTRAL_ROW_BORDER_COLOR_JS)
     wait_until_css_property(
         page=page,
-        css_selector=row_selector,
+        css_selector=next_selector,
         css_property="border-bottom-color",
         expected_value=neutral_row_border_color,
     )
 
 
-def test_url_swipe_dismiss_twice_then_blur_leaves_no_stuck_goto_icon(
+def test_url_swipe_delete_twice_then_blur_leaves_no_stuck_goto_icon(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN two rows that each committed a swipe-to-delete gesture and had the
-        confirm modal dismissed
-    WHEN focus subsequently leaves a dismissed row (e.g. the user taps
-        elsewhere)
-    THEN that row's .goToUrlIcon is not left permanently visible (regression
-        coverage for a leaked `visible-on-focus` class: the pre-existing
-        keyboard-focus handler in cards.ts only clears that class when the
-        icon itself blurs — a check designed for real Tab navigation that
-        never matches when the swipe module's WCAG focus-return blurs the
-        row directly, so the class leaked forever once focus moved on)
+    GIVEN two rows that were each swipe-deleted in turn
+    WHEN focus subsequently leaves the neighbour row that received it (e.g. the
+        user taps elsewhere)
+    THEN no remaining row's .goToUrlIcon is left permanently visible
+        (regression coverage for a leaked `visible-on-focus` class: the
+        pre-existing keyboard-focus handler in cards.ts only clears that class
+        when the icon itself blurs — a check designed for real Tab navigation
+        that never matches when the swipe module's focus-return blurs the row
+        directly, so the class leaked forever once focus moved on)
     """
     page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
-    utub_urls = get_urls_in_utub(app, utub.id)
-    assert len(utub_urls) >= 2, "Test premise violated: need 2+ URLs in the UTub"
-    first_url, second_url = utub_urls[0], utub_urls[1]
 
     login_user_and_select_utub_by_utubid_mobile(
         app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
     assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
-    first_row_selector = get_url_row_selector(utub_url_id=first_url.id)
-    second_row_selector = get_url_row_selector(utub_url_id=second_url.id)
+    url_ids = get_all_url_ids_in_selected_utub(page=page)
+    assert len(url_ids) >= 3, "Test premise violated: need 3+ URLs in the UTub"
 
-    for row_selector in (first_row_selector, second_row_selector):
+    for url_id in url_ids[:2]:
+        row_selector = get_url_row_selector(utub_url_id=url_id)
         swipe_url_card_delete(page=page, url_row_selector=row_selector)
-        wait_until_url_card_swipe_committed(page=page)
-        assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
-        # assert_visible_css_selector only confirms the modal is attached and
-        # visible, not that its Bootstrap fade-in transition has finished.
-        # Clicking dismiss mid-transition causes Bootstrap to drop the
-        # subsequent modal("hide") call, so the modal never becomes hidden.
-        # Gate on the fade-in being fully settled (opacity == 1) before
-        # clicking.
-        wait_until_css_property(
-            page=page,
-            css_selector=HPL.HOME_MODAL,
-            css_property="opacity",
-            expected_value="1",
-        )
-        wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
-        wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+        wait_for_element_to_be_removed(page=page, locator=page.locator(row_selector))
         wait_until_url_card_swipe_reset(page=page)
 
-    # A tap elsewhere blurs whichever row the WCAG focus-return trigger last
-    # focused, the same way a real user would move on after dismissing.
-    wait_then_click_element(page=page, css_selector=HPL.MAIN_PANEL)
+    # The second delete moved focus to its neighbour row (the premise of the
+    # blur path below), then a tap in the panel's corner (clear of any row)
+    # blurs it, the same way a real user would move on after deleting.
+    remaining_ids = get_all_url_ids_in_selected_utub(page=page)
+    neighbour_row = page.locator(get_url_row_selector(utub_url_id=remaining_ids[0]))
+    expect(neighbour_row).to_be_focused()
+    page.locator(HPL.MAIN_PANEL).click(position={"x": 1, "y": 1})
+    expect(neighbour_row).not_to_be_focused()
 
-    for row_selector in (first_row_selector, second_row_selector):
-        icon_selector = f"{row_selector} {HPL.GO_TO_URL_ICON}"
+    for url_id in remaining_ids:
+        icon_selector = (
+            f"{get_url_row_selector(utub_url_id=url_id)} {HPL.GO_TO_URL_ICON}"
+        )
         assert_not_visible_css_selector(page=page, css_selector=icon_selector)
         icon = page.locator(icon_selector).first
         assert "visible-on-focus" not in (icon.get_attribute("class") or "")
+
+
+def test_url_swipe_toast_buttons_meet_touch_target(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a swipe-delete on a coarse-pointer viewport
+    WHEN the undo toast appears
+    THEN its Undo and dismiss controls are at least 44px square
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    utub_url = get_url_in_utub(app, utub.id)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    row_selector = get_url_row_selector(utub_url_id=utub_url.id)
+    swipe_url_card_delete(page=page, url_row_selector=row_selector)
+    assert_visible_css_selector(page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO)
+    # Measure only once the toast has finished any enter transition.
+    wait_for_animation_to_end_check_top_lhs_corner(
+        page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO
+    )
+
+    for control_selector in (
+        HPL.URL_OUTCOME_BANNER_UNDO,
+        HPL.URL_OUTCOME_BANNER_DISMISS,
+    ):
+        bounding_box = page.locator(control_selector).first.bounding_box()
+        assert bounding_box is not None
+        assert bounding_box["width"] >= MIN_TOUCH_TARGET_PX, control_selector
+        assert bounding_box["height"] >= MIN_TOUCH_TARGET_PX, control_selector
 
 
 def test_url_swipe_below_threshold_snaps_back_no_op(
@@ -262,9 +260,9 @@ def test_url_swipe_below_threshold_snaps_back_no_op(
     GIVEN a logged-in mobile user on the URL deck with a deletable URL
     WHEN they swipe the row left by a small amount well below the ~35% commit
         threshold (sub-threshold drag)
-    THEN the row snaps back to its resting position and does not open the
-        confirm modal, proving the real browser only commits once the
-        threshold is crossed
+    THEN the row snaps back to its resting position and nothing is deleted (no
+        toast), proving the real browser only commits once the threshold is
+        crossed
     """
     page = page_mobile_portrait
     app = provide_app
@@ -283,6 +281,7 @@ def test_url_swipe_below_threshold_snaps_back_no_op(
     wait_until_url_card_swipe_reset(page=page)
 
     assert_not_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
     url_row = page.locator(row_selector).first
     row_class = url_row.get_attribute("class") or ""
     assert SWIPE_COMMITTED_CLASS not in row_class
@@ -295,8 +294,8 @@ def test_url_tap_to_select_delete_button_still_works(
     """
     GIVEN a logged-in mobile user on the URL deck with a deletable URL
     WHEN they tap the row to select it, then tap the existing .urlBtnDelete
-    THEN the confirm modal opens exactly as before the swipe gesture was added
-        (non-regression of the existing tap-to-select delete flow)
+    THEN the URL is deleted at once with the undo toast and no confirm modal
+        (the tap-to-select delete flow, now confirmation-free)
     """
     page = page_mobile_portrait
     app = provide_app
@@ -314,7 +313,7 @@ def test_url_tap_to_select_delete_button_still_works(
     # The selected-row padding/transform transition must settle before the
     # delete button's post-select position is stable, otherwise the click
     # lands on a still-animating sibling (e.g. .urlTags) instead of the
-    # button — mirrors login_select_utub_select_url_click_delete_get_modal_url.
+    # button — mirrors click_delete_on_selected_url.
     wait_for_animation_to_end_check_top_lhs_corner(
         page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
@@ -322,9 +321,12 @@ def test_url_tap_to_select_delete_button_still_works(
     delete_btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}"
     wait_then_click_element(page=page, css_selector=delete_btn_selector)
 
-    assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
-    modal_body = page.locator(HPL.BODY_MODAL).first
-    assert modal_body.inner_text() == DELETE_URL_WARNING
+    assert_visible_css_selector(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_MOVED_TO_TRASH_ONE
+    )
+    expect(page.locator(HPL.HOME_MODAL)).not_to_be_visible()
+    expect(page.locator(row_selector)).to_have_count(0)
 
 
 def test_url_swipe_inert_for_non_deletable_row(
@@ -335,7 +337,7 @@ def test_url_swipe_inert_for_non_deletable_row(
         (added by a different member, in a UTub they did not create)
     WHEN they attempt the same left-swipe gesture used to delete a row
     THEN the row is inert — no swipe reveal panel exists, no swipe class is
-        applied, and no confirm modal opens
+        applied, and nothing is deleted
     """
     page = page_mobile_portrait
     app = provide_app
@@ -362,6 +364,7 @@ def test_url_swipe_inert_for_non_deletable_row(
     swipe_url_card_delete(page=page, url_row_selector=row_selector)
 
     assert_not_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
     url_row = page.locator(row_selector).first
     row_class = url_row.get_attribute("class") or ""
     assert SWIPE_COMMITTED_CLASS not in row_class

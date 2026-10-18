@@ -9,15 +9,18 @@ from playwright.sync_api import Page, expect
 from backend import db
 from backend.models.urls import Urls
 from backend.models.users import Users
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import (
+    add_tag_to_utub_user_created,
     get_other_member_in_utub,
     get_other_utub_this_user_is_member_of,
     get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.locators import TrashPanelLocators as TrashPL
 from tests.functional.playwright_assert_utils import (
     assert_active_utub,
     assert_login_with_username,
@@ -30,27 +33,26 @@ from tests.functional.playwright_login_utils import (
 )
 from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
-    dismiss_modal_with_click_out,
     force_next_bulk_delete_ajax_failure_no_navigate,
-    get_num_url_rows,
     invalidate_csrf_token_on_page,
     wait_for_element_to_be_removed,
-    wait_for_modal_ready,
     wait_then_click_element,
     wait_until_hidden,
-    wait_until_in_focus,
 )
+from tests.functional.tags_ui.playwright_utils import get_utub_tag_filter_selector
+from tests.functional.trash_ui.db_utils import purge_utub_url_row
 from tests.functional.urls_ui.playwright_utils import (
+    bulk_delete_selected,
     enter_multi_select_and_select_urls,
+    enter_multi_select_mode,
     expect_cant_delete_cue_on_row,
-    open_bulk_delete_confirm,
-    submit_bulk_delete,
     tap_url_checkbox,
 )
 
 pytestmark = pytest.mark.urls_ui
 
 USER_ID_FOR_TEST = 1
+HIDDEN_BY_FILTER_TAG_STRING = "bulk-delete-filter-tag"
 
 
 # --- Seed helpers -------------------------------------------------------------
@@ -99,18 +101,28 @@ def _utub_url_row_is_live(*, app: Flask, utub_url_id: int) -> bool:
         return row is not None and not row.is_trashed
 
 
+def _get_trash_count(*, page: Page) -> int:
+    text = page.locator(TrashPL.SELECTOR_COUNT).inner_text()
+    return int(text.strip("()"))
+
+
+def _moved_to_trash_text(*, count: int) -> str:
+    return STRINGS.URL_MOVED_TO_TRASH.replace("{n}", str(count))
+
+
 # --- Tests --------------------------------------------------------------------
 
 
-def test_bulk_delete_happy_removes_selected_and_shows_banner(
+def test_bulk_delete_happy_removes_selected_and_shows_undo_toast(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN two deletable URLs selected in multi-select mode (creator deck)
-    WHEN the user opens the confirm, sees the count-aware title, and confirms
-    THEN both selected rows are removed, the success banner shows, the DB row
-        count drops by two, other URLs survive (deck not empty), and focus
-        returns to the header Exit control (#bulkSelectExit).
+    WHEN the user clicks the bar's Delete (no confirm step)
+    THEN both selected rows are removed, the success toast reads "Moved 2 URLs to
+        Trash." with an Undo, the DB row count drops by two, other URLs survive
+        (deck not empty), and focus returns to the header Exit control
+        (#bulkSelectExit).
     """
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
@@ -145,29 +157,23 @@ def test_bulk_delete_happy_removes_selected_and_shows_banner(
     )
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
 
-    open_bulk_delete_confirm(page=page)
+    # No confirm modal: the Delete click deletes at once and the toast appears.
+    bulk_delete_selected(page=page)
 
-    # Count-aware title: both selected URLs are deletable.
-    expect(page.locator(HPL.HEADER_MODAL)).to_have_text(
-        STRINGS.URL_BULK_DELETE_CONFIRM_TITLE.replace("{n}", "2")
-    )
-    # The submit label reflects the deletable count.
-    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_have_text(
-        STRINGS.URL_BULK_DELETE_SUBMIT.replace("{n}", "2")
-    )
-
-    submit_bulk_delete(page=page)
-
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=row_a)
     wait_for_element_to_be_removed(page=page, locator=row_b)
 
-    # Persistent success banner (deck not empty → survivors remain).
-    banner = page.locator(HPL.BULK_DELETE_BANNER)
+    # Success toast with Undo (deck not empty → survivors remain).
+    banner = page.locator(HPL.URL_OUTCOME_BANNER)
     expect(banner).to_be_visible()
     expect(banner).to_have_class(re.compile(r"(^|\s)success(\s|$)"))
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        _moved_to_trash_text(count=2)
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_UNDO)).to_be_visible()
+    expect(page.locator(HPL.HOME_MODAL)).to_be_hidden()
 
-    # Focus returns to the header Exit control on a non-deck-emptying close path.
+    # Focus returns to the header Exit control on a non-deck-emptying path.
     expect(page.locator(HPL.BULK_SELECT_EXIT)).to_be_focused()
 
     # DB: exactly the two selected rows are gone.
@@ -176,18 +182,15 @@ def test_bulk_delete_happy_removes_selected_and_shows_banner(
     assert _count_url_rows_in_utub(app=app, utub_id=utub_id) == initial_count
 
 
-@pytest.mark.parametrize(
-    "cancel_method",
-    ["dismiss", "x_close", "escape", "click_outside"],
-)
-def test_bulk_delete_cancel_paths_leave_urls_intact(
-    page: Page, create_test_urls, provide_app: Flask, cancel_method: str
+def test_bulk_delete_undo_restores_all(
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN two deletable URLs selected and the confirm modal open
-    WHEN the user cancels via the Just-kidding button / X / Escape / backdrop
-    THEN no request fires, every URL stays, the modal hides, and focus returns to
-        the header Exit control (#bulkSelectExit) on every non-empty close path.
+    GIVEN two URLs just bulk-deleted (toast showing)
+    WHEN the toast's Undo is clicked
+    THEN one restore brings every row back, the toast reports "Restored 2 URLs
+        from trash.", the Trash count returns to its starting value, and both
+        DB rows are live again.
     """
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
@@ -197,58 +200,101 @@ def test_bulk_delete_cancel_paths_leave_urls_intact(
         app=app,
         utub_id=utub_id,
         user_id=USER_ID_FOR_TEST,
-        url_string=f"https://bulk-delete-cancel-{cancel_method}-a.test/",
-        url_title="Bulk Delete Cancel A",
+        url_string="https://bulk-delete-undo-a.test/",
+        url_title="Bulk Delete Undo A",
     )
     utub_url_id_b, _ = _seed_url_in_utub(
         app=app,
         utub_id=utub_id,
         user_id=USER_ID_FOR_TEST,
-        url_string=f"https://bulk-delete-cancel-{cancel_method}-b.test/",
-        url_title="Bulk Delete Cancel B",
+        url_string="https://bulk-delete-undo-b.test/",
+        url_title="Bulk Delete Undo B",
     )
 
     login_user_and_select_utub_by_name(
         app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
     )
 
-    initial_rows = get_num_url_rows(page=page)
+    row_a = page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id_a}']")
+    row_b = page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id_b}']")
+    initial_trash_count = _get_trash_count(page=page)
 
     enter_multi_select_and_select_urls(
         page=page, url_ids=[utub_url_id_a, utub_url_id_b]
     )
-    open_bulk_delete_confirm(page=page)
+    bulk_delete_selected(page=page)
+    wait_for_element_to_be_removed(page=page, locator=row_a)
+    wait_for_element_to_be_removed(page=page, locator=row_b)
 
-    if cancel_method == "dismiss":
-        wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
-        wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
-    elif cancel_method == "x_close":
-        wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
-        wait_then_click_element(page=page, css_selector=HPL.BUTTON_X_CLOSE)
-    elif cancel_method == "escape":
-        # Gate on the fade-in transition being complete (like the other cancel
-        # paths) AND the modal holding focus, so Escape is never dropped
-        # mid-transition by Bootstrap.
-        wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
-        wait_until_in_focus(page=page, css_selector=HPL.HOME_MODAL)
-        page.keyboard.press("Escape")
-    else:  # click_outside
-        wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
-        dismiss_modal_with_click_out(page=page, modal_selector=HPL.HOME_MODAL)
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO)
 
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        STRINGS.URL_UNDO_RESTORED.replace("{n}", "2")
+    )
+    expect(row_a).to_have_count(1)
+    expect(row_b).to_have_count(1)
+    expect(page.locator(TrashPL.SELECTOR_COUNT)).to_have_text(
+        f"({initial_trash_count})"
+    )
 
-    # No deletion, no result banner, focus back on the header Exit control.
-    assert get_num_url_rows(page=page) == initial_rows
-    expect(
-        page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id_a}']")
-    ).to_be_visible()
-    expect(
-        page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id_b}']")
-    ).to_be_visible()
     assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_a)
     assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_b)
-    expect(page.locator(HPL.BULK_SELECT_EXIT)).to_be_focused()
+
+
+def test_bulk_delete_dismiss_keeps_urls_in_trash(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN two URLs just bulk-deleted (toast showing)
+    WHEN the toast's dismiss button is clicked
+    THEN the toast hides, the rows stay gone and the Trash count stays incremented.
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    utub_id = utub.id
+
+    utub_url_id_a, _ = _seed_url_in_utub(
+        app=app,
+        utub_id=utub_id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://bulk-delete-dismiss-a.test/",
+        url_title="Bulk Delete Dismiss A",
+    )
+    utub_url_id_b, _ = _seed_url_in_utub(
+        app=app,
+        utub_id=utub_id,
+        user_id=USER_ID_FOR_TEST,
+        url_string="https://bulk-delete-dismiss-b.test/",
+        url_title="Bulk Delete Dismiss B",
+    )
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    row_a = page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id_a}']")
+    row_b = page.locator(f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id_b}']")
+    initial_trash_count = _get_trash_count(page=page)
+
+    enter_multi_select_and_select_urls(
+        page=page, url_ids=[utub_url_id_a, utub_url_id_b]
+    )
+    bulk_delete_selected(page=page)
+
+    # Dismiss right away: the success toast auto-hides after ~10s.
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_DISMISS)
+    wait_until_hidden(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
+
+    wait_for_element_to_be_removed(page=page, locator=row_a)
+    wait_for_element_to_be_removed(page=page, locator=row_b)
+
+    expect(row_a).to_have_count(0)
+    expect(row_b).to_have_count(0)
+    expect(page.locator(TrashPL.SELECTOR_COUNT)).to_have_text(
+        f"({initial_trash_count + 2})"
+    )
+    assert not _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_a)
+    assert not _utub_url_row_is_live(app=app, utub_url_id=utub_url_id_b)
 
 
 def test_bulk_delete_partial_permission_skips_others_url(
@@ -258,10 +304,10 @@ def test_bulk_delete_partial_permission_skips_others_url(
     GIVEN, in a UTub the acting user did NOT create, one URL they authored
         (deletable) and one authored by another member (not deletable), both
         selected
-    WHEN the user confirms the delete
-    THEN the confirm warns a URL will be skipped, the deletable URL is removed,
-        the other member's URL survives with an amber "Can't delete" cue, and the
-        result banner is the assertive partial variant.
+    WHEN the user clicks Delete
+    THEN the deletable URL is removed, the other member's URL survives with an
+        amber "Can't delete" cue, and the toast is the partial variant with the
+        skipped detail line.
     """
     app = provide_app
     source = get_utub_this_user_created(app, USER_ID_FOR_TEST)
@@ -299,28 +345,13 @@ def test_bulk_delete_partial_permission_skips_others_url(
     )
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
 
-    open_bulk_delete_confirm(page=page)
-
-    # Title counts the full selection; the body warns one URL will be skipped;
-    # the submit label reflects the single deletable URL.
-    expect(page.locator(HPL.HEADER_MODAL)).to_have_text(
-        STRINGS.URL_BULK_DELETE_CONFIRM_TITLE.replace("{n}", "2")
-    )
-    expect(page.locator(HPL.BODY_MODAL)).to_contain_text(
-        STRINGS.URL_BULK_DELETE_SKIPPED_WARNING_ONE
-    )
-    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_have_text(
-        STRINGS.URL_BULK_DELETE_SUBMIT_ONE
-    )
-
-    submit_bulk_delete(page=page)
+    bulk_delete_selected(page=page)
 
     # Assert the transient amber "Can't delete" cue on the survivor FIRST — it is
     # removed a few seconds after the delete renders, so poll for it before the
-    # (slower) modal-hide + row-fade-removal waits can eat into that budget.
+    # (slower) row-fade-removal wait can eat into that budget.
     expect_cant_delete_cue_on_row(page=page, utub_url_id=non_deletable_id)
 
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=deletable_row)
 
     # The other member's URL survives.
@@ -328,14 +359,85 @@ def test_bulk_delete_partial_permission_skips_others_url(
         page.locator(f"{HPL.ROWS_URLS}[utuburlid='{non_deletable_id}']")
     ).to_be_visible()
 
-    # Assertive partial result banner.
-    banner = page.locator(HPL.BULK_DELETE_BANNER)
+    # Partial toast: one URL moved, the skipped count in the detail.
+    banner = page.locator(HPL.URL_OUTCOME_BANNER)
     expect(banner).to_be_visible()
     expect(banner).to_have_class(re.compile(r"(^|\s)partial(\s|$)"))
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        STRINGS.URL_MOVED_TO_TRASH_ONE
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_DETAIL)).to_contain_text(
+        STRINGS.URL_BULK_DELETE_SKIPPED_SUFFIX_ONE
+    )
 
     # DB: only the acting user's URL was deleted.
     assert not _utub_url_row_is_live(app=app, utub_url_id=deletable_id)
     assert _utub_url_row_is_live(app=app, utub_url_id=non_deletable_id)
+
+
+def test_bulk_delete_hidden_selection_detail(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN three selected URLs where a tag filter hides one of them
+    WHEN the user clicks Delete
+    THEN all three selected URLs (including the hidden one) are moved to Trash and
+        the toast detail reports the one URL hidden by the filter.
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    utub_id = utub.id
+    tag = add_tag_to_utub_user_created(
+        app, utub_id, USER_ID_FOR_TEST, HIDDEN_BY_FILTER_TAG_STRING
+    )
+    tag_id = tag.id
+
+    # Tag the first two URLs so a filter on the tag hides the third.
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id)
+            .order_by(Utub_Urls.id)
+            .all()
+        )
+        assert len(utub_urls) >= 3
+        tagged_ids = [utub_urls[0].id, utub_urls[1].id]
+        untagged_id = utub_urls[2].id
+        for utub_url_id in tagged_ids:
+            db.session.add(
+                Utub_Url_Tags(
+                    utub_id=utub_id, utub_url_id=utub_url_id, utub_tag_id=tag_id
+                )
+            )
+        db.session.commit()
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    selected_ids = [tagged_ids[0], tagged_ids[1], untagged_id]
+    enter_multi_select_mode(page=page)
+    for utub_url_id in selected_ids:
+        tap_url_checkbox(page=page, utub_url_id=utub_url_id)
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("3")
+
+    # Filter by the tag — the untagged (still-selected) row is hidden.
+    wait_then_click_element(
+        page=page, css_selector=get_utub_tag_filter_selector(utub_tag_id=tag_id)
+    )
+    untagged_row = page.locator(f"{HPL.ROWS_URLS}[utuburlid='{untagged_id}']").first
+    expect(untagged_row).to_be_hidden()
+    expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("3")
+
+    bulk_delete_selected(page=page)
+
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        _moved_to_trash_text(count=3)
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_DETAIL)).to_contain_text(
+        STRINGS.URL_DELETE_HIDDEN_DETAIL_ONE
+    )
+    for utub_url_id in selected_ids:
+        assert not _utub_url_row_is_live(app=app, utub_url_id=utub_url_id)
 
 
 def test_bulk_delete_button_disabled_until_deletable_url_selected(
@@ -409,7 +511,7 @@ def test_bulk_delete_deck_empties_announces_and_exits(
     """
     GIVEN a small UTub whose every URL is deletable by the acting user
     WHEN the user selects and deletes them all
-    THEN the deck-level outcome announcer shows the deleted-count message,
+    THEN the deck-level outcome announcer shows the moved-to-Trash message,
         multi-select mode has exited, the empty-state renders, and focus lands on
         the multi-select toggle (toggleBar(false)'s visible-case fallback).
     """
@@ -444,17 +546,15 @@ def test_bulk_delete_deck_empties_announces_and_exits(
     )
     expect(page.locator(HPL.BULK_SELECT_COUNT)).to_have_text("2")
 
-    open_bulk_delete_confirm(page=page)
-    submit_bulk_delete(page=page)
+    bulk_delete_selected(page=page)
 
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=row_a)
     wait_for_element_to_be_removed(page=page, locator=row_b)
 
-    # Deck-level outcome announcer holds the deleted-count message (survives the
+    # Deck-level outcome announcer holds the moved-to-Trash message (survives the
     # bulk-bar teardown on mode exit).
     expect(page.locator(HPL.URL_DECK_OUTCOME_ANNOUNCEMENT)).to_have_text(
-        STRINGS.URL_BULK_DELETED.replace("{n}", "2")
+        _moved_to_trash_text(count=2)
     )
 
     # Multi-select mode has exited (deck no longer marked active).
@@ -471,44 +571,12 @@ def test_bulk_delete_deck_empties_announces_and_exits(
     assert _count_url_rows_in_utub(app=app, utub_id=utub_id) == 0
 
 
-def test_bulk_delete_confirm_modal_has_correct_aria_labelledby(
-    page: Page, create_test_urls, provide_app: Flask
-):
-    """
-    Authoritative regression coverage for the homeModalBase.html a11y fix: with
-    the confirm modal open on the REAL rendered template, aria-labelledby points
-    at the real #confirmModalTitle (not the historical non-existent FormModal id).
-    """
-    app = provide_app
-    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
-
-    utub_url_id, _ = _seed_url_in_utub(
-        app=app,
-        utub_id=utub.id,
-        user_id=USER_ID_FOR_TEST,
-        url_string="https://bulk-delete-aria.test/",
-        url_title="Bulk Delete Aria",
-    )
-
-    login_user_and_select_utub_by_name(
-        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
-    )
-
-    enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
-    open_bulk_delete_confirm(page=page)
-
-    assert (
-        page.locator(HPL.HOME_MODAL).get_attribute("aria-labelledby")
-        == "confirmModalTitle"
-    )
-
-
 def test_bulk_delete_invalid_csrf_token_reloads(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN a deletable URL selected and the confirm modal open
-    WHEN the confirm is submitted with an invalidated CSRF token
+    GIVEN a deletable URL selected
+    WHEN Delete is clicked with an invalidated CSRF token
     THEN the server returns the 403 page (body-swapped in), the reload restores
         the session, and the URL is NOT deleted.
     """
@@ -531,14 +599,12 @@ def test_bulk_delete_invalid_csrf_token_reloads(
     )
 
     enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
-    open_bulk_delete_confirm(page=page)
 
     invalidate_csrf_token_on_page(page=page)
-    submit_bulk_delete(page=page)
+    bulk_delete_selected(page=page, expect_toast=False)
 
     assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
-    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     assert_login_with_username(page=page, username=username)
     assert_active_utub(page=page, utub_name=utub.name)
 
@@ -549,8 +615,8 @@ def test_bulk_delete_rate_limited_shows_429(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN a deletable URL selected and the confirm modal open, user rate-limited
-    WHEN the confirm is submitted
+    GIVEN a deletable URL selected, user rate-limited
+    WHEN Delete is clicked
     THEN the 429 error page is shown and the URL is NOT deleted.
     """
     app = provide_app
@@ -569,25 +635,24 @@ def test_bulk_delete_rate_limited_shows_429(
     )
 
     enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
-    open_bulk_delete_confirm(page=page)
 
     add_forced_rate_limit_header(page=page)
-    submit_bulk_delete(page=page)
+    bulk_delete_selected(page=page, expect_toast=False)
 
     assert_on_429_page(page=page)
     assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id)
 
 
-def test_bulk_delete_submit_reenables_on_server_error(
+def test_bulk_delete_reenables_on_server_error(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN a deletable URL selected and the confirm modal open
+    GIVEN a deletable URL selected
     WHEN the delete POST fails and the failure handler short-circuits without
         navigating (the forced fake failure reads as already-handled, mirroring
         the single-URL delete precedent in test_delete_url_ui)
-    THEN the request's .always() re-enables #modalSubmit so the user can retry,
-        and nothing is deleted.
+    THEN the request's .always() re-enables the bar's Delete button so the user
+        can retry, no toast shows, and nothing is deleted.
     """
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
@@ -605,11 +670,74 @@ def test_bulk_delete_submit_reenables_on_server_error(
     )
 
     enter_multi_select_and_select_urls(page=page, url_ids=[utub_url_id])
-    open_bulk_delete_confirm(page=page)
 
     force_next_bulk_delete_ajax_failure_no_navigate(page=page)
-    submit_bulk_delete(page=page)
+    bulk_delete_selected(page=page, expect_toast=False)
 
-    # The always() handler re-enables the submit button after the failure.
-    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
+    # The always() handler re-enables the Delete button after the failure.
+    delete_button = page.locator(HPL.BUTTON_BULK_DELETE_URLS)
+    expect(delete_button).to_be_visible()
+    expect(delete_button).not_to_have_attribute("aria-disabled", "true")
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
     assert _utub_url_row_is_live(app=app, utub_url_id=utub_url_id)
+
+
+def test_bulk_undo_partial_reports_not_in_trash(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN three URLs bulk-deleted and one of them then purged from Trash
+    WHEN the toast's Undo is clicked
+    THEN the other two are restored, the toast reads "Restored 2 of 3 URLs from
+        trash." with the "1 is no longer in Trash." detail, and the purged URL
+        stays gone.
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    utub_id = utub.id
+
+    seeded_ids: list[int] = []
+    for suffix in ("a", "b", "c"):
+        seeded_id, _ = _seed_url_in_utub(
+            app=app,
+            utub_id=utub_id,
+            user_id=USER_ID_FOR_TEST,
+            url_string=f"https://bulk-undo-partial-{suffix}.test/",
+            url_title=f"Bulk Undo Partial {suffix.upper()}",
+        )
+        seeded_ids.append(seeded_id)
+    purged_id = seeded_ids[1]
+    survivors = [seeded_ids[0], seeded_ids[2]]
+
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_name=UTS.TEST_UTUB_NAME_1
+    )
+
+    enter_multi_select_and_select_urls(page=page, url_ids=seeded_ids)
+    bulk_delete_selected(page=page)
+
+    # The delete is committed before the toast renders; purge one trashed row
+    # (as the purge job would) so its restore is skipped.
+    purge_utub_url_row(app, purged_id)
+
+    for seeded_id in seeded_ids:
+        wait_for_element_to_be_removed(
+            page=page, locator=page.locator(f"{HPL.ROWS_URLS}[utuburlid='{seeded_id}']")
+        )
+
+    wait_then_click_element(page=page, css_selector=HPL.URL_OUTCOME_BANNER_UNDO)
+
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        STRINGS.URL_UNDO_RESTORED_SOME.replace("{restored}", "2").replace(
+            "{total}", "3"
+        )
+    )
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_DETAIL)).to_contain_text(
+        STRINGS.URL_UNDO_NOT_IN_TRASH_ONE
+    )
+    for restored_id in survivors:
+        expect(
+            page.locator(f"{HPL.ROWS_URLS}[utuburlid='{restored_id}']")
+        ).to_have_count(1)
+        assert _utub_url_row_is_live(app=app, utub_url_id=restored_id)
+    expect(page.locator(f"{HPL.ROWS_URLS}[utuburlid='{purged_id}']")).to_have_count(0)

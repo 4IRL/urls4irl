@@ -781,7 +781,7 @@ def force_next_bulk_delete_ajax_failure_no_navigate(*, page: Page) -> None:
     (``/urls/delete``) fails with a fake 500 whose _429Handled getter always
     reads true — the bulk-delete failure handler's is429Handled short-circuit
     then returns early WITHOUT navigating, while the request's .always() still
-    re-enables #modalSubmit / #modalDismiss. Mirrors
+    re-enables the bar's Delete button. Mirrors
     force_next_delete_ajax_failure_no_navigate for the single-URL DELETE, but
     scoped to the bulk POST (the bulk endpoint is POST, not DELETE)."""
     page.evaluate("""() => {

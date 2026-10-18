@@ -19,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   isUTubDescriptionSubmitInFlight: vi.fn(() => false),
   isBulkTagSubmitInFlight: vi.fn(() => false),
   isBulkDeleteSubmitInFlight: vi.fn(() => false),
+  isURLDeleteInFlight: vi.fn(() => false),
+  isURLDeleteUndoInFlight: vi.fn(() => false),
+  isURLDeleteToastShowing: vi.fn(() => false),
   isBulkCopySubmitInFlight: vi.fn(() => false),
   isCrossUtubSearchActive: vi.fn(() => false),
   log: vi.fn(),
@@ -65,6 +68,13 @@ vi.mock("../../urls/bulk-actions/bulk-tag.js", () => ({
 }));
 vi.mock("../../urls/bulk-actions/bulk-delete.js", () => ({
   isBulkDeleteSubmitInFlight: mocks.isBulkDeleteSubmitInFlight,
+}));
+vi.mock("../../urls/cards/delete.js", () => ({
+  isURLDeleteInFlight: mocks.isURLDeleteInFlight,
+}));
+vi.mock("../../urls/cards/delete-undo.js", () => ({
+  isURLDeleteUndoInFlight: mocks.isURLDeleteUndoInFlight,
+  isURLDeleteToastShowing: mocks.isURLDeleteToastShowing,
 }));
 vi.mock("../../urls/bulk-actions/bulk-copy.js", () => ({
   isBulkCopySubmitInFlight: mocks.isBulkCopySubmitInFlight,
@@ -160,6 +170,9 @@ function clearBusySignals(): void {
   mocks.isUTubDescriptionSubmitInFlight.mockReturnValue(false);
   mocks.isBulkTagSubmitInFlight.mockReturnValue(false);
   mocks.isBulkDeleteSubmitInFlight.mockReturnValue(false);
+  mocks.isURLDeleteInFlight.mockReturnValue(false);
+  mocks.isURLDeleteUndoInFlight.mockReturnValue(false);
+  mocks.isURLDeleteToastShowing.mockReturnValue(false);
   mocks.isBulkCopySubmitInFlight.mockReturnValue(false);
   mocks.isCrossUtubSearchActive.mockReturnValue(false);
   mocks.storeState.multiSelectMode = false;
@@ -467,6 +480,18 @@ describe("isUserBusyOnHome", () => {
     [
       "a bulk delete submit",
       () => mocks.isBulkDeleteSubmitInFlight.mockReturnValue(true),
+    ],
+    [
+      "a URL delete request",
+      () => mocks.isURLDeleteInFlight.mockReturnValue(true),
+    ],
+    [
+      "a URL delete-undo request",
+      () => mocks.isURLDeleteUndoInFlight.mockReturnValue(true),
+    ],
+    [
+      "a URL delete-undo toast showing",
+      () => mocks.isURLDeleteToastShowing.mockReturnValue(true),
     ],
     [
       "a bulk copy submit",

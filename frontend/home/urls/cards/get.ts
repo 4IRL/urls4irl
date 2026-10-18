@@ -209,7 +209,7 @@ export function deleteURLOnStale(urlCard: JQuery): void {
   log(
     "deleteURLOnStale — URL was deleted by another user, removing card locally",
   );
-  // Close modal in case URL was found stale while it's shown
+  // Close any open confirm modal (another flow's) so it can't outlive the stale card
   $("#confirmModal").modal("hide");
   urlCard.fadeOut("slow", function () {
     // The card and every tag badge inside it carry render-time tooltips; drop

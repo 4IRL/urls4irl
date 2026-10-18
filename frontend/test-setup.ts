@@ -90,6 +90,7 @@ const appConfig = {
     copyURLsToUtubs: "/utubs/urls/copy",
     bulkDeleteURLs: "/utubs/-1/urls/delete",
     restoreURL: "/utubs/-1/urls/-2/restore",
+    restoreURLs: "/utubs/-1/urls/restore",
     purgeURL: "/utubs/-1/urls/-2/purge",
     deleteUTubTag: "/utubs/-1/tags/-2",
     createMember: "/utubs/-1/members",
@@ -274,23 +275,7 @@ const appConfig = {
     URL_BULK_DELETE_LABEL: "Delete",
     URL_BULK_DELETE_DISABLED_REASON:
       "You can delete only URLs you added, or any URL in a UTub you created.",
-    URL_BULK_DELETE_CONFIRM_TITLE: "Delete {n} URLs from this UTub?",
-    URL_BULK_DELETE_CONFIRM_TITLE_ONE: "Delete 1 URL from this UTub?",
-    URL_BULK_DELETE_CONFIRM_BODY:
-      "This removes them from this UTub for everyone.",
-    URL_BULK_DELETE_HIDDEN_WARNING:
-      "{n} selected URLs are hidden by your filter and will still be deleted.",
-    URL_BULK_DELETE_HIDDEN_WARNING_ONE:
-      "1 selected URL is hidden by your filter and will still be deleted.",
-    URL_BULK_DELETE_SKIPPED_WARNING:
-      "{n} selected URLs were added by another member and will be skipped.",
-    URL_BULK_DELETE_SKIPPED_WARNING_ONE:
-      "1 selected URL was added by another member and will be skipped.",
-    URL_BULK_DELETE_SUBMIT: "Delete {n} URLs",
-    URL_BULK_DELETE_SUBMIT_ONE: "Delete 1 URL",
     URL_BULK_DELETE_CANCEL: "Just kidding",
-    URL_BULK_DELETED: "Deleted {n} URLs.",
-    URL_BULK_DELETED_ONE: "Deleted 1 URL.",
     URL_BULK_DELETE_SKIPPED_SUFFIX:
       "{n} skipped because you can't delete them.",
     URL_BULK_DELETE_SKIPPED_SUFFIX_ONE:
@@ -345,6 +330,22 @@ const appConfig = {
     URL_REVIVED_FROM_TRASH: "Restored from trash.",
     URL_REVIVED_LOST_TAGS: "Restored from trash. {n} tags no longer exist.",
     URL_REVIVED_LOST_TAGS_ONE: "Restored from trash. 1 tag no longer exists.",
+    URL_MOVED_TO_TRASH: "Moved {n} URLs to Trash.",
+    URL_MOVED_TO_TRASH_ONE: "Moved 1 URL to Trash.",
+    URL_DELETE_HIDDEN_DETAIL: "Includes {n} URLs hidden by your filters.",
+    URL_DELETE_HIDDEN_DETAIL_ONE: "Includes 1 URL hidden by your filters.",
+    URL_UNDO_RESTORED: "Restored {n} URLs from trash.",
+    URL_UNDO_RESTORED_SOME: "Restored {restored} of {total} URLs from trash.",
+    URL_UNDO_LOST_TAGS: "{n} tags no longer exist.",
+    URL_UNDO_LOST_TAGS_ONE: "1 tag no longer exists.",
+    URL_UNDO_NOT_IN_TRASH: "{n} are no longer in Trash.",
+    URL_UNDO_NOT_IN_TRASH_ONE: "1 is no longer in Trash.",
+    URL_UNDO_DESTINATION_REQUIRED:
+      "{n} are still in Trash — pick a destination in the Trash panel.",
+    URL_UNDO_DESTINATION_REQUIRED_ONE:
+      "1 is still in Trash — pick a destination in the Trash panel.",
+    URL_UNDO_DELETE_ARIA: "Undo delete of {n} URLs",
+    URL_UNDO_DELETE_ARIA_ONE: "Undo delete of 1 URL",
     TRASH_TAB_URLS: "URLs ({n})",
     TRASH_TAB_UTUBS: "UTubs ({n})",
     TRASH_RETENTION_NOTICE:

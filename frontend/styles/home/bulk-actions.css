@@ -530,41 +530,6 @@
   outline-color: var(--removeIconColor);
 }
 
-/* Bulk-delete confirm (shared #confirmModal): delayed in-flight spinner on the
-   destructive submit, mirroring the bulk-copy/bulk-tag confirm spinner. The class
-   is toggled by bulk-delete.ts after SHOW_LOADING_ICON_AFTER_MS. Scoped to
-   #modalSubmit (the shared confirm button has no .bulkCopyConfirmBtn class). */
-#modalSubmit.bulkDeleteSubmitLoading {
-  color: transparent;
-  position: relative;
-}
-
-#modalSubmit.bulkDeleteSubmitLoading::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 14px;
-  height: 14px;
-  margin: -7px 0 0 -7px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: bulkTagSpin 0.6s linear infinite;
-}
-
-/* Confirm-body scope warnings (hidden-by-filter / not-deletable). Amber emphasis
-   so the destructive-reach disclosures stand out from the base body copy. */
-.bulkDeleteConfirmWarn {
-  margin-top: 8px;
-  /* Theme-aware caution text: --editURLColor's bright yellow is illegible as
-     running text on the near-white light-mode confirm modal. --cautionText is
-     that same yellow in dark mode and an accessible dark amber in light. */
-  color: var(--cautionText);
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
 /* A bar button reflects its disabled state via aria-disabled (not the native
    disabled attribute) so it stays focusable — Clear is the mode-enter focus
    target, and the strip's Select all / Invert stay reachable while inert. The
@@ -730,9 +695,8 @@
     background: transparent;
   }
 
-  /* Bulk-delete reuses the shared #confirmModal. Ensure its footer buttons
-     (Just kidding / Delete) meet the 44px WCAG 2.5.5 touch-target floor on
-     coarse pointers — the destructive confirm must be comfortable to tap. */
+  /* Shared #confirmModal footer buttons meet the 44px WCAG 2.5.5 touch-target
+     floor on coarse pointers — destructive confirms must be comfortable to tap. */
   #confirmModal .modal-footer .btn {
     min-height: 2.75rem;
   }
@@ -742,10 +706,6 @@
   .urlSelectCheckbox,
   .barBtn {
     transition: none;
-  }
-
-  #modalSubmit.bulkDeleteSubmitLoading::after {
-    animation: none;
   }
 }
 

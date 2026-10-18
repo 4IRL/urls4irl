@@ -1,15 +1,14 @@
-import {
-  initBulkDelete,
-  isBulkDeleteConfirmOpen,
-  isBulkDeleteSubmitInFlight,
-  setBulkDeleteConfirmOpen,
-} from "../bulk-delete.js";
+import { initBulkDelete, isBulkDeleteSubmitInFlight } from "../bulk-delete.js";
 import { getAvailableBulkActions } from "../bulk-action-registry.js";
 import type { BulkAction } from "../bulk-action-registry.js";
 import { setPickerOpen } from "../picker-guard.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { updateVisibleURLsForTagCount } from "../../cards/filtering.js";
+import {
+  showURLDeletedToast,
+  showURLDeletionFailedToast,
+} from "../../cards/delete-undo.js";
 import { showURLsEmptyState } from "../../empty-state.js";
 import { hideURLSearchIcon } from "../../search.js";
 import { exitMultiSelectMode } from "../bulk-mode.js";
@@ -24,10 +23,13 @@ vi.mock("../../../../lib/ajax.js", () => ({
   is429Handled: vi.fn(() => false),
 }));
 
-// Partial mock: keep the real AppEvents enum AND the real `on` wiring that
-// initBulkDelete relies on (URL_MULTISELECT_MODE_CHANGED subscription) functional,
-// spying only `emit` so the URL_DECK_CHANGED notification fired on a successful
-// bulk delete can be asserted.
+vi.mock("../../cards/delete-undo.js", () => ({
+  showURLDeletedToast: vi.fn(),
+  showURLDeletionFailedToast: vi.fn(),
+}));
+
+// Partial mock: keep the real AppEvents enum, spying only `emit` so the
+// URL_DECK_CHANGED notification fired on a successful bulk delete can be asserted.
 vi.mock("../../../../lib/event-bus.js", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../../../../lib/event-bus.js")>();
@@ -95,26 +97,15 @@ const $ = window.jQuery;
 const LOCKED_MESSAGE = "This UTub is locked and cannot be modified.";
 const URL_UTUB_IS_LOCKED = 8;
 
-// #confirmModal carries the CORRECTED aria-labelledby (the real homeModalBase.html
-// fix). This is a hand-authored fixture check only — the authoritative regression
-// coverage for the template is the Playwright assertion in Step 6.
 const BASE_HTML = `
   <div id="URLDeck">
     <div id="listURLs"></div>
     <div id="bulkActionBar">
       <button id="bulkSelectExit" type="button">Exit</button>
       <div id="bulkActionButtons"></div>
-      <div id="bulkDeleteResultBanner" class="bulkTagBanner hidden" role="status"></div>
     </div>
     <span id="URLDeckOutcomeAnnouncement" class="visually-hidden" aria-live="polite"></span>
     <div id="noURLsEmptyState" class="hidden"><p id="noURLsSubheader"></p></div>
-  </div>
-  <div id="confirmModal" class="modal fade" aria-labelledby="confirmModalTitle">
-    <h4 id="confirmModalTitle"></h4>
-    <div id="confirmModalBody"></div>
-    <button id="modalDismiss" type="button"></button>
-    <button id="modalRedirect" type="button"></button>
-    <button id="modalSubmit" type="submit" class="btn btn-danger"></button>
   </div>
 `;
 
@@ -142,12 +133,23 @@ function resolveDeleteAction(): BulkAction {
   return action;
 }
 
-/** Open the confirm modal for a selection/url-list. */
-function openConfirmFor(selectedURLCardIDs: number[], urls: TestUrl[]): void {
+/** Activate bulk delete for a selection/url-list (no modal: submits directly). */
+function activateFor(selectedURLCardIDs: number[], urls: TestUrl[]): void {
   resolveDeleteAction().onActivate({
     selectedURLCardIDs,
     urls: urls as never,
   });
+}
+
+/** Activate with a pending request and return its deferred. */
+function activateAndPend(
+  selectedURLCardIDs: number[],
+  urls: TestUrl[],
+): ReturnType<typeof createMockJqXHR> {
+  const deferred = createMockJqXHR();
+  vi.mocked(ajaxCall).mockReturnValue(deferred);
+  activateFor(selectedURLCardIDs, urls);
+  return deferred;
 }
 
 /** Build a bulk-delete success response envelope. */
@@ -178,6 +180,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.body.innerHTML = BASE_HTML;
+  // The shared lock guard (utub-locked.js) hides any open Bootstrap modal.
   $.fn.modal = vi.fn().mockReturnThis();
   $.fx.off = true;
   storeState.activeUTubID = 1;
@@ -185,14 +188,12 @@ beforeEach(() => {
   storeState.selectedURLCardIDs = [];
   vi.clearAllMocks();
   vi.mocked(is429Handled).mockReturnValue(false);
-  setBulkDeleteConfirmOpen(false);
   setPickerOpen("bulk-tag", false);
   setPickerOpen("bulk-copy", false);
 });
 
 afterEach(() => {
   $.fx.off = false;
-  setBulkDeleteConfirmOpen(false);
   setPickerOpen("bulk-tag", false);
   setPickerOpen("bulk-copy", false);
   document.body.innerHTML = "";
@@ -257,141 +258,101 @@ describe("bulk-delete action registration + availability", () => {
   });
 });
 
-describe("openBulkDeleteConfirm (onActivate)", () => {
-  it("opens the confirm with a count-aware title and a deletable-count submit label", () => {
-    openConfirmFor(
-      [10, 20, 30],
-      [url(10, true), url(20, true), url(30, false)],
-    );
-
-    expect(isBulkDeleteConfirmOpen()).toBe(true);
-    expect($("#confirmModalTitle").text()).toBe(
-      APP_CONFIG.strings.URL_BULK_DELETE_CONFIRM_TITLE.replace("{n}", "3"),
-    );
-    // 2 of the 3 selected are deletable → "Delete 2 URLs".
-    expect($("#modalSubmit").text()).toBe(
-      APP_CONFIG.strings.URL_BULK_DELETE_SUBMIT.replace("{n}", "2"),
-    );
-  });
-
-  it("discloses the not-deletable skip scope in the confirm body", () => {
-    openConfirmFor([10, 20], [url(10, true), url(20, false)]);
-    // One selected URL is not deletable → skip warning shown.
-    expect($("#confirmModalBody").text()).toContain(
-      APP_CONFIG.strings.URL_BULK_DELETE_SKIPPED_WARNING_ONE,
-    );
-  });
-
-  it("discloses the hidden-by-filter scope when a selected URL is not visible", () => {
-    // id 10 has a visible row; id 20 has NO row (hidden by filter).
-    seedUrlRows([10]);
-    openConfirmFor([10, 20], [url(10, true), url(20, true)]);
-    expect($("#confirmModalBody").text()).toContain(
-      APP_CONFIG.strings.URL_BULK_DELETE_HIDDEN_WARNING_ONE,
-    );
-  });
-
-  it("renders the plural {n}-interpolated hidden + skipped warnings (not the _ONE variants) for 2+ of each", () => {
-    // id 10 → deletable + visible (the required deletable survivor).
-    // ids 20, 30 → deletable but NO row → hidden by filter (2 hidden).
-    // ids 40, 50 → not deletable but visible → skipped (2 skipped).
-    seedUrlRows([10, 40, 50]);
-    openConfirmFor(
-      [10, 20, 30, 40, 50],
-      [
-        url(10, true),
-        url(20, true),
-        url(30, true),
-        url(40, false),
-        url(50, false),
-      ],
-    );
-
-    const bodyText = $("#confirmModalBody").text();
-    // Plural templates render with the correct interpolated counts…
-    expect(bodyText).toContain(
-      APP_CONFIG.strings.URL_BULK_DELETE_HIDDEN_WARNING.replace("{n}", "2"),
-    );
-    expect(bodyText).toContain(
-      APP_CONFIG.strings.URL_BULK_DELETE_SKIPPED_WARNING.replace("{n}", "2"),
-    );
-    // …and the singular _ONE variants are NOT used when the count is > 1.
-    expect(bodyText).not.toContain(
-      APP_CONFIG.strings.URL_BULK_DELETE_HIDDEN_WARNING_ONE,
-    );
-    expect(bodyText).not.toContain(
-      APP_CONFIG.strings.URL_BULK_DELETE_SKIPPED_WARNING_ONE,
-    );
-  });
-
-  it("opening the confirm does NOT fire a request (confirm gates the AJAX)", () => {
-    openConfirmFor([10], [url(10, true)]);
-    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
-  });
-
-  it("cancel (Just kidding) closes the confirm without firing a request", () => {
-    openConfirmFor([10], [url(10, true)]);
-    $("#modalDismiss").trigger("click");
-    expect(isBulkDeleteConfirmOpen()).toBe(false);
-    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
-  });
-
-  it("no-ops (re-entrant) when another bulk picker is already open", () => {
-    setPickerOpen("bulk-tag", true);
-    openConfirmFor([10], [url(10, true)]);
-    expect(isBulkDeleteConfirmOpen()).toBe(false);
-    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
-  });
-
-  it("does not open when there is no active UTub", () => {
-    storeState.activeUTubID = null;
-    openConfirmFor([10], [url(10, true)]);
-    expect(isBulkDeleteConfirmOpen()).toBe(false);
-  });
-
-  it("uses the aria-labelledby=confirmModalTitle contract on the shared modal (fixture smoke)", () => {
-    expect($("#confirmModal").attr("aria-labelledby")).toBe(
-      "confirmModalTitle",
-    );
-  });
-});
-
-describe("confirm submit + success (active-deck mutation)", () => {
-  function openAndSubmit(
-    selectedURLCardIDs: number[],
-    urls: TestUrl[],
-  ): ReturnType<typeof createMockJqXHR> {
-    const deferred = createMockJqXHR();
-    vi.mocked(ajaxCall).mockReturnValue(deferred);
-    openConfirmFor(selectedURLCardIDs, urls);
-    $("#modalSubmit").trigger("click");
-    return deferred;
-  }
-
-  it("posts only the deletable snapshot to bulkDeleteURLs(activeUTubID)", () => {
+describe("activateBulkDelete (onActivate)", () => {
+  it("posts only the deletable snapshot immediately, with no modal", () => {
+    // 2 deletable (10, 20) + 1 non-deletable (30) + 1 filter-hidden (40: no row).
     seedUrlRows([10, 20, 30]);
-    storeState.urls = [url(10, true), url(20, true), url(30, false)];
-    const deferred = openAndSubmit([10, 20, 30], storeState.urls);
+    const deferred = activateAndPend(
+      [10, 20, 30, 40],
+      [url(10, true), url(20, true), url(30, false), url(40, true)],
+    );
 
     expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
     const [method, requestUrl, body] = vi.mocked(ajaxCall).mock.calls[0];
     expect(method).toBe("post");
     expect(requestUrl).toBe(APP_CONFIG.routes.bulkDeleteURLs(1));
-    // Only the two deletable ids travel; id 30 (not deletable) is skipped client-side.
-    expect(body).toEqual({ utubUrlIds: [10, 20] });
+    // id 30 (not deletable) is skipped client-side; hidden id 40 is still sent.
+    expect(body).toEqual({ utubUrlIds: [10, 20, 40] });
 
-    // Settle the request so the module-private submitInFlight flag does not leak
-    // into later tests.
+    // Settle the request so the module-private submitInFlight flag does not leak.
     deferred.resolve(deleteResponse({ deletedIds: [10, 20] }), "success", {
       status: 200,
     });
   });
 
+  it("disables the bar's Delete button while pending and restores it after", () => {
+    $("#bulkActionButtons").append(
+      '<button data-bulk-action-id="bulk-delete">',
+    );
+    seedUrlRows([10]);
+    storeState.urls = [url(10, true)];
+    const deferred = activateAndPend([10], storeState.urls);
+    expect($('[data-bulk-action-id="bulk-delete"]').attr("aria-disabled")).toBe(
+      "true",
+    );
+    deferred.resolve(deleteResponse({ deletedIds: [10] }), "success", {
+      status: 200,
+    });
+    expect(
+      $('[data-bulk-action-id="bulk-delete"]').attr("aria-disabled"),
+    ).toBeUndefined();
+  });
+
+  it("does not re-enable a Delete button that was re-rendered while pending", () => {
+    $("#bulkActionButtons").append(
+      '<button data-bulk-action-id="bulk-delete">',
+    );
+    seedUrlRows([10]);
+    storeState.urls = [url(10, true)];
+    const deferred = activateAndPend([10], storeState.urls);
+    // The bar re-renders: the captured button is detached, a new disabled one
+    // takes its place (e.g. the remaining selection has nothing deletable).
+    $("#bulkActionButtons").html(
+      '<button data-bulk-action-id="bulk-delete" aria-disabled="true">',
+    );
+    deferred.resolve(deleteResponse({ deletedIds: [10] }), "success", {
+      status: 200,
+    });
+    expect($('[data-bulk-action-id="bulk-delete"]').attr("aria-disabled")).toBe(
+      "true",
+    );
+  });
+
+  it("no-ops while another bulk picker is open", () => {
+    setPickerOpen("bulk-tag", true);
+    activateFor([10], [url(10, true)]);
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+  });
+
+  it("no-ops while a submit is already in flight", () => {
+    seedUrlRows([10]);
+    storeState.urls = [url(10, true)];
+    const deferred = activateAndPend([10], storeState.urls);
+    activateFor([10], [url(10, true)]);
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+    deferred.resolve(deleteResponse({ deletedIds: [10] }), "success", {
+      status: 200,
+    });
+  });
+
+  it("no-ops when there is no active UTub", () => {
+    storeState.activeUTubID = null;
+    activateFor([10], [url(10, true)]);
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+  });
+
+  it("no-ops when nothing selected is deletable", () => {
+    activateFor([10], [url(10, false)]);
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+  });
+});
+
+describe("submit + success (active-deck mutation)", () => {
   it("isBulkDeleteSubmitInFlight is true while the delete is pending and false after it settles", () => {
     seedUrlRows([10]);
     storeState.urls = [url(10, true)];
     expect(isBulkDeleteSubmitInFlight()).toBe(false);
-    const deferred = openAndSubmit([10], storeState.urls);
+    const deferred = activateAndPend([10], storeState.urls);
     expect(isBulkDeleteSubmitInFlight()).toBe(true);
     deferred.resolve(deleteResponse({ deletedIds: [10] }), "success", {
       status: 200,
@@ -399,10 +360,10 @@ describe("confirm submit + success (active-deck mutation)", () => {
     expect(isBulkDeleteSubmitInFlight()).toBe(false);
   });
 
-  it("clean delete → success banner, survivors remain, tag numerators recomputed once", async () => {
+  it("clean delete → deleted toast with server ids, survivors remain, numerators recomputed once", async () => {
     seedUrlRows([10, 20, 99]);
     storeState.urls = [url(10, true), url(20, true), url(99, false)];
-    const deferred = openAndSubmit(
+    const deferred = activateAndPend(
       [10, 20],
       [url(10, true), url(20, true), url(99, false)],
     );
@@ -411,20 +372,29 @@ describe("confirm submit + success (active-deck mutation)", () => {
       status: 200,
     });
 
-    const banner = $("#bulkDeleteResultBanner");
-    expect(banner.hasClass("success")).toBe(true);
-    expect(banner.attr("aria-live")).toBe("polite");
-    expect(banner.text()).toContain(
-      APP_CONFIG.strings.URL_BULK_DELETED.replace("{n}", "2"),
+    expect(vi.mocked(showURLDeletedToast)).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(showURLDeletedToast).mock.calls[0][0];
+    expect(args).toMatchObject({
+      utubID: 1,
+      deletedIDs: [10, 20],
+      skippedCount: 0,
+      hiddenCount: 0,
+    });
+    expect(args.returnFocusTo[0]).toBe(
+      document.getElementById("bulkSelectExit"),
     );
+    expect(vi.mocked(showURLDeletionFailedToast)).not.toHaveBeenCalled();
 
     await vi.waitFor(() => {
       expect($("#listURLs .urlRow[utuburlid=10]").length).toBe(0);
     });
     // Numerator half recomputed exactly once, unconditionally (mirrors bulk-tag).
     expect(vi.mocked(updateVisibleURLsForTagCount)).toHaveBeenCalledTimes(1);
-    // Survivors remain → mode is NOT exited.
+    // Survivors remain → mode is NOT exited, focus returns to the Exit control.
     expect(vi.mocked(exitMultiSelectMode)).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(
+      document.getElementById("bulkSelectExit"),
+    );
     expect(refreshTrashCount).toHaveBeenCalledTimes(1);
   });
 
@@ -440,7 +410,7 @@ describe("confirm submit + success (active-deck mutation)", () => {
         '<span class="tagAppliedToUrlsCount">2 / 4</span>' +
         "</div>",
     );
-    const deferred = openAndSubmit(
+    const deferred = activateAndPend(
       [10, 20],
       [url(10, true), url(20, true), url(99, false)],
     );
@@ -458,39 +428,90 @@ describe("confirm submit + success (active-deck mutation)", () => {
     ).toBe("2 / 7");
   });
 
-  it("partial (client-side skip) → partial banner + amber Can't-delete cue on the survivor", () => {
+  it("partial (skip + filter-hidden) → toast carries the skipped and hidden counts, amber cue on the survivor", () => {
+    // id 10 deletable + visible; id 20 not deletable + visible (skipped);
+    // id 30 deletable but NO row (hidden by filter).
     seedUrlRows([10, 20]);
     storeState.urls = [url(10, true), url(20, false)];
-    const deferred = openAndSubmit([10, 20], [url(10, true), url(20, false)]);
+    const deferred = activateAndPend(
+      [10, 20, 30],
+      [url(10, true), url(20, false), url(30, true)],
+    );
 
-    deferred.resolve(deleteResponse({ deletedIds: [10] }), "success", {
+    deferred.resolve(deleteResponse({ deletedIds: [10, 30] }), "success", {
       status: 200,
     });
 
-    const banner = $("#bulkDeleteResultBanner");
-    expect(banner.hasClass("partial")).toBe(true);
-    expect(banner.attr("aria-live")).toBe("assertive");
-    expect(banner.text()).toContain(APP_CONFIG.strings.URL_BULK_DELETED_ONE);
+    expect(vi.mocked(showURLDeletedToast)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        utubID: 1,
+        deletedIDs: [10, 30],
+        skippedCount: 1,
+        hiddenCount: 1,
+      }),
+    );
     // The non-deletable survivor (id 20) flashes an amber "Can't delete" cue.
     const cue = $('.urlRow[utuburlid="20"] .bulkCardResultCue--skipped');
     expect(cue.length).toBe(1);
     expect(cue.text()).toBe(APP_CONFIG.strings.URL_BULK_CARD_CANT_DELETE);
   });
 
-  it("deck empties → outcome announced in the deck live region, bulk banner stays empty, mode exits", async () => {
+  it("dedupes a server-reported skipped id already in the client-side skipped partition", () => {
+    seedUrlRows([10, 20]);
+    storeState.urls = [url(10, true), url(20, false)];
+    const deferred = activateAndPend([10, 20], [url(10, true), url(20, false)]);
+
+    deferred.resolve(
+      {
+        ...deleteResponse({ deletedIds: [10] }),
+        skipped: [{ utubUrlID: 20 }],
+        totalSkipped: 1,
+      },
+      "success",
+      { status: 200 },
+    );
+
+    expect(vi.mocked(showURLDeletedToast)).toHaveBeenCalledWith(
+      expect.objectContaining({ deletedIDs: [10], skippedCount: 1 }),
+    );
+  });
+
+  it("all-skipped success → failed toast (no Undo), forceFail false", () => {
+    seedUrlRows([10]);
+    storeState.urls = [url(10, true)];
+    const deferred = activateAndPend([10], [url(10, true)]);
+
+    // Server skipped the only id (permission drift): nothing deleted.
+    deferred.resolve(
+      {
+        ...deleteResponse({ deletedIds: [] }),
+        skipped: [{ utubUrlID: 10 }],
+        totalSkipped: 1,
+      },
+      "success",
+      { status: 200 },
+    );
+
+    expect(vi.mocked(showURLDeletedToast)).not.toHaveBeenCalled();
+    expect(vi.mocked(showURLDeletionFailedToast)).toHaveBeenCalledWith({
+      forceFail: false,
+    });
+  });
+
+  it("deck empties → outcome announced in the deck live region, toast still shows, mode exits", async () => {
     seedUrlRows([10, 20]);
     storeState.urls = [url(10, true), url(20, true)];
-    const deferred = openAndSubmit([10, 20], [url(10, true), url(20, true)]);
+    const deferred = activateAndPend([10, 20], [url(10, true), url(20, true)]);
 
     deferred.resolve(deleteResponse({ deletedIds: [10, 20] }), "success", {
       status: 200,
     });
 
-    // The deck-level announcer carries the outcome; the bulk-bar banner does NOT.
     expect($("#URLDeckOutcomeAnnouncement").text()).toContain(
-      APP_CONFIG.strings.URL_BULK_DELETED.replace("{n}", "2"),
+      APP_CONFIG.strings.URL_MOVED_TO_TRASH.replace("{n}", "2"),
     );
-    expect($("#bulkDeleteResultBanner").text()).toBe("");
+    // The toast lives outside the bulk bar, so it still shows.
+    expect(vi.mocked(showURLDeletedToast)).toHaveBeenCalledTimes(1);
 
     await vi.waitFor(() => {
       expect(vi.mocked(showURLsEmptyState)).toHaveBeenCalled();
@@ -503,7 +524,7 @@ describe("confirm submit + success (active-deck mutation)", () => {
     const { emit, AppEvents } = await import("../../../../lib/event-bus.js");
     seedUrlRows([10, 20]);
     storeState.urls = [url(10, true), url(20, true)];
-    const deferred = openAndSubmit([10, 20], [url(10, true), url(20, true)]);
+    const deferred = activateAndPend([10, 20], [url(10, true), url(20, true)]);
 
     deferred.resolve(deleteResponse({ deletedIds: [10, 20] }), "success", {
       status: 200,
@@ -517,35 +538,24 @@ describe("confirm submit + success (active-deck mutation)", () => {
   it("stale activeUTubID race → nothing rendered when the active UTub changes mid-flight", () => {
     seedUrlRows([10]);
     storeState.urls = [url(10, true)];
-    const deferred = openAndSubmit([10], [url(10, true)]);
+    const deferred = activateAndPend([10], [url(10, true)]);
 
     storeState.activeUTubID = 999;
     deferred.resolve(deleteResponse({ deletedIds: [10] }), "success", {
       status: 200,
     });
 
-    expect($("#bulkDeleteResultBanner").hasClass("hidden")).toBe(true);
+    expect(vi.mocked(showURLDeletedToast)).not.toHaveBeenCalled();
     expect($("#URLDeckOutcomeAnnouncement").text()).toBe("");
   });
 });
 
-describe("confirm submit — failure paths", () => {
-  function openAndSubmit(
-    selectedURLCardIDs: number[],
-    urls: TestUrl[],
-  ): ReturnType<typeof createMockJqXHR> {
-    const deferred = createMockJqXHR();
-    vi.mocked(ajaxCall).mockReturnValue(deferred);
-    openConfirmFor(selectedURLCardIDs, urls);
-    $("#modalSubmit").trigger("click");
-    return deferred;
-  }
-
+describe("submit — failure paths", () => {
   it("is429Handled short-circuits the failure path", () => {
     vi.mocked(is429Handled).mockReturnValueOnce(true);
-    const deferred = openAndSubmit([10], [url(10, true)]);
+    const deferred = activateAndPend([10], [url(10, true)]);
     deferred.reject({ status: 429 });
-    expect($("#bulkDeleteResultBanner").hasClass("fail")).toBe(false);
+    expect(vi.mocked(showURLDeletionFailedToast)).not.toHaveBeenCalled();
   });
 
   it("locked UTub 403 → inline deck banner, no error-page redirect", () => {
@@ -553,7 +563,7 @@ describe("confirm submit — failure paths", () => {
       .spyOn(window.location, "assign")
       .mockImplementation(() => {});
     try {
-      const deferred = openAndSubmit([10], [url(10, true)]);
+      const deferred = activateAndPend([10], [url(10, true)]);
       deferred.reject({
         status: 403,
         responseJSON: {
@@ -570,19 +580,29 @@ describe("confirm submit — failure paths", () => {
     }
   });
 
-  it("message-level 400 → fail banner (UNABLE_TO_DELETE_URLS) and the modal closes", () => {
-    const deferred = openAndSubmit([10], [url(10, true)]);
+  it("message-level 400 → failed toast with forceFail", () => {
+    const deferred = activateAndPend([10], [url(10, true)]);
     deferred.reject({
       status: 400,
       responseJSON: { message: "One or more URLs are not in this UTub." },
     });
 
-    const banner = $("#bulkDeleteResultBanner");
-    expect(banner.hasClass("fail")).toBe(true);
-    expect(banner.attr("aria-live")).toBe("assertive");
-    expect(banner.text()).toContain(APP_CONFIG.strings.UNABLE_TO_DELETE_URLS);
-    expect(isBulkDeleteConfirmOpen()).toBe(false);
+    expect(vi.mocked(showURLDeletionFailedToast)).toHaveBeenCalledWith({
+      forceFail: true,
+    });
+    expect(vi.mocked(showURLDeletedToast)).not.toHaveBeenCalled();
     expect(refreshTrashCount).not.toHaveBeenCalled();
+  });
+
+  it("400 after the active UTub changed mid-flight → no failed toast", () => {
+    const deferred = activateAndPend([10], [url(10, true)]);
+    storeState.activeUTubID = 999;
+    deferred.reject({
+      status: 400,
+      responseJSON: { message: "One or more URLs are not in this UTub." },
+    });
+
+    expect(vi.mocked(showURLDeletionFailedToast)).not.toHaveBeenCalled();
   });
 
   it("redirects to the error page on a JSON 403 (non-locked)", () => {
@@ -590,7 +610,7 @@ describe("confirm submit — failure paths", () => {
       .spyOn(window.location, "assign")
       .mockImplementation(() => {});
     try {
-      const deferred = openAndSubmit([10], [url(10, true)]);
+      const deferred = activateAndPend([10], [url(10, true)]);
       deferred.reject({ status: 403, responseJSON: { message: "Forbidden" } });
       expect(locationAssignSpy).toHaveBeenCalledWith(
         APP_CONFIG.routes.errorPage,
@@ -605,7 +625,7 @@ describe("confirm submit — failure paths", () => {
       .spyOn(window.location, "assign")
       .mockImplementation(() => {});
     try {
-      const deferred = openAndSubmit([10], [url(10, true)]);
+      const deferred = activateAndPend([10], [url(10, true)]);
       deferred.reject({ status: 404, responseJSON: { message: "Not found" } });
       expect(locationAssignSpy).toHaveBeenCalledWith(
         APP_CONFIG.routes.errorPage,
@@ -616,7 +636,7 @@ describe("confirm submit — failure paths", () => {
   });
 
   it("replaces the body with server HTML on a non-JSON 403 (CSRF expired)", () => {
-    const deferred = openAndSubmit([10], [url(10, true)]);
+    const deferred = activateAndPend([10], [url(10, true)]);
     const forbiddenHtml = '<div id="forbiddenPage">Forbidden</div>';
     deferred.reject({
       status: 403,

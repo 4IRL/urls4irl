@@ -3,6 +3,7 @@ import { debug } from "../../../lib/debug.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { deselectAllURLs } from "../cards/selection.js";
+import { clearURLOutcomeBanner } from "../outcome-banner.js";
 import { getNumOfURLs } from "../utils.js";
 import { clearURLSelection } from "./bulk-selection.js";
 import { closeAllPickers } from "./picker-guard.js";
@@ -84,6 +85,8 @@ export function enterMultiSelectMode(): void {
   $(EDIT_PANEL_TOGGLE_SELECTOR).addClass(HIDDEN_CLASS);
 
   setState({ multiSelectMode: true });
+  // A showing delete-Undo toast can never be actioned once the deck shows checkboxes.
+  clearURLOutcomeBanner();
   $("#URLDeck").addClass(MULTI_SELECT_ACTIVE_CLASS);
   // Also mark the shared ancestor so tag-sheet.css can suppress the collapsed
   // peek (transform, not `.hidden`) without blocking on-demand opens.
@@ -133,7 +136,6 @@ export function exitMultiSelectMode(): void {
   // never imports a picker module.
   $("#bulkTagResultBanner").addClass(HIDDEN_CLASS).empty();
   $("#bulkCopyResultBanner").addClass(HIDDEN_CLASS).empty();
-  $("#bulkDeleteResultBanner").addClass(HIDDEN_CLASS).empty();
   setState({ multiSelectMode: false });
   $("#URLDeck").removeClass(MULTI_SELECT_ACTIVE_CLASS);
   // Dropping the mainPanel mode class lets the collapsed tag-sheet peek slide
