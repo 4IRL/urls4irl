@@ -30,6 +30,7 @@ import { initUpdateAllTags } from "./home/tags/update-all.js";
 import { initURLDeck } from "./home/urls/deck.js";
 import { initBulkActions } from "./home/urls/bulk-actions/index.js";
 import { initSwipe } from "./home/urls/cards/swipe.js";
+import { initURLOutcomeBannerLifecycle } from "./home/urls/outcome-banner.js";
 import { initURLDeckHeaderFit } from "./home/utubs/header-fit.js";
 import { initUTubRefreshOnFocus } from "./home/utubs/refresh-on-focus.js";
 import { initTagSheet } from "./home/tags/sheet.js";
@@ -80,6 +81,7 @@ $(document).ready(() => {
   initTrashPanel();
   initTrashActions();
   initSwipe();
+  initURLOutcomeBannerLifecycle();
   initURLDeckHeaderFit();
   initCookieBanner();
   initMetricsClient();
