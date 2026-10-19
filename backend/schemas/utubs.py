@@ -212,3 +212,17 @@ class UtubDescUpdatedResponseSchema(BaseSchema):
         alias=UTUB_DESCRIPTION,
         description="New description of the UTub, or null if cleared",
     )
+
+
+class UtubSettingsUpdatedResponseSchema(BaseSchema):
+    """UTub settings updated"""
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub whose settings were updated",
+    )
+    # SerializeAsAny: see UtubDetailSchema.settings (settings-model seam).
+    settings: SerializeAsAny[UtubSettings] = Field(
+        alias=MODELS.SETTINGS,
+        description="Full resolved per-UTub settings (stored overrides merged over defaults)",
+    )

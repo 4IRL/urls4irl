@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.schemas.requests._sanitize import OptionalSanitizedStr, SanitizedStr
 from backend.utils.constants import UTUB_CONSTANTS
@@ -64,3 +66,23 @@ class UpdateUTubDescriptionRequest(BaseModel):
                 f"String should have at most {UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH} characters"
             )
         return value
+
+
+class UpdateUTubSettingsRequest(BaseModel):
+    """Per-section settings patch. Only sections the caller sent are merged
+    (``model_fields_set``); a ``null`` or non-object section is rejected here."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    utubs: dict[str, Any] = Field(
+        default_factory=dict, description="Patch for the UTub panel settings"
+    )
+    members: dict[str, Any] = Field(
+        default_factory=dict, description="Patch for the members panel settings"
+    )
+    tags: dict[str, Any] = Field(
+        default_factory=dict, description="Patch for the tags panel settings"
+    )
+    urls: dict[str, Any] = Field(
+        default_factory=dict, description="Patch for the URLs panel settings"
+    )

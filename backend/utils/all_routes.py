@@ -163,6 +163,7 @@ class UTUB_ROUTES:
     PURGE_UTUB = _UTUBS + "purge_utub"
     UPDATE_UTUB_NAME = _UTUBS + "update_utub_name"
     UPDATE_UTUB_DESC = _UTUBS + "update_utub_desc"
+    UPDATE_UTUB_SETTINGS = _UTUBS + "update_utub_settings"
 
 
 class API_V1_ROUTES:
@@ -253,6 +254,7 @@ JS_ROUTES: dict[str, JsRoute] = {
     "purgeUTub": JsRoute(UTUB_ROUTES.PURGE_UTUB, {"utub_id": -1}),
     "updateUTubName": JsRoute(UTUB_ROUTES.UPDATE_UTUB_NAME, {"utub_id": -1}),
     "updateUTubDescription": JsRoute(UTUB_ROUTES.UPDATE_UTUB_DESC, {"utub_id": -1}),
+    "updateUTubSettings": JsRoute(UTUB_ROUTES.UPDATE_UTUB_SETTINGS, {"utub_id": -1}),
     # URL routes
     "getURL": JsRoute(URL_ROUTES.GET_URL, {"utub_id": -1, "utub_url_id": -2}),
     "createURL": JsRoute(URL_ROUTES.CREATE_URL, {"utub_id": -1}),

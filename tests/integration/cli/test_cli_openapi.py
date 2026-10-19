@@ -944,6 +944,31 @@ def test_utub_detail_exposes_settings_property(runner, tmp_path):
     assert "UtubSettings" in str(settings_prop), settings_prop
 
 
+def test_update_utub_settings_operation_in_spec(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect PATCH /utubs/{utub_id}/settings
+    THEN it has a request body referencing UpdateUTubSettingsRequest, responses
+         200 (referencing UtubSettingsUpdatedResponseSchema), 400, 403 and 404,
+         and the response schema exposes a settings property
+    """
+    spec = _generate_spec(runner, tmp_path)
+    patch_op = spec["paths"]["/utubs/{utub_id}/settings"]["patch"]
+
+    request_ref = patch_op["requestBody"]["content"]["application/json"]["schema"][
+        "$ref"
+    ]
+    assert request_ref.endswith("/UpdateUTubSettingsRequest"), request_ref
+
+    for status_code in ("200", "400", "403", "404"):
+        assert status_code in patch_op["responses"], patch_op["responses"].keys()
+    ok_schema = patch_op["responses"]["200"]["content"]["application/json"]["schema"]
+    assert "UtubSettingsUpdatedResponseSchema" in str(ok_schema), ok_schema
+
+    component = spec["components"]["schemas"]["UtubSettingsUpdatedResponseSchema"]
+    assert "settings" in component["properties"], component["properties"].keys()
+
+
 def test_typed_error_responses_narrow_error_code(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec

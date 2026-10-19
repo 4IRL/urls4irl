@@ -43,6 +43,7 @@ from backend.schemas.utubs import (
     UtubDescUpdatedResponseSchema,
     UtubDetailSchema,
     UtubNameUpdatedResponseSchema,
+    UtubSettingsUpdatedResponseSchema,
 )
 
 __all__ = [
@@ -85,4 +86,5 @@ __all__ = [
     "UtubDetailSchema",
     "UtubNameUpdatedResponseSchema",
     "UtubSettings",
+    "UtubSettingsUpdatedResponseSchema",
 ]

@@ -89,6 +89,8 @@ def lock_statements_seen_during(send_request: Callable[[], Any]) -> list[str]:
             {UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: "Lock test new desc"},
             200,
         ),
+        # Body {} yields identical overrides (no commit) but still locks first.
+        ("patch", ROUTES.UTUBS.UPDATE_UTUB_SETTINGS, {}, {}, 200),
     ],
     ids=[
         "transfer_ownership",
@@ -97,6 +99,7 @@ def lock_statements_seen_during(send_request: Callable[[], Any]) -> list[str]:
         "delete_utub",
         "update_utub_name",
         "update_utub_desc",
+        "update_utub_settings",
     ],
 )
 def test_user_endpoint_locks_utub_row_for_no_key_update(

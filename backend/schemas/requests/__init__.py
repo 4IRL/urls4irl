@@ -17,6 +17,7 @@ from backend.schemas.requests.utubs import (
     CreateUTubRequest,
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
+    UpdateUTubSettingsRequest,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "CreateUTubRequest",
     "UpdateUTubDescriptionRequest",
     "UpdateUTubNameRequest",
+    "UpdateUTubSettingsRequest",
 ]
