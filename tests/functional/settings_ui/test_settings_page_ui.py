@@ -839,10 +839,15 @@ def _fill_delete_modal_and_recompute_gate(
 
     `fill` sets each value in a single atomic DOM operation, so — unlike
     character-by-character typing — a mid-interaction focus steal cannot drop
-    part of the text and silently leave the gate closed.
+    part of the text and silently leave the gate closed. Both values are
+    asserted to have landed before the recompute, so the gate is always
+    computed from the intended pair and a fill that did not take fails here,
+    naming the field, instead of surfacing later as a stale button state.
     """
     confirm_username_input.fill(username)
     current_password_input.fill(password)
+    expect(confirm_username_input).to_have_value(username)
+    expect(current_password_input).to_have_value(password)
     _recompute_delete_gate(confirm_username_input)
 
 
@@ -1023,25 +1028,40 @@ def test_delete_typed_confirmation_gates_submit(
     # Corrupting the username closes it again — asserted as a transition away
     # from enabled, so a gate that never recomputed at all cannot pass by
     # leaving the button in its already-disabled opening state.
-    confirm_username_input.fill(username + "-nope")
-    _recompute_delete_gate(confirm_username_input)
+    _fill_delete_modal_and_recompute_gate(
+        confirm_username_input=confirm_username_input,
+        current_password_input=current_password_input,
+        username=username + "-nope",
+        password=UI_TEST_STRINGS.TEST_PASSWORD_1,
+    )
     expect(submit).to_be_disabled()
 
     # A prefix of the username is not a match either — the gate compares the
     # whole value, not a leading substring.
-    confirm_username_input.fill(username[:-1])
-    _recompute_delete_gate(confirm_username_input)
+    _fill_delete_modal_and_recompute_gate(
+        confirm_username_input=confirm_username_input,
+        current_password_input=current_password_input,
+        username=username[:-1],
+        password=UI_TEST_STRINGS.TEST_PASSWORD_1,
+    )
     expect(submit).to_be_disabled()
 
     # Emptying the password with the exact username typed keeps it closed.
-    confirm_username_input.fill(username)
-    current_password_input.fill("")
-    _recompute_delete_gate(confirm_username_input)
+    _fill_delete_modal_and_recompute_gate(
+        confirm_username_input=confirm_username_input,
+        current_password_input=current_password_input,
+        username=username,
+        password="",
+    )
     expect(submit).to_be_disabled()
 
     # Restoring the password re-opens it.
-    current_password_input.fill(UI_TEST_STRINGS.TEST_PASSWORD_1)
-    _recompute_delete_gate(confirm_username_input)
+    _fill_delete_modal_and_recompute_gate(
+        confirm_username_input=confirm_username_input,
+        current_password_input=current_password_input,
+        username=username,
+        password=UI_TEST_STRINGS.TEST_PASSWORD_1,
+    )
     expect(submit).to_be_enabled()
 
 
