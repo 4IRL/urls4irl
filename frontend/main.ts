@@ -46,6 +46,7 @@ import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
 import { initTrashPanel } from "./home/trash/panel.js";
 import { initTrashActions } from "./home/trash/actions.js";
+import { initTrashSwipe } from "./home/trash/swipe.js";
 
 // Register jQuery plugins and setup CSRF before DOM ready
 registerJQueryPlugins();
@@ -80,6 +81,7 @@ $(document).ready(() => {
   initTrashTabs();
   initTrashPanel();
   initTrashActions();
+  initTrashSwipe();
   initSwipe();
   initURLOutcomeBannerLifecycle();
   initURLDeckHeaderFit();
