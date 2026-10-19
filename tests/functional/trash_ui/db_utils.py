@@ -6,7 +6,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from tests.functional.db_utils import add_url_to_utub_as_other_member
+from tests.functional.db_utils import add_url_to_utub_as_other_member, trash_utub_url
 
 
 def create_utub_as_creator(app: Flask, user_id: int, utub_name: str) -> int:
@@ -32,6 +32,30 @@ def add_url_to_utub(
 ) -> int:
     """Add a URL authored by ``user_id`` to the UTub; returns the ``Utub_Urls`` id."""
     return add_url_to_utub_as_other_member(app, utub_id, user_id, url_string, url_title)
+
+
+def seed_trashed_urls(
+    app: Flask,
+    utub_id: int,
+    count: int,
+    prefix: str,
+    tag_ids: list[int] | None = None,
+    user_id: int = 1,
+) -> list[int]:
+    """Add ``count`` URLs to the UTub and trash each one in place; returns the
+    ``Utub_Urls`` ids in creation order."""
+    utub_url_ids: list[int] = []
+    for index in range(count):
+        utub_url_id = add_url_to_utub(
+            app,
+            utub_id,
+            user_id,
+            f"https://{prefix}-{index}.example.com/",
+            f"{prefix} title {index}",
+        )
+        trash_utub_url(app, utub_url_id, user_id, tag_ids or [])
+        utub_url_ids.append(utub_url_id)
+    return utub_url_ids
 
 
 def add_tag_to_url(

@@ -294,7 +294,7 @@ _URLS_UI_DIR: tuple[str, ...] = (
     "mobile_ui",
 )
 _UTUBS_UI_DIR: tuple[str, ...] = ("utubs_ui", "mobile_ui")
-_TRASH_UI_DIR: tuple[str, ...] = ("trash_ui", "home_ui")
+_TRASH_UI_DIR: tuple[str, ...] = ("trash_ui", "home_ui", "mobile_ui")
 _HOME_DECKS_UI: tuple[str, ...] = _union(
     _HOME_UI_DIR,
     _UTUBS_UI_DIR,

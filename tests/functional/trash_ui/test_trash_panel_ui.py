@@ -25,6 +25,7 @@ from tests.functional.trash_ui.db_utils import (
     create_utub_as_creator,
     delete_utub_tag,
     purge_utub_url_row,
+    seed_trashed_urls,
 )
 from tests.functional.trash_ui.playwright_utils import (
     login_user_and_open_trash,
@@ -44,24 +45,6 @@ def seeded_users(page: Page, create_test_users):
     """Every test seeds its own UTubs and URLs, but needs the mock users to exist.
 
     Depends on ``page`` so it seeds AFTER the page fixture's database wipe."""
-
-
-def _seed_trashed_urls(
-    app: Flask, utub_id: int, count: int, prefix: str, tag_ids: list[int] | None = None
-) -> list[int]:
-    """Add ``count`` URLs to the UTub and trash each one in place."""
-    utub_url_ids: list[int] = []
-    for index in range(count):
-        utub_url_id = add_url_to_utub(
-            app,
-            utub_id,
-            USER_ID,
-            f"https://{prefix}-{index}.example.com/",
-            f"{prefix} title {index}",
-        )
-        trash_utub_url(app, utub_url_id, USER_ID, tag_ids or [])
-        utub_url_ids.append(utub_url_id)
-    return utub_url_ids
 
 
 def _url_row(utub_url_id: int) -> str:
@@ -87,7 +70,7 @@ def test_badge_shows_row_total_across_both_tabs(page: Page, provide_app: Flask):
     """
     app = provide_app
     live_utub_id = create_utub_as_creator(app, USER_ID, "Trash live utub")
-    _seed_trashed_urls(app, live_utub_id, 2, "badge-live")
+    seed_trashed_urls(app, live_utub_id, 2, "badge-live")
     doomed_utub_id = create_utub_as_creator(app, USER_ID, "Trash doomed utub")
     add_url_to_utub(app, doomed_utub_id, USER_ID, "https://badge-a.example.com/", "A")
     add_url_to_utub(app, doomed_utub_id, USER_ID, "https://badge-b.example.com/", "B")
@@ -266,7 +249,7 @@ def test_restore_url_in_place_announces_focuses_next_row_and_updates_badge(
     """
     app = provide_app
     utub_id = create_utub_as_creator(app, USER_ID, "Trash restore utub")
-    first_id, second_id = _seed_trashed_urls(app, utub_id, 2, "restore")
+    first_id, second_id = seed_trashed_urls(app, utub_id, 2, "restore")
     login_user_to_home_page(app=app, page=page, user_id=USER_ID)
     expect(page.locator(TPL.SELECTOR_COUNT)).to_have_text("(2)")
     open_trash(page=page)
@@ -295,7 +278,7 @@ def test_restoring_last_url_row_focuses_empty_state(page: Page, provide_app: Fla
     """
     app = provide_app
     utub_id = create_utub_as_creator(app, USER_ID, "Trash last row utub")
-    (only_id,) = _seed_trashed_urls(app, utub_id, 1, "last")
+    (only_id,) = seed_trashed_urls(app, utub_id, 1, "last")
     login_user_and_open_trash(app=app, page=page, user_id=USER_ID)
 
     page.locator(f"{_url_row(only_id)} {TPL.BUTTON_RESTORE}").click()
@@ -455,7 +438,7 @@ def test_delete_forever_cancel_keeps_row_and_confirm_removes_it(
     """
     app = provide_app
     utub_id = create_utub_as_creator(app, USER_ID, "Trash purge utub")
-    first_id, second_id = _seed_trashed_urls(app, utub_id, 2, "purge")
+    first_id, second_id = seed_trashed_urls(app, utub_id, 2, "purge")
     login_user_and_open_trash(app=app, page=page, user_id=USER_ID)
     purge_button = page.locator(f"{_url_row(first_id)} {TPL.BUTTON_PURGE}")
 
@@ -488,7 +471,7 @@ def test_empty_trash_empties_only_the_active_tab(page: Page, provide_app: Flask)
     """
     app = provide_app
     live_utub_id = create_utub_as_creator(app, USER_ID, "Trash empty live utub")
-    _seed_trashed_urls(app, live_utub_id, 2, "empty")
+    seed_trashed_urls(app, live_utub_id, 2, "empty")
     doomed_utub_id = create_utub_as_creator(app, USER_ID, "Trash empty doomed utub")
     trash_utub(app, doomed_utub_id, USER_ID)
     login_user_and_open_trash(app=app, page=page, user_id=USER_ID)
@@ -524,9 +507,9 @@ def test_locked_origin_disables_row_actions_and_empty_trash_keeps_it(
     """
     app = provide_app
     open_utub_id = create_utub_as_creator(app, USER_ID, "Trash unlocked utub")
-    (open_url_id,) = _seed_trashed_urls(app, open_utub_id, 1, "unlocked")
+    (open_url_id,) = seed_trashed_urls(app, open_utub_id, 1, "unlocked")
     locked_utub_id = create_utub_as_creator(app, USER_ID, "Trash locked utub")
-    (locked_url_id,) = _seed_trashed_urls(app, locked_utub_id, 1, "locked")
+    (locked_url_id,) = seed_trashed_urls(app, locked_utub_id, 1, "locked")
     set_utub_locked_state(app, locked_utub_id, True)
     login_user_and_open_trash(app=app, page=page, user_id=USER_ID)
 
@@ -560,7 +543,7 @@ def test_restoring_a_row_purged_elsewhere_reports_not_in_trash(
     """
     app = provide_app
     utub_id = create_utub_as_creator(app, USER_ID, "Trash stale utub")
-    stale_id, other_id = _seed_trashed_urls(app, utub_id, 2, "stale")
+    stale_id, other_id = seed_trashed_urls(app, utub_id, 2, "stale")
     login_user_and_open_trash(app=app, page=page, user_id=USER_ID)
     expect(page.locator(TPL.ROWS_URLS)).to_have_count(2)
 
