@@ -1288,7 +1288,7 @@ class SettingsPageLocators(GenericPageLocator):
 
 
 class TrashPanelLocators(GenericPageLocator):
-    """A collector class for the desktop Trash destination locators.
+    """A collector class for the Trash destination locators (desktop and mobile).
 
     Selectors mirror the IDs in `backend/templates/components/home/TrashPanel/`
     and the classes built by `frontend/home/trash/render.ts`.
@@ -1321,6 +1321,16 @@ class TrashPanelLocators(GenericPageLocator):
     # Destination picker (inline listbox inside a row)
     DESTINATION_PICKER = ".trashDestinationPicker"
     DESTINATION_OPTION = ".trashDestinationOption[role='option']"
+    DESTINATION_OPTION_ANY = ".trashDestinationOption"
+
+    # Mobile layout: the tab row, the panels the Trash panel replaces, and the
+    # swipe-restore layers of an armed row
+    TAB_ROW = "#TrashTabRow"
+    ROW_SWIPEABLE = ".trashRowSwipeable"
+    ROW_SWIPE_CONTENT = ".trashRowContent"
+    ROW_SWIPE_REVEAL = ".trashRowSwipeReveal"
+    LEFT_PANEL = "#leftPanel"
+    MEMBER_DECK = "#MemberDeck"
 
     # Confirm modal (shared #confirmModal)
     CONFIRM_MODAL = "#confirmModal"
