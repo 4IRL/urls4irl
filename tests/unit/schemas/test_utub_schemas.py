@@ -48,6 +48,24 @@ def test_utub_detail_schema_dump():
     assert dumped[MODELS.CURRENT_USER] == 1
 
 
+def test_utub_detail_schema_settings_default_is_last_field():
+    schema = UtubDetailSchema.model_validate(_UTUB_DICT)
+    dumped = schema.model_dump(by_alias=True)
+    assert dumped[MODELS.SETTINGS] == {
+        "utubs": {},
+        "members": {},
+        "tags": {},
+        "urls": {},
+    }
+    assert list(dumped)[-1] == MODELS.SETTINGS
+
+
+def test_utub_detail_schema_settings_unknown_section_rejected():
+    data = {**_UTUB_DICT, MODELS.SETTINGS: {"bogus": {}}}
+    with pytest.raises(ValidationError):
+        UtubDetailSchema.model_validate(data)
+
+
 def test_utub_detail_schema_nested_members():
     schema = UtubDetailSchema.model_validate(_UTUB_DICT)
     dumped = schema.model_dump(by_alias=True)

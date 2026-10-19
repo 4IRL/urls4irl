@@ -931,6 +931,19 @@ def test_utub_detail_current_user_is_integer(runner, tmp_path):
     )
 
 
+def test_utub_detail_exposes_settings_property(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the UtubDetailSchema component schema
+    THEN it has a settings property referencing the settings schema
+    """
+    spec = _generate_spec(runner, tmp_path)
+    utub_detail = spec["components"]["schemas"]["UtubDetailSchema"]
+    assert "settings" in utub_detail["properties"], utub_detail["properties"].keys()
+    settings_prop = utub_detail["properties"]["settings"]
+    assert "UtubSettings" in str(settings_prop), settings_prop
+
+
 def test_typed_error_responses_narrow_error_code(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec

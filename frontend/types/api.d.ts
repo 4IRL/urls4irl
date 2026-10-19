@@ -2349,6 +2349,23 @@ export interface components {
        */
       trashCount: number;
     };
+    /** @description Settings for the members panel (no settings yet). */
+    MembersSettings: Record<string, never>;
+    /** @description Settings for the tags panel (no settings yet). */
+    TagsSettings: Record<string, never>;
+    /** @description Settings for the URLs panel (no settings yet). */
+    UrlsSettings: Record<string, never>;
+    /** @description Resolved per-UTub settings, one namespaced section per panel. */
+    UtubSettings: {
+      /** @description Settings for the UTub panel */
+      utubs?: components["schemas"]["UtubsSettings"];
+      /** @description Settings for the members panel */
+      members?: components["schemas"]["MembersSettings"];
+      /** @description Settings for the tags panel */
+      tags?: components["schemas"]["TagsSettings"];
+      /** @description Settings for the URLs panel */
+      urls?: components["schemas"]["UrlsSettings"];
+    };
     UtubUrlSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -2368,6 +2385,8 @@ export interface components {
       /** @description User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list) */
       addedByUserID: number;
     };
+    /** @description Settings for the UTub panel (no settings yet). */
+    UtubsSettings: Record<string, never>;
     /** @description Full UTub detail with members, URLs, and tags */
     UtubDetailSchema: {
       /** @description Unique UTub ID */
@@ -2397,6 +2416,8 @@ export interface components {
       isLocked: boolean;
       /** @description ID of the currently authenticated user */
       currentUser: number;
+      /** @description Resolved per-UTub panel settings (stored overrides merged over defaults) */
+      settings?: components["schemas"]["UtubSettings"];
     };
     UpdateUTubNameRequest: {
       /** @description New name for the UTub */

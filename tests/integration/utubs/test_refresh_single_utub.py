@@ -18,6 +18,7 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.settings_stub import STUB_KEY, patch_settings_model
 from tests.utils_for_test import trash_utub
 
 pytestmark = pytest.mark.utubs
@@ -126,6 +127,38 @@ def test_refresh_payload_matches_open_as_co_creator(
         member[MODELS.MEMBER_ROLE] == Member_Role.CO_CREATOR.value
         for member in refresh_json[MODELS.MEMBERS]
     )
+
+
+def test_refresh_includes_settings_defaults_and_stored_override(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """
+    GIVEN a UTub with NULL settings, then a stored override under a stubbed settings model
+    WHEN the member refreshes the UTub
+    THEN `settings` carries defaults, then the override merged over defaults
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+
+    default_json = _refresh(client, utub_id).json
+    assert default_json is not None
+    assert default_json[MODELS.SETTINGS] == {
+        "utubs": {},
+        "members": {},
+        "tags": {},
+        "urls": {},
+    }
+
+    patch_settings_model(monkeypatch)
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.settings = {"urls": {STUB_KEY: True}}
+        db.session.commit()
+
+    refresh_json = _refresh(client, utub_id).json
+    assert refresh_json is not None
+    assert refresh_json[MODELS.SETTINGS]["urls"] == {STUB_KEY: True}
+    assert refresh_json == _open(client, utub_id).json
 
 
 def test_refresh_does_not_write_last_updated_or_last_opened_at(

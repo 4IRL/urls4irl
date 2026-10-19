@@ -506,6 +506,9 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
             ]
+            test_utub[MODEL_STRS.SETTINGS] = utub_in_data_serialized[
+                MODEL_STRS.SETTINGS
+            ]
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
 
@@ -583,6 +586,9 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             ]
             test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
+            ]
+            test_utub[MODEL_STRS.SETTINGS] = utub_in_data_serialized[
+                MODEL_STRS.SETTINGS
             ]
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
@@ -689,6 +695,9 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             ]
             test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
+            ]
+            test_utub[MODEL_STRS.SETTINGS] = utub_in_data_serialized[
+                MODEL_STRS.SETTINGS
             ]
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
@@ -822,6 +831,9 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             ]
             test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
+            ]
+            test_utub[MODEL_STRS.SETTINGS] = utub_in_data_serialized[
+                MODEL_STRS.SETTINGS
             ]
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)

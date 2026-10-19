@@ -10619,6 +10619,47 @@
         "required": ["utubs"],
         "type": "object"
       },
+      "MembersSettings": {
+        "additionalProperties": false,
+        "description": "Settings for the members panel (no settings yet).",
+        "properties": {},
+        "type": "object"
+      },
+      "TagsSettings": {
+        "additionalProperties": false,
+        "description": "Settings for the tags panel (no settings yet).",
+        "properties": {},
+        "type": "object"
+      },
+      "UrlsSettings": {
+        "additionalProperties": false,
+        "description": "Settings for the URLs panel (no settings yet).",
+        "properties": {},
+        "type": "object"
+      },
+      "UtubSettings": {
+        "additionalProperties": false,
+        "description": "Resolved per-UTub settings, one namespaced section per panel.",
+        "properties": {
+          "utubs": {
+            "$ref": "#/components/schemas/UtubsSettings",
+            "description": "Settings for the UTub panel"
+          },
+          "members": {
+            "$ref": "#/components/schemas/MembersSettings",
+            "description": "Settings for the members panel"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/TagsSettings",
+            "description": "Settings for the tags panel"
+          },
+          "urls": {
+            "$ref": "#/components/schemas/UrlsSettings",
+            "description": "Settings for the URLs panel"
+          }
+        },
+        "type": "object"
+      },
       "UtubUrlSchema": {
         "properties": {
           "utubUrlID": {
@@ -10663,6 +10704,12 @@
           "addedAt",
           "addedByUserID"
         ],
+        "type": "object"
+      },
+      "UtubsSettings": {
+        "additionalProperties": false,
+        "description": "Settings for the UTub panel (no settings yet).",
+        "properties": {},
         "type": "object"
       },
       "UtubDetailSchema": {
@@ -10725,6 +10772,10 @@
           "currentUser": {
             "description": "ID of the currently authenticated user",
             "type": "integer"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/UtubSettings",
+            "description": "Resolved per-UTub panel settings (stored overrides merged over defaults)"
           }
         },
         "required": [
