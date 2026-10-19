@@ -33,6 +33,7 @@ const mockBeginPopstateClose = vi.fn();
 const mockEndPopstateClose = vi.fn();
 const mockConsumeTagSheetSelfBackClose = vi.fn(() => false);
 const mockShowURLDeckBannerError = vi.fn();
+const mockSetMobileUIWhenTrashSelected = vi.fn();
 const mockOpenTrash = vi.fn();
 const mockCloseTrash = vi.fn();
 const mockIsTrashOpen = vi.fn(() => false);
@@ -50,6 +51,7 @@ vi.mock("../../lib/config.js", () => ({
       MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
       MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
       MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
+      MOBILE_PANEL_ANNOUNCEMENT_TRASH: "Now showing Trash",
       UTUB_NO_LONGER_AVAILABLE:
         "The UTub you tried to open is no longer available",
     },
@@ -68,6 +70,8 @@ vi.mock("../mobile.js", () => ({
     mockSetMobileUIWhenUTubDeckSelected(...args),
   setMobileUIWhenMemberDeckSelected: (...args: unknown[]) =>
     mockSetMobileUIWhenMemberDeckSelected(...args),
+  setMobileUIWhenTrashSelected: (...args: unknown[]) =>
+    mockSetMobileUIWhenTrashSelected(...args),
   setCurrentMobilePanel: (...args: unknown[]) =>
     mockSetCurrentMobilePanel(...args),
 }));
@@ -207,18 +211,96 @@ describe("window-events", () => {
       widthSpy.mockRestore();
     });
 
-    it("does not open Trash below the desktop breakpoint", () => {
+    it("opens Trash and announces it below the desktop breakpoint", () => {
       const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
 
       popstateHandler!(
         new PopStateEvent("popstate", { state: { trash: true } }),
       );
 
-      expect(mockOpenTrash).not.toHaveBeenCalled();
-      expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+      expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+      expect(mockResetHomePageToInitialState).not.toHaveBeenCalled();
+      expect($("#MobilePanelAnnouncement").text()).toBe("Now showing Trash");
 
       widthSpy.mockRestore();
     });
+
+    it("does not announce Trash on desktop", () => {
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+      popstateHandler!(
+        new PopStateEvent("popstate", { state: { trash: true } }),
+      );
+
+      expect($("#MobilePanelAnnouncement").text()).toBe("");
+
+      widthSpy.mockRestore();
+    });
+
+    it("normalizes { UTubID, mobilePanel: trash } to Trash with no tag-sheet close, validation or fetch", () => {
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+      mockIsTagSheetOpen.mockReturnValue(true);
+      const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+      popstateHandler!(
+        new PopStateEvent("popstate", {
+          state: { UTubID: 5, mobilePanel: "trash" },
+        }),
+      );
+
+      expect(replaceStateSpy).toHaveBeenCalledWith(
+        { trash: true },
+        "",
+        "/home?view=trash",
+      );
+      expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+      expect(mockCloseTagSheet).not.toHaveBeenCalled();
+      expect(mockIsUtubIdValidFromStateAccess).not.toHaveBeenCalled();
+      expect(mockGetUTubInfo).not.toHaveBeenCalled();
+      expect(mockEmit).not.toHaveBeenCalledWith(
+        expect.objectContaining({ event: UI_EVENTS.UI_MOBILE_NAV }),
+      );
+
+      replaceStateSpy.mockRestore();
+      widthSpy.mockRestore();
+    });
+
+    it.each([
+      ["tagSheetOpen", { UTubID: 5, mobilePanel: "urls", tagSheetOpen: true }],
+      ["mobilePanel", { UTubID: 5, mobilePanel: "members" }],
+      ["bare UTubID", { UTubID: 5 }],
+    ])(
+      "closes an open Trash when the %s entry's UTubID is inaccessible",
+      (_label, state) => {
+        mockIsTrashOpen.mockReturnValue(true);
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(false);
+
+        popstateHandler!(new PopStateEvent("popstate", { state }));
+
+        expect(mockCloseTrash).toHaveBeenCalled();
+        expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      ["tagSheetOpen", { UTubID: 5, mobilePanel: "urls", tagSheetOpen: true }],
+      ["mobilePanel", { UTubID: 5, mobilePanel: "members" }],
+      ["bare UTubID", { UTubID: 5 }],
+    ])(
+      "closes an open Trash when the %s entry's getUTubInfo rejects",
+      async (_label, state) => {
+        mockIsTrashOpen.mockReturnValue(true);
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockRejectedValue(new Error("nope"));
+
+        popstateHandler!(new PopStateEvent("popstate", { state }));
+
+        await vi.waitFor(() => {
+          expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+        });
+        expect(mockCloseTrash).toHaveBeenCalled();
+      },
+    );
 
     it("closes Trash when Back lands on /home (null state) while Trash is open", () => {
       mockIsTrashOpen.mockReturnValue(true);
@@ -904,23 +986,77 @@ describe("window-events", () => {
         widthSpy.mockRestore();
       });
 
-      it("replaces history with /home and lands on the no-UTub state below 992px", () => {
+      it("opens Trash and keeps the URL below 992px", () => {
         const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
 
         coldLoad({ search: "?view=trash" });
 
-        expect(mockOpenTrash).not.toHaveBeenCalled();
+        expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
         expect(window.history.replaceState).toHaveBeenCalledWith(
-          null,
+          { trash: true },
           "",
-          "/home",
+          "/home?view=trash",
         );
-        expect(mockSetUIWhenNoUTubSelected).toHaveBeenCalled();
-        expect(mockSetMemberDeckWhenNoUTubSelected).toHaveBeenCalled();
-        expect(mockSetTagDeckSubheaderWhenNoUTubSelected).toHaveBeenCalled();
         expect(window.location.assign).not.toHaveBeenCalled();
 
         widthSpy.mockRestore();
+      });
+
+      it("treats a bare ?panel=trash like ?view=trash", () => {
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        coldLoad({ search: "?panel=trash" });
+
+        expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+        expect(window.history.replaceState).toHaveBeenCalledWith(
+          { trash: true },
+          "",
+          "/home?view=trash",
+        );
+        expect(mockGetUTubInfo).not.toHaveBeenCalled();
+        expect(window.location.assign).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+
+      it("normalizes ?UTubID=5&panel=trash to Trash with no UTub request", () => {
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        coldLoad({ search: "?UTubID=5&panel=trash" });
+
+        expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+        expect(window.history.replaceState).toHaveBeenCalledWith(
+          { trash: true },
+          "",
+          "/home?view=trash",
+        );
+        expect(mockGetUTubInfo).not.toHaveBeenCalled();
+        expect(mockIsUtubIdValidOnPageLoad).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+
+      it("normalizes a reload on a { UTubID, mobilePanel: trash } entry", () => {
+        Object.defineProperty(history, "state", {
+          value: { UTubID: 5, mobilePanel: "trash" },
+          writable: true,
+          configurable: true,
+        });
+        Object.defineProperty(window, "location", {
+          value: { search: "?UTubID=5&panel=trash", assign: vi.fn() },
+          writable: true,
+          configurable: true,
+        });
+
+        pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+        expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+        expect(window.history.replaceState).toHaveBeenCalledWith(
+          { trash: true },
+          "",
+          "/home?view=trash",
+        );
+        expect(mockGetUTubInfo).not.toHaveBeenCalled();
       });
 
       it("prefers Trash over UTubID and drops UTubID", () => {

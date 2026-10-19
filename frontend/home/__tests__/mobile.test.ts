@@ -8,6 +8,7 @@ import {
   setMobileUIWhenUTubNotSelectedOrUTubDeleted,
   setMobileUIWhenUTubDeckSelected,
   setMobileUIWhenMemberDeckSelected,
+  setMobileUIWhenTrashSelected,
   revertMobileUIToFullScreenUI,
   pushMobilePanelHistoryState,
   replaceMobilePanelHistoryState,
@@ -16,6 +17,11 @@ import {
 } from "../mobile.js";
 
 const mockMakeUTubSelectableAgainIfMobile = vi.fn();
+const mockIsTrashOpen = vi.fn(() => false);
+
+vi.mock("../trash/panel.js", () => ({
+  isTrashOpen: () => mockIsTrashOpen(),
+}));
 
 // `test-setup.ts`'s global APP_CONFIG.strings mock does not include the query
 // param keys these history helpers read, so hand-mock config.js locally
@@ -255,6 +261,44 @@ describe("setMobileUIWhenMemberDeckSelected", () => {
   });
 });
 
+describe("setMobileUIWhenTrashSelected", () => {
+  beforeEach(() => {
+    document.body.innerHTML = MOBILE_HTML;
+    vi.clearAllMocks();
+  });
+
+  it("hides the left panel and shows the center panel", () => {
+    $("#MemberDeck").addClass("visible-flex");
+
+    setMobileUIWhenTrashSelected();
+
+    expect($(".panel#leftPanel").hasClass("hidden")).toBe(true);
+    expect($(".panel#centerPanel").hasClass("visible-flex")).toBe(true);
+    expect($(".deck#MemberDeck").hasClass("visible-flex")).toBe(false);
+  });
+
+  it("shows only the UTubs nav button", () => {
+    $("button#toUTubs").addClass("hidden");
+    $("button#toURLs, button#toMembers, button#toTags").removeClass("hidden");
+
+    setMobileUIWhenTrashSelected();
+
+    expect($("button#toUTubs").hasClass("hidden")).toBe(false);
+    expect($("button#toURLs").hasClass("hidden")).toBe(true);
+    expect($("button#toMembers").hasClass("hidden")).toBe(true);
+    expect($("button#toTags").hasClass("hidden")).toBe(true);
+  });
+
+  it("emits the trash switch exactly once", () => {
+    setMobileUIWhenTrashSelected();
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "trash",
+    });
+  });
+});
+
 describe("revertMobileUIToFullScreenUI", () => {
   beforeEach(() => {
     document.body.innerHTML = MOBILE_HTML;
@@ -300,6 +344,7 @@ describe("initMobileLayout viewport-crossing reconciliation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsTrashOpen.mockReturnValue(false);
     mockLeftPanelToggleState.userCollapsedLHS = false;
     document.body.innerHTML = `
       <main id="mainPanel">
@@ -394,6 +439,24 @@ describe("initMobileLayout viewport-crossing reconciliation", () => {
   // On the way INTO mobile the decks are force-expanded on purpose (single-deck
   // nav, Tag deck relocated into the bottom sheet); applying a collapsed layout
   // there would strand a sheet the user cannot reopen.
+  it("shows the Trash panel when crossing into mobile with Trash open", () => {
+    mockIsTrashOpen.mockReturnValue(true);
+    setCurrentMobilePanel({ mobilePanel: "utubs" });
+    widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+    breakpointChangeHandler();
+
+    expect($("#leftPanel").hasClass("hidden")).toBe(true);
+    expect($("#centerPanel").hasClass("visible-flex")).toBe(true);
+    expect(getCurrentMobilePanel()).toBe("trash");
+    expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "trash",
+    });
+    expect(emit).not.toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "no-utub",
+    });
+  });
+
   it("does not apply the persisted deck layout on the crossing into mobile", async () => {
     const { applyPersistedDeckLayout, resetAllDecksIfCollapsed } =
       await import("../collapsible-decks.js");
@@ -477,5 +540,7 @@ describe("pushMobilePanelHistoryState / replaceMobilePanelHistoryState", () => {
     expect(getCurrentMobilePanel()).toBe("members");
     setCurrentMobilePanel({ mobilePanel: "urls" });
     expect(getCurrentMobilePanel()).toBe("urls");
+    setCurrentMobilePanel({ mobilePanel: "trash" });
+    expect(getCurrentMobilePanel()).toBe("trash");
   });
 });

@@ -18,6 +18,7 @@ import { showOutcomeBanner } from "../../urls/outcome-banner.js";
 import { TRASH_BANNER_MOUNT } from "../banner.js";
 import { refreshTrashCount, renderTrashCount } from "../count.js";
 import { loadTrashList } from "../list.js";
+import { isTrashOpen } from "../panel.js";
 import { renderTrashList, updateEmptyTrashButton } from "../render.js";
 import {
   handleTrashTabClick,
@@ -30,7 +31,12 @@ import {
   handleTrashActionFailure,
   initTrashActions,
   restoreTrashedURL,
+  restoreTrashedUTub,
 } from "../actions.js";
+import {
+  armTrashClickSuppression,
+  clearTrashClickSuppression,
+} from "../swipe-click-guard.js";
 
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -46,6 +52,9 @@ vi.mock("../count.js", () => ({
 }));
 vi.mock("../list.js", () => ({
   loadTrashList: vi.fn(() => Promise.resolve()),
+}));
+vi.mock("../panel.js", () => ({
+  isTrashOpen: vi.fn(() => true),
 }));
 vi.mock("../../urls/outcome-banner.js", () => ({
   showOutcomeBanner: vi.fn(),
@@ -202,6 +211,7 @@ describe("trash actions", () => {
     resetStore();
     vi.clearAllMocks();
     vi.mocked(is429Handled).mockReturnValue(false);
+    vi.mocked(isTrashOpen).mockReturnValue(true);
     modalSpy = vi.fn().mockReturnThis();
     ($.fn as unknown as Record<string, unknown>).modal = modalSpy;
     initTrashActions();
@@ -211,6 +221,7 @@ describe("trash actions", () => {
     $("#listTrashURLs, #listTrashUTubs, #TrashBtnEmpty").off(".trashActions");
     $("#modalSubmit, #modalDismiss, #confirmModal").off();
     _resetTrashTabsForTests();
+    clearTrashClickSuppression();
     vi.restoreAllMocks();
   });
 
@@ -627,6 +638,354 @@ describe("trash actions", () => {
       const button = rowFor(11).find(".trashBtnRestore");
       expect(button.attr("aria-disabled")).toBeUndefined();
       expect(button.hasClass("disabled")).toBe(false);
+    });
+  });
+
+  describe("restoreTrashedURL resolution", () => {
+    beforeEach(() => renderRows());
+
+    it("resolves true when the row was removed", async () => {
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({ done: { lostTagCount: 0, restoredToDestination: false } }),
+      );
+
+      await expect(
+        restoreTrashedURL({ utubID: 3, utubUrlID: 11 }),
+      ).resolves.toBe(true);
+      expect(rowFor(11)).toHaveLength(0);
+    });
+
+    it.each([
+      { name: "403 locked", status: 403, responseJSON: undefined },
+      {
+        name: "404 not in Trash",
+        status: 404,
+        responseJSON: { errorCode: 11 },
+      },
+      { name: "network failure", status: 0, responseJSON: undefined },
+    ])("resolves false on $name and keeps the row", async (fixture) => {
+      vi.spyOn(window, "location", "get").mockReturnValue({
+        assign: vi.fn(),
+      } as unknown as Location);
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({
+          fail: failXhr({
+            status: fixture.status,
+            responseJSON:
+              fixture.status === 403
+                ? { message: APP_CONFIG.strings.UTUB_IS_LOCKED }
+                : fixture.responseJSON,
+          }),
+        }),
+      );
+
+      await expect(
+        restoreTrashedURL({ utubID: 3, utubUrlID: 11 }),
+      ).resolves.toBe(false);
+      expect(rowFor(11)).toHaveLength(1);
+    });
+  });
+
+  describe("400 URL_DESTINATION_REQUIRED on an in-place restore", () => {
+    beforeEach(() => renderRows());
+
+    it.each([
+      { name: "swipe call shape", viaSwipe: true },
+      { name: "plain tap call shape", viaSwipe: false },
+    ])(
+      "reloads the list, warns with the origin-unavailable copy and resolves false ($name)",
+      async ({ viaSwipe }) => {
+        const assign = vi.fn();
+        vi.spyOn(window, "location", "get").mockReturnValue({
+          assign,
+        } as unknown as Location);
+        vi.mocked(ajaxCall).mockReturnValue(
+          settled({
+            fail: failXhr({ status: 400, responseJSON: { errorCode: 12 } }),
+          }),
+        );
+
+        const restored = await restoreTrashedURL({
+          utubID: 3,
+          utubUrlID: 11,
+          destUtubID: undefined,
+          viaSwipe,
+        });
+
+        expect(restored).toBe(false);
+        expect(loadTrashList).toHaveBeenCalledTimes(1);
+        expect(bannerCall().variant).toBe("partial");
+        expect(bannerCall().message).toBe(
+          APP_CONFIG.strings.TRASH_ORIGIN_UNAVAILABLE,
+        );
+        expect(assign).not.toHaveBeenCalled();
+      },
+    );
+
+    it("a desktop tap on the Restore button takes the same path", async () => {
+      const assign = vi.fn();
+      vi.spyOn(window, "location", "get").mockReturnValue({
+        assign,
+      } as unknown as Location);
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({
+          fail: failXhr({ status: 400, responseJSON: { errorCode: 12 } }),
+        }),
+      );
+
+      rowFor(11).find(".trashBtnRestore").trigger("click");
+      await Promise.resolve();
+
+      expect(loadTrashList).toHaveBeenCalledTimes(1);
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it("a 400 with a different errorCode still redirects to the error page", async () => {
+      const assign = vi.fn();
+      vi.spyOn(window, "location", "get").mockReturnValue({
+        assign,
+      } as unknown as Location);
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({
+          fail: failXhr({ status: 400, responseJSON: { errorCode: 99 } }),
+        }),
+      );
+
+      await expect(
+        restoreTrashedURL({ utubID: 3, utubUrlID: 11, viaSwipe: true }),
+      ).resolves.toBe(false);
+
+      expect(assign).toHaveBeenCalledWith(APP_CONFIG.routes.errorPage);
+      expect(loadTrashList).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("stale completion after Trash closed (DD-25)", () => {
+    function deferredXhr(): {
+      xhr: JQuery.jqXHR;
+      resolve: (response: unknown) => void;
+      reject: (xhr: JQuery.jqXHR) => void;
+    } {
+      const handlers: {
+        done: Array<(arg: unknown) => void>;
+        fail: Array<(arg: unknown) => void>;
+        always: Array<() => void>;
+      } = { done: [], fail: [], always: [] };
+      const xhr = createMockJqXHRChainable({
+        done: (callback) => handlers.done.push(callback as never),
+        fail: (callback) => handlers.fail.push(callback as never),
+        always: (callback) => handlers.always.push(callback as never),
+      });
+      return {
+        xhr,
+        resolve: (response) => {
+          handlers.done.forEach((callback) => callback(response));
+          handlers.always.forEach((callback) => callback());
+        },
+        reject: (failed) => {
+          handlers.fail.forEach((callback) => callback(failed));
+          handlers.always.forEach((callback) => callback());
+        },
+      };
+    }
+
+    function expectSilent(): void {
+      expect(showOutcomeBanner).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(document.body);
+    }
+
+    beforeEach(() => {
+      renderRows({ utubs: [makeUtubItem()] });
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
+
+    it("restoreTrashedURL removes the row and counts, but writes no banner and moves no focus", async () => {
+      const request = deferredXhr();
+      vi.mocked(ajaxCall).mockReturnValue(request.xhr);
+
+      const pendingRestore = restoreTrashedURL({ utubID: 3, utubUrlID: 11 });
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+      request.resolve({ lostTagCount: 0, restoredToDestination: false });
+
+      await expect(pendingRestore).resolves.toBe(true);
+      expect(rowFor(11)).toHaveLength(0);
+      expect(refreshTrashCount).toHaveBeenCalledTimes(1);
+      expectSilent();
+    });
+
+    it("restoreTrashedUTub skips the list reload but still refreshes the deck and count", async () => {
+      const request = deferredXhr();
+      vi.mocked(ajaxCall).mockReturnValue(request.xhr);
+      vi.mocked(getAllUTubs).mockReturnValue(
+        settled({ done: { utubs: [], trashCount: 2 } }) as never,
+      );
+
+      const pendingRestore = restoreTrashedUTub({ utubID: 4 });
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+      request.resolve({ utubName: "Work Archive" });
+      await pendingRestore;
+      await vi.waitFor(() => expect(getState().trashCount).toBe(2));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(buildUTubDeck).toHaveBeenCalled();
+      expect(getState().trashCount).toBe(2);
+      expect(loadTrashList).not.toHaveBeenCalled();
+      expectSilent();
+    });
+
+    it("purgeURL removes the row and counts, silently", () => {
+      const request = deferredXhr();
+      vi.mocked(ajaxCall).mockReturnValue(request.xhr);
+
+      rowFor(12).find(".trashBtnPurge").trigger("click");
+      $("#modalSubmit").trigger("click");
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+      request.resolve({ utubID: 3, utubUrlID: 12 });
+
+      expect(rowFor(12)).toHaveLength(0);
+      expect(refreshTrashCount).toHaveBeenCalledTimes(1);
+      expectSilent();
+    });
+
+    it("purgeUTub skips the reload but still counts, silently", async () => {
+      const request = deferredXhr();
+      vi.mocked(ajaxCall).mockReturnValue(request.xhr);
+
+      $("#listTrashUTubs .trashBtnPurge").trigger("click");
+      $("#modalSubmit").trigger("click");
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+      request.resolve({ utubName: "Work Archive" });
+      await Promise.resolve();
+
+      expect(loadTrashList).not.toHaveBeenCalled();
+      expect(refreshTrashCount).toHaveBeenCalledTimes(1);
+      expectSilent();
+    });
+
+    it("emptyTrash skips the reload but still counts, silently", async () => {
+      const request = deferredXhr();
+      vi.mocked(ajaxCall).mockReturnValue(request.xhr);
+
+      confirmAndEmptyTrash();
+      $("#modalSubmit").trigger("click");
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+      request.resolve({ totalPurged: 3, totalSkippedLocked: 0 });
+      await Promise.resolve();
+
+      expect(loadTrashList).not.toHaveBeenCalled();
+      expect(refreshTrashCount).toHaveBeenCalledTimes(1);
+      expectSilent();
+    });
+
+    it("the locked-UTub failure arm shows no banner and skips the reload", () => {
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+
+      handleTrashActionFailure({
+        xhr: failXhr({
+          status: 403,
+          responseJSON: { message: APP_CONFIG.strings.UTUB_IS_LOCKED },
+        }),
+        domain: "url",
+      });
+
+      expect(loadTrashList).not.toHaveBeenCalled();
+      expectSilent();
+    });
+
+    it("the not-in-Trash failure arm shows no banner, skips the reload, still counts", () => {
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+
+      handleTrashActionFailure({
+        xhr: failXhr({ status: 404, responseJSON: { errorCode: 11 } }),
+        domain: "url",
+      });
+
+      expect(loadTrashList).not.toHaveBeenCalled();
+      expect(refreshTrashCount).toHaveBeenCalledTimes(1);
+      expectSilent();
+    });
+
+    it("the already-in-destination arm shows no banner", async () => {
+      const request = deferredXhr();
+      vi.mocked(ajaxCall).mockReturnValue(request.xhr);
+
+      const pendingRestore = restoreTrashedURL({
+        utubID: 3,
+        utubUrlID: 11,
+        destUtubID: 5,
+      });
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+      request.reject(failXhr({ status: 409, responseJSON: { errorCode: 14 } }));
+
+      await expect(pendingRestore).resolves.toBe(false);
+      expectSilent();
+    });
+
+    it("the 400 stale-list arm shows no banner and skips the reload", async () => {
+      const request = deferredXhr();
+      vi.mocked(ajaxCall).mockReturnValue(request.xhr);
+
+      const pendingRestore = restoreTrashedURL({ utubID: 3, utubUrlID: 11 });
+      vi.mocked(isTrashOpen).mockReturnValue(false);
+      request.reject(failXhr({ status: 400, responseJSON: { errorCode: 12 } }));
+
+      await expect(pendingRestore).resolves.toBe(false);
+      expect(loadTrashList).not.toHaveBeenCalled();
+      expectSilent();
+    });
+  });
+
+  describe("swipe focus-ring suppression", () => {
+    beforeEach(() => renderRows());
+
+    it("viaSwipe hides the ring on the newly focused row, cleared on blur", async () => {
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({ done: { lostTagCount: 0, restoredToDestination: false } }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11, viaSwipe: true });
+
+      expect(rowFor(12).hasClass("swipe-focus-return")).toBe(true);
+      rowFor(12).trigger("blur");
+      expect(rowFor(12).hasClass("swipe-focus-return")).toBe(false);
+    });
+
+    it("viaSwipe suppression is also cleared by the next pointerdown in the panel", async () => {
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({ done: { lostTagCount: 0, restoredToDestination: false } }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11, viaSwipe: true });
+      $("#TrashPanel").trigger("pointerdown");
+
+      expect(rowFor(12).hasClass("swipe-focus-return")).toBe(false);
+    });
+
+    it("a tap or keyboard restore keeps the visible ring", async () => {
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({ done: { lostTagCount: 0, restoredToDestination: false } }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11 });
+
+      expect(rowFor(12).hasClass("swipe-focus-return")).toBe(false);
+    });
+  });
+
+  describe("trailing click after a committed swipe", () => {
+    beforeEach(() => renderRows());
+
+    it("swallows exactly one click, then acts normally", () => {
+      vi.mocked(ajaxCall).mockReturnValue(pending());
+      armTrashClickSuppression();
+
+      rowFor(11).find(".trashBtnRestore").trigger("click");
+      expect(ajaxCall).not.toHaveBeenCalled();
+
+      rowFor(11).find(".trashBtnRestore").trigger("click");
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      clearTrashClickSuppression();
     });
   });
 

@@ -4,6 +4,12 @@ import { debug } from "../../lib/debug.js";
 import { AppEvents, emit, on } from "../../lib/event-bus.js";
 import { setState } from "../../store/app-store.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
+import {
+  getCurrentMobilePanel,
+  isMobile,
+  setCurrentMobilePanel,
+  setMobileUIWhenTrashSelected,
+} from "../mobile.js";
 import { clearOutcomeBanner } from "../urls/outcome-banner.js";
 import { TRASH_BANNER_MOUNT } from "./banner.js";
 import { closeDestinationPicker } from "./destination-picker.js";
@@ -55,6 +61,13 @@ export function openTrash({ fromHistory }: { fromHistory: boolean }): void {
     );
   }
 
+  if (isMobile()) {
+    setMobileUIWhenTrashSelected();
+    setCurrentMobilePanel({ mobilePanel: "trash" });
+    // Focus the panel, not a row: loadTrashList() is about to rebuild the list.
+    $(TRASH_PANEL).trigger("focus");
+  }
+
   emit(AppEvents.TRASH_OPENED);
   void loadTrashList();
 }
@@ -68,6 +81,11 @@ export function closeTrash(): void {
   $(TRASH_PANEL).addClass("hidden");
   $(URL_DECK).removeClass("hidden");
   clearOutcomeBanner({ mount: TRASH_BANNER_MOUNT });
+  // Ungated on purpose: no Trash exit may leave the mobile panel at "trash".
+  if (getCurrentMobilePanel() === "trash") {
+    setCurrentMobilePanel({ mobilePanel: "utubs" });
+  }
+  emit(AppEvents.TRASH_CLOSED);
 }
 
 function handleTrashSelectorClick(): void {

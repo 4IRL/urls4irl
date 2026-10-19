@@ -173,6 +173,72 @@
     border-bottom: 1px solid var(--focusedUrlBorder);
 }
 
+/* Swipe-right-to-restore. Every rule is scoped to .trashRowSwipeable, which
+   render.ts sets only on armed rows, so unarmed rows (and the destination picker
+   appended to an orphan row) keep today's layout and are never clipped. The
+   padding moves from the row to the opaque content layer that covers the reveal. */
+.trashRow.trashRowSwipeable {
+    position: relative;
+    overflow: hidden;
+    touch-action: pan-y;
+    padding: 0;
+}
+
+.trashRowSwipeable .trashRowSwipeReveal {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: var(--deckHeaderGreen);
+    z-index: 0;
+}
+
+.trashRowSwipeable .trashRowSwipeRevealIcon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.trashRowSwipeable .trashRowSwipeRevealIcon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.trashRowSwipeable .trashRowContent {
+    position: relative;
+    z-index: 1;
+    background-color: inherit;
+    padding: 10px 14px;
+    transition: transform 0.3s ease;
+}
+
+.trashRowSwipeable.swipe-dragging .trashRowContent {
+    transition: none;
+}
+
+/* --trash-swipe-reveal-width is set inline by swipe.ts at drag start. */
+.trashRowSwipeable.swipe-committed .trashRowContent {
+    transform: translateX(var(--trash-swipe-reveal-width, 100%));
+}
+
+/* The row focused after a swipe-restore was never tapped: hide the ring (the
+   borders keep their size so nothing shifts). Cleared on blur / next pointerdown. */
+.trashRow.swipe-focus-return:focus,
+.trashRow.swipe-focus-return:focus-visible {
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid var(--borderColor);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .trashRowSwipeable .trashRowContent {
+        transition: none;
+    }
+}
+
 .trashRow .rowline {
     display: flex;
     align-items: flex-start;
@@ -246,9 +312,17 @@
 
 .btn-restore,
 .btn-forever {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 4px 12px;
     font-size: 0.8rem;
     font-weight: 600;
+}
+
+.btn-restore svg,
+.btn-forever svg {
+    flex-shrink: 0;
 }
 
 .btn-restore {
@@ -325,16 +399,20 @@
     outline: 2px solid var(--deckSelectionGreenHover);
 }
 
-/* Step 8 removes this rule when the mobile Trash panel lands. */
 @media (max-width: 991.98px) {
-    #TrashSelectorWrap {
-        display: none;
-    }
-
-    /* The master's >=44px touch-target rule; inert until Step 8 shows the panel. */
+    /* The master's >=44px touch-target rule. */
     .trashBtnRestore,
     .trashBtnPurge,
-    #TrashBtnEmpty {
+    #TrashBtnEmpty,
+    .TrashSelector,
+    .TrashTab,
+    .trashDestinationOption {
         min-height: 2.75rem;
+        min-width: 2.75rem;
+    }
+
+    /* Let the Empty Trash button drop below the tablist instead of overflowing. */
+    #TrashTabRow {
+        flex-wrap: wrap;
     }
 }

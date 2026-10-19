@@ -15,7 +15,7 @@ from backend.extensions.url_validation.constants import (
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DeviceType
 from backend.utils.constants import generate_constants_js, generate_strings_js
-from backend.utils.strings import url_strs
+from backend.utils.strings import url_strs, utub_strs
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.trash_strs import TRASH_UI
 
@@ -187,6 +187,7 @@ def test_generate_strings_js_includes_trash_ui_strings():
     assert "{n}" in strings["TRASH_DAYS_LEFT"]
     assert "{utub}" in strings["TRASH_FROM_UTUB"]
     assert strings["TRASH_VIEW"] == "trash"
+    assert strings["TRASH_ORIGIN_UNAVAILABLE"] == TRASH_UI.ORIGIN_UNAVAILABLE
 
     for plural_key in (
         "TRASH_EMPTIED",
@@ -198,6 +199,20 @@ def test_generate_strings_js_includes_trash_ui_strings():
         assert "{n}" in strings[plural_key]
         assert "{n}" not in strings[f"{plural_key}_ONE"]
         assert "1" in strings[f"{plural_key}_ONE"]
+
+
+def test_generate_strings_js_includes_mobile_panel_announcements():
+    """Each mobile panel's screen-reader announcement is bridged unchanged."""
+    strings = generate_strings_js()
+    expected = {
+        "MOBILE_PANEL_ANNOUNCEMENT_UTUBS": utub_strs.MOBILE_PANEL_ANNOUNCEMENT_UTUBS,
+        "MOBILE_PANEL_ANNOUNCEMENT_URLS": utub_strs.MOBILE_PANEL_ANNOUNCEMENT_URLS,
+        "MOBILE_PANEL_ANNOUNCEMENT_MEMBERS": utub_strs.MOBILE_PANEL_ANNOUNCEMENT_MEMBERS,
+        "MOBILE_PANEL_ANNOUNCEMENT_TRASH": utub_strs.MOBILE_PANEL_ANNOUNCEMENT_TRASH,
+    }
+    for key, value in expected.items():
+        assert strings[key] == value
+    assert strings["MOBILE_PANEL_ANNOUNCEMENT_TRASH"] == "Now showing Trash"
 
 
 def test_generate_strings_js_includes_delete_undo_strings():

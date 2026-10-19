@@ -31,7 +31,13 @@ export interface AppEventMap {
   "url:tag-filter-applied": void;
   "cross-utub-search:visibility-changed": { active: boolean };
   "mobile:deck-switched": {
-    target: "desktop" | "url-deck" | "utub-deck" | "member-deck" | "no-utub";
+    target:
+      | "desktop"
+      | "url-deck"
+      | "utub-deck"
+      | "member-deck"
+      | "no-utub"
+      | "trash";
   };
   "data-export:status-changed": { message: string };
   "url:multiselect-mode-changed": { active: boolean };
@@ -44,6 +50,7 @@ export interface AppEventMap {
   "tag:deck-changed": void;
   "tag-sheet:toggled": { active: boolean };
   "trash:opened": void;
+  "trash:closed": void;
 }
 
 export const AppEvents = Object.freeze({
@@ -69,6 +76,7 @@ export const AppEvents = Object.freeze({
   TAG_DECK_CHANGED: "tag:deck-changed",
   TAG_SHEET_TOGGLED: "tag-sheet:toggled",
   TRASH_OPENED: "trash:opened",
+  TRASH_CLOSED: "trash:closed",
 } as const);
 
 const _handlers = new Map<string, Set<(payload: unknown) => void>>();

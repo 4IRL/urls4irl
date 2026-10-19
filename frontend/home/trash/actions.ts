@@ -44,11 +44,13 @@ import {
 } from "./error-codes.js";
 import type { TrashDomain } from "./error-codes.js";
 import { loadTrashList } from "./list.js";
+import { isTrashOpen } from "./panel.js";
 import {
   TRASH_SCOPE_IDS,
   getTrashListState,
   removeTrashRow,
 } from "./render.js";
+import { consumeTrashClickSuppression } from "./swipe-click-guard.js";
 import { getActiveTrashScope } from "./tabs.js";
 import type { TrashScope } from "./tabs.js";
 
@@ -61,6 +63,11 @@ const MODAL_REDIRECT = "#modalRedirect";
 const EMPTY_TRASH_BUTTON = "#TrashBtnEmpty";
 const ROW_BUTTONS = ".trashBtnRestore, .trashBtnPurge";
 const EMPTY_TRASH_TIMEOUT_MS = 10_000;
+const TRASH_PANEL = "#TrashPanel";
+// Hides the `.trashRow:focus` ring on the row focused after a swipe-restore.
+const SWIPE_FOCUS_RETURN_CLASS = "swipe-focus-return";
+const SWIPE_FOCUS_RETURN_BLUR = "blur.trashSwipeFocusReturn";
+const SWIPE_FOCUS_RETURN_POINTERDOWN = "pointerdown.trashSwipeFocusReturn";
 
 type UrlRestoredResponse = SuccessResponse<"restoreUrl">;
 type UrlPurgedResponse = SuccessResponse<"purgeUrl">;
@@ -70,6 +77,11 @@ type TrashEmptiedResponse = SuccessResponse<"emptyTrash">;
 
 type CsrfAwareBody = { message?: string };
 
+/**
+ * A response can land after the user left Trash, by which time `closeTrash()`
+ * has cleared the banner. Writing it then would resurface a stale announcement
+ * on the next open, so a closed Trash gets no banner and no focus move.
+ */
 function showTrashBanner({
   variant,
   message,
@@ -79,6 +91,7 @@ function showTrashBanner({
   message: string;
   detail?: string;
 }): void {
+  if (!isTrashOpen()) return;
   showOutcomeBanner({
     mount: TRASH_BANNER_MOUNT,
     variant,
@@ -126,18 +139,51 @@ function setRowBusy({ row }: { row: JQuery }): () => void {
 export function focusAfterRowRemoval({
   scope,
   removedIndex,
+  viaSwipe = false,
 }: {
   scope: TrashScope;
   removedIndex: number;
+  viaSwipe?: boolean;
 }): void {
+  if (!isTrashOpen()) return;
   const ids = TRASH_SCOPE_IDS[scope];
   const rows = $(`${ids.list} .trashRow`);
   if (rows.length === 0) {
     $(ids.emptyState).trigger("focus");
     return;
   }
-  const target = Math.max(0, Math.min(removedIndex, rows.length - 1));
-  rows.eq(target).trigger("focus");
+  const target = rows.eq(Math.max(0, Math.min(removedIndex, rows.length - 1)));
+  target.trigger("focus");
+  // After the focus move: a previously focused row's blur release must not
+  // tear down the handler armed for this row.
+  if (viaSwipe) armSwipeFocusReturnSuppression({ row: target });
+}
+
+/**
+ * Hides the focus ring on the row that took focus after a swipe-restore (the
+ * user never tapped it). Cleared on blur or the next pointerdown in the panel,
+ * mirroring the URL deck's `swipe-focus-return`; keyboard and tap restores
+ * never reach this and keep the ring.
+ */
+function armSwipeFocusReturnSuppression({ row }: { row: JQuery }): void {
+  const panel = $(TRASH_PANEL);
+  const release = () => {
+    row.removeClass(SWIPE_FOCUS_RETURN_CLASS);
+    row.off(SWIPE_FOCUS_RETURN_BLUR);
+    panel.off(SWIPE_FOCUS_RETURN_POINTERDOWN);
+  };
+  panel.off(SWIPE_FOCUS_RETURN_POINTERDOWN);
+  row.addClass(SWIPE_FOCUS_RETURN_CLASS);
+  row.off(SWIPE_FOCUS_RETURN_BLUR).one(SWIPE_FOCUS_RETURN_BLUR, release);
+  panel.one(SWIPE_FOCUS_RETURN_POINTERDOWN, release);
+}
+
+/**
+ * Reload the list only while Trash is open: `openTrash()` reloads anyway, and a
+ * background re-render must not touch a panel the user already left.
+ */
+function reloadTrashListIfOpen(): Promise<void> {
+  return isTrashOpen() ? loadTrashList() : Promise.resolve();
 }
 
 function indexOfRow({
@@ -182,7 +228,7 @@ export function handleTrashActionFailure({
       variant: "partial",
       message: APP_CONFIG.strings.TRASH_LOCKED,
     });
-    void loadTrashList();
+    void reloadTrashListIfOpen();
     return;
   }
 
@@ -192,13 +238,21 @@ export function handleTrashActionFailure({
       variant: "partial",
       message: APP_CONFIG.strings.TRASH_NOT_IN_TRASH,
     });
-    void loadTrashList();
+    void reloadTrashListIfOpen();
     void refreshTrashCount();
     return;
   }
 
   log("unrecoverable trash action failure", { status: xhr.status });
   window.location.assign(APP_CONFIG.routes.errorPage);
+}
+
+/** True for the 400 an in-place restore gets when the origin UTub is now trashed. */
+function isDestinationRequiredFailure({ xhr }: { xhr: JQuery.jqXHR }): boolean {
+  if (xhr.status !== 400) return false;
+  const errorCode = (xhr.responseJSON as { errorCode?: number } | undefined)
+    ?.errorCode;
+  return errorCode === URL_DESTINATION_REQUIRED;
 }
 
 /**
@@ -227,7 +281,7 @@ function handleDestinationFailure({ xhr }: { xhr: JQuery.jqXHR }): boolean {
       return false;
     }
     closeDestinationPicker({ returnFocus: false });
-    void loadTrashList();
+    void reloadTrashListIfOpen();
     return true;
   }
   return false;
@@ -236,19 +290,24 @@ function handleDestinationFailure({ xhr }: { xhr: JQuery.jqXHR }): boolean {
 /**
  * Restores a trashed URL. `destUtubID` is `undefined` for an in-place restore;
  * the key is still always passed, because a literal `{}` would make `ajaxCall`
- * send no JSON body (and no Content-Type) at all.
+ * send no JSON body (and no Content-Type) at all. Resolves `true` only when
+ * the row was removed, `false` on every failure path (swipe snaps back on it).
+ * `viaSwipe` only hides the focus ring on the row focused afterwards.
  */
 export function restoreTrashedURL({
   utubID,
   utubUrlID,
   destUtubID,
+  viaSwipe = false,
 }: {
   utubID: number;
   utubUrlID: number;
   destUtubID?: number;
-}): Promise<void> {
+  viaSwipe?: boolean;
+}): Promise<boolean> {
   const row = findUrlRow({ utubID, utubUrlID });
   const release = setRowBusy({ row });
+  let restored = false;
 
   return new Promise((resolve) => {
     ajaxCall("post", APP_CONFIG.routes.restoreURL(utubID, utubUrlID), {
@@ -276,7 +335,8 @@ export function restoreTrashedURL({
             }),
           });
         }
-        focusAfterRowRemoval({ scope: "urls", removedIndex });
+        restored = true;
+        focusAfterRowRemoval({ scope: "urls", removedIndex, viaSwipe });
         void refreshTrashCount();
       })
       .fail((xhr: JQuery.jqXHR) => {
@@ -284,9 +344,19 @@ export function restoreTrashedURL({
         if (destUtubID !== undefined && handleDestinationFailure({ xhr })) {
           return;
         }
+        if (destUtubID === undefined && isDestinationRequiredFailure({ xhr })) {
+          // The origin UTub was trashed after this row was armed: re-render it
+          // as an orphan (destination picker path) instead of erroring out.
+          showTrashBanner({
+            variant: "partial",
+            message: APP_CONFIG.strings.TRASH_ORIGIN_UNAVAILABLE,
+          });
+          void reloadTrashListIfOpen();
+          return;
+        }
         handleTrashActionFailure({ xhr, domain: "url" });
       })
-      .always(() => resolve());
+      .always(() => resolve(restored));
   });
 }
 
@@ -329,9 +399,11 @@ export function restoreTrashedUTub({
           }),
         });
         // One GET /utubs response rebuilds the deck and sets the badge.
-        void Promise.all([refreshDeckAndCount(), loadTrashList()]).then(() => {
-          focusAfterRowRemoval({ scope: "utubs", removedIndex });
-        });
+        void Promise.all([refreshDeckAndCount(), reloadTrashListIfOpen()]).then(
+          () => {
+            focusAfterRowRemoval({ scope: "utubs", removedIndex });
+          },
+        );
       })
       .fail((xhr: JQuery.jqXHR) => {
         release();
@@ -491,7 +563,7 @@ function purgeUTub({ item }: { item: TrashedUtubItem }): void {
         }),
       });
       // Its URL rows left Trash too, so reload instead of removing one row.
-      void loadTrashList().then(() => {
+      void reloadTrashListIfOpen().then(() => {
         focusAfterRowRemoval({ scope: "utubs", removedIndex });
       });
       void refreshTrashCount();
@@ -581,7 +653,7 @@ function emptyTrash({
               })
             : undefined,
       });
-      void loadTrashList().then(() => {
+      void reloadTrashListIfOpen().then(() => {
         focusAfterRowRemoval({ scope, removedIndex: 0 });
       });
       void refreshTrashCount();
@@ -613,6 +685,8 @@ function findUtubItem({ row }: { row: JQuery }): TrashedUtubItem | undefined {
 }
 
 function handleUrlRowClick(event: JQuery.TriggeredEvent): void {
+  // A committed swipe is followed by a click on whatever was under the finger.
+  if (consumeTrashClickSuppression()) return;
   const button = $(event.target).closest(ROW_BUTTONS);
   if (button.length === 0 || button.attr("aria-disabled") === "true") return;
   const row = button.closest(".trashRow");

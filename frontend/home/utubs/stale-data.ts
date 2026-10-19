@@ -393,6 +393,9 @@ function applyPermissionFallback({ data }: { data: UtubDetail }): void {
     case "utubs":
       setMobileUIWhenUTubDeckSelected();
       break;
+    case "trash":
+      // Trash is not UTub-scoped: nothing to re-apply, and the panel must not be re-shown.
+      break;
   }
 }
 
