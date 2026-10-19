@@ -218,6 +218,7 @@ All inter-module communication uses typed events:
 | `TAG_DECK_CHANGED` | void | tags/create, tags/delete | onboarding |
 | `TAG_SHEET_TOGGLED` | `{active: boolean}` | tags/sheet.ts | onboarding |
 | `TRASH_OPENED` | void | trash/panel.ts | urls/bulk-actions, members/transfer-picker |
+| `TRASH_CLOSED` | void | trash/panel.ts | trash/swipe.ts |
 
 ### Established TypeScript Patterns
 
