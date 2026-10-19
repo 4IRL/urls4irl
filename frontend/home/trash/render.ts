@@ -130,21 +130,29 @@ export function formatDeletedBy({
   });
 }
 
+// Bootstrap Icons arrow-counterclockwise and trash (trash matches TrashPanel.html).
+const RESTORE_ICON_SVG =
+  '<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/></svg>';
+const TRASH_ICON_SVG =
+  '<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>';
+
 function buildActionButton({
   className,
+  icon,
   label,
   ariaLabel,
   disabled,
 }: {
   className: string;
+  icon: string;
   label: string;
   ariaLabel: string;
   disabled: boolean;
 }): JQuery {
   const button = $('<button type="button" class="btn"></button>')
     .addClass(className)
-    .text(label)
     .attr("aria-label", ariaLabel);
+  button.append($(icon)).append(document.createTextNode(label));
   if (disabled) button.addClass("disabled").attr("aria-disabled", "true");
   return button;
 }
@@ -229,6 +237,7 @@ export function buildTrashUrlRow({
 
   const restore = buildActionButton({
     className: "trashBtnRestore btn-restore",
+    icon: RESTORE_ICON_SVG,
     label: item.originUtubTrashed
       ? APP_CONFIG.strings.TRASH_RESTORE_TO
       : APP_CONFIG.strings.TRASH_RESTORE,
@@ -243,6 +252,7 @@ export function buildTrashUrlRow({
 
   const purge = buildActionButton({
     className: "trashBtnPurge btn-forever",
+    icon: TRASH_ICON_SVG,
     label: APP_CONFIG.strings.TRASH_DELETE_FOREVER,
     ariaLabel: `${APP_CONFIG.strings.TRASH_DELETE_FOREVER} ${item.urlTitle}`,
     disabled: !item.canDelete,
@@ -258,7 +268,33 @@ export function buildTrashUrlRow({
         formatDeletedBy({ item, currentUserID, now }),
       ),
     );
+  if (isSwipeRestorable({ item })) armSwipeLayers({ row });
   return row;
+}
+
+/**
+ * Swipe-right-to-restore is decided per row at render time from the item, never
+ * from store state: only a row whose in-place Restore would succeed (restorable,
+ * origin UTub neither locked nor trashed) gets the reveal layer.
+ */
+function isSwipeRestorable({ item }: { item: TrashedUrlItem }): boolean {
+  return item.canRestore && !item.originUtubLocked && !item.originUtubTrashed;
+}
+
+/**
+ * Wraps the row's content in a layer that can slide right over an `aria-hidden`
+ * restore reveal anchored left. `.trashRow` stays the click/focus target.
+ */
+function armSwipeLayers({ row }: { row: JQuery }): void {
+  const content = $('<div class="trashRowContent"></div>').append(
+    row.children(),
+  );
+  const reveal = $(
+    '<div class="trashRowSwipeReveal" aria-hidden="true"></div>',
+  ).append(
+    $('<span class="trashRowSwipeRevealIcon"></span>').append(RESTORE_ICON_SVG),
+  );
+  row.addClass("trashRowSwipeable").append(reveal).append(content);
 }
 
 export function buildTrashUtubRow({
@@ -288,6 +324,7 @@ export function buildTrashUtubRow({
     .append(
       buildActionButton({
         className: "trashBtnRestore btn-restore",
+        icon: RESTORE_ICON_SVG,
         label: APP_CONFIG.strings.TRASH_RESTORE,
         ariaLabel: `${APP_CONFIG.strings.TRASH_RESTORE} ${item.utubName}`,
         disabled: !item.canRestore,
@@ -296,6 +333,7 @@ export function buildTrashUtubRow({
     .append(
       buildActionButton({
         className: "trashBtnPurge btn-forever",
+        icon: TRASH_ICON_SVG,
         label: APP_CONFIG.strings.TRASH_DELETE_FOREVER,
         ariaLabel: `${APP_CONFIG.strings.TRASH_DELETE_FOREVER} ${item.utubName}`,
         disabled: !item.canDelete,

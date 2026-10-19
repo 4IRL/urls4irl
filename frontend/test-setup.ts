@@ -188,6 +188,7 @@ const appConfig = {
     MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
     MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
     MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
+    MOBILE_PANEL_ANNOUNCEMENT_TRASH: "Now showing Trash",
     UTUB_NO_LONGER_AVAILABLE:
       "The UTub you tried to open is no longer available",
     ADMIN_ACTION_REASON_LABEL: "Reason",
@@ -381,6 +382,8 @@ const appConfig = {
     TRASH_NOT_IN_TRASH: "This item is no longer in Trash.",
     TRASH_ALREADY_IN_DESTINATION: "That UTub already has this URL.",
     TRASH_LOCKED: "That UTub is locked, so this item can't be changed.",
+    TRASH_ORIGIN_UNAVAILABLE:
+      "That UTub is no longer available. Choose a UTub to restore this URL into.",
     TRASH_CONFIRM_PURGE_TITLE: "Delete forever?",
     TRASH_CONFIRM_PURGE_URL_BODY:
       "“{title}” will be permanently deleted. This can't be undone.",

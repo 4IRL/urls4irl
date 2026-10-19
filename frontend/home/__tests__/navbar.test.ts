@@ -11,9 +11,12 @@ import {
 import { openTagSheetFromUserAction } from "../tags/sheet.js";
 import {
   setMobileUIWhenUTubSelectedOrURLNavSelected,
+  setMobileUIWhenUTubDeckSelected,
+  setMobileUIWhenUTubNotSelectedOrUTubDeleted,
   pushMobilePanelHistoryState,
   setCurrentMobilePanel,
 } from "../mobile.js";
+import { closeTrash, isTrashOpen } from "../trash/panel.js";
 import { getState } from "../../store/app-store.js";
 import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../../types/metrics-dim-values.js";
 
@@ -28,8 +31,13 @@ vi.mock("../mobile.js", () => ({
   setMobileUIWhenMemberDeckSelected: vi.fn(),
   setMobileUIWhenUTubSelectedOrURLNavSelected: vi.fn(),
   setMobileUIWhenUTubDeckSelected: vi.fn(),
+  setMobileUIWhenUTubNotSelectedOrUTubDeleted: vi.fn(),
   pushMobilePanelHistoryState: vi.fn(),
   setCurrentMobilePanel: vi.fn(),
+}));
+vi.mock("../trash/panel.js", () => ({
+  isTrashOpen: vi.fn(() => false),
+  closeTrash: vi.fn(),
 }));
 vi.mock("../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ activeUTubID: 5 })),
@@ -65,6 +73,7 @@ describe("navbar", () => {
     document.body.innerHTML = NAVBAR_HTML;
     vi.clearAllMocks();
     window.history.replaceState(null, "", "/");
+    (isTrashOpen as unknown as ReturnType<typeof vi.fn>).mockReturnValue(false);
     (
       isCrossUtubSearchActive as unknown as ReturnType<typeof vi.fn>
     ).mockReturnValue(false);
@@ -186,6 +195,35 @@ describe("navbar", () => {
       expect(setCurrentMobilePanel).toHaveBeenCalledWith({
         mobilePanel: "utubs",
       });
+    });
+
+    it("Back to UTubs from Trash closes Trash, shows the UTubs list and pushes one plain /home entry", () => {
+      (isTrashOpen as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+        true,
+      );
+      (getState as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        activeUTubID: null,
+      });
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        '<div id="TrashSelector" tabindex="0"></div>',
+      );
+      const pushSpy = vi.spyOn(window.history, "pushState");
+      initNavbar();
+
+      $("button#toUTubs").trigger("click");
+
+      expect(closeTrash).toHaveBeenCalledTimes(1);
+      expect(setMobileUIWhenUTubNotSelectedOrUTubDeleted).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(setMobileUIWhenUTubDeckSelected).not.toHaveBeenCalled();
+      expect(pushMobilePanelHistoryState).not.toHaveBeenCalled();
+      expect(pushSpy).toHaveBeenCalledTimes(1);
+      expect(pushSpy).toHaveBeenCalledWith(null, "", "/home");
+      expect(document.activeElement?.id).toBe("TrashSelector");
+
+      pushSpy.mockRestore();
     });
 
     it("registers collapse event listeners on NavbarNavDropdown", () => {

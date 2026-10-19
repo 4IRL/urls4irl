@@ -12,6 +12,7 @@ import {
 import { getState } from "../store/app-store.js";
 import { reapplyLeftPanelVisibilityForViewport } from "./left-panel-toggle.js";
 import { makeUTubSelectableAgainIfMobile } from "./utubs/selectors.js";
+import { isTrashOpen } from "./trash/panel.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("home-shell");
@@ -22,7 +23,7 @@ const log = debug("home-shell");
  * persisted panel (its history entry is handled separately in the Tags sheet
  * module), it is an overlay on top of whichever panel is active.
  */
-export type MobilePanel = "utubs" | "urls" | "members";
+export type MobilePanel = "utubs" | "urls" | "members" | "trash";
 
 // Module-local tracking of the panel currently shown on mobile, mirroring the
 // `isTagSheetOpen()`/`isCrossUtubSearchActive()` module-local-state convention.
@@ -151,6 +152,9 @@ export function initMobileLayout(): void {
       // Set tablet-mobile navbar depending on UTub selected or not
       if (getState().activeUTubID !== null) {
         setMobileUIWhenUTubSelectedOrURLNavSelected();
+      } else if (isTrashOpen()) {
+        setMobileUIWhenTrashSelected();
+        setCurrentMobilePanel({ mobilePanel: "trash" });
       } else {
         setMobileUIWhenUTubNotSelectedOrUTubDeleted();
       }
@@ -185,6 +189,24 @@ export function setMobileUIWhenUTubSelectedOrURLNavSelected(): void {
 
   NAVBAR_TOGGLER.toggler?.hide();
   emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
+}
+
+/**
+ * Show the Trash panel on mobile. Pure UI: `openTrash` owns the
+ * #URLDeck / #TrashPanel swap.
+ */
+export function setMobileUIWhenTrashSelected(): void {
+  $(".panel#leftPanel").addClass("hidden");
+  $(".panel#centerPanel").addClass("visible-flex");
+  $(".deck#MemberDeck").removeClass("visible-flex");
+
+  $("button#toUTubs").removeClass("hidden");
+  $("button#toURLs").addClass("hidden");
+  $("button#toMembers").addClass("hidden");
+  $("button#toTags").addClass("hidden");
+
+  NAVBAR_TOGGLER.toggler?.hide();
+  emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "trash" });
 }
 
 export function setMobileUIWhenUTubNotSelectedOrUTubDeleted(): void {

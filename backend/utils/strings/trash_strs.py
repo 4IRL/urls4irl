@@ -84,6 +84,9 @@ class TRASH_UI:
     NOT_IN_TRASH = NOT_IN_TRASH
     ALREADY_IN_DESTINATION = "That UTub already has this URL."
     LOCKED = "That UTub is locked, so this item can't be changed."
+    ORIGIN_UNAVAILABLE = (
+        "That UTub is no longer available. Choose a UTub to restore this URL into."
+    )
     CONFIRM_PURGE_TITLE = "Delete forever?"
     CONFIRM_PURGE_URL_BODY = (
         "“{title}” will be permanently deleted. This can't be undone."

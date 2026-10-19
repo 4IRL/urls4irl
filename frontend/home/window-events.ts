@@ -7,6 +7,7 @@ import {
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubDeckSelected,
   setMobileUIWhenMemberDeckSelected,
+  setMobileUIWhenTrashSelected,
   setCurrentMobilePanel,
   type MobilePanel,
 } from "./mobile.js";
@@ -71,17 +72,24 @@ function announcementForMobilePanel({
       return APP_CONFIG.strings.MOBILE_PANEL_ANNOUNCEMENT_UTUBS;
     case "members":
       return APP_CONFIG.strings.MOBILE_PANEL_ANNOUNCEMENT_MEMBERS;
+    case "trash":
+      return APP_CONFIG.strings.MOBILE_PANEL_ANNOUNCEMENT_TRASH;
     case "urls":
     default:
       return APP_CONFIG.strings.MOBILE_PANEL_ANNOUNCEMENT_URLS;
   }
 }
 
-// The three persisted mobile panels (the tag sheet is never a persisted panel).
+function trashViewUrl(): string {
+  return `/home?${APP_CONFIG.strings.TRASH_VIEW_QUERY_PARAM}=${APP_CONFIG.strings.TRASH_VIEW}`;
+}
+
+// The persisted mobile panels (the tag sheet is never a persisted panel).
 const VALID_MOBILE_PANELS: ReadonlySet<string> = new Set([
   "utubs",
   "urls",
   "members",
+  "trash",
 ]);
 
 /**
@@ -113,6 +121,9 @@ function applyMobilePanelUI({
       break;
     case "members":
       setMobileUIWhenMemberDeckSelected();
+      break;
+    case "trash":
+      setMobileUIWhenTrashSelected();
       break;
     case "urls":
     default:
@@ -170,6 +181,13 @@ function closeTagSheetForPopstateNav({
   });
 }
 
+// A popstate that lands on an unusable entry must not strand a hidden-but-active
+// Trash (handleTrashSelectorClick early-returns while Trash reads as open).
+function resetHomeAndCloseTrash(): void {
+  if (isTrashOpen()) closeTrash();
+  resetHomePageToInitialState();
+}
+
 function handlePopState(event: PopStateEvent): void {
   // A standalone tap/Escape/backdrop close of the tag sheet consumes its own
   // pushed history entry via closeTagSheet()'s default history.back(). That
@@ -196,6 +214,7 @@ function handlePopState(event: PopStateEvent): void {
   // Returning to a recorded cross-UTub search: re-open search mode and re-run
   // the saved query (see pushCrossUtubSearchHistoryState in cross-utub-search).
   if (state !== null && "crossSearch" in state) {
+    if (isTrashOpen()) closeTrash();
     restoreCrossUtubSearchFromHistory(state.crossSearch);
     endPopstateClose();
     return;
@@ -209,14 +228,23 @@ function handlePopState(event: PopStateEvent): void {
     });
   }
 
-  // Trash view entry (pushed by openTrash). Desktop only: mobile has no
-  // trash view yet, so below the breakpoint fall back to the no-UTub landing. Checked before
-  // every UTubID branch; opening Trash never consults UTub validity.
-  if (state !== null && "trash" in state) {
-    if (($(window).width() ?? 0) >= TABLET_WIDTH) {
-      openTrash({ fromHistory: true });
-    } else {
-      resetHomePageToInitialState();
+  // Trash view entry (pushed by openTrash), or a {UTubID, mobilePanel:"trash"}
+  // entry normalized to it. Checked before the tag-sheet and every UTubID
+  // branch; opening Trash never consults UTub validity.
+  if (
+    state !== null &&
+    ("trash" in state ||
+      ("mobilePanel" in state && state.mobilePanel === "trash"))
+  ) {
+    if (!("trash" in state)) {
+      window.history.replaceState({ trash: true }, "", trashViewUrl());
+    }
+    openTrash({ fromHistory: true });
+    if (($(window).width() ?? 0) < TABLET_WIDTH) {
+      // History navigation is the only place panel announcements are written.
+      $("#MobilePanelAnnouncement").text(
+        announcementForMobilePanel({ mobilePanel: "trash" }),
+      );
     }
     endPopstateClose();
     return;
@@ -235,7 +263,7 @@ function handlePopState(event: PopStateEvent): void {
         { utubID: state.UTubID },
       );
       window.history.replaceState(null, "", "/home");
-      resetHomePageToInitialState();
+      resetHomeAndCloseTrash();
       endPopstateClose();
       return;
     }
@@ -254,7 +282,7 @@ function handlePopState(event: PopStateEvent): void {
       },
       () => {
         if (generation !== _popstateGeneration) return;
-        resetHomePageToInitialState();
+        resetHomeAndCloseTrash();
         endPopstateClose();
       },
     );
@@ -279,7 +307,7 @@ function handlePopState(event: PopStateEvent): void {
         { utubID: state.UTubID },
       );
       window.history.replaceState(null, "", "/home");
-      resetHomePageToInitialState();
+      resetHomeAndCloseTrash();
       endPopstateClose();
       return;
     }
@@ -300,11 +328,14 @@ function handlePopState(event: PopStateEvent): void {
             $("#MobilePanelAnnouncement").text(
               announcementForMobilePanel({ mobilePanel }),
             );
-            emit({
-              event: UI_EVENTS.UI_MOBILE_NAV,
-              target: mobilePanel,
-              trigger: MOBILE_NAV_TRIGGER.HISTORY_NAV,
-            });
+            // "trash" is not a MOBILE_NAV_TARGET metric dimension value.
+            if (mobilePanel !== "trash") {
+              emit({
+                event: UI_EVENTS.UI_MOBILE_NAV,
+                target: mobilePanel,
+                trigger: MOBILE_NAV_TRIGGER.HISTORY_NAV,
+              });
+            }
           }
         }
         endPopstateClose();
@@ -313,7 +344,7 @@ function handlePopState(event: PopStateEvent): void {
         // Stale-guard the reject path too: a superseded popstate whose fetch
         // rejects after a newer one resolved must not reset and clobber it.
         if (generation !== _popstateGeneration) return;
-        resetHomePageToInitialState();
+        resetHomeAndCloseTrash();
         endPopstateClose();
       },
     );
@@ -335,7 +366,7 @@ function handlePopState(event: PopStateEvent): void {
         utubID: state.UTubID,
       });
       window.history.replaceState(null, "", "/home");
-      resetHomePageToInitialState();
+      resetHomeAndCloseTrash();
       endPopstateClose();
       return;
     }
@@ -359,7 +390,7 @@ function handlePopState(event: PopStateEvent): void {
         // Stale-guard the reject path too: a superseded popstate whose fetch
         // rejects after a newer one resolved must not reset and clobber it.
         if (generation !== _popstateGeneration) return;
-        resetHomePageToInitialState();
+        resetHomeAndCloseTrash();
         endPopstateClose();
       },
     );
@@ -374,6 +405,13 @@ function handlePopState(event: PopStateEvent): void {
 function handlePageShow(): void {
   setUTubEventListenersOnInitialPageLoad();
   setCreateUTubEventListeners();
+
+  // A warm {UTubID, mobilePanel:"trash"} entry (reload) normalizes to Trash.
+  if (history.state?.mobilePanel === "trash") {
+    window.history.replaceState({ trash: true }, "", trashViewUrl());
+    openTrash({ fromHistory: true });
+    return;
+  }
 
   if (history.state && history.state.UTubID) {
     // Restore the panel recorded on the warm history entry. A tagSheetOpen entry
@@ -420,14 +458,16 @@ function handlePageShow(): void {
   // Reject only when a genuinely-unrecognized param is present. A UTubID-absent
   // request (only `panel` supplied) is no longer treated as malformed here — it
   // falls through to the graceful no-UTub degradation.
-  const isTrashView =
+  const hasTrashViewParam =
     searchParams.get(APP_CONFIG.strings.TRASH_VIEW_QUERY_PARAM) ===
     APP_CONFIG.strings.TRASH_VIEW;
+  // `?panel=trash` is equivalent to `?view=trash` (any UTubID is ignored).
+  const isTrashView = hasTrashViewParam || panel === "trash";
   const recognizedParamCount =
     (utubId !== null ? 1 : 0) +
     (panel !== null ? 1 : 0) +
     (hasEmailChangeStatus ? 1 : 0) +
-    (isTrashView ? 1 : 0);
+    (hasTrashViewParam ? 1 : 0);
   if (searchParams.size > recognizedParamCount) {
     log(
       "pageshow: rejecting malformed query params, redirecting to error page",
@@ -443,21 +483,11 @@ function handlePageShow(): void {
   }
 
   // Trash wins over any UTubID (dropped) and never consults UTub validity.
-  // Desktop only: below the breakpoint mobile has no trash view, so degrade to /home.
+  // Checked before the `utubId === null` early return so a bare `?panel=trash`
+  // is not dropped. Both widths open Trash.
   if (isTrashView) {
-    if (($(window).width() ?? 0) >= TABLET_WIDTH) {
-      window.history.replaceState(
-        { trash: true },
-        "",
-        `/home?${APP_CONFIG.strings.TRASH_VIEW_QUERY_PARAM}=${APP_CONFIG.strings.TRASH_VIEW}`,
-      );
-      openTrash({ fromHistory: true });
-    } else {
-      window.history.replaceState(null, "", "/home");
-      setUIWhenNoUTubSelected();
-      setMemberDeckWhenNoUTubSelected();
-      setTagDeckSubheaderWhenNoUTubSelected();
-    }
+    window.history.replaceState({ trash: true }, "", trashViewUrl());
+    openTrash({ fromHistory: true });
     return;
   }
 

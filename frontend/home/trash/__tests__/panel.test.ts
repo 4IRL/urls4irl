@@ -2,6 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { AppEvents, emit, on } from "../../../lib/event-bus.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { setUIWhenNoUTubSelected } from "../../init.js";
+import { getCurrentMobilePanel, setCurrentMobilePanel } from "../../mobile.js";
 import { invalidateTrashListRequests, loadTrashList } from "../list.js";
 import { buildSelectedUTub, selectUTub } from "../../utubs/selectors.js";
 import {
@@ -97,6 +98,19 @@ describe("trash panel", () => {
     unsubscribe();
   });
 
+  it("closeTrash emits TRASH_CLOSED exactly once, after the DOM reset", () => {
+    openTrash({ fromHistory: false });
+    const seenOpen: boolean[] = [];
+    const handler = vi.fn(() => seenOpen.push(isTrashOpen()));
+    const unsubscribe = on(AppEvents.TRASH_CLOSED, handler);
+
+    closeTrash();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(seenOpen).toEqual([false]);
+    unsubscribe();
+  });
+
   it("never calls selectUTub / buildSelectedUTub", () => {
     openTrash({ fromHistory: false });
 
@@ -163,6 +177,67 @@ describe("trash panel", () => {
 
     $("#TrashSelector").trigger("click");
     expect(window.history.pushState).toHaveBeenCalledTimes(1);
+  });
+
+  describe("mobile", () => {
+    let widthSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+      setCurrentMobilePanel({ mobilePanel: "utubs" });
+    });
+
+    afterEach(() => {
+      widthSpy.mockRestore();
+      setCurrentMobilePanel({ mobilePanel: "utubs" });
+    });
+
+    it("openTrash shows the center panel, sets the panel to trash and focuses #TrashPanel", () => {
+      $("body").append('<div id="leftPanel" class="panel"></div>');
+      $("body").append('<div id="centerPanel" class="panel"></div>');
+
+      openTrash({ fromHistory: false });
+
+      expect($("#leftPanel").hasClass("hidden")).toBe(true);
+      expect($("#centerPanel").hasClass("visible-flex")).toBe(true);
+      expect(getCurrentMobilePanel()).toBe("trash");
+      expect(document.activeElement?.id).toBe("TrashPanel");
+    });
+
+    it("closeTrash resets the mobile panel off trash", () => {
+      openTrash({ fromHistory: true });
+
+      closeTrash();
+
+      expect(getCurrentMobilePanel()).toBe("utubs");
+    });
+
+    it("closeTrash resets the panel after narrow, widen, then UTUB_SELECTED on desktop", () => {
+      openTrash({ fromHistory: true });
+      widthSpy.mockReturnValue(1200);
+
+      emit(AppEvents.UTUB_SELECTED, {
+        utubID: 1,
+        utubName: "One",
+        urls: [],
+        tags: [],
+        members: [],
+        utubOwnerID: 1,
+        isCurrentUserOwner: true,
+        currentUserID: 1,
+      });
+
+      expect(isTrashOpen()).toBe(false);
+      expect(getCurrentMobilePanel()).toBe("utubs");
+    });
+
+    it("desktop openTrash leaves the mobile panel alone", () => {
+      widthSpy.mockReturnValue(1200);
+
+      openTrash({ fromHistory: true });
+
+      expect(getCurrentMobilePanel()).toBe("utubs");
+    });
   });
 
   it("Enter and Space open Trash (Space is default-prevented); other keys do not", () => {

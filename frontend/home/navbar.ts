@@ -6,12 +6,14 @@ import {
   setMobileUIWhenMemberDeckSelected,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubDeckSelected,
+  setMobileUIWhenUTubNotSelectedOrUTubDeleted,
   pushMobilePanelHistoryState,
   setCurrentMobilePanel,
   type MobilePanel,
 } from "./mobile.js";
 import { getState } from "../store/app-store.js";
 import { openTagSheetFromUserAction } from "./tags/sheet.js";
+import { closeTrash, isTrashOpen } from "./trash/panel.js";
 import {
   exitCrossUtubSearchMode,
   isCrossUtubSearchActive,
@@ -93,6 +95,15 @@ export function initNavbar(): void {
       target: MOBILE_NAV_TARGET.UTUBS,
       trigger: MOBILE_NAV_TRIGGER.TAP,
     });
+    if (isTrashOpen()) {
+      // Leaving Trash: no UTub is active, so land on the UTubs list and push a
+      // plain /home entry so browser Back returns to Trash.
+      closeTrash();
+      setMobileUIWhenUTubNotSelectedOrUTubDeleted();
+      window.history.pushState(null, "", "/home");
+      $("#TrashSelector").trigger("focus");
+      return;
+    }
     setMobileUIWhenUTubDeckSelected();
     pushMobilePanelHistoryOnTap({ mobilePanel: "utubs" });
   });

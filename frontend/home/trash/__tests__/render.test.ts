@@ -171,6 +171,10 @@ describe("trash rows", () => {
     const purge = row.find(".trashBtnPurge");
     expect(purge.hasClass("btn-forever")).toBe(true);
     expect(purge.attr("aria-label")).toContain("Example A");
+    for (const button of [restore, purge]) {
+      expect(button.find('svg[aria-hidden="true"]').length).toBe(1);
+      expect(button.attr("aria-label")?.startsWith(button.text())).toBe(true);
+    }
   });
 
   it("renders 'you' when the current user deleted the row", () => {
@@ -228,6 +232,68 @@ describe("trash rows", () => {
     expect(row.find(".trashBtnPurge").hasClass("disabled")).toBe(true);
   });
 
+  describe("swipe arming", () => {
+    function build(overrides: Partial<TrashedUrlItem>): JQuery {
+      return buildTrashUrlRow({
+        item: makeUrlItem(overrides),
+        currentUserID: CURRENT_USER,
+        now: NOW,
+      });
+    }
+
+    it("arms a restorable, unlocked, live-origin row with content wrapper and aria-hidden reveal", () => {
+      const row = build({});
+
+      expect(row.hasClass("trashRowSwipeable")).toBe(true);
+      expect(row.children(".trashRowSwipeReveal").attr("aria-hidden")).toBe(
+        "true",
+      );
+      const content = row.children(".trashRowContent");
+      expect(content.find(".rowline, .actions")).toHaveLength(2);
+      expect(content.find(".trashBtnRestore")).toHaveLength(1);
+      expect(row.attr("tabindex")).toBe("-1");
+    });
+
+    it.each([
+      { name: "not restorable", overrides: { canRestore: false } },
+      { name: "origin locked", overrides: { originUtubLocked: true } },
+      { name: "origin trashed", overrides: { originUtubTrashed: true } },
+    ])(
+      "leaves a row unarmed and structurally unchanged when $name",
+      ({ overrides }) => {
+        const row = build(overrides);
+
+        expect(row.hasClass("trashRowSwipeable")).toBe(false);
+        expect(row.find(".trashRowSwipeReveal, .trashRowContent")).toHaveLength(
+          0,
+        );
+        expect(row.children(".rowline, .actions")).toHaveLength(2);
+        expect(row.find(".chip-origin")).toHaveLength(1);
+      },
+    );
+
+    it("keeps the same focusable controls in the same order as an unarmed row", () => {
+      const armed = build({});
+      const unarmed = build({ canRestore: false });
+      const order = (row: JQuery): string[] =>
+        row
+          .find("button")
+          .toArray()
+          .map((button) => button.className.replace(/\s*disabled/, ""));
+
+      expect(order(armed)).toEqual(order(unarmed));
+    });
+
+    it("never arms a UTub row", () => {
+      const row = buildTrashUtubRow({
+        item: makeUtubItem(),
+        currentUserID: CURRENT_USER,
+        now: NOW,
+      });
+      expect(row.hasClass("trashRowSwipeable")).toBe(false);
+    });
+  });
+
   it("builds a UTub row with the summary line and a locked chip", () => {
     const row = buildTrashUtubRow({
       item: makeUtubItem({
@@ -246,6 +312,9 @@ describe("trash rows", () => {
     expect(row.find(".t-meta").text()).toBe("Deleted by you · 5 days ago");
     expect(row.find(".trashBtnRestore").attr("aria-disabled")).toBe("true");
     expect(row.find(".trashBtnPurge").attr("aria-disabled")).toBe("true");
+    for (const selector of [".trashBtnRestore", ".trashBtnPurge"]) {
+      expect(row.find(`${selector} svg[aria-hidden="true"]`).length).toBe(1);
+    }
   });
 
   it("omits the locked chip for an unlocked UTub", () => {

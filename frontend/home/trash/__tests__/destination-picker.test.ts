@@ -32,6 +32,9 @@ vi.mock("../count.js", () => ({
 vi.mock("../list.js", () => ({
   loadTrashList: vi.fn(() => Promise.resolve()),
 }));
+vi.mock("../panel.js", () => ({
+  isTrashOpen: vi.fn(() => true),
+}));
 vi.mock("../../urls/outcome-banner.js", () => ({
   showOutcomeBanner: vi.fn(),
   buildReviveMessage: vi.fn(() => "revived"),
