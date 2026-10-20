@@ -4,8 +4,10 @@ from playwright.sync_api import Page, expect
 
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.utils.strings.url_strs import URL_ADDED_BY
 from backend.utils.strings.user_strs import MEMBER_DELETE_WARNING
 from tests.functional.db_utils import (
+    add_url_to_utub_as_other_member,
     get_other_member_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
@@ -35,6 +37,11 @@ from tests.functional.playwright_utils import (
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
+)
+from tests.functional.urls_ui.db_utils import (
+    FORMER_MEMBER_BADGE_PREFIX,
+    ORPHANED_URL_STRING,
+    ORPHANED_URL_TITLE,
 )
 
 pytestmark = pytest.mark.members_ui
@@ -230,6 +237,54 @@ def test_delete_member_btn(
 
     member_usernames = get_all_member_usernames(page=page)
     assert member_name not in member_usernames
+
+
+def test_delete_member_updates_expanded_url_badge_to_former_member(
+    page: Page,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN a UTub creator with a URL expanded that a member added
+    WHEN they remove that member through the delete UTub Member modal
+    THEN the expanded URL's attribution badge reads "Added by a former member"
+        without a reload
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
+    utub_url_id = add_url_to_utub_as_other_member(
+        app,
+        utub_user_created.id,
+        other_member.id,
+        ORPHANED_URL_STRING,
+        ORPHANED_URL_TITLE,
+    )
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
+    row_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+    wait_then_click_element(page=page, css_selector=row_selector)
+    badge = page.locator(f"{row_selector} {HPL.URL_DATE_ADDED_BADGE_STACKED}")
+    expect(badge).to_contain_text(f"{URL_ADDED_BY} {other_member.username}")
+
+    delete_member_active_utub(page=page, member_name=other_member.username)
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_for_selector_to_be_removed(
+        page=page,
+        css_selector=f'{HPL.BADGES_MEMBERS}[memberid="{other_member.id}"]',
+    )
+
+    expect(badge).to_contain_text(FORMER_MEMBER_BADGE_PREFIX)
+    expect(badge).not_to_contain_text(other_member.username)
 
 
 def test_delete_member_rate_limits(
