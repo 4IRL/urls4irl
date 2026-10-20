@@ -495,6 +495,8 @@ class HomePageLocators(GenericPageLocator):
     SAVED_TICK_URL_STRING = ".updateUrlStringWrap .field-saved-tick"
 
     BUTTON_URL_DELETE = ".urlBtnDelete"
+    URL_DATE_ADDED_BADGE_STACKED = ".urlDateAddedBadgeStacked"
+    URL_ROW_SWIPE_REVEAL = ".urlRowSwipeReveal"
 
     BUTTON_URL_COPY = ".urlBtnCopy"
 

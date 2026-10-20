@@ -29,6 +29,10 @@ from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_until_css_property,
 )
+from tests.functional.urls_ui.db_utils import (
+    FORMER_MEMBER_BADGE_PATTERN,
+    seed_orphaned_url_scenario,
+)
 from tests.functional.urls_ui.playwright_utils import (
     get_url_row_selector,
     swipe_url_card_below_threshold,
@@ -369,3 +373,93 @@ def test_url_swipe_inert_for_non_deletable_row(
     row_class = url_row.get_attribute("class") or ""
     assert SWIPE_COMMITTED_CLASS not in row_class
     assert SWIPE_DRAGGING_CLASS not in row_class
+
+
+def test_url_swipe_delete_works_for_orphaned_url(
+    page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a plain member on mobile and a URL whose adder was removed from the UTub
+    WHEN they left-swipe that row past the commit threshold
+    THEN the row has a swipe reveal panel and is moved to Trash with the undo toast
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    scenario = seed_orphaned_url_scenario(app=app, user_id=USER_ID_FOR_TEST)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=scenario.utub_id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    row_selector = get_url_row_selector(utub_url_id=scenario.orphaned_utub_url_id)
+    assert_visible_css_selector(page=page, css_selector=row_selector)
+    expect(page.locator(row_selector).locator(HPL.URL_ROW_SWIPE_REVEAL)).to_have_count(
+        1
+    )
+    control_selector = get_url_row_selector(utub_url_id=scenario.control_utub_url_id)
+    assert_visible_css_selector(page=page, css_selector=control_selector)
+    expect(
+        page.locator(control_selector).locator(HPL.URL_ROW_SWIPE_REVEAL)
+    ).to_have_count(0)
+
+    swipe_url_card_delete(page=page, url_row_selector=row_selector)
+
+    assert_visible_css_selector(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_MOVED_TO_TRASH_ONE
+    )
+    wait_for_element_to_be_removed(page=page, locator=page.locator(row_selector))
+
+
+def test_expanded_orphaned_url_shows_stacked_former_member_badge_below_buttons(
+    page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a plain member on mobile and a URL whose adder was removed from the UTub
+    WHEN they tap the row to expand it
+    THEN the stacked badge reads "Added by a former member · <date>", is visible,
+        left-aligned with the row content and sits below the buttons row
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    scenario = seed_orphaned_url_scenario(app=app, user_id=USER_ID_FOR_TEST)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=scenario.utub_id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    row_selector = get_url_row_selector(utub_url_id=scenario.orphaned_utub_url_id)
+    wait_then_click_element(page=page, css_selector=row_selector)
+    wait_for_animation_to_end_check_top_lhs_corner(
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
+
+    badge = page.locator(f"{row_selector} {HPL.URL_DATE_ADDED_BADGE_STACKED}")
+    expect(badge).to_be_visible()
+    expect(badge).to_have_text(FORMER_MEMBER_BADGE_PATTERN)
+    expect(badge).not_to_contain_text(scenario.departed_username)
+
+    access_btn = page.locator(f"{row_selector} {HPL.BUTTON_URL_ACCESS}")
+    delete_btn = page.locator(f"{row_selector} {HPL.BUTTON_URL_DELETE}")
+    expect(delete_btn).to_be_visible()
+    badge_box = badge.bounding_box()
+    access_box = access_btn.bounding_box()
+    delete_box = delete_btn.bounding_box()
+    row_box = page.locator(row_selector).bounding_box()
+    assert (
+        badge_box is not None
+        and access_box is not None
+        and delete_box is not None
+        and row_box is not None
+    )
+    buttons_bottom = max(
+        access_box["y"] + access_box["height"], delete_box["y"] + delete_box["height"]
+    )
+    assert badge_box["y"] >= buttons_bottom - 1, "Badge must sit below the buttons row"
+    # Stacked left-aligned: starts at the buttons' left edge, not pinned to the right
+    assert abs(badge_box["x"] - access_box["x"]) <= 2, (
+        "Badge must be left-aligned with the buttons row"
+    )
+    assert badge_box["x"] + badge_box["width"] <= row_box["x"] + row_box["width"] + 1

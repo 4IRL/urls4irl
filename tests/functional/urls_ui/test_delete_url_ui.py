@@ -54,6 +54,10 @@ from tests.functional.trash_ui.db_utils import (
     delete_utub_tag,
     purge_utub_url_row,
 )
+from tests.functional.urls_ui.db_utils import (
+    FORMER_MEMBER_BADGE_PATTERN,
+    seed_orphaned_url_scenario,
+)
 from tests.functional.urls_ui.playwright_login_utils import (
     click_delete_on_selected_url,
     click_delete_on_selected_url_and_wait_for_toast,
@@ -61,6 +65,8 @@ from tests.functional.urls_ui.playwright_login_utils import (
 )
 
 pytestmark = pytest.mark.urls_ui
+
+USER_ID_FOR_TEST = 1
 
 
 def _get_trash_count(*, page: Page) -> int:
@@ -82,6 +88,62 @@ def _get_utub_url_id(*, app: Flask, utub_name: str, url_string: str) -> int:
             Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url.id
         ).first()
         return utub_url.id
+
+
+def test_member_can_edit_and_delete_orphaned_url_but_not_member_url(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a plain member in a UTub where one URL's adder has been removed from the UTub
+        and a control URL was added by a current member
+    WHEN the member expands each URL
+    THEN the orphaned URL shows edit and delete buttons and the stacked badge reads
+        "Added by a former member · <date>", deleting it removes the card, and the
+        control URL shows no edit or delete buttons
+    """
+    app = provide_app
+    scenario = seed_orphaned_url_scenario(app=app, user_id=USER_ID_FOR_TEST)
+    orphaned_row = f"{HPL.ROWS_URLS}[utuburlid='{scenario.orphaned_utub_url_id}']"
+    control_row = f"{HPL.ROWS_URLS}[utuburlid='{scenario.control_utub_url_id}']"
+
+    # Control first: a current member's URL is not actionable by a plain member
+    login_user_select_utub_by_id_and_url_by_id(
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=scenario.utub_id,
+        utub_url_id=scenario.control_utub_url_id,
+    )
+    expect(page.locator(f"{control_row} {HPL.BUTTON_URL_DELETE}")).to_have_count(0)
+    expect(page.locator(f"{control_row} {HPL.BUTTON_URL_STRING_UPDATE}")).to_have_count(
+        0
+    )
+    expect(page.locator(f"{control_row} {HPL.BUTTON_URL_TITLE_UPDATE}")).to_have_count(
+        0
+    )
+
+    wait_then_click_element(page=page, css_selector=orphaned_row)
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_attribute(
+        "utuburlid", str(scenario.orphaned_utub_url_id)
+    )
+    expect(page.locator(f"{orphaned_row} {HPL.BUTTON_URL_DELETE}")).to_be_visible()
+    expect(
+        page.locator(f"{orphaned_row} {HPL.BUTTON_URL_STRING_UPDATE}")
+    ).to_be_visible()
+    # The title pencil is hover-revealed, so only its presence is asserted
+    expect(
+        page.locator(f"{orphaned_row} {HPL.BUTTON_URL_TITLE_UPDATE}")
+    ).to_be_attached()
+    badge = page.locator(f"{orphaned_row} {HPL.URL_DATE_ADDED_BADGE_STACKED}")
+    expect(badge).to_be_visible()
+    expect(badge).to_have_text(FORMER_MEMBER_BADGE_PATTERN)
+    expect(badge).not_to_contain_text(scenario.departed_username)
+
+    init_num_url_rows = get_num_url_rows(page=page)
+    url_elem_to_delete = click_delete_on_selected_url_and_wait_for_toast(page=page)
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+    expect(page.locator(orphaned_row)).to_have_count(0)
+    assert init_num_url_rows - 1 == get_num_url_rows(page=page)
 
 
 def test_delete_url_tooltip_animates(
