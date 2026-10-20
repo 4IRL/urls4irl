@@ -20,6 +20,7 @@ from backend.schemas.urls import (
     UtubUrlDeleteSchema,
 )
 from backend.urls.constants import BulkDeleteSkipReason, URLErrorCodes
+from backend.urls.permissions import can_act_as_url_adder
 from backend.urls.services.trashed_url_tags import (
     build_tag_name_snapshot,
     build_tag_name_snapshot_from_ids,
@@ -206,12 +207,12 @@ def delete_urls_in_utub(
     transaction, skipping and reporting any URL the acting user may not delete
     (partial-with-report).
 
-    Per-URL permission is the *manager* predicate
-    ``current_user_id == utub_url.user_id or current_user_is_manager`` — where a
-    "manager" is the literal owner OR a co-owner (``Member_Role.CO_CREATOR``) — and is
-    the exact predicate ``UtubUrlSchema.from_orm_url`` computes as ``can_delete``. This
-    keeps server enforcement aligned with the client's ``canDelete``-derived deletable
-    snapshot, so a manager's request never contains an id the server would reject.
+    Per-URL permission is ``can_act_as_url_adder`` (the actor is the adder, a manager,
+    or the adder is no longer a member of the UTub) — where a "manager" is the literal
+    owner OR a co-owner (``Member_Role.CO_CREATOR``) — and is the same predicate
+    ``UtubUrlSchema.from_orm_url`` computes as ``can_delete``. This keeps server
+    enforcement aligned with the client's ``canDelete``-derived deletable snapshot, so
+    a request built from it never contains an id the server would reject.
 
     The whole batch is one transaction with a single terminal commit: unknown or
     cross-UTub ids reject the entire request as a 400 before any write (a foreign id is
@@ -267,21 +268,27 @@ def delete_urls_in_utub(
             status_code=400,
         )
 
-    # Partition by the manager permission predicate (matches can_delete on
-    # UtubUrlSchema): the adder of a URL, or a manager (literal owner or co-owner),
-    # may delete it.
+    # Partition by the shared permission predicate (matches can_delete on
+    # UtubUrlSchema): the adder of a URL, a manager (literal owner or co-owner), or
+    # any member when the adder has left the UTub (orphan rule, #770), may delete it.
     current_user_is_manager = current_user_id == utub.utub_creator or any(
         member.user_id == current_user_id
         and member.member_role == Member_Role.CO_CREATOR
         for member in utub.members
     )
+    member_ids: set[int] = {member.user_id for member in utub.members}
     deletable_rows: list[Utub_Urls] = []
     skipped: list[dict] = []
     for utub_url_id in utub_url_ids:
         row = rows_by_id[utub_url_id]
         if row.is_trashed:
             continue
-        can_delete = row.user_id == current_user_id or current_user_is_manager
+        can_delete = can_act_as_url_adder(
+            adder_id=row.user_id,
+            user_id=current_user_id,
+            is_manager=current_user_is_manager,
+            member_ids=member_ids,
+        )
         if can_delete:
             deletable_rows.append(row)
         else:

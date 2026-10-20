@@ -264,7 +264,10 @@ def _restore_url_into_destination(
             utub_id=dest_utub_id,
             utub_name=dest_utub.name,
             url=UtubUrlSchema.from_orm_url(
-                utub_url, current_user_id, viewer_is_manager
+                utub_url,
+                current_user_id,
+                viewer_is_manager,
+                frozenset(member.user_id for member in dest_utub.members),
             ),
             restored_to_destination=True,
             lost_tag_count=lost_tag_count,
@@ -382,7 +385,10 @@ def restore_trashed_url(
             utub_id=utub_id,
             utub_name=origin_utub.name,
             url=UtubUrlSchema.from_orm_url(
-                utub_url, current_user_id, viewer_is_manager
+                utub_url,
+                current_user_id,
+                viewer_is_manager,
+                frozenset(member.user_id for member in origin_utub.members),
             ),
             applied_tags=[
                 UtubTagSchema(
@@ -409,6 +415,7 @@ def _build_urls_restored_response(
     lost_tag_names: set[str],
     current_user_id: int,
     viewer_is_manager: bool,
+    member_ids: frozenset[int],
 ) -> FlaskResponse:
     """Build the 200 response for a bulk in-place restore (skipped may be non-empty)."""
     surviving_tag_ids: set[int] = {
@@ -430,7 +437,9 @@ def _build_urls_restored_response(
         data=UrlsRestoredResponseSchema(
             utub_id=utub_id,
             restored=[
-                UtubUrlSchema.from_orm_url(row, current_user_id, viewer_is_manager)
+                UtubUrlSchema.from_orm_url(
+                    row, current_user_id, viewer_is_manager, member_ids
+                )
                 for row in restored_rows
             ],
             skipped=[
@@ -505,6 +514,7 @@ def restore_trashed_urls_in_place(
             lost_tag_names=set(),
             current_user_id=current_user_id,
             viewer_is_manager=False,
+            member_ids=frozenset(),
         )
 
     _first_url, origin_utub, membership = locked_rows[0]
@@ -539,6 +549,7 @@ def restore_trashed_urls_in_place(
             lost_tag_names=set(),
             current_user_id=current_user_id,
             viewer_is_manager=viewer_is_manager,
+            member_ids=frozenset(),
         )
 
     restored_rows: list[Utub_Urls] = [row[0] for row in locked_rows]
@@ -597,6 +608,7 @@ def restore_trashed_urls_in_place(
         lost_tag_names=lost_tag_names,
         current_user_id=current_user_id,
         viewer_is_manager=viewer_is_manager,
+        member_ids=frozenset(member.user_id for member in origin_utub.members),
     )
 
 

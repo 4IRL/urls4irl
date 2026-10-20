@@ -136,9 +136,9 @@ def test_url_serialization_without_tags():
 
         assert (
             json.dumps(
-                UtubUrlSchema.from_orm_url(new_utub_url, 1, True).model_dump(
-                    by_alias=True
-                )
+                UtubUrlSchema.from_orm_url(
+                    new_utub_url, 1, True, frozenset({1})
+                ).model_dump(by_alias=True)
             )
             == valid_url_for_json
         )
@@ -226,9 +226,9 @@ def test_url_serialization_with_tags(
             }
 
             assert json.dumps(expected_url) == json.dumps(
-                UtubUrlSchema.from_orm_url(url_with_tags, 1, True).model_dump(
-                    by_alias=True
-                )
+                UtubUrlSchema.from_orm_url(
+                    url_with_tags, 1, True, frozenset({1})
+                ).model_dump(by_alias=True)
             )
 
 

@@ -805,7 +805,7 @@ def test_failed_restores_do_not_record_metric(
         ("co_creator", THIRD_USER_ID, (1, 2, 3)),
         ("adder_departed", FIRST_USER_ID, (1, 2, 3)),
         ("adder_departed", SECOND_USER_ID, ()),
-        ("adder_departed", THIRD_USER_ID, (3,)),
+        ("adder_departed", THIRD_USER_ID, (2, 3)),
         ("member_departed", SECOND_USER_ID, ()),
         ("member_departed", THIRD_USER_ID, ()),
         ("locked", FIRST_USER_ID, (1, 2, 3)),

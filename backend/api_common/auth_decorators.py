@@ -152,6 +152,21 @@ def utub_owner_required(func: Callable) -> Callable:
     return decorated_view
 
 
+def _actor_may_act_as_url_adder(current_utub_url: Utub_Urls) -> bool:
+    """Return whether the current (already-member) user may act as the URL's adder.
+
+    Orphan rule (#770): true when the actor is the adder, or the adder no longer has a
+    ``Utub_Members`` row in the UTub. This is the single-row equivalent of
+    ``can_act_as_url_adder`` minus the manager arm (managers are checked separately via
+    ``g.is_manager``): the actor is a member by construction, so one primary-key lookup
+    on the adder replaces loading every member id. The lookup is skipped when the actor
+    is the adder.
+    """
+    if current_utub_url.user_id == current_user.id:
+        return True
+    return Utub_Members.query.get((g.utub_id, current_utub_url.user_id)) is None
+
+
 def utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
     @wraps(func)
     @utub_membership_required
@@ -171,7 +186,7 @@ def utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
             abort(404)
 
         kwargs["current_utub_url"] = current_utub_url
-        g.user_added_url = current_utub_url.user_id == current_user.id
+        g.user_added_url = _actor_may_act_as_url_adder(current_utub_url)
 
         return func(*args, **kwargs)
 
@@ -483,7 +498,7 @@ def api_utub_membership_with_valid_url_in_utub_required(func: Callable) -> Calla
             abort(404)
 
         kwargs["current_utub_url"] = current_utub_url
-        g.user_added_url = current_utub_url.user_id == current_user.id
+        g.user_added_url = _actor_may_act_as_url_adder(current_utub_url)
 
         return func(*args, **kwargs)
 

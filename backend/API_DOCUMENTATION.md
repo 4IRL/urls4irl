@@ -737,7 +737,7 @@ UTub selection via the query parameter is handled on the client side.
 >             "utubUrlID": 1,
 >             "urlString": "https://urls.4irl.app",
 >             "urlTagIDs": [1, 2, 3],
->             "canDelete": true,           // Can only delete if UTub creator, co-owner (co-creator), or adder of URL  
+>             "canDelete": true,           // Can only delete if UTub creator, co-owner (co-creator), or adder of URL, or any member when the adder is no longer a UTub member  
 >             "urlTitle": "Title for URL",
 >         },
 >         {

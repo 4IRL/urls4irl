@@ -28,6 +28,7 @@ from tests.settings_stub import DEFAULT_SETTINGS_DICT, STUB_KEY, patch_settings_
 from tests.utils_for_test import (
     count_tag_instances_in_utub,
     is_string_in_logs,
+    remove_member,
     set_member_role,
     trash_utub,
     trash_utub_url,
@@ -353,6 +354,68 @@ def test_get_valid_utub_as_co_creator_can_delete_others_url(
         if url[MODELS.UTUB_URL_ID] == others_url_id
     )
     assert url_entry[MODELS.CAN_DELETE] is True
+
+
+def _get_can_delete_and_adder(
+    *, client: FlaskClient, route: str, utub_id: int, utub_url_id: int
+) -> Tuple[bool, int]:
+    response = client.get(
+        url_for(route, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+    assert response.json is not None
+    entry = next(
+        url
+        for url in response.json[MODELS.URLS]
+        if url[MODELS.UTUB_URL_ID] == utub_url_id
+    )
+    return entry[MODELS.CAN_DELETE], entry[MODELS.ADDED_BY]
+
+
+def test_utub_detail_can_delete_follows_orphan_rule_for_plain_member(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a URL added by member user 3, viewed by plain member user 2
+    WHEN the adder is removed, then re-added to the UTub
+    THEN `canDelete` (on GET and refresh) is False while the adder is a member, True
+        once they are gone (with `addedByUserID` kept), and False again after re-adding
+    """
+    client, _, _, app = login_second_user_without_register
+    adder_id = 3
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == 1).first()
+        utub_id = utub.id
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).first()
+        utub_url.user_id = adder_id
+        utub_url_id = utub_url.id
+        db.session.commit()
+
+    for route in (ROUTES.UTUBS.GET_SINGLE_UTUB, ROUTES.UTUBS.REFRESH_SINGLE_UTUB):
+        assert _get_can_delete_and_adder(
+            client=client, route=route, utub_id=utub_id, utub_url_id=utub_url_id
+        ) == (False, adder_id)
+
+    remove_member(app, utub_id, adder_id)
+
+    for route in (ROUTES.UTUBS.GET_SINGLE_UTUB, ROUTES.UTUBS.REFRESH_SINGLE_UTUB):
+        assert _get_can_delete_and_adder(
+            client=client, route=route, utub_id=utub_id, utub_url_id=utub_url_id
+        ) == (True, adder_id)
+
+    with app.app_context():
+        db.session.add(Utub_Members(utub_id=utub_id, user_id=adder_id))
+        db.session.commit()
+
+    for route in (ROUTES.UTUBS.GET_SINGLE_UTUB, ROUTES.UTUBS.REFRESH_SINGLE_UTUB):
+        assert _get_can_delete_and_adder(
+            client=client, route=route, utub_id=utub_id, utub_url_id=utub_url_id
+        ) == (False, adder_id)
 
 
 def test_get_valid_utub_as_not_member(

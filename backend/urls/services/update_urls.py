@@ -31,6 +31,7 @@ from backend.tags.services.create_url_tag import (
     get_tag_applied_counts,
 )
 from backend.urls.constants import URLErrorCodes, URLState
+from backend.urls.permissions import can_act_as_url_adder
 from backend.urls.services.create_urls import (
     build_response_for_invalidated_url,
     validate_new_url_for_utub,
@@ -221,9 +222,11 @@ def _revive_trashed_url_on_edit(
     row (which owns the slot for the new link) is revived in place and the edited row
     is soft-deleted exactly like a normal delete (so it stays recoverable). The
     revived row takes the edited row's identity (title, adder, `added_at`) so the card
-    the user edited appears to simply change link. The trashed row's tags are kept
-    only when the editor is its original adder or a UTub manager (the same rule as
-    add-revive); the edited row's tags are then unioned on top. Tags deleted from the
+    the user edited appears to simply change link; if the edited row's adder is no
+    longer a UTub member, the reviving user is credited as adder instead. The trashed
+    row's tags are kept only when the editor may act as its adder (its adder, a UTub
+    manager, or any member when its adder is orphaned; the same rule as add-revive);
+    the edited row's tags are then unioned on top. Tags deleted from the
     UTub while the row was trashed are reported as `lostTagCount`. If the union
     exceeds the per-URL tag limit, nothing changes and the at-tag-limit 400 is
     returned.
@@ -269,8 +272,12 @@ def _revive_trashed_url_on_edit(
             current_utub=current_utub, url=revived_url, had_tracking=had_tracking
         )
 
-    can_keep_tags: bool = (
-        locked_trashed.user_id == current_user.id or is_current_utub_manager()
+    member_ids: set[int] = {member.user_id for member in current_utub.members}
+    can_keep_tags: bool = can_act_as_url_adder(
+        adder_id=locked_trashed.user_id,
+        user_id=current_user.id,
+        is_manager=is_current_utub_manager(),
+        member_ids=member_ids,
     )
 
     # Read everything that depends on the pre-write state before any write.
@@ -286,6 +293,10 @@ def _revive_trashed_url_on_edit(
     ]
     edited_title: str = locked_edited.url_title
     edited_adder_id: int = locked_edited.user_id
+    # An orphaned adder (no longer a member) is replaced by the reviver (#770).
+    revived_adder_id: int = (
+        edited_adder_id if edited_adder_id in member_ids else current_user.id
+    )
     edited_added_at: datetime = locked_edited.added_at
 
     # Kept out of the try below so the 404 abort needs no HTTPException passthrough.
@@ -309,7 +320,7 @@ def _revive_trashed_url_on_edit(
         locked_trashed.deleted_by = None
         locked_trashed.trashed_tag_ids = None
         locked_trashed.trashed_tag_names = None
-        locked_trashed.user_id = edited_adder_id
+        locked_trashed.user_id = revived_adder_id
         locked_trashed.url_title = edited_title
         locked_trashed.added_at = edited_added_at
         locked_trashed.last_accessed = utc_now()
@@ -374,6 +385,7 @@ def _revive_trashed_url_on_edit(
             utub_id=current_utub.id,
             utub_name=current_utub.name,
             url=UtubUrlDetailSchema.from_orm_url(locked_trashed),
+            added_by_user_id=locked_trashed.user_id,
             revived_from_trash=True,
             lost_tag_count=lost_tag_count,
             lost_tag_names=lost_tag_names,

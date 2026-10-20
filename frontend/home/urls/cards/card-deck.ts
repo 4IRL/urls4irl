@@ -66,11 +66,11 @@ export function insertURLCardIntoDeck({
   // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
   emitAppEvent(AppEvents.URL_DECK_CHANGED);
 
-  const newUrlCard = createURLBlock(
-    newUrl,
-    [], // Mimics an empty array of tags to match against
+  const newUrlCard = createURLBlock({
+    url: newUrl,
+    dictTags: [], // Mimics an empty array of tags to match against
     utubID,
-  ).addClass("even");
+  }).addClass("even");
 
   newUrlCard.insertAfter($("#createURLWrap"));
 

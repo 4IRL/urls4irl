@@ -55,6 +55,7 @@ from tests.unit.test_url_validation import (
 from tests.utils_for_test import (
     is_string_in_logs,
     is_string_in_logs_regex,
+    remove_member,
     trash_utub_url,
 )
 
@@ -2489,6 +2490,7 @@ def test_update_url_to_trashed_url_in_utub_revives_trashed_row_and_trashes_edite
     assert response_json[MODEL_STRS.REVIVED_FROM_TRASH] is True
     assert response_json[MODEL_STRS.LOST_TAG_COUNT] == 0
     assert response_json[MODEL_STRS.REPLACED_UTUB_URL_ID] == edited_utub_url_id
+    assert response_json[MODEL_STRS.ADDED_BY] == 1
 
     url_json = response_json[MODEL_STRS.URL]
     assert url_json[MODEL_STRS.UTUB_URL_ID] == trashed_utub_url_id
@@ -2657,6 +2659,92 @@ def test_update_url_to_trashed_url_reports_lost_tags(
         revived_row: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
         assert revived_row.deleted_at is None
         assert revived_row.associated_tag_ids == [shared_tag_id]
+
+
+@pytest.mark.parametrize(
+    "trashed_adder_is_orphaned, expect_tags_kept",
+    [
+        pytest.param(True, True, id="orphaned_trashed_adder_tags_kept"),
+        pytest.param(False, False, id="member_trashed_adder_tags_dropped"),
+    ],
+)
+def test_update_url_revive_keeps_tags_only_when_trashed_adder_orphaned(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_second_user_without_register,
+    trashed_adder_is_orphaned: bool,
+    expect_tags_kept: bool,
+):
+    """
+    GIVEN UTub 1 where URL 3 (added by user 3, shared tag) is trashed and plain member
+        user 2 edits their own tag-less URL 2
+    WHEN user 2 edits URL 2's string to URL 3's string, with user 3 either gone from
+        the UTub (orphaned) or still a member
+    THEN the revived row keeps URL 3's old tag only when user 3 is orphaned
+    """
+    client, csrf_token, _, app = login_second_user_without_register
+    edited_utub_url_id, _ = _first_utub_row_info(app, url_id=2)
+    trashed_utub_url_id, trashed_url_string = _first_utub_row_info(app, url_id=3)
+    with app.app_context():
+        (shared_tag_id,) = Utub_Urls.query.get(trashed_utub_url_id).associated_tag_ids
+        Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_url_id == edited_utub_url_id
+        ).delete()
+        db.session.commit()
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=3)
+    if trashed_adder_is_orphaned:
+        remove_member(app, 1, 3)
+
+    response = _patch_url_string(
+        client, csrf_token, edited_utub_url_id, trashed_url_string
+    )
+
+    assert response.status_code == 200
+    assert response.json[MODEL_STRS.REVIVED_FROM_TRASH] is True
+    # user 2 is the edited row's adder and a member, so keeps credit either way
+    assert response.json[MODEL_STRS.ADDED_BY] == 2
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(trashed_utub_url_id)
+        assert revived_row.user_id == 2
+        assert revived_row.associated_tag_ids == (
+            [shared_tag_id] if expect_tags_kept else []
+        )
+
+
+@pytest.mark.parametrize(
+    "edited_adder_is_orphaned, expected_adder_id",
+    [
+        pytest.param(True, 1, id="orphaned_edited_adder_credits_reviver"),
+        pytest.param(False, 2, id="member_edited_adder_keeps_credit"),
+    ],
+)
+def test_update_url_revive_credits_reviver_only_when_edited_adder_orphaned(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+    edited_adder_is_orphaned: bool,
+    expected_adder_id: int,
+):
+    """
+    GIVEN UTub 1 where URL 3 is trashed and URL 2 (added by user 2) is live
+    WHEN manager user 1 edits URL 2's string to URL 3's string, with user 2 either gone
+        from the UTub (orphaned) or still a member
+    THEN the revived row's user_id and the response addedByUserID are the reviver
+        (user 1) when user 2 is orphaned, and remain user 2 when user 2 is a member
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    edited_utub_url_id, _ = _first_utub_row_info(app, url_id=2)
+    trashed_utub_url_id, trashed_url_string = _first_utub_row_info(app, url_id=3)
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=3)
+    if edited_adder_is_orphaned:
+        remove_member(app, 1, 2)
+
+    response = _patch_url_string(
+        client, csrf_token, edited_utub_url_id, trashed_url_string
+    )
+
+    assert response.status_code == 200
+    assert response.json[MODEL_STRS.ADDED_BY] == expected_adder_id
+    with app.app_context():
+        assert Utub_Urls.query.get(trashed_utub_url_id).user_id == expected_adder_id
 
 
 def test_update_url_to_trashed_url_as_non_adder_member_drops_trashed_tags(

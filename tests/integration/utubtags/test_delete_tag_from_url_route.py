@@ -9,7 +9,6 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.schemas.urls import UtubUrlSchema
 from backend.tags.constants import URLTagErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import TAG_CONSTANTS
@@ -29,6 +28,7 @@ from tests.utils_for_test import (
     count_tag_instances_in_utub,
     is_string_in_logs,
     trash_utub_url,
+    url_schema_for_viewer,
 )
 
 pytestmark = pytest.mark.tags
@@ -912,7 +912,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
         url_id_to_delete_tag_from = valid_url_in_utub.id
 
         # Get URL serialization for checking
-        initial_url_serialization = UtubUrlSchema.from_orm_url(
+        initial_url_serialization = url_schema_for_viewer(
             valid_url_in_utub, current_user.id, True
         ).model_dump(by_alias=True)
 
@@ -952,7 +952,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
         ).first()
 
         # Ensure final and initial serialization do match
-        assert initial_url_serialization == UtubUrlSchema.from_orm_url(
+        assert initial_url_serialization == url_schema_for_viewer(
             final_utub_url_association, current_user.id, True
         ).model_dump(by_alias=True)
 
@@ -987,7 +987,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
         url_id_to_delete_tag_from = valid_url_in_utub.id
 
         # Get URL serialization for checking
-        initial_url_serialization = UtubUrlSchema.from_orm_url(
+        initial_url_serialization = url_schema_for_viewer(
             valid_url_in_utub, current_user.id, False
         ).model_dump(by_alias=True)
 
@@ -1030,7 +1030,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
         ).first()
 
         # Ensure final and initial serialization do match
-        assert initial_url_serialization == UtubUrlSchema.from_orm_url(
+        assert initial_url_serialization == url_schema_for_viewer(
             final_utub_url_association, current_user.id, False
         ).model_dump(by_alias=True)
 
@@ -1087,7 +1087,7 @@ def test_delete_tag_from_url_but_not_member_of_utub(
             Utub_Urls.id == url_id_in_utub,
         ).first()
 
-        initial_url_utub_serialization = UtubUrlSchema.from_orm_url(
+        initial_url_utub_serialization = url_schema_for_viewer(
             initial_url_utub_association, current_user.id, False
         ).model_dump(by_alias=True)
 
@@ -1127,7 +1127,7 @@ def test_delete_tag_from_url_but_not_member_of_utub(
             Utub_Urls.id == url_id_in_utub,
         ).first()
 
-        assert initial_url_utub_serialization == UtubUrlSchema.from_orm_url(
+        assert initial_url_utub_serialization == url_schema_for_viewer(
             final_url_utub_association, current_user.id, False
         ).model_dump(by_alias=True)
 
@@ -1169,7 +1169,7 @@ def test_delete_tag_from_url_from_nonexistent_utub(
         initial_utub_url_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == existing_utub_id, Utub_Urls.id == url_id_to_delete
         ).first()
-        initial_utub_url_serialization = UtubUrlSchema.from_orm_url(
+        initial_utub_url_serialization = url_schema_for_viewer(
             initial_utub_url_association,
             current_user.id,
             current_user.id == creator_of_existing_utub_id,
@@ -1213,7 +1213,7 @@ def test_delete_tag_from_url_from_nonexistent_utub(
 
         # Ensure URL-UTub association still exists
         final_utub_url_association: Utub_Urls = Utub_Urls.query.get(url_id_to_delete)
-        final_utub_url_serialization = UtubUrlSchema.from_orm_url(
+        final_utub_url_serialization = url_schema_for_viewer(
             final_utub_url_association,
             current_user.id,
             current_user.id == creator_of_existing_utub_id,

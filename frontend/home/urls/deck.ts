@@ -46,6 +46,7 @@ import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { disposeTooltipsWithin } from "../../lib/tooltips.js";
 import { debug } from "../../lib/debug.js";
 import type { UtubUrlItem, UtubTag } from "../../types/url.js";
+import type { MemberItem } from "../../types/member.js";
 
 const log = debug("urls");
 
@@ -94,11 +95,17 @@ export function showURLDeckBannerError(errorMessage: string): void {
 }
 
 // Update URLs in center panel based on asynchronous updates or stale data
-export function updateURLDeck(
-  updatedUTubUrls: UtubUrlItem[],
-  updatedUTubTags: UtubTag[],
-  utubID: number,
-): void {
+export function updateURLDeck({
+  updatedUTubUrls,
+  updatedUTubTags,
+  utubID,
+  updatedMembers,
+}: {
+  updatedUTubUrls: UtubUrlItem[];
+  updatedUTubTags: UtubTag[];
+  utubID: number;
+  updatedMembers?: MemberItem[];
+}): void {
   const oldCount = getState().urls.length;
   log("updateURLDeck — applying deck diff for stale URLs", {
     utubID,
@@ -130,7 +137,14 @@ export function updateURLDeck(
       });
     },
     addElement: (url) => {
-      const urlBlock = createURLBlock(url, updatedUTubTags, utubID);
+      // The store still holds the pre-refresh members (STALE_DATA_DETECTED is
+      // emitted before setState), so resolve the adder from the payload's.
+      const urlBlock = createURLBlock({
+        url,
+        dictTags: updatedUTubTags,
+        utubID,
+        members: updatedMembers,
+      });
       $("#listURLs").append(urlBlock);
       // Deck-diff reconcile lives in the URL adapter (never the generic engine):
       // re-mark a re-added card from the store so a live multi-selection
@@ -249,11 +263,11 @@ export function setURLDeckOnUTubSelected(
   if (numOfURLs !== 0) {
     // Instantiate deck with list of URLs stored in current UTub
     for (let urlIndex = 0; urlIndex < dictURLs.length; urlIndex++) {
-      const urlBlock = createURLBlock(
-        dictURLs[urlIndex],
+      const urlBlock = createURLBlock({
+        url: dictURLs[urlIndex],
         dictTags,
         utubID,
-      ).addClass(urlIndex % 2 === 0 ? "even" : "odd");
+      }).addClass(urlIndex % 2 === 0 ? "even" : "odd");
       parent.append(urlBlock);
       triggerURLSwipeNudgeIfEligible({ urlRow: urlBlock });
     }
@@ -316,7 +330,12 @@ export function initURLDeck(): void {
 on(AppEvents.UTUB_SELECTED, ({ utubID, utubName, urls, tags }) =>
   setURLDeckOnUTubSelected(utubID, utubName, urls, tags),
 );
-on(AppEvents.STALE_DATA_DETECTED, ({ urls, tags, utubID }) =>
-  updateURLDeck(urls, tags, utubID),
+on(AppEvents.STALE_DATA_DETECTED, ({ urls, tags, utubID, members }) =>
+  updateURLDeck({
+    updatedUTubUrls: urls,
+    updatedUTubTags: tags,
+    utubID,
+    updatedMembers: members,
+  }),
 );
 on(AppEvents.UTUB_DELETED, () => resetURLDeckOnDeleteUTub());

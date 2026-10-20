@@ -5,8 +5,10 @@ from flask import current_app, url_for
 from flask_login import current_user
 from werkzeug.exceptions import NotFound
 
+from backend import db
 from backend.metrics.events import EventName
 from backend.models.utub_members import Utub_Members
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -17,12 +19,18 @@ from backend.utils.constants import URL_CONSTANTS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
     parse_dims,
 )
-from tests.utils_for_test import is_string_in_logs, trash_utub, trash_utub_url
+from tests.utils_for_test import (
+    is_string_in_logs,
+    remove_member,
+    trash_utub,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.urls
 
@@ -185,6 +193,73 @@ def test_route_trashed_destination_occupant_is_revived_not_duplicate(
         assert not revived_row.is_trashed
         assert revived_row.deleted_by is None
         assert revived_row.user_id == copier_id
+
+
+@pytest.mark.parametrize(
+    "occupant_adder_is_orphaned, expect_tags_kept",
+    [
+        pytest.param(True, True, id="orphaned_occupant_adder_tags_kept"),
+        pytest.param(False, False, id="member_occupant_adder_tags_dropped"),
+    ],
+)
+def test_route_trashed_occupant_keeps_tags_only_when_its_adder_is_orphaned(
+    add_multi_dest_with_one_dup,
+    login_second_user_without_register,
+    occupant_adder_is_orphaned: bool,
+    expect_tags_kept: bool,
+):
+    """
+    GIVEN a tagged, trashed occupant of source URL 1 in destination UTub 3 added by
+        user 3, who has either left UTub 3 (orphaned) or is still a member
+    WHEN plain member user 2 copies URL 1 into UTub 3
+    THEN the occupant is revived attributed to user 2, and keeps its old tag only
+        when user 3 is orphaned
+    """
+    client, csrf_token, _, app = login_second_user_without_register
+
+    with app.app_context():
+        target_id = _source_rows_by_url_id(SOURCE_UTUB_ID)[1].id
+        occupant: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == THIRD_UTUB_ID,
+            Utub_Urls.url_id == _source_rows_by_url_id(SOURCE_UTUB_ID)[1].url_id,
+        ).one()
+        occupant_id = occupant.id
+        assert occupant.user_id == 3
+        tag = Utub_Tags(utub_id=THIRD_UTUB_ID, tag_string="occupanttag", created_by=3)
+        db.session.add(tag)
+        db.session.flush()
+        db.session.add(
+            Utub_Url_Tags(
+                utub_id=THIRD_UTUB_ID,
+                utub_url_id=occupant_id,
+                utub_tag_id=tag.id,
+                user_id=3,
+            )
+        )
+        db.session.commit()
+        tag_id = tag.id
+
+    trash_utub_url(app, occupant_id, deleted_by=3)
+    if occupant_adder_is_orphaned:
+        remove_member(app, THIRD_UTUB_ID, 3)
+
+    response = client.post(
+        url_for(ROUTES.URLS.COPY_URLS_MULTI),
+        json={
+            SOURCE_UTUB_ID_FIELD: SOURCE_UTUB_ID,
+            DEST_UTUB_IDS_FIELD: [THIRD_UTUB_ID],
+            UTUB_URL_IDS_FIELD: [target_id],
+        },
+        headers={URL_VALIDATION.X_CSRF_TOKEN: csrf_token},
+    )
+
+    assert response.status_code == 200
+    assert response.json[MODEL_STRS.TOTAL_COPIED] == 1
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(occupant_id)
+        assert not revived_row.is_trashed
+        assert revived_row.user_id == 2
+        assert revived_row.associated_tag_ids == ([tag_id] if expect_tags_kept else [])
 
 
 def test_route_partial_success_skips_per_destination_duplicate(

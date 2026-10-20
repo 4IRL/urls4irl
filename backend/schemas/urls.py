@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Set as AbstractSet
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -7,6 +8,7 @@ from pydantic import ConfigDict, Field, field_serializer
 
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagOnAddDeleteSchema, UtubTagSchema
+from backend.urls.permissions import can_act_as_url_adder
 from backend.utils.strings.model_strs import ADDED_BY, MODELS, TAG_COUNTS_MODIFIED
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
 
@@ -40,14 +42,23 @@ class UtubUrlSchema(BaseSchema):
 
     @classmethod
     def from_orm_url(
-        cls, utub_url: Utub_Urls, current_user_id: int, viewer_is_manager: bool
+        cls,
+        utub_url: Utub_Urls,
+        current_user_id: int,
+        viewer_is_manager: bool,
+        member_ids: AbstractSet[int],
     ) -> UtubUrlSchema:
         return cls(
             utub_url_id=utub_url.id,
             url_string=utub_url.standalone_url.url_string,
             utub_url_tag_ids=utub_url.associated_tag_ids,
             url_title=utub_url.url_title,
-            can_delete=current_user_id == utub_url.user_id or viewer_is_manager,
+            can_delete=can_act_as_url_adder(
+                adder_id=utub_url.user_id,
+                user_id=current_user_id,
+                is_manager=viewer_is_manager,
+                member_ids=member_ids,
+            ),
             added_at=utub_url.added_at,
             added_by_user_id=utub_url.user_id,
         )
@@ -188,6 +199,11 @@ class UrlUpdatedResponseSchema(BaseSchema):
     url: UtubUrlDetailSchema = Field(
         alias=MODELS.URL,
         description="Detailed URL item with updated URL string. On a revive-on-edit this is the revived row, not the edited one.",
+    )
+    added_by_user_id: int | None = Field(
+        default=None,
+        alias=ADDED_BY,
+        description="On a revive, the user ID credited as the revived row's adder (the reviver when the edited row's adder was no longer a member); null otherwise.",
     )
     revived_from_trash: bool = Field(
         default=False,
