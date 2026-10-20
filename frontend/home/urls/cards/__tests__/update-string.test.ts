@@ -22,6 +22,7 @@ import {
 import { insertURLCardIntoDeck, removeURLCardFromDeck } from "../card-deck.js";
 import { restoreTooltipIfStillTargeted } from "../../../../lib/tooltips.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
+import { updateUTubOnFindingStaleData } from "../../../utubs/stale-data.js";
 import {
   updateURL,
   hideAndResetUpdateURLStringForm,
@@ -59,6 +60,11 @@ const { mockMetricsClient } = await vi.hoisted(
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
+
+// One shared log spy for every debug(namespace) logger, so the revive
+// missing-adder anomaly log can be asserted on.
+const { logSpy } = vi.hoisted(() => ({ logSpy: vi.fn() }));
+vi.mock("../../../../lib/debug.js", () => ({ debug: () => logSpy }));
 
 const { globalsMock } = await vi.hoisted(async () => {
   const { mockGlobalsWithTooltipInstance } =
@@ -158,6 +164,10 @@ vi.mock("../../../btns-forms.js", async (importOriginal) => ({
 
 vi.mock("../conflict-handler.js", () => ({
   checkForStaleDataOn409: vi.fn(),
+}));
+
+vi.mock("../../../utubs/stale-data.js", () => ({
+  updateUTubOnFindingStaleData: vi.fn(),
 }));
 
 vi.mock("../access.js", () => ({
@@ -335,13 +345,16 @@ describe("updateURLSuccess - revive on edit", () => {
   function revivedResponse({
     lostTagCount,
     lostTagNames = [],
+    addedByUserID = 3,
   }: {
     lostTagCount: number;
     lostTagNames?: string[];
+    addedByUserID?: number | null;
   }) {
     return {
       status: "Success",
       revivedFromTrash: true,
+      addedByUserID,
       lostTagCount,
       lostTagNames,
       replacedUtubUrlID: EDITED_UTUB_URL_ID,
@@ -465,7 +478,83 @@ describe("updateURLSuccess - revive on edit", () => {
     });
   });
 
-  it("completes the swap with fallback adder fields when the edited card is missing from the store", async () => {
+  it.each([
+    ["an orphaned adder (reviver credited)", 42],
+    ["a current member adder (original adder kept)", 3],
+  ])(
+    "credits the response's addedByUserID on the swapped card for %s",
+    async (_label, credited) => {
+      urlStringInput.val(REVIVED_URL);
+      mockSuccess(
+        revivedResponse({ lostTagCount: 0, addedByUserID: credited }),
+      );
+
+      await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+      const newUrl = vi.mocked(insertURLCardIntoDeck).mock.calls[0][0].newUrl;
+      expect(newUrl.addedByUserID).toBe(credited);
+      expect(newUrl.canDelete).toBe(true);
+      expect(updateUTubOnFindingStaleData).not.toHaveBeenCalled();
+    },
+  );
+
+  it("gives the swapped card canDelete true even when the edited card's was false", async () => {
+    urlStringInput.val(REVIVED_URL);
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: EDITED_UTUB_URL_ID,
+          urlString: "https://example.com",
+          urlTitle: "Edited Title",
+          utubUrlTagIDs: [],
+          canDelete: false,
+          addedAt: "2026-01-02T03:04:05",
+          addedByUserID: 3,
+        },
+      ],
+    } as unknown as AppState);
+    mockSuccess(revivedResponse({ lostTagCount: 0 }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(
+      vi.mocked(insertURLCardIntoDeck).mock.calls[0][0].newUrl.canDelete,
+    ).toBe(true);
+  });
+
+  it.each([
+    ["null", null],
+    ["absent", undefined],
+  ])(
+    "performs no swap, closes the panel and resyncs when the response adder is %s",
+    async (_label, adder) => {
+      urlStringInput.val(REVIVED_URL);
+      const response: Record<string, unknown> = revivedResponse({
+        lostTagCount: 0,
+        addedByUserID: null,
+      });
+      if (adder === undefined) delete response.addedByUserID;
+      mockSuccess(response);
+      logSpy.mockClear();
+
+      await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        "revive: response missing addedByUserID — resyncing instead of swap",
+        expect.anything(),
+      );
+
+      expect(closeURLEditPanel).toHaveBeenCalledWith(urlCard);
+      expect(updateUTubOnFindingStaleData).toHaveBeenCalledWith({
+        utubID: UTUB_ID,
+      });
+      expect(removeURLCardFromDeck).not.toHaveBeenCalled();
+      expect(insertURLCardIntoDeck).not.toHaveBeenCalled();
+      expect(showReviveBanner).not.toHaveBeenCalled();
+    },
+  );
+
+  it("completes the swap with the response adder and a fallback added-at when the edited card is missing from the store", async () => {
     urlStringInput.val(REVIVED_URL);
     vi.mocked(getState).mockReturnValue({
       urls: [],
@@ -486,7 +575,7 @@ describe("updateURLSuccess - revive on edit", () => {
         utubUrlTagIDs: [4, 9],
         canDelete: true,
         addedAt: expect.any(String),
-        addedByUserID: 0,
+        addedByUserID: 3,
       },
       utubID: UTUB_ID,
       appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],

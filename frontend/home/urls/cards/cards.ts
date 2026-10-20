@@ -1,5 +1,4 @@
 import { $ } from "../../../lib/globals.js";
-import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm } from "../../../lib/modal-tracking.js";
@@ -7,8 +6,9 @@ import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { getState } from "../../../store/app-store.js";
-import type { DateFormatValue } from "../../../types/preferences.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
+import type { MemberItem } from "../../../types/member.js";
+import { createURLDateAddedBadge } from "./adder-badge.js";
 import {
   selectURLCard,
   setURLCardSelectionEventListener,
@@ -120,98 +120,20 @@ export function updateURLAfterFindingStaleData(
   }
 }
 
-// Formats an ISO-8601 timestamp string into the user's stored DateFormat
-// preference. Uses UTC calendar components so the rendered date is deterministic
-// regardless of the viewer's local timezone (added_at is stored as UTC).
-//   iso → YYYY-MM-DD | us → MM/DD/YYYY | eu → DD/MM/YYYY
-export function formatDateByPreference(
-  isoDate: string,
-  dateFormat: DateFormatValue,
-): string {
-  const date = new Date(isoDate);
-  const year = `${date.getUTCFullYear()}`;
-  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getUTCDate()}`.padStart(2, "0");
-  switch (dateFormat) {
-    case "us":
-      return `${month}/${day}/${year}`;
-    case "eu":
-      return `${day}/${month}/${year}`;
-    case "iso":
-    default:
-      return `${year}-${month}-${day}`;
-  }
-}
-
-// Resolve the display username of the member who added a URL from the current
-// UTub's member list in the store. Returns null if that user is no longer a
-// member (e.g. removed after adding the URL) so the badge can fall back to a
-// date-only label rather than showing a dangling id.
-function resolveAdderUsername(addedByUserID: number): string | null {
-  const adder = getState().members.find(
-    (member) => member.id === addedByUserID,
-  );
-  return adder ? adder.username : null;
-}
-
-// Secondary/metadata date-added badge for a URL card. Two placements share this
-// builder and are swapped by viewport + selection state (see .urlDateAddedBadge*
-// in urls.css):
-//   - "urlDateAddedBadgeInline"  — desktop only, COLLAPSED cards: a terse
-//     date-only badge inline at the URL-string row's lower-right, so it costs no
-//     card height and leaves long URLs their room (withAdder = false).
-//   - "urlDateAddedBadgeStacked" — EXPANDED cards on both desktop and mobile:
-//     a full-width row below the buttons row carrying the full attribution
-//     (withAdder = true).
-// A <time> element carries the machine-readable ISO value in `datetime` and an
-// unambiguous accessible name in `aria-label`. With `withAdder`, the visible
-// text attributes the URL to the member who added it — "Added by <username> ·
-// <date>" — falling back to a date-only "Added: <date>" when the adder is no
-// longer a member; without it, the badge is always the date-only form. The date
-// is formatted per the stored DateFormat preference.
-function createURLDateAddedBadge({
-  addedAt,
-  addedByUserID,
-  placementClass,
-  withAdder,
+// Create a URL block to add to current UTub/URLDeck. `members` is passed only by
+// the stale-data deck diff, whose store still holds the pre-refresh members while
+// it builds cards; the stacked badge resolves the adder from it when given.
+export function createURLBlock({
+  url,
+  dictTags,
+  utubID,
+  members,
 }: {
-  addedAt: string;
-  addedByUserID: number;
-  placementClass: string;
-  withAdder: boolean;
+  url: UtubUrlItem;
+  dictTags: UtubTag[];
+  utubID: number;
+  members?: MemberItem[];
 }): JQuery<HTMLElement> {
-  const formattedDate = formatDateByPreference(
-    addedAt,
-    getState().preferences.dateFormat,
-  );
-  const adderUsername = withAdder ? resolveAdderUsername(addedByUserID) : null;
-  // Static label words come from the backend strings bridge; the dynamic
-  // username/date (and the "·" separator punctuation) are composed here so the
-  // exact rendered output is preserved: "Added by <user> · <date>" /
-  // "Added: <date>" (visible), "Added by <user> on <date>" / "Added <date>"
-  // (aria).
-  const addedBy = APP_CONFIG.strings.URL_ADDED_BY;
-  const addedOn = APP_CONFIG.strings.URL_ADDED_ON;
-  const addedLabel = APP_CONFIG.strings.URL_DATE_ADDED_LABEL;
-  const addedAriaPrefix = APP_CONFIG.strings.URL_DATE_ADDED_ARIA;
-  const visibleText = adderUsername
-    ? `${addedBy} ${adderUsername} · ${formattedDate}`
-    : `${addedLabel} ${formattedDate}`;
-  const accessibleLabel = adderUsername
-    ? `${addedBy} ${adderUsername} ${addedOn} ${formattedDate}`
-    : `${addedAriaPrefix} ${formattedDate}`;
-  return $(document.createElement("time"))
-    .addClass(`urlDateAddedBadge ${placementClass}`)
-    .attr({ datetime: addedAt, "aria-label": accessibleLabel })
-    .text(visibleText);
-}
-
-// Create a URL block to add to current UTub/URLDeck
-export function createURLBlock(
-  url: UtubUrlItem,
-  dictTags: UtubTag[],
-  utubID: number,
-): JQuery<HTMLElement> {
   const urlCard = $(document.createElement("div"))
     .addClass("urlRow flex-column full-width pointerable")
     .enableTab(); // Holds everything in the URL
@@ -285,6 +207,7 @@ export function createURLBlock(
       addedByUserID: url.addedByUserID,
       placementClass: "urlDateAddedBadgeStacked",
       withAdder: true,
+      members,
     }),
   );
 

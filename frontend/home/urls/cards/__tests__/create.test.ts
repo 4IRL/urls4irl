@@ -421,7 +421,7 @@ describe("createURL - client-side validation", () => {
       // object handed to createURLBlock (it drives the "Added by <user>"
       // attribution badge). Guards against a regression that reads the
       // nonexistent response.URL.addedByUserID instead of response.addedByUserID.
-      expect(vi.mocked(createURLBlock).mock.calls[0][0]).toEqual(
+      expect(vi.mocked(createURLBlock).mock.calls[0][0].url).toEqual(
         expect.objectContaining({ addedByUserID: response.addedByUserID }),
       );
 

@@ -69,6 +69,7 @@ import {
   syncEditPanelDirtyState,
 } from "./edit-panel-dirty.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
+import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import {
   expandParamTrimBlock,
   flushParamTrim,
@@ -698,7 +699,8 @@ function updateURLSuccess({
 }
 
 // The edit landed on a link that was trashed in this UTub: the server revived
-// that row (taking over the edited card's title, adder and added-at) and trashed
+// that row (taking over the edited card's title and added-at, and crediting the
+// adder the response names, which is the reviver for an orphaned URL) and trashed
 // the edited one. The deck mirrors that swap: the edited card goes away and the
 // revived URL appears as a freshly-inserted card, exactly like an add that
 // revived it. The edited card's string is never rewritten, since it no longer
@@ -723,8 +725,20 @@ function replaceEditedCardWithRevivedURL({
     revivedUtubUrlID: revivedUrl.utubUrlID,
   });
 
-  // The revived row inherits the edited card's adder and added-at server-side
-  // (the response omits them), so carry them over from the card being replaced.
+  // The revived row inherits the edited card's added-at server-side (the
+  // response omits it), so carry it over from the card being replaced. The adder
+  // comes from the response: it is the reviver when the edited row's adder had
+  // left the UTub, so it can differ from the edited card's adder. Never guess
+  // one: with no adder in the response, resync from the server instead of swapping.
+  const credited = response.addedByUserID;
+  if (credited === null || credited === undefined) {
+    log("revive: response missing addedByUserID — resyncing instead of swap", {
+      editedUtubUrlID,
+    });
+    closeURLEditPanel(urlCard);
+    updateUTubOnFindingStaleData({ utubID });
+    return;
+  }
   const editedUrl = getState().urls.find(
     (url: UtubUrlItem) => url.utubUrlID === editedUtubUrlID,
   );
@@ -735,9 +749,11 @@ function replaceEditedCardWithRevivedURL({
     urlString: revivedUrl.urlString,
     urlTitle: revivedUrl.urlTitle,
     utubUrlTagIDs: revivedUrl.urlTags.map((urlTag) => urlTag.utubTagID),
-    canDelete: editedUrl?.canDelete ?? true,
+    // The editor just passed the server's permission check on this URL, so they
+    // may act on the revived row too (no per-adder branching).
+    canDelete: true,
     addedAt: editedUrl?.addedAt ?? new Date().toISOString(),
-    addedByUserID: editedUrl?.addedByUserID ?? 0,
+    addedByUserID: credited,
   };
 
   // Tear down the edited card's edit panel and selection first, so no open-form

@@ -1,4 +1,5 @@
-import { createURLBlock, formatDateByPreference } from "../cards.js";
+import { createURLBlock } from "../cards.js";
+import { formatDateByPreference } from "../adder-badge.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { setState } from "../../../../store/app-store.js";
 import { createURLTitle, createURLTitleAndUpdateBlock } from "../url-title.js";
@@ -91,24 +92,24 @@ describe("createURLBlock", () => {
 
   describe("outer element structure", () => {
     it("returns a div element", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       expect(el.prop("tagName")).toBe("DIV");
     });
 
     it("has urlRow class", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       expect(el.hasClass("urlRow")).toBe(true);
     });
 
     it("has flex-column, full-width, pointerable classes", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       expect(el.hasClass("flex-column")).toBe(true);
       expect(el.hasClass("full-width")).toBe(true);
       expect(el.hasClass("pointerable")).toBe(true);
     });
 
     it("has urlRowContent wrapping the row's content", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       const content = el.find("> .urlRowContent");
       expect(content.length).toBe(1);
       expect(content.hasClass("flex-column")).toBe(true);
@@ -121,62 +122,90 @@ describe("createURLBlock", () => {
 
   describe("data attributes", () => {
     it("sets utuburlid attribute to the URL's utubUrlID", () => {
-      const el = createURLBlock({ ...baseURL, utubUrlID: 99 }, [], 10);
+      const el = createURLBlock({
+        url: { ...baseURL, utubUrlID: 99 },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(el.attr("utuburlid")).toBe("99");
     });
 
     it("sets urlselected to false", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       expect(el.attr("urlselected")).toBe("false");
     });
 
     it("sets filterable to true", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       expect(el.attr("filterable")).toBe("true");
     });
 
     it("sets data-utub-url-tag-ids to comma-joined tag IDs", () => {
-      const el = createURLBlock(
-        { ...baseURL, utubUrlTagIDs: [1, 2, 3] },
-        [],
-        10,
-      );
+      const el = createURLBlock({
+        url: { ...baseURL, utubUrlTagIDs: [1, 2, 3] },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(el.attr("data-utub-url-tag-ids")).toBe("1,2,3");
     });
 
     it("sets data-utub-url-tag-ids to empty string when the URL has no tags", () => {
-      const el = createURLBlock({ ...baseURL, utubUrlTagIDs: [] }, [], 10);
+      const el = createURLBlock({
+        url: { ...baseURL, utubUrlTagIDs: [] },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(el.attr("data-utub-url-tag-ids")).toBe("");
     });
   });
 
   describe("conditional rendering based on canDelete", () => {
     it("uses createURLTitle (not update block) when canDelete is false", () => {
-      createURLBlock({ ...baseURL, canDelete: false }, [], 10);
+      createURLBlock({
+        url: { ...baseURL, canDelete: false },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(vi.mocked(createURLTitle)).toHaveBeenCalledOnce();
       expect(vi.mocked(createURLTitleAndUpdateBlock)).not.toHaveBeenCalled();
     });
 
     it("uses createURLTitleAndUpdateBlock (not simple title) when canDelete is true", () => {
-      createURLBlock({ ...baseURL, canDelete: true }, [], 10);
+      createURLBlock({
+        url: { ...baseURL, canDelete: true },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(vi.mocked(createURLTitleAndUpdateBlock)).toHaveBeenCalledOnce();
       expect(vi.mocked(createURLTitle)).not.toHaveBeenCalled();
     });
 
     it("uses createURLString (not update block) when canDelete is false", () => {
-      createURLBlock({ ...baseURL, canDelete: false }, [], 10);
+      createURLBlock({
+        url: { ...baseURL, canDelete: false },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(vi.mocked(createURLString)).toHaveBeenCalledOnce();
       expect(vi.mocked(createURLStringAndUpdateBlock)).not.toHaveBeenCalled();
     });
 
     it("uses createURLStringAndUpdateBlock (not simple string) when canDelete is true", () => {
-      createURLBlock({ ...baseURL, canDelete: true }, [], 10);
+      createURLBlock({
+        url: { ...baseURL, canDelete: true },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(vi.mocked(createURLStringAndUpdateBlock)).toHaveBeenCalledOnce();
       expect(vi.mocked(createURLString)).not.toHaveBeenCalled();
     });
 
     it("renders .urlRowSwipeReveal when canDelete is true", () => {
-      const el = createURLBlock({ ...baseURL, canDelete: true }, [], 10);
+      const el = createURLBlock({
+        url: { ...baseURL, canDelete: true },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(el.find(".urlRowSwipeReveal").length).toBe(1);
       const icon = el.find(".urlRowSwipeRevealIcon");
       expect(icon.length).toBe(1);
@@ -184,14 +213,18 @@ describe("createURLBlock", () => {
     });
 
     it("does not render .urlRowSwipeReveal when canDelete is false", () => {
-      const el = createURLBlock({ ...baseURL, canDelete: false }, [], 10);
+      const el = createURLBlock({
+        url: { ...baseURL, canDelete: false },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(el.find(".urlRowSwipeReveal").length).toBe(0);
     });
   });
 
   describe("event listener setup", () => {
     it("calls setURLCardSelectionEventListener with the card element", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       expect(
         vi.mocked(setURLCardSelectionEventListener),
       ).toHaveBeenCalledOnce();
@@ -201,14 +234,22 @@ describe("createURLBlock", () => {
     });
 
     it("calls createGoToURLIcon with the URL string", () => {
-      createURLBlock({ ...baseURL, urlString: "https://example.com" }, [], 10);
+      createURLBlock({
+        url: { ...baseURL, urlString: "https://example.com" },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(vi.mocked(createGoToURLIcon)).toHaveBeenCalledWith(
         "https://example.com",
       );
     });
 
     it("clicking the .urlSelectCheckbox toggles selection and stops propagation to the row", () => {
-      const el = createURLBlock({ ...baseURL, utubUrlID: 5 }, [], 10);
+      const el = createURLBlock({
+        url: { ...baseURL, utubUrlID: 5 },
+        dictTags: [],
+        utubID: 10,
+      });
       const clickEvent = $.Event("click");
       const stopPropagationSpy = vi.spyOn(clickEvent, "stopPropagation");
 
@@ -219,7 +260,11 @@ describe("createURLBlock", () => {
     });
 
     it("pressing Enter or Space on the focused .urlSelectCheckbox toggles selection", () => {
-      const el = createURLBlock({ ...baseURL, utubUrlID: 5 }, [], 10);
+      const el = createURLBlock({
+        url: { ...baseURL, utubUrlID: 5 },
+        dictTags: [],
+        utubID: 10,
+      });
       const checkbox = el.find(".urlSelectCheckbox");
 
       checkbox.trigger($.Event("keydown", { key: "Enter" }));
@@ -234,7 +279,7 @@ describe("createURLBlock", () => {
     afterEach(() => setState({ selectedURLCardIDs: [] }));
 
     it("renders a role=checkbox .urlSelectCheckbox (aria-checked=false) inside .urlSelectCheckboxWrap", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       const wrap = el.children(".urlSelectCheckboxWrap");
       expect(wrap.length).toBe(1);
       const checkbox = wrap.children(".urlSelectCheckbox");
@@ -245,7 +290,11 @@ describe("createURLBlock", () => {
 
     it("re-marks the card from the store on build when its id is already selected", () => {
       setState({ selectedURLCardIDs: [99] });
-      const el = createURLBlock({ ...baseURL, utubUrlID: 99 }, [], 10);
+      const el = createURLBlock({
+        url: { ...baseURL, utubUrlID: 99 },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(el.hasClass("multiSelected")).toBe(true);
       expect(el.attr("aria-checked")).toBe("true");
       // The role="checkbox" span (what assistive tech announces) must also flip.
@@ -254,7 +303,11 @@ describe("createURLBlock", () => {
 
     it("does not mark the card on build when its id is not in the store selection", () => {
       setState({ selectedURLCardIDs: [12345] });
-      const el = createURLBlock({ ...baseURL, utubUrlID: 99 }, [], 10);
+      const el = createURLBlock({
+        url: { ...baseURL, utubUrlID: 99 },
+        dictTags: [],
+        utubID: 10,
+      });
       expect(el.hasClass("multiSelected")).toBe(false);
       expect(el.find(".urlSelectCheckbox").attr("aria-checked")).toBe("false");
     });
@@ -272,11 +325,15 @@ describe("createURLBlock", () => {
       setState({
         members: [{ id: 7, username: "alice", memberRole: "member" }],
       });
-      const el = createURLBlock(
-        { ...baseURL, addedByUserID: 7, addedAt: "2024-03-09T12:00:00+00:00" },
-        [],
-        10,
-      );
+      const el = createURLBlock({
+        url: {
+          ...baseURL,
+          addedByUserID: 7,
+          addedAt: "2024-03-09T12:00:00+00:00",
+        },
+        dictTags: [],
+        utubID: 10,
+      });
       const badge = el.find(".urlDateAddedBadgeInline");
       expect(badge.length).toBe(1);
       expect(badge.hasClass("urlDateAddedBadge")).toBe(true);
@@ -294,7 +351,7 @@ describe("createURLBlock", () => {
     });
 
     it("places the inline date badge on the URL-string row, right-most after the URL string", () => {
-      const el = createURLBlock(baseURL, [], 10);
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
       const stringRow = el.find(".urlStringRow");
       expect(stringRow.length).toBe(1);
       // The row lives inside .urlRowContent (above the swipe-reveal layer).
@@ -314,11 +371,15 @@ describe("createURLBlock", () => {
       setState({
         members: [{ id: 7, username: "alice", memberRole: "member" }],
       });
-      const el = createURLBlock(
-        { ...baseURL, addedByUserID: 7, addedAt: "2024-03-09T12:00:00+00:00" },
-        [],
-        10,
-      );
+      const el = createURLBlock({
+        url: {
+          ...baseURL,
+          addedByUserID: 7,
+          addedAt: "2024-03-09T12:00:00+00:00",
+        },
+        dictTags: [],
+        utubID: 10,
+      });
       const rowContent = el.find(".urlRowContent");
       const stacked = rowContent.children(".urlDateAddedBadgeStacked");
       expect(stacked.length).toBe(1);
@@ -339,25 +400,100 @@ describe("createURLBlock", () => {
       expect(stacked.prev().hasClass("tagsAndButtonsWrap")).toBe(true);
     });
 
-    it("stacked badge falls back to a date-only label when the adder is no longer a member", () => {
+    it("stacked badge reads 'Added by a former member' when the adder is no longer a member", () => {
       setState({ members: [] });
-      const el = createURLBlock(
-        {
+      const el = createURLBlock({
+        url: {
           ...baseURL,
           addedByUserID: 999,
           addedAt: "2024-03-09T12:00:00+00:00",
         },
-        [],
-        10,
-      );
+        dictTags: [],
+        utubID: 10,
+      });
       const stacked = el
         .find(".urlRowContent")
         .children(".urlDateAddedBadgeStacked");
       expect(stacked.text()).toBe(
-        `${APP_CONFIG.strings.URL_DATE_ADDED_LABEL} 2024-03-09`,
+        `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER} · 2024-03-09`,
       );
       expect(stacked.attr("aria-label")).toBe(
-        `${APP_CONFIG.strings.URL_DATE_ADDED_ARIA} 2024-03-09`,
+        `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER} ${APP_CONFIG.strings.URL_ADDED_ON} 2024-03-09`,
+      );
+    });
+
+    it.each([
+      ["a departed username", "departed_dan"],
+      ["a tombstone username", "deleted-user-999"],
+    ])(
+      "never shows %s for an adder absent from members (text and aria-label)",
+      (_label, departedName) => {
+        setState({
+          members: [{ id: 7, username: "alice", memberRole: "member" }],
+        });
+        // The departed adder's name could only come from stale data; seed it on
+        // the item to prove the badge never reads it.
+        const el = createURLBlock({
+          url: {
+            ...baseURL,
+            addedByUserID: 999,
+            addedByUsername: departedName,
+          } as typeof baseURL,
+          dictTags: [],
+          utubID: 10,
+        });
+        const stacked = el.find(".urlDateAddedBadgeStacked");
+        expect(stacked.text()).not.toContain(departedName);
+        expect(stacked.text()).not.toContain("deleted-user-");
+        expect(stacked.attr("aria-label")).not.toContain(departedName);
+        expect(stacked.attr("aria-label")).not.toContain("deleted-user-");
+        expect(stacked.text()).toBe("Added by a former member · 2024-03-09");
+        expect(stacked.attr("aria-label")).toBe(
+          "Added by a former member on 2024-03-09",
+        );
+      },
+    );
+
+    it("inline collapsed badge stays date-only for an orphaned URL", () => {
+      setState({ members: [] });
+      const el = createURLBlock({
+        url: { ...baseURL, addedByUserID: 999 },
+        dictTags: [],
+        utubID: 10,
+      });
+      expect(el.find(".urlDateAddedBadgeInline").text()).toBe(
+        `${APP_CONFIG.strings.URL_DATE_ADDED_LABEL} 2024-03-09`,
+      );
+    });
+
+    it("resolves the adder from a members override instead of the store (stale-data path)", () => {
+      // Store lacks user 7 (pre-refresh), the payload's members include them.
+      setState({ members: [] });
+      const payloadMembers = [
+        { id: 7, username: "alice", memberRole: "member" as const },
+      ];
+      const known = createURLBlock({
+        url: baseURL,
+        dictTags: [],
+        utubID: 10,
+        members: payloadMembers,
+      });
+      expect(known.find(".urlDateAddedBadgeStacked").text()).toBe(
+        `${APP_CONFIG.strings.URL_ADDED_BY} alice · 2024-03-09`,
+      );
+      // An adder absent from the override's members is still a former member,
+      // even if the store lists them.
+      setState({
+        members: [{ id: 7, username: "alice", memberRole: "member" }],
+      });
+      const orphan = createURLBlock({
+        url: baseURL,
+        dictTags: [],
+        utubID: 10,
+        members: [],
+      });
+      expect(orphan.find(".urlDateAddedBadgeStacked").text()).toContain(
+        APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER,
       );
     });
   });
