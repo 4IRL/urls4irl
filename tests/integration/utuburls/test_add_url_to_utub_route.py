@@ -56,6 +56,7 @@ from tests.unit.test_url_validation import (
 from tests.utils_for_test import (
     is_string_in_logs,
     is_string_in_logs_regex,
+    remove_member,
     trash_utub_url,
 )
 
@@ -2459,6 +2460,45 @@ def test_readd_trashed_url_as_non_adder_member_revives_clean(
             == 0
         )
         assert Utub_Url_Tags.query.count() == initial_url_tag_count - 1
+
+
+@pytest.mark.parametrize(
+    "adder_is_orphaned, expect_tags_kept",
+    [
+        pytest.param(True, True, id="orphaned_adder_tags_kept"),
+        pytest.param(False, False, id="member_adder_tags_dropped"),
+    ],
+)
+def test_readd_trashed_url_keeps_tags_only_when_adder_orphaned(
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_second_user_without_register,
+    adder_is_orphaned: bool,
+    expect_tags_kept: bool,
+):
+    """
+    GIVEN URL 3 in UTub 1 (added by user 3, shared tag) is trashed, with user 3 either
+        gone from the UTub (orphaned) or still a member
+    WHEN plain member user 2 re-adds it
+    THEN the row's old tag is kept only when user 3 is orphaned, and user 2 is the adder
+    """
+    client, csrf_token, _, app = login_second_user_without_register
+    utub_url_id, url_string = _first_utub_url_row_info(app, url_id=3)
+    with app.app_context():
+        (shared_tag_id,) = Utub_Urls.query.get(utub_url_id).associated_tag_ids
+    trash_utub_url(app, utub_url_id, deleted_by=1)
+    if adder_is_orphaned:
+        remove_member(app, 1, 3)
+
+    response = _post_readd(client, csrf_token, url_string, "Member re-add")
+
+    assert response.status_code == 200
+    assert response.json[MODEL_STRS.REVIVED_FROM_TRASH] is True
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert revived_row.user_id == 2
+        assert revived_row.associated_tag_ids == (
+            [shared_tag_id] if expect_tags_kept else []
+        )
 
 
 def test_readd_trashed_url_reports_lost_tags(

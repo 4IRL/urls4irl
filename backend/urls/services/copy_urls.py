@@ -17,6 +17,7 @@ from backend.schemas.urls import (
     UrlCopySkippedSchema,
 )
 from backend.urls.constants import BulkCopySkipReason, DestCopyStatus, URLErrorCodes
+from backend.urls.permissions import can_act_as_url_adder
 from backend.urls.services.create_urls import make_locked_trashed_url_live
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
@@ -39,8 +40,9 @@ def _copy_source_rows_into_dest(
     (the unique constraint `unique_url_per_utub` covers trashed rows, so a second row
     cannot be inserted) and reported as copied: it is re-locked, re-checked as still
     trashed, and becomes live under the acting user with the source row's title; its
-    old tags stay attached only when the acting user was its adder or manages the
-    destination UTub (the same rule as add-revive), otherwise it comes back clean.
+    old tags stay attached only when the acting user may act as its adder (its adder,
+    a manager of the destination UTub, or any member when the adder is no longer a
+    member; the same rule as add-revive), otherwise it comes back clean.
 
     Args:
         source_rows_in_order (list[Utub_Urls]): Validated source `Utub_Urls` rows, in
@@ -57,6 +59,7 @@ def _copy_source_rows_into_dest(
     """
     copied_results: list[UrlCopiedItemSchema] = []
     skipped_results: list[dict] = []
+    dest_member_ids: set[int] = {member.user_id for member in dest_utub.members}
     current_user_is_dest_manager: bool = (
         current_user_id == dest_utub.utub_creator
         or any(
@@ -90,9 +93,11 @@ def _copy_source_rows_into_dest(
                 locked_utub_url=locked_occupant,
                 adder_id=current_user_id,
                 url_title=source_row.url_title,
-                keep_tags=(
-                    locked_occupant.user_id == current_user_id
-                    or current_user_is_dest_manager
+                keep_tags=can_act_as_url_adder(
+                    adder_id=locked_occupant.user_id,
+                    user_id=current_user_id,
+                    is_manager=current_user_is_dest_manager,
+                    member_ids=dest_member_ids,
                 ),
             )
             copied_results.append(

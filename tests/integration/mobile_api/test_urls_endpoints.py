@@ -18,9 +18,12 @@ from typing import Callable
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from werkzeug.test import TestResponse
 
+from backend import db
 from backend.api_v1.services.tokens import create_access_token
 from backend.models.users import Users
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
@@ -30,7 +33,12 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_NAME
 from tests.models_for_test import valid_url_strings
-from tests.utils_for_test import trash_utub, trash_utub_url
+from tests.utils_for_test import (
+    get_utub_url_id,
+    remove_member,
+    trash_utub,
+    trash_utub_url,
+)
 
 pytestmark = pytest.mark.mobile_api
 
@@ -555,9 +563,61 @@ def test_update_url_to_trashed_url_in_utub_revives_trashed_row(
     assert response_json[MODELS.URL][MODELS.UTUB_URL_ID] == trashed_utub_url_id
     assert response_json[MODELS.URL][MODELS.URL_STRING] == trashed_url_string
 
+    assert response_json[MODELS.ADDED_BY] == 1
+
     with app.app_context():
         assert not Utub_Urls.query.get(trashed_utub_url_id).is_trashed
         assert Utub_Urls.query.get(edited_utub_url_id).is_trashed
+
+
+@pytest.mark.parametrize(
+    "adder_is_orphaned, expected_adder_id",
+    [
+        pytest.param(True, 1, id="orphaned_adder_credits_reviver"),
+        pytest.param(False, 2, id="member_adder_keeps_credit"),
+    ],
+)
+def test_update_url_revive_on_edit_credits_reviver_only_for_orphaned_adder(
+    app: Flask,
+    api_client: FlaskClient,
+    add_mixed_delete_permission_urls_in_first_utub,
+    make_bearer_headers: Callable[[str], dict[str, str]],
+    adder_is_orphaned: bool,
+    expected_adder_id: int,
+):
+    """
+    GIVEN UTub 1 holds live URL 2 (added by user 2) and a trashed URL 3
+    WHEN manager user 1 PATCHes URL 2's urlString to URL 3's string, with user 2
+        either gone from the UTub (orphaned) or still a member
+    THEN the revived row's adder and the response addedByUserID both equal the reviver
+        (user 1) when user 2 is orphaned, and stay user 2 when user 2 is a member
+    """
+    user_1_token = _token_for_user(app, user_id=1)
+    with app.app_context():
+        edited_utub_url_id = (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == 1, Utub_Urls.url_id == 2)
+            .one()
+            .id
+        )
+        trashed_utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == 1, Utub_Urls.url_id == 3
+        ).one()
+        trashed_utub_url_id = trashed_utub_url.id
+        trashed_url_string = trashed_utub_url.standalone_url.url_string
+    trash_utub_url(app, trashed_utub_url_id, deleted_by=3)
+    if adder_is_orphaned:
+        remove_member(app, 1, 2)
+
+    response = api_client.patch(
+        _update_url_url(app, utub_id=1, utub_url_id=edited_utub_url_id),
+        json={MODELS.URL_STRING: trashed_url_string},
+        headers=make_bearer_headers(user_1_token),
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()[MODELS.ADDED_BY] == expected_adder_id
+    with app.app_context():
+        assert Utub_Urls.query.get(trashed_utub_url_id).user_id == expected_adder_id
 
 
 def test_update_url_no_token_is_401(
@@ -871,3 +931,143 @@ def test_delete_url_nonexistent_utub_url_is_404(
     assert response.status_code == 404
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+# ===========================================================================
+# Orphaned URLs (adder no longer a UTub member) belong to the whole UTub (#770)
+# ===========================================================================
+
+
+_ORPHAN_EDIT_URL_STRING = "https://www.orphan-edit-target.com/"
+
+
+def _send_orphan_request(
+    app: Flask,
+    api_client: FlaskClient,
+    kind: str,
+    utub_url_id: int,
+    headers: dict[str, str],
+) -> TestResponse:
+    if kind == "delete":
+        return api_client.delete(
+            _delete_url_url(app, utub_id=1, utub_url_id=utub_url_id), headers=headers
+        )
+    if kind == "url":
+        return api_client.patch(
+            _update_url_url(app, utub_id=1, utub_url_id=utub_url_id),
+            json={MODELS.URL_STRING: _ORPHAN_EDIT_URL_STRING},
+            headers=headers,
+        )
+    if kind == "title":
+        return api_client.patch(
+            _update_url_title_url(app, utub_id=1, utub_url_id=utub_url_id),
+            json={MODELS.URL_TITLE: _UPDATED_URL_TITLE},
+            headers=headers,
+        )
+    raise ValueError(f"unknown request kind: {kind}")
+
+
+@pytest.mark.parametrize("kind", ["delete", "url", "title"])
+def test_plain_member_acts_on_orphaned_url_is_200(
+    app: Flask,
+    api_client: FlaskClient,
+    add_mixed_delete_permission_urls_in_first_utub,
+    make_bearer_headers: Callable[[str], dict[str, str]],
+    kind: str,
+):
+    """
+    GIVEN URL 3 in UTub 1 whose adder (user 3) has left the UTub
+    WHEN plain member user 2 deletes it or edits its string or title
+    THEN 200
+    """
+    row_id = get_utub_url_id(app, 1, 3)
+    remove_member(app, 1, 3)
+
+    response = _send_orphan_request(
+        app,
+        api_client,
+        kind,
+        row_id,
+        make_bearer_headers(_token_for_user(app, user_id=2)),
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        row: Utub_Urls = Utub_Urls.query.get(row_id)
+        assert row.is_trashed is (kind == "delete")
+        if kind == "url":
+            assert row.standalone_url.url_string == _ORPHAN_EDIT_URL_STRING
+        if kind == "title":
+            assert row.url_title == _UPDATED_URL_TITLE
+
+
+@pytest.mark.parametrize("kind", ["delete", "url", "title"])
+def test_non_member_on_orphaned_url_is_404(
+    app: Flask,
+    api_client: FlaskClient,
+    add_mixed_delete_permission_urls_in_first_utub,
+    make_bearer_headers: Callable[[str], dict[str, str]],
+    kind: str,
+):
+    """
+    GIVEN URL 3 in UTub 1 whose adder (user 3) has left the UTub
+    WHEN user 3, now a non-member, deletes it or edits its string or title
+    THEN 404 as for any non-member, and the row is untouched
+    """
+    row_id = get_utub_url_id(app, 1, 3)
+    remove_member(app, 1, 3)
+
+    response = _send_orphan_request(
+        app,
+        api_client,
+        kind,
+        row_id,
+        make_bearer_headers(_token_for_user(app, user_id=3)),
+    )
+
+    assert response.status_code == 404
+    with app.app_context():
+        row: Utub_Urls = Utub_Urls.query.get(row_id)
+        assert not row.is_trashed
+        assert row.url_title != _UPDATED_URL_TITLE
+
+
+def test_plain_member_revive_on_edit_of_orphaned_url_credits_reviver(
+    app: Flask,
+    api_client: FlaskClient,
+    add_mixed_delete_permission_urls_in_first_utub,
+    make_bearer_headers: Callable[[str], dict[str, str]],
+):
+    """
+    GIVEN UTub 1 where URL 3 (live) and URL 2 (trashed, shared tag) were both added by
+        user 3, who has left the UTub
+    WHEN plain member user 2 PATCHes URL 3's urlString to URL 2's string
+    THEN 200, the revived row and the response addedByUserID are user 2, and the
+        revived row keeps its old shared tag (its adder is orphaned)
+    """
+    edited_row_id = get_utub_url_id(app, 1, 3)
+    trashed_row_id = get_utub_url_id(app, 1, 2)
+    with app.app_context():
+        trashed_row: Utub_Urls = Utub_Urls.query.get(trashed_row_id)
+        trashed_row.user_id = 3
+        trashed_url_string = trashed_row.standalone_url.url_string
+        (shared_tag_id,) = trashed_row.associated_tag_ids
+        Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_url_id == edited_row_id).delete()
+        db.session.commit()
+    trash_utub_url(app, trashed_row_id, deleted_by=1)
+    remove_member(app, 1, 3)
+
+    response = api_client.patch(
+        _update_url_url(app, utub_id=1, utub_url_id=edited_row_id),
+        json={MODELS.URL_STRING: trashed_url_string},
+        headers=make_bearer_headers(_token_for_user(app, user_id=2)),
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[MODELS.REVIVED_FROM_TRASH] is True
+    assert response_json[MODELS.ADDED_BY] == 2
+    with app.app_context():
+        revived_row: Utub_Urls = Utub_Urls.query.get(trashed_row_id)
+        assert revived_row.user_id == 2
+        assert revived_row.associated_tag_ids == [shared_tag_id]

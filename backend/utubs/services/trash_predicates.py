@@ -41,6 +41,25 @@ def join_utub_deleter(statement: Select, deleter: AliasedClass) -> Select:
     return statement.join(deleter, deleter.id == Utubs.deleted_by)
 
 
+def adder_not_member_clause() -> ColumnElement[bool]:
+    """SQL twin of the orphan rule in ``can_act_as_url_adder`` (#770).
+
+    True when the URL row's adder is no longer a member of its UTub. Correlated to
+    ``Utub_Urls`` via a fresh alias of ``Utub_Members``: the alias keeps it independent
+    of any viewer ``Utub_Members`` join in the enclosing select (a bare ``Utub_Members``
+    would auto-correlate to that join and test the viewer's row instead).
+    """
+    adder_membership = aliased(Utub_Members)
+    return ~(
+        select(adder_membership.user_id)
+        .where(
+            adder_membership.utub_id == Utub_Urls.utub_id,
+            adder_membership.user_id == Utub_Urls.user_id,
+        )
+        .exists()
+    )
+
+
 def trashed_url_rows_actionable_by(*, user_id: int) -> Select:
     """Select the trashed URL rows ``user_id`` may list, restore or permanently delete.
 
@@ -51,8 +70,8 @@ def trashed_url_rows_actionable_by(*, user_id: int) -> Select:
     A row is actionable when either:
       * its UTub is trashed and ``user_id`` created it (the whole UTub's URLs ride along
         with it, whatever their own ``deleted_at``); or
-      * its UTub is live, the URL is trashed, and ``user_id`` added it or is the UTub's
-        creator or a co-creator.
+      * its UTub is live, the URL is trashed, and ``user_id`` added it, is the UTub's
+        creator or a co-creator, or the adder is no longer a member (orphan rule, #770).
 
     The inner join on ``Utub_Members`` also drops users who have left the UTub.
     """
@@ -77,6 +96,7 @@ def trashed_url_rows_actionable_by(*, user_id: int) -> Select:
                     Utub_Urls.deleted_at.isnot(None),
                     or_(
                         Utub_Urls.user_id == user_id,
+                        adder_not_member_clause(),
                         Utub_Members.member_role.in_(
                             [Member_Role.CREATOR, Member_Role.CO_CREATOR]
                         ),

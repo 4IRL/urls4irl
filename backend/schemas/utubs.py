@@ -104,8 +104,11 @@ class UtubDetailSchema(BaseSchema):
         # user's ``default_sort`` preference (server-authoritative, resolved by
         # ``get_single_utub_for_user``) — the serialized ``urls`` list is emitted
         # in exactly this order.
+        member_ids = frozenset(member.user_id for member in utub.members)
         urls = [
-            UtubUrlSchema.from_orm_url(utub_url, current_user_id, viewer_is_manager)
+            UtubUrlSchema.from_orm_url(
+                utub_url, current_user_id, viewer_is_manager, member_ids
+            )
             for utub_url in ordered_utub_urls
         ]
         tags = [

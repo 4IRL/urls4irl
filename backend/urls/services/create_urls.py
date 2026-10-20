@@ -43,6 +43,7 @@ from backend.tags.services.create_url_tag import (
 )
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
+from backend.urls.permissions import can_act_as_url_adder
 from backend.urls.services.trashed_url_tags import (
     count_lost_trashed_tags,
     list_lost_trashed_tag_names,
@@ -618,8 +619,9 @@ def _revive_trashed_url_in_utub(
     The unique constraint `unique_url_per_utub` covers trashed rows, so re-adding a
     trashed URL must reuse its row. The row is made live again under the re-adding
     user with a fresh title and timestamps. The tags the URL had when it was
-    trashed are kept only when the re-adder is the original adder or a UTub
-    manager; any other member gets a clean row. Tags deleted from the UTub while
+    trashed are kept only when the re-adder may act as the original adder (the
+    adder, a UTub manager, or any member when the adder is no longer a member);
+    any other member gets a clean row. Tags deleted from the UTub while
     the row was trashed are reported as `lostTagCount`. Requested `tag_strings`
     are applied on top of the surviving tags, all in one transaction.
 
@@ -655,8 +657,12 @@ def _revive_trashed_url_in_utub(
             had_tracking=had_tracking,
         )
 
-    can_keep_tags: bool = (
-        locked_utub_url.user_id == current_user.id or is_current_utub_manager()
+    member_ids: set[int] = {member.user_id for member in current_utub.members}
+    can_keep_tags: bool = can_act_as_url_adder(
+        adder_id=locked_utub_url.user_id,
+        user_id=current_user.id,
+        is_manager=is_current_utub_manager(),
+        member_ids=member_ids,
     )
 
     # Read everything that depends on the trashed state before any write.

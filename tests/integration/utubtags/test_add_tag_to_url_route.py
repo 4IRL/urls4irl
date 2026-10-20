@@ -10,7 +10,6 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.schemas.urls import UtubUrlSchema
 from backend.tags.constants import URLTagErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import TAG_CONSTANTS
@@ -33,6 +32,7 @@ from tests.utils_for_test import (
     count_tag_instances_in_utub,
     is_string_in_logs,
     trash_utub_url,
+    url_schema_for_viewer,
 )
 
 pytestmark = pytest.mark.tags
@@ -696,7 +696,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+        url_serialization_for_check = url_schema_for_viewer(
             url_utub_association, current_user.id, True
         ).model_dump(by_alias=True)
 
@@ -769,7 +769,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
         ).first()
 
         assert (
-            UtubUrlSchema.from_orm_url(
+            url_schema_for_viewer(
                 url_utub_tag_association, current_user.id, True
             ).model_dump(by_alias=True)
             == url_serialization_for_check
@@ -818,7 +818,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
             Utub_Urls.user_id != current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+        url_serialization_for_check = url_schema_for_viewer(
             url_utub_association, current_user.id, False
         ).model_dump(by_alias=True)
 
@@ -891,7 +891,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         ).first()
 
         assert (
-            UtubUrlSchema.from_orm_url(
+            url_schema_for_viewer(
                 url_utub_tag_association, current_user.id, False
             ).model_dump(by_alias=True)
             == url_serialization_for_check
@@ -1374,7 +1374,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
             Utub_Urls.utub_id == utub_id_that_user_not_member_of
         ).first()
         url_id_for_url_in_utub: int = url_association_with_this_utub.id
-        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+        url_serialization_for_check = url_schema_for_viewer(
             url_association_with_this_utub, current_user.id, False
         ).model_dump(by_alias=True)
 
@@ -1432,7 +1432,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
 
         # Ensure URL in UTub serialization is still same
         assert (
-            UtubUrlSchema.from_orm_url(
+            url_schema_for_viewer(
                 Utub_Urls.query.filter(
                     Utub_Urls.id == url_id_for_url_in_utub,
                 ).first(),
@@ -1608,7 +1608,7 @@ def test_add_tag_to_url_with_max_tags_as_utub_creator(
         new_tag_id_to_add = new_tag_to_add.id
 
         # Get the initial URL-UTub serialization
-        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+        url_serialization_for_check = url_schema_for_viewer(
             Utub_Urls.query.filter(
                 Utub_Urls.utub_id == utub_id_user_is_creator_of,
                 Utub_Urls.user_id == current_user.id,
@@ -1663,7 +1663,7 @@ def test_add_tag_to_url_with_max_tags_as_utub_creator(
         )
 
         assert (
-            UtubUrlSchema.from_orm_url(
+            url_schema_for_viewer(
                 Utub_Urls.query.filter(
                     Utub_Urls.id == url_id_in_this_utub,
                 ).first(),
@@ -1829,7 +1829,7 @@ def test_add_tag_to_url_with_max_tags_as_utub_member(
         new_tag_id_to_add = new_tag_to_add.id
 
         # Get the URL-UTub serialization for checking later
-        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+        url_serialization_for_check = url_schema_for_viewer(
             Utub_Urls.query.filter(
                 Utub_Urls.utub_id == utub_id_user_is_member_of,
                 Utub_Urls.user_id != current_user.id,
@@ -1884,7 +1884,7 @@ def test_add_tag_to_url_with_max_tags_as_utub_member(
         )
 
         assert (
-            UtubUrlSchema.from_orm_url(
+            url_schema_for_viewer(
                 Utub_Urls.query.filter(
                     Utub_Urls.id == url_id_in_this_utub,
                 ).first(),
@@ -1939,7 +1939,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+        url_serialization_for_check = url_schema_for_viewer(
             url_utub_association, current_user.id, True
         ).model_dump(by_alias=True)
 
@@ -1978,7 +1978,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         assert Utub_Tags.query.count() == 0
 
         # Ensure same serialization for URL
-        assert url_serialization_for_check == UtubUrlSchema.from_orm_url(
+        assert url_serialization_for_check == url_schema_for_viewer(
             Utub_Urls.query.get(url_id_to_add_tag_to),
             current_user.id,
             True,
@@ -2172,7 +2172,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+        url_serialization_for_check = url_schema_for_viewer(
             url_utub_association, current_user.id, True
         ).model_dump(by_alias=True)
 
@@ -2199,7 +2199,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         assert Utub_Tags.query.count() == 0
 
         # Ensure same serialization for URL
-        assert url_serialization_for_check == UtubUrlSchema.from_orm_url(
+        assert url_serialization_for_check == url_schema_for_viewer(
             Utub_Urls.query.get(url_id_to_add_tag_to),
             current_user.id,
             True,
@@ -2643,7 +2643,7 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+        url_serialization_for_check = url_schema_for_viewer(
             url_utub_association, current_user.id, True
         ).model_dump(by_alias=True)
 
@@ -2711,7 +2711,7 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
         ).first()
 
         assert (
-            UtubUrlSchema.from_orm_url(
+            url_schema_for_viewer(
                 url_utub_tag_association, current_user.id, True
             ).model_dump(by_alias=True)
             == url_serialization_for_check

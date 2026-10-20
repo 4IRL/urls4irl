@@ -816,6 +816,33 @@ def login_second_user_without_register(
 
 
 @pytest.fixture
+def login_third_user_without_register(
+    app: Flask,
+) -> Generator[Tuple[FlaskClient, str, Users, Flask], None, None]:
+    """
+    Given a user with ID == 3, logs them in and routes them to "/home",
+    https://flask-login.readthedocs.io/en/latest/#automated-testing
+
+    Args:
+        app (Flask): The Flask client providing an app context
+
+    Yields:
+        (FlaskLoginClient): Flask client that logs in a user using flask_login
+        (str): The CSRF token string
+        (Users): The User model of currently logged in user
+        (Flask): The Flask client for providing an app context
+    """
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        user_to_login = Users.query.get(3)
+
+    with app.test_client(user=user_to_login) as logged_in_client:
+        logged_in_response = logged_in_client.get("/home")
+        csrf_token_string = get_csrf_token(logged_in_response.get_data(), meta_tag=True)
+        yield logged_in_client, csrf_token_string, user_to_login, app
+
+
+@pytest.fixture
 def add_single_utub_as_user_without_logging_in(
     app: Flask, register_first_user: Tuple[Tuple[dict[str, str | None]], Users]
 ):
