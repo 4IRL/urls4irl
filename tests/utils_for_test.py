@@ -13,6 +13,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.urls import UtubUrlSchema
 from backend.urls.services.trashed_url_tags import build_tag_name_snapshot_from_ids
 from backend.utils.datetime_utils import utc_now
 
@@ -265,6 +266,32 @@ def remove_member(app: Flask, utub_id: int, user_id: int) -> None:
         member: Utub_Members = Utub_Members.query.get((utub_id, user_id))
         db.session.delete(member)
         db.session.commit()
+
+
+def url_schema_for_viewer(
+    utub_url: Utub_Urls, viewer_id: int, viewer_is_manager: bool
+) -> UtubUrlSchema:
+    """Serialize a Utub_Urls row for a viewer with the real member-id set of its UTub.
+
+    Must be called inside an app context (reads ``Utub_Members``).
+
+    Args:
+        utub_url (Utub_Urls): The URL row to serialize
+        viewer_id (int): The viewing user's ID
+        viewer_is_manager (bool): Whether the viewer is the UTub's creator or co-creator
+
+    Returns:
+        (UtubUrlSchema): The wire schema, with ``canDelete`` per the orphan rule
+    """
+    member_ids: frozenset[int] = frozenset(
+        member.user_id
+        for member in Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_url.utub_id
+        ).all()
+    )
+    return UtubUrlSchema.from_orm_url(
+        utub_url, viewer_id, viewer_is_manager, member_ids
+    )
 
 
 def get_utub_url_id(app: Flask, utub_id: int, url_id: int) -> int:

@@ -2127,6 +2127,11 @@ export interface components {
       /** @description Detailed URL item with updated URL string. On a revive-on-edit this is the revived row, not the edited one. */
       URL: components["schemas"]["UtubUrlDetailSchema"];
       /**
+       * @description On a revive, the user ID credited as the revived row's adder (the reviver when the edited row's adder was no longer a member); null otherwise.
+       * @default null
+       */
+      addedByUserID: number | null;
+      /**
        * @description True when the edit revived this UTub's trashed row for the new URL and trashed the edited row.
        * @default false
        */

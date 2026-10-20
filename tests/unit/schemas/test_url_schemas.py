@@ -8,6 +8,7 @@ from backend.schemas.requests.urls import (
     CreateURLRequest,
     UpdateURLTitleRequest,
 )
+from backend.schemas.urls import UtubUrlSchema
 from backend.utils.constants import TAG_CONSTANTS, URL_CONSTANTS
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE
@@ -37,7 +38,10 @@ def test_utub_url_schema_dump():
     from backend.schemas.urls import UtubUrlSchema
 
     schema = UtubUrlSchema.from_orm_url(
-        _MockUtubUrl(), current_user_id=2, viewer_is_manager=True
+        _MockUtubUrl(),
+        current_user_id=2,
+        viewer_is_manager=True,
+        member_ids=frozenset({2}),
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped[MODELS.UTUB_URL_ID] == 10
@@ -53,9 +57,43 @@ def test_utub_url_schema_can_delete_false():
     from backend.schemas.urls import UtubUrlSchema
 
     schema = UtubUrlSchema.from_orm_url(
-        _MockUtubUrl(), current_user_id=99, viewer_is_manager=False
+        _MockUtubUrl(),
+        current_user_id=99,
+        viewer_is_manager=False,
+        member_ids=frozenset({2, 99}),
     )
     assert schema.can_delete is False
+
+
+def test_utub_url_schema_can_delete_true_for_orphaned_url_plain_viewer():
+    """
+    GIVEN a URL whose adder (user 2) is not a current member
+    WHEN a plain member (user 99) serializes it
+    THEN canDelete is True and addedByUserID keeps the departed adder
+    """
+    schema = UtubUrlSchema.from_orm_url(
+        _MockUtubUrl(),
+        current_user_id=99,
+        viewer_is_manager=False,
+        member_ids=frozenset({99}),
+    )
+    assert schema.can_delete is True
+    assert schema.added_by_user_id == 2
+
+
+def test_utub_url_schema_can_delete_true_for_manager_with_member_adder():
+    """
+    GIVEN a URL whose adder is still a member
+    WHEN a manager serializes it
+    THEN canDelete is True
+    """
+    schema = UtubUrlSchema.from_orm_url(
+        _MockUtubUrl(),
+        current_user_id=99,
+        viewer_is_manager=True,
+        member_ids=frozenset({2, 99}),
+    )
+    assert schema.can_delete is True
 
 
 def test_utub_url_schema_missing_required_fields():
