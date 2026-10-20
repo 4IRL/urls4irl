@@ -3,12 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from pydantic import Field, field_serializer
+from pydantic import Field, SerializeAsAny, field_serializer
 
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
 from backend.schemas.users import UtubMemberSchema
+from backend.schemas.utub_settings import UtubSettings, resolve_utub_settings
 from backend.utils.strings.model_strs import MODELS, UTUB_DESCRIPTION
 from backend.utils.strings.utub_strs import UTUB_CREATOR_ID, UTUB_ID, UTUB_NAME
 
@@ -67,6 +68,14 @@ class UtubDetailSchema(BaseSchema):
     current_user: int = Field(
         alias=MODELS.CURRENT_USER,
         description="ID of the currently authenticated user",
+    )
+    # SerializeAsAny: the value comes from the settings-model seam
+    # (``get_settings_model``) and may be a ``UtubSettings`` subclass whose
+    # extra section fields must serialize in full.
+    settings: SerializeAsAny[UtubSettings] = Field(
+        default_factory=UtubSettings,
+        alias=MODELS.SETTINGS,
+        description="Resolved per-UTub panel settings (stored overrides merged over defaults)",
     )
 
     @field_serializer("created_at")
@@ -143,6 +152,7 @@ class UtubDetailSchema(BaseSchema):
             is_co_creator=is_co_creator,
             is_locked=utub.is_locked,
             current_user=current_user_id,
+            settings=resolve_utub_settings(utub.settings),
         )
 
 
@@ -204,4 +214,18 @@ class UtubDescUpdatedResponseSchema(BaseSchema):
     utub_description: str | None = Field(
         alias=UTUB_DESCRIPTION,
         description="New description of the UTub, or null if cleared",
+    )
+
+
+class UtubSettingsUpdatedResponseSchema(BaseSchema):
+    """UTub settings updated"""
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub whose settings were updated",
+    )
+    # SerializeAsAny: see UtubDetailSchema.settings (settings-model seam).
+    settings: SerializeAsAny[UtubSettings] = Field(
+        alias=MODELS.SETTINGS,
+        description="Full resolved per-UTub settings (stored overrides merged over defaults)",
     )

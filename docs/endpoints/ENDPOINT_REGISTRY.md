@@ -1318,6 +1318,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `restoreUTub`
 
+### `PATCH /utubs/<int:utub_id>/settings` — `utubs.update_utub_settings`
+
+- **Handler:** `backend/utubs/routes.py:update_utub_settings`
+- **Decorators:** `utub_manager_required`, `api_route`
+- **Service:** `backend.utubs.services.update_utub_settings:update_utub_settings_if_changed`
+- **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubSettingsRequest`; response: `backend.schemas.utubs.UtubSettingsUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubSettingsUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `updateUTubSettings`
+
 ### `GET /utubs/trash` — `utubs.get_trash`
 
 - **Handler:** `backend/utubs/routes.py:get_trash`

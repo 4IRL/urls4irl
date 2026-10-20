@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from backend.schemas.utubs import UtubDetailSchema
 from backend.utils.strings.model_strs import MODELS
+from tests.settings_stub import DEFAULT_SETTINGS_DICT
 
 pytestmark = pytest.mark.unit
 
@@ -46,6 +47,19 @@ def test_utub_detail_schema_dump():
     assert dumped[MODELS.IS_CREATOR] is True
     assert dumped[MODELS.IS_CO_CREATOR] is False
     assert dumped[MODELS.CURRENT_USER] == 1
+
+
+def test_utub_detail_schema_settings_default_is_last_field():
+    schema = UtubDetailSchema.model_validate(_UTUB_DICT)
+    dumped = schema.model_dump(by_alias=True)
+    assert dumped[MODELS.SETTINGS] == DEFAULT_SETTINGS_DICT
+    assert list(dumped)[-1] == MODELS.SETTINGS
+
+
+def test_utub_detail_schema_settings_unknown_section_rejected():
+    data = {**_UTUB_DICT, MODELS.SETTINGS: {"bogus": {}}}
+    with pytest.raises(ValidationError):
+        UtubDetailSchema.model_validate(data)
 
 
 def test_utub_detail_schema_nested_members():

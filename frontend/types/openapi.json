@@ -8985,6 +8985,92 @@
         }
       }
     },
+    "/utubs/{utub_id}/settings": {
+      "patch": {
+        "operationId": "updateUtubSettings",
+        "tags": ["utubs"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Partially update a UTub's per-panel settings. Metrics: API_HIT only (no DOMAIN event).",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUTubSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UTub settings updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubSettingsUpdatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/urls/{utub_url_id}/tags": {
       "post": {
         "operationId": "createUtubUrlTag",
@@ -10631,6 +10717,47 @@
         "required": ["utubs"],
         "type": "object"
       },
+      "MembersSettings": {
+        "additionalProperties": false,
+        "description": "Settings for the members panel (no settings yet).",
+        "properties": {},
+        "type": "object"
+      },
+      "TagsSettings": {
+        "additionalProperties": false,
+        "description": "Settings for the tags panel (no settings yet).",
+        "properties": {},
+        "type": "object"
+      },
+      "UrlsSettings": {
+        "additionalProperties": false,
+        "description": "Settings for the URLs panel (no settings yet).",
+        "properties": {},
+        "type": "object"
+      },
+      "UtubSettings": {
+        "additionalProperties": false,
+        "description": "Resolved per-UTub settings, one namespaced section per panel.",
+        "properties": {
+          "utubs": {
+            "$ref": "#/components/schemas/UtubsSettings",
+            "description": "Settings for the UTub panel"
+          },
+          "members": {
+            "$ref": "#/components/schemas/MembersSettings",
+            "description": "Settings for the members panel"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/TagsSettings",
+            "description": "Settings for the tags panel"
+          },
+          "urls": {
+            "$ref": "#/components/schemas/UrlsSettings",
+            "description": "Settings for the URLs panel"
+          }
+        },
+        "type": "object"
+      },
       "UtubUrlSchema": {
         "properties": {
           "utubUrlID": {
@@ -10675,6 +10802,12 @@
           "addedAt",
           "addedByUserID"
         ],
+        "type": "object"
+      },
+      "UtubsSettings": {
+        "additionalProperties": false,
+        "description": "Settings for the UTub panel (no settings yet).",
+        "properties": {},
         "type": "object"
       },
       "UtubDetailSchema": {
@@ -10737,6 +10870,10 @@
           "currentUser": {
             "description": "ID of the currently authenticated user",
             "type": "integer"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/UtubSettings",
+            "description": "Resolved per-UTub panel settings (stored overrides merged over defaults)"
           }
         },
         "required": [
@@ -13503,6 +13640,48 @@
           }
         },
         "required": ["utubID", "utubName", "purgedUrlCount"],
+        "type": "object"
+      },
+      "UpdateUTubSettingsRequest": {
+        "additionalProperties": false,
+        "description": "Per-section settings patch. Only sections the caller sent are merged\n(``model_fields_set``); a ``null`` or non-object section is rejected here.",
+        "properties": {
+          "utubs": {
+            "additionalProperties": true,
+            "description": "Patch for the UTub panel settings",
+            "type": "object"
+          },
+          "members": {
+            "additionalProperties": true,
+            "description": "Patch for the members panel settings",
+            "type": "object"
+          },
+          "tags": {
+            "additionalProperties": true,
+            "description": "Patch for the tags panel settings",
+            "type": "object"
+          },
+          "urls": {
+            "additionalProperties": true,
+            "description": "Patch for the URLs panel settings",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "UtubSettingsUpdatedResponseSchema": {
+        "description": "UTub settings updated",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub whose settings were updated",
+            "type": "integer"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/UtubSettings",
+            "description": "Full resolved per-UTub settings (stored overrides merged over defaults)"
+          }
+        },
+        "required": ["utubID", "settings"],
         "type": "object"
       },
       "AddTagsToUrlsRequest": {

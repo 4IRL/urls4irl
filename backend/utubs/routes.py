@@ -23,6 +23,7 @@ from backend.schemas.requests.utubs import (
     CreateUTubRequest,
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
+    UpdateUTubSettingsRequest,
 )
 from backend.schemas.trash import (
     TrashEmptiedResponseSchema,
@@ -37,6 +38,7 @@ from backend.schemas.utubs import (
     UtubDescUpdatedResponseSchema,
     UtubDetailSchema,
     UtubNameUpdatedResponseSchema,
+    UtubSettingsUpdatedResponseSchema,
 )
 from backend.splash.services.change_email import (
     EMAIL_CHANGE_STATUS_QUERY_PARAM,
@@ -69,6 +71,7 @@ from backend.utubs.services.trash_utubs import (
     purge_trashed_utub,
     restore_trashed_utub,
 )
+from backend.utubs.services.update_utub_settings import update_utub_settings_if_changed
 from backend.utubs.services.update_utubs import (
     update_utub_desc_if_new,
     update_utub_name_if_new,
@@ -345,6 +348,41 @@ def update_utub_desc(
     return update_utub_desc_if_new(
         current_utub, update_utub_description_request.utubDescription
     )
+
+
+@utubs.route("/utubs/<int:utub_id>/settings", methods=["PATCH"])
+@utub_manager_required
+@api_route(
+    request_schema=UpdateUTubSettingsRequest,
+    response_schema=UtubSettingsUpdatedResponseSchema,
+    error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_SETTINGS,
+    error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.UTUBS],
+    description="Partially update a UTub's per-panel settings. Metrics: API_HIT only (no DOMAIN event).",
+    status_codes={
+        200: UtubSettingsUpdatedResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def update_utub_settings(
+    utub_id: int,
+    current_utub: Utubs,
+    update_utub_settings_request: UpdateUTubSettingsRequest,
+) -> FlaskResponse:
+    """
+    Creator or co-owner wants to update the per-panel settings of their UTub.
+    Only the sections present in the request are merged.
+
+    Args:
+        utub_id (int): The ID of the UTub that will have its settings updated
+    """
+    patch = {
+        section: getattr(update_utub_settings_request, section)
+        for section in update_utub_settings_request.model_fields_set
+    }
+    return update_utub_settings_if_changed(current_utub, patch)
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])

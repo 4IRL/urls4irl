@@ -761,9 +761,17 @@ UTub selection via the query parameter is handled on the client side.
 >             "id": 3,
 >             "tagString": "helpful",
 >         }
->     ]
+>     ],
+>     "settings": {
+>         "utubs": {},
+>         "members": {},
+>         "tags": {},
+>         "urls": {}
+>     }
 > }
 > ```
+
+The `settings` object holds the fully resolved per-panel settings (stored overrides merged over defaults). Section and key names are snake_case.
 
 ##### Example cURL
 
@@ -1077,6 +1085,99 @@ Invalid JSON body sent with the request. The `errors` field is present when Pyda
 >  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
 >  --data-raw '{"utubDescription": "UTub Description"}'
+> ```
+
+</details>
+<details>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/settings</b></code> <code>(partially update a UTub's per-panel settings)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to update |
+
+##### Request Payload
+
+Payload content-type should be `application/json`. Only the UTub creator or a co-owner may update settings.
+
+Optional JSON body; each present section is an object of snake_case keys merged over the stored overrides for that section. Sections are `utubs`, `members`, `tags` and `urls` (currently empty, so no keys are accepted yet):
+> ```json
+> {
+>     "urls": {}
+> }
+> ```
+
+A `null` or non-object section, or an unknown top-level key, is rejected with `400`. An empty body object `{}` is a no-op. Settings writes do not change the UTub's `lastUpdated`.
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Settings updated (or unchanged); returns the full resolved settings. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `400`         | `application/json`                | `See below.` | Invalid request shape, unknown key in a section, invalid value. |
+> | `403`         | `application/json`                | `See below.` | Not a creator or co-owner (`NOT_AUTHORIZED`, no `errorCode`), or the UTub is locked (`errorCode` 3). |
+> | `404`         | `text/html;charset=utf−8`         | None | UTub not found, trashed, or user not in UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+| Case | Status |
+|---|---|
+| Creator or co-owner, valid patch | 200 |
+| Patch identical to stored overrides, or `{}` | 200 (no write) |
+| Unknown top-level key, `null` or non-object section, missing or non-JSON body | 400 |
+| Unknown key in a section, invalid value | 400 (`errors["<section>.<key>"]`) |
+| Plain member | 403 |
+| Manager on a locked UTub | 403 (`errorCode` 3) |
+| Non-member, revoked member, trashed or missing UTub | 404 |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success",
+>     "utubID": 1,
+>     "settings": {
+>         "utubs": {},
+>         "members": {},
+>         "tags": {},
+>         "urls": {}
+>     }
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to modify UTub settings.",
+>     "errorCode": 2,
+>     "errors": {
+>         "urls.example_key": ["Unknown setting."]
+>     }
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "This UTub is locked and cannot be modified.",
+>     "errorCode": 3
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X PATCH \
+>  https://urls.4irl.app/utubs/1/settings \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-raw '{"urls": {}}'
 > ```
 
 </details>

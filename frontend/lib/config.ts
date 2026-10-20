@@ -56,6 +56,7 @@ export interface AppRoutes {
   transferUtubOwnership: (id: number) => string;
   updateUTubName: (id: number) => string;
   updateUTubDescription: (id: number) => string;
+  updateUTubSettings: (id: number) => string;
   createURL: (id: number) => string;
   createUTubTag: (id: number) => string;
   applyTagsToURLs: (utubId: number) => string;
@@ -192,6 +193,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.updateUTubName.replace("-1", String(id)),
     updateUTubDescription: (id: number) =>
       rawConfig.routes.updateUTubDescription.replace("-1", String(id)),
+    updateUTubSettings: (id: number) =>
+      rawConfig.routes.updateUTubSettings.replace("-1", String(id)),
 
     getURL: (utubId: number, urlId: number) =>
       rawConfig.routes.getURL

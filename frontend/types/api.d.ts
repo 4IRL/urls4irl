@@ -1698,6 +1698,23 @@ export interface paths {
     patch: operations["updateUtubDesc"];
     trace?: never;
   };
+  "/utubs/{utub_id}/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Partially update a UTub's per-panel settings. Metrics: API_HIT only (no DOMAIN event). */
+    patch: operations["updateUtubSettings"];
+    trace?: never;
+  };
   "/utubs/{utub_id}/urls/{utub_url_id}/tags": {
     parameters: {
       query?: never;
@@ -2354,6 +2371,23 @@ export interface components {
        */
       trashCount: number;
     };
+    /** @description Settings for the members panel (no settings yet). */
+    MembersSettings: Record<string, never>;
+    /** @description Settings for the tags panel (no settings yet). */
+    TagsSettings: Record<string, never>;
+    /** @description Settings for the URLs panel (no settings yet). */
+    UrlsSettings: Record<string, never>;
+    /** @description Resolved per-UTub settings, one namespaced section per panel. */
+    UtubSettings: {
+      /** @description Settings for the UTub panel */
+      utubs?: components["schemas"]["UtubsSettings"];
+      /** @description Settings for the members panel */
+      members?: components["schemas"]["MembersSettings"];
+      /** @description Settings for the tags panel */
+      tags?: components["schemas"]["TagsSettings"];
+      /** @description Settings for the URLs panel */
+      urls?: components["schemas"]["UrlsSettings"];
+    };
     UtubUrlSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -2373,6 +2407,8 @@ export interface components {
       /** @description User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list) */
       addedByUserID: number;
     };
+    /** @description Settings for the UTub panel (no settings yet). */
+    UtubsSettings: Record<string, never>;
     /** @description Full UTub detail with members, URLs, and tags */
     UtubDetailSchema: {
       /** @description Unique UTub ID */
@@ -2402,6 +2438,8 @@ export interface components {
       isLocked: boolean;
       /** @description ID of the currently authenticated user */
       currentUser: number;
+      /** @description Resolved per-UTub panel settings (stored overrides merged over defaults) */
+      settings?: components["schemas"]["UtubSettings"];
     };
     UpdateUTubNameRequest: {
       /** @description New name for the UTub */
@@ -3854,6 +3892,35 @@ export interface components {
       utubName: string;
       /** @description Number of URL rows (live and trashed) deleted with the UTub */
       purgedUrlCount: number;
+    };
+    /**
+     * @description Per-section settings patch. Only sections the caller sent are merged
+     *     (``model_fields_set``); a ``null`` or non-object section is rejected here.
+     */
+    UpdateUTubSettingsRequest: {
+      /** @description Patch for the UTub panel settings */
+      utubs?: {
+        [key: string]: unknown;
+      };
+      /** @description Patch for the members panel settings */
+      members?: {
+        [key: string]: unknown;
+      };
+      /** @description Patch for the tags panel settings */
+      tags?: {
+        [key: string]: unknown;
+      };
+      /** @description Patch for the URLs panel settings */
+      urls?: {
+        [key: string]: unknown;
+      };
+    };
+    /** @description UTub settings updated */
+    UtubSettingsUpdatedResponseSchema: {
+      /** @description ID of the UTub whose settings were updated */
+      utubID: number;
+      /** @description Full resolved per-UTub settings (stored overrides merged over defaults) */
+      settings: components["schemas"]["UtubSettings"];
     };
     AddTagsToUrlsRequest: {
       /**
@@ -9942,6 +10009,60 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["UtubDescUpdatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateUtubSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateUTubSettingsRequest"];
+      };
+    };
+    responses: {
+      /** @description UTub settings updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubSettingsUpdatedResponseSchema"];
         };
       };
       /** @description Bad request */

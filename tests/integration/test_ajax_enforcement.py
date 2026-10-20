@@ -107,6 +107,14 @@ CSRF_HEADER_KEY = "X-CSRFToken"
             id="update_utub_desc",
         ),
         pytest.param(
+            "update_utub_settings",
+            "PATCH",
+            ROUTES.UTUBS.UPDATE_UTUB_SETTINGS,
+            {"utub_id": "utub_id"},
+            {},
+            id="update_utub_settings",
+        ),
+        pytest.param(
             "delete_utub",
             "DELETE",
             ROUTES.UTUBS.DELETE_UTUB,

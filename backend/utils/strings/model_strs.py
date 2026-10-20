@@ -35,6 +35,7 @@ USERNAME = "username"
 UTUB_DESCRIPTION = "utubDescription"
 UTUB_URL_ID = "utubUrlID"
 CURRENT_USER = "currentUser"
+SETTINGS = "settings"
 UTUBS = "utubs"
 TRASH_COUNT = "trashCount"
 TAG_APPLIED = "tagApplied"
@@ -123,6 +124,7 @@ class MODELS:
     CAN_DELETE = CAN_DELETE
     UTUB_URL_ID = UTUB_URL_ID
     CURRENT_USER = CURRENT_USER
+    SETTINGS = SETTINGS
     UTUBS = UTUBS
     TRASH_COUNT = TRASH_COUNT
     TAG_APPLIED = TAG_APPLIED

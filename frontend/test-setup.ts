@@ -77,6 +77,7 @@ const appConfig = {
     transferUtubOwnership: "/utubs/-1/owner",
     updateUTubName: "/utubs/-1/name",
     updateUTubDescription: "/utubs/-1/description",
+    updateUTubSettings: "/utubs/-1/settings",
     getURL: "/utubs/-1/urls/-2",
     createURL: "/utubs/-1/urls",
     deleteURL: "/utubs/-1/urls/-2",

@@ -412,6 +412,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("backend/schemas/requests/users.py", ("unit", "account_and_support")),
     ("backend/schemas/trash.py", ("unit", "trash")),
     ("backend/schemas/utubs.py", ("unit", "utubs")),
+    ("backend/schemas/utub_settings.py", ("unit", "utubs")),
     ("backend/schemas/requests/utubs.py", ("unit", "utubs")),
     ("backend/schemas/requests/members.py", ("unit", "members")),
     ("backend/schemas/requests/splash.py", ("unit", "splash")),

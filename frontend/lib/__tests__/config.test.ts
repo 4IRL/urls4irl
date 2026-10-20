@@ -30,6 +30,7 @@ describe("APP_CONFIG shape", () => {
       "transferUtubOwnership",
       "updateUTubName",
       "updateUTubDescription",
+      "updateUTubSettings",
       "createURL",
       "createUTubTag",
       "createMember",
@@ -51,6 +52,10 @@ describe("APP_CONFIG shape", () => {
       expect(APP_CONFIG.routes.transferUtubOwnership(10)).toBe(
         "/utubs/10/owner",
       );
+    });
+
+    it("routes.updateUTubSettings substitutes the utub id", () => {
+      expect(APP_CONFIG.routes.updateUTubSettings(7)).toBe("/utubs/7/settings");
     });
   });
 

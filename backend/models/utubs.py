@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 
 from backend import db
 from backend.models.utub_members import Utub_Members
@@ -48,6 +49,11 @@ class Utubs(db.Model):
         default=False,
         server_default=text("false"),
         name="isLocked",
+    )
+    # Sparse per-section setting overrides; NULL means all defaults. JSONB has no
+    # mutation tracking: always reassign a new dict, never mutate in place.
+    settings: dict | None = Column(
+        JSONB(none_as_null=True), nullable=True, default=None, name="settings"
     )
     # Soft-delete marker; NULL means not trashed.
     deleted_at: datetime | None = Column(

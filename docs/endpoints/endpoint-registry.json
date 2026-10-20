@@ -4165,6 +4165,42 @@
       "templates": []
     },
     {
+      "blueprint": "utubs",
+      "decorators": [
+        "utub_manager_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.update_utub_settings",
+      "handler": "backend/utubs/routes.py:update_utub_settings",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "updateUTubSettings"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/utubs/<int:utub_id>/settings",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.utubs.UpdateUTubSettingsRequest",
+        "response": "backend.schemas.utubs.UtubSettingsUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubSettingsUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.update_utub_settings:update_utub_settings_if_changed"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "utub_tags",
       "decorators": [
         "utub_membership_required",

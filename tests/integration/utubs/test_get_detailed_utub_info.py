@@ -6,7 +6,7 @@ import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from flask_login import current_user
-from sqlalchemy import text
+from sqlalchemy import event, text
 
 from backend import db
 from backend.metrics.events import EventName
@@ -24,6 +24,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utubs.services import read_utubs
 from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.settings_stub import DEFAULT_SETTINGS_DICT, STUB_KEY, patch_settings_model
 from tests.utils_for_test import (
     count_tag_instances_in_utub,
     is_string_in_logs,
@@ -872,6 +873,93 @@ def test_get_utub_excludes_trashed_url(
         # count_tag_instances_in_utub is a raw count, so the trashed row is excluded
         # by hand
         assert tags_by_id[tag_id][MODELS.TAG_APPLIED] == raw_counts_before[tag_id] - 1
+
+
+def _get_detail_json(client: FlaskClient, utub_id: int) -> dict:
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+    assert response.json is not None
+    return response.json
+
+
+def test_get_utub_detail_null_settings_returns_defaults(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a UTub whose settings column is NULL
+    WHEN a member requests the UTub detail
+    THEN `settings` holds the resolved defaults
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        assert Utubs.query.get(utub_id).settings is None
+
+    response_json = _get_detail_json(client, utub_id)
+
+    assert response_json[MODELS.SETTINGS] == DEFAULT_SETTINGS_DICT
+
+
+def test_get_utub_detail_stored_override_merged_with_defaults(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """
+    GIVEN a UTub with a stored override and a stubbed settings model
+    WHEN a member requests the UTub detail
+    THEN the override is merged over defaults and the stub's field is serialized
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+    patch_settings_model(monkeypatch)
+
+    response_json = _get_detail_json(client, utub_id)
+    assert response_json[MODELS.SETTINGS]["urls"] == {STUB_KEY: False}
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.settings = {"urls": {STUB_KEY: True}}
+        db.session.commit()
+
+    response_json = _get_detail_json(client, utub_id)
+    assert response_json[MODELS.SETTINGS] == {
+        "utubs": {},
+        "members": {},
+        "tags": {},
+        "urls": {STUB_KEY: True},
+    }
+
+
+def test_get_utub_detail_takes_no_row_lock(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a UTub
+    WHEN a member requests the UTub detail
+    THEN no FOR UPDATE / FOR NO KEY UPDATE statement is issued on Utubs
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+    statements: list[str] = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    with app.app_context():
+        engine = db.engine
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        _get_detail_json(client, utub_id)
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+
+    assert statements
+    assert not [
+        statement
+        for statement in statements
+        if "FOR UPDATE" in statement.upper() or "FOR NO KEY UPDATE" in statement.upper()
+    ]
 
 
 def test_get_utub_detail_reflects_locked_state(

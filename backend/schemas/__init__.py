@@ -36,12 +36,14 @@ from backend.schemas.users import (
     UtubSummaryItemSchema,
     UtubSummaryListSchema,
 )
+from backend.schemas.utub_settings import UtubSettings
 from backend.schemas.utubs import (
     UtubCreatedResponseSchema,
     UtubDeletedResponseSchema,
     UtubDescUpdatedResponseSchema,
     UtubDetailSchema,
     UtubNameUpdatedResponseSchema,
+    UtubSettingsUpdatedResponseSchema,
 )
 
 __all__ = [
@@ -83,4 +85,6 @@ __all__ = [
     "UtubDescUpdatedResponseSchema",
     "UtubDetailSchema",
     "UtubNameUpdatedResponseSchema",
+    "UtubSettings",
+    "UtubSettingsUpdatedResponseSchema",
 ]

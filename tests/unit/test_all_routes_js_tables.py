@@ -29,6 +29,7 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "purgeUTub": "/utubs/-1/purge",
     "updateUTubName": "/utubs/-1/name",
     "updateUTubDescription": "/utubs/-1/description",
+    "updateUTubSettings": "/utubs/-1/settings",
     # URL routes
     "getURL": "/utubs/-1/urls/-2",
     "createURL": "/utubs/-1/urls",
@@ -108,7 +109,7 @@ def test_js_routes_table_keys_match_expected_order() -> None:
     """
     GIVEN the declarative JS_ROUTES table
     WHEN its keys are listed
-    THEN they match the 44 frontend route keys in their established order
+    THEN they match the 45 frontend route keys in their established order
     """
     assert list(JS_ROUTES) == list(EXPECTED_JS_ROUTE_URLS)
 
@@ -117,7 +118,7 @@ def test_generate_routes_js_renders_expected_urls(full_app: Flask) -> None:
     """
     GIVEN the full app url_map
     WHEN generate_routes_js() is called inside a request context
-    THEN it returns exactly the expected {key: url} dict for all 44 keys
+    THEN it returns exactly the expected {key: url} dict for all 45 keys
     """
     with full_app.test_request_context():
         rendered_routes = generate_routes_js()
