@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any, Callable, Generator
 from unittest import mock
 
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from pydantic import Field
+from werkzeug.test import TestResponse
 
 from backend import db
 from backend.models.users import Users
@@ -77,7 +78,7 @@ def _patch(
     csrf_token: str,
     body: Any,
     utub_id: int = UTUB_ID_VALUE,
-):
+) -> TestResponse:
     with app.app_context():
         url = url_for(ROUTES.UTUBS.UPDATE_UTUB_SETTINGS, utub_id=utub_id)
     return client.patch(url, json=body, headers={"X-CSRFToken": csrf_token})
@@ -102,7 +103,7 @@ def _last_updated(app: Flask) -> Any:
         return Utubs.query.get(UTUB_ID_VALUE).last_updated
 
 
-def _count_commits(action) -> int:
+def _count_commits(action: Callable[[], object]) -> int:
     real_commit = db.session.commit
     with mock.patch.object(db.session, "commit", wraps=real_commit) as commit_spy:
         action()
@@ -113,7 +114,7 @@ def _seed_roles(app: Flask) -> None:
     set_member_role(app, UTUB_ID_VALUE, CO_OWNER_ID, Member_Role.CO_CREATOR)
 
 
-def _assert_400(response, expected_error_keys: set[str]) -> None:
+def _assert_400(response: TestResponse, expected_error_keys: set[str]) -> None:
     assert response.status_code == 400
     assert response.json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
