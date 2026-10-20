@@ -11,7 +11,7 @@ default later reaches every UTub that never overrode it.
 
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from pydantic import (
     BaseModel,
@@ -104,9 +104,7 @@ def get_settings_model() -> type[UtubSettings]:
 
 
 def _section_class(model: type[UtubSettings], name: str) -> type[SettingsSection]:
-    annotation = model.model_fields[name].annotation
-    assert isinstance(annotation, type) and issubclass(annotation, SettingsSection)
-    return annotation
+    return cast(type[SettingsSection], model.model_fields[name].annotation)
 
 
 def _clean_stored_section(
