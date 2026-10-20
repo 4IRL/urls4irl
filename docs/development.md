@@ -93,6 +93,8 @@ make vite-build  # build to backend/static/dist/ (= pnpm run build) in a one-off
 make test-js     # run JS unit tests (vitest) on the host
 ```
 
+`vite-build`, `vite-build-built` and `generate-types` first regenerate `docker/.capacity.generated.env`, so they require host mise (`make setup` or `make tools`).
+
 ## Flask CLI Commands
 
 ```bash
