@@ -7,7 +7,7 @@ import { getState, resetStore, setState } from "../../../../store/app-store.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
 vi.mock("../cards.js", () => ({
-  createURLBlock: vi.fn((url: UtubUrlItem) =>
+  createURLBlock: vi.fn(({ url }: { url: UtubUrlItem }) =>
     window.jQuery(
       `<div class="urlRow" utuburlid="${url.utubUrlID}" filterable="true" data-utub-url-tag-ids="${url.utubUrlTagIDs.join(",")}"></div>`,
     ),

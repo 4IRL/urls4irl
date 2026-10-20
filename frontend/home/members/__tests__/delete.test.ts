@@ -17,6 +17,7 @@ import {
   removeMemberShowModal,
 } from "../delete.js";
 import { bootstrap } from "../../../lib/globals.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 
 // The ambient test-setup Bootstrap mock returns null from getInstance(), which
 // would make the tooltip-hide guard a silent no-op. Override lib/globals.js with
@@ -242,6 +243,7 @@ describe("removeMemberSuccess — creator-removes-member success branch", () => 
     vi.mocked(is429Handled).mockReturnValue(false);
     vi.mocked(getState).mockReturnValue({
       members: [{ id: 9, username: "Bob", memberRole: "member" }],
+      urls: [],
     } as unknown as ReturnType<typeof getState>);
   });
 
@@ -270,6 +272,114 @@ describe("removeMemberSuccess — creator-removes-member success branch", () => 
     $("#modalSubmit").trigger("click");
 
     expect(emit).toHaveBeenCalledWith(AppEvents.MEMBER_DECK_CHANGED);
+  });
+
+  it("re-renders only the removed member's stacked badges as 'Added by a former member'", async () => {
+    document.body.innerHTML =
+      LEAVE_UTUB_HTML +
+      `<div id="listURLs">
+        <div class="urlRow" utuburlid="1"><time class="urlDateAddedBadge urlDateAddedBadgeStacked">old-1</time></div>
+        <div class="urlRow" utuburlid="2"><time class="urlDateAddedBadge urlDateAddedBadgeStacked">old-2</time></div>
+      </div>`;
+    // Mirror the post-setState store: the removed member (9) is gone.
+    vi.mocked(getState).mockReturnValue({
+      members: [{ id: 5, username: "carol", memberRole: "member" }],
+      preferences: { dateFormat: "iso" },
+      urls: [
+        {
+          utubUrlID: 1,
+          addedByUserID: 9,
+          addedAt: "2024-03-09T12:00:00+00:00",
+        },
+        {
+          utubUrlID: 2,
+          addedByUserID: 5,
+          addedAt: "2024-03-10T12:00:00+00:00",
+        },
+      ],
+    } as unknown as ReturnType<typeof getState>);
+    const successXhr = createMockXhr({ status: 200 });
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) => {
+          (
+            cb as (
+              _response: unknown,
+              _textStatus: unknown,
+              xhr: JQuery.jqXHR,
+            ) => void
+          )({}, "success", successXhr);
+        },
+      }),
+    );
+
+    removeMemberShowModal(9, true, 42);
+    $("#modalSubmit").trigger("click");
+
+    const removed = $('.urlRow[utuburlid="1"] .urlDateAddedBadgeStacked');
+    expect(removed.length).toBe(1);
+    expect(removed.text()).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER} · 2024-03-09`,
+    );
+    expect(removed.attr("aria-label")).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER} ${APP_CONFIG.strings.URL_ADDED_ON} 2024-03-09`,
+    );
+    // Another member's card is untouched.
+    expect($('.urlRow[utuburlid="2"] .urlDateAddedBadgeStacked').text()).toBe(
+      "old-2",
+    );
+  });
+
+  it("does not throw and leaves the DOM unchanged when the removed member's URLs have no rendered card or the member has no URLs", () => {
+    const deckHTML = `<div id="listURLs">
+        <div class="urlRow" utuburlid="2"><time class="urlDateAddedBadge urlDateAddedBadgeStacked">old-2</time></div>
+      </div>`;
+    document.body.innerHTML = LEAVE_UTUB_HTML + deckHTML;
+    // Removed member 9 owns URL 1 (in the store, no card rendered); member 5
+    // (still present) owns URL 2; member 6 has no URLs at all.
+    vi.mocked(getState).mockReturnValue({
+      members: [{ id: 5, username: "carol", memberRole: "member" }],
+      preferences: { dateFormat: "iso" },
+      urls: [
+        {
+          utubUrlID: 1,
+          addedByUserID: 9,
+          addedAt: "2024-03-09T12:00:00+00:00",
+        },
+        {
+          utubUrlID: 2,
+          addedByUserID: 5,
+          addedAt: "2024-03-10T12:00:00+00:00",
+        },
+      ],
+    } as unknown as ReturnType<typeof getState>);
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) => {
+          (
+            cb as (
+              _response: unknown,
+              _textStatus: unknown,
+              xhr: JQuery.jqXHR,
+            ) => void
+          )({}, "success", createMockXhr({ status: 200 }));
+        },
+      }),
+    );
+    const before = $("#listURLs").html();
+
+    expect(() => {
+      removeMemberShowModal(9, true, 42);
+      $("#modalSubmit").trigger("click");
+    }).not.toThrow();
+    expect($("#listURLs").html()).toBe(before);
+
+    // A member with no URLs in the store is likewise a no-op.
+    expect(() => {
+      removeMemberShowModal(6, true, 42);
+      $("#modalSubmit").trigger("click");
+    }).not.toThrow();
+    expect($("#listURLs").html()).toBe(before);
   });
 });
 

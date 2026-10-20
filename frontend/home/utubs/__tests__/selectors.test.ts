@@ -106,6 +106,7 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
 
   afterEach(() => {
     getJSONSpy.mockRestore();
+    vi.mocked(emit).mockReset();
     document.body.innerHTML = "";
     resetStore();
   });
@@ -120,6 +121,26 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
     });
     expect(utubSelectedEmits()).toHaveLength(1);
     expect(utubSelectedEmits()[0][1]).toMatchObject({ utubID: 1 });
+  });
+
+  it("populates the store's members before UTUB_SELECTED is emitted (cards never see an empty member list)", async () => {
+    const members = [
+      { id: 1, username: "alice", memberRole: "member" as const },
+    ];
+    let membersSeenAtEmit: unknown = null;
+    vi.mocked(emit).mockImplementation(((eventName: string) => {
+      if (eventName === AppEvents.UTUB_SELECTED) {
+        membersSeenAtEmit = getState().members;
+      }
+    }) as unknown as typeof emit);
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+
+    firstRequest.resolve({ ...makeUtubDetail({ id: 1 }), members });
+
+    await vi.waitFor(() => {
+      expect(utubSelectedEmits()).toHaveLength(1);
+    });
+    expect(membersSeenAtEmit).toEqual(members);
   });
 
   it("ignores a previously selected UTub's response that lands after the current one", async () => {

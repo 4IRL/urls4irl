@@ -195,11 +195,11 @@ describe("insertURLCardIntoDeck", () => {
       urls: [...EXISTING_URL_IDS, NEW_URL_ID].map(buildUrlItem),
     });
     expect(emit).toHaveBeenCalledWith(AppEvents.URL_DECK_CHANGED);
-    expect(createURLBlock).toHaveBeenCalledWith(
-      buildUrlItem(NEW_URL_ID),
-      [],
-      1,
-    );
+    expect(createURLBlock).toHaveBeenCalledWith({
+      url: buildUrlItem(NEW_URL_ID),
+      dictTags: [],
+      utubID: 1,
+    });
     expect(newUrlCard.hasClass("even")).toBe(true);
   });
 

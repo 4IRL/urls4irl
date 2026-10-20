@@ -6,7 +6,7 @@ import type { UtubUrlItem, UtubTag } from "../../../types/url.js";
 import { updateURLDeck } from "../deck.js";
 
 vi.mock("../cards/cards.js", () => ({
-  createURLBlock: vi.fn((url: UtubUrlItem) =>
+  createURLBlock: vi.fn(({ url }: { url: UtubUrlItem }) =>
     window.jQuery(
       `<div class="urlRow" utuburlid="${url.utubUrlID}" filterable="true"><button class="inner">btn</button></div>`,
     ),
@@ -95,7 +95,11 @@ describe("updateURLDeck post-diff reorder and restripe", () => {
     $("#listURLs .urlRow[utuburlid=2]").addClass("odd");
     mockStoreUrls([makeURL(1), makeURL(2)]);
 
-    updateURLDeck([makeURL(3), makeURL(1), makeURL(2)], TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [makeURL(3), makeURL(1), makeURL(2)],
+      updatedUTubTags: TAGS,
+      utubID: 42,
+    });
 
     expect(domOrder()).toEqual([3, 1, 2]);
     const classes = $("#listURLs .urlRow")
@@ -110,7 +114,11 @@ describe("updateURLDeck post-diff reorder and restripe", () => {
     $("#listURLs .urlRow[utuburlid=2]").attr("searchable", "false");
     mockStoreUrls([makeURL(1), makeURL(2)]);
 
-    updateURLDeck([makeURL(3), makeURL(1), makeURL(2)], TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [makeURL(3), makeURL(1), makeURL(2)],
+      updatedUTubTags: TAGS,
+      utubID: 42,
+    });
 
     expect($("#listURLs .urlRow[utuburlid=3]").hasClass("even")).toBe(true);
     expect($("#listURLs .urlRow[utuburlid=1]").hasClass("odd")).toBe(true);
@@ -128,7 +136,11 @@ describe("updateURLDeck post-diff reorder and restripe", () => {
     mockStoreUrls([makeURL(1), makeURL(2)]);
 
     // Payload puts 2 before 1, so card 1 is moved in the DOM.
-    updateURLDeck([makeURL(2), makeURL(1)], TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [makeURL(2), makeURL(1)],
+      updatedUTubTags: TAGS,
+      utubID: 42,
+    });
 
     expect(domOrder()).toEqual([2, 1]);
     expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true });
@@ -144,7 +156,11 @@ describe("updateURLDeck post-diff reorder and restripe", () => {
     const observer = new MutationObserver(() => {});
     observer.observe(document.getElementById("listURLs")!, { childList: true });
 
-    updateURLDeck([makeURL(1, "Edited title"), makeURL(2)], TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [makeURL(1, "Edited title"), makeURL(2)],
+      updatedUTubTags: TAGS,
+      utubID: 42,
+    });
 
     expect(observer.takeRecords()).toHaveLength(0);
     observer.disconnect();

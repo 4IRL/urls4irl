@@ -15,6 +15,7 @@ import { setMemberDeckForUTub } from "./deck.js";
 import { hideInputs } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { deselectAllURLs } from "../urls/cards/selection.js";
+import { refreshStackedAdderBadges } from "../urls/cards/adder-badge.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import {
   hideInputsAndUpdateUTubDeck,
@@ -158,6 +159,10 @@ function removeMemberSuccess(memberID: number): void {
     members: getState().members.filter((member) => member.id !== memberID),
   });
   emitAppEvent(AppEvents.MEMBER_DECK_CHANGED);
+
+  // The removed member's URLs are now orphans: switch the remover's rendered
+  // attribution badges to "a former member" without rebuilding the deck.
+  refreshStackedAdderBadges(memberID);
 
   const memberListItem = $("span[memberid=" + memberID + "]");
   memberListItem.fadeOut("slow", function () {

@@ -166,7 +166,11 @@ describe("updateURLDeck", () => {
 
   it("calls applyDeckDiff once with correct URL deck config", () => {
     const updatedUrls: UtubUrlItem[] = [SAMPLE_URL_1, SAMPLE_URL_2];
-    updateURLDeck(updatedUrls, SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: updatedUrls,
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
 
     expect(vi.mocked(applyDeckDiff)).toHaveBeenCalledTimes(1);
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
@@ -196,7 +200,11 @@ describe("updateURLDeck", () => {
       return this;
     };
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     config.removeElement(1);
@@ -231,7 +239,11 @@ describe("updateURLDeck", () => {
       expect(document.contains(rowToRemove)).toBe(true);
     });
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     config.removeElement(1);
@@ -267,7 +279,11 @@ describe("updateURLDeck", () => {
       return this;
     };
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     config.removeElement(3);
@@ -293,7 +309,11 @@ describe("updateURLDeck", () => {
       return this;
     };
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     config.removeElement(3);
@@ -309,7 +329,11 @@ describe("updateURLDeck", () => {
     const newURLBlock = $('<div class="urlRow" utuburlid="1"></div>');
     vi.mocked(createURLBlock).mockReturnValueOnce(newURLBlock);
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     config.addElement(SAMPLE_URL_1);
@@ -336,7 +360,11 @@ describe("updateURLDeck", () => {
       return this;
     };
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     config.removeElement(3);
@@ -367,7 +395,11 @@ describe("updateURLDeck", () => {
       return this;
     };
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     config.removeElement(3);
@@ -384,16 +416,21 @@ describe("updateURLDeck", () => {
     const newURLBlock = $('<div class="urlRow" utuburlid="2"></div>');
     vi.mocked(createURLBlock).mockReturnValueOnce(newURLBlock);
 
-    updateURLDeck([SAMPLE_URL_1, SAMPLE_URL_2], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1, SAMPLE_URL_2],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     config.addElement(SAMPLE_URL_2);
 
-    expect(vi.mocked(createURLBlock)).toHaveBeenCalledWith(
-      SAMPLE_URL_2,
-      SAMPLE_TAGS,
-      42,
-    );
+    expect(vi.mocked(createURLBlock)).toHaveBeenCalledWith({
+      url: SAMPLE_URL_2,
+      dictTags: SAMPLE_TAGS,
+      utubID: 42,
+      members: undefined,
+    });
     expect(
       document.querySelector('#listURLs .urlRow[utuburlid="2"]'),
     ).not.toBeNull();
@@ -403,10 +440,36 @@ describe("updateURLDeck", () => {
     });
   });
 
+  it("forwards the stale-data payload's members to createURLBlock for added cards", () => {
+    const payloadMembers = [
+      { id: 1, username: "alice", memberRole: "member" as const },
+    ];
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1, SAMPLE_URL_2],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+      updatedMembers: payloadMembers,
+    });
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.addElement(SAMPLE_URL_2);
+
+    expect(vi.mocked(createURLBlock)).toHaveBeenCalledWith({
+      url: SAMPLE_URL_2,
+      dictTags: SAMPLE_TAGS,
+      utubID: 42,
+      members: payloadMembers,
+    });
+  });
+
   it("skips the swipe nudge for an added card while a background refresh is active", () => {
     const newURLBlock = $('<div class="urlRow" utuburlid="2"></div>');
     vi.mocked(createURLBlock).mockReturnValueOnce(newURLBlock);
-    updateURLDeck([SAMPLE_URL_1, SAMPLE_URL_2], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1, SAMPLE_URL_2],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     setBackgroundRefreshActive({ active: true });
@@ -422,7 +485,11 @@ describe("updateURLDeck", () => {
   it("still nudges for an added card when no background refresh is active", () => {
     const newURLBlock = $('<div class="urlRow" utuburlid="2"></div>');
     vi.mocked(createURLBlock).mockReturnValueOnce(newURLBlock);
-    updateURLDeck([SAMPLE_URL_1, SAMPLE_URL_2], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1, SAMPLE_URL_2],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     setBackgroundRefreshActive({ active: false });
@@ -443,7 +510,11 @@ describe("updateURLDeck", () => {
       urls: [],
     } as unknown as ReturnType<typeof getState>);
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
 
     expect(vi.mocked(hideURLsEmptyState)).toHaveBeenCalledTimes(1);
     expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(false);
@@ -451,7 +522,11 @@ describe("updateURLDeck", () => {
   });
 
   it("does not touch the empty state when the store already had URLs", () => {
-    updateURLDeck([SAMPLE_URL_1, SAMPLE_URL_2], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1, SAMPLE_URL_2],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
 
     expect(vi.mocked(hideURLsEmptyState)).not.toHaveBeenCalled();
     expect(vi.mocked(showURLSearchIcon)).not.toHaveBeenCalled();
@@ -469,7 +544,11 @@ describe("updateURLDeck", () => {
       urlTitle: "Updated Title",
     };
 
-    updateURLDeck([updatedURL], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [updatedURL],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
     expect(config.updateElement).toBeDefined();
@@ -490,7 +569,11 @@ describe("updateURLDeck", () => {
       <div id="listURLs"></div>
     `;
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
 
     expect(vi.mocked(reapplyURLSearchFilter)).toHaveBeenCalledTimes(1);
   });
@@ -501,7 +584,11 @@ describe("updateURLDeck", () => {
       <div id="listURLs"></div>
     `;
 
-    updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
+    updateURLDeck({
+      updatedUTubUrls: [SAMPLE_URL_1],
+      updatedUTubTags: SAMPLE_TAGS,
+      utubID: 42,
+    });
 
     expect(vi.mocked(reapplyURLSearchFilter)).not.toHaveBeenCalled();
   });

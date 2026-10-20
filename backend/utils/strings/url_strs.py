@@ -115,7 +115,10 @@ URL_BULK_N_HIDDEN = "{n} hidden by filter"
 #   visible date-only: "Added: <date>"              (URL_DATE_ADDED_LABEL)
 #   aria    w/ adder : "Added by <user> on <date>"  (URL_ADDED_BY + URL_ADDED_ON)
 #   aria    date-only: "Added <date>"               (URL_DATE_ADDED_ARIA)
+# When the adder is no longer a member, "<user>" becomes URL_ADDED_BY_FORMER_MEMBER
+# ("Added by a former member · <date>"); the departed user's name is never shown.
 URL_ADDED_BY = "Added by"
+URL_ADDED_BY_FORMER_MEMBER = "a former member"
 URL_ADDED_ON = "on"
 URL_DATE_ADDED_LABEL = "Added:"
 URL_DATE_ADDED_ARIA = "Added"
