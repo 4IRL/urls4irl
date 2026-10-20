@@ -649,23 +649,22 @@ def test_non_manager_on_locked_utub_gets_not_authorized(
 
 
 @pytest.mark.parametrize(
-    "user_id, expected_status",
-    [(PLAIN_MEMBER_ID, 403), (None, 404)],
+    "remove_first, expected_status",
+    [(False, 403), (True, 404)],
     ids=["plain_member", "non_member"],
 )
 def test_non_manager_with_malformed_body_gets_role_response_not_400(
-    add_multiple_users_to_utub_without_logging_in, app, user_id, expected_status
+    add_multiple_users_to_utub_without_logging_in, app, remove_first, expected_status
 ):
     """
     GIVEN a non-manager (plain member or non-member)
     WHEN they PATCH a malformed body (unknown top-level key)
     THEN the role decorator's 403 / 404 wins; never 400
     """
-    acting_user_id = PLAIN_MEMBER_ID
-    if user_id is None:
+    if remove_first:
         remove_member(app, UTUB_ID_VALUE, PLAIN_MEMBER_ID)
 
-    with _client_for(app, acting_user_id) as (client, csrf_token):
+    with _client_for(app, PLAIN_MEMBER_ID) as (client, csrf_token):
         response = _patch(app, client, csrf_token, {"unknown_section": {}})
 
     assert response.status_code == expected_status
