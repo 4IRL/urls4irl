@@ -107,6 +107,14 @@ case " $* " in
       exit "$STUB_ADMIT_RC"
     fi
     exit 0 ;;
+  *" _capacity-fresh "*)
+    if [ -z "${STUB_REAL_MAKE:-}" ]; then
+      if [ "${STUB_CAPACITY_RC:-0}" != 0 ]; then
+        echo "capacity: stub failure" >&2
+        exit "$STUB_CAPACITY_RC"
+      fi
+      exit 0
+    fi ;;
   *" worktree-init "*)
     if [ -z "${STUB_REAL_MAKE:-}" ]; then
       if [ "${STUB_INIT_RC:-0}" != 0 ]; then

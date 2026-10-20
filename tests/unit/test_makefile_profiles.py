@@ -912,6 +912,24 @@ def test_tunnel_needs_no_hub_playwright() -> None:
     assert _single_line_containing(output, " rm -sf ").endswith("rm -sf workflow")
 
 
+@pytest.mark.parametrize(
+    "make_target", ["vite-build", "vite-build-built", "generate-types"]
+)
+def test_vite_container_targets_ensure_the_capacity_file_first(
+    make_target: str,
+) -> None:
+    # Without docker/.capacity.generated.env compose falls back to uid 1001 for the vite container and image.
+    lines = _successful_dry_run(make_target).splitlines()
+    ensure_index = next(
+        (index for index, line in enumerate(lines) if "capacity.py" in line), None
+    )
+    assert ensure_index is not None, lines
+    first_vite_index = next(
+        index for index, line in enumerate(lines) if " vite " in line
+    )
+    assert ensure_index < first_vite_index
+
+
 @pytest.mark.parametrize("make_target", ["up", "up-built", "start-built", "tunnel"])
 def test_stack_start_targets_run_worktree_init_first(make_target: str) -> None:
     # make -n is safe here: none of these targets or their prerequisites recurse via $(MAKE).

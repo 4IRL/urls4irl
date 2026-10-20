@@ -35,7 +35,7 @@ make worktree-new name=<slug> [b=<branch>] [from=<ref>]
   hub (see Naming rules).
 - It runs the spoke admission check first (`capacity.py admit`) and refuses when live memory cannot
   hold one more idle spoke plus a minimum test run (see Parallelism limits).
-- After `git worktree add` it runs `make worktree-init` in the new worktree. It does not start a stack:
+- After `git worktree add` it runs `make worktree-init` in the new worktree, then generates its `docker/.capacity.generated.env` (host UID/GID; a failure only warns). It does not start a stack:
   it prints the `make up d=1` hint. Start the stack yourself from inside the worktree.
 
 If a step after the add fails, the worktree is left in place for recovery and the error prints the

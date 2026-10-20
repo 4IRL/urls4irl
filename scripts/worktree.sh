@@ -10,7 +10,7 @@
 # PROJECT=urls4irl-... (the project is u4i-<slug>), and it is ignored by design.
 #
 # Order of `new`: (1) validate inputs (read-only), (2) collision checks (read-only), (3) spoke admission,
-# (4) git worktree add, (5) worktree-init, (6) hint. A refusal before (4) leaves no trace.
+# (4) git worktree add, (5) worktree-init, then _capacity-fresh (soft), (6) hint. A refusal before (4) leaves no trace.
 set -euo pipefail
 
 err() { printf 'worktree-new: %s\n' "$*" >&2; }
@@ -179,6 +179,12 @@ cmd_new() {
     printf 'discard it with: make -C %q worktree-rm\n' "$path" >&2
     printf 'or, if its .env link is missing: git -C %q worktree remove %q\n' "$primary_root" "$path" >&2
     exit 1
+  fi
+
+  # (5b) generate docker/.capacity.generated.env (HOST_UID/HOST_GID) so a first `make vite-build` is not baked with
+  # the compose fallback uid. Soft: every stack/vite target regenerates it anyway.
+  if ! scrubbed_make -C "$path" --no-print-directory _capacity-fresh; then
+    warn "could not generate the capacity file; run 'make capacity' inside $path"
   fi
 
   # (6) hint: never start a stack here.

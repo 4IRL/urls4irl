@@ -488,6 +488,56 @@ def test_new_initialises_the_worktree_and_never_starts_a_stack(
     assert f"cd {path} && make up d=1" in result.stdout
 
 
+def _capacity_calls(primary: TempPrimary) -> list[int]:
+    """Indexes of the _capacity-fresh calls among the recorded make calls."""
+    return [
+        index
+        for index, call in enumerate(primary.make_calls())
+        if "_capacity-fresh" in call.argv
+    ]
+
+
+def test_new_generates_the_capacity_file_after_worktree_init(
+    primary: TempPrimary,
+) -> None:
+    result = _new(primary, "wt1")
+
+    assert result.returncode == 0, _output(result)
+    path = _worktree_path(primary, "wt1")
+    calls = primary.make_calls()
+    capacity = _capacity_calls(primary)
+    assert len(capacity) == 1
+    assert calls[capacity[0]].argv == [
+        "-C",
+        str(path),
+        "--no-print-directory",
+        "_capacity-fresh",
+    ]
+    init_index = next(
+        index for index, call in enumerate(calls) if "worktree-init" in call.argv
+    )
+    assert init_index < capacity[0]
+
+
+def test_new_tolerates_a_capacity_failure_with_a_warning(
+    primary: TempPrimary,
+) -> None:
+    result = _new(primary, "wt1", extra_env={"STUB_CAPACITY_RC": "1"})
+
+    assert result.returncode == 0, _output(result)
+    assert "could not generate the capacity file" in result.stderr
+    assert f"cd {_worktree_path(primary, 'wt1')} && make up d=1" in result.stdout
+
+
+def test_new_skips_the_capacity_step_when_worktree_init_fails(
+    primary: TempPrimary,
+) -> None:
+    result = _new(primary, "wt1", extra_env={"STUB_INIT_RC": "1"})
+
+    assert result.returncode != 0
+    assert _capacity_calls(primary) == []
+
+
 def test_new_failure_after_the_add_prints_both_recovery_commands(
     primary: TempPrimary,
 ) -> None:
@@ -515,7 +565,7 @@ def test_child_makes_run_without_the_invoking_identity(
 
     assert result.returncode == 0, _output(result)
     calls = primary.make_calls()
-    assert len(calls) == 2, [call.argv for call in calls]
+    assert len(calls) == 3, [call.argv for call in calls]
     for call in calls:
         assert variable not in call.env, f"{variable} leaked into {call.argv}"
     admission = next(call for call in calls if "_admit-spoke" in call.argv)
