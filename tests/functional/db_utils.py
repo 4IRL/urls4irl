@@ -68,6 +68,23 @@ def set_member_role_in_utub(
         db.session.commit()
 
 
+def get_plain_members_excluding(
+    app: Flask, utub_id: int, excluded_user_ids: list[int]
+) -> list[int]:
+    """User ids of ``utub_id``'s plain (non-creator) members, minus ``excluded_user_ids``."""
+    with app.app_context():
+        memberships: list[Utub_Members] = (
+            Utub_Members.query.filter(
+                Utub_Members.utub_id == utub_id,
+                Utub_Members.member_role == Member_Role.MEMBER,
+                Utub_Members.user_id.notin_(excluded_user_ids),
+            )
+            .order_by(Utub_Members.user_id)
+            .all()
+        )
+        return [membership.user_id for membership in memberships]
+
+
 def remove_user_from_utub(app: Flask, user_id: int, utub_id: int) -> None:
     """Delete ``user_id``'s ``Utub_Members`` row for ``utub_id`` and commit, so
     the running Flask server treats the user as no longer a member."""
