@@ -47,6 +47,9 @@ CO_OWNER_USER_ID = 2
 SERVICE_LOCK_PATH = "backend.utubs.services.update_utub_settings.lock_and_reauthorize"
 SeedType = Tuple[Flask, int, list[int]]
 
+# Module state read by the stub classes below; set by ``hook_settings_model``.
+_UTUB_ID_UNDER_TEST: list[int] = [0]
+
 
 # --------------------------------------------------------------------------
 # Stub settings models (registered via the single seam, undone by monkeypatch)
@@ -120,9 +123,6 @@ class _HookUrlsSettings(UrlsSettings):
 
 class _HookUtubSettings(UtubSettings):
     urls: _HookUrlsSettings = Field(default_factory=_HookUrlsSettings)
-
-
-_UTUB_ID_UNDER_TEST: list[int] = [0]
 
 
 # --------------------------------------------------------------------------
