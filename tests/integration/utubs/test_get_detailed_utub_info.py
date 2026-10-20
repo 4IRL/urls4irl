@@ -24,7 +24,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utubs.services import read_utubs
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.settings_stub import STUB_KEY, patch_settings_model
+from tests.settings_stub import DEFAULT_SETTINGS_DICT, STUB_KEY, patch_settings_model
 from tests.utils_for_test import (
     count_tag_instances_in_utub,
     is_string_in_logs,
@@ -812,9 +812,6 @@ def test_get_utub_excludes_trashed_url(
         assert tags_by_id[tag_id][MODELS.TAG_APPLIED] == raw_counts_before[tag_id] - 1
 
 
-DEFAULT_SETTINGS = {"utubs": {}, "members": {}, "tags": {}, "urls": {}}
-
-
 def _get_detail_json(client: FlaskClient, utub_id: int) -> dict:
     response = client.get(
         url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
@@ -840,7 +837,7 @@ def test_get_utub_detail_null_settings_returns_defaults(
 
     response_json = _get_detail_json(client, utub_id)
 
-    assert response_json[MODELS.SETTINGS] == DEFAULT_SETTINGS
+    assert response_json[MODELS.SETTINGS] == DEFAULT_SETTINGS_DICT
 
 
 def test_get_utub_detail_stored_override_merged_with_defaults(

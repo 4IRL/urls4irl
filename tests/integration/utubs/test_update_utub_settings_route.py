@@ -25,7 +25,12 @@ from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID
 from backend.utubs.constants import UTubErrorCodes
 from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.utils import assert_response_conforms_to_schema
-from tests.settings_stub import STUB_KEY, StubUtubSettings, patch_settings_model
+from tests.settings_stub import (
+    DEFAULT_SETTINGS_DICT,
+    STUB_KEY,
+    StubUtubSettings,
+    patch_settings_model,
+)
 from tests.utils_for_test import (
     get_csrf_token,
     lock_utub,
@@ -124,10 +129,6 @@ def _assert_400(response: TestResponse, expected_error_keys: set[str]) -> None:
     assert set(response.json[STD_JSON.ERRORS]) == expected_error_keys
 
 
-def _default_settings_dict() -> dict[str, dict[str, Any]]:
-    return {"utubs": {}, "members": {}, "tags": {}, "urls": {}}
-
-
 # --------------------------------------------------------------------------
 # Success paths
 # --------------------------------------------------------------------------
@@ -155,7 +156,7 @@ def test_creator_empty_section_patch_returns_default_settings(
     )
     assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert response.json[UTUB_ID] == UTUB_ID_VALUE
-    assert response.json[MODELS.SETTINGS] == _default_settings_dict()
+    assert response.json[MODELS.SETTINGS] == DEFAULT_SETTINGS_DICT
     assert _stored_settings(app) is None
 
 
@@ -198,7 +199,7 @@ def test_creator_patch_stores_sparse_overrides_and_returns_full_settings(
     assert response.status_code == 200
     assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert response.json[MODELS.SETTINGS] == {
-        **_default_settings_dict(),
+        **DEFAULT_SETTINGS_DICT,
         "urls": {STUB_KEY: True},
     }
     assert _stored_settings(app) == {"urls": {STUB_KEY: True}}

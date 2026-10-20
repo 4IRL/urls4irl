@@ -18,7 +18,7 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.settings_stub import STUB_KEY, patch_settings_model
+from tests.settings_stub import DEFAULT_SETTINGS_DICT, STUB_KEY, patch_settings_model
 from tests.utils_for_test import trash_utub
 
 pytestmark = pytest.mark.utubs
@@ -142,12 +142,7 @@ def test_refresh_includes_settings_defaults_and_stored_override(
 
     default_json = _refresh(client, utub_id).json
     assert default_json is not None
-    assert default_json[MODELS.SETTINGS] == {
-        "utubs": {},
-        "members": {},
-        "tags": {},
-        "urls": {},
-    }
+    assert default_json[MODELS.SETTINGS] == DEFAULT_SETTINGS_DICT
 
     patch_settings_model(monkeypatch)
     with app.app_context():
