@@ -585,3 +585,32 @@
         min-height: 2.75rem;
     }
 }
+
+/* Tag drag-and-drop (desktop only; mirrors the gate in tags/drag-drop.ts).
+   The id-prefixed selectors beat the chip hover rules and .unselected.disabled
+   (cursor: not-allowed; pointer-events: none), so chips stay draggable when 20
+   filter tags are selected. Cursor only; no other visual change. */
+@media (min-width: 992px) and (pointer: fine) {
+
+    #listTags .tagFilter[draggable="true"],
+    #listTags .tagFilter[draggable="true"]:hover {
+        cursor: grab;
+    }
+
+    #listTags .tagFilter.tagDragging {
+        opacity: 0.45;
+        cursor: grabbing;
+    }
+
+    #listTags .tagFilter.disabled[draggable="true"] {
+        pointer-events: auto;
+        cursor: grab;
+    }
+
+    /* Off-screen element the browser snapshots as the drag image. */
+    .tagDragImage {
+        position: absolute;
+        top: -1000px;
+        left: -1000px;
+    }
+}

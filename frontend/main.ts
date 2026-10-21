@@ -34,6 +34,7 @@ import { initURLOutcomeBannerLifecycle } from "./home/urls/outcome-banner.js";
 import { initURLDeckHeaderFit } from "./home/utubs/header-fit.js";
 import { initUTubRefreshOnFocus } from "./home/utubs/refresh-on-focus.js";
 import { initTagSheet } from "./home/tags/sheet.js";
+import { initTagDragDrop } from "./home/tags/drag-drop.js";
 import {
   applyDefaultDensity,
   applyDefaultViewMode,
@@ -74,6 +75,7 @@ $(document).ready(() => {
   initUnselectAllTags();
   initUpdateAllTags();
   initURLDeck();
+  initTagDragDrop();
   initBulkActions();
   initTransferPicker();
   loadInitialTrashCount();

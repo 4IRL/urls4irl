@@ -5,6 +5,7 @@ import {
 } from "../../lib/jquery-plugins.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 import { closeTagNameFilter } from "./search.js";
+import { syncTagDragState } from "./drag-drop.js";
 
 // Native `<button>`s already fire click on Enter/Space, so the open/close
 // buttons here need no separate keyboard handlers.
@@ -53,6 +54,7 @@ export function openUTubTagBtnMenuOnUTubTags(): void {
   $(".tagMenuWrap").showClassNormal();
   $(".tagFilter").addClass("disabled").disableTab();
   enableTabbableChildElements($("#listTags"));
+  syncTagDragState();
 }
 
 export function closeUTubTagBtnMenuOnUTubTags(): void {
@@ -60,4 +62,5 @@ export function closeUTubTagBtnMenuOnUTubTags(): void {
   $(".tagCountWrap").showClassNormal();
   $(".tagMenuWrap").hideClass();
   $(".tagFilter").removeClass("disabled").enableTab();
+  syncTagDragState();
 }
