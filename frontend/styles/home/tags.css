@@ -597,14 +597,18 @@
         cursor: grab;
     }
 
-    #listTags .tagFilter.tagDragging {
-        opacity: 0.45;
-        cursor: grabbing;
-    }
-
     #listTags .tagFilter.disabled[draggable="true"] {
         pointer-events: auto;
         cursor: grab;
+    }
+
+    /* After the grab rules and at least their specificity (including :hover,
+       since the pointer is over the chip when a drag starts), so the dragged chip
+       shows grabbing instead of grab. */
+    #listTags .tagFilter[draggable="true"].tagDragging,
+    #listTags .tagFilter[draggable="true"].tagDragging:hover {
+        opacity: 0.45;
+        cursor: grabbing;
     }
 
     /* Off-screen element the browser snapshots as the drag image. */

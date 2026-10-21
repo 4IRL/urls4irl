@@ -181,6 +181,7 @@ All app-owned `localStorage` keys are prefixed `u4i:` to avoid collisions with t
 - **deck.ts** — `setTagDeckOnUTubSelected()`, `resetTagDeck()`, `updateTagDeck()` (diff-based sync)
 - **tags.ts** — `buildTagFilterInDeck()` creates clickable filter with count; `toggleTagFilterSelected()`
 - **create.ts** — Create UTub tag form and AJAX with field-level error dispatch
+- **drag-drop.ts** — Desktop-only (>= 992px, fine pointer) drag of a Tag Deck chip onto a URL card: delegated `dragstart`/`dragover`/`drop` listeners, drop-target ring and hint, reuses `submitStagedTags` (`applySource: 'drag'`); emits `UI_TAG_APPLY_DRAG`
 - **delete.ts** — Delete UTub tag
 - **utils.ts** — `currentTagDeckIDs()`, `isTagInUTubTagDeck()`, `isATagSelected()`
 - **unselect-all.ts** — Clear all tag filter selections

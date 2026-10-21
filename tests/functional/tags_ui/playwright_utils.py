@@ -1,7 +1,8 @@
+import json
 import re
 
 from flask import Flask
-from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import JSHandle, Locator, Page, Request, Route, expect
 
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
@@ -464,3 +465,296 @@ def expect_badge_count_on_url_row(
     initial deck render cannot flake the assertion."""
     badge_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}'] {HPL.TAG_BADGES}"
     expect(page.locator(badge_selector)).to_have_count(expected)
+
+
+# --- Tag Deck -> URL card drag and drop -----------------------------------
+#
+# `drag_tag_onto_url` is the real (native) drag: Playwright's mouse-driven
+# `drag_to` makes Chromium fire genuine dragstart/dragover/drop events with a
+# real DataTransfer. The `dispatch_*` helpers below fire the same events
+# synthetically with a real `DataTransfer`, so a test can pause between phases
+# (assert the ring during a dragover, hold the POST, cancel with a dragend)
+# which a native drag cannot do. They follow `_DISPATCH_POINTER_DRAG_JS` in
+# `tests/functional/playwright_utils.py` as the precedent.
+
+_START_TAG_DRAG_JS = """(chipSelector) => {
+    const chip = document.querySelector(chipSelector);
+    if (!chip) throw new Error('no tag chip for ' + chipSelector);
+    const dataTransfer = new DataTransfer();
+    chip.dispatchEvent(new DragEvent('dragstart', {
+        bubbles: true, cancelable: true, dataTransfer,
+    }));
+    return dataTransfer;
+}"""
+
+_DISPATCH_DRAG_EVENT_JS = """({ dataTransfer, eventType, selector }) => {
+    const target = document.querySelector(selector);
+    if (!target) throw new Error('no element for ' + selector);
+    // Returns false when a listener called preventDefault (drop accepted).
+    return target.dispatchEvent(new DragEvent(eventType, {
+        bubbles: true, cancelable: true, dataTransfer,
+    }));
+}"""
+
+
+_START_LINK_DRAG_JS = """(linkSelector) => {
+    const link = document.querySelector(linkSelector);
+    if (!link) throw new Error('no link for ' + linkSelector);
+    const dataTransfer = new DataTransfer();
+    dataTransfer.setData('text/uri-list', link.href);
+    dataTransfer.setData('text/plain', link.href);
+    link.dispatchEvent(new DragEvent('dragstart', {
+        bubbles: true, cancelable: true, dataTransfer,
+    }));
+    return dataTransfer;
+}"""
+
+_GET_COMPUTED_STYLE_JS = """({ selector, pseudo, properties }) => {
+    const element = document.querySelector(selector);
+    if (!element) throw new Error('no element for ' + selector);
+    const style = getComputedStyle(element, pseudo);
+    const result = {};
+    for (const property of properties) result[property] = style[property];
+    return result;
+}"""
+
+
+def get_computed_style(
+    *, page: Page, css_selector: str, properties: list[str], pseudo: str | None = None
+) -> dict[str, str]:
+    """Computed style values (camelCase property names) of the first element
+    matching `css_selector`, optionally of a pseudo-element such as `::after`."""
+    return page.evaluate(
+        _GET_COMPUTED_STYLE_JS,
+        {"selector": css_selector, "pseudo": pseudo, "properties": properties},
+    )
+
+
+def get_card_height(*, page: Page, utub_url_id: int) -> float:
+    return page.evaluate(
+        "(selector) => document.querySelector(selector).getBoundingClientRect().height",
+        get_url_card_selector(utub_url_id=utub_url_id),
+    )
+
+
+def dispatch_link_dragstart(*, page: Page, utub_url_id: int) -> JSHandle:
+    """Fire `dragstart` on a card's `a.urlString` link (a foreign, non-tag drag)
+    and return its `DataTransfer` handle."""
+    return page.evaluate_handle(
+        _START_LINK_DRAG_JS,
+        f"{get_url_card_selector(utub_url_id=utub_url_id)} {HPL.URL_STRING_READ}",
+    )
+
+
+def get_tag_chip_selector(*, utub_tag_id: int) -> str:
+    return get_utub_tag_filter_selector(utub_tag_id=utub_tag_id)
+
+
+def get_url_card_selector(*, utub_url_id: int) -> str:
+    return f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+
+
+def drag_tag_onto_url(*, page: Page, utub_tag_id: int, utub_url_id: int) -> None:
+    """Native drag of a Tag Deck chip onto a URL card (real browser drag)."""
+    page.locator(get_tag_chip_selector(utub_tag_id=utub_tag_id)).drag_to(
+        page.locator(get_url_card_selector(utub_url_id=utub_url_id))
+    )
+
+
+def dispatch_tag_dragstart(*, page: Page, utub_tag_id: int) -> JSHandle:
+    """Fire `dragstart` on a chip and return the shared `DataTransfer` handle to
+    pass to the following `dispatch_tag_drag_event` calls."""
+    return page.evaluate_handle(
+        _START_TAG_DRAG_JS, get_tag_chip_selector(utub_tag_id=utub_tag_id)
+    )
+
+
+def dispatch_tag_drag_event(
+    *, page: Page, data_transfer: JSHandle, event_type: str, css_selector: str
+) -> bool:
+    """Fire one DragEvent of `event_type` on `css_selector` with the drag's
+    `DataTransfer`. Returns False when a listener called `preventDefault`."""
+    return page.evaluate(
+        _DISPATCH_DRAG_EVENT_JS,
+        {
+            "dataTransfer": data_transfer,
+            "eventType": event_type,
+            "selector": css_selector,
+        },
+    )
+
+
+def dispatch_tag_dragover_on_url(
+    *, page: Page, data_transfer: JSHandle, utub_url_id: int
+) -> bool:
+    return dispatch_tag_drag_event(
+        page=page,
+        data_transfer=data_transfer,
+        event_type="dragover",
+        css_selector=get_url_card_selector(utub_url_id=utub_url_id),
+    )
+
+
+def dispatch_tag_drop_on_url(
+    *, page: Page, data_transfer: JSHandle, utub_url_id: int
+) -> None:
+    dispatch_tag_drag_event(
+        page=page,
+        data_transfer=data_transfer,
+        event_type="drop",
+        css_selector=get_url_card_selector(utub_url_id=utub_url_id),
+    )
+
+
+def dispatch_tag_dragend(
+    *, page: Page, data_transfer: JSHandle, utub_tag_id: int
+) -> None:
+    dispatch_tag_drag_event(
+        page=page,
+        data_transfer=data_transfer,
+        event_type="dragend",
+        css_selector=get_tag_chip_selector(utub_tag_id=utub_tag_id),
+    )
+
+
+def dispatch_tag_drag_and_drop(
+    *, page: Page, utub_tag_id: int, utub_url_id: int
+) -> None:
+    """Full synthetic dragstart -> dragenter -> dragover -> drop -> dragend."""
+    data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=utub_tag_id)
+    card_selector = get_url_card_selector(utub_url_id=utub_url_id)
+    for event_type in ("dragenter", "dragover", "drop"):
+        dispatch_tag_drag_event(
+            page=page,
+            data_transfer=data_transfer,
+            event_type=event_type,
+            css_selector=card_selector,
+        )
+    dispatch_tag_dragend(
+        page=page, data_transfer=data_transfer, utub_tag_id=utub_tag_id
+    )
+
+
+TAG_BATCH_URL_PATTERN = re.compile(r".*/tags/batch$")
+_PREFLIGHT_URL_PATTERN = re.compile(r".*/utubs/\d+/urls/\d+$")
+_HELD_MARKER_ATTR = "data-test-held-tag-posts"
+_ROUND_TRIP_JS = (
+    "() => fetch(window.location.href, { method: 'HEAD' }).then((r) => r.status)"
+)
+_SETTLE_JS = (
+    "() => new Promise((resolve) => setTimeout(() => requestAnimationFrame("
+    "() => requestAnimationFrame(resolve)), 100))"
+)
+
+
+class TagBatchRoute:
+    """Intercepts the `.../tags/batch` POST of a drop.
+
+    Default mode counts and passes requests through. `hold=True` parks each
+    request (the page shows a pending request) until `release()`; `status` set
+    fulfils requests with that status and `body` instead of hitting the server,
+    after `pass_through_first` requests went through untouched.
+
+    A drop first sends a pre-flight GET of the URL, then the POST, so the GET is
+    counted too: it is issued synchronously by the drop handler, which makes
+    "nothing was sent" provable. `expect_nothing_sent` / `expect_post_count` run
+    a same-page round trip first so every request the page already issued has
+    reached this listener before the count is read.
+    """
+
+    def __init__(
+        self,
+        *,
+        page: Page,
+        hold: bool = False,
+        status: int | None = None,
+        body: dict | str | None = None,
+        pass_through_first: int = 0,
+    ) -> None:
+        self._page = page
+        self._hold = hold
+        self._status = status
+        self._body = body
+        self._pass_through_first = pass_through_first
+        self.request_count = 0
+        self.preflight_count = 0
+        self._held: list[Route] = []
+        page.on("request", self._on_request)
+        page.route(TAG_BATCH_URL_PATTERN, self._handle)
+
+    def _on_request(self, request: Request) -> None:
+        if request.method == "GET" and _PREFLIGHT_URL_PATTERN.match(request.url):
+            self.preflight_count += 1
+
+    def _handle(self, route: Route) -> None:
+        self.request_count += 1
+        if self.request_count <= self._pass_through_first:
+            route.continue_()
+            return
+        if self._hold:
+            self._held.append(route)
+            # Observable, auto-retrying "the POST is parked" signal.
+            self._page.evaluate(
+                "([attr, count]) => document.documentElement.setAttribute(attr, String(count))",
+                [_HELD_MARKER_ATTR, len(self._held)],
+            )
+            return
+        self._respond(route, self._status, self._body)
+
+    @staticmethod
+    def _respond(route: Route, status: int | None, body: dict | str | None) -> None:
+        if status is None:
+            route.continue_()
+        elif isinstance(body, dict):
+            route.fulfill(
+                status=status, content_type="application/json", body=json.dumps(body)
+            )
+        else:
+            route.fulfill(
+                status=status, content_type="text/plain", body=body if body else ""
+            )
+
+    def wait_until_held(self, *, count: int = 1) -> None:
+        expect(self._page.locator("html")).to_have_attribute(
+            _HELD_MARKER_ATTR, str(count)
+        )
+
+    def release(
+        self,
+        *,
+        index: int = 0,
+        status: int | None = None,
+        body: dict | str | None = None,
+    ) -> None:
+        """Let a parked request through (`status=None`) or fulfil it."""
+        self._respond(self._held[index], status, body)
+
+    def _round_trip(self) -> None:
+        settle_page_tasks(page=self._page)
+        self._page.evaluate(_ROUND_TRIP_JS)
+
+    def expect_nothing_sent(self) -> None:
+        """No pre-flight GET and no POST left the page for the drop."""
+        self._round_trip()
+        assert self.preflight_count == 0, "a drop sent the pre-flight GET"
+        assert self.request_count == 0, "a drop sent the tags/batch POST"
+
+    def expect_post_count(self, expected: int) -> None:
+        self._round_trip()
+        assert self.request_count == expected
+
+
+def settle_page_tasks(*, page: Page) -> None:
+    """Resolve after a macrotask and two animation frames in the page, so jQuery
+    callbacks queued by an already-received response have run before an absence
+    assertion (no banner / no selection) is made."""
+    page.evaluate(_SETTLE_JS)
+
+
+def expect_no_drag_marks_left(*, page: Page) -> None:
+    """Deterministic post-drop signal (auto-retrying): no chip is being dragged
+    and no card carries a drop ring, invalid state or hint."""
+    expect(page.locator(".tagDragging")).to_have_count(0)
+    expect(page.locator(".tagDropTarget")).to_have_count(0)
+    expect(page.locator(".tagDropInvalid")).to_have_count(0)
+    expect(page.locator("[data-drop-hint]")).to_have_count(0)

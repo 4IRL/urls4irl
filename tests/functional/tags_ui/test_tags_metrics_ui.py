@@ -14,15 +14,24 @@ from tests.functional.db_utils import (
     get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
+from tests.functional.metrics_helpers.db_utils import (
+    query_anonymous_metrics_rows,
+    wait_for_metrics_row,
+)
 from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_utubid,
     login_user_select_utub_by_id_and_url_by_id,
 )
 from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_until_hidden,
 )
-from tests.functional.tags_ui.playwright_utils import add_tag_to_url
+from tests.functional.tags_ui.db_utils import create_utub_tag
+from tests.functional.tags_ui.playwright_utils import (
+    add_tag_to_url,
+    drag_tag_onto_url,
+    expect_badge_count_on_url_row,
+)
 
 pytestmark = pytest.mark.tags_ui
 
@@ -91,3 +100,56 @@ def test_tag_apply_emits_to_anonymous_metrics(
     )
     assert matched_row["count"] == 1
     assert matched_row["bucket_start"] is not None
+
+
+def test_tag_drag_drop_emits_drag_event_and_not_combobox_event(
+    page: Page,
+    create_test_urls: Any,
+    provide_app: Flask,
+    metrics_redis_client: Redis,
+    pg_conn_for_metrics: Any,
+):
+    """
+    GIVEN a logged-in user with a UTub tag applied to no URL and the metrics
+        pipeline activated end-to-end
+    WHEN the user drags the tag chip onto a URL card and the metrics client
+        flushes
+    THEN an `ui_tag_apply_drag` row (device_type only, count 1) is observed and
+        only then is `ui_tag_apply` queried: it has zero rows, so a drop emits
+        exactly one of the two events. (The combobox path recording
+        `ui_tag_apply` is covered by `test_tag_apply_emits_to_anonymous_metrics`.)
+    """
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(provide_app, user_id_for_test)
+    url_in_utub = get_url_in_utub(provide_app, utub_user_created.id)
+    tag_id = create_utub_tag(
+        app=provide_app,
+        utub_id=utub_user_created.id,
+        user_id=user_id_for_test,
+        tag_string=UTS.TEST_TAG_NAME_1,
+    )
+
+    login_user_and_select_utub_by_utubid(
+        app=provide_app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+    )
+
+    drag_tag_onto_url(page=page, utub_tag_id=tag_id, utub_url_id=url_in_utub.id)
+    expect_badge_count_on_url_row(page=page, utub_url_id=url_in_utub.id, expected=1)
+
+    matched_row = wait_for_metrics_row(
+        browser=page,
+        redis_client=metrics_redis_client,
+        pg_conn=pg_conn_for_metrics,
+        event_name=EventName.UI_TAG_APPLY_DRAG,
+        expected_dimensions={"device_type": _EXPECTED_DEVICE_TYPE},
+    )
+    assert matched_row["count"] == 1
+    assert (
+        query_anonymous_metrics_rows(
+            pg_conn_for_metrics, event_name=EventName.UI_TAG_APPLY.value
+        )
+        == []
+    )
