@@ -8,6 +8,7 @@ import { resetStore, setState } from "../../../store/app-store.js";
 import type { MemberItem } from "../../../types/member.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import type { UtubSummaryItem } from "../../../types/utub.js";
+import { setPanelSettingsOpen } from "../../panel-settings/state.js";
 import { isCrossUtubSearchActive } from "../../search/cross-utub-search.js";
 import { isUTubSearchActive } from "../../utubs/search.js";
 import * as nudgeStorage from "../nudge-storage.js";
@@ -301,6 +302,47 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
     window
       .jQuery(document)
       .trigger(window.jQuery.Event("keydown", { key: "Enter" }));
+
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    expect(tip.dispose).not.toHaveBeenCalled();
+    expect(markTipSeenSpy).not.toHaveBeenCalled();
+  });
+
+  it("(panel settings) a click on a settings gear or inside the popover does NOT dismiss the tip", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<button class="panelSettingsGear" id="gearUnderTest"></button><div id="panelSettingsPopover"><input id="insidePopover" /></div>',
+    );
+
+    showTip(CREATE_UTUB_TIP);
+    await flushDeferredBind();
+    window.jQuery("#gearUnderTest").trigger("click");
+    window.jQuery("#insidePopover").trigger("click");
+    await flushDeferredDispose();
+
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    expect(tip.dispose).not.toHaveBeenCalled();
+    expect(markTipSeenSpy).not.toHaveBeenCalled();
+  });
+
+  it("(panel settings) Escape while the settings popover is open does NOT dismiss the tip", async () => {
+    const { showTip } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+
+    showTip(CREATE_UTUB_TIP);
+    await flushDeferredBind();
+    setPanelSettingsOpen({ open: true });
+    try {
+      window
+        .jQuery(document)
+        .trigger(window.jQuery.Event("keydown", { key: "Escape" }));
+    } finally {
+      setPanelSettingsOpen({ open: false });
+    }
 
     const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
     expect(tip.dispose).not.toHaveBeenCalled();
@@ -729,6 +771,25 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     vi.mocked(isCrossUtubSearchActive).mockReturnValue(true);
     initOnboardingNudges();
     expect(tip.show).not.toHaveBeenCalled();
+  });
+
+  it("(panel settings) an open settings popover suppresses the tip, and closing it lets it show", async () => {
+    const { initOnboardingNudges, maybeShowNextTip } =
+      await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    setPanelSettingsOpen({ open: true });
+    try {
+      initOnboardingNudges();
+      expect(tip.show).not.toHaveBeenCalled();
+    } finally {
+      setPanelSettingsOpen({ open: false });
+    }
+
+    maybeShowNextTip();
+    expect(tip.show).toHaveBeenCalledTimes(1);
   });
 
   it("(Red 6) MOBILE_DECK_SWITCHED away from the active tip's anchor tears it down WITHOUT marking it seen", async () => {

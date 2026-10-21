@@ -1,4 +1,5 @@
 import type { HomeForm } from "../types/metrics-dim-values.js";
+import { AppEvents, emit } from "./event-bus.js";
 
 // Auth-form ids tracked alongside the home forms. These mirror the
 // `form: Literal["login", "register"]` dim on the backend `_DimAuthCancel`
@@ -21,11 +22,13 @@ let _openForm: OpenFormId | null = null;
 /** Records which form is currently open. Called by each form's open handler. */
 export function setOpenForm(formId: OpenFormId): void {
   _openForm = formId;
+  emit(AppEvents.FORM_MODE_CHANGED, { openForm: formId });
 }
 
 /** Clears the open-form registry. Called on form submit or cancel. */
 export function clearOpenForm(): void {
   _openForm = null;
+  emit(AppEvents.FORM_MODE_CHANGED, { openForm: null });
 }
 
 /** Returns the currently-open form id, or `null` when no form is open. */

@@ -3,6 +3,7 @@ import { KEYS } from "../../../lib/constants.js";
 import { debug } from "../../../lib/debug.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { isMobile } from "../../mobile.js";
+import { isPanelSettingsOpen } from "../../panel-settings/state.js";
 import { isCrossUtubSearchActive } from "../../search/cross-utub-search.js";
 import {
   isTagSheetOpen,
@@ -117,6 +118,7 @@ export function initBulkActions(): void {
       if ($(".modal.show").length > 0) return;
       if (isTextInputFocused()) return;
       if (isTagSheetOpen()) return;
+      if (isPanelSettingsOpen()) return;
       if (isCrossUtubSearchActive()) return;
       // Redundant second exit path: an open picker's own container capture-phase
       // listener already stops Escape from reaching here while it is open, but
