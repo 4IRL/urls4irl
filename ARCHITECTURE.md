@@ -219,6 +219,10 @@ All inter-module communication uses typed events:
 | `TAG_SHEET_TOGGLED` | `{active: boolean}` | tags/sheet.ts | onboarding |
 | `TRASH_OPENED` | void | trash/panel.ts | urls/bulk-actions, members/transfer-picker |
 | `TRASH_CLOSED` | void | trash/panel.ts | trash/swipe.ts |
+| `PANEL_SETTINGS_SECTIONS_CHANGED` | void | panel-settings/registry.ts | panel-settings (gear/popover layer) |
+| `FORM_MODE_CHANGED` | `{openForm: OpenFormId \| null}` | lib/modal-tracking.ts (`setOpenForm`, `clearOpenForm`) | panel-settings/popover |
+| `DECK_COLLAPSE_CHANGED` | `{deck: "utubs" \| "members" \| "tags", collapsed: boolean}` | home/collapsible-decks.ts (every deck `collapsed` class site) | panel-settings/popover |
+| `LEFT_PANEL_COLLAPSE_CHANGED` | `{collapsed: boolean}` | home/left-panel-toggle.ts (`applyLeftPanelVisibility`, on a resolved-state change) | panel-settings/popover |
 
 ### Established TypeScript Patterns
 

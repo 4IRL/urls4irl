@@ -1,5 +1,6 @@
 import type { MemberItem } from "../types/member.js";
 import type { UtubUrlItem, UtubTag } from "../types/url.js";
+import type { OpenFormId } from "./modal-tracking.js";
 
 export interface UtubSelectedPayload {
   utubID: number;
@@ -51,6 +52,13 @@ export interface AppEventMap {
   "tag-sheet:toggled": { active: boolean };
   "trash:opened": void;
   "trash:closed": void;
+  "panel-settings:sections-changed": void;
+  "form:mode-changed": { openForm: OpenFormId | null };
+  "deck:collapse-changed": {
+    deck: "utubs" | "members" | "tags";
+    collapsed: boolean;
+  };
+  "left-panel:collapse-changed": { collapsed: boolean };
 }
 
 export const AppEvents = Object.freeze({
@@ -77,6 +85,10 @@ export const AppEvents = Object.freeze({
   TAG_SHEET_TOGGLED: "tag-sheet:toggled",
   TRASH_OPENED: "trash:opened",
   TRASH_CLOSED: "trash:closed",
+  PANEL_SETTINGS_SECTIONS_CHANGED: "panel-settings:sections-changed",
+  FORM_MODE_CHANGED: "form:mode-changed",
+  DECK_COLLAPSE_CHANGED: "deck:collapse-changed",
+  LEFT_PANEL_COLLAPSE_CHANGED: "left-panel:collapse-changed",
 } as const);
 
 const _handlers = new Map<string, Set<(payload: unknown) => void>>();
