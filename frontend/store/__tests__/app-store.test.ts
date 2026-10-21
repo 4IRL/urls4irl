@@ -1,4 +1,14 @@
-import { getState, setState, resetStore } from "../app-store.js";
+import {
+  getState,
+  setState,
+  resetStore,
+  subscribe,
+  type StoreListener,
+} from "../app-store.js";
+import { EMPTY_UTUB_SETTINGS } from "../../types/settings.js";
+
+const { mockLog } = vi.hoisted(() => ({ mockLog: vi.fn() }));
+vi.mock("../../lib/debug.js", () => ({ debug: () => mockLog }));
 
 beforeEach(() => {
   resetStore();
@@ -53,6 +63,152 @@ describe("setState", () => {
   it("can update array fields", () => {
     setState({ selectedTagIDs: [1, 2, 3] });
     expect(getState().selectedTagIDs).toEqual([1, 2, 3]);
+  });
+});
+
+describe("settings slice defaults", () => {
+  it("starts with null settings and settingsVersion 0, restored by resetStore", () => {
+    expect(getState().settings).toBeNull();
+    expect(getState().settingsVersion).toBe(0);
+
+    setState({ settings: EMPTY_UTUB_SETTINGS, settingsVersion: 4 });
+    resetStore();
+
+    expect(getState().settings).toBeNull();
+    expect(getState().settingsVersion).toBe(0);
+  });
+});
+
+describe("subscribe", () => {
+  const disposers: Array<() => void> = [];
+
+  function track(listener: StoreListener): () => void {
+    const dispose = subscribe(listener);
+    disposers.push(dispose);
+    return dispose;
+  }
+
+  afterEach(() => {
+    disposers.splice(0).forEach((dispose) => dispose());
+  });
+
+  it("notifies only the keys whose value changed by reference", () => {
+    const listener = vi.fn();
+    track(listener);
+    setState({ activeUTubName: "A" });
+    setState({ activeUTubName: "A", isCoCreator: true });
+
+    expect(listener).toHaveBeenNthCalledWith(1, ["activeUTubName"]);
+    expect(listener).toHaveBeenNthCalledWith(2, ["isCoCreator"]);
+  });
+
+  it("does not notify when nothing changed", () => {
+    const listener = vi.fn();
+    track(listener);
+    setState({ activeUTubName: null });
+    setState({});
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("stops notifying after dispose", () => {
+    const listener = vi.fn();
+    const dispose = track(listener);
+    dispose();
+    setState({ isCoCreator: true });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("a throwing listener neither aborts setState nor later listeners, and is logged", () => {
+    const later = vi.fn();
+    track(() => {
+      throw new Error("boom");
+    });
+    track(later);
+
+    expect(() => setState({ isCoCreator: true })).not.toThrow();
+
+    expect(getState().isCoCreator).toBe(true);
+    expect(later).toHaveBeenCalledWith(["isCoCreator"]);
+    expect(mockLog).toHaveBeenCalledWith(
+      "store listener threw",
+      expect.any(Error),
+    );
+  });
+
+  it("delivers a nested setState's notification after the outer one completes", () => {
+    const order: string[] = [];
+    track((keys) => {
+      order.push(`first:${keys.join(",")}`);
+      if (keys.includes("activeUTubName")) {
+        setState({ isCoCreator: true });
+        order.push("first-after-nested-setState");
+      }
+    });
+    track((keys) => {
+      order.push(`second:${keys.join(",")}`);
+    });
+
+    setState({ activeUTubName: "A" });
+
+    expect(getState().isCoCreator).toBe(true);
+    expect(order).toEqual([
+      "first:activeUTubName",
+      "first-after-nested-setState",
+      "second:activeUTubName",
+      "first:isCoCreator",
+      "second:isCoCreator",
+    ]);
+  });
+});
+
+describe("no-UTub settings invariant", () => {
+  const populated = { ...EMPTY_UTUB_SETTINGS, utubs: { sample: 1 } } as never;
+
+  it.each([
+    ["null (removal / openTrash / leave)", null],
+    ["a different id (switch)", 9],
+  ])(
+    "nulls settings and notifies it when activeUTubID becomes %s",
+    (_n, id) => {
+      setState({ activeUTubID: 1, settings: populated });
+      const listener = vi.fn();
+      const dispose = subscribe(listener);
+
+      setState({ activeUTubID: id });
+
+      expect(getState().settings).toBeNull();
+      expect(listener).toHaveBeenCalledWith(["activeUTubID", "settings"]);
+      dispose();
+    },
+  );
+
+  it("does not notify settings when they were already null", () => {
+    setState({ activeUTubID: 1 });
+    const listener = vi.fn();
+    const dispose = subscribe(listener);
+
+    setState({ activeUTubID: null });
+
+    expect(listener).toHaveBeenCalledWith(["activeUTubID"]);
+    dispose();
+  });
+
+  it("leaves settings alone for a same-id setState", () => {
+    setState({ activeUTubID: 1, settings: populated });
+
+    setState({ activeUTubID: 1, activeUTubName: "x" });
+
+    expect(getState().settings).toBe(populated);
+  });
+
+  it("keeps settings the caller passes in the same setState", () => {
+    setState({ activeUTubID: 1, settings: EMPTY_UTUB_SETTINGS });
+
+    setState({ activeUTubID: 2, settings: populated });
+
+    expect(getState().settings).toBe(populated);
   });
 });
 

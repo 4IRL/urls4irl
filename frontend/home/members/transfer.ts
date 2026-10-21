@@ -8,7 +8,11 @@ import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState } from "../../store/app-store.js";
 import { debug } from "../../lib/debug.js";
-import { buildSelectedUTub, getUTubInfo } from "../utubs/selectors.js";
+import {
+  buildSelectedUTub,
+  getUTubInfo,
+  shouldKeepSettings,
+} from "../utubs/selectors.js";
 import { buildUTubDeck, setUTubDeckOnUTubSelected } from "../utubs/deck.js";
 import { getAllUTubs } from "../utubs/utils.js";
 import {
@@ -256,9 +260,16 @@ function transferOwnershipSuccess(
   // affordances LAST so buildUTubDeck's resetUTubDeck() can't win a race.
   void (async () => {
     try {
+      const capturedSettingsVersion = getState().settingsVersion;
       const selectedUTub = await getUTubInfo(getState().activeUTubID!);
       if (selectedUTub) {
-        buildSelectedUTub(selectedUTub);
+        buildSelectedUTub({
+          selectedUTub,
+          keepSettings: shouldKeepSettings({
+            selectedUTub,
+            capturedSettingsVersion,
+          }),
+        });
         const utubData = await getAllUTubs();
         buildUTubDeck(utubData.utubs);
       }

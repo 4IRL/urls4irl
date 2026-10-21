@@ -3,6 +3,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 
 import type { UtubDetail } from "../../types/utub.js";
+import { resolveUtubSettings } from "../../types/settings.js";
 import { getState, setState } from "../../store/app-store.js";
 import type { AppState } from "../../store/app-store.js";
 import { fitUTubHeaderAndSubheader } from "./header-fit.js";
@@ -61,6 +62,7 @@ export async function updateUTubOnFindingStaleData({
   const capturedName = capturedState.activeUTubName;
   const capturedDescription = capturedState.activeUTubDescription;
   const capturedLocked = capturedState.isCurrentUTubLocked;
+  const capturedSettingsVersion = capturedState.settingsVersion;
 
   const result = await fetchUTubForRefresh({ utubID });
 
@@ -107,6 +109,22 @@ export async function updateUTubOnFindingStaleData({
       },
     );
     return;
+  }
+
+  // Settings apply before the no-op short-circuit (a settings-only difference
+  // must still land), unless a local save landed while the request was in
+  // flight: that response predates the save and must not overwrite it.
+  if (currentState.settingsVersion === capturedSettingsVersion) {
+    const incomingSettings = resolveUtubSettings(utub.settings);
+    if (
+      JSON.stringify(incomingSettings) !== JSON.stringify(currentState.settings)
+    ) {
+      setState({ settings: incomingSettings });
+    }
+  } else {
+    log("updateUTubOnFindingStaleData — settings saved mid-flight, keeping", {
+      utubID,
+    });
   }
 
   if (isSameUTubData({ store: currentState, data: utub })) {
@@ -378,7 +396,7 @@ function applyPermissionFallback({ data }: { data: UtubDetail }): void {
   const mobile = isMobile();
   const panelBefore = getCurrentMobilePanel();
 
-  buildSelectedUTub(data);
+  buildSelectedUTub({ selectedUTub: data, keepSettings: true });
   syncSidebarUTubEntry({ data });
 
   if (!mobile) return;

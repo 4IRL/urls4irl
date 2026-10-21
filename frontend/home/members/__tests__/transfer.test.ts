@@ -411,6 +411,21 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     );
   });
 
+  it("keeps settings saved while the post-transfer rebuild fetch was in flight", async () => {
+    mockAjaxSuccess(SUCCESS_RESPONSE);
+    const saved = { utubs: { saved: 1 }, members: {}, tags: {}, urls: {} };
+    vi.mocked(getUTubInfo).mockImplementationOnce((() => {
+      setState({ settings: saved as never, settingsVersion: 1 });
+      return Promise.resolve(transferredUtubDetail());
+    }) as never);
+
+    openConfirm();
+    $("#transferOwnerSubmit").trigger("click");
+    await flush();
+
+    expect(getState().settings).toEqual(saved);
+  });
+
   it("redirects to the error page if the select-rebuild refetch (getUTubInfo) fails after a 200 PATCH", async () => {
     const assignSpy = vi
       .spyOn(window.location, "assign")

@@ -21,6 +21,7 @@ import { debug } from "../../lib/debug.js";
 import { getOpenForm } from "../../lib/modal-tracking.js";
 import { getState } from "../../store/app-store.js";
 import { isTransferPickerOpen } from "../members/transfer-picker.js";
+import { isPanelSettingsBusy } from "../panel-settings/state.js";
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
 import { isTagSheetOpen } from "../tags/sheet.js";
 import { isAnyBulkPickerOpen } from "../urls/bulk-actions/picker-guard.js";
@@ -92,7 +93,8 @@ export function isUserBusyOnHome(): boolean {
     isURLDeleteUndoInFlight() ||
     isURLDeleteToastShowing() ||
     isBulkCopySubmitInFlight() ||
-    isCrossUtubSearchActive()
+    isCrossUtubSearchActive() ||
+    isPanelSettingsBusy()
   );
 }
 

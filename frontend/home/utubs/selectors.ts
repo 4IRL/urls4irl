@@ -4,7 +4,8 @@ import type { UtubDetail } from "../../types/utub.js";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { is429Handled } from "../../lib/ajax.js";
-import { setState } from "../../store/app-store.js";
+import { getState, setState } from "../../store/app-store.js";
+import { resolveUtubSettings } from "../../types/settings.js";
 import { KEYS } from "../../lib/constants.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
@@ -125,7 +126,30 @@ export function pushUTubHistoryState(selectedUTubID: number): void {
   );
 }
 
-export function buildSelectedUTub(selectedUTub: UtubDetail): void {
+// True when a same-UTub rebuild's fetch began before a settings save landed, so
+// the rebuild must not overwrite the saved settings. A different-UTub switch
+// always takes the new payload's settings.
+export function shouldKeepSettings({
+  selectedUTub,
+  capturedSettingsVersion,
+}: {
+  selectedUTub: UtubDetail;
+  capturedSettingsVersion: number;
+}): boolean {
+  const state = getState();
+  return (
+    selectedUTub.id === state.activeUTubID &&
+    state.settingsVersion !== capturedSettingsVersion
+  );
+}
+
+export function buildSelectedUTub({
+  selectedUTub,
+  keepSettings = false,
+}: {
+  selectedUTub: UtubDetail;
+  keepSettings?: boolean;
+}): void {
   log(
     "buildSelectedUTub — applying full UTub payload to store + emitting UTUB_SELECTED",
     {
@@ -151,6 +175,9 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
     urls: selectedUTub.urls,
     tags: selectedUTub.tags,
     members: selectedUTub.members,
+    ...(keepSettings
+      ? {}
+      : { settings: resolveUtubSettings(selectedUTub.settings) }),
     selectedTagIDs: [],
     selectedURLCardID: null,
     // Defense-in-depth: the UTUB_SELECTED subscriber in bulk-actions/index.ts
@@ -293,6 +320,7 @@ function isStaleUTubResponse(requestedUTubID: number): boolean {
 }
 
 export function getSelectedUTubInfo(selectedUTubID: number): void {
+  const capturedSettingsVersion = getState().settingsVersion;
   fetchUTubInfo(selectedUTubID).then(
     (selectedUTub) => {
       if (!selectedUTub) return;
@@ -303,7 +331,13 @@ export function getSelectedUTubInfo(selectedUTubID: number): void {
         return;
       }
 
-      buildSelectedUTub(selectedUTub);
+      buildSelectedUTub({
+        selectedUTub,
+        keepSettings: shouldKeepSettings({
+          selectedUTub,
+          capturedSettingsVersion,
+        }),
+      });
     },
     () => {
       // A failed fetch for a UTub the user already moved away from must not

@@ -16,6 +16,7 @@ const mockSetUTubEventListenersOnInitialPageLoad = vi.fn();
 const mockSetCreateUTubEventListeners = vi.fn();
 const mockGetUTubInfo = vi.fn();
 const mockBuildSelectedUTub = vi.fn();
+const mockShouldKeepSettings = vi.fn((..._args: unknown[]) => false);
 const mockIsValidUTubID = vi.fn();
 const mockIsUtubIdValidOnPageLoad = vi.fn();
 const mockIsUtubIdValidFromStateAccess = vi.fn();
@@ -92,6 +93,7 @@ vi.mock("../utubs/create.js", () => ({
 vi.mock("../utubs/selectors.js", () => ({
   getUTubInfo: (...args: unknown[]) => mockGetUTubInfo(...args),
   buildSelectedUTub: (...args: unknown[]) => mockBuildSelectedUTub(...args),
+  shouldKeepSettings: (...args: unknown[]) => mockShouldKeepSettings(...args),
 }));
 vi.mock("../utubs/utils.js", () => ({
   isValidUTubID: (...args: unknown[]) => mockIsValidUTubID(...args),
@@ -323,7 +325,10 @@ describe("window-events", () => {
       // Trash closes through the UTUB_SELECTED path inside buildSelectedUTub,
       // not via an explicit closeTrash() call here.
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
       expect(mockOpenTrash).not.toHaveBeenCalled();
       expect(mockCloseTrash).not.toHaveBeenCalled();
@@ -350,6 +355,32 @@ describe("window-events", () => {
       expect(mockResetHomePageToInitialState).not.toHaveBeenCalled();
     });
 
+    it("passes keepSettings when a settings save landed during the fetch", async () => {
+      const fakeUTub = { id: 5, name: "Test UTub" };
+      mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+      mockShouldKeepSettings.mockReturnValue(true);
+      vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+      popstateHandler!(
+        new PopStateEvent("popstate", {
+          state: { UTubID: 5 },
+        }),
+      );
+
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: true,
+        });
+      });
+      expect(mockShouldKeepSettings).toHaveBeenCalledWith({
+        selectedUTub: fakeUTub,
+        capturedSettingsVersion: 0,
+      });
+      mockShouldKeepSettings.mockReturnValue(false);
+    });
+
     it("fetches and builds UTub when state has a valid UTubID", async () => {
       const fakeUTub = { id: 5, name: "Test UTub" };
       mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
@@ -365,7 +396,10 @@ describe("window-events", () => {
       expect(mockIsUtubIdValidFromStateAccess).toHaveBeenCalledWith(5);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
 
       expect(
@@ -457,7 +491,10 @@ describe("window-events", () => {
       popstateHandler!(event);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
 
       expect(
@@ -494,7 +531,10 @@ describe("window-events", () => {
         popstateHandler!(event);
 
         await vi.waitFor(() => {
-          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+            selectedUTub: fakeUTub,
+            keepSettings: false,
+          });
         });
         expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
         expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
@@ -524,7 +564,10 @@ describe("window-events", () => {
         popstateHandler!(event);
 
         await vi.waitFor(() => {
-          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+            selectedUTub: fakeUTub,
+            keepSettings: false,
+          });
         });
         expect(
           mockSetMobileUIWhenUTubSelectedOrURLNavSelected,
@@ -551,7 +594,10 @@ describe("window-events", () => {
         popstateHandler!(event);
 
         await vi.waitFor(() => {
-          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+            selectedUTub: fakeUTub,
+            keepSettings: false,
+          });
         });
         expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
         expect($("#MobilePanelAnnouncement").text()).toBe(
@@ -593,7 +639,10 @@ describe("window-events", () => {
         popstateHandler!(event);
 
         await vi.waitFor(() => {
-          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+            selectedUTub: fakeUTub,
+            keepSettings: false,
+          });
         });
         expect(mockSetMobileUIWhenMemberDeckSelected).not.toHaveBeenCalled();
         expect(mockEmit).not.toHaveBeenCalled();
@@ -635,14 +684,19 @@ describe("window-events", () => {
         // Resolve the newer one first, then the (superseded) older one.
         resolveNewer(newerUTub);
         await vi.waitFor(() => {
-          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(newerUTub);
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+            selectedUTub: newerUTub,
+            keepSettings: false,
+          });
         });
         resolveOlder(olderUTub);
         await Promise.resolve();
         await Promise.resolve();
 
         // Only the newer popstate's effects applied — the older is stale-gated.
-        expect(mockBuildSelectedUTub).not.toHaveBeenCalledWith(olderUTub);
+        expect(mockBuildSelectedUTub).not.toHaveBeenCalledWith(
+          expect.objectContaining({ selectedUTub: olderUTub }),
+        );
         expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
         expect(mockSetMobileUIWhenUTubDeckSelected).not.toHaveBeenCalled();
 
@@ -664,7 +718,10 @@ describe("window-events", () => {
 
         expect(mockBeginPopstateClose).toHaveBeenCalledTimes(1);
         await vi.waitFor(() => {
-          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+            selectedUTub: fakeUTub,
+            keepSettings: false,
+          });
         });
         expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
           mobilePanel: "urls",
@@ -692,7 +749,10 @@ describe("window-events", () => {
         popstateHandler!(event);
 
         await vi.waitFor(() => {
-          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+            selectedUTub: fakeUTub,
+            keepSettings: false,
+          });
         });
         expect(mockOpenTagSheet).not.toHaveBeenCalled();
 
@@ -854,13 +914,18 @@ describe("window-events", () => {
 
         resolveNewer(newerUTub);
         await vi.waitFor(() => {
-          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(newerUTub);
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+            selectedUTub: newerUTub,
+            keepSettings: false,
+          });
         });
         resolveOlder(olderUTub);
         await Promise.resolve();
         await Promise.resolve();
 
-        expect(mockBuildSelectedUTub).not.toHaveBeenCalledWith(olderUTub);
+        expect(mockBuildSelectedUTub).not.toHaveBeenCalledWith(
+          expect.objectContaining({ selectedUTub: olderUTub }),
+        );
         // Only one mobile-UI application (from the newer popstate).
         expect(
           mockSetMobileUIWhenUTubSelectedOrURLNavSelected,
@@ -928,7 +993,10 @@ describe("window-events", () => {
       expect(mockGetUTubInfo).toHaveBeenCalledWith(2);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
 
       widthSpy.mockRestore();
@@ -1215,7 +1283,10 @@ describe("window-events", () => {
 
       await vi.waitFor(() => {
         expect(mockGetUTubInfo).toHaveBeenCalledWith(10);
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
 
       widthSpy.mockRestore();
@@ -1243,7 +1314,10 @@ describe("window-events", () => {
 
       await vi.waitFor(() => {
         expect(mockGetUTubInfo).toHaveBeenCalledWith(10);
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
       // The recognized `panel` param must not trip the malformed-params redirect.
       expect(assignMock).not.toHaveBeenCalledWith("/error");
@@ -1269,7 +1343,10 @@ describe("window-events", () => {
       pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
       expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
       expect(
@@ -1302,7 +1379,10 @@ describe("window-events", () => {
       pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
       // Desktop shows all panels — no panel-specific mobile routing, no tracking.
       expect(mockSetMobileUIWhenMemberDeckSelected).not.toHaveBeenCalled();
@@ -1334,7 +1414,10 @@ describe("window-events", () => {
       pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
       expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
       expect(
@@ -1360,7 +1443,10 @@ describe("window-events", () => {
       pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
       expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
       expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
@@ -1383,7 +1469,10 @@ describe("window-events", () => {
       pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
       expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
       expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
@@ -1406,7 +1495,10 @@ describe("window-events", () => {
       pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
 
       await vi.waitFor(() => {
-        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: fakeUTub,
+          keepSettings: false,
+        });
       });
       // Sheet does not auto-reopen on reload — land on the underlying url-deck.
       expect(
