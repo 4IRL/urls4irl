@@ -17,7 +17,12 @@ import {
 } from "./init.js";
 import { setUTubEventListenersOnInitialPageLoad } from "./utubs/deck.js";
 import { setCreateUTubEventListeners } from "./utubs/create.js";
-import { getUTubInfo, buildSelectedUTub } from "./utubs/selectors.js";
+import {
+  getUTubInfo,
+  buildSelectedUTub,
+  shouldKeepSettings,
+} from "./utubs/selectors.js";
+import { getState } from "../store/app-store.js";
 import {
   isValidUTubID,
   isUtubIdValidOnPageLoad,
@@ -268,11 +273,18 @@ function handlePopState(event: PopStateEvent): void {
       return;
     }
 
+    const capturedSettingsVersion = getState().settingsVersion;
     getUTubInfo(state.UTubID).then(
       (selectedUTub) => {
         if (generation !== _popstateGeneration) return;
         if (selectedUTub) {
-          buildSelectedUTub(selectedUTub);
+          buildSelectedUTub({
+            selectedUTub,
+            keepSettings: shouldKeepSettings({
+              selectedUTub,
+              capturedSettingsVersion,
+            }),
+          });
           if (($(window).width() ?? 0) < TABLET_WIDTH) {
             setCurrentMobilePanel({ mobilePanel: "urls" });
             openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV });
@@ -313,12 +325,19 @@ function handlePopState(event: PopStateEvent): void {
     }
 
     const mobilePanel = state.mobilePanel;
+    const capturedSettingsVersion = getState().settingsVersion;
     getUTubInfo(state.UTubID).then(
       (selectedUTub) => {
         // Gate the entire callback: a stale/superseded popstate must not apply.
         if (generation !== _popstateGeneration) return;
         if (selectedUTub) {
-          buildSelectedUTub(selectedUTub);
+          buildSelectedUTub({
+            selectedUTub,
+            keepSettings: shouldKeepSettings({
+              selectedUTub,
+              capturedSettingsVersion,
+            }),
+          });
           // Route to the recorded panel only on mobile — desktop shows all panels.
           if (($(window).width() ?? 0) < TABLET_WIDTH) {
             applyMobilePanelUI({ mobilePanel });
@@ -372,13 +391,20 @@ function handlePopState(event: PopStateEvent): void {
     }
 
     // State will contain property UTub if URL contains query parameter UTubID
+    const capturedSettingsVersion = getState().settingsVersion;
     getUTubInfo(state.UTubID).then(
       (selectedUTub) => {
         // Same stale-result guard as the mobilePanel branch above — this
         // pre-existing branch shares the identical async race.
         if (generation !== _popstateGeneration) return;
         if (selectedUTub) {
-          buildSelectedUTub(selectedUTub);
+          buildSelectedUTub({
+            selectedUTub,
+            keepSettings: shouldKeepSettings({
+              selectedUTub,
+              capturedSettingsVersion,
+            }),
+          });
           // If mobile, go straight to URL deck
           if (($(window).width() ?? 0) < TABLET_WIDTH) {
             setMobileUIWhenUTubSelectedOrURLNavSelected();
@@ -418,10 +444,17 @@ function handlePageShow(): void {
     // also carries mobilePanel:"urls", so ignoring tagSheetOpen (the sheet does
     // not auto-reopen on reload) lands on the underlying url-deck automatically.
     const warmPanel = toValidMobilePanel(history.state.mobilePanel);
+    const capturedSettingsVersion = getState().settingsVersion;
     getUTubInfo(history.state.UTubID).then(
       (selectedUTub) => {
         if (!selectedUTub) return;
-        buildSelectedUTub(selectedUTub);
+        buildSelectedUTub({
+          selectedUTub,
+          keepSettings: shouldKeepSettings({
+            selectedUTub,
+            capturedSettingsVersion,
+          }),
+        });
         routeMobilePanelOnPageShow({ mobilePanel: warmPanel });
         return;
       },
@@ -541,10 +574,17 @@ function handlePageShow(): void {
     return;
   }
 
+  const capturedSettingsVersion = getState().settingsVersion;
   getUTubInfo(parseInt(utubId)).then(
     (selectedUTub) => {
       if (!selectedUTub) return;
-      buildSelectedUTub(selectedUTub);
+      buildSelectedUTub({
+        selectedUTub,
+        keepSettings: shouldKeepSettings({
+          selectedUTub,
+          capturedSettingsVersion,
+        }),
+      });
       // Route to the recorded panel on mobile after the UTub is built.
       routeMobilePanelOnPageShow({ mobilePanel: validatedPanel });
     },

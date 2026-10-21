@@ -3,7 +3,7 @@ import type { UtubDetail } from "../../../types/utub.js";
 import { fetchUTubForRefresh, selectUTub } from "../selectors.js";
 import { showUTubLoadingIconAndSetTimeout } from "../deck.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { getState, resetStore } from "../../../store/app-store.js";
+import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 
@@ -121,6 +121,38 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
     });
     expect(utubSelectedEmits()).toHaveLength(1);
     expect(utubSelectedEmits()[0][1]).toMatchObject({ utubID: 1 });
+  });
+
+  it("keeps settings saved during the fetch of a same-UTub rebuild", async () => {
+    const saved = { utubs: { saved: 1 }, members: {}, tags: {}, urls: {} };
+    setState({ activeUTubID: 1, settings: { ...saved, utubs: {} } as never });
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+    setState({ settings: saved as never, settingsVersion: 1 });
+
+    firstRequest.resolve(makeUtubDetail({ id: 1 }));
+
+    await vi.waitFor(() => {
+      expect(utubSelectedEmits()).toHaveLength(1);
+    });
+    expect(getState().settings).toEqual(saved);
+  });
+
+  it("takes the new UTub's settings on a different-UTub switch", async () => {
+    setState({ activeUTubID: 2, settings: { utubs: { old: 1 } } as never });
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+    setState({ settingsVersion: 1 });
+
+    firstRequest.resolve(makeUtubDetail({ id: 1 }));
+
+    await vi.waitFor(() => {
+      expect(utubSelectedEmits()).toHaveLength(1);
+    });
+    expect(getState().settings).toEqual({
+      utubs: {},
+      members: {},
+      tags: {},
+      urls: {},
+    });
   });
 
   it("populates the store's members before UTUB_SELECTED is emitted (cards never see an empty member list)", async () => {

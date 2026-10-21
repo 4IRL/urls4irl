@@ -14,6 +14,7 @@ import { emit, AppEvents } from "../../../lib/event-bus.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { isBackgroundRefreshActive } from "../background-refresh-flag.js";
 import type { UtubDetail } from "../../../types/utub.js";
+import { resolveUtubSettings } from "../../../types/settings.js";
 
 import {
   isMobile,
@@ -168,6 +169,8 @@ function seedStore(
       },
     ],
     selectedTagIDs: [],
+    settings: resolveUtubSettings(detail.settings),
+    settingsVersion: 0,
     ...overrides,
   };
 }
@@ -372,6 +375,72 @@ describe("updateUTubOnFindingStaleData", () => {
         expect($("#URLDeckHeader").text()).toBe("SENTINEL");
       },
     );
+  });
+
+  describe("settings slice", () => {
+    // Shipped per-panel schemas are empty, so a populated section is cast.
+    const populatedSettings = { utubs: { sample: 1 } } as never;
+
+    it("updates the slice for a settings-only difference despite the no-op short-circuit", async () => {
+      await refreshWith(ok(makeDetail({ settings: populatedSettings })));
+
+      expect(setState).toHaveBeenCalledWith({
+        settings: resolveUtubSettings(populatedSettings),
+      });
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("skips only the settings assignment when a save landed mid-flight", async () => {
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({
+        name: "Renamed",
+        settings: populatedSettings,
+      });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.settingsVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(setState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ settings: expect.anything() }),
+      );
+      expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(1);
+      expect(setState).toHaveBeenCalledWith(
+        expect.objectContaining({ activeUTubName: "Renamed" }),
+      );
+    });
+
+    it("leaves newer saved settings in place on the permission-fallback path", async () => {
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({
+        isCoCreator: true,
+        settings: populatedSettings,
+      });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.settingsVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(setState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ settings: expect.anything() }),
+      );
+      expect(buildSelectedUTub).toHaveBeenCalledWith({
+        selectedUTub: fresh,
+        keepSettings: true,
+      });
+    });
   });
 
   describe("no-op short-circuit", () => {
@@ -798,7 +867,10 @@ describe("updateUTubOnFindingStaleData", () => {
 
         await refreshWith(ok(payload));
 
-        expect(buildSelectedUTub).toHaveBeenCalledWith(payload);
+        expect(buildSelectedUTub).toHaveBeenCalledWith({
+          selectedUTub: payload,
+          keepSettings: true,
+        });
         expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
         expect(storeState.value.utubs).toEqual([
           expect.objectContaining({ id: UTUB_ID, isLocked: false }),
@@ -812,7 +884,10 @@ describe("updateUTubOnFindingStaleData", () => {
 
       await refreshWith(ok(payload));
 
-      expect(buildSelectedUTub).toHaveBeenCalledWith(payload);
+      expect(buildSelectedUTub).toHaveBeenCalledWith({
+        selectedUTub: payload,
+        keepSettings: true,
+      });
       expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
     });
 

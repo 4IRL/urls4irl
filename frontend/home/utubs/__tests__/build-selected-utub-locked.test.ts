@@ -1,6 +1,6 @@
 import type { UtubDetail } from "../../../types/utub.js";
 
-import { buildSelectedUTub } from "../selectors.js";
+import { buildSelectedUTub, shouldKeepSettings } from "../selectors.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -87,7 +87,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
   });
 
   it("marks the body locked, reveals the lock icon, and stores lock state for a locked UTub", () => {
-    buildSelectedUTub(makeUtubDetail({ isLocked: true }));
+    buildSelectedUTub({ selectedUTub: makeUtubDetail({ isLocked: true }) });
 
     expect(document.body.classList.contains("utub-locked")).toBe(true);
     expect($("#URLDeckLockIcon").hasClass("hidden")).toBe(false);
@@ -95,11 +95,78 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
   });
 
   it("clears the locked body class, hides the lock icon, and stores unlocked state for an unlocked UTub", () => {
-    buildSelectedUTub(makeUtubDetail({ isLocked: false }));
+    buildSelectedUTub({ selectedUTub: makeUtubDetail({ isLocked: false }) });
 
     expect(document.body.classList.contains("utub-locked")).toBe(false);
     expect($("#URLDeckLockIcon").hasClass("hidden")).toBe(true);
     expect(getState().isCurrentUTubLocked).toBe(false);
+  });
+
+  describe("settings slice", () => {
+    const populated = { utubs: { sample: 1 } } as never;
+    const emptyShape = { utubs: {}, members: {}, tags: {}, urls: {} };
+
+    it("sets settings from the payload and replaces the previous UTub's", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 1, settings: populated }),
+      });
+      expect(getState().settings).toEqual({
+        ...emptyShape,
+        utubs: { sample: 1 },
+      });
+
+      buildSelectedUTub({ selectedUTub: makeUtubDetail({ id: 2 }) });
+      expect(getState().settings).toEqual(emptyShape);
+    });
+
+    it("stores the empty resolved shape (not the previous value) for a payload without settings", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 1, settings: populated }),
+      });
+      buildSelectedUTub({ selectedUTub: makeUtubDetail({ id: 1 }) });
+
+      expect(getState().settings).toEqual(emptyShape);
+    });
+
+    it("keepSettings preserves the stored settings", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 1, settings: populated }),
+      });
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 1 }),
+        keepSettings: true,
+      });
+
+      expect(getState().settings).toEqual({
+        ...emptyShape,
+        utubs: { sample: 1 },
+      });
+    });
+
+    it("shouldKeepSettings truth table", () => {
+      setState({ activeUTubID: 1, settingsVersion: 3 });
+      const sameID = makeUtubDetail({ id: 1 });
+      const otherID = makeUtubDetail({ id: 9 });
+
+      expect(
+        shouldKeepSettings({
+          selectedUTub: sameID,
+          capturedSettingsVersion: 2,
+        }),
+      ).toBe(true);
+      expect(
+        shouldKeepSettings({
+          selectedUTub: sameID,
+          capturedSettingsVersion: 3,
+        }),
+      ).toBe(false);
+      expect(
+        shouldKeepSettings({
+          selectedUTub: otherID,
+          capturedSettingsVersion: 2,
+        }),
+      ).toBe(false);
+    });
   });
 
   describe("multi-select store clear (UTub switch, defense-in-depth)", () => {
@@ -112,7 +179,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       setState({ multiSelectMode: true, selectedURLCardIDs: [1, 2] });
       expect(getState().multiSelectMode).toBe(true);
 
-      buildSelectedUTub(makeUtubDetail({ id: 55 }));
+      buildSelectedUTub({ selectedUTub: makeUtubDetail({ id: 55 }) });
 
       expect(getState().multiSelectMode).toBe(false);
       expect(getState().selectedURLCardIDs).toEqual([]);
@@ -121,8 +188,8 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
 
   describe("co-creator signal and member roles are threaded into the store", () => {
     it("writes isCoCreator from the response and preserves each member's memberRole", () => {
-      buildSelectedUTub(
-        makeUtubDetail({
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
           id: 61,
           isCoCreator: true,
           members: [
@@ -131,7 +198,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
             { id: 4, username: "regular", memberRole: "member" },
           ],
         }),
-      );
+      });
 
       expect(getState().isCoCreator).toBe(true);
       expect(getState().members.map((member) => member.memberRole)).toEqual([
@@ -142,7 +209,9 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
     });
 
     it("keeps isCoCreator false when the response is not co-creator", () => {
-      buildSelectedUTub(makeUtubDetail({ id: 62, isCoCreator: false }));
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 62, isCoCreator: false }),
+      });
 
       expect(getState().isCoCreator).toBe(false);
     });
@@ -153,7 +222,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       mockIsMobile.mockReturnValue(true);
       const pushStateSpy = vi.spyOn(window.history, "pushState");
 
-      buildSelectedUTub(makeUtubDetail({ id: 77 }));
+      buildSelectedUTub({ selectedUTub: makeUtubDetail({ id: 77 }) });
 
       // The bare-{UTubID} push shape is unchanged (shared with desktop).
       expect(pushStateSpy).toHaveBeenCalledTimes(1);
@@ -180,7 +249,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       mockIsMobile.mockReturnValue(false);
       const pushStateSpy = vi.spyOn(window.history, "pushState");
 
-      buildSelectedUTub(makeUtubDetail({ id: 88 }));
+      buildSelectedUTub({ selectedUTub: makeUtubDetail({ id: 88 }) });
 
       expect(pushStateSpy).toHaveBeenCalledTimes(1);
       expect(pushStateSpy).toHaveBeenCalledWith(

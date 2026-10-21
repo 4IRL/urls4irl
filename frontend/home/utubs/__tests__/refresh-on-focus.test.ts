@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   isURLDeleteToastShowing: vi.fn(() => false),
   isBulkCopySubmitInFlight: vi.fn(() => false),
   isCrossUtubSearchActive: vi.fn(() => false),
+  isPanelSettingsBusy: vi.fn(() => false),
   log: vi.fn(),
   storeState: {
     activeUTubID: 7 as number | null,
@@ -81,6 +82,9 @@ vi.mock("../../urls/bulk-actions/bulk-copy.js", () => ({
 }));
 vi.mock("../../search/cross-utub-search.js", () => ({
   isCrossUtubSearchActive: mocks.isCrossUtubSearchActive,
+}));
+vi.mock("../../panel-settings/state.js", () => ({
+  isPanelSettingsBusy: mocks.isPanelSettingsBusy,
 }));
 
 import { AppEvents, emit } from "../../../lib/event-bus.js";
@@ -175,6 +179,7 @@ function clearBusySignals(): void {
   mocks.isURLDeleteToastShowing.mockReturnValue(false);
   mocks.isBulkCopySubmitInFlight.mockReturnValue(false);
   mocks.isCrossUtubSearchActive.mockReturnValue(false);
+  mocks.isPanelSettingsBusy.mockReturnValue(false);
   mocks.storeState.multiSelectMode = false;
 }
 
@@ -500,6 +505,10 @@ describe("isUserBusyOnHome", () => {
     [
       "a cross-UTub search",
       () => mocks.isCrossUtubSearchActive.mockReturnValue(true),
+    ],
+    [
+      "an open or saving panel settings popover",
+      () => mocks.isPanelSettingsBusy.mockReturnValue(true),
     ],
   ];
 
