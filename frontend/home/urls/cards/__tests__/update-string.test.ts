@@ -426,6 +426,8 @@ describe("updateURLSuccess - revive on edit", () => {
         canDelete: true,
         addedAt: "2026-01-02T03:04:05",
         addedByUserID: 3,
+        shortLinkExpiresAt: null,
+        canRevokeShortLink: false,
       },
       utubID: UTUB_ID,
       appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],
@@ -494,6 +496,8 @@ describe("updateURLSuccess - revive on edit", () => {
       const newUrl = vi.mocked(insertURLCardIntoDeck).mock.calls[0][0].newUrl;
       expect(newUrl.addedByUserID).toBe(credited);
       expect(newUrl.canDelete).toBe(true);
+      expect(newUrl.shortLinkExpiresAt).toBeNull();
+      expect(newUrl.canRevokeShortLink).toBe(false);
       expect(updateUTubOnFindingStaleData).not.toHaveBeenCalled();
     },
   );
@@ -576,6 +580,8 @@ describe("updateURLSuccess - revive on edit", () => {
         canDelete: true,
         addedAt: expect.any(String),
         addedByUserID: 3,
+        shortLinkExpiresAt: null,
+        canRevokeShortLink: false,
       },
       utubID: UTUB_ID,
       appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],

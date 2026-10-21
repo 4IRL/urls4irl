@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, field_serializer
 
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagOnAddDeleteSchema, UtubTagSchema
-from backend.urls.permissions import can_act_as_url_adder
+from backend.urls.permissions import can_act_as_url_adder, can_revoke_short_link
 from backend.utils.strings.model_strs import ADDED_BY, MODELS, TAG_COUNTS_MODIFIED
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
 
@@ -39,6 +39,16 @@ class UtubUrlSchema(BaseSchema):
         description="User ID of the member who added this URL to the UTub "
         "(resolved to a username on the frontend via the UTub member list)",
     )
+    short_link_expires_at: datetime | None = Field(
+        alias=MODELS.SHORT_LINK_EXPIRES_AT,
+        description="Expiry of the URL's active share short link; null when there is "
+        "no link or it has expired",
+    )
+    can_revoke_short_link: bool = Field(
+        alias=MODELS.CAN_REVOKE_SHORT_LINK,
+        description="Whether the current user can revoke the URL's active share short "
+        "link; false when there is no active link",
+    )
 
     @classmethod
     def from_orm_url(
@@ -48,7 +58,26 @@ class UtubUrlSchema(BaseSchema):
         viewer_is_manager: bool,
         member_ids: AbstractSet[int],
     ) -> UtubUrlSchema:
+        short_link = utub_url.short_link
+        active_short_link = (
+            short_link
+            if short_link is not None and not short_link.is_expired()
+            else None
+        )
         return cls(
+            short_link_expires_at=(
+                active_short_link.expires_at if active_short_link else None
+            ),
+            can_revoke_short_link=(
+                active_short_link is not None
+                and can_revoke_short_link(
+                    adder_id=utub_url.user_id,
+                    minter_id=active_short_link.created_by,
+                    user_id=current_user_id,
+                    is_manager=viewer_is_manager,
+                    member_ids=member_ids,
+                )
+            ),
             utub_url_id=utub_url.id,
             url_string=utub_url.standalone_url.url_string,
             utub_url_tag_ids=utub_url.associated_tag_ids,
@@ -66,6 +95,10 @@ class UtubUrlSchema(BaseSchema):
     @field_serializer("added_at")
     def serialize_added_at(self, value: datetime) -> str:
         return value.isoformat()
+
+    @field_serializer("short_link_expires_at")
+    def serialize_short_link_expires_at(self, value: datetime | None) -> str | None:
+        return value.isoformat() if value is not None else None
 
 
 class UtubUrlDetailSchema(BaseSchema):

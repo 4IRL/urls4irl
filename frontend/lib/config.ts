@@ -72,6 +72,8 @@ export interface AppRoutes {
   restoreURL: (utubId: number, urlId: number) => string;
   restoreURLs: (utubId: number) => string;
   purgeURL: (utubId: number, urlId: number) => string;
+  mintShortLink: (utubId: number, urlId: number) => string;
+  revokeShortLink: (utubId: number, urlId: number) => string;
   createURLTag: (utubId: number, urlId: number) => string;
   createURLTagsBatch: (utubId: number, urlId: number) => string;
   deleteUTubTag: (utubId: number, tagId: number) => string;
@@ -220,6 +222,14 @@ export const APP_CONFIG: AppConfig = Object.freeze({
         .replace("-2", String(urlId)),
     purgeURL: (utubId: number, urlId: number) =>
       rawConfig.routes.purgeURL
+        .replace("-1", String(utubId))
+        .replace("-2", String(urlId)),
+    mintShortLink: (utubId: number, urlId: number) =>
+      rawConfig.routes.mintShortLink
+        .replace("-1", String(utubId))
+        .replace("-2", String(urlId)),
+    revokeShortLink: (utubId: number, urlId: number) =>
+      rawConfig.routes.revokeShortLink
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
 

@@ -1,6 +1,8 @@
 # Strings for standardizing the model serialization
 ADDED_BY = "addedByUserID"
 CAN_DELETE = "canDelete"
+CAN_REVOKE_SHORT_LINK = "canRevokeShortLink"
+SHORT_LINK_EXPIRES_AT = "shortLinkExpiresAt"
 CREATED_BY = "createdByUserID"
 CREATED_AT = "createdAt"
 DESCRIPTION = "description"
@@ -86,6 +88,9 @@ PURGED_UTUB_IDS = "purgedUtubIDs"
 TOTAL_PURGED = "totalPurged"
 TOTAL_SKIPPED_LOCKED = "totalSkippedLocked"
 SCOPE = "scope"
+SHORT_URL = "shortUrl"
+CAN_REVOKE = "canRevoke"
+CREATED = "created"
 
 
 class MODELS:
@@ -122,6 +127,8 @@ class MODELS:
     IS_CO_CREATOR = IS_CO_CREATOR
     IS_LOCKED = IS_LOCKED
     CAN_DELETE = CAN_DELETE
+    CAN_REVOKE_SHORT_LINK = CAN_REVOKE_SHORT_LINK
+    SHORT_LINK_EXPIRES_AT = SHORT_LINK_EXPIRES_AT
     UTUB_URL_ID = UTUB_URL_ID
     CURRENT_USER = CURRENT_USER
     SETTINGS = SETTINGS
@@ -174,3 +181,6 @@ class MODELS:
     TOTAL_PURGED = TOTAL_PURGED
     TOTAL_SKIPPED_LOCKED = TOTAL_SKIPPED_LOCKED
     SCOPE = SCOPE
+    SHORT_URL = SHORT_URL
+    CAN_REVOKE = CAN_REVOKE
+    CREATED = CREATED

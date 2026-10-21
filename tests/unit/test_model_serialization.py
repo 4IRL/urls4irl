@@ -131,6 +131,8 @@ def test_url_serialization_without_tags():
             **v_url,
             "addedAt": new_utub_url.added_at.isoformat(),
             MODEL_STRS.ADDED_BY: new_utub_url.user_id,
+            MODEL_STRS.SHORT_LINK_EXPIRES_AT: None,
+            MODEL_STRS.CAN_REVOKE_SHORT_LINK: False,
         }
         valid_url_for_json = json.dumps(expected_url)
 
@@ -223,6 +225,8 @@ def test_url_serialization_with_tags(
                 **verified_url,
                 "addedAt": url_with_tags.added_at.isoformat(),
                 MODEL_STRS.ADDED_BY: url_with_tags.user_id,
+                MODEL_STRS.SHORT_LINK_EXPIRES_AT: None,
+                MODEL_STRS.CAN_REVOKE_SHORT_LINK: False,
             }
 
             assert json.dumps(expected_url) == json.dumps(
@@ -683,6 +687,13 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
                     utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.ADDED_BY]
                 )
 
+            # No fixture URL has a short link: both link fields trail addedByUserID.
+            for idx in range(len(test_utub[MODEL_STRS.URLS])):
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.SHORT_LINK_EXPIRES_AT] = None
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_REVOKE_SHORT_LINK] = (
+                    False
+                )
+
             # Match creator elements
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
@@ -819,6 +830,13 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             for idx in range(len(test_utub[MODEL_STRS.URLS])):
                 test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.ADDED_BY] = (
                     utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.ADDED_BY]
+                )
+
+            # No fixture URL has a short link: both link fields trail addedByUserID.
+            for idx in range(len(test_utub[MODEL_STRS.URLS])):
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.SHORT_LINK_EXPIRES_AT] = None
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_REVOKE_SHORT_LINK] = (
+                    False
                 )
 
             # Set deletion for UTub based on equality

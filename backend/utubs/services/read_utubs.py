@@ -1,4 +1,5 @@
 from flask_login import current_user
+from sqlalchemy.orm import selectinload
 
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
@@ -28,15 +29,28 @@ def _record_utub_opened_by(*, utub_id: int, user_id: int) -> None:
 def _build_utub_detail_for_user(current_utub: Utubs) -> UtubDetailSchema:
     # DD-36: order the returned URL list server-side by the viewing user's saved
     # ``default_sort`` preference (defaulting to NEWEST when no UserPreferences
-    # row exists). ``utub_urls`` is a fully-materializing list relationship
-    # already loaded into memory, so the in-memory list is sorted rather than
-    # issuing a second parallel query. Both GET /utubs/<id> and its api_v1 mirror
-    # share this service, so ordering here covers both surfaces.
+    # row exists). The live rows are fetched in one explicit query with the
+    # per-URL relationships the serializer reads (standalone URL, tag links and
+    # share link) eager-loaded via ``selectinload``, so the statement count does not
+    # grow with the number of URLs; the in-memory list is then sorted. Both
+    # GET /utubs/<id> and its api_v1 mirror share this service, so ordering here
+    # covers both surfaces.
     default_sort = resolve_preferences(current_user.preferences).default_sort
-    # Trashed URLs stay in the relationship; drop them before sorting and serializing.
-    live_utub_urls: list[Utub_Urls] = [
-        utub_url for utub_url in current_utub.utub_urls if not utub_url.is_trashed
-    ]
+    # ``populate_existing`` refreshes rows the route guard already identity-mapped, so
+    # the eager loads apply to them too. Trashed URLs are filtered out in SQL.
+    live_utub_urls: list[Utub_Urls] = (
+        Utub_Urls.query.populate_existing()
+        .options(
+            selectinload(Utub_Urls.standalone_url),
+            selectinload(Utub_Urls.url_tags),
+            selectinload(Utub_Urls.short_link),
+        )
+        .filter(
+            Utub_Urls.utub_id == current_utub.id,
+            Utub_Urls.deleted_at.is_(None),
+        )
+        .all()
+    )
     if default_sort == SortOrder.TITLE_AZ:
         # ``url_title`` is DB-nullable (Python default ``""`` only), so coalesce
         # to ``""`` before ``.lower()`` — a NULL title can never raise here.

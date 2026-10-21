@@ -424,6 +424,13 @@ describe("createURL - client-side validation", () => {
       expect(vi.mocked(createURLBlock).mock.calls[0][0].url).toEqual(
         expect.objectContaining({ addedByUserID: response.addedByUserID }),
       );
+      // A freshly created card never carries a short link.
+      expect(vi.mocked(createURLBlock).mock.calls[0][0].url).toEqual(
+        expect.objectContaining({
+          shortLinkExpiresAt: null,
+          canRevokeShortLink: false,
+        }),
+      );
 
       expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledTimes(
         1,
@@ -691,6 +698,17 @@ describe("createURL - client-side validation", () => {
         });
       },
     );
+
+    it("builds a revived card with no short link", () => {
+      addWith({ revivedFromTrash: true, lostTagCount: 0 });
+
+      expect(vi.mocked(createURLBlock).mock.calls[0][0].url).toEqual(
+        expect.objectContaining({
+          shortLinkExpiresAt: null,
+          canRevokeShortLink: false,
+        }),
+      );
+    });
 
     it("passes the lost tag names through to the revive banner", () => {
       addWith({
