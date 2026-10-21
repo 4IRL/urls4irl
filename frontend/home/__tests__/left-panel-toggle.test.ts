@@ -1,3 +1,4 @@
+import { AppEvents, on } from "../../lib/event-bus.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { LHS_COLLAPSE_SOURCE } from "../../types/metrics-dim-values.js";
 import {
@@ -242,6 +243,55 @@ describe("Left Panel Toggle", () => {
         event: UI_EVENTS.UI_LHS_COLLAPSE,
         source: LHS_COLLAPSE_SOURCE.URL_HEADER,
       });
+    });
+  });
+
+  describe("LEFT_PANEL_COLLAPSE_CHANGED emission", () => {
+    let received: boolean[];
+    let unsubscribe: () => void;
+
+    beforeEach(() => {
+      received = [];
+      unsubscribe = on(
+        AppEvents.LEFT_PANEL_COLLAPSE_CHANGED,
+        ({ collapsed }) => {
+          received.push(collapsed);
+        },
+      );
+    });
+
+    afterEach(() => {
+      unsubscribe();
+    });
+
+    it("emits when a manual collapse and expand change the resolved state", () => {
+      $("#lhsToggleSeam").trigger("click");
+      $("#lhsToggleSeam").trigger("click");
+
+      expect(received).toEqual([true, false]);
+    });
+
+    it("emits when search mode hides and restores the panel", () => {
+      setSearchModeActive({ active: true });
+      setSearchModeActive({ active: false });
+
+      expect(received).toEqual([true, false]);
+    });
+
+    it("emits only on a resolved-state change, not on every apply", () => {
+      setUserCollapsedLHS({
+        collapsed: true,
+        source: LHS_COLLAPSE_SOURCE.SEAM,
+      });
+      // Search mode on top of a manual collapse leaves the panel hidden.
+      setSearchModeActive({ active: true });
+      setSearchModeActive({ active: false });
+      setUserCollapsedLHS({
+        collapsed: true,
+        source: LHS_COLLAPSE_SOURCE.SEAM,
+      });
+
+      expect(received).toEqual([true]);
     });
   });
 });

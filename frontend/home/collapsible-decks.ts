@@ -1,5 +1,5 @@
 import { $ } from "../lib/globals.js";
-import { AppEvents, on } from "../lib/event-bus.js";
+import { AppEvents, emit as emitAppEvent, on } from "../lib/event-bus.js";
 import { emit } from "../lib/metrics-client.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { isMobile } from "./mobile.js";
@@ -61,6 +61,31 @@ const DECK_CONTENT_ID_BY_DECK: Readonly<Record<string, string>> = {
   [MEMBER_DECK_CSS_SELECTOR]: "MemberDeckContent",
   [UTUB_TAG_DECK_CSS_SELECTOR]: "TagDeckContent",
 };
+
+const DECK_ID_BY_DECK: Readonly<Record<string, "utubs" | "members" | "tags">> =
+  {
+    [UTUB_DECK_CSS_SELECTOR]: "utubs",
+    [MEMBER_DECK_CSS_SELECTOR]: "members",
+    [UTUB_TAG_DECK_CSS_SELECTOR]: "tags",
+  };
+
+/**
+ * Tell the bus a deck's `collapsed` class was added or removed. EVERY site that
+ * toggles the class calls this (the panel settings popover closes on its own
+ * deck's collapse).
+ */
+function emitDeckCollapseChanged({
+  deckSelector,
+  collapsed,
+}: {
+  deckSelector: string;
+  collapsed: boolean;
+}): void {
+  emitAppEvent(AppEvents.DECK_COLLAPSE_CHANGED, {
+    deck: DECK_ID_BY_DECK[deckSelector],
+    collapsed,
+  });
+}
 
 /**
  * Initialize collapsible deck functionality
@@ -249,6 +274,10 @@ export function resetAllDecksIfCollapsed(): void {
   if (caretUTubDeck.hasClass("closed")) {
     caretUTubDeck.removeClass("closed");
     $(UTUB_DECK_CSS_SELECTOR).removeClass("collapsed");
+    emitDeckCollapseChanged({
+      deckSelector: UTUB_DECK_CSS_SELECTOR,
+      collapsed: false,
+    });
     setDeckHeaderExpanded({
       headerSelector: UTUB_DECK_HEADER_SELECTOR,
       expanded: true,
@@ -259,6 +288,10 @@ export function resetAllDecksIfCollapsed(): void {
   if (caretMemberDeck.hasClass("closed")) {
     caretMemberDeck.removeClass("closed");
     $(MEMBER_DECK_CSS_SELECTOR).removeClass("collapsed");
+    emitDeckCollapseChanged({
+      deckSelector: MEMBER_DECK_CSS_SELECTOR,
+      collapsed: false,
+    });
     setDeckHeaderExpanded({
       headerSelector: MEMBER_DECK_HEADER_SELECTOR,
       expanded: true,
@@ -272,6 +305,10 @@ export function resetAllDecksIfCollapsed(): void {
   if (caretTagDeck.hasClass("closed")) {
     caretTagDeck.removeClass("closed");
     $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("collapsed");
+    emitDeckCollapseChanged({
+      deckSelector: UTUB_TAG_DECK_CSS_SELECTOR,
+      collapsed: false,
+    });
     setDeckHeaderExpanded({
       headerSelector: UTUB_TAG_DECK_HEADER_SELECTOR,
       expanded: true,
@@ -312,6 +349,10 @@ function setupUTubHeaderForMaximizeMinimize() {
         expanded: true,
       });
       clearLastCollapsed(UTUB_DECK_CSS_SELECTOR);
+      emitDeckCollapseChanged({
+        deckSelector: UTUB_DECK_CSS_SELECTOR,
+        collapsed: false,
+      });
       // Same as the Member/Tag expand branches below: #utubBtnCreate sits in
       // this deck's .button-container, so a nudge anchored to it was skipped
       // while collapsed. Deferred one tick so the class removal has settled.
@@ -322,6 +363,10 @@ function setupUTubHeaderForMaximizeMinimize() {
     const numDecksAlreadyCollapsed = getNumDecksAlreadyCollapsed();
     caret.addClass("closed");
     $(UTUB_DECK_CSS_SELECTOR).addClass("collapsed");
+    emitDeckCollapseChanged({
+      deckSelector: UTUB_DECK_CSS_SELECTOR,
+      collapsed: true,
+    });
     setDeckHeaderExpanded({
       headerSelector: UTUB_DECK_HEADER_SELECTOR,
       expanded: false,
@@ -375,6 +420,10 @@ function setupMemberHeaderForMaximizeMinimize() {
         minimized: false,
       });
       clearLastCollapsed(MEMBER_DECK_CSS_SELECTOR);
+      emitDeckCollapseChanged({
+        deckSelector: MEMBER_DECK_CSS_SELECTOR,
+        collapsed: false,
+      });
       // A nudge whose anchor sat inside this deck was skipped while collapsed
       // (visibility:hidden). Re-evaluate now the deck is open — deferred one
       // tick so the class removal is committed and the deck's style/layout has
@@ -388,6 +437,10 @@ function setupMemberHeaderForMaximizeMinimize() {
     const numDecksAlreadyCollapsed = getNumDecksAlreadyCollapsed();
     caret.addClass("closed");
     $(MEMBER_DECK_CSS_SELECTOR).addClass("collapsed");
+    emitDeckCollapseChanged({
+      deckSelector: MEMBER_DECK_CSS_SELECTOR,
+      collapsed: true,
+    });
     setDeckHeaderExpanded({
       headerSelector: MEMBER_DECK_HEADER_SELECTOR,
       expanded: false,
@@ -447,6 +500,10 @@ function setupTagHeaderForMaximizeMinimize() {
       }
       persistDeckMinimized({ deck: PERSISTABLE_DECK.TAGS, minimized: false });
       clearLastCollapsed(UTUB_TAG_DECK_CSS_SELECTOR);
+      emitDeckCollapseChanged({
+        deckSelector: UTUB_TAG_DECK_CSS_SELECTOR,
+        collapsed: false,
+      });
       // See the Member-deck expand branch above: deferred one tick so the class
       // removal is committed and the deck has settled before re-evaluating.
       setTimeout(() => maybeShowNextTip(), 0);
@@ -456,6 +513,10 @@ function setupTagHeaderForMaximizeMinimize() {
     const numDecksAlreadyCollapsed = getNumDecksAlreadyCollapsed();
     caret.addClass("closed");
     $(UTUB_TAG_DECK_CSS_SELECTOR).addClass("collapsed");
+    emitDeckCollapseChanged({
+      deckSelector: UTUB_TAG_DECK_CSS_SELECTOR,
+      collapsed: true,
+    });
     setDeckHeaderExpanded({
       headerSelector: UTUB_TAG_DECK_HEADER_SELECTOR,
       expanded: false,
@@ -562,6 +623,10 @@ function ensureOnlyTwoDecksCollapsedAtOnce(): void {
   const deckToExpand = $(deckToExpandSelector);
   deckToExpand.find(".title-caret").first().removeClass("closed");
   deckToExpand.removeClass("collapsed");
+  emitDeckCollapseChanged({
+    deckSelector: deckToExpandSelector,
+    collapsed: false,
+  });
   setDeckHeaderExpanded({
     headerSelector: DECK_HEADER_SELECTOR_BY_DECK[deckToExpandSelector],
     expanded: true,
@@ -630,6 +695,7 @@ function setDeckMinimized({
 }): void {
   const deck = $(deckSelector);
   const headerSelector = DECK_HEADER_SELECTOR_BY_DECK[deckSelector];
+  const wasCollapsed = deck.hasClass("collapsed");
   // Toggle WITHOUT animation: an animating expand briefly slides member/tag rows
   // over the header buttons, intercepting clicks (and it is jarring on every UTub
   // switch). .deck-snap suppresses the transition; the forced reflow commits the
@@ -642,6 +708,9 @@ function setDeckMinimized({
   const deckElement = deck.get(0);
   if (deckElement) void deckElement.offsetHeight;
   deck.removeClass("deck-snap");
+  if (wasCollapsed !== minimized) {
+    emitDeckCollapseChanged({ deckSelector, collapsed: minimized });
+  }
   if (minimized) {
     // Mirror the click-collapse path (:394 / :461), which strips this class so
     // a collapsed header band carries no expanded-state padding. Nothing

@@ -522,6 +522,26 @@ describe("cross-utub-search — mode mechanics", () => {
     });
   });
 
+  it("(e2) ESC does not close the mode while the panel settings popover is open", async () => {
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
+    const { setPanelSettingsOpen } =
+      await import("../../panel-settings/state.js");
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    setPanelSettingsOpen({ open: true });
+    try {
+      $(document).trigger($.Event("keydown.crossSearchEsc", { key: "Escape" }));
+    } finally {
+      setPanelSettingsOpen({ open: false });
+    }
+
+    expect($("#crossUtubSearchMode").hasClass("cross-search-visible")).toBe(
+      true,
+    );
+  });
+
   it("(f) the navbar trigger morphs to its close glyph on open and back on close", async () => {
     const { initCrossUtubSearch, enterCrossUtubSearchMode } =
       await import("../cross-utub-search.js");
