@@ -73,13 +73,20 @@ def _assert_live_region_idle(page: Page) -> None:
 
 def _unhide_gears(page: Page) -> None:
     """DOM-only: strip the `hidden` class the shell has not removed (no section
-    registered yet), so the CSS hide rules can be asserted on their own."""
+    registered yet), so the CSS hide rules can be asserted on their own.
+
+    Waits two animation frames first: the breakpoint `matchMedia` change handler
+    (which re-applies `hidden`) fires in the rendering update after a viewport
+    resize, so unhiding before it runs would be undone."""
     page.evaluate(
-        """(gearSelector) => {
-            document.querySelectorAll(gearSelector).forEach((gear) => {
-                gear.classList.remove('hidden');
-            });
-        }""",
+        """(gearSelector) => new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                document.querySelectorAll(gearSelector).forEach((gear) => {
+                    gear.classList.remove('hidden');
+                });
+                resolve();
+            }));
+        })""",
         HPL.PANEL_SETTINGS_GEARS,
     )
 
