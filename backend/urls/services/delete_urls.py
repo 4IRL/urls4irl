@@ -19,6 +19,9 @@ from backend.schemas.urls import (
     UrlDeleteSkippedSchema,
     UtubUrlDeleteSchema,
 )
+from backend.short_links.services.kill_short_links import (
+    delete_short_links_for_utub_urls,
+)
 from backend.urls.constants import BulkDeleteSkipReason, URLErrorCodes
 from backend.urls.permissions import can_act_as_url_adder
 from backend.urls.services.trashed_url_tags import (
@@ -28,7 +31,7 @@ from backend.urls.services.trashed_url_tags import (
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import lock_live_utub_or_abort, reject_if_utub_locked
 
 
 def delete_url_in_utub(
@@ -54,11 +57,30 @@ def delete_url_in_utub(
         - int: HTTP status code 200 (Success); the request aborts with 404 if the row
           was trashed concurrently
     """
+    # Utubs lock first (same order as the short-link mint), then the lock-state check
+    # on the refreshed row.
+    lock_live_utub_or_abort(utub_id=current_utub.id)
     utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
         current_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
     )
     if utub_locked_error is not None:
+        db.session.rollback()
         return utub_locked_error
+
+    # Re-read under the lock: an edit or tag change may have committed while queued,
+    # and a purge may have hard-deleted the row.
+    locked_utub_url: Utub_Urls | None = (
+        Utub_Urls.query.populate_existing()
+        .filter(
+            Utub_Urls.id == current_utub_url.id,
+            Utub_Urls.utub_id == current_utub.id,
+        )
+        .one_or_none()
+    )
+    if locked_utub_url is None:
+        db.session.rollback()
+        abort(404)
+    current_utub_url = locked_utub_url
 
     # Capture serialized data and the tag snapshot BEFORE the row is flagged
     url_id_to_remove = current_utub_url.standalone_url.id
@@ -111,7 +133,10 @@ def trash_live_utub_url(
     """
     Soft-deletes (trashes) one live Utub_Urls row on behalf of the current user, with a
     conditional ``UPDATE ... WHERE deleted_at IS NULL`` so a concurrent trash is never
-    overwritten. Does not flush, commit or roll back; the caller owns the transaction.
+    overwritten, then hard-deletes the row's ``ShortLinks`` row (after the UPDATE, so
+    its row lock is held). The caller must already hold the ``Utubs`` row lock
+    (``lock_live_utub_or_abort``) so the lock order matches the mint. Does not commit
+    or roll back; the caller owns the transaction.
 
     Args:
         utub_id (int): The UTub the row must belong to.
@@ -141,6 +166,10 @@ def trash_live_utub_url(
             synchronize_session=False,
         )
     )
+    if rows_trashed > 0:
+        # After the UPDATE above, whose row lock serializes against a concurrent mint:
+        # a trashed URL keeps no share link (a restore never brings one back).
+        delete_short_links_for_utub_urls(utub_url_ids=[utub_url_id])
     return rows_trashed > 0
 
 
@@ -240,10 +269,14 @@ def delete_urls_in_utub(
             (including the all-skipped no-op case), or 400 (one or more ids are not URLs
             in this UTub), or 403 (the UTub is locked).
     """
+    # Utubs lock first (same order as the short-link mint), then the lock-state check
+    # on the refreshed row.
+    lock_live_utub_or_abort(utub_id=utub.id)
     utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
         utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
     )
     if utub_locked_error is not None:
+        db.session.rollback()
         return utub_locked_error
 
     # Defensively de-dup ids (order-preserving), mirroring the request schema's own
@@ -329,6 +362,11 @@ def delete_urls_in_utub(
             # Flush the pending flags so the grouped recompute counts live-only
             # state, then recompute affected tag counts ONCE.
             db.session.flush()
+            # After the flush: the trash UPDATEs hold the row locks that serialize
+            # against a concurrent mint. Trashed URLs keep no share link.
+            delete_short_links_for_utub_urls(
+                utub_url_ids=[row.id for row in deletable_rows]
+            )
             tag_counts = recompute_tag_counts_after_delete(
                 utub_id=utub.id, affected_utub_tag_ids=affected_utub_tag_ids
             )
