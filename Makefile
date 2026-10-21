@@ -461,10 +461,10 @@ test-file-parallel: _capacity-fresh _require-n-fits _hub-capacity $(UI_PATH_STAR
 test-file-parallel-built: _capacity-fresh _require-n-fits _hub-capacity start-built ## Run pytest against a specific file or path in parallel against built assets (queues on the host token budget; shrinks to fit live memory unless n= is given): make test-file-parallel-built f=<path> [n=derived: see make capacity] [args=<extra-pytest-args>]
 	$(call BUDGETED,$(N_PATH),$@,$(MIN_TOKENS)) $(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n @TOKENS@ --dist=loadscope -v $(args)"
 
-vite-build: ## Build Vite to verify no import/syntax errors (one-off vite container)
+vite-build: _capacity-fresh ## Build Vite to verify no import/syntax errors (one-off vite container)
 	$(RUN_VITE) pnpm exec vite build
 
-vite-build-built: ## Rebuild Vite assets in the built stack (one-off vite build container; used when up-built is running and the long-lived dev vite service is absent)
+vite-build-built: _capacity-fresh ## Rebuild Vite assets in the built stack (one-off vite build container; used when up-built is running and the long-lived dev vite service is absent)
 	$(COMPOSE_BUILT) run --rm --no-deps vite pnpm exec vite build
 
 lint: lint-python lint-frontend lint-shell lockfile-check lint-actions audit-pins ## Run all linters (same command CI and pre-commit run)
@@ -505,7 +505,7 @@ typecheck: _require-tools ## Run TypeScript typecheck (app + test + node-side ts
 	$(MISE) $(FRONTEND_BIN)/tsc --noEmit --project frontend/tsconfig.test.json
 	$(MISE) $(FRONTEND_BIN)/tsc --noEmit --project frontend/tsconfig.node.json
 
-generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
+generate-types: _capacity-fresh ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
 	$(EXEC_WEB_AS_HOST) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
 	$(RUN_VITE) pnpm exec openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-dim-types --output /code/u4i/frontend/types/metrics-dimensions.d.ts"
@@ -614,7 +614,8 @@ wt_sq = $(subst ','\'',$(1))
 
 # worktree-new logic lives in scripts/worktree.sh (shellcheck/shfmt-linted, stub-tested). `from` is deliberately not `base`:
 # `base ?= origin/main` above is the affected-markers knob and is never empty, so an omitted ref could not be told from
-# an explicit one. An empty b / from means "default" to the script. It creates the worktree and links .env/secrets; it never
+# an explicit one. An empty b / from means "default" to the script. It creates the worktree, links .env/secrets and generates
+# its docker/.capacity.generated.env (HOST_UID/HOST_GID, so a first `make vite-build` builds as the host user); it never
 # starts a stack (it prints `make up d=1`). Neither target reads or writes .worktree.env: the INIT=1 bootstrap's copy has a
 # wrong-prefix PROJECT= (urls4irl-…, not u4i-…) and is ignored by design; names derive from $(U4I_PROJECT)/$(U4I_DEV_DB).
 worktree-new: ## Create a worktree: make worktree-new name=<slug> [b=<branch>] [from=<ref>]
