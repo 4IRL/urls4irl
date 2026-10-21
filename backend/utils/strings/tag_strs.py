@@ -68,6 +68,14 @@ TAGS_MATCH_COUNT = "{n} matches"
 TAGS_MATCH_COUNT_ONE = "1 match"
 TAGS_EMPTY_HINT = "No tags yet — type to create one"
 
+# Tag drag-and-drop on-card hover hints (set as `data-drop-hint` by drag-drop.ts).
+TAG_DROP_HINT_ADD = 'Add "{tag}" to this URL'
+TAG_DROP_HINT_HAS = 'Already has "{tag}"'
+# Tag drag-and-drop outcome banners (shown in the URL deck banner after a drop).
+TAG_DROP_ADDED = 'Added tag "{tag}" to {title}.'
+TAG_DROP_NOOP = '"{tag}" is already on {title}.'
+TAG_DROP_FAILED = "Couldn't add the tag. Please try again."
+
 # Bulk multi-URL tag-apply strings (Phase 2). Read dynamically by production
 # TypeScript (bulk-tag.ts / combobox.ts BULK mode) via APP_CONFIG.strings, so
 # they go through the full APP_CONFIG bridge (constants.STRINGS +

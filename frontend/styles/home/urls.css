@@ -1086,3 +1086,47 @@ a.urlString {
         animation: none;
     }
 }
+
+/* ============================================================================
+   Tag drag-and-drop drop target (desktop only; mirrors the gate in
+   tags/drag-drop.ts and the chip rules in tags.css). The classes and the
+   data-drop-hint attribute are set/cleared by the drag handlers.
+   ============================================================================ */
+@media (min-width: 992px) and (pointer: fine) {
+
+    /* Same specificity as `#listURLs .urlRow.even[filterable="true"]` and placed
+       after it so the tint wins on even rows too. Inset outline: .urlRow has
+       overflow: hidden. The tint is the opaque --urlCreateFlashBg for the same
+       red-reveal reason as the create flash above. */
+    #listURLs .urlRow.tagDropTarget[filterable="true"] {
+        outline: 2px solid var(--deckSelectionGreen);
+        outline-offset: -2px;
+        background: var(--urlCreateFlashBg);
+    }
+
+    .urlRow.tagDropInvalid {
+        opacity: .6;
+    }
+
+    /* Hint text so the state is never color-only. Absolutely positioned inside
+       the card (.urlRow is position: relative) so it takes no layout space; the
+       z-index lifts it above .urlRowContent (z-index: 1). */
+    #listURLs .urlRow[data-drop-hint]::after {
+        content: attr(data-drop-hint);
+        position: absolute;
+        right: 14px;
+        top: 10px;
+        z-index: 2;
+        font-size: .8rem;
+        pointer-events: none;
+    }
+
+    #listURLs .urlRow.tagDropTarget[data-drop-hint]::after {
+        font-weight: 700;
+        color: var(--deckSelectionGreen);
+    }
+
+    #listURLs .urlRow.tagDropInvalid[data-drop-hint]::after {
+        color: var(--cautionText);
+    }
+}

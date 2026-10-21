@@ -38,7 +38,14 @@ import {
   setTimeoutAndShowURLCardLoadingIcon,
   clearTimeoutIDAndHideLoadingIcon,
 } from "../cards/loading.js";
-import { getUpdatedURL, handleRejectFromGetURL } from "../cards/get.js";
+import {
+  deleteURLOnStale,
+  getUpdatedURL,
+  handleRejectFromGetURL,
+} from "../cards/get.js";
+import { showURLDeckBannerError } from "../deck.js";
+import { clearURLOutcomeBanner } from "../outcome-banner.js";
+import { isUtubLockedHandled } from "../../utub-locked.js";
 import { isMobile } from "../../mobile.js";
 import {
   enableTabbableChildElements,
@@ -55,6 +62,12 @@ type SubmitFieldName = (typeof SUBMIT_FIELD_NAMES)[number];
 function isSubmitFieldName(key: string): key is SubmitFieldName {
   return (SUBMIT_FIELD_NAMES as readonly string[]).includes(key);
 }
+
+/** Where an apply request came from; drives metrics and combobox handling. */
+export type ApplySource = "combobox" | "drag";
+
+/** How `submitStagedTags` ended; it settles only after the POST completes. */
+export type SubmitStagedTagsOutcome = "applied" | "noop" | "failed" | "aborted";
 
 const FILTER_DEBOUNCE_MS = 200;
 const OPTION_ID_PREFIX = "urlTagOption";
@@ -1001,54 +1014,101 @@ export function hideAndResetTagCombobox(urlCard: JQuery): void {
  * mirroring how `create.ts` emits in the button handler before calling
  * `createURLTag`.
  */
-export async function submitStagedTags({
+export function submitStagedTags({
   urlCard,
   utubID,
   utubUrlID,
   stagedStrings,
+  applySource = "combobox",
 }: {
   urlCard: JQuery;
   utubID: number;
   utubUrlID: number;
   stagedStrings: string[];
-}): Promise<void> {
+  applySource?: ApplySource;
+}): Promise<SubmitStagedTagsOutcome> {
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
-  try {
-    await getUpdatedURL(utubID, utubUrlID, urlCard);
 
-    disableClickOnSelectedURLCardToHide(urlCard);
+  // Settles from the request's done/fail `finally` blocks (or the pre-flight
+  // catch), never from the end of the function body, so it resolves only after
+  // the POST completed and its store/DOM work ran. Resolving is idempotent.
+  let settle: (outcome: SubmitStagedTagsOutcome) => void = () => {};
+  const outcome = new Promise<SubmitStagedTagsOutcome>((resolve) => {
+    settle = resolve;
+  });
 
-    const data: AddTagsRequest = { tagStrings: stagedStrings };
-    const request = ajaxCall(
-      "post",
-      APP_CONFIG.routes.createURLTagsBatch(utubID, utubUrlID),
-      data,
-    );
+  const run = async (): Promise<void> => {
+    try {
+      await getUpdatedURL(utubID, utubUrlID, urlCard);
 
-    request.done(function (
-      response: UrlTagsModifiedResponse,
-      _: JQuery.Ajax.SuccessTextStatus,
-      xhr: JQuery.jqXHR,
-    ) {
-      if (xhr.status === 200) {
-        submitStagedTagsSuccess({ response, urlCard, utubID });
+      disableClickOnSelectedURLCardToHide(urlCard);
+
+      const data: AddTagsRequest = { tagStrings: stagedStrings };
+      const request = ajaxCall(
+        "post",
+        APP_CONFIG.routes.createURLTagsBatch(utubID, utubUrlID),
+        data,
+      );
+
+      request.done(function (
+        response: UrlTagsModifiedResponse,
+        _: JQuery.Ajax.SuccessTextStatus,
+        xhr: JQuery.jqXHR,
+      ) {
+        try {
+          if (xhr.status === 200) {
+            submitStagedTagsSuccess({ response, urlCard, utubID, applySource });
+          }
+        } finally {
+          // jQuery 3.7.1 skips later callbacks (including `.always`) when a
+          // `.done` callback throws, so the loading icon and the outcome are
+          // settled here; the throw still propagates.
+          // Settle first and defensively: nothing here may throw before it,
+          // or a caller's in-flight flag would be held forever.
+          try {
+            const appliedTags: unknown = response?.appliedTags;
+            if (xhr.status !== 200 || !Array.isArray(appliedTags)) {
+              settle("failed");
+            } else {
+              settle(appliedTags.length > 0 ? "applied" : "noop");
+            }
+          } finally {
+            settle("failed");
+            clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+          }
+        }
+      });
+
+      request.fail(function (xhr: JQuery.jqXHR) {
+        try {
+          submitStagedTagsFail({ xhr, urlCard, applySource });
+        } finally {
+          clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+          settle("failed");
+        }
+      });
+
+      // Fallback only: a promise still pending here must not hold a caller's
+      // in-flight flag forever.
+      request.always(function () {
+        clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+        settle("failed");
+      });
+    } catch (error) {
+      try {
+        clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+        handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
+          showError: true,
+          message: "Another user has deleted this URL",
+        });
+      } finally {
+        settle("aborted");
       }
-    });
+    }
+  };
 
-    request.fail(function (xhr: JQuery.jqXHR) {
-      submitStagedTagsFail({ xhr, urlCard });
-    });
-
-    request.always(function () {
-      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
-    });
-  } catch (error) {
-    clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
-    handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
-      showError: true,
-      message: "Another user has deleted this URL",
-    });
-  }
+  void run();
+  return outcome;
 }
 
 /**
@@ -1060,14 +1120,24 @@ export function submitStagedTagsSuccess({
   response,
   urlCard,
   utubID,
+  applySource = "combobox",
 }: {
   response: UrlTagsModifiedResponse;
   urlCard: JQuery;
   utubID: number;
+  applySource?: ApplySource;
 }): void {
+  const isDrag = applySource === "drag";
   if (response.appliedTags.length > 0) {
-    emit({ event: UI_EVENTS.UI_TAG_APPLY });
+    // Exactly one of the two events per successful apply, so counts compare.
+    emit({
+      event: isDrag ? UI_EVENTS.UI_TAG_APPLY_DRAG : UI_EVENTS.UI_TAG_APPLY,
+    });
   }
+
+  // The UTub changed while a drop was pending: the card is detached and the
+  // store belongs to the new UTub, so touch neither.
+  if (isDrag && getState().activeUTubID !== utubID) return;
 
   // Caller-owned store patch: update the existing URL entry's tag-ID slice. This
   // stays here (not inside `renderAppliedTagsForUrl`) because the helper is a
@@ -1088,21 +1158,59 @@ export function submitStagedTagsSuccess({
     utubID,
   });
 
-  hideAndResetTagCombobox(urlCard);
+  if (!isDrag) {
+    hideAndResetTagCombobox(urlCard);
+    return;
+  }
+
+  // A drop never resets a combobox the user opened on this card while the
+  // request was pending. `submitStagedTags` disabled click-to-hide after the
+  // pre-flight and `hideAndResetTagCombobox` was its only re-enable point, so
+  // restore it here when the card is selected and no combobox is open.
+  if (
+    isURLCardSelected(urlCard) &&
+    urlCard.find(".urlTagComboboxWrap").hasClass("hidden")
+  ) {
+    enableClickOnSelectedURLCardToHide(urlCard);
+  }
 }
 
 /**
- * Handles a failed batch submit: 429 short-circuit, CSRF HTML handling, 400
- * field/message inline errors, and the error page for the remaining statuses.
+ * Handles a failed batch submit: 429 short-circuit, locked-UTub banner, CSRF
+ * HTML handling, then by source. `'combobox'`: 400 field/message inline errors
+ * and the error page for the remaining statuses. `'drag'`: every failure shows a
+ * URL deck banner and never redirects (keyed on the source, not the DOM, since
+ * the combobox can open or close between the drop and the response).
  */
 export function submitStagedTagsFail({
   xhr,
   urlCard,
+  applySource = "combobox",
 }: {
   xhr: JQuery.jqXHR;
   urlCard: JQuery;
+  applySource?: ApplySource;
 }): void {
+  // `submitStagedTags` disabled click-to-hide after the pre-flight GET; a
+  // failure must hand it back on a selected card with no combobox open (DOM
+  // keyed on purpose: a combobox opened meanwhile keeps it disabled).
+  if (
+    isURLCardSelected(urlCard) &&
+    urlCard.find(".urlTagComboboxWrap").hasClass("hidden")
+  ) {
+    enableClickOnSelectedURLCardToHide(urlCard);
+  }
+
+  const isDrag = applySource === "drag";
+  if (isDrag) {
+    // The UTub was switched while pending: the new deck gets nothing.
+    if (urlCard.closest("#listURLs").length === 0) return;
+    // A success banner from an earlier drop must not sit beside the error.
+    clearURLOutcomeBanner();
+  }
+
   if (is429Handled(xhr)) return;
+  if (isUtubLockedHandled(xhr)) return;
 
   if (!("responseJSON" in xhr)) {
     if (
@@ -1112,7 +1220,16 @@ export function submitStagedTagsFail({
       $("body").html(xhr.responseText);
       return;
     }
+    if (isDrag) {
+      showURLDeckBannerError(APP_CONFIG.strings.TAG_DROP_FAILED);
+      return;
+    }
     window.location.assign(APP_CONFIG.routes.errorPage);
+    return;
+  }
+
+  if (isDrag) {
+    submitStagedTagsDragFail({ xhr, urlCard });
     return;
   }
 
@@ -1134,6 +1251,59 @@ export function submitStagedTagsFail({
     default:
       window.location.assign(APP_CONFIG.routes.errorPage);
   }
+}
+
+/** Banner handling for a JSON failure of a drop (never redirects). */
+function submitStagedTagsDragFail({
+  xhr,
+  urlCard,
+}: {
+  xhr: JQuery.jqXHR;
+  urlCard: JQuery;
+}): void {
+  if (xhr.status === 400) {
+    const responseJSON = xhr.responseJSON as UrlTagError;
+    const message =
+      firstBatchFieldError(
+        responseJSON.errors as
+          | Partial<Record<SubmitFieldName, string[]>>
+          | undefined,
+      ) ??
+      (typeof responseJSON.message === "string" && responseJSON.message
+        ? responseJSON.message
+        : null);
+    showURLDeckBannerError(message ?? APP_CONFIG.strings.TAG_DROP_FAILED);
+    return;
+  }
+
+  if (xhr.status === 404) {
+    showURLDeckBannerError("Another user has deleted this URL");
+    deleteURLOnStale(urlCard);
+    return;
+  }
+
+  // 5xx, a non-lock 403 and any other status.
+  showURLDeckBannerError(APP_CONFIG.strings.TAG_DROP_FAILED);
+}
+
+function isURLCardSelected(urlCard: JQuery): boolean {
+  const selectedAttr = urlCard.attr("urlSelected");
+  return (
+    typeof selectedAttr === "string" && selectedAttr.toLowerCase() === "true"
+  );
+}
+
+function firstBatchFieldError(
+  errors: Partial<Record<SubmitFieldName, string[]>> | undefined,
+): string | null {
+  if (!errors) return null;
+  for (const errorFieldName in errors) {
+    if (isSubmitFieldName(errorFieldName)) {
+      const message = errors[errorFieldName]?.[0];
+      if (message) return message;
+    }
+  }
+  return null;
 }
 
 function displayBatchFieldErrors(
