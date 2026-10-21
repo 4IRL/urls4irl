@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from logging import Handler, Logger, LogRecord, getLogger
 from typing import Any, NamedTuple
 
@@ -7,6 +8,7 @@ from flask import Flask
 
 from backend import create_app, db, oauth
 from backend.config import ConfigTest
+from backend.models.short_links import Short_Links
 from backend.models.urls import Urls
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -14,6 +16,8 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.urls import UtubUrlSchema
+from backend.short_links.code_generator import generate_short_link_code
+from backend.short_links.constants import SHORT_LINK_TTL
 from backend.urls.services.trashed_url_tags import build_tag_name_snapshot_from_ids
 from backend.utils.datetime_utils import utc_now
 
@@ -252,6 +256,40 @@ def unlock_utub(app: Flask, utub_id: int) -> None:
         utub: Utubs = Utubs.query.get(utub_id)
         utub.is_locked = False
         db.session.commit()
+
+
+def add_short_link(
+    app: Flask,
+    utub_url_id: int,
+    minted_by: int | None,
+    code: str | None = None,
+    expires_at: datetime | None = None,
+) -> int:
+    """Seed a ``ShortLinks`` row for a UTub URL directly, bypassing the mint route.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_url_id (int): The ID of the Utub_Urls row to link
+        minted_by (int | None): The ID of the User recorded as the minter, or None
+        code (str | None): The link code. Defaults to a freshly generated one
+        expires_at (datetime | None): Expiry. Defaults to now plus the link TTL; pass a
+            past value to seed an expired link
+
+    Returns:
+        int: The new ShortLinks row ID
+    """
+    with app.app_context():
+        link = Short_Links(
+            utub_url_id=utub_url_id,
+            code=code if code is not None else generate_short_link_code(),
+            created_by=minted_by,
+            expires_at=(
+                expires_at if expires_at is not None else utc_now() + SHORT_LINK_TTL
+            ),
+        )
+        db.session.add(link)
+        db.session.commit()
+        return link.id
 
 
 def remove_member(app: Flask, utub_id: int, user_id: int) -> None:
