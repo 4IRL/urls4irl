@@ -67,6 +67,7 @@ COPY --chown=workflow:workflow scripts/check_flush_liveness.py /app/check_flush_
 COPY --chown=workflow:workflow scripts/sample_gauges.py /app/sample_gauges.py
 COPY --chown=workflow:workflow scripts/purge_audit_log.py /app/purge_audit_log.py
 COPY --chown=workflow:workflow scripts/purge_trash.py /app/purge_trash.py
+COPY --chown=workflow:workflow scripts/purge_short_links.py /app/purge_short_links.py
 COPY --chown=workflow:workflow scripts/trash_retention.py /app/scripts/trash_retention.py
 COPY --chown=workflow:workflow scripts/backup_sentinel.py /app/backup_sentinel.py
 COPY --chown=workflow:workflow scripts/run_backup_if_requested.py /app/run_backup_if_requested.py
@@ -86,6 +87,7 @@ RUN chmod +x /app/*.sh \
     && chmod +x /app/sample_gauges.py \
     && chmod +x /app/purge_audit_log.py \
     && chmod +x /app/purge_trash.py \
+    && chmod +x /app/purge_short_links.py \
     && chmod +x /app/backup_sentinel.py \
     && chmod +x /app/run_backup_if_requested.py \
     && chmod +x /app/scripts/notify.py \

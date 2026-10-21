@@ -30,7 +30,7 @@ Custom Flask extensions registered on `app.extensions` and initialized via `init
 - **`email_sender/email_sender.py`** - `EmailSender`: Wraps the Mailjet REST API (`mailjet_rest.Client`) for transactional emails. Sends account email confirmations and password reset emails using Jinja2 templates from `backend/templates/email_templates/`. Uses sandbox mode during tests. Production mode toggled via `in_production()`.
 - **`notifications/notifications.py`** - `NotificationSender`: Sends webhook notifications (Discord) via HTTP POST. `send_notification()` is fire-and-forget (runs in a background `threading.Thread`). `send_contact_form_details()` is synchronous and returns success/failure. Non-production messages are wrapped with a testing disclaimer.
 - **`metrics/dim_types_generator.py`** - Pure codegen module that renders the frontend metrics contract from the backend Pydantic source of truth. `generate_dim_types_ts()` emits per-event dimension TypeScript types from `DIMENSION_MODELS`; `generate_dim_values_ts()` emits runtime constants for every dim-value `Literal` alias; `generate_ui_events_ts()` emits the `UI_EVENTS` `as const` object plus the derived `UIEventName` type from the `EventName` enum. Invoked by the `flask metrics generate-*` CLI commands; no app context, DB, or Redis access.
-- **`audit/record.py`** - `audit.record(actor_id, action, target_type=None, target_id=None, metadata=None)`: inserts one `AuditLogs` row and commits; never raises (failures roll back and log a warning). Every admin-portal view/action calls it. **Retention: 90 days** — `AuditLogs` stores personal data (actor ids, target user ids, search queries in metadata), so `scripts/purge_audit_log.py` deletes rows older than `AUDIT_LOG_RETENTION_DAYS = 90` daily at 2 AM via `docker/crontab.workflow` in the workflow sidecar (same pattern as `flush_metrics.py`). **Trash retention: 30 days** (`TRASH_RETENTION_DAYS`) — `scripts/purge_trash.py` hard-deletes trashed URLs and UTubs past the window daily at 3 AM via the same crontab, skipping admin-locked UTubs.
+- **`audit/record.py`** - `audit.record(actor_id, action, target_type=None, target_id=None, metadata=None)`: inserts one `AuditLogs` row and commits; never raises (failures roll back and log a warning). Every admin-portal view/action calls it. **Retention: 90 days** — `AuditLogs` stores personal data (actor ids, target user ids, search queries in metadata), so `scripts/purge_audit_log.py` deletes rows older than `AUDIT_LOG_RETENTION_DAYS = 90` daily at 2 AM via `docker/crontab.workflow` in the workflow sidecar (same pattern as `flush_metrics.py`). **Trash retention: 30 days** (`TRASH_RETENTION_DAYS`) — `scripts/purge_trash.py` hard-deletes trashed URLs and UTubs past the window daily at 3 AM via the same crontab, skipping admin-locked UTubs. **Short-link retention: 7-day TTL** — `scripts/purge_short_links.py` hard-deletes every `ShortLinks` row whose `expiresAt` has passed daily at 4 AM via the same crontab (log: `/app/workflow_logs/short-link-purge.log`), skipping no UTub (locked and trashed included: an expired link is not content and already resolves to the 404 page).
 
 ## Schemas (`backend/schemas/`)
 
@@ -59,6 +59,8 @@ Pydantic models for request parsing and response serialization used by the AJAX 
 ## Models (`backend/models/`)
 
 Core domain: `Users` -> `Utub_Members` (with `Member_Role`: MEMBER/CREATOR/CO_CREATOR) -> `Utubs` -> `Utub_Urls` -> `Urls`. Tags: `Utub_Tags` <-> `Utub_Url_Tags` <-> `Utub_Urls`.
+
+`Short_Links` (table `ShortLinks`) holds at most one short link per `Utub_Urls` row: a unique 10-char bearer `code`, `expires_at` (TTL `SHORT_LINK_TTL`) and a nullable `created_by` (`ON DELETE SET NULL`). The FK to `Utub_Urls` is `ON DELETE CASCADE`, so raw-SQL purges remove links; the ORM relationship uses `passive_deletes` for the same reason. `code` is hidden in the admin DB browser.
 
 ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.3.
 
@@ -333,8 +335,9 @@ Organized by domain with per-feature conftest files:
 - `search/` (marker: `urls`, shared with `utuburls/`) — Cross-UTub search: query schema, route, metrics
 - `system/` (marker: `cli`, shared with `cli/`) — Metrics/latency pipeline, health checks, gauges, admin-route gating (ops/observability)
 - `trash/` (marker: `trash`) — Trash API: list, restore, purge (delete forever) and empty-trash routes for soft-deleted URLs and UTubs
+- `short_links/` (marker: `short_links`) — Short links: `Short_Links` model constraints, DB/ORM cascades from `Utub_Urls` and `Utubs`, and link minting/expiry
 
-CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 11 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
+CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 12 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
 
 ### tests/functional/ — UI/Playwright Tests
 
