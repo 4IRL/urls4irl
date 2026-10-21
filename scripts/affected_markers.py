@@ -115,6 +115,7 @@ _ADMIN: tuple[str, ...] = ("admin", "admin_ui")
 _METRICS: tuple[str, ...] = ("cli", "metrics_ui")
 _SYSTEM: tuple[str, ...] = ("cli",)
 _API_V1: tuple[str, ...] = ("mobile_api",)
+_SHORT_LINKS: tuple[str, ...] = ("short_links",)
 
 BLUEPRINT_MARKERS: dict[str, tuple[str, ...]] = {
     "splash": _SPLASH,
@@ -323,6 +324,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("tests/integration/search/*", ("urls",)),
     ("tests/integration/splash/*", ("splash",)),
     ("tests/integration/system/*", ("cli",)),
+    ("tests/integration/short_links/*", ("short_links",)),
     ("tests/integration/trash/*", ("trash",)),
     ("tests/integration/utubmembers/*", ("members",)),
     ("tests/integration/utubs/*", ("utubs",)),
@@ -437,6 +439,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("backend/templates/pages/contact_us.html", _CONTACT),
     ("backend/templates/pages/privacy_policy.html", ("splash_ui",)),
     ("backend/templates/pages/terms_and_conditions.html", ("splash_ui",)),
+    ("backend/templates/pages/short_link.html", _SHORT_LINKS),
     # --- backend domains (same markers as their blueprint) ------------------
     ("backend/testing/*", _union(_SPLASH, _USERS)),
     # Imported by splash (OAuth linking), users and members services.
@@ -445,6 +448,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("backend/utubs/*", _UTUBS),
     ("backend/members/*", _MEMBERS),
     ("backend/urls/*", _URLS),
+    ("backend/short_links/*", ("short_links", "unit")),
     # backend/tags/ serves the utub_tags and utub_url_tags blueprints.
     ("backend/tags/*", _TAGS),
     ("backend/search/*", _SEARCH),
@@ -486,6 +490,8 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("frontend/settings.ts", _SETTINGS_UI_DIR),
     ("frontend/contact.ts", _CONTACT),
     ("frontend/navbar.ts", ("splash_ui", "home_ui")),
+    ("frontend/short-link.ts", _SHORT_LINKS),
+    ("frontend/styles/short-link.css", _SHORT_LINKS),
     (
         "frontend/logic/*",
         _union(_URLS_UI_DIR, _TAGS_UI_DIR, _MEMBERS_UI_DIR, _UTUBS_UI_DIR),
@@ -504,6 +510,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("scripts/run_backup_if_requested.py", ("admin",)),
     ("scripts/trash_retention.py", ("unit", "trash")),
     ("scripts/purge_trash.py", ("unit", "trash")),
+    ("scripts/purge_short_links.py", ("unit", "short_links")),
     ("scripts/*.py", ("unit",)),
     ("scripts/*.sh", ("unit", "admin")),
 )

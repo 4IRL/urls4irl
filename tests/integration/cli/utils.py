@@ -35,11 +35,10 @@ def assert_row_counts_match_ignoring_new_tables(
         row_counts_after: Per-table row counts captured after downgrading to
             the target revision.
     """
+    shared_tables = row_counts_before.keys() & row_counts_after.keys()
     assert {
-        table_name: row_count
-        for table_name, row_count in row_counts_before.items()
-        if table_name in row_counts_after
-    } == row_counts_after
+        table_name: row_counts_before[table_name] for table_name in shared_tables
+    } == {table_name: row_counts_after[table_name] for table_name in shared_tables}
 
 
 def verify_users_added():

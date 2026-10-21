@@ -15,6 +15,7 @@ EVENT_REGISTRY = "EventRegistry"
 ANONYMOUS_METRICS = "AnonymousMetrics"
 ANONYMOUS_GAUGES = "AnonymousGauges"
 AUDIT_LOGS = "AuditLogs"
+SHORT_LINKS = "ShortLinks"
 ALEMBIC_VERSION = "alembic_version"
 
 
@@ -37,6 +38,7 @@ class TABLE_NAMES:
     ANONYMOUS_METRICS = ANONYMOUS_METRICS
     ANONYMOUS_GAUGES = ANONYMOUS_GAUGES
     AUDIT_LOGS = AUDIT_LOGS
+    SHORT_LINKS = SHORT_LINKS
 
     SORTED_TABLES_FOR_DELETION = (
         ANONYMOUS_GAUGES,
@@ -44,6 +46,8 @@ class TABLE_NAMES:
         EVENT_REGISTRY,
         UTUB_URL_TAGS,
         UTUB_TAGS,
+        # ShortLinks references UtubUrls (utubUrlID FK) and must drop before it.
+        SHORT_LINKS,
         UTUB_URLS,
         UTUB_MEMBERS,
         URLS,

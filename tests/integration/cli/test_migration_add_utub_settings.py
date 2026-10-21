@@ -22,6 +22,7 @@ from tests.integration.cli.utils import assert_row_counts_match_ignoring_new_tab
 pytestmark = pytest.mark.cli
 
 _PRE_SETTINGS_REVISION: str = "b6f2d8a4c1e7"
+_SETTINGS_REVISION: str = "c7a3e9b5d2f4"
 _UTUBS_TABLE: str = "Utubs"
 _USERS_TABLE: str = "Users"
 _ALEMBIC_VERSION_TABLE: str = "alembic_version"
@@ -80,8 +81,7 @@ def test_add_utub_settings_migration_upgrade_and_downgrade(runner):
         alembic_config = _build_alembic_config()
         script = ScriptDirectory.from_config(alembic_config)
         assert len(script.get_heads()) == 1
-        head_revision = script.get_heads()[0]
-        assert script.get_revision(head_revision).down_revision == (
+        assert script.get_revision(_SETTINGS_REVISION).down_revision == (
             _PRE_SETTINGS_REVISION
         )
 
