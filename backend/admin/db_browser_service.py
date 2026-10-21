@@ -36,6 +36,7 @@ _SENSITIVE_COLUMN_EXCLUSIONS: dict[str, list[str]] = {
     "Forgot_Passwords": ["reset_token"],
     "Email_Validations": ["validation_token"],
     "UserOAuthIdentity": ["provider_subject"],
+    "Short_Links": ["code"],
 }
 
 

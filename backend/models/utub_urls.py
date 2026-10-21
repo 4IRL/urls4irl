@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Column,
@@ -18,6 +19,9 @@ from backend import db
 from backend.models.urls import Urls
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+
+if TYPE_CHECKING:
+    from backend.models.short_links import Short_Links
 
 
 class Utub_Urls(db.Model):
@@ -74,6 +78,16 @@ class Utub_Urls(db.Model):
     standalone_url: Urls = db.relationship("Urls")
     utub = db.relationship("Utubs", back_populates="utub_urls")
     url_tags = db.relationship("Utub_Url_Tags", back_populates="tagged_url")
+    # One-to-one share link. A loaded link is ORM-deleted with this row; an unloaded
+    # one is left to the DB ON DELETE CASCADE (passive_deletes), so the NOT NULL FK
+    # is never nulled.
+    short_link: Short_Links | None = db.relationship(
+        "Short_Links",
+        back_populates="utub_url",
+        uselist=False,
+        cascade="save-update, merge, delete",
+        passive_deletes=True,
+    )
 
     UniqueConstraint(utub_id, url_id, name="unique_url_per_utub")
 
