@@ -25,6 +25,9 @@ from backend.schemas.urls import (
     UrlUpdatedResponseSchema,
     UtubUrlDetailSchema,
 )
+from backend.short_links.services.kill_short_links import (
+    delete_short_links_for_utub_urls,
+)
 from backend.tags.services.create_url_tag import (
     apply_tags_core,
     build_url_at_tag_limit_response,
@@ -48,7 +51,7 @@ from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import lock_live_utub_or_abort, reject_if_utub_locked
 
 
 def update_url_in_utub(
@@ -249,6 +252,17 @@ def _revive_trashed_url_on_edit(
     trashed_utub_url_id: int = trashed_utub_url.id
     revived_url: Urls = trashed_utub_url.standalone_url
 
+    # Utubs lock before any UtubUrls lock (the short-link mint's order). The edited
+    # row's share link is deleted by ``trash_live_utub_url`` below, after its UPDATE;
+    # the revived row has none (its link died when it was trashed).
+    locked_utub: Utubs = lock_live_utub_or_abort(utub_id=current_utub.id)
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        locked_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        db.session.rollback()
+        return utub_locked_error
+
     locked_rows_by_id: dict[int, Utub_Urls] = {
         locked_row.id: locked_row
         for locked_row in Utub_Urls.query.filter(
@@ -420,9 +434,37 @@ def _associate_updated_url_with_utub(
         - Response: JSON response on update
         - int: HTTP status code 200 (Success)
     """
+    # Utubs lock before the UtubUrls UPDATE (the short-link mint's order).
+    locked_utub: Utubs = lock_live_utub_or_abort(utub_id=current_utub.id)
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        locked_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        db.session.rollback()
+        return utub_locked_error
+
+    # Re-read the row under the lock: it may have been trashed while this request
+    # queued behind the Utubs lock.
+    locked_utub_url: Utub_Urls | None = (
+        Utub_Urls.query.populate_existing()
+        .filter(
+            Utub_Urls.id == current_utub_url.id,
+            Utub_Urls.utub_id == current_utub.id,
+        )
+        .with_for_update()
+        .one_or_none()
+    )
+    if locked_utub_url is None or locked_utub_url.is_trashed:
+        db.session.rollback()
+        abort(404)
+
     # Now set the URL ID for the old URL to the new URL
-    current_utub_url.url_id = url.id
-    current_utub_url.standalone_url = url
+    locked_utub_url.url_id = url.id
+    locked_utub_url.standalone_url = url
+    # Flush first: the UPDATE's row lock serializes against a concurrent mint, so the
+    # link deleted next is the only one that can exist for the old destination.
+    db.session.flush()
+    delete_short_links_for_utub_urls(utub_url_ids=[locked_utub_url.id])
 
     current_utub.set_last_updated()
     db.session.commit()
@@ -442,6 +484,6 @@ def _associate_updated_url_with_utub(
         data=UrlUpdatedResponseSchema(
             utub_id=current_utub.id,
             utub_name=current_utub.name,
-            url=UtubUrlDetailSchema.from_orm_url(current_utub_url),
+            url=UtubUrlDetailSchema.from_orm_url(locked_utub_url),
         ),
     ).to_response()
