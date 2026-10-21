@@ -263,6 +263,7 @@ export type UIEventDimensions = {
   ui_member_search_open: DimMemberSearchOpen;
   ui_member_search_close: DimMemberSearchClose;
   ui_tag_apply: DimDeviceOnly;
+  ui_tag_apply_drag: DimDeviceOnly;
   ui_tag_remove: DimDeviceOnly;
   ui_tag_create_open: DimTagCreateOpen;
   ui_tag_delete_open: DimTagDeleteOpen;

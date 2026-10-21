@@ -1316,6 +1316,7 @@ def test_top_events_resource_filter_runs_before_limit_truncation(
     ]
     tag_events = [
         EventName.UI_TAG_APPLY,
+        EventName.UI_TAG_APPLY_DRAG,
         EventName.UI_TAG_REMOVE,
         EventName.UI_TAG_CREATE_OPEN,
         EventName.UI_TAG_DELETE_OPEN,

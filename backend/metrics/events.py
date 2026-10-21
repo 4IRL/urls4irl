@@ -114,6 +114,7 @@ class EventName(StrEnum):
     UI_MEMBER_SEARCH_CLOSE = "ui_member_search_close"
     # — Tags
     UI_TAG_APPLY = "ui_tag_apply"
+    UI_TAG_APPLY_DRAG = "ui_tag_apply_drag"
     UI_TAG_REMOVE = "ui_tag_remove"
     UI_TAG_CREATE_OPEN = "ui_tag_create_open"
     UI_TAG_DELETE_OPEN = "ui_tag_delete_open"
