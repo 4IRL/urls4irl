@@ -66,6 +66,10 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
     ),
     (EventName.UI_URL_COPY, {"result": "success", "device_type": DeviceType.DESKTOP}),
     (
+        EventName.UI_SHORT_LINK_COPY,
+        {"result": "fallback", "device_type": DeviceType.DESKTOP},
+    ),
+    (
         EventName.UI_URL_PARAMS_TRIMMED,
         {"form": "url_create", "action": "toggle", "device_type": DeviceType.DESKTOP},
     ),

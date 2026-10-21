@@ -169,6 +169,12 @@ export const ONBOARDING_TIP_DISMISSED_TIP_ID = {
 
 export const ONBOARDING_TIP_SHOWN_TIP_ID = ONBOARDING_TIP_DISMISSED_TIP_ID;
 
+export const SHORT_LINK_COPY_RESULT = {
+  SUCCESS: "success",
+  FALLBACK: "fallback",
+  FAILURE: "failure",
+} as const;
+
 export const TAG_SEARCH_CLOSE_TARGET = {
   TAGS: "tags",
 } as const;

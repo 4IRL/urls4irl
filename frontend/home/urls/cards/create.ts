@@ -417,6 +417,10 @@ function createURLSuccess({
     // "Added by <username> · <date>" attribution badge, resolved to a name
     // from the UTub member list at render time.
     addedByUserID: response.addedByUserID,
+    // A new (or revived) card has no active share link; real state arrives on the
+    // next UTub refresh.
+    shortLinkExpiresAt: null,
+    canRevokeShortLink: false,
   };
 
   // A revive is announced by the visible outcome banner below (role=status), so

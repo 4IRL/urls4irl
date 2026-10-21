@@ -8,8 +8,11 @@
    viewport-fit=cover insets and is never overridden for light mode. A single static
    value keeps the browser chrome matching that strip in every theme. #}
 <meta name="theme-color" content="#212529">
+{% if is_short_link_page %}
+<meta name="robots" content="noindex, nofollow">
+{% endif %}
 {% block scripts_for_login %}
-{% if current_user.is_authenticated and current_user.email_validated %}
+{% if current_user.is_authenticated and current_user.email_validated and not is_short_link_page %}
 <meta http-equiv="refresh" content="{{ CONSTANTS.CONFIG.SESSION_LIFETIME }}">
 {% endif %}
 {# Rendered for all users (including unauthenticated) because JSON splash POST routes need CSRF protection #}

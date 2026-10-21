@@ -130,6 +130,8 @@ const SAMPLE_URL_1: UtubUrlItem = {
   urlTitle: "One",
   utubUrlTagIDs: [],
   canDelete: true,
+  shortLinkExpiresAt: null,
+  canRevokeShortLink: false,
   addedAt: "2024-01-01T00:00:00+00:00",
   addedByUserID: 1,
 };
@@ -140,6 +142,8 @@ const SAMPLE_URL_2: UtubUrlItem = {
   urlTitle: "Two",
   utubUrlTagIDs: [],
   canDelete: true,
+  shortLinkExpiresAt: null,
+  canRevokeShortLink: false,
   addedAt: "2024-01-02T00:00:00+00:00",
   addedByUserID: 1,
 };

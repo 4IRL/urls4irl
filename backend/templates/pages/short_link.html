@@ -1,0 +1,31 @@
+{% extends "pages/layout.html" %}
+{# Public share-link page. The context carries ONLY destination_url and destination_host
+   (both absent on the dead-link variant): nothing about the UTub, its members, tags or
+   the URL title ever reaches this template. #}
+{% block mainbody %}
+<main id="ShortLinkMain" class="short-link-main">
+  {% if destination_url %}
+  <section class="short-link-panel" aria-labelledby="shortLinkHeading">
+    <p class="short-link-eyebrow">This link goes to</p>
+    <h1 id="shortLinkHeading" class="short-link-heading">{{ destination_host }}</h1>
+    <p class="short-link-full-url">{{ destination_url }}</p>
+    <p class="short-link-hint">Someone shared this link with you via URLS4IRL. Check the address before continuing.</p>
+    <div class="short-link-cta-row">
+      <a class="splash-button" href="{{ destination_url }}" rel="noopener noreferrer nofollow">Continue</a>
+      <a class="short-link-secondary" href="/">Go to URLS4IRL</a>
+    </div>
+  </section>
+  {% else %}
+  <section class="short-link-panel" aria-labelledby="shortLinkGoneHeading">
+    <h1 id="shortLinkGoneHeading" class="short-link-heading">This link has expired or doesn't exist</h1>
+    <p class="short-link-hint">Short links last 7 days and can be revoked by the people who manage them. Ask the sender for a new link.</p>
+    <div class="short-link-cta-row">
+      <a class="splash-button" href="/">Go to URLS4IRL</a>
+    </div>
+  </section>
+  {% endif %}
+</main>
+
+<!-- Initialized by frontend/short-link.ts -->
+<script nonce="{{ nonce }}" type="module" src="{{ vite_asset('short-link.ts') }}"></script>
+{% endblock %}

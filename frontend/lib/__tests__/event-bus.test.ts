@@ -96,6 +96,8 @@ describe("event-bus", () => {
           urlTitle: "Example",
           addedAt: "2024-01-01T00:00:00+00:00",
           canDelete: true,
+          shortLinkExpiresAt: null,
+          canRevokeShortLink: false,
           addedByUserID: 3,
         },
       ],

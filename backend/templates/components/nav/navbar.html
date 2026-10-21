@@ -1,4 +1,6 @@
-{% if current_user.is_authenticated and current_user.email_validated %}
+{# is_short_link_page forces the neutral anonymous shell for every viewer #}
+{% set authed_shell = current_user.is_authenticated and current_user.email_validated and not is_short_link_page %}
+{% if authed_shell %}
 <nav id="mainNavbar" class="navbar navbar-expand-none navbar-dark bg-dark py-0">
     <a class="navbar-brand navbar-start" href="/home">
 {% else %}
@@ -10,7 +12,7 @@
             <img id="u4iFavicon" src="/static/favicon/android-chrome-192x192.png" alt="" />
         </div>
     </a>
-    {% if current_user.is_authenticated and current_user.email_validated %}
+    {% if authed_shell %}
     {% include 'components/nav/logged_in_as_inline.html' %}
     {% endif %}
     {# Cross-UTub search trigger. A standalone icon button that sits inline next to
@@ -20,7 +22,7 @@
        Only rendered on home-context pages (mirrors the deck-switcher guards); the home
        JS that reveals it does not initialize on settings/privacy/terms/contact, so it
        stays hidden there. #}
-    {% if current_user.is_authenticated and current_user.email_validated and not is_privacy_or_terms and not is_contact_form and not is_settings %}
+    {% if authed_shell and not is_privacy_or_terms and not is_contact_form and not is_settings %}
     <button class="navbar-cross-search hidden" id="toCrossUtubSearch" aria-label="Search across your UTubs">
         <span id="crossSearchTriggerOpenIcon">
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-search"
@@ -46,7 +48,7 @@
         aria-controls="NavbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
-    {% if current_user.is_authenticated and current_user.email_validated %}
+    {% if authed_shell %}
     <div class="navbar-collapse collapse bg-dark home" id="NavbarNavDropdown">
         {% include 'components/nav/nav_home_items.html' %}
     </div>

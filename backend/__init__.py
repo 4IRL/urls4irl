@@ -298,6 +298,7 @@ def create_app(
     from backend.members.routes import members
     from backend.metrics.routes import metrics
     from backend.search.routes import search
+    from backend.short_links.routes import short_links
     from backend.splash.routes import splash
     from backend.system.routes import system
     from backend.tags.url_tag_routes import utub_url_tags
@@ -322,6 +323,7 @@ def create_app(
     app.register_blueprint(members)
     app.register_blueprint(metrics)
     app.register_blueprint(search)
+    app.register_blueprint(short_links)
     app.register_blueprint(splash)
     app.register_blueprint(system)
     app.register_blueprint(urls)
@@ -478,8 +480,9 @@ def add_security_headers(app: Flask):
 
         response.headers[CONFIG_ENVS.X_CONTENT_TYPE_OPTIONS] = "nosniff"
         response.headers[CONFIG_ENVS.X_FRAME_OPTIONS] = "DENY"
-        response.headers[CONFIG_ENVS.REFERRER_POLICY] = (
-            "strict-origin-when-cross-origin"
+        # setdefault: a route may set its own policy (the share page sends no-referrer)
+        response.headers.setdefault(
+            CONFIG_ENVS.REFERRER_POLICY, CONFIG_ENVS.DEFAULT_REFERRER_POLICY_VALUE
         )
         response.headers[CONFIG_ENVS.CROSS_ORIGIN_RESOURCE_POLICY] = "same-origin"
         return response

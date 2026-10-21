@@ -764,6 +764,17 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `crossUtubSearch`
 
+## short_links
+
+### `GET /s/<code>` — `short_links.resolve_short_link`
+
+- **Handler:** `backend/short_links/routes.py:resolve_short_link`
+- **Decorators:** `api_route`, `limiter.limit(SHORT_LINK_RESOLVE_RATE_LIMIT)`
+- **Service:** `backend.short_links.services.resolve_short_link:find_live_destination`
+- **Schema:** status: 200 `backend.schemas.base.HtmlErrorPageSchema`, 404 `backend.schemas.base.HtmlErrorPageSchema`
+- **Template:** —
+- **JS:** no-js: public-share-link
+
 ## splash
 
 ### `GET /` — `splash.splash_page`
@@ -1012,6 +1023,24 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Schema:** request: `backend.schemas.requests.trash.RestoreUrlRequest`; response: `backend.schemas.trash.UrlRestoredResponseSchema`; status: 200 `backend.schemas.trash.UrlRestoredResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `restoreURL`
+
+### `DELETE /utubs/<int:utub_id>/urls/<int:utub_url_id>/short-link` — `urls.revoke_short_link`
+
+- **Handler:** `backend/urls/routes.py:revoke_short_link`
+- **Decorators:** `utub_membership_with_valid_url_in_utub_required`, `api_route`
+- **Service:** `backend.short_links.services.revoke_short_link:revoke_short_link_for_utub_url`
+- **Schema:** response: `backend.schemas.short_links.ShortLinkRevokedResponseSchema`; status: 200 `backend.schemas.short_links.ShortLinkRevokedResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `revokeShortLink`
+
+### `POST /utubs/<int:utub_id>/urls/<int:utub_url_id>/short-link` — `urls.mint_short_link`
+
+- **Handler:** `backend/urls/routes.py:mint_short_link`
+- **Decorators:** `utub_membership_with_valid_url_in_utub_required`, `api_route`, `limiter.limit(SHORT_LINK_MINT_RATE_LIMIT, key_func=short_link_mint_rate_key)`
+- **Service:** `backend.short_links.services.mint_short_link:mint_short_link_for_utub_url`
+- **Schema:** response: `backend.schemas.short_links.ShortLinkResponseSchema`; status: 200 `backend.schemas.short_links.ShortLinkResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`, 500 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `mintShortLink`
 
 ### `PATCH /utubs/<int:utub_id>/urls/<int:utub_url_id>/title` — `urls.update_url_title`
 

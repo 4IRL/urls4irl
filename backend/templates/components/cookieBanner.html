@@ -1,7 +1,7 @@
 
 {% if not request.cookies.get(CONFIG.strings.COOKIE_BANNER_KEY) %}
 
-    {% if current_user.is_authenticated and current_user.email_validated %}
+    {% if current_user.is_authenticated and current_user.email_validated and not is_short_link_page %}
     <dialog class="z9999 flex-column flex-start bg-dark is-hiding logged-in" id="CookieBanner">
     {% else %}
     <dialog class="z9999 flex-column flex-start bg-dark is-hiding" id="CookieBanner">
