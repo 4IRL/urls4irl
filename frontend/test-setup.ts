@@ -493,6 +493,17 @@ const appConfig = {
     FIELD_SAVED_LABEL_URL_TITLE: "URL title",
     FIELD_SAVED_LABEL_URL: "URL",
     URL_ADDED_ANNOUNCEMENT: "URL added",
+    NOT_AUTHORIZED: "Not authorized.",
+    PANEL_SETTINGS_SAVING: "Saving…",
+    PANEL_SETTINGS_SAVED: "Saved",
+    PANEL_SETTINGS_REVERTED: "Couldn't save — reverted",
+    PANEL_SETTINGS_SAVE_FAILED: "Couldn't save",
+    PANEL_SETTINGS_CLOSED: "Settings closed",
+    PANEL_SETTINGS_UTUB_LOCKED: "UTub is locked",
+    PANEL_SETTINGS_MANAGERS_ONLY: "Only UTub managers can change this",
+    PANEL_SETTINGS_SCOPE_UTUB: "Shared with this UTub",
+    PANEL_SETTINGS_SCOPE_USER: "Just for you",
+    PANEL_SETTINGS_EMPTY: "No settings available",
     // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py.
     // Only keys read by production TS are mirrored here. Jinja-only labels are inline in templates;
     // Python-test-only keys live in ui_testing_strs.py. Vitest runs in Node with no Flask app context,

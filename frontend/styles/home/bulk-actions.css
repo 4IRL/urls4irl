@@ -132,7 +132,8 @@
  * its auto-select-on-create call site (createURLSuccess) is an unguarded
  * selectURLCard() path that this hides the only affordance for.
  */
-#URLDeck.multiSelectActive #urlBtnCreate {
+#URLDeck.multiSelectActive #urlBtnCreate,
+#URLDeck.multiSelectActive #urlBtnSettings {
   display: none !important;
 }
 

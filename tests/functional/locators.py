@@ -85,6 +85,17 @@ class HomePageLocators(GenericPageLocator):
     SELECTORS_UTUB_NAME = ".UTubName"
     SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
 
+    # Per-panel settings shell: one gear per deck header (last child of the
+    # header's button container), the desktop popover and its live region.
+    BUTTON_UTUB_SETTINGS_GEAR = "#utubBtnSettings"
+    BUTTON_MEMBER_SETTINGS_GEAR = "#memberBtnSettings"
+    BUTTON_TAG_SETTINGS_GEAR = "#utubTagBtnSettings"
+    BUTTON_URL_SETTINGS_GEAR = "#urlBtnSettings"
+    PANEL_SETTINGS_GEARS = ".panelSettingsGear"
+    PANEL_SETTINGS_ROOT = "#panelSettingsRoot"
+    PANEL_SETTINGS_POPOVER = "#panelSettingsPopover"
+    PANEL_SETTINGS_ANNOUNCEMENT = "#PanelSettingsAnnouncement"
+
     BUTTON_UTUB_CREATE = "#utubBtnCreate"
     BUTTON_UTUB_DELETE = "#utubBtnDelete"
     INPUT_UTUB_NAME_CREATE = "#utubNameCreate"

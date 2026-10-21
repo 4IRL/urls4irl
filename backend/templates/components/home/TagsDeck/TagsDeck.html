@@ -71,6 +71,9 @@
 				  </svg>
 			</button>
 
+			{% with gear_id="utubTagBtnSettings", gear_panel="tags", gear_label=CONSTANTS.STRINGS.PANEL_SETTINGS_GEAR_TAGS %}
+			{% include 'components/home/PanelSettingsGear.html' %}
+			{% endwith %}
 		</div>
 		{# Collapsed-state tag-filter indicator. A non-interactive <span> — no role,
 		   no tabindex (Design Decision 4): expanding the deck is one caret click

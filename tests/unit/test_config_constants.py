@@ -17,6 +17,7 @@ from backend.metrics.events import DeviceType
 from backend.utils.constants import generate_constants_js, generate_strings_js
 from backend.utils.strings import url_strs, utub_strs
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.json_strs import NOT_AUTHORIZED
 from backend.utils.strings.trash_strs import TRASH_UI
 
 pytestmark = pytest.mark.unit
@@ -213,6 +214,28 @@ def test_generate_strings_js_includes_mobile_panel_announcements():
     for key, value in expected.items():
         assert strings[key] == value
     assert strings["MOBILE_PANEL_ANNOUNCEMENT_TRASH"] == "Now showing Trash"
+
+
+def test_generate_strings_js_includes_panel_settings_strings():
+    """The panel settings shell writes these from TS, so each is bridged unchanged."""
+    strings = generate_strings_js()
+    expected = {
+        "NOT_AUTHORIZED": NOT_AUTHORIZED,
+        "PANEL_SETTINGS_SAVING": utub_strs.PANEL_SETTINGS_SAVING,
+        "PANEL_SETTINGS_SAVED": utub_strs.PANEL_SETTINGS_SAVED,
+        "PANEL_SETTINGS_REVERTED": utub_strs.PANEL_SETTINGS_REVERTED,
+        "PANEL_SETTINGS_SAVE_FAILED": utub_strs.PANEL_SETTINGS_SAVE_FAILED,
+        "PANEL_SETTINGS_CLOSED": utub_strs.PANEL_SETTINGS_CLOSED,
+        "PANEL_SETTINGS_UTUB_LOCKED": utub_strs.PANEL_SETTINGS_UTUB_LOCKED,
+        "PANEL_SETTINGS_MANAGERS_ONLY": utub_strs.PANEL_SETTINGS_MANAGERS_ONLY,
+        "PANEL_SETTINGS_SCOPE_UTUB": utub_strs.PANEL_SETTINGS_SCOPE_UTUB,
+        "PANEL_SETTINGS_SCOPE_USER": utub_strs.PANEL_SETTINGS_SCOPE_USER,
+        "PANEL_SETTINGS_EMPTY": utub_strs.PANEL_SETTINGS_EMPTY,
+    }
+    for key, value in expected.items():
+        assert key in strings, f"generate_strings_js() is missing {key}"
+        assert strings[key] == value
+        assert value
 
 
 def test_generate_strings_js_includes_delete_undo_strings():

@@ -47,6 +47,24 @@ CREATE_UTUB_CANCEL_TOOLTIP = "Cancel"
 # aria-label only — #utubBtnCreate is an onboarding-nudge anchor and deliberately
 # gets NO tooltip (a shared Bootstrap instance would break the nudge sequence).
 CREATE_UTUB_ARIA_LABEL = "Create UTub"
+# Panel settings shell: status text, live-region announcements, scope labels and
+# read-only notes. All are written by TS, so all are bridged.
+PANEL_SETTINGS_SAVING = "Saving…"
+PANEL_SETTINGS_SAVED = "Saved"
+PANEL_SETTINGS_REVERTED = "Couldn't save — reverted"
+PANEL_SETTINGS_SAVE_FAILED = "Couldn't save"
+PANEL_SETTINGS_CLOSED = "Settings closed"
+PANEL_SETTINGS_UTUB_LOCKED = "UTub is locked"
+PANEL_SETTINGS_MANAGERS_ONLY = "Only UTub managers can change this"
+PANEL_SETTINGS_SCOPE_UTUB = "Shared with this UTub"
+PANEL_SETTINGS_SCOPE_USER = "Just for you"
+PANEL_SETTINGS_EMPTY = "No settings available"
+# Gear aria-label/tooltip text: Jinja-only, asserted by a Python integration test, so
+# backend constants only (not bridged to TS).
+PANEL_SETTINGS_GEAR_UTUBS = "UTubs settings"
+PANEL_SETTINGS_GEAR_MEMBERS = "Members settings"
+PANEL_SETTINGS_GEAR_TAGS = "Tags settings"
+PANEL_SETTINGS_GEAR_URLS = "URLs settings"
 
 
 class UTUB_GENERAL:

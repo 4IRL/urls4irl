@@ -81,6 +81,18 @@
     {% include 'components/home/SearchMode/SearchMode.html' %}
     <!-- End Cross-UTub Search Mode overlay -->
 </main>
+
+<!-- Panel settings shell mount: sibling of <main> (outside #mainPanel, so the tag
+     sheet's inert pass never touches it) and out of flow (position: fixed). The
+     popover is the desktop surface; the sheet and backdrop are reserved for phase 3.
+     Hidden with the .hidden class, never the hidden attribute. -->
+<div id="panelSettingsRoot">
+    <div id="panelSettingsPopover" class="panelSettingsPopover hidden" role="dialog" tabindex="-1"></div>
+    <div id="panelSettingsBackdrop" class="panelSettingsBackdrop hidden"></div>
+    <div id="panelSettingsSheet" class="panelSettingsSheet hidden"></div>
+    <span id="PanelSettingsAnnouncement" class="visually-hidden" aria-live="polite"></span>
+</div>
+
 <!-- Initial UTub data for client-side store seeding -->
 <script id="utubs-data" type="application/json">{{ utubs_for_this_user | tojson }}</script>
 <script id="trash-count-data" type="application/json">{{ trash_count | tojson }}</script>

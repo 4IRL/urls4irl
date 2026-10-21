@@ -1,0 +1,189 @@
+/*
+ * Panel settings: the header gear and the desktop settings popover.
+ * Markup: components/home/PanelSettingsGear.html (one gear per deck header) and the
+ * #panelSettingsRoot mount in pages/home.html. Behaviour: the settings shell (TS).
+ * Tokens only, so every rule flips with the app-wide theme.
+ */
+
+/* ------------------------------- Gear button ------------------------------- */
+
+/* 44px hit area via padding around the unchanged 30px icon; the negative margin
+   hands the extra 14px back so neighbouring icons keep their rhythm. `.hidden`
+   (display:none !important) collapses the gear to zero width, margin included. */
+.panelSettingsGear {
+    flex: 0 0 auto;
+    padding: 7px;
+    margin: -7px;
+    cursor: pointer;
+}
+
+.panelSettingsGear > svg {
+    width: 30px;
+    height: 30px;
+    fill: var(--grayBadgeSelection);
+    transition: fill 0.15s ease;
+}
+
+.panelSettingsGear[aria-expanded="true"] > svg {
+    fill: var(--deckSelectionGreen);
+}
+
+.panelSettingsGear:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+@media not all and (any-pointer: coarse) {
+    .panelSettingsGear:hover > svg {
+        fill: var(--deckSelectionGreenHover);
+    }
+}
+
+/* No surface is wired below 992px until the mobile sheet (phase 3); the 992px
+   boundary matches the deck CSS (min-width: 992px / max-width: 991.98px). */
+@media (max-width: 991.98px) {
+    .panelSettingsGear {
+        display: none !important;
+    }
+}
+
+/* ------------------------------ Shell mount ------------------------------- */
+
+/* Out of flow: <body> is a flex column and the mount must never take a slot. */
+#panelSettingsRoot {
+    position: fixed;
+    /* position:fixed makes the root its own stacking context, so the popover's
+       z-index only orders inside it: the root itself must carry the 1031. */
+    z-index: 1031;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    overflow: visible;
+}
+
+/* ------------------------------ Popover card ------------------------------ */
+
+/* Above in-flow content, the member row menu (20) and the tag-sheet peek (30);
+   below the 1036 bulk-actions bar/picker, the 1039 tag-sheet backdrop and the
+   1040 overlays. The shell positions it next to the opening gear. */
+.panelSettingsPopover {
+    position: fixed;
+    width: 340px;
+    max-width: calc(100vw - 16px);
+    /* 112px = header band bottom (~93px under the navbar) + gear gap + bottom margin,
+       so the card still fits when positioned directly under a top-deck gear. */
+    max-height: calc(100dvh - 112px);
+    overflow-y: auto;
+    padding: 4px 16px;
+    background: var(--panelBackgroundColor);
+    color: var(--textPrimary);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+}
+
+.panelSettingsPopover:focus {
+    outline: none;
+}
+
+.panelSettingsPopover:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+/* Reserved for the phase 3 bottom sheet and its backdrop (empty, hidden here). */
+.panelSettingsBackdrop,
+.panelSettingsSheet {
+    position: fixed;
+}
+
+/* ---------------------------- Section chrome ----------------------------- */
+
+.panelSettingsSection {
+    padding: 0.85rem 0;
+    border-top: 1px solid var(--borderColor);
+}
+
+.panelSettingsSection:first-child {
+    border-top: 0;
+}
+
+/* Small uppercase muted text label: scope is never conveyed by colour alone. */
+.panelSettingsScope {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0.5rem;
+    color: var(--cardURLTextColor);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* Section rows mirror .SettingsPrefRow (settings-page.css). */
+.panelSettingsRow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.6rem 0;
+}
+
+.panelSettingsRowTitle {
+    color: var(--textPrimary);
+    font-weight: 700;
+    font-size: 0.98rem;
+}
+
+.panelSettingsRowDesc {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+/* Inline status slot: saving muted, saved green, error red (each also carries text). */
+.panelSettingsStatus {
+    min-height: 1.1rem;
+    font-size: 0.8rem;
+    color: var(--cardURLTextColor);
+}
+
+.panelSettingsStatus[data-state="saved"] {
+    color: var(--splashGreen);
+}
+
+.panelSettingsStatus[data-state="error"] {
+    color: var(--removeIconColor);
+}
+
+/* Read-only note, shown as text only when the section cannot be written. */
+.panelSettingsReadOnlyNote {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--cardURLTextColor);
+    font-size: 0.8rem;
+}
+
+/* display:flex above would otherwise defeat the hidden attribute. */
+.panelSettingsReadOnlyNote[hidden] {
+    display: none;
+}
+
+/* Touch devices keep the 44px minimum on interactive section controls. */
+@media (any-pointer: coarse) {
+    .panelSettingsPopover button,
+    .panelSettingsPopover select,
+    .panelSettingsPopover input {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .panelSettingsGear > svg {
+        transition: none;
+    }
+}
