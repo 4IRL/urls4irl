@@ -25,6 +25,7 @@ from tests.functional.playwright_utils import (
     get_all_url_ids_in_selected_utub,
     get_num_url_rows,
     wait_for_animation_to_end_check_top_lhs_corner,
+    wait_for_css_transitions_to_finish,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_until_css_property,
@@ -435,6 +436,10 @@ def test_expanded_orphaned_url_shows_stacked_former_member_badge_below_buttons(
     wait_for_animation_to_end_check_top_lhs_corner(
         page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
+
+    # The buttons' top-left corner barely moves while the row expands, so the corner poll
+    # above can pass early; settle the whole row before comparing the badge to the buttons.
+    wait_for_css_transitions_to_finish(locator=page.locator(row_selector))
 
     badge = page.locator(f"{row_selector} {HPL.URL_DATE_ADDED_BADGE_STACKED}")
     expect(badge).to_be_visible()
