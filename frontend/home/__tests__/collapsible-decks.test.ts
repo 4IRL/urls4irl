@@ -6,7 +6,7 @@ import {
   resetAllDecksIfCollapsed,
   applyPersistedDeckLayout,
 } from "../collapsible-decks.js";
-import { AppEvents, emit } from "../../lib/event-bus.js";
+import { AppEvents, emit, on } from "../../lib/event-bus.js";
 import { resetStore, setState } from "../../store/app-store.js";
 
 vi.mock("../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
@@ -1445,6 +1445,94 @@ describe("Collapsible Decks", () => {
       expect($("#MemberDeckHeaderAndCaret").attr("aria-disabled")).toBe("true");
       // The UTubs deck is never auto-locked, so it stays a live tab stop.
       expect($("#UTubDeckHeaderAndCaret").attr("tabindex")).toBeUndefined();
+    });
+  });
+
+  describe("DECK_COLLAPSE_CHANGED emission", () => {
+    type CollapsePayload = { deck: string; collapsed: boolean };
+    let received: CollapsePayload[];
+    let unsubscribe: () => void;
+
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      received = [];
+      unsubscribe = on(AppEvents.DECK_COLLAPSE_CHANGED, (payload) => {
+        received.push(payload);
+      });
+    });
+
+    afterEach(() => {
+      unsubscribe();
+    });
+
+    it.each([
+      ["#UTubDeckHeaderAndCaret", "utubs"],
+      ["#MemberDeckHeaderAndCaret", "members"],
+      ["#TagDeckHeaderAndCaret", "tags"],
+    ])("%s click emits collapse then expand for %s", (header, deck) => {
+      $(header).trigger("click");
+      $(header).trigger("click");
+
+      expect(received).toEqual([
+        { deck, collapsed: true },
+        { deck, collapsed: false },
+      ]);
+    });
+
+    it("emits collapsed:false for the evicted deck when a third deck collapses", () => {
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      received.length = 0;
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect(received).toContainEqual({ deck: "members", collapsed: false });
+      expect(received).toContainEqual({ deck: "tags", collapsed: true });
+    });
+
+    it("emits collapsed:false for the UTubs deck when it is the fallback eviction", () => {
+      $(".deck#UTubDeck").addClass("collapsed");
+      $("#UTubDeckHeaderAndCaret .title-caret").addClass("closed");
+      $(".deck#MemberDeck").addClass("collapsed");
+      $("#MemberDeckHeaderAndCaret .title-caret").addClass("closed");
+
+      $("#TagDeckHeaderAndCaret").trigger("click");
+
+      expect(received).toContainEqual({ deck: "utubs", collapsed: false });
+    });
+
+    it("emits collapsed:false for each deck that resetAllDecksIfCollapsed expands", () => {
+      for (const deck of ["UTub", "Member", "Tag"]) {
+        $(`.deck#${deck}Deck`).addClass("collapsed");
+        $(`#${deck}DeckHeaderAndCaret .title-caret`).addClass("closed");
+      }
+
+      resetAllDecksIfCollapsed();
+
+      expect(received).toEqual(
+        expect.arrayContaining([
+          { deck: "utubs", collapsed: false },
+          { deck: "members", collapsed: false },
+          { deck: "tags", collapsed: false },
+        ]),
+      );
+      expect(received.every((payload) => payload.collapsed === false)).toBe(
+        true,
+      );
+    });
+
+    it("emits collapsed:true for the decks setDeckMinimized collapses, once each", async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+      minimizeMemberAndTagDecksWhenNoUTub();
+      minimizeMemberAndTagDecksWhenNoUTub();
+
+      expect(received).toEqual([
+        { deck: "members", collapsed: true },
+        { deck: "tags", collapsed: true },
+      ]);
     });
   });
 });

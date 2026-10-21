@@ -1,4 +1,5 @@
 import { $ } from "../lib/globals.js";
+import { AppEvents, emit as emitAppEvent } from "../lib/event-bus.js";
 import { emit } from "../lib/metrics-client.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { LHS_COLLAPSE_SOURCE } from "../types/metrics-dim-values.js";
@@ -20,6 +21,9 @@ const MOBILE_HIDDEN_CLASS = "hidden";
 
 let userCollapsedLHS = false;
 let searchModeActive = false;
+// The resolved hidden state last announced on the bus, so the event fires only
+// when it actually changed.
+let lastEmittedHidden = false;
 
 /**
  * Single source of truth for LHS visibility on desktop. The resolved hidden
@@ -33,6 +37,10 @@ function applyLeftPanelVisibility(): void {
   $(SEAM_TOGGLE_SELECTOR).attr("aria-expanded", ariaExpanded);
   $(HEADER_TOGGLE_SELECTOR).attr("aria-expanded", ariaExpanded);
   $(`${SEAM_TOGGLE_SELECTOR} .bi`).toggleClass(CHEVRON_CLOSED_CLASS, hidden);
+  if (hidden !== lastEmittedHidden) {
+    lastEmittedHidden = hidden;
+    emitAppEvent(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: hidden });
+  }
 }
 
 /**

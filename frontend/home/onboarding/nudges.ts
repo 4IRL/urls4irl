@@ -27,6 +27,7 @@ import { ONBOARDING_TIP_SHOWN_TIP_ID } from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState } from "../../store/app-store.js";
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
+import { isPanelSettingsOpen } from "../panel-settings/state.js";
 import { isUTubSearchActive } from "../utubs/search.js";
 import {
   _resetOnboardingStorageForTests,
@@ -54,6 +55,8 @@ export type TipId =
 // Real, styled tooltip skin defined in `styles/home/onboarding-nudges.css`.
 const NUDGE_CUSTOM_CLASS = "onboarding-nudge-tooltip";
 const CLICK_NAMESPACE = "click.onboardingNudge";
+const PANEL_SETTINGS_CLICK_EXEMPT_SELECTOR =
+  ".panelSettingsGear, #panelSettingsPopover";
 const KEYDOWN_NAMESPACE = "keydown.onboardingNudge";
 // Shared visually-hidden aria-live region (see `pages/home.html`).
 const ANNOUNCER_SELECTOR = "#onboardingNudgeAnnouncement";
@@ -204,12 +207,19 @@ function flushPendingTipDispose(anchor: HTMLElement): void {
 // click elsewhere) dismiss with markSeen:true. The act path is not
 // special-cased because we never `preventDefault`/`stopPropagation`, so the
 // anchor's own click handler still runs and opens its form as usual.
-function handleDocumentClick(): void {
+function handleDocumentClick(event: JQuery.TriggeredEvent): void {
+  // The settings gear and popover own their clicks: opening one dismisses the
+  // tip itself (without marking it seen), so a click inside must not mark it.
+  if ($(event.target).closest(PANEL_SETTINGS_CLICK_EXEMPT_SELECTOR).length > 0)
+    return;
   dismissActiveTip({ markSeen: true });
 }
 
 function handleDocumentKeydown(event: JQuery.TriggeredEvent): void {
-  if (event.key === "Escape") dismissActiveTip({ markSeen: true });
+  if (event.key !== "Escape") return;
+  // Escape closes the settings popover first, not the tip.
+  if (isPanelSettingsOpen()) return;
+  dismissActiveTip({ markSeen: true });
 }
 
 /**
@@ -479,7 +489,8 @@ export function maybeShowNextTip(): void {
     getState().multiSelectMode ||
     getState().isCurrentUTubLocked ||
     isUTubSearchActive() ||
-    isCrossUtubSearchActive();
+    isCrossUtubSearchActive() ||
+    isPanelSettingsOpen();
   if (suppressed) {
     if (_activeTip !== null) dismissActiveTip({ markSeen: false });
     return;

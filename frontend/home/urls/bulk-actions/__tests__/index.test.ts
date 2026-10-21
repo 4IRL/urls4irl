@@ -9,6 +9,7 @@ import {
   openTagSheetFromUserAction,
 } from "../../../tags/sheet.js";
 import { isMobile } from "../../../mobile.js";
+import { setPanelSettingsOpen } from "../../../panel-settings/state.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 
 vi.mock("../bulk-mode.js", () => ({
@@ -89,6 +90,18 @@ describe("bulk-actions index — Escape-to-exit", () => {
     vi.mocked(isTagSheetOpen).mockReturnValue(true);
 
     pressEscape();
+
+    expect(vi.mocked(exitMultiSelectMode)).not.toHaveBeenCalled();
+  });
+
+  it("does NOT exit on Escape while the panel settings popover is open", () => {
+    vi.mocked(isMultiSelectActive).mockReturnValue(true);
+    setPanelSettingsOpen({ open: true });
+    try {
+      pressEscape();
+    } finally {
+      setPanelSettingsOpen({ open: false });
+    }
 
     expect(vi.mocked(exitMultiSelectMode)).not.toHaveBeenCalled();
   });
