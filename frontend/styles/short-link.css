@@ -1,0 +1,141 @@
+/* Public share-link confirmation / dead-link page (GET /s/<code>). Tokens only. */
+
+.short-link-main {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 460px;
+    padding: var(--space-16) var(--space-4);
+    background: var(--defaultPageBackgroundColor);
+    color: var(--UTubDescriptionColor);
+    font-family: var(--font-display);
+}
+
+.short-link-main::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+        55% 55% at 50% 28%,
+        rgba(var(--color-brand-green-rgb), 0.2),
+        transparent 72%
+    );
+}
+
+.short-link-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: 100%;
+    max-width: 36rem;
+    padding: var(--space-6);
+    background: var(--panelBackgroundColor);
+    border: 2px solid var(--borderColor);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md), var(--shadow-glow-green);
+}
+
+.short-link-eyebrow {
+    margin: 0;
+    color: var(--splashLabelGreen);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+}
+
+.short-link-heading {
+    margin: 0;
+    color: var(--UTubDescriptionColor);
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-bold);
+    text-align: left;
+    word-break: break-word;
+}
+
+.short-link-full-url {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--cardBackgroundColor);
+    border-radius: var(--radius-card);
+    color: var(--cardURLTextColor);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: var(--fs-sm);
+    word-break: break-all;
+}
+
+.short-link-hint {
+    margin: 0;
+    color: var(--navbarText);
+    font-size: var(--fs-sm);
+}
+
+.short-link-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+/* Shared with the splash styles' .splash-button (splash.css is not loaded here). */
+.short-link-panel .splash-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 11rem;
+    min-height: 2.75rem; /* 44px touch target */
+    padding: var(--space-2) var(--space-6);
+    border: 1px solid var(--darkSplashLabelGreen);
+    border-radius: var(--radius-md);
+    background-color: var(--darkSplashLabelGreen);
+    color: #fff;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+}
+
+.short-link-panel .splash-button:hover {
+    background-color: var(--splashGreen);
+}
+
+.short-link-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: var(--space-2) var(--space-6);
+    border: 1px solid var(--navbarText);
+    border-radius: var(--radius-md);
+    color: var(--UTubDescriptionColor);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.short-link-panel .splash-button:focus-visible,
+.short-link-secondary:focus-visible {
+    outline: 3px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.collapsing#NavbarNavDropdown,
+.show#NavbarNavDropdown {
+    z-index: 9999;
+}
+
+@media (max-width: 767.98px) {
+    .short-link-main {
+        padding: var(--space-8) var(--space-4);
+    }
+
+    .short-link-cta-row a {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .short-link-panel .splash-button {
+        transition: none;
+    }
+}

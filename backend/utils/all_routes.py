@@ -70,6 +70,13 @@ class URL_ROUTES:
     RESTORE_URL = _URLS + "restore_url"
     RESTORE_URLS = _URLS + "restore_urls"
     PURGE_URL = _URLS + "purge_url"
+    MINT_SHORT_LINK = _URLS + "mint_short_link"
+    REVOKE_SHORT_LINK = _URLS + "revoke_short_link"
+
+
+class SHORT_LINK_ROUTES:
+    _SHORT_LINKS = "short_links."
+    RESOLVE_SHORT_LINK = _SHORT_LINKS + "resolve_short_link"
 
 
 class USER_ROUTES:
@@ -219,6 +226,7 @@ class ROUTES:
     URL_TAGS = URL_TAG_ROUTES
     UTUB_TAGS = UTUB_TAG_ROUTES
     URLS = URL_ROUTES
+    SHORT_LINKS = SHORT_LINK_ROUTES
     USERS = USER_ROUTES
     ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
     ADMIN = ADMIN_ROUTES
@@ -268,6 +276,12 @@ JS_ROUTES: dict[str, JsRoute] = {
     "restoreURL": JsRoute(URL_ROUTES.RESTORE_URL, {"utub_id": -1, "utub_url_id": -2}),
     "restoreURLs": JsRoute(URL_ROUTES.RESTORE_URLS, {"utub_id": -1}),
     "purgeURL": JsRoute(URL_ROUTES.PURGE_URL, {"utub_id": -1, "utub_url_id": -2}),
+    "mintShortLink": JsRoute(
+        URL_ROUTES.MINT_SHORT_LINK, {"utub_id": -1, "utub_url_id": -2}
+    ),
+    "revokeShortLink": JsRoute(
+        URL_ROUTES.REVOKE_SHORT_LINK, {"utub_id": -1, "utub_url_id": -2}
+    ),
     # UTub URL Tag routes
     "createURLTag": JsRoute(
         URL_TAG_ROUTES.CREATE_URL_TAG, {"utub_id": -1, "utub_url_id": -2}
@@ -377,6 +391,7 @@ class NoJsReason(StrEnum):
     OAUTH_CALLBACK = "oauth-callback"
     BROWSER_REDIRECT = "browser-redirect"
     INFRA_PROBE = "infra-probe"
+    PUBLIC_SHARE_LINK = "public-share-link"
 
 
 # Keys are exact endpoints, or `<blueprint>.*` for a whole blueprint. A
@@ -394,6 +409,8 @@ NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
     "splash.github_callback": NoJsReason.OAUTH_CALLBACK,
     # Redirect target built server-side (linking_service, account_service).
     "splash.oauth_link": NoJsReason.BROWSER_REDIRECT,
+    # Public share-link page opened from outside the app (confirmation page).
+    "short_links.resolve_short_link": NoJsReason.PUBLIC_SHARE_LINK,
 }
 
 

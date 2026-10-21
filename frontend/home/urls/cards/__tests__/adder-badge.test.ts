@@ -20,6 +20,8 @@ function makeURL({
     urlString: "https://example.com",
     utubUrlTagIDs: [],
     canDelete: false,
+    shortLinkExpiresAt: null,
+    canRevokeShortLink: false,
     addedAt: "2024-03-09T12:00:00+00:00",
     addedByUserID,
   };

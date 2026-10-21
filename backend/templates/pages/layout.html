@@ -20,7 +20,10 @@
 
     {% block modal_extender %}
     <!-- Modal -->
-    {% if email_token_is_expired %}
+    {% if is_short_link_page %}
+    {# neutral shell for every viewer: no splash or home modals #}
+
+    {% elif email_token_is_expired %}
 
     {% include 'components/splash/validate_email_expired.html' %}
 
@@ -49,7 +52,7 @@
     {% endblock %}
 
     {% block mainbody %}
-    {% if current_user.is_authenticated and current_user.email_validated %}
+    {% if current_user.is_authenticated and current_user.email_validated and not is_short_link_page %}
     <!-- Main Panel View -->
 
     {% endif %}

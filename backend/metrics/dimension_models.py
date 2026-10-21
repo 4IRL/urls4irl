@@ -153,6 +153,10 @@ class _DimUrlCopy(UIBaseDimensions):
     result: Literal["success", "failure"]
 
 
+class _DimShortLinkCopy(UIBaseDimensions):
+    result: Literal["success", "fallback", "failure"]
+
+
 class _DimUrlParamsTrimmed(UIBaseDimensions):
     form: Literal["url_create", "url_string_edit"]
     action: Literal["toggle", "drop_all", "keep_all", "undo"]
@@ -550,6 +554,9 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.PASSWORD_RESET_REQUESTED: _DimDeviceOnly,
     EventName.REGISTER_REJECTED: _DimRegisterRejected,
     EventName.REGISTER_SUCCESS: _DimDeviceOnly,
+    EventName.SHORT_LINK_MINTED: _DimDeviceOnly,
+    EventName.SHORT_LINK_RESOLVED: _DimDeviceOnly,
+    EventName.SHORT_LINK_REVOKED: _DimDeviceOnly,
     EventName.TAG_APPLIED: _DimDeviceOnly,
     EventName.TAGS_APPLIED_BATCH: _DimTagsAppliedBatch,
     EventName.TAGS_APPLIED_MULTI_URL: _DimTagsAppliedMultiUrl,
@@ -594,6 +601,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_URL_TITLE_EDIT_OPEN: _DimDeviceOnly,
     EventName.UI_URL_STRING_EDIT_OPEN: _DimDeviceOnly,
     EventName.UI_URL_COPY: _DimUrlCopy,
+    EventName.UI_SHORT_LINK_COPY: _DimShortLinkCopy,
     EventName.UI_URL_ACCESS_WARNING: _DimDeviceOnly,
     EventName.UI_URL_ACCESS_WARNING_DISMISS: _DimDeviceOnly,
     EventName.UI_URL_PARAMS_TRIMMED: _DimUrlParamsTrimmed,

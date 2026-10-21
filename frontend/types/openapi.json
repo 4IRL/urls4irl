@@ -5068,6 +5068,9 @@
                 "password_reset_requested",
                 "register_rejected",
                 "register_success",
+                "short_link_minted",
+                "short_link_resolved",
+                "short_link_revoked",
                 "tag_applied",
                 "tags_applied_batch",
                 "tags_applied_multi_url",
@@ -5110,6 +5113,7 @@
                 "ui_url_title_edit_open",
                 "ui_url_string_edit_open",
                 "ui_url_copy",
+                "ui_short_link_copy",
                 "ui_url_access_warning",
                 "ui_url_access_warning_dismiss",
                 "ui_url_params_trimmed",
@@ -5430,6 +5434,9 @@
                 "password_reset_requested",
                 "register_rejected",
                 "register_success",
+                "short_link_minted",
+                "short_link_resolved",
+                "short_link_revoked",
                 "tag_applied",
                 "tags_applied_batch",
                 "tags_applied_multi_url",
@@ -5472,6 +5479,7 @@
                 "ui_url_title_edit_open",
                 "ui_url_string_edit_open",
                 "ui_url_copy",
+                "ui_short_link_copy",
                 "ui_url_access_warning",
                 "ui_url_access_warning_dismiss",
                 "ui_url_params_trimmed",
@@ -6191,6 +6199,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/s/{code}": {
+      "get": {
+        "operationId": "resolveShortLink",
+        "tags": ["urls"],
+        "security": [],
+        "description": "Public share-link landing page. Shows a confirmation page (200) with the destination and a Continue link for a live link, never a redirect. Every dead, malformed, expired, trashed or locked code returns the same 404 page.",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
                 }
               }
             }
@@ -7627,6 +7675,164 @@
         "x-error-codes": {
           "URLErrorCodes": {
             "$ref": "#/components/schemas/URLErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls/{utub_url_id}/short-link": {
+      "post": {
+        "operationId": "mintShortLink",
+        "tags": ["urls"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Get the share short link for a UTub URL, making one when none is active. An active link is reused unchanged (created false); links expire 7 days after they are made.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An active share short link for one UTub URL (just created, or reused).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ShortLinkResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "revokeShortLink",
+        "tags": ["urls"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Revoke a UTub URL's share short link (owner, co-owner, the URL's adder or the member who made the link). Allowed while the UTub is locked.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A short link revoked (hard-deleted).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ShortLinkRevokedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -10791,6 +10997,22 @@
           "addedByUserID": {
             "description": "User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list)",
             "type": "integer"
+          },
+          "shortLinkExpiresAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Expiry of the URL's active share short link; null when there is no link or it has expired"
+          },
+          "canRevokeShortLink": {
+            "description": "Whether the current user can revoke the URL's active share short link; false when there is no active link",
+            "type": "boolean"
           }
         },
         "required": [
@@ -10800,7 +11022,9 @@
           "urlTitle",
           "canDelete",
           "addedAt",
-          "addedByUserID"
+          "addedByUserID",
+          "shortLinkExpiresAt",
+          "canRevokeShortLink"
         ],
         "type": "object"
       },
@@ -11060,6 +11284,7 @@
               "ui_url_title_edit_open",
               "ui_url_string_edit_open",
               "ui_url_copy",
+              "ui_short_link_copy",
               "ui_url_access_warning",
               "ui_url_access_warning_dismiss",
               "ui_url_params_trimmed",
@@ -11979,6 +12204,11 @@
         "required": ["window_start", "window_end", "buckets"],
         "type": "object"
       },
+      "HtmlErrorPageSchema": {
+        "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
+        "properties": {},
+        "type": "object"
+      },
       "RegisterRequest": {
         "properties": {
           "username": {
@@ -12187,11 +12417,6 @@
       },
       "EmptyRedirectSchema": {
         "description": "Documents a bare 302 redirect with no JSON body.",
-        "properties": {},
-        "type": "object"
-      },
-      "HtmlErrorPageSchema": {
-        "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
         "properties": {},
         "type": "object"
       },
@@ -12655,6 +12880,41 @@
           "totalRestored",
           "totalSkipped"
         ],
+        "type": "object"
+      },
+      "ShortLinkResponseSchema": {
+        "description": "An active share short link for one UTub URL (just created, or reused).",
+        "properties": {
+          "shortUrl": {
+            "description": "Absolute share URL (https://<host>/s/<code>)",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "UTC ISO-8601 timestamp after which the link stops working",
+            "format": "date-time",
+            "type": "string"
+          },
+          "canRevoke": {
+            "description": "Whether the current user may revoke this link",
+            "type": "boolean"
+          },
+          "created": {
+            "description": "True when this request made the link, false when an active one was reused",
+            "type": "boolean"
+          }
+        },
+        "required": ["shortUrl", "expiresAt", "canRevoke", "created"],
+        "type": "object"
+      },
+      "ShortLinkRevokedResponseSchema": {
+        "description": "A short link revoked (hard-deleted).",
+        "properties": {
+          "utubUrlID": {
+            "description": "ID of the UTub-URL whose short link was revoked",
+            "type": "integer"
+          }
+        },
+        "required": ["utubUrlID"],
         "type": "object"
       },
       "UrlPurgedResponseSchema": {

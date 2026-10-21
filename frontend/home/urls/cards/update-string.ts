@@ -754,6 +754,10 @@ function replaceEditedCardWithRevivedURL({
     canDelete: true,
     addedAt: editedUrl?.addedAt ?? new Date().toISOString(),
     addedByUserID: credited,
+    // Trashing the edited row deleted its share link and the revived row never had
+    // one; real state arrives on the next UTub refresh.
+    shortLinkExpiresAt: null,
+    canRevokeShortLink: false,
   };
 
   // Tear down the edited card's edit panel and selection first, so no open-form

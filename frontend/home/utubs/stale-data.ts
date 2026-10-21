@@ -249,6 +249,8 @@ function projectUTubContent({
       urlString: url.urlString,
       urlTitle: url.urlTitle,
       canDelete: url.canDelete,
+      shortLinkExpiresAt: url.shortLinkExpiresAt,
+      canRevokeShortLink: url.canRevokeShortLink,
       utubUrlTagIDs: [...url.utubUrlTagIDs].sort(
         (first, second) => first - second,
       ),

@@ -55,6 +55,7 @@ from backend.utils.strings.search_strs import (
     CROSS_SEARCH_TRIGGER_CLOSE_LABEL,
     CROSS_SEARCH_TRIGGER_OPEN_LABEL,
 )
+from backend.utils.strings.short_link_strs import SHORT_LINK_UI
 from backend.utils.strings.splash_form_strs import (
     FORGOT_YOUR_PASSWORD,
     GITHUB_OAUTH_LOGIN_BUTTON_TEXT,
@@ -635,6 +636,20 @@ class STRINGS:
     TRASH_EMPTY_SKIPPED_LOCKED_ONE = TRASH_UI.EMPTY_SKIPPED_LOCKED_ONE
     TRASH_NOT_IN_TRASH = TRASH_UI.NOT_IN_TRASH
     TRASH_ALREADY_IN_DESTINATION = TRASH_UI.ALREADY_IN_DESTINATION
+    # URL-card short links (url-shortener) — read by the card short-link button/banner.
+    SHORT_LINK_TOOLTIP = SHORT_LINK_UI.TOOLTIP
+    SHORT_LINK_TOOLTIP_ACTIVE = SHORT_LINK_UI.TOOLTIP_ACTIVE
+    SHORT_LINK_REMOVED_SUFFIX = SHORT_LINK_UI.LINK_REMOVED_SUFFIX
+    SHORT_LINK_COPIED = SHORT_LINK_UI.COPIED
+    SHORT_LINK_EXPIRES = SHORT_LINK_UI.EXPIRES
+    SHORT_LINK_REVOKE_LABEL = SHORT_LINK_UI.REVOKE_LABEL
+    SHORT_LINK_REVOKE_ARIA = SHORT_LINK_UI.REVOKE_ARIA
+    SHORT_LINK_REVOKED = SHORT_LINK_UI.REVOKED
+    SHORT_LINK_CLIPBOARD_FALLBACK = SHORT_LINK_UI.CLIPBOARD_FALLBACK
+    SHORT_LINK_COPY_FAILED = SHORT_LINK_UI.COPY_FAILED
+    SHORT_LINK_REVOKE_FAILED = SHORT_LINK_UI.REVOKE_FAILED
+    SHORT_LINK_REVOKE_CONFIRM_TITLE = SHORT_LINK_UI.REVOKE_CONFIRM_TITLE
+    SHORT_LINK_REVOKE_CONFIRM_BODY = SHORT_LINK_UI.REVOKE_CONFIRM_BODY
     TRASH_LOCKED = TRASH_UI.LOCKED
     TRASH_ORIGIN_UNAVAILABLE = TRASH_UI.ORIGIN_UNAVAILABLE
     TRASH_CONFIRM_PURGE_TITLE = TRASH_UI.CONFIRM_PURGE_TITLE
@@ -1443,6 +1458,20 @@ def generate_strings_js() -> dict[str, str]:
         "TRASH_EMPTY_SKIPPED_LOCKED_ONE": CONSTANTS.STRINGS.TRASH_EMPTY_SKIPPED_LOCKED_ONE,
         "TRASH_NOT_IN_TRASH": CONSTANTS.STRINGS.TRASH_NOT_IN_TRASH,
         "TRASH_ALREADY_IN_DESTINATION": CONSTANTS.STRINGS.TRASH_ALREADY_IN_DESTINATION,
+        # URL-card short-link Strings (url-shortener) — read by the card short-link UI
+        "SHORT_LINK_TOOLTIP": CONSTANTS.STRINGS.SHORT_LINK_TOOLTIP,
+        "SHORT_LINK_TOOLTIP_ACTIVE": CONSTANTS.STRINGS.SHORT_LINK_TOOLTIP_ACTIVE,
+        "SHORT_LINK_REMOVED_SUFFIX": CONSTANTS.STRINGS.SHORT_LINK_REMOVED_SUFFIX,
+        "SHORT_LINK_COPIED": CONSTANTS.STRINGS.SHORT_LINK_COPIED,
+        "SHORT_LINK_EXPIRES": CONSTANTS.STRINGS.SHORT_LINK_EXPIRES,
+        "SHORT_LINK_REVOKE_LABEL": CONSTANTS.STRINGS.SHORT_LINK_REVOKE_LABEL,
+        "SHORT_LINK_REVOKE_ARIA": CONSTANTS.STRINGS.SHORT_LINK_REVOKE_ARIA,
+        "SHORT_LINK_REVOKED": CONSTANTS.STRINGS.SHORT_LINK_REVOKED,
+        "SHORT_LINK_CLIPBOARD_FALLBACK": CONSTANTS.STRINGS.SHORT_LINK_CLIPBOARD_FALLBACK,
+        "SHORT_LINK_COPY_FAILED": CONSTANTS.STRINGS.SHORT_LINK_COPY_FAILED,
+        "SHORT_LINK_REVOKE_FAILED": CONSTANTS.STRINGS.SHORT_LINK_REVOKE_FAILED,
+        "SHORT_LINK_REVOKE_CONFIRM_TITLE": CONSTANTS.STRINGS.SHORT_LINK_REVOKE_CONFIRM_TITLE,
+        "SHORT_LINK_REVOKE_CONFIRM_BODY": CONSTANTS.STRINGS.SHORT_LINK_REVOKE_CONFIRM_BODY,
         "TRASH_LOCKED": CONSTANTS.STRINGS.TRASH_LOCKED,
         "TRASH_ORIGIN_UNAVAILABLE": CONSTANTS.STRINGS.TRASH_ORIGIN_UNAVAILABLE,
         "TRASH_CONFIRM_PURGE_TITLE": CONSTANTS.STRINGS.TRASH_CONFIRM_PURGE_TITLE,
@@ -1730,15 +1759,22 @@ def generate_strings_js() -> dict[str, str]:
     }
 
 
-def build_frontend_config() -> dict:
+def build_frontend_config(*, anonymous: bool = False) -> dict:
     """JSON-serializable app config rendered into `#app-config` (`_config.html`)
-    and read by `frontend/lib/config.ts`."""
-    routes = generate_routes_js()
-    if current_user.is_authenticated and current_user.is_admin():
-        routes.update(generate_admin_routes_js())
-    debug_enabled = current_app.config["DEBUG"] or (
-        current_user.is_authenticated and current_user.is_admin()
+    and read by `frontend/lib/config.ts`.
+
+    Args:
+        anonymous (bool): Build the config an anonymous visitor gets, ignoring
+            ``current_user`` (no admin routes, no admin debug flag). Used by pages
+            that render the same neutral shell for every viewer.
+    """
+    is_admin_viewer: bool = (
+        not anonymous and current_user.is_authenticated and current_user.is_admin()
     )
+    routes = generate_routes_js()
+    if is_admin_viewer:
+        routes.update(generate_admin_routes_js())
+    debug_enabled = current_app.config["DEBUG"] or is_admin_viewer
     return dict(
         routes=routes,
         constants=generate_constants_js(),
@@ -1748,9 +1784,10 @@ def build_frontend_config() -> dict:
     )
 
 
-def provide_config_for_constants() -> dict:
+def provide_config_for_constants(*, anonymous: bool = False) -> dict:
     """
-    Provides configuration to templates:
+    Provides configuration to templates (``anonymous=True`` forces the per-user
+    parts, ``user_theme`` and ``CONFIG``, to the anonymous visitor's values):
     - CONSTANTS: Python objects for Jinja template rendering
     - CONFIG: JSON-serializable dict for JavaScript
     - google_oauth_enabled / github_oauth_enabled: whether each provider's
@@ -1763,13 +1800,15 @@ def provide_config_for_constants() -> dict:
     # users (and authenticated users with no UserPreferences row) resolve to the
     # shared ``Theme.SYSTEM`` ("system") default via ``resolve_preferences``.
     preferences_row = (
-        current_user.preferences if current_user.is_authenticated else None
+        current_user.preferences
+        if not anonymous and current_user.is_authenticated
+        else None
     )
     user_theme = resolve_preferences(preferences_row).theme.value
     return dict(
         CONSTANTS=CONSTANTS(),
         user_theme=user_theme,
-        CONFIG=build_frontend_config(),
+        CONFIG=build_frontend_config(anonymous=anonymous),
         current_year=utc_now().year,
         google_oauth_enabled=should_register_google_oauth(
             current_app.config.get("GOOGLE_OAUTH_CLIENT_ID"),

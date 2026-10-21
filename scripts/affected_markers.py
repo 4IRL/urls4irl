@@ -131,12 +131,16 @@ BLUEPRINT_MARKERS: dict[str, tuple[str, ...]] = {
     "metrics": _METRICS,
     "system": _SYSTEM,
     "api_v1": _API_V1,
+    "short_links": _SHORT_LINKS,
 }
 
 # Added on top of the row's blueprint markers. The admin metrics page's own
 # integration tests (tests/integration/system/) are marked `cli`.
 ENDPOINT_MARKER_OVERRIDES: dict[str, tuple[str, ...]] = {
     "admin.admin_metrics": ("metrics_ui", "cli"),
+    # The share-link routes live on the `urls` blueprint but are tested by `short_links`.
+    "urls.mint_short_link": ("short_links",),
+    "urls.revoke_short_link": ("short_links",),
 }
 
 NO_IMPACT_GLOBS: tuple[str, ...] = (
