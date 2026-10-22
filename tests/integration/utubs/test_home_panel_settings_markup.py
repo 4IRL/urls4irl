@@ -1,3 +1,4 @@
+import re
 from html.parser import HTMLParser
 from typing import Dict, List, Optional, Tuple
 
@@ -183,3 +184,66 @@ def test_home_page_renders_settings_shell_mount_outside_main(
     announcement = parser.elements["PanelSettingsAnnouncement"]
     assert announcement.get("aria-live") == "polite"
     assert html.count('id="PanelSettingsAnnouncement"') == 1
+
+
+def test_home_page_renders_settings_sheet_dialog_markup(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user
+    WHEN the home page is requested
+    THEN the hidden mobile settings sheet carries dialog semantics, a named close
+        button, an empty title and grabber, header (title, close), body in DOM order
+    """
+    client, _, _, _ = login_first_user_without_register
+    parser, html = _get_home_markup(client)
+
+    sheet = parser.elements["panelSettingsSheet"]
+    assert sheet.get("role") == "dialog"
+    assert sheet.get("aria-modal") == "true"
+    assert sheet.get("aria-labelledby") == "panelSettingsSheetTitle"
+    assert sheet.get("tabindex") == "-1"
+    # The title is the only accessible-name source.
+    assert "aria-label" not in sheet
+
+    backdrop = parser.elements["panelSettingsBackdrop"]
+    assert backdrop.get("aria-hidden") == "true"
+    for element_id in ("panelSettingsSheet", "panelSettingsBackdrop"):
+        classes = (parser.elements[element_id].get("class") or "").split()
+        assert "hidden" in classes
+        assert "hidden" not in parser.elements[element_id]
+
+    close = parser.elements["panelSettingsSheetClose"]
+    assert close.get("type") == "button"
+    assert close.get("aria-label") == UI_TEST_STRINGS.PANEL_SETTINGS_CLOSE
+    assert UI_TEST_STRINGS.PANEL_SETTINGS_CLOSE == "Close settings"
+
+    grabber = parser.elements["panelSettingsSheetGrabber"]
+    assert grabber.get("aria-hidden") == "true"
+
+    # The title is an empty h2 (text is set at open time), read from the raw html.
+    assert re.search(r'<h2[^>]*id="panelSettingsSheetTitle"[^>]*>\s*</h2>', html), (
+        "title must be an empty h2"
+    )
+
+    grabber_at = html.index('id="panelSettingsSheetGrabber"')
+    header_at = html.index('id="panelSettingsSheetHeader"')
+    title_at = html.index('id="panelSettingsSheetTitle"')
+    close_at = html.index('id="panelSettingsSheetClose"')
+    body_at = html.index('id="panelSettingsSheetBody"')
+    assert grabber_at < header_at < title_at < close_at < body_at
+    for child_id in (
+        "panelSettingsSheetGrabber",
+        "panelSettingsSheetHeader",
+        "panelSettingsSheetBody",
+    ):
+        assert parser.parents[child_id].get("id") == "panelSettingsSheet"
+    assert (
+        parser.parents["panelSettingsSheetTitle"].get("id")
+        == "panelSettingsSheetHeader"
+    )
+    assert (
+        parser.parents["panelSettingsSheetClose"].get("id")
+        == "panelSettingsSheetHeader"
+    )

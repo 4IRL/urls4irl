@@ -4,6 +4,14 @@
     {% include 'components/home/UTubDeck/UTubDeckHeaders.html' %}
 
     <div id="UTubDeckContent" class="flex-column content">
+        <!-- Selection indicator overlay: positioned over the selected UTub row by selection-indicator.ts -->
+        <div id="UTubSelectionIndicator" class="utubSelectionIndicator" aria-hidden="true"
+            data-selected-label="{{ CONSTANTS.STRINGS.UTUB_SELECTED_ANNOUNCEMENT }}">
+            <div class="utubSelectionBar"></div>
+            <div class="utubSelectionShimmerClip">
+                <div class="utubSelectionShimmer"></div>
+            </div>
+        </div>
         <!-- Create UTub Form -->
         {% include 'components/home/UTubDeck/CreateUTubForm.html' %}
         <p id="UTubSearchNoResults" class="hidden"></p>
