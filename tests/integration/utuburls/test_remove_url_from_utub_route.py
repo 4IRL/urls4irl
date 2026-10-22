@@ -707,6 +707,48 @@ def test_delete_url_trashed_between_gate_and_service_is_404(
         assert row_after.deleted_by == other_user_id
 
 
+def test_delete_url_purged_between_gate_and_service_is_404(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+) -> None:
+    """
+    GIVEN a live URL that passes the route's ownership decorator
+    WHEN a purge hard-deletes the row before the delete service re-reads it
+    THEN the delete responds 404 NOT_FOUND instead of a 500
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id: int = utub_creator_of.id
+        utub_url_id: int = (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first().id
+        )
+
+    def purge_concurrently_then_delete(**kwargs: object) -> object:
+        with app.app_context():
+            Utub_Urls.query.filter(Utub_Urls.id == utub_url_id).delete()
+            db.session.commit()
+        return delete_url_in_utub(**kwargs)
+
+    with patch(
+        "backend.urls.routes.delete_url_in_utub",
+        side_effect=purge_concurrently_then_delete,
+    ):
+        delete_url_response = client.delete(
+            url_for(ROUTES.URLS.DELETE_URL, utub_id=utub_id, utub_url_id=utub_url_id),
+            headers={"X-CSRFToken": csrf_token_string},
+        )
+
+    assert delete_url_response.status_code == 404
+    json_response = delete_url_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+    with app.app_context():
+        assert Utub_Urls.query.get(utub_url_id) is None
+
+
 def test_trash_live_utub_url_returns_false_for_already_trashed_row(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ) -> None:

@@ -57,3 +57,6 @@ MAILTO=""
 
 # Trash retention purge — daily at 3 AM, hard-deletes Trash rows past TRASH_RETENTION_DAYS (30), skipping locked UTubs (uses the set -a env pattern above)
 0 3 * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/purge_trash.py >> /app/workflow_logs/trash-purge.log 2>&1
+
+# Expired short-link purge — daily at 4 AM, hard-deletes ShortLinks rows whose expiresAt has passed, skipping no UTub (uses the set -a env pattern above)
+0 4 * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/purge_short_links.py >> /app/workflow_logs/short-link-purge.log 2>&1

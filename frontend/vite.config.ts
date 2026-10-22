@@ -80,6 +80,8 @@ export default defineConfig(({ mode }) => ({
         error: resolve(__dirname, "frontend/error.ts"),
         // Entry point for static pages (privacy/terms)
         navbar: resolve(__dirname, "frontend/navbar.ts"),
+        // Entry point for the public share-link page (/s/<code>)
+        shortLink: resolve(__dirname, "frontend/short-link.ts"),
         // Entry point for admin metrics dashboard
         adminMetrics: resolve(__dirname, "frontend/admin-metrics.ts"),
         // Entry point for the admin portal shell (health, users, audit log)

@@ -1,3 +1,5 @@
+import type { UtubUrlItem } from "../../../../types/url.js";
+
 import {
   createMockJqXHR,
   createMockJqXHRChainable,
@@ -215,6 +217,7 @@ const CONCURRENT_EDIT_CARD_HTML = `<div class="urlRow" utuburlid="42" urlSelecte
     <button class="urlTagBtnCreate"></button>
     <button class="urlBtnDelete"></button>
     <button class="urlBtnCopy"></button>
+    <button class="urlBtnShortLink"></button>
     <span class="goToUrlIcon"></span>
 </div>`;
 
@@ -426,6 +429,8 @@ describe("updateURLSuccess - revive on edit", () => {
         canDelete: true,
         addedAt: "2026-01-02T03:04:05",
         addedByUserID: 3,
+        shortLinkExpiresAt: null,
+        canRevokeShortLink: false,
       },
       utubID: UTUB_ID,
       appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],
@@ -436,6 +441,7 @@ describe("updateURLSuccess - revive on edit", () => {
       lostTagCount: 0,
       lostTagNames: [],
       utubUrlID: REVIVED_UTUB_URL_ID,
+      linkRemoved: false,
     });
     expect(showURLUpdatedBanner).not.toHaveBeenCalled();
     expect(showTrimSavedBanner).not.toHaveBeenCalled();
@@ -455,6 +461,7 @@ describe("updateURLSuccess - revive on edit", () => {
       lostTagCount: 2,
       lostTagNames: ["Tool", "Art"],
       utubUrlID: REVIVED_UTUB_URL_ID,
+      linkRemoved: false,
     });
   });
 
@@ -475,6 +482,7 @@ describe("updateURLSuccess - revive on edit", () => {
       lostTagCount: 0,
       lostTagNames: [],
       utubUrlID: REVIVED_UTUB_URL_ID,
+      linkRemoved: false,
     });
   });
 
@@ -494,6 +502,8 @@ describe("updateURLSuccess - revive on edit", () => {
       const newUrl = vi.mocked(insertURLCardIntoDeck).mock.calls[0][0].newUrl;
       expect(newUrl.addedByUserID).toBe(credited);
       expect(newUrl.canDelete).toBe(true);
+      expect(newUrl.shortLinkExpiresAt).toBeNull();
+      expect(newUrl.canRevokeShortLink).toBe(false);
       expect(updateUTubOnFindingStaleData).not.toHaveBeenCalled();
     },
   );
@@ -576,6 +586,8 @@ describe("updateURLSuccess - revive on edit", () => {
         canDelete: true,
         addedAt: expect.any(String),
         addedByUserID: 3,
+        shortLinkExpiresAt: null,
+        canRevokeShortLink: false,
       },
       utubID: UTUB_ID,
       appliedTags: [{ id: 4, tagString: "kept", tagApplied: 1 }],
@@ -585,6 +597,7 @@ describe("updateURLSuccess - revive on edit", () => {
       lostTagCount: 1,
       lostTagNames: [],
       utubUrlID: REVIVED_UTUB_URL_ID,
+      linkRemoved: false,
     });
   });
 
@@ -706,6 +719,120 @@ describe("updateURLSuccess - revive on edit", () => {
     expect(showURLUpdatedBanner).toHaveBeenCalledTimes(1);
     expect(setState).toHaveBeenCalled();
     expect(refreshTrashCount).not.toHaveBeenCalled();
+  });
+
+  function storeWithLink({ active }: { active: boolean }): void {
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: EDITED_UTUB_URL_ID,
+          urlString: "https://example.com",
+          urlTitle: "Edited Title",
+          utubUrlTagIDs: [],
+          canDelete: true,
+          shortLinkExpiresAt: active ? "2026-10-27T12:00:00" : null,
+          canRevokeShortLink: active,
+          addedAt: "2026-01-02T03:04:05",
+          addedByUserID: 3,
+        },
+      ],
+    } as unknown as AppState);
+  }
+
+  function plainEditResponse({ status }: { status: string }) {
+    return {
+      status,
+      revivedFromTrash: false,
+      lostTagCount: 0,
+      replacedUtubUrlID: null,
+      URL: {
+        utubUrlID: EDITED_UTUB_URL_ID,
+        urlString: "https://plain-edit.example.com",
+        urlTitle: "Edited Title",
+        urlTags: [],
+      },
+    };
+  }
+
+  it("passes linkRemoved to the updated banner when the card had a link", async () => {
+    storeWithLink({ active: true });
+    urlStringInput.val("https://plain-edit.example.com");
+    mockSuccess(plainEditResponse({ status: "Success" }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(vi.mocked(showURLUpdatedBanner).mock.calls[0][0].linkRemoved).toBe(
+      true,
+    );
+  });
+
+  it("does not flag linkRemoved for a card without a link", async () => {
+    storeWithLink({ active: false });
+    urlStringInput.val("https://plain-edit.example.com");
+    mockSuccess(plainEditResponse({ status: "Success" }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(vi.mocked(showURLUpdatedBanner).mock.calls[0][0].linkRemoved).toBe(
+      false,
+    );
+  });
+
+  it("does not flag linkRemoved on a 'No change' response", async () => {
+    storeWithLink({ active: true });
+    urlStringInput.val("https://plain-edit.example.com");
+    mockSuccess(plainEditResponse({ status: "No change" }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    // A 'No change' save shows no updated/trim banner (so nothing says the link
+    // was removed), clears any stale one, and leaves the store's link fields alone.
+    expect(showURLUpdatedBanner).not.toHaveBeenCalled();
+    expect(showTrimSavedBanner).not.toHaveBeenCalled();
+    expect(clearURLOutcomeBanner).toHaveBeenCalledTimes(1);
+    const written = vi.mocked(setState).mock.calls[0][0] as {
+      urls: UtubUrlItem[];
+    };
+    expect(written.urls[0].shortLinkExpiresAt).toBe("2026-10-27T12:00:00");
+    expect(written.urls[0].canRevokeShortLink).toBe(true);
+  });
+
+  it("clears the link fields in the store on a changed address", async () => {
+    storeWithLink({ active: true });
+    urlStringInput.val("https://plain-edit.example.com");
+    mockSuccess(plainEditResponse({ status: "Success" }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    const written = vi.mocked(setState).mock.calls[0][0] as {
+      urls: UtubUrlItem[];
+    };
+    expect(written.urls[0].shortLinkExpiresAt).toBeNull();
+    expect(written.urls[0].canRevokeShortLink).toBe(false);
+  });
+
+  it("gives the revived card's inserted item no link even when the edited card had one", async () => {
+    storeWithLink({ active: true });
+    urlStringInput.val(REVIVED_URL);
+    mockSuccess(revivedResponse({ lostTagCount: 0 }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    const inserted = vi.mocked(insertURLCardIntoDeck).mock.calls[0][0].newUrl;
+    expect(inserted.shortLinkExpiresAt).toBeNull();
+    expect(inserted.canRevokeShortLink).toBe(false);
+  });
+
+  it("passes linkRemoved to the revive banner when the edited card had a link", async () => {
+    storeWithLink({ active: true });
+    urlStringInput.val(REVIVED_URL);
+    mockSuccess(revivedResponse({ lostTagCount: 0 }));
+
+    await updateURL(urlStringInput, urlCard, UTUB_ID);
+
+    expect(showReviveBanner).toHaveBeenCalledWith(
+      expect.objectContaining({ linkRemoved: true }),
+    );
   });
 });
 
@@ -842,6 +969,7 @@ describe("desktop full toggle — Title and URL editors are mutually exclusive (
       <button class="urlTagBtnCreate hidden"></button>
       <button class="urlBtnDelete hidden"></button>
       <button class="urlBtnCopy hidden"></button>
+      <button class="urlBtnShortLink hidden"></button>
       <span class="goToUrlIcon hidden"></span>
       <div class="tagBadge"></div>
     </div>
@@ -866,6 +994,7 @@ describe("desktop full toggle — Title and URL editors are mutually exclusive (
       <button class="urlTagBtnCreate"></button>
       <button class="urlBtnDelete"></button>
       <button class="urlBtnCopy"></button>
+      <button class="urlBtnShortLink"></button>
       <span class="goToUrlIcon"></span>
       <div class="tagBadge"></div>
     </div>
@@ -897,6 +1026,7 @@ describe("desktop full toggle — Title and URL editors are mutually exclusive (
     // Option buttons restored (the string reset re-showed them).
     expect(urlCard.find(".urlBtnAccess").hasClass("hidden")).toBe(false);
     expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlBtnShortLink").hasClass("hidden")).toBe(false);
     // Edit-URL trigger is present and visible (morphed back from the Cancel bar).
     expect(urlCard.find(".urlStringBtnUpdate").length).toBe(1);
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
@@ -982,6 +1112,7 @@ describe("bindURLStringEditClickHandler - mobile vs desktop click target", () =>
       <button class="urlTagBtnCreate"></button>
       <button class="urlBtnDelete"></button>
       <button class="urlBtnCopy"></button>
+      <button class="urlBtnShortLink"></button>
       <span class="goToUrlIcon"></span>
     </div>
   `;
@@ -1054,6 +1185,7 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
       <button class="urlTagBtnCreate hidden"></button>
       <button class="urlBtnDelete hidden"></button>
       <button class="urlBtnCopy hidden"></button>
+      <button class="urlBtnShortLink hidden"></button>
       <span class="goToUrlIcon hidden"></span>
       <div class="urlStringUpdate-error"></div>
       <div class="urlCardDualLoadingRing"></div>
@@ -1161,6 +1293,7 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
     expect(urlCard.find(".urlTagBtnCreate").hasClass("hidden")).toBe(true);
     expect(urlCard.find(".urlBtnDelete").hasClass("hidden")).toBe(true);
     expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlBtnShortLink").hasClass("hidden")).toBe(true);
     expect(urlCard.find(".goToUrlIcon").hasClass("hidden")).toBe(true);
     // Saved✓ tick shown and shared announcer reflects the field label.
     expect(
@@ -1427,6 +1560,35 @@ describe("query-parameter trim block in the edit-URL-string flow", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.mocked(getState).mockReturnValue({ urls: [] } as unknown as AppState);
+  });
+
+  it("passes linkRemoved to the trim-saved banner when the edit removed a link", async () => {
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: TRIM_URL,
+          urlTitle: "t",
+          utubUrlTagIDs: [],
+          canDelete: true,
+          shortLinkExpiresAt: "2026-10-27T12:00:00",
+          canRevokeShortLink: true,
+          addedAt: "2026-01-02T03:04:05",
+          addedByUserID: 3,
+        },
+      ],
+    } as unknown as AppState);
+    syncFromInput(TRIM_URL);
+    dropChip(0);
+    mockSuccess("https://example.com/p?b=2&c=3");
+
+    await updateURL(urlStringInput, urlCard, 7);
+
+    expect(showTrimSavedBanner).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(showTrimSavedBanner).mock.calls[0][0].linkRemoved).toBe(
+      true,
+    );
   });
 
   it("renders the pre-filled value immediately on open, expanded", () => {
@@ -2780,6 +2942,7 @@ describe("URL string form hides the tags while editing", () => {
       <button class="urlBtnAccess"></button>
       <button class="urlBtnDelete"></button>
       <button class="urlBtnCopy"></button>
+      <button class="urlBtnShortLink"></button>
       <button class="urlTagBtnCreate visible-flex"></button>
       <div class="urlTags">
         <div class="urlTagsContainer"><div class="tagBadge"></div></div>
@@ -2832,6 +2995,18 @@ describe("URL string form hides the tags while editing", () => {
     hideAndResetUpdateURLStringForm({ urlCard, keepOpen: true });
 
     expect(urlCard.find(".urlTagsContainer").hasClass("hidden")).toBe(true);
+  });
+
+  it("hides Copy URL and Copy short link on open and restores both on close", () => {
+    openString();
+
+    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlBtnShortLink").hasClass("hidden")).toBe(true);
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlBtnShortLink").hasClass("hidden")).toBe(false);
   });
 
   it("keeps the tags hidden while the title form is still open (mobile panel)", () => {

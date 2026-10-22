@@ -76,6 +76,8 @@ function makeURL(utubUrlID: number, addedByUserID: number): UtubUrlItem {
     urlTitle: `Title ${utubUrlID}`,
     utubUrlTagIDs: [],
     canDelete: true,
+    shortLinkExpiresAt: null,
+    canRevokeShortLink: false,
     addedAt: ADDED_AT,
     addedByUserID,
   };

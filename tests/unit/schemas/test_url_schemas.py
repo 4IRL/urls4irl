@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -27,6 +27,7 @@ class _MockUtubUrl:
     user_id = 2
     added_at = datetime(2024, 3, 9, 12, 0, tzinfo=timezone.utc)
     standalone_url = _MockUrl()
+    short_link = None
     associated_tag_ids = [3, 5]
     associated_tags = [
         {MODELS.UTUB_TAG_ID: 3, MODELS.TAG_STRING: "python"},
@@ -51,6 +52,89 @@ def test_utub_url_schema_dump():
     assert dumped[MODELS.CAN_DELETE] is True
     # added_at is serialized to an ISO-8601 string via field_serializer.
     assert dumped["addedAt"] == "2024-03-09T12:00:00+00:00"
+    # No short link: null expiry, nobody can revoke.
+    assert dumped[MODELS.SHORT_LINK_EXPIRES_AT] is None
+    assert dumped[MODELS.CAN_REVOKE_SHORT_LINK] is False
+
+
+class _MockShortLink:
+    def __init__(self, *, expires_at: datetime, created_by: int | None) -> None:
+        self.expires_at = expires_at
+        self.created_by = created_by
+
+    def is_expired(self) -> bool:
+        return datetime.now(timezone.utc) >= self.expires_at
+
+
+def _utub_url_with_link(*, expires_at: datetime, created_by: int | None):
+    utub_url = _MockUtubUrl()
+    utub_url.short_link = _MockShortLink(expires_at=expires_at, created_by=created_by)
+    return utub_url
+
+
+def test_utub_url_schema_active_short_link_serializes_expiry_iso():
+    """
+    GIVEN a URL with an unexpired short link
+    WHEN a manager serializes it
+    THEN shortLinkExpiresAt is the ISO expiry and canRevokeShortLink is true
+    """
+    expires_at = datetime.now(timezone.utc) + timedelta(days=1)
+    schema = UtubUrlSchema.from_orm_url(
+        _utub_url_with_link(expires_at=expires_at, created_by=3),
+        current_user_id=99,
+        viewer_is_manager=True,
+        member_ids=frozenset({2, 3, 99}),
+    )
+    dumped = schema.model_dump(by_alias=True)
+    assert dumped[MODELS.SHORT_LINK_EXPIRES_AT] == expires_at.isoformat()
+    assert dumped[MODELS.CAN_REVOKE_SHORT_LINK] is True
+
+
+def test_utub_url_schema_expired_short_link_is_reported_as_none():
+    """
+    GIVEN a URL whose short link has expired
+    WHEN a manager serializes it
+    THEN shortLinkExpiresAt is null and canRevokeShortLink is false
+    """
+    schema = UtubUrlSchema.from_orm_url(
+        _utub_url_with_link(
+            expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
+            created_by=99,
+        ),
+        current_user_id=99,
+        viewer_is_manager=True,
+        member_ids=frozenset({2, 99}),
+    )
+    dumped = schema.model_dump(by_alias=True)
+    assert dumped[MODELS.SHORT_LINK_EXPIRES_AT] is None
+    assert dumped[MODELS.CAN_REVOKE_SHORT_LINK] is False
+
+
+@pytest.mark.parametrize(
+    "viewer_id, viewer_is_manager, minter_id, member_ids, expected",
+    [
+        (2, False, 3, {2, 3, 99}, True),  # adder (user 2)
+        (99, True, 3, {2, 3, 99}, True),  # manager
+        (3, False, 3, {2, 3, 99}, True),  # minter
+        (99, False, 3, {2, 3, 99}, False),  # other plain member
+        (3, False, 3, {2, 99}, False),  # minter who left the UTub
+        (99, False, None, {2, 99}, False),  # minter deleted, plain member
+    ],
+    ids=["adder", "manager", "minter", "other", "minter-left", "minter-deleted"],
+)
+def test_utub_url_schema_can_revoke_short_link_matrix(
+    viewer_id, viewer_is_manager, minter_id, member_ids, expected
+):
+    schema = UtubUrlSchema.from_orm_url(
+        _utub_url_with_link(
+            expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+            created_by=minter_id,
+        ),
+        current_user_id=viewer_id,
+        viewer_is_manager=viewer_is_manager,
+        member_ids=frozenset(member_ids),
+    )
+    assert schema.can_revoke_short_link is expected
 
 
 def test_utub_url_schema_can_delete_false():

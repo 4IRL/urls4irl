@@ -35,6 +35,10 @@ class CONFIG_ENVS:
     X_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options"
     X_FRAME_OPTIONS = "X-Frame-Options"
     REFERRER_POLICY = "Referrer-Policy"
+    # The app-wide Referrer-Policy value; a route may override it before the
+    # after_request hook runs (the hook only fills it in when unset).
+    DEFAULT_REFERRER_POLICY_VALUE = "strict-origin-when-cross-origin"
+    NO_REFERRER_POLICY_VALUE = "no-referrer"
     CROSS_ORIGIN_RESOURCE_POLICY = "Cross-Origin-Resource-Policy"
     CONTACT_US_URL = "CONTACT_US_URL"
     VITE_DEV_SERVER = "VITE_DEV_SERVER"

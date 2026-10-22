@@ -43,6 +43,7 @@ import "./home/members/deck.js";
 import "./home/tags/deck.js";
 import { initTransferPicker } from "./home/members/transfer-picker.js";
 import { initOnboardingNudges } from "./home/onboarding/nudges.js";
+import { initPanelSettings } from "./home/panel-settings/index.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
 import { initTrashPanel } from "./home/trash/panel.js";
@@ -68,6 +69,9 @@ $(document).ready(() => {
   initMobileLayout();
   initCollapsibleDecks();
   initTagSheet();
+  // After the decks/sheet (it listens for their collapse events) and before
+  // initTooltips()/initOnboardingNudges(), which must see the gear states.
+  initPanelSettings();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
   setUTubEventListenersOnInitialPageLoad();

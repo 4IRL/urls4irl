@@ -22,6 +22,10 @@ import {
 import { createTagBadgeInURL, createTagBadgesAndWrap } from "../tags/tags.js";
 import { ComboboxMode, createTagComboboxBlock } from "../tags/combobox.js";
 import { createURLOptionsButtons } from "./options/btns.js";
+import {
+  buildShortLinkStatusRow,
+  renderShortLinkStatus,
+} from "./short-link.js";
 import { createDeleteURLIcon } from "./options/delete-btn.js";
 import { bindURLRowSwipeGesture } from "./swipe.js";
 import {
@@ -61,6 +65,15 @@ export function updateURLAfterFindingStaleData(
   if (urlString.attr("href") !== newUrl.urlString) {
     urlString.text(newUrl.urlString).attr({ href: newUrl.urlString });
   }
+
+  // Another member's mint or revoke arrives as ordinary content.
+  renderShortLinkStatus({
+    urlCard,
+    utubID,
+    utubUrlID: newUrl.utubUrlID,
+    expiresAt: newUrl.shortLinkExpiresAt,
+    canRevoke: newUrl.canRevokeShortLink,
+  });
 
   const currentURLTags = urlCard.find(".tagBadge");
   const currentURLTagIDs = $.map(currentURLTags.toArray(), (tag: HTMLElement) =>
@@ -376,6 +389,19 @@ function createTagsAndOptionsForUrlBlock(
   );
 
   tagsAndButtonsWrap.append(createURLOptionsButtons(url, urlCard, utubID));
+
+  // The "link active" row sits in its own row below the buttons.
+  if (typeof url.shortLinkExpiresAt === "string") {
+    tagsAndButtonsWrap.append(
+      buildShortLinkStatusRow({
+        urlCard,
+        utubID,
+        utubUrlID: url.utubUrlID,
+        expiresAt: url.shortLinkExpiresAt,
+        canRevoke: url.canRevokeShortLink,
+      }),
+    );
+  }
 
   return tagsAndButtonsWrap;
 }

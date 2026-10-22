@@ -11,13 +11,16 @@ import { getState, setState } from "../../../store/app-store.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 import { copyURLString } from "./copy.js";
+import { clearShortLinkFromCard } from "./short-link-state.js";
 
 type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
 
 // Leaf module (no card-flow imports) so both the edit save and the trim Undo can
 // share it without an import cycle.
 // Writes a saved URL string into the store and the card (href, text and the
-// access/go-to/copy bindings).
+// access/go-to/copy bindings). A changed address also drops the URL's short link
+// (the server deletes it), so the store and card lose the link state. A
+// "No change" response (an equivalent URL, answered before any write) keeps it.
 export function applyUpdatedURLString({
   response,
   urlCard,
@@ -26,6 +29,7 @@ export function applyUpdatedURLString({
   urlCard: JQuery;
 }): void {
   const updatedURLString = response.URL.urlString;
+  const addressChanged = response.status !== "No change";
 
   setState({
     urls: getState().urls.map((existingUrl: UtubUrlItem) =>
@@ -37,10 +41,14 @@ export function applyUpdatedURLString({
             utubUrlTagIDs: response.URL.urlTags.map(
               (urlTag) => urlTag.utubTagID,
             ),
+            ...(addressChanged
+              ? { shortLinkExpiresAt: null, canRevokeShortLink: false }
+              : {}),
           }
         : existingUrl,
     ),
   });
+  if (addressChanged) clearShortLinkFromCard(urlCard);
 
   // Update URL body with latest published data
   urlCard

@@ -1,6 +1,7 @@
 import {
   createURLTagSuccess,
   hideAndResetCreateURLTagForm,
+  showCreateURLTagForm,
 } from "../create.js";
 import { enableClickOnSelectedURLCardToHide } from "../../cards/selection.js";
 import { buildTagFilterInDeck } from "../../../tags/tags.js";
@@ -53,6 +54,7 @@ vi.mock("../tags.js", () => ({
 }));
 
 vi.mock("../../cards/utils.js", () => ({
+  isURLEditFormOpen: vi.fn(() => false),
   disableEditingURLString: vi.fn(),
   disableEditingURLTitle: vi.fn(),
   enableEditingURLString: vi.fn(),
@@ -86,6 +88,7 @@ const URL_CARD_HTML = `
     <div class="urlStringBtnUpdate"></div>
     <div class="urlBtnDelete"></div>
     <div class="urlBtnCopy"></div>
+    <div class="urlBtnShortLink"></div>
     <div class="tagBadge"></div>
   </div>
 `;
@@ -113,6 +116,21 @@ describe("hideAndResetCreateURLTagForm - selection guard", () => {
     hideAndResetCreateURLTagForm(urlCard);
 
     expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
+  });
+
+  it("hides Copy URL and Copy short link while the tag form is open and restores both on close", () => {
+    document.body.innerHTML = URL_CARD_HTML;
+    const urlCard = $(".urlRow");
+
+    showCreateURLTagForm(urlCard, urlCard.find(".urlTagBtnCreate"));
+
+    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlBtnShortLink").hasClass("hidden")).toBe(true);
+
+    hideAndResetCreateURLTagForm(urlCard);
+
+    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlBtnShortLink").hasClass("hidden")).toBe(false);
   });
 });
 

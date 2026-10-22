@@ -127,7 +127,7 @@
 .urlOptions {
     display: flex;
     flex-direction: row;
-    flex-wrap: no-wrap;
+    flex-wrap: nowrap;
 }
 
 
@@ -248,6 +248,65 @@
     font-size: initial;
     opacity: 1;
     pointer-events: initial;
+}
+
+/* Short-link "link active" row: its own in-flow row below the button row (never
+   inside the stacked attribution, never absolutely positioned), shown only while
+   the card is selected. Revoke exists in the DOM only for members who may revoke;
+   an edit panel hides the whole row with .hidden. */
+.shortLinkStatusRow {
+    display: none;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .shortLinkStatusRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding-top: 12px;
+}
+
+.shortLinkStatus {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--cardURLTextColor);
+    font-size: 0.8em;
+}
+
+.shortLinkStatus svg {
+    flex-shrink: 0;
+    color: var(--shortLinkColor);
+}
+
+.shortLinkRevoke {
+    background: transparent;
+    border: 1px solid var(--deleteURLColor);
+    color: var(--deleteURLColor);
+    border-radius: var(--radius-sm);
+    padding: 2px 10px;
+    font-size: 0.8em;
+    line-height: 1.4;
+}
+
+.shortLinkRevoke:hover,
+.shortLinkRevoke:focus-visible {
+    background: var(--deleteURLColor);
+    border-color: var(--deleteURLColor);
+    color: #fff;
+}
+
+@media (any-pointer: coarse) {
+    .shortLinkRevoke {
+        min-height: 2.75rem;
+    }
+
+    .shortLinkRevoke:hover {
+        background: transparent;
+        color: var(--deleteURLColor);
+    }
 }
 
 a.urlString {
@@ -501,6 +560,23 @@ a.urlString {
     border-color: var(--copyURLColor) !important;
 }
 
+.urlBtnShortLink {
+    background-color: var(--shortLinkColor);
+    border-width: 1px;
+    border-color: var(--shortLinkColor);
+    color: #000;
+}
+
+.urlBtnShortLink:active {
+    background-color: var(--shortLinkColor) !important;
+    border-color: var(--shortLinkColor) !important;
+}
+
+.urlBtnShortLink[aria-disabled="true"] {
+    cursor: progress;
+    opacity: 0.65;
+}
+
 .urlTagBtnCreate {
     background-color: var(--addTagColor);
     border-width: 1px;
@@ -521,8 +597,24 @@ a.urlString {
 @media (any-pointer: coarse) {
     .urlBtnAccess,
     .urlBtnCopy,
+    .urlBtnShortLink,
     .urlTagBtnCreate {
         -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlBtnShortLink:hover,
+    .urlBtnShortLink:focus,
+    .urlBtnShortLink:focus-visible {
+        background-color: var(--shortLinkColor) !important;
+        border-width: 1px;
+        border-color: var(--shortLinkColor) !important;
+        color: #000;
+    }
+
+    .urlBtnShortLink:active {
+        background-color: var(--shortLinkColorHover) !important;
+        border-width: 1px;
+        border-color: var(--shortLinkColorBorderHover) !important;
     }
 
     .urlBtnAccess:hover,
@@ -893,6 +985,12 @@ a.urlString {
     .urlBtnCopy:hover {
         background-color: var(--copyURLColorHover);
         border-color: var(--copyURLColorBorderHover);
+        transition: background-color 0.1s ease;
+    }
+
+    .urlBtnShortLink:not([aria-disabled="true"]):hover {
+        background-color: var(--shortLinkColorHover);
+        border-color: var(--shortLinkColorBorderHover);
         transition: background-color 0.1s ease;
     }
 

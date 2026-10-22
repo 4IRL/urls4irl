@@ -35,6 +35,7 @@ _FLUSH_METRICS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "flush_metrics.py"
 _CHECK_LIVENESS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "check_flush_liveness.py"
 _PURGE_AUDIT_LOG_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "purge_audit_log.py"
 _PURGE_TRASH_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "purge_trash.py"
+_PURGE_SHORT_LINKS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "purge_short_links.py"
 _SAMPLE_GAUGES_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "sample_gauges.py"
 _NOTIFY_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "notify.py"
 _BACKUP_SENTINEL_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "backup_sentinel.py"
@@ -223,6 +224,18 @@ def test_allow_list_covers_purge_trash_env_reads():
     reads = _walk_env_reads(_PURGE_TRASH_SCRIPT.read_text())
     assert reads <= _ALLOWED, (
         f"purge_trash.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    )
+
+
+def test_allow_list_covers_purge_short_links_env_reads():
+    """
+    GIVEN the env-var keys read by scripts/purge_short_links.py
+    WHEN they are compared against ALLOW_VARS
+    THEN every read key is present in ALLOW_VARS.
+    """
+    reads = _walk_env_reads(_PURGE_SHORT_LINKS_SCRIPT.read_text())
+    assert reads <= _ALLOWED, (
+        f"purge_short_links.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
     )
 
 

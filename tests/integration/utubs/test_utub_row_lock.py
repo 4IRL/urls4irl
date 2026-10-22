@@ -22,7 +22,9 @@ from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.guards import (
     UtubAccess,
     get_fresh_membership,
+    get_utub_member_ids,
     lock_and_reauthorize,
+    lock_live_utub_or_abort,
     lock_trashed_utub_for_creator,
     lock_utub_for_update,
 )
@@ -226,6 +228,69 @@ def test_lock_and_reauthorize_trashed_utub_aborts_404(
         with app.test_request_context():
             with pytest.raises(NotFound):
                 _reauthorize(utub, 1, UtubAccess.OWNER)
+
+
+def test_lock_live_utub_or_abort_live_utub_returns_locked_row(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a live UTub
+    WHEN the live-UTub guard locks it
+    THEN the refreshed UTub row is returned
+    """
+    with app.app_context():
+        utub: Utubs = lock_live_utub_or_abort(utub_id=UTUB_ID)
+
+        assert utub.id == UTUB_ID
+
+
+def test_lock_live_utub_or_abort_trashed_utub_aborts_404(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a UTub trashed out-of-band after the route guard loaded it as live
+    WHEN the live-UTub guard locks it
+    THEN a 404 is raised
+    """
+    with app.app_context():
+        Utubs.query.get(UTUB_ID)
+        _raw('UPDATE "Utubs" SET "deletedAt" = now() WHERE id = 1')
+
+        with app.test_request_context():
+            with pytest.raises(NotFound):
+                lock_live_utub_or_abort(utub_id=UTUB_ID)
+
+
+def test_lock_live_utub_or_abort_missing_utub_aborts_404(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a UTub id that does not exist
+    WHEN the live-UTub guard locks it
+    THEN a 404 is raised
+    """
+    with app.app_context():
+        with app.test_request_context():
+            with pytest.raises(NotFound):
+                lock_live_utub_or_abort(utub_id=99999)
+
+
+def test_get_utub_member_ids_returns_every_member(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a UTub with several members
+    WHEN its member ids are read
+    THEN the set holds exactly the member user ids
+    """
+    with app.app_context():
+        expected = {
+            member.user_id
+            for member in Utub_Members.query.filter_by(utub_id=UTUB_ID).all()
+        }
+
+        assert get_utub_member_ids(utub_id=UTUB_ID) == expected
+        assert len(expected) > 1
 
 
 def test_lock_and_reauthorize_locked_utub_authorized_caller_gets_locked_error(

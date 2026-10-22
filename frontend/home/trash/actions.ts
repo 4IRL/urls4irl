@@ -16,6 +16,7 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { debug } from "../../lib/debug.js";
 import { fillTemplate } from "../../lib/string-template.js";
 import { setState } from "../../store/app-store.js";
+import { hideConfirmModal, showConfirmModal } from "../confirm-modal.js";
 import { buildUTubDeck } from "../utubs/deck.js";
 import { getAllUTubs } from "../utubs/utils.js";
 import {
@@ -58,8 +59,6 @@ const log = debug("trash:actions");
 
 const CONFIRM_MODAL = "#confirmModal";
 const MODAL_SUBMIT = "#modalSubmit";
-const MODAL_DISMISS = "#modalDismiss";
-const MODAL_REDIRECT = "#modalRedirect";
 const EMPTY_TRASH_BUTTON = "#TrashBtnEmpty";
 const ROW_BUTTONS = ".trashBtnRestore, .trashBtnPurge";
 const EMPTY_TRASH_TIMEOUT_MS = 10_000;
@@ -413,63 +412,7 @@ export function restoreTrashedUTub({
   });
 }
 
-// --- Confirm modal (shared #confirmModal) ---
-
-function showConfirmModal({
-  title,
-  body,
-  submitLabel,
-  namespace,
-  onConfirm,
-}: {
-  title: string;
-  body: string;
-  submitLabel: string;
-  namespace: "trashPurge" | "trashEmpty";
-  onConfirm: () => void;
-}): void {
-  $("#confirmModalTitle").text(title);
-  $("#confirmModalBody").text(body);
-
-  // #confirmModal is shared: reset the submit class so a prior flow's styling
-  // never leaks into this destructive confirm.
-  $(MODAL_SUBMIT)
-    .removeClass()
-    .addClass("btn btn-danger")
-    .text(submitLabel)
-    .prop("disabled", false)
-    .off(`click.${namespace}`)
-    .on(`click.${namespace}`, (event: JQuery.TriggeredEvent) => {
-      event.preventDefault();
-      onConfirm();
-    });
-
-  $(MODAL_DISMISS)
-    .text(APP_CONFIG.strings.URL_BULK_DELETE_CANCEL)
-    .prop("disabled", false)
-    .off(`click.${namespace}`)
-    .on(`click.${namespace}`, (event: JQuery.TriggeredEvent) => {
-      event.preventDefault();
-      $(CONFIRM_MODAL).modal("hide");
-    });
-
-  // Self-unbinding: the modal is shared, so these handlers must only live for
-  // this confirm session, whichever way it closes.
-  $(CONFIRM_MODAL)
-    .off(`hidden.bs.modal.${namespace}`)
-    .on(`hidden.bs.modal.${namespace}`, () => {
-      $(CONFIRM_MODAL).off(`hidden.bs.modal.${namespace}`);
-      $(MODAL_SUBMIT).off(`click.${namespace}`);
-      $(MODAL_DISMISS).off(`click.${namespace}`);
-    });
-
-  $(MODAL_REDIRECT).hide();
-  $(CONFIRM_MODAL).modal("show");
-}
-
-function hideConfirmModal(): void {
-  $(CONFIRM_MODAL).modal("hide");
-}
+// --- Confirm modal: shared #confirmModal helper lives in ../confirm-modal.ts ---
 
 /** Confirms, then permanently deletes one trashed URL. */
 export function confirmAndPurgeURL({ item }: { item: TrashedUrlItem }): void {

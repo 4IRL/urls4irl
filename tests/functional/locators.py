@@ -516,6 +516,13 @@ class HomePageLocators(GenericPageLocator):
 
     BUTTON_URL_COPY = ".urlBtnCopy"
 
+    # Share short link: the "Copy short link" button, the card's "link active"
+    # status line and its lasting Revoke button
+    BUTTON_URL_SHORT_LINK = ".urlBtnShortLink"
+    SHORT_LINK_STATUS = ".shortLinkStatus"
+    SHORT_LINK_STATUS_ROW = ".shortLinkStatusRow"
+    BUTTON_SHORT_LINK_REVOKE = ".shortLinkRevoke"
+
     URL_STRING_IN_DATA = "href"
     GO_TO_URL_ICON = ".goToUrlIcon"
 
@@ -794,6 +801,19 @@ class SplashPageLocators(GenericPageLocator):
     # Reset Password
     INPUT_NEW_PASSWORD = "#newPassword"
     INPUT_CONFIRM_NEW_PASSWORD = "#confirmNewPassword"
+
+
+class ShortLinkPageLocators(GenericPageLocator):
+    """A collector class for the public share-link confirmation page (``/s/<code>``)"""
+
+    MAIN = "#ShortLinkMain"
+    PANEL = f"{MAIN} .short-link-panel"
+    HEADING = f"{MAIN} .short-link-heading"
+    FULL_URL = f"{MAIN} .short-link-full-url"
+    BUTTON_CONTINUE = f"{MAIN} a.splash-button"
+    LINK_GO_TO_APP = f"{MAIN} a.short-link-secondary"
+    DEAD_LINK_HEADING = "#shortLinkGoneHeading"
+    VALID_LINK_HEADING = "#shortLinkHeading"
 
 
 class ModalLocators:

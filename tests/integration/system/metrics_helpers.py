@@ -38,6 +38,12 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
         EventName.URL_REMOVED_FROM_UTUB,
+        # Covered by tests/integration/short_links/test_mint_short_link_route.py,
+        # test_revoke_short_link_route.py and test_resolve_short_link_route.py
+        # (counter 0 -> 1).
+        EventName.SHORT_LINK_MINTED,
+        EventName.SHORT_LINK_RESOLVED,
+        EventName.SHORT_LINK_REVOKED,
         # Covered by tests/integration/trash/test_purge_route.py (counter 0 -> 1).
         EventName.URL_PURGED_FROM_TRASH,
         # Covered by test_restore_url_route.py and test_restore_url_to_destination_route.py.

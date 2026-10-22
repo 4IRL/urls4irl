@@ -195,6 +195,22 @@ CSRF_HEADER_KEY = "X-CSRFToken"
             id="purge_url",
         ),
         pytest.param(
+            "mint_short_link",
+            "POST",
+            ROUTES.URLS.MINT_SHORT_LINK,
+            {"utub_id": "utub_id", "utub_url_id": "utub_url_id"},
+            None,
+            id="mint_short_link",
+        ),
+        pytest.param(
+            "revoke_short_link",
+            "DELETE",
+            ROUTES.URLS.REVOKE_SHORT_LINK,
+            {"utub_id": "utub_id", "utub_url_id": "utub_url_id"},
+            None,
+            id="revoke_short_link",
+        ),
+        pytest.param(
             "create_member",
             "POST",
             ROUTES.MEMBERS.CREATE_MEMBER,
@@ -379,6 +395,14 @@ def test_ajax_required_routes_reject_non_ajax(
             {},
             {"message": "Hello"},
             id="contact_us",
+        ),
+        pytest.param(
+            "resolve_short_link",
+            "GET",
+            ROUTES.SHORT_LINKS.RESOLVE_SHORT_LINK,
+            {"code": "Zzzzzzzzzz"},
+            None,
+            id="resolve_short_link",
         ),
         pytest.param(
             "health",
