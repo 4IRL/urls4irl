@@ -140,6 +140,15 @@ function deselectURL(urlCard: JQuery): void {
 export function deselectAllURLs(): void {
   const previouslySelectedCard = getSelectedURLCard();
   if (previouslySelectedCard !== null) deselectURL(previouslySelectedCard);
+
+  // The store's id is only a pointer to the selected card; the DOM's
+  // `urlSelected` attribute is what keeps a card expanded. When the two drift
+  // (the id is null, or points at a card node that no longer exists), a card
+  // would otherwise stay expanded beside the newly selected one. Collapse every
+  // card still marked selected so at most one card is ever open.
+  $(".urlRow[urlSelected='true']").each(function () {
+    deselectURL($(this));
+  });
 }
 
 function isSelectedCardHidden(): boolean {

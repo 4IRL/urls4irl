@@ -21,6 +21,7 @@ import {
 import { getState } from "../../../store/app-store.js";
 import { isCoarsePointer, isMobile } from "../../mobile.js";
 import { deleteURL } from "./delete.js";
+import { armFocusReturnSuppression } from "./focus-return.js";
 
 // A press starting inside any of these must never begin a swipe: it would
 // race the existing tap-to-reveal tag-delete toggle, an open inline-edit
@@ -46,19 +47,6 @@ const SWIPE_COMMITTED_CLASS = "swipe-committed";
 // browser resized to mobile width for QA, not true touch emulation — can
 // never read as row hover/selection during the ~400ms peek.
 const SWIPE_NUDGE_PEEKING_CLASS = "swipe-nudge-peeking";
-// Applied only while focus is being programmatically moved to the neighbour row
-// after a swipe-delete (WCAG 2.4.3); suppresses the visual focus ring (see
-// urls.css) so this native-focus side effect never reads as urlSelected="true"
-// on a row the user never tapped to select.
-const SWIPE_FOCUS_RETURN_CLASS = "swipe-focus-return";
-const SWIPE_FOCUS_RETURN_NAMESPACE = "blur.swipeFocusReturn";
-// setFocusEventListenersOnURLCard (cards.ts) adds this to .goToUrlIcon on
-// .urlRow focus and only removes it when the *icon itself* blurs (the real
-// keyboard-Tab path: row -> icon -> away). The WCAG focus-return trigger()
-// above focuses/blurs the row directly, never the icon, so that cleanup
-// condition never matches — strip it here to avoid leaking it permanently.
-const GO_TO_URL_ICON_SELECTOR = ".goToUrlIcon";
-const VISIBLE_ON_FOCUS_CLASS = "visible-on-focus";
 // Movement (px) below which a press-release is treated as a tap, not a drag.
 const TAP_SLOP_PX = 8;
 // A drag is treated as vertical/ambiguous (native scroll wins) once the
@@ -311,7 +299,7 @@ function _endDrag(event: PointerEvent): void {
     urlCard: urlRow,
     utubID,
     beforeFocus: (target) => {
-      if (target.hasClass("urlRow")) _armFocusReturnSuppression(target);
+      if (target.hasClass("urlRow")) armFocusReturnSuppression(target);
     },
   }).then((deleted) => {
     if (deleted) return;
@@ -319,27 +307,9 @@ function _endDrag(event: PointerEvent): void {
     // snap it back and return focus to it (WCAG 2.4.3).
     urlRow.removeClass(`${SWIPE_COMMITTED_CLASS} ${SWIPE_DRAGGING_CLASS}`);
     urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
-    _armFocusReturnSuppression(urlRow);
+    armFocusReturnSuppression(urlRow);
     urlRow.trigger("focus");
   });
-}
-
-/**
- * Arm the WCAG 2.4.3 focus-return suppression: add `SWIPE_FOCUS_RETURN_CLASS`
- * so focus moving to the neighbour row after a delete (or back to the row after
- * a failed one) never reads as "selected" (see frontend/styles/home/urls.css),
- * and (re)bind a one-shot blur listener that removes it. Must be called every
- * time the class is added, because the one-shot listener self-consumes on the
- * first blur and is never implicitly re-armed.
- */
-function _armFocusReturnSuppression(urlRow: JQuery): void {
-  urlRow.addClass(SWIPE_FOCUS_RETURN_CLASS);
-  urlRow
-    .off(SWIPE_FOCUS_RETURN_NAMESPACE)
-    .one(SWIPE_FOCUS_RETURN_NAMESPACE, () => {
-      urlRow.removeClass(SWIPE_FOCUS_RETURN_CLASS);
-      urlRow.find(GO_TO_URL_ICON_SELECTOR).removeClass(VISIBLE_ON_FOCUS_CLASS);
-    });
 }
 
 /**

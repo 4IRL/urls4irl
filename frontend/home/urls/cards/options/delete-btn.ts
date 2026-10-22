@@ -1,6 +1,7 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { deleteURL } from "../delete.js";
+import { armFocusReturnSuppression } from "../focus-return.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
 export function createDeleteURLIcon(): JQuery<SVGSVGElement> {
@@ -60,7 +61,15 @@ export function createDeleteURLBtn(
     })
     .disableTab()
     .onExact("click", function () {
-      void deleteURL({ utubUrlID: url.utubUrlID, urlCard, utubID });
+      void deleteURL({
+        utubUrlID: url.utubUrlID,
+        urlCard,
+        utubID,
+        // Focus moving to the neighbour row (WCAG 2.4.3) must not read as selected.
+        beforeFocus: (target) => {
+          if (target.hasClass("urlRow")) armFocusReturnSuppression(target);
+        },
+      });
     })
     .append(createDeleteURLIcon());
 

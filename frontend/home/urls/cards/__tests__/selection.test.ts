@@ -237,6 +237,38 @@ describe("URL Card Selection", () => {
       deselectAllURLs();
       expect(clearURLOutcomeBanner).not.toHaveBeenCalled();
     });
+
+    it("collapses a card still marked selected when the store id is null", () => {
+      document.body.innerHTML = MULTI_CARD_HTML;
+      const cardA = $('.urlRow[utuburlid="10"]');
+      const cardB = $('.urlRow[utuburlid="20"]');
+      cardA.attr({ urlSelected: true });
+      setState({ selectedURLCardID: null });
+
+      selectURLCard(cardB);
+
+      expect(cardA.attr("urlSelected")).toBe("false");
+      expect(cardB.attr("urlSelected")).toBe("true");
+      expect($('.urlRow[urlSelected="true"]')).toHaveLength(1);
+      expect(getState().selectedURLCardID).toBe(20);
+    });
+
+    it("collapses a card still marked selected when the store id points at another card", () => {
+      document.body.innerHTML = MULTI_CARD_HTML;
+      const cardA = $('.urlRow[utuburlid="10"]');
+      const cardB = $('.urlRow[utuburlid="20"]');
+      const cardC = $('.urlRow[utuburlid="30"]');
+      selectURLCard(cardA);
+      // Drift: the store now names C although A is the card that is open.
+      setState({ selectedURLCardID: 30 });
+
+      selectURLCard(cardB);
+
+      expect(cardA.attr("urlSelected")).toBe("false");
+      expect(cardC.attr("urlSelected")).toBe("false");
+      expect($('.urlRow[urlSelected="true"]')).toHaveLength(1);
+      expect(cardB.attr("urlSelected")).toBe("true");
+    });
   });
 
   describe("enableClickOnSelectedURLCardToHide", () => {
