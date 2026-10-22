@@ -15,6 +15,14 @@ import { canWriteSection } from "./permissions.js";
 import { createSaveQueue } from "./queue.js";
 import type { SaveQueue } from "./queue.js";
 import { getSections, isKnownPanel } from "./registry.js";
+import {
+  closeSettingsSheet,
+  isPanelSettingsSheetSelfBackPending,
+  openSettingsSheet,
+  registerSettingsSheetCloseHandler,
+  resetSettingsSheet,
+} from "./sheet.js";
+import type { CloseKind } from "./sheet.js";
 import { setPanelSettingsOpen } from "./state.js";
 import type {
   PanelSection,
@@ -26,7 +34,11 @@ import type {
 
 const log = debug("panel-settings");
 
-const POPOVER_SELECTOR = "#panelSettingsPopover";
+const POPOVER_ID = "panelSettingsPopover";
+const SHEET_ID = "panelSettingsSheet";
+const POPOVER_SELECTOR = `#${POPOVER_ID}`;
+const SHEET_SELECTOR = `#${SHEET_ID}`;
+const SHEET_CLOSE_SELECTOR = "#panelSettingsSheetClose";
 const GEAR_SELECTOR = ".panelSettingsGear";
 const KEYDOWN_NAMESPACE = "keydown.panelSettings";
 const MODAL_NAMESPACE = "show.bs.modal.panelSettings";
@@ -50,6 +62,10 @@ const FOCUS_FALLBACK_SELECTORS: Readonly<Record<PanelId, readonly string[]>> = {
   tags: ["#TagDeckHeaderAndCaret"],
   urls: ["#urlBtnCreate", "#urlBtnMultiSelect"],
 };
+
+// Below the breakpoint the Tag deck lives in the Tag sheet, whose handle is the
+// focusable stand-in for a missing Tags gear.
+const TAG_SHEET_HANDLE_SELECTOR = "#tagSheetHandle";
 
 // A deck's own collapse closes its popover; the URL deck has no collapse.
 const COLLAPSE_DECK_BY_PANEL: Readonly<
@@ -78,7 +94,13 @@ interface SectionEntry {
   settleTimer: ReturnType<typeof setTimeout> | null;
 }
 
+type Surface = "popover" | "sheet";
+
 interface OpenPopover {
+  /** Which surface renders this open settings view. */
+  surface: Surface;
+  /** Render target: the popover element, or the sheet body. */
+  container: HTMLElement;
   panel: PanelId;
   gear: HTMLElement;
   /** Active UTub when opened; null for the UTubs popover. */
@@ -105,6 +127,16 @@ let _lastIsLocked = false;
 
 function popoverElement(): HTMLElement | null {
   return document.querySelector<HTMLElement>(POPOVER_SELECTOR);
+}
+
+function sheetElement(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(SHEET_SELECTOR);
+}
+
+// The dialog element of the open surface (Tab trap root, inside-focus test and
+// last-resort focus target); never the sheet's body container.
+function surfaceElement(): HTMLElement | null {
+  return _current?.surface === "sheet" ? sheetElement() : popoverElement();
 }
 
 function allGears(): HTMLElement[] {
@@ -378,7 +410,7 @@ function renderSectionBody({ entry }: { entry: SectionEntry }): void {
     (
       byId ??
       focusableDescendants({ root: entry.body })[0] ??
-      popoverElement()
+      surfaceElement()
     )?.focus();
   }
 }
@@ -467,8 +499,7 @@ function teardownEntry({ entry }: { entry: SectionEntry }): void {
 }
 
 function renderAllSections({ popover }: { popover: OpenPopover }): void {
-  const element = popoverElement();
-  if (!element) return;
+  const element = popover.container;
   const sections = getSections(popover.panel);
   for (const [sectionId, entry] of popover.entries) {
     if (!sections.some((section) => section.id === sectionId)) {
@@ -727,7 +758,11 @@ function restoreFocusTo({
     gear.focus();
     return;
   }
-  for (const selector of FOCUS_FALLBACK_SELECTORS[panel]) {
+  const selectors =
+    panel === "tags" && isBelowBreakpoint()
+      ? [TAG_SHEET_HANDLE_SELECTOR, ...FOCUS_FALLBACK_SELECTORS[panel]]
+      : FOCUS_FALLBACK_SELECTORS[panel];
+  for (const selector of selectors) {
     const fallback = document.querySelector<HTMLElement>(selector);
     if (isFocusable(fallback)) {
       fallback?.focus();
@@ -737,13 +772,22 @@ function restoreFocusTo({
 }
 
 function openPopover({ gear }: { gear: HTMLElement }): void {
-  const element = popoverElement();
+  const surface: Surface = isBelowBreakpoint() ? "sheet" : "popover";
+  const element = surface === "sheet" ? sheetElement() : popoverElement();
   const panel = gear.dataset.panel;
   if (!element || !isKnownPanel(panel)) return;
   if (getSections(panel).length === 0) return;
+  // A sheet close or Tag sheet close is still unwinding its history entry: the
+  // tap is dropped (before any internal close) and stays dropped.
+  if (surface === "sheet" && isPanelSettingsSheetSelfBackPending()) return;
 
   if (_current !== null) {
-    closePopover({ forced: false, restoreFocus: false });
+    // Switching popovers is a quiet user close; the sheet's gears are inert while
+    // it is open, so reaching this on the sheet is a forced close.
+    closePopover({
+      kind: _current.surface === "sheet" ? "forced" : "user",
+      restoreFocus: false,
+    });
   }
 
   closeAllMemberRowMenus();
@@ -752,14 +796,24 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
 
   gear.setAttribute("aria-expanded", "true");
   const label = gear.getAttribute("aria-label");
-  element.removeAttribute("aria-labelledby");
-  element.removeAttribute("aria-label");
-  if (label) element.setAttribute("aria-label", label);
 
   if (_closeFlagTimer !== null) clearTimeout(_closeFlagTimer);
   _closeFlagTimer = null;
   _forcedReadOnly = null;
+
+  let container: HTMLElement;
+  if (surface === "sheet") {
+    // The sheet is labelled by its title element, which carries the gear label.
+    container = openSettingsSheet({ title: label ?? "" });
+  } else {
+    element.removeAttribute("aria-labelledby");
+    element.removeAttribute("aria-label");
+    if (label) element.setAttribute("aria-label", label);
+    container = element;
+  }
   const popover: OpenPopover = {
+    surface,
+    container,
     panel,
     gear,
     utubID: isPerUTubPanel({ panel }) ? getState().activeUTubID : null,
@@ -768,25 +822,39 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
   _current = popover;
   setPanelSettingsOpen({ open: true });
 
-  element.replaceChildren();
-  element.classList.remove(HIDDEN_CLASS);
-  renderAllSections({ popover });
-  positionPopover({ gear });
+  try {
+    container.replaceChildren();
+    if (surface === "popover") element.classList.remove(HIDDEN_CLASS);
+    renderAllSections({ popover });
+    if (surface === "popover") positionPopover({ gear });
 
-  const first = focusableDescendants({ root: element })[0];
-  (first ?? element).focus();
+    const first = focusableDescendants({ root: container })[0];
+    const fallback =
+      surface === "sheet"
+        ? (document.querySelector<HTMLElement>(SHEET_CLOSE_SELECTOR) ?? element)
+        : element;
+    // The sheet is fixed-position: never let focus scroll the page behind it.
+    (first ?? fallback).focus({ preventScroll: surface === "sheet" });
+  } catch (error) {
+    // An inert page with a half-rendered sheet would lock the user in.
+    if (surface === "sheet") {
+      closePopover({ kind: "forced", restoreFocus: false });
+    }
+    throw error;
+  }
 }
 
 function closePopover({
-  forced,
+  kind,
   restoreFocus = true,
 }: {
-  forced: boolean;
+  kind: CloseKind;
   restoreFocus?: boolean;
 }): void {
   const popover = _current;
-  const element = popoverElement();
+  const element = surfaceElement();
   if (popover === null || !element) return;
+  const forced = kind === "forced";
 
   // Pending edits always go out on close.
   _queue?.flush({});
@@ -801,8 +869,14 @@ function closePopover({
     teardownEntry({ entry });
   }
   popover.entries.clear();
-  element.replaceChildren();
-  element.classList.add(HIDDEN_CLASS);
+  popover.container.replaceChildren();
+  // The surface teardown (inert restore on the sheet) completes before focus
+  // returns to the gear, which may sit inside a previously inert region.
+  if (popover.surface === "sheet") {
+    closeSettingsSheet({ kind });
+  } else {
+    element.classList.add(HIDDEN_CLASS);
+  }
   popover.gear.setAttribute("aria-expanded", "false");
 
   if (restoreFocus && (!forced || focusWasInside)) {
@@ -829,7 +903,7 @@ function closeIfPanel({
   matches: (panel: PanelId) => boolean;
 }): void {
   if (_current !== null && matches(_current.panel)) {
-    closePopover({ forced: true });
+    closePopover({ kind: "forced" });
   }
 }
 
@@ -845,14 +919,14 @@ function closeAnyOpen(): void {
 
 function recomputeGears(): void {
   const state = getState();
-  const wired = !isBelowBreakpoint();
+  const controls = isBelowBreakpoint() ? SHEET_ID : POPOVER_ID;
   let changed = false;
   for (const gear of allGears()) {
     const panel = gear.dataset.panel;
+    gear.setAttribute("aria-controls", controls);
     const visible =
       isKnownPanel(panel) &&
       getSections(panel).length > 0 &&
-      wired &&
       (panel === "utubs" || state.activeUTubID !== null);
     if (gear.classList.contains(HIDDEN_CLASS) === visible) {
       gear.classList.toggle(HIDDEN_CLASS, !visible);
@@ -866,7 +940,7 @@ function onGearClick(event: Event): void {
   const gear = event.currentTarget;
   if (!(gear instanceof HTMLElement)) return;
   if (_current !== null && _current.gear === gear) {
-    closePopover({ forced: false });
+    closePopover({ kind: "user" });
     return;
   }
   openPopover({ gear });
@@ -935,13 +1009,9 @@ export function reconcilePanelSettings({
       roleFlipped ||
       sliceGone
     ) {
-      closePopover({ forced: true });
+      closePopover({ kind: "forced" });
       return;
     }
-  }
-  if (isBelowBreakpoint()) {
-    closePopover({ forced: true });
-    return;
   }
 
   // 4. Lock flip: re-render read-only (or writable) without closing.
@@ -987,7 +1057,7 @@ function onSectionsChanged(): void {
   // that went away still complete (the queue holds its section object); only its
   // DOM is dropped here.
   if (getSections(popover.panel).length === 0) {
-    closePopover({ forced: true });
+    closePopover({ kind: "forced" });
     return;
   }
   renderAllSections({ popover });
@@ -995,15 +1065,17 @@ function onSectionsChanged(): void {
 
 function onPointerDown(event: Event): void {
   const popover = _current;
-  const element = popoverElement();
+  const element = surfaceElement();
   if (popover === null || !element) return;
+  // The sheet's outside is its backdrop, which closes it through its own click.
+  if (popover.surface === "sheet") return;
   const target = event.target;
   if (!(target instanceof Node)) return;
   if (element.contains(target)) return;
   // Gear clicks are handled by the gear's own click (toggle / switch).
   if (target instanceof Element && target.closest(GEAR_SELECTOR)) return;
   const { gear, panel } = popover;
-  closePopover({ forced: false, restoreFocus: false });
+  closePopover({ kind: "user", restoreFocus: false });
   // The browser's default mousedown focus handling runs after this capture
   // handler, so restore afterwards, and only if nothing took focus (a clicked
   // control keeps it; blank space leaves the body).
@@ -1018,12 +1090,14 @@ function onPointerDown(event: Event): void {
 function onEscape(event: JQuery.TriggeredEvent): void {
   if (event.key !== KEYS.ESCAPE || _current === null) return;
   event.preventDefault();
-  closePopover({ forced: false });
+  // Nothing else may react to the Escape that closes the sheet.
+  if (_current.surface === "sheet") event.stopImmediatePropagation();
+  closePopover({ kind: "user" });
 }
 
 function onPopoverKeydown(event: KeyboardEvent): void {
   if (event.key !== KEYS.TAB) return;
-  const element = popoverElement();
+  const element = surfaceElement();
   if (!element || _current === null) return;
   const focusable = focusableDescendants({ root: element });
   if (focusable.length === 0) {
@@ -1044,12 +1118,15 @@ function onPopoverKeydown(event: KeyboardEvent): void {
 }
 
 function onBreakpointChange(): void {
+  // Whichever surface is open belongs to the viewport that just ended.
+  closeAnyOpen();
   recomputeGears();
-  if (isBelowBreakpoint()) closeAnyOpen();
 }
 
 function onResize(): void {
-  if (_current !== null) positionPopover({ gear: _current.gear });
+  if (_current !== null && _current.surface === "popover") {
+    positionPopover({ gear: _current.gear });
+  }
 }
 
 // ------------------------------------------------------------ lifecycle
@@ -1068,6 +1145,7 @@ export function resetPopover(): void {
     for (const entry of _current.entries.values()) teardownEntry({ entry });
     _current = null;
   }
+  resetSettingsSheet();
   _queue = null;
   _forcedReadOnly = null;
   _breakpointQuery = null;
@@ -1094,13 +1172,14 @@ export function initPopover(): void {
     });
   }
 
-  const element = popoverElement();
-  if (element) {
+  for (const element of [popoverElement(), sheetElement()]) {
+    if (!element) continue;
     element.addEventListener("keydown", onPopoverKeydown);
     _disposers.push(() =>
       element.removeEventListener("keydown", onPopoverKeydown),
     );
   }
+  registerSettingsSheetCloseHandler((kind) => closePopover({ kind }));
 
   document.addEventListener("pointerdown", onPointerDown, true);
   _disposers.push(() =>
@@ -1155,6 +1234,7 @@ export function initPopover(): void {
     }),
   );
   _disposers.push(on(AppEvents.TRASH_OPENED, closeAnyOpen));
+  _disposers.push(on(AppEvents.MOBILE_DECK_SWITCHED, closeAnyOpen));
   _disposers.push(
     on(AppEvents.DECK_COLLAPSE_CHANGED, ({ deck, collapsed }) => {
       if (!collapsed) return;
