@@ -68,6 +68,8 @@ PANEL_SETTINGS_GEAR_UTUBS = "UTubs settings"
 PANEL_SETTINGS_GEAR_MEMBERS = "Members settings"
 PANEL_SETTINGS_GEAR_TAGS = "Tags settings"
 PANEL_SETTINGS_GEAR_URLS = "URLs settings"
+# Mobile sheet close button aria-label: Jinja-only, asserted by tests (not bridged).
+PANEL_SETTINGS_CLOSE = "Close settings"
 
 
 class UTUB_GENERAL:
