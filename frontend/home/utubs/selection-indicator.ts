@@ -5,6 +5,8 @@
 // Positions are measured only when the selection or layout changes, and only
 // transform / opacity are ever written.
 
+import { AppEvents, on } from "../../lib/event-bus.js";
+
 const INDICATOR_ID = "UTubSelectionIndicator";
 const LIST_ID = "listUTubs";
 const ROW_SELECTOR = ".UTubSelector";
@@ -14,6 +16,10 @@ const SHIMMER_CLIP_SELECTOR = ".utubSelectionShimmerClip";
 const ANNOUNCE_CLASS = "utubSelectedAnnounce";
 const VISIBLE_CLASS = "isVisible";
 const IDLE_CLASS = "isIdle";
+const DECK_ID = "UTubDeck";
+const MAIN_PANEL_ID = "mainPanel";
+const DECK_COLLAPSED_CLASS = "collapsed";
+const LEFT_PANEL_COLLAPSED_CLASS = "lhs-collapsed";
 
 export const STRETCH_MS = 420;
 export const STRETCH_EASING = "cubic-bezier(.5, 0, .2, 1)";
@@ -29,6 +35,82 @@ let pendingFrameId: number | null = null;
 let pendingAnimate = false;
 let lastPlaced: PlacedBox | null = null;
 let stretchAnimation: Animation | null = null;
+
+// Inputs of recomputeIdle(), the one rule that decides the `isIdle` class.
+let visible = false;
+let stretching = false;
+let settling = false;
+let deckCollapsed = false;
+let leftPanelCollapsed = false;
+let settleTimer: ReturnType<typeof setTimeout> | null = null;
+let releaseRegistrations: Array<() => void> = [];
+
+// Sets `isIdle` iff the shimmer can be seen; every site calls this and none
+// hand-writes the condition.
+function recomputeIdle(): void {
+  const indicator = getIndicator();
+  if (indicator === null) return;
+  const idle =
+    visible &&
+    !stretching &&
+    !settling &&
+    !deckCollapsed &&
+    !leftPanelCollapsed &&
+    !document.hidden;
+  indicator.classList.toggle(IDLE_CLASS, idle);
+}
+
+// Re-reads both collapse flags from the DOM (shared by every re-sync path).
+function reseedCollapseFlags(): void {
+  deckCollapsed =
+    document
+      .getElementById(DECK_ID)
+      ?.classList.contains(DECK_COLLAPSED_CLASS) ?? false;
+  leftPanelCollapsed =
+    document
+      .getElementById(MAIN_PANEL_ID)
+      ?.classList.contains(LEFT_PANEL_COLLAPSED_CLASS) ?? false;
+}
+
+function clearSettle(): void {
+  if (settleTimer !== null) clearTimeout(settleTimer);
+  settleTimer = null;
+  settling = false;
+}
+
+// Runs a pending (rAF-deferred) sync now instead of waiting for the frame.
+function flushPendingSync(): void {
+  if (pendingFrameId === null) return;
+  cancelAnimationFrame(pendingFrameId);
+  pendingFrameId = null;
+  applySelection();
+}
+
+function onSettleFired(): void {
+  settleTimer = null;
+  settling = false;
+  if (boundList === null) return;
+  reseedCollapseFlags();
+  syncUTubSelectionIndicator({ animate: false });
+  flushPendingSync();
+  recomputeIdle();
+}
+
+function handleCollapseChanged({ collapsed }: { collapsed: boolean }): void {
+  // The flag is written by the caller; a collapse cancels the settle timer,
+  // an expand (re)starts the single one.
+  clearSettle();
+  if (!collapsed) {
+    settling = true;
+    settleTimer = setTimeout(onSettleFired, IDLE_REARM_MS);
+  }
+  recomputeIdle();
+}
+
+function handleVisibilityChange(): void {
+  if (!document.hidden) flushPendingSync();
+  recomputeIdle();
+}
 
 function getIndicator(): HTMLElement | null {
   return document.getElementById(INDICATOR_ID);
@@ -96,13 +178,15 @@ function hideIndicator({
   clip: HTMLElement | null;
 }): void {
   cancelStretch();
-  indicator.classList.remove(VISIBLE_CLASS, IDLE_CLASS);
+  indicator.classList.remove(VISIBLE_CLASS);
   for (const part of [bar, clip]) {
     if (part === null) continue;
     part.style.transform = "translateY(0)";
     part.style.height = "";
   }
   lastPlaced = null;
+  visible = false;
+  recomputeIdle();
 }
 
 function prefersReducedMotion(): boolean {
@@ -116,6 +200,7 @@ function cancelStretch(): void {
   if (stretchAnimation === null) return;
   const animation = stretchAnimation;
   stretchAnimation = null;
+  stretching = false;
   animation.cancel();
 }
 
@@ -204,10 +289,14 @@ function startStretch({
     { duration: STRETCH_MS, easing: STRETCH_EASING },
   );
   stretchAnimation = animation;
+  stretching = true;
   // A cancelled animation rejects `finished` with AbortError; ignore it.
   animation.finished
     .then(() => {
-      if (stretchAnimation === animation) stretchAnimation = null;
+      if (stretchAnimation !== animation) return;
+      stretchAnimation = null;
+      stretching = false;
+      recomputeIdle();
     })
     .catch(() => undefined);
 }
@@ -270,6 +359,8 @@ function placeIndicator({
   }
   indicator.classList.add(VISIBLE_CLASS);
   lastPlaced = target;
+  visible = true;
+  recomputeIdle();
 }
 
 function applySelection(): void {
@@ -327,9 +418,16 @@ function teardown(): void {
     pendingFrameId = null;
   }
   pendingAnimate = false;
+  for (const release of releaseRegistrations) release();
+  releaseRegistrations = [];
+  clearSettle();
   cancelStretch();
   lastPlaced = null;
   boundList = null;
+  visible = false;
+  stretching = false;
+  deckCollapsed = false;
+  leftPanelCollapsed = false;
   getIndicator()?.classList.remove(VISIBLE_CLASS, IDLE_CLASS);
 }
 
@@ -355,6 +453,22 @@ export function initUTubSelectionIndicator(): void {
       attributeFilter: ["class"],
     });
   }
+  reseedCollapseFlags();
+  releaseRegistrations = [
+    on(AppEvents.DECK_COLLAPSE_CHANGED, ({ deck, collapsed }) => {
+      if (deck !== "utubs") return;
+      deckCollapsed = collapsed;
+      handleCollapseChanged({ collapsed });
+    }),
+    on(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, ({ collapsed }) => {
+      leftPanelCollapsed = collapsed;
+      handleCollapseChanged({ collapsed });
+    }),
+  ];
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  releaseRegistrations.push(() =>
+    document.removeEventListener("visibilitychange", handleVisibilityChange),
+  );
   syncUTubSelectionIndicator({ animate: false });
 }
 

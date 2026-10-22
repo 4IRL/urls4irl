@@ -173,6 +173,48 @@ def wait_until_css_property(
     return page.locator(css_selector).first
 
 
+_DECK_COLLAPSED_CLASS_RE = re.compile(r"(^|\s)collapsed(\s|$)")
+
+
+def collapse_deck_by_header_click(
+    *, page: Page, header_selector: str, deck_selector: str, content_id: str
+) -> None:
+    """Collapse a deck with a real header click, then wait for it to settle.
+
+    Both gates are root causes, not padding. The class assert proves the click
+    handler ran (and with it the localStorage write, which happens in the same
+    synchronous handler). The computed-`visibility` wait proves the 0.3s
+    transition has ENDED: per the CSS Transitions spec a `visible`->`hidden`
+    `visibility` transition holds `visible` until its very last frame, so
+    anything that depends on the content actually being hidden (focus order,
+    a following `page.reload()`) would race it otherwise.
+    """
+    page.locator(header_selector).click()
+    expect(page.locator(deck_selector)).to_have_class(_DECK_COLLAPSED_CLASS_RE)
+    wait_until_css_property(
+        page=page,
+        css_selector=f"#{content_id}",
+        css_property="visibility",
+        expected_value="hidden",
+    )
+
+
+def expand_deck_by_header_click(
+    *, page: Page, header_selector: str, deck_selector: str, content_id: str
+) -> None:
+    """Inverse of the above. `hidden`->`visible` flips at 0%, so the wait here
+    settles immediately — it is kept for symmetry and to prove the content is
+    genuinely back in the focus/a11y tree, not merely un-classed."""
+    page.locator(header_selector).click()
+    expect(page.locator(deck_selector)).not_to_have_class(_DECK_COLLAPSED_CLASS_RE)
+    wait_until_css_property(
+        page=page,
+        css_selector=f"#{content_id}",
+        css_property="visibility",
+        expected_value="visible",
+    )
+
+
 def wait_until_same_width_and_right_edge(
     *,
     page: Page,

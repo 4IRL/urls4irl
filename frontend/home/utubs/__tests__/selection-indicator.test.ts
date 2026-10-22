@@ -1,8 +1,10 @@
 import {
+  IDLE_REARM_MS,
   initUTubSelectionIndicator,
   syncUTubSelectionIndicator,
   resetUTubSelectionIndicatorForTests,
 } from "../selection-indicator.js";
+import { AppEvents, emit } from "../../../lib/event-bus.js";
 
 const ROW_HEIGHT = 40;
 const LABEL = "selected";
@@ -87,14 +89,15 @@ function getClip(): HTMLElement {
 
 function buildFixture(): void {
   document.body.innerHTML = `
-    <div id="UTubDeckContent">
+    <div id="UTubDeck"><div id="UTubDeckContent">
       <div id="UTubSelectionIndicator" class="utubSelectionIndicator"
            aria-hidden="true" data-selected-label="${LABEL}">
         <div class="utubSelectionBar"></div>
         <div class="utubSelectionShimmerClip"><div class="utubSelectionShimmer"></div></div>
       </div>
       <div id="listUTubs"></div>
-    </div>
+    </div></div>
+    <div id="mainPanel"></div>
     <div id="bulkPicker"><span class="UTubSelector active" utubid="99"></span></div>`;
   getList().append(
     makeRow({ utubid: 1, index: 0 }),
@@ -190,6 +193,8 @@ describe("selection-indicator", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     Reflect.deleteProperty(Element.prototype, "animate");
+    Reflect.deleteProperty(document, "hidden");
+    vi.useRealTimers();
     document.body.innerHTML = "";
   });
 
@@ -629,6 +634,372 @@ describe("selection-indicator", () => {
     it("does not schedule a frame before init", () => {
       syncUTubSelectionIndicator({ animate: true });
       expect(frameQueue.size).toBe(0);
+    });
+  });
+
+  describe("idle shimmer", () => {
+    const isIdle = (): boolean => getIndicator().classList.contains("isIdle");
+
+    async function flushMicrotasks(): Promise<void> {
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+
+    function setHidden(hidden: boolean): void {
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        get: () => hidden,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    }
+
+    async function startSelected(index = 0): Promise<void> {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      await initAndSettle();
+      await selectRow(getRows()[index]);
+    }
+
+    function expandDeck(): void {
+      emit(AppEvents.DECK_COLLAPSE_CHANGED, {
+        deck: "utubs",
+        collapsed: false,
+      });
+    }
+
+    function collapseDeck(): void {
+      emit(AppEvents.DECK_COLLAPSE_CHANGED, { deck: "utubs", collapsed: true });
+    }
+
+    it("is idle right after the first snap and not before anything is selected", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      await initAndSettle();
+      expect(isIdle()).toBe(false);
+      await selectRow(getRows()[0]);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("drops isIdle while a stretch runs and re-adds it when that stretch finishes", async () => {
+      await startSelected(0);
+      await selectRow(getRows()[2]);
+      expect(animateCalls()).toBe(1);
+      expect(isIdle()).toBe(false);
+
+      animations[0].resolve();
+      await flushMicrotasks();
+      expect(isIdle()).toBe(true);
+    });
+
+    it("only the latest stretch's completion counts; a cancelled one adds nothing", async () => {
+      await startSelected(0);
+      await selectRow(getRows()[1]);
+      await selectRow(getRows()[2]);
+      expect(animateCalls()).toBe(2);
+
+      await flushMicrotasks();
+      expect(isIdle()).toBe(false);
+      animations[0].resolve();
+      await flushMicrotasks();
+      expect(isIdle()).toBe(false);
+      animations[1].resolve();
+      await flushMicrotasks();
+      expect(isIdle()).toBe(true);
+    });
+
+    it("removes isIdle when the indicator hides", async () => {
+      await startSelected(0);
+      expect(isIdle()).toBe(true);
+      await selectRow(undefined);
+      expect(isIdle()).toBe(false);
+    });
+
+    it("removes isIdle on deck collapse and re-adds it IDLE_REARM_MS after expand", async () => {
+      await startSelected(0);
+      collapseDeck();
+      expect(isIdle()).toBe(false);
+
+      expandDeck();
+      expect(isIdle()).toBe(false);
+      vi.advanceTimersByTime(IDLE_REARM_MS - 1);
+      expect(isIdle()).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("ignores collapse events for other decks", async () => {
+      await startSelected(0);
+      emit(AppEvents.DECK_COLLAPSE_CHANGED, {
+        deck: "members",
+        collapsed: true,
+      });
+      emit(AppEvents.DECK_COLLAPSE_CHANGED, { deck: "tags", collapsed: false });
+      expect(isIdle()).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("handles the left panel the same way", async () => {
+      await startSelected(0);
+      emit(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: true });
+      expect(isIdle()).toBe(false);
+      emit(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: false });
+      expect(isIdle()).toBe(false);
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("a re-collapse before the timer fires cancels it", async () => {
+      await startSelected(0);
+      collapseDeck();
+      expandDeck();
+      vi.advanceTimersByTime(IDLE_REARM_MS - 10);
+      collapseDeck();
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime(IDLE_REARM_MS * 2);
+      expect(isIdle()).toBe(false);
+    });
+
+    it("a second expand replaces the pending timer", async () => {
+      await startSelected(0);
+      collapseDeck();
+      expandDeck();
+      vi.advanceTimersByTime(IDLE_REARM_MS - 10);
+      expandDeck();
+      expect(vi.getTimerCount()).toBe(1);
+      vi.advanceTimersByTime(IDLE_REARM_MS - 1);
+      expect(isIdle()).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("the settle fire re-syncs with animate:false and starts no stretch", async () => {
+      await startSelected(0);
+      collapseDeck();
+      expandDeck();
+      stubGeometry({ row: getRows()[0], top: 3 * ROW_HEIGHT });
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+
+      expect(animateCalls()).toBe(0);
+      expect(getBar().style.transform).toBe(
+        `translateY(${3 * ROW_HEIGHT}px) scaleY(1)`,
+      );
+      expect(isIdle()).toBe(true);
+    });
+
+    it("removes isIdle while the document is hidden and re-adds it when visible", async () => {
+      await startSelected(0);
+      setHidden(true);
+      expect(isIdle()).toBe(false);
+      setHidden(false);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("a stretch finishing while the document is hidden does not add isIdle", async () => {
+      await startSelected(0);
+      await selectRow(getRows()[1]);
+      setHidden(true);
+      animations[0].resolve();
+      await flushMicrotasks();
+      expect(isIdle()).toBe(false);
+      setHidden(false);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("runs a pending sync before recomputing when the document becomes visible", async () => {
+      await startSelected(0);
+      setHidden(true);
+      getRows()[0].classList.remove("active");
+      getRows()[1].classList.add("active");
+      await flushMicrotasks();
+      expect(frameQueue.size).toBe(1);
+
+      setHidden(false);
+      expect(frameQueue.size).toBe(0);
+      expect(getBar().style.transform).toBe(
+        `translateY(${ROW_HEIGHT}px) scaleY(1)`,
+      );
+    });
+
+    it("a snap or stretch finish while the deck is collapsed does not add isIdle", async () => {
+      await startSelected(0);
+      collapseDeck();
+      await selectRow(getRows()[1]);
+      animations[0]?.resolve();
+      await flushMicrotasks();
+      expect(isIdle()).toBe(false);
+    });
+
+    it("seeds deckCollapsed from #UTubDeck.collapsed at init, then expand re-adds isIdle", async () => {
+      document.getElementById("UTubDeck")?.classList.add("collapsed");
+      await startSelected(0);
+      expect(isIdle()).toBe(false);
+
+      document.getElementById("UTubDeck")?.classList.remove("collapsed");
+      expandDeck();
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("seeds leftPanelCollapsed from #mainPanel.lhs-collapsed at init", async () => {
+      document.getElementById("mainPanel")?.classList.add("lhs-collapsed");
+      await startSelected(0);
+      expect(isIdle()).toBe(false);
+
+      document.getElementById("mainPanel")?.classList.remove("lhs-collapsed");
+      emit(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: false });
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("re-seeds both flags from the DOM on the settle fire (stale flag corrected)", async () => {
+      await startSelected(0);
+      // The class flips with no collapse event, so the flag is stale (false).
+      document.getElementById("mainPanel")?.classList.add("lhs-collapsed");
+      expandDeck();
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(isIdle()).toBe(false);
+
+      // And the other way: a stale true flag is cleared by the next re-seed.
+      document.getElementById("mainPanel")?.classList.remove("lhs-collapsed");
+      expandDeck();
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("a hide during settling keeps the timer; a placement inside the window stays non-idle until the fire", async () => {
+      await startSelected(0);
+      collapseDeck();
+      expandDeck();
+      await selectRow(undefined);
+      expect(vi.getTimerCount()).toBe(1);
+
+      vi.advanceTimersByTime(IDLE_REARM_MS - 100);
+      await selectRow(getRows()[1]);
+      expect(getIndicator().classList.contains("isVisible")).toBe(true);
+      expect(isIdle()).toBe(false);
+
+      vi.advanceTimersByTime(100);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("a visibilitychange back to visible during settling does not add isIdle", async () => {
+      await startSelected(0);
+      collapseDeck();
+      expandDeck();
+      setHidden(true);
+      setHidden(false);
+      expect(isIdle()).toBe(false);
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("a stretch finish inside the settle window does not add isIdle", async () => {
+      await startSelected(0);
+      await selectRow(getRows()[1]);
+      collapseDeck();
+      expandDeck();
+      animations[0].resolve();
+      await flushMicrotasks();
+      expect(isIdle()).toBe(false);
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("registers each Step 3 subscription once for a double init on the same list", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const addSpy = vi.spyOn(document, "addEventListener");
+      await initAndSettle();
+      initUTubSelectionIndicator();
+      const visibilityAdds = addSpy.mock.calls.filter(
+        ([type]) => type === "visibilitychange",
+      );
+      expect(visibilityAdds).toHaveLength(1);
+
+      const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
+      expandDeck();
+      emit(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: false });
+      expect(timeoutSpy).toHaveBeenCalledTimes(2);
+      expect(vi.getTimerCount()).toBe(1);
+    });
+
+    it("rebinds the registrations when #listUTubs is replaced and releases the old ones", async () => {
+      await startSelected(0);
+      const removeSpy = vi.spyOn(document, "removeEventListener");
+      const replacement = document.createElement("div");
+      replacement.id = "listUTubs";
+      getList().replaceWith(replacement);
+      initUTubSelectionIndicator();
+      flushFrames();
+      expect(
+        removeSpy.mock.calls.filter(([type]) => type === "visibilitychange"),
+      ).toHaveLength(1);
+
+      const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
+      expandDeck();
+      expect(timeoutSpy).toHaveBeenCalledTimes(1);
+
+      const row = makeRow({ utubid: 9, index: 0 });
+      row.classList.add("active");
+      replacement.append(row);
+      await flushObserverAndFrame();
+      expect(isIdle()).toBe(false);
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("reset releases subscriptions and listener, clears the timer, settling and classes", async () => {
+      await startSelected(0);
+      const removeSpy = vi.spyOn(document, "removeEventListener");
+      collapseDeck();
+      expandDeck();
+      expect(vi.getTimerCount()).toBe(1);
+
+      resetUTubSelectionIndicatorForTests();
+      expect(vi.getTimerCount()).toBe(0);
+      expect(
+        removeSpy.mock.calls.filter(([type]) => type === "visibilitychange"),
+      ).toHaveLength(1);
+      expect(isIdle()).toBe(false);
+      expect(getIndicator().classList.contains("isVisible")).toBe(false);
+
+      const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
+      expandDeck();
+      collapseDeck();
+      setHidden(true);
+      setHidden(false);
+      expect(timeoutSpy).not.toHaveBeenCalled();
+
+      // settling was cleared: a fresh init places idle immediately.
+      await initAndSettle();
+      await selectRow(getRows()[0]);
+      expect(isIdle()).toBe(true);
+    });
+
+    it("teardown by re-init on a replaced list cancels a running stretch and resets state", async () => {
+      await startSelected(0);
+      await selectRow(getRows()[1]);
+      expect(animateCalls()).toBe(1);
+      collapseDeck();
+      expandDeck();
+
+      const replacement = document.createElement("div");
+      replacement.id = "listUTubs";
+      getList().replaceWith(replacement);
+      initUTubSelectionIndicator();
+      await flushMicrotasks();
+
+      expect(animations[0].cancel).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+      expect(isIdle()).toBe(false);
+      expect(getIndicator().classList.contains("isVisible")).toBe(false);
+
+      // lastPlaced/pending animate flag cleared: the next placement snaps,
+      // and settling is false so it is idle straight away.
+      flushFrames();
+      const row = makeRow({ utubid: 5, index: 2 });
+      row.classList.add("active");
+      replacement.append(row);
+      await flushObserverAndFrame();
+      expect(animateCalls()).toBe(1);
+      expect(isIdle()).toBe(true);
     });
   });
 

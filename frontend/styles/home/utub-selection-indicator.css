@@ -52,15 +52,46 @@
     );
 }
 
+/* The shimmer loop runs only while the JS adds isIdle (selected, settled,
+   deck and left panel expanded, tab visible). The clip's fade-in is declared
+   only here, so removing isIdle drops the opacity with no fade-out. */
+#UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmerClip {
+    opacity: 1;
+    transition: opacity 300ms;
+}
+
+#UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmer {
+    animation: utubSelectionShimmer 3600ms ease-in-out infinite;
+}
+
+@keyframes utubSelectionShimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    55%,
+    100% {
+        transform: translateX(260%);
+    }
+}
+
 /* The stretch itself is skipped in JS (matchMedia at call time); this keeps
-   any CSS transition off the indicator as well. */
+   any CSS transition and the shimmer off the indicator as well. The isIdle
+   selectors match the specificity of the rules above. */
 @media (prefers-reduced-motion: reduce) {
     #UTubDeck .utubSelectionIndicator,
     #UTubDeck .utubSelectionBar,
     #UTubDeck .utubSelectionShimmerClip,
-    #UTubDeck .utubSelectionShimmer {
+    #UTubDeck .utubSelectionShimmer,
+    #UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmerClip,
+    #UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmer {
         transition: none;
         animation: none;
+    }
+
+    /* No frozen band: the clip stays transparent while idle. */
+    #UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmerClip {
+        opacity: 0;
     }
 }
 

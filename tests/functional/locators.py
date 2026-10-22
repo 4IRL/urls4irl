@@ -86,6 +86,8 @@ class HomePageLocators(GenericPageLocator):
     SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
     UTUB_SELECTION_INDICATOR = "#UTubSelectionIndicator"
     UTUB_SELECTION_BAR = "#UTubSelectionIndicator .utubSelectionBar"
+    UTUB_SELECTION_SHIMMER = "#UTubSelectionIndicator .utubSelectionShimmer"
+    UTUB_SELECTION_SHIMMER_CLIP = "#UTubSelectionIndicator .utubSelectionShimmerClip"
     UTUB_SELECTED_ANNOUNCE = ".utubSelectedAnnounce"
 
     # Per-panel settings shell: one gear per deck header (last child of the

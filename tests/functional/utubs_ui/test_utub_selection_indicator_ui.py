@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
@@ -7,8 +9,11 @@ from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
 )
+from tests.functional.home_ui.playwright_utils import toggle_lhs_panels
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_utils import (
+    collapse_deck_by_header_click,
+    expand_deck_by_header_click,
     login_user_to_home_page,
     select_utub_by_id,
     wait_until_css_property,
@@ -19,12 +24,15 @@ from tests.functional.utubs_ui.playwright_utils import (
     get_selection_bar_animate_call_count,
     install_selection_bar_animate_spy,
     wait_for_selection_bar_on_utub,
+    wait_for_selection_shimmer_animation_count,
 )
 
 pytestmark = pytest.mark.utubs_ui
 
 USER_ID_FOR_TEST = 1
 POSITION_TOLERANCE_PX = 1
+_UTUB_DECK_CONTENT_ID = "UTubDeckContent"
+_IDLE_CLASS_RE = re.compile(r"(^|\s)isIdle(\s|$)")
 
 
 def _row_selector(utub_id: int) -> str:
@@ -255,4 +263,140 @@ def test_rendered_selected_label_matches_backend_constant(
     assert UTS.UTUB_SELECTED_ANNOUNCEMENT
     expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_attribute(
         "data-selected-label", UTS.UTUB_SELECTED_ANNOUNCEMENT
+    )
+
+
+def _select_first_utub_and_settle(*, app: Flask, page: Page) -> None:
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=utub.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+
+
+def test_shimmer_runs_once_selection_settles(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected UTub whose selection has settled
+    THEN the indicator is idle and the shimmer has a running CSS animation
+    """
+    _select_first_utub_and_settle(app=provide_app, page=page)
+
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+    wait_for_selection_shimmer_animation_count(page=page, running=True)
+
+
+def test_reduced_motion_has_no_shimmer_animation(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a user who prefers reduced motion with a settled selection
+    THEN the indicator may be idle but the shimmer has no running animation
+    """
+    page.emulate_media(reduced_motion="reduce")
+    _select_first_utub_and_settle(app=provide_app, page=page)
+
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+    wait_for_selection_shimmer_animation_count(page=page, running=False)
+
+
+def test_opening_trash_removes_idle(page: Page, create_test_tags, provide_app: Flask):
+    """
+    GIVEN an idle shimmer on a selected UTub
+    WHEN the user opens Trash (which clears the selection)
+    THEN isIdle is removed
+    """
+    _select_first_utub_and_settle(app=provide_app, page=page)
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+
+    open_trash(page=page)
+
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).not_to_have_class(_IDLE_CLASS_RE)
+
+
+def test_collapsing_utub_deck_pauses_shimmer_until_expand(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN an idle shimmer on a selected UTub
+    WHEN the UTub deck is collapsed, then expanded
+    THEN isIdle is removed on collapse and returns after the expand settles
+    """
+    _select_first_utub_and_settle(app=provide_app, page=page)
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+
+    collapse_deck_by_header_click(
+        page=page,
+        header_selector=HPL.HEADER_AND_CARET_UTUB_DECK,
+        deck_selector=HPL.UTUB_DECK,
+        content_id=_UTUB_DECK_CONTENT_ID,
+    )
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).not_to_have_class(_IDLE_CLASS_RE)
+
+    expand_deck_by_header_click(
+        page=page,
+        header_selector=HPL.HEADER_AND_CARET_UTUB_DECK,
+        deck_selector=HPL.UTUB_DECK,
+        content_id=_UTUB_DECK_CONTENT_ID,
+    )
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+    wait_for_selection_shimmer_animation_count(page=page, running=True)
+
+
+def test_collapsing_left_panel_pauses_shimmer_until_expand(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN an idle shimmer on a selected UTub at desktop width
+    WHEN the left panel is collapsed with the seam toggle, then expanded
+    THEN isIdle is removed on collapse and returns after the expand settles
+    """
+    _select_first_utub_and_settle(app=provide_app, page=page)
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+
+    toggle_lhs_panels(page=page)
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).not_to_have_class(_IDLE_CLASS_RE)
+
+    toggle_lhs_panels(page=page)
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+
+
+def test_forced_colors_keeps_bar_visible_and_hides_shimmer(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN forced-colors mode with a selected UTub
+    THEN the indicator is visible, the bar is painted with the Highlight system
+    color and the shimmer clip is display:none
+    """
+    page.emulate_media(forced_colors="active")
+    _select_first_utub_and_settle(app=provide_app, page=page)
+
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.UTUB_SELECTION_INDICATOR,
+        css_property="opacity",
+        expected_value="1",
+    )
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.UTUB_SELECTION_SHIMMER_CLIP,
+        css_property="display",
+        expected_value="none",
+    )
+    page.wait_for_function(
+        """(barSelector) => {
+            const bar = document.querySelector(barSelector);
+            if (!bar) return false;
+            const barStyle = window.getComputedStyle(bar);
+            if (barStyle.display === "none") return false;
+            const probe = document.createElement("div");
+            probe.style.background = "Highlight";
+            probe.style.forcedColorAdjust = "none";
+            document.body.appendChild(probe);
+            const highlight = window.getComputedStyle(probe).backgroundColor;
+            probe.remove();
+            return barStyle.backgroundColor === highlight;
+        }""",
+        arg=HPL.UTUB_SELECTION_BAR,
     )

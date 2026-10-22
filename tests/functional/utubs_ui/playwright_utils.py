@@ -25,6 +25,28 @@ def get_selection_bar_and_active_row_boxes(
     return bar_box, row_box
 
 
+def wait_for_selection_shimmer_animation_count(
+    *, page: Page, running: bool, animation_name: str = "utubSelectionShimmer"
+) -> None:
+    """Poll until the shimmer element has (running=True) or lacks (running=False)
+    a CSS animation named `animation_name`."""
+    page.wait_for_function(
+        """({ shimmerSelector, animationName, expectRunning }) => {
+            const shimmer = document.querySelector(shimmerSelector);
+            if (!shimmer) return false;
+            const found = shimmer
+                .getAnimations()
+                .some((animation) => animation.animationName === animationName);
+            return found === expectRunning;
+        }""",
+        arg={
+            "shimmerSelector": HPL.UTUB_SELECTION_SHIMMER,
+            "animationName": animation_name,
+            "expectRunning": running,
+        },
+    )
+
+
 def wait_for_selection_bar_on_utub(
     *, page: Page, utub_id: int, tolerance_px: float = 1
 ) -> None:
