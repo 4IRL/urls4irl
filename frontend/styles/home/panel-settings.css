@@ -39,14 +39,6 @@
     }
 }
 
-/* No surface is wired below 992px until the mobile sheet (phase 3); the 992px
-   boundary matches the deck CSS (min-width: 992px / max-width: 991.98px). */
-@media (max-width: 991.98px) {
-    .panelSettingsGear {
-        display: none !important;
-    }
-}
-
 /* ------------------------------ Shell mount ------------------------------- */
 
 /* Out of flow: <body> is a flex column and the mount must never take a slot. */
@@ -92,10 +84,127 @@
     outline-offset: -2px;
 }
 
-/* Reserved for the phase 3 bottom sheet and its backdrop (empty, hidden here). */
-.panelSettingsBackdrop,
+/* -------------------------- Mobile bottom sheet --------------------------- */
+
+/* While the sheet is open the root rises above the open Tag sheet (1040) and its
+   backdrop (1039), but stays under the navbar dropdown and Bootstrap modals (1050+). */
+#panelSettingsRoot.panelSettingsRoot--sheet {
+    z-index: 1045;
+}
+
+/* One full-viewport backdrop (covers the navbar too: the sheet is fully modal). */
+.panelSettingsBackdrop {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    opacity: 0;
+    /* A touch drag on the dimmed page must not scroll the document behind. */
+    touch-action: none;
+    transition: opacity 0.3s ease;
+}
+
+.panelSettingsBackdrop.panelSettingsBackdrop--show {
+    opacity: 0.5;
+}
+
 .panelSettingsSheet {
     position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 85dvh;
+    background: var(--panelBackgroundColor);
+    color: var(--textPrimary);
+    border-top: 2px solid var(--contentTopBorder);
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.panelSettingsSheet.panelSettingsSheet--open {
+    transform: translateY(0);
+}
+
+/* The sheet tracks the finger 1:1 during a drag, so no transition then. */
+.panelSettingsSheet.panelSettingsSheet--dragging {
+    transition: none;
+}
+
+.panelSettingsSheet:focus {
+    outline: none;
+}
+
+/* Grabber: 38x4 visual with a >=24px hit area; a drag target. */
+.panelSettingsSheetGrabber {
+    position: relative;
+    display: block;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 4px;
+    margin: 6px auto 0;
+    background: #5a6565;
+    border-radius: 2px;
+    touch-action: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.panelSettingsSheetGrabber::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    right: -24px;
+    top: -6px;
+    height: 24px;
+}
+
+.panelSettingsSheetHeader {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem 0.25rem 1rem;
+    touch-action: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.panelSettingsSheetTitle {
+    margin: 0;
+    color: var(--deckHeaderGreen);
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+
+.panelSettingsSheetClose {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--textPrimary);
+    cursor: pointer;
+}
+
+.panelSettingsSheetClose:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+.panelSettingsSheetBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 1rem calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
 
 /* ---------------------------- Section chrome ----------------------------- */
@@ -176,14 +285,19 @@
 @media (any-pointer: coarse) {
     .panelSettingsPopover button,
     .panelSettingsPopover select,
-    .panelSettingsPopover input {
+    .panelSettingsPopover input,
+    .panelSettingsSheet button,
+    .panelSettingsSheet select,
+    .panelSettingsSheet input {
         min-width: 2.75rem;
         min-height: 2.75rem;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .panelSettingsGear > svg {
+    .panelSettingsGear > svg,
+    .panelSettingsSheet,
+    .panelSettingsBackdrop {
         transition: none;
     }
 }

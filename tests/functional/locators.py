@@ -100,6 +100,8 @@ class HomePageLocators(GenericPageLocator):
     PANEL_SETTINGS_ROOT = "#panelSettingsRoot"
     PANEL_SETTINGS_POPOVER = "#panelSettingsPopover"
     PANEL_SETTINGS_ANNOUNCEMENT = "#PanelSettingsAnnouncement"
+    PANEL_SETTINGS_SHEET = "#panelSettingsSheet"
+    PANEL_SETTINGS_SHEET_BACKDROP = "#panelSettingsBackdrop"
 
     BUTTON_UTUB_CREATE = "#utubBtnCreate"
     BUTTON_UTUB_DELETE = "#utubBtnDelete"

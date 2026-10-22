@@ -113,6 +113,42 @@ def _computed_display(page: Page, css_selector: str) -> str:
     )
 
 
+def gear_container_metrics(page: Page, gear_selector: str) -> dict:
+    """Overflow/wrap metrics of the gear's button container, in margin boxes (not
+    border boxes): the gear's 44px hit area (7px padding) is handed back by a -7px
+    margin, so its transparent padding pokes 7px past the container's content edge
+    by design. That inflates scrollWidth and shifts the border-box top without any
+    real overflow or wrap. Shared with the mobile gear-fit tests."""
+    return page.evaluate(
+        """(gearSelector) => {
+            const container = document.querySelector(gearSelector).parentElement;
+            const containerRect = container.getBoundingClientRect();
+            const containerStyle = getComputedStyle(container);
+            const contentRight =
+                containerRect.right - parseFloat(containerStyle.paddingRight);
+            const boxes = Array.from(container.children)
+                .filter((child) => child.getClientRects().length > 0)
+                .map((child) => {
+                    const rect = child.getBoundingClientRect();
+                    const style = getComputedStyle(child);
+                    return {
+                        top: Math.round(rect.top - parseFloat(style.marginTop)),
+                        right: rect.right + parseFloat(style.marginRight),
+                    };
+                });
+            return {
+                gear: gearSelector,
+                contentRight,
+                containerHeight: containerRect.height,
+                maxMarginBoxRight: Math.max(...boxes.map((box) => box.right)),
+                visibleButtons: boxes.length,
+                distinctTops: new Set(boxes.map((box) => box.top)).size,
+            };
+        }""",
+        gear_selector,
+    )
+
+
 def _login_and_select_owned_utub(app: Flask, page: Page) -> int:
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
     login_user_and_select_utub_by_utubid(
@@ -359,23 +395,85 @@ def test_tags_update_row_hides_the_tags_gear(
     expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_visible()
 
 
-def test_gears_hidden_below_992(
-    page: Page, create_test_utubmembers, provide_app: Flask
+def test_tags_gear_unaffected_by_multi_select_at_desktop(
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN an owned UTub selected on desktop
-    WHEN the viewport is resized to 991px and the gears are un-hidden
-    THEN all four are display:none
+    GIVEN an owned UTub at a desktop width with the gears un-hidden
+    WHEN URL multi-select is entered
+    THEN the Tags gear stays displayed (only below 992px does the mode hide it)
     """
     _login_and_select_owned_utub(provide_app, page)
 
-    page.set_viewport_size(
-        {"width": _BELOW_DESKTOP_WIDTH_PX, "height": _NARROW_DESKTOP_VIEWPORT["height"]}
-    )
+    enter_multi_select_mode(page=page)
+    # No section is registered, so the shell re-adds `hidden` on re-render:
+    # reveal after the mode starts, then read class and display together.
     _reveal_gears(page)
 
+    has_hidden_class, display = page.evaluate(
+        """(gearSelector) => {
+            const gear = document.querySelector(gearSelector);
+            return [gear.classList.contains('hidden'), getComputedStyle(gear).display];
+        }""",
+        HPL.BUTTON_TAG_SETTINGS_GEAR,
+    )
+    assert has_hidden_class is False
+    assert display != "none"
+
+
+@pytest.mark.parametrize(
+    "viewport_width", [_BELOW_DESKTOP_WIDTH_PX, _AT_DESKTOP_WIDTH_PX]
+)
+def test_no_gear_without_section_at_both_widths(
+    page: Page, create_test_utubmembers, provide_app: Flask, viewport_width: int
+):
+    """
+    GIVEN an owned UTub selected, loaded at 991px (sheet) or 992px (popover)
+    WHEN no settings section is registered
+    THEN no gear is visible, and un-hiding them through the DOM shows the CSS no
+        longer hides any gear at either width (positive control)
+    """
+    page.set_viewport_size(
+        {"width": viewport_width, "height": _NARROW_DESKTOP_VIEWPORT["height"]}
+    )
+    _login_and_select_owned_utub(provide_app, page)
+
+    _assert_no_gear_visible(page)
+
+    _reveal_gears(page)
     for gear_selector in _ALL_GEARS:
-        assert _computed_display(page, gear_selector) == "none"
+        assert _computed_display(page, gear_selector) != "none"
+
+
+@pytest.mark.parametrize("viewport_width", [1280, 420])
+def test_sheet_root_modifier_z_index_and_sheet_hidden(
+    page: Page, create_test_utubmembers, provide_app: Flask, viewport_width: int
+):
+    """
+    GIVEN the home page at desktop (1280px) and phone (420px) widths
+    WHEN the sheet modifier class is added to the settings root
+    THEN the root's z-index is 1045, and the sheet and backdrop are attached but hidden
+    """
+    page.set_viewport_size(
+        {"width": viewport_width, "height": _NARROW_DESKTOP_VIEWPORT["height"]}
+    )
+    _login_and_select_owned_utub(provide_app, page)
+
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_be_attached()
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).not_to_be_visible()
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET_BACKDROP)).to_be_attached()
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET_BACKDROP)).not_to_be_visible()
+
+    page.evaluate(
+        "(rootSelector) => document.querySelector(rootSelector)"
+        ".classList.add('panelSettingsRoot--sheet')",
+        HPL.PANEL_SETTINGS_ROOT,
+    )
+    z_index = page.evaluate(
+        "(rootSelector) => getComputedStyle(document.querySelector(rootSelector)).zIndex",
+        HPL.PANEL_SETTINGS_ROOT,
+    )
+    assert z_index == "1045"
 
 
 def test_gears_visible_at_992(page: Page, create_test_utubmembers, provide_app: Flask):
@@ -422,33 +520,7 @@ def test_revealed_gears_do_not_overflow_or_wrap_headers_at_left_panel_minimum(
         # is handed back by a -7px margin, so its transparent padding pokes 7px
         # past the container's content edge by design. That inflates scrollWidth
         # and shifts the border-box top without any real overflow or wrap.
-        metrics = page.evaluate(
-            """(gearSelector) => {
-                const container = document.querySelector(gearSelector).parentElement;
-                const containerRect = container.getBoundingClientRect();
-                const containerStyle = getComputedStyle(container);
-                const contentRight =
-                    containerRect.right - parseFloat(containerStyle.paddingRight);
-                const boxes = Array.from(container.children)
-                    .filter((child) => child.getClientRects().length > 0)
-                    .map((child) => {
-                        const rect = child.getBoundingClientRect();
-                        const style = getComputedStyle(child);
-                        return {
-                            top: Math.round(rect.top - parseFloat(style.marginTop)),
-                            right: rect.right + parseFloat(style.marginRight),
-                        };
-                    });
-                return {
-                    gear: gearSelector,
-                    contentRight,
-                    maxMarginBoxRight: Math.max(...boxes.map((box) => box.right)),
-                    visibleButtons: boxes.length,
-                    distinctTops: new Set(boxes.map((box) => box.top)).size,
-                };
-            }""",
-            gear_selector,
-        )
+        metrics = gear_container_metrics(page, gear_selector)
         assert metrics["maxMarginBoxRight"] <= metrics["contentRight"] + 0.5, metrics
         assert metrics["visibleButtons"] >= 3, metrics
         assert left_panel_width == 350, left_panel_width
