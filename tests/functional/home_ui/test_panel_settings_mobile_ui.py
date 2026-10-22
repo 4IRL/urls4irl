@@ -207,6 +207,9 @@ def test_revealed_gears_fit_their_headers_on_small_phones(
     page = page_mobile_portrait
     page.set_viewport_size({"width": viewport_width, "height": _PHONE_HEIGHT_PX})
     _select_owned_utub_on_phone(provide_app, page)
+    # The UTub load is async and every store write re-adds `hidden` to the gears
+    # (no section is registered): wait for the loaded UTub's tag filters first.
+    expect(page.locator(HPL.TAG_FILTERS).first).to_be_attached()
 
     def check_fit(gear_selector: str) -> None:
         _unhide_gear(page, gear_selector)
