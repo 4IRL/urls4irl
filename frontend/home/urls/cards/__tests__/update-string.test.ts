@@ -2649,6 +2649,16 @@ describe("edit-URL scheme selector", () => {
       expect(highlightInput).not.toHaveBeenCalled();
     });
 
+    it("still selects the URL input when an unfocused title input is present", () => {
+      vi.useFakeTimers();
+      openForm({ href: "https://example.com" });
+      urlCard.append($('<input class="urlTitleUpdate" type="text" />'));
+
+      vi.advanceTimersByTime(100);
+
+      expect(highlightInput).toHaveBeenCalledTimes(1);
+    });
+
     it("still selects the URL input when it is already focused", () => {
       vi.useFakeTimers();
       openForm({ href: "https://example.com" });
