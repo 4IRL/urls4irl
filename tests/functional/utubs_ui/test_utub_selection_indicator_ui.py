@@ -257,6 +257,46 @@ def test_active_row_announces_selection_without_changing_layout(
     )
 
 
+def test_accessibility_tree_exposes_selected_once_and_hides_indicator(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected UTub
+    THEN the active row's accessibility subtree holds the UTub name and the single
+    "selected" text, no other row exposes it, and the aria-hidden indicator is
+    absent from the tree
+    """
+    app = provide_app
+    selected = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=selected.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=selected.id)
+
+    active_row = page.locator(HPL.SELECTOR_SELECTED_UTUB)
+    expect(active_row).to_have_attribute("aria-current", "true")
+    expect(active_row).to_match_aria_snapshot(
+        f"""
+        - text: {selected.name}
+        - text: {UTS.UTUB_SELECTED_ANNOUNCEMENT}
+        """
+    )
+
+    inactive_rows = page.locator(f"{HPL.SELECTORS_UTUB}:not(.active)")
+    assert inactive_rows.count() > 0
+    for row_index in range(inactive_rows.count()):
+        inactive_snapshot = inactive_rows.nth(row_index).aria_snapshot()
+        assert UTS.UTUB_SELECTED_ANNOUNCEMENT not in inactive_snapshot
+
+    deck_snapshot = page.locator(HPL.LIST_UTUB).aria_snapshot()
+    assert deck_snapshot.count(UTS.UTUB_SELECTED_ANNOUNCEMENT) == 1
+
+    indicator_snapshot = page.locator(HPL.UTUB_SELECTION_INDICATOR).aria_snapshot()
+    assert indicator_snapshot.strip() == ""
+    full_snapshot = page.locator(HPL.UTUB_DECK).aria_snapshot()
+    assert "UTubSelectionIndicator" not in full_snapshot
+    assert "utubSelection" not in full_snapshot
+
+
 def test_rendered_selected_label_matches_backend_constant(
     page: Page, create_test_tags, provide_app: Flask
 ):
