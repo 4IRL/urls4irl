@@ -1,25 +1,33 @@
 import { $ } from "../../../lib/globals.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { resetStore, setState } from "../../../store/app-store.js";
-import type { UtubSummaryItem } from "../../../types/utub.js";
-import type { ResolvedUtubSettings } from "../../../types/settings.js";
 import { dismissActiveTip, maybeShowNextTip } from "../../onboarding/nudges.js";
 import { closeAllMemberRowMenus } from "../../members/row-menu.js";
 import { fitUTubHeaderAndSubheader } from "../../utubs/header-fit.js";
 import { hideTooltip } from "../../../lib/tooltips.js";
+import type { ResolvedUtubSettings } from "../../../types/settings.js";
 import { announceSettingsStatus } from "../announce.js";
 import { resyncSettings } from "../client.js";
 import { resetPopover, initPopover } from "../popover.js";
 import { DEBOUNCE_MS } from "../queue.js";
-import { _resetRegistryForTests, registerSection } from "../registry.js";
+import { _resetRegistryForTests } from "../registry.js";
 import { isPanelSettingsBusy, isPanelSettingsOpen } from "../state.js";
-import type {
-  PanelSection,
-  SaveResult,
-  SectionContext,
-  SectionPatch,
-} from "../types.js";
-import { makeSection } from "./helpers.js";
+import type { SectionContext, SectionPatch } from "../types.js";
+import type { BreakpointMock, Harness } from "./helpers.js";
+import {
+  FIXTURE,
+  OTHER_UTUB_ID,
+  SETTINGS,
+  UTUB_ID,
+  el,
+  gear,
+  mockBreakpoint,
+  openGear,
+  pressKey,
+  registerControlled,
+  selectUTub,
+  summaries,
+} from "./helpers.js";
 
 // Writes straight to the live region so tests can both read it and count calls.
 vi.mock("../announce.js", () => ({
@@ -48,77 +56,11 @@ vi.mock("../../utubs/header-fit.js", () => ({
 vi.mock("../../../lib/tooltips.js", () => ({
   hideTooltip: vi.fn(),
 }));
-
-const UTUB_ID = 7;
-const OTHER_UTUB_ID = 8;
-const SETTINGS: ResolvedUtubSettings = {
-  utubs: {},
-  members: {},
-  tags: {},
-  urls: { sort: "old" },
-} as unknown as ResolvedUtubSettings;
-
-const FIXTURE = `
-  <button id="UTubDeckHeaderAndCaret" type="button">utubs</button>
-  <button id="MemberDeckHeaderAndCaret" type="button">members</button>
-  <button id="TagDeckHeaderAndCaret" type="button">tags</button>
-  <button id="urlBtnCreate" type="button">create</button>
-  <button id="utubBtnSettings" class="panelSettingsGear hidden" data-panel="utubs"
-    aria-label="UTubs settings" aria-haspopup="dialog" aria-expanded="false"
-    aria-controls="panelSettingsPopover"></button>
-  <button id="memberBtnSettings" class="panelSettingsGear hidden" data-panel="members"
-    aria-label="Members settings" aria-haspopup="dialog" aria-expanded="false"
-    aria-controls="panelSettingsPopover"></button>
-  <button id="utubTagBtnSettings" class="panelSettingsGear hidden" data-panel="tags"
-    aria-label="Tags settings" aria-haspopup="dialog" aria-expanded="false"
-    aria-controls="panelSettingsPopover"></button>
-  <button id="urlBtnSettings" class="panelSettingsGear hidden" data-panel="urls"
-    aria-label="URLs settings" aria-haspopup="dialog" aria-expanded="false"
-    aria-controls="panelSettingsPopover"></button>
-  <button id="outside" type="button">outside</button>
-  <div id="panelSettingsRoot">
-    <div id="panelSettingsPopover" class="panelSettingsPopover hidden"
-      role="dialog" tabindex="-1"></div>
-    <div id="PanelSettingsAnnouncement" aria-live="polite"></div>
-  </div>
-`;
-
-interface BreakpointMock {
-  matches: boolean;
-  cross({ matches }: { matches: boolean }): void;
-}
-
-function mockBreakpoint({ matches }: { matches: boolean }): BreakpointMock {
-  const listeners = new Set<() => void>();
-  const query = {
-    matches,
-    addEventListener: (_event: string, listener: () => void) =>
-      listeners.add(listener),
-    removeEventListener: (_event: string, listener: () => void) =>
-      listeners.delete(listener),
-  };
-  window.matchMedia = vi.fn(() => query) as unknown as typeof window.matchMedia;
-  return {
-    get matches() {
-      return query.matches;
-    },
-    cross({ matches: next }) {
-      query.matches = next;
-      listeners.forEach((listener) => listener());
-    },
-  };
-}
-
-function el(id: string): HTMLElement {
-  return document.getElementById(id) as HTMLElement;
-}
-
-function gear(panel: string): HTMLElement {
-  return document.querySelector(
-    `.panelSettingsGear[data-panel="${panel}"]`,
-  ) as HTMLElement;
-}
-
+// sheet.ts reads isTagSheetSelfBackPending; the real module would load the home module graph.
+vi.mock("../../tags/sheet.js", () => ({
+  isTagSheetOpen: () => false,
+  isTagSheetSelfBackPending: () => false,
+}));
 function popover(): HTMLElement {
   return el("panelSettingsPopover");
 }
@@ -136,101 +78,8 @@ function announced(): string {
   return el("PanelSettingsAnnouncement").textContent ?? "";
 }
 
-function summaries(ids: number[]): UtubSummaryItem[] {
-  return ids.map((id) => ({ id, name: `UTub ${id}` })) as UtubSummaryItem[];
-}
-
-function selectUTub({
-  utubID = UTUB_ID,
-  owner = true,
-  locked = false,
-  settings = SETTINGS,
-}: {
-  utubID?: number;
-  owner?: boolean;
-  locked?: boolean;
-  settings?: ResolvedUtubSettings;
-} = {}): void {
-  setState({
-    utubs: summaries([UTUB_ID, OTHER_UTUB_ID]),
-    activeUTubID: utubID,
-    isCurrentUserOwner: owner,
-    isCurrentUTubLocked: locked,
-    settings,
-  });
-}
-
-interface Deferred {
-  promise: Promise<SaveResult>;
-  resolve: (result: SaveResult) => void;
-}
-
-function deferred(): Deferred {
-  let resolve!: (result: SaveResult) => void;
-  const promise = new Promise<SaveResult>((innerResolve) => {
-    resolve = innerResolve;
-  });
-  return { promise, resolve };
-}
-
-interface Harness {
-  section: PanelSection;
-  pending: Deferred[];
-  ctxs: SectionContext[];
-  cleanup: ReturnType<typeof vi.fn>;
-  unregister: () => void;
-}
-
-// A registered section rendering one input; saves resolve through `pending`.
-function registerControlled(overrides: Partial<PanelSection> = {}): Harness {
-  const pending: Deferred[] = [];
-  const ctxs: SectionContext[] = [];
-  const cleanup = vi.fn();
-  const section = makeSection({
-    id: "sort",
-    panel: "urls",
-    title: "Sort",
-    render: vi.fn(({ container, ctx }) => {
-      ctxs.push(ctx);
-      container.innerHTML = '<input id="sort-input" />';
-      return cleanup;
-    }),
-    save: vi.fn(() => {
-      const next = deferred();
-      pending.push(next);
-      return next.promise;
-    }),
-    ...overrides,
-  });
-  const unregister = registerSection(section);
-  return { section, pending, ctxs, cleanup, unregister };
-}
-
 function lastCtx(harness: Harness): SectionContext {
   return harness.ctxs[harness.ctxs.length - 1];
-}
-
-function openGear(panel: string): void {
-  gear(panel).click();
-}
-
-function pressKey({
-  key,
-  shiftKey = false,
-  target = document.body,
-}: {
-  key: string;
-  shiftKey?: boolean;
-  target?: HTMLElement;
-}): KeyboardEvent {
-  const event = new KeyboardEvent("keydown", {
-    key,
-    shiftKey,
-    bubbles: true,
-    cancelable: true,
-  });
-  target.dispatchEvent(event);
-  return event;
 }
 
 async function settle(): Promise<void> {
@@ -300,7 +149,7 @@ describe("panel settings popover", () => {
       expect(isGearVisible("utubs")).toBe(true);
     });
 
-    it("hides every gear at the mobile breakpoint and restores them on crossing back", () => {
+    it("keeps the gear visible across the breakpoint and points aria-controls at the active surface", () => {
       initPopover();
       registerControlled({
         id: "utubs-pref",
@@ -309,12 +158,21 @@ describe("panel settings popover", () => {
         userKind: "global",
       });
       expect(isGearVisible("utubs")).toBe(true);
+      expect(gear("utubs").getAttribute("aria-controls")).toBe(
+        "panelSettingsPopover",
+      );
 
       breakpoint.cross({ matches: true });
-      expect(isGearVisible("utubs")).toBe(false);
+      expect(isGearVisible("utubs")).toBe(true);
+      expect(gear("utubs").getAttribute("aria-controls")).toBe(
+        "panelSettingsSheet",
+      );
 
       breakpoint.cross({ matches: false });
       expect(isGearVisible("utubs")).toBe(true);
+      expect(gear("utubs").getAttribute("aria-controls")).toBe(
+        "panelSettingsPopover",
+      );
     });
 
     it("never uses the visible classes, and re-fits the header on a change", () => {
@@ -1045,11 +903,11 @@ describe("panel settings popover", () => {
       expect(document.activeElement).toBe(el("MemberDeckHeaderAndCaret"));
     });
 
-    it("falls back to the deck header button when the breakpoint is crossed", () => {
+    it("restores focus to the still-visible gear when the breakpoint is crossed", () => {
       el("sort-input").focus();
       breakpoint.cross({ matches: true });
-      expect(isGearVisible("urls")).toBe(false);
-      expect(document.activeElement).toBe(el("urlBtnCreate"));
+      expect(isGearVisible("urls")).toBe(true);
+      expect(document.activeElement).toBe(gear("urls"));
     });
 
     it("leaves focus in the cross-UTub search input when it opens (Ctrl/Cmd+K)", () => {

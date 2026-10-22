@@ -302,6 +302,15 @@ export function consumeTagSheetSelfBackClose(): boolean {
   return wasSelfClosing;
 }
 
+/**
+ * Read-only: true while closeTagSheet()'s own history.back() is in flight.
+ * Never clears the flag (only consumeTagSheetSelfBackClose() does), so other
+ * surfaces can ask "is a Tag back() pending?" without stealing the popstate.
+ */
+export function isTagSheetSelfBackPending(): boolean {
+  return _selfClosingViaBack;
+}
+
 export function closeTagSheet({
   returnFocus = true,
   viaDeckSwitch = false,
