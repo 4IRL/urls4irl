@@ -503,6 +503,9 @@ class ClipboardMockHelper:
             window.mockClipboard = {
                 data: '',
                 writeCount: 0,
+                // Writes that arrived through navigator.clipboard.write (the
+                // ClipboardItem path), a subset of writeCount.
+                writeItemCount: 0,
                 readCount: 0,
                 lastWriteTime: null,
                 lastReadTime: null,
@@ -585,6 +588,49 @@ class ClipboardMockHelper:
                         }, delay);
                     });
                 },
+                // The ClipboardItem path: resolves the item's text/plain blob (which
+                // may itself be a promise, as in "Copy short link") to text, so reads
+                // return the copied string, and honours the writeText failure config.
+                write: function(items) {
+                    console.log('Mock clipboard write called');
+                    const self = this;
+                    return new Promise(function(resolve, reject) {
+                        const config = self.failureConfig.writeText;
+                        const delay = Math.max(config.failureDelay, 1);
+                        const item = items && items[0];
+                        if (!item || !item.types || item.types.indexOf('text/plain') === -1) {
+                            reject(self.generateError('generic', 'write to'));
+                            return;
+                        }
+                        Promise.resolve(item.getType('text/plain'))
+                            .then(function(blob) { return blob.text(); })
+                            .then(function(text) {
+                                setTimeout(function() {
+                                    if (self.shouldOperationFail('writeText')) {
+                                        const error = config.customError ||
+                                                    self.generateError(config.failureType, 'write to');
+                                        self.errors.push({
+                                            operation: 'write',
+                                            error: error.message,
+                                            timestamp: Date.now(),
+                                            data: text
+                                        });
+                                        console.error('Mock clipboard write failed:', error.message);
+                                        reject(error);
+                                    } else {
+                                        self.data = text;
+                                        self.writeCount++;
+                                        self.writeItemCount++;
+                                        self.lastWriteTime = Date.now();
+                                        console.log('Mock clipboard write succeeded');
+                                        resolve();
+                                    }
+                                }, delay);
+                            }, function(error) {
+                                reject(error);
+                            });
+                    });
+                },
                 readText: function() {
                     console.log('Mock clipboard readText called, current data:', this.data);
                     const self = this;
@@ -615,6 +661,7 @@ class ClipboardMockHelper:
                     return {
                         data: this.data,
                         writeCount: this.writeCount,
+                        writeItemCount: this.writeItemCount,
                         readCount: this.readCount,
                         lastWriteTime: this.lastWriteTime,
                         lastReadTime: this.lastReadTime,
@@ -651,6 +698,20 @@ class ClipboardMockHelper:
             // Replace with our mock
             navigator.clipboard.writeText = window.mockClipboard.writeText.bind(window.mockClipboard);
             navigator.clipboard.readText = window.mockClipboard.readText.bind(window.mockClipboard);
+            navigator.clipboard.write = window.mockClipboard.write.bind(window.mockClipboard);
+            // ClipboardItem only exists in secure contexts; stub it where it is
+            // missing so the production ClipboardItem path is exercised either way.
+            if (typeof window.ClipboardItem === 'undefined') {
+                window.ClipboardItem = class ClipboardItem {
+                    constructor(items) {
+                        this.items = items;
+                        this.types = Object.keys(items);
+                    }
+                    getType(type) {
+                        return Promise.resolve(this.items[type]);
+                    }
+                };
+            }
             // Enhanced execCommand mock for headless
             window.originalExecCommand = document.execCommand;
             document.execCommand = function(command, showUI, value) {
@@ -775,11 +836,23 @@ class ClipboardMockHelper:
         """Get current clipboard content from mock"""
         return self.page.evaluate("() => window.mockClipboard.data")
 
+    def get_clipboard_item_write_count(self) -> int:
+        """Number of writes that arrived through `navigator.clipboard.write`
+        (the `ClipboardItem` path) rather than `writeText`."""
+        return self.page.evaluate("() => window.mockClipboard.writeItemCount")
+
+    def wait_for_write_count(self, *, count: int) -> None:
+        """Block until the mock has recorded at least ``count`` successful writes."""
+        self.page.wait_for_function(
+            "(count) => window.mockClipboard.writeCount >= count", arg=count
+        )
+
     def reset_mock(self):
         """Reset the mock to initial state"""
         self.page.evaluate("""() => {
             window.mockClipboard.data = '';
             window.mockClipboard.writeCount = 0;
+            window.mockClipboard.writeItemCount = 0;
             window.mockClipboard.readCount = 0;
             window.mockClipboard.lastWriteTime = null;
             window.mockClipboard.lastReadTime = null;
