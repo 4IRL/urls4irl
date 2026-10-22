@@ -1,0 +1,65 @@
+/* Selection indicator overlay for the UTub menu. Positioned and sized by
+   frontend/home/utubs/selection-indicator.ts (inline translateY + height);
+   it only ever changes transform and opacity. */
+
+#UTubDeckContent {
+    position: relative;
+}
+
+#UTubDeck .utubSelectionIndicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+}
+
+#UTubDeck .utubSelectionIndicator.isVisible {
+    opacity: 1;
+}
+
+#UTubDeck .utubSelectionBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 0;
+    transform-origin: 0 0;
+    background: var(--deckSelectionGreen);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--deckSelectionGreen) 55%, transparent);
+}
+
+#UTubDeck .utubSelectionShimmerClip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+}
+
+#UTubDeck .utubSelectionShimmer {
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--deckSelectionGreen) 22%, transparent),
+        transparent
+    );
+}
+
+@media (forced-colors: active) {
+    #UTubDeck .utubSelectionBar {
+        background: Highlight;
+        forced-color-adjust: none;
+        box-shadow: none;
+    }
+
+    #UTubDeck .utubSelectionShimmerClip {
+        display: none;
+    }
+}

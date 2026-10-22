@@ -84,6 +84,9 @@ class HomePageLocators(GenericPageLocator):
     SELECTORS_UTUB = ".UTubSelector"
     SELECTORS_UTUB_NAME = ".UTubName"
     SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
+    UTUB_SELECTION_INDICATOR = "#UTubSelectionIndicator"
+    UTUB_SELECTION_BAR = "#UTubSelectionIndicator .utubSelectionBar"
+    UTUB_SELECTED_ANNOUNCE = ".utubSelectedAnnounce"
 
     # Per-panel settings shell: one gear per deck header (last child of the
     # header's button container), the desktop popover and its live region.

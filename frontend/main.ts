@@ -33,6 +33,7 @@ import { initSwipe } from "./home/urls/cards/swipe.js";
 import { initURLOutcomeBannerLifecycle } from "./home/urls/outcome-banner.js";
 import { initURLDeckHeaderFit } from "./home/utubs/header-fit.js";
 import { initUTubRefreshOnFocus } from "./home/utubs/refresh-on-focus.js";
+import { initUTubSelectionIndicator } from "./home/utubs/selection-indicator.js";
 import { initTagSheet } from "./home/tags/sheet.js";
 import {
   applyDefaultDensity,
@@ -85,6 +86,7 @@ $(document).ready(() => {
   initSwipe();
   initURLOutcomeBannerLifecycle();
   initURLDeckHeaderFit();
+  initUTubSelectionIndicator();
   initCookieBanner();
   initMetricsClient();
   // Before initOnboardingNudges(): the nudge anchors are deliberately excluded

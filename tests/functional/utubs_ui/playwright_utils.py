@@ -14,6 +14,45 @@ from tests.functional.playwright_utils import (
 )
 
 
+def get_selection_bar_and_active_row_boxes(
+    *, page: Page
+) -> tuple[dict[str, float], dict[str, float]]:
+    """Return the selection indicator bar's and the active UTub row's bounding boxes."""
+    bar_box = page.locator(HPL.UTUB_SELECTION_BAR).bounding_box()
+    row_box = page.locator(HPL.SELECTOR_SELECTED_UTUB).bounding_box()
+    assert bar_box is not None, "selection bar has no bounding box"
+    assert row_box is not None, "active UTub row has no bounding box"
+    return bar_box, row_box
+
+
+def wait_for_selection_bar_on_utub(
+    *, page: Page, utub_id: int, tolerance_px: float = 1
+) -> None:
+    """Wait until the selection bar's top and height match the UTub row's.
+
+    The indicator is placed in a requestAnimationFrame-deferred sync after the
+    `active` class changes, so a one-shot read right after a click can be early.
+    """
+    page.wait_for_function(
+        """({ rowSelector, barSelector, tolerance }) => {
+            const row = document.querySelector(rowSelector);
+            const bar = document.querySelector(barSelector);
+            if (!row || !bar) return false;
+            const rowRect = row.getBoundingClientRect();
+            const barRect = bar.getBoundingClientRect();
+            return (
+                Math.abs(rowRect.top - barRect.top) <= tolerance &&
+                Math.abs(rowRect.height - barRect.height) <= tolerance
+            );
+        }""",
+        arg={
+            "rowSelector": f"{HPL.SELECTORS_UTUB}.active[utubid='{utub_id}']",
+            "barSelector": HPL.UTUB_SELECTION_BAR,
+            "tolerance": tolerance_px,
+        },
+    )
+
+
 def open_utub_name_filter(*, page: Page) -> Locator:
     """Open the UTub name filter input and return the ready input locator.
 

@@ -22,6 +22,9 @@ UTUB_SELECT = "Select a UTub"
 UTUB_SEARCH_NO_RESULTS = "No UTubs found"
 UTUB_SEARCH_PLACEHOLDER = "Filter UTubs"
 UTUB_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} UTubs shown"
+# Visually-hidden text placed inside the selected UTub row so assistive tech
+# announces the selection (rendered by Jinja as data-selected-label).
+UTUB_SELECTED_ANNOUNCEMENT = "selected"
 # Transient "Saved ✓" acknowledgment shown next to a field after a successful
 # per-field save on the mobile consolidated edit panels (UTub header + URL card).
 # Shared across all four fields; the "✓" glyph is decorative markup, not bridged.

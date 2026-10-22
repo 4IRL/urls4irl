@@ -600,13 +600,17 @@ def get_num_utubs(*, page: Page) -> int:
 
 
 def get_all_utub_selector_names(*, page: Page) -> list[str]:
-    return page.locator(HPL.SELECTORS_UTUB).all_inner_texts()
+    # Read the name element, not the whole row: the selected row also holds a
+    # visually-hidden "selected" announcement node.
+    return page.locator(
+        f"{HPL.SELECTORS_UTUB} {HPL.SELECTORS_UTUB_NAME}"
+    ).all_inner_texts()
 
 
 def get_selected_utub_name(*, page: Page) -> str:
     selected_utub = page.locator(HPL.SELECTOR_SELECTED_UTUB)
     expect(selected_utub).to_be_attached()
-    return selected_utub.inner_text()
+    return selected_utub.locator(HPL.SELECTORS_UTUB_NAME).inner_text()
 
 
 # URL Deck

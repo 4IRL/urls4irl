@@ -95,6 +95,9 @@ vi.mock("../home/urls/cards/swipe.js", () => ({
 vi.mock("../home/utubs/header-fit.js", () => ({
   initURLDeckHeaderFit: track("initURLDeckHeaderFit"),
 }));
+vi.mock("../home/utubs/selection-indicator.js", () => ({
+  initUTubSelectionIndicator: track("initUTubSelectionIndicator"),
+}));
 vi.mock("../home/tags/sheet.js", () => ({
   initTagSheet: track("initTagSheet"),
 }));
