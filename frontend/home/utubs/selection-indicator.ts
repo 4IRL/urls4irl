@@ -1,5 +1,5 @@
-// Selection indicator overlay for the UTub menu: a bar (and, in later steps, a
-// shimmer) positioned over the selected row. The module never owns the
+// Selection indicator overlay for the UTub menu: a bar and a
+// shimmer positioned over the selected row. The module never owns the
 // `active` class; it follows it with a MutationObserver on #listUTubs, which
 // sees every writer (selectUTub, setUTubDeckOnUTubSelected, transfer, ...).
 // Positions are measured only when the selection or layout changes, and only
