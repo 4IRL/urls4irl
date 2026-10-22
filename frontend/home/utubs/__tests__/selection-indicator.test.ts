@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import {
   IDLE_REARM_MS,
   initUTubSelectionIndicator,
@@ -95,6 +96,7 @@ function buildFixture(): void {
         <div class="utubSelectionBar"></div>
         <div class="utubSelectionShimmerClip"><div class="utubSelectionShimmer"></div></div>
       </div>
+      <p id="UTubSearchNoResults" class="hidden"></p>
       <div id="listUTubs"></div>
     </div></div>
     <div id="mainPanel"></div>
@@ -1000,6 +1002,211 @@ describe("selection-indicator", () => {
       await flushObserverAndFrame();
       expect(animateCalls()).toBe(1);
       expect(isIdle()).toBe(true);
+    });
+  });
+
+  describe("layout re-sync", () => {
+    type FakeResizeObserver = {
+      callback: () => void;
+      observed: Element[];
+      disconnect: Mock<() => void>;
+    };
+    let observers: FakeResizeObserver[];
+    const isIdle = (): boolean => getIndicator().classList.contains("isIdle");
+
+    async function flushMicrotasks(): Promise<void> {
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+
+    function fireResize(): void {
+      for (const observer of observers) observer.callback();
+    }
+
+    beforeEach(() => {
+      observers = [];
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          private fake: FakeResizeObserver;
+          constructor(callback: () => void) {
+            this.fake = {
+              callback,
+              observed: [],
+              disconnect: vi.fn<() => void>(),
+            };
+            observers.push(this.fake);
+          }
+          observe(target: Element): void {
+            this.fake.observed.push(target);
+          }
+          disconnect(): void {
+            this.fake.disconnect();
+          }
+        },
+      );
+    });
+
+    async function startOn(index: number): Promise<void> {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      await initAndSettle();
+      await selectRow(getRows()[index]);
+    }
+
+    it("observes the list, the scroller and the blocks above the list", async () => {
+      await initAndSettle();
+      expect(observers).toHaveLength(1);
+      const ids = observers[0].observed.map((el) => el.id);
+      expect(ids).toEqual(
+        expect.arrayContaining([
+          "listUTubs",
+          "UTubDeckContent",
+          "UTubSearchNoResults",
+        ]),
+      );
+      expect(ids).not.toContain("UTubSelectionIndicator");
+    });
+
+    it("a resize re-places the bar on the shifted active row without a stretch", async () => {
+      await startOn(1);
+      for (const [index, row] of getRows().entries())
+        stubGeometry({ row, top: index * 60 + 20, height: 60 });
+      fireResize();
+      flushFrames();
+      expect(getBar().style.transform).toBe("translateY(80px) scaleY(1)");
+      expect(getBar().style.height).toBe("60px");
+      expect(getClip().style.transform).toBe("translateY(80px)");
+      expect(animateCalls()).toBe(0);
+    });
+
+    it("a selection change after a resize still stretches", async () => {
+      await startOn(0);
+      fireResize();
+      flushFrames();
+      await selectRow(getRows()[2]);
+      expect(animateCalls()).toBe(1);
+    });
+
+    it("MOBILE_DECK_SWITCHED re-places the bar without a stretch", async () => {
+      await startOn(0);
+      stubGeometry({ row: getRows()[0], top: 0, height: 66 });
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+      flushFrames();
+      expect(getBar().style.height).toBe("66px");
+      expect(animateCalls()).toBe(0);
+    });
+
+    it("hides when the active row stops rendering and snaps back when it returns", async () => {
+      await startOn(1);
+      stubGeometry({ row: getRows()[1], top: 40, rendered: false });
+      fireResize();
+      flushFrames();
+      expect(getIndicator().classList.contains("isVisible")).toBe(false);
+      expect(isIdle()).toBe(false);
+
+      stubGeometry({ row: getRows()[1], top: 40 });
+      fireResize();
+      flushFrames();
+      expect(getIndicator().classList.contains("isVisible")).toBe(true);
+      expect(getBar().style.transform).toBe("translateY(40px) scaleY(1)");
+      expect(animateCalls()).toBe(0);
+    });
+
+    it("removing a non-active row shifts the active row without a stretch", async () => {
+      await startOn(2);
+      getRows()[0].remove();
+      for (const [index, row] of getRows().entries())
+        stubGeometry({ row, top: index * ROW_HEIGHT });
+      await flushObserverAndFrame();
+      expect(getBar().style.transform).toBe(
+        `translateY(${ROW_HEIGHT}px) scaleY(1)`,
+      );
+      expect(animateCalls()).toBe(0);
+    });
+
+    it("a geometry-neutral resize or deck switch leaves a running stretch alone", async () => {
+      await startOn(0);
+      await selectRow(getRows()[2]);
+      expect(animateCalls()).toBe(1);
+      fireResize();
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+      flushFrames();
+      expect(animations[0].cancel).not.toHaveBeenCalled();
+      expect(animateCalls()).toBe(1);
+    });
+
+    it("collapse and expand settle with an animate:false re-sync and no stretch", async () => {
+      await startOn(1);
+      emit(AppEvents.DECK_COLLAPSE_CHANGED, { deck: "utubs", collapsed: true });
+      emit(AppEvents.DECK_COLLAPSE_CHANGED, {
+        deck: "utubs",
+        collapsed: false,
+      });
+      stubGeometry({ row: getRows()[1], top: 55 });
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(getBar().style.transform).toBe("translateY(55px) scaleY(1)");
+      expect(animateCalls()).toBe(0);
+      expect(isIdle()).toBe(true);
+
+      emit(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: true });
+      emit(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: false });
+      stubGeometry({ row: getRows()[1], top: 70 });
+      vi.advanceTimersByTime(IDLE_REARM_MS);
+      expect(getBar().style.transform).toBe("translateY(70px) scaleY(1)");
+      expect(animateCalls()).toBe(0);
+    });
+
+    it("re-seeds the flags from the DOM on a resize with no event emitted", async () => {
+      await startOn(0);
+      expect(isIdle()).toBe(true);
+      document.getElementById("mainPanel")?.classList.add("lhs-collapsed");
+      fireResize();
+      await flushMicrotasks();
+      expect(isIdle()).toBe(false);
+      document.getElementById("mainPanel")?.classList.remove("lhs-collapsed");
+      fireResize();
+      flushFrames();
+      expect(isIdle()).toBe(true);
+
+      document.getElementById("UTubDeck")?.classList.add("collapsed");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+      expect(isIdle()).toBe(false);
+      document.getElementById("UTubDeck")?.classList.remove("collapsed");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+      expect(isIdle()).toBe(true);
+    });
+
+    it("registers once for a double init, rebinds on a replaced list, and reset releases", async () => {
+      await initAndSettle();
+      initUTubSelectionIndicator();
+      expect(observers).toHaveLength(1);
+
+      const replacement = document.createElement("div");
+      replacement.id = "listUTubs";
+      getList().replaceWith(replacement);
+      initUTubSelectionIndicator();
+      expect(observers[0].disconnect).toHaveBeenCalledTimes(1);
+      expect(observers).toHaveLength(2);
+      flushFrames();
+
+      // One resync per emit reads #UTubDeck exactly once (no duplicate
+      // subscription from the double init or the rebind).
+      const lookupSpy = vi.spyOn(document, "getElementById");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+      const deckLookups = (): number =>
+        lookupSpy.mock.calls.filter(([id]) => id === "UTubDeck").length;
+      expect(deckLookups()).toBe(1);
+
+      resetUTubSelectionIndicatorForTests();
+      expect(observers[1].disconnect).toHaveBeenCalledTimes(1);
+      lookupSpy.mockClear();
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+      expect(deckLookups()).toBe(0);
+    });
+
+    it("does not throw when ResizeObserver is undefined", () => {
+      vi.stubGlobal("ResizeObserver", undefined);
+      expect(() => initUTubSelectionIndicator()).not.toThrow();
     });
   });
 

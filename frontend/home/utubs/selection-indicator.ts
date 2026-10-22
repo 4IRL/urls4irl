@@ -107,6 +107,35 @@ function handleCollapseChanged({ collapsed }: { collapsed: boolean }): void {
   recomputeIdle();
 }
 
+// Geometry-only re-sync (resize, breakpoint, mobile deck switch): re-seed the
+// collapse flags from the DOM, snap to wherever the active row is now, then
+// recompute `isIdle`. Never stretches.
+function resyncForLayout(): void {
+  if (boundList === null) return;
+  reseedCollapseFlags();
+  syncUTubSelectionIndicator({ animate: false });
+  recomputeIdle();
+}
+
+// Observes the list, the scroller and the blocks stacked above the list (the
+// create form and the search no-results line shift rows without resizing the
+// list or the scroller).
+function observeLayout(list: HTMLElement): void {
+  if (typeof ResizeObserver === "undefined") return;
+  const observer = new ResizeObserver(resyncForLayout);
+  const content = list.parentElement;
+  const targets = new Set<Element>([list]);
+  if (content !== null) {
+    targets.add(content);
+    for (const child of Array.from(content.children)) {
+      if (child === list) break;
+      if (child.id !== INDICATOR_ID) targets.add(child);
+    }
+  }
+  for (const target of targets) observer.observe(target);
+  releaseRegistrations.push(() => observer.disconnect());
+}
+
 function handleVisibilityChange(): void {
   if (!document.hidden) flushPendingSync();
   recomputeIdle();
@@ -455,6 +484,7 @@ export function initUTubSelectionIndicator(): void {
   }
   reseedCollapseFlags();
   releaseRegistrations = [
+    on(AppEvents.MOBILE_DECK_SWITCHED, resyncForLayout),
     on(AppEvents.DECK_COLLAPSE_CHANGED, ({ deck, collapsed }) => {
       if (deck !== "utubs") return;
       deckCollapsed = collapsed;
@@ -465,6 +495,7 @@ export function initUTubSelectionIndicator(): void {
       handleCollapseChanged({ collapsed });
     }),
   ];
+  observeLayout(list);
   document.addEventListener("visibilitychange", handleVisibilityChange);
   releaseRegistrations.push(() =>
     document.removeEventListener("visibilitychange", handleVisibilityChange),

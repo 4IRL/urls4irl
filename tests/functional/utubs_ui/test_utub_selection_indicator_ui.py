@@ -12,17 +12,23 @@ from tests.functional.db_utils import (
 from tests.functional.home_ui.playwright_utils import toggle_lhs_panels
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_utils import (
+    click_on_navbar,
     collapse_deck_by_header_click,
     expand_deck_by_header_click,
+    get_selected_utub_id,
     login_user_to_home_page,
     select_utub_by_id,
+    wait_then_click_element,
     wait_until_css_property,
 )
 from tests.functional.trash_ui.playwright_utils import open_trash
 from tests.functional.utubs_ui.playwright_utils import (
+    create_utub,
+    delete_utub_as_creator,
     get_selection_bar_and_active_row_boxes,
     get_selection_bar_animate_call_count,
     install_selection_bar_animate_spy,
+    open_utub_name_filter,
     wait_for_selection_bar_on_utub,
     wait_for_selection_shimmer_animation_count,
 )
@@ -32,6 +38,7 @@ pytestmark = pytest.mark.utubs_ui
 USER_ID_FOR_TEST = 1
 POSITION_TOLERANCE_PX = 1
 _UTUB_DECK_CONTENT_ID = "UTubDeckContent"
+_NEW_UTUB_NAME = "Brand new indicator utub"
 _IDLE_CLASS_RE = re.compile(r"(^|\s)isIdle(\s|$)")
 
 
@@ -359,6 +366,200 @@ def test_collapsing_left_panel_pauses_shimmer_until_expand(
 
     toggle_lhs_panels(page=page)
     expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+
+
+def _wait_for_indicator_hidden(*, page: Page) -> None:
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.UTUB_SELECTION_INDICATOR,
+        css_property="opacity",
+        expected_value="0",
+    )
+
+
+def _wait_for_bar_height_equals_row_height(*, page: Page, expected_px: float) -> None:
+    """Poll until the active row is expected_px tall and the bar matches it."""
+    page.wait_for_function(
+        """({ rowSelector, barSelector, expected }) => {
+            const row = document.querySelector(rowSelector);
+            const bar = document.querySelector(barSelector);
+            if (!row || !bar) return false;
+            const rowHeight = row.getBoundingClientRect().height;
+            const barHeight = bar.getBoundingClientRect().height;
+            return Math.abs(rowHeight - expected) <= 1 &&
+                Math.abs(barHeight - rowHeight) <= 1;
+        }""",
+        arg={
+            "rowSelector": HPL.SELECTOR_SELECTED_UTUB,
+            "barSelector": HPL.UTUB_SELECTION_BAR,
+            "expected": expected_px,
+        },
+    )
+
+
+def test_filtering_out_active_utub_hides_indicator_and_clearing_restores_it(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected UTub with the indicator visible
+    WHEN the UTub list is filtered so the active UTub is hidden, then cleared
+    THEN the indicator hides, and comes back aligned with the active row
+        without a stretch
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=utub.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+    install_selection_bar_animate_spy(page=page)
+
+    search_input = open_utub_name_filter(page=page)
+    search_input.fill("zzzz-no-such-utub")
+    expect(page.locator(_row_selector(utub.id))).to_be_hidden()
+    _wait_for_indicator_hidden(page=page)
+
+    search_input.fill("")
+    expect(page.locator(_row_selector(utub.id))).to_be_visible()
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.UTUB_SELECTION_INDICATOR,
+        css_property="opacity",
+        expected_value="1",
+    )
+    assert get_selection_bar_animate_call_count(page=page) == 0
+
+
+def test_creating_utub_places_bar_on_new_row_without_stretch(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected UTub and the animate spy installed
+    WHEN the user creates a new UTub (which prepends and selects its row)
+    THEN the bar snaps onto the new row; no stretch animate call is made
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=utub.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+    install_selection_bar_animate_spy(page=page)
+
+    create_utub(
+        page=page,
+        utub_name=_NEW_UTUB_NAME,
+        utub_description=_NEW_UTUB_NAME,
+    )
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_SUBMIT_CREATE)
+    expect(
+        page.locator(f"{HPL.SELECTOR_SELECTED_UTUB} {HPL.SELECTORS_UTUB_NAME}")
+    ).to_have_text(_NEW_UTUB_NAME)
+
+    new_utub_id = get_selected_utub_id(page=page)
+    assert new_utub_id != utub.id
+    wait_for_selection_bar_on_utub(page=page, utub_id=new_utub_id)
+    assert get_selection_bar_animate_call_count(page=page) == 0
+    expect(page.locator(f"{HPL.LIST_UTUB} [aria-current]")).to_have_count(1)
+
+
+def test_collapse_then_expand_deck_leaves_bar_aligned(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected UTub with the bar aligned
+    WHEN the UTub deck is collapsed then expanded
+    THEN the bar is aligned with the active row once the transition settles
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=utub.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+
+    collapse_deck_by_header_click(
+        page=page,
+        header_selector=HPL.HEADER_AND_CARET_UTUB_DECK,
+        deck_selector=HPL.UTUB_DECK,
+        content_id=_UTUB_DECK_CONTENT_ID,
+    )
+    expand_deck_by_header_click(
+        page=page,
+        header_selector=HPL.HEADER_AND_CARET_UTUB_DECK,
+        deck_selector=HPL.UTUB_DECK,
+        content_id=_UTUB_DECK_CONTENT_ID,
+    )
+
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+    expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
+
+
+def test_deleting_active_utub_hides_indicator(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a selected UTub owned by the user
+    WHEN the user deletes it
+    THEN once the fade-out and removal finish, the indicator is hidden and no
+        row keeps aria-current
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=utub.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+
+    delete_utub_as_creator(page=page, utub_to_delete=utub)
+
+    _wait_for_indicator_hidden(page=page)
+    expect(page.locator(f"{HPL.LIST_UTUB} [aria-current]")).to_have_count(0)
+
+
+@pytest.mark.parametrize("left_panel_collapsed", [False, True])
+def test_crossing_mobile_breakpoint_remeasures_bar_and_idle(
+    page: Page, create_test_tags, provide_app: Flask, left_panel_collapsed: bool
+):
+    """
+    GIVEN a desktop user with a selected UTub (left panel expanded or collapsed)
+    WHEN the viewport shrinks below 992px, the user returns to the UTub list
+        through the mobile nav, and the viewport widens again
+    THEN the indicator is hidden while the deck is display:none, the bar matches
+        the 2.75rem mobile row, then the 2.2rem desktop row, and isIdle follows
+        the left-panel state once back on desktop
+    """
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=utub.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+    desktop_viewport = page.viewport_size
+    assert desktop_viewport is not None
+    if left_panel_collapsed:
+        toggle_lhs_panels(page=page)
+        expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).not_to_have_class(
+            _IDLE_CLASS_RE
+        )
+
+    page.set_viewport_size({"width": 800, "height": desktop_viewport["height"]})
+    _wait_for_indicator_hidden(page=page)
+
+    click_on_navbar(page=page)
+    wait_then_click_element(page=page, css_selector=HPL.NAVBAR_UTUB_DECK)
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+    _wait_for_bar_height_equals_row_height(page=page, expected_px=44)
+
+    page.set_viewport_size(desktop_viewport)
+    wait_for_selection_bar_on_utub(page=page, utub_id=utub.id)
+    _wait_for_bar_height_equals_row_height(page=page, expected_px=35.2)
+
+    if left_panel_collapsed:
+        expect(page.locator(HPL.MAIN_PANEL)).to_have_class(
+            re.compile(r"(^|\s)lhs-collapsed(\s|$)")
+        )
+        expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).not_to_have_class(
+            _IDLE_CLASS_RE
+        )
+    else:
+        expect(page.locator(HPL.UTUB_SELECTION_INDICATOR)).to_have_class(_IDLE_CLASS_RE)
 
 
 def test_forced_colors_keeps_bar_visible_and_hides_shimmer(
