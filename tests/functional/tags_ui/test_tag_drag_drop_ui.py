@@ -248,6 +248,33 @@ def test_drop_on_unselected_card_adds_tag_selects_card_and_shows_banner(
     expect_no_drag_marks_left(page=page)
 
 
+def test_drop_on_another_card_collapses_the_open_card_and_leaves_one_selected(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN URL card A is selected (expanded) and the tag is on no URL
+    WHEN the user natively drags the tag chip onto a different URL card B
+    THEN B is selected and A is collapsed: exactly one card has urlSelected=true.
+    """
+    app = provide_app
+    scene = _seed_scene(app)
+    open_url_id, dropped_url_id = scene.url_ids[1], scene.url_ids[0]
+    _login_with_url_selected(app=app, page=page, scene=scene, url_id=open_url_id)
+    _expect_card_selected(page, open_url_id)
+    wait_for_css_transitions_to_finish(locator=_card(page, open_url_id))
+    expanded_height = get_card_height(page=page, utub_url_id=open_url_id)
+
+    drag_tag_onto_url(page=page, utub_tag_id=scene.tag_id, utub_url_id=dropped_url_id)
+
+    expect_badge_count_on_url_row(page=page, utub_url_id=dropped_url_id, expected=1)
+    _expect_card_selected(page, dropped_url_id)
+    _expect_card_selected(page, open_url_id, selected=False)
+    expect(page.locator(f"{HPL.ROWS_URLS}[urlselected='true']")).to_have_count(1)
+    wait_for_css_transitions_to_finish(locator=_card(page, open_url_id))
+    assert get_card_height(page=page, utub_url_id=open_url_id) < expanded_height
+    expect_no_drag_marks_left(page=page)
+
+
 def test_drag_does_not_toggle_the_tag_filter(
     page: Page, create_test_urls, provide_app: Flask
 ):
@@ -1224,6 +1251,219 @@ def test_drag_styles_cursor_opacity_tint_hint_and_height(
     assert rendered_content == _hint_add(DRAG_TAG)
     assert hint_style["position"] == "absolute"
     assert get_card_height(page=page, utub_url_id=odd_url_id) == idle_height
+
+
+# --- Ghost pill on a selected (expanded) card -------------------------------------
+
+GHOST_SELECTOR = ".tagDropGhost"
+
+
+def _after_content(*, page: Page, url_id: int) -> str:
+    return get_computed_style(
+        page=page,
+        css_selector=get_url_card_selector(utub_url_id=url_id),
+        properties=["content"],
+        pseudo="::after",
+    )["content"]
+
+
+def test_selected_card_shows_one_distinct_ghost_pill_and_no_corner_text(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a selected card that already has a real tag
+    WHEN a tag is dragged over it (repeated dragovers)
+    THEN exactly one aria-hidden ghost pill labelled with the tag sits after the
+        real pill, styled dashed unlike the real pill, the corner `::after` text is
+        gone while `data-drop-hint` remains, no tag is added, and a dragend removes
+        the ghost.
+    """
+    app = provide_app
+    scene = _seed_scene(app)
+    url_id = scene.url_ids[0]
+    other_tag_id = create_utub_tag(
+        app=app, utub_id=scene.utub_id, user_id=USER_ID_FOR_TEST, tag_string=SECOND_TAG
+    )
+    apply_tag_to_url_in_db(
+        app=app,
+        utub_id=scene.utub_id,
+        user_id=USER_ID_FOR_TEST,
+        utub_url_id=url_id,
+        utub_tag_id=other_tag_id,
+    )
+    _login_with_url_selected(app=app, page=page, scene=scene, url_id=url_id)
+    expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=1)
+    card = _card(page, url_id)
+    tag_ids_before = card.get_attribute("data-utub-url-tag-ids")
+
+    data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=scene.tag_id)
+    for _ in range(2):
+        # False means a listener called preventDefault, i.e. the drop is accepted.
+        not_prevented = dispatch_tag_dragover_on_url(
+            page=page, data_transfer=data_transfer, utub_url_id=url_id
+        )
+        assert not not_prevented
+
+    ghost = card.locator(GHOST_SELECTOR)
+    expect(ghost).to_have_count(1)
+    expect(ghost).to_have_text(DRAG_TAG)
+    expect(ghost).to_have_attribute("aria-hidden", "true")
+    expect(ghost).to_have_css("border-top-style", "dashed")
+    expect(ghost).to_have_css("pointer-events", "none")
+    real_pill = card.locator(HPL.TAG_BADGES)
+    expect(real_pill).to_have_count(1)
+    expect(real_pill).to_have_css("border-top-style", "solid")
+    expect(card.locator(f"{HPL.TAG_BADGES} ~ {GHOST_SELECTOR}")).to_have_count(1)
+    expect(card).to_have_attribute("data-drop-hint", _hint_add(DRAG_TAG))
+    assert _after_content(page=page, url_id=url_id) == "none"
+    assert card.get_attribute("data-utub-url-tag-ids") == tag_ids_before
+
+    dispatch_tag_dragend(
+        page=page, data_transfer=data_transfer, utub_tag_id=scene.tag_id
+    )
+    expect_no_drag_marks_left(page=page)
+    expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=1)
+
+
+def test_dragenter_on_next_card_before_dragleave_on_old_keeps_new_marks(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a tag dragged over card A, with card B selected (so it shows a ghost)
+    WHEN the browser fires `dragenter` on B BEFORE `dragleave` on A
+        (relatedTarget B), as real drags do
+    THEN B keeps its ring, hint and ghost and A has none; a later leave to
+        outside every card clears everything.
+    """
+    app = provide_app
+    scene = _seed_scene(app)
+    card_a_id, card_b_id = scene.url_ids[0], scene.url_ids[1]
+    _login_with_url_selected(app=app, page=page, scene=scene, url_id=card_b_id)
+    card_a, card_b = _card(page, card_a_id), _card(page, card_b_id)
+    selector_a = get_url_card_selector(utub_url_id=card_a_id)
+    selector_b = get_url_card_selector(utub_url_id=card_b_id)
+    ring = re.compile(r"(^|\s)tagDropTarget(\s|$)")
+
+    data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=scene.tag_id)
+    dispatch_tag_drag_event(
+        page=page,
+        data_transfer=data_transfer,
+        event_type="dragenter",
+        css_selector=selector_a,
+    )
+    expect(card_a).to_have_class(ring)
+
+    dispatch_tag_drag_event(
+        page=page,
+        data_transfer=data_transfer,
+        event_type="dragenter",
+        css_selector=selector_b,
+    )
+    dispatch_tag_drag_event(
+        page=page,
+        data_transfer=data_transfer,
+        event_type="dragleave",
+        css_selector=selector_a,
+        related_css_selector=selector_b,
+    )
+
+    expect(card_b).to_have_class(ring)
+    expect(card_b).to_have_attribute("data-drop-hint", _hint_add(DRAG_TAG))
+    expect(card_b.locator(GHOST_SELECTOR)).to_have_count(1)
+    expect(card_a).not_to_have_class(ring)
+    expect(card_a).not_to_have_attribute("data-drop-hint", _hint_add(DRAG_TAG))
+    expect(card_a.locator(GHOST_SELECTOR)).to_have_count(0)
+
+    dispatch_tag_drag_event(
+        page=page,
+        data_transfer=data_transfer,
+        event_type="dragleave",
+        css_selector=selector_b,
+    )
+    expect(card_b).not_to_have_class(ring)
+    expect(card_b).not_to_have_attribute("data-drop-hint", _hint_add(DRAG_TAG))
+    expect(card_b.locator(GHOST_SELECTOR)).to_have_count(0)
+
+    dispatch_tag_dragend(
+        page=page, data_transfer=data_transfer, utub_tag_id=scene.tag_id
+    )
+    expect_no_drag_marks_left(page=page)
+
+
+def test_ghost_pill_on_card_without_tags_does_not_make_the_card_flicker(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a selected card with no tags
+    WHEN a tag is dragged over it twice
+    THEN one ghost pill is shown and the card height is identical between the two
+        dragovers (the pointer cannot flip in and out of the card).
+    """
+    app = provide_app
+    scene = _seed_scene(app)
+    url_id = scene.url_ids[0]
+    _login_with_url_selected(app=app, page=page, scene=scene, url_id=url_id)
+    card = _card(page, url_id)
+    wait_for_css_transitions_to_finish(locator=card)
+
+    data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=scene.tag_id)
+    dispatch_tag_dragover_on_url(
+        page=page, data_transfer=data_transfer, utub_url_id=url_id
+    )
+    expect(card.locator(GHOST_SELECTOR)).to_have_count(1)
+    wait_for_css_transitions_to_finish(locator=card)
+    height_first = get_card_height(page=page, utub_url_id=url_id)
+
+    dispatch_tag_dragover_on_url(
+        page=page, data_transfer=data_transfer, utub_url_id=url_id
+    )
+    wait_for_css_transitions_to_finish(locator=card)
+    assert get_card_height(page=page, utub_url_id=url_id) == height_first
+    expect(card.locator(GHOST_SELECTOR)).to_have_count(1)
+
+    dispatch_tag_dragend(
+        page=page, data_transfer=data_transfer, utub_tag_id=scene.tag_id
+    )
+    expect_no_drag_marks_left(page=page)
+
+
+def test_selected_card_with_the_tag_emphasizes_the_existing_pill(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a selected card that already has the dragged tag
+    WHEN the tag is dragged over it
+    THEN no ghost is added, the existing pill is emphasized, the corner text is
+        suppressed and everything is cleared by the dragend.
+    """
+    app = provide_app
+    scene = _seed_scene(app)
+    url_id = scene.url_ids[0]
+    apply_tag_to_url_in_db(
+        app=app,
+        utub_id=scene.utub_id,
+        user_id=USER_ID_FOR_TEST,
+        utub_url_id=url_id,
+        utub_tag_id=scene.tag_id,
+    )
+    _login_with_url_selected(app=app, page=page, scene=scene, url_id=url_id)
+    card = _card(page, url_id)
+
+    data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=scene.tag_id)
+    dispatch_tag_dragover_on_url(
+        page=page, data_transfer=data_transfer, utub_url_id=url_id
+    )
+
+    expect(card.locator(GHOST_SELECTOR)).to_have_count(0)
+    expect(card.locator(f"{HPL.TAG_BADGES}.tagDropExisting")).to_have_count(1)
+    expect(card).to_have_attribute("data-drop-hint", _hint_has(DRAG_TAG))
+    assert _after_content(page=page, url_id=url_id) == "none"
+
+    dispatch_tag_dragend(
+        page=page, data_transfer=data_transfer, utub_tag_id=scene.tag_id
+    )
+    expect_no_drag_marks_left(page=page)
+    expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=1)
 
 
 # --- Mobile and the width boundary ------------------------------------------------

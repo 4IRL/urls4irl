@@ -41,7 +41,10 @@ const DRAGGING_CLASS = "tagDragging";
 const DRAG_IMAGE_CLASS = "tagDragImage";
 const DROP_TARGET_CLASS = "tagDropTarget";
 const DROP_INVALID_CLASS = "tagDropInvalid";
+const DROP_GHOST_CLASS = "tagDropGhost";
+const DROP_EXISTING_CLASS = "tagDropExisting";
 const DROP_HINT_ATTR = "data-drop-hint";
+const TAGS_CONTAINER_SELECTOR = ".urlTagsContainer";
 const URL_LIST_SELECTOR = "#listURLs";
 const URL_CARD_SELECTOR = ".urlRow";
 const OPEN_COMBOBOX_SELECTOR = "#listURLs .urlTagComboboxWrap:not(.hidden)";
@@ -86,6 +89,8 @@ function clearDropMarks(): void {
     `${DROP_TARGET_CLASS} ${DROP_INVALID_CLASS}`,
   );
   $(`[${DROP_HINT_ATTR}]`).removeAttr(DROP_HINT_ATTR);
+  $(`.${DROP_GHOST_CLASS}`).remove();
+  $(`.${DROP_EXISTING_CLASS}`).removeClass(DROP_EXISTING_CLASS);
 }
 
 function getAppliedTagCount(urlCard: JQuery): number {
@@ -238,22 +243,50 @@ function highlightCard({
   card,
   reason,
   hint,
+  tagString,
 }: {
   card: HTMLElement;
   reason: DropReason;
   hint: string;
+  tagString: string;
 }): void {
   const className =
     reason === DropReason.VALID ? DROP_TARGET_CLASS : DROP_INVALID_CLASS;
+  // An expanded card hides nothing, so it shows the outcome in its tag list
+  // (CSS suppresses the corner hint there); a collapsed card keeps the hint.
+  const expanded = card.getAttribute("urlSelected") === "true";
+  const wantGhost = expanded && reason === DropReason.VALID;
+  const existingPill =
+    expanded && reason === DropReason.HAS_TAG && draggedTagID !== null
+      ? card.querySelector<HTMLElement>(
+          `${TAGS_CONTAINER_SELECTOR} > .tagBadge[data-utub-tag-id="${draggedTagID}"]`,
+        )
+      : null;
   const unchanged =
     card.classList.contains(className) &&
     card.getAttribute(DROP_HINT_ATTR) === hint &&
-    $(`.${DROP_TARGET_CLASS}, .${DROP_INVALID_CLASS}`).length === 1;
+    $(`.${DROP_TARGET_CLASS}, .${DROP_INVALID_CLASS}`).length === 1 &&
+    $(`.${DROP_GHOST_CLASS}`).length === (wantGhost ? 1 : 0) &&
+    $(`.${DROP_EXISTING_CLASS}`).length === (existingPill ? 1 : 0);
   if (unchanged) return;
 
   clearDropMarks();
   card.classList.add(className);
   card.setAttribute(DROP_HINT_ATTR, hint);
+  existingPill?.classList.add(DROP_EXISTING_CLASS);
+  const tagsContainer = wantGhost
+    ? card.querySelector(TAGS_CONTAINER_SELECTOR)
+    : null;
+  if (tagsContainer) {
+    // Not a `.tagBadge` and carries no tag data attribute, so no tag consumer
+    // (counts, delete, filters) can mistake the ghost for an applied tag. The
+    // leading "+" is drawn in CSS; the text is only the dragged tag's name.
+    const ghost = document.createElement("span");
+    ghost.className = DROP_GHOST_CLASS;
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.textContent = tagString;
+    tagsContainer.appendChild(ghost);
+  }
 }
 
 /**
@@ -285,6 +318,7 @@ function handleDragOverCard(event: DragEvent): void {
       card,
       reason,
       hint: hintFor({ reason, tagString }),
+      tagString,
     });
     return;
   }
@@ -295,7 +329,12 @@ function handleDragOverCard(event: DragEvent): void {
     tagString !== null &&
     (reason === DropReason.HAS_TAG || reason === DropReason.AT_LIMIT)
   ) {
-    highlightCard({ card, reason, hint: hintFor({ reason, tagString }) });
+    highlightCard({
+      card,
+      reason,
+      hint: hintFor({ reason, tagString }),
+      tagString,
+    });
     return;
   }
   clearDropMarks();
@@ -307,7 +346,26 @@ function handleDragLeaveCard(event: DragEvent): void {
   const entered = event.relatedTarget as Node | null;
   // Crossing between children of the same card is not a leave.
   if (entered && card.contains(entered)) return;
+  // Browsers fire `dragenter` on the new card BEFORE `dragleave` on the old
+  // one, so a global clear would wipe the marks the new card just received.
+  // Moving into another card only strips the card being left; a null or
+  // non-card relatedTarget (some browsers report null) clears everything.
+  if (closestCard(entered)) {
+    clearCardMarks(card);
+    return;
+  }
   clearDropMarks();
+}
+
+function clearCardMarks(card: HTMLElement): void {
+  card.classList.remove(DROP_TARGET_CLASS, DROP_INVALID_CLASS);
+  card.removeAttribute(DROP_HINT_ATTR);
+  card.querySelectorAll(`.${DROP_GHOST_CLASS}`).forEach((ghost) => {
+    ghost.remove();
+  });
+  card
+    .querySelectorAll(`.${DROP_EXISTING_CLASS}`)
+    .forEach((pill) => pill.classList.remove(DROP_EXISTING_CLASS));
 }
 
 /**

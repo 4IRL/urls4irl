@@ -1104,8 +1104,14 @@ a.urlString {
         background: var(--urlCreateFlashBg);
     }
 
-    .urlRow.tagDropInvalid {
+    /* Dashed caution outline + not-allowed cursor so the refusal reads as a
+       distinct state, not just a faded card. Inset outline: .urlRow has
+       overflow: hidden. */
+    #listURLs .urlRow.tagDropInvalid {
         opacity: .6;
+        outline: 2px dashed var(--cautionText);
+        outline-offset: -2px;
+        cursor: not-allowed;
     }
 
     /* Hint text so the state is never color-only. Absolutely positioned inside
@@ -1121,12 +1127,50 @@ a.urlString {
         pointer-events: none;
     }
 
+    /* An expanded card shows its tag list, so the outcome is shown there (ghost
+       pill / emphasized existing pill) and the corner text, which would overlay
+       the go-to icon, is suppressed. The attribute stays for tests and aria. */
+    #listURLs .urlRow[urlSelected="true"][data-drop-hint]::after {
+        content: none;
+    }
+
+    /* Ghost pill: same box metrics as .tagBadge, but dashed + tinted + a CSS
+       "+" so it reads as "would be added", not as an applied tag. */
+    #listURLs .urlTagsContainer > .tagDropGhost {
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
+        padding-left: 6px;
+        padding-right: 6px;
+        border-radius: 12px;
+        white-space: nowrap;
+        pointer-events: none;
+        color: var(--deckSelectionGreen);
+        border: 1px dashed var(--deckSelectionGreen);
+        background: color-mix(in srgb, var(--deckSelectionGreen) 14%, transparent);
+    }
+
+    #listURLs .urlTagsContainer > .tagDropGhost::before {
+        content: "+";
+        margin-right: 4px;
+        font-weight: 700;
+    }
+
+    #listURLs .urlTagsContainer > .tagBadge.tagDropExisting {
+        outline: 2px dashed var(--cautionText);
+        outline-offset: 1px;
+    }
+
     #listURLs .urlRow.tagDropTarget[data-drop-hint]::after {
         font-weight: 700;
         color: var(--deckSelectionGreen);
     }
 
     #listURLs .urlRow.tagDropInvalid[data-drop-hint]::after {
+        font-weight: 700;
         color: var(--cautionText);
+        border: 1px solid var(--cautionText);
+        border-radius: 4px;
+        padding: 0 6px;
     }
 }

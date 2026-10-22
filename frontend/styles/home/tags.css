@@ -79,8 +79,10 @@
     background-color: var(--tagBackgroundColorSelected);
 }
 
-.tagFilter.unselected:active,
-.tagFilter:active {
+/* Draggable chips are excluded: a native drag starts without a mouseup, so the
+   browser can leave :active stuck on the chip after the drag ends. */
+.tagFilter.unselected:not([draggable="true"]):active,
+.tagFilter:not([draggable="true"]):active {
     background-color: var(--grayBadgeSelectionFocus);
     color: var(--grayBadgeSelection);
 }

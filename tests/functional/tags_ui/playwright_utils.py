@@ -487,12 +487,17 @@ _START_TAG_DRAG_JS = """(chipSelector) => {
     return dataTransfer;
 }"""
 
-_DISPATCH_DRAG_EVENT_JS = """({ dataTransfer, eventType, selector }) => {
+_DISPATCH_DRAG_EVENT_JS = """({ dataTransfer, eventType, selector, relatedSelector }) => {
     const target = document.querySelector(selector);
     if (!target) throw new Error('no element for ' + selector);
+    const relatedTarget = relatedSelector
+        ? document.querySelector(relatedSelector)
+        : null;
+    if (relatedSelector && !relatedTarget)
+        throw new Error('no related element for ' + relatedSelector);
     // Returns false when a listener called preventDefault (drop accepted).
     return target.dispatchEvent(new DragEvent(eventType, {
-        bubbles: true, cancelable: true, dataTransfer,
+        bubbles: true, cancelable: true, dataTransfer, relatedTarget,
     }));
 }"""
 
@@ -570,16 +575,23 @@ def dispatch_tag_dragstart(*, page: Page, utub_tag_id: int) -> JSHandle:
 
 
 def dispatch_tag_drag_event(
-    *, page: Page, data_transfer: JSHandle, event_type: str, css_selector: str
+    *,
+    page: Page,
+    data_transfer: JSHandle,
+    event_type: str,
+    css_selector: str,
+    related_css_selector: str | None = None,
 ) -> bool:
     """Fire one DragEvent of `event_type` on `css_selector` with the drag's
-    `DataTransfer`. Returns False when a listener called `preventDefault`."""
+    `DataTransfer` (and `relatedTarget` = `related_css_selector`, when given).
+    Returns False when a listener called `preventDefault`."""
     return page.evaluate(
         _DISPATCH_DRAG_EVENT_JS,
         {
             "dataTransfer": data_transfer,
             "eventType": event_type,
             "selector": css_selector,
+            "relatedSelector": related_css_selector,
         },
     )
 
@@ -758,3 +770,5 @@ def expect_no_drag_marks_left(*, page: Page) -> None:
     expect(page.locator(".tagDropTarget")).to_have_count(0)
     expect(page.locator(".tagDropInvalid")).to_have_count(0)
     expect(page.locator("[data-drop-hint]")).to_have_count(0)
+    expect(page.locator(".tagDropGhost")).to_have_count(0)
+    expect(page.locator(".tagDropExisting")).to_have_count(0)

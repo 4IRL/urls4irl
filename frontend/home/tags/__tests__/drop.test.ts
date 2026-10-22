@@ -230,6 +230,50 @@ describe("tag drag-and-drop drop target", () => {
       expectNoMarks();
     });
 
+    it("keeps the entered card's marks when dragenter on it precedes dragleave on the old card", () => {
+      startDrag(7);
+      fire({ type: "dragenter", target: el("cardA") });
+      fire({ type: "dragenter", target: el("cardC") });
+      fire({
+        type: "dragleave",
+        target: el("cardA"),
+        relatedTarget: el("cardC").querySelector(".urlTagsContainer"),
+      });
+
+      expect(el("cardC").classList.contains("tagDropTarget")).toBe(true);
+      expect(el("cardC").getAttribute("data-drop-hint")).toBe(ADD_HINT_ALPHA);
+      expect(el("cardA").classList.contains("tagDropTarget")).toBe(false);
+      expect(el("cardA").hasAttribute("data-drop-hint")).toBe(false);
+    });
+
+    it("strips only the old card, including its ghost, when leaving into another card", () => {
+      el("cardA").setAttribute("urlSelected", "true");
+      el("cardC").setAttribute("urlSelected", "true");
+      startDrag(7);
+      fire({ type: "dragenter", target: el("cardA") });
+      fire({ type: "dragenter", target: el("cardC") });
+      fire({
+        type: "dragleave",
+        target: el("cardA"),
+        relatedTarget: el("cardC"),
+      });
+
+      expect(el("cardA").querySelector(".tagDropGhost")).toBeNull();
+      expect(el("cardC").querySelectorAll(".tagDropGhost")).toHaveLength(1);
+      expect(el("cardC").classList.contains("tagDropTarget")).toBe(true);
+    });
+
+    it("clears every mark when leaving to outside any card", () => {
+      startDrag(7);
+      fire({ type: "dragover", target: el("cardA") });
+      fire({
+        type: "dragleave",
+        target: el("cardA"),
+        relatedTarget: el("listURLs"),
+      });
+      expectNoMarks();
+    });
+
     it("clears the ring and hint when the drag ends", () => {
       startDrag(7);
       fire({ type: "dragover", target: el("cardA") });
@@ -278,6 +322,111 @@ describe("tag drag-and-drop drop target", () => {
       const { event } = fire({ type: "dragover", target: el("cardA") });
       expect(event.defaultPrevented).toBe(false);
       expectNoMarks();
+    });
+  });
+
+  describe("ghost pill on a selected card", () => {
+    const ghosts = () => document.querySelectorAll(".tagDropGhost");
+
+    beforeEach(() => {
+      el("cardA").setAttribute("urlSelected", "true");
+      el("cardB").setAttribute("urlSelected", "true");
+    });
+
+    it("adds exactly one aria-hidden ghost labelled with the tag, kept across repeated dragover", () => {
+      startDrag(7);
+      for (let index = 0; index < 3; index++) {
+        fire({ type: "dragover", target: el("cardA") });
+      }
+
+      expect(ghosts()).toHaveLength(1);
+      const ghost = ghosts()[0] as HTMLElement;
+      expect(ghost.parentElement?.classList.contains("urlTagsContainer")).toBe(
+        true,
+      );
+      expect(ghost.textContent).toBe("alpha");
+      expect(ghost.getAttribute("aria-hidden")).toBe("true");
+      expect(ghost.classList.contains("tagBadge")).toBe(false);
+      expect(ghost.hasAttribute("data-utub-tag-id")).toBe(false);
+      expect(el("cardA").getAttribute("data-utub-url-tag-ids")).toBe("");
+      expect(el("cardA").getAttribute("data-drop-hint")).toBe(ADD_HINT_ALPHA);
+    });
+
+    it("appends the ghost after existing pills", () => {
+      el("cardC").setAttribute("urlSelected", "true");
+      el("cardC")
+        .querySelector(".urlTagsContainer")!
+        .insertAdjacentHTML(
+          "beforeend",
+          '<span class="tagBadge" data-utub-tag-id="9">beta</span>',
+        );
+      startDrag(7);
+      fire({ type: "dragover", target: el("cardC") });
+
+      const container = el("cardC").querySelector(".urlTagsContainer")!;
+      expect(
+        container.lastElementChild?.classList.contains("tagDropGhost"),
+      ).toBe(true);
+      expect(container.querySelectorAll(".tagBadge")).toHaveLength(1);
+    });
+
+    it("removes the ghost on dragleave, dragend and drop, and moves it between cards", () => {
+      startDrag(7);
+      fire({ type: "dragover", target: el("cardA") });
+      fire({ type: "dragleave", target: el("cardA"), relatedTarget: null });
+      expect(ghosts()).toHaveLength(0);
+
+      fire({ type: "dragover", target: el("cardA") });
+      el("cardC").setAttribute("urlSelected", "true");
+      fire({ type: "dragover", target: el("cardC") });
+      expect(ghosts()).toHaveLength(1);
+      expect(el("cardA").querySelector(".tagDropGhost")).toBeNull();
+
+      document.dispatchEvent(new Event("dragend", { bubbles: true }));
+      expect(ghosts()).toHaveLength(0);
+
+      startDrag(7);
+      fire({ type: "dragover", target: el("cardA") });
+      fire({ type: "drop", target: el("cardA") });
+      expect(ghosts()).toHaveLength(0);
+    });
+
+    it("emphasizes the existing pill for HAS_TAG and clears it afterwards", () => {
+      startDrag(7);
+      fire({ type: "dragover", target: el("cardB") });
+      fire({ type: "dragover", target: el("cardB") });
+
+      expect(ghosts()).toHaveLength(0);
+      const pill = el("cardB").querySelector(".tagBadge")!;
+      expect(pill.classList.contains("tagDropExisting")).toBe(true);
+      expect(document.querySelectorAll(".tagDropExisting")).toHaveLength(1);
+      expect(el("cardB").getAttribute("data-drop-hint")).toBe(HAS_HINT_ALPHA);
+
+      document.dispatchEvent(new Event("dragend", { bubbles: true }));
+      expect(document.querySelector(".tagDropExisting")).toBeNull();
+    });
+
+    it("adds no ghost on an at-limit selected card but keeps the hint attribute", () => {
+      const ids = Array.from({ length: 20 }, (_, index) => index + 100);
+      el("cardC").setAttribute("urlSelected", "true");
+      el("cardC").setAttribute("data-utub-url-tag-ids", ids.join(","));
+      startDrag(7);
+      fire({ type: "dragover", target: el("cardC") });
+
+      expect(ghosts()).toHaveLength(0);
+      expect(el("cardC").getAttribute("data-drop-hint")).toBe(LIMIT_HINT);
+    });
+
+    it("keeps the hint and adds no ghost or emphasis on a collapsed card", () => {
+      el("cardA").setAttribute("urlSelected", "false");
+      el("cardB").setAttribute("urlSelected", "false");
+      startDrag(7);
+      fire({ type: "dragover", target: el("cardA") });
+      expect(el("cardA").getAttribute("data-drop-hint")).toBe(ADD_HINT_ALPHA);
+      expect(ghosts()).toHaveLength(0);
+
+      fire({ type: "dragover", target: el("cardB") });
+      expect(document.querySelector(".tagDropExisting")).toBeNull();
     });
   });
 
