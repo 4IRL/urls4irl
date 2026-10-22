@@ -52,6 +52,18 @@
     );
 }
 
+/* The stretch itself is skipped in JS (matchMedia at call time); this keeps
+   any CSS transition off the indicator as well. */
+@media (prefers-reduced-motion: reduce) {
+    #UTubDeck .utubSelectionIndicator,
+    #UTubDeck .utubSelectionBar,
+    #UTubDeck .utubSelectionShimmerClip,
+    #UTubDeck .utubSelectionShimmer {
+        transition: none;
+        animation: none;
+    }
+}
+
 @media (forced-colors: active) {
     #UTubDeck .utubSelectionBar {
         background: Highlight;

@@ -53,6 +53,31 @@ def wait_for_selection_bar_on_utub(
     )
 
 
+def install_selection_bar_animate_spy(*, page: Page) -> None:
+    """Count `Element.prototype.animate` calls made on the selection bar.
+
+    The 420ms stretch is too short-lived to observe with `getAnimations()` after
+    a network-bound selection, so wrap `animate` instead. Install it after the
+    home page has loaded (selection does not reload the page).
+    """
+    page.evaluate(
+        """(barSelector) => {
+            window.__selectionBarAnimateCalls = 0;
+            const original = Element.prototype.animate;
+            Element.prototype.animate = function (...args) {
+                if (this.matches(barSelector)) window.__selectionBarAnimateCalls += 1;
+                return original.apply(this, args);
+            };
+        }""",
+        HPL.UTUB_SELECTION_BAR,
+    )
+
+
+def get_selection_bar_animate_call_count(*, page: Page) -> int:
+    """Return how many `animate` calls the spy has seen on the selection bar."""
+    return page.evaluate("() => window.__selectionBarAnimateCalls")
+
+
 def open_utub_name_filter(*, page: Page) -> Locator:
     """Open the UTub name filter input and return the ready input locator.
 

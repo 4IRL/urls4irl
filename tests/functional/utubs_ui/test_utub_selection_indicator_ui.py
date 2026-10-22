@@ -16,6 +16,8 @@ from tests.functional.playwright_utils import (
 from tests.functional.trash_ui.playwright_utils import open_trash
 from tests.functional.utubs_ui.playwright_utils import (
     get_selection_bar_and_active_row_boxes,
+    get_selection_bar_animate_call_count,
+    install_selection_bar_animate_spy,
     wait_for_selection_bar_on_utub,
 )
 
@@ -71,6 +73,58 @@ def test_bar_and_aria_current_move_to_second_utub(
     )
     expect(page.locator(f"{_row_selector(first.id)}[aria-current]")).to_have_count(0)
     expect(page.locator(f"{HPL.LIST_UTUB} [aria-current]")).to_have_count(1)
+
+
+def test_selecting_second_utub_stretches_bar_once(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a user with one UTub selected and the animate spy installed
+    WHEN the user selects a second, different UTub
+    THEN the bar is animated exactly once and settles on the new row
+    """
+    app = provide_app
+    first = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    second = get_utub_this_user_did_not_create(app, USER_ID_FOR_TEST)
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=first.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=first.id)
+    install_selection_bar_animate_spy(page=page)
+    assert get_selection_bar_animate_call_count(page=page) == 0
+
+    select_utub_by_id(page=page, utub_id=second.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=second.id)
+
+    assert get_selection_bar_animate_call_count(page=page) == 1
+    bar_box, row_box = get_selection_bar_and_active_row_boxes(page=page)
+    assert abs(bar_box["y"] - row_box["y"]) <= POSITION_TOLERANCE_PX
+    assert abs(bar_box["height"] - row_box["height"]) <= POSITION_TOLERANCE_PX
+
+
+def test_reduced_motion_snaps_bar_without_animating(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a user who prefers reduced motion with one UTub selected
+    WHEN the user selects a second UTub
+    THEN the bar is never animated and already matches the new row
+    """
+    app = provide_app
+    first = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    second = get_utub_this_user_did_not_create(app, USER_ID_FOR_TEST)
+    page.emulate_media(reduced_motion="reduce")
+    login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
+    select_utub_by_id(page=page, utub_id=first.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=first.id)
+    install_selection_bar_animate_spy(page=page)
+
+    select_utub_by_id(page=page, utub_id=second.id)
+    wait_for_selection_bar_on_utub(page=page, utub_id=second.id)
+
+    assert get_selection_bar_animate_call_count(page=page) == 0
+    bar_box, row_box = get_selection_bar_and_active_row_boxes(page=page)
+    assert abs(bar_box["y"] - row_box["y"]) <= POSITION_TOLERANCE_PX
+    assert abs(bar_box["height"] - row_box["height"]) <= POSITION_TOLERANCE_PX
 
 
 def test_opening_trash_hides_indicator(
