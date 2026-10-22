@@ -14,6 +14,8 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import leave_utub_as_member
 from tests.functional.playwright_login_utils import login_user_and_select_utub_by_name
 from tests.functional.playwright_utils import (
+    collapse_deck_by_header_click,
+    expand_deck_by_header_click,
     login_user_to_home_page,
     select_utub_by_name,
     wait_then_click_element,
@@ -163,45 +165,6 @@ def _seed_persisted_deck_layout(
                 "tagsMinimized": tags_minimized,
             },
         },
-    )
-
-
-def _collapse_deck_by_header_click(
-    page: Page, *, header_selector: str, deck_selector: str, content_id: str
-) -> None:
-    """Collapse a deck with a real header click, then wait for it to settle.
-
-    Both gates are root causes, not padding. The class assert proves the click
-    handler ran (and with it the localStorage write, which happens in the same
-    synchronous handler). The computed-`visibility` wait proves the 0.3s
-    transition has ENDED: per the CSS Transitions spec a `visible`->`hidden`
-    `visibility` transition holds `visible` until its very last frame, so
-    anything that depends on the content actually being hidden (focus order,
-    a following `page.reload()`) would race it otherwise.
-    """
-    page.locator(header_selector).click()
-    expect(page.locator(deck_selector)).to_have_class(_COLLAPSED_CLASS_RE)
-    wait_until_css_property(
-        page=page,
-        css_selector=f"#{content_id}",
-        css_property="visibility",
-        expected_value="hidden",
-    )
-
-
-def _expand_deck_by_header_click(
-    page: Page, *, header_selector: str, deck_selector: str, content_id: str
-) -> None:
-    """Inverse of the above. `hidden`->`visible` flips at 0%, so the wait here
-    settles immediately — it is kept for symmetry and to prove the content is
-    genuinely back in the focus/a11y tree, not merely un-classed."""
-    page.locator(header_selector).click()
-    expect(page.locator(deck_selector)).not_to_have_class(_COLLAPSED_CLASS_RE)
-    wait_until_css_property(
-        page=page,
-        css_selector=f"#{content_id}",
-        css_property="visibility",
-        expected_value="visible",
     )
 
 
@@ -692,8 +655,8 @@ def test_persisted_deck_layout_applies_to_next_utub(
         utub_name=first_utub.name,
     )
 
-    _collapse_deck_by_header_click(
-        page,
+    collapse_deck_by_header_click(
+        page=page,
         header_selector=HPL.HEADER_AND_CARET_MEMBER_DECK,
         deck_selector=HPL.MEMBER_DECK,
         content_id=_MEMBER_DECK_CONTENT_ID,
@@ -749,14 +712,14 @@ def test_persisted_deck_layout_survives_reload(
         utub_name=utub_user_created.name,
     )
 
-    _collapse_deck_by_header_click(
-        page,
+    collapse_deck_by_header_click(
+        page=page,
         header_selector=HPL.HEADER_AND_CARET_MEMBER_DECK,
         deck_selector=HPL.MEMBER_DECK,
         content_id=_MEMBER_DECK_CONTENT_ID,
     )
-    _collapse_deck_by_header_click(
-        page,
+    collapse_deck_by_header_click(
+        page=page,
         header_selector=HPL.HEADER_AND_CARET_TAG_DECK,
         deck_selector=HPL.TAG_DECK,
         content_id=_TAG_DECK_CONTENT_ID,
@@ -815,20 +778,20 @@ def test_auto_minimize_does_not_overwrite_saved_layout(
         utub_name=utub_user_member_of.name,
     )
 
-    _collapse_deck_by_header_click(
-        page,
+    collapse_deck_by_header_click(
+        page=page,
         header_selector=HPL.HEADER_AND_CARET_MEMBER_DECK,
         deck_selector=HPL.MEMBER_DECK,
         content_id=_MEMBER_DECK_CONTENT_ID,
     )
-    _expand_deck_by_header_click(
-        page,
+    expand_deck_by_header_click(
+        page=page,
         header_selector=HPL.HEADER_AND_CARET_MEMBER_DECK,
         deck_selector=HPL.MEMBER_DECK,
         content_id=_MEMBER_DECK_CONTENT_ID,
     )
-    _collapse_deck_by_header_click(
-        page,
+    collapse_deck_by_header_click(
+        page=page,
         header_selector=HPL.HEADER_AND_CARET_TAG_DECK,
         deck_selector=HPL.TAG_DECK,
         content_id=_TAG_DECK_CONTENT_ID,
