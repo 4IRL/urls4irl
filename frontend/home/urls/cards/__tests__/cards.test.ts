@@ -1,4 +1,8 @@
-import { createURLBlock } from "../cards.js";
+import { createURLBlock, updateURLAfterFindingStaleData } from "../cards.js";
+import {
+  applyHoverTooltip,
+  disposeTooltipsWithin,
+} from "../../../../lib/tooltips.js";
 import { formatDateByPreference } from "../adder-badge.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { setState } from "../../../../store/app-store.js";
@@ -13,6 +17,18 @@ import { toggleURLCardSelection } from "../../bulk-actions/bulk-selection.js";
 
 const $ = window.jQuery;
 
+// A full factory (no importOriginal): the real module would load first and its
+// import chain would bind short-link-state to the unmocked helpers.
+vi.mock("../../../../lib/tooltips.js", () => ({
+  initTooltips: vi.fn(),
+  hideTooltip: vi.fn(),
+  disposeTooltipsWithin: vi.fn(),
+  disposeTooltipsWithinAfterHide: vi.fn(),
+  applyHoverTooltip: vi.fn(),
+  restoreTooltipIfStillTargeted: vi.fn(),
+  TOOLTIP_DISPOSE_DELAY_MS: 200,
+  TOOLTIP_RESTORE_DELAY_MS: 200,
+}));
 vi.mock("../selection.js", () => ({
   selectURLCard: vi.fn(),
   setURLCardSelectionEventListener: vi.fn(),
@@ -498,6 +514,144 @@ describe("createURLBlock", () => {
         APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER,
       );
     });
+  });
+
+  describe("short link status row", () => {
+    const EXPIRES_AT = "2026-10-27T12:00:00";
+
+    it("renders no row when the URL has no active link", () => {
+      const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
+      expect(el.find(".shortLinkStatusRow")).toHaveLength(0);
+    });
+
+    it("renders the row right after .urlOptions, with Revoke, when the viewer can revoke", () => {
+      const el = createURLBlock({
+        url: {
+          ...baseURL,
+          shortLinkExpiresAt: EXPIRES_AT,
+          canRevokeShortLink: true,
+        },
+        dictTags: [],
+        utubID: 10,
+      });
+      expect(el.find(".urlOptions").next().hasClass("shortLinkStatusRow")).toBe(
+        true,
+      );
+      expect(el.find(".shortLinkRevoke")).toHaveLength(1);
+    });
+
+    it("renders the row without Revoke when the viewer cannot revoke", () => {
+      const el = createURLBlock({
+        url: {
+          ...baseURL,
+          shortLinkExpiresAt: EXPIRES_AT,
+          canRevokeShortLink: false,
+        },
+        dictTags: [],
+        utubID: 10,
+      });
+      expect(el.find(".shortLinkStatusRow")).toHaveLength(1);
+      expect(el.find(".shortLinkRevoke")).toHaveLength(0);
+    });
+
+    it("treats a missing shortLinkExpiresAt (older payload) as no link", () => {
+      const legacy = { ...baseURL } as Partial<typeof baseURL>;
+      delete legacy.shortLinkExpiresAt;
+      const el = createURLBlock({
+        url: legacy as typeof baseURL,
+        dictTags: [],
+        utubID: 10,
+      });
+      expect(el.find(".shortLinkStatusRow")).toHaveLength(0);
+    });
+  });
+});
+
+describe("updateURLAfterFindingStaleData short-link refresh", () => {
+  const EXPIRES_AT = "2026-10-27T12:00:00";
+  const LATER_EXPIRES_AT = "2026-11-03T12:00:00";
+
+  function cardWithLink({ canRevoke }: { canRevoke: boolean }): JQuery {
+    const card = createURLBlock({
+      url: {
+        ...baseURL,
+        shortLinkExpiresAt: EXPIRES_AT,
+        canRevokeShortLink: canRevoke,
+      },
+      dictTags: [],
+      utubID: 10,
+    });
+    card.append('<button class="urlBtnShortLink"></button>');
+    return card;
+  }
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("removes the row, Revoke and tooltip state when the link is gone", () => {
+    const card = cardWithLink({ canRevoke: true });
+
+    updateURLAfterFindingStaleData(card, baseURL, [], 10);
+
+    expect(card.find(".shortLinkStatusRow")).toHaveLength(0);
+    expect(card.find(".shortLinkRevoke")).toHaveLength(0);
+    expect(disposeTooltipsWithin).toHaveBeenCalledTimes(1);
+    expect(applyHoverTooltip).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(applyHoverTooltip).mock.calls[0][0].tooltip?.title).toBe(
+      APP_CONFIG.strings.SHORT_LINK_TOOLTIP,
+    );
+  });
+
+  it("adds the row and Revoke when another member minted a link", () => {
+    const card = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
+    card.append('<button class="urlBtnShortLink"></button>');
+
+    updateURLAfterFindingStaleData(
+      card,
+      { ...baseURL, shortLinkExpiresAt: EXPIRES_AT, canRevokeShortLink: true },
+      [],
+      10,
+    );
+
+    expect(card.find(".shortLinkStatusRow")).toHaveLength(1);
+    expect(card.find(".shortLinkRevoke")).toHaveLength(1);
+    expect(applyHoverTooltip).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-renders the row when the expiry or revoke permission changed", () => {
+    const card = cardWithLink({ canRevoke: true });
+
+    updateURLAfterFindingStaleData(
+      card,
+      {
+        ...baseURL,
+        shortLinkExpiresAt: LATER_EXPIRES_AT,
+        canRevokeShortLink: false,
+      },
+      [],
+      10,
+    );
+
+    const row = card.find(".shortLinkStatusRow");
+    expect(row).toHaveLength(1);
+    expect(row.attr("data-expires-at")).toBe(LATER_EXPIRES_AT);
+    expect(card.find(".shortLinkRevoke")).toHaveLength(0);
+    expect(applyHoverTooltip).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not rebuild the row or tooltip when the link fields are unchanged", () => {
+    const card = cardWithLink({ canRevoke: true });
+    const rowBefore = card.find(".shortLinkStatusRow")[0];
+
+    updateURLAfterFindingStaleData(
+      card,
+      { ...baseURL, shortLinkExpiresAt: EXPIRES_AT, canRevokeShortLink: true },
+      [],
+      10,
+    );
+
+    expect(card.find(".shortLinkStatusRow")[0]).toBe(rowBefore);
+    expect(applyHoverTooltip).not.toHaveBeenCalled();
+    expect(disposeTooltipsWithin).not.toHaveBeenCalled();
   });
 });
 

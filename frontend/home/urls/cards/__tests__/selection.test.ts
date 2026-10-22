@@ -252,6 +252,16 @@ describe("URL Card Selection", () => {
       expect(urlCard.attr("urlSelected")).toBe("true");
     });
 
+    it("clicking the short-link button (or its icon) does NOT deselect the URL card", () => {
+      document.body.innerHTML = `<div class="urlRow" utuburlid="42" urlSelected="false" filterable="true"><button class="urlBtnShortLink"><svg><path></path></svg></button><span class="goToUrlIcon"></span></div>`;
+      urlCard = $(".urlRow");
+      selectURLCard(urlCard);
+      urlCard.find(".urlBtnShortLink").trigger("click");
+      expect(urlCard.attr("urlSelected")).toBe("true");
+      urlCard.find(".urlBtnShortLink path").trigger("click");
+      expect(urlCard.attr("urlSelected")).toBe("true");
+    });
+
     it("clicking the urlTitleBtnUpdate pencil does NOT deselect the URL card", () => {
       document.body.innerHTML = `<div class="urlRow" utuburlid="42" urlSelected="false" filterable="true"><button class="urlTitleBtnUpdate"></button><span class="goToUrlIcon"></span></div>`;
       urlCard = $(".urlRow");

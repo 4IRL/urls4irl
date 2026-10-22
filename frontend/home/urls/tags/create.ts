@@ -34,6 +34,10 @@ import {
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { createAddTagIcon } from "../cards/options/tag-btn.js";
+import {
+  hideShortLinkStatus,
+  restoreShortLinkStatus,
+} from "../cards/short-link-state.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { refreshTagDeckTagCount } from "../../tags/deck.js";
@@ -84,7 +88,8 @@ export function showCreateURLTagForm(
   urlCard.find(".urlBtnAccess").hideClass();
   disableEditingURLString(urlCard);
   urlCard.find(".urlBtnDelete").hideClass();
-  urlCard.find(".urlBtnCopy").hideClass();
+  urlCard.find(".urlBtnCopy, .urlBtnShortLink").hideClass();
+  hideShortLinkStatus(urlCard);
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
@@ -139,7 +144,8 @@ export function hideAndResetCreateURLTagForm(urlCard: JQuery): void {
   urlCard.find(".urlBtnAccess").showClassFlex();
   enableEditingURLString(urlCard);
   urlCard.find(".urlBtnDelete").showClassFlex();
-  urlCard.find(".urlBtnCopy").showClassFlex();
+  urlCard.find(".urlBtnCopy, .urlBtnShortLink").showClassFlex();
+  restoreShortLinkStatus(urlCard);
 
   // Enable hovering on tags for deletion
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");

@@ -26,6 +26,7 @@ vi.mock("../../cards/selection.js", () => ({
 }));
 
 vi.mock("../../cards/utils.js", () => ({
+  isURLEditFormOpen: vi.fn(() => false),
   disableEditingURLString: vi.fn(),
   disableEditingURLTitle: vi.fn(),
   enableEditingURLString: vi.fn(),
@@ -78,6 +79,7 @@ const URL_CARD_HTML = `
     <div class="urlStringBtnUpdate"></div>
     <div class="urlBtnDelete"></div>
     <div class="urlBtnCopy"></div>
+    <div class="urlBtnShortLink"></div>
     <div class="tagBadge"></div>
     <div class="tagsAndTagCreateWrap"></div>
   </div>
@@ -409,6 +411,23 @@ describe("hideAndResetTagCombobox", () => {
 
     expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
     expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(true);
+  });
+
+  it("hides Copy URL and Copy short link while open and restores both on close", () => {
+    const urlCard = mountCombobox();
+
+    showTagCombobox({
+      urlCard,
+      urlTagBtnCreate: urlCard.find(".urlTagBtnCreate"),
+    });
+
+    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlBtnShortLink").hasClass("hidden")).toBe(true);
+
+    hideAndResetTagCombobox(urlCard);
+
+    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlBtnShortLink").hasClass("hidden")).toBe(false);
   });
 });
 
