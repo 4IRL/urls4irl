@@ -14,7 +14,7 @@ import { debug } from "../../lib/debug.js";
 
 const log = debug("tags:drag-drop");
 
-export const TAG_DRAG_MIME = "application/x-u4i-tag-id";
+const TAG_DRAG_MIME = "application/x-u4i-tag-id";
 
 /**
  * Why a URL card can or cannot take the dragged tag. `'has-tag'` and
@@ -77,7 +77,7 @@ function isEditAllTagsActive(): boolean {
  * Single shared cleanup for an in-flight drag: state, chip dimming and any
  * drop ring/hint left on URL cards.
  */
-export function clearDragState(): void {
+function clearDragState(): void {
   draggedTagID = null;
   draggedChip = null;
   $(TAG_CHIP_SELECTOR).removeClass(DRAGGING_CLASS);
@@ -185,10 +185,6 @@ function handleDragStart(event: DragEvent): void {
   chip.classList.add(DRAGGING_CLASS);
 }
 
-function handleDragEnd(): void {
-  clearDragState();
-}
-
 function carriesTagMime(event: DragEvent): boolean {
   const types = event.dataTransfer?.types;
   return !!types && Array.from(types).includes(TAG_DRAG_MIME);
@@ -213,22 +209,22 @@ function hintFor({
   reason: DropReason;
   tagString: string;
 }): string {
-  // Function replacers: a tag string may contain `$&`-style patterns.
   switch (reason) {
     case DropReason.VALID:
-      return APP_CONFIG.strings.TAG_DROP_HINT_ADD.replace(
-        "{tag}",
-        () => tagString,
-      );
+      return fillTemplate({
+        template: APP_CONFIG.strings.TAG_DROP_HINT_ADD,
+        values: { tag: tagString },
+      });
     case DropReason.HAS_TAG:
-      return APP_CONFIG.strings.TAG_DROP_HINT_HAS.replace(
-        "{tag}",
-        () => tagString,
-      );
+      return fillTemplate({
+        template: APP_CONFIG.strings.TAG_DROP_HINT_HAS,
+        values: { tag: tagString },
+      });
     case DropReason.AT_LIMIT:
-      return APP_CONFIG.strings.TAGS_LIMIT_REACHED.replace("{max}", () =>
-        String(APP_CONFIG.constants.TAGS_MAX_ON_URLS),
-      );
+      return fillTemplate({
+        template: APP_CONFIG.strings.TAGS_LIMIT_REACHED,
+        values: { max: String(APP_CONFIG.constants.TAGS_MAX_ON_URLS) },
+      });
     default:
       return "";
   }
@@ -506,8 +502,8 @@ export function initTagDragDrop(): void {
 
   // Document-level cleanup: a drag cancelled or dropped anywhere (including
   // outside any card, or after the chip left the DOM) leaves no stale state.
-  document.addEventListener("dragend", handleDragEnd);
-  document.addEventListener("drop", handleDragEnd);
+  document.addEventListener("dragend", clearDragState);
+  document.addEventListener("drop", clearDragState);
 
   window.matchMedia(TAG_DRAG_MEDIA_QUERY).addEventListener("change", () => {
     clearDragState();

@@ -262,6 +262,36 @@ describe("tag drag-and-drop source", () => {
       expect(drag.getDraggedTagID()).toBeNull();
       expect(chip(7).getAttribute("draggable")).toBe("true");
     });
+
+    it.each([
+      ["missing", null],
+      ["non-numeric", "abc"],
+    ])(
+      "fails closed when the chip's data-utub-tag-id is %s",
+      (_label, value) => {
+        drag.initTagDragDrop();
+        const target = chip(7);
+        if (value === null) target.removeAttribute("data-utub-tag-id");
+        else target.setAttribute("data-utub-tag-id", value);
+
+        const { event, dataTransfer } = fireDragStart(target);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(dataTransfer.setData).not.toHaveBeenCalled();
+        expect(drag.getDraggedTagID()).toBeNull();
+        expect(target.classList.contains("tagDragging")).toBe(false);
+      },
+    );
+
+    it("fails closed when the event has no dataTransfer", () => {
+      drag.initTagDragDrop();
+      const event = new Event("dragstart", { bubbles: true, cancelable: true });
+      chip(7).dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(drag.getDraggedTagID()).toBeNull();
+      expect(chip(7).classList.contains("tagDragging")).toBe(false);
+    });
   });
 
   describe("mid-drag cleanup", () => {

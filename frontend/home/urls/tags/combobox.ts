@@ -1073,6 +1073,8 @@ export function submitStagedTags({
               settle(appliedTags.length > 0 ? "applied" : "noop");
             }
           } finally {
+            // Idempotent: only takes effect if the outcome computation above
+            // threw before settling.
             settle("failed");
             clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
           }
@@ -1099,7 +1101,7 @@ export function submitStagedTags({
         clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
         handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
           showError: true,
-          message: "Another user has deleted this URL",
+          message: APP_CONFIG.strings.URL_DELETED_BY_OTHER_USER,
         });
       } finally {
         settle("aborted");
@@ -1277,7 +1279,7 @@ function submitStagedTagsDragFail({
   }
 
   if (xhr.status === 404) {
-    showURLDeckBannerError("Another user has deleted this URL");
+    showURLDeckBannerError(APP_CONFIG.strings.URL_DELETED_BY_OTHER_USER);
     deleteURLOnStale(urlCard);
     return;
   }

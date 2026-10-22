@@ -675,6 +675,18 @@ describe("submitStagedTagsFail — applySource", () => {
       expect(showURLDeckBannerError).not.toHaveBeenCalled();
       expect(assignMock).not.toHaveBeenCalled();
     });
+
+    it("leaves a handled 429 to the rate-limit handler: no TAG_DROP_FAILED banner and no redirect", () => {
+      vi.mocked(is429Handled).mockReturnValueOnce(true);
+      submitStagedTagsFail({
+        xhr: jsonXhr({ status: 429, responseJSON: {} }),
+        urlCard: mountCard({ comboboxHidden: true }),
+        applySource: "drag",
+      });
+
+      expect(showURLDeckBannerError).not.toHaveBeenCalled();
+      expect(assignMock).not.toHaveBeenCalled();
+    });
   });
 
   describe("combobox source (and the default)", () => {

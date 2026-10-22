@@ -689,6 +689,52 @@ describe("tag drag-and-drop drop target", () => {
     });
   });
 
+  describe("tag strings with replacement-pattern or HTML characters", () => {
+    const SPECIAL_TAG = "a$&b<i>";
+
+    beforeEach(() => {
+      const specialChip = document.createElement("div");
+      specialChip.className = "tagFilter";
+      specialChip.setAttribute("data-utub-tag-id", "11");
+      const label = document.createElement("span");
+      label.textContent = SPECIAL_TAG;
+      specialChip.appendChild(label);
+      document.getElementById("listTags")!.appendChild(specialChip);
+      store.setState({
+        tags: [
+          { id: 7, tagString: "alpha", tagApplied: 1 },
+          { id: 11, tagString: SPECIAL_TAG, tagApplied: 0 },
+        ],
+      });
+    });
+
+    it("keeps the hint and the ghost text verbatim", () => {
+      el("cardA").setAttribute("urlSelected", "true");
+      startDrag(11);
+      fire({ type: "dragover", target: el("cardA"), payload: "11" });
+
+      expect(el("cardA").getAttribute("data-drop-hint")).toBe(
+        `Add "${SPECIAL_TAG}" to this URL`,
+      );
+      const ghost = el("cardA").querySelector(".tagDropGhost") as HTMLElement;
+      expect(ghost.textContent).toBe(SPECIAL_TAG);
+      expect(ghost.querySelector("i")).toBeNull();
+    });
+
+    it("keeps the success banner message verbatim", async () => {
+      startDrag(11);
+      fire({ type: "drop", target: el("cardA"), payload: "11" });
+      await flush();
+
+      expect(submitStagedTagsMock.mock.calls[0][0].stagedStrings).toEqual([
+        SPECIAL_TAG,
+      ]);
+      expect(showURLOutcomeBannerMock.mock.calls[0][0].message).toBe(
+        `Added tag "${SPECIAL_TAG}" to Title A.`,
+      );
+    });
+  });
+
   describe("outcome step", () => {
     // Drops tag 7 on cardA; `whilePending` runs after the drop and before the
     // request settles, to change the world the way a slow request would.

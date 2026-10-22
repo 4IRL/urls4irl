@@ -27,7 +27,7 @@ from dataclasses import dataclass
 
 import pytest
 from flask import Flask
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from backend.utils.constants import STRINGS, TAG_CONSTANTS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -74,8 +74,8 @@ from tests.functional.tags_ui.playwright_utils import (
     expect_no_drag_marks_left,
     get_card_height,
     get_computed_style,
-    get_tag_chip_selector,
     get_url_card_selector,
+    get_utub_tag_filter_selector,
     get_visible_urls_and_urls_with_tag_text_by_tag_id,
     open_tag_combobox,
     settle_page_tasks,
@@ -121,7 +121,9 @@ def _login(*, app: Flask, page: Page) -> None:
     expect(page.locator(HPL.TAG_FILTERS).first).to_be_attached()
 
 
-def _login_with_url_selected(*, app: Flask, page: Page, scene: Scene, url_id: int):
+def _login_with_url_selected(
+    *, app: Flask, page: Page, scene: Scene, url_id: int
+) -> None:
     login_user_select_utub_by_id_and_url_by_id(
         app=app,
         page=page,
@@ -152,19 +154,19 @@ def _noop_message(*, tag: str, title: str) -> str:
     return STRINGS.TAG_DROP_NOOP.replace("{tag}", tag).replace("{title}", title)
 
 
-def _card(page: Page, url_id: int):
+def _card(*, page: Page, url_id: int) -> Locator:
     return page.locator(get_url_card_selector(utub_url_id=url_id))
 
 
-def _expect_card_selected(page: Page, url_id: int, selected: bool = True) -> None:
-    card = _card(page, url_id)
+def _expect_card_selected(*, page: Page, url_id: int, selected: bool = True) -> None:
+    card = _card(page=page, url_id=url_id)
     if selected:
         expect(card).to_have_attribute("urlselected", "true")
     else:
         expect(card).not_to_have_attribute("urlselected", "true")
 
 
-def _expect_error_banner(page: Page, message: str) -> None:
+def _expect_error_banner(*, page: Page, message: str) -> None:
     indicator = page.locator(HPL.URL_DECK_ERROR_INDICATOR)
     expect(indicator).to_have_text(message)
     expect(indicator).to_have_class(re.compile(ERROR_SHOWN_CLASS))
@@ -176,11 +178,11 @@ def _expect_no_error_banner(page: Page) -> None:
     )
 
 
-def _expect_success_banner(page: Page, message: str) -> None:
+def _expect_success_banner(*, page: Page, message: str) -> None:
     expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(message)
 
 
-def _expect_no_outcome_banner(page: Page) -> None:
+def _expect_no_outcome_banner(*, page: Page) -> None:
     expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_hidden()
 
 
@@ -229,22 +231,29 @@ def test_drop_on_unselected_card_adds_tag_selects_card_and_shows_banner(
     assert get_visible_urls_and_urls_with_tag_text_by_tag_id(
         page=page, tag_id=scene.tag_id
     ) == (0, 0)
-    _expect_card_selected(page, url_id, selected=False)
+    _expect_card_selected(page=page, url_id=url_id, selected=False)
 
     drag_tag_onto_url(page=page, utub_tag_id=scene.tag_id, utub_url_id=url_id)
 
     expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=1)
-    _expect_card_selected(page, url_id)
+    _expect_card_selected(page=page, url_id=url_id)
     _expect_success_banner(
-        page,
-        _added_message(tag=DRAG_TAG, title=get_url_title(app=app, utub_url_id=url_id)),
+        page=page,
+        message=_added_message(
+            tag=DRAG_TAG, title=get_url_title(app=app, utub_url_id=url_id)
+        ),
     )
     expect(
         page.locator(
             f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{scene.tag_id}'] {HPL.TAG_COUNT}"
         )
     ).to_have_text("1 / 1")
-    assert count_urls_with_tag_applied_by_tag_string(app, scene.utub_id, DRAG_TAG) == 1
+    assert (
+        count_urls_with_tag_applied_by_tag_string(
+            app=app, utub_id=scene.utub_id, tag_text=DRAG_TAG
+        )
+        == 1
+    )
     expect_no_drag_marks_left(page=page)
 
 
@@ -260,17 +269,17 @@ def test_drop_on_another_card_collapses_the_open_card_and_leaves_one_selected(
     scene = _seed_scene(app)
     open_url_id, dropped_url_id = scene.url_ids[1], scene.url_ids[0]
     _login_with_url_selected(app=app, page=page, scene=scene, url_id=open_url_id)
-    _expect_card_selected(page, open_url_id)
-    wait_for_css_transitions_to_finish(locator=_card(page, open_url_id))
+    _expect_card_selected(page=page, url_id=open_url_id)
+    wait_for_css_transitions_to_finish(locator=_card(page=page, url_id=open_url_id))
     expanded_height = get_card_height(page=page, utub_url_id=open_url_id)
 
     drag_tag_onto_url(page=page, utub_tag_id=scene.tag_id, utub_url_id=dropped_url_id)
 
     expect_badge_count_on_url_row(page=page, utub_url_id=dropped_url_id, expected=1)
-    _expect_card_selected(page, dropped_url_id)
-    _expect_card_selected(page, open_url_id, selected=False)
+    _expect_card_selected(page=page, url_id=dropped_url_id)
+    _expect_card_selected(page=page, url_id=open_url_id, selected=False)
     expect(page.locator(f"{HPL.ROWS_URLS}[urlselected='true']")).to_have_count(1)
-    wait_for_css_transitions_to_finish(locator=_card(page, open_url_id))
+    wait_for_css_transitions_to_finish(locator=_card(page=page, url_id=open_url_id))
     assert get_card_height(page=page, utub_url_id=open_url_id) < expanded_height
     expect_no_drag_marks_left(page=page)
 
@@ -326,7 +335,7 @@ def test_drop_on_card_that_already_has_the_tag_is_dimmed_and_sends_no_request(
     )
 
     assert not_prevented
-    card = _card(page, url_id)
+    card = _card(page=page, url_id=url_id)
     expect(card).to_have_class(re.compile(r"(^|\s)tagDropInvalid(\s|$)"))
     expect(card).to_have_attribute("data-drop-hint", _hint_has(DRAG_TAG))
     expect(card).to_have_css("opacity", DROP_OPACITY)
@@ -338,8 +347,13 @@ def test_drop_on_card_that_already_has_the_tag_is_dimmed_and_sends_no_request(
     expect_no_drag_marks_left(page=page)
     route.expect_nothing_sent()
     expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=1)
-    assert count_urls_with_tag_applied_by_tag_string(app, scene.utub_id, DRAG_TAG) == 1
-    _expect_no_outcome_banner(page)
+    assert (
+        count_urls_with_tag_applied_by_tag_string(
+            app=app, utub_id=scene.utub_id, tag_text=DRAG_TAG
+        )
+        == 1
+    )
+    _expect_no_outcome_banner(page=page)
 
 
 def test_drop_on_card_at_the_tag_limit_is_dimmed_and_refused(
@@ -369,7 +383,7 @@ def test_drop_on_card_at_the_tag_limit_is_dimmed_and_refused(
     )
 
     assert not_prevented
-    card = _card(page, url_id)
+    card = _card(page=page, url_id=url_id)
     expect(card).to_have_class(re.compile(r"(^|\s)tagDropInvalid(\s|$)"))
     expect(card).to_have_attribute("data-drop-hint", _hint_limit())
     expect(card).to_have_css("opacity", DROP_OPACITY)
@@ -406,7 +420,12 @@ def test_drop_in_locked_utub_shows_no_ring_and_sends_no_request(
     )
 
     expect_badge_count_on_url_row(page=page, utub_url_id=scene.url_ids[0], expected=0)
-    assert count_urls_with_tag_applied_by_tag_string(app, scene.utub_id, DRAG_TAG) == 0
+    assert (
+        count_urls_with_tag_applied_by_tag_string(
+            app=app, utub_id=scene.utub_id, tag_text=DRAG_TAG
+        )
+        == 0
+    )
 
 
 def test_drop_with_stale_lock_shows_lock_banner_and_does_not_redirect(
@@ -427,7 +446,7 @@ def test_drop_with_stale_lock_shows_lock_banner_and_does_not_redirect(
         page=page, utub_tag_id=scene.tag_id, utub_url_id=scene.url_ids[0]
     )
 
-    _expect_error_banner(page, STRINGS.UTUB_IS_LOCKED)
+    _expect_error_banner(page=page, message=STRINGS.UTUB_IS_LOCKED)
     assert page.url == url_before
     expect_badge_count_on_url_row(page=page, utub_url_id=scene.url_ids[0], expected=0)
 
@@ -508,8 +527,8 @@ def test_open_form_on_one_card_makes_every_other_card_refuse(
     expect(
         page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}")
     ).to_be_visible()
-    _expect_card_selected(page, open_url_id)
-    _expect_card_selected(page, other_url_id, selected=False)
+    _expect_card_selected(page=page, url_id=open_url_id)
+    _expect_card_selected(page=page, url_id=other_url_id, selected=False)
 
 
 def test_drop_refused_in_multi_select_mode(
@@ -559,14 +578,21 @@ def test_drop_refused_on_card_hidden_by_a_filter(
     )
     _login(app=app, page=page)
     apply_tag_filter_based_on_id(page=page, utub_tag_id=other_tag_id)
-    expect(_card(page, hidden_url_id)).to_have_attribute("filterable", "false")
+    expect(_card(page=page, url_id=hidden_url_id)).to_have_attribute(
+        "filterable", "false"
+    )
     route = TagBatchRoute(page=page)
 
     _refused_drag_and_drop(
         page=page, utub_tag_id=scene.tag_id, utub_url_id=hidden_url_id, route=route
     )
 
-    assert count_urls_with_tag_applied_by_tag_string(app, scene.utub_id, DRAG_TAG) == 0
+    assert (
+        count_urls_with_tag_applied_by_tag_string(
+            app=app, utub_id=scene.utub_id, tag_text=DRAG_TAG
+        )
+        == 0
+    )
 
 
 def test_non_tag_drag_over_a_card_shows_no_ring(
@@ -621,13 +647,13 @@ def test_cancelled_drag_leaves_no_marks_and_sends_no_request(
     route = TagBatchRoute(page=page)
 
     data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=scene.tag_id)
-    expect(page.locator(get_tag_chip_selector(utub_tag_id=scene.tag_id))).to_have_class(
-        re.compile(r"(^|\s)tagDragging(\s|$)")
-    )
+    expect(
+        page.locator(get_utub_tag_filter_selector(utub_tag_id=scene.tag_id))
+    ).to_have_class(re.compile(r"(^|\s)tagDragging(\s|$)"))
     dispatch_tag_dragover_on_url(
         page=page, data_transfer=data_transfer, utub_url_id=url_id
     )
-    card = _card(page, url_id)
+    card = _card(page=page, url_id=url_id)
     expect(card).to_have_class(re.compile(r"(^|\s)tagDropTarget(\s|$)"))
     expect(card).to_have_attribute("data-drop-hint", _hint_add(DRAG_TAG))
 
@@ -658,7 +684,9 @@ def test_drop_outside_any_card_leaves_no_stale_highlight(
     dispatch_tag_dragover_on_url(
         page=page, data_transfer=data_transfer, utub_url_id=url_id
     )
-    expect(_card(page, url_id)).to_have_class(re.compile(r"(^|\s)tagDropTarget(\s|$)"))
+    expect(_card(page=page, url_id=url_id)).to_have_class(
+        re.compile(r"(^|\s)tagDropTarget(\s|$)")
+    )
 
     dispatch_tag_drag_event(
         page=page, data_transfer=data_transfer, event_type="drop", css_selector="body"
@@ -692,7 +720,7 @@ def test_chip_is_draggable_while_twenty_filters_are_selected(
     _login(app=app, page=page)
     for limit_tag_id in limit_tag_ids:
         apply_tag_filter_based_on_id(page=page, utub_tag_id=limit_tag_id)
-    chip_selector = get_tag_chip_selector(utub_tag_id=scene.tag_id)
+    chip_selector = get_utub_tag_filter_selector(utub_tag_id=scene.tag_id)
     chip = page.locator(chip_selector)
     expect(chip).to_have_class(re.compile(r"(^|\s)disabled(\s|$)"))
 
@@ -768,10 +796,12 @@ def test_drop_of_a_tag_the_url_already_has_server_side_shows_noop_banner(
 
     dispatch_tag_drag_and_drop(page=page, utub_tag_id=scene.tag_id, utub_url_id=url_id)
 
-    _expect_card_selected(page, url_id)
+    _expect_card_selected(page=page, url_id=url_id)
     _expect_success_banner(
-        page,
-        _noop_message(tag=DRAG_TAG, title=get_url_title(app=app, utub_url_id=url_id)),
+        page=page,
+        message=_noop_message(
+            tag=DRAG_TAG, title=get_url_title(app=app, utub_url_id=url_id)
+        ),
     )
     assert count_tags_on_url(app=app, utub_url_id=url_id) == 1
 
@@ -818,7 +848,7 @@ def test_failed_drop_shows_deck_banner_and_never_redirects(
 
     dispatch_tag_drag_and_drop(page=page, utub_tag_id=scene.tag_id, utub_url_id=url_id)
 
-    _expect_error_banner(page, expected_message)
+    _expect_error_banner(page=page, message=expected_message)
     assert page.url == url_before
     expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=0)
 
@@ -839,8 +869,8 @@ def test_drop_answered_with_404_shows_deleted_banner_and_removes_the_card(
 
     dispatch_tag_drag_and_drop(page=page, utub_tag_id=scene.tag_id, utub_url_id=url_id)
 
-    _expect_error_banner(page, "Another user has deleted this URL")
-    expect(_card(page, url_id)).to_have_count(0)
+    _expect_error_banner(page=page, message=STRINGS.URL_DELETED_BY_OTHER_USER)
+    expect(_card(page=page, url_id=url_id)).to_have_count(0)
 
 
 def test_failed_drop_after_a_successful_drop_shows_only_the_error_banner(
@@ -865,13 +895,13 @@ def test_failed_drop_after_a_successful_drop_shows_only_the_error_banner(
     # first drop so the second drop follows the success banner immediately.
     TagBatchRoute(page=page, status=500, body="", pass_through_first=1)
     dispatch_tag_drag_and_drop(page=page, utub_tag_id=scene.tag_id, utub_url_id=url_id)
-    _expect_success_banner(page, added_message)
+    _expect_success_banner(page=page, message=added_message)
 
     dispatch_tag_drag_and_drop(page=page, utub_tag_id=second_tag_id, utub_url_id=url_id)
 
-    _expect_error_banner(page, STRINGS.TAG_DROP_FAILED)
+    _expect_error_banner(page=page, message=STRINGS.TAG_DROP_FAILED)
     expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_count(0)
-    _expect_no_outcome_banner(page)
+    _expect_no_outcome_banner(page=page)
 
 
 def test_failed_drop_on_a_selected_card_still_lets_a_click_deselect_it(
@@ -891,10 +921,10 @@ def test_failed_drop_on_a_selected_card_still_lets_a_click_deselect_it(
 
     dispatch_tag_drag_and_drop(page=page, utub_tag_id=scene.tag_id, utub_url_id=url_id)
 
-    _expect_error_banner(page, "Tag limit race")
-    _expect_card_selected(page, url_id)
-    _card(page, url_id).click(position={"x": 4, "y": 4})
-    _expect_card_selected(page, url_id, selected=False)
+    _expect_error_banner(page=page, message="Tag limit race")
+    _expect_card_selected(page=page, url_id=url_id)
+    _card(page=page, url_id=url_id).click(position={"x": 4, "y": 4})
+    _expect_card_selected(page=page, url_id=url_id, selected=False)
 
 
 # --- Concurrency and source-keyed handling ---------------------------------------
@@ -930,22 +960,27 @@ def test_second_drop_while_first_is_pending_is_rejected(
     expect_no_drag_marks_left(page=page)
 
     route.expect_post_count(1)
-    _expect_card_selected(page, second_url_id, selected=False)
+    _expect_card_selected(page=page, url_id=second_url_id, selected=False)
     with page.expect_response(TAG_BATCH_URL_PATTERN):
         route.release()
 
-    _expect_card_selected(page, first_url_id)
-    _expect_card_selected(page, second_url_id, selected=False)
+    _expect_card_selected(page=page, url_id=first_url_id)
+    _expect_card_selected(page=page, url_id=second_url_id, selected=False)
     _expect_success_banner(
-        page,
-        _added_message(
+        page=page,
+        message=_added_message(
             tag=DRAG_TAG, title=get_url_title(app=app, utub_url_id=first_url_id)
         ),
     )
     expect_badge_count_on_url_row(page=page, utub_url_id=first_url_id, expected=1)
     expect_badge_count_on_url_row(page=page, utub_url_id=second_url_id, expected=0)
     route.expect_post_count(1)
-    assert count_urls_with_tag_applied_by_tag_string(app, scene.utub_id, DRAG_TAG) == 1
+    assert (
+        count_urls_with_tag_applied_by_tag_string(
+            app=app, utub_id=scene.utub_id, tag_text=DRAG_TAG
+        )
+        == 1
+    )
 
 
 def _drop_hold_and_open_combobox(
@@ -976,7 +1011,7 @@ def test_message_400_after_combobox_opened_mid_drop_uses_banner_not_combobox(
 
     route.release(status=400, body={"message": "Held message-only 400"})
 
-    _expect_error_banner(page, "Held message-only 400")
+    _expect_error_banner(page=page, message="Held message-only 400")
     card_selector = get_url_card_selector(utub_url_id=url_id)
     expect(page.locator(f"{card_selector} {HPL.TAG_COMBOBOX_MSG}")).to_have_text("")
     expect(page.locator(f"{card_selector} {HPL.INPUT_TAG_COMBOBOX}")).to_be_visible()
@@ -1047,13 +1082,13 @@ def test_utub_switch_while_drop_pending_shows_no_banner_or_selection(
     response_info.value.finished()
     settle_page_tasks(page=page)
 
-    _expect_no_outcome_banner(page)
+    _expect_no_outcome_banner(page=page)
     _expect_no_error_banner(page)
     expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(0)
     # The held request did complete as intended (200 applied it, 500 did not).
-    assert count_urls_with_tag_applied_by_tag_string(app, scene.utub_id, DRAG_TAG) == (
-        1 if status is None else 0
-    )
+    assert count_urls_with_tag_applied_by_tag_string(
+        app=app, utub_id=scene.utub_id, tag_text=DRAG_TAG
+    ) == (1 if status is None else 0)
 
 
 def test_outcome_does_not_select_dropped_card_when_another_combobox_is_open(
@@ -1073,20 +1108,20 @@ def test_outcome_does_not_select_dropped_card_when_another_combobox_is_open(
         page=page, utub_tag_id=scene.tag_id, utub_url_id=dropped_url_id
     )
     route.wait_until_held(count=1)
-    _card(page, other_url_id).click(position={"x": 4, "y": 4})
-    _expect_card_selected(page, other_url_id)
+    _card(page=page, url_id=other_url_id).click(position={"x": 4, "y": 4})
+    _expect_card_selected(page=page, url_id=other_url_id)
     open_tag_combobox(page=page, url_id=other_url_id)
 
     with page.expect_response(TAG_BATCH_URL_PATTERN):
         route.release()
 
     _expect_success_banner(
-        page,
-        _added_message(
+        page=page,
+        message=_added_message(
             tag=DRAG_TAG, title=get_url_title(app=app, utub_url_id=dropped_url_id)
         ),
     )
-    _expect_card_selected(page, dropped_url_id, selected=False)
+    _expect_card_selected(page=page, url_id=dropped_url_id, selected=False)
     expect(
         page.locator(
             f"{get_url_card_selector(utub_url_id=other_url_id)} {HPL.INPUT_TAG_COMBOBOX}"
@@ -1109,12 +1144,17 @@ def test_drop_on_card_scrolled_into_view(
     url_id = scene.url_ids[-1]
     page.set_viewport_size({"width": 1400, "height": 500})
     _login(app=app, page=page)
-    _card(page, url_id).scroll_into_view_if_needed()
+    _card(page=page, url_id=url_id).scroll_into_view_if_needed()
 
     drag_tag_onto_url(page=page, utub_tag_id=scene.tag_id, utub_url_id=url_id)
 
     expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=1)
-    assert count_urls_with_tag_applied_by_tag_string(app, scene.utub_id, DRAG_TAG) == 1
+    assert (
+        count_urls_with_tag_applied_by_tag_string(
+            app=app, utub_id=scene.utub_id, tag_text=DRAG_TAG
+        )
+        == 1
+    )
 
 
 # --- Combobox-open regression ------------------------------------------------------
@@ -1163,7 +1203,7 @@ def test_combobox_locked_403_shows_lock_banner_and_does_not_redirect(
 
     submit_staged_tags(page=page)
 
-    _expect_error_banner(page, STRINGS.UTUB_IS_LOCKED)
+    _expect_error_banner(page=page, message=STRINGS.UTUB_IS_LOCKED)
     assert page.url == url_before
 
 
@@ -1183,7 +1223,7 @@ def test_drag_styles_cursor_opacity_tint_hint_and_height(
     app = provide_app
     scene = _seed_scene(app)
     _login(app=app, page=page)
-    chip_selector = get_tag_chip_selector(utub_tag_id=scene.tag_id)
+    chip_selector = get_utub_tag_filter_selector(utub_tag_id=scene.tag_id)
     chip = page.locator(chip_selector)
     expect(chip).to_have_attribute("draggable", "true")
 
@@ -1293,7 +1333,7 @@ def test_selected_card_shows_one_distinct_ghost_pill_and_no_corner_text(
     )
     _login_with_url_selected(app=app, page=page, scene=scene, url_id=url_id)
     expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=1)
-    card = _card(page, url_id)
+    card = _card(page=page, url_id=url_id)
     tag_ids_before = card.get_attribute("data-utub-url-tag-ids")
 
     data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=scene.tag_id)
@@ -1339,7 +1379,10 @@ def test_dragenter_on_next_card_before_dragleave_on_old_keeps_new_marks(
     scene = _seed_scene(app)
     card_a_id, card_b_id = scene.url_ids[0], scene.url_ids[1]
     _login_with_url_selected(app=app, page=page, scene=scene, url_id=card_b_id)
-    card_a, card_b = _card(page, card_a_id), _card(page, card_b_id)
+    card_a, card_b = (
+        _card(page=page, url_id=card_a_id),
+        _card(page=page, url_id=card_b_id),
+    )
     selector_a = get_url_card_selector(utub_url_id=card_a_id)
     selector_b = get_url_card_selector(utub_url_id=card_b_id)
     ring = re.compile(r"(^|\s)tagDropTarget(\s|$)")
@@ -1403,7 +1446,7 @@ def test_ghost_pill_on_card_without_tags_does_not_make_the_card_flicker(
     scene = _seed_scene(app)
     url_id = scene.url_ids[0]
     _login_with_url_selected(app=app, page=page, scene=scene, url_id=url_id)
-    card = _card(page, url_id)
+    card = _card(page=page, url_id=url_id)
     wait_for_css_transitions_to_finish(locator=card)
 
     data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=scene.tag_id)
@@ -1447,7 +1490,7 @@ def test_selected_card_with_the_tag_emphasizes_the_existing_pill(
         utub_tag_id=scene.tag_id,
     )
     _login_with_url_selected(app=app, page=page, scene=scene, url_id=url_id)
-    card = _card(page, url_id)
+    card = _card(page=page, url_id=url_id)
 
     data_transfer = dispatch_tag_dragstart(page=page, utub_tag_id=scene.tag_id)
     dispatch_tag_dragover_on_url(

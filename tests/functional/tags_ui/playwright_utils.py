@@ -551,17 +551,13 @@ def dispatch_link_dragstart(*, page: Page, utub_url_id: int) -> JSHandle:
     )
 
 
-def get_tag_chip_selector(*, utub_tag_id: int) -> str:
-    return get_utub_tag_filter_selector(utub_tag_id=utub_tag_id)
-
-
 def get_url_card_selector(*, utub_url_id: int) -> str:
     return f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
 
 
 def drag_tag_onto_url(*, page: Page, utub_tag_id: int, utub_url_id: int) -> None:
     """Native drag of a Tag Deck chip onto a URL card (real browser drag)."""
-    page.locator(get_tag_chip_selector(utub_tag_id=utub_tag_id)).drag_to(
+    page.locator(get_utub_tag_filter_selector(utub_tag_id=utub_tag_id)).drag_to(
         page.locator(get_url_card_selector(utub_url_id=utub_url_id))
     )
 
@@ -570,7 +566,7 @@ def dispatch_tag_dragstart(*, page: Page, utub_tag_id: int) -> JSHandle:
     """Fire `dragstart` on a chip and return the shared `DataTransfer` handle to
     pass to the following `dispatch_tag_drag_event` calls."""
     return page.evaluate_handle(
-        _START_TAG_DRAG_JS, get_tag_chip_selector(utub_tag_id=utub_tag_id)
+        _START_TAG_DRAG_JS, get_utub_tag_filter_selector(utub_tag_id=utub_tag_id)
     )
 
 
@@ -625,7 +621,7 @@ def dispatch_tag_dragend(
         page=page,
         data_transfer=data_transfer,
         event_type="dragend",
-        css_selector=get_tag_chip_selector(utub_tag_id=utub_tag_id),
+        css_selector=get_utub_tag_filter_selector(utub_tag_id=utub_tag_id),
     )
 
 
