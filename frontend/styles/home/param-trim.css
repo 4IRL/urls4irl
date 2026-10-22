@@ -307,6 +307,17 @@
     opacity: 0.75;
 }
 
+/* Short-link clipboard fallback: the link is the thing to copy, so one click selects it all. */
+.urlOutcomeBanner .urlOutcomeBannerDetail.urlOutcomeBannerDetailSelectable {
+    user-select: all;
+    opacity: 1;
+}
+
+.urlOutcomeBannerDetailSelectable:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
 .urlOutcomeBannerActions {
     display: flex;
     flex-direction: row;

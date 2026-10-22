@@ -45,6 +45,10 @@ import {
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { createAddTagIcon } from "../cards/options/tag-btn.js";
+import {
+  hideShortLinkStatus,
+  restoreShortLinkStatus,
+} from "../cards/short-link-state.js";
 import { renderAppliedTagsForUrl } from "../tags/tag-render.js";
 import { getState, setState } from "../../../store/app-store.js";
 
@@ -893,7 +897,8 @@ export function showTagCombobox({
   urlCard.find(".urlBtnAccess").hideClass();
   disableEditingURLString(urlCard);
   urlCard.find(".urlBtnDelete").hideClass();
-  urlCard.find(".urlBtnCopy").hideClass();
+  urlCard.find(".urlBtnCopy, .urlBtnShortLink").hideClass();
+  hideShortLinkStatus(urlCard);
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
@@ -968,7 +973,8 @@ export function hideAndResetTagCombobox(urlCard: JQuery): void {
   urlCard.find(".urlBtnAccess").showClassFlex();
   enableEditingURLString(urlCard);
   urlCard.find(".urlBtnDelete").showClassFlex();
-  urlCard.find(".urlBtnCopy").showClassFlex();
+  urlCard.find(".urlBtnCopy, .urlBtnShortLink").showClassFlex();
+  restoreShortLinkStatus(urlCard);
 
   // Re-enable hovering on tags for deletion
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");

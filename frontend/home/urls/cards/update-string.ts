@@ -80,6 +80,11 @@ import {
 } from "../trim/param-trim-block.js";
 import { applyUpdatedURLString } from "./apply-url-string.js";
 import {
+  hasActiveShortLink,
+  hideShortLinkStatus,
+  restoreShortLinkStatus,
+} from "./short-link-state.js";
+import {
   clearURLOutcomeBanner,
   showReviveBanner,
   showTrimSavedBanner,
@@ -302,7 +307,8 @@ export function showUpdateURLStringForm({
   urlCard.find(".urlBtnAccess").hideClass();
   urlCard.find(".urlTagBtnCreate").hideClass();
   urlCard.find(".urlBtnDelete").hideClass();
-  urlCard.find(".urlBtnCopy").hideClass();
+  urlCard.find(".urlBtnCopy, .urlBtnShortLink").hideClass();
+  hideShortLinkStatus(urlCard);
 
   // Disable Go To URL Icon
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
@@ -422,7 +428,8 @@ export function hideAndResetUpdateURLStringForm({
       urlCard.find(".urlTagBtnCreate").showClassFlex();
     }
     urlCard.find(".urlBtnDelete").showClassFlex();
-    urlCard.find(".urlBtnCopy").showClassFlex();
+    urlCard.find(".urlBtnCopy, .urlBtnShortLink").showClassFlex();
+    restoreShortLinkStatus(urlCard);
     if (!suppressSiblingDisable) enableEditingURLTitle(urlCard);
 
     // Enable Go To URL Icon
@@ -633,6 +640,11 @@ function updateURLSuccess({
     return;
   }
 
+  // Read before applyUpdatedURLString clears the link state: an edit that changed
+  // the address removed the URL's short link, which the banners say.
+  const linkRemoved =
+    response.status !== "No change" &&
+    hasActiveShortLink({ utubUrlID: response.URL.utubUrlID });
   applyUpdatedURLString({ response, urlCard });
 
   // Panel-aware: on mobile the title form can still be open alongside this
@@ -669,6 +681,7 @@ function updateURLSuccess({
       utubUrlID: response.URL.utubUrlID,
       urlCard,
       form: URL_PARAMS_TRIMMED_FORM.URL_STRING_EDIT,
+      linkRemoved,
     });
   } else if (response.status !== "No change") {
     // A plain edit (nothing dropped) also gets an Undo banner, restoring the
@@ -678,6 +691,7 @@ function updateURLSuccess({
       utubUrlID: response.URL.utubUrlID,
       urlCard,
       previousUrlString,
+      linkRemoved,
     });
   } else {
     // Nothing actually changed server-side, so there is nothing to undo; the next
@@ -744,6 +758,8 @@ function replaceEditedCardWithRevivedURL({
   );
   if (!editedUrl)
     log("revive: edited card missing from store", { editedUtubUrlID });
+  // Read now, before the edited card goes: trashing it deleted its short link.
+  const linkRemoved = typeof editedUrl?.shortLinkExpiresAt === "string";
   const revivedUrlItem: UtubUrlItem = {
     utubUrlID: revivedUrl.utubUrlID,
     urlString: revivedUrl.urlString,
@@ -793,12 +809,14 @@ function replaceEditedCardWithRevivedURL({
       urlCard: revivedUrlCard,
       form: URL_PARAMS_TRIMMED_FORM.URL_STRING_EDIT,
       revive: { lostTagCount, lostTagNames },
+      linkRemoved,
     });
   } else {
     showReviveBanner({
       lostTagCount,
       lostTagNames,
       utubUrlID: revivedUrl.utubUrlID,
+      linkRemoved,
     });
   }
 }

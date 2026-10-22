@@ -9,6 +9,10 @@ import { deleteURLOnStale } from "./cards/get.js";
 import { applyUpdatedURLString } from "./cards/apply-url-string.js";
 import { syncEditPanelDirtyState } from "./cards/edit-panel-dirty.js";
 import {
+  announceInDeck,
+  withShortLinkRemovedSuffix,
+} from "./cards/short-link-state.js";
+import {
   type TrimSubmission,
   type UrlParamsTrimmedForm,
 } from "./trim/param-trim-block.js";
@@ -46,7 +50,6 @@ export const URL_DECK_BANNER_MOUNT: OutcomeBannerMount = {
   rootSelector: "#URLDeck",
 };
 
-const BANNER_SELECTOR = URL_DECK_BANNER_MOUNT.bannerSelector;
 const DECK_SELECTOR = URL_DECK_BANNER_MOUNT.rootSelector;
 const REQUEST_TIMEOUT_MS = 35000;
 
@@ -87,6 +90,8 @@ const TOUCH_COMPAT_MOUSE_MS = 1000;
 type MountTimers = {
   autoHideTimer: ReturnType<typeof setTimeout> | null;
   lastTouchAt: number;
+  // True for a banner shown with `autoHide: false`: it stays until dismissed.
+  autoHideDisabled: boolean;
 };
 
 // Per-mount timer state, keyed by `bannerSelector`, so banners never share a countdown.
@@ -95,7 +100,11 @@ const timersByBanner = new Map<string, MountTimers>();
 function timersFor(mount: OutcomeBannerMount): MountTimers {
   let timers = timersByBanner.get(mount.bannerSelector);
   if (timers === undefined) {
-    timers = { autoHideTimer: null, lastTouchAt: Number.NEGATIVE_INFINITY };
+    timers = {
+      autoHideTimer: null,
+      lastTouchAt: Number.NEGATIVE_INFINITY,
+      autoHideDisabled: false,
+    };
     timersByBanner.set(mount.bannerSelector, timers);
   }
   return timers;
@@ -131,8 +140,8 @@ function stopAutoHide(mount: OutcomeBannerMount): void {
   }
 }
 
-function bannerVariant(): OutcomeBannerVariant {
-  return $(BANNER_SELECTOR).hasClass("partial") ? "partial" : "success";
+function bannerVariantIn(mount: OutcomeBannerMount): OutcomeBannerVariant {
+  return $(mount.bannerSelector).hasClass("partial") ? "partial" : "success";
 }
 
 // (Re)starts the full countdown; hides without moving focus (focus can only be
@@ -149,6 +158,7 @@ function startAutoHide({
 }): void {
   stopAutoHide(mount);
   const timers = timersFor(mount);
+  if (timers.autoHideDisabled) return;
   timers.autoHideTimer = setTimeout(
     () => {
       timers.autoHideTimer = null;
@@ -188,6 +198,28 @@ function isCompatMouseEvent({
   );
 }
 
+/**
+ * Re-enables a banner's action button after the request it started settled
+ * without replacing the banner (a cancelled confirmation, a 429 or any other
+ * failure), and restarts the auto-hide countdown that may have fired and been
+ * deferred while the action was in flight. A hovered banner stays paused until
+ * the pointer leaves.
+ */
+export function rearmBannerAction({
+  mount,
+}: {
+  mount: OutcomeBannerMount;
+}): void {
+  const banner = $(mount.bannerSelector);
+  const action = banner.find(".urlOutcomeBannerAction");
+  // No action means the banner was cleared or replaced: nothing to re-arm.
+  if (action.length === 0) return;
+  action.removeAttr("aria-disabled");
+  if (!banner.is(":hover")) {
+    startAutoHide({ mount, variant: bannerVariantIn(mount) });
+  }
+}
+
 /** Hides and empties the mount's banner. Safe to call when none is showing. */
 export function clearOutcomeBanner({
   mount,
@@ -196,6 +228,8 @@ export function clearOutcomeBanner({
 }): void {
   bumpBannerToken(mount);
   stopAutoHide(mount);
+  const timers = timersByBanner.get(mount.bannerSelector);
+  if (timers !== undefined) timers.autoHideDisabled = false;
   const banner = $(mount.bannerSelector);
   if (banner.length === 0) {
     log("clearOutcomeBanner — container missing, skipped");
@@ -241,6 +275,8 @@ export function showURLOutcomeBanner({
   onAction,
   returnFocusTo,
   ariaLive,
+  autoHide,
+  detailSelectable,
 }: {
   variant: OutcomeBannerVariant;
   message: string;
@@ -250,6 +286,8 @@ export function showURLOutcomeBanner({
   onAction?: () => void;
   returnFocusTo: JQuery;
   ariaLive?: "polite" | "assertive";
+  autoHide?: boolean;
+  detailSelectable?: boolean;
 }): void {
   showOutcomeBanner({
     mount: URL_DECK_BANNER_MOUNT,
@@ -261,6 +299,8 @@ export function showURLOutcomeBanner({
     onAction,
     returnFocusTo,
     ariaLive,
+    autoHide,
+    detailSelectable,
   });
 }
 
@@ -283,6 +323,8 @@ export function showOutcomeBanner({
   onAction,
   returnFocusTo,
   ariaLive,
+  autoHide = true,
+  detailSelectable = false,
 }: {
   mount: OutcomeBannerMount;
   variant: OutcomeBannerVariant;
@@ -293,6 +335,10 @@ export function showOutcomeBanner({
   onAction?: () => void;
   returnFocusTo: JQuery;
   ariaLive?: "polite" | "assertive";
+  // false keeps the banner up until dismissed (no timer, no resume restart).
+  autoHide?: boolean;
+  // Makes the detail line a select-all, focused target (a link to copy by hand).
+  detailSelectable?: boolean;
 }): void {
   bumpBannerToken(mount);
   const banner = $(mount.bannerSelector);
@@ -300,9 +346,17 @@ export function showOutcomeBanner({
     log("showOutcomeBanner — container missing, skipped");
     return;
   }
+  stopAutoHide(mount);
+  timersFor(mount).autoHideDisabled = !autoHide;
 
+  // A focused selectable detail is described by the message, so a screen reader
+  // announces the explanation along with the link.
+  const messageId = `${mount.bannerSelector.replace(/^#/, "")}Message`;
   const body = $("<div>", { class: "urlOutcomeBannerBody" }).append(
-    $("<span>", { class: "urlOutcomeBannerMessage" }).text(message),
+    $("<span>", {
+      class: "urlOutcomeBannerMessage",
+      ...(detailSelectable ? { id: messageId } : {}),
+    }).text(message),
   );
   // Each detail line gets its own span, so a revive banner can carry the lost tags
   // and the dropped parameters on separate lines.
@@ -310,7 +364,14 @@ export function showOutcomeBanner({
   for (const detailLine of detailLines) {
     if (detailLine) {
       body.append(
-        $("<span>", { class: "urlOutcomeBannerDetail" }).text(detailLine),
+        $("<span>", {
+          class: detailSelectable
+            ? "urlOutcomeBannerDetail urlOutcomeBannerDetailSelectable"
+            : "urlOutcomeBannerDetail",
+          ...(detailSelectable
+            ? { tabindex: "-1", "aria-describedby": messageId }
+            : {}),
+        }).text(detailLine),
       );
     }
   }
@@ -364,6 +425,21 @@ export function showOutcomeBanner({
   // A banner replaced under a still-hovering pointer stays paused until the
   // pointer leaves (its pointerleave restarts the countdown).
   if (!banner.is(":hover")) startAutoHide({ mount, variant });
+  if (detailSelectable) focusAndSelectDetail(banner);
+}
+
+// Focuses the banner's selectable detail line and selects its text, so the
+// link can be copied with the platform copy shortcut.
+function focusAndSelectDetail(banner: JQuery): void {
+  const detailElement = banner.find(".urlOutcomeBannerDetailSelectable")[0];
+  if (detailElement === undefined) return;
+  detailElement.focus();
+  const selection = window.getSelection();
+  if (selection === null) return;
+  const range = document.createRange();
+  range.selectNodeContents(detailElement);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 /**
@@ -432,18 +508,7 @@ export function performUndo({
   request.fail(function (xhr: JQuery.jqXHR) {
     if (is429Handled(xhr)) {
       // The banner stays up, so let the user retry the Undo.
-      const banner = $(BANNER_SELECTOR);
-      banner.find(".urlOutcomeBannerAction").removeAttr("aria-disabled");
-      // The countdown may have fired (and been deferred) while in flight.
-      if (
-        timersFor(URL_DECK_BANNER_MOUNT).autoHideTimer === null &&
-        !banner.is(":hover")
-      ) {
-        startAutoHide({
-          mount: URL_DECK_BANNER_MOUNT,
-          variant: bannerVariant(),
-        });
-      }
+      rearmBannerAction({ mount: URL_DECK_BANNER_MOUNT });
       returnFocus(returnFocusTo);
       return;
     }
@@ -489,19 +554,26 @@ export function showURLUpdatedBanner({
   utubUrlID,
   urlCard,
   previousUrlString,
+  linkRemoved = false,
 }: {
   utubID: number;
   utubUrlID: number;
   urlCard: JQuery;
   previousUrlString: string;
+  linkRemoved?: boolean;
 }): void {
   const returnFocusTo = $(`.urlRow[utuburlid=${utubUrlID}]`).find(
     ".urlStringBtnUpdate",
   );
+  const message = withShortLinkRemovedSuffix({
+    message: APP_CONFIG.strings.URL_UPDATED_BANNER,
+    linkRemoved,
+  });
+  if (linkRemoved) announceInDeck(message);
 
   showURLOutcomeBanner({
     variant: "success",
-    message: APP_CONFIG.strings.URL_UPDATED_BANNER,
+    message,
     actionLabel: APP_CONFIG.strings.URL_TRIM_UNDO,
     onAction: () => {
       emit({ event: UI_EVENTS.UI_URL_EDIT_UNDONE });
@@ -559,14 +631,21 @@ export function showReviveBanner({
   lostTagCount,
   lostTagNames,
   utubUrlID,
+  linkRemoved = false,
 }: {
   lostTagCount: number;
   lostTagNames: readonly string[];
   utubUrlID: number;
+  linkRemoved?: boolean;
 }): void {
+  const message = withShortLinkRemovedSuffix({
+    message: buildReviveMessage({ lostTagCount }),
+    linkRemoved,
+  });
+  if (linkRemoved) announceInDeck(message);
   showURLOutcomeBanner({
     variant: lostTagCount > 0 ? "partial" : "success",
-    message: buildReviveMessage({ lostTagCount }),
+    message,
     detail: buildLostTagNamesDetail({ lostTagNames }),
     returnFocusTo: $(`.urlRow[utuburlid=${utubUrlID}]`).find(
       ".urlStringBtnUpdate",
@@ -586,6 +665,7 @@ export function showTrimSavedBanner({
   urlCard,
   form,
   revive,
+  linkRemoved = false,
 }: {
   trimSubmission: TrimSubmission;
   utubID: number;
@@ -593,6 +673,7 @@ export function showTrimSavedBanner({
   urlCard: JQuery;
   form: UrlParamsTrimmedForm;
   revive?: { lostTagCount: number; lostTagNames: readonly string[] };
+  linkRemoved?: boolean;
 }): void {
   const returnFocusTo = $(`.urlRow[utuburlid=${utubUrlID}]`).find(
     ".urlStringBtnUpdate",
@@ -606,10 +687,14 @@ export function showTrimSavedBanner({
         });
   // An add that both revived a trashed URL and trimmed params gets one banner:
   // the revive sentence leads, and lost tags make it a partial outcome.
-  const message =
-    revive === undefined
-      ? trimMessage
-      : `${buildReviveMessage(revive)} ${trimMessage}`;
+  const message = withShortLinkRemovedSuffix({
+    message:
+      revive === undefined
+        ? trimMessage
+        : `${buildReviveMessage(revive)} ${trimMessage}`,
+    linkRemoved,
+  });
+  if (linkRemoved) announceInDeck(message);
   const variant: OutcomeBannerVariant =
     revive !== undefined && revive.lostTagCount > 0 ? "partial" : "success";
   // Detail lines follow the message's sentence order: the lost tags (revive) first,

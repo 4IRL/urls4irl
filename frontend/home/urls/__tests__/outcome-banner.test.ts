@@ -906,6 +906,118 @@ describe("outcome banner", () => {
     });
   });
 
+  describe("removed short link suffix", () => {
+    const SUFFIX = "Its short link was removed.";
+
+    function message(): string {
+      return banner().find(".urlOutcomeBannerMessage").text();
+    }
+
+    function announcement(): string {
+      return $("#URLDeckOutcomeAnnouncement").text();
+    }
+
+    function showUpdated(linkRemoved?: boolean): void {
+      showURLUpdatedBanner({
+        utubID: 3,
+        utubUrlID: 42,
+        urlCard: $(".urlRow[utuburlid=42]"),
+        previousUrlString: ORIGINAL,
+        linkRemoved,
+      });
+    }
+
+    function showTrimSaved({
+      linkRemoved,
+      revive,
+    }: {
+      linkRemoved?: boolean;
+      revive?: { lostTagCount: number; lostTagNames: string[] };
+    }): void {
+      showTrimSavedBanner({
+        trimSubmission: {
+          originalUrlString: ORIGINAL,
+          droppedSegments: ["a=1"],
+          droppedCount: 1,
+        },
+        utubID: 3,
+        utubUrlID: 42,
+        urlCard: $(".urlRow[utuburlid=42]"),
+        form: URL_PARAMS_TRIMMED_FORM.URL_CREATE,
+        revive,
+        linkRemoved,
+      });
+    }
+
+    beforeEach(() => {
+      $("#URLDeck").append('<span id="URLDeckOutcomeAnnouncement"></span>');
+    });
+
+    it("adds the suffix to the URL updated banner and the deck announcement", () => {
+      showUpdated(true);
+
+      expect(message()).toBe(
+        `${APP_CONFIG.strings.URL_UPDATED_BANNER} ${SUFFIX}`,
+      );
+      expect(announcement()).toBe(message());
+    });
+
+    it("adds no suffix to the URL updated banner without a link", () => {
+      showUpdated();
+
+      expect(message()).toBe(APP_CONFIG.strings.URL_UPDATED_BANNER);
+      expect(announcement()).toBe("");
+    });
+
+    it("adds the suffix to the trim-saved banner and the announcement", () => {
+      showTrimSaved({ linkRemoved: true });
+
+      expect(message()).toBe(
+        `${APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE} ${SUFFIX}`,
+      );
+      expect(announcement()).toBe(message());
+    });
+
+    it("adds the suffix to the trim-saved revive variant", () => {
+      showTrimSaved({
+        linkRemoved: true,
+        revive: { lostTagCount: 0, lostTagNames: [] },
+      });
+
+      expect(message()).toBe(
+        `${APP_CONFIG.strings.URL_REVIVED_FROM_TRASH} ${APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE} ${SUFFIX}`,
+      );
+      expect(announcement()).toBe(message());
+    });
+
+    it("adds no suffix to the trim-saved banner without a link", () => {
+      showTrimSaved({});
+
+      expect(message()).toBe(APP_CONFIG.strings.URL_TRIM_SAVED_BANNER_ONE);
+      expect(announcement()).toBe("");
+    });
+
+    it("adds the suffix to the revive banner and the announcement", () => {
+      showReviveBanner({
+        lostTagCount: 0,
+        lostTagNames: [],
+        utubUrlID: 42,
+        linkRemoved: true,
+      });
+
+      expect(message()).toBe(
+        `${APP_CONFIG.strings.URL_REVIVED_FROM_TRASH} ${SUFFIX}`,
+      );
+      expect(announcement()).toBe(message());
+    });
+
+    it("adds no suffix to the revive banner without a link", () => {
+      showReviveBanner({ lostTagCount: 0, lostTagNames: [], utubUrlID: 42 });
+
+      expect(message()).toBe(APP_CONFIG.strings.URL_REVIVED_FROM_TRASH);
+    });
+  });
+
   describe("buildLostTagNamesDetail", () => {
     it("joins the names with a comma and space", () => {
       expect(buildLostTagNamesDetail({ lostTagNames: ["Tool", "Art"] })).toBe(
@@ -1069,6 +1181,59 @@ describe("outcome banner", () => {
       expect(banner().hasClass("hidden")).toBe(true);
       expect(banner().children()).toHaveLength(0);
       expect(document.activeElement).toBe(editButton()[0]);
+    });
+
+    it("a successful Undo drops the card's short link through the real address-edit helper", async () => {
+      const actual = await vi.importActual<
+        typeof import("../cards/apply-url-string.js")
+      >("../cards/apply-url-string.js");
+      const store = await vi.importActual<
+        typeof import("../../../store/app-store.js")
+      >("../../../store/app-store.js");
+      vi.mocked(applyUpdatedURLString).mockImplementation(
+        actual.applyUpdatedURLString,
+      );
+      store.setState({
+        urls: [
+          {
+            utubUrlID: 42,
+            urlString: ORIGINAL,
+            utubUrlTagIDs: [],
+            urlTitle: "Title",
+            canDelete: true,
+            shortLinkExpiresAt: "2026-10-27T12:00:00",
+            canRevokeShortLink: true,
+            addedAt: "2026-10-17T00:00:00",
+            addedByUserID: 1,
+          },
+        ],
+      });
+      $(".urlRow[utuburlid=42]").append(
+        '<div class="shortLinkStatusRow"><button class="shortLinkRevoke"></button></div>',
+      );
+      mockDone({
+        status: "Success",
+        URL: {
+          utubUrlID: 42,
+          urlString: ORIGINAL,
+          urlTitle: "Title",
+          urlTags: [],
+        },
+      });
+
+      try {
+        runUndo();
+
+        const stored = store.getState().urls[0];
+        expect(stored.shortLinkExpiresAt).toBeNull();
+        expect(stored.canRevokeShortLink).toBe(false);
+        expect(
+          $(".urlRow[utuburlid=42]").find(".shortLinkStatusRow"),
+        ).toHaveLength(0);
+      } finally {
+        // Back to the module mock so later tests keep their stubbed helper.
+        vi.mocked(applyUpdatedURLString).mockReset();
+      }
     });
 
     describe("edit form resync", () => {

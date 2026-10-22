@@ -137,6 +137,11 @@
     --copyURLColor: rgba(179, 102, 255, 1.0);
     --copyURLColorHover: rgba(179, 102, 255, 0.5);
     --copyURLColorBorderHover: rgba(179, 102, 255, 0.0);
+    /* Aliases of the theme-aware selection green, so the light theme (which
+       overrides --deckSelectionGreen on :root) re-resolves them on the same element. */
+    --shortLinkColor: var(--deckSelectionGreen);
+    --shortLinkColorHover: var(--deckSelectionGreenHover);
+    --shortLinkColorBorderHover: transparent;
 
     /* #aaaaaa */
     --grayBadgeSelection: rgba(170, 170, 170, 1.0);
@@ -233,6 +238,9 @@
     --light-memberOutsiderAmberTint: rgba(240, 193, 90, 0.18);
     /* Accent/focus green darkened for contrast on white surfaces. */
     --light-deckSelectionGreen: #1e8549;
+    /* Short-link button hover: a darker step of the light green, as Copy URL's hover
+       is darker than its base (the dark-theme teal hover would read lighter here). */
+    --light-shortLinkColorHover: #17683a;
     /* Create-time flash pulse start color — opaque pale mint tint on white
        (never semi-transparent; see dark-mode note above). */
     --light-urlCreateFlashBg: #dcefe4;
@@ -273,6 +281,7 @@
     --memberOutsiderAmber: var(--light-memberOutsiderAmber);
     --memberOutsiderAmberTint: var(--light-memberOutsiderAmberTint);
     --deckSelectionGreen: var(--light-deckSelectionGreen);
+    --shortLinkColorHover: var(--light-shortLinkColorHover);
     --urlCreateFlashBg: var(--light-urlCreateFlashBg);
     --urlMultiSelectedBg: var(--light-urlMultiSelectedBg);
 
@@ -313,6 +322,7 @@
         --memberOutsiderAmber: var(--light-memberOutsiderAmber);
         --memberOutsiderAmberTint: var(--light-memberOutsiderAmberTint);
         --deckSelectionGreen: var(--light-deckSelectionGreen);
+        --shortLinkColorHover: var(--light-shortLinkColorHover);
         --urlCreateFlashBg: var(--light-urlCreateFlashBg);
         --urlMultiSelectedBg: var(--light-urlMultiSelectedBg);
 

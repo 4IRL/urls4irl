@@ -65,6 +65,8 @@ export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
       ".urlTitleCancelBtnUpdate",
       ".urlTagBtnDelete",
       ".urlBtnCopy",
+      ".urlBtnShortLink",
+      ".shortLinkRevoke",
       ".goToUrlIcon",
       ".urlBtnAccess",
       ".urlBtnDelete",
