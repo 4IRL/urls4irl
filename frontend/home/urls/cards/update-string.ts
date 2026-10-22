@@ -292,11 +292,13 @@ export function showUpdateURLStringForm({
     // inside this window keeps its focus instead of having it pulled back to
     // the URL input. The URL input itself sits inside the wrapper, so it is
     // excluded: it may already be focused (mobile) and still needs select-all.
+    // Likewise, a title input focused on the consolidated mobile panel keeps it.
     if (
       urlStringInput
         .closest(".urlSchemeSelector")
         .find(":focus")
-        .not(urlStringInput).length > 0
+        .not(urlStringInput).length > 0 ||
+      urlCard.find(".urlTitleUpdate").is(":focus")
     ) {
       return;
     }
