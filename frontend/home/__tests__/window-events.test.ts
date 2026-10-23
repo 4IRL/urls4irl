@@ -38,6 +38,10 @@ const mockSetMobileUIWhenTrashSelected = vi.fn();
 const mockOpenTrash = vi.fn();
 const mockCloseTrash = vi.fn();
 const mockIsTrashOpen = vi.fn(() => false);
+const mockConsumeSettingsSelfBackClose = vi.fn(() => false);
+const mockIsSettingsSheetOpen = vi.fn(() => false);
+const mockGetSettingsSheetBaseState = vi.fn<() => unknown>(() => null);
+const mockCloseSettingsSheetFromPopstate = vi.fn();
 
 vi.mock("../../lib/config.js", () => ({
   APP_CONFIG: {
@@ -136,6 +140,15 @@ vi.mock("../tags/sheet.js", () => ({
   consumeTagSheetSelfBackClose: () => mockConsumeTagSheetSelfBackClose(),
 }));
 
+vi.mock("../panel-settings/sheet.js", () => ({
+  consumePanelSettingsSheetSelfBackClose: () =>
+    mockConsumeSettingsSelfBackClose(),
+  isSettingsSheetOpen: () => mockIsSettingsSheetOpen(),
+  getSettingsSheetBaseState: () => mockGetSettingsSheetBaseState(),
+  closeSettingsSheetFromPopstate: (...args: unknown[]) =>
+    mockCloseSettingsSheetFromPopstate(...args),
+}));
+
 const $ = window.jQuery;
 
 describe("window-events", () => {
@@ -152,6 +165,9 @@ describe("window-events", () => {
     mockGetTagSheetOriginPanel.mockReturnValue(null);
     mockConsumeTagSheetSelfBackClose.mockReturnValue(false);
     mockIsTrashOpen.mockReturnValue(false);
+    mockConsumeSettingsSelfBackClose.mockReturnValue(false);
+    mockIsSettingsSheetOpen.mockReturnValue(false);
+    mockGetSettingsSheetBaseState.mockReturnValue(null);
     popstateHandler = undefined;
     pageshowHandler = undefined;
 
@@ -190,6 +206,131 @@ describe("window-events", () => {
     beforeEach(() => {
       document.body.innerHTML = '<span id="MobilePanelAnnouncement"></span>';
       initWindowEvents();
+    });
+
+    describe("settings sheet layer", () => {
+      const BASE = { UTubID: 5, mobilePanel: "urls" };
+
+      function pop(state: unknown): void {
+        popstateHandler!(new PopStateEvent("popstate", { state }));
+      }
+
+      it("returns early on the settings self-back consume", () => {
+        mockConsumeSettingsSelfBackClose.mockReturnValue(true);
+        mockConsumeTagSheetSelfBackClose.mockReturnValue(true);
+
+        pop(null);
+
+        expect(mockConsumeTagSheetSelfBackClose).not.toHaveBeenCalled();
+        expect(mockBeginPopstateClose).not.toHaveBeenCalled();
+        expect(mockGetUTubInfo).not.toHaveBeenCalled();
+        expect(mockResetHomePageToInitialState).not.toHaveBeenCalled();
+      });
+
+      it("closes once and does nothing else when landing on the base state", () => {
+        mockIsSettingsSheetOpen.mockReturnValue(true);
+        mockGetSettingsSheetBaseState.mockReturnValue(BASE);
+
+        pop({ ...BASE });
+
+        expect(mockCloseSettingsSheetFromPopstate).toHaveBeenCalledTimes(1);
+        expect(mockBeginPopstateClose).not.toHaveBeenCalled();
+        expect(mockGetUTubInfo).not.toHaveBeenCalled();
+        expect(mockResetHomePageToInitialState).not.toHaveBeenCalled();
+        expect(mockCloseTagSheet).not.toHaveBeenCalled();
+      });
+
+      it("matches a null base with a null destination", () => {
+        mockIsSettingsSheetOpen.mockReturnValue(true);
+        mockGetSettingsSheetBaseState.mockReturnValue(null);
+
+        pop(null);
+
+        expect(mockCloseSettingsSheetFromPopstate).toHaveBeenCalledTimes(1);
+        expect(mockResetHomePageToInitialState).not.toHaveBeenCalled();
+      });
+
+      it("closes then runs the existing branch for a non-base destination", async () => {
+        mockIsSettingsSheetOpen.mockReturnValue(true);
+        mockGetSettingsSheetBaseState.mockReturnValue(BASE);
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue({ id: 9, name: "Nine" });
+
+        pop({ UTubID: 9, mobilePanel: "urls" });
+        await Promise.resolve();
+
+        expect(mockCloseSettingsSheetFromPopstate).toHaveBeenCalledTimes(1);
+        expect(mockGetUTubInfo).toHaveBeenCalledTimes(1);
+      });
+
+      it("falls through when the destination differs only in trash", () => {
+        mockIsSettingsSheetOpen.mockReturnValue(true);
+        mockGetSettingsSheetBaseState.mockReturnValue(BASE);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+        pop({ ...BASE, trash: true });
+
+        expect(mockCloseSettingsSheetFromPopstate).toHaveBeenCalledTimes(1);
+        expect(mockOpenTrash).toHaveBeenCalledWith({ fromHistory: true });
+        widthSpy.mockRestore();
+      });
+
+      it("falls through to cross-search when only the destination has crossSearch", () => {
+        mockIsSettingsSheetOpen.mockReturnValue(true);
+        mockGetSettingsSheetBaseState.mockReturnValue(BASE);
+
+        pop({ crossSearch: { query: "q", fields: [] } });
+
+        expect(mockCloseSettingsSheetFromPopstate).toHaveBeenCalledTimes(1);
+        expect(mockRestoreCrossUtubSearchFromHistory).toHaveBeenCalledTimes(1);
+      });
+
+      it("compares crossSearch by presence only", () => {
+        mockIsSettingsSheetOpen.mockReturnValue(true);
+        mockGetSettingsSheetBaseState.mockReturnValue({
+          crossSearch: { query: "a", fields: [] },
+        });
+
+        pop({ crossSearch: { query: "b", fields: [] } });
+
+        expect(mockCloseSettingsSheetFromPopstate).toHaveBeenCalledTimes(1);
+        expect(mockRestoreCrossUtubSearchFromHistory).not.toHaveBeenCalled();
+        expect(mockBeginPopstateClose).not.toHaveBeenCalled();
+      });
+
+      it("treats a non-object destination as not equal (fail closed)", () => {
+        mockIsSettingsSheetOpen.mockReturnValue(true);
+        mockGetSettingsSheetBaseState.mockReturnValue(BASE);
+
+        pop(null);
+
+        expect(mockCloseSettingsSheetFromPopstate).toHaveBeenCalledTimes(1);
+        expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+      });
+
+      it("takes the tagSheetOpen path for a keyed state while the sheet is closed", () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue({ id: 5, name: "Five" });
+
+        pop({
+          UTubID: 5,
+          mobilePanel: "urls",
+          tagSheetOpen: true,
+          panelSettingsSheetOpen: true,
+        });
+
+        expect(mockCloseSettingsSheetFromPopstate).not.toHaveBeenCalled();
+        expect(mockBeginPopstateClose).toHaveBeenCalled();
+      });
+
+      it("consumes the settings flag first and leaves the Tag flag", () => {
+        mockConsumeSettingsSelfBackClose.mockReturnValue(true);
+        mockConsumeTagSheetSelfBackClose.mockReturnValue(true);
+
+        pop(null);
+
+        expect(mockConsumeTagSheetSelfBackClose).not.toHaveBeenCalled();
+      });
     });
 
     it("resets to initial state when state is null", () => {

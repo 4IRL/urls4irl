@@ -50,6 +50,12 @@ import {
   endPopstateClose,
   consumeTagSheetSelfBackClose,
 } from "./tags/sheet.js";
+import {
+  closeSettingsSheetFromPopstate,
+  consumePanelSettingsSheetSelfBackClose,
+  getSettingsSheetBaseState,
+  isSettingsSheetOpen,
+} from "./panel-settings/sheet.js";
 import { closeTrash, isTrashOpen, openTrash } from "./trash/panel.js";
 import type { MatchedField } from "../types/search.js";
 import { debug } from "../lib/debug.js";
@@ -193,7 +199,47 @@ function resetHomeAndCloseTrash(): void {
   resetHomePageToInitialState();
 }
 
+const BASE_STATE_KEYS = ["UTubID", "mobilePanel", "tagSheetOpen", "trash"];
+
+// Fail closed: only null/null or two objects agreeing on every key
+// handlePopState reads are "the same entry". crossSearch is presence-only.
+function isSameBaseState({
+  base,
+  destination,
+}: {
+  base: unknown;
+  destination: unknown;
+}): boolean {
+  if (base === null && destination === null) return true;
+  if (
+    typeof base !== "object" ||
+    base === null ||
+    typeof destination !== "object" ||
+    destination === null
+  ) {
+    return false;
+  }
+  const baseRecord = base as Record<string, unknown>;
+  const destinationRecord = destination as Record<string, unknown>;
+  if ("crossSearch" in baseRecord !== "crossSearch" in destinationRecord) {
+    return false;
+  }
+  return BASE_STATE_KEYS.every(
+    (key) => baseRecord[key] === destinationRecord[key],
+  );
+}
+
 function handlePopState(event: PopStateEvent): void {
+  // The settings sheet is its own history layer, handled before everything
+  // else (and before the generation bump): its Back must never rebuild the
+  // UTub or touch the Tag sheet beneath it.
+  if (consumePanelSettingsSheetSelfBackClose()) return;
+  if (isSettingsSheetOpen()) {
+    const baseState = getSettingsSheetBaseState();
+    closeSettingsSheetFromPopstate();
+    if (isSameBaseState({ base: baseState, destination: event.state })) return;
+  }
+
   // A standalone tap/Escape/backdrop close of the tag sheet consumes its own
   // pushed history entry via closeTagSheet()'s default history.back(). That
   // traversal fires this popstate purely to unwind the stack — the underlying
@@ -428,6 +474,8 @@ function handlePopState(event: PopStateEvent): void {
   }
 }
 
+// The panelSettingsSheetOpen history key is ignored here on purpose: a reload
+// never reopens the sheet, and a keyed entry behaves as its base entry.
 function handlePageShow(): void {
   setUTubEventListenersOnInitialPageLoad();
   setCreateUTubEventListeners();
