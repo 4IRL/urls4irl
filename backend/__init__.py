@@ -268,8 +268,7 @@ def create_app(
     limiter.init_app(app)
 
     if production or app.config.get(CONFIG_ENVS.DEV_SERVER, False):
-        # NOTE: Handle both the nginx reverse proxy, and Cloudflare as a reverse proxy
-        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=2, x_host=2, x_prefix=2)
+        apply_proxy_fix(app)
 
     if testing:
         test_url_val = UrlValidator()
@@ -377,6 +376,22 @@ def create_app(
     init_metrics_middleware(app)
     init_vite_app(app)
     return app
+
+
+def apply_proxy_fix(app: Flask) -> None:
+    """Trust the forwarded headers of the Cloudflare -> cloudflared -> nginx chain.
+
+    Each count must equal the number of values the header actually carries, or
+    werkzeug ignores the header entirely (see ARCHITECTURE.md "Edge -> origin topology"):
+    - X-Forwarded-For has 2 values (Cloudflare's client IP, then nginx's appended
+      cloudflared address), so `x_for=2` resolves the client IP.
+    - X-Forwarded-Proto has 1 value (Cloudflare's `https`, passed through by nginx;
+      Cloudflare overwrites any client-supplied value), so `x_proto=1`. With 2,
+      every `url_for(_external=True)` URL came out `http://` (#715). If nginx ever
+      appends `$scheme` to this header, raise it to 2.
+    - Nothing sends X-Forwarded-Host or X-Forwarded-Prefix; nginx passes `Host`.
+    """
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 
 
 def add_security_headers(app: Flask):

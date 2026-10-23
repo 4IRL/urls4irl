@@ -251,6 +251,16 @@ All inter-module communication uses typed events:
 - CSP: Nonce-based inline script policy, set in `add_security_headers()`
 - Passwords: Werkzeug `pbkdf2:sha256`
 
+## Edge -> origin topology
+
+Prod: Cloudflare edge -> cloudflared tunnel (token-managed; its route is set in the Cloudflare Zero Trust dashboard; runs on the same host as nginx) -> nginx `:8000`, plain HTTP (`nginx/u4i.conf`) -> app `127.0.0.1:8659`. TLS ends at the Cloudflare edge; the origin holds no certificate, and there is no certbot automation in this repo. Dev's nginx (`nginx/dev-u4i.conf`, plain HTTP on `:80`) sets the same forwarded headers. Neither nginx config nor the tunnel route is deployed by CI: they are changed by hand on the host and in the dashboard.
+
+Forwarded headers reaching Flask, which set the `ProxyFix` counts in `apply_proxy_fix()` (`backend/__init__.py`):
+- `X-Forwarded-Proto`: 1 value, `https`, set by Cloudflare (which overwrites any client-supplied value); nginx passes it through. Hence `x_proto=1`.
+- `X-Forwarded-For`: 2 values, the client IP from Cloudflare, then nginx appending cloudflared's address. Hence `x_for=2`, which makes `request.remote_addr` (logs, rate limiting) the client IP.
+
+A count higher than the header's value count makes werkzeug ignore that header. Change the counts whenever a proxy hop is added or a proxy starts appending to a header.
+
 ## Redis DB Allocation
 
 Two separate Redis instances back the stack: a shared `redis` container for sessions and rate-limiting, and a dedicated `redis-metrics` container for the anonymous-metrics counter buffer.
