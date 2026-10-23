@@ -261,6 +261,8 @@ Forwarded headers reaching Flask, which set the `ProxyFix` counts in `apply_prox
 
 A count higher than the header's value count makes werkzeug ignore that header. Change the counts whenever a proxy hop is added or a proxy starts appending to a header.
 
+Trust boundary: nginx `:8000` listens on all interfaces and serves plain HTTP, so trusting these forwarded headers relies on `:8000` not being reachable from the internet. On prod the Hetzner Cloud Firewall and `ufw` block it, and only the local cloudflared connects. A client that reached nginx directly could forge `X-Forwarded-For` and `X-Forwarded-Proto`.
+
 ## Redis DB Allocation
 
 Two separate Redis instances back the stack: a shared `redis` container for sessions and rate-limiting, and a dedicated `redis-metrics` container for the anonymous-metrics counter buffer.
