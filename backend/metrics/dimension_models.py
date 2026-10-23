@@ -622,6 +622,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_MEMBER_SEARCH_CLOSE: _DimMemberSearchClose,
     # UI — Tags
     EventName.UI_TAG_APPLY: _DimDeviceOnly,
+    EventName.UI_TAG_APPLY_DRAG: _DimDeviceOnly,
     EventName.UI_TAG_REMOVE: _DimDeviceOnly,
     EventName.UI_TAG_CREATE_OPEN: _DimTagCreateOpen,
     EventName.UI_TAG_DELETE_OPEN: _DimTagDeleteOpen,

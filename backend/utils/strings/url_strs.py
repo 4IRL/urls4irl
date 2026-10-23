@@ -139,6 +139,7 @@ URL_TRIM_WARNING_ONE = "Warning: removing this parameter may break this link."
 # restores the previous string); a trim-and-save uses the URL_TRIM_SAVED_BANNER*
 # strings instead.
 URL_UPDATED_BANNER = "URL updated."
+URL_DELETED_BY_OTHER_USER = "Another user has deleted this URL"
 URL_TRIM_GROUP_ARIA = "URL parameters to keep or drop"
 URL_TRIM_DROP_ALL = "Drop all"
 URL_TRIM_KEEP_ALL = "Keep all"

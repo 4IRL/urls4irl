@@ -286,7 +286,7 @@ export async function updateURLTitle(
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
-      message: "Another user has deleted this URL",
+      message: APP_CONFIG.strings.URL_DELETED_BY_OTHER_USER,
     });
   }
 }

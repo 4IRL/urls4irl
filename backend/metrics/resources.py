@@ -142,6 +142,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_MEMBER_SEARCH_CLOSE: Resource.SEARCH,
     # UI — Tags
     EventName.UI_TAG_APPLY: Resource.TAG,
+    EventName.UI_TAG_APPLY_DRAG: Resource.TAG,
     EventName.UI_TAG_REMOVE: Resource.TAG,
     EventName.UI_TAG_CREATE_OPEN: Resource.TAG,
     EventName.UI_TAG_DELETE_OPEN: Resource.TAG,

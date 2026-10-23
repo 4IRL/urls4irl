@@ -272,8 +272,11 @@
 }
 
 .urlOutcomeBanner.success {
-    background: rgba(67, 199, 154, 0.12);
-    border: 1px solid var(--splashGreen);
+    background: rgba(67, 199, 154, 0.24);
+    border: 2px solid var(--splashGreen);
+    /* Theme-aware primary text (like .partial) so the message reads against the
+       green wash instead of inheriting the card-green from its host. */
+    color: var(--textPrimary);
 }
 
 .urlOutcomeBanner.partial {
@@ -353,6 +356,26 @@
 .urlOutcomeBannerAction:active {
     background-color: var(--splashGreenSolidActive);
     border-color: var(--splashGreenSolidActive);
+}
+
+/* Dismiss hover/press feedback. Scoped under .urlOutcomeBanner for specificity
+   and gated to real hover so touch never sticks. currentColor keeps the tint
+   visible in both themes. */
+.urlOutcomeBanner .urlOutcomeBannerDismiss {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out,
+        border-color 0.15s ease-in-out;
+}
+
+@media (hover: hover) {
+    .urlOutcomeBanner .urlOutcomeBannerDismiss:hover {
+        background-color: color-mix(in srgb, currentColor 18%, transparent);
+        border-color: currentColor;
+    }
+}
+
+.urlOutcomeBanner .urlOutcomeBannerDismiss:active {
+    background-color: color-mix(in srgb, currentColor 30%, transparent);
 }
 
 /* Glyph drawn here so no display string lives in TS; the label is aria-label. */

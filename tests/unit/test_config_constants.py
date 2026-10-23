@@ -202,6 +202,25 @@ def test_generate_strings_js_includes_trash_ui_strings():
         assert "1" in strings[f"{plural_key}_ONE"]
 
 
+def test_generate_strings_js_includes_tag_drop_strings():
+    """The drop hints and outcome banners are read by TS, so each is bridged."""
+    strings = generate_strings_js()
+    for key in (
+        "TAG_DROP_HINT_ADD",
+        "TAG_DROP_HINT_HAS",
+        "TAG_DROP_ADDED",
+        "TAG_DROP_NOOP",
+        "TAG_DROP_FAILED",
+    ):
+        assert key in strings, f"generate_strings_js() is missing {key}"
+        assert strings[key]
+
+    assert "{tag}" in strings["TAG_DROP_ADDED"]
+    assert "{title}" in strings["TAG_DROP_ADDED"]
+    assert "{tag}" in strings["TAG_DROP_NOOP"]
+    assert "{title}" in strings["TAG_DROP_NOOP"]
+
+
 def test_generate_strings_js_includes_mobile_panel_announcements():
     """Each mobile panel's screen-reader announcement is bridged unchanged."""
     strings = generate_strings_js()

@@ -101,6 +101,9 @@ vi.mock("../home/utubs/selection-indicator.js", () => ({
 vi.mock("../home/tags/sheet.js", () => ({
   initTagSheet: track("initTagSheet"),
 }));
+vi.mock("../home/tags/drag-drop.js", () => ({
+  initTagDragDrop: track("initTagDragDrop"),
+}));
 vi.mock("../home/urls/cards/filtering.js", () => ({
   applyDefaultDensity: track("applyDefaultDensity"),
   applyDefaultViewMode: track("applyDefaultViewMode"),
@@ -141,6 +144,14 @@ describe("main.ts init order", () => {
     expect(callOrder.indexOf("initUTubRefreshOnFocus")).toBe(
       visibilityIndex + 1,
     );
+  });
+
+  it("runs initTagDragDrop after initURLDeck and initTagSheet", () => {
+    const dragIndex = callOrder.indexOf("initTagDragDrop");
+
+    expect(dragIndex).toBeGreaterThanOrEqual(0);
+    expect(dragIndex).toBeGreaterThan(callOrder.indexOf("initURLDeck"));
+    expect(dragIndex).toBeGreaterThan(callOrder.indexOf("initTagSheet"));
   });
 
   it("runs initPanelSettings after the decks and tag sheet, before tooltips and nudges", () => {
