@@ -1,6 +1,7 @@
 from flask import Flask
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, expect
 
+from backend.utils.strings.url_strs import URL_MOVED_TO_TRASH_ONE
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_login_utils import (
     login_user_select_utub_by_name_and_url_by_string,
@@ -32,6 +33,12 @@ def click_delete_on_selected_url_and_wait_for_toast(*, page: Page) -> Locator:
     undo toast. Returns the deleted URL's row locator."""
     url_row = click_delete_on_selected_url(page=page)
     wait_until_visible_css_selector(page=page, css_selector=HPL.URL_OUTCOME_BANNER)
+    # The banner is shared with other outcomes (e.g. "Short link copied"), so it can
+    # already be visible before the delete lands. Wait for the delete's own message
+    # so the Undo that follows targets the delete toast.
+    expect(page.locator(HPL.URL_OUTCOME_BANNER_MESSAGE)).to_have_text(
+        URL_MOVED_TO_TRASH_ONE
+    )
 
     return url_row
 
