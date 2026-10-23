@@ -1,4 +1,5 @@
 import random
+import re
 from typing import Tuple
 
 import pytest
@@ -236,6 +237,62 @@ def test_delete_url_moves_to_trash_and_shows_undo_toast(
     expect(page.locator(TrashPL.SELECTOR_COUNT)).to_have_text(
         f"({init_trash_count + 1})"
     )
+
+
+def test_delete_url_focused_neighbour_does_not_look_selected(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a user, selected UTub and selected URL
+    WHEN the selected URL is deleted and focus moves programmatically to the next row
+    THEN no row is selected, and the focused neighbour shows neither the selected/focus
+        green border nor the go-to icon (it must not look selected)
+    """
+    login_user_select_utub_by_name_and_url_by_string(
+        app=provide_app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+    deck_ids = _get_deck_url_ids(page=page)
+    deleted_id = page.locator(HPL.ROW_SELECTED_URL).first.get_attribute("utuburlid")
+    assert deleted_id is not None
+    deleted_index = deck_ids.index(deleted_id)
+    neighbour_id = (
+        deck_ids[deleted_index + 1]
+        if deleted_index + 1 < len(deck_ids)
+        else deck_ids[deleted_index - 1]
+    )
+
+    url_elem_to_delete = click_delete_on_selected_url_and_wait_for_toast(page=page)
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+
+    neighbour_selector = f"{HPL.ROWS_URLS}[utuburlid='{neighbour_id}']"
+    wait_until_in_focus(page=page, css_selector=neighbour_selector)
+
+    # Park the pointer away so only focus (not hover) can style the neighbour
+    page.mouse.move(0, 0)
+
+    neighbour = page.locator(neighbour_selector)
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(0)
+    expect(neighbour).to_have_attribute("urlSelected", "false")
+    expect(neighbour).to_have_class(re.compile(r"\bswipe-focus-return\b"))
+    expect(neighbour.locator(HPL.GO_TO_URL_ICON)).to_be_hidden()
+    # Resolve the selected/focus ring tokens to computed colours via a probe element
+    ring_colors = neighbour.evaluate(
+        """el => ['--selectedUrlBorder', '--focusedUrlBorder'].map(token => {
+            const probe = document.createElement('div');
+            probe.style.borderTopColor = `var(${token})`;
+            el.appendChild(probe);
+            const color = getComputedStyle(probe).borderTopColor;
+            probe.remove();
+            return color;
+        })"""
+    )
+    for ring_color in ring_colors:
+        expect(neighbour).not_to_have_css("border-top-color", ring_color)
+        expect(neighbour).not_to_have_css("border-bottom-color", ring_color)
 
 
 def test_delete_url_undo_restores_row(page: Page, create_test_tags, provide_app: Flask):

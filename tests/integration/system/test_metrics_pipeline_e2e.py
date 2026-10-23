@@ -40,6 +40,10 @@ MULTI_EVENT_PAYLOAD: list[dict[str, object]] = [
         "dimensions": {"device_type": DeviceType.MOBILE},
     },
     {
+        "event_name": EventName.UI_TAG_APPLY_DRAG.value,
+        "dimensions": {"device_type": DeviceType.MOBILE},
+    },
+    {
         "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
         "dimensions": {"device_type": DeviceType.MOBILE},
     },
@@ -57,6 +61,7 @@ MULTI_EVENT_NAMES: frozenset[str] = frozenset(
     {
         EventName.UI_URL_COPY.value,
         EventName.UI_TAG_APPLY.value,
+        EventName.UI_TAG_APPLY_DRAG.value,
         EventName.UI_UTUB_CREATE_OPEN.value,
         EventName.UI_URL_CREATE_OPEN.value,
     }
@@ -242,6 +247,7 @@ def test_metrics_pipeline_multi_event_payload(
 
         device_only_event_names = {
             EventName.UI_TAG_APPLY.value,
+            EventName.UI_TAG_APPLY_DRAG.value,
             EventName.UI_UTUB_CREATE_OPEN.value,
             EventName.UI_URL_CREATE_OPEN.value,
         }

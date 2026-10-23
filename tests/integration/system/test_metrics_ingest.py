@@ -362,6 +362,35 @@ def test_ingest_rejects_unknown_dimension_key(
     assert count_counter_keys(provide_metrics_redis, EventName.UI_FORM_SUBMIT) == 0
 
 
+def test_ingest_rejects_extra_dimension_on_tag_apply_drag(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a ui_tag_apply_drag event carrying a dimension beyond device_type
+    WHEN POSTing
+    THEN the response is 400 and no counter is incremented.
+    """
+    response = client.post(
+        INGEST_URL,
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_TAG_APPLY_DRAG.value,
+                    "dimensions": {"plan": "free"},
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.get_json()[STD_JSON.ERROR_CODE] == MetricsErrorCodes.INVALID_FORM_INPUT
+    )
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_TAG_APPLY_DRAG) == 0
+
+
 def test_ingest_rejects_unknown_dimension_value(
     metrics_enabled_app: Flask,
     client: FlaskClient,

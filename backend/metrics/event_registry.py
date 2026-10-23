@@ -531,7 +531,11 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         dimensions={"target": ("members",)},
     ),
     EventName.UI_TAG_APPLY: EventRegistryEntry(
-        description="Tag applied from picker",
+        description="Tag applied from the Add Tag combobox",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_TAG_APPLY_DRAG: EventRegistryEntry(
+        description="Tag applied by drag-drop",
         category=EventCategory.UI,
     ),
     EventName.UI_TAG_REMOVE: EventRegistryEntry(
