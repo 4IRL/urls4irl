@@ -41,6 +41,8 @@ function makeUrl(utubUrlID: number, utubUrlTagIDs: number[]): UtubUrlItem {
     urlTitle: `Example ${utubUrlID}`,
     utubUrlTagIDs,
     canDelete: true,
+    shortLinkExpiresAt: null,
+    canRevokeShortLink: false,
     addedAt: "2024-01-01T00:00:00+00:00",
     addedByUserID: 1,
   };

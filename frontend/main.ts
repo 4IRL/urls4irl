@@ -33,6 +33,7 @@ import { initSwipe } from "./home/urls/cards/swipe.js";
 import { initURLOutcomeBannerLifecycle } from "./home/urls/outcome-banner.js";
 import { initURLDeckHeaderFit } from "./home/utubs/header-fit.js";
 import { initUTubRefreshOnFocus } from "./home/utubs/refresh-on-focus.js";
+import { initUTubSelectionIndicator } from "./home/utubs/selection-indicator.js";
 import { initTagSheet } from "./home/tags/sheet.js";
 import { initTagDragDrop } from "./home/tags/drag-drop.js";
 import {
@@ -43,6 +44,7 @@ import "./home/members/deck.js";
 import "./home/tags/deck.js";
 import { initTransferPicker } from "./home/members/transfer-picker.js";
 import { initOnboardingNudges } from "./home/onboarding/nudges.js";
+import { initPanelSettings } from "./home/panel-settings/index.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
 import { initTrashPanel } from "./home/trash/panel.js";
@@ -68,6 +70,9 @@ $(document).ready(() => {
   initMobileLayout();
   initCollapsibleDecks();
   initTagSheet();
+  // After the decks/sheet (it listens for their collapse events) and before
+  // initTooltips()/initOnboardingNudges(), which must see the gear states.
+  initPanelSettings();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
   setUTubEventListenersOnInitialPageLoad();
@@ -87,6 +92,7 @@ $(document).ready(() => {
   initSwipe();
   initURLOutcomeBannerLifecycle();
   initURLDeckHeaderFit();
+  initUTubSelectionIndicator();
   initCookieBanner();
   initMetricsClient();
   // Before initOnboardingNudges(): the nudge anchors are deliberately excluded

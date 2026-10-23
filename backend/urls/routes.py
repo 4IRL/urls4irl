@@ -1,6 +1,7 @@
 from flask import Blueprint
 from flask_login import current_user
 
+from backend import limiter
 from backend.api_common.auth_decorators import (
     email_validation_required,
     url_adder_or_manager_required,
@@ -20,6 +21,10 @@ from backend.schemas.requests.urls import (
     UpdateURLStringRequest,
     UpdateURLTitleRequest,
 )
+from backend.schemas.short_links import (
+    ShortLinkResponseSchema,
+    ShortLinkRevokedResponseSchema,
+)
 from backend.schemas.trash import (
     UrlPurgedResponseSchema,
     UrlRestoredResponseSchema,
@@ -33,6 +38,12 @@ from backend.schemas.urls import (
     UrlReadResponseSchema,
     UrlTitleUpdatedResponseSchema,
     UrlUpdatedResponseSchema,
+)
+from backend.short_links.constants import SHORT_LINK_MINT_RATE_LIMIT
+from backend.short_links.rate_limit import short_link_mint_rate_key
+from backend.short_links.services.mint_short_link import mint_short_link_for_utub_url
+from backend.short_links.services.revoke_short_link import (
+    revoke_short_link_for_utub_url,
 )
 from backend.urls.constants import URLErrorCodes
 from backend.urls.services.copy_urls import copy_urls_into_utubs
@@ -387,6 +398,79 @@ def restore_urls(
         utub_id=utub_id,
         utub_url_ids=restore_urls_request.utubUrlIds,
         current_user_id=current_user.id,
+    )
+
+
+@urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/short-link", methods=["POST"])
+@utub_membership_with_valid_url_in_utub_required
+@api_route(
+    response_schema=ShortLinkResponseSchema,
+    tags=[OPEN_API.URLS],
+    description=(
+        "Get the share short link for a UTub URL, making one when none is active. "
+        "An active link is reused unchanged (created false); links expire 7 days "
+        "after they are made."
+    ),
+    status_codes={
+        200: ShortLinkResponseSchema,
+        403: ErrorResponse,
+        404: ErrorResponse,
+        429: ErrorResponse,
+        500: ErrorResponse,
+    },
+)
+@limiter.limit(SHORT_LINK_MINT_RATE_LIMIT, key_func=short_link_mint_rate_key)
+def mint_short_link(
+    utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
+) -> FlaskResponse:
+    """
+    Any UTub member wants a share short link for a URL. Returns the active link, or
+    makes one (replacing an expired link). Refused while the UTub is admin-locked.
+
+    Args:
+        utub_id (int): The UTub containing the URL
+        utub_url_id (int): The UtubUrl to get a short link for
+        current_utub (Utubs): The UTub for this request (membership already proved)
+        current_utub_url (Utub_Urls): The live URL (route guard)
+    """
+    return mint_short_link_for_utub_url(
+        current_utub=current_utub, current_utub_url=current_utub_url
+    )
+
+
+@urls.route(
+    "/utubs/<int:utub_id>/urls/<int:utub_url_id>/short-link", methods=["DELETE"]
+)
+@utub_membership_with_valid_url_in_utub_required
+@api_route(
+    response_schema=ShortLinkRevokedResponseSchema,
+    tags=[OPEN_API.URLS],
+    description=(
+        "Revoke a UTub URL's share short link (owner, co-owner, the URL's adder or "
+        "the member who made the link). Allowed while the UTub is locked."
+    ),
+    status_codes={
+        200: ShortLinkRevokedResponseSchema,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def revoke_short_link(
+    utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
+) -> FlaskResponse:
+    """
+    User wants to revoke a URL's share short link. The permission check (managers,
+    the URL's adder, or the minter) lives in the service because the route guard does
+    not know the minter.
+
+    Args:
+        utub_id (int): The UTub containing the URL
+        utub_url_id (int): The UtubUrl whose short link is revoked
+        current_utub (Utubs): The UTub for this request (membership already proved)
+        current_utub_url (Utub_Urls): The live URL (route guard)
+    """
+    return revoke_short_link_for_utub_url(
+        current_utub=current_utub, current_utub_url=current_utub_url
     )
 
 

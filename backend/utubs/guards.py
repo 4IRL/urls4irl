@@ -94,6 +94,29 @@ def lock_utub_for_update(*, utub_id: int) -> Utubs | None:
     return utub
 
 
+def lock_live_utub_or_abort(*, utub_id: int) -> Utubs:
+    """Take the per-UTub row lock for a writer that already passed its route guard.
+
+    For URL trash and address-edit writers: they lock ``Utubs`` before any
+    ``UtubUrls`` row so they take the same order as the short-link mint
+    (``Utubs`` -> ``UtubUrls`` -> ``ShortLinks``) and cannot deadlock with it. Unlike
+    ``lock_and_reauthorize`` this does not re-check membership or role; the route
+    decorators did that.
+
+    Args:
+        utub_id (int): ID of the UTub to lock.
+
+    Returns:
+        The locked, refreshed ``Utubs`` row. Aborts 404 (after rolling back) when it
+        is gone or was trashed concurrently.
+    """
+    utub: Utubs | None = lock_utub_for_update(utub_id=utub_id)
+    if utub is None or utub.is_trashed:
+        db.session.rollback()
+        abort(404)
+    return utub
+
+
 def get_fresh_membership(*, utub_id: int, user_id: int) -> Utub_Members | None:
     """Re-read a membership row, bypassing the identity-map shortcut.
 
@@ -105,6 +128,23 @@ def get_fresh_membership(*, utub_id: int, user_id: int) -> Utub_Members | None:
         The refreshed membership, or None if it was deleted concurrently.
     """
     return Utub_Members.query.populate_existing().get((utub_id, user_id))
+
+
+def get_utub_member_ids(*, utub_id: int) -> set[int]:
+    """Return the user ids of every member of a UTub.
+
+    Args:
+        utub_id (int): ID of the UTub.
+
+    Returns:
+        The set of member user ids.
+    """
+    return {
+        member_id
+        for (member_id,) in db.session.query(Utub_Members.user_id).filter(
+            Utub_Members.utub_id == utub_id
+        )
+    }
 
 
 def lock_and_reauthorize(

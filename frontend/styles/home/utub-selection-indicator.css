@@ -1,0 +1,108 @@
+/* Selection indicator overlay for the UTub menu. Positioned and sized by
+   frontend/home/utubs/selection-indicator.ts (inline translateY + height);
+   it only ever changes transform and opacity. */
+
+#UTubDeckContent {
+    position: relative;
+}
+
+#UTubDeck .utubSelectionIndicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+}
+
+#UTubDeck .utubSelectionIndicator.isVisible {
+    opacity: 1;
+}
+
+#UTubDeck .utubSelectionBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 0;
+    transform-origin: 0 0;
+    background: var(--deckSelectionGreen);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--deckSelectionGreen) 55%, transparent);
+}
+
+#UTubDeck .utubSelectionShimmerClip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+}
+
+#UTubDeck .utubSelectionShimmer {
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--deckSelectionGreen) 22%, transparent),
+        transparent
+    );
+}
+
+/* The shimmer loop runs only while the JS adds isIdle (selected, settled,
+   deck and left panel expanded, tab visible). The clip's fade-in is declared
+   only here, so removing isIdle drops the opacity with no fade-out. */
+#UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmerClip {
+    opacity: 1;
+    transition: opacity 300ms;
+}
+
+#UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmer {
+    animation: utubSelectionShimmer 3600ms ease-in-out infinite;
+}
+
+@keyframes utubSelectionShimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    55%,
+    100% {
+        transform: translateX(260%);
+    }
+}
+
+/* The stretch itself is skipped in JS (matchMedia at call time); this keeps
+   any CSS transition and the shimmer off the indicator as well. The isIdle
+   selectors match the specificity of the rules above. */
+@media (prefers-reduced-motion: reduce) {
+    #UTubDeck .utubSelectionIndicator,
+    #UTubDeck .utubSelectionBar,
+    #UTubDeck .utubSelectionShimmerClip,
+    #UTubDeck .utubSelectionShimmer,
+    #UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmerClip,
+    #UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmer {
+        transition: none;
+        animation: none;
+    }
+
+    /* No frozen band: the clip stays transparent while idle. */
+    #UTubDeck .utubSelectionIndicator.isIdle .utubSelectionShimmerClip {
+        opacity: 0;
+    }
+}
+
+@media (forced-colors: active) {
+    #UTubDeck .utubSelectionBar {
+        background: Highlight;
+        forced-color-adjust: none;
+        box-shadow: none;
+    }
+
+    #UTubDeck .utubSelectionShimmerClip {
+        display: none;
+    }
+}

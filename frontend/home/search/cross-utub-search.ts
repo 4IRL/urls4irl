@@ -15,6 +15,7 @@ import {
 import { AppEvents, emit as emitBusEvent, on } from "../../lib/event-bus.js";
 import { getState } from "../../store/app-store.js";
 import { setSearchModeActive } from "../left-panel-toggle.js";
+import { isPanelSettingsOpen } from "../panel-settings/state.js";
 import {
   isMobile,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
@@ -759,6 +760,7 @@ export function initCrossUtubSearch(): void {
       if (event.key !== KEYS.ESCAPE) return;
       if (!_searchModeActive) return;
       if ($(".modal.show").length > 0) return;
+      if (isPanelSettingsOpen()) return;
       exitCrossUtubSearchMode({
         trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.ESCAPE_KEY,
       });

@@ -28,6 +28,7 @@ from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     force_next_patch_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
+    wait_for_css_transitions_to_finish,
     wait_then_click_element,
     wait_until_css_property,
     wait_until_hidden,
@@ -62,6 +63,9 @@ def _submit_confirm_modal(*, page: Page) -> None:
         css_property="opacity",
         expected_value="1",
     )
+    # opacity==1 can be read a tick before Bootstrap clears its transitioning flag;
+    # wait for every transition on the modal and its dialog to finish as well.
+    wait_for_css_transitions_to_finish(locator=page.locator(HPL.HOME_MODAL))
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
 

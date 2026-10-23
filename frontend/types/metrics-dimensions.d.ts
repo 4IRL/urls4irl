@@ -54,6 +54,11 @@ export type DimUrlCopy = {
   result: "success" | "failure";
 };
 
+export type DimShortLinkCopy = {
+  device_type: DeviceType;
+  result: "success" | "fallback" | "failure";
+};
+
 export type DimUrlParamsTrimmed = {
   device_type: DeviceType;
   form: "url_create" | "url_string_edit";
@@ -245,6 +250,7 @@ export type UIEventDimensions = {
   ui_url_title_edit_open: DimDeviceOnly;
   ui_url_string_edit_open: DimDeviceOnly;
   ui_url_copy: DimUrlCopy;
+  ui_short_link_copy: DimShortLinkCopy;
   ui_url_access_warning: DimDeviceOnly;
   ui_url_access_warning_dismiss: DimDeviceOnly;
   ui_url_params_trimmed: DimUrlParamsTrimmed;

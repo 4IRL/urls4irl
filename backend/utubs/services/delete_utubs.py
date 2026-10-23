@@ -7,6 +7,7 @@ from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.models.utubs import Utubs
 from backend.schemas.utubs import UtubDeletedResponseSchema
+from backend.short_links.services.kill_short_links import delete_short_links_for_utub
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.utub_strs import UTUB_SUCCESS
 from backend.utubs.constants import UTubErrorCodes
@@ -44,6 +45,11 @@ def delete_utub_for_user(current_utub: Utubs) -> FlaskResponse:
     # earlier deletion's deleted_at / deleted_by.
     current_utub.deleted_at = utc_now()
     current_utub.deleted_by = current_user.id
+    # Flush the trash UPDATE first (it takes the row lock that serializes against a
+    # concurrent mint), then drop the share links of every URL in the UTub. A restore
+    # never brings them back.
+    db.session.flush()
+    delete_short_links_for_utub(utub_id=utub_id)
     db.session.commit()
 
     safe_add_many_logs(

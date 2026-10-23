@@ -95,6 +95,9 @@ vi.mock("../home/urls/cards/swipe.js", () => ({
 vi.mock("../home/utubs/header-fit.js", () => ({
   initURLDeckHeaderFit: track("initURLDeckHeaderFit"),
 }));
+vi.mock("../home/utubs/selection-indicator.js", () => ({
+  initUTubSelectionIndicator: track("initUTubSelectionIndicator"),
+}));
 vi.mock("../home/tags/sheet.js", () => ({
   initTagSheet: track("initTagSheet"),
 }));
@@ -110,6 +113,9 @@ vi.mock("../home/members/transfer-picker.js", () => ({
 }));
 vi.mock("../home/onboarding/nudges.js", () => ({
   initOnboardingNudges: track("initOnboardingNudges"),
+}));
+vi.mock("../home/panel-settings/index.js", () => ({
+  initPanelSettings: track("initPanelSettings"),
 }));
 vi.mock("../home/utubs/refresh-on-focus.js", () => ({
   initUTubRefreshOnFocus: track("initUTubRefreshOnFocus"),
@@ -146,5 +152,20 @@ describe("main.ts init order", () => {
     expect(dragIndex).toBeGreaterThanOrEqual(0);
     expect(dragIndex).toBeGreaterThan(callOrder.indexOf("initURLDeck"));
     expect(dragIndex).toBeGreaterThan(callOrder.indexOf("initTagSheet"));
+  });
+
+  it("runs initPanelSettings after the decks and tag sheet, before tooltips and nudges", () => {
+    const panelSettingsIndex = callOrder.indexOf("initPanelSettings");
+
+    expect(panelSettingsIndex).toBeGreaterThan(
+      callOrder.indexOf("initCollapsibleDecks"),
+    );
+    expect(panelSettingsIndex).toBeGreaterThan(
+      callOrder.indexOf("initTagSheet"),
+    );
+    expect(panelSettingsIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
+    expect(panelSettingsIndex).toBeLessThan(
+      callOrder.indexOf("initOnboardingNudges"),
+    );
   });
 });

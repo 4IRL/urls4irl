@@ -271,7 +271,7 @@ def test_create_utub_name_similar(page: Page, create_test_utubs, provide_app: Fl
     # Extract name of a pre-existing UTub
     utub_selectors = wait_then_get_elements(page=page, css_selector=HPL.SELECTORS_UTUB)
     first_utub_selector = utub_selectors[0]
-    utub_name = first_utub_selector.inner_text()
+    utub_name = first_utub_selector.locator(HPL.SELECTORS_UTUB_NAME).inner_text()
 
     # Attempt to add a new UTub with the same name
     create_utub(page=page, utub_name=utub_name, utub_description=MOCK_UTUB_DESCRIPTION)

@@ -3235,6 +3235,38 @@
       "templates": []
     },
     {
+      "blueprint": "short_links",
+      "decorators": [
+        "api_route",
+        "limiter.limit(SHORT_LINK_RESOLVE_RATE_LIMIT)"
+      ],
+      "endpoint": "short_links.resolve_short_link",
+      "handler": "backend/short_links/routes.py:resolve_short_link",
+      "js": {
+        "indirect": null,
+        "no_js": "public-share-link",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/s/<code>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": null,
+        "status_codes": {
+          "200": "backend.schemas.base.HtmlErrorPageSchema",
+          "404": "backend.schemas.base.HtmlErrorPageSchema"
+        }
+      },
+      "services": [
+        "backend.short_links.services.resolve_short_link:find_live_destination"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "search",
       "decorators": [
         "email_validation_required",
@@ -4481,6 +4513,79 @@
       },
       "services": [
         "backend.urls.services.trash_urls:restore_trashed_url"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "utub_membership_with_valid_url_in_utub_required",
+        "api_route"
+      ],
+      "endpoint": "urls.revoke_short_link",
+      "handler": "backend/urls/routes.py:revoke_short_link",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "revokeShortLink"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/short-link",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.short_links.ShortLinkRevokedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.short_links.ShortLinkRevokedResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.short_links.services.revoke_short_link:revoke_short_link_for_utub_url"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "urls",
+      "decorators": [
+        "utub_membership_with_valid_url_in_utub_required",
+        "api_route",
+        "limiter.limit(SHORT_LINK_MINT_RATE_LIMIT, key_func=short_link_mint_rate_key)"
+      ],
+      "endpoint": "urls.mint_short_link",
+      "handler": "backend/urls/routes.py:mint_short_link",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "mintShortLink"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/urls/<int:utub_url_id>/short-link",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.short_links.ShortLinkResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.short_links.ShortLinkResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse",
+          "500": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.short_links.services.mint_short_link:mint_short_link_for_utub_url"
       ],
       "templates": []
     },

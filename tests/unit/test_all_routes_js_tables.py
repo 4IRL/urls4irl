@@ -41,6 +41,8 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "restoreURL": "/utubs/-1/urls/-2/restore",
     "restoreURLs": "/utubs/-1/urls/restore",
     "purgeURL": "/utubs/-1/urls/-2/purge",
+    "mintShortLink": "/utubs/-1/urls/-2/short-link",
+    "revokeShortLink": "/utubs/-1/urls/-2/short-link",
     # UTub URL Tag routes
     "createURLTag": "/utubs/-1/urls/-2/tags",
     "createURLTagsBatch": "/utubs/-1/urls/-2/tags/batch",

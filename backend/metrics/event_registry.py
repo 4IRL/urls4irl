@@ -134,6 +134,18 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="URL click-through (distinct from list)",
         category=EventCategory.DOMAIN,
     ),
+    EventName.SHORT_LINK_MINTED: EventRegistryEntry(
+        description="Share short link created for a UTub URL (not a reuse of an active link)",
+        category=EventCategory.DOMAIN,
+    ),
+    EventName.SHORT_LINK_RESOLVED: EventRegistryEntry(
+        description="Share short link opened and its confirmation page shown (live link only)",
+        category=EventCategory.DOMAIN,
+    ),
+    EventName.SHORT_LINK_REVOKED: EventRegistryEntry(
+        description="Share short link revoked by a UTub member",
+        category=EventCategory.DOMAIN,
+    ),
     EventName.TAG_APPLIED: EventRegistryEntry(
         description="Tag added to a URL",
         category=EventCategory.DOMAIN,
@@ -415,6 +427,11 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="URL copied to clipboard",
         category=EventCategory.UI,
         dimensions={"result": ("success", "failure")},
+    ),
+    EventName.UI_SHORT_LINK_COPY: EventRegistryEntry(
+        description="Short link copy attempted from the URL card",
+        category=EventCategory.UI,
+        dimensions={"result": ("success", "fallback", "failure")},
     ),
     EventName.UI_URL_ACCESS_WARNING: EventRegistryEntry(
         description="Non-HTTP URL warning modal shown",

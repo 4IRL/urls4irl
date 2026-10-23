@@ -565,6 +565,8 @@ def test_get_valid_utub_with_members_urls_no_tags(
             MODELS.URL_TITLE: url.url_title,
             "addedAt": url.added_at.isoformat(),
             MODELS.ADDED_BY: url.user_id,
+            MODELS.SHORT_LINK_EXPIRES_AT: None,
+            MODELS.CAN_REVOKE_SHORT_LINK: False,
         }
         assert url_dict in response_json[MODELS.URLS]
 
@@ -769,6 +771,8 @@ def test_get_valid_utub_with_members_urls_tags(
             MODELS.URL_TITLE: f"This is {url_string}",
             "addedAt": url.added_at.isoformat(),
             MODELS.ADDED_BY: url.user_id,
+            MODELS.SHORT_LINK_EXPIRES_AT: None,
+            MODELS.CAN_REVOKE_SHORT_LINK: False,
         }
         assert url_dict in response_json[MODELS.URLS]
 

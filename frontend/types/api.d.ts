@@ -1047,6 +1047,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/s/{code}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Public share-link landing page. Shows a confirmation page (200) with the destination and a Continue link for a live link, never a redirect. Every dead, malformed, expired, trashed or locked code returns the same 404 page. */
+    get: operations["resolveShortLink"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/register": {
     parameters: {
       query?: never;
@@ -1384,6 +1401,24 @@ export interface paths {
     /** @description Restore many trashed URLs of one UTub in place */
     post: operations["restoreUrls"];
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/utubs/{utub_id}/urls/{utub_url_id}/short-link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Get the share short link for a UTub URL, making one when none is active. An active link is reused unchanged (created false); links expire 7 days after they are made. */
+    post: operations["mintShortLink"];
+    /** @description Revoke a UTub URL's share short link (owner, co-owner, the URL's adder or the member who made the link). Allowed while the UTub is locked. */
+    delete: operations["revokeShortLink"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2406,6 +2441,10 @@ export interface components {
       addedAt: string;
       /** @description User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list) */
       addedByUserID: number;
+      /** @description Expiry of the URL's active share short link; null when there is no link or it has expired */
+      shortLinkExpiresAt: string | null;
+      /** @description Whether the current user can revoke the URL's active share short link; false when there is no active link */
+      canRevokeShortLink: boolean;
     };
     /** @description Settings for the UTub panel (no settings yet). */
     UtubsSettings: Record<string, never>;
@@ -2530,6 +2569,7 @@ export interface components {
         | "ui_url_title_edit_open"
         | "ui_url_string_edit_open"
         | "ui_url_copy"
+        | "ui_short_link_copy"
         | "ui_url_access_warning"
         | "ui_url_access_warning_dismiss"
         | "ui_url_params_trimmed"
@@ -3066,6 +3106,11 @@ export interface components {
       /** @description Zero-filled per-bucket percentile series in chronological order. */
       buckets: components["schemas"]["LatencyTimeseriesBucket"][];
     };
+    /**
+     * @description Documents an HTML page render (not a JSON body) returned for an
+     *     error/reject state.
+     */
+    HtmlErrorPageSchema: Record<string, never>;
     RegisterRequest: {
       /**
        * @description Username for the new account
@@ -3168,11 +3213,6 @@ export interface components {
     ForgotPasswordErrorCodes: 1 | 3;
     /** @description Documents a bare 302 redirect with no JSON body. */
     EmptyRedirectSchema: Record<string, never>;
-    /**
-     * @description Documents an HTML page render (not a JSON body) returned for an
-     *     error/reject state.
-     */
-    HtmlErrorPageSchema: Record<string, never>;
     ConfirmLinkRequest: {
       /** @description Password of the existing account that owns the colliding email, re-authenticated before the pending OAuth identity is linked */
       password: string;
@@ -3381,6 +3421,25 @@ export interface components {
       totalRestored: number;
       /** @description Number of requested URLs skipped */
       totalSkipped: number;
+    };
+    /** @description An active share short link for one UTub URL (just created, or reused). */
+    ShortLinkResponseSchema: {
+      /** @description Absolute share URL (https://<host>/s/<code>) */
+      shortUrl: string;
+      /**
+       * Format: date-time
+       * @description UTC ISO-8601 timestamp after which the link stops working
+       */
+      expiresAt: string;
+      /** @description Whether the current user may revoke this link */
+      canRevoke: boolean;
+      /** @description True when this request made the link, false when an active one was reused */
+      created: boolean;
+    };
+    /** @description A short link revoked (hard-deleted). */
+    ShortLinkRevokedResponseSchema: {
+      /** @description ID of the UTub-URL whose short link was revoked */
+      utubUrlID: number;
     };
     /** @description A trashed URL permanently deleted. Live tag counts are unaffected: trashed rows never count. */
     UrlPurgedResponseSchema: {
@@ -7432,6 +7491,9 @@ export interface operations {
           | "password_reset_requested"
           | "register_rejected"
           | "register_success"
+          | "short_link_minted"
+          | "short_link_resolved"
+          | "short_link_revoked"
           | "tag_applied"
           | "tags_applied_batch"
           | "tags_applied_multi_url"
@@ -7474,6 +7536,7 @@ export interface operations {
           | "ui_url_title_edit_open"
           | "ui_url_string_edit_open"
           | "ui_url_copy"
+          | "ui_short_link_copy"
           | "ui_url_access_warning"
           | "ui_url_access_warning_dismiss"
           | "ui_url_params_trimmed"
@@ -7679,6 +7742,9 @@ export interface operations {
           | "password_reset_requested"
           | "register_rejected"
           | "register_success"
+          | "short_link_minted"
+          | "short_link_resolved"
+          | "short_link_revoked"
           | "tag_applied"
           | "tags_applied_batch"
           | "tags_applied_multi_url"
@@ -7721,6 +7787,7 @@ export interface operations {
           | "ui_url_title_edit_open"
           | "ui_url_string_edit_open"
           | "ui_url_copy"
+          | "ui_short_link_copy"
           | "ui_url_access_warning"
           | "ui_url_access_warning_dismiss"
           | "ui_url_params_trimmed"
@@ -8134,6 +8201,40 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  resolveShortLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        code: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
         };
       };
     };
@@ -9094,6 +9195,108 @@ export interface operations {
       };
       /** @description Forbidden */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  mintShortLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description An active share short link for one UTub URL (just created, or reused). */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["ShortLinkResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  revokeShortLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description A short link revoked (hard-deleted). */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["ShortLinkRevokedResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

@@ -25,6 +25,10 @@ import {
   isURLEditFormOpen,
   restoreURLTagsIfNotEditing,
 } from "./utils.js";
+import {
+  hideShortLinkStatus,
+  restoreShortLinkStatus,
+} from "./short-link-state.js";
 import { hideAndResetTagCombobox } from "../tags/combobox.js";
 import { hideAndResetUpdateURLStringForm } from "./update-string.js";
 import { isMobile, isCoarsePointer } from "../../mobile.js";
@@ -130,6 +134,7 @@ export function showUpdateURLTitleForm({
   // under them (mirrors the string form).
   hideURLTags({ urlCard });
   urlCard.find(".urlTagBtnCreate").hideClass();
+  hideShortLinkStatus(urlCard);
 
   disableClickOnSelectedURLCardToHide(urlCard);
 }
@@ -157,6 +162,8 @@ export function hideAndResetUpdateURLTitleForm({
       urlCard.find(".urlTagBtnCreate").showClassFlex();
     }
     restoreURLTagsIfNotEditing({ urlCard });
+    // A no-op while the string form is still open (mobile panel).
+    restoreShortLinkStatus(urlCard);
   }
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
 

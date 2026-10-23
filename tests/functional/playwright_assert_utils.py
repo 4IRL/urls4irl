@@ -260,7 +260,7 @@ def assert_active_utub(*, page: Page, utub_name: str) -> None:
     selected_utub = page.locator(HPL.SELECTOR_SELECTED_UTUB).first
     expect(selected_utub).to_be_visible()
     expect(selected_utub).to_have_class(re.compile(r"(^|\s)active(\s|$)"))
-    expect(selected_utub).to_have_text(utub_name)
+    expect(selected_utub.locator(HPL.SELECTORS_UTUB_NAME)).to_have_text(utub_name)
 
     url_deck_header = page.locator(HPL.HEADER_URL_DECK).first
     expect(url_deck_header).to_be_visible()

@@ -30,6 +30,7 @@ vi.mock("../../cards/selection.js", () => ({
 }));
 
 vi.mock("../../cards/utils.js", () => ({
+  isURLEditFormOpen: vi.fn(() => false),
   disableEditingURLString: vi.fn(),
   disableEditingURLTitle: vi.fn(),
   enableEditingURLString: vi.fn(),

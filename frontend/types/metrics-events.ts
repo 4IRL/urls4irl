@@ -22,6 +22,7 @@ export const UI_EVENTS = {
   UI_URL_TITLE_EDIT_OPEN: "ui_url_title_edit_open",
   UI_URL_STRING_EDIT_OPEN: "ui_url_string_edit_open",
   UI_URL_COPY: "ui_url_copy",
+  UI_SHORT_LINK_COPY: "ui_short_link_copy",
   UI_URL_ACCESS_WARNING: "ui_url_access_warning",
   UI_URL_ACCESS_WARNING_DISMISS: "ui_url_access_warning_dismiss",
   UI_URL_PARAMS_TRIMMED: "ui_url_params_trimmed",

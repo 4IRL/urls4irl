@@ -7,6 +7,7 @@ import {
   beginPopstateClose,
   endPopstateClose,
   consumeTagSheetSelfBackClose,
+  isTagSheetSelfBackPending,
   closeTagSheet,
   toggleTagSheet,
   relocateTagDeckForViewport,
@@ -606,6 +607,19 @@ describe("Tag Sheet Controller", () => {
       // active tag filter; it is consume-once.
       expect(consumeTagSheetSelfBackClose()).toBe(true);
       expect(consumeTagSheetSelfBackClose()).toBe(false);
+    });
+
+    it("isTagSheetSelfBackPending reflects the armed flag without consuming it", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      expect(isTagSheetSelfBackPending()).toBe(false);
+
+      closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      expect(isTagSheetSelfBackPending()).toBe(true);
+      expect(isTagSheetSelfBackPending()).toBe(true);
+      expect(consumeTagSheetSelfBackClose()).toBe(true);
+      expect(isTagSheetSelfBackPending()).toBe(false);
     });
 
     it("a viaReplace close does NOT arm the self-close flag (no back(), nothing to swallow)", async () => {

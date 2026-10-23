@@ -14,6 +14,8 @@ Conventions:
   - pytestmark = pytest.mark.mobile_api
 """
 
+from datetime import datetime
+
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
@@ -31,7 +33,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import UTUB_NAME, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
 from tests.settings_stub import DEFAULT_SETTINGS_DICT, STUB_KEY, patch_settings_model
-from tests.utils_for_test import trash_utub
+from tests.utils_for_test import add_short_link, get_utub_url_id, trash_utub
 
 pytestmark = pytest.mark.mobile_api
 
@@ -390,6 +392,41 @@ def test_get_single_utub_includes_settings(
     )
     assert response.status_code == 200
     assert response.get_json()[MODELS.SETTINGS]["urls"] == {STUB_KEY: True}
+
+
+def test_get_single_utub_carries_short_link_fields(
+    app: Flask,
+    api_client: FlaskClient,
+    make_bearer_headers,
+    add_mixed_delete_permission_urls_in_first_utub,
+):
+    """
+    GIVEN UTub 1 (creator user 1) holding URLs 1-3, with a short link on URL 1 only
+    WHEN the creator GETs /api/v1/utubs/1
+    THEN the linked URL carries an ISO expiry and canRevokeShortLink true, and an
+        unlinked URL carries a null expiry and canRevokeShortLink false
+    """
+    linked_utub_url_id = get_utub_url_id(app, 1, 1)
+    unlinked_utub_url_id = get_utub_url_id(app, 1, 2)
+    add_short_link(app, linked_utub_url_id, minted_by=1)
+
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=1),
+        headers=make_bearer_headers(_token_for_user(app, user_id=1)),
+    )
+
+    assert response.status_code == 200
+    urls_by_id = {
+        url_item[MODELS.UTUB_URL_ID]: url_item
+        for url_item in response.get_json()[MODELS.URLS]
+    }
+    linked = urls_by_id[linked_utub_url_id]
+    assert isinstance(linked[MODELS.SHORT_LINK_EXPIRES_AT], str)
+    assert datetime.fromisoformat(linked[MODELS.SHORT_LINK_EXPIRES_AT])
+    assert linked[MODELS.CAN_REVOKE_SHORT_LINK] is True
+    unlinked = urls_by_id[unlinked_utub_url_id]
+    assert unlinked[MODELS.SHORT_LINK_EXPIRES_AT] is None
+    assert unlinked[MODELS.CAN_REVOKE_SHORT_LINK] is False
 
 
 def test_get_single_utub_as_co_creator(

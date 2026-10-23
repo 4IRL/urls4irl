@@ -411,6 +411,14 @@
   display: none !important;
 }
 
+/* Below 992px the Tags gear sits in the Tag sheet, which stays open during
+   multi-select; hide it there with the other Tag controls. */
+@media (max-width: 991.98px) {
+  #mainPanel.multiSelectActive #utubTagBtnSettings {
+    display: none !important;
+  }
+}
+
 /*
  * ---- Bulk-action bar ----
  * Desktop: an inline control group living IN the deck header's context row,

@@ -1,5 +1,6 @@
 import { createAccessLinkBtn } from "./access-btn.js";
 import { createCopyURLBtn } from "./copy-btn.js";
+import { createShortLinkBtn } from "./short-link-btn.js";
 import { createEditURLBtn } from "./edit-string-btn.js";
 import { createDeleteURLBtn } from "./delete-btn.js";
 import { createAddTagBtn } from "./tag-btn.js";
@@ -21,7 +22,8 @@ export function createURLOptionsButtons(
   urlOptions
     .append(createAccessLinkBtn(url))
     .append(createAddTagBtn(urlCard))
-    .append(createCopyURLBtn(url));
+    .append(createCopyURLBtn(url))
+    .append(createShortLinkBtn({ url, urlCard, utubID }));
 
   if (url.canDelete) {
     urlOptions

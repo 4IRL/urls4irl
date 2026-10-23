@@ -101,6 +101,8 @@ function restoredUrl({
     utubUrlTagIDs: tagIDs,
     urlTitle: `Title ${id}`,
     canDelete: true,
+    shortLinkExpiresAt: null,
+    canRevokeShortLink: false,
     addedAt: "2026-10-17T00:00:00",
     addedByUserID: 1,
   };

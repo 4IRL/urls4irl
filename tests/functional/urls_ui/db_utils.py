@@ -3,7 +3,12 @@ from typing import NamedTuple
 
 from flask import Flask
 
+from backend import db
+from backend.models.short_links import Short_Links
 from backend.models.users import Users
+from backend.short_links.code_generator import generate_short_link_code
+from backend.short_links.constants import SHORT_LINK_TTL
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.url_strs import URL_ADDED_BY, URL_ADDED_BY_FORMER_MEMBER
 from tests.functional.db_utils import (
     add_url_to_utub_as_other_member,
@@ -60,3 +65,30 @@ def seed_orphaned_url_scenario(*, app: Flask, user_id: int) -> OrphanedUrlScenar
         control_utub_url_id=control_id,
         departed_user_id=departed_user_id,
     )
+
+
+def mint_short_link_in_db(*, app: Flask, utub_url_id: int, created_by: int) -> str:
+    """Insert an active (7-day) ``ShortLinks`` row for ``utub_url_id`` minted by
+    ``created_by`` and return its code, so a test can start from a link another
+    member already made without driving that member's browser."""
+    code = generate_short_link_code()
+    with app.app_context():
+        db.session.add(
+            Short_Links(
+                utub_url_id=utub_url_id,
+                code=code,
+                created_by=created_by,
+                expires_at=utc_now() + SHORT_LINK_TTL,
+            )
+        )
+        db.session.commit()
+    return code
+
+
+def get_short_link_code(*, app: Flask, utub_url_id: int) -> str | None:
+    """The code of the URL's ``ShortLinks`` row, or None when it has none."""
+    with app.app_context():
+        short_link: Short_Links | None = Short_Links.query.filter(
+            Short_Links.utub_url_id == utub_url_id
+        ).first()
+        return None if short_link is None else short_link.code
