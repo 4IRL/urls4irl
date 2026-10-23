@@ -32,23 +32,37 @@ class ConfigTestDevServer(ConfigTest):
     DEV_SERVER = True
 
 
-@pytest.fixture
-def proxied_app() -> Flask:
+RequestObservations = dict[str, str | None]
+
+
+def _build_observing_app(observed: RequestObservations, with_proxy_fix: bool) -> Flask:
+    # The route records what the request resolved to instead of echoing it back,
+    # so no header-derived value flows into a response body.
     app = Flask(__name__)
 
     @app.route(CALLBACK_PATH)
-    def callback() -> dict[str, str | None]:
-        return {
-            "external_url": url_for("callback", _external=True),
-            "remote_addr": request.remote_addr,
-        }
+    def callback() -> str:
+        observed["external_url"] = url_for("callback", _external=True)
+        observed["remote_addr"] = request.remote_addr
+        return ""
 
-    apply_proxy_fix(app)
+    if with_proxy_fix:
+        apply_proxy_fix(app)
     return app
 
 
+@pytest.fixture
+def observed() -> RequestObservations:
+    return {}
+
+
+@pytest.fixture
+def proxied_app(observed: RequestObservations) -> Flask:
+    return _build_observing_app(observed, with_proxy_fix=True)
+
+
 def test_single_forwarded_proto_value_yields_https_external_urls(
-    proxied_app: Flask,
+    proxied_app: Flask, observed: RequestObservations
 ) -> None:
     """
     GIVEN the app behind the proxy chain, where Cloudflare sends one
@@ -60,11 +74,13 @@ def test_single_forwarded_proto_value_yields_https_external_urls(
         CALLBACK_PATH,
         headers={"X-Forwarded-Proto": "https", "Host": "urls.4irl.app"},
     )
-    assert response.json is not None
-    assert response.json["external_url"] == f"https://urls.4irl.app{CALLBACK_PATH}"
+    assert response.status_code == 200
+    assert observed["external_url"] == f"https://urls.4irl.app{CALLBACK_PATH}"
 
 
-def test_two_forwarded_for_values_resolve_the_client_ip(proxied_app: Flask) -> None:
+def test_two_forwarded_for_values_resolve_the_client_ip(
+    proxied_app: Flask, observed: RequestObservations
+) -> None:
     """
     GIVEN `X-Forwarded-For: <client>, <cloudflared>`: Cloudflare's client IP,
         then nginx's appended address
@@ -76,12 +92,12 @@ def test_two_forwarded_for_values_resolve_the_client_ip(proxied_app: Flask) -> N
         headers={"X-Forwarded-For": f"{CLIENT_IP}, {CLOUDFLARED_IP}"},
         environ_base={"REMOTE_ADDR": CLOUDFLARED_IP},
     )
-    assert response.json is not None
-    assert response.json["remote_addr"] == CLIENT_IP
+    assert response.status_code == 200
+    assert observed["remote_addr"] == CLIENT_IP
 
 
 def test_client_supplied_forwarded_for_cannot_spoof_the_client_ip(
-    proxied_app: Flask,
+    proxied_app: Flask, observed: RequestObservations
 ) -> None:
     """
     GIVEN a client that sent its own `X-Forwarded-For`, which Cloudflare
@@ -94,28 +110,26 @@ def test_client_supplied_forwarded_for_cannot_spoof_the_client_ip(
         headers={"X-Forwarded-For": f"198.51.100.99, {CLIENT_IP}, {CLOUDFLARED_IP}"},
         environ_base={"REMOTE_ADDR": CLOUDFLARED_IP},
     )
-    assert response.json is not None
-    assert response.json["remote_addr"] == CLIENT_IP
+    assert response.status_code == 200
+    assert observed["remote_addr"] == CLIENT_IP
 
 
-def test_without_proxy_fix_external_urls_stay_http() -> None:
+def test_without_proxy_fix_external_urls_stay_http(
+    observed: RequestObservations,
+) -> None:
     """
     GIVEN a local app, where `create_app` never applies ProxyFix
     WHEN an external URL is built for a request carrying `X-Forwarded-Proto: https`
     THEN the header is ignored and the URL stays http (local loopback callbacks)
     """
-    app = Flask(__name__)
-
-    @app.route(CALLBACK_PATH)
-    def callback() -> dict[str, str]:
-        return {"external_url": url_for("callback", _external=True)}
+    app = _build_observing_app(observed, with_proxy_fix=False)
 
     response = app.test_client().get(
         CALLBACK_PATH,
         headers={"X-Forwarded-Proto": "https", "Host": "127.0.0.1:8659"},
     )
-    assert response.json is not None
-    assert response.json["external_url"] == f"http://127.0.0.1:8659{CALLBACK_PATH}"
+    assert response.status_code == 200
+    assert observed["external_url"] == f"http://127.0.0.1:8659{CALLBACK_PATH}"
 
 
 @pytest.fixture
