@@ -1,5 +1,7 @@
 // Contract types for the panel settings shell. Phases 4-7 author sections
-// against these and may not edit the shell.
+// against these and may not edit the shell, except for one additive extension
+// (URLs panel phase): an optional `notice` on a saved result, folded into the
+// single "Saved" announcement.
 import type {
   PanelId,
   SettingsScope,
@@ -10,7 +12,7 @@ import type {
 export type SectionPatch = Record<string, unknown>;
 
 export type SaveResult =
-  | { outcome: "ok"; settings?: UtubSettings }
+  | { outcome: "ok"; settings?: UtubSettings; notice?: string }
   | { outcome: "stale"; failed: boolean }
   | { outcome: "error"; resync?: boolean }
   | { outcome: "locked" | "forbidden" | "gone" | "invalid" };
@@ -64,11 +66,13 @@ export interface QueueSink {
     utubID,
     status,
     savedPatch,
+    notice,
   }: {
     sectionId: string;
     utubID: number | null;
     status: SaveStatus;
     savedPatch?: SectionPatch;
+    notice?: string;
   }): void;
   forceReadOnly({
     reason,

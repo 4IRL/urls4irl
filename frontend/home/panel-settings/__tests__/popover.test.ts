@@ -1067,6 +1067,18 @@ describe("panel settings popover", () => {
       expect(status().dataset.state).toBeUndefined();
     });
 
+    it("announces Saved plus the notice as one message, keeping the visible status plain", async () => {
+      edit();
+      await settle();
+      vi.mocked(announceSettingsStatus).mockClear();
+      harness.pending[0].resolve({ outcome: "ok", notice: "Reset to https." });
+      await settle();
+
+      expect(status().textContent).toBe("Saved");
+      expect(announceSettingsStatus).toHaveBeenCalledTimes(1);
+      expect(announced()).toBe("Sort: Saved. Reset to https.");
+    });
+
     it("rolls back, shows a persistent message tied to the control, and announces on error", async () => {
       el("sort-input").focus();
       edit();
@@ -1312,6 +1324,40 @@ describe("panel settings popover", () => {
       expect(announced()).toBe("Sort: Couldn't save");
       expect(harness.section.render).toHaveBeenCalledTimes(rendersBefore);
       expect(popover().childElementCount).toBe(0);
+    });
+
+    it("announces a late save with a notice once, with title, Saved and notice", async () => {
+      initPopover();
+      const harness = registerControlled();
+      selectUTub();
+      openGear("urls");
+      lastCtx(harness).submit({ patch: { sort: "new" } });
+      await settle();
+
+      openGear("urls");
+      vi.mocked(announceSettingsStatus).mockClear();
+      harness.pending[0].resolve({ outcome: "ok", notice: "Reset to https." });
+      await settle();
+
+      expect(announceSettingsStatus).toHaveBeenCalledTimes(1);
+      expect(announced()).toBe("Sort: Saved. Reset to https.");
+      expect(popover().childElementCount).toBe(0);
+    });
+
+    it("stays silent for a late plain save", async () => {
+      initPopover();
+      const harness = registerControlled();
+      selectUTub();
+      openGear("urls");
+      lastCtx(harness).submit({ patch: { sort: "new" } });
+      await settle();
+
+      openGear("urls");
+      vi.mocked(announceSettingsStatus).mockClear();
+      harness.pending[0].resolve({ outcome: "ok" });
+      await settle();
+
+      expect(announceSettingsStatus).not.toHaveBeenCalled();
     });
 
     it("treats forced read-only as a no-op", async () => {
