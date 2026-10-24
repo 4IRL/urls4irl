@@ -52,6 +52,64 @@ MOCK_TRACKING_SEED_URL_STRINGS: frozenset[str] = frozenset(
     raw_url for raw_url, _stripped_url in MOCK_TRACKING_SEED_URL_PAIRS
 )
 
+# Sample custom metric flows seeded by `addmock all` (wire shape, validated by
+# validate_flow_payload at seeding time). `device_type:1` is DeviceType.MOBILE.
+MOCK_METRIC_FLOW_PAYLOADS: tuple[dict[str, object], ...] = (
+    {
+        "display_name": "Create UTub on mobile",
+        "steps": [
+            {
+                "stream": "ui",
+                "label": "Open create UTub",
+                "event_name": "ui_utub_create_open",
+                "dim_filter": ["device_type:1"],
+            },
+            {
+                "stream": "ui",
+                "label": "Submit form",
+                "event_name": "ui_form_submit",
+                "dim_filter": ["form:utub_create"],
+            },
+            {
+                "stream": "domain",
+                "label": "UTub created",
+                "event_name": "utub_created",
+            },
+        ],
+    },
+    {
+        "display_name": "Login then add URL",
+        "steps": [
+            {
+                "stream": "ui",
+                "label": "Submit login",
+                "event_name": "ui_login_submit",
+            },
+            {
+                "stream": "domain",
+                "label": "Login success",
+                "event_name": "login_success",
+            },
+            {
+                "stream": "api",
+                "label": "Create URL call",
+                "api_endpoint": "urls.create_url",
+                "api_method": "POST",
+                "dim_filter": ["status_code:200"],
+            },
+            {
+                "stream": "domain",
+                "label": "URL added",
+                "event_name": "url_added_to_utub",
+                "drop_breakdown": {
+                    "event_name": "url_create_rejected",
+                    "group_by": "reason",
+                },
+            },
+        ],
+    },
+)
+
 MOCK_TAGS = (
     "Great",
     "Funny",

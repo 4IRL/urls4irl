@@ -136,7 +136,9 @@ def test_add_shortlinks_table_migration_upgrade_and_downgrade(runner):
             _PRE_SHORTLINKS_REVISION
         )
 
-        command.upgrade(alembic_config, _SHORTLINKS_REVISION)
+        # Start at head so addmock all runs against a complete schema
+        # (it seeds MetricFlows, which a later migration creates).
+        command.upgrade(alembic_config, "head")
 
         with db.engine.connect() as connection:
             _assert_shortlinks_schema(connection)
