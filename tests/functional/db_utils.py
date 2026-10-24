@@ -54,6 +54,16 @@ def set_utub_locked_state(app: Flask, utub_id: int, is_locked: bool) -> None:
         db.session.commit()
 
 
+def set_utub_settings(app: Flask, utub_id: int, settings: dict | None) -> None:
+    """Write ``Utubs.settings`` (the sparse per-panel settings dict, for example
+    ``{"urls": {"default_url_scheme": "ftp"}}``) and commit so the running Flask
+    server resolves it on the next request."""
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.settings = settings
+        db.session.commit()
+
+
 def set_member_role_in_utub(
     app: Flask, user_id: int, utub_id: int, member_role: Member_Role
 ) -> None:
