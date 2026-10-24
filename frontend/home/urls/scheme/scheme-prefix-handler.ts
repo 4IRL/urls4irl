@@ -22,6 +22,11 @@ export function handleSchemePrefixInput({
   onChange: () => void;
 }): void {
   onChange();
+  // Hidden selector: an emptied field puts the snapshotted default back so a
+  // pasted opaque scheme (explicit `mailto`) cannot trap what is typed next.
+  if (selector.isHidden() && getInputValue(input).trim() === "") {
+    selector.restoreDefaultScheme();
+  }
   if (
     selector.isExplicit() &&
     !isAuthorityScheme({ scheme: selector.getScheme() })
@@ -41,7 +46,10 @@ export function handleSchemePrefixInput({
   }
   if (!selector.isExplicit()) {
     selector.setScheme({
-      scheme: defaultSchemeForText({ text }),
+      scheme: defaultSchemeForText({
+        text,
+        fallbackScheme: selector.getDefaultScheme(),
+      }),
       explicit: false,
     });
   }

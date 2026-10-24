@@ -42,7 +42,11 @@ import {
   closeURLEditPanel,
   resetURLEditPanelState,
 } from "../update-url-panel.js";
-import { bindEditPanelDirtyState } from "../edit-panel-dirty.js";
+import {
+  bindEditPanelDirtyState,
+  isURLStringDirty,
+} from "../edit-panel-dirty.js";
+import { composeURL } from "../../scheme/scheme-utils.js";
 import { hideAndResetTagCombobox } from "../../tags/combobox.js";
 import { getSchemeSelector } from "../../scheme/scheme-selector.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
@@ -2588,14 +2592,97 @@ describe("edit-URL scheme selector", () => {
       expect(selector()!.getScheme()).toBe("ssh");
     });
 
-    it("leaves a legacy unsupported scheme whole, with the selector at its default", () => {
+    it("leaves a legacy unsupported scheme whole, seeding the selector with https", () => {
       openForm({ href: "foo://x" });
 
       expect(urlInput.val()).toBe("foo://x");
-      expect(selector()!.getScheme()).toBe(
-        APP_CONFIG.constants.URL_DEFAULT_SCHEME,
-      );
+      expect(selector()!.getScheme()).toBe("https");
       expect(selector()!.isExplicit()).toBe(false);
+    });
+
+    describe("with a UTub default", () => {
+      function setUtubDefault({ scheme }: { scheme: string }): void {
+        vi.mocked(getState).mockReturnValue({
+          urls: [],
+          settings: { urls: { default_url_scheme: scheme } },
+        } as unknown as ReturnType<typeof getState>);
+      }
+
+      afterEach(() => {
+        vi.mocked(getState).mockReturnValue({
+          urls: [],
+        } as unknown as ReturnType<typeof getState>);
+      });
+
+      it("keeps an ftp:// href on ftp, not dirty, under a mailto default", () => {
+        setUtubDefault({ scheme: "mailto" });
+        openForm({ href: "ftp://h/p" });
+
+        expect(selector()!.getScheme()).toBe("ftp");
+        expect(urlInput.val()).toBe("h/p");
+        expect(isURLStringDirty(urlCard)).toBe(false);
+      });
+
+      it("saves an ftp:// href byte-identical under a mailto default", async () => {
+        setUtubDefault({ scheme: "mailto" });
+        openForm({ href: "ftp://h/p" });
+
+        await updateURL(urlInput, urlCard, 1);
+
+        expect(ajaxCall).not.toHaveBeenCalled();
+      });
+
+      it("opens a legacy foo://x href not dirty on https under a mailto default", async () => {
+        setUtubDefault({ scheme: "mailto" });
+        openForm({ href: "foo://x" });
+
+        expect(selector()!.getScheme()).toBe("https");
+        expect(selector()!.getDefaultScheme()).toBe("https");
+        expect(selector()!.isExplicit()).toBe(false);
+        expect(isURLStringDirty(urlCard)).toBe(false);
+
+        await updateURL(urlInput, urlCard, 1);
+        expect(ajaxCall).not.toHaveBeenCalled();
+      });
+
+      it("keeps a legacy edit on https while typing under a mailto default", () => {
+        setUtubDefault({ scheme: "mailto" });
+        openForm({ href: "foo://x" });
+
+        urlInput.val("foo://xy").trigger("input");
+
+        expect(selector()!.getScheme()).toBe("https");
+        expect(selector()!.getDefaultScheme()).toBe("https");
+        expect(
+          composeURL({
+            scheme: selector()!.getScheme(),
+            text: String(urlInput.val()),
+          }),
+        ).toBe("foo://xy");
+      });
+
+      it("still flips a legacy edit to http for dev-host text", () => {
+        setUtubDefault({ scheme: "mailto" });
+        openForm({ href: "foo://x" });
+
+        urlInput.val("localhost:3000").trigger("input");
+
+        expect(selector()!.getScheme()).toBe("http");
+      });
+
+      it("falls back cleanly when settings is null", async () => {
+        vi.mocked(getState).mockReturnValue({
+          urls: [],
+          settings: null,
+        } as unknown as ReturnType<typeof getState>);
+        openForm({ href: "foo://x" });
+
+        expect(selector()!.getScheme()).toBe("https");
+        expect(isURLStringDirty(urlCard)).toBe(false);
+
+        await updateURL(urlInput, urlCard, 1);
+        expect(ajaxCall).not.toHaveBeenCalled();
+      });
     });
 
     it("mounts the toggle inside the string field's container", () => {
@@ -2870,7 +2957,7 @@ describe("edit-URL scheme selector", () => {
       expect(selector()!.getScheme()).toBe("https");
     });
 
-    it("keepOpen resyncing an unsupported stored href shows it whole and leaves the selector scheme alone", () => {
+    it("keepOpen resyncing an unsupported stored href shows it whole and re-seeds the selector with https", () => {
       openForm({ href: "https://example.com" });
       selector()!.setScheme({ scheme: "ftp", explicit: true });
       urlInput.val("changed");
@@ -2880,7 +2967,8 @@ describe("edit-URL scheme selector", () => {
 
       expect(selector()).not.toBeNull();
       expect(urlInput.val()).toBe("foo://x");
-      expect(selector()!.getScheme()).toBe("ftp");
+      expect(selector()!.getScheme()).toBe("https");
+      expect(selector()!.isExplicit()).toBe(false);
     });
   });
 

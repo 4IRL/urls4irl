@@ -34,6 +34,29 @@
     border-radius: 0 4px 4px 0;
 }
 
+/* Hidden selector: the toggle is `.hidden` (display:none), so the input gets
+   back the left border and radius the toggle normally supplies. (0,4,0). */
+.urlSchemeInputRow.urlSchemeHidden .text-input-inner-container > .text-input {
+    border-radius: 4px;
+}
+
+/* Effective-scheme note under the URL input while the selector is hidden. Empty
+   (no text) it takes no space. */
+.urlSchemeHelper {
+    margin: 4px 0 0;
+    font-size: 0.78rem;
+    color: var(--cardURLTextColor);
+    overflow-wrap: anywhere;
+}
+
+.urlSchemeHelper:empty {
+    display: none;
+}
+
+.urlSchemeHelper strong {
+    color: var(--textPrimary);
+}
+
 .urlSchemeToggle {
     display: inline-flex;
     flex: 0 0 auto;
