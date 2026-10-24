@@ -27,14 +27,12 @@ BAD_FILTER_VALUE_STR = "Choose a value from the list."
 CANNOT_FILTER_STR = "This field cannot be used as a filter."
 BAD_STATUS_CODE_STR = "Use a status code like 200."
 
-_ECHO_MAX_LENGTH = 255
-
 
 def echo_input(value: str) -> str:
     """Show user input `repr`-style, cut to 255 characters first (then `...`)."""
     shown = value
-    if len(shown) > _ECHO_MAX_LENGTH:
-        shown = shown[:_ECHO_MAX_LENGTH] + "..."
+    if len(shown) > FLOW_LIMITS.IDENTIFIER_MAX_LENGTH:
+        shown = shown[: FLOW_LIMITS.IDENTIFIER_MAX_LENGTH] + "..."
     return repr(shown)
 
 
