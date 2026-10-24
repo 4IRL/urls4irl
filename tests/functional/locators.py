@@ -102,6 +102,28 @@ class HomePageLocators(GenericPageLocator):
     PANEL_SETTINGS_ANNOUNCEMENT = "#PanelSettingsAnnouncement"
     PANEL_SETTINGS_SHEET = "#panelSettingsSheet"
     PANEL_SETTINGS_SHEET_BACKDROP = "#panelSettingsBackdrop"
+    # "New URLs" section controls (URLs gear): default-scheme picker toggle, the
+    # hide-selector switch and its https-only hint.
+    URLS_SETTINGS_DEFAULT_SCHEME = "#urlsSettingsDefaultScheme"
+    URLS_SETTINGS_HIDE_SWITCH = "#urlsSettingsHideSwitch"
+    URLS_SETTINGS_HIDE_HINT = "#urlsSettingsHideHint"
+    URLS_SETTINGS_READ_ONLY_NOTE = (
+        f"{PANEL_SETTINGS_POPOVER} .panelSettingsReadOnlyNote"
+    )
+    # Listbox parts of the settings picker, scoped to the popover.
+    URLS_SETTINGS_SCHEME_FILTER = f"{PANEL_SETTINGS_POPOVER} .urlSchemeFilter"
+    URLS_SETTINGS_SCHEME_LISTBOX = f"{PANEL_SETTINGS_POPOVER} .urlSchemeListbox"
+    # Mobile sheet chrome and the same picker/note parts scoped to the sheet.
+    PANEL_SETTINGS_SHEET_HEADER = "#panelSettingsSheetHeader"
+    PANEL_SETTINGS_SHEET_CLOSE = "#panelSettingsSheetClose"
+    URLS_SETTINGS_SHEET_SCHEME_FILTER = f"{PANEL_SETTINGS_SHEET} .urlSchemeFilter"
+    URLS_SETTINGS_SHEET_SCHEME_LISTBOX = f"{PANEL_SETTINGS_SHEET} .urlSchemeListbox"
+    URLS_SETTINGS_SHEET_SCHEME_OPTION_VISIBLE = (
+        f"{PANEL_SETTINGS_SHEET} .urlSchemeOption:not(.hidden)"
+    )
+    URLS_SETTINGS_SHEET_READ_ONLY_NOTE = (
+        f"{PANEL_SETTINGS_SHEET} .panelSettingsReadOnlyNote"
+    )
 
     BUTTON_UTUB_CREATE = "#utubBtnCreate"
     BUTTON_UTUB_DELETE = "#utubBtnDelete"
@@ -503,6 +525,11 @@ class HomePageLocators(GenericPageLocator):
     )
     SCHEME_OPTION_UPDATE = (
         f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeOption"
+    )
+    # Helper line under the URL input when the UTub hides the scheme selector
+    SCHEME_HELPER_CREATE = f"{WRAP_URL_CREATE} .urlSchemeHelper"
+    SCHEME_HELPER_UPDATE = (
+        f"{ROW_SELECTED_URL} {UPDATE_URL_STRING_WRAP} .urlSchemeHelper"
     )
     BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
     BUTTON_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBtnUpdate"
