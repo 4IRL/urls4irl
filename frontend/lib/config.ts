@@ -133,6 +133,15 @@ export interface AppConstants {
   readonly URL_SCHEME_HINTS: Readonly<Record<string, string>>;
   readonly DEVICE_TYPE: DeviceTypeValues;
   readonly DEVICE_TYPE_DIM_KEY: string;
+  readonly METRIC_FLOWS_MIN_STEPS: number;
+  readonly METRIC_FLOWS_MAX_STEPS: number;
+  readonly METRIC_FLOWS_MAX_FILTERS: number;
+  readonly METRIC_FLOWS_NAME_MIN_LENGTH: number;
+  readonly METRIC_FLOWS_NAME_MAX_LENGTH: number;
+  readonly METRIC_FLOWS_LABEL_MIN_LENGTH: number;
+  readonly METRIC_FLOWS_LABEL_MAX_LENGTH: number;
+  readonly METRIC_FLOWS_FILTER_VALUE_MAX_LENGTH: number;
+  readonly METRIC_FLOWS_MAX_CUSTOM: number;
 }
 
 export interface AppConfig {

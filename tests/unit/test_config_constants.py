@@ -1,8 +1,10 @@
+import json
 import re
 from pathlib import Path
 
 import pytest
 
+from backend.config import ConfigTest
 from backend.extensions.url_validation.constants import (
     AUTHORITY_URL_SCHEMES,
     CORE_SCHEMES,
@@ -14,13 +16,49 @@ from backend.extensions.url_validation.constants import (
 )
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DeviceType
-from backend.utils.constants import generate_constants_js, generate_strings_js
+from backend.metrics.flow_limits import FLOW_LIMITS_FOR_FRONTEND
+from backend.utils.constants import (
+    generate_constants_js,
+    generate_strings_js,
+    provide_config_for_constants,
+)
 from backend.utils.strings import url_strs, utub_strs
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import NOT_AUTHORIZED
 from backend.utils.strings.trash_strs import TRASH_UI
+from tests.utils_for_test import create_secondary_app
 
 pytestmark = pytest.mark.unit
+
+FLOW_LIMIT_KEYS_JSON = (
+    Path(__file__).resolve().parents[2] / "backend" / "metrics" / "flow_limit_keys.json"
+)
+
+
+def _read_flow_limit_keys() -> dict[str, int]:
+    return json.loads(FLOW_LIMIT_KEYS_JSON.read_text(encoding="utf-8"))
+
+
+def test_flow_limit_keys_json_matches_module():
+    """The shared limits JSON equals FLOW_LIMITS_FOR_FRONTEND (keys and values) and is key-sorted."""
+    shared = _read_flow_limit_keys()
+    assert shared == FLOW_LIMITS_FOR_FRONTEND
+    assert list(shared) == sorted(shared)
+
+
+def test_generate_constants_js_includes_flow_limits():
+    constants = generate_constants_js()
+    for key, value in _read_flow_limit_keys().items():
+        assert constants[key] == value
+
+
+def test_provide_config_for_constants_carries_flow_limits():
+    app = create_secondary_app(ConfigTest)
+    with app.test_request_context():
+        constants = provide_config_for_constants(anonymous=True)["CONFIG"]["constants"]
+    for key, value in _read_flow_limit_keys().items():
+        assert constants[key] == value
+    assert constants["METRIC_FLOWS_MAX_STEPS"] == 8
 
 
 def test_metrics_config_envs_exist():

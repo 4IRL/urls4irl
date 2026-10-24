@@ -12,6 +12,7 @@ from backend.extensions.url_validation.constants import (
 )
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType
+from backend.metrics.flow_limits import FLOW_LIMITS_FOR_FRONTEND
 from backend.models.user_preferences import resolve_preferences
 from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
@@ -1265,6 +1266,8 @@ def generate_constants_js() -> dict[
         # references via APP_CONFIG.constants.DEVICE_TYPE_DIM_KEY when building
         # /api/metrics/query/* URLSearchParams.
         "DEVICE_TYPE_DIM_KEY": DEVICE_TYPE_DIM_KEY,
+        # Custom metric-flow limits (source of truth: backend.metrics.flow_limits)
+        **FLOW_LIMITS_FOR_FRONTEND,
     }
 
 
