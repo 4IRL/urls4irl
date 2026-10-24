@@ -16,6 +16,7 @@ ANONYMOUS_METRICS = "AnonymousMetrics"
 ANONYMOUS_GAUGES = "AnonymousGauges"
 AUDIT_LOGS = "AuditLogs"
 SHORT_LINKS = "ShortLinks"
+METRIC_FLOWS = "MetricFlows"
 ALEMBIC_VERSION = "alembic_version"
 
 
@@ -39,6 +40,7 @@ class TABLE_NAMES:
     ANONYMOUS_GAUGES = ANONYMOUS_GAUGES
     AUDIT_LOGS = AUDIT_LOGS
     SHORT_LINKS = SHORT_LINKS
+    METRIC_FLOWS = METRIC_FLOWS
 
     SORTED_TABLES_FOR_DELETION = (
         ANONYMOUS_GAUGES,
@@ -61,5 +63,7 @@ class TABLE_NAMES:
         API_REFRESH_TOKENS,
         # AuditLogs references Users (actorId FK) and must drop before it.
         AUDIT_LOGS,
+        # MetricFlows references Users (createdBy/updatedBy FKs) and must drop before it.
+        METRIC_FLOWS,
         USERS,
     )

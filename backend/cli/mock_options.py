@@ -370,7 +370,14 @@ def clear_db(db_type: str):
     if TABLE_NAMES.ALEMBIC_VERSION in meta.tables:
         meta.remove(meta.tables[TABLE_NAMES.ALEMBIC_VERSION])
     meta.drop_all()
-    meta.create_all()
+    # Recreate model tables from the model metadata, not the reflected copy:
+    # reflection skips expression-based indexes (MetricFlows' lower(displayName)
+    # unique index), so a reflected create_all would silently lose them.
+    reflected_only_tables = [
+        table for name, table in meta.tables.items() if name not in db.metadata.tables
+    ]
+    meta.create_all(tables=reflected_only_tables)
+    db.metadata.create_all(engine)
     con.close()
     print(f"\n--- Finished emptying each table in {db_type} database ---\n\n")
 
