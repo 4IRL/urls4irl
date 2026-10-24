@@ -121,14 +121,16 @@ _EXPECTED_UPGRADED_DEFINITION: dict[str, Any] = {
 }
 
 
-def _seed_flow(connection: Connection) -> int:
+def _seed_flow(
+    connection: Connection, definition: dict[str, Any] = _ORIGINAL_DEFINITION
+) -> int:
     return connection.execute(
         text(
             'INSERT INTO "MetricFlows" '
             '("displayName", definition, "createdAt", "updatedAt") '
             "VALUES (:name, CAST(:definition AS JSONB), now(), now()) RETURNING id"
         ),
-        {"name": _FLOW_NAME, "definition": json.dumps(_ORIGINAL_DEFINITION)},
+        {"name": _FLOW_NAME, "definition": json.dumps(definition)},
     ).scalar_one()
 
 
@@ -184,3 +186,30 @@ def test_rewrite_leaves_non_matching_rows_untouched(runner):
             flow_id = _seed_flow(connection)
             assert rewrite_metric_flow_definitions(connection, **unmatched_spec) == 0
             assert _read_definition(connection, flow_id) == _ORIGINAL_DEFINITION
+
+
+@pytest.mark.parametrize(
+    "malformed_definition",
+    [
+        # A non-array "steps" cannot be seeded: the DB CHECK constraint rejects it.
+        {"steps": [5]},
+        {
+            "steps": [
+                {"stream": "ui", "event_name": "plain_evt", "dim_filter": ["nocolon"]}
+            ]
+        },
+    ],
+    ids=["step_not_dict", "filter_without_colon"],
+)
+def test_rewrite_ignores_malformed_definitions(runner, malformed_definition):
+    """
+    GIVEN a stored definition with a malformed shape
+    WHEN the upgrade spec is applied
+    THEN no row changes (count 0) and the stored JSON is unchanged
+    """
+    app, _ = runner
+    with app.app_context():
+        with db.engine.begin() as connection:
+            flow_id = _seed_flow(connection, malformed_definition)
+            assert rewrite_metric_flow_definitions(connection, **_UPGRADE_SPEC) == 0
+            assert _read_definition(connection, flow_id) == malformed_definition
