@@ -389,6 +389,7 @@ def _check_api_step(
 def _check_event_step(
     *, errors: dict[str, list[str]], path: str, step: LenientFlowStep
 ) -> None:
+    # Intentional fail-closed backstop: unreachable today, but denies any future stream value.
     if step.stream not in ("ui", "domain"):
         _add_error(errors, f"{path}.stream", CHOOSE_STEP_TYPE_STR)
         return
@@ -512,9 +513,7 @@ def validate_flow_payload(payload: object) -> FlowDefinition | dict[str, list[st
     return _hydrate_and_validate(payload)[1]
 
 
-def _filters_to_strings(filters: object) -> object:
-    if not isinstance(filters, list):
-        return filters
+def _filters_to_strings(filters: list[list[str]]) -> list[str]:
     return [f"{dim_key}:{dim_value}" for dim_key, dim_value in filters]
 
 
