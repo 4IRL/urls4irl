@@ -590,6 +590,34 @@ def _cast_int_filter(field: str, value: str) -> int:
         raise ValueError(f"filter value for {field} must be an integer")
 
 
+def validate_dim_keys(
+    *,
+    event_name: EventName,
+    dim_filter: list[tuple[str, str]],
+    group_by: str | None,
+) -> None:
+    """Validate filter/group_by keys (and integer filter values) for one event.
+
+    API-category events accept the flat columns `endpoint`/`method`/
+    `status_code`; every other event accepts the keys of its dimension model.
+    `status_code` and `device_type` filter values must be integers. Builds no
+    SQL expressions, so save-time flow validation and query time share one rule.
+
+    Raises `ValueError` with a fixed-shape message on the first violation.
+    """
+    if EVENT_CATEGORY[event_name] is EventCategory.API:
+        valid_fields = set(_API_FLAT_COLUMNS.keys())
+    else:
+        dim_model = DIMENSION_MODELS[event_name]
+        valid_fields = (
+            set(dim_model.model_fields.keys()) if dim_model is not None else set()
+        )
+    _raise_on_unknown_keys(event_name, dim_filter, group_by, valid_fields)
+    for dim_key, dim_value in dim_filter:
+        if dim_key == "status_code" or _is_device_type_dim(event_name, dim_key):
+            _cast_int_filter(dim_key, dim_value)
+
+
 class _GroupedCountQuery(NamedTuple):
     """The validated, category-resolved pieces of a grouped-count query.
 
@@ -629,6 +657,7 @@ def _build_grouped_count_query(
     Raises `ValueError` on any unknown filter/group_by key (or a non-integer
     `status_code` / `device_type` value) so the route layer can map it to a 400.
     """
+    validate_dim_keys(event_name=event_name, dim_filter=dim_filter, group_by=group_by)
     is_api_event = EVENT_CATEGORY[event_name] is EventCategory.API
     base_filters = [
         Anonymous_Metrics.event_name == event_name.value,
@@ -637,8 +666,6 @@ def _build_grouped_count_query(
     ]
 
     if is_api_event:
-        valid_fields = set(_API_FLAT_COLUMNS.keys())
-        _raise_on_unknown_keys(event_name, dim_filter, group_by, valid_fields)
         for dim_key, dim_value in dim_filter:
             column = _API_FLAT_COLUMNS[dim_key]
             if dim_key == "status_code":
@@ -647,11 +674,6 @@ def _build_grouped_count_query(
                 base_filters.append(column == dim_value)
         group_column = _API_FLAT_COLUMNS[group_by] if group_by is not None else None
     else:
-        dim_model = DIMENSION_MODELS[event_name]
-        valid_fields = (
-            set(dim_model.model_fields.keys()) if dim_model is not None else set()
-        )
-        _raise_on_unknown_keys(event_name, dim_filter, group_by, valid_fields)
         for dim_key, dim_value in dim_filter:
             if _is_device_type_dim(event_name, dim_key):
                 base_filters.append(

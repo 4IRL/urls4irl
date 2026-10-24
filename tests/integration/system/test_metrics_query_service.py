@@ -24,6 +24,7 @@ from backend.metrics.query_service import (
     summary,
     timeseries,
     top_events,
+    validate_dim_keys,
 )
 from backend.metrics.resources import Resource
 from backend.utils.strings.metrics_strs import METRICS_REDIS
@@ -1979,7 +1980,7 @@ def test_grouped_counts_invalid_group_by_key_raises_value_error(
     WHEN grouped_count_by is called with a `group_by` key that is not a valid
         dimension on the event
     THEN ValueError is raised on BOTH paths — the unknown group_by key is
-        rejected by `_raise_on_unknown_keys` before any query runs.
+        rejected by `validate_dim_keys` before any query runs.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -2122,6 +2123,116 @@ def test_grouped_counts_device_type_nonnumeric_filter_value_raises_value_error(
             )
 
     assert "filter value for device_type must be an integer" in str(exc_info.value)
+
+
+def test_validate_dim_keys_unknown_key_nonapi_event_raises() -> None:
+    """
+    GIVEN a non-API event
+    WHEN validate_dim_keys gets an unknown filter key
+    THEN ValueError names the key and the valid keys.
+    """
+    with pytest.raises(ValueError, match="Unknown filter/group_by key") as exc_info:
+        validate_dim_keys(
+            event_name=EventName.UI_FORM_CANCEL,
+            dim_filter=[("nonexistent_dim", "value")],
+            group_by=None,
+        )
+    assert "nonexistent_dim" in str(exc_info.value)
+
+
+def test_validate_dim_keys_key_outside_flat_columns_api_event_raises() -> None:
+    """
+    GIVEN API_HIT
+    WHEN validate_dim_keys gets a key outside endpoint/method/status_code
+    THEN ValueError is raised.
+    """
+    with pytest.raises(ValueError, match="Unknown filter/group_by key"):
+        validate_dim_keys(
+            event_name=EventName.API_HIT,
+            dim_filter=[("device_type", "2")],
+            group_by=None,
+        )
+
+
+@pytest.mark.parametrize("event_name", (EventName.UI_FORM_CANCEL, EventName.API_HIT))
+def test_validate_dim_keys_unknown_group_by_raises(event_name: EventName) -> None:
+    """
+    GIVEN a non-API or an API event
+    WHEN validate_dim_keys gets an unknown group_by
+    THEN ValueError is raised.
+    """
+    with pytest.raises(ValueError, match="Unknown filter/group_by key"):
+        validate_dim_keys(event_name=event_name, dim_filter=[], group_by="nonexistent")
+
+
+def test_validate_dim_keys_unknown_key_wins_over_nonint_value() -> None:
+    """
+    GIVEN API_HIT with a non-integer status_code value and an unknown key
+    WHEN validate_dim_keys runs
+    THEN the unknown-key ValueError is raised, not the integer one.
+    """
+    with pytest.raises(ValueError, match="Unknown filter/group_by key"):
+        validate_dim_keys(
+            event_name=EventName.API_HIT,
+            dim_filter=[("status_code", "abc"), ("bogus", "x")],
+            group_by=None,
+        )
+
+
+def test_validate_dim_keys_nonnumeric_status_code_raises() -> None:
+    """
+    GIVEN API_HIT with a non-numeric status_code filter value
+    WHEN validate_dim_keys runs
+    THEN the controlled integer message is raised.
+    """
+    with pytest.raises(
+        ValueError, match="filter value for status_code must be an integer"
+    ):
+        validate_dim_keys(
+            event_name=EventName.API_HIT,
+            dim_filter=[("status_code", "abc")],
+            group_by=None,
+        )
+
+
+def test_validate_dim_keys_nonnumeric_device_type_raises() -> None:
+    """
+    GIVEN a non-API event with a non-numeric device_type filter value
+    WHEN validate_dim_keys runs
+    THEN the controlled integer message is raised.
+    """
+    with pytest.raises(
+        ValueError, match="filter value for device_type must be an integer"
+    ):
+        validate_dim_keys(
+            event_name=EventName.UI_FORM_CANCEL,
+            dim_filter=[("device_type", "phone")],
+            group_by=None,
+        )
+
+
+def test_validate_dim_keys_valid_inputs_return_none() -> None:
+    """
+    GIVEN valid keys and integer values for API and non-API events
+    WHEN validate_dim_keys runs
+    THEN it returns None.
+    """
+    assert (
+        validate_dim_keys(
+            event_name=EventName.API_HIT,
+            dim_filter=[("endpoint", "urls.create_url"), ("status_code", "200")],
+            group_by="method",
+        )
+        is None
+    )
+    assert (
+        validate_dim_keys(
+            event_name=EventName.UI_FORM_CANCEL,
+            dim_filter=[("form", "utub_create"), ("device_type", "2")],
+            group_by="trigger",
+        )
+        is None
+    )
 
 
 # ----------------------------- latency ------------------------------------

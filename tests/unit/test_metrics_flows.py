@@ -76,6 +76,44 @@ def test_flow_step_invalid_with_neither_event_name_nor_api_endpoint() -> None:
         FlowStep(stream="ui", label="Neither")
 
 
+@pytest.mark.parametrize(
+    "partial_pair",
+    [
+        {"api_endpoint": "urls.create_url"},
+        {"api_method": "POST"},
+    ],
+)
+def test_flow_step_invalid_with_partial_api_pair(partial_pair: dict[str, str]) -> None:
+    """
+    GIVEN a FlowStep with only `api_endpoint` or only `api_method`
+    WHEN the model is constructed
+    THEN a ValidationError carrying the both-or-neither message is raised.
+    """
+    with pytest.raises(ValidationError, match="both or neither"):
+        FlowStep(stream="api", label="x", **partial_pair)
+
+
+@pytest.mark.parametrize(
+    "partial_pair",
+    [{"api_endpoint": "urls.create_url"}, {"api_method": "POST"}],
+)
+def test_flow_step_invalid_with_event_and_partial_api_pair(
+    partial_pair: dict[str, str],
+) -> None:
+    """
+    GIVEN a UI event step that also carries only half of the API pair
+    WHEN the model is constructed
+    THEN the pair error is raised (not the XOR error, not silent acceptance).
+    """
+    with pytest.raises(ValidationError, match="both or neither"):
+        FlowStep(
+            stream="ui",
+            label="x",
+            event_name=EventName.UI_FORM_SUBMIT,
+            **partial_pair,
+        )
+
+
 def test_flow_definition_invalid_with_one_step() -> None:
     """
     GIVEN a FlowDefinition with exactly one FlowStep

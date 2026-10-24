@@ -31,8 +31,9 @@ Adding a new funnel
                          must be the Flask endpoint name (e.g. 'urls.create_url'),
                          NOT the URL pattern. Run `make endpoint-info e=<route>`
                          (or see `docs/endpoints/ENDPOINT_REGISTRY.md`) for the
-                         correct value. Exactly one
-                         of (event_name) or (api_endpoint+api_method) must be set
+                         correct value. api_endpoint and api_method are set
+                         both or neither; exactly one of (event_name) or the
+                         (api_endpoint+api_method) pair must be set
      - dim_filter        optional per-step AND-filter (e.g. [("form","login")])
      - drop_breakdown    optional FlowStepBreakdown(event_name, dim_filter, group_by)
                          explaining the drop from the previous step (e.g.
@@ -93,6 +94,9 @@ __all__ = [
 _FLOW_STEP_XOR_ERROR: str = (
     "A FlowStep must set exactly one of `event_name` or "
     "(`api_endpoint` + `api_method`)."
+)
+_FLOW_STEP_API_PAIR_ERROR: str = (
+    "A FlowStep must set `api_endpoint` and `api_method` both or neither."
 )
 _FLOW_DEFINITION_MIN_STEPS_ERROR: str = (
     "A FlowDefinition must declare at least 2 steps."
@@ -215,8 +219,10 @@ class FlowStep(BaseModel):
 
     @model_validator(mode="after")
     def _check_event_xor_api(self) -> Self:
+        if (self.api_endpoint is None) != (self.api_method is None):
+            raise ValueError(_FLOW_STEP_API_PAIR_ERROR)
         has_event = self.event_name is not None
-        has_api = self.api_endpoint is not None or self.api_method is not None
+        has_api = self.api_endpoint is not None and self.api_method is not None
         if has_event == has_api:
             raise ValueError(_FLOW_STEP_XOR_ERROR)
         return self
