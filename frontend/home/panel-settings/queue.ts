@@ -224,6 +224,7 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
           utubID,
           status: "saved",
           ...(section.scope === "utub" ? { savedPatch: patch } : {}),
+          ...(result.notice ? { notice: result.notice } : {}),
         });
         return;
       case "error": {

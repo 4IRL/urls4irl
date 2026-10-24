@@ -219,12 +219,15 @@ function say({ message }: { message: string }): void {
 function sayStatus({
   sectionId,
   status,
+  notice,
 }: {
   sectionId: string;
   status: string;
+  notice?: string;
 }): void {
   const title = titleOf({ sectionId });
-  say({ message: title === "" ? status : `${title}: ${status}` });
+  const base = title === "" ? status : `${title}: ${status}`;
+  say({ message: notice ? `${base}. ${notice}` : base });
 }
 
 function isManager({ state }: { state: AppState }): boolean {
@@ -617,8 +620,19 @@ function entryFor({
 
 function buildSink(): QueueSink {
   return {
-    report({ sectionId, utubID, status, savedPatch }) {
+    report({ sectionId, utubID, status, savedPatch, notice }) {
       const entry = entryFor({ sectionId, utubID });
+
+      // A notice-bearing save is announced even with no popover attached (closed
+      // mid-save); a plain save with no entry stays silent.
+      if (status === "saved" && notice && !entry) {
+        sayStatus({
+          sectionId,
+          status: APP_CONFIG.strings.PANEL_SETTINGS_SAVED,
+          notice,
+        });
+        return;
+      }
 
       if (status === "error") {
         // Announced even with no popover attached (a late save failure).
@@ -663,6 +677,7 @@ function buildSink(): QueueSink {
       sayStatus({
         sectionId,
         status: APP_CONFIG.strings.PANEL_SETTINGS_SAVED,
+        notice,
       });
       // Synchronous: a coalesced edit re-sends right after this report and would
       // cancel a deferred check.
