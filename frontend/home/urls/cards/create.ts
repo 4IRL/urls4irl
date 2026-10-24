@@ -15,6 +15,7 @@ import {
   mountSchemeSelector,
   type SchemeSelectorHandle,
 } from "../scheme/scheme-selector.js";
+import { isSchemeSelectorHidden } from "../scheme/scheme-default.js";
 import { handleSchemePrefixInput } from "../scheme/scheme-prefix-handler.js";
 import { getNumOfURLs } from "../utils.js";
 import {
@@ -159,6 +160,7 @@ function mountCreateSchemeSelector(): void {
     inputContainer,
     urlInput,
     idPrefix: "create",
+    hidden: isSchemeSelectorHidden(),
     onChange: () => {
       clearCreateURLStringError();
       urlInput.trigger(TRIM_INPUT_EVENT);
