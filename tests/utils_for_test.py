@@ -384,7 +384,13 @@ def clear_database(test_config: ConfigTest):
     meta = sqlalchemy.MetaData(engine)
     meta.reflect()
     meta.drop_all()
-    meta.create_all()
+    # Recreate model tables from the model metadata: reflection skips
+    # expression-based indexes (MetricFlows' lower("displayName") unique index).
+    reflected_only_tables = [
+        table for name, table in meta.tables.items() if name not in db.metadata.tables
+    ]
+    meta.create_all(tables=reflected_only_tables)
+    db.metadata.create_all(engine)
 
 
 def create_secondary_app(config: type[ConfigTest]) -> Flask:

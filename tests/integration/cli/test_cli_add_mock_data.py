@@ -1,8 +1,10 @@
 import pytest
 
+from backend.cli import mock_options
 from backend.cli.mock_constants import (
     MOCK_ADMIN_USERNAME,
     MOCK_ADMIN_UTUB_NAME,
+    MOCK_METRIC_FLOW_PAYLOADS,
     MOCK_TAGS,
     MOCK_URL_STRINGS,
     TEST_USER_COUNT,
@@ -14,9 +16,13 @@ from backend.cli.mock_options import (
     SEED_LATENCY_ROLLUP_DAY_OFFSETS,
     SEED_TEST_DATA_HOUR_OFFSETS,
 )
+from backend.db import db
+from backend.metrics.flow_validation import validate_flow_payload
+from backend.metrics.flows import FlowDefinition
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.models.metric_flows import Metric_Flows
 from backend.models.users import User_Role, Users
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -39,6 +45,7 @@ from tests.integration.cli.utils import (
 pytestmark = pytest.mark.cli
 
 DUPLICATE_COUNT = 2
+EXPECTED_SAMPLE_FLOW_COUNT = 2
 # Three category-anchor events (API_HIT, UI_LOGIN_SUBMIT, UTUB_CREATED) plus
 # four `(transport × device_type)` rows for API_METRICS_INGEST_BATCH so the
 # Pipeline Health stacked-bar card sees one segment per swatch.
@@ -477,6 +484,87 @@ def test_add_all_mock_data_with_no_utub_duplicates(runner):
     verify_tracking_seed_urls_added(app, cli_runner)
 
 
+def test_add_all_mock_data_seeds_valid_custom_metric_flows_idempotently(runner):
+    """
+    GIVEN a developer running `flask addmock all` twice
+    THEN exactly the two sample custom flows exist after each run, and each
+        stored definition passes validate_flow_payload.
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+
+    for _ in range(DUPLICATE_COUNT):
+        result = cli_runner.invoke(args=["addmock", "all"])
+        assert result.exit_code == 0, result.output
+        with app.app_context():
+            flows = Metric_Flows.query.order_by(Metric_Flows.id).all()
+            assert len(flows) == EXPECTED_SAMPLE_FLOW_COUNT
+            for flow in flows:
+                validated = validate_flow_payload(
+                    {"display_name": flow.display_name, **flow.definition}
+                )
+                assert isinstance(validated, FlowDefinition), validated
+                assert flow.created_by is None
+                assert flow.updated_by is None
+            assert {flow.display_name for flow in flows} == {
+                payload["display_name"] for payload in MOCK_METRIC_FLOW_PAYLOADS
+            }
+
+
+def test_add_metric_flows_raises_on_invalid_sample_payload(runner, monkeypatch):
+    """
+    GIVEN a sample metric flow payload that fails validation (a single step)
+    WHEN `_add_metric_flows` runs
+    THEN a ValueError is raised so samples cannot silently drift invalid.
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+        monkeypatch (pytest.fixture): Patches the sample payloads
+    """
+    app, _ = runner
+    monkeypatch.setattr(
+        mock_options,
+        "MOCK_METRIC_FLOW_PAYLOADS",
+        ({"display_name": "Invalid sample", "steps": [{"event": "api_hit"}]},),
+    )
+
+    with app.app_context():
+        with pytest.raises(ValueError):
+            mock_options._add_metric_flows(db)
+
+
+def test_add_all_mock_data_skips_case_variant_existing_metric_flow(runner):
+    """
+    GIVEN a Metric_Flows row whose display_name differs only by case from a sample
+    WHEN the developer runs `flask addmock all`
+    THEN the command exits 0 and no duplicate is added for the case-variant;
+        only the other sample is inserted.
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+
+    with app.app_context():
+        db.session.add(
+            Metric_Flows(
+                display_name="CREATE UTUB ON MOBILE",
+                definition={"steps": []},
+                created_by=None,
+                updated_by=None,
+            )
+        )
+        db.session.commit()
+
+    result = cli_runner.invoke(args=["addmock", "all"])
+    assert result.exit_code == 0, result.output
+
+    with app.app_context():
+        assert Metric_Flows.query.count() == EXPECTED_SAMPLE_FLOW_COUNT
+
+
 def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):
     """
     GIVEN a developer wanting to seed deterministic AnonymousMetrics rows for UI tests
@@ -516,6 +604,10 @@ def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):
     )
 
     with app.app_context():
+        assert Metric_Flows.query.count() == 0, (
+            "seed-uniform-test-data must not write custom MetricFlows rows "
+            "(the metrics UI tests assert only the four built-in funnels)."
+        )
         rows_after_first_run = Anonymous_Metrics.query.count()
         assert rows_after_first_run == EXPECTED_SEEDED_ROW_COUNT, (
             f"Expected {EXPECTED_SEEDED_ROW_COUNT} seeded rows after first run, "
@@ -541,6 +633,7 @@ def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):
     )
 
     with app.app_context():
+        assert Metric_Flows.query.count() == 0
         rows_after_second_run = Anonymous_Metrics.query.count()
         assert rows_after_second_run == EXPECTED_SEEDED_ROW_COUNT, (
             "Seed CLI must be idempotent: second invocation must not add or "

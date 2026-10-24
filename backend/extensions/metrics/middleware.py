@@ -14,6 +14,15 @@ from backend.utils.strings.config_strs import CONFIG_ENVS
 _SKIP_ENDPOINTS: frozenset[str] = frozenset({"static", SYSTEM_ROUTES.HEALTH})
 _METRICS_BLUEPRINT_NAME: str = "metrics"
 
+# Methods counted as "API hit"-emitting routes; mirrors the HTTP verbs the
+# `API_HIT` middleware records via `@app.after_request`. Werkzeug auto-adds
+# HEAD when GET is registered and OPTIONS for CORS — neither produces a
+# distinct route handler, so both are excluded from the count. The coverage
+# summary CLI and the custom-flow validator share this one set.
+API_HIT_COUNTED_METHODS: frozenset[str] = frozenset(
+    {"GET", "POST", "PATCH", "PUT", "DELETE"}
+)
+
 
 def should_skip(endpoint: str | None, blueprint: str | None) -> bool:
     """Return True when this request must not be recorded as an api_hit.

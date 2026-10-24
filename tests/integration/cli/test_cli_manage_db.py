@@ -5,8 +5,10 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect, text
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.exc import IntegrityError
 
 from backend import db, migrate
+from backend.models.metric_flows import DISPLAY_NAME_LOWER_INDEX, Metric_Flows
 from backend.models.urls import Urls
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
@@ -63,6 +65,43 @@ def test_clear_db(runner):
             initial_utub_tag_count != Utub_Url_Tags.query.count()
             and Utub_Url_Tags.query.count() == 0
         )
+
+
+def test_clear_db_preserves_metric_flows_display_name_index(runner):
+    """
+    GIVEN a database cleared via `flask managedb clear test`
+    WHEN a Metric_Flows row 'Foo' exists and a row 'foo' is committed
+    THEN the lower(displayName) unique index still rejects it
+    """
+    app, cli_runner = runner
+    cli_runner.invoke(args=["managedb", "clear", "test"])
+
+    with app.app_context():
+        db.session.add(
+            Metric_Flows(
+                display_name="Foo",
+                definition={"steps": []},
+                created_by=None,
+                updated_by=None,
+            )
+        )
+        db.session.commit()
+
+        db.session.add(
+            Metric_Flows(
+                display_name="foo",
+                definition={"steps": []},
+                created_by=None,
+                updated_by=None,
+            )
+        )
+        with pytest.raises(IntegrityError) as raised:
+            db.session.commit()
+        db.session.rollback()
+        assert DISPLAY_NAME_LOWER_INDEX in str(raised.value)
+
+        Metric_Flows.query.delete()
+        db.session.commit()
 
 
 def test_drop_db_without_migrations(runner):

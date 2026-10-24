@@ -15,7 +15,10 @@ from backend.extensions.metrics.dim_types_generator import (
     generate_resources_ts,
     generate_ui_events_ts,
 )
-from backend.extensions.metrics.middleware import should_skip
+from backend.extensions.metrics.middleware import (
+    API_HIT_COUNTED_METHODS,
+    should_skip,
+)
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics import query_service
 from backend.metrics.audit import (
@@ -56,14 +59,6 @@ AUDIT_SECTION_REGISTRY_DRIFT: str = "# EVENT_REGISTRY drift vs EventName enum"
 #   Count    — distinct route handlers (API) or `EventName` members (Domain/UI).
 COVERAGE_SUMMARY_HEADER: str = "Domain\tCategory\tCount"
 COVERAGE_SUMMARY_API_LABEL: str = "API (auto)"
-
-# Methods counted as "API hit"-emitting routes; mirrors the HTTP verbs the
-# `API_HIT` middleware records via `@app.after_request`. Werkzeug auto-adds
-# HEAD when GET is registered and OPTIONS for CORS — neither produces a
-# distinct route handler, so both are excluded from the count.
-_COVERAGE_SUMMARY_COUNTED_METHODS: frozenset[str] = frozenset(
-    {"GET", "POST", "PATCH", "PUT", "DELETE"}
-)
 
 HELP_SUMMARY_METRICS = """Anonymous metrics CLI commands for U4I."""
 
@@ -422,7 +417,7 @@ def _count_auto_counted_api_routes(app: Flask) -> int:
         if should_skip(rule.endpoint, blueprint_name):
             continue
         for method_name in rule.methods:
-            if method_name in _COVERAGE_SUMMARY_COUNTED_METHODS:
+            if method_name in API_HIT_COUNTED_METHODS:
                 counted_pairs.add((rule.endpoint, method_name))
     return len(counted_pairs)
 

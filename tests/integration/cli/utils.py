@@ -15,8 +15,13 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.utils.db_table_names import TABLE_NAMES
 
 TRACKING_SEED_URL_STRINGS: frozenset[str] = MOCK_TRACKING_SEED_URL_STRINGS
+
+# Seeded-at-head tables whose rows do not survive a downgrade past their own
+# migration (the downgrade drops the table; re-upgrade recreates it empty).
+TABLES_DROPPED_BY_DOWNGRADE: frozenset[str] = frozenset({TABLE_NAMES.METRIC_FLOWS})
 
 
 def assert_row_counts_match_ignoring_new_tables(
@@ -29,13 +34,20 @@ def assert_row_counts_match_ignoring_new_tables(
     to the target and are not part of that migration's data-loss contract,
     so only tables present in both snapshots are compared.
 
+    Tables in ``TABLES_DROPPED_BY_DOWNGRADE`` (seeded at head by ``addmock
+    all`` but legitimately emptied when a downgrade below their own migration
+    drops them, then re-created empty on re-upgrade) are excluded from the
+    comparison; every other table must match exactly.
+
     Args:
         row_counts_before: Per-table row counts captured before the roundtrip
             (at head, after seeding).
         row_counts_after: Per-table row counts captured after downgrading to
             the target revision.
     """
-    shared_tables = row_counts_before.keys() & row_counts_after.keys()
+    shared_tables = (
+        row_counts_before.keys() & row_counts_after.keys()
+    ) - TABLES_DROPPED_BY_DOWNGRADE
     assert {
         table_name: row_counts_before[table_name] for table_name in shared_tables
     } == {table_name: row_counts_after[table_name] for table_name in shared_tables}

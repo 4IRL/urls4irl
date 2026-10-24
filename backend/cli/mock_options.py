@@ -5,10 +5,14 @@ import click
 from flask import Flask, current_app, session
 from flask.cli import AppGroup, with_appcontext
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, func
 from sqlalchemy.exc import ProgrammingError
 
-from backend.cli.mock_constants import MOCK_TRACKING_SEED_URL_PAIRS, TEST_USER_COUNT
+from backend.cli.mock_constants import (
+    MOCK_METRIC_FLOW_PAYLOADS,
+    MOCK_TRACKING_SEED_URL_PAIRS,
+    TEST_USER_COUNT,
+)
 from backend.cli.mock_data.admin import generate_mock_admin
 from backend.cli.mock_data.tags import generate_mock_tags
 from backend.cli.mock_data.urls import generate_custom_mock_url, generate_mock_urls
@@ -18,12 +22,15 @@ from backend.cli.mock_data.utubs import generate_mock_utubs
 from backend.db import db
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics.events import DeviceType, EventName
+from backend.metrics.flow_validation import serialize_flow_steps, validate_flow_payload
+from backend.metrics.flows import FlowDefinition
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeKind
 from backend.metrics.latency import LatencyMetricName
 from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.models.metric_flows import Metric_Flows
 from backend.models.urls import Urls
 from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
@@ -214,6 +221,7 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     generate_mock_urls(db)
     generate_mock_tags(db)
     _add_tracking_seed_urls(db)
+    _add_metric_flows(db)
     rows_written = _seed_uniform_test_data()
     print(
         f"\n--- Seeded {rows_written} AnonymousMetrics + AnonymousGauges + "
@@ -222,6 +230,42 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     print(
         "\n--- Finished adding all mock users, UTubs, members, urls, tags, and metrics ---\n\n"
     )
+
+
+def _add_metric_flows(db: SQLAlchemy):
+    """Seed the sample custom metric flows (not part of the uniform UI seed).
+
+    Each sample in ``MOCK_METRIC_FLOW_PAYLOADS`` is built through
+    ``validate_flow_payload`` (an error map raises, so samples cannot drift
+    invalid) and stored with ``created_by``/``updated_by`` of None. A sample
+    whose ``lower(display_name)`` already exists is skipped, keeping repeat
+    ``addmock all`` runs idempotent. Requires an active Flask app context.
+    """
+    for payload in MOCK_METRIC_FLOW_PAYLOADS:
+        validated = validate_flow_payload(payload)
+        if not isinstance(validated, FlowDefinition):
+            raise ValueError(
+                f"Sample metric flow {payload['display_name']!r} is invalid: "
+                f"{validated}"
+            )
+
+        existing_flow = Metric_Flows.query.filter(
+            func.lower(Metric_Flows.display_name) == validated.display_name.lower()
+        ).first()
+        if existing_flow is not None:
+            print(f"Already added metric flow {validated.display_name!r}")
+            continue
+
+        print(f"Adding metric flow {validated.display_name!r}")
+        db.session.add(
+            Metric_Flows(
+                display_name=validated.display_name,
+                definition=serialize_flow_steps(validated),
+                created_by=None,
+                updated_by=None,
+            )
+        )
+    db.session.commit()
 
 
 def _add_tracking_seed_urls(db: SQLAlchemy):
@@ -370,7 +414,14 @@ def clear_db(db_type: str):
     if TABLE_NAMES.ALEMBIC_VERSION in meta.tables:
         meta.remove(meta.tables[TABLE_NAMES.ALEMBIC_VERSION])
     meta.drop_all()
-    meta.create_all()
+    # Recreate model tables from the model metadata, not the reflected copy:
+    # reflection skips expression-based indexes (MetricFlows' lower(displayName)
+    # unique index), so a reflected create_all would silently lose them.
+    reflected_only_tables = [
+        table for name, table in meta.tables.items() if name not in db.metadata.tables
+    ]
+    meta.create_all(tables=reflected_only_tables)
+    db.metadata.create_all(engine)
     con.close()
     print(f"\n--- Finished emptying each table in {db_type} database ---\n\n")
 
