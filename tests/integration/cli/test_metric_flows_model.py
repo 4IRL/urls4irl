@@ -22,15 +22,10 @@ pytestmark = pytest.mark.cli
 _VALID_DEFINITION: dict[str, Any] = {"steps": []}
 
 
-_DEFAULT_DEFINITION: Any = object()
-
-
-def _add_flow(display_name: str, definition: Any = _DEFAULT_DEFINITION) -> Metric_Flows:
+def _add_flow(display_name: str, definition: Any = None) -> Metric_Flows:
     flow = Metric_Flows(
         display_name=display_name,
-        definition=_VALID_DEFINITION
-        if definition is _DEFAULT_DEFINITION
-        else definition,
+        definition=definition if definition is not None else _VALID_DEFINITION,
         created_by=None,
         updated_by=None,
     )
