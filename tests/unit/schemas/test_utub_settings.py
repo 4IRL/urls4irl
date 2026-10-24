@@ -4,11 +4,12 @@ from typing import Any, Self
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import Field
+from pydantic import Field, ValidationError
 
 import backend.schemas.utub_settings as settings_module
 from backend.schemas.utub_settings import (
     SettingsSection,
+    UrlsSettings,
     UtubSettings,
     UtubSettingsPatchError,
     merge_utub_settings,
@@ -238,6 +239,71 @@ def test_merge_unknown_section_raises() -> None:
     with pytest.raises(UtubSettingsPatchError) as exc_info:
         merge_utub_settings(None, {"bogus": {}})
     assert list(exc_info.value.errors) == ["bogus"]
+
+
+HIDE_KEY = "hide_scheme_selector"
+SCHEME_KEY = "default_url_scheme"
+
+
+def _validate_urls(data: dict[str, Any], patched: frozenset[str]) -> UrlsSettings:
+    return UrlsSettings.model_validate(data, context={"patched_keys": patched})
+
+
+@pytest.mark.parametrize(
+    "hide, scheme, patched, expected_hide",
+    [
+        (True, "https", frozenset({HIDE_KEY}), True),
+        (True, "https", frozenset({SCHEME_KEY}), True),
+        (True, "https", frozenset(), True),
+        (False, "https", frozenset({HIDE_KEY}), False),
+        (False, "https", frozenset(), False),
+        (False, "mailto", frozenset({HIDE_KEY}), False),
+        (False, "mailto", frozenset({SCHEME_KEY}), False),
+        (False, "mailto", frozenset(), False),
+        # Non-https with hide=true, hide not patched: auto-reset (incl. reads).
+        (True, "mailto", frozenset({SCHEME_KEY}), False),
+        (True, "mailto", frozenset(), False),
+    ],
+)
+def test_urls_normalize_truth_table(
+    hide: bool, scheme: str, patched: frozenset[str], expected_hide: bool
+) -> None:
+    section = _validate_urls({SCHEME_KEY: scheme, HIDE_KEY: hide}, patched)
+    assert section.hide_scheme_selector is expected_hide
+    assert section.default_url_scheme == scheme
+
+
+def test_urls_normalize_rejects_explicit_hide_with_non_https() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        _validate_urls({SCHEME_KEY: "ssh", HIDE_KEY: True}, frozenset({HIDE_KEY}))
+    assert exc_info.value.errors()[0]["loc"] == ()
+
+
+def test_urls_auto_reset_is_marked_set_so_it_persists() -> None:
+    section = _validate_urls(
+        {SCHEME_KEY: "mailto", HIDE_KEY: True}, frozenset({SCHEME_KEY})
+    )
+    assert section.model_dump(exclude_unset=True) == {
+        SCHEME_KEY: "mailto",
+        HIDE_KEY: False,
+    }
+
+
+def test_urls_unknown_scheme_rejected() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        _validate_urls({SCHEME_KEY: "bogus"}, frozenset({SCHEME_KEY}))
+    assert exc_info.value.errors()[0]["loc"] == (SCHEME_KEY,)
+
+
+def test_urls_scheme_is_lowercased() -> None:
+    assert _validate_urls({SCHEME_KEY: "MailTo"}, frozenset()).default_url_scheme == (
+        "mailto"
+    )
+
+
+def test_urls_extra_key_rejected() -> None:
+    with pytest.raises(ValidationError):
+        _validate_urls({"nope": 1}, frozenset({"nope"}))
 
 
 def test_wire_keys_are_snake_case() -> None:
