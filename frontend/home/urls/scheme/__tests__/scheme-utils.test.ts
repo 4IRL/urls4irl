@@ -200,9 +200,12 @@ describe("isDevHostText", () => {
     });
 
     it("falls back to the app default scheme", () => {
-      expect(defaultSchemeForText({ text: "localhost" })).toBe(
-        APP_CONFIG.constants.URL_DEFAULT_SCHEME,
-      );
+      expect(
+        defaultSchemeForText({
+          text: "localhost",
+          fallbackScheme: APP_CONFIG.constants.URL_DEFAULT_SCHEME,
+        }),
+      ).toBe(APP_CONFIG.constants.URL_DEFAULT_SCHEME);
     });
   });
 });
@@ -211,16 +214,36 @@ describe("defaultSchemeForText", () => {
   it.each(["localhost:3000", "127.0.0.1/x", "0.0.0.0"])(
     "is http for dev host %j",
     (text) => {
-      expect(defaultSchemeForText({ text })).toBe("http");
+      expect(
+        defaultSchemeForText({
+          text,
+          fallbackScheme: APP_CONFIG.constants.URL_DEFAULT_SCHEME,
+        }),
+      ).toBe("http");
     },
   );
+
+  it("is http for a dev host whatever the fallback", () => {
+    expect(
+      defaultSchemeForText({ text: "localhost", fallbackScheme: "mailto" }),
+    ).toBe("http");
+  });
 
   it.each(["example.com", "", "localhostx.com"])(
     "is the app default for %j",
     (text) => {
-      expect(defaultSchemeForText({ text })).toBe(
-        APP_CONFIG.constants.URL_DEFAULT_SCHEME,
-      );
+      expect(
+        defaultSchemeForText({
+          text,
+          fallbackScheme: APP_CONFIG.constants.URL_DEFAULT_SCHEME,
+        }),
+      ).toBe(APP_CONFIG.constants.URL_DEFAULT_SCHEME);
     },
   );
+
+  it("returns the given fallback for non-dev text", () => {
+    expect(
+      defaultSchemeForText({ text: "example.com", fallbackScheme: "ssh" }),
+    ).toBe("ssh");
+  });
 });

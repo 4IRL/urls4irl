@@ -1,0 +1,419 @@
+import { $ } from "../../../lib/globals.js";
+import { APP_CONFIG } from "../../../lib/config.js";
+import { KEYS } from "../../../lib/constants.js";
+import { createRovingListbox } from "../../../lib/roving-listbox.js";
+import { fillTemplate } from "../../../lib/string-template.js";
+import { isCoarsePointer } from "../../mobile.js";
+
+export interface SchemePickerHandle {
+  getScheme(): string;
+  setScheme(args: { scheme: string }): void;
+  setReadOnly(args: { readOnly: boolean }): void;
+  setInvalid(args: { invalid: boolean }): void;
+  open(): void;
+  close(): void;
+  destroy(): void;
+  /** Root elements. Auto-attached to `container` only when it was given. */
+  toggle: JQuery<HTMLElement>;
+  listbox: JQuery<HTMLElement>;
+}
+
+export interface MountSchemePickerArgs {
+  container?: JQuery<HTMLElement>;
+  idPrefix: string;
+  initialScheme: string;
+  /** Space-separated ids naming the toggle (host label); excludes accessibleName. */
+  labelledBy?: string;
+  /** Writes the toggle's aria-label from the current scheme; excludes labelledBy. */
+  accessibleName?: (args: { scheme: string }) => string;
+  toggleId?: string;
+  /** Called after the picker updated, closed and ran focusAfterSelect. */
+  onSelect: (args: { scheme: string }) => void;
+  focusAfterSelect: "toggle" | (() => void);
+  /** Escape on the closed toggle: stopPropagation, then this. Absent: bubbles. */
+  onEscapeWhenClosed?: () => void;
+  /**
+   * Element whose subtree counts as "inside" for outside-click and focus-leave
+   * dismissal. Defaults to the toggle plus the listbox.
+   */
+  boundary?: JQuery<HTMLElement>;
+}
+
+const OPTION_SELECTOR = '.urlSchemeOption[role="option"]';
+const ENABLED_OPTION_SELECTOR = '.urlSchemeOption[role="option"]:not(.hidden)';
+const OPTIONS_SELECTOR = ".urlSchemeOptions";
+const NO_MATCHES_SELECTOR = ".urlSchemeHint";
+
+// Each mount takes the next number, so its document/boundary event namespaces
+// and listbox ids never collide with another live (or stale) instance.
+let mountCounter = 0;
+
+// Ids and event namespaces must not contain spaces or dots.
+function sanitizeIdPrefix({ idPrefix }: { idPrefix: string }): string {
+  return idPrefix.replace(/[^A-Za-z0-9_-]/g, "-");
+}
+
+export function mountSchemePicker({
+  container,
+  idPrefix,
+  initialScheme,
+  labelledBy,
+  accessibleName,
+  toggleId,
+  onSelect,
+  focusAfterSelect,
+  onEscapeWhenClosed,
+  boundary,
+}: MountSchemePickerArgs): SchemePickerHandle {
+  if (labelledBy !== undefined && accessibleName !== undefined) {
+    throw new Error(
+      "mountSchemePicker: pass labelledBy or accessibleName, not both",
+    );
+  }
+
+  mountCounter += 1;
+  const instanceKey = `${sanitizeIdPrefix({ idPrefix })}-${mountCounter}`;
+  const documentClickEvent = `click.urlSchemeSelector${mountCounter}`;
+  const focusOutEvent = `focusout.urlSchemeSelector${mountCounter}`;
+  const listboxId = `${instanceKey}-urlSchemeListbox`;
+
+  let currentScheme = initialScheme;
+  let isOpen = false;
+  let readOnly = false;
+  let destroyed = false;
+  let rowsBuilt = false;
+  // Enter on the filter activates on KEYUP (like the rows), but only when its
+  // keydown also landed on the filter: opening the list with Enter on the toggle
+  // moves focus to the filter mid-press, and that Enter keyup must not select.
+  let filterEnterArmed = false;
+
+  const toggleLabel = $(document.createElement("span"))
+    .addClass("urlSchemeToggleLabel")
+    .text(currentScheme);
+  const toggleCaret = $(document.createElement("span"))
+    .addClass("urlSchemeToggleCaret")
+    .attr("aria-hidden", "true")
+    .text("▾");
+  const toggle = $(document.createElement("button"))
+    .addClass("urlSchemeToggle")
+    .attr({
+      type: "button",
+      "aria-haspopup": "listbox",
+      "aria-expanded": "false",
+      "aria-controls": listboxId,
+    })
+    .append(toggleLabel)
+    .append(toggleCaret);
+  if (toggleId !== undefined) toggle.attr("id", toggleId);
+  const valueId = `${idPrefix}SchemeToggleValue`;
+  if (labelledBy !== undefined) toggleLabel.attr("id", valueId);
+
+  const filterInput = $(document.createElement("input"))
+    .addClass("text-input urlSchemeFilter")
+    .attr({
+      type: "search",
+      autocomplete: "off",
+      autocorrect: "off",
+      autocapitalize: "off",
+      "aria-label": APP_CONFIG.strings.URL_SCHEME_FILTER_LABEL,
+      placeholder: APP_CONFIG.strings.URL_SCHEME_FILTER_LABEL,
+    });
+  const filterWrap = $(document.createElement("div"))
+    .addClass("urlSchemeFilterWrap")
+    .append(
+      $(document.createElement("div"))
+        .addClass("text-input-inner-container")
+        .append(filterInput),
+    );
+
+  const noMatchesHint = $(document.createElement("div"))
+    .addClass("urlSchemeHint hidden")
+    .attr({ role: "status", "aria-live": "polite" })
+    .text(APP_CONFIG.strings.URL_SCHEME_NO_MATCHES);
+  const options = $(document.createElement("div"))
+    .addClass("urlSchemeOptions")
+    .attr("role", "listbox")
+    .append(noMatchesHint);
+  const matchMessage = $(document.createElement("div"))
+    .addClass("urlSchemeMsg")
+    .attr({ "aria-live": "polite", "aria-atomic": "true" });
+  const listbox = $(document.createElement("div"))
+    .addClass("urlSchemeListbox hidden")
+    .attr("id", listboxId)
+    .append(filterWrap)
+    .append(options)
+    .append(matchMessage);
+
+  const roving = createRovingListbox({
+    container: () => listbox,
+    optionSelector: OPTION_SELECTOR,
+    enabledOptionSelector: ENABLED_OPTION_SELECTOR,
+    listboxSelector: OPTIONS_SELECTOR,
+    noMatchesSelector: NO_MATCHES_SELECTOR,
+    filterText: (row) => row.attr("data-scheme") ?? "",
+    onActivateRow: (row) => selectRow(row),
+    onEscape: () => closeList({ restoreFocus: true }),
+  });
+
+  function isInside(node: Node): boolean {
+    if (boundary !== undefined) return boundary[0].contains(node);
+    return toggle[0].contains(node) || listbox[0].contains(node);
+  }
+
+  function syncAccessibleName(): void {
+    if (accessibleName !== undefined) {
+      toggle.attr("aria-label", accessibleName({ scheme: currentScheme }));
+    } else if (labelledBy !== undefined) {
+      toggle.attr("aria-labelledby", `${labelledBy} ${valueId}`);
+    }
+  }
+
+  function buildRows(): void {
+    if (rowsBuilt) return;
+    rowsBuilt = true;
+    const hints = APP_CONFIG.constants.URL_SCHEME_HINTS;
+    const rows = APP_CONFIG.constants.URL_SCHEMES.map((scheme) => {
+      const row = $(document.createElement("div"))
+        .addClass("urlSchemeOption flex-row jc-sb align-center")
+        .attr({
+          role: "option",
+          "data-scheme": scheme,
+          "aria-selected": String(scheme === currentScheme),
+          tabindex: "-1",
+        })
+        .append(
+          $(document.createElement("span"))
+            .addClass("urlSchemeOptionLabel")
+            .text(scheme),
+        );
+      // Own keys only: an inherited name like "constructor" is not a hint.
+      if (Object.prototype.hasOwnProperty.call(hints, scheme)) {
+        row.append(
+          $(document.createElement("span"))
+            .addClass("urlSchemeOptionHint")
+            .text(hints[scheme]),
+        );
+      }
+      return row[0];
+    });
+    noMatchesHint.before(rows);
+  }
+
+  function syncSelectedRows(): void {
+    options.find(OPTION_SELECTOR).each((_, element) => {
+      const row = $(element);
+      row.attr(
+        "aria-selected",
+        String(row.attr("data-scheme") === currentScheme),
+      );
+    });
+  }
+
+  function updateMatchMessage(): void {
+    const visibleCount = options.find(ENABLED_OPTION_SELECTOR).length;
+    const hasQuery = String(filterInput.val() ?? "").trim() !== "";
+    if (!hasQuery || visibleCount === 0) {
+      matchMessage.text("");
+      return;
+    }
+    matchMessage.text(
+      visibleCount === 1
+        ? APP_CONFIG.strings.URL_SCHEME_MATCH_ONE
+        : fillTemplate({
+            template: APP_CONFIG.strings.URL_SCHEME_MATCH_MANY,
+            values: { count: String(visibleCount) },
+          }),
+    );
+  }
+
+  function clearFilter(): void {
+    filterInput.val("");
+    if (!rowsBuilt) return;
+    roving.applyFilter("");
+    matchMessage.text("");
+  }
+
+  function seedRovingEntry(): void {
+    options.find(OPTION_SELECTOR).attr("tabindex", "-1");
+    const selectedRow = options.find(
+      `${OPTION_SELECTOR}[aria-selected="true"]`,
+    );
+    const entryRow =
+      selectedRow.length > 0
+        ? selectedRow
+        : options.find(OPTION_SELECTOR).first();
+    entryRow.attr("tabindex", "0");
+    // Only meaningful once the listbox is visible (see openList).
+    entryRow[0]?.scrollIntoView({ block: "nearest" });
+  }
+
+  function applyScheme({ scheme }: { scheme: string }): void {
+    currentScheme = scheme;
+    toggleLabel.text(scheme);
+    syncAccessibleName();
+    syncSelectedRows();
+  }
+
+  function closeList({ restoreFocus }: { restoreFocus: boolean }): void {
+    filterEnterArmed = false;
+    if (!isOpen) return;
+    isOpen = false;
+    toggle.attr("aria-expanded", "false");
+    listbox.addClass("hidden");
+    roving.detachKeyListeners();
+    $(document).off(documentClickEvent);
+    focusScope().off(focusOutEvent);
+    clearFilter();
+    if (restoreFocus) toggle.trigger("focus");
+  }
+
+  function focusScope(): JQuery<HTMLElement> {
+    return boundary ?? toggle.add(listbox);
+  }
+
+  function openList(): void {
+    if (isOpen || readOnly) return;
+    isOpen = true;
+    filterEnterArmed = false;
+    buildRows();
+    clearFilter();
+    syncSelectedRows();
+    toggle.attr("aria-expanded", "true");
+    listbox.removeClass("hidden");
+    // After the unhide: scrollIntoView is a no-op on a `display: none` subtree.
+    seedRovingEntry();
+    roving.attachKeyListeners();
+
+    $(document).offAndOnExact(
+      documentClickEvent,
+      function (event: JQuery.TriggeredEvent) {
+        const target = event.target as Node | null;
+        if (target !== null && isInside(target)) return;
+        closeList({ restoreFocus: false });
+      },
+    );
+    focusScope().offAndOnExact(
+      focusOutEvent,
+      function (event: JQuery.TriggeredEvent) {
+        // jQuery does not copy relatedTarget onto focus events; read the native one.
+        const nativeEvent = event.originalEvent as FocusEvent | undefined;
+        const nextFocus = nativeEvent?.relatedTarget ?? null;
+        if (!(nextFocus instanceof Node)) return;
+        if (isInside(nextFocus)) return;
+        closeList({ restoreFocus: false });
+      },
+    );
+
+    // Touch: keep focus on the toggle so the on-screen keyboard stays down.
+    if (!isCoarsePointer()) filterInput.trigger("focus");
+  }
+
+  function selectRow(row: JQuery<HTMLElement>): void {
+    const scheme = row.attr("data-scheme");
+    if (scheme === undefined) return;
+    applyScheme({ scheme });
+    closeList({ restoreFocus: false });
+    if (focusAfterSelect === "toggle") toggle.trigger("focus");
+    else focusAfterSelect();
+    onSelect({ scheme });
+  }
+
+  function selectFirstVisibleRow(): void {
+    const firstRow = options.find(ENABLED_OPTION_SELECTOR).first();
+    if (firstRow.length > 0) selectRow(firstRow);
+  }
+
+  syncAccessibleName();
+  if (container !== undefined) container.append(toggle).append(listbox);
+
+  toggle.offAndOnExact("click.urlSchemeToggle", () => {
+    if (isOpen) closeList({ restoreFocus: true });
+    else openList();
+  });
+
+  toggle.offAndOnExact(
+    "keydown.urlSchemeToggleEscape",
+    function (event: JQuery.TriggeredEvent) {
+      if (event.key !== KEYS.ESCAPE) return;
+      if (isOpen) {
+        // Coarse pointer: focus never left the toggle, so the list's own
+        // capture-phase Escape (bound on the listbox) cannot see this event.
+        event.stopPropagation();
+        event.preventDefault();
+        closeList({ restoreFocus: true });
+        return;
+      }
+      // Closed: an owner callback handles it (and must not also hit a panel-level
+      // Escape handler); with no owner, bubble untouched.
+      if (onEscapeWhenClosed === undefined) return;
+      event.stopPropagation();
+      onEscapeWhenClosed();
+    },
+  );
+
+  options.offAndOnExact(
+    "click.urlSchemeSelect",
+    function (event: JQuery.TriggeredEvent) {
+      const row = $(event.target as HTMLElement).closest(OPTION_SELECTOR);
+      if (row.length > 0) selectRow(row);
+    },
+  );
+
+  filterInput.offAndOnExact("input.urlSchemeFilter", () => {
+    roving.applyFilter(String(filterInput.val() ?? ""));
+    updateMatchMessage();
+  });
+  filterInput.offAndOnExact(
+    "keydown.urlSchemeFilter",
+    function (event: JQuery.TriggeredEvent) {
+      if (event.key !== KEYS.ENTER) return;
+      event.preventDefault();
+      filterEnterArmed = true;
+    },
+  );
+  filterInput.offAndOnExact(
+    "keyup.urlSchemeFilter",
+    function (event: JQuery.TriggeredEvent) {
+      if (event.key !== KEYS.ENTER || !filterEnterArmed) return;
+      filterEnterArmed = false;
+      selectFirstVisibleRow();
+    },
+  );
+
+  return {
+    toggle,
+    listbox,
+    getScheme: () => currentScheme,
+    setScheme: applyScheme,
+    setReadOnly({ readOnly: nextReadOnly }) {
+      readOnly = nextReadOnly;
+      if (readOnly) {
+        toggle.attr("aria-disabled", "true");
+        closeList({ restoreFocus: false });
+      } else {
+        toggle.removeAttr("aria-disabled");
+      }
+    },
+    setInvalid({ invalid }) {
+      toggle.toggleClass("invalid-field", invalid);
+    },
+    open: openList,
+    close() {
+      closeList({ restoreFocus: false });
+    },
+    destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      // Unbinds this instance's own document, focusout and key listeners (each
+      // carries a per-mount namespace).
+      closeList({ restoreFocus: false });
+      toggle.off(".urlSchemeToggle .urlSchemeToggleEscape");
+      filterInput.off(".urlSchemeFilter");
+      options.off(".urlSchemeSelect");
+      if (container !== undefined) {
+        toggle.remove();
+        listbox.remove();
+      }
+    },
+  };
+}
