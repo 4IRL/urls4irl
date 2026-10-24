@@ -249,7 +249,7 @@ def test_device_type_non_integer_strings_fail(app: Flask, value: str) -> None:
 
 
 def test_whitespace_only_dim_parts_are_rejected(app: Flask) -> None:
-    """Carry-over from Step 3: the lenient model accepts ``'  :v'``."""
+    """Filters with whitespace-only parts pass the lenient model but fail validation."""
     errors = _errors(_ui_step(), _second(dim_filter=["  :v", "form:  "]))
     assert errors == {
         "steps.1.dim_filter.0": [unknown_field_message(value="  ")],
