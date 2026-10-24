@@ -39,6 +39,7 @@ from tests.integration.utubmembers.test_owner_mutation_concurrency import (
     _run_concurrently,
     committed_owner_utub,  # noqa: F401  (fixture reused as a base seed)
 )
+from tests.settings_stub import URLS_DEFAULTS
 from tests.utils_for_test import set_member_role
 
 pytestmark = pytest.mark.utubs
@@ -299,7 +300,7 @@ def test_normalize_repairs_state_invalid_before_normalize_instead_of_400(
     )
 
     assert status == 200
-    assert body["settings"]["urls"] == {"low": 7, "high": 7}
+    assert body["settings"]["urls"] == {**URLS_DEFAULTS, "low": 7, "high": 7}
     assert _stored_settings(app, utub_id) == {"urls": {"low": 7, "high": 7}}
 
 

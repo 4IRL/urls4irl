@@ -32,7 +32,12 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import UTUB_NAME, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
-from tests.settings_stub import DEFAULT_SETTINGS_DICT, STUB_KEY, patch_settings_model
+from tests.settings_stub import (
+    DEFAULT_SETTINGS_DICT,
+    STUB_KEY,
+    URLS_DEFAULTS,
+    patch_settings_model,
+)
 from tests.utils_for_test import add_short_link, get_utub_url_id, trash_utub
 
 pytestmark = pytest.mark.mobile_api
@@ -391,7 +396,10 @@ def test_get_single_utub_includes_settings(
         _get_single_utub_url(app, utub_id=1), headers=bearer_headers_first_user
     )
     assert response.status_code == 200
-    assert response.get_json()[MODELS.SETTINGS]["urls"] == {STUB_KEY: True}
+    assert response.get_json()[MODELS.SETTINGS]["urls"] == {
+        **URLS_DEFAULTS,
+        STUB_KEY: True,
+    }
 
 
 def test_get_single_utub_carries_short_link_fields(

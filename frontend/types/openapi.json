@@ -10939,8 +10939,19 @@
       },
       "UrlsSettings": {
         "additionalProperties": false,
-        "description": "Settings for the URLs panel (no settings yet).",
-        "properties": {},
+        "description": "Settings for the URLs panel: default link type and selector visibility.",
+        "properties": {
+          "default_url_scheme": {
+            "default": "https",
+            "description": "Link type (scheme) new URLs start with",
+            "type": "string"
+          },
+          "hide_scheme_selector": {
+            "default": false,
+            "description": "Hide the link type picker; only allowed while the default is https",
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "UtubSettings": {

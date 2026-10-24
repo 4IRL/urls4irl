@@ -124,7 +124,12 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
   });
 
   it("keeps settings saved during the fetch of a same-UTub rebuild", async () => {
-    const saved = { utubs: { saved: 1 }, members: {}, tags: {}, urls: {} };
+    const saved = {
+      utubs: { saved: 1 },
+      members: {},
+      tags: {},
+      urls: { default_url_scheme: "https", hide_scheme_selector: false },
+    };
     setState({ activeUTubID: 1, settings: { ...saved, utubs: {} } as never });
     selectUTub(1, $(".UTubSelector[utubid='1']"));
     setState({ settings: saved as never, settingsVersion: 1 });
@@ -151,7 +156,7 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
       utubs: {},
       members: {},
       tags: {},
-      urls: {},
+      urls: { default_url_scheme: "https", hide_scheme_selector: false },
     });
   });
 

@@ -2410,8 +2410,19 @@ export interface components {
     MembersSettings: Record<string, never>;
     /** @description Settings for the tags panel (no settings yet). */
     TagsSettings: Record<string, never>;
-    /** @description Settings for the URLs panel (no settings yet). */
-    UrlsSettings: Record<string, never>;
+    /** @description Settings for the URLs panel: default link type and selector visibility. */
+    UrlsSettings: {
+      /**
+       * @description Link type (scheme) new URLs start with
+       * @default https
+       */
+      default_url_scheme: string;
+      /**
+       * @description Hide the link type picker; only allowed while the default is https
+       * @default false
+       */
+      hide_scheme_selector: boolean;
+    };
     /** @description Resolved per-UTub settings, one namespaced section per panel. */
     UtubSettings: {
       /** @description Settings for the UTub panel */

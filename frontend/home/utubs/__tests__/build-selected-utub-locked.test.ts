@@ -104,7 +104,12 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
 
   describe("settings slice", () => {
     const populated = { utubs: { sample: 1 } } as never;
-    const emptyShape = { utubs: {}, members: {}, tags: {}, urls: {} };
+    const emptyShape = {
+      utubs: {},
+      members: {},
+      tags: {},
+      urls: { default_url_scheme: "https", hide_scheme_selector: false },
+    };
 
     it("sets settings from the payload and replaces the previous UTub's", () => {
       buildSelectedUTub({

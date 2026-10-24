@@ -166,6 +166,9 @@ def test_generate_strings_js_includes_url_scheme_selector_strings():
         "URL_SCHEME_MATCH_ONE",
         "URL_SCHEME_MATCH_MANY",
         "URL_SCHEME_SET_ANNOUNCE",
+        "URL_SCHEME_HELPER_WILL_SAVE_AS",
+        "URL_SCHEME_HELPER_DEFAULT",
+        "URL_SCHEME_HELPER_TYPE_HINT",
     )
     for key in expected_keys:
         assert key in strings, f"generate_strings_js() is missing {key}"
@@ -250,6 +253,13 @@ def test_generate_strings_js_includes_panel_settings_strings():
         "PANEL_SETTINGS_SCOPE_UTUB": utub_strs.PANEL_SETTINGS_SCOPE_UTUB,
         "PANEL_SETTINGS_SCOPE_USER": utub_strs.PANEL_SETTINGS_SCOPE_USER,
         "PANEL_SETTINGS_EMPTY": utub_strs.PANEL_SETTINGS_EMPTY,
+        "URLS_SETTINGS_SECTION_TITLE": utub_strs.URLS_SETTINGS_SECTION_TITLE,
+        "URLS_SETTINGS_DEFAULT_SCHEME_LABEL": utub_strs.URLS_SETTINGS_DEFAULT_SCHEME_LABEL,
+        "URLS_SETTINGS_DEFAULT_SCHEME_DESC": utub_strs.URLS_SETTINGS_DEFAULT_SCHEME_DESC,
+        "URLS_SETTINGS_HIDE_LABEL": utub_strs.URLS_SETTINGS_HIDE_LABEL,
+        "URLS_SETTINGS_HIDE_DESC": utub_strs.URLS_SETTINGS_HIDE_DESC,
+        "URLS_SETTINGS_HIDE_REQUIRES_HTTPS": utub_strs.URLS_SETTINGS_HIDE_REQUIRES_HTTPS,
+        "URLS_SETTINGS_SELECTOR_RESTORED": utub_strs.URLS_SETTINGS_SELECTOR_RESTORED,
     }
     for key, value in expected.items():
         assert key in strings, f"generate_strings_js() is missing {key}"

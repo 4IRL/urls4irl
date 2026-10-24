@@ -62,6 +62,16 @@ PANEL_SETTINGS_MANAGERS_ONLY = "Only UTub managers can change this"
 PANEL_SETTINGS_SCOPE_UTUB = "Shared with this UTub"
 PANEL_SETTINGS_SCOPE_USER = "Just for you"
 PANEL_SETTINGS_EMPTY = "No settings available"
+# URLs panel "New URLs" settings section: written by TS, so all are bridged.
+URLS_SETTINGS_SECTION_TITLE = "New URLs"
+URLS_SETTINGS_DEFAULT_SCHEME_LABEL = "Default scheme"
+URLS_SETTINGS_DEFAULT_SCHEME_DESC = "New URLs start with this scheme."
+URLS_SETTINGS_HIDE_LABEL = "Hide scheme selector"
+URLS_SETTINGS_HIDE_DESC = "Members see the scheme as a note under the URL field."
+URLS_SETTINGS_HIDE_REQUIRES_HTTPS = "Only available when the default is https."
+URLS_SETTINGS_SELECTOR_RESTORED = (
+    "Scheme selector shown again because the default is no longer https."
+)
 # Gear aria-label/tooltip text: Jinja-only, asserted by a Python integration test, so
 # backend constants only (not bridged to TS).
 PANEL_SETTINGS_GEAR_UTUBS = "UTubs settings"
@@ -92,6 +102,9 @@ UNABLE_TO_MAKE_UTUB = "Unable to make a UTub with that information."
 UNABLE_TO_MODIFY_UTUB_NAME = "Unable to modify UTub name."
 UNABLE_TO_MODIFY_UTUB_DESC = "Unable to modify UTub description."
 UNABLE_TO_MODIFY_UTUB_SETTINGS = "Unable to modify UTub settings."
+HIDE_SCHEME_SELECTOR_REQUIRES_HTTPS = (
+    "The scheme selector can only be hidden when the default scheme is https."
+)
 UTUB_DESC_TOO_LONG = "UTub description is too long."
 UTUB_DESC_FIELD_TOO_LONG = ["Field cannot be longer than 500 characters."]
 UTUB_NAME_FIELD_INVALID = ["Field must be between 1 and 30 characters long."]

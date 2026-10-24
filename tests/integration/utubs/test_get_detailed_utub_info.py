@@ -24,7 +24,12 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utubs.services import read_utubs
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.settings_stub import DEFAULT_SETTINGS_DICT, STUB_KEY, patch_settings_model
+from tests.settings_stub import (
+    DEFAULT_SETTINGS_DICT,
+    STUB_KEY,
+    URLS_DEFAULTS,
+    patch_settings_model,
+)
 from tests.utils_for_test import (
     count_tag_instances_in_utub,
     is_string_in_logs,
@@ -920,7 +925,7 @@ def test_get_utub_detail_stored_override_merged_with_defaults(
     patch_settings_model(monkeypatch)
 
     response_json = _get_detail_json(client, utub_id)
-    assert response_json[MODELS.SETTINGS]["urls"] == {STUB_KEY: False}
+    assert response_json[MODELS.SETTINGS]["urls"] == {**URLS_DEFAULTS, STUB_KEY: False}
 
     with app.app_context():
         utub: Utubs = Utubs.query.get(utub_id)
@@ -932,7 +937,7 @@ def test_get_utub_detail_stored_override_merged_with_defaults(
         "utubs": {},
         "members": {},
         "tags": {},
-        "urls": {STUB_KEY: True},
+        "urls": {**URLS_DEFAULTS, STUB_KEY: True},
     }
 
 
