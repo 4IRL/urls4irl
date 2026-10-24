@@ -1,3 +1,4 @@
+import { APP_CONFIG } from "../../../lib/config.js";
 import { getInputValue } from "../../../lib/globals.js";
 import { flushParamTrim } from "../trim/param-trim-block.js";
 import {
@@ -33,8 +34,8 @@ export function currentUpdateScheme({ urlCard }: { urlCard: JQuery }): string {
  * Resyncs the edit input from `href` (default: the card's stored href). With a
  * selector, a recognized scheme prefix is moved into it (explicit); an href
  * without one (including a legacy unsupported scheme) stays whole in the input
- * and the selector's scheme is left as it is. Callers mounting a fresh selector
- * get its default scheme.
+ * and the selector is seeded with the app default (non-explicit, snapshot
+ * pinned), ignoring any UTub default.
  */
 export function syncUpdateInputFromHref({
   urlCard,
@@ -53,6 +54,14 @@ export function syncUpdateInputFromHref({
     return;
   }
   input.val(href);
+  if (selector) {
+    // Legacy href with no recognised scheme: the edit ignores the UTub default
+    // (an opaque one would make composeURL prefix `mailto:` onto the stored
+    // text), so seed the app default and pin the snapshot to it.
+    const appDefault = APP_CONFIG.constants.URL_DEFAULT_SCHEME;
+    selector.setScheme({ scheme: appDefault, explicit: false });
+    selector.setDefaultScheme({ scheme: appDefault });
+  }
 }
 
 /**

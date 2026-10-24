@@ -1,5 +1,5 @@
-"""Stub settings model for tests: the shipped sections are empty, so tests that
-need a real setting patch the settings-model seam to this subclass."""
+"""Stub settings model for tests: most shipped sections are empty, so tests that
+need an extra setting patch the settings-model seam to this subclass."""
 
 from typing import Any
 
@@ -11,12 +11,17 @@ from backend.schemas.utub_settings import UrlsSettings, UtubSettings
 
 STUB_KEY = "stub_flag"
 
-# The resolved settings of a UTub with no stored overrides (all sections empty).
+# The resolved settings of a UTub with no stored overrides (only urls has keys).
+URLS_DEFAULTS: dict[str, Any] = {
+    "default_url_scheme": "https",
+    "hide_scheme_selector": False,
+}
+
 DEFAULT_SETTINGS_DICT: dict[str, dict[str, Any]] = {
     "utubs": {},
     "members": {},
     "tags": {},
-    "urls": {},
+    "urls": dict(URLS_DEFAULTS),
 }
 
 

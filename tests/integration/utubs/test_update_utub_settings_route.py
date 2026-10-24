@@ -28,6 +28,7 @@ from tests.integration.utils import assert_response_conforms_to_schema
 from tests.settings_stub import (
     DEFAULT_SETTINGS_DICT,
     STUB_KEY,
+    URLS_DEFAULTS,
     StubUtubSettings,
     patch_settings_model,
 )
@@ -176,7 +177,7 @@ def test_co_owner_can_patch_settings(
         response = _patch(app, client, csrf_token, {"urls": {STUB_KEY: True}})
 
     assert response.status_code == 200
-    assert response.json[MODELS.SETTINGS]["urls"] == {STUB_KEY: True}
+    assert response.json[MODELS.SETTINGS]["urls"] == {**URLS_DEFAULTS, STUB_KEY: True}
     assert _stored_settings(app) == {"urls": {STUB_KEY: True}}
 
 
@@ -200,7 +201,7 @@ def test_creator_patch_stores_sparse_overrides_and_returns_full_settings(
     assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert response.json[MODELS.SETTINGS] == {
         **DEFAULT_SETTINGS_DICT,
-        "urls": {STUB_KEY: True},
+        "urls": {**URLS_DEFAULTS, STUB_KEY: True},
     }
     assert _stored_settings(app) == {"urls": {STUB_KEY: True}}
 
@@ -262,7 +263,7 @@ def test_patch_response_serializes_all_seam_model_keys(
     response = _patch(app, client, csrf_token, {"urls": {}})
 
     assert response.status_code == 200
-    assert response.json[MODELS.SETTINGS]["urls"] == {STUB_KEY: False}
+    assert response.json[MODELS.SETTINGS]["urls"] == {**URLS_DEFAULTS, STUB_KEY: False}
 
 
 def test_second_section_patch_does_not_clobber_first(
@@ -283,7 +284,7 @@ def test_second_section_patch_does_not_clobber_first(
 
     assert first.status_code == 200
     assert second.status_code == 200
-    assert second.json[MODELS.SETTINGS]["urls"] == {STUB_KEY: True}
+    assert second.json[MODELS.SETTINGS]["urls"] == {**URLS_DEFAULTS, STUB_KEY: True}
     assert second.json[MODELS.SETTINGS]["tags"] == {STUB_COUNT_KEY: 5}
     assert _stored_settings(app) == {
         "urls": {STUB_KEY: True},
@@ -349,7 +350,10 @@ def test_identical_overrides_patch_does_not_commit(
     assert first_commits >= 1
     assert same_commits == 0
     assert empty_commits == 0
-    assert responses[2].json[MODELS.SETTINGS]["urls"] == {STUB_KEY: True}
+    assert responses[2].json[MODELS.SETTINGS]["urls"] == {
+        **URLS_DEFAULTS,
+        STUB_KEY: True,
+    }
 
 
 def test_empty_section_patch_cleans_invalid_stored_section(
@@ -382,7 +386,10 @@ def test_empty_section_patch_cleans_invalid_stored_section(
     )
     assert clean_commits >= 1
     assert _stored_settings(app) is None
-    assert responses[1].json[MODELS.SETTINGS]["urls"] == {STUB_KEY: False}
+    assert responses[1].json[MODELS.SETTINGS]["urls"] == {
+        **URLS_DEFAULTS,
+        STUB_KEY: False,
+    }
 
     # Same patch on a clean UTub: no commit
     clean_utub_commits = _count_commits(
@@ -712,3 +719,232 @@ def test_non_ajax_manager_request_redirects(
     )
 
     assert response.status_code == 302
+
+
+# --------------------------------------------------------------------------
+# Real `urls` section: default scheme and hide-selector rules
+# --------------------------------------------------------------------------
+
+HTTPS_HIDDEN_URLS = {"default_url_scheme": "https", "hide_scheme_selector": True}
+MAILTO_UNHIDDEN_URLS = {"default_url_scheme": "mailto", "hide_scheme_selector": False}
+
+
+def _get_detail_settings(app: Flask, client: FlaskClient) -> Any:
+    with app.app_context():
+        detail_url = url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=UTUB_ID_VALUE)
+    return client.get(detail_url).json[MODELS.SETTINGS]
+
+
+def test_default_scheme_change_auto_resets_hide_and_persists(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a stored hide=true with the https default
+    WHEN the creator PATCHes only a non-https default scheme
+    THEN hide is false in the response, in the stored row and in the detail GET
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    _set_stored_settings(app, {"urls": dict(HTTPS_HIDDEN_URLS)})
+
+    response = _patch(
+        app, client, csrf_token, {"urls": {"default_url_scheme": "mailto"}}
+    )
+
+    assert response.status_code == 200
+    assert response.json[MODELS.SETTINGS]["urls"] == MAILTO_UNHIDDEN_URLS
+    assert _stored_settings(app) == {"urls": MAILTO_UNHIDDEN_URLS}
+    assert _get_detail_settings(app, client)["urls"] == MAILTO_UNHIDDEN_URLS
+
+
+def test_explicit_hide_with_non_https_default_in_same_body_returns_400(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub with no stored settings
+    WHEN the creator PATCHes a non-https default together with hide=true
+    THEN 400 keyed "urls" is returned and nothing is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(
+        app,
+        client,
+        csrf_token,
+        {"urls": {"default_url_scheme": "ssh", "hide_scheme_selector": True}},
+    )
+
+    _assert_400(response, {"urls"})
+    assert _stored_settings(app) is None
+
+
+def test_hide_only_patch_against_stored_non_https_default_returns_400(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a stored non-https default
+    WHEN the creator PATCHes only hide=true
+    THEN 400 keyed "urls" is returned and the stored section is unchanged
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    stored = {"urls": {"default_url_scheme": "mailto"}}
+    _set_stored_settings(app, stored)
+
+    response = _patch(app, client, csrf_token, {"urls": {"hide_scheme_selector": True}})
+
+    _assert_400(response, {"urls"})
+    assert _stored_settings(app) == stored
+
+
+def test_hide_with_https_default_returns_200(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub with the https default
+    WHEN the creator PATCHes hide=true
+    THEN 200 is returned and hide is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"urls": {"hide_scheme_selector": True}})
+
+    assert response.status_code == 200
+    assert response.json[MODELS.SETTINGS]["urls"] == HTTPS_HIDDEN_URLS
+    assert _stored_settings(app) == {"urls": {"hide_scheme_selector": True}}
+
+
+def test_hide_false_with_non_https_default_returns_200(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub with no stored settings
+    WHEN the creator PATCHes a non-https default with hide=false
+    THEN 200 is returned
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"urls": MAILTO_UNHIDDEN_URLS})
+
+    assert response.status_code == 200
+    assert response.json[MODELS.SETTINGS]["urls"] == MAILTO_UNHIDDEN_URLS
+
+
+def test_unknown_default_scheme_returns_400_keyed_to_field(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub with no stored settings
+    WHEN the creator PATCHes an unsupported scheme
+    THEN 400 keyed "urls.default_url_scheme" is returned and nothing is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(
+        app, client, csrf_token, {"urls": {"default_url_scheme": "bogus"}}
+    )
+
+    _assert_400(response, {"urls.default_url_scheme"})
+    assert _stored_settings(app) is None
+
+
+def test_plain_member_cannot_patch_urls_section(
+    add_multiple_users_to_utub_without_logging_in, app
+):
+    """
+    GIVEN a plain member
+    WHEN they PATCH a real urls setting
+    THEN 403 NOT_AUTHORIZED without errorCode is returned and nothing is stored
+    """
+    with _client_for(app, PLAIN_MEMBER_ID) as (client, csrf_token):
+        response = _patch(
+            app, client, csrf_token, {"urls": {"default_url_scheme": "mailto"}}
+        )
+
+    assert response.status_code == 403
+    assert response.json[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    assert STD_JSON.ERROR_CODE not in response.json
+    assert _stored_settings(app) is None
+
+
+def test_co_creator_can_patch_urls_section(
+    add_multiple_users_to_utub_without_logging_in, app
+):
+    """
+    GIVEN a co-creator
+    WHEN they PATCH the default scheme (mixed case)
+    THEN 200 is returned and the lowercased scheme is stored
+    """
+    _seed_roles(app)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(
+            app, client, csrf_token, {"urls": {"default_url_scheme": "MailTo"}}
+        )
+
+    assert response.status_code == 200
+    assert response.json[MODELS.SETTINGS]["urls"]["default_url_scheme"] == "mailto"
+    assert _stored_settings(app) == {"urls": {"default_url_scheme": "mailto"}}
+
+
+def test_locked_utub_rejects_urls_patch(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a locked UTub
+    WHEN a manager PATCHes a real urls setting
+    THEN 403 UTUB_IS_LOCKED with errorCode 3 is returned and nothing is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    lock_utub(app, UTUB_ID_VALUE)
+
+    response = _patch(
+        app, client, csrf_token, {"urls": {"default_url_scheme": "mailto"}}
+    )
+
+    assert response.status_code == 403
+    assert response.json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert response.json[STD_JSON.ERROR_CODE] == UTubErrorCodes.UTUB_IS_LOCKED
+    assert _stored_settings(app) is None
+
+
+def test_stored_invalid_pair_reads_back_with_hide_false(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a stored (non-https, hide=true) pair
+    WHEN the UTub detail is fetched
+    THEN hide is false in the resolved settings
+    """
+    client, _, _, app = login_first_user_without_register
+    _set_stored_settings(
+        app, {"urls": {"default_url_scheme": "mailto", "hide_scheme_selector": True}}
+    )
+
+    assert _get_detail_settings(app, client)["urls"] == MAILTO_UNHIDDEN_URLS
+
+
+def test_stored_unknown_scheme_resolves_whole_section_to_defaults(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a stored unknown scheme alongside a valid hide key
+    WHEN the UTub detail is fetched
+    THEN the whole urls section resolves to defaults
+    """
+    client, _, _, app = login_first_user_without_register
+    _set_stored_settings(
+        app, {"urls": {"default_url_scheme": "bogus", "hide_scheme_selector": True}}
+    )
+
+    assert _get_detail_settings(app, client)["urls"] == {
+        "default_url_scheme": "https",
+        "hide_scheme_selector": False,
+    }

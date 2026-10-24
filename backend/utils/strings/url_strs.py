@@ -277,6 +277,11 @@ URL_SCHEME_NO_MATCHES = "No matching schemes"
 URL_SCHEME_MATCH_ONE = "1 scheme matches"
 URL_SCHEME_MATCH_MANY = "{count} schemes match"
 URL_SCHEME_SET_ANNOUNCE = "Scheme set to {scheme}"
+# Helper line under the URL input while the UTub hides the selector. The scheme
+# itself is rendered bold between these parts, so they carry no placeholder.
+URL_SCHEME_HELPER_WILL_SAVE_AS = "Will be saved as"
+URL_SCHEME_HELPER_DEFAULT = "Links here start with"
+URL_SCHEME_HELPER_TYPE_HINT = "Type or paste a different scheme to change it."
 
 # Strings for URL failure
 UNABLE_TO_DELETE_URL = "Unable to remove this URL."

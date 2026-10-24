@@ -37,10 +37,22 @@ const UTUB_ID = 7;
 const LOCKED = APP_CONFIG.strings.UTUB_IS_LOCKED;
 const NOT_AUTHORIZED = APP_CONFIG.strings.NOT_AUTHORIZED;
 
+// The resolver fills the urls section's defaults into every payload.
+const URLS_DEFAULTS = {
+  default_url_scheme: "https",
+  hide_scheme_selector: false,
+} as const;
+
 function settingsWith(
   overrides: Partial<ResolvedUtubSettings> = {},
 ): ResolvedUtubSettings {
-  return { utubs: {}, members: {}, tags: {}, urls: {}, ...overrides };
+  return {
+    utubs: {},
+    members: {},
+    tags: {},
+    ...overrides,
+    urls: { ...URLS_DEFAULTS, ...overrides.urls },
+  };
 }
 
 function failXhr({
@@ -160,7 +172,7 @@ describe("patchUtubSettings", () => {
       await first.result;
 
       expect(getState().settings?.tags).toEqual({ t: 1 });
-      expect(getState().settings?.urls).toEqual({ u: 1 });
+      expect(getState().settings?.urls).toEqual({ ...URLS_DEFAULTS, u: 1 });
       expect(getState().settingsVersion).toBe(2);
     });
 
@@ -416,7 +428,7 @@ describe("resyncSettings", () => {
 
     expect(await resyncSettings({ utubID: UTUB_ID })).toBe(true);
     expect(calls).toBe(2);
-    expect(getState().settings?.urls).toEqual({ fresh: 1 });
+    expect(getState().settings?.urls).toEqual({ ...URLS_DEFAULTS, fresh: 1 });
     expect(getState().settingsVersion).toBe(4);
   });
 

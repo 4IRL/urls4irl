@@ -963,6 +963,14 @@ describe("scheme-selector", () => {
       );
     });
 
+    it("getDefaultScheme returns the mount snapshot and setDefaultScheme pins it", () => {
+      expect(handle.getDefaultScheme()).toBe(
+        APP_CONFIG.constants.URL_DEFAULT_SCHEME,
+      );
+      handle.setDefaultScheme({ scheme: "ftp" });
+      expect(handle.getDefaultScheme()).toBe("ftp");
+    });
+
     it("announce writes the set-scheme message into a polite hidden region", () => {
       vi.useFakeTimers();
       handle.setScheme({ scheme: "mailto", explicit: true, announce: true });

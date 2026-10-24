@@ -16,7 +16,7 @@ export const EMPTY_UTUB_SETTINGS: ResolvedUtubSettings = Object.freeze({
   utubs: {},
   members: {},
   tags: {},
-  urls: {},
+  urls: { default_url_scheme: "https", hide_scheme_selector: false },
 });
 
 /** Copies a (possibly partial or absent) payload into the resolved shape. */

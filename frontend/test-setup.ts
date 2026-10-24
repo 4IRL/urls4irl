@@ -225,6 +225,10 @@ const appConfig = {
     URL_SCHEME_MATCH_ONE: "1 scheme matches",
     URL_SCHEME_MATCH_MANY: "{count} schemes match",
     URL_SCHEME_SET_ANNOUNCE: "Scheme set to {scheme}",
+    URL_SCHEME_HELPER_WILL_SAVE_AS: "Will be saved as",
+    URL_SCHEME_HELPER_DEFAULT: "Links here start with",
+    URL_SCHEME_HELPER_TYPE_HINT:
+      "Type or paste a different scheme to change it.",
     TAG_FILTER_NO_RESULTS: "No URLs match selected tags",
     TAG_SEARCH_NO_RESULTS: "No tags found",
     TAG_SEARCH_PLACEHOLDER: "Filter tags",
@@ -537,6 +541,16 @@ const appConfig = {
     PANEL_SETTINGS_SCOPE_UTUB: "Shared with this UTub",
     PANEL_SETTINGS_SCOPE_USER: "Just for you",
     PANEL_SETTINGS_EMPTY: "No settings available",
+    URLS_SETTINGS_SECTION_TITLE: "New URLs",
+    URLS_SETTINGS_DEFAULT_SCHEME_LABEL: "Default scheme",
+    URLS_SETTINGS_DEFAULT_SCHEME_DESC: "New URLs start with this scheme.",
+    URLS_SETTINGS_HIDE_LABEL: "Hide scheme selector",
+    URLS_SETTINGS_HIDE_DESC:
+      "Members see the scheme as a note under the URL field.",
+    URLS_SETTINGS_HIDE_REQUIRES_HTTPS:
+      "Only available when the default is https.",
+    URLS_SETTINGS_SELECTOR_RESTORED:
+      "Scheme selector shown again because the default is no longer https.",
     // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py.
     // Only keys read by production TS are mirrored here. Jinja-only labels are inline in templates;
     // Python-test-only keys live in ui_testing_strs.py. Vitest runs in Node with no Flask app context,

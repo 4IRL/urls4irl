@@ -19,10 +19,17 @@ from pydantic import (
     Field,
     ValidationError,
     ValidationInfo,
+    field_validator,
     model_validator,
 )
 
 from backend.app_logger import warning_log
+from backend.extensions.url_validation.constants import (
+    CORE_SCHEMES,
+    DEFAULT_URL_SCHEME,
+    OTHER_VALID_SCHEMES,
+)
+from backend.utils.strings.utub_strs import HIDE_SCHEME_SELECTOR_REQUIRES_HTTPS
 
 _NO_PATCHED_KEYS: frozenset[str] = frozenset()
 
@@ -60,7 +67,38 @@ class TagsSettings(SettingsSection):
 
 
 class UrlsSettings(SettingsSection):
-    """Settings for the URLs panel (no settings yet)."""
+    """Settings for the URLs panel: default link type and selector visibility."""
+
+    default_url_scheme: str = Field(
+        default=DEFAULT_URL_SCHEME,
+        description="Link type (scheme) new URLs start with",
+    )
+    hide_scheme_selector: bool = Field(
+        default=False,
+        description="Hide the link type picker; only allowed while the default is https",
+    )
+
+    @field_validator("default_url_scheme")
+    @classmethod
+    def _validate_default_url_scheme(cls, value: str) -> str:
+        scheme = value.lower()
+        if scheme not in CORE_SCHEMES | OTHER_VALID_SCHEMES:
+            raise ValueError("Unsupported URL scheme.")
+        return scheme
+
+    def normalize(self, patched_keys: frozenset[str]) -> Self:
+        """Hiding the selector needs an https default.
+
+        An explicit hide request against a non-https default is rejected; a
+        stored or implied hide is turned off instead (persisted when patched).
+        """
+        is_https = self.default_url_scheme == DEFAULT_URL_SCHEME
+        if not self.hide_scheme_selector or is_https:
+            return self
+        if "hide_scheme_selector" in patched_keys:
+            raise ValueError(HIDE_SCHEME_SELECTOR_REQUIRES_HTTPS)
+        self.hide_scheme_selector = False
+        return self
 
 
 class UtubSettings(BaseModel):

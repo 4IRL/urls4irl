@@ -143,6 +143,9 @@ describe("APP_CONFIG shape", () => {
       "URL_SCHEME_MATCH_ONE",
       "URL_SCHEME_MATCH_MANY",
       "URL_SCHEME_SET_ANNOUNCE",
+      "URL_SCHEME_HELPER_WILL_SAVE_AS",
+      "URL_SCHEME_HELPER_DEFAULT",
+      "URL_SCHEME_HELPER_TYPE_HINT",
     ])("strings.%s is a non-empty string", (key) => {
       expect(typeof APP_CONFIG.strings[key]).toBe("string");
       expect(APP_CONFIG.strings[key].length).toBeGreaterThan(0);
