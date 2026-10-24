@@ -28,6 +28,7 @@ import {
   mountSchemeSelector,
   type SchemeSelectorHandle,
 } from "../scheme/scheme-selector.js";
+import { isSchemeSelectorHidden } from "../scheme/scheme-default.js";
 import {
   UPDATE_SCHEME_CONTAINER_SELECTOR,
   currentUpdateScheme,
@@ -214,6 +215,7 @@ function mountUpdateSchemeSelector({
     inputContainer,
     urlInput,
     idPrefix: "update-" + (urlCard.attr("utuburlid") ?? "card"),
+    hidden: isSchemeSelectorHidden(),
     onChange: () => {
       resetUpdateURLFailErrors(urlCard);
       urlInput.trigger(TRIM_INPUT_EVENT);
@@ -224,6 +226,9 @@ function mountUpdateSchemeSelector({
       : () => cancelUpdateURLStringFormOnEscape({ urlCard }),
   });
   syncUpdateInputFromHref({ urlCard, selector });
+  // The input text changed without an input event (and the scheme may already
+  // match), so render the helper from the synced value.
+  selector.refreshHelper();
   return selector;
 }
 
