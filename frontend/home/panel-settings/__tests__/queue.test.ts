@@ -288,6 +288,44 @@ describe("createSaveQueue", () => {
       expect(isPanelSettingsBusy()).toBe(false);
     });
 
+    it("forwards an ok notice on the saved report", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection();
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      pending[0].resolve({ outcome: "ok", notice: "Reset to https" });
+      await settle();
+
+      expect(sink.report).toHaveBeenCalledWith({
+        sectionId: section.id,
+        utubID: UTUB_ID,
+        status: "saved",
+        savedPatch: { a: 1 },
+        notice: "Reset to https",
+      });
+    });
+
+    it("never forwards a notice on a stale outcome", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection({
+        scope: "user",
+        userKind: "per-utub",
+        panel: "members",
+      });
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      setState({ activeUTubID: 99 });
+      pending[0].resolve({ outcome: "ok", notice: "Reset to https" });
+      await settle();
+
+      for (const [report] of vi.mocked(sink.report).mock.calls) {
+        expect(report).not.toHaveProperty("notice");
+      }
+      expect(sink.announce).not.toHaveBeenCalled();
+    });
+
     it("a per-utub user key is keyed by (id, utubID) and converts a late result to stale", async () => {
       const { sink, queue } = setup();
       const { section, pending } = controlledSection({

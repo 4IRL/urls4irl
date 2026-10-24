@@ -2,6 +2,7 @@ import type { Mock } from "vitest";
 
 import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { resetStore, setState } from "../../../store/app-store.js";
+import { announceSettingsStatus } from "../announce.js";
 import { initPopover, resetPopover } from "../popover.js";
 import { DEBOUNCE_MS } from "../queue.js";
 import { _resetRegistryForTests } from "../registry.js";
@@ -566,6 +567,18 @@ describe("panel settings mobile sheet", () => {
       expect(isPanelSettingsBusy()).toBe(true);
       vi.advanceTimersByTime(0);
       expect(isPanelSettingsBusy()).toBe(false);
+    });
+
+    it("announces Saved plus the notice as one message in the sheet", async () => {
+      const harness = setupUrlsSheet();
+      harness.ctxs[harness.ctxs.length - 1].submit({ patch: { sort: "new" } });
+      await vi.advanceTimersByTimeAsync(0);
+      vi.mocked(announceSettingsStatus).mockClear();
+      harness.pending[0].resolve({ outcome: "ok", notice: "Reset to https." });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(announceSettingsStatus).toHaveBeenCalledTimes(1);
+      expect(announced()).toBe("Sort: Saved. Reset to https.");
     });
 
     it("shows save status in the sheet", async () => {

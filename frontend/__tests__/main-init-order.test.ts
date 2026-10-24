@@ -117,6 +117,9 @@ vi.mock("../home/onboarding/nudges.js", () => ({
 vi.mock("../home/panel-settings/index.js", () => ({
   initPanelSettings: track("initPanelSettings"),
 }));
+vi.mock("../home/urls/settings-section.js", () => ({
+  registerUrlsSettingsSection: track("registerUrlsSettingsSection"),
+}));
 vi.mock("../home/utubs/refresh-on-focus.js", () => ({
   initUTubRefreshOnFocus: track("initUTubRefreshOnFocus"),
 }));
@@ -165,6 +168,16 @@ describe("main.ts init order", () => {
     );
     expect(panelSettingsIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
     expect(panelSettingsIndex).toBeLessThan(
+      callOrder.indexOf("initOnboardingNudges"),
+    );
+  });
+
+  it("registers the URLs settings section next to initPanelSettings, before tooltips and nudges", () => {
+    const registerIndex = callOrder.indexOf("registerUrlsSettingsSection");
+
+    expect(registerIndex).toBe(callOrder.indexOf("initPanelSettings") + 1);
+    expect(registerIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
+    expect(registerIndex).toBeLessThan(
       callOrder.indexOf("initOnboardingNudges"),
     );
   });
