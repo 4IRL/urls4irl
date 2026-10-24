@@ -177,9 +177,44 @@ If you must:
    find call sites).
 2. Update the `EVENT_REGISTRY`, `EVENT_NAME_TO_RESOURCE`, and
    `DIMENSION_MODELS` keys.
-3. Write a one-off Alembic migration to `UPDATE "AnonymousMetrics" SET
-   event_name = 'new_name' WHERE event_name = 'old_name'`.
-4. `make generate-types` + commit.
+3. Write an Alembic migration modelled on
+   `a3f9c1e7b2d4_rename_navbar_dropdown_events.py`: it rewrites the
+   `"AnonymousMetrics"."eventName"` column and seeds the new `EventRegistry` row
+   while deleting the old one.
+4. **Required:** the same migration must also rewrite stored custom flows. Call
+   `rewrite_metric_flow_definitions(op.get_bind(), ...)`
+   (`backend/metrics/flow_rewrites.py`) in `upgrade()` and the inverse spec in
+   `downgrade()`:
+
+   ```python
+   from backend.metrics.flow_rewrites import rewrite_metric_flow_definitions
+
+   def upgrade() -> None:
+       # ... AnonymousMetrics / EventRegistry rewrites ...
+       rewrite_metric_flow_definitions(
+           op.get_bind(),
+           event_renames={"old_name": "new_name"},
+           dim_key_renames={},
+           dim_value_renames={},
+       )
+
+   def downgrade() -> None:
+       rewrite_metric_flow_definitions(
+           op.get_bind(),
+           event_renames={"new_name": "old_name"},
+           dim_key_renames={},
+           dim_value_renames={},
+       )
+   ```
+
+   The dim maps are keyed by event, then old dim key, then old value
+   (`dim_value_renames[event][dim_key][old_value]`). The event key is the event
+   name **after this call's `event_renames`**, so the downgrade spec is keyed by
+   the old event names. A value map is keyed by the dim key as it stands before
+   this call's `dim_key_renames`. API steps (no `event_name`) are not touched by
+   dim renames. The helper works on raw JSON and imports no registry or enum
+   code, so old migrations keep working after the enums change.
+5. `make generate-types` + commit.
 
 ### Adding a new dim value to a closed-set Literal
 
@@ -191,6 +226,11 @@ E.g., `transport: Literal["fetch", "beacon"]` → adding `"sendbeacon"`:
 3. `make generate-types`.
 4. Update any frontend code that branches on the dim.
 5. `make audit` confirms drift is gone.
+
+Renaming (or removing) a dim key or an existing value is not covered by these
+steps: stored custom flows still reference the old text, so the migration must go
+through the same `rewrite_metric_flow_definitions` helper described under
+"Renaming the EventName" (`dim_key_renames` / `dim_value_renames`).
 
 ### Changing the Resource mapping
 
@@ -224,6 +264,11 @@ the schema**.
    `_INTENTIONALLY_UNTRACKED_EVENTS` in `backend/metrics/audit.py` (with a
    comment linking to the deprecation date).
 4. `make audit` should still be clean. Commit.
+
+Custom flows (stored in `MetricFlows`) may still reference the event. Once it is
+removed from the registry, such a flow shows as "Needs attention" instead of
+breaking hydration, because stored flows are hydrated leniently and only
+validated against the live registry.
 
 ### Phase 2 — Drop after retention window expires
 
