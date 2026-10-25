@@ -47,7 +47,7 @@
 
 import type { Schema } from "../types/api-helpers.d.ts";
 import type { FlowId } from "../types/metrics-flows.js";
-import { FLOW_IDS } from "../types/metrics-flows.js";
+import { FLOW_IDS, FLOW_METADATA } from "../types/metrics-flows.js";
 import {
   RESOURCES,
   RESOURCES_BY_CATEGORY,
@@ -58,6 +58,7 @@ import { APP_CONFIG } from "../lib/config.js";
 import { $ } from "../lib/globals.js";
 import { is429Handled } from "../lib/ajax.js";
 
+import type { FlowGridEntry } from "./flow-card.js";
 import { renderFlowGrid } from "./flow-card.js";
 import { renderGaugeGrid } from "./gauge-card.js";
 import {
@@ -1223,7 +1224,19 @@ function renderFlowsPanel(): void {
   if (grid === null) {
     return;
   }
-  renderFlowGrid({ container: grid, responsesByFlowId: _flowCache });
+  const entries: FlowGridEntry[] = [];
+  for (const flowId of Object.values(FLOW_IDS)) {
+    const response = _flowCache[flowId];
+    if (response === undefined) {
+      continue;
+    }
+    entries.push({
+      id: flowId,
+      title: FLOW_METADATA[flowId].displayName,
+      state: { kind: "response", response },
+    });
+  }
+  renderFlowGrid({ container: grid, entries });
 }
 
 /**
