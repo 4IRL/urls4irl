@@ -1256,7 +1256,15 @@ function getFlowInvalidDetail({
   if (typeof invalid !== "object" || invalid === null) {
     return null;
   }
-  return invalid as FlowInvalidDetail;
+  const { step_index, field, reason } = invalid as Record<string, unknown>;
+  if (
+    (typeof step_index !== "number" && step_index !== null) ||
+    typeof field !== "string" ||
+    typeof reason !== "string"
+  ) {
+    return null;
+  }
+  return { step_index, field, reason };
 }
 
 function issueFlowRequest({ id }: { id: string }): JQuery.jqXHR {
@@ -1344,7 +1352,6 @@ function startFlowFanOut(): void {
 
 /**
  * Test-only: drop one flow id (aborts its request, clears cache and state).
- * Step 6 promotes this to the delete/404 path.
  */
 export function _dropFlowIdForTests({ id }: { id: string }): void {
   _flowLoadQueue.dropId({ id });

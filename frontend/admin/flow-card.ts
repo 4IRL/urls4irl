@@ -21,8 +21,7 @@ type FlowStepSchema = Schema<"FlowStepSchema">;
 type FlowBreakdownRow = Schema<"FlowBreakdownRow">;
 type FlowStream = FlowStepSchema["stream"];
 
-// Local structural type; replaced by the generated `flow_invalid` type later
-// without a signature change.
+// Local structural type for the `invalid` object of a `flow_invalid` 422 body.
 export interface FlowInvalidDetail {
   step_index: number | null;
   field: string;
@@ -190,7 +189,7 @@ function buildConnector({
 
 export function renderFlowCard({
   id,
-  title: displayName,
+  title,
   response,
 }: {
   id: string;
@@ -213,13 +212,13 @@ export function renderFlowCard({
 
   const header = document.createElement("div");
   header.className = "flow-header";
-  const title = document.createElement("h3");
-  title.className = "flow-title";
-  title.textContent = displayName;
+  const titleElement = document.createElement("h3");
+  titleElement.className = "flow-title";
+  titleElement.textContent = title;
   const summary = document.createElement("span");
   summary.className = "flow-summary";
   summary.textContent = `${lastStep.count.toLocaleString()} / ${topStep.count.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED} · ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`;
-  header.appendChild(title);
+  header.appendChild(titleElement);
   header.appendChild(summary);
   card.appendChild(header);
 
@@ -227,7 +226,7 @@ export function renderFlowCard({
   // "Create UTub: 638 of 812 succeeded, 79% conversion".
   card.setAttribute(
     "aria-label",
-    `${displayName}: ${lastStep.count.toLocaleString()} of ${topStep.count.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED}, ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`,
+    `${title}: ${lastStep.count.toLocaleString()} of ${topStep.count.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED}, ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`,
   );
 
   if (allZero) {
@@ -254,7 +253,7 @@ export function renderFlowCard({
 // `renderFlowGrid` can leave an unchanged node alone (a held element reference
 // must not go stale when an unrelated flow settles). WeakMap-keyed by the
 // container so a detached/replaced grid element does not leak state.
-const lastRenderedResponses: WeakMap<
+const lastRenderedStates: WeakMap<
   HTMLElement,
   Map<string, FlowCardState>
 > = new WeakMap();
@@ -325,7 +324,7 @@ export function renderFlowGrid({
   container: HTMLElement;
   entries: readonly FlowGridEntry[];
 }): void {
-  const previousStates = lastRenderedResponses.get(container) ?? new Map();
+  const previousStates = lastRenderedStates.get(container) ?? new Map();
   const nextStates = new Map<string, FlowCardState>();
   // Index existing nodes by id in a Map (no selector, so raw ids are safe).
   const existingNodes = new Map<string, HTMLElement>();
@@ -375,5 +374,5 @@ export function renderFlowGrid({
       container.insertBefore(node, cursor);
     }
   }
-  lastRenderedResponses.set(container, nextStates);
+  lastRenderedStates.set(container, nextStates);
 }

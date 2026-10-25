@@ -60,6 +60,10 @@ vi.mock("../../types/metrics-flows.js", async (importOriginal) => {
     get FLOW_IDS() {
       return flowIdsHolder.ids ?? actual.FLOW_IDS;
     },
+    // Ids injected through `flowIdsHolder` have no real metadata entry.
+    FLOW_METADATA: new Proxy(actual.FLOW_METADATA as Record<string, unknown>, {
+      get: (target, key: string) => target[key] ?? { displayName: key },
+    }),
   };
 });
 
@@ -309,7 +313,6 @@ describe("metrics-dashboard flows load queue wiring", () => {
     clickTab({ id: "MetricsTabApi" });
     announcement().textContent = "";
     renderFlowGridSpy.mockClear();
-    expect(announcement().textContent).toBe("");
 
     changeWindow({ windowKey: "week" });
 
@@ -428,11 +431,6 @@ describe("metrics-dashboard flows load queue wiring", () => {
       responseJSON: { error: "flow_invalid", invalid: VALID_INVALID },
     });
 
-    expect(target.xhr.status).toBe(422);
-    expect(
-      (target.xhr as unknown as { responseJSON: { invalid: unknown } })
-        .responseJSON.invalid,
-    ).toEqual(VALID_INVALID);
     expect(kindOf({ id: ID_A })).toBe("invalid");
     expect(
       lastEntries().find((entry) => entry.id === ID_A)?.state.invalid,
@@ -673,12 +671,51 @@ describe("metrics-dashboard flows load queue wiring", () => {
     openFlows();
     deferreds.slice(0, 3).forEach((entry) => entry.resolve());
     announcement().textContent = "";
-    expect(announcement().textContent).toBe("");
 
     _dropFlowIdForTests({ id: ID_D });
 
     expect(flowsPanel().hasAttribute("aria-busy")).toBe(false);
     expect(announcement().textContent).toBe("");
+  });
+
+  it("with six ids only four are in flight; a settle admits the fifth and the rest render as loading", () => {
+    const sixIds = ["id1", "id2", "id3", "id4", "id5", "id6"];
+    flowIdsHolder.ids = Object.fromEntries(sixIds.map((id) => [id, id]));
+    openFlows();
+
+    expect(fetchFlowSpy).toHaveBeenCalledTimes(4);
+    expect(lastEntries().map((entry) => entry.state.kind)).toEqual(
+      sixIds.map(() => "loading"),
+    );
+
+    deferreds[0].resolve();
+
+    expect(fetchFlowSpy).toHaveBeenCalledTimes(5);
+    expect(lastEntries().map((entry) => entry.state.kind)).toEqual([
+      "response",
+      "loading",
+      "loading",
+      "loading",
+      "loading",
+      "loading",
+    ]);
+  });
+
+  it("returning to Flows after all four requests errored retries them", () => {
+    openFlows();
+    deferreds.forEach((entry) => entry.reject({ status: 500 }));
+    expect(lastEntries().map((entry) => entry.state.kind)).toEqual([
+      "error",
+      "error",
+      "error",
+      "error",
+    ]);
+    fetchFlowSpy.mockClear();
+
+    clickTab({ id: "MetricsTabApi" });
+    clickTab({ id: "MetricsTabFlows" });
+
+    expect(fetchFlowSpy).toHaveBeenCalledTimes(4);
   });
 
   it("an empty fan-out clears aria-busy and announces", () => {
