@@ -180,6 +180,15 @@ class TestResponseDescription:
         result = response_description(400, NonEmptySchema)
         assert result == "Bad request"
 
+    def test_unprocessable_entity_status_returns_http_phrase(self) -> None:
+        """
+        GIVEN the 422 status code used by the flow query's `flow_invalid` body
+        WHEN response_description is called
+        THEN the HTTP phrase is returned
+        """
+        result = response_description(422, NonEmptySchema)
+        assert result == "Unprocessable Entity"
+
     def test_unmapped_error_status_returns_error(self) -> None:
         """
         GIVEN a status code >= 400 that is NOT in HTTP_STATUS_DESCRIPTIONS

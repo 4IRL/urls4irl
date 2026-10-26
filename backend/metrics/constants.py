@@ -14,3 +14,5 @@ class MetricsFailureMessages:
     UNABLE_TO_QUERY_METRICS = "Unable to query metrics."
     INVALID_WINDOW = "Invalid window."
     INVALID_QUERY = "Invalid query parameters."
+    FLOW_NOT_FOUND = "Flow not found."
+    INVALID_FLOW_ID = "Unknown flow id."

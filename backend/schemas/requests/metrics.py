@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Annotated, Literal, Self
 
@@ -13,8 +14,9 @@ from pydantic import (
     model_validator,
 )
 
+from backend.metrics.constants import MetricsFailureMessages
 from backend.metrics.events import EVENT_CATEGORY, DeviceType, EventCategory, EventName
-from backend.metrics.flows import ALL_FLOW_IDS
+from backend.metrics.flows import FLOW_ID_PATTERN
 from backend.metrics.latency import LatencyMetricName
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
@@ -348,12 +350,6 @@ class SummaryQuerySchema(BaseModel):
         return self
 
 
-# Module-level tuple of every FlowId value, mirroring `ALL_EVENT_NAMES`. Built
-# from the `flows` registry's `FlowId` StrEnum so the query schema's accepted
-# flow ids stay in lockstep with the source of truth.
-FlowIdLiteral = Literal[*ALL_FLOW_IDS]  # type: ignore[valid-type]
-
-
 class FlowQuerySchema(BaseModel):
     """Query params for `GET /api/metrics/query/flow`.
 
@@ -365,15 +361,27 @@ class FlowQuerySchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    flow_id: FlowIdLiteral = Field(
+    # The pattern is published to OpenAPI via `json_schema_extra` but enforced by
+    # `_check_flow_id` with `fullmatch`: a `$`-anchored `re.match` would also
+    # accept a trailing newline, and pydantic's own pattern error would leak the
+    # regex into the 400 body.
+    flow_id: str = Field(
         description="Which funnel to assemble (create_utub | add_url_to_utub | "
-        "register | login).",
+        "register | login | custom_<id>).",
+        json_schema_extra={"pattern": FLOW_ID_PATTERN},
     )
     window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
     start: AwareDatetime | None = Field(
         default=None, description=_START_FIELD_DESCRIPTION
     )
     end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+
+    @field_validator("flow_id")
+    @classmethod
+    def _check_flow_id(cls, value: str) -> str:
+        if re.fullmatch(FLOW_ID_PATTERN, value) is None:
+            raise ValueError(MetricsFailureMessages.INVALID_FLOW_ID)
+        return value
 
     @model_validator(mode="after")
     def _check_window_xor_range(self) -> Self:

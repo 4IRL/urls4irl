@@ -315,6 +315,11 @@ class FlowResponseSchema(BaseSchema):
     A `steps` wrapper (not a bare list) is required because
     `APIResponse.to_response()` spreads the payload via `**data_dict`, which
     needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+
+    Serves both the built-in funnels and stored `custom_<id>` flows. A
+    well-formed custom id with no saved flow answers 404; a saved flow that no
+    longer validates (or raises a count-time `ValueError`) answers 422 with
+    `FlowInvalidResponseSchema` instead of this envelope.
     """
 
     steps: list[FlowStepSchema] = Field(
@@ -322,6 +327,32 @@ class FlowResponseSchema(BaseSchema):
             "Ordered funnel steps assembled server-side from the FLOWS "
             "registry; one entry per FlowDefinition step, in funnel order."
         ),
+    )
+
+
+class FlowInvalidDetailSchema(BaseSchema):
+    """The first problem found in a saved custom funnel that no longer validates.
+
+    `step_index` is the 0-based step the problem belongs to, or null when it is
+    flow-level (name or step list). `field` is the full dotted path of the bad
+    field and `reason` the message shown to the admin.
+    """
+
+    step_index: int | None = Field(
+        description="0-based index of the offending step; null for flow-level problems.",
+    )
+    field: str = Field(description="Dotted path of the offending field.")
+    reason: str = Field(description="Human-readable reason the field is invalid.")
+
+
+class FlowInvalidResponseSchema(BaseSchema):
+    """Body of the `422` answer for a saved funnel that needs attention."""
+
+    error: Literal["flow_invalid"] = Field(
+        description="Fixed discriminator for the 'needs attention' answer.",
+    )
+    invalid: FlowInvalidDetailSchema = Field(
+        description="The first invalid step or field of the saved funnel.",
     )
 
 

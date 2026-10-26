@@ -969,7 +969,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Assemble one conversion funnel (UI intent → API request → domain outcome) for an admin time window, fanning out per-step counts plus per-cause drop-off breakdowns from the server-side FLOWS registry. */
+    /** @description Assemble one conversion funnel (UI intent → API request → domain outcome) for an admin time window, fanning out per-step counts plus per-cause drop-off breakdowns. `flow_id` is a built-in funnel from the server-side FLOWS registry or `custom_<id>` for a saved funnel (404 if absent, 422 `flow_invalid` if it no longer validates or a step count raises a `ValueError`). */
     get: operations["queryFlow"];
     put?: never;
     post?: never;
@@ -2922,10 +2922,40 @@ export interface components {
      *     A `steps` wrapper (not a bare list) is required because
      *     `APIResponse.to_response()` spreads the payload via `**data_dict`, which
      *     needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+     *
+     *     Serves both the built-in funnels and stored `custom_<id>` flows. A
+     *     well-formed custom id with no saved flow answers 404; a saved flow that no
+     *     longer validates (or raises a count-time `ValueError`) answers 422 with
+     *     `FlowInvalidResponseSchema` instead of this envelope.
      */
     FlowResponseSchema: {
       /** @description Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order. */
       steps: components["schemas"]["FlowStepSchema"][];
+    };
+    /**
+     * @description The first problem found in a saved custom funnel that no longer validates.
+     *
+     *     `step_index` is the 0-based step the problem belongs to, or null when it is
+     *     flow-level (name or step list). `field` is the full dotted path of the bad
+     *     field and `reason` the message shown to the admin.
+     */
+    FlowInvalidDetailSchema: {
+      /** @description 0-based index of the offending step; null for flow-level problems. */
+      step_index: number | null;
+      /** @description Dotted path of the offending field. */
+      field: string;
+      /** @description Human-readable reason the field is invalid. */
+      reason: string;
+    };
+    /** @description Body of the `422` answer for a saved funnel that needs attention. */
+    FlowInvalidResponseSchema: {
+      /**
+       * @description Fixed discriminator for the 'needs attention' answer.
+       * @constant
+       */
+      error: "flow_invalid";
+      /** @description The first invalid step or field of the saved funnel. */
+      invalid: components["schemas"]["FlowInvalidDetailSchema"];
     };
     /**
      * @description One sampled point of a gauge's timeseries.
@@ -7930,8 +7960,8 @@ export interface operations {
   queryFlow: {
     parameters: {
       query: {
-        /** @description Which funnel to assemble (create_utub | add_url_to_utub | register | login). */
-        flow_id: "create_utub" | "add_url_to_utub" | "register" | "login";
+        /** @description Which funnel to assemble (create_utub | add_url_to_utub | register | login | custom_<id>). */
+        flow_id: string;
         /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
         window?: string;
         /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
@@ -7951,6 +7981,11 @@ export interface operations {
        *         A `steps` wrapper (not a bare list) is required because
        *         `APIResponse.to_response()` spreads the payload via `**data_dict`, which
        *         needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+       *
+       *         Serves both the built-in funnels and stored `custom_<id>` flows. A
+       *         well-formed custom id with no saved flow answers 404; a saved flow that no
+       *         longer validates (or raises a count-time `ValueError`) answers 422 with
+       *         `FlowInvalidResponseSchema` instead of this envelope.
        */
       200: {
         headers: {
@@ -7986,6 +8021,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FlowInvalidResponseSchema"];
         };
       };
     };
