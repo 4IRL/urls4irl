@@ -14,6 +14,7 @@ WRONG_TYPE_LIST_STR = "Enter a list of items."
 WRONG_TYPE_OBJECT_STR = "Enter an object."
 CHOOSE_STEP_TYPE_STR = "Choose a step type."
 UNEXPECTED_FIELD_STR = "Unexpected field."
+FLOW_INVALID_UNKNOWN_STR = "This funnel needs attention."
 
 
 # Registry (semantic) messages.

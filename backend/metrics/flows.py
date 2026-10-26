@@ -79,8 +79,9 @@ first step is always the denominator.
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum
-from typing import Annotated, Literal, Self
+from typing import Annotated, Final, Literal, Self
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
@@ -88,12 +89,17 @@ from backend.metrics.events import EventName
 
 __all__ = [
     "ALL_FLOW_IDS",
+    "CUSTOM_FLOW_ID_PREFIX",
+    "CUSTOM_FLOW_ID_REGEX",
     "FLOWS",
+    "FLOW_ID_PATTERN",
     "FlowDefinition",
     "FlowFilterCondition",
     "FlowId",
     "FlowStep",
     "FlowStepBreakdown",
+    "format_custom_flow_id",
+    "parse_custom_flow_id",
 ]
 
 _FLOW_STEP_XOR_ERROR: str = (
@@ -119,10 +125,35 @@ class FlowId(StrEnum):
     LOGIN = "login"
 
 
-# Module-level tuple of every FlowId value. Reused by `FlowIdLiteral` in the
-# query schema and by `generate_flows_ts()` so the wire contract and the
-# codegen surface stay aligned with this source of truth.
+# Module-level tuple of every built-in FlowId value. Reused by `FlowIdLiteral`
+# in the query schema and by `generate_flows_ts()` so the wire contract and the
+# codegen surface stay aligned with this source of truth. The accepted id
+# grammar is wider than this tuple: a stored custom flow is addressed as
+# `custom_<n>` (see `FLOW_ID_PATTERN`).
 ALL_FLOW_IDS: tuple[str, ...] = tuple(member.value for member in FlowId)
+
+# The single id-namespace constant for stored custom flows (DD-3).
+CUSTOM_FLOW_ID_PREFIX: Final = "custom_"
+# Unanchored body: a positive integer of at most 9 digits, no leading zero.
+CUSTOM_FLOW_ID_REGEX: Final = rf"{CUSTOM_FLOW_ID_PREFIX}[1-9][0-9]{{0,8}}"
+_BUILT_IN_FLOW_ID_ALTERNATION: Final = "|".join(
+    re.escape(flow_id) for flow_id in ALL_FLOW_IDS
+)
+FLOW_ID_PATTERN: Final = (
+    rf"^(?:{_BUILT_IN_FLOW_ID_ALTERNATION}|{CUSTOM_FLOW_ID_REGEX})$"
+)
+
+
+def parse_custom_flow_id(flow_id: str) -> int | None:
+    """Return the row id of a `custom_<n>` flow id, else `None` (never raises)."""
+    if re.fullmatch(CUSTOM_FLOW_ID_REGEX, flow_id) is None:
+        return None
+    return int(flow_id[len(CUSTOM_FLOW_ID_PREFIX) :])
+
+
+def format_custom_flow_id(row_id: int) -> str:
+    """Return the `custom_<n>` flow id for a stored flow's row id."""
+    return f"{CUSTOM_FLOW_ID_PREFIX}{row_id}"
 
 
 def parse_flow_filter_condition(value: object) -> object:

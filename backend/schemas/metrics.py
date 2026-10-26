@@ -325,6 +325,32 @@ class FlowResponseSchema(BaseSchema):
     )
 
 
+class FlowInvalidDetailSchema(BaseSchema):
+    """The first problem found in a saved custom funnel that no longer validates.
+
+    `step_index` is the 0-based step the problem belongs to, or null when it is
+    flow-level (name or step list). `field` is the full dotted path of the bad
+    field and `reason` the message shown to the admin.
+    """
+
+    step_index: int | None = Field(
+        description="0-based index of the offending step; null for flow-level problems.",
+    )
+    field: str = Field(description="Dotted path of the offending field.")
+    reason: str = Field(description="Human-readable reason the field is invalid.")
+
+
+class FlowInvalidResponseSchema(BaseSchema):
+    """Body of the `422` answer for a saved funnel that needs attention."""
+
+    error: Literal["flow_invalid"] = Field(
+        description="Fixed discriminator for the 'needs attention' answer.",
+    )
+    invalid: FlowInvalidDetailSchema = Field(
+        description="The first invalid step or field of the saved funnel.",
+    )
+
+
 class GaugeSampleSchema(BaseSchema):
     """One sampled point of a gauge's timeseries.
 
