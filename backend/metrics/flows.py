@@ -90,7 +90,6 @@ from backend.metrics.events import EventName
 __all__ = [
     "ALL_FLOW_IDS",
     "CUSTOM_FLOW_ID_PREFIX",
-    "CUSTOM_FLOW_ID_REGEX",
     "FLOWS",
     "FLOW_ID_PATTERN",
     "FlowDefinition",

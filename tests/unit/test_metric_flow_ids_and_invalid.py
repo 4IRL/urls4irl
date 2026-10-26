@@ -1,6 +1,7 @@
 import re
 
 import pytest
+from flask import Flask
 
 from backend.metrics.flow_invalid import first_invalid_detail, flow_invalid_response
 from backend.metrics.flows import (
@@ -20,7 +21,7 @@ pytestmark = pytest.mark.unit
     "flow_id,expected",
     [("custom_1", 1), ("custom_999999999", 999999999), ("custom_42", 42)],
 )
-def test_parse_custom_flow_id_accepts_valid(flow_id, expected):
+def test_parse_custom_flow_id_accepts_valid(flow_id: str, expected: int) -> None:
     assert parse_custom_flow_id(flow_id) == expected
 
 
@@ -39,20 +40,20 @@ def test_parse_custom_flow_id_accepts_valid(flow_id, expected):
         *ALL_FLOW_IDS,
     ],
 )
-def test_parse_custom_flow_id_rejects_invalid(flow_id):
+def test_parse_custom_flow_id_rejects_invalid(flow_id: str) -> None:
     assert parse_custom_flow_id(flow_id) is None
 
 
-def test_format_custom_flow_id_round_trips():
+def test_format_custom_flow_id_round_trips() -> None:
     assert format_custom_flow_id(7) == "custom_7"
     assert parse_custom_flow_id(format_custom_flow_id(7)) == 7
 
 
-def test_no_built_in_flow_id_uses_custom_prefix():
+def test_no_built_in_flow_id_uses_custom_prefix() -> None:
     assert not any(member.value.startswith(CUSTOM_FLOW_ID_PREFIX) for member in FlowId)
 
 
-def test_flow_id_pattern_matches_built_ins_and_custom_only():
+def test_flow_id_pattern_matches_built_ins_and_custom_only() -> None:
     for flow_id in ALL_FLOW_IDS:
         assert re.fullmatch(FLOW_ID_PATTERN, flow_id)
     assert re.fullmatch(FLOW_ID_PATTERN, "custom_12")
@@ -65,14 +66,14 @@ def _pick(errors: dict[str, list[str]]) -> str:
     return first_invalid_detail(errors).field
 
 
-def test_flow_level_before_step():
+def test_flow_level_before_step() -> None:
     detail = first_invalid_detail({"steps.0.event_name": ["a"], "display_name": ["b"]})
     assert detail.field == "display_name"
     assert detail.step_index is None
     assert detail.reason == "b"
 
 
-def test_flow_level_order():
+def test_flow_level_order() -> None:
     assert _pick({"display_name": ["x"], "__root__": ["x"], "steps": ["x"]}) == (
         "__root__"
     )
@@ -81,7 +82,7 @@ def test_flow_level_order():
     assert _pick({"zeta": ["x"], "alpha": ["x"]}) == "alpha"
 
 
-def test_steps_ordered_numerically():
+def test_steps_ordered_numerically() -> None:
     assert _pick({"steps.10.label": ["x"], "steps.2.label": ["x"]}) == "steps.2.label"
     assert first_invalid_detail({"steps.3.label": ["x"]}).step_index == 3
 
@@ -117,12 +118,12 @@ def test_steps_ordered_numerically():
         ("steps.0.dim_filter.5", "steps.0.drop_breakdown.event_name"),
     ],
 )
-def test_within_step_order(earlier, later):
+def test_within_step_order(earlier: str, later: str) -> None:
     assert _pick({later: ["x"], earlier: ["x"]}) == earlier
     assert _pick({earlier: ["x"], later: ["x"]}) == earlier
 
 
-def test_three_key_map_picks_step_zero():
+def test_three_key_map_picks_step_zero() -> None:
     detail = first_invalid_detail(
         {
             "steps.2.api_endpoint": ["c"],
@@ -135,24 +136,24 @@ def test_three_key_map_picks_step_zero():
     assert detail.reason == "a"
 
 
-def test_reason_is_first_message():
+def test_reason_is_first_message() -> None:
     assert first_invalid_detail({"display_name": ["one", "two"]}).reason == "one"
 
 
-def test_empty_paths_are_skipped():
+def test_empty_paths_are_skipped() -> None:
     detail = first_invalid_detail({"display_name": [], "steps.1.label": ["x"]})
     assert detail.field == "steps.1.label"
 
 
 @pytest.mark.parametrize("errors", [{}, {"display_name": [], "steps.0.label": []}])
-def test_nothing_selectable_fails_closed(errors):
+def test_nothing_selectable_fails_closed(errors: dict[str, list[str]]) -> None:
     detail = first_invalid_detail(errors)
     assert detail.step_index is None
     assert detail.field == "__root__"
     assert detail.reason == FLOW_INVALID_UNKNOWN_STR
 
 
-def test_flow_invalid_response_body_and_status(app):
+def test_flow_invalid_response_body_and_status(app: Flask) -> None:
     detail = first_invalid_detail({"steps": ["Add at least 2 steps."]})
     with app.app_context():
         response, status_code = flow_invalid_response(detail)

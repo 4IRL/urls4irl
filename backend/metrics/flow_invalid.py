@@ -1,8 +1,8 @@
 """Pick the single most important validation problem of a saved custom flow.
 
 `first_invalid_detail` is pure (no app context; `flow_invalid_response` needs
-one for `jsonify`) and orders the validator's error map
-by the DD-58 rules so `/flow` and the flow list always show the same message.
+one for `jsonify`). It orders the validator's error map by the DD-58 rules so
+`/flow` and the flow list always show the same message.
 """
 
 import re

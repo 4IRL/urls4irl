@@ -7,6 +7,7 @@ from typing import Any, Callable, NoReturn, Tuple
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from werkzeug.test import TestResponse
 
 from backend import db
 from backend.metrics import flow_counting
@@ -1811,7 +1812,7 @@ def _insert_custom_flow(
         return row.id
 
 
-def _get_custom_flow(logged_in_client: FlaskClient, row_id: int):
+def _get_custom_flow(logged_in_client: FlaskClient, row_id: int) -> TestResponse:
     return logged_in_client.get(
         _flow_url(format_custom_flow_id(row_id)), headers=_AJAX_HEADERS
     )

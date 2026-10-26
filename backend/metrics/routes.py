@@ -468,6 +468,8 @@ def query_flow() -> FlaskResponse:
     else:
         row_id = parse_custom_flow_id(parsed.flow_id)
         if row_id is None:
+            # Unreachable while the schema pattern validates `flow_id`; kept as a
+            # fail-closed guard so a pattern drift can never reach the lookup.
             return build_field_error_response(
                 message=MetricsFailureMessages.INVALID_QUERY,
                 errors={"flow_id": [MetricsFailureMessages.INVALID_FLOW_ID]},
