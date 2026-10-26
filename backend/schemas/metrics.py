@@ -315,6 +315,11 @@ class FlowResponseSchema(BaseSchema):
     A `steps` wrapper (not a bare list) is required because
     `APIResponse.to_response()` spreads the payload via `**data_dict`, which
     needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+
+    Serves both the built-in funnels and stored `custom_<id>` flows. A
+    well-formed custom id with no saved flow answers 404; a saved flow that no
+    longer validates (or fails while counting) answers 422 with
+    `FlowInvalidResponseSchema` instead of this envelope.
     """
 
     steps: list[FlowStepSchema] = Field(

@@ -125,8 +125,8 @@ class FlowId(StrEnum):
     LOGIN = "login"
 
 
-# Module-level tuple of every built-in FlowId value. Reused by `FlowIdLiteral`
-# in the query schema and by `generate_flows_ts()` so the wire contract and the
+# Module-level tuple of every built-in FlowId value. Reused by
+# the query schema and by `generate_flows_ts()` so the wire contract and the
 # codegen surface stay aligned with this source of truth. The accepted id
 # grammar is wider than this tuple: a stored custom flow is addressed as
 # `custom_<n>` (see `FLOW_ID_PATTERN`).

@@ -10,7 +10,7 @@ from flask.testing import FlaskClient
 
 from backend import db
 from backend.metrics import flow_counting
-from backend.metrics.constants import MetricsErrorCodes
+from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.events import (
     DEVICE_TYPE_DIM_KEY,
     EVENT_DESCRIPTIONS,
@@ -19,7 +19,18 @@ from backend.metrics.events import (
     EventName,
 )
 from backend.metrics.flow_counting import FlowCountError, count_flow
-from backend.metrics.flows import FLOWS, FlowDefinition, FlowId, FlowStep
+from backend.metrics.flow_invalid import first_invalid_detail
+from backend.metrics.flow_validation import (
+    serialize_flow_steps,
+    validate_flow_payload,
+)
+from backend.metrics.flows import (
+    FLOWS,
+    FlowDefinition,
+    FlowId,
+    FlowStep,
+    format_custom_flow_id,
+)
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeName
 from backend.metrics.latency import LatencyMetricName
 from backend.models.anonymous_gauges import Anonymous_Gauges
@@ -27,9 +38,14 @@ from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rol
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
+from backend.models.metric_flows import Metric_Flows
 from backend.models.users import Users
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.metric_flow_strs import (
+    UNEXPECTED_FIELD_STR,
+    unknown_event_message,
+)
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
 pytestmark = pytest.mark.cli
@@ -1235,31 +1251,37 @@ def _seed_add_url_flow(bucket_start: datetime, *, with_rejections: bool) -> None
         )
 
 
-def test_flow_anonymous_returns_401(app: Flask, client: FlaskClient) -> None:
+@pytest.mark.parametrize("flow_id", [_ADD_URL_FLOW, "custom_1"])
+def test_flow_anonymous_returns_401(
+    app: Flask, client: FlaskClient, flow_id: str
+) -> None:
     """
     GIVEN an anonymous client (no session)
-    WHEN GETing /api/metrics/query/flow
-    THEN the response is 401 with a JSON failure envelope (NOT a 302 redirect).
+    WHEN GETing /api/metrics/query/flow (built-in or custom id)
+    THEN the response is 401 with a JSON failure envelope (NOT a 302 redirect),
+        before any row lookup.
     """
-    response = client.get(_flow_url(_ADD_URL_FLOW))
+    response = client.get(_flow_url(flow_id))
 
     assert response.status_code == 401
     assert response.is_json
     assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
+@pytest.mark.parametrize("flow_id", [_ADD_URL_FLOW, "custom_1"])
 def test_flow_non_admin_returns_404(
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    flow_id: str,
 ) -> None:
     """
     GIVEN a logged-in user with the default User_Role.USER
-    WHEN GETing /api/metrics/query/flow
+    WHEN GETing /api/metrics/query/flow (built-in or custom id)
     THEN the response is 404 with a JSON failure envelope (not advertised to
         non-admins) — matches the other @admin_required query endpoints.
     """
     logged_in_client, _, _, _ = login_first_user_with_register
 
-    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW))
+    response = logged_in_client.get(_flow_url(flow_id))
 
     assert response.status_code == 404
     assert response.is_json
@@ -1285,24 +1307,45 @@ def test_flow_admin_missing_ajax_header_redirects_to_home(
     assert response.location.endswith("/home")
 
 
-def test_flow_unknown_flow_id_returns_400(
+@pytest.mark.parametrize(
+    "flow_id",
+    [
+        "not_a_real_flow",
+        "custom_0",
+        "custom_007",
+        "custom_-1",
+        "custom_abc",
+        "custom_2147483648",
+        "custom_1000000000",
+        "Custom_1",
+        "custom_1%0A",
+        "custom_",
+        "login%0A",
+    ],
+)
+def test_flow_malformed_flow_id_returns_400(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    flow_id: str,
 ) -> None:
     """
     GIVEN an admin client
-    WHEN GETing /api/metrics/query/flow with an unknown `flow_id`
-    THEN the response is 400 — `FlowIdLiteral` rejects the value at the schema
-        layer and `parse_query_args` maps the ValidationError to a 400.
+    WHEN GETing /api/metrics/query/flow with a `flow_id` outside the id grammar
+        (including ids with a trailing newline, which a `$`-anchored match
+        would accept)
+    THEN the response is 400 with exactly the fixed `Unknown flow id.` message
+        (no regex text leaks) under the `INVALID_QUERY_PARAM` error code.
     """
     logged_in_client, _, _, _ = login_admin_user_with_register
 
-    response = logged_in_client.get(_flow_url("not_a_real_flow"), headers=_AJAX_HEADERS)
+    response = logged_in_client.get(_flow_url(flow_id), headers=_AJAX_HEADERS)
 
     assert response.status_code == 400
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
-    assert "flow_id" in body[STD_JSON.ERRORS]
+    assert body[STD_JSON.ERRORS] == {
+        "flow_id": [MetricsFailureMessages.INVALID_FLOW_ID]
+    }
 
 
 def test_flow_window_xor_enforced(
@@ -1737,6 +1780,314 @@ def test_count_flow_reports_lowest_failing_step_when_several_fail(
 
     assert exc_info.value.step_index == 1
     assert exc_info.value.field == "steps.1.drop_breakdown"
+
+
+# ---------------------------------------------------------------------------
+# Flow query — stored custom flows (`custom_<id>`)
+# ---------------------------------------------------------------------------
+
+_CUSTOM_FLOW_NAME = "Custom add URL"
+_FLOW_INVALID = "flow_invalid"
+
+
+def _add_url_steps() -> list[dict[str, Any]]:
+    """Return the serialized steps of the built-in add-URL funnel (fresh copy)."""
+    return serialize_flow_steps(FLOWS[FlowId.ADD_URL_TO_UTUB])["steps"]  # type: ignore[return-value]
+
+
+def _insert_custom_flow(
+    app: Flask, *, definition: dict[str, Any], display_name: str = _CUSTOM_FLOW_NAME
+) -> int:
+    """Insert one `Metric_Flows` row and return its id."""
+    with app.app_context():
+        row = Metric_Flows(
+            display_name=display_name,
+            definition=definition,
+            created_by=None,
+            updated_by=None,
+        )
+        db.session.add(row)
+        db.session.commit()
+        return row.id
+
+
+def _get_custom_flow(logged_in_client: FlaskClient, row_id: int):
+    return logged_in_client.get(
+        _flow_url(format_custom_flow_id(row_id)), headers=_AJAX_HEADERS
+    )
+
+
+def _expected_invalid(
+    app: Flask, *, definition: dict[str, Any], display_name: str
+) -> dict[str, Any]:
+    """Return `first_invalid_detail` of the validator's errors for a stored row."""
+    with app.app_context():
+        errors = validate_flow_payload({**definition, "display_name": display_name})
+        assert isinstance(errors, dict)
+        return first_invalid_detail(errors).model_dump()
+
+
+def _assert_flow_invalid(response: Any, invalid: dict[str, Any]) -> None:
+    assert response.status_code == 422
+    assert response.get_json() == {"error": _FLOW_INVALID, "invalid": invalid}
+
+
+def test_flow_custom_valid_row_returns_same_shape_as_built_in(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a stored custom flow mirroring the add-URL funnel and its seeded events
+    WHEN GETing /api/metrics/query/flow?flow_id=custom_<id>
+    THEN the response is 200 with the same counts, streams and breakdown shape
+        as the built-in happy path.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_add_url_flow(_bucket_inside_window(), with_rejections=True)
+    row_id = _insert_custom_flow(app, definition={"steps": _add_url_steps()})
+
+    custom = _get_custom_flow(logged_in_client, row_id)
+    built_in = logged_in_client.get(_flow_url(_ADD_URL_FLOW), headers=_AJAX_HEADERS)
+
+    assert built_in.status_code == 200
+    assert custom.status_code == 200
+    steps = custom.get_json()["steps"]
+    assert [step["count"] for step in steps] == [10, 8, 7, 6]
+    assert [step["stream"] for step in steps] == ["ui", "ui", "api", "domain"]
+    assert steps[3]["pct_of_top"] == 6 / 10
+    assert steps == built_in.get_json()["steps"]
+
+
+@pytest.mark.parametrize("delete_row", [False, True])
+def test_flow_custom_missing_row_returns_404(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    delete_row: bool,
+) -> None:
+    """
+    GIVEN a well-formed custom id with no row (never inserted, or inserted then
+        deleted)
+    WHEN GETing /api/metrics/query/flow
+    THEN the response is 404 with the `Flow not found.` message.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    row_id = 999999999
+    if delete_row:
+        row_id = _insert_custom_flow(app, definition={"steps": _add_url_steps()})
+        with app.app_context():
+            Metric_Flows.query.filter_by(id=row_id).delete()
+            db.session.commit()
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    assert response.status_code == 404
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.MESSAGE] == MetricsFailureMessages.FLOW_NOT_FOUND
+
+
+def test_flow_custom_removed_event_returns_422_naming_step(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a stored flow whose step 2 names an event that no longer exists
+    WHEN GETing the custom flow
+    THEN the response is the pinned 422 body naming step 2 and its event path.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    steps = _add_url_steps()
+    steps = [steps[0], steps[1], {**steps[3], "event_name": "removed_event"}]
+    row_id = _insert_custom_flow(app, definition={"steps": steps})
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    _assert_flow_invalid(
+        response,
+        {
+            "step_index": 2,
+            "field": "steps.2.event_name",
+            "reason": unknown_event_message(value="removed_event"),
+        },
+    )
+    assert STD_JSON.STATUS not in response.get_json()
+
+
+def test_flow_custom_bad_filter_key_returns_422(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a stored flow whose step 1 filters on a dimension that does not exist
+    WHEN GETing the custom flow
+    THEN the 422 names `steps.1.dim_filter.0`.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    steps = _add_url_steps()
+    steps[1]["dim_filter"] = ["nope:1"]
+    row_id = _insert_custom_flow(app, definition={"steps": steps})
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    expected = _expected_invalid(
+        app, definition={"steps": steps}, display_name=_CUSTOM_FLOW_NAME
+    )
+    assert expected["step_index"] == 1
+    assert expected["field"] == "steps.1.dim_filter.0"
+    _assert_flow_invalid(response, expected)
+    assert STD_JSON.STATUS not in response.get_json()
+
+
+@pytest.mark.parametrize(
+    ("display_name", "definition", "expected_index", "expected_field"),
+    [
+        ("One step", {"steps": _add_url_steps()[:1]}, None, "steps"),
+        ("bad\u0007name", {"steps": _add_url_steps()}, None, "display_name"),
+        ("Non object steps", {"steps": [5, 6]}, 0, "steps.0"),
+    ],
+)
+def test_flow_custom_structural_problems_return_422(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    display_name: str,
+    definition: dict[str, Any],
+    expected_index: int | None,
+    expected_field: str,
+) -> None:
+    """
+    GIVEN a stored flow with a structural problem (too few steps, a control
+        character in the name, a non-object step)
+    WHEN GETing the custom flow
+    THEN the 422 carries the validator's field path, with a null `step_index`
+        for flow-level paths, and the body is exactly the pinned shape.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    row_id = _insert_custom_flow(app, definition=definition, display_name=display_name)
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    expected = _expected_invalid(app, definition=definition, display_name=display_name)
+    assert expected["step_index"] == expected_index
+    assert expected["field"] == expected_field
+    assert expected["reason"]
+    _assert_flow_invalid(response, expected)
+    assert STD_JSON.STATUS not in response.get_json()
+
+
+def test_flow_custom_errors_in_two_steps_report_the_lower_step(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a stored flow with problems in step 1 and step 3
+    WHEN GETing the custom flow
+    THEN the 422 `invalid` is exactly `first_invalid_detail` of the validator's
+        errors (same helper, same object) and names the lower step.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    steps = _add_url_steps()
+    steps[1]["dim_filter"] = ["nope:1"]
+    steps[3]["event_name"] = "removed_event"
+    row_id = _insert_custom_flow(app, definition={"steps": steps})
+    with app.app_context():
+        errors = validate_flow_payload(
+            {"steps": steps, "display_name": _CUSTOM_FLOW_NAME}
+        )
+        assert isinstance(errors, dict)
+        expected = first_invalid_detail(errors).model_dump()
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    _assert_flow_invalid(response, expected)
+    assert expected["step_index"] == 1
+
+
+def test_flow_custom_column_display_name_overrides_stored_key(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a stored definition carrying a stale `display_name` key beside a valid
+        column value
+    WHEN GETing the custom flow
+    THEN the column wins and the response is 200.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    row_id = _insert_custom_flow(
+        app, definition={"steps": _add_url_steps(), "display_name": "bad\u0007name"}
+    )
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    assert response.status_code == 200
+
+
+def test_flow_custom_unknown_top_level_key_returns_422(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a stored definition with an unknown top-level key
+    WHEN GETing the custom flow
+    THEN the 422 is flow-level (`step_index` null) naming the stray key.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    row_id = _insert_custom_flow(
+        app, definition={"steps": _add_url_steps(), "bogus": 1}
+    )
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    _assert_flow_invalid(
+        response,
+        {"step_index": None, "field": "bogus", "reason": UNEXPECTED_FIELD_STR},
+    )
+
+
+def test_flow_custom_scalar_count_error_returns_422_not_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN a valid custom flow whose 3rd step count raises ValueError
+    WHEN GETing the custom flow
+    THEN the response is a 422 naming step 2 with the raised message.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    row_id = _insert_custom_flow(app, definition={"steps": _add_url_steps()})
+    monkeypatch.setattr(
+        flow_counting,
+        "grouped_count_scalar",
+        _scalar_raising_on_third_call(flow_counting.grouped_count_scalar),
+    )
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    _assert_flow_invalid(
+        response, {"step_index": 2, "field": "steps.2", "reason": "boom"}
+    )
+
+
+def test_flow_custom_breakdown_count_error_returns_422_not_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN a valid custom flow whose step breakdown raises ValueError
+    WHEN GETing the custom flow
+    THEN the response is a 422 naming the first step's `drop_breakdown` path.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    steps = _add_url_steps()
+    first_breakdown_index = next(
+        index for index, step in enumerate(steps) if "drop_breakdown" in step
+    )
+    row_id = _insert_custom_flow(app, definition={"steps": steps})
+    monkeypatch.setattr(flow_counting, "grouped_count_by", _breakdown_raising)
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    _assert_flow_invalid(
+        response,
+        {
+            "step_index": first_breakdown_index,
+            "field": f"steps.{first_breakdown_index}.drop_breakdown",
+            "reason": "boom",
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -48,6 +48,7 @@ HTTP_STATUS_DESCRIPTIONS: dict[int, str] = {
     403: "Forbidden",
     404: "Not found",
     409: "Conflict",
+    422: "Unprocessable Entity",
     429: "Too many requests",
     503: "Service unavailable",
 }

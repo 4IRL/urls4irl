@@ -686,7 +686,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/metrics/routes.py:query_flow`
 - **Decorators:** `admin_required`, `api_route`
 - **Service:** —
-- **Schema:** query: `backend.schemas.requests.metrics.FlowQuerySchema`; response: `backend.schemas.metrics.FlowResponseSchema`; status: 200 `backend.schemas.metrics.FlowResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Schema:** query: `backend.schemas.requests.metrics.FlowQuerySchema`; response: `backend.schemas.metrics.FlowResponseSchema`; status: 200 `backend.schemas.metrics.FlowResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 422 `backend.schemas.metrics.FlowInvalidResponseSchema`
 - **Template:** —
 - **JS:** keys: `metricsQueryFlow`
 

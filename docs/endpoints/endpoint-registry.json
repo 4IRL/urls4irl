@@ -1319,7 +1319,8 @@
           "200": "backend.schemas.metrics.FlowResponseSchema",
           "400": "backend.schemas.errors.ErrorResponse",
           "401": "backend.schemas.errors.ErrorResponse",
-          "404": "backend.schemas.errors.ErrorResponse"
+          "404": "backend.schemas.errors.ErrorResponse",
+          "422": "backend.schemas.metrics.FlowInvalidResponseSchema"
         }
       },
       "services": [],

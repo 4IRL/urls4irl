@@ -21,12 +21,8 @@ type FlowStepSchema = Schema<"FlowStepSchema">;
 type FlowBreakdownRow = Schema<"FlowBreakdownRow">;
 type FlowStream = FlowStepSchema["stream"];
 
-// Local structural type for the `invalid` object of a `flow_invalid` 422 body.
-export interface FlowInvalidDetail {
-  step_index: number | null;
-  field: string;
-  reason: string;
-}
+// The `invalid` object of a `flow_invalid` 422 body.
+export type FlowInvalidDetail = Schema<"FlowInvalidDetailSchema">;
 
 export type FlowCardState =
   | { kind: "response"; response: FlowResponseSchema }

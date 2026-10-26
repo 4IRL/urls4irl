@@ -5,7 +5,7 @@ from typing import Literal
 from flask import Blueprint, request
 from pydantic import BaseModel, ValidationError
 
-from backend import csrf, limiter, metrics_writer
+from backend import csrf, db, limiter, metrics_writer
 from backend.api_common.auth_decorators import admin_required
 from backend.api_common.parse_request import api_route, parse_query_args
 from backend.api_common.request_errors import pydantic_errors_to_dict
@@ -18,14 +18,26 @@ from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventCategory, EventName
 from backend.metrics.flow_counting import FlowCountError, count_flow
-from backend.metrics.flows import FLOWS, FlowId
+from backend.metrics.flow_invalid import first_invalid_detail, flow_invalid_response
+from backend.metrics.flow_validation import validate_flow_payload
+from backend.metrics.flows import (
+    ALL_FLOW_IDS,
+    FLOWS,
+    FlowDefinition,
+    FlowId,
+    parse_custom_flow_id,
+)
 from backend.metrics.latency import LatencyMetricName
 from backend.metrics.resources import Resource
+from backend.models.metric_flows import Metric_Flows
 from backend.schemas.errors import (
     ErrorResponse,
     build_field_error_response,
+    build_message_error_response,
 )
 from backend.schemas.metrics import (
+    FlowInvalidDetailSchema,
+    FlowInvalidResponseSchema,
     FlowResponseSchema,
     GaugesTimeseriesResponseSchema,
     GroupedTimeseriesResponseSchema,
@@ -408,13 +420,16 @@ def query_grouped_timeseries() -> FlaskResponse:
     description=(
         "Assemble one conversion funnel (UI intent → API request → domain "
         "outcome) for an admin time window, fanning out per-step counts plus "
-        "per-cause drop-off breakdowns from the server-side FLOWS registry."
+        "per-cause drop-off breakdowns. `flow_id` is a built-in funnel from the "
+        "server-side FLOWS registry or `custom_<id>` for a saved funnel (404 if "
+        "absent, 422 `flow_invalid` if it no longer validates or counts)."
     ),
     status_codes={
         200: FlowResponseSchema,
         400: ErrorResponse,
         401: ErrorResponse,
         404: ErrorResponse,
+        422: FlowInvalidResponseSchema,
     },
 )
 def query_flow() -> FlaskResponse:
@@ -445,13 +460,48 @@ def query_flow() -> FlaskResponse:
             status_code=400,
         )
 
-    flow = FLOWS[FlowId(parsed.flow_id)]
+    is_built_in = parsed.flow_id in ALL_FLOW_IDS
+    flow: FlowDefinition
+    if is_built_in:
+        # Read at request time and not re-validated: built-ins are trusted code.
+        flow = FLOWS[FlowId(parsed.flow_id)]
+    else:
+        row_id = parse_custom_flow_id(parsed.flow_id)
+        if row_id is None:
+            return build_field_error_response(
+                message=MetricsFailureMessages.INVALID_QUERY,
+                errors={"flow_id": [MetricsFailureMessages.INVALID_FLOW_ID]},
+                error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+                status_code=400,
+            )
+        row = db.session.get(Metric_Flows, row_id)
+        if row is None:
+            return build_message_error_response(
+                message=MetricsFailureMessages.FLOW_NOT_FOUND, status_code=404
+            )
+        # The column wins over any stray stored `display_name` key.
+        validated = validate_flow_payload(
+            {**row.definition, "display_name": row.display_name}
+        )
+        if not isinstance(validated, FlowDefinition):
+            return flow_invalid_response(
+                first_invalid_detail(validated if isinstance(validated, dict) else {})
+            )
+        flow = validated
 
     try:
         response_schema = count_flow(
             definition=flow, window_start=window_start, window_end=window_end
         )
     except FlowCountError as error:
+        if not is_built_in:
+            return flow_invalid_response(
+                FlowInvalidDetailSchema(
+                    step_index=error.step_index,
+                    field=error.field,
+                    reason=error.reason,
+                )
+            )
         return build_field_error_response(
             message=MetricsFailureMessages.INVALID_QUERY,
             errors={"filter": [str(error)]},
