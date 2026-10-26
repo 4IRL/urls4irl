@@ -969,7 +969,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Assemble one conversion funnel (UI intent → API request → domain outcome) for an admin time window, fanning out per-step counts plus per-cause drop-off breakdowns. `flow_id` is a built-in funnel from the server-side FLOWS registry or `custom_<id>` for a saved funnel (404 if absent, 422 `flow_invalid` if it no longer validates or counts). */
+    /** @description Assemble one conversion funnel (UI intent → API request → domain outcome) for an admin time window, fanning out per-step counts plus per-cause drop-off breakdowns. `flow_id` is a built-in funnel from the server-side FLOWS registry or `custom_<id>` for a saved funnel (404 if absent, 422 `flow_invalid` if it no longer validates or a step count raises a `ValueError`). */
     get: operations["queryFlow"];
     put?: never;
     post?: never;
@@ -2925,7 +2925,7 @@ export interface components {
      *
      *     Serves both the built-in funnels and stored `custom_<id>` flows. A
      *     well-formed custom id with no saved flow answers 404; a saved flow that no
-     *     longer validates (or fails while counting) answers 422 with
+     *     longer validates (or raises a count-time `ValueError`) answers 422 with
      *     `FlowInvalidResponseSchema` instead of this envelope.
      */
     FlowResponseSchema: {
@@ -7984,7 +7984,7 @@ export interface operations {
        *
        *         Serves both the built-in funnels and stored `custom_<id>` flows. A
        *         well-formed custom id with no saved flow answers 404; a saved flow that no
-       *         longer validates (or fails while counting) answers 422 with
+       *         longer validates (or raises a count-time `ValueError`) answers 422 with
        *         `FlowInvalidResponseSchema` instead of this envelope.
        */
       200: {

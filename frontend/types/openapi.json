@@ -5666,7 +5666,7 @@
             "adminSession": []
           }
         ],
-        "description": "Assemble one conversion funnel (UI intent \u2192 API request \u2192 domain outcome) for an admin time window, fanning out per-step counts plus per-cause drop-off breakdowns. `flow_id` is a built-in funnel from the server-side FLOWS registry or `custom_<id>` for a saved funnel (404 if absent, 422 `flow_invalid` if it no longer validates or counts).",
+        "description": "Assemble one conversion funnel (UI intent \u2192 API request \u2192 domain outcome) for an admin time window, fanning out per-step counts plus per-cause drop-off breakdowns. `flow_id` is a built-in funnel from the server-side FLOWS registry or `custom_<id>` for a saved funnel (404 if absent, 422 `flow_invalid` if it no longer validates or a step count raises a `ValueError`).",
         "parameters": [
           {
             "name": "flow_id",
@@ -5710,7 +5710,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\n    A `steps` wrapper (not a bare list) is required because\n    `APIResponse.to_response()` spreads the payload via `**data_dict`, which\n    needs a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\n    Serves both the built-in funnels and stored `custom_<id>` flows. A\n    well-formed custom id with no saved flow answers 404; a saved flow that no\n    longer validates (or fails while counting) answers 422 with\n    `FlowInvalidResponseSchema` instead of this envelope.",
+            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\n    A `steps` wrapper (not a bare list) is required because\n    `APIResponse.to_response()` spreads the payload via `**data_dict`, which\n    needs a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\n    Serves both the built-in funnels and stored `custom_<id>` flows. A\n    well-formed custom id with no saved flow answers 404; a saved flow that no\n    longer validates (or raises a count-time `ValueError`) answers 422 with\n    `FlowInvalidResponseSchema` instead of this envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11893,7 +11893,7 @@
         "type": "object"
       },
       "FlowResponseSchema": {
-        "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\nServes both the built-in funnels and stored `custom_<id>` flows. A\nwell-formed custom id with no saved flow answers 404; a saved flow that no\nlonger validates (or fails while counting) answers 422 with\n`FlowInvalidResponseSchema` instead of this envelope.",
+        "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\nServes both the built-in funnels and stored `custom_<id>` flows. A\nwell-formed custom id with no saved flow answers 404; a saved flow that no\nlonger validates (or raises a count-time `ValueError`) answers 422 with\n`FlowInvalidResponseSchema` instead of this envelope.",
         "properties": {
           "steps": {
             "description": "Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order.",

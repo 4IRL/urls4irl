@@ -422,7 +422,8 @@ def query_grouped_timeseries() -> FlaskResponse:
         "outcome) for an admin time window, fanning out per-step counts plus "
         "per-cause drop-off breakdowns. `flow_id` is a built-in funnel from the "
         "server-side FLOWS registry or `custom_<id>` for a saved funnel (404 if "
-        "absent, 422 `flow_invalid` if it no longer validates or counts)."
+        "absent, 422 `flow_invalid` if it no longer validates or a step count "
+        "raises a `ValueError`)."
     ),
     status_codes={
         200: FlowResponseSchema,

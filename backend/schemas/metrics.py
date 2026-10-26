@@ -318,7 +318,7 @@ class FlowResponseSchema(BaseSchema):
 
     Serves both the built-in funnels and stored `custom_<id>` flows. A
     well-formed custom id with no saved flow answers 404; a saved flow that no
-    longer validates (or fails while counting) answers 422 with
+    longer validates (or raises a count-time `ValueError`) answers 422 with
     `FlowInvalidResponseSchema` instead of this envelope.
     """
 
