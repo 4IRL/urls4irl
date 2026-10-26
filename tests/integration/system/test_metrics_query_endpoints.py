@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime, timedelta, timezone
-from typing import Tuple
+from typing import Any, Callable, NoReturn, Tuple
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 
 from backend import db
+from backend.metrics import flow_counting
 from backend.metrics.constants import MetricsErrorCodes
 from backend.metrics.events import (
     DEVICE_TYPE_DIM_KEY,
@@ -17,6 +18,7 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.metrics.flow_counting import FlowCountError, count_flow
 from backend.metrics.flows import FLOWS, FlowDefinition, FlowId, FlowStep
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeName
 from backend.metrics.latency import LatencyMetricName
@@ -26,6 +28,7 @@ from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.models.users import Users
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
@@ -1577,6 +1580,163 @@ def test_flow_pct_of_top_capped_at_one_when_downstream_exceeds_denominator(
     assert steps[0]["count"] == 5
     assert steps[1]["count"] == 8
     assert steps[1]["pct_of_top"] == 1.0
+
+
+def _scalar_raising_on_third_call(
+    real_scalar: Callable[..., int],
+) -> Callable[..., int]:
+    """Wrap `grouped_count_scalar` so its 3rd call raises `ValueError("boom")`."""
+    calls = {"count": 0}
+
+    def _stub(**kwargs: Any) -> int:
+        calls["count"] += 1
+        if calls["count"] == 3:
+            raise ValueError("boom")
+        return real_scalar(**kwargs)
+
+    return _stub
+
+
+def _breakdown_raising(**_kwargs: Any) -> NoReturn:
+    raise ValueError("boom")
+
+
+def test_flow_scalar_count_value_error_returns_400_with_filter_message(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN an admin client and a built-in flow whose 3rd step count raises ValueError
+    WHEN GETing /api/metrics/query/flow
+    THEN the response is 400 with `errors == {"filter": ["boom"]}`.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    monkeypatch.setattr(
+        flow_counting,
+        "grouped_count_scalar",
+        _scalar_raising_on_third_call(flow_counting.grouped_count_scalar),
+    )
+
+    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert body[STD_JSON.ERRORS] == {"filter": ["boom"]}
+
+
+def test_flow_breakdown_value_error_returns_400_with_filter_message(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN an admin client and a built-in flow whose step breakdown raises ValueError
+    WHEN GETing /api/metrics/query/flow
+    THEN the response is 400 with `errors == {"filter": ["boom"]}`.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    monkeypatch.setattr(flow_counting, "grouped_count_by", _breakdown_raising)
+
+    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert body[STD_JSON.ERRORS] == {"filter": ["boom"]}
+
+
+def test_count_flow_tags_scalar_failure_with_step_index(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    GIVEN a built-in flow whose 3rd step count raises ValueError("boom")
+    WHEN count_flow runs directly
+    THEN FlowCountError carries step_index 2, field steps.2, reason boom, is a
+        ValueError and chains the original error as __cause__.
+    """
+    monkeypatch.setattr(
+        flow_counting,
+        "grouped_count_scalar",
+        _scalar_raising_on_third_call(flow_counting.grouped_count_scalar),
+    )
+    window_end = utc_now()
+
+    with app.app_context():
+        with pytest.raises(FlowCountError) as exc_info:
+            count_flow(
+                definition=FLOWS[FlowId.ADD_URL_TO_UTUB],
+                window_start=window_end - timedelta(days=1),
+                window_end=window_end,
+            )
+
+    error = exc_info.value
+    assert error.step_index == 2
+    assert error.field == "steps.2"
+    assert error.reason == "boom"
+    assert str(error) == "boom"
+    assert isinstance(error, ValueError)
+    assert isinstance(error.__cause__, ValueError)
+    assert str(error.__cause__) == "boom"
+
+
+def test_count_flow_tags_breakdown_failure_with_drop_breakdown_field(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    GIVEN a built-in flow whose step-1 breakdown raises ValueError("boom")
+    WHEN count_flow runs directly
+    THEN FlowCountError has step_index 1 and field steps.1.drop_breakdown.
+    """
+    monkeypatch.setattr(flow_counting, "grouped_count_by", _breakdown_raising)
+    window_end = utc_now()
+
+    with app.app_context():
+        with pytest.raises(FlowCountError) as exc_info:
+            count_flow(
+                definition=FLOWS[FlowId.ADD_URL_TO_UTUB],
+                window_start=window_end - timedelta(days=1),
+                window_end=window_end,
+            )
+
+    error = exc_info.value
+    first_breakdown_index = next(
+        step_index
+        for step_index, step in enumerate(FLOWS[FlowId.ADD_URL_TO_UTUB].steps)
+        if step.drop_breakdown is not None
+    )
+    assert error.step_index == first_breakdown_index
+    assert error.field == f"steps.{first_breakdown_index}.drop_breakdown"
+    assert error.reason == "boom"
+
+
+def test_count_flow_reports_lowest_failing_step_when_several_fail(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    GIVEN a built-in flow whose 3rd step count fails AND whose earlier step-1
+        breakdown fails
+    WHEN count_flow runs directly
+    THEN the earlier step's breakdown failure is reported (per-step evaluation
+        order), not the later step's count failure.
+    """
+    monkeypatch.setattr(
+        flow_counting,
+        "grouped_count_scalar",
+        _scalar_raising_on_third_call(flow_counting.grouped_count_scalar),
+    )
+    monkeypatch.setattr(flow_counting, "grouped_count_by", _breakdown_raising)
+    window_end = utc_now()
+
+    with app.app_context():
+        with pytest.raises(FlowCountError) as exc_info:
+            count_flow(
+                definition=FLOWS[FlowId.ADD_URL_TO_UTUB],
+                window_start=window_end - timedelta(days=1),
+                window_end=window_end,
+            )
+
+    assert exc_info.value.step_index == 1
+    assert exc_info.value.field == "steps.1.drop_breakdown"
 
 
 # ---------------------------------------------------------------------------

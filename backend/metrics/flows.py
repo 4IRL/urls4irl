@@ -13,10 +13,10 @@ Built-in flows are code-defined in `FLOWS`; custom flows are DB-backed in the
 `MetricFlows` table (see `flow_validation.py`).
 
 Each flow is one `FlowDefinition` entry in `FLOWS`, holding `display_name` and
-an ordered `steps` list. The `/api/metrics/query/flow` endpoint loops over
-`flow.steps`, fanning out one `grouped_count_scalar()` call per step (plus one
-`grouped_count_by()` per drop_breakdown) over the requested window; nothing is
-inferred from the data —
+an ordered `steps` list. The `/api/metrics/query/flow` endpoint calls
+`flow_counting.count_flow`, which loops over `flow.steps`, fanning out one
+`grouped_count_scalar()` call per step (plus one `grouped_count_by()` per
+drop_breakdown) over the requested window; nothing is inferred from the data —
 the steps are exactly the events named here. The first step is the funnel top
 (the `pct_of_top` denominator).
 
