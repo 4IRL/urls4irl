@@ -17,7 +17,6 @@
 
 import type { SuccessResponse } from "../types/api-helpers.d.ts";
 import type { DeviceType } from "../types/metrics-dim-values.js";
-import type { FlowId } from "../types/metrics-flows.js";
 import type { ResourceName } from "../types/metrics-resources.js";
 
 import { ajaxCall } from "../lib/ajax.js";
@@ -195,7 +194,7 @@ export function fetchFlow({
   flowId,
   window,
 }: {
-  flowId: FlowId;
+  flowId: string;
   window: string;
 }): JQuery.jqXHR<SuccessResponse<"queryFlow">> {
   const queryString = new URLSearchParams({

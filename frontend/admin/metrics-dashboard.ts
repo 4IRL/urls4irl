@@ -46,8 +46,7 @@
  */
 
 import type { Schema } from "../types/api-helpers.d.ts";
-import type { FlowId } from "../types/metrics-flows.js";
-import { FLOW_IDS } from "../types/metrics-flows.js";
+import { FLOW_IDS, FLOW_METADATA } from "../types/metrics-flows.js";
 import {
   RESOURCES,
   RESOURCES_BY_CATEGORY,
@@ -58,7 +57,9 @@ import { APP_CONFIG } from "../lib/config.js";
 import { $ } from "../lib/globals.js";
 import { is429Handled } from "../lib/ajax.js";
 
+import type { FlowGridEntry, FlowInvalidDetail } from "./flow-card.js";
 import { renderFlowGrid } from "./flow-card.js";
+import { createFlowLoadQueue } from "./flow-load-queue.js";
 import { renderGaugeGrid } from "./gauge-card.js";
 import {
   renderLatencyDetailChart,
@@ -130,10 +131,6 @@ interface InFlightRequests {
   gaugesTimeseries: JQuery.jqXHR | null;
   latency: JQuery.jqXHR | null;
   latencyTimeseries: JQuery.jqXHR | null;
-  flowCreateUtub: JQuery.jqXHR | null;
-  flowAddUrl: JQuery.jqXHR | null;
-  flowRegister: JQuery.jqXHR | null;
-  flowLogin: JQuery.jqXHR | null;
 }
 
 interface CategoryPanelIds {
@@ -289,18 +286,6 @@ const GAUGES_ANNOUNCEMENT_ID: string = "MetricsPanelGaugesAnnouncement";
 // tabs but hidden on Flows and Gauges (neither is about window-wide event counts).
 const SUMMARY_SECTION_ID: string = "MetricsSummary";
 
-// Maps each FlowId to its dedicated in-flight slot so per-flow XHRs are aborted
-// independently (mirrors TOP_SLOT_BY_CATEGORY).
-const FLOW_SLOT_BY_FLOW_ID: Record<
-  FlowId,
-  "flowCreateUtub" | "flowAddUrl" | "flowRegister" | "flowLogin"
-> = {
-  [FLOW_IDS.CREATE_UTUB]: "flowCreateUtub",
-  [FLOW_IDS.ADD_URL_TO_UTUB]: "flowAddUrl",
-  [FLOW_IDS.REGISTER]: "flowRegister",
-  [FLOW_IDS.LOGIN]: "flowLogin",
-};
-
 function getTabAndPanelIds(tabId: MetricsTabId): {
   tab: string;
   panel: string;
@@ -344,14 +329,13 @@ let _inFlight: InFlightRequests = {
   gaugesTimeseries: null,
   latency: null,
   latencyTimeseries: null,
-  flowCreateUtub: null,
-  flowAddUrl: null,
-  flowRegister: null,
-  flowLogin: null,
 };
 // Last successful `/flow` response per flow id, so a tab switch back to Flows
-// renders instantly from cache. Populated by `fetchFlows`.
-let _flowCache: Partial<Record<FlowId, FlowResponseSchema>> = {};
+// renders instantly from cache. Populated by the flow load queue.
+const _flowCache = new Map<string, FlowResponseSchema>();
+// Ids whose last result was not a response: "error" (generic failure) or the
+// server's `flow_invalid` detail.
+const _flowStates = new Map<string, "error" | FlowInvalidDetail>();
 // Last successful batched `gauges/timeseries` response (the full envelope, not
 // `GaugeSeries[]`), so a tab switch back to Gauges renders instantly from cache.
 // Populated by `fetchGauges`; `null` until the first batched request settles.
@@ -785,10 +769,6 @@ function abortInFlightRequests(): void {
     "gaugesTimeseries",
     "latency",
     "latencyTimeseries",
-    "flowCreateUtub",
-    "flowAddUrl",
-    "flowRegister",
-    "flowLogin",
   ] as const) {
     const xhr = _inFlight[key];
     if (xhr !== null) {
@@ -1216,68 +1196,168 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
  * an event from a panel's `<select>`. There is no stable default event to
  * query on poll.
  */
-// Re-render the Flows grid from the per-flow cache. Cards fill in as each
-// `/flow` XHR settles; flows without a cached response are skipped.
+// Re-render the Flows grid from the per-id cache and states. Precedence per
+// id, first match wins: response > invalid > loading > error. An id matching
+// none (e.g. aborted off the Flows tab) is left out.
 function renderFlowsPanel(): void {
   const grid = getElementByIdOrNull<HTMLElement>(FLOWS_GRID_ID);
   if (grid === null) {
     return;
   }
-  renderFlowGrid({ container: grid, responsesByFlowId: _flowCache });
+  const entries: FlowGridEntry[] = [];
+  for (const flowId of Object.values(FLOW_IDS)) {
+    const title = FLOW_METADATA[flowId].displayName;
+    const response = _flowCache.get(flowId);
+    const flowState = _flowStates.get(flowId);
+    if (response !== undefined) {
+      entries.push({
+        id: flowId,
+        title,
+        state: { kind: "response", response },
+      });
+    } else if (flowState !== undefined && flowState !== "error") {
+      entries.push({
+        id: flowId,
+        title,
+        state: { kind: "invalid", invalid: flowState },
+      });
+    } else if (_flowLoadQueue.isPending({ id: flowId })) {
+      entries.push({ id: flowId, title, state: { kind: "loading" } });
+    } else if (flowState === "error") {
+      entries.push({ id: flowId, title, state: { kind: "error" } });
+    }
+  }
+  renderFlowGrid({ container: grid, entries });
 }
 
-/**
- * Fan out the four per-flow `/flow` XHRs (one per FlowId). Sets panel-scoped
- * `aria-busy` while any request is in flight and clears it after ALL four
- * settle, then announces completion on the aria-live span (DD-25 / DD-26).
- *
- * Deliberately separate from `fetchAll`'s global busy / `onSettleAny` path:
- * flow settle-state lives only on `#MetricsPanelFlows` (DD-10).
- */
-function fetchFlows(): void {
-  const flowIds = Object.values(FLOW_IDS);
-  setFlowsPanelBusy({ busy: true });
-  let pending = flowIds.length;
+// Step 7 supplies the builder-open predicate (DD-12, DD-44); loads are never
+// paused until then.
+function isFlowLoadPaused(): boolean {
+  return false;
+}
 
-  const onFlowSettle = (): void => {
-    pending -= 1;
-    if (pending > 0) {
+// A `flow_invalid` 422 is recognized structurally, never by trusting the body.
+function getFlowInvalidDetail({
+  xhr,
+}: {
+  xhr: JQuery.jqXHR;
+}): FlowInvalidDetail | null {
+  if (xhr.status !== 422) {
+    return null;
+  }
+  const body: unknown = xhr.responseJSON;
+  if (typeof body !== "object" || body === null) {
+    return null;
+  }
+  const { error, invalid } = body as { error?: unknown; invalid?: unknown };
+  if (error !== "flow_invalid") {
+    return null;
+  }
+  if (typeof invalid !== "object" || invalid === null) {
+    return null;
+  }
+  const { step_index, field, reason } = invalid as Record<string, unknown>;
+  if (
+    (typeof step_index !== "number" && step_index !== null) ||
+    typeof field !== "string" ||
+    typeof reason !== "string"
+  ) {
+    return null;
+  }
+  return { step_index, field, reason };
+}
+
+function issueFlowRequest({ id }: { id: string }): JQuery.jqXHR {
+  let flowRequest: JQuery.jqXHR;
+  try {
+    flowRequest = fetchFlow({ flowId: id, window: _currentWindow });
+  } catch (error) {
+    _flowStates.set(id, "error");
+    renderFlowsPanel();
+    throw error;
+  }
+  flowRequest
+    .done((response: FlowResponseSchema) => {
+      if (!_flowLoadQueue.isCurrent({ id, xhr: flowRequest })) {
+        return;
+      }
+      setBannerVisible({ visible: false });
+      _flowCache.set(id, response);
+      _flowStates.delete(id);
+      renderFlowsPanel();
+    })
+    .fail((xhr: JQuery.jqXHR) => {
+      if (!_flowLoadQueue.isCurrent({ id, xhr: flowRequest })) {
+        return;
+      }
+      if (is429Handled(xhr)) {
+        if (!_flowCache.has(id) && !_flowStates.has(id)) {
+          _flowStates.set(id, "error");
+          renderFlowsPanel();
+        }
+        return;
+      }
+      if (xhr.readyState === 0) {
+        return;
+      }
+      const invalid = getFlowInvalidDetail({ xhr });
+      if (invalid !== null) {
+        _flowStates.set(id, invalid);
+        _flowCache.delete(id);
+        renderFlowsPanel();
+        return;
+      }
+      _flowStates.set(id, "error");
+      setBannerVisible({ visible: true });
+      renderFlowsPanel();
+    })
+    .always(() => {
+      _lastFetchPerf = performance.now();
+    });
+  return flowRequest;
+}
+
+// Capped queue (at most 4 `/flow` requests in flight) shared by every Flows
+// fan-out. Deliberately separate from `fetchAll`'s global busy / `onSettleAny`
+// path: flow settle-state lives only on `#MetricsPanelFlows` (DD-10).
+const _flowLoadQueue = createFlowLoadQueue({
+  issue: issueFlowRequest,
+  isPaused: isFlowLoadPaused,
+  onSettle: () => renderFlowsPanel(),
+  onIdle: ({ cause }) => {
+    setFlowsPanelBusy({ busy: false });
+    if (cause !== "settled") {
       return;
     }
-    setFlowsPanelBusy({ busy: false });
     const announcement = getElementByIdOrNull<HTMLElement>(
       FLOWS_ANNOUNCEMENT_ID,
     );
     if (announcement !== null) {
       announcement.textContent = APP_CONFIG.strings.METRICS_FLOWS_LOADED;
     }
-  };
+  },
+});
 
-  for (const flowId of flowIds) {
-    const slotName = FLOW_SLOT_BY_FLOW_ID[flowId];
-    const flowRequest = fetchFlow({ flowId, window: _currentWindow });
-    _inFlight[slotName] = flowRequest;
-    flowRequest
-      .done((response) => {
-        setBannerVisible({ visible: false });
-        _flowCache[flowId] = response;
-        renderFlowsPanel();
-      })
-      .fail((xhr) => {
-        if (is429Handled(xhr)) {
-          return;
-        }
-        if (xhr.readyState === 0) {
-          return;
-        }
-        setBannerVisible({ visible: true });
-      })
-      .always(() => {
-        _inFlight[slotName] = null;
-        _lastFetchPerf = performance.now();
-        onFlowSettle();
-      });
-  }
+/**
+ * Start a fresh Flows fan-out over every flow id: sets panel-scoped
+ * `aria-busy`, which the queue's `onIdle` clears once ALL ids settle (and
+ * announces on the aria-live span, DD-25 / DD-26). Renders last so `loading`
+ * entries appear immediately.
+ */
+function startFlowFanOut(): void {
+  setFlowsPanelBusy({ busy: true });
+  _flowLoadQueue.startFanOut({ ids: Object.values(FLOW_IDS) });
+  renderFlowsPanel();
+}
+
+/**
+ * Test-only: drop one flow id (aborts its request, clears cache and state).
+ */
+export function _dropFlowIdForTests({ id }: { id: string }): void {
+  _flowLoadQueue.dropId({ id });
+  _flowCache.delete(id);
+  _flowStates.delete(id);
+  renderFlowsPanel();
 }
 
 /**
@@ -1545,6 +1625,7 @@ function handleLatencyRowKeydown(event: JQuery.TriggeredEvent): void {
 
 function fetchAll(): void {
   abortInFlightRequests();
+  _flowLoadQueue.abortAll();
   setDashboardBusy({ busy: true });
   setRefreshButtonInFlight({ inFlight: true });
 
@@ -1676,7 +1757,11 @@ function fetchAll(): void {
   // is the single source of truth here — `_currentCategory` never equals
   // "flows", so gating on it would be dead code.
   if (_activeTab === TAB.FLOWS) {
-    fetchFlows();
+    startFlowFanOut();
+  } else {
+    // The abort above ended any running flow loads; clear the panel busy flag
+    // silently (no completion announcement).
+    setFlowsPanelBusy({ busy: false });
   }
 
   // Gate the single batched gauges request on the active tab (same pattern as
@@ -1700,8 +1785,7 @@ function fetchAll(): void {
  * `aria-busy` on the dashboard root and the Refresh button's `aria-disabled`
  * track the union of all in-flight requests.
  *
- * Flow slots (flowCreateUtub, flowAddUrl, flowRegister, flowLogin) excluded —
- * tracked via #MetricsPanelFlows aria-busy instead.
+ * Flow loads are excluded — tracked via #MetricsPanelFlows aria-busy instead.
  */
 function onSettleAny(): void {
   const anyInFlight =
@@ -2029,8 +2113,8 @@ function handleTabClick({
   // than waiting up to 60 s for the next `fetchAll` tick. Subsequent switches
   // re-render from the warm cache.
   if (tab === TAB.FLOWS) {
-    if (Object.keys(_flowCache).length === 0) {
-      fetchFlows();
+    if (_flowCache.size === 0 && _flowLoadQueue.isIdle()) {
+      startFlowFanOut();
     } else {
       renderFlowsPanel();
     }
@@ -2240,6 +2324,7 @@ export function _resetMetricsDashboardForTests(): void {
   stopPolling();
   stopBadgeTicker();
   abortInFlightRequests();
+  _flowLoadQueue.abortAll();
   _lastFetchPerf = 0;
   _currentWindow = "day";
   _currentCategory = TAB.API;
@@ -2256,12 +2341,9 @@ export function _resetMetricsDashboardForTests(): void {
     gaugesTimeseries: null,
     latency: null,
     latencyTimeseries: null,
-    flowCreateUtub: null,
-    flowAddUrl: null,
-    flowRegister: null,
-    flowLogin: null,
   };
-  _flowCache = {};
+  _flowCache.clear();
+  _flowStates.clear();
   _gaugesCache = null;
   _selectedGaugeName = null;
   _latencyCache = null;

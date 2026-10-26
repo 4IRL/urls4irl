@@ -13,15 +13,33 @@
  */
 
 import type { Schema } from "../types/api-helpers.d.ts";
-import type { FlowId } from "../types/metrics-flows.js";
 
 import { APP_CONFIG } from "../lib/config.js";
-import { FLOW_METADATA } from "../types/metrics-flows.js";
 
 type FlowResponseSchema = Schema<"FlowResponseSchema">;
 type FlowStepSchema = Schema<"FlowStepSchema">;
 type FlowBreakdownRow = Schema<"FlowBreakdownRow">;
 type FlowStream = FlowStepSchema["stream"];
+
+// Local structural type for the `invalid` object of a `flow_invalid` 422 body.
+export interface FlowInvalidDetail {
+  step_index: number | null;
+  field: string;
+  reason: string;
+}
+
+export type FlowCardState =
+  | { kind: "response"; response: FlowResponseSchema }
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "invalid"; invalid: FlowInvalidDetail }
+  | { kind: "removed" };
+
+export interface FlowGridEntry {
+  id: string;
+  title: string;
+  state: FlowCardState;
+}
 
 const NULL_PCT_PLACEHOLDER = "–";
 // Reject-causes carry the "reject" pill tint; everything else (cancels) the
@@ -170,21 +188,20 @@ function buildConnector({
 }
 
 export function renderFlowCard({
-  flowId,
+  id,
+  title,
   response,
 }: {
-  flowId: FlowId;
+  id: string;
+  title: string;
   response: FlowResponseSchema;
 }): HTMLElement {
   const card = document.createElement("section");
   card.className = "flow-card";
   // Stable identity so `renderFlowGrid` can reconcile per-flow (replace one
   // card in place) instead of tearing down and rebuilding the whole grid each
-  // time one of the four `/flow` XHRs settles.
-  card.dataset.flowId = flowId;
-
-  const metadata = FLOW_METADATA[flowId];
-  const displayName = metadata.displayName;
+  // time one of the flow XHRs settles.
+  card.dataset.flowId = id;
 
   const steps = response.steps;
   const allZero = steps.every((step) => step.count === 0);
@@ -195,13 +212,13 @@ export function renderFlowCard({
 
   const header = document.createElement("div");
   header.className = "flow-header";
-  const title = document.createElement("h3");
-  title.className = "flow-title";
-  title.textContent = displayName;
+  const titleElement = document.createElement("h3");
+  titleElement.className = "flow-title";
+  titleElement.textContent = title;
   const summary = document.createElement("span");
   summary.className = "flow-summary";
   summary.textContent = `${lastStep.count.toLocaleString()} / ${topStep.count.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED} · ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`;
-  header.appendChild(title);
+  header.appendChild(titleElement);
   header.appendChild(summary);
   card.appendChild(header);
 
@@ -209,7 +226,7 @@ export function renderFlowCard({
   // "Create UTub: 638 of 812 succeeded, 79% conversion".
   card.setAttribute(
     "aria-label",
-    `${displayName}: ${lastStep.count.toLocaleString()} of ${topStep.count.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED}, ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`,
+    `${title}: ${lastStep.count.toLocaleString()} of ${topStep.count.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED}, ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`,
   );
 
   if (allZero) {
@@ -232,70 +249,130 @@ export function renderFlowCard({
   return card;
 }
 
-// Remembers the response object last rendered for each flow id, per grid
-// container. Lets `renderFlowGrid` skip re-rendering a flow whose cached
-// response has not changed since the previous call — which is exactly the
-// case for every flow EXCEPT the one that just settled. WeakMap-keyed by the
+// Remembers the state last rendered for each flow id, per grid container, so
+// `renderFlowGrid` can leave an unchanged node alone (a held element reference
+// must not go stale when an unrelated flow settles). WeakMap-keyed by the
 // container so a detached/replaced grid element does not leak state.
-const lastRenderedResponses: WeakMap<
+const lastRenderedStates: WeakMap<
   HTMLElement,
-  Partial<Record<FlowId, FlowResponseSchema>>
+  Map<string, FlowCardState>
 > = new WeakMap();
 
+function buildPlaceholder({
+  id,
+  kind,
+}: {
+  id: string;
+  kind: FlowCardState["kind"];
+}): HTMLElement {
+  const placeholder = document.createElement("section");
+  placeholder.className = "flow-card-placeholder";
+  placeholder.dataset.flowId = id;
+  placeholder.dataset.flowState = kind;
+  placeholder.hidden = true;
+  return placeholder;
+}
+
+// Reconcile rule: response by reference; loading/error by kind only; invalid by
+// field equality; any kind change is a change.
+function isSameState({
+  previous,
+  next,
+}: {
+  previous: FlowCardState;
+  next: FlowCardState;
+}): boolean {
+  if (previous.kind !== next.kind) {
+    return false;
+  }
+  if (previous.kind === "response" && next.kind === "response") {
+    return previous.response === next.response;
+  }
+  if (previous.kind === "invalid" && next.kind === "invalid") {
+    return (
+      previous.invalid.step_index === next.invalid.step_index &&
+      previous.invalid.field === next.invalid.field &&
+      previous.invalid.reason === next.invalid.reason
+    );
+  }
+  return true;
+}
+
+function buildNode({ entry }: { entry: FlowGridEntry }): HTMLElement {
+  const { id, title, state } = entry;
+  if (state.kind === "response") {
+    return renderFlowCard({ id, title, response: state.response });
+  }
+  return buildPlaceholder({ id, kind: state.kind });
+}
+
 /**
- * Render the full Flows panel grid: one `.flow-card` per flow id in
- * `FLOW_METADATA` order. Each card is built from the matching `/flow` response
- * in `responsesByFlowId`; flows with no cached response are skipped (the grid
- * fills in as each XHR settles).
+ * Render the Flows panel grid from an ordered entry list: one node per entry,
+ * in `entries` order. `response` entries render a `.flow-card`; `loading`,
+ * `error` and `invalid` entries render a hidden `.flow-card-placeholder`;
+ * `removed` entries and ids absent from `entries` have their node removed.
  *
- * Reconciles per-flow rather than clearing and rebuilding the container: the
- * four `/flow` XHRs settle independently and each settle re-invokes this
- * function with a growing cache. A full clear + rebuild would detach every
- * existing card — including the empty-state node a caller (e.g. a Selenium
- * assertion) may be holding — every time ANY flow settles, producing
- * stale-element churn. Instead, a flow's card is built and placed only when
- * its response object differs from the one last rendered for it (by reference,
- * which holds because each settle reassigns exactly one cache entry); cards for
- * unchanged flows are left untouched. New cards insert at their
- * `FLOW_METADATA`-order position; changed cards replace in place.
+ * Reconciles per id rather than clearing and rebuilding the container: flow
+ * XHRs settle independently and each settle re-invokes this function. A node
+ * whose state is unchanged (see `isSameState`) is never detached; a changed
+ * one is replaced in place.
  */
 export function renderFlowGrid({
   container,
-  responsesByFlowId,
+  entries,
 }: {
   container: HTMLElement;
-  responsesByFlowId: Partial<Record<FlowId, FlowResponseSchema>>;
+  entries: readonly FlowGridEntry[];
 }): void {
-  const orderedFlowIds = Object.keys(FLOW_METADATA) as FlowId[];
-  const previouslyRendered = lastRenderedResponses.get(container) ?? {};
-  // Track the last card occupying a slot so a newly-inserted card lands
-  // directly after the previous flow's card, preserving FLOW_METADATA order
-  // even when earlier flows have no cached response yet.
-  let previousCard: HTMLElement | null = null;
-  for (const flowId of orderedFlowIds) {
-    const response = responsesByFlowId[flowId];
-    if (response === undefined) {
-      continue;
+  const previousStates = lastRenderedStates.get(container) ?? new Map();
+  const nextStates = new Map<string, FlowCardState>();
+  // Index existing nodes by id in a Map (no selector, so raw ids are safe).
+  const existingNodes = new Map<string, HTMLElement>();
+  for (const child of Array.from(container.children)) {
+    if (child instanceof HTMLElement && child.dataset.flowId !== undefined) {
+      existingNodes.set(child.dataset.flowId, child);
     }
-    const existingCard = container.querySelector<HTMLElement>(
-      `.flow-card[data-flow-id="${flowId}"]`,
-    );
-    // Leave an already-rendered card in place when its response is unchanged —
-    // this is what keeps a held element reference from going stale when an
-    // unrelated flow settles.
-    if (existingCard !== null && previouslyRendered[flowId] === response) {
-      previousCard = existingCard;
-      continue;
-    }
-    const newCard = renderFlowCard({ flowId, response });
-    if (existingCard !== null) {
-      container.replaceChild(newCard, existingCard);
-    } else if (previousCard !== null) {
-      previousCard.insertAdjacentElement("afterend", newCard);
-    } else {
-      container.insertBefore(newCard, container.firstChild);
-    }
-    previousCard = newCard;
   }
-  lastRenderedResponses.set(container, { ...responsesByFlowId });
+
+  const desiredNodes: HTMLElement[] = [];
+  for (const entry of entries) {
+    if (entry.state.kind === "removed" || nextStates.has(entry.id)) {
+      continue;
+    }
+    const existing = existingNodes.get(entry.id);
+    const previous = previousStates.get(entry.id);
+    let node: HTMLElement;
+    if (
+      existing !== undefined &&
+      previous !== undefined &&
+      isSameState({ previous, next: entry.state })
+    ) {
+      node = existing;
+    } else {
+      node = buildNode({ entry });
+      if (existing !== undefined) {
+        container.replaceChild(node, existing);
+      }
+    }
+    nextStates.set(entry.id, entry.state);
+    desiredNodes.push(node);
+  }
+
+  const desiredSet = new Set(desiredNodes);
+  for (const existing of existingNodes.values()) {
+    if (!desiredSet.has(existing) && existing.parentNode === container) {
+      container.removeChild(existing);
+    }
+  }
+
+  // Place nodes in entry order, moving only those out of position.
+  let cursor: ChildNode | null = container.firstChild;
+  for (const node of desiredNodes) {
+    if (node === cursor) {
+      cursor = cursor.nextSibling;
+    } else {
+      container.insertBefore(node, cursor);
+    }
+  }
+  lastRenderedStates.set(container, nextStates);
 }

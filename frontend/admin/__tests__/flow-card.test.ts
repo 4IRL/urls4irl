@@ -1,5 +1,6 @@
 import type { Schema } from "../../types/api-helpers.d.ts";
 
+import type { FlowCardState, FlowGridEntry } from "../flow-card.js";
 import { renderFlowCard, renderFlowGrid } from "../flow-card.js";
 
 type FlowResponseSchema = Schema<"FlowResponseSchema">;
@@ -92,7 +93,8 @@ function buildAddUrlResponse(): FlowResponseSchema {
 describe("renderFlowCard", () => {
   it("renders N funnel-step rows and N-1 connectors for a 4-step flow", () => {
     const card = renderFlowCard({
-      flowId: "add_url_to_utub",
+      id: "add_url_to_utub",
+      title: "Add URL to UTub",
       response: buildAddUrlResponse(),
     });
 
@@ -117,7 +119,8 @@ describe("renderFlowCard", () => {
     };
 
     const card = renderFlowCard({
-      flowId: "create_utub",
+      id: "create_utub",
+      title: "Create UTub",
       response,
     });
 
@@ -127,7 +130,8 @@ describe("renderFlowCard", () => {
 
   it("colors each step row by stream via the .ui/.api/.domain modifier", () => {
     const card = renderFlowCard({
-      flowId: "add_url_to_utub",
+      id: "add_url_to_utub",
+      title: "Add URL to UTub",
       response: buildAddUrlResponse(),
     });
 
@@ -140,7 +144,8 @@ describe("renderFlowCard", () => {
 
   it("renders per-cause cause-pill chips with the cancel/reject tint", () => {
     const card = renderFlowCard({
-      flowId: "add_url_to_utub",
+      id: "add_url_to_utub",
+      title: "Add URL to UTub",
       response: buildAddUrlResponse(),
     });
 
@@ -157,7 +162,8 @@ describe("renderFlowCard", () => {
 
   it("writes --w on cause pills from pct_of_step", () => {
     const card = renderFlowCard({
-      flowId: "add_url_to_utub",
+      id: "add_url_to_utub",
+      title: "Add URL to UTub",
       response: buildAddUrlResponse(),
     });
     const firstPill = card.querySelector(".cause-pill") as HTMLElement;
@@ -180,7 +186,11 @@ describe("renderFlowCard", () => {
       ],
     };
 
-    const card = renderFlowCard({ flowId: "create_utub", response });
+    const card = renderFlowCard({
+      id: "create_utub",
+      title: "Create UTub",
+      response,
+    });
 
     expect(card.querySelectorAll(".funnel-connector").length).toBe(1);
     expect(card.querySelectorAll(".cause-pill").length).toBe(0);
@@ -203,13 +213,18 @@ describe("renderFlowCard", () => {
       ],
     };
 
-    const card = renderFlowCard({ flowId: "create_utub", response });
+    const card = renderFlowCard({
+      id: "create_utub",
+      title: "Create UTub",
+      response,
+    });
     expect(card.querySelectorAll(".cause-pill").length).toBe(0);
   });
 
   it("renders the header summary with succeeded / conversion strings", () => {
     const card = renderFlowCard({
-      flowId: "add_url_to_utub",
+      id: "add_url_to_utub",
+      title: "Add URL to UTub",
       response: buildAddUrlResponse(),
     });
     const summary = card.querySelector(".flow-summary")?.textContent ?? "";
@@ -222,7 +237,8 @@ describe("renderFlowCard", () => {
 
   it("sets a screen-reader aria-label on the card", () => {
     const card = renderFlowCard({
-      flowId: "add_url_to_utub",
+      id: "add_url_to_utub",
+      title: "Add URL to UTub",
       response: buildAddUrlResponse(),
     });
     const label = card.getAttribute("aria-label") ?? "";
@@ -245,7 +261,11 @@ describe("renderFlowCard", () => {
       ],
     };
 
-    const card = renderFlowCard({ flowId: "create_utub", response });
+    const card = renderFlowCard({
+      id: "create_utub",
+      title: "Create UTub",
+      response,
+    });
     const empty = card.querySelector(".flow-card-empty") as HTMLElement | null;
     expect(empty).not.toBeNull();
     expect(empty?.getAttribute("tabindex")).toBe("0");
@@ -269,14 +289,19 @@ describe("renderFlowCard", () => {
       ],
     };
 
-    const card = renderFlowCard({ flowId: "create_utub", response });
+    const card = renderFlowCard({
+      id: "create_utub",
+      title: "Create UTub",
+      response,
+    });
     // Empty-state path still computes the aria-label with the placeholder.
     expect(card.getAttribute("aria-label")).toContain("–");
   });
 
   it("exposes the full event name on .step-event via aria-label", () => {
     const card = renderFlowCard({
-      flowId: "add_url_to_utub",
+      id: "add_url_to_utub",
+      title: "Add URL to UTub",
       response: buildAddUrlResponse(),
     });
     const eventSpan = card.querySelector(".step-event") as HTMLElement;
@@ -298,7 +323,11 @@ describe("renderFlowCard", () => {
       ],
     };
 
-    const card = renderFlowCard({ flowId: "create_utub", response });
+    const card = renderFlowCard({
+      id: "create_utub",
+      title: "Create UTub",
+      response,
+    });
     const connector = card.querySelector(".funnel-connector") as HTMLElement;
     expect(connector.getAttribute("aria-label")).toContain("20");
   });
@@ -320,34 +349,56 @@ function buildEmptyResponse(): FlowResponseSchema {
   };
 }
 
+function responseEntry({
+  id,
+  response,
+}: {
+  id: string;
+  response: FlowResponseSchema;
+}): FlowGridEntry {
+  return { id, title: `Title ${id}`, state: { kind: "response", response } };
+}
+
+function stateEntry({
+  id,
+  state,
+}: {
+  id: string;
+  state: FlowCardState;
+}): FlowGridEntry {
+  return { id, title: `Title ${id}`, state };
+}
+
+function flowIdOrder(container: HTMLElement): (string | undefined)[] {
+  return Array.from(container.children).map(
+    (node) => (node as HTMLElement).dataset.flowId,
+  );
+}
+
 describe("renderFlowGrid", () => {
   it("tags each card with a data-flow-id matching its flow", () => {
     const container = document.createElement("div");
     renderFlowGrid({
       container,
-      responsesByFlowId: { create_utub: buildEmptyResponse() },
+      entries: [
+        responseEntry({ id: "create_utub", response: buildEmptyResponse() }),
+      ],
     });
     const card = container.querySelector(".flow-card") as HTMLElement;
     expect(card.dataset.flowId).toBe("create_utub");
   });
 
   it("does NOT detach an already-rendered card when an unrelated flow settles", () => {
-    // Mirrors the live fan-out: the four `/flow` XHRs settle one at a time,
-    // re-invoking renderFlowGrid with a growing cache. Each settle reassigns
-    // exactly one cache entry, so an already-rendered flow keeps the SAME
-    // response object across calls. Such a card must survive later settles so a
-    // held element reference (e.g. a Selenium assertion on the empty-state
-    // node) does not go stale.
+    // Flows settle independently (live fan-out), so each settle re-renders the
+    // grid; a card whose own response is unchanged must keep its DOM node so
+    // focus, scroll and in-flight state survive.
     const container = document.createElement("div");
-    // One stable object per flow, mirroring entries in the live `_flowCache`.
     const createUtubResponse = buildEmptyResponse();
-    const addUrlResponse = buildEmptyResponse();
-    const registerResponse = buildEmptyResponse();
-    const loginResponse = buildEmptyResponse();
-
     renderFlowGrid({
       container,
-      responsesByFlowId: { create_utub: createUtubResponse },
+      entries: [
+        responseEntry({ id: "create_utub", response: createUtubResponse }),
+      ],
     });
     const firstCard = container.querySelector(
       '.flow-card[data-flow-id="create_utub"]',
@@ -358,16 +409,19 @@ describe("renderFlowGrid", () => {
 
     renderFlowGrid({
       container,
-      responsesByFlowId: {
-        create_utub: createUtubResponse,
-        add_url_to_utub: addUrlResponse,
-        register: registerResponse,
-        login: loginResponse,
-      },
+      entries: [
+        responseEntry({ id: "create_utub", response: createUtubResponse }),
+        responseEntry({
+          id: "add_url_to_utub",
+          response: buildEmptyResponse(),
+        }),
+        responseEntry({ id: "register", response: buildEmptyResponse() }),
+        responseEntry({ id: "login", response: buildEmptyResponse() }),
+      ],
     });
 
-    // Same node object — never torn out and rebuilt — so it stays attached.
     expect(container.contains(firstEmptyState)).toBe(true);
+    expect(container.querySelector(".flow-card")).toBe(firstCard);
     expect(container.querySelectorAll(".flow-card").length).toBe(4);
   });
 
@@ -375,50 +429,326 @@ describe("renderFlowGrid", () => {
     const container = document.createElement("div");
     renderFlowGrid({
       container,
-      responsesByFlowId: { create_utub: buildEmptyResponse() },
+      entries: [
+        responseEntry({ id: "create_utub", response: buildEmptyResponse() }),
+      ],
     });
     expect(container.querySelector(".flow-card-empty")).not.toBeNull();
 
     renderFlowGrid({
       container,
-      responsesByFlowId: { create_utub: buildAddUrlResponse() },
+      entries: [
+        responseEntry({ id: "create_utub", response: buildAddUrlResponse() }),
+      ],
     });
-    // The card was replaced with the funnel render; still exactly one card.
     expect(container.querySelectorAll(".flow-card").length).toBe(1);
     expect(container.querySelector(".flow-card-empty")).toBeNull();
     expect(container.querySelectorAll(".funnel-step").length).toBe(4);
   });
 
-  it("preserves FLOW_METADATA order even when flows settle out of order", () => {
+  it("preserves entry order when flows settle out of order", () => {
     const container = document.createElement("div");
-    // login settles first, then create_utub — the grid must still order
-    // create_utub before login.
     renderFlowGrid({
       container,
-      responsesByFlowId: { login: buildEmptyResponse() },
+      entries: [responseEntry({ id: "login", response: buildEmptyResponse() })],
     });
     renderFlowGrid({
       container,
-      responsesByFlowId: {
-        create_utub: buildEmptyResponse(),
-        login: buildEmptyResponse(),
-      },
+      entries: [
+        responseEntry({ id: "create_utub", response: buildEmptyResponse() }),
+        responseEntry({ id: "login", response: buildEmptyResponse() }),
+      ],
     });
-    const order = Array.from(container.querySelectorAll(".flow-card")).map(
-      (card) => (card as HTMLElement).dataset.flowId,
-    );
-    expect(order).toEqual(["create_utub", "login"]);
+    expect(flowIdOrder(container)).toEqual(["create_utub", "login"]);
   });
 
-  it("skips flows with no cached response", () => {
+  it("renders the four built-in cards with a stable DOM snapshot", () => {
     const container = document.createElement("div");
     renderFlowGrid({
       container,
-      responsesByFlowId: { register: buildEmptyResponse() },
+      entries: [
+        {
+          id: "create_utub",
+          title: "Create UTub",
+          state: { kind: "response", response: buildAddUrlResponse() },
+        },
+        {
+          id: "add_url_to_utub",
+          title: "Add URL to UTub",
+          state: { kind: "response", response: buildAddUrlResponse() },
+        },
+        {
+          id: "register",
+          title: "Register",
+          state: { kind: "response", response: buildEmptyResponse() },
+        },
+        {
+          id: "login",
+          title: "Login",
+          state: { kind: "response", response: buildAddUrlResponse() },
+        },
+      ],
+    });
+    expect(container.innerHTML).toMatchSnapshot();
+  });
+
+  it("lists only the entries given (flows with no entry are skipped)", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [
+        responseEntry({ id: "register", response: buildEmptyResponse() }),
+      ],
     });
     expect(container.querySelectorAll(".flow-card").length).toBe(1);
     expect(
       (container.querySelector(".flow-card") as HTMLElement).dataset.flowId,
     ).toBe("register");
+  });
+
+  it("removes a card whose id leaves entries", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [
+        responseEntry({ id: "alpha", response: buildEmptyResponse() }),
+        responseEntry({ id: "beta", response: buildEmptyResponse() }),
+      ],
+    });
+    renderFlowGrid({
+      container,
+      entries: [responseEntry({ id: "beta", response: buildEmptyResponse() })],
+    });
+    expect(flowIdOrder(container)).toEqual(["beta"]);
+  });
+
+  it("removes a node for a removed entry", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [responseEntry({ id: "alpha", response: buildEmptyResponse() })],
+    });
+    renderFlowGrid({
+      container,
+      entries: [stateEntry({ id: "alpha", state: { kind: "removed" } })],
+    });
+    expect(container.children.length).toBe(0);
+  });
+
+  it.each([
+    { kind: "loading" },
+    { kind: "error" },
+    {
+      kind: "invalid",
+      invalid: { step_index: 1, field: "event_name", reason: "unknown" },
+    },
+  ] as FlowCardState[])(
+    "renders a hidden placeholder for a $kind entry",
+    (state) => {
+      const container = document.createElement("div");
+      renderFlowGrid({
+        container,
+        entries: [stateEntry({ id: "alpha", state })],
+      });
+      const placeholder = container.querySelector(
+        ".flow-card-placeholder",
+      ) as HTMLElement;
+      expect(placeholder.hidden).toBe(true);
+      expect(placeholder.dataset.flowId).toBe("alpha");
+      expect(placeholder.dataset.flowState).toBe(state.kind);
+      expect(container.querySelector(".flow-card")).toBeNull();
+    },
+  );
+
+  it("replaces a placeholder with a card at the same position", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [
+        responseEntry({ id: "alpha", response: buildEmptyResponse() }),
+        stateEntry({ id: "beta", state: { kind: "loading" } }),
+        responseEntry({ id: "gamma", response: buildEmptyResponse() }),
+      ],
+    });
+    renderFlowGrid({
+      container,
+      entries: [
+        responseEntry({ id: "alpha", response: buildEmptyResponse() }),
+        responseEntry({ id: "beta", response: buildEmptyResponse() }),
+        responseEntry({ id: "gamma", response: buildEmptyResponse() }),
+      ],
+    });
+    expect(flowIdOrder(container)).toEqual(["alpha", "beta", "gamma"]);
+    expect(container.children[1].classList.contains("flow-card")).toBe(true);
+  });
+
+  it("reorders existing nodes without recreating them", () => {
+    const container = document.createElement("div");
+    const alphaResponse = buildEmptyResponse();
+    const betaResponse = buildEmptyResponse();
+    renderFlowGrid({
+      container,
+      entries: [
+        responseEntry({ id: "alpha", response: alphaResponse }),
+        responseEntry({ id: "beta", response: betaResponse }),
+      ],
+    });
+    const alphaNode = container.children[0];
+    const betaNode = container.children[1];
+    renderFlowGrid({
+      container,
+      entries: [
+        responseEntry({ id: "beta", response: betaResponse }),
+        responseEntry({ id: "alpha", response: alphaResponse }),
+      ],
+    });
+    expect(flowIdOrder(container)).toEqual(["beta", "alpha"]);
+    expect(container.children[0]).toBe(betaNode);
+    expect(container.children[1]).toBe(alphaNode);
+  });
+
+  it("renders one node per id when entries share an id (first wins)", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [
+        responseEntry({ id: "alpha", response: buildEmptyResponse() }),
+        stateEntry({ id: "alpha", state: { kind: "loading" } }),
+      ],
+    });
+    expect(container.children.length).toBe(1);
+    expect(container.children[0].classList.contains("flow-card")).toBe(true);
+  });
+
+  it("keeps the same node for an unchanged response (identity)", () => {
+    const container = document.createElement("div");
+    const response = buildEmptyResponse();
+    renderFlowGrid({
+      container,
+      entries: [responseEntry({ id: "alpha", response })],
+    });
+    const node = container.firstElementChild;
+    renderFlowGrid({
+      container,
+      entries: [responseEntry({ id: "alpha", response })],
+    });
+    expect(container.firstElementChild).toBe(node);
+  });
+
+  it.each(["loading", "error"] as const)(
+    "keeps the node for a repeated %s entry",
+    (kind) => {
+      const container = document.createElement("div");
+      renderFlowGrid({
+        container,
+        entries: [stateEntry({ id: "alpha", state: { kind } })],
+      });
+      const node = container.firstElementChild;
+      renderFlowGrid({
+        container,
+        entries: [stateEntry({ id: "alpha", state: { kind } })],
+      });
+      expect(container.firstElementChild).toBe(node);
+    },
+  );
+
+  describe("invalid entries compare by field equality", () => {
+    const invalidState = ({
+      stepIndex,
+      field,
+      reason,
+    }: {
+      stepIndex: number | null;
+      field: string;
+      reason: string;
+    }): FlowCardState => ({
+      kind: "invalid",
+      invalid: { step_index: stepIndex, field, reason },
+    });
+    const base = { stepIndex: 2, field: "event_name", reason: "unknown" };
+
+    it("keeps the node when every field is equal", () => {
+      const container = document.createElement("div");
+      renderFlowGrid({
+        container,
+        entries: [stateEntry({ id: "alpha", state: invalidState(base) })],
+      });
+      const node = container.firstElementChild;
+      renderFlowGrid({
+        container,
+        entries: [stateEntry({ id: "alpha", state: invalidState(base) })],
+      });
+      expect(container.firstElementChild).toBe(node);
+    });
+
+    it.each([
+      { name: "reason", change: { reason: "changed" } },
+      { name: "step_index", change: { stepIndex: 3 } },
+      { name: "step_index to null", change: { stepIndex: null } },
+      { name: "field", change: { field: "label" } },
+    ])("replaces the node when $name changes", ({ change }) => {
+      const container = document.createElement("div");
+      renderFlowGrid({
+        container,
+        entries: [stateEntry({ id: "alpha", state: invalidState(base) })],
+      });
+      const node = container.firstElementChild;
+      renderFlowGrid({
+        container,
+        entries: [
+          stateEntry({
+            id: "alpha",
+            state: invalidState({ ...base, ...change }),
+          }),
+        ],
+      });
+      expect(container.firstElementChild).not.toBe(node);
+    });
+  });
+
+  it("replaces the node when the kind changes", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [stateEntry({ id: "alpha", state: { kind: "loading" } })],
+    });
+    const node = container.firstElementChild;
+    renderFlowGrid({
+      container,
+      entries: [stateEntry({ id: "alpha", state: { kind: "error" } })],
+    });
+    expect(container.firstElementChild).not.toBe(node);
+    expect((container.firstElementChild as HTMLElement).dataset.flowState).toBe(
+      "error",
+    );
+  });
+
+  it("replaces a card with a placeholder when a response becomes loading", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [responseEntry({ id: "alpha", response: buildEmptyResponse() })],
+    });
+    const node = container.firstElementChild;
+    renderFlowGrid({
+      container,
+      entries: [stateEntry({ id: "alpha", state: { kind: "loading" } })],
+    });
+    expect(container.firstElementChild).not.toBe(node);
+    expect((container.firstElementChild as HTMLElement).dataset.flowState).toBe(
+      "loading",
+    );
+    expect(container.querySelector(".flow-card")).toBeNull();
+  });
+
+  it("handles ids containing selector-special characters", () => {
+    const container = document.createElement("div");
+    const response = buildEmptyResponse();
+    const entries = [responseEntry({ id: 'we"ird]id', response })];
+    renderFlowGrid({ container, entries });
+    const node = container.firstElementChild;
+    renderFlowGrid({ container, entries });
+    expect(container.firstElementChild).toBe(node);
+    expect(container.children.length).toBe(1);
   });
 });

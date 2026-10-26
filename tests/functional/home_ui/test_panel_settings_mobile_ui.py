@@ -43,6 +43,7 @@ from tests.functional.playwright_utils import (
     get_selected_url,
     login_user_to_home_page,
     wait_for_class_to_be_removed,
+    wait_for_css_transitions_to_finish,
     wait_then_click_element,
     wait_until_visible_css_selector,
 )
@@ -360,6 +361,9 @@ def _open_urls_sheet(page: Page) -> None:
     gear.tap()
     expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_have_class(_SHEET_OPEN_CLASS_RE)
     expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_visible()
+    # bounding_box() returns the transformed rect, which is fractional (e.g.
+    # 43.9999px) while the slide-in transition is still running.
+    wait_for_css_transitions_to_finish(locator=page.locator(HPL.PANEL_SETTINGS_SHEET))
     _wait_sheet_history_entry(page, keyed=True)
 
 
