@@ -7,6 +7,7 @@ from typing import Any, Callable, NoReturn, Tuple
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from sqlalchemy.exc import IntegrityError
 from werkzeug.test import TestResponse
 
 from backend import db
@@ -1859,6 +1860,67 @@ def test_flow_custom_valid_row_returns_same_shape_as_built_in(
     assert steps == built_in.get_json()["steps"]
 
 
+def test_flow_custom_step_dim_filter_changes_counts(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN the add-URL funnel seeded plus 4 extra step-0 rows with `device_type`
+        1 (so step 0 is 14 unfiltered, 10 for `device_type` 2)
+    WHEN GETing a custom flow whose step 0 filters `device_type:2` and one
+        without the filter
+    THEN the filtered flow counts 10 with `pct_of_top` 0.6 for the last step,
+        and the unfiltered flow counts 14.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    bucket = _bucket_inside_window()
+    with app.app_context():
+        _seed_add_url_flow(bucket, with_rejections=False)
+        _seed_event_with_count(
+            event_name=EventName.UI_URL_CREATE_OPEN,
+            category=EventCategory.UI,
+            bucket_start=bucket,
+            count=4,
+            dimensions={"device_type": 1},
+        )
+    filtered_steps = _add_url_steps()
+    filtered_steps[0]["dim_filter"] = ["device_type:2"]
+    filtered_id = _insert_custom_flow(app, definition={"steps": filtered_steps})
+    unfiltered_id = _insert_custom_flow(
+        app, definition={"steps": _add_url_steps()}, display_name="Unfiltered add URL"
+    )
+
+    filtered = _get_custom_flow(logged_in_client, filtered_id)
+    unfiltered = _get_custom_flow(logged_in_client, unfiltered_id)
+
+    assert filtered.status_code == 200
+    assert unfiltered.status_code == 200
+    filtered_body = filtered.get_json()["steps"]
+    assert [step["count"] for step in filtered_body] == [10, 8, 7, 6]
+    assert filtered_body[3]["pct_of_top"] == 6 / 10
+    unfiltered_body = unfiltered.get_json()["steps"]
+    assert unfiltered_body[0]["count"] == 14
+    assert unfiltered_body[3]["pct_of_top"] == 6 / 14
+
+
+def test_flow_custom_empty_window_returns_null_pct_of_top(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a valid custom flow and no seeded events in the window
+    WHEN GETing the custom flow
+    THEN the response is 200, every count is 0 and every `pct_of_top` is null.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    row_id = _insert_custom_flow(app, definition={"steps": _add_url_steps()})
+
+    response = _get_custom_flow(logged_in_client, row_id)
+
+    assert response.status_code == 200
+    steps = response.get_json()["steps"]
+    assert all(step["count"] == 0 for step in steps)
+    assert all(step["pct_of_top"] is None for step in steps)
+
+
 @pytest.mark.parametrize("delete_row", [False, True])
 def test_flow_custom_missing_row_returns_404(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
@@ -2015,6 +2077,35 @@ def test_flow_custom_column_display_name_overrides_stored_key(
     response = _get_custom_flow(logged_in_client, row_id)
 
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize("definition", [[], [{"steps": []}], 5, "steps", None])
+def test_flow_custom_non_object_definition_cannot_be_stored(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    definition: Any,
+) -> None:
+    """
+    GIVEN a `definition` that is not a JSON object (list, scalar, null)
+    WHEN inserting it into `Metric_Flows`
+    THEN the database rejects it, so the flow route never has to read a
+        non-dict `definition` and the 422 `flow_invalid` path stays reachable
+        only for object definitions.
+    """
+    _, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        db.session.add(
+            Metric_Flows(
+                display_name=_CUSTOM_FLOW_NAME,
+                definition=definition,
+                created_by=None,
+                updated_by=None,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            db.session.commit()
+        db.session.rollback()
+        assert Metric_Flows.query.count() == 0
 
 
 def test_flow_custom_unknown_top_level_key_returns_422(
