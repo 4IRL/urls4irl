@@ -58,6 +58,8 @@ class GaugeName(StrEnum):
     TOTAL_URLS = "total_urls"
     TOTAL_TAGS = "total_tags"
     TOTAL_UTUB_URL_ASSOCIATIONS = "total_utub_url_associations"
+    TOTAL_UTUB_MEMBERSHIPS = "total_utub_memberships"
+    TOTAL_SHORT_LINKS = "total_short_links"
     # Distribution — MAX / AVG of a per-entity grouped count.
     MAX_URLS_PER_UTUB = "max_urls_per_utub"
     AVG_URLS_PER_UTUB = "avg_urls_per_utub"
@@ -102,7 +104,7 @@ class GaugeDefinition:
     # table has no `id`.
     count_column: str | None = None
     # Reserved for the future EVENT_DERIVED_MAX kind; the AnonymousMetrics
-    # eventName to filter on. No shipped gauge sets it (all 16 are relational).
+    # eventName to filter on. No shipped gauge sets it (all 18 are relational).
     event_name: str | None = None
     # Reserved for the future EVENT_DERIVED_MAX kind; the JSONB dimension key to
     # group by. No shipped gauge sets it.
@@ -162,6 +164,16 @@ GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
         kind=GaugeKind.VOLUME,
         description="Total URL-in-UTub associations",
         table="UtubUrls",
+    ),
+    GaugeName.TOTAL_UTUB_MEMBERSHIPS: GaugeDefinition(
+        kind=GaugeKind.VOLUME,
+        description="Total UTub memberships",
+        table="UtubMembers",
+    ),
+    GaugeName.TOTAL_SHORT_LINKS: GaugeDefinition(
+        kind=GaugeKind.VOLUME,
+        description="Total short links minted (incl. expired, until purged)",
+        table="ShortLinks",
     ),
     # -----------------------------------------------------------------------
     # Distribution — URLs per UTub

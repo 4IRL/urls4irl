@@ -396,6 +396,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/admin/metrics/flows/catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description List every event, dimension filter rule and API endpoint the flow builder may offer, derived from the same sources save-time validation uses. */
+    get: operations["getMetricFlowCatalog"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/metrics/flows/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Validate an unsaved funnel draft and count it for an admin time window with the same code as the dashboard. Writes nothing. */
+    post: operations["previewMetricFlow"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/admin/metrics/flows/{flow_id}": {
     parameters: {
       query?: never;
@@ -2045,6 +2079,116 @@ export interface components {
       display_name: string;
       steps: components["schemas"]["LenientFlowStep"][];
     };
+    /** @description One API endpoint (and its methods) an API step may name. */
+    FlowCatalogApiEndpointSchema: {
+      /** @description Flask endpoint name, e.g. `urls.create_url`. */
+      endpoint: string;
+      /** @description Blueprint prefix: the part of `endpoint` before the first `.`. */
+      blueprint: string;
+      /** @description Sorted HTTP methods a step may name. */
+      methods: string[];
+    };
+    /** @description One dimension of a catalog event and how a flow may use it. */
+    FlowCatalogDimSchema: {
+      /** @description Dimension key, usable as a group_by key. */
+      key: string;
+      /**
+       * @description `values`: filter by one of `values`; `status_code`: filter by a 3-digit code from 100 to 599; `group_by_only`: not filterable.
+       * @enum {string}
+       */
+      filter_kind: "values" | "status_code" | "group_by_only";
+      /** @description Allowed filter values; non-empty only when filter_kind is `values`. */
+      values: string[];
+    };
+    /** @description Catalog events of one category, sorted by name. */
+    FlowCatalogEventGroupSchema: {
+      /**
+       * @description Category shared by every event in the group.
+       * @enum {string}
+       */
+      category: "ui" | "domain" | "api";
+      /** @description Events in this category, sorted by event_name. */
+      events: components["schemas"]["FlowCatalogEventSchema"][];
+    };
+    /** @description One event a flow step or breakdown may use. */
+    FlowCatalogEventSchema: {
+      /** @description Registered event name. */
+      event_name: string;
+      /** @description Human-readable event summary. */
+      description: string;
+      /**
+       * @description Event category from the registry.
+       * @enum {string}
+       */
+      category: "ui" | "domain" | "api";
+      /** @description True only for ui/domain events, the categories a step may use. */
+      step_allowed: boolean;
+      /** @description Dimensions in model order (flat columns for api events). */
+      dims: components["schemas"]["FlowCatalogDimSchema"][];
+    };
+    /** @description Everything the flow builder may offer: events, dims and API endpoints. */
+    FlowCatalogResponseSchema: {
+      /** @description Event groups ordered ui, domain, api; empty groups omitted. */
+      event_groups: components["schemas"]["FlowCatalogEventGroupSchema"][];
+      /** @description API endpoints sorted by endpoint name. */
+      api_endpoints: components["schemas"]["FlowCatalogApiEndpointSchema"][];
+    };
+    /**
+     * @description One per-cause row of a flow step's drop-off breakdown.
+     *
+     *     `pct_of_step` normalizes WITHIN the breakdown (all rows sum to ~1.0) so
+     *     cause-pill widths are self-consistent regardless of the step's absolute
+     *     count. It is a `float` (never null): a breakdown with no rows collapses to
+     *     `null` on the owning step (DD-6) before any row is constructed.
+     */
+    FlowBreakdownRow: {
+      /** @description Raw dimension value for this cause (e.g. 'escape_key', 'invalid_url'); the renderer maps it to a human-readable label. */
+      label: string;
+      /** @description Summed count for this cause in the window. */
+      count: number;
+      /** @description Fraction of the breakdown total this cause represents (0.0-1.0); all rows in one breakdown sum to ~1.0. */
+      pct_of_step: number;
+    };
+    /** @description One step of an assembled funnel returned by `GET /api/metrics/query/flow`. */
+    FlowStepSchema: {
+      /**
+       * @description Metric stream — drives renderer coloring/category.
+       * @enum {string}
+       */
+      stream: "ui" | "api" | "domain";
+      /** @description Display label for this step. */
+      label: string;
+      /** @description The underlying event name counted for this step; for API steps this carries the step's display label instead (the Flask endpoint name is an internal routing identifier, not display-suitable). */
+      event_name: string;
+      /** @description Summed count for this step in the window. */
+      count: number;
+      /**
+       * @description This step's count as a fraction of the funnel-top (steps[0]) count, capped at 1.0. Null when the top count is zero (division-by-zero guard, DD-6 graceful-degrade).
+       * @default null
+       */
+      pct_of_top: number | null;
+      /**
+       * @description Per-cause drop-off rows for the transition INTO this step; null when the step has no configured breakdown or the breakdown event has no rows in the window (DD-6 graceful-degrade).
+       * @default null
+       */
+      breakdown: components["schemas"]["FlowBreakdownRow"][] | null;
+    };
+    /**
+     * @description Envelope returned by `GET /api/metrics/query/flow`.
+     *
+     *     A `steps` wrapper (not a bare list) is required because
+     *     `APIResponse.to_response()` spreads the payload via `**data_dict`, which
+     *     needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+     *
+     *     Serves both the built-in funnels and stored `custom_<id>` flows. A
+     *     well-formed custom id with no saved flow answers 404; a saved flow that no
+     *     longer validates (or raises a count-time `ValueError`) answers 422 with
+     *     `FlowInvalidResponseSchema` instead of this envelope.
+     */
+    FlowResponseSchema: {
+      /** @description Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order. */
+      steps: components["schemas"]["FlowStepSchema"][];
+    };
     /** @description Authenticated user's profile for the mobile /api/v1 surface. */
     ApiUserProfileSchema: {
       /** @description Unique user ID */
@@ -3048,62 +3192,6 @@ export interface components {
       group_by: string[];
       /** @description Per-(bucket × dim tuple) rows, ordered chronologically and then alphabetically by dim values for deterministic output. NOT zero-filled — missing combinations are absent rather than zero-valued. */
       buckets: components["schemas"]["GroupedTimeseriesBucket"][];
-    };
-    /**
-     * @description One per-cause row of a flow step's drop-off breakdown.
-     *
-     *     `pct_of_step` normalizes WITHIN the breakdown (all rows sum to ~1.0) so
-     *     cause-pill widths are self-consistent regardless of the step's absolute
-     *     count. It is a `float` (never null): a breakdown with no rows collapses to
-     *     `null` on the owning step (DD-6) before any row is constructed.
-     */
-    FlowBreakdownRow: {
-      /** @description Raw dimension value for this cause (e.g. 'escape_key', 'invalid_url'); the renderer maps it to a human-readable label. */
-      label: string;
-      /** @description Summed count for this cause in the window. */
-      count: number;
-      /** @description Fraction of the breakdown total this cause represents (0.0-1.0); all rows in one breakdown sum to ~1.0. */
-      pct_of_step: number;
-    };
-    /** @description One step of an assembled funnel returned by `GET /api/metrics/query/flow`. */
-    FlowStepSchema: {
-      /**
-       * @description Metric stream — drives renderer coloring/category.
-       * @enum {string}
-       */
-      stream: "ui" | "api" | "domain";
-      /** @description Display label for this step. */
-      label: string;
-      /** @description The underlying event name counted for this step; for API steps this carries the step's display label instead (the Flask endpoint name is an internal routing identifier, not display-suitable). */
-      event_name: string;
-      /** @description Summed count for this step in the window. */
-      count: number;
-      /**
-       * @description This step's count as a fraction of the funnel-top (steps[0]) count, capped at 1.0. Null when the top count is zero (division-by-zero guard, DD-6 graceful-degrade).
-       * @default null
-       */
-      pct_of_top: number | null;
-      /**
-       * @description Per-cause drop-off rows for the transition INTO this step; null when the step has no configured breakdown or the breakdown event has no rows in the window (DD-6 graceful-degrade).
-       * @default null
-       */
-      breakdown: components["schemas"]["FlowBreakdownRow"][] | null;
-    };
-    /**
-     * @description Envelope returned by `GET /api/metrics/query/flow`.
-     *
-     *     A `steps` wrapper (not a bare list) is required because
-     *     `APIResponse.to_response()` spreads the payload via `**data_dict`, which
-     *     needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
-     *
-     *     Serves both the built-in funnels and stored `custom_<id>` flows. A
-     *     well-formed custom id with no saved flow answers 404; a saved flow that no
-     *     longer validates (or raises a count-time `ValueError`) answers 422 with
-     *     `FlowInvalidResponseSchema` instead of this envelope.
-     */
-    FlowResponseSchema: {
-      /** @description Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order. */
-      steps: components["schemas"]["FlowStepSchema"][];
     };
     /** @description Body of the `422` answer for a saved funnel that needs attention. */
     FlowInvalidResponseSchema: {
@@ -5691,6 +5779,115 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["MetricFlowEntrySchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getMetricFlowCatalog: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Everything the flow builder may offer: events, dims and API endpoints. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["FlowCatalogResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  previewMetricFlow: {
+    parameters: {
+      query?: {
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["LenientFlowDefinition"];
+      };
+    };
+    responses: {
+      /**
+       * @description Envelope returned by `GET /api/metrics/query/flow`.
+       *
+       *         A `steps` wrapper (not a bare list) is required because
+       *         `APIResponse.to_response()` spreads the payload via `**data_dict`, which
+       *         needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+       *
+       *         Serves both the built-in funnels and stored `custom_<id>` flows. A
+       *         well-formed custom id with no saved flow answers 404; a saved flow that no
+       *         longer validates (or raises a count-time `ValueError`) answers 422 with
+       *         `FlowInvalidResponseSchema` instead of this envelope.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["FlowResponseSchema"];
         };
       };
       /** @description Bad request */

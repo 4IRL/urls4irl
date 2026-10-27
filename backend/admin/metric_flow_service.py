@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 
@@ -11,6 +13,7 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
 from backend.extensions.audit.record import record
 from backend.metrics.constants import MetricsFailureMessages
+from backend.metrics.flow_counting import FlowCountError, count_flow
 from backend.metrics.flow_invalid import first_invalid_detail
 from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.flow_validation import (
@@ -208,6 +211,39 @@ def create_metric_flow(*, actor_id: int, payload: object) -> FlaskResponse:
         ["Created metric flow", f"User.id={actor_id}", f"MetricFlow.id={flow_id}"]
     )
     return APIResponse(data=entry, status_code=201).to_response()
+
+
+def preview_metric_flow(
+    *, payload: object, window_start: datetime, window_end: datetime
+) -> FlaskResponse:
+    """Validate a draft and count it for the window, saving nothing.
+
+    Uses the same validator and counting helper as save and ``/flow``, so the
+    preview equals the saved card. No name or cap check, no row, no audit.
+
+    Returns:
+        FlaskResponse: 200 with the flow counts, or a 400 field-error envelope.
+    """
+    validated = validate_flow_payload(payload)
+    if not isinstance(validated, FlowDefinition):
+        return build_field_error_response(
+            message=ADMIN_ACTION_STRINGS.METRIC_FLOW_INVALID,
+            errors=validated,
+            error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
+        )
+    try:
+        result = count_flow(
+            definition=validated, window_start=window_start, window_end=window_end
+        )
+    except FlowCountError as error:
+        return build_field_error_response(
+            message=ADMIN_ACTION_STRINGS.METRIC_FLOW_INVALID,
+            errors={error.field: [error.reason]},
+            error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
+        )
+    return APIResponse(data=result, status_code=200).to_response()
 
 
 def _invalid_id_response() -> FlaskResponse:
