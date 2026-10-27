@@ -20,6 +20,7 @@ from backend.admin.routes import admin
 from backend.api_common.auth_decorators import admin_required
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
+from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.flow_validation import LenientFlowDefinition
 from backend.schemas.admin_actions import AdminActionResponseSchema
 from backend.schemas.errors import ErrorResponse
@@ -58,7 +59,8 @@ def admin_list_metric_flows() -> FlaskResponse:
     tags=[OPEN_API.ADMIN],
     description=(
         "Save a new custom funnel. The body is validated against the live "
-        "event and endpoint registries; at most 20 custom flows may exist."
+        "event and endpoint registries; at most "
+        f"{FLOW_LIMITS.MAX_CUSTOM} custom flows may exist."
     ),
     status_codes={
         201: MetricFlowEntrySchema,
