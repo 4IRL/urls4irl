@@ -9,6 +9,7 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 
+from backend.metrics.dimension_models import DIMENSION_MODELS
 from backend.metrics.events import EVENT_CATEGORY, EventName
 from backend.metrics.flow_validation import (
     serialize_flow_steps,
@@ -118,6 +119,11 @@ def test_catalog_groups_events_and_dims(
     kinds = {dim["filter_kind"] for event in events.values() for dim in event["dims"]}
     assert {"values", "status_code", "group_by_only"} <= kinds
 
+    dimensionless = [name for name, event in events.items() if event["dims"] == []]
+    # Vacuous while every event has a dimension model; pins the branch for later.
+    for name in dimensionless:
+        assert DIMENSION_MODELS[EventName(name)] is None
+
 
 def test_catalog_api_endpoints(
     login_admin_user_with_register: AdminSession,
@@ -215,10 +221,6 @@ def _probe_filter(
     return draft, "steps.0.drop_breakdown.dim_filter.0"
 
 
-def _probe_group_by(*, event: dict[str, Any], dim_key: str) -> dict[str, Any]:
-    return _draft(_breakdown_step(event=event, group_by=dim_key))
-
-
 def _accepted(payload: dict[str, Any]) -> bool:
     return isinstance(validate_flow_payload(payload), FlowDefinition)
 
@@ -245,7 +247,7 @@ def test_catalog_parity_with_validator(
         for event in events.values():
             for dim in event["dims"]:
                 key = dim["key"]
-                assert _accepted(_probe_group_by(event=event, dim_key=key)), (
+                assert _accepted(_draft(_breakdown_step(event=event, group_by=key))), (
                     f"{event['event_name']} group_by {key}"
                 )
 

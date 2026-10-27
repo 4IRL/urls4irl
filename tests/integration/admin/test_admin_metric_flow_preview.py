@@ -432,6 +432,36 @@ def test_preview_unknown_window_returns_window_error_before_body(
     assert list(body[STD_JSON.ERRORS]) == ["window"]
 
 
+@pytest.mark.parametrize(
+    "query",
+    [
+        "?start=2026-01-02T00:00:00Z&end=2026-01-01T00:00:00Z",
+        "?start=2026-01-01T00:00:00Z&end=2026-01-01T00:00:00Z",
+    ],
+    ids=["inverted", "empty"],
+)
+def test_preview_non_increasing_absolute_range_is_rejected(
+    login_admin_user_with_register: AdminSession, query: str
+) -> None:
+    """
+    GIVEN an absolute range whose start is not strictly before its end
+    WHEN previewed
+    THEN 400 and nothing is written. The query schema's range-order validator
+         rejects it first (INVALID_QUERY under __root__), so the route's
+         INVALID_WINDOW branch is reachable only through named windows.
+    """
+    client, csrf, _, app = login_admin_user_with_register
+
+    response = _preview(client, csrf, _filtered_draft(), query=query)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.MESSAGE] == MetricsFailureMessages.INVALID_QUERY
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "__root__" in body[STD_JSON.ERRORS]
+    assert _counts(app) == (0, 0)
+
+
 def test_preview_error_envelopes_by_origin(
     login_admin_user_with_register: AdminSession,
 ) -> None:
