@@ -8,7 +8,10 @@ import type {
 } from "../types/preferences.js";
 import type { UtubTag, UtubUrlItem } from "../types/url.js";
 import type { UtubSummaryItem } from "../types/utub.js";
-import type { ResolvedUtubSettings } from "../types/settings.js";
+import type {
+  ResolvedMemberSettings,
+  ResolvedUtubSettings,
+} from "../types/settings.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("store");
@@ -43,6 +46,17 @@ export interface AppState {
   // Monotonic; bumped only by a successful scope-'utub' settings PATCH, in the
   // same setState that merges the response into `settings`.
   settingsVersion: number;
+  // The acting member's own resolved view overrides for the active UTub; null =
+  // no UTub / not yet delivered. Nulled on a UTub change like `settings`.
+  memberSettings: ResolvedMemberSettings | null;
+  // Monotonic; bumped only by a local personal-settings save's success write, in
+  // the same setState that writes `memberSettings`.
+  memberSettingsVersion: number;
+  // Monotonic; bumped only by the short-link policy 403 branch, in the same
+  // setState that writes `allow_short_links: false`. In-flight settings writers
+  // compare it (via captureSettingsVersions) so a response that predates the
+  // policy write cannot restore `true`.
+  policyLearnedVersion: number;
   // Co-member add candidates for the active UTub, hydrated once when the add UI
   // opens (see loadCoMemberCandidates). Held only for the active UTub and
   // cleared on UTub switch / reset so it never leaks across UTubs.
@@ -75,6 +89,9 @@ function createInitialState(): AppState {
     members: [],
     settings: null,
     settingsVersion: 0,
+    memberSettings: null,
+    memberSettingsVersion: 0,
+    policyLearnedVersion: 0,
     coMemberCandidates: [],
     coMemberCandidatesLoaded: false,
     preferences: {
@@ -143,6 +160,7 @@ export function setState(partial: Partial<AppState>): void {
     if (!Object.is(previous[key], partial[key])) changedKeys.push(key);
   }
   const previousSettings = previous.settings;
+  const previousMemberSettings = previous.memberSettings;
   Object.assign(_state, partial);
 
   // No UTub, no settings: a changed active UTub never keeps the previous
@@ -154,6 +172,14 @@ export function setState(partial: Partial<AppState>): void {
   ) {
     _state.settings = null;
     if (previousSettings !== null) changedKeys.push("settings");
+  }
+  if (
+    "activeUTubID" in partial &&
+    changedKeys.includes("activeUTubID") &&
+    !("memberSettings" in partial)
+  ) {
+    _state.memberSettings = null;
+    if (previousMemberSettings !== null) changedKeys.push("memberSettings");
   }
 
   if (changedKeys.length === 0) return;

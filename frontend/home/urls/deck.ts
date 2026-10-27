@@ -1,6 +1,6 @@
 import { $ } from "../../lib/globals.js";
 import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
-import { getState } from "../../store/app-store.js";
+import { getState, setState } from "../../store/app-store.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "./empty-state.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
@@ -189,6 +189,43 @@ export function updateURLDeck({
   }
 
   restripeURLCardsInDOMOrder();
+}
+
+/**
+ * Order-only live-apply of a server payload: moves the existing cards (never
+ * recreates, adds or removes one) to the payload order, permutes the store's
+ * `urls` the same way without adopting the payload's items or values (so a later
+ * `updateURLDeck` diff still sees a new URL as new), then restripes, reapplies
+ * the search/tag filters and keeps the selected card in view.
+ */
+export function applyServerUrlOrder(payloadUrls: UtubUrlItem[]): void {
+  const payloadRank = new Map<number, number>();
+  payloadUrls.forEach((url, index) => payloadRank.set(url.utubUrlID, index));
+
+  const storeUrls = getState().urls;
+  const inBoth = storeUrls
+    .filter((url) => payloadRank.has(url.utubUrlID))
+    .sort(
+      (first, second) =>
+        payloadRank.get(first.utubUrlID)! - payloadRank.get(second.utubUrlID)!,
+    );
+  const storeOnly = storeUrls.filter((url) => !payloadRank.has(url.utubUrlID));
+  setState({ urls: [...inBoth, ...storeOnly] });
+
+  reorderURLCardsToPayloadOrder(payloadUrls);
+
+  if ($("#SearchURLWrap").hasClass("visible-flex")) {
+    reapplyURLSearchFilter();
+  }
+  if (isATagSelected()) {
+    updateURLsAndTagSubheaderWhenTagSelected({ urls: getState().urls });
+  }
+  restripeURLCardsInDOMOrder();
+
+  const selectedCard = document.querySelector<HTMLElement>(
+    "#listURLs .urlRow[urlSelected='true']",
+  );
+  selectedCard?.scrollIntoView?.({ block: "nearest" });
 }
 
 // Reorders the existing `.urlRow` cards to the payload (server, i.e. viewer's

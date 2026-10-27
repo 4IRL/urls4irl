@@ -15,11 +15,14 @@ import { removeUTubLocally } from "../../utubs/remove-local.js";
 import { fetchUTubForRefresh } from "../../utubs/selectors.js";
 import type { RefreshResult } from "../../utubs/selectors.js";
 import { showURLDeckBannerError } from "../../urls/deck.js";
+import { syncDeckOrderToServer } from "../../urls/view-settings.js";
 import {
   PATCH_TIMEOUT_MS,
   handleActiveUTubGone,
   mapXhrToSaveOutcome,
+  patchMemberSettings,
   patchUtubSettings,
+  resyncMemberSettings,
   resyncSettings,
 } from "../client.js";
 
@@ -30,8 +33,19 @@ vi.mock("../../../lib/ajax.js", async () => {
   return { ...actual, ajaxCall: vi.fn() };
 });
 vi.mock("../../utubs/remove-local.js", () => ({ removeUTubLocally: vi.fn() }));
-vi.mock("../../utubs/selectors.js", () => ({ fetchUTubForRefresh: vi.fn() }));
+vi.mock("../../utubs/selectors.js", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../utubs/selectors.js")
+  >("../../utubs/selectors.js");
+  return { ...actual, fetchUTubForRefresh: vi.fn() };
+});
 vi.mock("../../urls/deck.js", () => ({ showURLDeckBannerError: vi.fn() }));
+vi.mock("../../urls/view-settings.js", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../urls/view-settings.js")
+  >("../../urls/view-settings.js");
+  return { ...actual, syncDeckOrderToServer: vi.fn() };
+});
 
 const UTUB_ID = 7;
 const LOCKED = APP_CONFIG.strings.UTUB_IS_LOCKED;
@@ -315,6 +329,123 @@ describe("patchUtubSettings", () => {
   });
 });
 
+describe("patchMemberSettings", () => {
+  const MEMBER_SETTINGS = { urls: { hide_copy_button: true } };
+
+  function startMemberPatch(): {
+    request: ReturnType<typeof createMockJqXHR>;
+    result: ReturnType<typeof patchMemberSettings>;
+  } {
+    const request = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValue(request);
+    const result = patchMemberSettings({
+      utubID: UTUB_ID,
+      panel: "urls",
+      patch: { hide_copy_button: true },
+    });
+    return { request, result };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetStore();
+    setState({ activeUTubID: UTUB_ID, settings: settingsWith() });
+    document.body.innerHTML =
+      '<div id="MobilePanelAnnouncement"></div><div id="confirmModal"></div>';
+  });
+
+  it("PATCHes the member-settings URL with { [panel]: patch } and the write timeout", async () => {
+    const { request, result } = startMemberPatch();
+    request.resolve({ utubID: UTUB_ID, memberSettings: MEMBER_SETTINGS });
+    await result;
+
+    expect(ajaxCall).toHaveBeenCalledWith(
+      "patch",
+      APP_CONFIG.routes.updateMemberSettings(UTUB_ID),
+      { urls: { hide_copy_button: true } },
+      PATCH_TIMEOUT_MS,
+    );
+    expect(APP_CONFIG.routes.updateMemberSettings(UTUB_ID)).toBe(
+      `/utubs/${UTUB_ID}/member-settings`,
+    );
+  });
+
+  it("a 200 resolves ok with the resolved slice and writes no store", async () => {
+    const before = getState().settings;
+    const { request, result } = startMemberPatch();
+    request.resolve({ utubID: UTUB_ID, memberSettings: MEMBER_SETTINGS });
+
+    expect(await result).toEqual({
+      outcome: "ok",
+      memberSettings: MEMBER_SETTINGS,
+    });
+    expect(getState().settings).toBe(before);
+    expect(getState().settingsVersion).toBe(0);
+  });
+
+  it.each([
+    ["a non-JSON body", "<html>login</html>"],
+    ["a missing memberSettings field", { utubID: UTUB_ID }],
+    ["a null memberSettings", { utubID: UTUB_ID, memberSettings: null }],
+  ])("%s resolves error", async (_label, body) => {
+    const { request, result } = startMemberPatch();
+    request.resolve(body);
+
+    expect(await result).toEqual({ outcome: "error" });
+  });
+
+  it.each([
+    ["400 invalid", { status: 400, message: "bad" }, { outcome: "invalid" }],
+    ["404 gone", { status: 404, message: "gone" }, { outcome: "gone" }],
+    ["404 HTML", { status: 404, html: true }, { outcome: "error" }],
+    ["403 HTML (CSRF)", { status: 403, html: true }, { outcome: "error" }],
+    ["500", { status: 500, message: "boom" }, { outcome: "error" }],
+  ] as Array<[string, Parameters<typeof failXhr>[0], object]>)(
+    "%s",
+    async (_label, xhrProps, expected) => {
+      const { request, result } = startMemberPatch();
+      request.reject(failXhr(xhrProps));
+
+      expect(await result).toEqual(expected);
+    },
+  );
+
+  it("an active-UTub 404 removes the UTub and shows the banner", async () => {
+    const { request, result } = startMemberPatch();
+    request.reject(failXhr({ status: 404, message: "gone" }));
+    await result;
+
+    expect(removeUTubLocally).toHaveBeenCalledWith({ utubID: UTUB_ID });
+    expect(showURLDeckBannerError).toHaveBeenCalledWith(
+      APP_CONFIG.strings.UTUB_NO_LONGER_AVAILABLE,
+    );
+  });
+
+  it("a late 200 resolves stale/failed:false with no store write", async () => {
+    const { request, result } = startMemberPatch();
+    setState({ activeUTubID: 99, settings: settingsWith() });
+    const before = getState().settings;
+    request.resolve({ utubID: UTUB_ID, memberSettings: MEMBER_SETTINGS });
+
+    expect(await result).toEqual({ outcome: "stale", failed: false });
+    expect(getState().settings).toBe(before);
+    expect(getState().settingsVersion).toBe(0);
+  });
+
+  it.each([404, 500])(
+    "a late %i resolves stale/failed:true with no removal",
+    async (status) => {
+      const { request, result } = startMemberPatch();
+      setState({ activeUTubID: 99 });
+      request.reject(failXhr({ status, message: "x" }));
+
+      expect(await result).toEqual({ outcome: "stale", failed: true });
+      expect(removeUTubLocally).not.toHaveBeenCalled();
+      expect(showURLDeckBannerError).not.toHaveBeenCalled();
+    },
+  );
+});
+
 describe("mapXhrToSaveOutcome", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -366,6 +497,105 @@ describe("handleActiveUTubGone", () => {
     ).toBe(APP_CONFIG.strings.UTUB_NO_LONGER_AVAILABLE);
     vi.useRealTimers();
   });
+});
+
+describe("resyncMemberSettings", () => {
+  function okMember(memberSettings: object): RefreshResult {
+    return {
+      kind: "ok",
+      data: { id: UTUB_ID, memberSettings } as never,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetStore();
+    setState({
+      activeUTubID: UTUB_ID,
+      memberSettings: null,
+      memberSettingsVersion: 2,
+    });
+  });
+
+  it("writes only memberSettings, without bumping any version", async () => {
+    vi.mocked(fetchUTubForRefresh).mockResolvedValue(
+      okMember({ urls: { hide_copy_button: true } }),
+    );
+    const settingsBefore = getState().settings;
+
+    expect(await resyncMemberSettings({ utubID: UTUB_ID })).toBe(true);
+
+    expect(getState().memberSettings?.urls.hide_copy_button).toBe(true);
+    expect(getState().memberSettings?.urls.sort).toBeNull();
+    expect(getState().memberSettingsVersion).toBe(2);
+    expect(getState().settings).toBe(settingsBefore);
+  });
+
+  it("syncs the deck order when the resync changes the effective sort", async () => {
+    vi.mocked(fetchUTubForRefresh).mockResolvedValue(
+      okMember({ urls: { sort: "title_az" } }),
+    );
+
+    expect(await resyncMemberSettings({ utubID: UTUB_ID })).toBe(true);
+
+    expect(syncDeckOrderToServer).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not sync the deck order when the effective sort is unchanged", async () => {
+    vi.mocked(fetchUTubForRefresh).mockResolvedValue(
+      okMember({ urls: { hide_copy_button: true } }),
+    );
+
+    expect(await resyncMemberSettings({ utubID: UTUB_ID })).toBe(true);
+
+    expect(syncDeckOrderToServer).not.toHaveBeenCalled();
+  });
+
+  it("does not sync the deck order when the slice write is guarded out", async () => {
+    vi.mocked(fetchUTubForRefresh).mockImplementation(async () => {
+      setState({ memberSettingsVersion: getState().memberSettingsVersion + 1 });
+      return okMember({ urls: { sort: "title_az" } });
+    });
+
+    expect(await resyncMemberSettings({ utubID: UTUB_ID })).toBe(false);
+
+    expect(syncDeckOrderToServer).not.toHaveBeenCalled();
+  });
+
+  it("is skipped when the active UTub differs", async () => {
+    expect(await resyncMemberSettings({ utubID: 99 })).toBe(false);
+    expect(fetchUTubForRefresh).not.toHaveBeenCalled();
+  });
+
+  it("does not write when the UTub changed mid-flight", async () => {
+    vi.mocked(fetchUTubForRefresh).mockImplementation(async () => {
+      setState({ activeUTubID: 99 });
+      return okMember({ urls: { hide_copy_button: true } });
+    });
+
+    expect(await resyncMemberSettings({ utubID: UTUB_ID })).toBe(false);
+    expect(getState().memberSettings).toBeNull();
+  });
+
+  it("does not write when a personal save landed mid-flight", async () => {
+    vi.mocked(fetchUTubForRefresh).mockImplementation(async () => {
+      setState({ memberSettingsVersion: getState().memberSettingsVersion + 1 });
+      return okMember({ urls: { hide_copy_button: true } });
+    });
+
+    expect(await resyncMemberSettings({ utubID: UTUB_ID })).toBe(false);
+    expect(getState().memberSettings).toBeNull();
+  });
+
+  it.each(["error", "gone"] as const)(
+    "a %s re-fetch resolves false and writes nothing",
+    async (kind) => {
+      vi.mocked(fetchUTubForRefresh).mockResolvedValue({ kind });
+
+      expect(await resyncMemberSettings({ utubID: UTUB_ID })).toBe(false);
+      expect(getState().memberSettings).toBeNull();
+    },
+  );
 });
 
 describe("resyncSettings", () => {
@@ -431,6 +661,28 @@ describe("resyncSettings", () => {
     expect(calls).toBe(2);
     expect(getState().settings?.urls).toEqual({ ...URLS_DEFAULTS, fresh: 1 });
     expect(getState().settingsVersion).toBe(4);
+  });
+
+  it("forces allow_short_links off when a policy 403 landed mid-flight", async () => {
+    vi.mocked(fetchUTubForRefresh).mockImplementation(async () => {
+      setState({ policyLearnedVersion: getState().policyLearnedVersion + 1 });
+      return ok({ urls: { allow_short_links: true } });
+    });
+
+    expect(await resyncSettings({ utubID: UTUB_ID })).toBe(true);
+
+    expect(getState().settings?.urls.allow_short_links).toBe(false);
+  });
+
+  it("adopts the server's allow_short_links when the fetch began after the policy write", async () => {
+    setState({ policyLearnedVersion: 1 });
+    vi.mocked(fetchUTubForRefresh).mockResolvedValue(
+      ok({ urls: { allow_short_links: true } }),
+    );
+
+    expect(await resyncSettings({ utubID: UTUB_ID })).toBe(true);
+
+    expect(getState().settings?.urls.allow_short_links).toBe(true);
   });
 
   it("is a no-op resolving false when the guard trips again", async () => {

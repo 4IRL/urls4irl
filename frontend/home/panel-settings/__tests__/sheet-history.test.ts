@@ -82,7 +82,16 @@ vi.mock("../../utubs/create.js", () => ({
 vi.mock("../../utubs/selectors.js", () => ({
   getUTubInfo: (...args: unknown[]) => mockGetUTubInfo(...args),
   buildSelectedUTub: (...args: unknown[]) => mockBuildSelectedUTub(...args),
-  shouldKeepSettings: () => false,
+  captureSettingsVersions: () => ({
+    settingsVersion: 0,
+    memberSettingsVersion: 0,
+    policyLearnedVersion: 0,
+  }),
+  shouldKeepSettings: () => ({
+    keepSettings: false,
+    keepMemberSettings: false,
+    forceShortLinksOff: false,
+  }),
 }));
 vi.mock("../../utubs/utils.js", () => ({
   isValidUTubID: vi.fn(),

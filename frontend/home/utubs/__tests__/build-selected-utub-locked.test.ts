@@ -1,6 +1,10 @@
 import type { UtubDetail } from "../../../types/utub.js";
 
-import { buildSelectedUTub, shouldKeepSettings } from "../selectors.js";
+import {
+  buildSelectedUTub,
+  captureSettingsVersions,
+  shouldKeepSettings,
+} from "../selectors.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -152,29 +156,161 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       });
     });
 
-    it("shouldKeepSettings truth table", () => {
-      setState({ activeUTubID: 1, settingsVersion: 3 });
+    it("captureSettingsVersions returns all current versions", () => {
+      setState({
+        settingsVersion: 4,
+        memberSettingsVersion: 7,
+        policyLearnedVersion: 2,
+      });
+
+      expect(captureSettingsVersions()).toEqual({
+        settingsVersion: 4,
+        memberSettingsVersion: 7,
+        policyLearnedVersion: 2,
+      });
+    });
+
+    it("shouldKeepSettings truth table covers keepSettings, keepMemberSettings and forceShortLinksOff independently", () => {
+      setState({
+        activeUTubID: 1,
+        settingsVersion: 3,
+        memberSettingsVersion: 6,
+        policyLearnedVersion: 5,
+      });
       const sameID = makeUtubDetail({ id: 1 });
       const otherID = makeUtubDetail({ id: 9 });
+      const decide = (
+        selectedUTub: UtubDetail,
+        settingsVersion: number,
+        policyLearnedVersion: number,
+        memberSettingsVersion = 6,
+      ) =>
+        shouldKeepSettings({
+          selectedUTub,
+          captured: {
+            settingsVersion,
+            memberSettingsVersion,
+            policyLearnedVersion,
+          },
+        });
 
-      expect(
-        shouldKeepSettings({
-          selectedUTub: sameID,
-          capturedSettingsVersion: 2,
+      expect(decide(sameID, 2, 5)).toEqual({
+        keepSettings: true,
+        keepMemberSettings: false,
+        forceShortLinksOff: false,
+      });
+      expect(decide(sameID, 3, 4)).toEqual({
+        keepSettings: false,
+        keepMemberSettings: false,
+        forceShortLinksOff: true,
+      });
+      expect(decide(sameID, 2, 4)).toEqual({
+        keepSettings: true,
+        keepMemberSettings: false,
+        forceShortLinksOff: true,
+      });
+      expect(decide(sameID, 3, 5)).toEqual({
+        keepSettings: false,
+        keepMemberSettings: false,
+        forceShortLinksOff: false,
+      });
+      // A member-settings bump alone keeps only the member slice.
+      expect(decide(sameID, 3, 5, 5)).toEqual({
+        keepSettings: false,
+        keepMemberSettings: true,
+        forceShortLinksOff: false,
+      });
+      // Both bumped: each is kept independently.
+      expect(decide(sameID, 2, 5, 5)).toEqual({
+        keepSettings: true,
+        keepMemberSettings: true,
+        forceShortLinksOff: false,
+      });
+      // A different UTub keeps neither.
+      expect(decide(otherID, 2, 4, 5)).toEqual({
+        keepSettings: false,
+        keepMemberSettings: false,
+        forceShortLinksOff: false,
+      });
+    });
+
+    it("seeds memberSettings from the payload in the same setState as settings", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          memberSettings: { urls: { hide_copy_button: true } } as never,
         }),
-      ).toBe(true);
-      expect(
-        shouldKeepSettings({
-          selectedUTub: sameID,
-          capturedSettingsVersion: 3,
+      });
+
+      expect(getState().memberSettings?.urls.hide_copy_button).toBe(true);
+      expect(getState().memberSettings?.urls.sort).toBeNull();
+    });
+
+    it("resolves a payload without memberSettings to the empty shape", () => {
+      buildSelectedUTub({ selectedUTub: makeUtubDetail({ id: 1 }) });
+
+      expect(getState().memberSettings).toEqual({
+        urls: {
+          hide_copy_button: false,
+          hide_short_link_button: false,
+          hide_date_added: false,
+          sort: null,
+          view_mode: null,
+          density: null,
+          disable_swipe_delete: false,
+        },
+      });
+    });
+
+    it("keepMemberSettings preserves the stored slice while settings still apply", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          memberSettings: { urls: { hide_copy_button: true } } as never,
         }),
-      ).toBe(false);
-      expect(
-        shouldKeepSettings({
-          selectedUTub: otherID,
-          capturedSettingsVersion: 2,
+      });
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 1 }),
+        keepMemberSettings: true,
+      });
+
+      expect(getState().memberSettings?.urls.hide_copy_button).toBe(true);
+    });
+
+    it("a UTub switch nulls memberSettings unless the same setState supplies them", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          memberSettings: { urls: { hide_copy_button: true } } as never,
         }),
-      ).toBe(false);
+      });
+      setState({ activeUTubID: 2 });
+
+      expect(getState().memberSettings).toBeNull();
+    });
+
+    it("forceShortLinksOff applies incoming settings with allow_short_links false", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          settings: { urls: { allow_short_links: true } } as never,
+        }),
+        forceShortLinksOff: true,
+      });
+
+      expect(getState().settings?.urls.allow_short_links).toBe(false);
+      expect(getState().settings?.urls.default_url_scheme).toBe("https");
+    });
+
+    it("without forceShortLinksOff the incoming allow_short_links is adopted", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          settings: { urls: { allow_short_links: true } } as never,
+        }),
+      });
+
+      expect(getState().settings?.urls.allow_short_links).toBe(true);
     });
   });
 

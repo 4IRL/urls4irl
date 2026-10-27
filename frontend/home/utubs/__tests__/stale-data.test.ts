@@ -14,7 +14,10 @@ import { emit, AppEvents } from "../../../lib/event-bus.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { isBackgroundRefreshActive } from "../background-refresh-flag.js";
 import type { UtubDetail } from "../../../types/utub.js";
-import { resolveUtubSettings } from "../../../types/settings.js";
+import {
+  resolveMemberSettings,
+  resolveUtubSettings,
+} from "../../../types/settings.js";
 
 import {
   isMobile,
@@ -173,6 +176,9 @@ function seedStore(
     selectedTagIDs: [],
     settings: resolveUtubSettings(detail.settings),
     settingsVersion: 0,
+    memberSettings: resolveMemberSettings(detail.memberSettings),
+    memberSettingsVersion: 0,
+    policyLearnedVersion: 0,
     ...overrides,
   };
 }
@@ -418,6 +424,50 @@ describe("updateUTubOnFindingStaleData", () => {
       );
     });
 
+    it("forces allow_short_links off when a policy 403 was learned mid-flight", async () => {
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({
+        settings: { urls: { allow_short_links: true } } as never,
+      });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.policyLearnedVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(setState).toHaveBeenCalledWith({
+        settings: expect.objectContaining({
+          urls: expect.objectContaining({ allow_short_links: false }),
+        }),
+      });
+    });
+
+    it("adopts the server's allow_short_links for a refresh issued after the policy write", async () => {
+      storeState.value.policyLearnedVersion = 1;
+      storeState.value.settings = resolveUtubSettings({
+        urls: { allow_short_links: false },
+      } as never);
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            settings: { urls: { allow_short_links: true } } as never,
+          }),
+        ),
+      );
+
+      expect(setState).toHaveBeenCalledWith({
+        settings: expect.objectContaining({
+          urls: expect.objectContaining({ allow_short_links: true }),
+        }),
+      });
+    });
+
     it("leaves newer saved settings in place on the permission-fallback path", async () => {
       let resolveFetch!: () => void;
       const fresh = makeDetail({
@@ -441,6 +491,76 @@ describe("updateUTubOnFindingStaleData", () => {
       expect(buildSelectedUTub).toHaveBeenCalledWith({
         selectedUTub: fresh,
         keepSettings: true,
+        keepMemberSettings: true,
+      });
+    });
+  });
+
+  describe("member settings slice", () => {
+    const populatedMember = {
+      urls: { hide_copy_button: true },
+    } as never;
+
+    it("updates the slice for a member-settings-only difference despite the no-op short-circuit", async () => {
+      await refreshWith(ok(makeDetail({ memberSettings: populatedMember })));
+
+      expect(setState).toHaveBeenCalledWith({
+        memberSettings: resolveMemberSettings(populatedMember),
+      });
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("does not write when the resolved incoming slice equals the store's", async () => {
+      await refreshWith(ok(makeDetail()));
+
+      expect(setState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ memberSettings: expect.anything() }),
+      );
+    });
+
+    it("skips only the member slice when a personal save landed mid-flight", async () => {
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({
+        name: "Renamed",
+        settings: { utubs: { sample: 1 } } as never,
+        memberSettings: populatedMember,
+      });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.memberSettingsVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(setState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ memberSettings: expect.anything() }),
+      );
+      // The shared slice is independent: its own version did not move.
+      expect(setState).toHaveBeenCalledWith({
+        settings: resolveUtubSettings({ utubs: { sample: 1 } } as never),
+      });
+    });
+
+    it("keeps the shared slice when only a shared save landed mid-flight", async () => {
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({ memberSettings: populatedMember });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.settingsVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(setState).toHaveBeenCalledWith({
+        memberSettings: resolveMemberSettings(populatedMember),
       });
     });
   });
@@ -876,6 +996,7 @@ describe("updateUTubOnFindingStaleData", () => {
         expect(buildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: payload,
           keepSettings: true,
+          keepMemberSettings: true,
         });
         expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
         expect(storeState.value.utubs).toEqual([
@@ -893,6 +1014,7 @@ describe("updateUTubOnFindingStaleData", () => {
       expect(buildSelectedUTub).toHaveBeenCalledWith({
         selectedUTub: payload,
         keepSettings: true,
+        keepMemberSettings: true,
       });
       expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
     });
