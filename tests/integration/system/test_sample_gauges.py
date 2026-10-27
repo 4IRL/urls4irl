@@ -79,13 +79,38 @@ def _seed_url(pg_conn: Any, url_string: str, creator_id: int) -> int:
     return url_id
 
 
-def _seed_utub_url(pg_conn: Any, utub_id: int, url_id: int, user_id: int) -> None:
+def _seed_utub_url(pg_conn: Any, utub_id: int, url_id: int, user_id: int) -> int:
     with pg_conn.cursor() as cursor:
         cursor.execute(
             'INSERT INTO "UtubUrls" '
             '("utubID", "urlID", "userID", "urlTitle", "addedAt", "lastAccessed") '
-            "VALUES (%s, %s, %s, '', %s, %s)",
+            "VALUES (%s, %s, %s, '', %s, %s) RETURNING id",
             (utub_id, url_id, user_id, _SEED_TIMESTAMP, _SEED_TIMESTAMP),
+        )
+        utub_url_id = cursor.fetchone()[0]
+    pg_conn.commit()
+    return utub_url_id
+
+
+def _seed_utub_member(pg_conn: Any, utub_id: int, user_id: int) -> None:
+    with pg_conn.cursor() as cursor:
+        cursor.execute(
+            'INSERT INTO "UtubMembers" ("utubID", "userID", "memberRole") '
+            "VALUES (%s, %s, 'MEMBER')",
+            (utub_id, user_id),
+        )
+    pg_conn.commit()
+
+
+def _seed_short_link(
+    pg_conn: Any, utub_url_id: int, created_by: int, code: str, expires_at: str
+) -> None:
+    with pg_conn.cursor() as cursor:
+        cursor.execute(
+            'INSERT INTO "ShortLinks" '
+            '("utubUrlID", code, "createdBy", "createdAt", "expiresAt") '
+            "VALUES (%s, %s, %s, %s, %s)",
+            (utub_url_id, code, created_by, _SEED_TIMESTAMP, expires_at),
         )
     pg_conn.commit()
 
@@ -158,6 +183,47 @@ def test_volume_gauges_match_seeded_counts(metrics_enabled_runner_app: Flask):
 
         assert _gauge_value(pg_conn, GaugeName.TOTAL_USERS)[0] == expected_users
         assert _gauge_value(pg_conn, GaugeName.TOTAL_UTUBS)[0] == expected_utubs
+    finally:
+        _truncate_all(pg_conn)
+        pg_conn.close()
+
+
+def test_volume_gauges_count_memberships_and_short_links(
+    metrics_enabled_runner_app: Flask,
+):
+    """
+    GIVEN 3 memberships across 2 UTubs and 2 short links (one expired)
+    WHEN run_sample is invoked
+    THEN total_utub_memberships == 3 and total_short_links == 2 (expired counted).
+    """
+    app = metrics_enabled_runner_app
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        user_ids = [_seed_user(pg_conn, f"user{idx}") for idx in range(3)]
+        utub_a = _seed_utub(pg_conn, "utub-a", user_ids[0])
+        utub_b = _seed_utub(pg_conn, "utub-b", user_ids[0])
+        _seed_utub_member(pg_conn, utub_a, user_ids[0])
+        _seed_utub_member(pg_conn, utub_a, user_ids[1])
+        _seed_utub_member(pg_conn, utub_b, user_ids[2])
+        url_ids = [
+            _seed_url(pg_conn, f"https://example.com/{idx}", user_ids[0])
+            for idx in range(2)
+        ]
+        utub_url_ids = [
+            _seed_utub_url(pg_conn, utub_a, url_id, user_ids[0]) for url_id in url_ids
+        ]
+        _seed_short_link(
+            pg_conn, utub_url_ids[0], user_ids[0], "expired1", "2020-01-01 00:00:00+00"
+        )
+        _seed_short_link(
+            pg_conn, utub_url_ids[1], user_ids[0], "future01", "2099-01-01 00:00:00+00"
+        )
+
+        run_sample(pg_conn=pg_conn, now_epoch=int(time.time()))
+
+        assert _gauge_value(pg_conn, GaugeName.TOTAL_UTUB_MEMBERSHIPS) == (3, None)
+        assert _gauge_value(pg_conn, GaugeName.TOTAL_SHORT_LINKS) == (2, None)
     finally:
         _truncate_all(pg_conn)
         pg_conn.close()

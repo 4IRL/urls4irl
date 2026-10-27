@@ -906,6 +906,7 @@ def test_admin_email_verify_already_verified_noop(
 
 def test_admin_email_resend_happy_path(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
     GIVEN an unvalidated target with an Email_Validations row at the attempt cap
@@ -929,6 +930,15 @@ def test_admin_email_resend_happy_path(
     with app.app_context():
         assert Email_Validations.query.filter_by(user_id=target.id).first() is not None
         assert AuditLog.query.count() == 0
+
+    success_email_response = Response()
+    success_email_response.status_code = 200
+
+    monkeypatch.setattr(
+        EmailSender,
+        "send_account_email_confirmation",
+        lambda self, *args, **kwargs: success_email_response,
+    )
 
     response = _post_account(
         client, _EMAIL_RESEND_URL.format(target_user_id=target.id), csrf
