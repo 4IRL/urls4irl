@@ -45,6 +45,20 @@ def test_build_gauge_sql_volume_count_star() -> None:
     assert "DISTINCT" not in sql
 
 
+def test_build_gauge_sql_volume_count_star_utub_memberships() -> None:
+    assert (
+        build_gauge_sql(GaugeName.TOTAL_UTUB_MEMBERSHIPS)
+        == 'SELECT COUNT(*) FROM "UtubMembers"'
+    )
+
+
+def test_build_gauge_sql_volume_count_star_short_links() -> None:
+    assert (
+        build_gauge_sql(GaugeName.TOTAL_SHORT_LINKS)
+        == 'SELECT COUNT(*) FROM "ShortLinks"'
+    )
+
+
 def test_build_gauge_sql_volume_count_distinct() -> None:
     sql = build_gauge_sql(GaugeName.TOTAL_TAGS)
     assert 'COUNT(DISTINCT "tagString")' in sql
@@ -151,7 +165,7 @@ def test_gauges_module_is_flask_free() -> None:
 def test_all_shipped_definitions_have_safe_sql_identifiers() -> None:
     """Every shipped `GaugeDefinition` passes the import-time identifier guard.
 
-    All 16 relational gauges leave `event_name` / `dimension_key` as `None`, so
+    All 18 relational gauges leave `event_name` / `dimension_key` as `None`, so
     the guard is a no-op for them today; constructing a fresh copy of each
     definition re-runs `__post_init__` and proves none would raise.
     """
