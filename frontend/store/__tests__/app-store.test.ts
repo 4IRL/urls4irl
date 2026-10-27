@@ -5,7 +5,10 @@ import {
   subscribe,
   type StoreListener,
 } from "../app-store.js";
-import { EMPTY_UTUB_SETTINGS } from "../../types/settings.js";
+import {
+  EMPTY_MEMBER_SETTINGS,
+  EMPTY_UTUB_SETTINGS,
+} from "../../types/settings.js";
 
 const { mockLog } = vi.hoisted(() => ({ mockLog: vi.fn() }));
 vi.mock("../../lib/debug.js", () => ({ debug: () => mockLog }));
@@ -76,6 +79,54 @@ describe("settings slice defaults", () => {
 
     expect(getState().settings).toBeNull();
     expect(getState().settingsVersion).toBe(0);
+  });
+});
+
+describe("memberSettings slice", () => {
+  const MEMBER = {
+    urls: { ...EMPTY_MEMBER_SETTINGS.urls, hide_copy_button: true },
+  };
+
+  it("starts null with version 0, restored by resetStore", () => {
+    expect(getState().memberSettings).toBeNull();
+    expect(getState().memberSettingsVersion).toBe(0);
+
+    setState({ memberSettings: MEMBER, memberSettingsVersion: 3 });
+    resetStore();
+
+    expect(getState().memberSettings).toBeNull();
+    expect(getState().memberSettingsVersion).toBe(0);
+  });
+
+  it("is nulled when the active UTub changes without a replacement", () => {
+    setState({ activeUTubID: 1, memberSettings: MEMBER });
+    const listener = vi.fn();
+    const dispose = subscribe(listener);
+
+    setState({ activeUTubID: 2 });
+    dispose();
+
+    expect(getState().memberSettings).toBeNull();
+    expect(listener).toHaveBeenCalledWith(
+      expect.arrayContaining(["activeUTubID", "memberSettings"]),
+    );
+  });
+
+  it("keeps a replacement supplied in the same setState as the UTub change", () => {
+    setState({ activeUTubID: 1, memberSettings: MEMBER });
+    const next = {
+      urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" as const },
+    };
+
+    setState({ activeUTubID: 2, memberSettings: next });
+
+    expect(getState().memberSettings).toBe(next);
+  });
+
+  it("is untouched when the same UTub id is set again", () => {
+    setState({ activeUTubID: 1, memberSettings: MEMBER });
+    setState({ activeUTubID: 1 });
+    expect(getState().memberSettings).toBe(MEMBER);
   });
 });
 

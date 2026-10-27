@@ -4,6 +4,10 @@ import { debug } from "../../lib/debug.js";
 import { getState } from "../../store/app-store.js";
 import { patchUtubSettings } from "../panel-settings/client.js";
 import { registerSection } from "../panel-settings/registry.js";
+import {
+  buildRowLabel,
+  buildSwitchButton,
+} from "../panel-settings/row-controls.js";
 import type {
   PanelSection,
   SaveResult,
@@ -23,36 +27,14 @@ const SCHEME_DESC_ID = "urlsSettingsDefaultSchemeDesc";
 const HIDE_LABEL_ID = "urlsSettingsHideLabel";
 const HIDE_DESC_ID = "urlsSettingsHideDesc";
 const HIDE_HINT_ID = "urlsSettingsHideHint";
+const ALLOW_SHORT_LINKS_SWITCH_ID = "urlsSettingsAllowShortLinksSwitch";
+const ALLOW_SHORT_LINKS_LABEL_ID = "urlsSettingsAllowShortLinksLabel";
+const ALLOW_SHORT_LINKS_DESC_ID = "urlsSettingsAllowShortLinksDesc";
 
 /** What the live render exposes to `save` so a server-driven flip lands in place. */
 interface MountedView {
   utubID: number | null;
   setLastHideIntent: (value: boolean) => void;
-}
-
-function buildRowLabel({
-  titleId,
-  title,
-  descId,
-  desc,
-}: {
-  titleId: string;
-  title: string;
-  descId: string;
-  desc: string;
-}): HTMLElement {
-  const label = document.createElement("div");
-  label.className = "panelSettingsRowLabel";
-  const titleElement = document.createElement("div");
-  titleElement.className = "panelSettingsRowName";
-  titleElement.id = titleId;
-  titleElement.textContent = title;
-  const descElement = document.createElement("div");
-  descElement.className = "panelSettingsRowDesc";
-  descElement.id = descId;
-  descElement.textContent = desc;
-  label.append(titleElement, descElement);
-  return label;
 }
 
 function hasOwn({ patch, key }: { patch: SectionPatch; key: string }): boolean {
@@ -107,21 +89,45 @@ export function registerUrlsSettingsSection(): () => void {
     hint.hidden = true;
     hideLabel.append(hint);
 
-    const switchButton = document.createElement("button");
-    switchButton.type = "button";
-    switchButton.id = SWITCH_ID;
-    switchButton.className = "urlsSettingsSwitch";
-    switchButton.setAttribute("role", "switch");
-    switchButton.setAttribute("aria-labelledby", HIDE_LABEL_ID);
-    const track = document.createElement("span");
-    track.className = "urlsSettingsSwitchTrack";
-    const thumb = document.createElement("span");
-    thumb.className = "urlsSettingsSwitchThumb";
-    track.append(thumb);
-    switchButton.append(track);
+    const switchButton = buildSwitchButton({
+      id: SWITCH_ID,
+      labelledBy: HIDE_LABEL_ID,
+    });
     hideRow.append(hideLabel, switchButton);
 
-    container.append(schemeRow, hideRow);
+    // Row 3: allow short links switch.
+    const shortLinksRow = document.createElement("div");
+    shortLinksRow.className = "panelSettingsRow";
+    const shortLinksSwitch = buildSwitchButton({
+      id: ALLOW_SHORT_LINKS_SWITCH_ID,
+      labelledBy: ALLOW_SHORT_LINKS_LABEL_ID,
+    });
+    shortLinksSwitch.setAttribute(
+      "aria-describedby",
+      ALLOW_SHORT_LINKS_DESC_ID,
+    );
+    shortLinksSwitch.setAttribute(
+      "aria-checked",
+      String(urlsSlice?.allow_short_links ?? true),
+    );
+    if (readOnly) shortLinksSwitch.setAttribute("aria-disabled", "true");
+    shortLinksRow.append(
+      buildRowLabel({
+        titleId: ALLOW_SHORT_LINKS_LABEL_ID,
+        title: APP_CONFIG.strings.URLS_SETTINGS_ALLOW_SHORT_LINKS_LABEL,
+        descId: ALLOW_SHORT_LINKS_DESC_ID,
+        desc: APP_CONFIG.strings.URLS_SETTINGS_ALLOW_SHORT_LINKS_DESC,
+      }),
+      shortLinksSwitch,
+    );
+    shortLinksSwitch.addEventListener("click", () => {
+      if (shortLinksSwitch.getAttribute("aria-disabled") === "true") return;
+      const allow = shortLinksSwitch.getAttribute("aria-checked") !== "true";
+      shortLinksSwitch.setAttribute("aria-checked", String(allow));
+      ctx.submit({ patch: { allow_short_links: allow } });
+    });
+
+    container.append(schemeRow, hideRow, shortLinksRow);
 
     function syncSwitch(): void {
       const nonHttps = picker.getScheme() !== HTTPS_SCHEME;
@@ -232,11 +238,24 @@ export function registerUrlsSettingsSection(): () => void {
       }
     }
 
+    // A coalesced patch can carry both; announce each change that happened.
+    const notices: string[] = [];
+    const allowIntent = sanitized.allow_short_links;
+    if (typeof allowIntent === "boolean") {
+      notices.push(
+        allowIntent
+          ? APP_CONFIG.strings.URLS_SETTINGS_SHORT_LINKS_ON_NOTICE
+          : APP_CONFIG.strings.URLS_SETTINGS_SHORT_LINKS_OFF_NOTICE,
+      );
+    }
     if (autoReset) {
+      notices.push(APP_CONFIG.strings.URLS_SETTINGS_SELECTOR_RESTORED);
+    }
+    if (notices.length > 0) {
       return {
         outcome: "ok",
         settings: result.settings,
-        notice: APP_CONFIG.strings.URLS_SETTINGS_SELECTOR_RESTORED,
+        notice: notices.join(". "),
       };
     }
     return result;

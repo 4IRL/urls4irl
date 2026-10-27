@@ -3,13 +3,16 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 
 import type { UtubDetail } from "../../types/utub.js";
-import { resolveUtubSettings } from "../../types/settings.js";
+import { resolveMemberSettings } from "../../types/settings.js";
 import { getState, setState } from "../../store/app-store.js";
 import type { AppState } from "../../store/app-store.js";
 import { fitUTubHeaderAndSubheader } from "./header-fit.js";
 import {
   fetchUTubForRefresh,
   buildSelectedUTub,
+  captureSettingsVersions,
+  resolveIncomingSettings,
+  shouldKeepSettings,
   makeUTubRoleIcon,
   applyUTubDescriptionVisibility,
 } from "./selectors.js";
@@ -62,7 +65,7 @@ export async function updateUTubOnFindingStaleData({
   const capturedName = capturedState.activeUTubName;
   const capturedDescription = capturedState.activeUTubDescription;
   const capturedLocked = capturedState.isCurrentUTubLocked;
-  const capturedSettingsVersion = capturedState.settingsVersion;
+  const captured = captureSettingsVersions();
 
   const result = await fetchUTubForRefresh({ utubID });
 
@@ -114,8 +117,26 @@ export async function updateUTubOnFindingStaleData({
   // Settings apply before the no-op short-circuit (a settings-only difference
   // must still land), unless a local save landed while the request was in
   // flight: that response predates the save and must not overwrite it.
-  if (currentState.settingsVersion === capturedSettingsVersion) {
-    const incomingSettings = resolveUtubSettings(utub.settings);
+  const { keepSettings, keepMemberSettings, forceShortLinksOff } =
+    shouldKeepSettings({
+      selectedUTub: utub,
+      captured,
+    });
+  // The member slice follows the same rule, guarded by its own version.
+  if (!keepMemberSettings) {
+    const incomingMemberSettings = resolveMemberSettings(utub.memberSettings);
+    if (
+      JSON.stringify(incomingMemberSettings) !==
+      JSON.stringify(currentState.memberSettings)
+    ) {
+      setState({ memberSettings: incomingMemberSettings });
+    }
+  }
+  if (!keepSettings) {
+    const incomingSettings = resolveIncomingSettings({
+      settings: utub.settings,
+      forceShortLinksOff,
+    });
     if (
       JSON.stringify(incomingSettings) !== JSON.stringify(currentState.settings)
     ) {
@@ -398,7 +419,11 @@ function applyPermissionFallback({ data }: { data: UtubDetail }): void {
   const mobile = isMobile();
   const panelBefore = getCurrentMobilePanel();
 
-  buildSelectedUTub({ selectedUTub: data, keepSettings: true });
+  buildSelectedUTub({
+    selectedUTub: data,
+    keepSettings: true,
+    keepMemberSettings: true,
+  });
   syncSidebarUTubEntry({ data });
 
   if (!mobile) return;

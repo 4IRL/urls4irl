@@ -10,6 +10,7 @@ import { getState } from "../../store/app-store.js";
 import { debug } from "../../lib/debug.js";
 import {
   buildSelectedUTub,
+  captureSettingsVersions,
   getUTubInfo,
   shouldKeepSettings,
 } from "../utubs/selectors.js";
@@ -260,15 +261,12 @@ function transferOwnershipSuccess(
   // affordances LAST so buildUTubDeck's resetUTubDeck() can't win a race.
   void (async () => {
     try {
-      const capturedSettingsVersion = getState().settingsVersion;
+      const captured = captureSettingsVersions();
       const selectedUTub = await getUTubInfo(getState().activeUTubID!);
       if (selectedUTub) {
         buildSelectedUTub({
           selectedUTub,
-          keepSettings: shouldKeepSettings({
-            selectedUTub,
-            capturedSettingsVersion,
-          }),
+          ...shouldKeepSettings({ selectedUTub, captured }),
         });
         const utubData = await getAllUTubs();
         buildUTubDeck(utubData.utubs);

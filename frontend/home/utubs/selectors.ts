@@ -5,7 +5,11 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { is429Handled } from "../../lib/ajax.js";
 import { getState, setState } from "../../store/app-store.js";
-import { resolveUtubSettings } from "../../types/settings.js";
+import {
+  resolveMemberSettings,
+  resolveUtubSettings,
+  type ResolvedUtubSettings,
+} from "../../types/settings.js";
 import { KEYS } from "../../lib/constants.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
@@ -129,26 +133,76 @@ export function pushUTubHistoryState(selectedUTubID: number): void {
 // True when a same-UTub rebuild's fetch began before a settings save landed, so
 // the rebuild must not overwrite the saved settings. A different-UTub switch
 // always takes the new payload's settings.
+export interface CapturedSettingsVersions {
+  settingsVersion: number;
+  memberSettingsVersion: number;
+  policyLearnedVersion: number;
+}
+
+// Taken before a fetch that may write settings, then handed to
+// shouldKeepSettings (or compared directly) at the write site.
+export function captureSettingsVersions(): CapturedSettingsVersions {
+  const { settingsVersion, memberSettingsVersion, policyLearnedVersion } =
+    getState();
+  return { settingsVersion, memberSettingsVersion, policyLearnedVersion };
+}
+
+export interface SettingsWriteDecision {
+  // A settings save landed in flight: keep the store's settings.
+  keepSettings: boolean;
+  // A personal-settings save landed in flight: keep the store's member slice.
+  // Independent of `keepSettings`: each slice is guarded by its own version.
+  keepMemberSettings: boolean;
+  // A short-link policy 403 was learned in flight: an incoming
+  // `allow_short_links: true` predates it and must be applied as false.
+  forceShortLinksOff: boolean;
+}
+
 export function shouldKeepSettings({
   selectedUTub,
-  capturedSettingsVersion,
+  captured,
 }: {
   selectedUTub: UtubDetail;
-  capturedSettingsVersion: number;
-}): boolean {
+  captured: CapturedSettingsVersions;
+}): SettingsWriteDecision {
   const state = getState();
-  return (
-    selectedUTub.id === state.activeUTubID &&
-    state.settingsVersion !== capturedSettingsVersion
-  );
+  const isSameUTub = selectedUTub.id === state.activeUTubID;
+  return {
+    keepSettings:
+      isSameUTub && state.settingsVersion !== captured.settingsVersion,
+    keepMemberSettings:
+      isSameUTub &&
+      state.memberSettingsVersion !== captured.memberSettingsVersion,
+    forceShortLinksOff:
+      isSameUTub &&
+      state.policyLearnedVersion !== captured.policyLearnedVersion,
+  };
+}
+
+// Resolves an incoming settings payload for a store write, forcing the
+// short-link policy off when a policy 403 was learned while it was in flight.
+export function resolveIncomingSettings({
+  settings,
+  forceShortLinksOff,
+}: {
+  settings: UtubDetail["settings"];
+  forceShortLinksOff: boolean;
+}): ResolvedUtubSettings {
+  const resolved = resolveUtubSettings(settings);
+  if (!forceShortLinksOff) return resolved;
+  return { ...resolved, urls: { ...resolved.urls, allow_short_links: false } };
 }
 
 export function buildSelectedUTub({
   selectedUTub,
   keepSettings = false,
+  keepMemberSettings = false,
+  forceShortLinksOff = false,
 }: {
   selectedUTub: UtubDetail;
   keepSettings?: boolean;
+  keepMemberSettings?: boolean;
+  forceShortLinksOff?: boolean;
 }): void {
   log(
     "buildSelectedUTub — applying full UTub payload to store + emitting UTUB_SELECTED",
@@ -177,7 +231,15 @@ export function buildSelectedUTub({
     members: selectedUTub.members,
     ...(keepSettings
       ? {}
-      : { settings: resolveUtubSettings(selectedUTub.settings) }),
+      : {
+          settings: resolveIncomingSettings({
+            settings: selectedUTub.settings,
+            forceShortLinksOff,
+          }),
+        }),
+    ...(keepMemberSettings
+      ? {}
+      : { memberSettings: resolveMemberSettings(selectedUTub.memberSettings) }),
     selectedTagIDs: [],
     selectedURLCardID: null,
     // Defense-in-depth: the UTUB_SELECTED subscriber in bulk-actions/index.ts
@@ -320,7 +382,7 @@ function isStaleUTubResponse(requestedUTubID: number): boolean {
 }
 
 export function getSelectedUTubInfo(selectedUTubID: number): void {
-  const capturedSettingsVersion = getState().settingsVersion;
+  const captured = captureSettingsVersions();
   fetchUTubInfo(selectedUTubID).then(
     (selectedUTub) => {
       if (!selectedUTub) return;
@@ -333,10 +395,7 @@ export function getSelectedUTubInfo(selectedUTubID: number): void {
 
       buildSelectedUTub({
         selectedUTub,
-        keepSettings: shouldKeepSettings({
-          selectedUTub,
-          capturedSettingsVersion,
-        }),
+        ...shouldKeepSettings({ selectedUTub, captured }),
       });
     },
     () => {

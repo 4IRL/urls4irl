@@ -1,6 +1,9 @@
 import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 import type { PanelId } from "../../types/settings.js";
-import { resolveUtubSettings } from "../../types/settings.js";
+import {
+  resolveMemberSettings,
+  resolveUtubSettings,
+} from "../../types/settings.js";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -8,8 +11,14 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { debug } from "../../lib/debug.js";
 import { getState, setState } from "../../store/app-store.js";
 import { removeUTubLocally } from "../utubs/remove-local.js";
-import { fetchUTubForRefresh } from "../utubs/selectors.js";
+import {
+  captureSettingsVersions,
+  fetchUTubForRefresh,
+  resolveIncomingSettings,
+  shouldKeepSettings,
+} from "../utubs/selectors.js";
 import { showURLDeckBannerError } from "../urls/deck.js";
+import { effectiveSort, syncDeckOrderToServer } from "../urls/view-settings.js";
 import type { SaveResult, SectionPatch } from "./types.js";
 
 const log = debug("panel-settings");
@@ -164,6 +173,122 @@ export function patchUtubSettings({
   });
 }
 
+type UpdateMemberSettingsResponse = SuccessResponse<"updateMemberSettings">;
+
+/** The caller's resolved per-UTub view settings, as the member endpoint returns them. */
+export type MemberSettings = UpdateMemberSettingsResponse["memberSettings"];
+
+/**
+ * A member-settings save outcome. `ok` carries the resolved slice for the caller
+ * to store (this client writes no store; the personal section owns its slice).
+ */
+export type MemberSaveResult =
+  | { outcome: "ok"; memberSettings: MemberSettings }
+  | Exclude<SaveResult, { outcome: "ok" }>;
+
+function hasMemberSettings(response: unknown): boolean {
+  if (typeof response !== "object" || response === null) return false;
+  const memberSettings = (response as { memberSettings?: unknown })
+    .memberSettings;
+  return typeof memberSettings === "object" && memberSettings !== null;
+}
+
+/**
+ * PATCHes the caller's own view overrides for one panel of a UTub; the body is
+ * `{ [panel]: patch }`. Not lock- or role-gated server side, so it never maps to
+ * `locked`/`forbidden`. Writes no store, so a result for a UTub that is no longer
+ * active resolves `stale`.
+ */
+export function patchMemberSettings({
+  utubID,
+  panel,
+  patch,
+}: {
+  utubID: number;
+  panel: PanelId;
+  patch: SectionPatch;
+}): Promise<MemberSaveResult> {
+  return new Promise<MemberSaveResult>((resolve) => {
+    const request = ajaxCall(
+      "patch",
+      APP_CONFIG.routes.updateMemberSettings(utubID),
+      { [panel]: patch },
+      PATCH_TIMEOUT_MS,
+    );
+
+    request.done((response: UpdateMemberSettingsResponse) => {
+      if (getState().activeUTubID !== utubID) {
+        resolve({ outcome: "stale", failed: false });
+        return;
+      }
+      // A 200 that is not the app's JSON (e.g. a followed login redirect) must
+      // never be reported as "saved".
+      if (!hasMemberSettings(response)) {
+        log("patchMemberSettings — malformed 200 body", { utubID, panel });
+        resolve({ outcome: "error" });
+        return;
+      }
+      resolve({ outcome: "ok", memberSettings: response.memberSettings });
+    });
+
+    request.fail((xhr: JQuery.jqXHR) => {
+      if (getState().activeUTubID !== utubID) {
+        resolve({ outcome: "stale", failed: true });
+        return;
+      }
+      const result = mapXhrToSaveOutcome(xhr);
+      if (result.outcome === "gone") handleActiveUTubGone({ utubID });
+      resolve(result);
+    });
+  });
+}
+
+/**
+ * Re-fetches the UTub and writes only `memberSettings` (no version bump), after
+ * a failed or timed-out personal save. Writes only when the active UTub and
+ * `memberSettingsVersion` are unchanged since before the fetch. Resolves true
+ * only when it wrote the slice.
+ */
+export async function resyncMemberSettings({
+  utubID,
+}: {
+  utubID: number;
+}): Promise<boolean> {
+  const before = getState();
+  if (before.activeUTubID !== utubID) {
+    log("resyncMemberSettings — active UTub changed, skipping", { utubID });
+    return false;
+  }
+  const capturedVersion = before.memberSettingsVersion;
+
+  const result = await fetchUTubForRefresh({ utubID });
+  if (result.kind !== "ok") {
+    log("resyncMemberSettings — re-fetch failed", {
+      utubID,
+      kind: result.kind,
+    });
+    return false;
+  }
+  const after = getState();
+  if (
+    after.activeUTubID !== utubID ||
+    after.memberSettingsVersion !== capturedVersion
+  ) {
+    log("resyncMemberSettings — state changed mid-flight, dropping", {
+      utubID,
+    });
+    return false;
+  }
+  const resolved = resolveMemberSettings(result.data.memberSettings);
+  if (JSON.stringify(resolved) !== JSON.stringify(after.memberSettings)) {
+    const sortBefore = effectiveSort();
+    setState({ memberSettings: resolved });
+    // A timed-out sort PATCH the server committed must still reorder the deck.
+    if (effectiveSort() !== sortBefore) void syncDeckOrderToServer();
+  }
+  return true;
+}
+
 /**
  * Re-fetches the UTub and writes only `settings` (whole slice, no version
  * bump). Retries once when another section's 200 trips the version guard.
@@ -180,7 +305,7 @@ export async function resyncSettings({
       log("resyncSettings — active UTub changed, skipping", { utubID });
       return false;
     }
-    const capturedVersion = getState().settingsVersion;
+    const captured = captureSettingsVersions();
 
     const result = await fetchUTubForRefresh({ utubID });
     if (result.kind !== "ok") {
@@ -191,14 +316,23 @@ export async function resyncSettings({
       log("resyncSettings — active UTub changed mid-flight", { utubID });
       return false;
     }
-    if (getState().settingsVersion !== capturedVersion) {
+    const { keepSettings, forceShortLinksOff } = shouldKeepSettings({
+      selectedUTub: result.data,
+      captured,
+    });
+    if (keepSettings) {
       log("resyncSettings — settings saved mid-flight, retrying", {
         utubID,
         attempt,
       });
       continue;
     }
-    setState({ settings: resolveUtubSettings(result.data.settings) });
+    setState({
+      settings: resolveIncomingSettings({
+        settings: result.data.settings,
+        forceShortLinksOff,
+      }),
+    });
     return true;
   }
   log("resyncSettings — guard tripped again, giving up", { utubID });

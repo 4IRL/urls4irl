@@ -16,7 +16,17 @@ const mockSetUTubEventListenersOnInitialPageLoad = vi.fn();
 const mockSetCreateUTubEventListeners = vi.fn();
 const mockGetUTubInfo = vi.fn();
 const mockBuildSelectedUTub = vi.fn();
-const mockShouldKeepSettings = vi.fn((..._args: unknown[]) => false);
+const KEEP_NONE = {
+  keepSettings: false,
+  keepMemberSettings: false,
+  forceShortLinksOff: false,
+};
+const mockShouldKeepSettings = vi.fn((..._args: unknown[]) => KEEP_NONE);
+const mockCaptureSettingsVersions = vi.fn(() => ({
+  settingsVersion: 0,
+  memberSettingsVersion: 0,
+  policyLearnedVersion: 0,
+}));
 const mockIsValidUTubID = vi.fn();
 const mockIsUtubIdValidOnPageLoad = vi.fn();
 const mockIsUtubIdValidFromStateAccess = vi.fn();
@@ -98,6 +108,7 @@ vi.mock("../utubs/selectors.js", () => ({
   getUTubInfo: (...args: unknown[]) => mockGetUTubInfo(...args),
   buildSelectedUTub: (...args: unknown[]) => mockBuildSelectedUTub(...args),
   shouldKeepSettings: (...args: unknown[]) => mockShouldKeepSettings(...args),
+  captureSettingsVersions: () => mockCaptureSettingsVersions(),
 }));
 vi.mock("../utubs/utils.js", () => ({
   isValidUTubID: (...args: unknown[]) => mockIsValidUTubID(...args),
@@ -469,6 +480,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
       expect(mockOpenTrash).not.toHaveBeenCalled();
@@ -500,7 +513,11 @@ describe("window-events", () => {
       const fakeUTub = { id: 5, name: "Test UTub" };
       mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
       mockGetUTubInfo.mockResolvedValue(fakeUTub);
-      mockShouldKeepSettings.mockReturnValue(true);
+      mockShouldKeepSettings.mockReturnValue({
+        keepSettings: true,
+        keepMemberSettings: true,
+        forceShortLinksOff: true,
+      });
       vi.spyOn($.fn, "width").mockReturnValue(1200);
 
       popstateHandler!(
@@ -513,13 +530,19 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: true,
+          keepMemberSettings: true,
+          forceShortLinksOff: true,
         });
       });
       expect(mockShouldKeepSettings).toHaveBeenCalledWith({
         selectedUTub: fakeUTub,
-        capturedSettingsVersion: 0,
+        captured: {
+          settingsVersion: 0,
+          memberSettingsVersion: 0,
+          policyLearnedVersion: 0,
+        },
       });
-      mockShouldKeepSettings.mockReturnValue(false);
+      mockShouldKeepSettings.mockReturnValue(KEEP_NONE);
     });
 
     it("fetches and builds UTub when state has a valid UTubID", async () => {
@@ -540,6 +563,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
 
@@ -635,6 +660,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
 
@@ -675,6 +702,8 @@ describe("window-events", () => {
           expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
             selectedUTub: fakeUTub,
             keepSettings: false,
+            keepMemberSettings: false,
+            forceShortLinksOff: false,
           });
         });
         expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
@@ -708,6 +737,8 @@ describe("window-events", () => {
           expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
             selectedUTub: fakeUTub,
             keepSettings: false,
+            keepMemberSettings: false,
+            forceShortLinksOff: false,
           });
         });
         expect(
@@ -738,6 +769,8 @@ describe("window-events", () => {
           expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
             selectedUTub: fakeUTub,
             keepSettings: false,
+            keepMemberSettings: false,
+            forceShortLinksOff: false,
           });
         });
         expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
@@ -783,6 +816,8 @@ describe("window-events", () => {
           expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
             selectedUTub: fakeUTub,
             keepSettings: false,
+            keepMemberSettings: false,
+            forceShortLinksOff: false,
           });
         });
         expect(mockSetMobileUIWhenMemberDeckSelected).not.toHaveBeenCalled();
@@ -828,6 +863,8 @@ describe("window-events", () => {
           expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
             selectedUTub: newerUTub,
             keepSettings: false,
+            keepMemberSettings: false,
+            forceShortLinksOff: false,
           });
         });
         resolveOlder(olderUTub);
@@ -862,6 +899,8 @@ describe("window-events", () => {
           expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
             selectedUTub: fakeUTub,
             keepSettings: false,
+            keepMemberSettings: false,
+            forceShortLinksOff: false,
           });
         });
         expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
@@ -893,6 +932,8 @@ describe("window-events", () => {
           expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
             selectedUTub: fakeUTub,
             keepSettings: false,
+            keepMemberSettings: false,
+            forceShortLinksOff: false,
           });
         });
         expect(mockOpenTagSheet).not.toHaveBeenCalled();
@@ -1058,6 +1099,8 @@ describe("window-events", () => {
           expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
             selectedUTub: newerUTub,
             keepSettings: false,
+            keepMemberSettings: false,
+            forceShortLinksOff: false,
           });
         });
         resolveOlder(olderUTub);
@@ -1137,6 +1180,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
 
@@ -1427,6 +1472,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
 
@@ -1458,6 +1505,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
       // The recognized `panel` param must not trip the malformed-params redirect.
@@ -1487,6 +1536,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
       expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
@@ -1523,6 +1574,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
       // Desktop shows all panels — no panel-specific mobile routing, no tracking.
@@ -1558,6 +1611,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
       expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
@@ -1587,6 +1642,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
       expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
@@ -1613,6 +1670,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
       expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
@@ -1639,6 +1698,8 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).toHaveBeenCalledWith({
           selectedUTub: fakeUTub,
           keepSettings: false,
+          keepMemberSettings: false,
+          forceShortLinksOff: false,
         });
       });
       // Sheet does not auto-reopen on reload — land on the underlying url-deck.

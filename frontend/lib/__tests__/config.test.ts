@@ -31,6 +31,7 @@ describe("APP_CONFIG shape", () => {
       "updateUTubName",
       "updateUTubDescription",
       "updateUTubSettings",
+      "updateMemberSettings",
       "createURL",
       "createUTubTag",
       "createMember",
@@ -56,6 +57,12 @@ describe("APP_CONFIG shape", () => {
 
     it("routes.updateUTubSettings substitutes the utub id", () => {
       expect(APP_CONFIG.routes.updateUTubSettings(7)).toBe("/utubs/7/settings");
+    });
+
+    it("routes.updateMemberSettings substitutes the utub id", () => {
+      expect(APP_CONFIG.routes.updateMemberSettings(7)).toBe(
+        "/utubs/7/member-settings",
+      );
     });
   });
 
