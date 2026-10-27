@@ -120,6 +120,14 @@ vi.mock("../home/panel-settings/index.js", () => ({
 vi.mock("../home/urls/settings-section.js", () => ({
   registerUrlsSettingsSection: track("registerUrlsSettingsSection"),
 }));
+vi.mock("../home/urls/personal-settings-section.js", () => ({
+  registerUrlsPersonalSettingsSection: track(
+    "registerUrlsPersonalSettingsSection",
+  ),
+}));
+vi.mock("../home/urls/deck-view-attrs.js", () => ({
+  initUrlDeckPolicyAttrs: track("initUrlDeckPolicyAttrs"),
+}));
 vi.mock("../home/utubs/refresh-on-focus.js", () => ({
   initUTubRefreshOnFocus: track("initUTubRefreshOnFocus"),
 }));
@@ -157,6 +165,12 @@ describe("main.ts init order", () => {
     expect(dragIndex).toBeGreaterThan(callOrder.indexOf("initTagSheet"));
   });
 
+  it("starts the deck policy attributes right after initURLDeck", () => {
+    expect(callOrder.indexOf("initUrlDeckPolicyAttrs")).toBe(
+      callOrder.indexOf("initURLDeck") + 1,
+    );
+  });
+
   it("runs initPanelSettings after the decks and tag sheet, before tooltips and nudges", () => {
     const panelSettingsIndex = callOrder.indexOf("initPanelSettings");
 
@@ -178,6 +192,20 @@ describe("main.ts init order", () => {
     expect(registerIndex).toBe(callOrder.indexOf("initPanelSettings") + 1);
     expect(registerIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
     expect(registerIndex).toBeLessThan(
+      callOrder.indexOf("initOnboardingNudges"),
+    );
+  });
+
+  it("registers the personal URLs section right after the shared URLs section", () => {
+    const personalIndex = callOrder.indexOf(
+      "registerUrlsPersonalSettingsSection",
+    );
+
+    expect(personalIndex).toBe(
+      callOrder.indexOf("registerUrlsSettingsSection") + 1,
+    );
+    expect(personalIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
+    expect(personalIndex).toBeLessThan(
       callOrder.indexOf("initOnboardingNudges"),
     );
   });

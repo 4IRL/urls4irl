@@ -30,7 +30,8 @@ import {
   withShortLinkRemovedSuffix,
 } from "../short-link-state.js";
 import { applyHoverTooltip } from "../../../../lib/tooltips.js";
-import { getState, setState } from "../../../../store/app-store.js";
+import { getState, resetStore, setState } from "../../../../store/app-store.js";
+import { EMPTY_UTUB_SETTINGS } from "../../../../types/settings.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -548,6 +549,112 @@ describe("short-link copy flow", () => {
     });
   });
 
+  describe("short links turned off (policy 403, errorCode 17)", () => {
+    const POLICY_MESSAGE = APP_CONFIG.strings.SHORT_LINK_SHORT_LINKS_DISABLED;
+    const policyXhr = (): JQuery.jqXHR =>
+      xhrError({ status: 403, message: "ignored", errorCode: 17 });
+
+    beforeEach(() => {
+      resetStore();
+      setState({
+        activeUTubID: UTUB_ID,
+        settings: {
+          ...EMPTY_UTUB_SETTINGS,
+          tags: { sample: 1 } as never,
+        },
+        settingsVersion: 3,
+        policyLearnedVersion: 0,
+      });
+    });
+
+    it("announces the policy message and writes allow_short_links false", async () => {
+      const request = nextRequest();
+      click();
+      request.reject(policyXhr());
+      await flush();
+
+      expect(showURLDeckBannerError).toHaveBeenCalledTimes(1);
+      expect(showURLDeckBannerError).toHaveBeenCalledWith(POLICY_MESSAGE);
+      expect(deleteURLOnStale).not.toHaveBeenCalled();
+      expect(getState().settings?.urls.allow_short_links).toBe(false);
+    });
+
+    it("bumps policyLearnedVersion, not settingsVersion, and keeps the other settings", async () => {
+      const request = nextRequest();
+      click();
+      request.reject(policyXhr());
+      await flush();
+
+      const state = getState();
+      expect(state.policyLearnedVersion).toBe(1);
+      expect(state.settingsVersion).toBe(3);
+      expect(state.settings).toEqual({
+        ...EMPTY_UTUB_SETTINGS,
+        tags: { sample: 1 },
+        urls: { ...EMPTY_UTUB_SETTINGS.urls, allow_short_links: false },
+      });
+    });
+
+    it("announces but writes nothing when the UTub changed before the 403 resolved", async () => {
+      const request = nextRequest();
+      click();
+      setState({ activeUTubID: UTUB_ID + 1 });
+      request.reject(policyXhr());
+      await flush();
+
+      expect(showURLDeckBannerError).toHaveBeenCalledWith(POLICY_MESSAGE);
+      expect(getState().settings?.urls.allow_short_links).not.toBe(false);
+      expect(getState().policyLearnedVersion).toBe(0);
+    });
+
+    it("announces but writes nothing while the settings slice is null", async () => {
+      setState({ settings: null });
+      const request = nextRequest();
+      click();
+      request.reject(policyXhr());
+      await flush();
+
+      expect(showURLDeckBannerError).toHaveBeenCalledWith(POLICY_MESSAGE);
+      expect(getState().settings).toBeNull();
+      expect(getState().policyLearnedVersion).toBe(0);
+    });
+
+    it("lets 429 win", async () => {
+      vi.mocked(is429Handled).mockReturnValue(true);
+      const request = nextRequest();
+      click();
+      request.reject(policyXhr());
+      await flush();
+
+      expect(showURLDeckBannerError).not.toHaveBeenCalled();
+      expect(getState().policyLearnedVersion).toBe(0);
+    });
+
+    it("lets the locked-UTub handler win", async () => {
+      vi.mocked(isUtubLockedHandled).mockReturnValue(true);
+      const request = nextRequest();
+      click();
+      request.reject(policyXhr());
+      await flush();
+
+      expect(showURLDeckBannerError).not.toHaveBeenCalled();
+      expect(getState().policyLearnedVersion).toBe(0);
+    });
+
+    it("a 403 with another errorCode takes the generic path", async () => {
+      const request = nextRequest();
+      click();
+      request.reject(xhrError({ status: 403, message: "x", errorCode: 8 }));
+      await flush();
+
+      expect(showURLDeckBannerError).toHaveBeenCalledWith(
+        APP_CONFIG.strings.SHORT_LINK_COPY_FAILED,
+      );
+      expect(getState().settings?.urls.allow_short_links).toBe(true);
+      expect(getState().policyLearnedVersion).toBe(0);
+    });
+  });
+
   describe("stale responses", () => {
     function supersedeBanner(): void {
       showURLOutcomeBanner({
@@ -707,6 +814,26 @@ describe("short-link copy flow", () => {
 
       expect(document.activeElement).toBe($("#URLDeck")[0]);
     });
+
+    it.each([
+      ["a personal hide", "data-hide-short-link", "true"],
+      ["the policy being off", "data-allow-short-links", "false"],
+    ])(
+      "returns focus to the card row after Revoke when the button is hidden by %s",
+      async (_label, attribute, value) => {
+        urlCard().attr("tabindex", "0");
+        $("#URLDeck").attr(attribute, value);
+        await openRevokeModal();
+        const request = nextRequest();
+        confirm();
+        request.resolve({ utubUrlID: URL_ID });
+        await flush();
+        closeModal();
+
+        expect(document.activeElement).toBe(urlCard()[0]);
+        expect(document.activeElement).not.toBe(document.body);
+      },
+    );
 
     it("treats a SHORT_LINK_NOT_FOUND 404 as already revoked", async () => {
       await openRevokeModal();
@@ -927,6 +1054,23 @@ describe("short-link copy flow", () => {
 
       expect(document.activeElement).toBe(shortLinkBtn()[0]);
     });
+
+    it.each([
+      ["a personal hide", "data-hide-short-link", "true"],
+      ["the policy being off", "data-allow-short-links", "false"],
+    ])(
+      "moves focus to the card row when a rebuild removes the focused Revoke and the button is hidden by %s",
+      (_label, attribute, value) => {
+        urlCard().attr("tabindex", "0");
+        renderRow({ expiresAt: EXPIRES_AT });
+        cardRevoke()[0].focus();
+        $("#URLDeck").attr(attribute, value);
+
+        renderRow({ expiresAt: REUSED_EXPIRES_AT });
+
+        expect(document.activeElement).toBe(urlCard()[0]);
+      },
+    );
 
     it("leaves focus alone when a rebuild happens while focus is elsewhere", () => {
       renderRow({ expiresAt: EXPIRES_AT });
