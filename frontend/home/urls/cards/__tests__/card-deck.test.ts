@@ -312,6 +312,31 @@ describe("insertURLCardIntoDeck", () => {
     expect($("#fieldSavedAnnouncement").text()).toBe("");
   });
 
+  it("sorts the inserted card by the member's override, not the Display default", () => {
+    vi.mocked(getState).mockReturnValue({
+      urls: EXISTING_URL_IDS.map(buildUrlItem),
+      activeUTubID: 1,
+      memberSettings: { urls: { sort: "title_az" } },
+      preferences: { defaultSort: "newest" },
+    } as unknown as ReturnType<typeof getState>);
+
+    insertCard({ announce: true });
+
+    expect(applyDefaultUrlSort).toHaveBeenCalledWith(
+      expect.any(Array),
+      "title_az",
+    );
+  });
+
+  it("sorts the inserted card by the Display default when no override is set", () => {
+    insertCard({ announce: true });
+
+    expect(applyDefaultUrlSort).toHaveBeenCalledWith(
+      expect.any(Array),
+      "newest",
+    );
+  });
+
   it("moves the card to its sorted position, scrolls it and announces when announce is true", () => {
     mockSortOrder([...EXISTING_URL_IDS, NEW_URL_ID]);
 

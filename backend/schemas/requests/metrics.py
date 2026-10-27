@@ -389,6 +389,27 @@ class FlowQuerySchema(BaseModel):
         return self
 
 
+class FlowPreviewQuerySchema(BaseModel):
+    """Query params for `POST /admin/metrics/flows/preview`.
+
+    Only the window/range XOR: the draft arrives as the JSON body, so `flow_id`
+    or any other key is rejected.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
+        return self
+
+
 class GroupedTimeseriesQuerySchema(BaseModel):
     """Query params for `GET /api/metrics/query/grouped-timeseries`.
 

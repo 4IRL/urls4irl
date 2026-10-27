@@ -218,17 +218,100 @@
     border-top: 0;
 }
 
-/* Small uppercase muted text label: scope is never conveyed by colour alone. */
-.panelSettingsScope {
-    display: flex;
+/* Top-level collapsible parent (one per scope): the largest, heaviest heading
+   in the panel. Its sections nest under it. */
+.panelSettingsGroup {
+    padding: 0.25rem 0;
+    border-top: 1px solid var(--borderColor);
+}
+
+.panelSettingsGroup:first-child {
+    border-top: 0;
+}
+
+.panelSettingsGroupHeading {
+    margin: 0;
+    color: var(--textPrimary);
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+/* Section subheaders are subordinate to the parent: smaller, regular colour,
+   and no default h3 margins (they left a dead gap above the first control). */
+h3.panelSettingsRowTitle {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.panelSettingsGroup > .panelSettingsGroupCollapse {
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--borderColor);
+}
+
+.panelSettingsGroupCollapse[hidden] {
+    display: none;
+}
+
+.panelSettingsGroup--collapsed > .panelSettingsGroupHeading .panelSettingsSectionChevron {
+    transform: rotate(-45deg);
+}
+
+/* Collapse toggle: the title text plus its chevron are the only hit target; the
+   rest of the header row is inert. */
+.panelSettingsGroupToggle,
+.panelSettingsSectionToggle {
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 0.5rem;
-    color: var(--cardURLTextColor);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    min-height: 44px;
+    padding: 0;
+    margin: -0.4rem 0 0;
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* The parent sits at the top of the surface: no pull-up that could clip its
+   focus ring. */
+.panelSettingsGroupToggle {
+    margin: 0;
+}
+
+@media (hover: hover) {
+    .panelSettingsSectionToggle:hover .panelSettingsSectionToggleTitle,
+    .panelSettingsGroupToggle:hover .panelSettingsGroupToggleTitle {
+        text-decoration: underline;
+    }
+}
+
+.panelSettingsGroupToggle:focus-visible,
+.panelSettingsSectionToggle:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.panelSettingsSectionChevron {
+    flex: 0 0 auto;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-top: -0.2rem;
+    border-right: 2px solid var(--cardURLTextColor);
+    border-bottom: 2px solid var(--cardURLTextColor);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+}
+
+.panelSettingsSection--collapsed .panelSettingsSectionChevron {
+    transform: rotate(-45deg);
+}
+
+.panelSettingsCollapse[hidden] {
+    display: none;
 }
 
 /* Section rows mirror .SettingsPrefRow (settings-page.css). */
@@ -271,6 +354,86 @@
    inside its max-height). */
 .panelSettingsRow > .urlSchemeListbox {
     flex: 0 0 100%;
+}
+
+/* The shared scheme toggle is the left half of a joined toggle + URL input
+   control (scheme-selector.css: no right border, squared right corners). Alone
+   in a settings row it must be a complete box, or its right edge reads as
+   clipped. min-width/max-width keep it inside the row at any panel width. */
+.panelSettingsRow > .urlSchemeToggle {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    border-right: 1px solid var(--borderColor);
+    border-radius: 4px;
+}
+
+.panelSettingsRow > .urlSchemeToggle[aria-expanded="true"],
+.panelSettingsRow > .urlSchemeToggle:focus-visible {
+    border-color: var(--deckSelectionGreen);
+}
+
+/* Keep the hover colour uniform on all four edges (the rule above would
+   otherwise leave the right edge grey while the others turn green). */
+@media not all and (any-pointer: coarse) {
+    .panelSettingsRow > .urlSchemeToggle:hover {
+        border-color: var(--deckSelectionGreenHover);
+    }
+
+    .panelSettingsRow > .urlSchemeToggle[aria-expanded="true"]:hover,
+    .panelSettingsRow > .urlSchemeToggle:focus-visible:hover {
+        border-color: var(--deckSelectionGreen);
+    }
+}
+
+/* Native select row: the control spans the row under its label. */
+.panelSettingsRow > .panelSettingsSelectWrap {
+    flex: 0 0 100%;
+}
+
+.panelSettingsSelectWrap {
+    position: relative;
+}
+
+.panelSettingsSelectWrap::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-right: 2px solid var(--cardURLTextColor);
+    border-bottom: 2px solid var(--cardURLTextColor);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+}
+
+.panelSettingsSelect {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 2rem 0 0.75rem;
+    appearance: none;
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    color: var(--textPrimary);
+    /* 16px prevents the iOS focus zoom. */
+    font-size: 16px;
+}
+
+.panelSettingsSelect:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.panelSettingsSelect.overridden {
+    border-color: var(--deckSelectionGreenHover);
+}
+
+.panelSettingsSelect[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* --------------------- URLs panel: "New URLs" section --------------------- */
@@ -339,9 +502,16 @@
 
 /* Inline status slot: saving muted, saved green, error red (each also carries text). */
 .panelSettingsStatus {
+    margin: 0 0 0.4rem;
     min-height: 1.1rem;
     font-size: 0.8rem;
     color: var(--cardURLTextColor);
+}
+
+/* An empty live region takes no space (no dead gap under the subheader). */
+.panelSettingsStatus:empty {
+    min-height: 0;
+    margin: 0;
 }
 
 .panelSettingsStatus[data-state="saved"] {

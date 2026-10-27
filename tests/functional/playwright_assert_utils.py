@@ -254,6 +254,60 @@ def assert_element_in_focus(*, page: Page, locator: Locator) -> None:
     expect(locator).to_be_focused()
 
 
+_SETTINGS_PANEL_LAYOUT_JS = """([containerSelector, rowSelector, toggleSelector]) => {
+    const container = document.querySelector(containerSelector);
+    const box = container.getBoundingClientRect();
+    const innerRight = box.left + container.clientLeft + container.clientWidth;
+    const overflowing = [];
+    let visibleCount = 0;
+    for (const row of container.querySelectorAll(rowSelector)) {
+        for (const node of [row, ...row.querySelectorAll('*')]) {
+            const rect = node.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) continue;
+            visibleCount += 1;
+            if (rect.right > innerRight + 1) {
+                overflowing.push(
+                    `${node.tagName}#${node.id}.${node.className} right=${rect.right}`
+                );
+            }
+        }
+    }
+    const toggle = container.querySelector(toggleSelector);
+    const toggleStyle = getComputedStyle(toggle);
+    return {
+        innerRight,
+        visibleCount,
+        overflowing,
+        scrollWidth: container.scrollWidth,
+        clientWidth: container.clientWidth,
+        toggleBorderRight: parseFloat(toggleStyle.borderRightWidth),
+        toggleRightRadius: parseFloat(toggleStyle.borderTopRightRadius),
+    };
+}"""
+
+
+def assert_settings_panel_controls_fit(*, page: Page, container_selector: str) -> None:
+    """Every visible element in every settings row ends at or before the
+    container's inner right edge (1px tolerance), the container does not scroll
+    horizontally, and the scheme toggle is a complete box (a right border and
+    rounded right corners): its joined-control styling otherwise drops the
+    right edge, which reads as clipped even when the box fits."""
+    layout = page.evaluate(
+        _SETTINGS_PANEL_LAYOUT_JS,
+        [container_selector, HPL.PANEL_SETTINGS_ROW, HPL.PANEL_SETTINGS_SCHEME_TOGGLE],
+    )
+    assert layout["visibleCount"] > 0, "Test premise violated: no visible rows"
+    assert layout["overflowing"] == [], (
+        f"Elements past the panel's right edge ({layout['innerRight']}): "
+        f"{layout['overflowing']}"
+    )
+    assert layout["scrollWidth"] <= layout["clientWidth"], (
+        f"Panel scrolls horizontally: {layout['scrollWidth']} > {layout['clientWidth']}"
+    )
+    assert layout["toggleBorderRight"] >= 1, "Scheme toggle has no right border"
+    assert layout["toggleRightRadius"] > 0, "Scheme toggle has squared right corners"
+
+
 def assert_active_utub(*, page: Page, utub_name: str) -> None:
     """Confirm the UTub named utub_name is the active selector and its name
     is displayed as the URL Deck header."""

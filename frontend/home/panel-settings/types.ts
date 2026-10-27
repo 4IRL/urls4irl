@@ -1,7 +1,9 @@
 // Contract types for the panel settings shell. Phases 4-7 author sections
-// against these and may not edit the shell, except for one additive extension
-// (URLs panel phase): an optional `notice` on a saved result, folded into the
-// single "Saved" announcement.
+// against these and may not edit the shell, except for additive extensions
+// (URLs panel phases): an optional `notice` on a saved result, folded into the
+// single "Saved" announcement, and an optional `rerenderOn` selector list on a
+// per-utub user section, which the shell diffs to know when to re-render it.
+import type { AppState } from "../../store/app-store.js";
 import type {
   PanelId,
   SettingsScope,
@@ -39,6 +41,12 @@ export interface PanelSection {
   scope: SettingsScope;
   /** Required for scope 'user'. */
   userKind?: UserKind;
+  /**
+   * Scope 'user', userKind 'per-utub' only: selectors for the store values the
+   * render depends on. The shell re-renders the section (when idle) whenever
+   * their results change from those taken at the last render.
+   */
+  rerenderOn?: Array<(state: AppState) => unknown>;
   render({
     container,
     ctx,

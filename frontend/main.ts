@@ -46,6 +46,8 @@ import { initTransferPicker } from "./home/members/transfer-picker.js";
 import { initOnboardingNudges } from "./home/onboarding/nudges.js";
 import { initPanelSettings } from "./home/panel-settings/index.js";
 import { registerUrlsSettingsSection } from "./home/urls/settings-section.js";
+import { registerUrlsPersonalSettingsSection } from "./home/urls/personal-settings-section.js";
+import { initUrlDeckPolicyAttrs } from "./home/urls/deck-view-attrs.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
 import { initTrashPanel } from "./home/trash/panel.js";
@@ -75,6 +77,7 @@ $(document).ready(() => {
   // initTooltips()/initOnboardingNudges(), which must see the gear states.
   initPanelSettings();
   registerUrlsSettingsSection();
+  registerUrlsPersonalSettingsSection();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
   setUTubEventListenersOnInitialPageLoad();
@@ -82,6 +85,7 @@ $(document).ready(() => {
   initUnselectAllTags();
   initUpdateAllTags();
   initURLDeck();
+  initUrlDeckPolicyAttrs();
   initTagDragDrop();
   initBulkActions();
   initTransferPicker();

@@ -32,11 +32,26 @@ const TOGGLE = "#urlsSettingsDefaultScheme";
 function urlsSettings({
   scheme = "https",
   hide = false,
-}: { scheme?: string; hide?: boolean } = {}): ResolvedUtubSettings {
+  allowShortLinks = true,
+}: {
+  scheme?: string;
+  hide?: boolean;
+  allowShortLinks?: boolean;
+} = {}): ResolvedUtubSettings {
   return {
     ...EMPTY_UTUB_SETTINGS,
-    urls: { default_url_scheme: scheme, hide_scheme_selector: hide },
+    urls: {
+      default_url_scheme: scheme,
+      hide_scheme_selector: hide,
+      allow_short_links: allowShortLinks,
+    },
   } as ResolvedUtubSettings;
+}
+
+const SHORT_LINKS_SWITCH = "#urlsSettingsAllowShortLinksSwitch";
+
+function shortLinksSwitchEl(): HTMLElement {
+  return document.querySelector<HTMLElement>(SHORT_LINKS_SWITCH)!;
 }
 
 function seed(settings: ResolvedUtubSettings | null): void {
@@ -354,6 +369,116 @@ describe("registerUrlsSettingsSection", () => {
       expect(submit).not.toHaveBeenCalled();
       switchEl().focus();
       expect(document.activeElement).toBe(switchEl());
+    });
+  });
+
+  describe("allow short links switch", () => {
+    it("renders the stored value with its label and description", () => {
+      setup({ settings: urlsSettings({ allowShortLinks: false }) });
+
+      expect(shortLinksSwitchEl().getAttribute("role")).toBe("switch");
+      expect(shortLinksSwitchEl().getAttribute("aria-checked")).toBe("false");
+      expect(
+        document.querySelector("#urlsSettingsAllowShortLinksLabel")!
+          .textContent,
+      ).toBe("Allow short links");
+      expect(
+        document.querySelector("#urlsSettingsAllowShortLinksDesc")!.textContent,
+      ).toContain("Existing short links keep working");
+    });
+
+    it("defaults to on when the slice is null", () => {
+      setup({ settings: null });
+      expect(shortLinksSwitchEl().getAttribute("aria-checked")).toBe("true");
+    });
+
+    it("toggles and submits allow_short_links", () => {
+      setup({ settings: urlsSettings() });
+
+      shortLinksSwitchEl().click();
+      expect(shortLinksSwitchEl().getAttribute("aria-checked")).toBe("false");
+      expect(submit).toHaveBeenLastCalledWith({
+        patch: { allow_short_links: false },
+      });
+
+      shortLinksSwitchEl().click();
+      expect(shortLinksSwitchEl().getAttribute("aria-checked")).toBe("true");
+      expect(submit).toHaveBeenLastCalledWith({
+        patch: { allow_short_links: true },
+      });
+    });
+
+    it("is aria-disabled and inert for a read-only viewer", () => {
+      setup({
+        settings: urlsSettings({ allowShortLinks: false }),
+        canWrite: false,
+      });
+
+      expect(shortLinksSwitchEl().getAttribute("aria-disabled")).toBe("true");
+      expect(shortLinksSwitchEl().getAttribute("aria-checked")).toBe("false");
+      shortLinksSwitchEl().click();
+      expect(submit).not.toHaveBeenCalled();
+    });
+
+    it("names the setting in the save notice", async () => {
+      seed(urlsSettings());
+      mockPatch(async () => ({
+        outcome: "ok",
+        settings: urlsSettings({ allowShortLinks: false }),
+      }));
+
+      const off = await section.save({
+        utubID: UTUB_ID,
+        patch: { allow_short_links: false },
+      });
+      expect(off).toMatchObject({
+        outcome: "ok",
+        notice: "Short links turned off",
+      });
+
+      const on = await section.save({
+        utubID: UTUB_ID,
+        patch: { allow_short_links: true },
+      });
+      expect(on).toMatchObject({
+        outcome: "ok",
+        notice: "Short links turned on",
+      });
+    });
+
+    it("joins the short-links and selector-restored notices for a coalesced patch", async () => {
+      seed(urlsSettings({ hide: true }));
+      mockPatch(async () => {
+        const settings = urlsSettings({
+          scheme: "ssh",
+          hide: false,
+          allowShortLinks: false,
+        });
+        setState({ settings });
+        return { outcome: "ok", settings };
+      });
+
+      const result = await section.save({
+        utubID: UTUB_ID,
+        patch: { allow_short_links: false, default_url_scheme: "ssh" },
+      });
+
+      expect(result).toMatchObject({
+        outcome: "ok",
+        notice:
+          "Short links turned off. Scheme selector shown again because the default is no longer https.",
+      });
+    });
+
+    it("passes a failed save through without a notice", async () => {
+      seed(urlsSettings());
+      mockPatch(async () => ({ outcome: "error" }));
+
+      const result = await section.save({
+        utubID: UTUB_ID,
+        patch: { allow_short_links: false },
+      });
+      expect(result).toEqual({ outcome: "error" });
     });
   });
 

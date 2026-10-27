@@ -2,7 +2,11 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
 import { getState } from "../../store/app-store.js";
 import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
-import { handleActiveUTubGone, resyncSettings } from "./client.js";
+import {
+  handleActiveUTubGone,
+  resyncMemberSettings,
+  resyncSettings,
+} from "./client.js";
 import { canWriteSection } from "./permissions.js";
 import { setPanelSettingsPendingSaveCount } from "./state.js";
 import type {
@@ -230,8 +234,12 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
       case "error": {
         dropPending({ state });
         sink.report({ sectionId, utubID, status: "error" });
-        if (section.scope === "utub" && result.resync !== false) {
-          await resyncAfterError({ sectionId, utubID });
+        if (
+          (section.scope === "utub" ||
+            (section.scope === "user" && section.userKind === "per-utub")) &&
+          result.resync !== false
+        ) {
+          await resyncAfterError({ section, utubID });
         }
         return;
       }
@@ -272,14 +280,18 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
 
   // The server may have committed a timed-out or network-failed PATCH.
   async function resyncAfterError({
-    sectionId,
+    section,
     utubID,
   }: {
-    sectionId: string;
+    section: PanelSection;
     utubID: number | null;
   }): Promise<void> {
     if (utubID === null) return;
-    if (await resyncSettings({ utubID })) sink.resynced({ sectionId, utubID });
+    const resynced =
+      section.scope === "user"
+        ? await resyncMemberSettings({ utubID })
+        : await resyncSettings({ utubID });
+    if (resynced) sink.resynced({ sectionId: section.id, utubID });
   }
 
   return {
