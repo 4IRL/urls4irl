@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from backend.schemas.utubs import UtubDetailSchema
 from backend.utils.strings.model_strs import MODELS
-from tests.settings_stub import DEFAULT_SETTINGS_DICT
+from tests.settings_stub import DEFAULT_MEMBER_SETTINGS_DICT, DEFAULT_SETTINGS_DICT
 
 pytestmark = pytest.mark.unit
 
@@ -51,11 +51,12 @@ def test_utub_detail_schema_dump():
     assert dumped[MODELS.CURRENT_USER] == 1
 
 
-def test_utub_detail_schema_settings_default_is_last_field():
+def test_utub_detail_schema_settings_defaults_are_the_last_fields():
     schema = UtubDetailSchema.model_validate(_UTUB_DICT)
     dumped = schema.model_dump(by_alias=True)
     assert dumped[MODELS.SETTINGS] == DEFAULT_SETTINGS_DICT
-    assert list(dumped)[-1] == MODELS.SETTINGS
+    assert dumped[MODELS.MEMBER_SETTINGS] == DEFAULT_MEMBER_SETTINGS_DICT
+    assert list(dumped)[-2:] == [MODELS.SETTINGS, MODELS.MEMBER_SETTINGS]
 
 
 def test_utub_detail_schema_settings_unknown_section_rejected():

@@ -86,3 +86,16 @@ class UpdateUTubSettingsRequest(BaseModel):
     urls: dict[str, Any] = Field(
         default_factory=dict, description="Patch for the URLs panel settings"
     )
+
+
+class UpdateMemberSettingsRequest(BaseModel):
+    """The caller's own per-panel view-override patch. Values are validated and
+    normalized only in ``merge_member_settings`` so an absent key and an explicit
+    ``null`` stay distinct; only sections the caller sent are merged."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    urls: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Patch for the caller's URLs panel view overrides",
+    )

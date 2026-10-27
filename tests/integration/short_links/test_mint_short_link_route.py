@@ -11,9 +11,11 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 from sqlalchemy.exc import IntegrityError
 
+from backend import db
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role
+from backend.models.utubs import Utubs
 from backend.schemas.short_links import ShortLinkResponseSchema
 from backend.short_links.constants import SHORT_LINK_TTL
 from backend.short_links.services import mint_short_link as mint_module
@@ -25,6 +27,7 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.short_link_strs import (
     SHORT_LINK_FAILURE,
     SHORT_LINK_SUCCESS,
+    SHORT_LINK_UI,
 )
 from tests.integration.short_links.short_link_helpers import (
     CAN_REVOKE_KEY,
@@ -38,6 +41,7 @@ from tests.integration.short_links.short_link_helpers import (
     SHORT_URL_KEY,
     THIRD_USER_ID,
     code_from_short_url,
+    delete_revoke,
     logged_in_as,
     post_mint,
     set_url_adder,
@@ -595,3 +599,135 @@ def test_mint_logs_success(
 
     assert is_string_in_logs("Minted short link", caplog.records)
     assert is_string_in_logs(f"UTubURL.id={FIRST_UTUB_URL_ID}", caplog.records)
+
+
+def _set_allow_short_links(app: Flask, allowed: bool) -> None:
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(FIRST_UTUB_ID)
+        utub.settings = {"urls": {"allow_short_links": allowed}}
+        db.session.commit()
+
+
+def _assert_policy_refusal(response) -> None:
+    assert response.status_code == 403
+    assert response.json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response.json[STD_JSON.MESSAGE] == SHORT_LINK_UI.SHORT_LINKS_DISABLED
+    assert int(response.json[STD_JSON.ERROR_CODE]) == URLErrorCodes.SHORT_LINKS_DISABLED
+    assert URLErrorCodes.SHORT_LINKS_DISABLED == 17
+
+
+@pytest.mark.utubs
+def test_mint_with_policy_off_returns_403_and_creates_no_row(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a UTub whose allow_short_links policy is off
+    WHEN a member (here the owner) mints
+    THEN 403 with errorCode 17 and no ShortLinks row
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    _set_allow_short_links(app, False)
+
+    _assert_policy_refusal(post_mint(client, csrf_token))
+
+    assert short_link_rows(app) == []
+
+
+@pytest.mark.utubs
+def test_mint_with_policy_off_refuses_plain_member(
+    add_one_url_and_all_users_to_each_utub_no_tags, app: Flask
+) -> None:
+    """
+    GIVEN a UTub whose allow_short_links policy is off
+    WHEN a plain member mints
+    THEN 403 with errorCode 17 and no row
+    """
+    _set_allow_short_links(app, False)
+
+    with logged_in_as(app, THIRD_USER_ID) as (client, csrf_token):
+        _assert_policy_refusal(post_mint(client, csrf_token))
+
+    assert short_link_rows(app) == []
+
+
+@pytest.mark.utubs
+def test_mint_with_policy_off_refuses_reuse_of_active_link(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an active short link and the policy turned off afterwards
+    WHEN a member mints again
+    THEN 403 with errorCode 17 and the link stays active and unchanged
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    add_short_link(app, FIRST_UTUB_URL_ID, minted_by=SECOND_USER_ID, code=OLD_CODE)
+    _set_allow_short_links(app, False)
+
+    _assert_policy_refusal(post_mint(client, csrf_token))
+
+    rows = short_link_rows(app)
+    assert [row.code for row in rows] == [OLD_CODE]
+    assert not rows[0].is_expired()
+
+
+@pytest.mark.utubs
+def test_mint_in_locked_utub_with_policy_off_reports_lock_first(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a locked UTub whose policy is also off
+    WHEN a member mints
+    THEN the lock error wins over the policy error
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    _set_allow_short_links(app, False)
+    lock_utub(app, FIRST_UTUB_ID)
+
+    response = post_mint(client, csrf_token)
+
+    assert response.status_code == 403
+    assert int(response.json[STD_JSON.ERROR_CODE]) == URLErrorCodes.UTUB_IS_LOCKED
+
+
+@pytest.mark.utubs
+def test_revoke_still_succeeds_with_policy_off(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an active short link and the policy turned off
+    WHEN the owner revokes it
+    THEN revoke returns 200 and the link row is removed
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    add_short_link(app, FIRST_UTUB_URL_ID, minted_by=SECOND_USER_ID, code=OLD_CODE)
+    _set_allow_short_links(app, False)
+
+    response = delete_revoke(client, csrf_token)
+
+    assert response.status_code == 200
+    assert short_link_rows(app) == []
+
+
+@pytest.mark.utubs
+def test_mint_works_again_after_policy_turned_back_on(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a policy that was off and is turned back on
+    WHEN a member mints
+    THEN 200 with a new link
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    _set_allow_short_links(app, False)
+    _assert_policy_refusal(post_mint(client, csrf_token))
+    _set_allow_short_links(app, True)
+
+    response = post_mint(client, csrf_token)
+
+    assert response.status_code == 200
+    _assert_success_body(response.json, created=True)

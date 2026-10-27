@@ -56,6 +56,7 @@ def _build_export_utub(
         role=membership.member_role.value,
         is_locked=utub.is_locked,
         created_at=utub.created_at,
+        member_settings=membership.settings,
         urls=[
             _build_export_url(utub_url=utub_url, username_by_id=username_by_id)
             for utub_url in utub.utub_urls

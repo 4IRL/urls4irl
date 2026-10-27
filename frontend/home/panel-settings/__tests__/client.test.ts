@@ -41,6 +41,7 @@ const NOT_AUTHORIZED = APP_CONFIG.strings.NOT_AUTHORIZED;
 const URLS_DEFAULTS = {
   default_url_scheme: "https",
   hide_scheme_selector: false,
+  allow_short_links: true,
 } as const;
 
 function settingsWith(

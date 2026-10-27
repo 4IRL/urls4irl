@@ -113,6 +113,11 @@ class ExportUtubSchema(BaseSchema):
         alias="createdAt",
         description="UTub creation timestamp (ISO 8601)",
     )
+    member_settings: dict | None = Field(
+        default=None,
+        alias="memberSettings",
+        description="The acting user's sparse private view overrides for this UTub, or null when none",
+    )
     urls: list[ExportUrlSchema] = Field(
         default_factory=list,
         description="URLs in the UTub, each with applied tags",

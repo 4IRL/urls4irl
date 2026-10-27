@@ -43,3 +43,4 @@ class SHORT_LINK_UI:
     REVOKE_FAILED = "Couldn't revoke the short link. Try again."
     REVOKE_CONFIRM_TITLE = "Revoke short link?"
     REVOKE_CONFIRM_BODY = "Anyone who has this link will no longer be able to open it. It would otherwise expire on {date}."
+    SHORT_LINKS_DISABLED = "Short links are turned off for this UTub."

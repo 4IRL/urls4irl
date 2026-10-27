@@ -18,6 +18,7 @@ class URLErrorCodes(IntEnum):
     URL_ALREADY_IN_DESTINATION = 14
     UNABLE_TO_RESTORE_URL_ERROR = 15
     UNABLE_TO_RESTORE_URLS_ERROR = 16
+    SHORT_LINKS_DISABLED = 17
 
 
 class UrlRestoreTarget(StrEnum):
