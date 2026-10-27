@@ -2095,6 +2095,166 @@
         }
       }
     },
+    "/admin/metrics/flows/catalog": {
+      "get": {
+        "operationId": "getMetricFlowCatalog",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "List every event, dimension filter rule and API endpoint the flow builder may offer, derived from the same sources save-time validation uses.",
+        "responses": {
+          "200": {
+            "description": "Everything the flow builder may offer: events, dims and API endpoints.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FlowCatalogResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/metrics/flows/preview": {
+      "post": {
+        "operationId": "previewMetricFlow",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Validate an unsaved funnel draft and count it for an admin time window with the same code as the dashboard. Writes nothing.",
+        "parameters": [
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LenientFlowDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\n    A `steps` wrapper (not a bare list) is required because\n    `APIResponse.to_response()` spreads the payload via `**data_dict`, which\n    needs a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\n    Serves both the built-in funnels and stored `custom_<id>` flows. A\n    well-formed custom id with no saved flow answers 404; a saved flow that no\n    longer validates (or raises a count-time `ValueError`) answers 422 with\n    `FlowInvalidResponseSchema` instead of this envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FlowResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
     "/admin/metrics/flows/{flow_id}": {
       "put": {
         "operationId": "updateMetricFlow",
@@ -10490,6 +10650,212 @@
         "required": ["display_name", "steps"],
         "type": "object"
       },
+      "FlowCatalogApiEndpointSchema": {
+        "description": "One API endpoint (and its methods) an API step may name.",
+        "properties": {
+          "endpoint": {
+            "description": "Flask endpoint name, e.g. `urls.create_url`.",
+            "type": "string"
+          },
+          "blueprint": {
+            "description": "Blueprint prefix: the part of `endpoint` before the first `.`.",
+            "type": "string"
+          },
+          "methods": {
+            "description": "Sorted HTTP methods a step may name.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["endpoint", "blueprint", "methods"],
+        "type": "object"
+      },
+      "FlowCatalogDimSchema": {
+        "description": "One dimension of a catalog event and how a flow may use it.",
+        "properties": {
+          "key": {
+            "description": "Dimension key, usable as a group_by key.",
+            "type": "string"
+          },
+          "filter_kind": {
+            "description": "`values`: filter by one of `values`; `status_code`: filter by a 3-digit code from 100 to 599; `group_by_only`: not filterable.",
+            "enum": ["values", "status_code", "group_by_only"],
+            "type": "string"
+          },
+          "values": {
+            "description": "Allowed filter values; non-empty only when filter_kind is `values`.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["key", "filter_kind", "values"],
+        "type": "object"
+      },
+      "FlowCatalogEventGroupSchema": {
+        "description": "Catalog events of one category, sorted by name.",
+        "properties": {
+          "category": {
+            "description": "Category shared by every event in the group.",
+            "enum": ["ui", "domain", "api"],
+            "type": "string"
+          },
+          "events": {
+            "description": "Events in this category, sorted by event_name.",
+            "items": {
+              "$ref": "#/components/schemas/FlowCatalogEventSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["category", "events"],
+        "type": "object"
+      },
+      "FlowCatalogEventSchema": {
+        "description": "One event a flow step or breakdown may use.",
+        "properties": {
+          "event_name": {
+            "description": "Registered event name.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Human-readable event summary.",
+            "type": "string"
+          },
+          "category": {
+            "description": "Event category from the registry.",
+            "enum": ["ui", "domain", "api"],
+            "type": "string"
+          },
+          "step_allowed": {
+            "description": "True only for ui/domain events, the categories a step may use.",
+            "type": "boolean"
+          },
+          "dims": {
+            "description": "Dimensions in model order (flat columns for api events).",
+            "items": {
+              "$ref": "#/components/schemas/FlowCatalogDimSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "event_name",
+          "description",
+          "category",
+          "step_allowed",
+          "dims"
+        ],
+        "type": "object"
+      },
+      "FlowCatalogResponseSchema": {
+        "description": "Everything the flow builder may offer: events, dims and API endpoints.",
+        "properties": {
+          "event_groups": {
+            "description": "Event groups ordered ui, domain, api; empty groups omitted.",
+            "items": {
+              "$ref": "#/components/schemas/FlowCatalogEventGroupSchema"
+            },
+            "type": "array"
+          },
+          "api_endpoints": {
+            "description": "API endpoints sorted by endpoint name.",
+            "items": {
+              "$ref": "#/components/schemas/FlowCatalogApiEndpointSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["event_groups", "api_endpoints"],
+        "type": "object"
+      },
+      "FlowBreakdownRow": {
+        "description": "One per-cause row of a flow step's drop-off breakdown.\n\n`pct_of_step` normalizes WITHIN the breakdown (all rows sum to ~1.0) so\ncause-pill widths are self-consistent regardless of the step's absolute\ncount. It is a `float` (never null): a breakdown with no rows collapses to\n`null` on the owning step (DD-6) before any row is constructed.",
+        "properties": {
+          "label": {
+            "description": "Raw dimension value for this cause (e.g. 'escape_key', 'invalid_url'); the renderer maps it to a human-readable label.",
+            "type": "string"
+          },
+          "count": {
+            "description": "Summed count for this cause in the window.",
+            "type": "integer"
+          },
+          "pct_of_step": {
+            "description": "Fraction of the breakdown total this cause represents (0.0-1.0); all rows in one breakdown sum to ~1.0.",
+            "type": "number"
+          }
+        },
+        "required": ["label", "count", "pct_of_step"],
+        "type": "object"
+      },
+      "FlowStepSchema": {
+        "description": "One step of an assembled funnel returned by `GET /api/metrics/query/flow`.",
+        "properties": {
+          "stream": {
+            "description": "Metric stream \u2014 drives renderer coloring/category.",
+            "enum": ["ui", "api", "domain"],
+            "type": "string"
+          },
+          "label": {
+            "description": "Display label for this step.",
+            "type": "string"
+          },
+          "event_name": {
+            "description": "The underlying event name counted for this step; for API steps this carries the step's display label instead (the Flask endpoint name is an internal routing identifier, not display-suitable).",
+            "type": "string"
+          },
+          "count": {
+            "description": "Summed count for this step in the window.",
+            "type": "integer"
+          },
+          "pct_of_top": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "This step's count as a fraction of the funnel-top (steps[0]) count, capped at 1.0. Null when the top count is zero (division-by-zero guard, DD-6 graceful-degrade)."
+          },
+          "breakdown": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FlowBreakdownRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Per-cause drop-off rows for the transition INTO this step; null when the step has no configured breakdown or the breakdown event has no rows in the window (DD-6 graceful-degrade)."
+          }
+        },
+        "required": ["stream", "label", "event_name", "count"],
+        "type": "object"
+      },
+      "FlowResponseSchema": {
+        "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\nServes both the built-in funnels and stored `custom_<id>` flows. A\nwell-formed custom id with no saved flow answers 404; a saved flow that no\nlonger validates (or raises a count-time `ValueError`) answers 422 with\n`FlowInvalidResponseSchema` instead of this envelope.",
+        "properties": {
+          "steps": {
+            "description": "Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order.",
+            "items": {
+              "$ref": "#/components/schemas/FlowStepSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["steps"],
+        "type": "object"
+      },
       "ApiUserProfileSchema": {
         "description": "Authenticated user's profile for the mobile /api/v1 surface.",
         "properties": {
@@ -12493,90 +12859,6 @@
           "group_by",
           "buckets"
         ],
-        "type": "object"
-      },
-      "FlowBreakdownRow": {
-        "description": "One per-cause row of a flow step's drop-off breakdown.\n\n`pct_of_step` normalizes WITHIN the breakdown (all rows sum to ~1.0) so\ncause-pill widths are self-consistent regardless of the step's absolute\ncount. It is a `float` (never null): a breakdown with no rows collapses to\n`null` on the owning step (DD-6) before any row is constructed.",
-        "properties": {
-          "label": {
-            "description": "Raw dimension value for this cause (e.g. 'escape_key', 'invalid_url'); the renderer maps it to a human-readable label.",
-            "type": "string"
-          },
-          "count": {
-            "description": "Summed count for this cause in the window.",
-            "type": "integer"
-          },
-          "pct_of_step": {
-            "description": "Fraction of the breakdown total this cause represents (0.0-1.0); all rows in one breakdown sum to ~1.0.",
-            "type": "number"
-          }
-        },
-        "required": ["label", "count", "pct_of_step"],
-        "type": "object"
-      },
-      "FlowStepSchema": {
-        "description": "One step of an assembled funnel returned by `GET /api/metrics/query/flow`.",
-        "properties": {
-          "stream": {
-            "description": "Metric stream \u2014 drives renderer coloring/category.",
-            "enum": ["ui", "api", "domain"],
-            "type": "string"
-          },
-          "label": {
-            "description": "Display label for this step.",
-            "type": "string"
-          },
-          "event_name": {
-            "description": "The underlying event name counted for this step; for API steps this carries the step's display label instead (the Flask endpoint name is an internal routing identifier, not display-suitable).",
-            "type": "string"
-          },
-          "count": {
-            "description": "Summed count for this step in the window.",
-            "type": "integer"
-          },
-          "pct_of_top": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "This step's count as a fraction of the funnel-top (steps[0]) count, capped at 1.0. Null when the top count is zero (division-by-zero guard, DD-6 graceful-degrade)."
-          },
-          "breakdown": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/FlowBreakdownRow"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Per-cause drop-off rows for the transition INTO this step; null when the step has no configured breakdown or the breakdown event has no rows in the window (DD-6 graceful-degrade)."
-          }
-        },
-        "required": ["stream", "label", "event_name", "count"],
-        "type": "object"
-      },
-      "FlowResponseSchema": {
-        "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\nServes both the built-in funnels and stored `custom_<id>` flows. A\nwell-formed custom id with no saved flow answers 404; a saved flow that no\nlonger validates (or raises a count-time `ValueError`) answers 422 with\n`FlowInvalidResponseSchema` instead of this envelope.",
-        "properties": {
-          "steps": {
-            "description": "Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order.",
-            "items": {
-              "$ref": "#/components/schemas/FlowStepSchema"
-            },
-            "type": "array"
-          }
-        },
-        "required": ["steps"],
         "type": "object"
       },
       "FlowInvalidResponseSchema": {

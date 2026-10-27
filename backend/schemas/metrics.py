@@ -403,6 +403,69 @@ class MetricFlowListResponseSchema(BaseSchema):
     )
 
 
+class FlowCatalogDimSchema(BaseSchema):
+    """One dimension of a catalog event and how a flow may use it."""
+
+    key: str = Field(description="Dimension key, usable as a group_by key.")
+    filter_kind: Literal["values", "status_code", "group_by_only"] = Field(
+        description=(
+            "`values`: filter by one of `values`; `status_code`: filter by a "
+            "3-digit code from 100 to 599; `group_by_only`: not filterable."
+        ),
+    )
+    values: list[str] = Field(
+        description="Allowed filter values; non-empty only when filter_kind is `values`.",
+    )
+
+
+class FlowCatalogEventSchema(BaseSchema):
+    """One event a flow step or breakdown may use."""
+
+    event_name: str = Field(description="Registered event name.")
+    description: str = Field(description="Human-readable event summary.")
+    category: Literal["ui", "domain", "api"] = Field(
+        description="Event category from the registry."
+    )
+    step_allowed: bool = Field(
+        description="True only for ui/domain events, the categories a step may use.",
+    )
+    dims: list[FlowCatalogDimSchema] = Field(
+        description="Dimensions in model order (flat columns for api events).",
+    )
+
+
+class FlowCatalogEventGroupSchema(BaseSchema):
+    """Catalog events of one category, sorted by name."""
+
+    category: Literal["ui", "domain", "api"] = Field(
+        description="Category shared by every event in the group."
+    )
+    events: list[FlowCatalogEventSchema] = Field(
+        description="Events in this category, sorted by event_name."
+    )
+
+
+class FlowCatalogApiEndpointSchema(BaseSchema):
+    """One API endpoint (and its methods) an API step may name."""
+
+    endpoint: str = Field(description="Flask endpoint name, e.g. `urls.create_url`.")
+    blueprint: str = Field(
+        description="Blueprint prefix: the part of `endpoint` before the first `.`."
+    )
+    methods: list[str] = Field(description="Sorted HTTP methods a step may name.")
+
+
+class FlowCatalogResponseSchema(BaseSchema):
+    """Everything the flow builder may offer: events, dims and API endpoints."""
+
+    event_groups: list[FlowCatalogEventGroupSchema] = Field(
+        description="Event groups ordered ui, domain, api; empty groups omitted.",
+    )
+    api_endpoints: list[FlowCatalogApiEndpointSchema] = Field(
+        description="API endpoints sorted by endpoint name.",
+    )
+
+
 class GaugeSampleSchema(BaseSchema):
     """One sampled point of a gauge's timeseries.
 

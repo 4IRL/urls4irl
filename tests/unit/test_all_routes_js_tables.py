@@ -95,6 +95,8 @@ EXPECTED_ADMIN_JS_ROUTE_URLS: dict[str, str] = {
     "adminMetricFlowCreate": "/admin/metrics/flows",
     "adminMetricFlowUpdate": "/admin/metrics/flows/-1",
     "adminMetricFlowDelete": "/admin/metrics/flows/-1",
+    "adminMetricFlowCatalog": "/admin/metrics/flows/catalog",
+    "adminMetricFlowPreview": "/admin/metrics/flows/preview",
 }
 
 
