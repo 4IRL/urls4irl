@@ -92,6 +92,8 @@ EXPECTED_ADMIN_JS_ROUTE_URLS: dict[str, str] = {
     # Custom metric flow builder
     "adminMetricFlowsList": "/admin/metrics/flows",
     "adminMetricFlowCreate": "/admin/metrics/flows",
+    "adminMetricFlowUpdate": "/admin/metrics/flows/-1",
+    "adminMetricFlowDelete": "/admin/metrics/flows/-1",
 }
 
 

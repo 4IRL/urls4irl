@@ -106,6 +106,24 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `adminMetricFlowCreate`
 
+### `DELETE /admin/metrics/flows/<flow_id>` — `admin.delete_metric_flow`
+
+- **Handler:** `backend/admin/metric_flow_routes.py:admin_delete_metric_flow`
+- **Decorators:** `admin_required`, `api_route`
+- **Service:** `backend.admin.metric_flow_service:delete_metric_flow`
+- **Schema:** response: `backend.schemas.admin_actions.AdminActionResponseSchema`; status: 200 `backend.schemas.admin_actions.AdminActionResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `adminMetricFlowDelete`
+
+### `PUT /admin/metrics/flows/<flow_id>` — `admin.update_metric_flow`
+
+- **Handler:** `backend/admin/metric_flow_routes.py:admin_update_metric_flow`
+- **Decorators:** `admin_required`, `api_route`
+- **Service:** `backend.admin.metric_flow_service:update_metric_flow`
+- **Schema:** body: `backend.metrics.flow_validation.LenientFlowDefinition`; response: `backend.schemas.metrics.MetricFlowEntrySchema`; status: 200 `backend.schemas.metrics.MetricFlowEntrySchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `adminMetricFlowUpdate`
+
 ### `POST /admin/ops/audit-purge` — `admin.admin_ops_audit_purge`
 
 - **Handler:** `backend/admin/action_routes.py:admin_ops_audit_purge`

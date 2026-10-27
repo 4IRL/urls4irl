@@ -134,6 +134,8 @@ class ADMIN_ROUTES:
     # Custom metric flow endpoints
     METRIC_FLOWS_LIST = _ADMIN + "list_metric_flows"
     METRIC_FLOW_CREATE = _ADMIN + "create_metric_flow"
+    METRIC_FLOW_UPDATE = _ADMIN + "update_metric_flow"
+    METRIC_FLOW_DELETE = _ADMIN + "delete_metric_flow"
 
 
 class METRICS_ROUTES:
@@ -353,6 +355,8 @@ ADMIN_JS_ROUTES: dict[str, JsRoute] = {
     # Custom metric flow builder (admin dashboard only)
     "adminMetricFlowsList": JsRoute(ADMIN_ROUTES.METRIC_FLOWS_LIST, {}),
     "adminMetricFlowCreate": JsRoute(ADMIN_ROUTES.METRIC_FLOW_CREATE, {}),
+    "adminMetricFlowUpdate": JsRoute(ADMIN_ROUTES.METRIC_FLOW_UPDATE, {"flow_id": -1}),
+    "adminMetricFlowDelete": JsRoute(ADMIN_ROUTES.METRIC_FLOW_DELETE, {"flow_id": -1}),
 }
 
 

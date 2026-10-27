@@ -1,4 +1,4 @@
-"""Service layer for the admin custom metric flow endpoints (list and create)."""
+"""Service layer for the admin custom metric flow endpoints (list, create, update, delete)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from backend.admin.constants import METRIC_FLOW_CAP_LOCK_KEY, AdminActionErrorCo
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
 from backend.extensions.audit.record import record
+from backend.metrics.constants import MetricsFailureMessages
 from backend.metrics.flow_invalid import first_invalid_detail
 from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.flow_validation import (
@@ -23,14 +24,20 @@ from backend.metrics.flows import (
     FlowDefinition,
     FlowId,
     format_custom_flow_id,
+    parse_custom_flow_id,
 )
 from backend.models.metric_flows import DISPLAY_NAME_LOWER_INDEX, Metric_Flows
-from backend.schemas.errors import build_field_error_response
+from backend.schemas.admin_actions import AdminActionResponseSchema
+from backend.schemas.errors import (
+    build_field_error_response,
+    build_message_error_response,
+)
 from backend.schemas.metrics import MetricFlowEntrySchema, MetricFlowListResponseSchema
 from backend.utils.strings.admin_portal_strs import (
     ADMIN_ACTION_STRINGS,
     ADMIN_AUDIT_ACTIONS,
 )
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 
 METRIC_FLOW_AUDIT_TARGET_TYPE: str = "MetricFlow"
 _ROOT_KEY: str = "__root__"
@@ -109,12 +116,15 @@ def _display_name_taken_response() -> FlaskResponse:
     )
 
 
-def _is_display_name_taken(*, display_name: str) -> bool:
+def _is_display_name_taken(
+    *, display_name: str, exclude_row_id: int | None = None
+) -> bool:
     """True when a built-in or saved flow already uses this name, ignoring case.
 
     Built-ins are compared with Python ``str.lower()`` and saved flows with
     Postgres ``lower()`` on purpose: the latter is exactly what the unique index
-    uses, so the pre-check and the backstop agree.
+    uses, so the pre-check and the backstop agree. ``exclude_row_id`` skips the
+    row being updated so it may be renamed to another case of its own name.
     """
     lowered_name = display_name.lower()
     if any(
@@ -122,12 +132,12 @@ def _is_display_name_taken(*, display_name: str) -> bool:
         for built_in in FLOWS.values()
     ):
         return True
-    return (
-        db.session.query(Metric_Flows.id)
-        .filter(func.lower(Metric_Flows.display_name) == func.lower(display_name))
-        .first()
-        is not None
+    query = db.session.query(Metric_Flows.id).filter(
+        func.lower(Metric_Flows.display_name) == func.lower(display_name)
     )
+    if exclude_row_id is not None:
+        query = query.filter(Metric_Flows.id != exclude_row_id)
+    return query.first() is not None
 
 
 def create_metric_flow(*, actor_id: int, payload: object) -> FlaskResponse:
@@ -198,3 +208,129 @@ def create_metric_flow(*, actor_id: int, payload: object) -> FlaskResponse:
         ["Created metric flow", f"User.id={actor_id}", f"MetricFlow.id={flow_id}"]
     )
     return APIResponse(data=entry, status_code=201).to_response()
+
+
+def _invalid_id_response() -> FlaskResponse:
+    return build_message_error_response(
+        message=ADMIN_ACTION_STRINGS.METRIC_FLOW_INVALID_ID,
+        error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+        status_code=400,
+    )
+
+
+def _not_found_response() -> FlaskResponse:
+    return build_message_error_response(
+        message=MetricsFailureMessages.FLOW_NOT_FOUND,
+        error_code=AdminActionErrorCodes.TARGET_NOT_FOUND,
+        status_code=404,
+    )
+
+
+def _get_locked_row(*, flow_id: str) -> Metric_Flows | FlaskResponse:
+    """Parse the id and fetch its row under a row lock.
+
+    Returns the row on success, else the error response: 400 for a malformed or
+    built-in id, 404 for a well-formed id with no row. Any early exit rolls back
+    so the row lock is not held.
+    """
+    row_id = parse_custom_flow_id(flow_id)
+    if row_id is None:
+        return _invalid_id_response()
+    row = db.session.get(Metric_Flows, row_id, with_for_update=True)
+    if row is None:
+        db.session.rollback()
+        return _not_found_response()
+    return row
+
+
+def update_metric_flow(
+    *, actor_id: int, flow_id: str, payload: object
+) -> FlaskResponse:
+    """Replace a saved funnel's name and steps (last write wins), auditing it.
+
+    Checks run in this order: id parse (400), locked row lookup (404), draft
+    validation (400), name (400). There is no cap check: the row already exists.
+
+    Returns:
+        FlaskResponse: 200 with the updated entry, or a 400/404 envelope.
+    """
+    row = _get_locked_row(flow_id=flow_id)
+    if not isinstance(row, Metric_Flows):
+        return row
+
+    validated = validate_flow_payload(payload)
+    if not isinstance(validated, FlowDefinition):
+        db.session.rollback()
+        return build_field_error_response(
+            message=ADMIN_ACTION_STRINGS.METRIC_FLOW_INVALID,
+            errors=validated,
+            error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
+        )
+
+    if _is_display_name_taken(
+        display_name=validated.display_name, exclude_row_id=row.id
+    ):
+        db.session.rollback()
+        return _display_name_taken_response()
+
+    previous_display_name: str = row.display_name
+    previous_definition = row.definition
+    try:
+        with db.session.begin_nested():
+            row.display_name = validated.display_name
+            row.definition = serialize_flow_steps(validated)
+            row.updated_by = actor_id
+            db.session.flush()
+    except IntegrityError as integrity_error:
+        db.session.rollback()
+        if _violated_constraint(integrity_error) != DISPLAY_NAME_LOWER_INDEX:
+            raise
+        return _display_name_taken_response()
+
+    entry = build_flow_entry(row=row)
+    record(
+        actor_id=actor_id,
+        action=ADMIN_AUDIT_ACTIONS.METRIC_FLOW_UPDATE,
+        target_type=METRIC_FLOW_AUDIT_TARGET_TYPE,
+        target_id=flow_id,
+        metadata={
+            "display_name": validated.display_name,
+            "previous_display_name": previous_display_name,
+            "previous_definition": previous_definition,
+        },
+    )
+    db.session.commit()
+    safe_add_many_logs(
+        ["Updated metric flow", f"User.id={actor_id}", f"MetricFlow.id={flow_id}"]
+    )
+    return APIResponse(data=entry, status_code=200).to_response()
+
+
+def delete_metric_flow(*, actor_id: int, flow_id: str) -> FlaskResponse:
+    """Hard-delete a saved funnel; the audit row keeps its full definition.
+
+    Returns:
+        FlaskResponse: 200 success message, or a 400/404 envelope.
+    """
+    row = _get_locked_row(flow_id=flow_id)
+    if not isinstance(row, Metric_Flows):
+        return row
+
+    display_name: str = row.display_name
+    definition = row.definition
+    db.session.delete(row)
+    record(
+        actor_id=actor_id,
+        action=ADMIN_AUDIT_ACTIONS.METRIC_FLOW_DELETE,
+        target_type=METRIC_FLOW_AUDIT_TARGET_TYPE,
+        target_id=flow_id,
+        metadata={"display_name": display_name, "definition": definition},
+    )
+    db.session.commit()
+    safe_add_many_logs(
+        ["Deleted metric flow", f"User.id={actor_id}", f"MetricFlow.id={flow_id}"]
+    )
+    return AdminActionResponseSchema(
+        status=STD_JSON.SUCCESS, message=ADMIN_ACTION_STRINGS.METRIC_FLOW_DELETED
+    ).to_response()

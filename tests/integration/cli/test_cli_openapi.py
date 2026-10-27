@@ -1156,3 +1156,25 @@ def test_component_schemas_have_no_title_fields(runner, tmp_path):
         f"Found {len(violations)} schema(s) with 'title' keys:\n"
         + "\n".join(violations)
     )
+
+
+def test_metric_flow_write_routes_body_is_lenient_flow_definition(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec of the real app
+    WHEN we inspect POST /admin/metrics/flows and PUT /admin/metrics/flows/{flow_id}
+    THEN each requestBody references LenientFlowDefinition (snake_case properties)
+        and each operation carries x-error-codes
+    """
+    spec = _generate_spec(runner, tmp_path)
+    operations = [
+        spec["paths"]["/admin/metrics/flows"]["post"],
+        spec["paths"]["/admin/metrics/flows/{flow_id}"]["put"],
+    ]
+    for operation in operations:
+        schema_ref = operation["requestBody"]["content"]["application/json"]["schema"][
+            "$ref"
+        ]
+        assert schema_ref == "#/components/schemas/LenientFlowDefinition"
+        assert "x-error-codes" in operation
+    properties = spec["components"]["schemas"]["LenientFlowDefinition"]["properties"]
+    assert {"display_name", "steps"} <= set(properties)

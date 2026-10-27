@@ -1,12 +1,16 @@
-"""Integration tests for the admin custom metric flow list and create endpoints.
+"""Integration tests for the admin custom metric flow endpoints.
 
-GET  /admin/metrics/flows
-POST /admin/metrics/flows
+GET    /admin/metrics/flows
+POST   /admin/metrics/flows
+PUT    /admin/metrics/flows/<flow_id>
+DELETE /admin/metrics/flows/<flow_id>
 """
 
 from __future__ import annotations
 
 import copy
+import json
+from datetime import datetime, timedelta, timezone
 from typing import Any, Tuple
 
 import pytest
@@ -17,6 +21,8 @@ from werkzeug.test import TestResponse
 import backend.admin.metric_flow_service as metric_flow_service
 from backend import db
 from backend.admin.constants import AdminActionErrorCodes
+from backend.metrics.constants import MetricsFailureMessages
+from backend.metrics.events import EVENT_DESCRIPTIONS, EventCategory, EventName
 from backend.metrics.flow_invalid import first_invalid_detail
 from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.flow_validation import serialize_flow_steps, validate_flow_payload
@@ -25,8 +31,11 @@ from backend.metrics.flows import (
     FLOWS,
     FlowId,
     format_custom_flow_id,
+    parse_custom_flow_id,
 )
+from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.audit_log import AuditLog
+from backend.models.event_registry import Event_Registry
 from backend.models.metric_flows import Metric_Flows
 from backend.models.users import Users
 from backend.utils.strings.admin_portal_strs import (
@@ -540,7 +549,561 @@ def test_list_metric_flows_flow_level_error_returns_raw_definition(
 
 
 # ---------------------------------------------------------------------------
+# Update and delete
+# ---------------------------------------------------------------------------
+
+
+def _flow_url(flow_id: str) -> str:
+    return f"{_FLOWS_URL}/{flow_id}"
+
+
+def _put_flow(
+    client: FlaskClient, csrf: str, flow_id: str, body: object
+) -> TestResponse:
+    return client.put(_flow_url(flow_id), json=body, headers={"X-CSRFToken": csrf})
+
+
+def _delete_flow(client: FlaskClient, csrf: str, flow_id: str) -> TestResponse:
+    return client.delete(_flow_url(flow_id), headers={"X-CSRFToken": csrf})
+
+
+def _row_snapshot(app: Flask, row_id: int) -> tuple[Any, ...] | None:
+    with app.app_context():
+        row = db.session.get(Metric_Flows, row_id)
+        if row is None:
+            return None
+        return (
+            row.display_name,
+            copy.deepcopy(row.definition),
+            row.created_by,
+            row.created_at,
+            row.updated_by,
+        )
+
+
+def _audit_rows(app: Flask, action: str) -> list[AuditLog]:
+    with app.app_context():
+        rows = AuditLog.query.filter_by(action=action).all()
+        for row in rows:
+            db.session.expunge(row)
+        return rows
+
+
+_MALFORMED_IDS: list[str] = [
+    "custom_0",
+    "custom_007",
+    "custom_-1",
+    "custom_abc",
+    "custom_1000000000",
+    "custom_2147483648",
+    "Custom_1",
+    "custom_",
+    *ALL_FLOW_IDS,
+]
+
+
+def _assert_invalid_id(response: TestResponse) -> None:
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.METRIC_FLOW_INVALID_ID
+    assert body[STD_JSON.ERROR_CODE] == AdminActionErrorCodes.INVALID_FORM_INPUT
+    assert STD_JSON.ERRORS not in body
+
+
+def _assert_flow_not_found(response: TestResponse) -> None:
+    assert response.status_code == 404
+    body = response.get_json()
+    assert body[STD_JSON.MESSAGE] == MetricsFailureMessages.FLOW_NOT_FOUND
+    assert body[STD_JSON.ERROR_CODE] == AdminActionErrorCodes.TARGET_NOT_FOUND
+
+
+def test_update_metric_flow_returns_entry_and_audits(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a saved flow created by someone else
+    WHEN PUT /admin/metrics/flows/<id> with a new valid draft
+    THEN 200 with the entry shape; name, definition and updated_by change while
+         created_by and created_at keep their values; one update audit row holds
+         the previous name and definition
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    old_steps = _valid_steps()
+    row_id = _insert_flow(
+        app, display_name="Old name", definition={"steps": old_steps}, created_by=None
+    )
+    flow_id = format_custom_flow_id(row_id)
+    before = _row_snapshot(app, row_id)
+    assert before is not None
+    new_steps = _valid_steps()[:3]
+    new_steps[0]["label"] = "Renamed first step"
+
+    response = _put_flow(
+        client, csrf, flow_id, {"display_name": " New name ", "steps": new_steps}
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert _SIX_FIELDS <= set(body)
+    assert body["id"] == flow_id
+    assert body["display_name"] == "New name"
+    assert body["is_builtin"] is False
+    assert body["definition"] == {"steps": new_steps}
+    assert body["errors"] == {}
+    assert body["first_invalid"] is None
+    after = _row_snapshot(app, row_id)
+    assert after is not None
+    assert after[0] == "New name"
+    assert after[1] == {"steps": new_steps}
+    assert after[2] == before[2]
+    assert after[3] == before[3]
+    assert after[4] == admin_user.id
+    audit_rows = _audit_rows(app, ADMIN_AUDIT_ACTIONS.METRIC_FLOW_UPDATE)
+    assert len(audit_rows) == 1
+    assert audit_rows[0].actor_id == admin_user.id
+    assert audit_rows[0].target_type == "MetricFlow"
+    assert audit_rows[0].target_id == flow_id
+    assert audit_rows[0].log_metadata == {
+        "display_name": "New name",
+        "previous_display_name": "Old name",
+        "previous_definition": {"steps": old_steps},
+    }
+    assert _counts(app)[1] == 1
+
+
+def test_update_metric_flow_rename_to_own_name_case_variant_succeeds(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a saved flow named `Foo`
+    WHEN it is updated with the name `foo`
+    THEN 200 (the unique index and pre-check exclude the row itself)
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    row_id = _insert_flow(app, display_name="Foo")
+
+    response = _put_flow(
+        client, csrf, format_custom_flow_id(row_id), _valid_draft("foo")
+    )
+
+    assert response.status_code == 200
+    snapshot = _row_snapshot(app, row_id)
+    assert snapshot is not None
+    assert snapshot[0] == "foo"
+
+
+@pytest.mark.parametrize(
+    "taken_name",
+    ["Other flow", " OTHER FLOW ", FLOWS[FlowId.ADD_URL_TO_UTUB].display_name],
+)
+def test_update_metric_flow_taken_name_rejected(
+    login_admin_user_with_register: AdminSession, taken_name: str
+) -> None:
+    """
+    GIVEN a saved flow and another custom flow
+    WHEN the first is renamed to the other's name (any case) or a built-in name
+    THEN 400 `display_name` error, the row unchanged and no audit row
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    _insert_flow(app, display_name="Other flow")
+    row_id = _insert_flow(app, display_name="Mine")
+    before = _row_snapshot(app, row_id)
+
+    response = _put_flow(
+        client, csrf, format_custom_flow_id(row_id), _valid_draft(taken_name)
+    )
+
+    _assert_name_taken(response)
+    assert _row_snapshot(app, row_id) == before
+    assert _counts(app)[1] == 0
+
+
+def test_update_metric_flow_invalid_draft_leaves_row_unchanged(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a saved flow
+    WHEN PUT with a draft naming an unknown event
+    THEN 400 with the validator map, the row unchanged and no audit row
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    row_id = _insert_flow(app, display_name="Mine")
+    before = _row_snapshot(app, row_id)
+    draft = _valid_draft("Mine")
+    draft["steps"][1]["event_name"] = "not_an_event"
+    with app.app_context():
+        expected_errors = validate_flow_payload(draft)
+    assert isinstance(expected_errors, dict)
+
+    response = _put_flow(client, csrf, format_custom_flow_id(row_id), draft)
+
+    _assert_error_envelope(
+        response,
+        message=ADMIN_ACTION_STRINGS.METRIC_FLOW_INVALID,
+        error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+        errors=expected_errors,
+    )
+    assert _row_snapshot(app, row_id) == before
+    assert _counts(app)[1] == 0
+
+
+def test_update_metric_flow_race_on_name_index_maps_to_display_name(
+    login_admin_user_with_register: AdminSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    GIVEN the name pre-check misses (a concurrent write took the name)
+    WHEN PUT hits the unique `lower(displayName)` index
+    THEN the IntegrityError maps to the `display_name` 400, the row is unchanged
+         and no audit row exists
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    _insert_flow(app, display_name="Taken")
+    row_id = _insert_flow(app, display_name="Mine")
+    before = _row_snapshot(app, row_id)
+    monkeypatch.setattr(
+        metric_flow_service, "_is_display_name_taken", lambda **_kwargs: False
+    )
+
+    response = _put_flow(
+        client, csrf, format_custom_flow_id(row_id), _valid_draft("TAKEN")
+    )
+
+    _assert_name_taken(response)
+    assert _row_snapshot(app, row_id) == before
+    assert _counts(app)[1] == 0
+
+
+def test_update_metric_flow_with_cap_reached_succeeds(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN 20 saved flows (the cap)
+    WHEN one of them is updated
+    THEN 200 (update has no cap check)
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    _seed_flows(app, count=FLOW_LIMITS.MAX_CUSTOM - 1)
+    row_id = _insert_flow(app, display_name="Last one")
+
+    response = _put_flow(
+        client, csrf, format_custom_flow_id(row_id), _valid_draft("Last one renamed")
+    )
+
+    assert response.status_code == 200
+    assert _counts(app)[0] == FLOW_LIMITS.MAX_CUSTOM
+
+
+def test_update_metric_flow_corrected_draft_clears_needs_attention(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a saved flow stored with a removed event (non-empty `errors`)
+    WHEN a corrected draft is PUT
+    THEN 200 with `errors == {}`, `first_invalid` null and the corrected definition
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    broken_steps = _valid_steps()
+    broken_steps[1]["event_name"] = "removed_event"
+    row_id = _insert_flow(
+        app, display_name="Broken", definition={"steps": broken_steps}
+    )
+
+    response = _put_flow(
+        client, csrf, format_custom_flow_id(row_id), _valid_draft("Broken")
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["errors"] == {}
+    assert body["first_invalid"] is None
+    snapshot = _row_snapshot(app, row_id)
+    assert snapshot is not None
+    assert snapshot[1] == {"steps": _valid_steps()}
+
+
+def test_delete_metric_flow_removes_row_and_audits_definition(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a saved flow
+    WHEN DELETE /admin/metrics/flows/<id>
+    THEN 200 success, the row is gone, one delete audit row holds the full stored
+         definition, and the flow query for that id is now 404
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    definition = {"steps": _valid_steps()}
+    row_id = _insert_flow(app, display_name="Doomed", definition=definition)
+    flow_id = format_custom_flow_id(row_id)
+
+    response = _delete_flow(client, csrf, flow_id)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.METRIC_FLOW_DELETED
+    assert _row_snapshot(app, row_id) is None
+    audit_rows = _audit_rows(app, ADMIN_AUDIT_ACTIONS.METRIC_FLOW_DELETE)
+    assert len(audit_rows) == 1
+    assert audit_rows[0].actor_id == admin_user.id
+    assert audit_rows[0].target_id == flow_id
+    assert audit_rows[0].log_metadata == {
+        "display_name": "Doomed",
+        "definition": definition,
+    }
+    query_response = client.get(
+        f"{_FLOW_QUERY_URL}?flow_id={flow_id}&window=day",
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert query_response.status_code == 404
+
+
+@pytest.mark.parametrize("method", ["put", "delete"])
+@pytest.mark.parametrize("flow_id", _MALFORMED_IDS)
+def test_update_delete_metric_flow_malformed_or_builtin_id_returns_400(
+    login_admin_user_with_register: AdminSession, method: str, flow_id: str
+) -> None:
+    """
+    GIVEN a saved flow
+    WHEN update or delete is called with a malformed or built-in id
+    THEN 400 `METRIC_FLOW_INVALID_ID`, nothing changes and no audit row
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    _insert_flow(app, display_name="Bystander")
+
+    response = getattr(client, method)(
+        _flow_url(flow_id), json=_valid_draft(), headers={"X-CSRFToken": csrf}
+    )
+
+    _assert_invalid_id(response)
+    assert _counts(app) == (1, 0)
+
+
+@pytest.mark.parametrize("method", ["put", "delete"])
+def test_update_delete_metric_flow_missing_row_returns_404_without_audit(
+    login_admin_user_with_register: AdminSession, method: str
+) -> None:
+    """
+    GIVEN no row with the well-formed id `custom_999999999`
+    WHEN update or delete is called
+    THEN 404 and zero audit rows
+    """
+    client, csrf, _, app = login_admin_user_with_register
+
+    response = getattr(client, method)(
+        _flow_url("custom_999999999"),
+        json=_valid_draft(),
+        headers={"X-CSRFToken": csrf},
+    )
+
+    _assert_flow_not_found(response)
+    assert _counts(app) == (0, 0)
+
+
+@pytest.mark.parametrize(
+    "send_body",
+    [
+        pytest.param(lambda: {"json": {"display_name": "", "steps": []}}, id="invalid"),
+        pytest.param(lambda: {}, id="missing"),
+        pytest.param(
+            lambda: {"data": "not json", "content_type": "text/plain"}, id="non_json"
+        ),
+    ],
+)
+def test_update_metric_flow_id_then_lookup_then_validation_order(
+    login_admin_user_with_register: AdminSession, send_body: Any
+) -> None:
+    """
+    GIVEN an invalid, missing or non-JSON body
+    WHEN PUT to a well-formed id with no row, a malformed id, then an existing row
+    THEN 404, 400 invalid id, then 400 validation: id parse, lookup, validation
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    row_id = _insert_flow(app, display_name="Mine")
+    before = _row_snapshot(app, row_id)
+    headers = {"X-CSRFToken": csrf}
+
+    missing = client.put(_flow_url("custom_999999999"), headers=headers, **send_body())
+    malformed = client.put(_flow_url("custom_abc"), headers=headers, **send_body())
+    existing = client.put(
+        _flow_url(format_custom_flow_id(row_id)), headers=headers, **send_body()
+    )
+
+    _assert_flow_not_found(missing)
+    _assert_invalid_id(malformed)
+    assert existing.status_code == 400
+    assert (
+        existing.get_json()[STD_JSON.MESSAGE]
+        == ADMIN_ACTION_STRINGS.METRIC_FLOW_INVALID
+    )
+    assert _row_snapshot(app, row_id) == before
+    assert _counts(app) == (1, 0)
+
+
+_ROUND_TRIP_NAME: str = "Round trip"
+
+
+def _seed_round_trip_metrics(app: Flask) -> None:
+    """Seed rows the UTub-create funnel's first two steps and breakdown count."""
+    bucket_start = datetime.now(timezone.utc) - timedelta(hours=1)
+    rows: list[tuple[EventName, EventCategory, int, dict[str, Any]]] = [
+        (EventName.UI_UTUB_CREATE_OPEN, EventCategory.UI, 10, {}),
+        (EventName.UI_FORM_SUBMIT, EventCategory.UI, 8, {"form": "utub_create"}),
+        (
+            EventName.UI_FORM_CANCEL,
+            EventCategory.UI,
+            2,
+            {"form": "utub_create", "trigger": "escape"},
+        ),
+    ]
+    with app.app_context():
+        for event_name, category, count, dimensions in rows:
+            if (
+                Event_Registry.query.filter_by(name=event_name.value).one_or_none()
+                is None
+            ):
+                db.session.add(
+                    Event_Registry(
+                        name=event_name.value,
+                        category=category,
+                        description=EVENT_DESCRIPTIONS[event_name],
+                    )
+                )
+                db.session.flush()
+            db.session.add(
+                Anonymous_Metrics(
+                    event_name=event_name.value,
+                    bucket_start=bucket_start,
+                    dimensions=dimensions,
+                    count=count,
+                )
+            )
+        db.session.commit()
+
+
+def test_update_metric_flow_list_definition_round_trips_byte_equal(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a saved flow whose steps carry `dim_filter` and a `drop_breakdown` with
+          its own `dim_filter` and `group_by`, plus seeded metrics in the window
+    WHEN its list-entry `definition` is PUT back with the same name
+    THEN the stored definition is byte-equal and the flow query is identical
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    steps = serialize_flow_steps(FLOWS[FlowId.CREATE_UTUB])["steps"][:2]  # type: ignore[index]
+    assert steps[1]["dim_filter"]
+    assert steps[1]["drop_breakdown"]["dim_filter"]
+    assert steps[1]["drop_breakdown"]["group_by"]
+    create_response = _post_flow(
+        client, csrf, {"display_name": _ROUND_TRIP_NAME, "steps": steps}
+    )
+    assert create_response.status_code == 201
+    flow_id = create_response.get_json()["id"]
+    row_id = parse_custom_flow_id(flow_id)
+    assert row_id is not None
+    _seed_round_trip_metrics(app)
+    ajax_headers = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
+    query_url = f"{_FLOW_QUERY_URL}?flow_id={flow_id}&window=day"
+    query_before = client.get(query_url, headers=ajax_headers)
+    assert query_before.status_code == 200
+    stored_before = _row_snapshot(app, row_id)
+    assert stored_before is not None
+
+    listed = next(
+        entry
+        for entry in client.get(_FLOWS_URL).get_json()["flows"]
+        if entry["id"] == flow_id
+    )
+    put_response = _put_flow(
+        client,
+        csrf,
+        flow_id,
+        {
+            "display_name": listed["display_name"],
+            "steps": listed["definition"]["steps"],
+        },
+    )
+
+    assert put_response.status_code == 200
+    stored_after = _row_snapshot(app, row_id)
+    assert stored_after is not None
+    assert json.dumps(stored_after[1], sort_keys=True) == json.dumps(
+        stored_before[1], sort_keys=True
+    )
+    query_after = client.get(query_url, headers=ajax_headers)
+    assert query_after.status_code == 200
+    assert query_after.get_json() == query_before.get_json()
+
+
+# ---------------------------------------------------------------------------
 # Auth
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("method", ["put", "delete"])
+def test_update_delete_metric_flow_anonymous_returns_401(
+    client: FlaskClient, method: str
+) -> None:
+    """
+    GIVEN an anonymous session
+    WHEN update or delete is called
+    THEN 401
+    """
+    csrf_token = get_csrf_token(client.get("/").get_data(), meta_tag=True)
+
+    response = getattr(client, method)(
+        _flow_url("custom_1"), headers={"X-CSRFToken": csrf_token}
+    )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize("method", ["put", "delete"])
+def test_update_delete_metric_flow_non_admin_returns_404(
+    login_first_user_with_register: AdminSession, method: str
+) -> None:
+    """
+    GIVEN a logged-in non-admin
+    WHEN update or delete is called
+    THEN 404
+    """
+    client, csrf, _, app = login_first_user_with_register
+
+    response = getattr(client, method)(
+        _flow_url("custom_1"), headers={"X-CSRFToken": csrf}
+    )
+
+    assert response.status_code == 404
+    assert _counts(app) == (0, 0)
+
+
+@pytest.mark.parametrize("method", ["put", "delete"])
+def test_update_delete_metric_flow_admin_without_ajax_header_redirects(
+    login_admin_user_with_register: AdminSession, method: str
+) -> None:
+    """
+    GIVEN a logged-in admin sending no AJAX header and an existing flow
+    WHEN update or delete is called
+    THEN 302 to /home and the flow is untouched
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    row_id = _insert_flow(app, display_name="Mine")
+    before = _row_snapshot(app, row_id)
+
+    response = getattr(client, method)(
+        _flow_url(format_custom_flow_id(row_id)),
+        json=_valid_draft("Changed"),
+        headers={**_NO_AJAX_HEADERS, "X-CSRFToken": csrf},
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/home")
+    assert _row_snapshot(app, row_id) == before
+    assert _counts(app)[1] == 0
+
+
+# ---------------------------------------------------------------------------
+# Auth (list and create)
 # ---------------------------------------------------------------------------
 
 

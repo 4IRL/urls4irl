@@ -353,6 +353,79 @@
         "admin_required",
         "api_route"
       ],
+      "endpoint": "admin.delete_metric_flow",
+      "handler": "backend/admin/metric_flow_routes.py:admin_delete_metric_flow",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "adminMetricFlowDelete"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "DELETE"
+      ],
+      "rule": "/admin/metrics/flows/<flow_id>",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.admin_actions.AdminActionResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.admin_actions.AdminActionResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.metric_flow_service:delete_metric_flow"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
+      "endpoint": "admin.update_metric_flow",
+      "handler": "backend/admin/metric_flow_routes.py:admin_update_metric_flow",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "adminMetricFlowUpdate"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PUT"
+      ],
+      "rule": "/admin/metrics/flows/<flow_id>",
+      "schemas": {
+        "body": "backend.metrics.flow_validation.LenientFlowDefinition",
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.metrics.MetricFlowEntrySchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.MetricFlowEntrySchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.metric_flow_service:update_metric_flow"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
       "endpoint": "admin.admin_ops_audit_purge",
       "handler": "backend/admin/action_routes.py:admin_ops_audit_purge",
       "js": {
