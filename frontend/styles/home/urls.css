@@ -577,6 +577,29 @@ a.urlString {
     opacity: 0.65;
 }
 
+/* Short-link policy off: !important so showClassFlex() re-shows cannot win. */
+#URLDeck[data-allow-short-links="false"] .urlBtnShortLink {
+    display: none !important;
+}
+
+/* Personal hides: !important so showClassFlex() re-shows cannot win. */
+#URLDeck[data-hide-copy="true"] .urlBtnCopy,
+#URLDeck[data-hide-short-link="true"] .urlBtnShortLink,
+#URLDeck[data-hide-date="true"] .urlDateAddedBadgeInline {
+    display: none !important;
+}
+
+/* Swipe to delete off: the reveal panel goes away and the row restores native
+   touch handling over the :has(.urlRowSwipeReveal) pan-y rule. .urlBtnDelete
+   is untouched. */
+#URLDeck[data-swipe-delete="off"] .urlRowSwipeReveal {
+    display: none !important;
+}
+
+#URLDeck[data-swipe-delete="off"] .urlRow {
+    touch-action: manipulation;
+}
+
 .urlTagBtnCreate {
     background-color: var(--addTagColor);
     border-width: 1px;

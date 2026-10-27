@@ -1,6 +1,12 @@
-import { refreshStackedAdderBadges } from "../adder-badge.js";
+import {
+  createURLDateAddedBadge,
+  refreshDateAddedBadges,
+  refreshStackedAdderBadges,
+} from "../adder-badge.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { setState } from "../../../../store/app-store.js";
+import { EMPTY_MEMBER_SETTINGS } from "../../../../types/settings.js";
+import type { MemberItem } from "../../../../types/member.js";
 
 const $ = window.jQuery;
 
@@ -108,5 +114,106 @@ describe("refreshStackedAdderBadges", () => {
     expect(() => refreshStackedAdderBadges(ADDER_ID)).not.toThrow();
 
     expect($(".urlDateAddedBadgeStacked").text()).toBe("stale");
+  });
+});
+
+describe("hide date added", () => {
+  const HIDE_DATE_RULE =
+    '#URLDeck[data-hide-date="true"] .urlDateAddedBadgeInline { display: none !important; }';
+
+  function hideDateSettings(hideDateAdded: boolean) {
+    return {
+      urls: { ...EMPTY_MEMBER_SETTINGS.urls, hide_date_added: hideDateAdded },
+    };
+  }
+
+  function buildStacked() {
+    return createURLDateAddedBadge({
+      addedAt: "2024-03-09T12:00:00+00:00",
+      addedByUserID: ADDER_ID,
+      placementClass: "urlDateAddedBadgeStacked",
+      withAdder: true,
+      members: [{ id: ADDER_ID, username: "alice" } as MemberItem],
+    });
+  }
+
+  beforeEach(() => {
+    document.head.innerHTML = "";
+    document.body.innerHTML = "";
+    setState({ urls: [], members: [], activeUTubID: null });
+  });
+
+  afterEach(() => {
+    document.head.innerHTML = "";
+    setState({ urls: [], members: [], activeUTubID: null });
+  });
+
+  it("keeps the date and attribution without an override", () => {
+    setState({ activeUTubID: 1, memberSettings: hideDateSettings(false) });
+
+    const badge = buildStacked();
+
+    expect(badge.text()).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} alice · 2024-03-09`,
+    );
+    expect(badge.attr("aria-label")).toContain("2024-03-09");
+  });
+
+  it("renders 'Added by <name>' with no date in text or aria-label when hidden", () => {
+    setState({ activeUTubID: 1, memberSettings: hideDateSettings(true) });
+
+    const badge = buildStacked();
+
+    expect(badge.text()).toBe(`${APP_CONFIG.strings.URL_ADDED_BY} alice`);
+    expect(badge.attr("aria-label")).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} alice`,
+    );
+  });
+
+  it("still renders the date-only badge unchanged (CSS hides the inline one)", () => {
+    setState({ activeUTubID: 1, memberSettings: hideDateSettings(true) });
+
+    const badge = createURLDateAddedBadge({
+      addedAt: "2024-03-09T12:00:00+00:00",
+      addedByUserID: ADDER_ID,
+      placementClass: "urlDateAddedBadgeInline",
+      withAdder: false,
+    });
+
+    expect(badge.text()).toContain("2024-03-09");
+  });
+
+  it("hides the inline badge through the deck attribute rule", () => {
+    document.head.innerHTML = `<style>${HIDE_DATE_RULE}</style>`;
+    document.body.innerHTML =
+      '<div id="URLDeck" data-hide-date="true"><time class="urlDateAddedBadgeInline">d</time></div>';
+
+    expect(
+      getComputedStyle(document.querySelector(".urlDateAddedBadgeInline")!)
+        .display,
+    ).toBe("none");
+  });
+
+  it("rebuilds every card's stacked badge in place", () => {
+    setState({
+      urls: [
+        makeURL({ utubUrlID: URL_ID, addedByUserID: ADDER_ID }),
+        makeURL({ utubUrlID: 6, addedByUserID: 8 }),
+      ],
+      members: [{ id: ADDER_ID, username: "alice" } as MemberItem],
+      activeUTubID: 1,
+      memberSettings: hideDateSettings(true),
+    });
+    document.body.innerHTML = stackedBadgeHTML(URL_ID) + stackedBadgeHTML(6);
+
+    refreshDateAddedBadges();
+
+    expect(
+      $(`.urlRow[utuburlid="${URL_ID}"] .urlDateAddedBadgeStacked`).text(),
+    ).toBe(`${APP_CONFIG.strings.URL_ADDED_BY} alice`);
+    const former = `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER}`;
+    const other = $('.urlRow[utuburlid="6"] .urlDateAddedBadgeStacked');
+    expect(other.text()).toBe(former);
+    expect(other.attr("aria-label")).toBe(former);
   });
 });

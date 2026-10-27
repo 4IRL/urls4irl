@@ -29,6 +29,8 @@ import {
   returnFocusIn,
   showURLOutcomeBanner,
 } from "../outcome-banner.js";
+import { shortLinkFocusTarget } from "../deck-view-attrs.js";
+import { armFocusReturnSuppression } from "./focus-return.js";
 import { deleteURLOnStale } from "./get.js";
 import {
   clearTimeoutIDAndHideLoadingIcon,
@@ -52,19 +54,29 @@ type ShortLinkErrorBody = { message?: string; errorCode?: number | null };
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const SELECTED_CARD_SELECTOR = '.urlRow[urlSelected="true"]';
-const SHORT_LINK_BTN_SELECTOR = ".urlBtnShortLink";
+const URL_ROW_SELECTOR = ".urlRow";
 const SUBMIT_BTN_SELECTOR = "#modalSubmit";
 const CONFIRM_MODAL_SELECTOR = "#confirmModal";
 const FOCUS_NAMESPACE = "hidden.bs.modal.shortLinkRevokeFocus";
 // Mirrors `ShortLinkErrorCodes.SHORT_LINK_NOT_FOUND` (backend/short_links/constants.py).
 const SHORT_LINK_NOT_FOUND_ERROR_CODE = 1;
+// Mirrors `URLErrorCodes.SHORT_LINKS_DISABLED` (backend/urls/constants.py).
+const SHORT_LINKS_DISABLED_ERROR_CODE = 17;
 
 function selectedCardElement(): HTMLElement | null {
   return ($(SELECTED_CARD_SELECTOR)[0] as HTMLElement | undefined) ?? null;
 }
 
+// Where focus returns for a URL's short-link button: the button, or the card's
+// `.urlRow` when a deck attribute hides the button (policy off or personal hide).
 function shortLinkBtnOf(utubUrlID: number): JQuery {
-  return $(`.urlRow[utuburlid=${utubUrlID}]`).find(SHORT_LINK_BTN_SELECTOR);
+  return shortLinkFocusTarget($(`.urlRow[utuburlid=${utubUrlID}]`));
+}
+
+// Arms the focus-ring suppression only at the moment focus is really moved to a row.
+function armIfRow(target: JQuery): JQuery {
+  if (target.is(URL_ROW_SELECTOR)) armFocusReturnSuppression(target);
+  return target;
 }
 
 function errorMessageOf({
@@ -159,6 +171,7 @@ export async function copyShortLink({
         urlCard,
         bannerUnchanged:
           currentBannerToken({ mount: URL_DECK_BANNER_MOUNT }) === clickToken,
+        utubID,
       });
       return;
     }
@@ -265,16 +278,41 @@ async function writeTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+function isShortLinksDisabledResponse(xhr: JQuery.jqXHR): boolean {
+  const body = xhr.responseJSON as ShortLinkErrorBody | undefined;
+  return (
+    xhr.status === 403 && body?.errorCode === SHORT_LINKS_DISABLED_ERROR_CODE
+  );
+}
+
+// Writes only `urls.allow_short_links: false` into the settings slice and bumps
+// `policyLearnedVersion` (not `settingsVersion`, so an open settings section
+// still reconciles). Fails closed: a stale UTub or an unsupplied (null) slice
+// gets no write, and nothing is seeded into the slice.
+function learnShortLinksDisabled({ utubID }: { utubID: number }): void {
+  const { activeUTubID, settings, policyLearnedVersion } = getState();
+  if (activeUTubID !== utubID || settings === null) return;
+  setState({
+    settings: {
+      ...settings,
+      urls: { ...settings.urls, allow_short_links: false },
+    },
+    policyLearnedVersion: policyLearnedVersion + 1,
+  });
+}
+
 // A stale mint failure still reports its (real) error and drops a card the
 // server says is gone; only the banner is left alone when a newer one replaced it.
 function handleMintFailure({
   xhr,
   urlCard,
   bannerUnchanged,
+  utubID,
 }: {
   xhr: JQuery.jqXHR;
   urlCard: JQuery;
   bannerUnchanged: boolean;
+  utubID: number;
 }): void {
   emit({
     event: UI_EVENTS.UI_SHORT_LINK_COPY,
@@ -282,6 +320,14 @@ function handleMintFailure({
   });
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
+
+  if (isShortLinksDisabledResponse(xhr)) {
+    // A stale client: the manager turned the policy off. Learn it so the Copy
+    // short link button goes away, but only for the UTub the user is still in.
+    learnShortLinksDisabled({ utubID });
+    showURLDeckBannerError(APP_CONFIG.strings.SHORT_LINK_SHORT_LINKS_DISABLED);
+    return;
+  }
 
   const message = errorMessageOf({
     xhr,
@@ -368,7 +414,7 @@ export function confirmAndRevokeShortLink({
 
   const returnFocus = (): void => {
     returnFocusIn({
-      target: focusDeckInstead ? $() : shortLinkBtnOf(utubUrlID),
+      target: focusDeckInstead ? $() : armIfRow(shortLinkBtnOf(utubUrlID)),
       mount,
     });
   };
@@ -566,7 +612,7 @@ export function renderShortLinkStatus({
   removeShortLinkStatusRow(urlCard);
   setShortLinkBtnTooltip({ urlCard, expiresAt });
   // Rebuilding drops focus to body; keep it on the card's short-link button.
-  if (focusWasInRow) urlCard.find(SHORT_LINK_BTN_SELECTOR).trigger("focus");
+  if (focusWasInRow) armIfRow(shortLinkFocusTarget(urlCard)).trigger("focus");
   if (expiresAt === null) return;
 
   const row = buildShortLinkStatusRow({

@@ -107,8 +107,9 @@ class HomePageLocators(GenericPageLocator):
     URLS_SETTINGS_DEFAULT_SCHEME = "#urlsSettingsDefaultScheme"
     URLS_SETTINGS_HIDE_SWITCH = "#urlsSettingsHideSwitch"
     URLS_SETTINGS_HIDE_HINT = "#urlsSettingsHideHint"
+    # The personal section also renders a (hidden) note, so match the shown one.
     URLS_SETTINGS_READ_ONLY_NOTE = (
-        f"{PANEL_SETTINGS_POPOVER} .panelSettingsReadOnlyNote"
+        f"{PANEL_SETTINGS_POPOVER} .panelSettingsReadOnlyNote:not([hidden])"
     )
     # Listbox parts of the settings picker, scoped to the popover.
     URLS_SETTINGS_SCHEME_FILTER = f"{PANEL_SETTINGS_POPOVER} .urlSchemeFilter"
@@ -122,8 +123,46 @@ class HomePageLocators(GenericPageLocator):
         f"{PANEL_SETTINGS_SHEET} .urlSchemeOption:not(.hidden)"
     )
     URLS_SETTINGS_SHEET_READ_ONLY_NOTE = (
-        f"{PANEL_SETTINGS_SHEET} .panelSettingsReadOnlyNote"
+        f"{PANEL_SETTINGS_SHEET} .panelSettingsReadOnlyNote:not([hidden])"
     )
+    # Shared (manager-only) short-link policy switch in the "New URLs" section.
+    URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH = "#urlsSettingsAllowShortLinksSwitch"
+    # "Your view of this UTub" (per-member) controls on the URLs gear.
+    URLS_PERSONAL_SORT_SELECT = "#urlsSettingsSortSelect"
+    URLS_PERSONAL_VIEW_SELECT = "#urlsSettingsViewSelect"
+    URLS_PERSONAL_DENSITY_SELECT = "#urlsSettingsDensitySelect"
+    URLS_PERSONAL_HIDE_COPY_SWITCH = "#urlsPersonalHideCopySwitch"
+    URLS_PERSONAL_HIDE_SHORT_LINK_SWITCH = "#urlsPersonalHideShortLinkSwitch"
+    URLS_PERSONAL_HIDE_DATE_SWITCH = "#urlsPersonalHideDateSwitch"
+    URLS_PERSONAL_DISABLE_SWIPE_SWITCH = "#urlsPersonalDisableSwipeSwitch"
+    # Collapsible settings sections (shell-owned subheaders): the title toggle
+    # button, keyed by the registered section id.
+    SETTINGS_SECTION_URLS_DEFAULTS = "urls-defaults"
+    SETTINGS_SECTION_URLS_PERSONAL = "urls-personal"
+    SETTINGS_SECTION_TOGGLE_FORMAT = (
+        ".panelSettingsSection[data-section-id='{section_id}']"
+        " .panelSettingsSectionToggle"
+    )
+    # Top-level collapsible parents ("Shared with this UTub" / "Just for you"),
+    # keyed by scope; the registered sections nest inside each parent's region.
+    SETTINGS_GROUP_UTUB = "utub"
+    SETTINGS_GROUP_USER = "user"
+    SETTINGS_GROUP_TOGGLE_FORMAT = (
+        ".panelSettingsGroup[data-group='{scope}']"
+        " > .panelSettingsGroupHeading .panelSettingsGroupToggle"
+    )
+    SETTINGS_GROUP_SECTION_FORMAT = (
+        ".panelSettingsGroup[data-group='{scope}'] [data-section-id='{section_id}']"
+    )
+    SETTINGS_GROUP_HEADING_FORMAT = (
+        ".panelSettingsGroup[data-group='{scope}'] > .panelSettingsGroupHeading"
+    )
+
+    # Settings surface layout: the mobile sheet's scrolling body, every control
+    # row, and the shared scheme toggle (a joined-control half styled for a row).
+    PANEL_SETTINGS_SHEET_BODY = f"{PANEL_SETTINGS_SHEET} .panelSettingsSheetBody"
+    PANEL_SETTINGS_ROW = ".panelSettingsRow"
+    PANEL_SETTINGS_SCHEME_TOGGLE = ".panelSettingsRow > .urlSchemeToggle"
 
     BUTTON_UTUB_CREATE = "#utubBtnCreate"
     BUTTON_UTUB_DELETE = "#utubBtnDelete"
@@ -541,6 +580,7 @@ class HomePageLocators(GenericPageLocator):
 
     BUTTON_URL_DELETE = ".urlBtnDelete"
     URL_DATE_ADDED_BADGE_STACKED = ".urlDateAddedBadgeStacked"
+    URL_DATE_ADDED_BADGE_INLINE = ".urlDateAddedBadgeInline"
     URL_ROW_SWIPE_REVEAL = ".urlRowSwipeReveal"
 
     BUTTON_URL_COPY = ".urlBtnCopy"

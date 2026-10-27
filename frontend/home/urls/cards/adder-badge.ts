@@ -3,6 +3,8 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { getState } from "../../../store/app-store.js";
 import type { MemberItem } from "../../../types/member.js";
 import type { DateFormatValue } from "../../../types/preferences.js";
+import type { UtubUrlItem } from "../../../types/url.js";
+import { effectiveHideDateAdded } from "../view-settings.js";
 
 // Formats an ISO-8601 timestamp string into the user's stored DateFormat
 // preference. Uses UTC calendar components so the rendered date is deterministic
@@ -95,8 +97,15 @@ export function createURLDateAddedBadge({
     const adderName =
       resolveAdderUsername({ addedByUserID, members }) ??
       APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER;
-    visibleText = `${addedBy} ${adderName} · ${formattedDate}`;
-    accessibleLabel = `${addedBy} ${adderName} ${addedOn} ${formattedDate}`;
+    if (effectiveHideDateAdded()) {
+      // Date hidden by the member: keep the attribution, drop the date everywhere
+      // (including the accessible name).
+      visibleText = `${addedBy} ${adderName}`;
+      accessibleLabel = visibleText;
+    } else {
+      visibleText = `${addedBy} ${adderName} · ${formattedDate}`;
+      accessibleLabel = `${addedBy} ${adderName} ${addedOn} ${formattedDate}`;
+    }
   }
   return $(document.createElement("time"))
     .addClass(`urlDateAddedBadge ${placementClass}`)
@@ -108,18 +117,28 @@ export function createURLDateAddedBadge({
 // whose URL was added by `addedByUserID`, in place (no deck rebuild). Used after
 // a member is removed so the remover's open cards switch to "a former member".
 export function refreshStackedAdderBadges(addedByUserID: number): void {
-  getState()
-    .urls.filter((url) => url.addedByUserID === addedByUserID)
-    .forEach((url) => {
-      $(
-        `.urlRow[utuburlid="${url.utubUrlID}"] .urlDateAddedBadgeStacked`,
-      ).replaceWith(
-        createURLDateAddedBadge({
-          addedAt: url.addedAt,
-          addedByUserID: url.addedByUserID,
-          placementClass: "urlDateAddedBadgeStacked",
-          withAdder: true,
-        }),
-      );
-    });
+  rebuildStackedBadges(
+    getState().urls.filter((url) => url.addedByUserID === addedByUserID),
+  );
+}
+
+// Re-render every card's stacked badge in place, e.g. after the member toggles
+// "hide date added" (the inline badge is hidden by CSS alone).
+export function refreshDateAddedBadges(): void {
+  rebuildStackedBadges(getState().urls);
+}
+
+function rebuildStackedBadges(urls: UtubUrlItem[]): void {
+  urls.forEach((url) => {
+    $(
+      `.urlRow[utuburlid="${url.utubUrlID}"] .urlDateAddedBadgeStacked`,
+    ).replaceWith(
+      createURLDateAddedBadge({
+        addedAt: url.addedAt,
+        addedByUserID: url.addedByUserID,
+        placementClass: "urlDateAddedBadgeStacked",
+        withAdder: true,
+      }),
+    );
+  });
 }

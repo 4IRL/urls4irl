@@ -24,6 +24,7 @@ import {
   showURLSearchIcon,
 } from "../search.js";
 import { showURLsEmptyState } from "../empty-state.js";
+import { effectiveSort } from "../view-settings.js";
 
 // Shared URL-deck mutations: inserting a freshly-materialised card (a create, or
 // a revive that brings a trashed URL back) and removing a card (a delete, or the
@@ -107,8 +108,10 @@ export function insertURLCardIntoDeck({
 
 // DD-36's sanctioned client-side visual exception: the ONLY place the client
 // re-sorts URLs. The deck is server-ordered on every full load; here we merely
-// keep the newly inserted or revived card from visually contradicting the active
-// sort for the brief pre-refetch window. Detaches/re-appends the URL cards into #listURLs in
+// keep the newly inserted or revived card from visually contradicting the
+// effective sort (the member's per-UTub override, else the Display default) for
+// the brief pre-refetch window. A sort change itself is applied from the server's
+// order (`syncDeckOrderToServer`), never by a client re-sort. Detaches/re-appends the URL cards into #listURLs in
 // the stored sort order (the detach/re-append idiom sortTagFiltersInPlace uses),
 // then — only when the reorder actually relocated the new card away from its
 // top-of-list insertion point — scrolls it into view and announces the add.
@@ -124,7 +127,7 @@ function reorderURLCardBySortPreference({
   const HIGHLIGHT_CLASS = "url-card-created-highlight";
   const HIGHLIGHT_DURATION_MS = 700;
 
-  const storedSortOrder = getState().preferences.defaultSort;
+  const storedSortOrder = effectiveSort();
   const sortedURLIDs = applyDefaultUrlSort(
     getState().urls,
     storedSortOrder,
