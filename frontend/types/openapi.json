@@ -1968,6 +1968,133 @@
         }
       }
     },
+    "/admin/metrics/flows": {
+      "get": {
+        "operationId": "listMetricFlows",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "List every metric funnel for the flow builder: built-ins first, then saved custom flows with their validation problems.",
+        "responses": {
+          "200": {
+            "description": "Every funnel for the admin flow builder: built-ins first, then saved flows.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MetricFlowListResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMetricFlow",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Save a new custom funnel. The body is validated against the live event and endpoint registries; at most 20 custom flows may exist.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LenientFlowDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\n    Returned by the list, create and update endpoints in the same shape, so the\n    builder renders every funnel from one type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MetricFlowEntrySchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "apiV1GetMe",
@@ -9889,7 +10016,7 @@
       },
       "AdminActionErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -9900,9 +10027,226 @@
           "LAST_ADMIN_FORBIDDEN",
           "EMAIL_SEND_FAILURE",
           "LAST_CREDENTIAL_FORBIDDEN",
-          "TARGET_ERASED"
+          "TARGET_ERASED",
+          "METRIC_FLOW_LIMIT_REACHED"
         ],
         "description": "Error codes for AdminActionErrorCodes"
+      },
+      "FlowInvalidDetailSchema": {
+        "description": "The first problem found in a saved custom funnel that no longer validates.\n\n`step_index` is the 0-based step the problem belongs to, or null when it is\nflow-level (name or step list). `field` is the full dotted path of the bad\nfield and `reason` the message shown to the admin.",
+        "properties": {
+          "step_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0-based index of the offending step; null for flow-level problems."
+          },
+          "field": {
+            "description": "Dotted path of the offending field.",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Human-readable reason the field is invalid.",
+            "type": "string"
+          }
+        },
+        "required": ["step_index", "field", "reason"],
+        "type": "object"
+      },
+      "MetricFlowEntrySchema": {
+        "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\nReturned by the list, create and update endpoints in the same shape, so the\nbuilder renders every funnel from one type.",
+        "properties": {
+          "id": {
+            "description": "Funnel id: the built-in flow id, or `custom_<n>` for a saved flow.",
+            "type": "string"
+          },
+          "display_name": {
+            "description": "Name shown for the funnel.",
+            "type": "string"
+          },
+          "is_builtin": {
+            "description": "True for a funnel shipped with the app (read-only).",
+            "type": "boolean"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "description": "`{'steps': [...]}` in the stored snake_case shape. Loosely typed on purpose: a saved flow that no longer loads as a flow envelope is returned as its raw stored JSON, and a step may still name a removed event.",
+            "type": "object"
+          },
+          "errors": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Validation problems by dotted path (`steps.1.event_name`); empty for built-ins and valid flows. A non-empty map means the flow needs attention.",
+            "type": "object"
+          },
+          "first_invalid": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FlowInvalidDetailSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first problem, picked the same way as the `422` of the flow query; null when `errors` is empty."
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "is_builtin",
+          "definition",
+          "errors",
+          "first_invalid"
+        ],
+        "type": "object"
+      },
+      "MetricFlowListResponseSchema": {
+        "description": "Every funnel for the admin flow builder: built-ins first, then saved flows.",
+        "properties": {
+          "flows": {
+            "description": "Built-in funnels in registry order, then custom funnels by creation time.",
+            "items": {
+              "$ref": "#/components/schemas/MetricFlowEntrySchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["flows"],
+        "type": "object"
+      },
+      "LenientFlowStep": {
+        "additionalProperties": false,
+        "properties": {
+          "stream": {
+            "enum": ["ui", "api", "domain"],
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "event_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "api_endpoint": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "api_method": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "dim_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 5,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "drop_breakdown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LenientFlowStepBreakdown"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": ["stream", "label"],
+        "type": "object"
+      },
+      "LenientFlowStepBreakdown": {
+        "additionalProperties": false,
+        "properties": {
+          "event_name": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "dim_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 5,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "group_by": {
+            "maxLength": 255,
+            "type": "string"
+          }
+        },
+        "required": ["event_name", "group_by"],
+        "type": "object"
+      },
+      "LenientFlowDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/LenientFlowStep"
+            },
+            "maxItems": 8,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": ["display_name", "steps"],
+        "type": "object"
       },
       "ApiUserProfileSchema": {
         "description": "Authenticated user's profile for the mobile /api/v1 surface.",
@@ -11904,32 +12248,6 @@
           }
         },
         "required": ["steps"],
-        "type": "object"
-      },
-      "FlowInvalidDetailSchema": {
-        "description": "The first problem found in a saved custom funnel that no longer validates.\n\n`step_index` is the 0-based step the problem belongs to, or null when it is\nflow-level (name or step list). `field` is the full dotted path of the bad\nfield and `reason` the message shown to the admin.",
-        "properties": {
-          "step_index": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "0-based index of the offending step; null for flow-level problems."
-          },
-          "field": {
-            "description": "Dotted path of the offending field.",
-            "type": "string"
-          },
-          "reason": {
-            "description": "Human-readable reason the field is invalid.",
-            "type": "string"
-          }
-        },
-        "required": ["step_index", "field", "reason"],
         "type": "object"
       },
       "FlowInvalidResponseSchema": {

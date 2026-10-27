@@ -131,6 +131,9 @@ class ADMIN_ROUTES:
     MOD_MEMBER_REMOVE = _ADMIN + "admin_member_remove"
     MOD_URL_DELETE = _ADMIN + "admin_url_delete"
     MOD_URL_PURGE = _ADMIN + "admin_url_purge"
+    # Custom metric flow endpoints
+    METRIC_FLOWS_LIST = _ADMIN + "list_metric_flows"
+    METRIC_FLOW_CREATE = _ADMIN + "create_metric_flow"
 
 
 class METRICS_ROUTES:
@@ -347,6 +350,9 @@ ADMIN_JS_ROUTES: dict[str, JsRoute] = {
     "metricsQueryLatencyTimeseries": JsRoute(
         METRICS_ROUTES.QUERY_LATENCY_TIMESERIES, {}
     ),
+    # Custom metric flow builder (admin dashboard only)
+    "adminMetricFlowsList": JsRoute(ADMIN_ROUTES.METRIC_FLOWS_LIST, {}),
+    "adminMetricFlowCreate": JsRoute(ADMIN_ROUTES.METRIC_FLOW_CREATE, {}),
 }
 
 

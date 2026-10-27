@@ -1,4 +1,5 @@
 from enum import IntEnum
+from typing import Final
 
 
 class AdminActionErrorCodes(IntEnum):
@@ -14,3 +15,11 @@ class AdminActionErrorCodes(IntEnum):
     EMAIL_SEND_FAILURE = 8
     LAST_CREDENTIAL_FORBIDDEN = 9
     TARGET_ERASED = 10
+    METRIC_FLOW_LIMIT_REACHED = 11
+
+
+# Key for the transaction-scoped Postgres advisory lock (`pg_advisory_xact_lock`)
+# that serializes custom metric flow creation, so the count-then-insert cap check
+# cannot be raced past FLOW_LIMITS.MAX_CUSTOM. A fixed 64-bit constant (ASCII
+# "MFLOWCAP"); it must not collide with any other advisory lock key in the app.
+METRIC_FLOW_CAP_LOCK_KEY: Final[int] = 0x4D464C4F57434150
