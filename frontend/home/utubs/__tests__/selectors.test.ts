@@ -57,9 +57,16 @@ const SELECTORS_HTML = `
   <input id="utubDescriptionUpdate" />
 `;
 
-function makeUtubDetail({ id }: { id: number }): UtubDetail {
+function makeUtubDetail({
+  id,
+  settings,
+}: {
+  id: number;
+  settings?: UtubDetail["settings"];
+}): UtubDetail {
   const utubDetail: Partial<UtubDetail> = {
     id,
+    settings,
     name: `UTub ${id}`,
     description: "",
     isCreator: false,
@@ -162,6 +169,24 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
         allow_short_links: true,
       },
     });
+  });
+
+  it("forces allow_short_links off for a same-UTub rebuild in flight across a policy 403", async () => {
+    setState({ activeUTubID: 1 });
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+    setState({ policyLearnedVersion: 1 });
+
+    firstRequest.resolve(
+      makeUtubDetail({
+        id: 1,
+        settings: { urls: { allow_short_links: true } } as never,
+      }),
+    );
+
+    await vi.waitFor(() => {
+      expect(utubSelectedEmits()).toHaveLength(1);
+    });
+    expect(getState().settings?.urls.allow_short_links).toBe(false);
   });
 
   it("populates the store's members before UTUB_SELECTED is emitted (cards never see an empty member list)", async () => {
