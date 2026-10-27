@@ -378,6 +378,42 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/admin/metrics/flows": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description List every metric funnel for the flow builder: built-ins first, then saved custom flows with their validation problems. */
+    get: operations["listMetricFlows"];
+    put?: never;
+    /** @description Save a new custom funnel. The body is validated against the live event and endpoint registries; at most 20 custom flows may exist. */
+    post: operations["createMetricFlow"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/metrics/flows/{flow_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** @description Replace a saved custom funnel by its custom_<n> id (last write wins). The body is validated against the live event and endpoint registries. */
+    put: operations["updateMetricFlow"];
+    post?: never;
+    /** @description Permanently delete a saved custom funnel by its custom_<n> id. */
+    delete: operations["deleteMetricFlow"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/me": {
     parameters: {
       query?: never;
@@ -1939,7 +1975,76 @@ export interface components {
      * @description Error codes for AdminActionErrorCodes
      * @enum {integer}
      */
-    AdminActionErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+    AdminActionErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+    /**
+     * @description The first problem found in a saved custom funnel that no longer validates.
+     *
+     *     `step_index` is the 0-based step the problem belongs to, or null when it is
+     *     flow-level (name or step list). `field` is the full dotted path of the bad
+     *     field and `reason` the message shown to the admin.
+     */
+    FlowInvalidDetailSchema: {
+      /** @description 0-based index of the offending step; null for flow-level problems. */
+      step_index: number | null;
+      /** @description Dotted path of the offending field. */
+      field: string;
+      /** @description Human-readable reason the field is invalid. */
+      reason: string;
+    };
+    /**
+     * @description One funnel in the admin flow builder: a built-in or a saved custom flow.
+     *
+     *     Returned by the list, create and update endpoints in the same shape, so the
+     *     builder renders every funnel from one type.
+     */
+    MetricFlowEntrySchema: {
+      /** @description Funnel id: the built-in flow id, or `custom_<n>` for a saved flow. */
+      id: string;
+      /** @description Name shown for the funnel. */
+      display_name: string;
+      /** @description True for a funnel shipped with the app (read-only). */
+      is_builtin: boolean;
+      /** @description `{'steps': [...]}` in the stored snake_case shape. Loosely typed on purpose: a saved flow that no longer loads as a flow envelope is returned as its raw stored JSON, and a step may still name a removed event. */
+      definition: {
+        [key: string]: unknown;
+      };
+      /** @description Validation problems by dotted path (`steps.1.event_name`); empty for built-ins and valid flows. A non-empty map means the flow needs attention. */
+      errors: {
+        [key: string]: string[];
+      };
+      /** @description The first problem, picked the same way as the `422` of the flow query; null when `errors` is empty. */
+      first_invalid: components["schemas"]["FlowInvalidDetailSchema"] | null;
+    };
+    /** @description Every funnel for the admin flow builder: built-ins first, then saved flows. */
+    MetricFlowListResponseSchema: {
+      /** @description Built-in funnels in registry order, then custom funnels by creation time. */
+      flows: components["schemas"]["MetricFlowEntrySchema"][];
+    };
+    LenientFlowStep: {
+      /** @enum {string} */
+      stream: "ui" | "api" | "domain";
+      label: string;
+      /** @default null */
+      event_name: string | null;
+      /** @default null */
+      api_endpoint: string | null;
+      /** @default null */
+      api_method: string | null;
+      /** @default null */
+      dim_filter: string[] | null;
+      /** @default null */
+      drop_breakdown: components["schemas"]["LenientFlowStepBreakdown"] | null;
+    };
+    LenientFlowStepBreakdown: {
+      event_name: string;
+      /** @default null */
+      dim_filter: string[] | null;
+      group_by: string;
+    };
+    LenientFlowDefinition: {
+      display_name: string;
+      steps: components["schemas"]["LenientFlowStep"][];
+    };
     /** @description Authenticated user's profile for the mobile /api/v1 surface. */
     ApiUserProfileSchema: {
       /** @description Unique user ID */
@@ -2999,21 +3104,6 @@ export interface components {
     FlowResponseSchema: {
       /** @description Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order. */
       steps: components["schemas"]["FlowStepSchema"][];
-    };
-    /**
-     * @description The first problem found in a saved custom funnel that no longer validates.
-     *
-     *     `step_index` is the 0-based step the problem belongs to, or null when it is
-     *     flow-level (name or step list). `field` is the full dotted path of the bad
-     *     field and `reason` the message shown to the admin.
-     */
-    FlowInvalidDetailSchema: {
-      /** @description 0-based index of the offending step; null for flow-level problems. */
-      step_index: number | null;
-      /** @description Dotted path of the offending field. */
-      field: string;
-      /** @description Human-readable reason the field is invalid. */
-      reason: string;
     };
     /** @description Body of the `422` answer for a saved funnel that needs attention. */
     FlowInvalidResponseSchema: {
@@ -5527,6 +5617,210 @@ export interface operations {
       };
       /** @description Error */
       502: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listMetricFlows: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Every funnel for the admin flow builder: built-ins first, then saved flows. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["MetricFlowListResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createMetricFlow: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["LenientFlowDefinition"];
+      };
+    };
+    responses: {
+      /**
+       * @description One funnel in the admin flow builder: a built-in or a saved custom flow.
+       *
+       *         Returned by the list, create and update endpoints in the same shape, so the
+       *         builder renders every funnel from one type.
+       */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["MetricFlowEntrySchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateMetricFlow: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        flow_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["LenientFlowDefinition"];
+      };
+    };
+    responses: {
+      /**
+       * @description One funnel in the admin flow builder: a built-in or a saved custom flow.
+       *
+       *         Returned by the list, create and update endpoints in the same shape, so the
+       *         builder renders every funnel from one type.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["MetricFlowEntrySchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  deleteMetricFlow: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        flow_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

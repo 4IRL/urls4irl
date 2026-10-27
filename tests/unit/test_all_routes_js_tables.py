@@ -90,6 +90,11 @@ EXPECTED_ADMIN_JS_ROUTE_URLS: dict[str, str] = {
     "metricsQueryGaugesTimeseries": "/api/metrics/query/gauges/timeseries",
     "metricsQueryLatency": "/api/metrics/query/latency",
     "metricsQueryLatencyTimeseries": "/api/metrics/query/latency/timeseries",
+    # Custom metric flow builder
+    "adminMetricFlowsList": "/admin/metrics/flows",
+    "adminMetricFlowCreate": "/admin/metrics/flows",
+    "adminMetricFlowUpdate": "/admin/metrics/flows/-1",
+    "adminMetricFlowDelete": "/admin/metrics/flows/-1",
 }
 
 
@@ -133,7 +138,8 @@ def test_generate_admin_routes_js_renders_expected_urls(full_app: Flask) -> None
     """
     GIVEN the full app url_map
     WHEN generate_admin_routes_js() is called inside a request context
-    THEN it returns the admin metrics page and the 8 metrics query URLs
+    THEN it returns the admin metrics page, the 8 metrics query URLs and the
+        2 custom-flow list/create URLs
     """
     with full_app.test_request_context():
         rendered_admin_routes = generate_admin_routes_js()

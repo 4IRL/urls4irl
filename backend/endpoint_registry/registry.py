@@ -296,7 +296,7 @@ def _schemas(view_fn: Callable[..., Any]) -> dict[str, Any] | None:
     if not hasattr(view_fn, "_api_route_request_schema"):
         return None
     status_codes = getattr(view_fn, "_api_route_status_codes", None) or {}
-    return {
+    schemas: dict[str, Any] = {
         "request": _qualified_class_name(
             getattr(view_fn, "_api_route_request_schema", None)
         ),
@@ -311,6 +311,11 @@ def _schemas(view_fn: Callable[..., Any]) -> dict[str, Any] | None:
             for code, schema_cls in sorted(status_codes.items())
         },
     }
+    body_schema = getattr(view_fn, "_api_route_body_schema", None)
+    if body_schema is not None:
+        # Only emitted when set so existing registry entries keep their shape.
+        schemas["body"] = _qualified_class_name(body_schema)
+    return schemas
 
 
 def _service_function_def(service: str, ast_cache: AstCache) -> ast.FunctionDef | None:
@@ -488,7 +493,7 @@ def _render_schemas(schemas: dict[str, Any] | None) -> str:
         return _EMPTY_VALUE
     parts = [
         f"{part}: {_code(schemas[part])}"
-        for part in ("request", "query", "response")
+        for part in ("request", "body", "query", "response")
         if schemas.get(part) is not None
     ]
     status_codes = schemas.get("status_codes") or {}

@@ -457,6 +457,9 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
         # Read stashed attributes
         request_schema = view_fn._api_route_request_schema
         query_schema = getattr(view_fn, "_api_route_query_schema", None)
+        if request_schema is None:
+            # OpenAPI-only body (route parses its own JSON body).
+            request_schema = getattr(view_fn, "_api_route_body_schema", None)
         response_schema = view_fn._api_route_response_schema
         tags = view_fn._api_route_tags
         description = view_fn._api_route_description

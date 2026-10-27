@@ -356,6 +356,53 @@ class FlowInvalidResponseSchema(BaseSchema):
     )
 
 
+class MetricFlowEntrySchema(BaseSchema):
+    """One funnel in the admin flow builder: a built-in or a saved custom flow.
+
+    Returned by the list, create and update endpoints in the same shape, so the
+    builder renders every funnel from one type.
+    """
+
+    id: str = Field(
+        description=(
+            "Funnel id: the built-in flow id, or `custom_<n>` for a saved flow."
+        ),
+    )
+    display_name: str = Field(description="Name shown for the funnel.")
+    is_builtin: bool = Field(
+        description="True for a funnel shipped with the app (read-only)."
+    )
+    definition: dict[str, Any] = Field(
+        description=(
+            "`{'steps': [...]}` in the stored snake_case shape. Loosely typed on "
+            "purpose: a saved flow that no longer loads as a flow envelope is "
+            "returned as its raw stored JSON, and a step may still name a "
+            "removed event."
+        ),
+    )
+    errors: dict[str, list[str]] = Field(
+        description=(
+            "Validation problems by dotted path (`steps.1.event_name`); empty for "
+            "built-ins and valid flows. A non-empty map means the flow needs "
+            "attention."
+        ),
+    )
+    first_invalid: FlowInvalidDetailSchema | None = Field(
+        description=(
+            "The first problem, picked the same way as the `422` of the flow "
+            "query; null when `errors` is empty."
+        ),
+    )
+
+
+class MetricFlowListResponseSchema(BaseSchema):
+    """Every funnel for the admin flow builder: built-ins first, then saved flows."""
+
+    flows: list[MetricFlowEntrySchema] = Field(
+        description="Built-in funnels in registry order, then custom funnels by creation time.",
+    )
+
+
 class GaugeSampleSchema(BaseSchema):
     """One sampled point of a gauge's timeseries.
 

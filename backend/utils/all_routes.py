@@ -3,7 +3,7 @@ Contains all routes for easy insertion into `url_for` flask function
 """
 
 from enum import StrEnum
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 from flask import url_for
 
@@ -131,6 +131,11 @@ class ADMIN_ROUTES:
     MOD_MEMBER_REMOVE = _ADMIN + "admin_member_remove"
     MOD_URL_DELETE = _ADMIN + "admin_url_delete"
     MOD_URL_PURGE = _ADMIN + "admin_url_purge"
+    # Custom metric flow endpoints
+    METRIC_FLOWS_LIST = _ADMIN + "list_metric_flows"
+    METRIC_FLOW_CREATE = _ADMIN + "create_metric_flow"
+    METRIC_FLOW_UPDATE = _ADMIN + "update_metric_flow"
+    METRIC_FLOW_DELETE = _ADMIN + "delete_metric_flow"
 
 
 class METRICS_ROUTES:
@@ -351,7 +356,23 @@ ADMIN_JS_ROUTES: dict[str, JsRoute] = {
     "metricsQueryLatencyTimeseries": JsRoute(
         METRICS_ROUTES.QUERY_LATENCY_TIMESERIES, {}
     ),
+    # Custom metric flow builder (admin dashboard only)
+    "adminMetricFlowsList": JsRoute(ADMIN_ROUTES.METRIC_FLOWS_LIST, {}),
+    "adminMetricFlowCreate": JsRoute(ADMIN_ROUTES.METRIC_FLOW_CREATE, {}),
+    "adminMetricFlowUpdate": JsRoute(ADMIN_ROUTES.METRIC_FLOW_UPDATE, {"flow_id": -1}),
+    "adminMetricFlowDelete": JsRoute(ADMIN_ROUTES.METRIC_FLOW_DELETE, {"flow_id": -1}),
 }
+
+# Endpoints whose XHR calls get a JSON 429 (the builder shows an inline error)
+# instead of the HTML 429 page. Step 5 adds the catalog and preview endpoints.
+BUILDER_JSON_429_ENDPOINTS: Final[frozenset[str]] = frozenset(
+    {
+        ADMIN_ROUTES.METRIC_FLOWS_LIST,
+        ADMIN_ROUTES.METRIC_FLOW_CREATE,
+        ADMIN_ROUTES.METRIC_FLOW_UPDATE,
+        ADMIN_ROUTES.METRIC_FLOW_DELETE,
+    }
+)
 
 
 # JS linkage invariant. Every `@api_route` endpoint must be reachable through

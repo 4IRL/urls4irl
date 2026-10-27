@@ -1,3 +1,6 @@
+from backend.metrics.flow_limits import FLOW_LIMITS
+
+
 class ADMIN_PORTAL_STRINGS:
     """Strings rendered by the admin-portal Jinja templates.
 
@@ -376,6 +379,14 @@ class ADMIN_ACTION_STRINGS:
     ACCOUNT_TARGET_ERASED: str = (
         "This account has been erased. Email actions are not available."
     )
+    # Custom metric flow backend response messages (not bridged to JS)
+    METRIC_FLOW_LIMIT_REACHED: str = (
+        f"You can save at most {FLOW_LIMITS.MAX_CUSTOM} custom flows."
+    )
+    METRIC_FLOW_NAME_TAKEN: str = "A flow with this name already exists."
+    METRIC_FLOW_INVALID: str = "The flow has errors."
+    METRIC_FLOW_INVALID_ID: str = "Unknown flow id."
+    METRIC_FLOW_DELETED: str = "Flow deleted."
 
 
 class ADMIN_AUDIT_ACTIONS:
@@ -416,3 +427,7 @@ class ADMIN_AUDIT_ACTIONS:
     OAUTH_UNLINK: str = "admin.user.oauth_unlink"
     EMAIL_VERIFY: str = "admin.user.email_verify"
     EMAIL_RESEND: str = "admin.user.email_resend"
+    # Metric flow actions
+    METRIC_FLOW_CREATE: str = "admin.metric_flow.create"
+    METRIC_FLOW_UPDATE: str = "admin.metric_flow.update"
+    METRIC_FLOW_DELETE: str = "admin.metric_flow.delete"
