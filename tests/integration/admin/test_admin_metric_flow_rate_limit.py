@@ -10,7 +10,7 @@ from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 
 from backend.models.users import Users
-from backend.utils.all_routes import BUILDER_JSON_429_ENDPOINTS
+from backend.utils.all_routes import ADMIN_ROUTES, BUILDER_JSON_429_ENDPOINTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
@@ -50,8 +50,13 @@ def _assert_html_429(response: TestResponse) -> None:
     assert IDENTIFIERS.HTML_429 in response.get_data(as_text=True)
 
 
-def test_builder_endpoint_set_has_four_endpoints() -> None:
-    assert len(BUILDER_JSON_429_ENDPOINTS) == 4
+def test_builder_endpoint_set_is_the_metric_flow_endpoints() -> None:
+    assert BUILDER_JSON_429_ENDPOINTS == {
+        ADMIN_ROUTES.METRIC_FLOWS_LIST,
+        ADMIN_ROUTES.METRIC_FLOW_CREATE,
+        ADMIN_ROUTES.METRIC_FLOW_UPDATE,
+        ADMIN_ROUTES.METRIC_FLOW_DELETE,
+    }
 
 
 @pytest.mark.parametrize("method,url", _BUILDER_REQUESTS)
