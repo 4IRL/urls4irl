@@ -37,8 +37,8 @@ from tests.functional.playwright_assert_utils import (
 from tests.functional.playwright_utils import (
     login_user_to_home_page,
     select_utub_by_id,
+    wait_for_modal_ready,
     wait_then_click_element,
-    wait_until_css_property,
     wait_until_hidden,
 )
 
@@ -157,12 +157,7 @@ def test_add_member_nudge_rearms_after_removing_last_member(
     # Remove the last extra member via the real delete flow (open kebab -> Remove
     # member -> confirm modal -> submit).
     delete_member_active_utub(page=page, member_name=OTHER_MEMBER_USERNAME)
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 

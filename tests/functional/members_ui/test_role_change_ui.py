@@ -29,6 +29,7 @@ from tests.functional.playwright_utils import (
     force_next_patch_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
     wait_for_css_transitions_to_finish,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_until_css_property,
     wait_until_hidden,
@@ -51,20 +52,14 @@ def _username_for_user_id(*, app: Flask, user_id: int) -> str:
 
 
 def _submit_confirm_modal(*, page: Page) -> None:
-    """Gate on the modal fade-in settling (opacity==1) before clicking submit.
+    """Gate on the modal fade-in settling before clicking submit.
 
     Clicking while Bootstrap's show-transition is still running causes the
     subsequent modal("hide") to be dropped as an overlapping transition, leaving
     the modal visible and racing wait_until_hidden (mirrors the delete tests).
     """
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
-    # opacity==1 can be read a tick before Bootstrap clears its transitioning flag;
-    # wait for every transition on the modal and its dialog to finish as well.
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
+    # Also wait for every transition on the modal and its dialog to finish.
     wait_for_css_transitions_to_finish(locator=page.locator(HPL.HOME_MODAL))
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 

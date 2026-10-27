@@ -17,7 +17,6 @@ from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
@@ -430,7 +429,7 @@ def open_transfer_ownership_picker(*, page: Page) -> None:
     """Open the dedicated ownership-transfer modal via the members-deck header.
 
     Clicks the owner-only #memberBtnTransferOwner trigger, waits for
-    #transferOwnerModal to be visible, gates on its fade-in settling (opacity==1)
+    #transferOwnerModal to be visible, gates on its fade-in settling (Bootstrap transition done)
     so a subsequent click can't be dropped mid show-transition (mirrors
     `_submit_confirm_modal`/`wait_until_css_property`), then waits for the PICK
     view's listbox to render. Only a literal owner of a UTub with >= 1 other member
@@ -442,12 +441,7 @@ def open_transfer_ownership_picker(*, page: Page) -> None:
     """
     wait_then_click_element(page=page, css_selector=HPL.MEMBER_BTN_TRANSFER_OWNER)
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.TRANSFER_OWNER_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    wait_for_modal_ready(page=page, modal_selector=HPL.TRANSFER_OWNER_MODAL)
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
 
 
