@@ -26,7 +26,7 @@ from backend import db
 from backend.admin.constants import METRIC_FLOW_CAP_LOCK_KEY, AdminActionErrorCodes
 from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.flow_validation import serialize_flow_steps
-from backend.metrics.flows import FLOWS, FlowId
+from backend.metrics.flows import FLOWS, FlowId, format_custom_flow_id
 from backend.models.audit_log import AuditLog
 from backend.models.metric_flows import Metric_Flows
 from backend.models.users import User_Role, Users
@@ -52,6 +52,12 @@ ADVISORY_WAIT_SQL: str = (
     "SELECT count(*) FROM pg_stat_activity "
     "WHERE datname = current_database() "
     "AND wait_event_type = 'Lock' AND wait_event = 'advisory'"
+)
+
+ROW_LOCK_WAIT_SQL: str = (
+    "SELECT count(*) FROM pg_stat_activity "
+    "WHERE datname = current_database() "
+    "AND wait_event_type = 'Lock' AND wait_event IN ('transactionid', 'tuple')"
 )
 
 ThreadResult = Tuple[int, Any]
@@ -237,3 +243,112 @@ def test_concurrent_creates_at_19_flows_yield_one_201_and_one_400(
         assert Metric_Flows.query.count() == FLOW_LIMITS.MAX_CUSTOM
         audit_actions = [row.action for row in AuditLog.query.all()]
     assert audit_actions == [ADMIN_AUDIT_ACTIONS.METRIC_FLOW_CREATE]
+
+
+def _prepare_flow_request(
+    app: Flask, user_id: int, method: str, flow_id: str, display_name: str | None
+) -> Callable[[], ThreadResult]:
+    """Log in as ``user_id`` now and return a callable that sends only the PUT/DELETE
+    for ``flow_id`` (a PUT body when ``display_name`` is given)."""
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        user = Users.query.get(user_id)
+    client = app.test_client(user=user)
+    csrf_token = get_csrf_token(client.get("/home").get_data(), meta_tag=True)
+    url = f"{_FLOWS_URL}/{flow_id}"
+    kwargs: dict[str, Any] = {"headers": {"X-CSRFToken": csrf_token}}
+    if display_name is not None:
+        kwargs["json"] = {
+            "display_name": display_name,
+            "steps": copy.deepcopy(
+                serialize_flow_steps(FLOWS[FlowId.ADD_URL_TO_UTUB])["steps"]
+            ),
+        }
+
+    def _send() -> ThreadResult:
+        try:
+            response = getattr(client, method)(url, **kwargs)
+            return response.status_code, response.get_json(silent=True)
+        except Exception as request_error:
+            return UNEXPECTED_ERROR_STATUS, repr(request_error)
+
+    return _send
+
+
+def _row_lock_waiters(app: Flask) -> int:
+    with app.app_context():
+        with db.engine.connect() as connection:
+            return int(connection.execute(text(ROW_LOCK_WAIT_SQL)).scalar_one())
+
+
+def test_concurrent_update_and_delete_of_same_flow_serialize_on_row_lock(
+    committed_admins_with_19_flows: Tuple[Flask, list[int]],
+) -> None:
+    """
+    GIVEN a saved flow whose row is locked by a second session
+    WHEN an update and a delete of that flow queue behind the lock and it is released
+    THEN one request is 200 and the other is 200 (delete after update) or 404 (update
+         after delete); there is no 5xx or deadlock and the row is gone at the end
+    """
+    app, admin_ids = committed_admins_with_19_flows
+    with app.app_context():
+        target_id = Metric_Flows.query.order_by(Metric_Flows.id).first().id
+    flow_id = format_custom_flow_id(target_id)
+    sends = [
+        _prepare_flow_request(app, admin_ids[0], "put", flow_id, "Racing rename"),
+        _prepare_flow_request(app, admin_ids[1], "delete", flow_id, None),
+    ]
+    results: dict[int, ThreadResult] = {}
+
+    def _run(index: int) -> None:
+        results[index] = sends[index]()
+
+    threads = [
+        threading.Thread(target=_run, args=(index,), daemon=True)
+        for index in range(len(sends))
+    ]
+    with app.app_context():
+        holder_connection = db.engine.connect()
+    holder_transaction = holder_connection.begin()
+    try:
+        holder_connection.execute(
+            text('SELECT id FROM "MetricFlows" WHERE id = :id FOR UPDATE'),
+            {"id": target_id},
+        )
+        for thread in threads:
+            thread.start()
+        deadline = time.monotonic() + BLOCK_WAIT_SECONDS
+        while _row_lock_waiters(app) < len(threads):
+            if not all(thread.is_alive() for thread in threads):
+                raise AssertionError("a request finished before blocking on the lock")
+            if time.monotonic() > deadline:
+                raise AssertionError("requests never blocked on the row lock")
+            time.sleep(POLL_INTERVAL_SECONDS)
+    finally:
+        holder_transaction.commit()
+        holder_connection.close()
+
+    for thread in threads:
+        thread.join(timeout=THREAD_JOIN_TIMEOUT_SECONDS)
+    if any(thread.is_alive() for thread in threads):
+        _terminate_stuck_backends(app)
+        for thread in threads:
+            thread.join(timeout=POST_TERMINATE_JOIN_SECONDS)
+    assert not any(thread.is_alive() for thread in threads), "a request thread hung"
+
+    update_status, _ = results[0]
+    delete_status, _ = results[1]
+    for status, body in (results[0], results[1]):
+        assert "deadlock" not in repr(body).lower(), f"deadlock detected: {body}"
+        assert status != UNEXPECTED_ERROR_STATUS, f"unexpected error: {body}"
+        assert status < 500, f"server error {status}: {body}"
+    assert delete_status == 200, results[1]
+    assert update_status in (200, 404), results[0]
+    with app.app_context():
+        assert db.session.get(Metric_Flows, target_id) is None
+        assert Metric_Flows.query.count() == FLOW_LIMITS.MAX_CUSTOM - 2
+        audit_actions = sorted(row.action for row in AuditLog.query.all())
+    expected_actions = [ADMIN_AUDIT_ACTIONS.METRIC_FLOW_DELETE]
+    if update_status == 200:
+        expected_actions.append(ADMIN_AUDIT_ACTIONS.METRIC_FLOW_UPDATE)
+    assert audit_actions == sorted(expected_actions)
