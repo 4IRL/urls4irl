@@ -290,7 +290,10 @@ def create_app(
     # imports are kept inside `create_app()` to avoid module-scope circular
     # imports — every blueprint module ultimately imports from `backend.*`,
     # which transitively imports this module. Mirrors the existing pattern.
-    from backend.admin import action_routes  # noqa: F401 — registers admin ops routes
+    from backend.admin import (  # noqa: F401 — registers admin ops + metric flow routes
+        action_routes,
+        metric_flow_routes,
+    )
     from backend.admin.routes import admin as admin_blueprint
     from backend.api_v1.routes import api_v1
     from backend.contact.routes import contact

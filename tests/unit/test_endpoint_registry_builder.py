@@ -8,16 +8,20 @@ from typing import Any
 import pytest
 from flask import Blueprint, Flask
 
+from backend.api_common.parse_request import api_route
 from backend.config import ConfigTest
+from backend.contact.constants import ContactErrorCodes
 from backend.endpoint_registry.registry import (
     _js,
     _no_js_reason,
+    _schemas,
     _service_function_def,
     build_registry,
     dump_registry_json,
     is_registry_endpoint,
     render_markdown,
 )
+from backend.schemas.requests.contact import ContactRequest
 from backend.utils.all_routes import IndirectJsSource, NoJsReason
 from tests.utils_for_test import create_secondary_app
 
@@ -404,6 +408,35 @@ def test_health_has_two_status_codes(registry_rows: RegistryRows) -> None:
         "200": "backend.schemas.system.HealthResponseSchema",
         "503": "backend.schemas.base.StatusMessageResponseSchema",
     }
+
+
+def test_schemas_body_key_only_when_body_schema_set() -> None:
+    """
+    GIVEN one @api_route with body_schema and one without
+    WHEN the registry reads their schemas
+    THEN only the first carries a "body" key (existing entries keep their shape)
+    """
+
+    @api_route(
+        body_schema=ContactRequest, error_code=ContactErrorCodes.INVALID_FORM_INPUT
+    )
+    def with_body() -> None:
+        return None
+
+    @api_route()
+    def without_body() -> None:
+        return None
+
+    with_body_schemas = _schemas(with_body)
+    assert with_body_schemas is not None
+    assert (
+        with_body_schemas["body"] == "backend.schemas.requests.contact.ContactRequest"
+    )
+    assert with_body_schemas["request"] is None
+
+    without_body_schemas = _schemas(without_body)
+    assert without_body_schemas is not None
+    assert "body" not in without_body_schemas
 
 
 def test_page_route_has_null_schemas(registry_rows: RegistryRows) -> None:

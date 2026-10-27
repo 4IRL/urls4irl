@@ -113,6 +113,8 @@ const appConfig = {
     metricsQueryGaugesTimeseries: "/api/metrics/query/gauges/timeseries",
     metricsQueryLatency: "/api/metrics/query/latency",
     metricsQueryLatencyTimeseries: "/api/metrics/query/latency/timeseries",
+    adminMetricFlowsList: "/admin/metrics/flows",
+    adminMetricFlowCreate: "/admin/metrics/flows",
   },
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,

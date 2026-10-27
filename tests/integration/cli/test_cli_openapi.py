@@ -315,6 +315,58 @@ def test_strict_flag_succeeds_when_all_routes_have_schemas(runner, tmp_path):
     assert spec["openapi"] == "3.1.0"
 
 
+class _BodySchemaProbe(BaseModel):
+    name: str
+
+
+class _BodySchemaProbeErrorCodes(IntEnum):
+    INVALID_FORM_INPUT = 1
+
+
+def test_body_schema_route_emits_request_body_and_error_codes(tmp_path):
+    """
+    GIVEN a route declaring body_schema + an IntEnum error_code, and one without
+    WHEN the OpenAPI spec is generated
+    THEN only the body_schema route has a requestBody ($ref in components) and x-error-codes
+    """
+    bp = Blueprint("body_schema_bp", __name__)
+
+    @bp.route("/with-body", methods=["POST"])
+    @api_route(
+        body_schema=_BodySchemaProbe,
+        error_code=_BodySchemaProbeErrorCodes.INVALID_FORM_INPUT,
+        tags=["test"],
+    )
+    def with_body() -> dict:
+        return {}
+
+    @bp.route("/without-body", methods=["POST"])
+    @api_route(tags=["test"])
+    def without_body() -> dict:
+        return {}
+
+    minimal_app = Flask(__name__)
+    minimal_app.register_blueprint(bp)
+    register_openapi_cli(minimal_app)
+    output_path = tmp_path / "body-schema.json"
+
+    result = minimal_app.test_cli_runner().invoke(
+        args=["openapi", "generate", "--output", str(output_path)]
+    )
+    assert result.exit_code == 0, result.output
+
+    spec = json.loads(output_path.read_text())
+    with_body_op = spec["paths"]["/with-body"]["post"]
+    schema = with_body_op["requestBody"]["content"]["application/json"]["schema"]
+    assert schema["$ref"].endswith("/_BodySchemaProbe")
+    assert "_BodySchemaProbe" in spec["components"]["schemas"]
+    assert "_BodySchemaProbeErrorCodes" in with_body_op["x-error-codes"]
+
+    without_body_op = spec["paths"]["/without-body"]["post"]
+    assert "requestBody" not in without_body_op
+    assert "x-error-codes" not in without_body_op
+
+
 def test_strict_flag_fails_when_route_lacks_response_schema(tmp_path):
     """
     GIVEN a Flask app with an @api_route that has no response schema
@@ -1104,3 +1156,25 @@ def test_component_schemas_have_no_title_fields(runner, tmp_path):
         f"Found {len(violations)} schema(s) with 'title' keys:\n"
         + "\n".join(violations)
     )
+
+
+def test_metric_flow_write_routes_body_is_lenient_flow_definition(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec of the real app
+    WHEN we inspect POST /admin/metrics/flows and PUT /admin/metrics/flows/{flow_id}
+    THEN each requestBody references LenientFlowDefinition (snake_case properties)
+        and each operation carries x-error-codes
+    """
+    spec = _generate_spec(runner, tmp_path)
+    operations = [
+        spec["paths"]["/admin/metrics/flows"]["post"],
+        spec["paths"]["/admin/metrics/flows/{flow_id}"]["put"],
+    ]
+    for operation in operations:
+        schema_ref = operation["requestBody"]["content"]["application/json"]["schema"][
+            "$ref"
+        ]
+        assert schema_ref == "#/components/schemas/LenientFlowDefinition"
+        assert "x-error-codes" in operation
+    properties = spec["components"]["schemas"]["LenientFlowDefinition"]["properties"]
+    assert {"display_name", "steps"} <= set(properties)

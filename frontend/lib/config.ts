@@ -99,6 +99,8 @@ export interface AdminRoutes {
   metricsQueryGaugesTimeseries: string | undefined;
   metricsQueryLatency: string | undefined;
   metricsQueryLatencyTimeseries: string | undefined;
+  adminMetricFlowsList: string | undefined;
+  adminMetricFlowCreate: string | undefined;
 }
 
 export interface MemberRoles {
@@ -300,6 +302,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     metricsQueryLatency: rawConfig.routes.metricsQueryLatency,
     metricsQueryLatencyTimeseries:
       rawConfig.routes.metricsQueryLatencyTimeseries,
+    adminMetricFlowsList: rawConfig.routes.adminMetricFlowsList,
+    adminMetricFlowCreate: rawConfig.routes.adminMetricFlowCreate,
   }),
   constants: Object.freeze(rawConfig.constants),
   strings: Object.freeze(rawConfig.strings),
