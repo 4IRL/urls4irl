@@ -375,6 +375,7 @@ def test_admin_account_kill_sessions_acts_twice_two_audit_rows(
 
 def test_admin_account_force_reset_creates_forgot_passwords_row(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
     GIVEN a user with a local password and no existing Forgot_Passwords row
@@ -389,6 +390,15 @@ def test_admin_account_force_reset_creates_forgot_passwords_row(
         target_before: Users = Users.query.get(target.id)
         assert target_before.forgot_password is None
         assert target_before.sessions_invalidated_at is None
+
+    success_email_response = Response()
+    success_email_response.status_code = 200
+
+    monkeypatch.setattr(
+        EmailSender,
+        "send_password_reset_email",
+        lambda self, *args, **kwargs: success_email_response,
+    )
 
     response = _post_account(
         client,
