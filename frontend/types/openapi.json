@@ -2095,6 +2095,58 @@
         }
       }
     },
+    "/admin/metrics/flows/catalog": {
+      "get": {
+        "operationId": "getMetricFlowCatalog",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "List every event, dimension filter rule and API endpoint the flow builder may offer, derived from the same sources save-time validation uses.",
+        "responses": {
+          "200": {
+            "description": "Everything the flow builder may offer: events, dims and API endpoints.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FlowCatalogResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/metrics/flows/{flow_id}": {
       "put": {
         "operationId": "updateMetricFlow",
@@ -10488,6 +10540,128 @@
           }
         },
         "required": ["display_name", "steps"],
+        "type": "object"
+      },
+      "FlowCatalogApiEndpointSchema": {
+        "description": "One API endpoint (and its methods) an API step may name.",
+        "properties": {
+          "endpoint": {
+            "description": "Flask endpoint name, e.g. `urls.create_url`.",
+            "type": "string"
+          },
+          "blueprint": {
+            "description": "Blueprint prefix: the part of `endpoint` before the first `.`.",
+            "type": "string"
+          },
+          "methods": {
+            "description": "Sorted HTTP methods a step may name.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["endpoint", "blueprint", "methods"],
+        "type": "object"
+      },
+      "FlowCatalogDimSchema": {
+        "description": "One dimension of a catalog event and how a flow may use it.",
+        "properties": {
+          "key": {
+            "description": "Dimension key, usable as a group_by key.",
+            "type": "string"
+          },
+          "filter_kind": {
+            "description": "`values`: filter by one of `values`; `status_code`: filter by a 3-digit code from 100 to 599; `group_by_only`: not filterable.",
+            "enum": ["values", "status_code", "group_by_only"],
+            "type": "string"
+          },
+          "values": {
+            "description": "Allowed filter values; non-empty only when filter_kind is `values`.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["key", "filter_kind", "values"],
+        "type": "object"
+      },
+      "FlowCatalogEventGroupSchema": {
+        "description": "Catalog events of one category, sorted by name.",
+        "properties": {
+          "category": {
+            "description": "Category shared by every event in the group.",
+            "enum": ["ui", "domain", "api"],
+            "type": "string"
+          },
+          "events": {
+            "description": "Events in this category, sorted by event_name.",
+            "items": {
+              "$ref": "#/components/schemas/FlowCatalogEventSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["category", "events"],
+        "type": "object"
+      },
+      "FlowCatalogEventSchema": {
+        "description": "One event a flow step or breakdown may use.",
+        "properties": {
+          "event_name": {
+            "description": "Registered event name.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Human-readable event summary.",
+            "type": "string"
+          },
+          "category": {
+            "description": "Event category from the registry.",
+            "enum": ["ui", "domain", "api"],
+            "type": "string"
+          },
+          "step_allowed": {
+            "description": "True only for ui/domain events, the categories a step may use.",
+            "type": "boolean"
+          },
+          "dims": {
+            "description": "Dimensions in model order (flat columns for api events).",
+            "items": {
+              "$ref": "#/components/schemas/FlowCatalogDimSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "event_name",
+          "description",
+          "category",
+          "step_allowed",
+          "dims"
+        ],
+        "type": "object"
+      },
+      "FlowCatalogResponseSchema": {
+        "description": "Everything the flow builder may offer: events, dims and API endpoints.",
+        "properties": {
+          "event_groups": {
+            "description": "Event groups ordered ui, domain, api; empty groups omitted.",
+            "items": {
+              "$ref": "#/components/schemas/FlowCatalogEventGroupSchema"
+            },
+            "type": "array"
+          },
+          "api_endpoints": {
+            "description": "API endpoints sorted by endpoint name.",
+            "items": {
+              "$ref": "#/components/schemas/FlowCatalogApiEndpointSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["event_groups", "api_endpoints"],
         "type": "object"
       },
       "ApiUserProfileSchema": {

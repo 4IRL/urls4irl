@@ -396,6 +396,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/admin/metrics/flows/catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description List every event, dimension filter rule and API endpoint the flow builder may offer, derived from the same sources save-time validation uses. */
+    get: operations["getMetricFlowCatalog"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/admin/metrics/flows/{flow_id}": {
     parameters: {
       query?: never;
@@ -2044,6 +2061,60 @@ export interface components {
     LenientFlowDefinition: {
       display_name: string;
       steps: components["schemas"]["LenientFlowStep"][];
+    };
+    /** @description One API endpoint (and its methods) an API step may name. */
+    FlowCatalogApiEndpointSchema: {
+      /** @description Flask endpoint name, e.g. `urls.create_url`. */
+      endpoint: string;
+      /** @description Blueprint prefix: the part of `endpoint` before the first `.`. */
+      blueprint: string;
+      /** @description Sorted HTTP methods a step may name. */
+      methods: string[];
+    };
+    /** @description One dimension of a catalog event and how a flow may use it. */
+    FlowCatalogDimSchema: {
+      /** @description Dimension key, usable as a group_by key. */
+      key: string;
+      /**
+       * @description `values`: filter by one of `values`; `status_code`: filter by a 3-digit code from 100 to 599; `group_by_only`: not filterable.
+       * @enum {string}
+       */
+      filter_kind: "values" | "status_code" | "group_by_only";
+      /** @description Allowed filter values; non-empty only when filter_kind is `values`. */
+      values: string[];
+    };
+    /** @description Catalog events of one category, sorted by name. */
+    FlowCatalogEventGroupSchema: {
+      /**
+       * @description Category shared by every event in the group.
+       * @enum {string}
+       */
+      category: "ui" | "domain" | "api";
+      /** @description Events in this category, sorted by event_name. */
+      events: components["schemas"]["FlowCatalogEventSchema"][];
+    };
+    /** @description One event a flow step or breakdown may use. */
+    FlowCatalogEventSchema: {
+      /** @description Registered event name. */
+      event_name: string;
+      /** @description Human-readable event summary. */
+      description: string;
+      /**
+       * @description Event category from the registry.
+       * @enum {string}
+       */
+      category: "ui" | "domain" | "api";
+      /** @description True only for ui/domain events, the categories a step may use. */
+      step_allowed: boolean;
+      /** @description Dimensions in model order (flat columns for api events). */
+      dims: components["schemas"]["FlowCatalogDimSchema"][];
+    };
+    /** @description Everything the flow builder may offer: events, dims and API endpoints. */
+    FlowCatalogResponseSchema: {
+      /** @description Event groups ordered ui, domain, api; empty groups omitted. */
+      event_groups: components["schemas"]["FlowCatalogEventGroupSchema"][];
+      /** @description API endpoints sorted by endpoint name. */
+      api_endpoints: components["schemas"]["FlowCatalogApiEndpointSchema"][];
     };
     /** @description Authenticated user's profile for the mobile /api/v1 surface. */
     ApiUserProfileSchema: {
@@ -5700,6 +5771,45 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getMetricFlowCatalog: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Everything the flow builder may offer: events, dims and API endpoints. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["FlowCatalogResponseSchema"];
         };
       };
       /** @description Unauthorized */

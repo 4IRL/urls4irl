@@ -33,6 +33,7 @@ _BUILDER_REQUESTS: list[tuple[str, str]] = [
     ("POST", _FLOWS_URL),
     ("PUT", _FLOW_URL),
     ("DELETE", _FLOW_URL),
+    ("GET", "/admin/metrics/flows/catalog"),
 ]
 
 
@@ -56,6 +57,7 @@ def test_builder_endpoint_set_is_the_metric_flow_endpoints() -> None:
         ADMIN_ROUTES.METRIC_FLOW_CREATE,
         ADMIN_ROUTES.METRIC_FLOW_UPDATE,
         ADMIN_ROUTES.METRIC_FLOW_DELETE,
+        ADMIN_ROUTES.METRIC_FLOW_CATALOG,
     }
 
 

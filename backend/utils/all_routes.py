@@ -136,6 +136,7 @@ class ADMIN_ROUTES:
     METRIC_FLOW_CREATE = _ADMIN + "create_metric_flow"
     METRIC_FLOW_UPDATE = _ADMIN + "update_metric_flow"
     METRIC_FLOW_DELETE = _ADMIN + "delete_metric_flow"
+    METRIC_FLOW_CATALOG = _ADMIN + "get_metric_flow_catalog"
 
 
 class METRICS_ROUTES:
@@ -361,12 +362,14 @@ ADMIN_JS_ROUTES: dict[str, JsRoute] = {
     "adminMetricFlowCreate": JsRoute(ADMIN_ROUTES.METRIC_FLOW_CREATE, {}),
     "adminMetricFlowUpdate": JsRoute(ADMIN_ROUTES.METRIC_FLOW_UPDATE, {"flow_id": -1}),
     "adminMetricFlowDelete": JsRoute(ADMIN_ROUTES.METRIC_FLOW_DELETE, {"flow_id": -1}),
+    "adminMetricFlowCatalog": JsRoute(ADMIN_ROUTES.METRIC_FLOW_CATALOG, {}),
 }
 
 # Endpoints whose XHR calls get a JSON 429 (the builder shows an inline error)
-# instead of the HTML 429 page. Step 5 adds the catalog and preview endpoints.
+# instead of the HTML 429 page. Preview arrives in plan Step 2.
 BUILDER_JSON_429_ENDPOINTS: Final[frozenset[str]] = frozenset(
     {
+        ADMIN_ROUTES.METRIC_FLOW_CATALOG,
         ADMIN_ROUTES.METRIC_FLOWS_LIST,
         ADMIN_ROUTES.METRIC_FLOW_CREATE,
         ADMIN_ROUTES.METRIC_FLOW_UPDATE,

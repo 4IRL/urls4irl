@@ -1178,3 +1178,23 @@ def test_metric_flow_write_routes_body_is_lenient_flow_definition(runner, tmp_pa
         assert "x-error-codes" in operation
     properties = spec["components"]["schemas"]["LenientFlowDefinition"]["properties"]
     assert {"display_name", "steps"} <= set(properties)
+
+
+def test_metric_flow_catalog_operation_in_spec(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec of the real app
+    WHEN we inspect GET /admin/metrics/flows/catalog
+    THEN it has no requestBody, a 200 for FlowCatalogResponseSchema and 401/404
+        referencing ErrorResponse
+    """
+    spec = _generate_spec(runner, tmp_path)
+    operation = spec["paths"]["/admin/metrics/flows/catalog"]["get"]
+
+    assert "requestBody" not in operation
+    ok_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert "FlowCatalogResponseSchema" in json.dumps(ok_schema)
+    for status in ("401", "404"):
+        error_schema = operation["responses"][status]["content"]["application/json"][
+            "schema"
+        ]
+        assert "ErrorResponse" in json.dumps(error_schema)

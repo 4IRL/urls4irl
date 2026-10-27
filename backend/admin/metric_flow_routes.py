@@ -19,12 +19,17 @@ from backend.admin.metric_flow_service import (
 from backend.admin.routes import admin
 from backend.api_common.auth_decorators import admin_required
 from backend.api_common.parse_request import api_route
-from backend.api_common.responses import FlaskResponse
+from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.metrics.flow_catalog import build_flow_catalog
 from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.flow_validation import LenientFlowDefinition
 from backend.schemas.admin_actions import AdminActionResponseSchema
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.metrics import MetricFlowEntrySchema, MetricFlowListResponseSchema
+from backend.schemas.metrics import (
+    FlowCatalogResponseSchema,
+    MetricFlowEntrySchema,
+    MetricFlowListResponseSchema,
+)
 from backend.utils.strings.openapi_strs import OPEN_API
 
 
@@ -74,6 +79,31 @@ def admin_create_metric_flow() -> FlaskResponse:
     return create_metric_flow(
         actor_id=current_user.id, payload=request.get_json(silent=True)
     )
+
+
+@admin.route(
+    "/admin/metrics/flows/catalog",
+    methods=["GET"],
+    endpoint="get_metric_flow_catalog",
+)
+@admin_required
+@api_route(
+    ajax_required=True,
+    response_schema=FlowCatalogResponseSchema,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "List every event, dimension filter rule and API endpoint the flow "
+        "builder may offer, derived from the same sources save-time validation uses."
+    ),
+    status_codes={
+        200: FlowCatalogResponseSchema,
+        401: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def admin_get_metric_flow_catalog() -> FlaskResponse:
+    """Return the flow builder catalog."""
+    return APIResponse(data=build_flow_catalog(), status_code=200).to_response()
 
 
 @admin.route(

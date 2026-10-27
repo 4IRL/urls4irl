@@ -124,6 +124,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `adminMetricFlowUpdate`
 
+### `GET /admin/metrics/flows/catalog` — `admin.get_metric_flow_catalog`
+
+- **Handler:** `backend/admin/metric_flow_routes.py:admin_get_metric_flow_catalog`
+- **Decorators:** `admin_required`, `api_route`
+- **Service:** —
+- **Schema:** response: `backend.schemas.metrics.FlowCatalogResponseSchema`; status: 200 `backend.schemas.metrics.FlowCatalogResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `adminMetricFlowCatalog`
+
 ### `POST /admin/ops/audit-purge` — `admin.admin_ops_audit_purge`
 
 - **Handler:** `backend/admin/action_routes.py:admin_ops_audit_purge`

@@ -63,6 +63,7 @@ __all__ = [
     "LenientFlowDefinition",
     "LenientFlowStep",
     "LenientFlowStepBreakdown",
+    "allowed_methods_by_endpoint",
     "flow_errors_from_validation_error",
     "inspect_flow_payload",
     "serialize_flow_steps",
@@ -231,7 +232,7 @@ def _event_or_none(value: str) -> EventName | None:
         return None
 
 
-def _allowed_methods_by_endpoint() -> dict[str, list[str]]:
+def allowed_methods_by_endpoint() -> dict[str, list[str]]:
     """Map each endpoint API_HIT records to the sorted methods it records.
 
     Applies the middleware's own skip predicate and counted-method set, the same
@@ -462,7 +463,7 @@ def validate_flow_definition(
     context for ``url_map``.
     """
     errors: dict[str, list[str]] = {}
-    methods_by_endpoint = _allowed_methods_by_endpoint()
+    methods_by_endpoint = allowed_methods_by_endpoint()
     for index, step in enumerate(draft.steps):
         path = f"steps.{index}"
         if step.stream == "api":
