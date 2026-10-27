@@ -58,7 +58,6 @@ from tests.functional.tags_ui.db_utils import (
     get_url_title,
 )
 from tests.functional.tags_ui.playwright_utils import (
-    TAG_BATCH_URL_PATTERN,
     TagBatchRoute,
     apply_tag_filter_based_on_id,
     click_open_update_utub_tags_btn,
@@ -78,7 +77,6 @@ from tests.functional.tags_ui.playwright_utils import (
     get_utub_tag_filter_selector,
     get_visible_urls_and_urls_with_tag_text_by_tag_id,
     open_tag_combobox,
-    settle_page_tasks,
     stage_new_tag,
     submit_staged_tags,
     type_in_tag_combobox,
@@ -961,8 +959,7 @@ def test_second_drop_while_first_is_pending_is_rejected(
 
     route.expect_post_count(1)
     _expect_card_selected(page=page, url_id=second_url_id, selected=False)
-    with page.expect_response(TAG_BATCH_URL_PATTERN):
-        route.release()
+    route.release_and_wait()
 
     _expect_card_selected(page=page, url_id=first_url_id)
     _expect_card_selected(page=page, url_id=second_url_id, selected=False)
@@ -1034,8 +1031,7 @@ def test_success_after_combobox_opened_mid_drop_does_not_reset_the_combobox(
     route = TagBatchRoute(page=page, hold=True)
     _drop_hold_and_open_combobox(page=page, scene=scene, url_id=url_id, route=route)
 
-    with page.expect_response(TAG_BATCH_URL_PATTERN):
-        route.release()
+    route.release_and_wait()
 
     expect_badge_count_on_url_row(page=page, utub_url_id=url_id, expected=1)
     combobox_input = page.locator(
@@ -1077,10 +1073,7 @@ def test_utub_switch_while_drop_pending_shows_no_banner_or_selection(
     route.wait_until_held(count=1)
     select_utub_by_id(page=page, utub_id=other_utub.id)
 
-    with page.expect_response(TAG_BATCH_URL_PATTERN) as response_info:
-        route.release(status=status, body=body)
-    response_info.value.finished()
-    settle_page_tasks(page=page)
+    route.release_and_wait(status=status, body=body)
 
     _expect_no_outcome_banner(page=page)
     _expect_no_error_banner(page)
@@ -1112,8 +1105,7 @@ def test_outcome_does_not_select_dropped_card_when_another_combobox_is_open(
     _expect_card_selected(page=page, url_id=other_url_id)
     open_tag_combobox(page=page, url_id=other_url_id)
 
-    with page.expect_response(TAG_BATCH_URL_PATTERN):
-        route.release()
+    route.release_and_wait()
 
     _expect_success_banner(
         page=page,

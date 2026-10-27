@@ -4,10 +4,10 @@ from backend.models.utubs import Utubs
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_utils import (
     clear_then_send_keys,
+    wait_for_modal_ready,
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
@@ -241,14 +241,10 @@ def delete_utub_as_creator(*, page: Page, utub_to_delete: Utubs) -> None:
     # The confirmation modal fades in via a Bootstrap transition. Submitting while
     # that fade-in is still running causes Bootstrap to drop the subsequent
     # modal("hide") call (it ignores show/hide requests mid-transition), so the
-    # modal never becomes invisible. Gate the submit click on the modal being
-    # fully settled (opacity == 1) so the later hide is honored deterministically.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    # modal never becomes invisible. Opacity reaches 1 a few ms before Bootstrap
+    # clears its transition flag on transitionend, so gate the submit click on
+    # wait_for_modal_ready (which checks the flag) to honor the later hide.
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
 
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 

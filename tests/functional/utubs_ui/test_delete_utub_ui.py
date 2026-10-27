@@ -33,7 +33,6 @@ from tests.functional.playwright_utils import (
     wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -128,13 +127,8 @@ def test_dismiss_delete_utub_modal_btn(
     # The confirmation modal fades in via a Bootstrap transition. Dismissing while
     # that fade-in is still running causes Bootstrap to drop the subsequent
     # modal("hide") call, so the modal never becomes invisible. Gate the dismiss
-    # click on the modal being fully settled (opacity == 1).
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    # click on the modal being fully settled (Bootstrap transition done).
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
 
     wait_then_click_element(page=page, css_selector=ML.BUTTON_MODAL_DISMISS)
 

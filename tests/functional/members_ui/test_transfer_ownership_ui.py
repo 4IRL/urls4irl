@@ -33,8 +33,8 @@ from tests.functional.playwright_utils import (
     force_next_patch_ajax_failure_no_navigate,
     get_selected_utub_id,
     invalidate_csrf_token_on_page,
+    wait_for_modal_ready,
     wait_then_click_element,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -273,16 +273,11 @@ def test_transfer_picker_keyboard_open_navigate_escape(
     expect(trigger).to_be_focused()
 
     # Enter fires the trigger's click handler, opening the modal. Gate on the
-    # fade-in settling (opacity==1) so the shown-focus handler has moved focus onto
+    # fade-in settling (Bootstrap transition done) so the shown-focus handler has moved focus onto
     # the first row before roving.
     page.keyboard.press("Enter")
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.TRANSFER_OWNER_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    wait_for_modal_ready(page=page, modal_selector=HPL.TRANSFER_OWNER_MODAL)
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
 
     # The modal's shown.bs.modal handler moves DOM focus onto the first option row;

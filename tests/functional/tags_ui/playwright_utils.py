@@ -16,10 +16,10 @@ from tests.functional.playwright_utils import (
     wait_for_css_transitions_to_finish,
     wait_for_element_presence,
     wait_for_element_to_be_removed,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
@@ -345,12 +345,7 @@ def delete_utub_tag_elem(*, page: Page, tag_id: str, app: Flask) -> None:
     # Wait for Bootstrap's show transition to complete before clicking submit.
     # Clicking mid-fade-in drops the click handler's modal.hide() call
     # (BS5 _isTransitioning guard), so the modal never becomes hidden.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
     # Resolve the tag element BEFORE submitting: the delete response can remove it
     # from the DOM before a post-submit presence wait runs, which flaked as
     # "Locator expected to be attached" on a fast response.
@@ -736,6 +731,26 @@ class TagBatchRoute:
     ) -> None:
         """Let a parked request through (`status=None`) or fulfil it."""
         self._respond(self._held[index], status, body)
+
+    def release_and_wait(
+        self,
+        *,
+        index: int = 0,
+        status: int | None = None,
+        body: dict | str | None = None,
+    ) -> None:
+        """`release()`, then block until the page has fully received and handled
+        the response.
+
+        The response waiter is registered before the release so the response
+        cannot be missed. After it arrives, the body is read to the end and the
+        page's queued jQuery callbacks are run, so the caller's next step never
+        races a response that is still in flight or half-processed under load.
+        """
+        with self._page.expect_response(TAG_BATCH_URL_PATTERN) as response_info:
+            self.release(index=index, status=status, body=body)
+        response_info.value.finished()
+        settle_page_tasks(page=self._page)
 
     def _round_trip(self) -> None:
         settle_page_tasks(page=self._page)
