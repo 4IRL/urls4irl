@@ -3,7 +3,7 @@ Contains all routes for easy insertion into `url_for` flask function
 """
 
 from enum import StrEnum
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 from flask import url_for
 
@@ -358,6 +358,17 @@ ADMIN_JS_ROUTES: dict[str, JsRoute] = {
     "adminMetricFlowUpdate": JsRoute(ADMIN_ROUTES.METRIC_FLOW_UPDATE, {"flow_id": -1}),
     "adminMetricFlowDelete": JsRoute(ADMIN_ROUTES.METRIC_FLOW_DELETE, {"flow_id": -1}),
 }
+
+# Endpoints whose XHR calls get a JSON 429 (the builder shows an inline error)
+# instead of the HTML 429 page. Step 5 adds the catalog and preview endpoints.
+BUILDER_JSON_429_ENDPOINTS: Final[frozenset[str]] = frozenset(
+    {
+        ADMIN_ROUTES.METRIC_FLOWS_LIST,
+        ADMIN_ROUTES.METRIC_FLOW_CREATE,
+        ADMIN_ROUTES.METRIC_FLOW_UPDATE,
+        ADMIN_ROUTES.METRIC_FLOW_DELETE,
+    }
+)
 
 
 # JS linkage invariant. Every `@api_route` endpoint must be reachable through
