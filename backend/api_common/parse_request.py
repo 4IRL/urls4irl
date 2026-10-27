@@ -89,6 +89,7 @@ def api_route(
     *,
     request_schema: Type[SchemaT] | None = None,
     query_schema: Type[BaseModel] | None = None,
+    body_schema: Type[BaseModel] | None = None,
     response_schema: Type[BaseSchema] | None = None,
     error_message: str | None = None,
     error_code: IntEnum | int | None = None,
@@ -114,6 +115,12 @@ def api_route(
     still lives at the route layer (``parse_query_args``); this kwarg never
     changes request handling.
 
+    ``body_schema`` is likewise OpenAPI-only metadata: it advertises the model of
+    a JSON body the route parses itself so the generated spec carries a
+    ``requestBody``. No parsing, no kwarg injection, no runtime effect. It is
+    mutually exclusive with ``request_schema`` and requires ``error_code`` (the
+    ``x-error-codes`` rule for operations with a ``requestBody``).
+
     ``response_schema`` is stashed on the wrapped function for introspection
     (e.g. OpenAPI generation) and has no runtime effect.
 
@@ -130,6 +137,19 @@ def api_route(
             raise ValueError(
                 f"error_code is required when request_schema is provided "
                 f"(got request_schema={request_schema.__name__})"
+            )
+
+    if body_schema is not None:
+        if request_schema is not None:
+            raise ValueError(
+                "body_schema and request_schema are mutually exclusive "
+                f"(got body_schema={body_schema.__name__}, "
+                f"request_schema={request_schema.__name__})"
+            )
+        if error_code is None:
+            raise ValueError(
+                f"error_code is required when body_schema is provided "
+                f"(got body_schema={body_schema.__name__})"
             )
 
     kwarg_name: str | None = (
@@ -184,6 +204,7 @@ def api_route(
         # Stashed for OpenAPI schema generation via route introspection.
         wrapper._api_route_request_schema = request_schema
         wrapper._api_route_query_schema = query_schema
+        wrapper._api_route_body_schema = body_schema
         wrapper._api_route_response_schema = response_schema
         wrapper._api_route_ajax_required = ajax_required
         wrapper._api_route_tags = tags

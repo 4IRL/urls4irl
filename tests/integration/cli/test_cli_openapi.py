@@ -315,6 +315,58 @@ def test_strict_flag_succeeds_when_all_routes_have_schemas(runner, tmp_path):
     assert spec["openapi"] == "3.1.0"
 
 
+class _BodySchemaProbe(BaseModel):
+    name: str
+
+
+class _BodySchemaProbeErrorCodes(IntEnum):
+    INVALID_FORM_INPUT = 1
+
+
+def test_body_schema_route_emits_request_body_and_error_codes(tmp_path):
+    """
+    GIVEN a route declaring body_schema + an IntEnum error_code, and one without
+    WHEN the OpenAPI spec is generated
+    THEN only the body_schema route has a requestBody ($ref in components) and x-error-codes
+    """
+    bp = Blueprint("body_schema_bp", __name__)
+
+    @bp.route("/with-body", methods=["POST"])
+    @api_route(
+        body_schema=_BodySchemaProbe,
+        error_code=_BodySchemaProbeErrorCodes.INVALID_FORM_INPUT,
+        tags=["test"],
+    )
+    def with_body() -> dict:
+        return {}
+
+    @bp.route("/without-body", methods=["POST"])
+    @api_route(tags=["test"])
+    def without_body() -> dict:
+        return {}
+
+    minimal_app = Flask(__name__)
+    minimal_app.register_blueprint(bp)
+    register_openapi_cli(minimal_app)
+    output_path = tmp_path / "body-schema.json"
+
+    result = minimal_app.test_cli_runner().invoke(
+        args=["openapi", "generate", "--output", str(output_path)]
+    )
+    assert result.exit_code == 0, result.output
+
+    spec = json.loads(output_path.read_text())
+    with_body_op = spec["paths"]["/with-body"]["post"]
+    schema = with_body_op["requestBody"]["content"]["application/json"]["schema"]
+    assert schema["$ref"].endswith("/_BodySchemaProbe")
+    assert "_BodySchemaProbe" in spec["components"]["schemas"]
+    assert "_BodySchemaProbeErrorCodes" in with_body_op["x-error-codes"]
+
+    without_body_op = spec["paths"]["/without-body"]["post"]
+    assert "requestBody" not in without_body_op
+    assert "x-error-codes" not in without_body_op
+
+
 def test_strict_flag_fails_when_route_lacks_response_schema(tmp_path):
     """
     GIVEN a Flask app with an @api_route that has no response schema

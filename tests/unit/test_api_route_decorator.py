@@ -2,7 +2,7 @@ import logging
 from typing import Type
 
 import pytest
-from flask import Blueprint, Flask
+from flask import Blueprint, Flask, request
 from pydantic import BaseModel
 
 from backend import limiter
@@ -143,6 +143,19 @@ def minimal_app():
     def test_tags_no_status_codes():
         return {"status": "ok"}, 200
 
+    @flask_app.route("/test-body-schema", methods=["POST"])
+    @api_route(
+        body_schema=LoginRequest,
+        error_code=ContactErrorCodes.INVALID_FORM_INPUT,
+    )
+    def test_body_schema():
+        return {"raw": request.get_data(as_text=True)}, 200
+
+    @flask_app.route("/test-query-schema", methods=["GET"])
+    @api_route(query_schema=LoginRequest)
+    def test_query_schema():
+        return {"status": "ok"}, 200
+
     @flask_app.route("/test-description-only", methods=["GET"])
     @api_route(description="A route with only a description")
     def test_description_only():
@@ -265,6 +278,86 @@ def test_api_route_stashes_request_schema(minimal_app: Flask):
     """
     view_fn = minimal_app.view_functions["test_with_body"]
     assert view_fn._api_route_request_schema is LoginRequest
+
+
+def test_api_route_stashes_body_schema(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(body_schema=LoginRequest, error_code=...)
+    WHEN accessing the view function
+    THEN _api_route_body_schema is LoginRequest and request_schema stays None
+    """
+    view_fn = minimal_app.view_functions["test_body_schema"]
+    assert view_fn._api_route_body_schema is LoginRequest
+    assert view_fn._api_route_request_schema is None
+
+
+def test_api_route_body_schema_defaults_to_none(minimal_app: Flask):
+    """
+    GIVEN a route decorated without body_schema
+    WHEN accessing the view function
+    THEN _api_route_body_schema is None
+    """
+    view_fn = minimal_app.view_functions["test_no_body"]
+    assert view_fn._api_route_body_schema is None
+
+
+def test_api_route_stashes_query_schema(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(query_schema=LoginRequest)
+    WHEN accessing the view function
+    THEN _api_route_query_schema is LoginRequest, and None when omitted
+    """
+    assert (
+        minimal_app.view_functions["test_query_schema"]._api_route_query_schema
+        is LoginRequest
+    )
+    assert minimal_app.view_functions["test_no_body"]._api_route_query_schema is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"json": {"username": "ab"}},
+        {"json": {}},
+        {"data": "not json at all", "content_type": "text/plain"},
+        {},
+    ],
+)
+def test_api_route_body_schema_has_no_runtime_effect(minimal_app: Flask, payload: dict):
+    """
+    GIVEN a route declaring body_schema only for OpenAPI
+    WHEN it receives a body the schema would reject (or a non-JSON/no body)
+    THEN the route function still runs with no injected kwarg and no 400
+    """
+    with minimal_app.test_client() as client:
+        response = client.post("/test-body-schema", headers=AJAX_HEADER, **payload)
+
+    assert response.status_code == 200
+
+
+def test_api_route_raises_when_body_schema_with_request_schema():
+    """
+    GIVEN @api_route called with both body_schema and request_schema
+    WHEN the decorator factory runs
+    THEN a ValueError is raised (fail closed)
+    """
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        api_route(
+            body_schema=LoginRequest,
+            request_schema=LoginRequest,
+            error_message="Some error",
+            error_code=ContactErrorCodes.INVALID_FORM_INPUT,
+        )
+
+
+def test_api_route_raises_when_body_schema_without_error_code():
+    """
+    GIVEN @api_route called with body_schema but no error_code
+    WHEN the decorator factory runs
+    THEN a ValueError is raised (x-error-codes needs the enum)
+    """
+    with pytest.raises(ValueError, match="error_code is required"):
+        api_route(body_schema=LoginRequest)
 
 
 def test_api_route_stashes_response_schema(minimal_app: Flask):
