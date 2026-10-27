@@ -208,6 +208,19 @@ describe("bulk-copy action registration + availability", () => {
     );
   });
 
+  it("stays available when the member hides the per-card Copy button", () => {
+    Object.assign(storeState, {
+      memberSettings: { urls: { hide_copy_button: true } },
+    });
+    try {
+      expect(
+        getCopyAction().isAvailable({ selectedURLCardIDs: [10], urls: [] }),
+      ).toBe(true);
+    } finally {
+      delete (storeState as Record<string, unknown>).memberSettings;
+    }
+  });
+
   it("isAvailable is true with a selection and at least one other UTub", () => {
     expect(
       getCopyAction().isAvailable({ selectedURLCardIDs: [10], urls: [] }),

@@ -85,6 +85,14 @@ let _suppressSwipeClick = false;
 // sheet.ts's GESTURE_BOUND_ATTR idempotency convention for its one-time binding.
 let _swipeInitialized = false;
 
+/**
+ * False when the member turned swipe-to-delete off for this UTub. Read at
+ * gesture start (and nudge time), so a live toggle applies to bound rows.
+ */
+export function isSwipeDeleteEnabled(): boolean {
+  return getState().memberSettings?.urls.disable_swipe_delete !== true;
+}
+
 export function _consumeSwipeClickSuppression(): boolean {
   const suppressed = _suppressSwipeClick;
   _suppressSwipeClick = false;
@@ -111,6 +119,7 @@ function _beginDrag({
   // would orphan the first pointer's listeners by overwriting _dragState).
   if (_dragState !== null) return;
   if (event.button !== 0) return;
+  if (!isSwipeDeleteEnabled()) return;
   // A locked UTub is frozen to every mutation; swipe-to-delete is one, so the
   // gesture never begins (the visible delete controls are disabled too).
   if (getState().isCurrentUTubLocked) return;
@@ -394,6 +403,8 @@ export function triggerURLSwipeNudgeIfEligible({
   if (!isMobile() || !isCoarsePointer()) return;
   // No swipe-to-delete on a locked UTub, so don't advertise the affordance.
   if (getState().isCurrentUTubLocked) return;
+  // Gated before the session flag is written, so re-enabling still teaches.
+  if (!isSwipeDeleteEnabled()) return;
 
   let alreadyShown = false;
   try {

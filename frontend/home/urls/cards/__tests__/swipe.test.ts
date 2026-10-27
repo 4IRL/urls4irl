@@ -1,6 +1,7 @@
 import {
   bindURLRowSwipeGesture,
   initSwipe,
+  isSwipeDeleteEnabled,
   resetSwipeStateOnDeckSwitch,
   triggerURLSwipeNudgeIfEligible,
   _consumeSwipeClickSuppression,
@@ -10,6 +11,7 @@ import { deleteURL } from "../delete.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { isMobile, isCoarsePointer } from "../../../mobile.js";
 import { setState, resetStore } from "../../../../store/app-store.js";
+import { EMPTY_MEMBER_SETTINGS } from "../../../../types/settings.js";
 
 // Resettable in-memory event-bus mock (mirrors tags/sheet.test.ts): `on`/`emit`
 // operate against a registry the suite clears in beforeEach, so initSwipe()
@@ -223,6 +225,75 @@ describe("swipe gesture", () => {
 
     expect(row.find(".urlRowContent").css("transform")).toBeFalsy();
     expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
+  });
+
+  describe("swipe-to-delete disabled by the member", () => {
+    function setSwipeDisabled({ disabled }: { disabled: boolean }): void {
+      setState({
+        activeUTubID: UTUB_ID,
+        memberSettings: {
+          urls: {
+            ...EMPTY_MEMBER_SETTINGS.urls,
+            disable_swipe_delete: disabled,
+          },
+        },
+      });
+    }
+
+    function pastThresholdDrag(row: JQuery): void {
+      const rowElement = row[0];
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+    }
+
+    it("isSwipeDeleteEnabled is true without a slice and false only when disabled", () => {
+      expect(isSwipeDeleteEnabled()).toBe(true);
+      setSwipeDisabled({ disabled: false });
+      expect(isSwipeDeleteEnabled()).toBe(true);
+      setSwipeDisabled({ disabled: true });
+      expect(isSwipeDeleteEnabled()).toBe(false);
+    });
+
+    it("_beginDrag no-ops while disabled, and works again on the same bound row once re-enabled", () => {
+      vi.useFakeTimers();
+      try {
+        const row = mountURLRow();
+
+        setSwipeDisabled({ disabled: true });
+        pastThresholdDrag(row);
+        expect(deleteURL).not.toHaveBeenCalled();
+        expect(row.hasClass("swipe-dragging")).toBe(false);
+        expect(row.hasClass("swipe-committed")).toBe(false);
+
+        setSwipeDisabled({ disabled: false });
+        pastThresholdDrag(row);
+        expect(deleteURL).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("skips the nudge and leaves the session flag unwritten while disabled, then teaches once re-enabled", () => {
+      setReducedMotion({ reduce: false });
+      const row = mountURLRow();
+
+      setSwipeDisabled({ disabled: true });
+      triggerURLSwipeNudgeIfEligible({ urlRow: row });
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+      expect(row.hasClass("swipe-nudge-peeking")).toBe(false);
+      expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
+
+      setSwipeDisabled({ disabled: false });
+      triggerURLSwipeNudgeIfEligible({ urlRow: row });
+      expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBe("true");
+    });
   });
 
   it("a tap (pointerdown + pointerup with no move) does not call deleteURL or add drag classes", () => {

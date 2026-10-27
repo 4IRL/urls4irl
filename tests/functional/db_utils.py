@@ -64,6 +64,21 @@ def set_utub_settings(app: Flask, utub_id: int, settings: dict | None) -> None:
         db.session.commit()
 
 
+def set_member_settings(
+    app: Flask, utub_id: int, user_id: int, settings: dict | None
+) -> None:
+    """Write ``Utub_Members.settings`` for ``user_id`` in ``utub_id`` (the sparse
+    per-member dict, for example ``{"urls": {"sort": "title_az"}}``) and commit so
+    the running Flask server resolves it on the next request."""
+    with app.app_context():
+        membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id, Utub_Members.utub_id == utub_id
+        ).first()
+        assert membership is not None
+        membership.settings = settings
+        db.session.commit()
+
+
 def set_member_role_in_utub(
     app: Flask, user_id: int, utub_id: int, member_role: Member_Role
 ) -> None:
