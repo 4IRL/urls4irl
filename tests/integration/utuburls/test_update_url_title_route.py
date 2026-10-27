@@ -5,6 +5,7 @@ from flask_login import current_user
 from backend import db
 from backend.metrics.events import EventName
 from backend.models.urls import Urls
+from backend.models.utub_members import Utub_Members
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -899,15 +900,18 @@ def test_update_url_title_as_member_of_other_utub(
 
     NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-
-        # Get the URL of another UTub
-        url_not_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id != utub_creator_of.id,
-            Utub_Urls.user_id != current_user.id,
-        ).first()
+        # Get the URL of a UTub this user is not a member of (a member who is not the adder gets 403)
+        url_not_in_this_utub: Utub_Urls = (
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id.not_in(
+                    db.select(Utub_Members.utub_id).where(
+                        Utub_Members.user_id == current_user.id
+                    )
+                ),
+            )
+            .order_by(Utub_Urls.id)
+            .first()
+        )
         utub_id = url_not_in_this_utub.utub_id
         current_url_id = url_not_in_this_utub.id
         current_title = url_not_in_this_utub.url_title

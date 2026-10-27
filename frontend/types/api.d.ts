@@ -1750,6 +1750,23 @@ export interface paths {
     patch: operations["updateUtubSettings"];
     trace?: never;
   };
+  "/utubs/{utub_id}/member-settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Partially update the caller's own per-UTub view settings. Not gated by the UTub lock or the caller's role. Metrics: API_HIT only (no DOMAIN event). */
+    patch: operations["updateMemberSettings"];
+    trace?: never;
+  };
   "/utubs/{utub_id}/urls/{utub_url_id}/tags": {
     parameters: {
       query?: never;
@@ -2149,7 +2166,8 @@ export interface components {
       | 13
       | 14
       | 15
-      | 16;
+      | 16
+      | 17;
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -2406,6 +2424,44 @@ export interface components {
        */
       trashCount: number;
     };
+    /** @description A member's private view overrides for the URLs panel of one UTub. */
+    MemberUrlsSettings: {
+      /**
+       * @description Hide the Copy button on URL cards
+       * @default false
+       */
+      hide_copy_button: boolean;
+      /**
+       * @description Hide the Copy short link button on URL cards
+       * @default false
+       */
+      hide_short_link_button: boolean;
+      /**
+       * @description Hide the date added on URL cards
+       * @default false
+       */
+      hide_date_added: boolean;
+      /**
+       * @description URL sort override; null uses the account default
+       * @default null
+       */
+      sort: ("newest" | "oldest" | "title_az") | null;
+      /**
+       * @description Layout override; null uses the account default
+       * @default null
+       */
+      view_mode: ("list" | "compact" | "cards") | null;
+      /**
+       * @description Density override; null uses the account default
+       * @default null
+       */
+      density: ("comfortable" | "compact") | null;
+      /**
+       * @description Turn off swipe to delete on touch screens
+       * @default false
+       */
+      disable_swipe_delete: boolean;
+    };
     /** @description Settings for the members panel (no settings yet). */
     MembersSettings: Record<string, never>;
     /** @description Settings for the tags panel (no settings yet). */
@@ -2422,6 +2478,16 @@ export interface components {
        * @default false
        */
       hide_scheme_selector: boolean;
+      /**
+       * @description Whether members can create short links for URLs in this UTub
+       * @default true
+       */
+      allow_short_links: boolean;
+    };
+    /** @description Resolved per-member settings for one UTub, one section per panel. */
+    UtubMemberSettings: {
+      /** @description The member's view overrides for the URLs panel */
+      urls?: components["schemas"]["MemberUrlsSettings"];
     };
     /** @description Resolved per-UTub settings, one namespaced section per panel. */
     UtubSettings: {
@@ -2490,6 +2556,8 @@ export interface components {
       currentUser: number;
       /** @description Resolved per-UTub panel settings (stored overrides merged over defaults) */
       settings?: components["schemas"]["UtubSettings"];
+      /** @description The current user's own resolved view settings for this UTub */
+      memberSettings?: components["schemas"]["UtubMemberSettings"];
     };
     UpdateUTubNameRequest: {
       /** @description New name for the UTub */
@@ -3801,6 +3869,13 @@ export interface components {
        * @description UTub creation timestamp (ISO 8601)
        */
       createdAt: string;
+      /**
+       * @description The acting user's sparse private view overrides for this UTub, or null when none
+       * @default null
+       */
+      memberSettings: {
+        [key: string]: unknown;
+      } | null;
       /** @description URLs in the UTub, each with applied tags */
       urls?: components["schemas"]["ExportUrlSchema"][];
       /** @description The UTub's tag vocabulary */
@@ -4022,6 +4097,24 @@ export interface components {
       utubID: number;
       /** @description Full resolved per-UTub settings (stored overrides merged over defaults) */
       settings: components["schemas"]["UtubSettings"];
+    };
+    /**
+     * @description The caller's own per-panel view-override patch. Values are validated and
+     *     normalized only in ``merge_member_settings`` so an absent key and an explicit
+     *     ``null`` stay distinct; only sections the caller sent are merged.
+     */
+    UpdateMemberSettingsRequest: {
+      /** @description Patch for the caller's URLs panel view overrides */
+      urls?: {
+        [key: string]: unknown;
+      };
+    };
+    /** @description The caller's own per-UTub view settings updated */
+    MemberSettingsUpdatedResponseSchema: {
+      /** @description ID of the UTub whose member settings were updated */
+      utubID: number;
+      /** @description The caller's full resolved view settings for this UTub */
+      memberSettings: components["schemas"]["UtubMemberSettings"];
     };
     AddTagsToUrlsRequest: {
       /**
@@ -10324,6 +10417,60 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["UtubSettingsUpdatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateMemberSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateMemberSettingsRequest"];
+      };
+    };
+    responses: {
+      /** @description The caller's own per-UTub view settings updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["MemberSettingsUpdatedResponseSchema"];
         };
       };
       /** @description Bad request */

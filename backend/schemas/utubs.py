@@ -9,6 +9,10 @@ from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
 from backend.schemas.users import UtubMemberSchema
+from backend.schemas.utub_member_settings import (
+    UtubMemberSettings,
+    resolve_member_settings,
+)
 from backend.schemas.utub_settings import UtubSettings, resolve_utub_settings
 from backend.utils.strings.model_strs import MODELS, UTUB_DESCRIPTION
 from backend.utils.strings.utub_strs import UTUB_CREATOR_ID, UTUB_ID, UTUB_NAME
@@ -78,6 +82,13 @@ class UtubDetailSchema(BaseSchema):
         description="Resolved per-UTub panel settings (stored overrides merged over defaults)",
     )
 
+    # The caller's own private per-UTub view overrides; never another member's.
+    member_settings: SerializeAsAny[UtubMemberSettings] = Field(
+        default_factory=UtubMemberSettings,
+        alias=MODELS.MEMBER_SETTINGS,
+        description="The current user's own resolved view settings for this UTub",
+    )
+
     @field_serializer("created_at")
     def serialize_created_at(self, value: datetime) -> str:
         return value.isoformat()
@@ -98,11 +109,13 @@ class UtubDetailSchema(BaseSchema):
         # same line.
         from backend.models.utub_members import Member_Role
 
-        is_co_creator = any(
-            member.to_user.id == current_user_id
-            and member.member_role == Member_Role.CO_CREATOR
-            for member in utub.members
-        )
+        is_co_creator = False
+        caller_member_settings: dict | None = None
+        for member in utub.members:
+            if member.to_user.id == current_user_id:
+                is_co_creator = member.member_role == Member_Role.CO_CREATOR
+                caller_member_settings = member.settings
+                break
         # A "manager" (literal owner OR co-owner) may delete any URL in the UTub.
         # This must stay in lockstep with the server-side delete predicate in
         # ``delete_urls_in_utub`` (``backend/urls/services/delete_urls.py``) and the
@@ -153,6 +166,7 @@ class UtubDetailSchema(BaseSchema):
             is_locked=utub.is_locked,
             current_user=current_user_id,
             settings=resolve_utub_settings(utub.settings),
+            member_settings=resolve_member_settings(caller_member_settings),
         )
 
 
@@ -228,4 +242,18 @@ class UtubSettingsUpdatedResponseSchema(BaseSchema):
     settings: SerializeAsAny[UtubSettings] = Field(
         alias=MODELS.SETTINGS,
         description="Full resolved per-UTub settings (stored overrides merged over defaults)",
+    )
+
+
+class MemberSettingsUpdatedResponseSchema(BaseSchema):
+    """The caller's own per-UTub view settings updated"""
+
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub whose member settings were updated",
+    )
+    # SerializeAsAny: see UtubDetailSchema.member_settings.
+    member_settings: SerializeAsAny[UtubMemberSettings] = Field(
+        alias=MODELS.MEMBER_SETTINGS,
+        description="The caller's full resolved view settings for this UTub",
     )

@@ -114,7 +114,7 @@ def test_add_shortlinks_table_migration_upgrade_and_downgrade(runner):
     GIVEN a database upgraded to head and seeded via ``flask addmock all``
     WHEN the add_shortlinks_table migration is downgraded to c7a3e9b5d2f4 and
         re-applied to head
-    THEN there is exactly one Alembic head (d4a8c2e6f0b1), the ShortLinks table
+    THEN there is exactly one Alembic head, the ShortLinks table
         has the expected columns, constraints, indexes and foreign keys, the
         downgrade drops it without changing any other table's row count, and
         the re-upgrade recreates the empty table.
@@ -137,7 +137,8 @@ def test_add_shortlinks_table_migration_upgrade_and_downgrade(runner):
         )
 
         # Start at head so addmock all runs against a complete schema
-        # (it seeds MetricFlows, which a later migration creates).
+        # (it seeds MetricFlows and later model-mapped columns that
+        # subsequent migrations create).
         command.upgrade(alembic_config, "head")
 
         with db.engine.connect() as connection:

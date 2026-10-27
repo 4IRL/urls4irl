@@ -21,6 +21,7 @@ from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.trash import EmptyTrashRequest
 from backend.schemas.requests.utubs import (
     CreateUTubRequest,
+    UpdateMemberSettingsRequest,
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
     UpdateUTubSettingsRequest,
@@ -33,6 +34,7 @@ from backend.schemas.trash import (
 )
 from backend.schemas.users import UtubSummaryListSchema
 from backend.schemas.utubs import (
+    MemberSettingsUpdatedResponseSchema,
     UtubCreatedResponseSchema,
     UtubDeletedResponseSchema,
     UtubDescUpdatedResponseSchema,
@@ -70,6 +72,9 @@ from backend.utubs.services.read_utubs import (
 from backend.utubs.services.trash_utubs import (
     purge_trashed_utub,
     restore_trashed_utub,
+)
+from backend.utubs.services.update_member_settings import (
+    update_member_settings_if_changed,
 )
 from backend.utubs.services.update_utub_settings import update_utub_settings_if_changed
 from backend.utubs.services.update_utubs import (
@@ -383,6 +388,42 @@ def update_utub_settings(
         for section in update_utub_settings_request.model_fields_set
     }
     return update_utub_settings_if_changed(current_utub, patch)
+
+
+@utubs.route("/utubs/<int:utub_id>/member-settings", methods=["PATCH"])
+@utub_membership_required
+@api_route(
+    request_schema=UpdateMemberSettingsRequest,
+    response_schema=MemberSettingsUpdatedResponseSchema,
+    error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_SETTINGS,
+    error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.UTUBS],
+    description="Partially update the caller's own per-UTub view settings. Not gated by the UTub lock or the caller's role. Metrics: API_HIT only (no DOMAIN event).",
+    status_codes={
+        200: MemberSettingsUpdatedResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def update_member_settings(
+    utub_id: int,
+    current_utub: Utubs,
+    update_member_settings_request: UpdateMemberSettingsRequest,
+) -> FlaskResponse:
+    """
+    Any member of the UTub wants to update their own private view settings.
+    Only the sections present in the request are merged, and only the caller's
+    own membership row is ever written.
+
+    Args:
+        utub_id (int): The ID of the UTub whose member settings are updated
+    """
+    patch = {
+        section: getattr(update_member_settings_request, section)
+        for section in update_member_settings_request.model_fields_set
+    }
+    return update_member_settings_if_changed(current_utub, patch)
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])

@@ -19,6 +19,7 @@ from backend.schemas.utubs import UtubDetailSchema, UtubTagSchema
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from tests.functional.db_utils import count_urls_with_tag_applied_by_tag_id
+from tests.settings_stub import DEFAULT_MEMBER_SETTINGS_DICT
 
 pytestmark = pytest.mark.unit
 
@@ -513,6 +514,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             test_utub[MODEL_STRS.SETTINGS] = utub_in_data_serialized[
                 MODEL_STRS.SETTINGS
             ]
+            test_utub[MODEL_STRS.MEMBER_SETTINGS] = DEFAULT_MEMBER_SETTINGS_DICT
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
 
@@ -594,6 +596,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             test_utub[MODEL_STRS.SETTINGS] = utub_in_data_serialized[
                 MODEL_STRS.SETTINGS
             ]
+            test_utub[MODEL_STRS.MEMBER_SETTINGS] = DEFAULT_MEMBER_SETTINGS_DICT
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
@@ -710,6 +713,7 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             test_utub[MODEL_STRS.SETTINGS] = utub_in_data_serialized[
                 MODEL_STRS.SETTINGS
             ]
+            test_utub[MODEL_STRS.MEMBER_SETTINGS] = DEFAULT_MEMBER_SETTINGS_DICT
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
@@ -853,5 +857,6 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             test_utub[MODEL_STRS.SETTINGS] = utub_in_data_serialized[
                 MODEL_STRS.SETTINGS
             ]
+            test_utub[MODEL_STRS.MEMBER_SETTINGS] = DEFAULT_MEMBER_SETTINGS_DICT
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)

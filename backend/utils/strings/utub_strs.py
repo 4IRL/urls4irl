@@ -1,5 +1,6 @@
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.model_strs import UTUB_DESCRIPTION
+from backend.utils.strings.user_settings_strs import USER_SETTINGS_STRINGS
 
 # Strings for utub success
 UTUB_ID = "utubID"
@@ -72,6 +73,70 @@ URLS_SETTINGS_HIDE_REQUIRES_HTTPS = "Only available when the default is https."
 URLS_SETTINGS_SELECTOR_RESTORED = (
     "Scheme selector shown again because the default is no longer https."
 )
+URLS_SETTINGS_ALLOW_SHORT_LINKS_LABEL = "Allow short links"
+URLS_SETTINGS_ALLOW_SHORT_LINKS_DESC = (
+    "Turning this off removes Copy short link for every member. "
+    "Existing short links keep working until they expire or are revoked."
+)
+URLS_SETTINGS_SHORT_LINKS_OFF_NOTICE = "Short links turned off"
+URLS_SETTINGS_SHORT_LINKS_ON_NOTICE = "Short links turned on"
+# URLs panel "Your view of this UTub" section: written by TS, so all are bridged.
+URLS_PERSONAL_SETTINGS_SECTION_TITLE = "Your view of this UTub"
+URLS_PERSONAL_SETTINGS_SORT_LABEL = "Sort URLs"
+URLS_PERSONAL_SETTINGS_VIEW_LABEL = "Layout"
+URLS_PERSONAL_SETTINGS_DENSITY_LABEL = "Density"
+URLS_PERSONAL_SETTINGS_DENSITY_DESC = (
+    "Compact spacing applies with a mouse or trackpad."
+)
+URLS_PERSONAL_SETTINGS_DEFAULT_OPTION_PREFIX = "Default: "
+URLS_PERSONAL_SETTINGS_SORT_OPTION_NEWEST = (
+    USER_SETTINGS_STRINGS.UI_SETTINGS_SORT_OPTION_NEWEST
+)
+URLS_PERSONAL_SETTINGS_SORT_OPTION_OLDEST = (
+    USER_SETTINGS_STRINGS.UI_SETTINGS_SORT_OPTION_OLDEST
+)
+URLS_PERSONAL_SETTINGS_SORT_OPTION_TITLE_AZ = (
+    USER_SETTINGS_STRINGS.UI_SETTINGS_SORT_OPTION_TITLE_AZ
+)
+URLS_PERSONAL_SETTINGS_VIEW_OPTION_LIST = (
+    USER_SETTINGS_STRINGS.UI_SETTINGS_VIEW_OPTION_LIST
+)
+URLS_PERSONAL_SETTINGS_VIEW_OPTION_COMPACT = "Compact"
+URLS_PERSONAL_SETTINGS_VIEW_OPTION_CARDS = (
+    USER_SETTINGS_STRINGS.UI_SETTINGS_VIEW_OPTION_CARDS
+)
+URLS_PERSONAL_SETTINGS_DENSITY_OPTION_COMFORTABLE = (
+    USER_SETTINGS_STRINGS.UI_SETTINGS_DENSITY_OPTION_COMFORTABLE
+)
+URLS_PERSONAL_SETTINGS_DENSITY_OPTION_COMPACT = "Compact"
+URLS_PERSONAL_SETTINGS_HIDE_COPY_LABEL = "Hide Copy button"
+URLS_PERSONAL_SETTINGS_HIDE_COPY_DESC = "Selecting several URLs can still copy them."
+URLS_PERSONAL_SETTINGS_HIDE_SHORT_LINK_LABEL = "Hide Copy short link button"
+URLS_PERSONAL_SETTINGS_HIDE_SHORT_LINK_DESC = "Existing short links and Revoke stay."
+URLS_PERSONAL_SETTINGS_HIDE_DATE_LABEL = "Hide date added"
+URLS_PERSONAL_SETTINGS_HIDE_DATE_DESC = '"Added by" names stay.'
+URLS_PERSONAL_SETTINGS_DISABLE_SWIPE_LABEL = "Turn off swipe to delete"
+URLS_PERSONAL_SETTINGS_DISABLE_SWIPE_DESC = (
+    "On touch screens. The Delete button still works."
+)
+URLS_PERSONAL_SETTINGS_SHORT_LINKS_OFF_HINT = (
+    "Short links are turned off for everyone in this UTub."
+)
+URLS_PERSONAL_SETTINGS_COPY_HIDDEN_NOTICE = "Copy button hidden"
+URLS_PERSONAL_SETTINGS_COPY_SHOWN_NOTICE = "Copy button shown"
+URLS_PERSONAL_SETTINGS_SHORT_LINK_HIDDEN_NOTICE = "Copy short link button hidden"
+URLS_PERSONAL_SETTINGS_SHORT_LINK_SHOWN_NOTICE = "Copy short link button shown"
+URLS_PERSONAL_SETTINGS_DATE_HIDDEN_NOTICE = "Date added hidden"
+URLS_PERSONAL_SETTINGS_DATE_SHOWN_NOTICE = "Date added shown"
+URLS_PERSONAL_SETTINGS_SWIPE_OFF_NOTICE = "Swipe to delete turned off"
+URLS_PERSONAL_SETTINGS_SWIPE_ON_NOTICE = "Swipe to delete turned on"
+URLS_PERSONAL_SETTINGS_SORT_ORDER_PENDING_NOTICE = "Order will update on next refresh"
+URLS_PERSONAL_SETTINGS_SORT_SET_NOTICE_PREFIX = "Sort set to "
+URLS_PERSONAL_SETTINGS_SORT_DEFAULT_NOTICE = "Sort uses your default"
+URLS_PERSONAL_SETTINGS_VIEW_SET_NOTICE_PREFIX = "Layout set to "
+URLS_PERSONAL_SETTINGS_VIEW_DEFAULT_NOTICE = "Layout uses your default"
+URLS_PERSONAL_SETTINGS_DENSITY_SET_NOTICE_PREFIX = "Density set to "
+URLS_PERSONAL_SETTINGS_DENSITY_DEFAULT_NOTICE = "Density uses your default"
 # Gear aria-label/tooltip text: Jinja-only, asserted by a Python integration test, so
 # backend constants only (not bridged to TS).
 PANEL_SETTINGS_GEAR_UTUBS = "UTubs settings"

@@ -1311,6 +1311,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `updateUTubDescription`
 
+### `PATCH /utubs/<int:utub_id>/member-settings` — `utubs.update_member_settings`
+
+- **Handler:** `backend/utubs/routes.py:update_member_settings`
+- **Decorators:** `utub_membership_required`, `api_route`
+- **Service:** `backend.utubs.services.update_member_settings:update_member_settings_if_changed`
+- **Schema:** request: `backend.schemas.requests.utubs.UpdateMemberSettingsRequest`; response: `backend.schemas.utubs.MemberSettingsUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.MemberSettingsUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `updateMemberSettings`
+
 ### `PATCH /utubs/<int:utub_id>/name` — `utubs.update_utub_name`
 
 - **Handler:** `backend/utubs/routes.py:update_utub_name`

@@ -37,6 +37,7 @@ from backend.models.user_preferences import (
     ViewMode,
 )
 from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.exports import UserDataExportResponseSchema
 from backend.users.constants import DATA_EXPORT_RATE_LIMIT, DataExportErrorCodes
@@ -163,6 +164,31 @@ def test_data_export_core_serializes_all_memberships(
         for tag_payload in utub_payload["tags"]:
             assert "id" not in tag_payload
             assert "createdByUserId" not in tag_payload
+
+
+def test_data_export_core_includes_member_settings(
+    login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
+) -> None:
+    """Each exported UTub carries the acting user's sparse overrides for it
+    (``memberSettings``), and ``null`` when none are stored."""
+    _logged_in_client, seeded_user, app = login_first_user_with_distinct_stats
+    stored_overrides = {"urls": {"sort": "title_az", "hide_copy_button": True}}
+
+    with app.app_context():
+        membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == seeded_user.id
+        ).first()
+        membership.settings = stored_overrides
+        db.session.commit()
+        acting_user: Users = Users.query.get(seeded_user.id)
+        export = build_user_data_export_core(user=acting_user, generated_at=utc_now())
+
+    payload = export.model_dump(by_alias=True, mode="json")
+    exported_settings = [
+        utub_payload["memberSettings"] for utub_payload in payload["utubs"]
+    ]
+    assert exported_settings.count(stored_overrides) == 1
+    assert exported_settings.count(None) == len(payload["utubs"]) - 1
 
 
 def test_data_export_core_includes_trashed_utub(

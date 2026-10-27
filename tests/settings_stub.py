@@ -15,6 +15,7 @@ STUB_KEY = "stub_flag"
 URLS_DEFAULTS: dict[str, Any] = {
     "default_url_scheme": "https",
     "hide_scheme_selector": False,
+    "allow_short_links": True,
 }
 
 DEFAULT_SETTINGS_DICT: dict[str, dict[str, Any]] = {
@@ -22,6 +23,20 @@ DEFAULT_SETTINGS_DICT: dict[str, dict[str, Any]] = {
     "members": {},
     "tags": {},
     "urls": dict(URLS_DEFAULTS),
+}
+
+
+# The resolved ``memberSettings`` of a member with no stored overrides.
+DEFAULT_MEMBER_SETTINGS_DICT: dict[str, dict[str, Any]] = {
+    "urls": {
+        "hide_copy_button": False,
+        "hide_short_link_button": False,
+        "hide_date_added": False,
+        "sort": None,
+        "view_mode": None,
+        "density": None,
+        "disable_swipe_delete": False,
+    }
 }
 
 

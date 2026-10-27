@@ -11,6 +11,7 @@ from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.users import UtubSummaryListSchema
+from backend.schemas.utub_member_settings import resolve_member_settings
 from backend.schemas.utubs import UtubDetailSchema
 from backend.utils.datetime_utils import utc_now
 from backend.utubs.services.trash_predicates import count_trash_rows_for_user
@@ -35,7 +36,20 @@ def _build_utub_detail_for_user(current_utub: Utubs) -> UtubDetailSchema:
     # grow with the number of URLs; the in-memory list is then sorted. Both
     # GET /utubs/<id> and its api_v1 mirror share this service, so ordering here
     # covers both surfaces.
+    # The caller's per-UTub ``urls.sort`` override (their own membership row)
+    # beats that preference; an unset override falls back to it.
     default_sort = resolve_preferences(current_user.preferences).default_sort
+    caller_settings = next(
+        (
+            member.settings
+            for member in current_utub.members
+            if member.user_id == current_user.id
+        ),
+        None,
+    )
+    sort_override = resolve_member_settings(caller_settings).urls.sort
+    if sort_override is not None:
+        default_sort = SortOrder(sort_override)
     # ``populate_existing`` refreshes rows the route guard already identity-mapped, so
     # the eager loads apply to them too. Trashed URLs are filtered out in SQL.
     live_utub_urls: list[Utub_Urls] = (

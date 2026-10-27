@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Tuple
 from unittest import mock
@@ -25,6 +26,7 @@ from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utubs.services import read_utubs
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.settings_stub import (
+    DEFAULT_MEMBER_SETTINGS_DICT,
     DEFAULT_SETTINGS_DICT,
     STUB_KEY,
     URLS_DEFAULTS,
@@ -690,6 +692,259 @@ def test_get_utub_urls_defaults_to_newest_without_preferences_row(
     assert response_json is not None
     actual_ids = [url[MODELS.UTUB_URL_ID] for url in response_json[MODELS.URLS]]
     assert actual_ids == expected_ids
+
+
+def _expected_ids_for_sort(utub: Utubs, sort_order: SortOrder) -> list[int]:
+    if sort_order == SortOrder.NEWEST:
+        ordered = sorted(
+            utub.utub_urls, key=lambda utub_url: utub_url.added_at, reverse=True
+        )
+    elif sort_order == SortOrder.OLDEST:
+        ordered = sorted(utub.utub_urls, key=lambda utub_url: utub_url.added_at)
+    else:
+        ordered = sorted(
+            utub.utub_urls, key=lambda utub_url: (utub_url.url_title or "").lower()
+        )
+    return [utub_url.id for utub_url in ordered]
+
+
+def _set_member_settings(*, utub_id: int, user_id: int, settings: dict | None) -> None:
+    membership: Utub_Members = Utub_Members.query.get((utub_id, user_id))
+    membership.settings = settings
+    db.session.commit()
+
+
+def _get_url_ids(client: FlaskClient, utub_id: int) -> list[int]:
+    response_json = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    ).json
+    assert response_json is not None
+    return [url[MODELS.UTUB_URL_ID] for url in response_json[MODELS.URLS]]
+
+
+@pytest.mark.parametrize(
+    "override, preference",
+    [
+        (SortOrder.NEWEST, SortOrder.OLDEST),
+        (SortOrder.OLDEST, SortOrder.NEWEST),
+        (SortOrder.TITLE_AZ, SortOrder.NEWEST),
+    ],
+    ids=["newest_over_oldest", "oldest_over_newest", "title_az_over_newest"],
+)
+def test_member_sort_override_beats_preference(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+    override: SortOrder,
+    preference: SortOrder,
+):
+    """
+    GIVEN a member whose account default sort is `preference` and whose
+        membership stores a different `urls.sort` override
+    WHEN they request the UTub detail
+    THEN the URLs follow the override
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        utub_id = utub.id
+        _assign_distinct_sort_values(utub)
+        db.session.add(
+            User_Preferences(user_id=current_user.id, default_sort=preference)
+        )
+        db.session.commit()
+        _set_member_settings(
+            utub_id=utub_id,
+            user_id=current_user.id,
+            settings={"urls": {"sort": override.value}},
+        )
+        expected_ids = _expected_ids_for_sort(Utubs.query.get(utub_id), override)
+        assert expected_ids != _expected_ids_for_sort(
+            Utubs.query.get(utub_id), preference
+        )
+
+    assert _get_url_ids(client, utub_id) == expected_ids
+
+
+def test_member_null_sort_override_falls_back_to_preference(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a member with a preference of OLDEST and stored settings with no sort
+    WHEN they request the UTub detail
+    THEN the URLs follow the account preference
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        utub_id = utub.id
+        _assign_distinct_sort_values(utub)
+        db.session.add(
+            User_Preferences(user_id=current_user.id, default_sort=SortOrder.OLDEST)
+        )
+        db.session.commit()
+        _set_member_settings(
+            utub_id=utub_id,
+            user_id=current_user.id,
+            settings={"urls": {"hide_date_added": True}},
+        )
+        expected_ids = _expected_ids_for_sort(
+            Utubs.query.get(utub_id), SortOrder.OLDEST
+        )
+
+    assert _get_url_ids(client, utub_id) == expected_ids
+
+
+def test_member_sort_override_in_one_utub_does_not_affect_another(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a member with a title_az override in UTub A only
+    WHEN they request UTub A and UTub B
+    THEN A is ordered by title and B by their default (newest)
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        memberships: list[Utub_Members] = (
+            Utub_Members.query.filter(Utub_Members.user_id == current_user.id)
+            .order_by(Utub_Members.utub_id)
+            .all()
+        )
+        utub_a_id, utub_b_id = memberships[0].utub_id, memberships[1].utub_id
+        user_id = current_user.id
+        for utub_id in (utub_a_id, utub_b_id):
+            _assign_distinct_sort_values(Utubs.query.get(utub_id))
+        _set_member_settings(
+            utub_id=utub_a_id, user_id=user_id, settings={"urls": {"sort": "title_az"}}
+        )
+        expected_a = _expected_ids_for_sort(
+            Utubs.query.get(utub_a_id), SortOrder.TITLE_AZ
+        )
+        expected_b = _expected_ids_for_sort(
+            Utubs.query.get(utub_b_id), SortOrder.NEWEST
+        )
+
+    assert _get_url_ids(client, utub_a_id) == expected_a
+    assert _get_url_ids(client, utub_b_id) == expected_b
+
+
+def test_member_title_az_override_is_case_insensitive_with_empty_title_first(
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a title_az override and one URL with an empty title (the serializer
+        rejects NULL titles on the wire, so the NULL-to-empty coalesce is
+        exercised by the empty-string case)
+    WHEN the member requests the UTub detail
+    THEN the empty title sorts first and the rest case-insensitively
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        utub_id = utub.id
+        _assign_distinct_sort_values(utub)
+        urls_by_title = {utub_url.url_title: utub_url for utub_url in utub.utub_urls}
+        urls_by_title["Charlie"].url_title = ""
+        db.session.commit()
+        empty_title_url_id = urls_by_title["Charlie"].id
+        _set_member_settings(
+            utub_id=utub_id,
+            user_id=current_user.id,
+            settings={"urls": {"sort": "title_az"}},
+        )
+
+    url_ids = _get_url_ids(client, utub_id)
+    assert url_ids[0] == empty_title_url_id
+    with app.app_context():
+        remaining_titles = [
+            Utub_Urls.query.get(url_id).url_title for url_id in url_ids[1:]
+        ]
+    assert remaining_titles == ["alpha", "Bravo"]
+
+
+def test_detail_member_settings_default_slice_for_creator(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a UTub creator with no stored settings
+    WHEN they request the UTub detail
+    THEN `memberSettings` is the all-default slice
+    """
+    client, utub_id, _, _ = add_single_utub_as_user_after_logging_in
+
+    assert _get_detail_json(client, utub_id)[MODELS.MEMBER_SETTINGS] == (
+        DEFAULT_MEMBER_SETTINGS_DICT
+    )
+
+
+def test_detail_member_settings_default_slice_for_co_creator(
+    add_co_creator_to_utub_without_logging_in,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a co-owner with no stored settings
+    WHEN they request the UTub detail
+    THEN `memberSettings` is the all-default slice
+    """
+    client, _, user, app = login_second_user_without_register
+
+    with app.app_context():
+        utub_id = Utubs.query.filter(Utubs.utub_creator != user.id).first().id
+
+    assert _get_detail_json(client, utub_id)[MODELS.MEMBER_SETTINGS] == (
+        DEFAULT_MEMBER_SETTINGS_DICT
+    )
+
+
+def test_detail_member_settings_default_slice_for_plain_member(
+    add_single_user_to_utub_without_logging_in,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a plain member with no stored settings
+    WHEN they request the UTub detail
+    THEN `memberSettings` is the all-default slice
+    """
+    client, _, user, app = login_second_user_without_register
+
+    with app.app_context():
+        utub_id = Utubs.query.filter(Utubs.utub_creator != user.id).first().id
+
+    assert _get_detail_json(client, utub_id)[MODELS.MEMBER_SETTINGS] == (
+        DEFAULT_MEMBER_SETTINGS_DICT
+    )
+
+
+def test_detail_member_settings_not_visible_to_other_members(
+    add_single_user_to_utub_without_logging_in,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN the creator's stored override and a plain member
+    WHEN the plain member requests the UTub detail
+    THEN `memberSettings` is the member's own defaults, never the creator's
+    """
+    client, _, member, app = login_second_user_without_register
+
+    with app.app_context():
+        utub_id = Utubs.query.filter(Utubs.utub_creator != member.id).first().id
+        creator_id = Utubs.query.get(utub_id).utub_creator
+        _set_member_settings(
+            utub_id=utub_id,
+            user_id=creator_id,
+            settings={"urls": {"hide_copy_button": True, "sort": "oldest"}},
+        )
+
+    detail_json = _get_detail_json(client, utub_id)
+    assert detail_json[MODELS.MEMBER_SETTINGS] == DEFAULT_MEMBER_SETTINGS_DICT
+    assert "oldest" not in json.dumps(detail_json)
 
 
 def test_get_valid_utub_with_members_urls_tags(
