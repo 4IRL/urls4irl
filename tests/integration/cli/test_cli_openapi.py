@@ -1180,6 +1180,29 @@ def test_metric_flow_write_routes_body_is_lenient_flow_definition(runner, tmp_pa
     assert {"display_name", "steps"} <= set(properties)
 
 
+def test_metric_flow_preview_operation_in_spec(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec of the real app
+    WHEN we inspect POST /admin/metrics/flows/preview
+    THEN it takes a LenientFlowDefinition body, window/start/end query params
+        (no flow_id), returns FlowResponseSchema and lists x-error-codes
+    """
+    spec = _generate_spec(runner, tmp_path)
+    operation = spec["paths"]["/admin/metrics/flows/preview"]["post"]
+
+    body_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+    assert "LenientFlowDefinition" in json.dumps(body_schema)
+    query_names = {
+        parameter["name"]
+        for parameter in operation["parameters"]
+        if parameter["in"] == "query"
+    }
+    assert query_names == {"window", "start", "end"}
+    ok_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert "FlowResponseSchema" in json.dumps(ok_schema)
+    assert set(operation["x-error-codes"]) == {"AdminActionErrorCodes"}
+
+
 def test_metric_flow_catalog_operation_in_spec(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec of the real app

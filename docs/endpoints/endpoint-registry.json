@@ -459,6 +459,43 @@
         "admin_required",
         "api_route"
       ],
+      "endpoint": "admin.preview_metric_flow",
+      "handler": "backend/admin/metric_flow_routes.py:admin_preview_metric_flow",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "adminMetricFlowPreview"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/admin/metrics/flows/preview",
+      "schemas": {
+        "body": "backend.metrics.flow_validation.LenientFlowDefinition",
+        "query": "backend.schemas.requests.metrics.FlowPreviewQuerySchema",
+        "request": null,
+        "response": "backend.schemas.metrics.FlowResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.metrics.FlowResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.admin.metric_flow_service:preview_metric_flow"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "admin",
+      "decorators": [
+        "admin_required",
+        "api_route"
+      ],
       "endpoint": "admin.admin_ops_audit_purge",
       "handler": "backend/admin/action_routes.py:admin_ops_audit_purge",
       "js": {
