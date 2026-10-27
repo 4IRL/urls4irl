@@ -1,6 +1,10 @@
 import { resetStore, setState } from "../../../store/app-store.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
-import { handleActiveUTubGone, resyncSettings } from "../client.js";
+import {
+  handleActiveUTubGone,
+  resyncMemberSettings,
+  resyncSettings,
+} from "../client.js";
 import { DEBOUNCE_MS, createSaveQueue } from "../queue.js";
 import {
   isPanelSettingsBusy,
@@ -12,6 +16,7 @@ import { makeSection, makeSink } from "./helpers.js";
 vi.mock("../client.js", () => ({
   handleActiveUTubGone: vi.fn(),
   resyncSettings: vi.fn(async () => true),
+  resyncMemberSettings: vi.fn(async () => true),
 }));
 vi.mock("../../utubs/stale-data.js", () => ({
   updateUTubOnFindingStaleData: vi.fn(async () => {}),
@@ -451,6 +456,65 @@ describe("createSaveQueue", () => {
         utubID: UTUB_ID,
       });
       expect(section.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("a per-utub user section resyncs the member slice, not the shared one", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection({
+        scope: "user",
+        userKind: "per-utub",
+      });
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      pending[0].resolve({ outcome: "error" });
+      await settle();
+
+      expect(resyncMemberSettings).toHaveBeenCalledWith({ utubID: UTUB_ID });
+      expect(resyncSettings).not.toHaveBeenCalled();
+      expect(sink.resynced).toHaveBeenCalledWith({
+        sectionId: section.id,
+        utubID: UTUB_ID,
+      });
+    });
+
+    it("an account-kind user section error calls neither resync fn", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection({
+        scope: "user",
+        userKind: "global",
+      });
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      pending[0].resolve({ outcome: "error" });
+      await settle();
+
+      expect(sink.report).toHaveBeenLastCalledWith({
+        sectionId: section.id,
+        utubID: null,
+        status: "error",
+      });
+      expect(resyncSettings).not.toHaveBeenCalled();
+      expect(resyncMemberSettings).not.toHaveBeenCalled();
+      expect(sink.resynced).not.toHaveBeenCalled();
+    });
+
+    it("a per-utub user section error with resync:false does not resync the member slice", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection({
+        scope: "user",
+        userKind: "per-utub",
+      });
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      pending[0].resolve({ outcome: "error", resync: false });
+      await settle();
+
+      expect(resyncMemberSettings).not.toHaveBeenCalled();
+      expect(resyncSettings).not.toHaveBeenCalled();
+      expect(sink.resynced).not.toHaveBeenCalled();
     });
 
     it("does not call resynced when the resync resolves false", async () => {

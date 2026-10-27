@@ -5,7 +5,10 @@ import { dismissActiveTip, maybeShowNextTip } from "../../onboarding/nudges.js";
 import { closeAllMemberRowMenus } from "../../members/row-menu.js";
 import { fitUTubHeaderAndSubheader } from "../../utubs/header-fit.js";
 import { hideTooltip } from "../../../lib/tooltips.js";
-import type { ResolvedUtubSettings } from "../../../types/settings.js";
+import {
+  EMPTY_MEMBER_SETTINGS,
+  type ResolvedUtubSettings,
+} from "../../../types/settings.js";
 import { announceSettingsStatus } from "../announce.js";
 import { resyncSettings } from "../client.js";
 import { resetPopover, initPopover } from "../popover.js";
@@ -63,6 +66,18 @@ vi.mock("../../tags/sheet.js", () => ({
 }));
 function popover(): HTMLElement {
   return el("panelSettingsPopover");
+}
+
+function toggleOf(sectionId: string): HTMLButtonElement {
+  return popover().querySelector(
+    `[data-section-id="${sectionId}"] .panelSettingsSectionToggle`,
+  ) as HTMLButtonElement;
+}
+
+function groupToggleOf(scope: string): HTMLButtonElement {
+  return popover().querySelector(
+    `[data-group="${scope}"] > .panelSettingsGroupHeading .panelSettingsGroupToggle`,
+  ) as HTMLButtonElement;
 }
 
 function isGearVisible(panel: string): boolean {
@@ -243,24 +258,36 @@ describe("panel settings popover", () => {
       expect(whileOpen.defaultPrevented).toBe(true);
     });
 
-    it("renders the section chrome: title, scope label, status slot, note slot", () => {
+    it("renders the section chrome: subheader title, status slot, note slot, no scope caption", () => {
       setupUrls();
       openGear("urls");
 
       const wrapper = popover().querySelector(
         '[data-section-id="sort"]',
       ) as HTMLElement;
-      expect(wrapper.querySelector("h2")?.textContent).toBe("Sort");
-      expect(wrapper.querySelector(".panelSettingsScope")?.textContent).toBe(
-        "Shared with this UTub",
-      );
+      expect(wrapper.querySelector("h3")?.textContent).toBe("Sort");
+      expect(wrapper.querySelector("h2")).toBeNull();
+      expect(popover().querySelector(".panelSettingsScope")).toBeNull();
       expect(wrapper.querySelector(".panelSettingsStatus")).not.toBeNull();
       expect(
         wrapper.querySelector(".panelSettingsReadOnlyNote"),
       ).not.toBeNull();
     });
 
-    it("labels a user-scope section as just for you", () => {
+    it("nests a utub-scope section under the 'Shared with this UTub' group", () => {
+      setupUrls();
+      openGear("urls");
+
+      const group = popover().querySelector(
+        '[data-group="utub"]',
+      ) as HTMLElement;
+      expect(group.querySelector("h2")?.textContent).toBe(
+        "Shared with this UTub",
+      );
+      expect(group.querySelector('[data-section-id="sort"]')).not.toBeNull();
+    });
+
+    it("nests a user-scope section under the 'Just for you' group", () => {
       initPopover();
       registerControlled({
         id: "utubs-pref",
@@ -269,9 +296,11 @@ describe("panel settings popover", () => {
         userKind: "global",
       });
       openGear("utubs");
-      expect(popover().querySelector(".panelSettingsScope")?.textContent).toBe(
-        "Just for you",
-      );
+      const group = popover().querySelector('[data-group="user"]');
+      expect(group?.querySelector("h2")?.textContent).toBe("Just for you");
+      expect(
+        group?.querySelector('[data-section-id="utubs-pref"]'),
+      ).not.toBeNull();
     });
 
     it("shows the empty message for a section that renders nothing", () => {
@@ -288,7 +317,7 @@ describe("panel settings popover", () => {
       expect(document.activeElement).toBe(el("sort-input"));
     });
 
-    it("moves focus to the dialog when there is no control", () => {
+    it("moves focus to the section toggle when the body has no control", () => {
       initPopover();
       registerControlled({
         render: vi.fn(({ container }) => {
@@ -297,7 +326,7 @@ describe("panel settings popover", () => {
       });
       selectUTub();
       openGear("urls");
-      expect(document.activeElement).toBe(popover());
+      expect(document.activeElement).toBe(toggleOf("sort"));
     });
 
     it("toggles closed on a second gear click and returns focus to the gear", () => {
@@ -458,6 +487,719 @@ describe("panel settings popover", () => {
     });
   });
 
+  describe("collapsible sections", () => {
+    const STORAGE_KEY = "u4i:panelSettingsCollapsed";
+
+    function regionOf(sectionId: string): HTMLElement {
+      return el(`panelSettingsRegion-${sectionId}`);
+    }
+
+    function setupSort(
+      overrides: Parameters<typeof registerControlled>[0] = {},
+    ) {
+      initPopover();
+      const harness = registerControlled(overrides);
+      selectUTub();
+      openGear("urls");
+      return harness;
+    }
+
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      localStorage.clear();
+      vi.restoreAllMocks();
+    });
+
+    it("renders each section expanded with an aria-expanded toggle", () => {
+      setupSort();
+      const toggle = toggleOf("sort");
+      expect(toggle.getAttribute("aria-expanded")).toBe("true");
+      expect(toggle.getAttribute("aria-controls")).toBe(
+        "panelSettingsRegion-sort",
+      );
+      expect(regionOf("sort").hidden).toBe(false);
+      expect(toggle.closest("h3")).not.toBeNull();
+    });
+
+    it("collapses on click, hides the body and persists the section id", () => {
+      setupSort();
+      toggleOf("sort").click();
+
+      expect(toggleOf("sort").getAttribute("aria-expanded")).toBe("false");
+      expect(regionOf("sort").hidden).toBe(true);
+      expect(
+        popover()
+          .querySelector('[data-section-id="sort"]')
+          ?.classList.contains("panelSettingsSection--collapsed"),
+      ).toBe(true);
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")).toEqual({
+        sort: true,
+      });
+    });
+
+    it("expands again and removes the id from storage", () => {
+      setupSort();
+      toggleOf("sort").click();
+      toggleOf("sort").click();
+
+      expect(regionOf("sort").hidden).toBe(false);
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")).toEqual({});
+    });
+
+    it("restores the collapsed state from storage on a fresh open", () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ sort: true }));
+      setupSort();
+
+      expect(toggleOf("sort").getAttribute("aria-expanded")).toBe("false");
+      expect(regionOf("sort").hidden).toBe(true);
+    });
+
+    it("falls back to expanded when storage is corrupt", () => {
+      localStorage.setItem(STORAGE_KEY, "{not json");
+      setupSort();
+      expect(regionOf("sort").hidden).toBe(false);
+    });
+
+    it("stays usable when storage throws", () => {
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      setupSort();
+
+      expect(regionOf("sort").hidden).toBe(false);
+      toggleOf("sort").click();
+      expect(regionOf("sort").hidden).toBe(true);
+    });
+
+    it("moves focus to the toggle when collapsing with focus in the body", () => {
+      setupSort();
+      el("sort-input").focus();
+      toggleOf("sort").click();
+
+      expect(document.activeElement).toBe(toggleOf("sort"));
+    });
+
+    it("keeps a collapsed section's controls out of the Tab order", () => {
+      setupSort();
+      toggleOf("sort").click();
+      toggleOf("sort").focus();
+
+      const event = pressKey({ key: "Tab", target: toggleOf("sort") });
+      // The group toggle and this toggle are the only visible focusables, so
+      // Tab from the last wraps to the group toggle.
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(groupToggleOf("utub"));
+    });
+
+    it("focuses the first control of the first expanded section on open", () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ first: true }));
+      initPopover();
+      registerControlled({ id: "first", title: "First" });
+      registerControlled({
+        id: "second",
+        title: "Second",
+        render: vi.fn(({ container }) => {
+          container.innerHTML = '<input id="second-input" />';
+        }),
+      });
+      selectUTub();
+      openGear("urls");
+
+      expect(document.activeElement).toBe(el("second-input"));
+    });
+
+    it("uses a native button for the toggle, so Enter and Space activate it", () => {
+      setupSort();
+      expect(toggleOf("sort").tagName).toBe("BUTTON");
+      expect(toggleOf("sort").type).toBe("button");
+    });
+
+    it("does not toggle on a click of a heading row (only the button toggles)", () => {
+      setupSort();
+      const section = popover().querySelector(
+        '[data-section-id="sort"]',
+      ) as HTMLElement;
+      (section.querySelector(".panelSettingsRowTitle") as HTMLElement).click();
+      (
+        popover().querySelector(".panelSettingsGroupHeading") as HTMLElement
+      ).click();
+
+      expect(toggleOf("sort").getAttribute("aria-expanded")).toBe("true");
+      expect(groupToggleOf("utub").getAttribute("aria-expanded")).toBe("true");
+      expect(regionOf("sort").hidden).toBe(false);
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    });
+
+    it("keeps the collapsed state across a section re-render", () => {
+      initPopover();
+      const harness = registerControlled({
+        scope: "user",
+        userKind: "per-utub",
+        rerenderOn: [(state) => state.memberSettings],
+      });
+      selectUTub();
+      openGear("urls");
+      toggleOf("sort").click();
+      const rendersBefore = vi.mocked(harness.section.render).mock.calls.length;
+
+      setState({
+        memberSettings: {
+          urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
+        },
+      });
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(
+        rendersBefore + 1,
+      );
+      expect(regionOf("sort").hidden).toBe(true);
+      expect(toggleOf("sort").getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("keeps the collapsed state across a close and reopen when storage throws", () => {
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      setupSort();
+      toggleOf("sort").click();
+
+      openGear("urls");
+      expect(isOpen()).toBe(false);
+      openGear("urls");
+
+      expect(regionOf("sort").hidden).toBe(true);
+    });
+
+    it("keeps a save error visible under a collapsed title", async () => {
+      const harness = setupSort();
+      lastCtx(harness).submit({ patch: { sort: "typed" } });
+      await settle();
+      toggleOf("sort").click();
+
+      harness.pending[0].resolve({ outcome: "error", resync: false });
+      await settle();
+
+      const status = popover().querySelector(
+        '[data-section-id="sort"] .panelSettingsStatus',
+      ) as HTMLElement;
+      expect(status.dataset.state).toBe("error");
+      expect(status.textContent).toBe("Couldn't save — reverted");
+      expect(regionOf("sort").hidden).toBe(true);
+      expect(regionOf("sort").contains(status)).toBe(false);
+    });
+
+    it("still announces a save that completes while collapsed", async () => {
+      const harness = setupSort();
+      lastCtx(harness).submit({ patch: { sort: "typed" } });
+      await settle();
+      toggleOf("sort").click();
+
+      harness.pending[0].resolve({ outcome: "ok" });
+      await settle();
+
+      expect(announced()).toContain("Saved");
+    });
+
+    it("focuses the first control of the first section when nothing is collapsed", () => {
+      initPopover();
+      registerControlled({ id: "first", title: "First" });
+      registerControlled({
+        id: "second",
+        title: "Second",
+        render: vi.fn(({ container }) => {
+          container.innerHTML = '<input id="second-input" />';
+        }),
+      });
+      selectUTub();
+      openGear("urls");
+
+      expect(document.activeElement).toBe(el("sort-input"));
+    });
+
+    it("focuses the first toggle when every section is collapsed", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ first: true, second: true }),
+      );
+      initPopover();
+      registerControlled({ id: "first", title: "First" });
+      registerControlled({ id: "second", title: "Second" });
+      selectUTub();
+      openGear("urls");
+
+      expect(document.activeElement).toBe(toggleOf("first"));
+    });
+
+    it("ignores a stored JSON array instead of reading its indexes as section ids", () => {
+      localStorage.setItem(STORAGE_KEY, "[true]");
+      setupSort({ id: "0", title: "Zero" });
+
+      expect(regionOf("0").hidden).toBe(false);
+    });
+
+    it("closes on Escape while a native select inside the body has focus", () => {
+      setupSort({
+        render: vi.fn(({ container }) => {
+          container.innerHTML = '<select id="pick"><option>a</option></select>';
+        }),
+      });
+      el("pick").focus();
+      pressKey({ key: "Escape", target: el("pick") });
+
+      expect(isOpen()).toBe(false);
+    });
+  });
+
+  describe("collapsible parent groups", () => {
+    const STORAGE_KEY = "u4i:panelSettingsCollapsed";
+
+    function groupRegion(scope: string): HTMLElement {
+      return el(`panelSettingsGroupRegion-${scope}`);
+    }
+
+    function setupBoth(): void {
+      initPopover();
+      registerControlled({ id: "shared", title: "Shared" });
+      registerControlled({
+        id: "personal",
+        title: "Personal",
+        scope: "user",
+        userKind: "global",
+        render: vi.fn(({ container }) => {
+          container.innerHTML = '<input id="personal-input" />';
+        }),
+      });
+      selectUTub();
+      openGear("urls");
+    }
+
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      localStorage.clear();
+      vi.restoreAllMocks();
+    });
+
+    it("renders both parents in order, expanded, with a11y wiring", () => {
+      setupBoth();
+      const groups = Array.from(
+        popover().querySelectorAll<HTMLElement>(".panelSettingsGroup"),
+      );
+      expect(groups.map((group) => group.dataset.group)).toEqual([
+        "utub",
+        "user",
+      ]);
+      for (const scope of ["utub", "user"]) {
+        const toggle = groupToggleOf(scope);
+        expect(toggle.tagName).toBe("BUTTON");
+        expect(toggle.getAttribute("aria-expanded")).toBe("true");
+        expect(toggle.getAttribute("aria-controls")).toBe(
+          `panelSettingsGroupRegion-${scope}`,
+        );
+        expect(toggle.closest("h2")).not.toBeNull();
+        expect(groupRegion(scope).hidden).toBe(false);
+      }
+      expect(
+        groupRegion("utub").querySelector('[data-section-id="shared"]'),
+      ).not.toBeNull();
+      expect(
+        groupRegion("user").querySelector('[data-section-id="personal"]'),
+      ).not.toBeNull();
+    });
+
+    it("collapses a parent, hides its subsections and persists a distinct key", () => {
+      setupBoth();
+      groupToggleOf("user").click();
+
+      expect(groupToggleOf("user").getAttribute("aria-expanded")).toBe("false");
+      expect(groupRegion("user").hidden).toBe(true);
+      expect(groupRegion("utub").hidden).toBe(false);
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")).toEqual({
+        "group|user": true,
+      });
+    });
+
+    it("keeps nested subsection state when the parent collapses and expands", () => {
+      setupBoth();
+      toggleOf("personal").click();
+      groupToggleOf("user").click();
+      groupToggleOf("user").click();
+
+      expect(groupRegion("user").hidden).toBe(false);
+      expect(toggleOf("personal").getAttribute("aria-expanded")).toBe("false");
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")).toEqual({
+        personal: true,
+      });
+    });
+
+    it("restores a collapsed parent from storage", () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ "group|utub": true }));
+      setupBoth();
+
+      expect(groupToggleOf("utub").getAttribute("aria-expanded")).toBe("false");
+      expect(groupRegion("utub").hidden).toBe(true);
+      expect(groupRegion("user").hidden).toBe(false);
+    });
+
+    it("ignores a stored array and tolerates storage that throws", () => {
+      localStorage.setItem(STORAGE_KEY, "[true]");
+      setupBoth();
+      expect(groupRegion("utub").hidden).toBe(false);
+
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      groupToggleOf("utub").click();
+      expect(groupRegion("utub").hidden).toBe(true);
+    });
+
+    it("moves focus to the parent toggle when collapsing with focus inside", () => {
+      setupBoth();
+      el("personal-input").focus();
+      groupToggleOf("user").click();
+
+      expect(document.activeElement).toBe(groupToggleOf("user"));
+    });
+
+    it("removes a collapsed parent's controls from the Tab order", () => {
+      setupBoth();
+      groupToggleOf("user").click();
+      groupToggleOf("user").focus();
+
+      const event = pressKey({ key: "Tab", target: groupToggleOf("user") });
+      // Visible focusables: utub group toggle, sort toggle and input, user toggle.
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(groupToggleOf("utub"));
+    });
+
+    it("focuses the first control of the first expanded parent on open", () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ "group|utub": true }));
+      setupBoth();
+
+      expect(document.activeElement).toBe(el("personal-input"));
+    });
+
+    it("focuses the first visible section toggle when its sections are collapsed", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ shared: true, personal: true }),
+      );
+      setupBoth();
+
+      expect(document.activeElement).toBe(toggleOf("shared"));
+    });
+
+    it("focuses in DOM order when the later group's section registered first", () => {
+      initPopover();
+      registerControlled({
+        id: "personal",
+        title: "Personal",
+        scope: "user",
+        userKind: "global",
+        render: vi.fn(({ container }) => {
+          container.innerHTML = '<input id="personal-input" />';
+        }),
+      });
+      registerControlled({ id: "shared", title: "Shared" });
+      selectUTub();
+      openGear("urls");
+
+      expect(
+        popover()
+          .querySelectorAll(".panelSettingsGroup")[0]
+          .getAttribute("data-group"),
+      ).toBe("utub");
+      expect(document.activeElement).toBe(el("sort-input"));
+    });
+
+    it("wraps Shift+Tab from the first parent toggle onto the last visible control", () => {
+      setupBoth();
+      groupToggleOf("user").click();
+      groupToggleOf("utub").focus();
+      const event = pressKey({
+        key: "Tab",
+        shiftKey: true,
+        target: groupToggleOf("utub"),
+      });
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(groupToggleOf("user"));
+    });
+
+    it("focuses the first parent toggle when every parent is collapsed", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ "group|utub": true, "group|user": true }),
+      );
+      setupBoth();
+
+      expect(document.activeElement).toBe(groupToggleOf("utub"));
+    });
+
+    it("still announces a completed save while the parent is collapsed", async () => {
+      initPopover();
+      const harness = registerControlled();
+      selectUTub();
+      openGear("urls");
+      lastCtx(harness).submit({ patch: { sort: "typed" } });
+      await settle();
+      groupToggleOf("utub").click();
+
+      harness.pending[0].resolve({ outcome: "ok" });
+      await settle();
+      expect(announced()).toContain("Saved");
+      expect(groupRegion("utub").hidden).toBe(true);
+    });
+
+    it("drops a parent with no sections and keeps the other", () => {
+      initPopover();
+      const shared = registerControlled({ id: "shared", title: "Shared" });
+      registerControlled({
+        id: "personal",
+        title: "Personal",
+        scope: "user",
+        userKind: "global",
+      });
+      selectUTub();
+      openGear("urls");
+      shared.unregister();
+
+      expect(popover().querySelector('[data-group="utub"]')).toBeNull();
+      expect(popover().querySelector('[data-group="user"]')).not.toBeNull();
+    });
+  });
+
+  describe("rerenderOn", () => {
+    it("re-renders the section when a listed selector's value changes", () => {
+      initPopover();
+      const harness = registerControlled({
+        id: "personal",
+        scope: "user",
+        userKind: "per-utub",
+        rerenderOn: [(state) => state.memberSettings],
+      });
+      selectUTub();
+      openGear("urls");
+      const rendersAfterOpen = vi.mocked(harness.section.render).mock.calls
+        .length;
+      // Initial focus sits in the body, which blocks a re-render.
+      (document.activeElement as HTMLElement).blur();
+
+      setState({
+        memberSettings: {
+          urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
+        },
+      });
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(
+        rendersAfterOpen + 1,
+      );
+    });
+
+    it("defers the re-render while focus is inside the section body", () => {
+      initPopover();
+      const harness = registerControlled({
+        id: "personal",
+        scope: "user",
+        userKind: "per-utub",
+        rerenderOn: [(state) => state.memberSettings],
+      });
+      selectUTub();
+      openGear("urls");
+      const rendersAfterOpen = vi.mocked(harness.section.render).mock.calls
+        .length;
+      el("sort-input").focus();
+
+      setState({
+        memberSettings: {
+          urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
+        },
+      });
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(
+        rendersAfterOpen,
+      );
+    });
+
+    it("runs the deferred re-render once focus leaves the section body", () => {
+      initPopover();
+      const harness = registerControlled({
+        id: "personal",
+        scope: "user",
+        userKind: "per-utub",
+        rerenderOn: [(state) => state.memberSettings],
+      });
+      selectUTub();
+      openGear("urls");
+      const rendersAfterOpen = vi.mocked(harness.section.render).mock.calls
+        .length;
+      el("sort-input").focus();
+      setState({
+        memberSettings: {
+          urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
+        },
+      });
+
+      (document.activeElement as HTMLElement).blur();
+      vi.advanceTimersByTime(5);
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(
+        rendersAfterOpen + 1,
+      );
+    });
+
+    describe("through the shared settings path", () => {
+      function withPolicy({ allow }: { allow: boolean }): ResolvedUtubSettings {
+        return {
+          ...SETTINGS,
+          urls: { sort: "old", allow_short_links: allow },
+        } as unknown as ResolvedUtubSettings;
+      }
+
+      function openPersonal() {
+        initPopover();
+        const harness = registerControlled({
+          id: "personal",
+          scope: "user",
+          userKind: "per-utub",
+          rerenderOn: [
+            (state) => state.memberSettings,
+            (state) => state.settings?.urls.allow_short_links,
+          ],
+        });
+        selectUTub({ settings: withPolicy({ allow: true }) });
+        openGear("urls");
+        (document.activeElement as HTMLElement).blur();
+        return harness;
+      }
+
+      function renderCount(harness: Harness): number {
+        return vi.mocked(harness.section.render).mock.calls.length;
+      }
+
+      it("re-renders on the shared section's own save write (settings plus settingsVersion)", () => {
+        const harness = openPersonal();
+        const before = renderCount(harness);
+
+        setState({
+          settings: withPolicy({ allow: false }),
+          settingsVersion: 1,
+        });
+
+        expect(renderCount(harness)).toBe(before + 1);
+      });
+
+      it("re-renders a utub section on a policy-403 write (settings without settingsVersion)", () => {
+        initPopover();
+        const harness = registerControlled({ id: "new-urls" });
+        selectUTub({ settings: withPolicy({ allow: true }) });
+        openGear("urls");
+        (document.activeElement as HTMLElement).blur();
+        const before = renderCount(harness);
+
+        setState({ settings: withPolicy({ allow: false }) });
+
+        expect(renderCount(harness)).toBe(before + 1);
+      });
+
+      it("does not re-render when a settings write leaves every selector result equal", () => {
+        const harness = openPersonal();
+        const before = renderCount(harness);
+
+        setState({
+          settings: {
+            ...SETTINGS,
+            urls: { sort: "changed", allow_short_links: true },
+          } as unknown as ResolvedUtubSettings,
+          settingsVersion: 1,
+        });
+
+        expect(renderCount(harness)).toBe(before);
+      });
+
+      it("is not suppressed by focus on the collapse toggle", () => {
+        const harness = openPersonal();
+        toggleOf("personal").focus();
+        const before = renderCount(harness);
+
+        setState({
+          settings: withPolicy({ allow: false }),
+          settingsVersion: 1,
+        });
+
+        expect(renderCount(harness)).toBe(before + 1);
+      });
+
+      it("applies a policy flip that landed during a pending save once it settles", async () => {
+        const harness = openPersonal();
+        lastCtx(harness).submit({ patch: { hide_copy_button: true } });
+        await settle();
+        const before = renderCount(harness);
+
+        setState({
+          settings: withPolicy({ allow: false }),
+          settingsVersion: 1,
+        });
+        expect(renderCount(harness)).toBe(before);
+
+        harness.pending[0].resolve({ outcome: "ok" });
+        await vi.advanceTimersByTimeAsync(1500);
+
+        expect(renderCount(harness)).toBe(before + 1);
+      });
+    });
+
+    it("does not re-render for an unrelated state change", () => {
+      initPopover();
+      const harness = registerControlled({
+        id: "personal",
+        scope: "user",
+        userKind: "per-utub",
+        rerenderOn: [(state) => state.memberSettings],
+      });
+      selectUTub();
+      openGear("urls");
+      const rendersAfterOpen = vi.mocked(harness.section.render).mock.calls
+        .length;
+
+      setState({ selectedTagIDs: [1] });
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(
+        rendersAfterOpen,
+      );
+    });
+
+    it("never re-renders a section that declares no rerenderOn", () => {
+      initPopover();
+      const harness = registerControlled();
+      selectUTub();
+      openGear("urls");
+      const rendersAfterOpen = vi.mocked(harness.section.render).mock.calls
+        .length;
+      (document.activeElement as HTMLElement).blur();
+
+      setState({
+        memberSettings: {
+          urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
+        },
+      });
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(
+        rendersAfterOpen,
+      );
+    });
+  });
+
   describe("keyboard", () => {
     function setupTwoControls(): void {
       initPopover();
@@ -471,21 +1213,21 @@ describe("panel settings popover", () => {
       openGear("urls");
     }
 
-    it("wraps Tab from the last control to the first", () => {
+    it("wraps Tab from the last control to the first (the parent toggle)", () => {
       setupTwoControls();
       el("last-input").focus();
       const event = pressKey({ key: "Tab", target: el("last-input") });
       expect(event.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(el("first-input"));
+      expect(document.activeElement).toBe(groupToggleOf("utub"));
     });
 
-    it("wraps Shift+Tab from the first control to the last", () => {
+    it("wraps Shift+Tab from the first control (the parent toggle) to the last", () => {
       setupTwoControls();
-      el("first-input").focus();
+      groupToggleOf("utub").focus();
       const event = pressKey({
         key: "Tab",
         shiftKey: true,
-        target: el("first-input"),
+        target: groupToggleOf("utub"),
       });
       expect(event.defaultPrevented).toBe(true);
       expect(document.activeElement).toBe(el("last-input"));
@@ -498,7 +1240,7 @@ describe("panel settings popover", () => {
       expect(event.defaultPrevented).toBe(false);
     });
 
-    it("keeps focus on the dialog when there are no focusable descendants", () => {
+    it("wraps between the parent toggle and the lone section toggle when the body has no control", () => {
       initPopover();
       registerControlled({
         render: vi.fn(({ container }) => {
@@ -508,9 +1250,9 @@ describe("panel settings popover", () => {
       selectUTub();
       openGear("urls");
 
-      const event = pressKey({ key: "Tab", target: popover() });
+      const event = pressKey({ key: "Tab", target: toggleOf("sort") });
       expect(event.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(popover());
+      expect(document.activeElement).toBe(groupToggleOf("utub"));
     });
 
     it("Escape closes, prevents default and returns focus to the gear", () => {
@@ -538,7 +1280,7 @@ describe("panel settings popover", () => {
       el("last-input").focus();
       const event = pressKey({ key: "Tab", target: el("last-input") });
       expect(event.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(el("first-input"));
+      expect(document.activeElement).toBe(groupToggleOf("utub"));
     });
 
     it("ignores other keys and Escape when closed", () => {
@@ -985,12 +1727,16 @@ describe("panel settings popover", () => {
       });
       selectUTub();
       openGear("urls");
-      const before = popover().querySelector("button") as HTMLElement;
+      const before = popover().querySelector(
+        ".panelSettingsSectionBody button",
+      ) as HTMLElement;
       before.focus();
 
       setState({ isCurrentUTubLocked: true });
 
-      const after = popover().querySelector("button") as HTMLElement;
+      const after = popover().querySelector(
+        ".panelSettingsSectionBody button",
+      ) as HTMLElement;
       expect(after).not.toBe(before);
       expect(document.activeElement).toBe(after);
     });

@@ -461,7 +461,7 @@ describe("panel settings mobile sheet", () => {
       expect(document.activeElement).toBe(el("sort-input"));
     });
 
-    it("lands on the close button when the section renders nothing focusable", () => {
+    it("lands on the section toggle when the section body renders nothing focusable", () => {
       initPopover();
       registerControlled({
         render: vi.fn(({ container }) => {
@@ -471,7 +471,9 @@ describe("panel settings mobile sheet", () => {
       selectUTub();
       openGear("urls");
 
-      expect(document.activeElement).toBe(el("panelSettingsSheetClose"));
+      expect(document.activeElement).toBe(
+        document.querySelector(".panelSettingsSectionToggle"),
+      );
     });
 
     it("wraps Tab from the last control to the first, close button included", () => {
