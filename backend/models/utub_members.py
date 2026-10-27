@@ -11,6 +11,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import JSONB
 
 from backend import db
 
@@ -39,6 +40,11 @@ class Utub_Members(db.Model):
     # Per-member "last opened this UTub" time; NULL = never recorded.
     last_opened_at: datetime | None = Column(
         DateTime(timezone=True), nullable=True, default=None, name="lastOpenedAt"
+    )
+
+    # Sparse per-member view overrides for this UTub; NULL = all defaults.
+    settings: dict | None = Column(
+        JSONB(none_as_null=True), nullable=True, default=None, name="settings"
     )
 
     to_user = db.relationship("Users", back_populates="utubs_is_member_of")

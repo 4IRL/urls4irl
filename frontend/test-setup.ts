@@ -78,6 +78,7 @@ const appConfig = {
     updateUTubName: "/utubs/-1/name",
     updateUTubDescription: "/utubs/-1/description",
     updateUTubSettings: "/utubs/-1/settings",
+    updateMemberSettings: "/utubs/-1/member-settings",
     getURL: "/utubs/-1/urls/-2",
     createURL: "/utubs/-1/urls",
     deleteURL: "/utubs/-1/urls/-2",
@@ -422,6 +423,8 @@ const appConfig = {
     SHORT_LINK_REVOKE_CONFIRM_TITLE: "Revoke short link?",
     SHORT_LINK_REVOKE_CONFIRM_BODY:
       "Anyone who has this link will no longer be able to open it. It would otherwise expire on {date}.",
+    SHORT_LINK_SHORT_LINKS_DISABLED:
+      "Short links are turned off for this UTub.",
     TRASH_LOCKED: "That UTub is locked, so this item can't be changed.",
     TRASH_ORIGIN_UNAVAILABLE:
       "That UTub is no longer available. Choose a UTub to restore this URL into.",
@@ -553,6 +556,57 @@ const appConfig = {
       "Only available when the default is https.",
     URLS_SETTINGS_SELECTOR_RESTORED:
       "Scheme selector shown again because the default is no longer https.",
+    URLS_SETTINGS_ALLOW_SHORT_LINKS_LABEL: "Allow short links",
+    URLS_SETTINGS_ALLOW_SHORT_LINKS_DESC:
+      "Turning this off removes Copy short link for every member. Existing short links keep working until they expire or are revoked.",
+    URLS_SETTINGS_SHORT_LINKS_OFF_NOTICE: "Short links turned off",
+    URLS_SETTINGS_SHORT_LINKS_ON_NOTICE: "Short links turned on",
+    URLS_PERSONAL_SETTINGS_SECTION_TITLE: "Your view of this UTub",
+    URLS_PERSONAL_SETTINGS_SORT_LABEL: "Sort URLs",
+    URLS_PERSONAL_SETTINGS_VIEW_LABEL: "Layout",
+    URLS_PERSONAL_SETTINGS_DENSITY_LABEL: "Density",
+    URLS_PERSONAL_SETTINGS_DENSITY_DESC:
+      "Compact spacing applies with a mouse or trackpad.",
+    URLS_PERSONAL_SETTINGS_DEFAULT_OPTION_PREFIX: "Default: ",
+    URLS_PERSONAL_SETTINGS_SORT_OPTION_NEWEST: "Date added (newest)",
+    URLS_PERSONAL_SETTINGS_SORT_OPTION_OLDEST: "Date added (oldest)",
+    URLS_PERSONAL_SETTINGS_SORT_OPTION_TITLE_AZ: "Title A–Z",
+    URLS_PERSONAL_SETTINGS_VIEW_OPTION_LIST: "List",
+    URLS_PERSONAL_SETTINGS_VIEW_OPTION_COMPACT: "Compact",
+    URLS_PERSONAL_SETTINGS_VIEW_OPTION_CARDS: "Cards",
+    URLS_PERSONAL_SETTINGS_DENSITY_OPTION_COMFORTABLE: "Comfortable",
+    URLS_PERSONAL_SETTINGS_DENSITY_OPTION_COMPACT: "Compact",
+    URLS_PERSONAL_SETTINGS_HIDE_COPY_LABEL: "Hide Copy button",
+    URLS_PERSONAL_SETTINGS_HIDE_COPY_DESC:
+      "Selecting several URLs can still copy them.",
+    URLS_PERSONAL_SETTINGS_HIDE_SHORT_LINK_LABEL: "Hide Copy short link button",
+    URLS_PERSONAL_SETTINGS_HIDE_SHORT_LINK_DESC:
+      "Existing short links and Revoke stay.",
+    URLS_PERSONAL_SETTINGS_HIDE_DATE_LABEL: "Hide date added",
+    URLS_PERSONAL_SETTINGS_HIDE_DATE_DESC: '"Added by" names stay.',
+    URLS_PERSONAL_SETTINGS_DISABLE_SWIPE_LABEL: "Turn off swipe to delete",
+    URLS_PERSONAL_SETTINGS_DISABLE_SWIPE_DESC:
+      "On touch screens. The Delete button still works.",
+    URLS_PERSONAL_SETTINGS_SHORT_LINKS_OFF_HINT:
+      "Short links are turned off for everyone in this UTub.",
+    URLS_PERSONAL_SETTINGS_COPY_HIDDEN_NOTICE: "Copy button hidden",
+    URLS_PERSONAL_SETTINGS_COPY_SHOWN_NOTICE: "Copy button shown",
+    URLS_PERSONAL_SETTINGS_SHORT_LINK_HIDDEN_NOTICE:
+      "Copy short link button hidden",
+    URLS_PERSONAL_SETTINGS_SHORT_LINK_SHOWN_NOTICE:
+      "Copy short link button shown",
+    URLS_PERSONAL_SETTINGS_DATE_HIDDEN_NOTICE: "Date added hidden",
+    URLS_PERSONAL_SETTINGS_DATE_SHOWN_NOTICE: "Date added shown",
+    URLS_PERSONAL_SETTINGS_SWIPE_OFF_NOTICE: "Swipe to delete turned off",
+    URLS_PERSONAL_SETTINGS_SWIPE_ON_NOTICE: "Swipe to delete turned on",
+    URLS_PERSONAL_SETTINGS_SORT_ORDER_PENDING_NOTICE:
+      "Order will update on next refresh",
+    URLS_PERSONAL_SETTINGS_SORT_SET_NOTICE_PREFIX: "Sort set to ",
+    URLS_PERSONAL_SETTINGS_SORT_DEFAULT_NOTICE: "Sort uses your default",
+    URLS_PERSONAL_SETTINGS_VIEW_SET_NOTICE_PREFIX: "Layout set to ",
+    URLS_PERSONAL_SETTINGS_VIEW_DEFAULT_NOTICE: "Layout uses your default",
+    URLS_PERSONAL_SETTINGS_DENSITY_SET_NOTICE_PREFIX: "Density set to ",
+    URLS_PERSONAL_SETTINGS_DENSITY_DEFAULT_NOTICE: "Density uses your default",
     // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py.
     // Only keys read by production TS are mirrored here. Jinja-only labels are inline in templates;
     // Python-test-only keys live in ui_testing_strs.py. Vitest runs in Node with no Flask app context,

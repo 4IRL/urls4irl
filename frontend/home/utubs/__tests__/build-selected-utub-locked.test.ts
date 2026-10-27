@@ -108,7 +108,11 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       utubs: {},
       members: {},
       tags: {},
-      urls: { default_url_scheme: "https", hide_scheme_selector: false },
+      urls: {
+        default_url_scheme: "https",
+        hide_scheme_selector: false,
+        allow_short_links: true,
+      },
     };
 
     it("sets settings from the payload and replaces the previous UTub's", () => {

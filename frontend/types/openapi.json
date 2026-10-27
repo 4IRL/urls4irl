@@ -9572,6 +9572,92 @@
         }
       }
     },
+    "/utubs/{utub_id}/member-settings": {
+      "patch": {
+        "operationId": "updateMemberSettings",
+        "tags": ["utubs"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Partially update the caller's own per-UTub view settings. Not gated by the UTub lock or the caller's role. Metrics: API_HIT only (no DOMAIN event).",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The caller's own per-UTub view settings updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MemberSettingsUpdatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/urls/{utub_url_id}/tags": {
       "post": {
         "operationId": "createUtubUrlTag",
@@ -10863,7 +10949,7 @@
       },
       "URLErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -10880,7 +10966,8 @@
           "INVALID_DESTINATION",
           "URL_ALREADY_IN_DESTINATION",
           "UNABLE_TO_RESTORE_URL_ERROR",
-          "UNABLE_TO_RESTORE_URLS_ERROR"
+          "UNABLE_TO_RESTORE_URLS_ERROR",
+          "SHORT_LINKS_DISABLED"
         ],
         "description": "Error codes for URLErrorCodes"
       },
@@ -11435,6 +11522,72 @@
         "required": ["utubs"],
         "type": "object"
       },
+      "MemberUrlsSettings": {
+        "additionalProperties": false,
+        "description": "A member's private view overrides for the URLs panel of one UTub.",
+        "properties": {
+          "hide_copy_button": {
+            "default": false,
+            "description": "Hide the Copy button on URL cards",
+            "type": "boolean"
+          },
+          "hide_short_link_button": {
+            "default": false,
+            "description": "Hide the Copy short link button on URL cards",
+            "type": "boolean"
+          },
+          "hide_date_added": {
+            "default": false,
+            "description": "Hide the date added on URL cards",
+            "type": "boolean"
+          },
+          "sort": {
+            "anyOf": [
+              {
+                "enum": ["newest", "oldest", "title_az"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "URL sort override; null uses the account default"
+          },
+          "view_mode": {
+            "anyOf": [
+              {
+                "enum": ["list", "compact", "cards"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Layout override; null uses the account default"
+          },
+          "density": {
+            "anyOf": [
+              {
+                "enum": ["comfortable", "compact"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Density override; null uses the account default"
+          },
+          "disable_swipe_delete": {
+            "default": false,
+            "description": "Turn off swipe to delete on touch screens",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "MembersSettings": {
         "additionalProperties": false,
         "description": "Settings for the members panel (no settings yet).",
@@ -11460,6 +11613,22 @@
             "default": false,
             "description": "Hide the link type picker; only allowed while the default is https",
             "type": "boolean"
+          },
+          "allow_short_links": {
+            "default": true,
+            "description": "Whether members can create short links for URLs in this UTub",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "UtubMemberSettings": {
+        "additionalProperties": false,
+        "description": "Resolved per-member settings for one UTub, one section per panel.",
+        "properties": {
+          "urls": {
+            "$ref": "#/components/schemas/MemberUrlsSettings",
+            "description": "The member's view overrides for the URLs panel"
           }
         },
         "type": "object"
@@ -11621,6 +11790,10 @@
           "settings": {
             "$ref": "#/components/schemas/UtubSettings",
             "description": "Resolved per-UTub panel settings (stored overrides merged over defaults)"
+          },
+          "memberSettings": {
+            "$ref": "#/components/schemas/UtubMemberSettings",
+            "description": "The current user's own resolved view settings for this UTub"
           }
         },
         "required": [
@@ -14022,6 +14195,19 @@
             "format": "date-time",
             "type": "string"
           },
+          "memberSettings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The acting user's sparse private view overrides for this UTub, or null when none"
+          },
           "urls": {
             "description": "URLs in the UTub, each with applied tags",
             "items": {
@@ -14482,6 +14668,33 @@
           }
         },
         "required": ["utubID", "settings"],
+        "type": "object"
+      },
+      "UpdateMemberSettingsRequest": {
+        "additionalProperties": false,
+        "description": "The caller's own per-panel view-override patch. Values are validated and\nnormalized only in ``merge_member_settings`` so an absent key and an explicit\n``null`` stay distinct; only sections the caller sent are merged.",
+        "properties": {
+          "urls": {
+            "additionalProperties": true,
+            "description": "Patch for the caller's URLs panel view overrides",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "MemberSettingsUpdatedResponseSchema": {
+        "description": "The caller's own per-UTub view settings updated",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub whose member settings were updated",
+            "type": "integer"
+          },
+          "memberSettings": {
+            "$ref": "#/components/schemas/UtubMemberSettings",
+            "description": "The caller's full resolved view settings for this UTub"
+          }
+        },
+        "required": ["utubID", "memberSettings"],
         "type": "object"
       },
       "AddTagsToUrlsRequest": {

@@ -77,6 +77,10 @@ class UrlsSettings(SettingsSection):
         default=False,
         description="Hide the link type picker; only allowed while the default is https",
     )
+    allow_short_links: bool = Field(
+        default=True,
+        description="Whether members can create short links for URLs in this UTub",
+    )
 
     @field_validator("default_url_scheme")
     @classmethod

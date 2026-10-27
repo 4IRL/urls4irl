@@ -30,6 +30,7 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "updateUTubName": "/utubs/-1/name",
     "updateUTubDescription": "/utubs/-1/description",
     "updateUTubSettings": "/utubs/-1/settings",
+    "updateMemberSettings": "/utubs/-1/member-settings",
     # URL routes
     "getURL": "/utubs/-1/urls/-2",
     "createURL": "/utubs/-1/urls",

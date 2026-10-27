@@ -33,6 +33,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import UTUB_NAME, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
 from tests.settings_stub import (
+    DEFAULT_MEMBER_SETTINGS_DICT,
     DEFAULT_SETTINGS_DICT,
     STUB_KEY,
     URLS_DEFAULTS,
@@ -399,6 +400,38 @@ def test_get_single_utub_includes_settings(
     assert response.get_json()[MODELS.SETTINGS]["urls"] == {
         **URLS_DEFAULTS,
         STUB_KEY: True,
+    }
+
+
+def test_get_single_utub_includes_member_settings(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN a member with no stored settings, then a stored sparse override
+    WHEN GET /api/v1/utubs/1
+    THEN `memberSettings` carries defaults, then the override merged over them
+    """
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=1), headers=bearer_headers_first_user
+    )
+    assert response.status_code == 200
+    assert response.get_json()[MODELS.MEMBER_SETTINGS] == DEFAULT_MEMBER_SETTINGS_DICT
+
+    with app.app_context():
+        Utub_Members.query.get((1, 1)).settings = {"urls": {"sort": "oldest"}}
+        db.session.commit()
+
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=1), headers=bearer_headers_first_user
+    )
+    assert response.status_code == 200
+    member_urls = response.get_json()[MODELS.MEMBER_SETTINGS]["urls"]
+    assert member_urls == {
+        **DEFAULT_MEMBER_SETTINGS_DICT["urls"],
+        "sort": "oldest",
     }
 
 

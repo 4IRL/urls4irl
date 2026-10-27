@@ -12,6 +12,7 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.short_links import ShortLinkResponseSchema
+from backend.schemas.utub_settings import resolve_utub_settings
 from backend.short_links.code_generator import generate_short_link_code
 from backend.short_links.constants import (
     SHORT_LINK_MINT_MAX_ATTEMPTS,
@@ -25,6 +26,7 @@ from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.short_link_strs import (
     SHORT_LINK_FAILURE,
     SHORT_LINK_SUCCESS,
+    SHORT_LINK_UI,
 )
 from backend.utubs.guards import (
     UtubAccess,
@@ -106,7 +108,9 @@ def mint_short_link_for_utub_url(
         current_utub_url (Utub_Urls): The URL loaded (unlocked) by the route guard.
 
     Returns:
-        FlaskResponse: 200 with the link, a 403 when the UTub is locked, or the generic
+        FlaskResponse: 200 with the link, a 403 when the UTub is locked or its
+        ``urls.allow_short_links`` policy is off (checked after the lock, before the
+        reuse branch), or the generic
         500 when every code attempt collided (no row written).
     """
     locked_response: FlaskResponse | None = lock_and_reauthorize(
@@ -117,6 +121,14 @@ def mint_short_link_for_utub_url(
     if locked_response is not None:
         db.session.rollback()
         return locked_response
+
+    if not resolve_utub_settings(current_utub.settings).urls.allow_short_links:
+        db.session.rollback()
+        return build_message_error_response(
+            message=SHORT_LINK_UI.SHORT_LINKS_DISABLED,
+            error_code=URLErrorCodes.SHORT_LINKS_DISABLED,
+            status_code=403,
+        )
 
     utub_url: Utub_Urls | None = (
         Utub_Urls.query.populate_existing()

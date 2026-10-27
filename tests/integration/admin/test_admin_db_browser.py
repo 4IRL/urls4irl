@@ -352,6 +352,25 @@ def test_admin_db_row_composite_pk_resolves(
     assert response.status_code == 200
 
 
+def test_admin_db_membership_row_renders_json_settings(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    client, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        utub_member = seed_utub_member(user_id=1)
+        utub_member.settings = {"urls": {"sort": "oldest"}}
+        db.session.commit()
+        pk_segment = f"{utub_member.utub_id},{utub_member.user_id}"
+
+    row_response = client.get(f"/admin/db/UtubMembers/{pk_segment}")
+    table_response = client.get("/admin/db/UtubMembers")
+
+    assert row_response.status_code == 200
+    assert b"oldest" in row_response.data
+    assert table_response.status_code == 200
+
+
 def test_admin_db_row_string_pk_resolves(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:

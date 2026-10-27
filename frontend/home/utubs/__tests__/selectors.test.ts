@@ -156,7 +156,11 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
       utubs: {},
       members: {},
       tags: {},
-      urls: { default_url_scheme: "https", hide_scheme_selector: false },
+      urls: {
+        default_url_scheme: "https",
+        hide_scheme_selector: false,
+        allow_short_links: true,
+      },
     });
   });
 

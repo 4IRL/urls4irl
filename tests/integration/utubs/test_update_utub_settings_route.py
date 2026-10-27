@@ -725,8 +725,8 @@ def test_non_ajax_manager_request_redirects(
 # Real `urls` section: default scheme and hide-selector rules
 # --------------------------------------------------------------------------
 
-HTTPS_HIDDEN_URLS = {"default_url_scheme": "https", "hide_scheme_selector": True}
-MAILTO_UNHIDDEN_URLS = {"default_url_scheme": "mailto", "hide_scheme_selector": False}
+HTTPS_HIDDEN_URLS = {**URLS_DEFAULTS, "hide_scheme_selector": True}
+MAILTO_UNHIDDEN_URLS = {**URLS_DEFAULTS, "default_url_scheme": "mailto"}
 
 
 def _get_detail_settings(app: Flask, client: FlaskClient) -> Any:
@@ -947,4 +947,63 @@ def test_stored_unknown_scheme_resolves_whole_section_to_defaults(
     assert _get_detail_settings(app, client)["urls"] == {
         "default_url_scheme": "https",
         "hide_scheme_selector": False,
+        "allow_short_links": True,
     }
+
+
+@pytest.mark.short_links
+def test_manager_can_turn_allow_short_links_off(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub with no stored settings
+    WHEN the creator PATCHes allow_short_links=false
+    THEN 200 returns the full resolved settings and only that key is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"urls": {"allow_short_links": False}})
+
+    assert response.status_code == 200
+    assert response.json[MODELS.SETTINGS]["urls"] == {
+        **URLS_DEFAULTS,
+        "allow_short_links": False,
+    }
+    assert _stored_settings(app) == {"urls": {"allow_short_links": False}}
+
+
+@pytest.mark.short_links
+def test_non_bool_allow_short_links_returns_400(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a manager
+    WHEN they PATCH a non-bool allow_short_links
+    THEN 400 is keyed urls.allow_short_links and nothing is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"urls": {"allow_short_links": "nope"}})
+
+    _assert_400(response, {"urls.allow_short_links"})
+    assert _stored_settings(app) is None
+
+
+@pytest.mark.short_links
+def test_plain_member_cannot_patch_allow_short_links(
+    add_multiple_users_to_utub_without_logging_in, app
+):
+    """
+    GIVEN a plain member
+    WHEN they PATCH allow_short_links
+    THEN 403 is returned and nothing is stored
+    """
+    with _client_for(app, PLAIN_MEMBER_ID) as (client, csrf_token):
+        response = _patch(
+            app, client, csrf_token, {"urls": {"allow_short_links": False}}
+        )
+
+    assert response.status_code == 403
+    assert _stored_settings(app) is None

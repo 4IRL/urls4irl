@@ -19,6 +19,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.settings_stub import (
+    DEFAULT_MEMBER_SETTINGS_DICT,
     DEFAULT_SETTINGS_DICT,
     STUB_KEY,
     URLS_DEFAULTS,
@@ -132,6 +133,54 @@ def test_refresh_payload_matches_open_as_co_creator(
         member[MODELS.MEMBER_ROLE] == Member_Role.CO_CREATOR.value
         for member in refresh_json[MODELS.MEMBERS]
     )
+
+
+def test_refresh_carries_callers_member_settings_only(
+    add_single_user_to_utub_without_logging_in,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN the creator holding a stored override and a plain member holding none
+    WHEN the plain member refreshes the UTub
+    THEN `memberSettings` is the all-default slice, equal to the open payload
+    """
+    client, _, member, app = login_second_user_without_register
+
+    with app.app_context():
+        utub_id = Utubs.query.filter(Utubs.utub_creator != member.id).first().id
+        creator_row: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id, Utub_Members.user_id != member.id
+        ).first()
+        creator_row.settings = {"urls": {"hide_date_added": True}}
+        db.session.commit()
+
+    refresh_json = _refresh(client, utub_id).json
+    assert refresh_json is not None
+    assert refresh_json[MODELS.MEMBER_SETTINGS] == DEFAULT_MEMBER_SETTINGS_DICT
+    assert refresh_json == _open(client, utub_id).json
+
+
+def test_refresh_carries_callers_own_stored_member_override(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN the caller's own membership stores a sort override
+    WHEN they refresh the UTub
+    THEN `memberSettings` carries it and equals the open payload
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id
+        ).first()
+        membership.settings = {"urls": {"sort": "oldest"}}
+        db.session.commit()
+
+    refresh_json = _refresh(client, utub_id).json
+    assert refresh_json is not None
+    assert refresh_json[MODELS.MEMBER_SETTINGS]["urls"]["sort"] == "oldest"
+    assert refresh_json == _open(client, utub_id).json
 
 
 def test_refresh_includes_settings_defaults_and_stored_override(

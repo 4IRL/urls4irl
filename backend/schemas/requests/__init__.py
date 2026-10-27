@@ -15,6 +15,7 @@ from backend.schemas.requests.urls import (
 )
 from backend.schemas.requests.utubs import (
     CreateUTubRequest,
+    UpdateMemberSettingsRequest,
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
     UpdateUTubSettingsRequest,
@@ -35,6 +36,7 @@ __all__ = [
     "UpdateURLStringRequest",
     "UpdateURLTitleRequest",
     "CreateUTubRequest",
+    "UpdateMemberSettingsRequest",
     "UpdateUTubDescriptionRequest",
     "UpdateUTubNameRequest",
     "UpdateUTubSettingsRequest",
