@@ -6,7 +6,7 @@ import { AppEvents, on } from "../../lib/event-bus.js";
 import { hideTooltip } from "../../lib/tooltips.js";
 import { getState, subscribe } from "../../store/app-store.js";
 import type { AppState } from "../../store/app-store.js";
-import type { PanelId } from "../../types/settings.js";
+import type { PanelId, SettingsScope } from "../../types/settings.js";
 import { closeAllMemberRowMenus } from "../members/row-menu.js";
 import { dismissActiveTip, maybeShowNextTip } from "../onboarding/nudges.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
@@ -51,6 +51,10 @@ const SAVED_DWELL_MS = 1500;
 // queue reports no terminal status for a stale outcome).
 const SETTLE_POLL_MS = 100;
 const BREAKPOINT_QUERY = `(max-width: ${TABLET_WIDTH - 0.02}px)`;
+const COLLAPSED_STORAGE_KEY = "u4i:panelSettingsCollapsed";
+// Parent groups render in this order. Their keys in the collapsed map contain
+// "|", which the registry forbids in a section id, so they never collide.
+const GROUP_ORDER: readonly SettingsScope[] = ["utub", "user"];
 const FOCUSABLE_SELECTOR =
   'a[href], button, input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -81,17 +85,37 @@ type ForcedReadOnlyReason = "locked" | "forbidden";
 interface SectionEntry {
   section: PanelSection;
   wrapper: HTMLElement;
+  /** The render container, a child of `collapseRegion`. */
   body: HTMLElement;
+  /** Holds `body`; toggled with `hidden`. Status and note stay outside it. */
+  collapseRegion: HTMLElement;
+  toggle: HTMLButtonElement;
+  collapsed: boolean;
   statusElement: HTMLElement;
   noteElement: HTMLElement;
   cleanup: (() => void) | null;
   /** Deep copy of `settings[panel]` at the last render (scope 'utub'). */
   renderedValue: unknown;
+  /**
+   * Selector results at the last render, for a per-utub user section declaring
+   * `rerenderOn`; replaced only by an actual render.
+   */
+  rerenderSnapshot: unknown[] | null;
   lastControlId: string | null;
   describedControlId: string | null;
   saving: boolean;
   dwellTimer: ReturnType<typeof setTimeout> | null;
   settleTimer: ReturnType<typeof setTimeout> | null;
+}
+
+/** A top-level collapsible parent header, one per scope that has sections. */
+interface GroupEntry {
+  scope: SettingsScope;
+  wrapper: HTMLElement;
+  /** Holds the group's section wrappers; toggled with `hidden`. */
+  region: HTMLElement;
+  toggle: HTMLButtonElement;
+  collapsed: boolean;
 }
 
 type Surface = "popover" | "sheet";
@@ -106,6 +130,7 @@ interface OpenPopover {
   /** Active UTub when opened; null for the UTubs popover. */
   utubID: number | null;
   entries: Map<string, SectionEntry>;
+  groups: Map<SettingsScope, GroupEntry>;
 }
 
 let _queue: SaveQueue | null = null;
@@ -116,6 +141,9 @@ let _breakpointQuery: MediaQueryList | null = null;
 let _closeFlagTimer: ReturnType<typeof setTimeout> | null = null;
 // Section titles outlive their DOM so a late failure can still be announced.
 const _titles = new Map<string, string>();
+// The viewer's collapsed sections, loaded lazily from localStorage and kept in
+// memory so a throwing store still remembers a choice for this page.
+let _collapsedSections: Record<string, true> | null = null;
 
 // Snapshots the reconcile pass diffs against.
 let _lastActiveUTubID: number | null = null;
@@ -202,6 +230,52 @@ function isDeepEqual({
       Object.prototype.hasOwnProperty.call(rightRecord, key) &&
       isDeepEqual({ left: leftRecord[key], right: rightRecord[key] }),
   );
+}
+
+function collapsedSections(): Record<string, true> {
+  if (_collapsedSections !== null) return _collapsedSections;
+  const loaded: Record<string, true> = {};
+  try {
+    const raw = localStorage.getItem(COLLAPSED_STORAGE_KEY);
+    const parsed: unknown = raw === null ? null : JSON.parse(raw);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+    ) {
+      for (const [sectionId, value] of Object.entries(parsed)) {
+        if (value === true) loaded[sectionId] = true;
+      }
+    }
+  } catch (error) {
+    log("collapsed sections unreadable, falling back to expanded", { error });
+  }
+  _collapsedSections = loaded;
+  return loaded;
+}
+
+function isSectionCollapsed({ sectionId }: { sectionId: string }): boolean {
+  return collapsedSections()[sectionId] === true;
+}
+
+function rememberCollapsed({
+  sectionId,
+  collapsed,
+}: {
+  sectionId: string;
+  collapsed: boolean;
+}): void {
+  const map = collapsedSections();
+  if (collapsed) {
+    map[sectionId] = true;
+  } else {
+    delete map[sectionId];
+  }
+  try {
+    localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(map));
+  } catch (error) {
+    log("collapsed sections not persisted", { error });
+  }
 }
 
 function sliceFor({ panel }: { panel: PanelId }): unknown {
@@ -358,8 +432,54 @@ function showError({
   entry.describedControlId = control.id;
 }
 
+// Body only: focus resting on the collapse toggle never blocks a re-render.
 function focusIsInside({ entry }: { entry: SectionEntry }): boolean {
-  return entry.wrapper.contains(document.activeElement);
+  return entry.body.contains(document.activeElement);
+}
+
+function declaresRerenderOn({ entry }: { entry: SectionEntry }): boolean {
+  return (
+    entry.section.scope === "user" &&
+    entry.section.userKind === "per-utub" &&
+    entry.section.rerenderOn !== undefined
+  );
+}
+
+function takeRerenderSnapshot({
+  entry,
+}: {
+  entry: SectionEntry;
+}): unknown[] | null {
+  if (!declaresRerenderOn({ entry })) return null;
+  const state = getState();
+  return (entry.section.rerenderOn ?? []).map((select) =>
+    cloneValue(select(state)),
+  );
+}
+
+// True when a declared selector's result differs from the last render's.
+function rerenderIsDue({ entry }: { entry: SectionEntry }): boolean {
+  if (!declaresRerenderOn({ entry }) || entry.rerenderSnapshot === null) {
+    return false;
+  }
+  const current = takeRerenderSnapshot({ entry });
+  return !isDeepEqual({ left: current, right: entry.rerenderSnapshot });
+}
+
+function applyCollapsed({
+  entry,
+  collapsed,
+}: {
+  entry: SectionEntry;
+  collapsed: boolean;
+}): void {
+  // Read before hiding: focus inside a body that just hid would fall to the page.
+  const moveFocus = collapsed && focusIsInside({ entry });
+  entry.collapsed = collapsed;
+  entry.collapseRegion.hidden = collapsed;
+  entry.toggle.setAttribute("aria-expanded", String(!collapsed));
+  entry.wrapper.classList.toggle("panelSettingsSection--collapsed", collapsed);
+  if (moveFocus) entry.toggle.focus();
 }
 
 function applyNote({ entry }: { entry: SectionEntry }): void {
@@ -384,6 +504,7 @@ function renderSectionBody({ entry }: { entry: SectionEntry }): void {
     entry.section.scope === "utub"
       ? cloneValue(sliceFor({ panel: entry.section.panel }))
       : undefined;
+  entry.rerenderSnapshot = takeRerenderSnapshot({ entry });
 
   try {
     const result = entry.section.render({
@@ -429,16 +550,25 @@ function createEntry({
   wrapper.className = "panelSettingsSection";
   wrapper.dataset.sectionId = section.id;
 
-  const heading = document.createElement("h2");
-  heading.className = "panelSettingsRowTitle";
-  heading.textContent = section.title;
+  const regionId = `panelSettingsRegion-${section.id}`;
 
-  const scope = document.createElement("div");
-  scope.className = "panelSettingsScope";
-  scope.textContent =
-    section.scope === "utub"
-      ? APP_CONFIG.strings.PANEL_SETTINGS_SCOPE_UTUB
-      : APP_CONFIG.strings.PANEL_SETTINGS_SCOPE_USER;
+  // Only the title text and its chevron are the toggle; the rest of the header
+  // row is inert. A subheader under its scope's parent group heading (h2).
+  const heading = document.createElement("h3");
+  heading.className = "panelSettingsRowTitle";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "panelSettingsSectionToggle";
+  toggle.setAttribute("aria-expanded", "true");
+  toggle.setAttribute("aria-controls", regionId);
+  const toggleTitle = document.createElement("span");
+  toggleTitle.className = "panelSettingsSectionToggleTitle";
+  toggleTitle.textContent = section.title;
+  const chevron = document.createElement("span");
+  chevron.className = "panelSettingsSectionChevron";
+  chevron.setAttribute("aria-hidden", "true");
+  toggle.append(toggleTitle, chevron);
+  heading.append(toggle);
 
   const body = document.createElement("div");
   body.className = "panelSettingsSectionBody";
@@ -450,16 +580,27 @@ function createEntry({
   noteElement.className = "panelSettingsReadOnlyNote";
   noteElement.hidden = true;
 
-  wrapper.append(heading, scope, body, statusElement, noteElement);
+  // Status and note sit outside the collapse region so an error stays visible
+  // under a collapsed title.
+  const collapseRegion = document.createElement("div");
+  collapseRegion.className = "panelSettingsCollapse";
+  collapseRegion.id = regionId;
+  collapseRegion.append(body);
+
+  wrapper.append(heading, statusElement, noteElement, collapseRegion);
 
   const entry: SectionEntry = {
     section,
     wrapper,
     body,
+    collapseRegion,
+    toggle,
+    collapsed: false,
     statusElement,
     noteElement,
     cleanup: null,
     renderedValue: undefined,
+    rerenderSnapshot: null,
     lastControlId: null,
     describedControlId: null,
     saving: false,
@@ -468,6 +609,19 @@ function createEntry({
   };
   statusElement.id = statusElementId({ entry });
   _titles.set(section.id, section.title);
+  applyCollapsed({
+    entry,
+    collapsed: isSectionCollapsed({ sectionId: section.id }),
+  });
+  toggle.addEventListener("click", () => {
+    const collapsed = !entry.collapsed;
+    applyCollapsed({ entry, collapsed });
+    rememberCollapsed({ sectionId: section.id, collapsed });
+    // Expanding can grow the popover past the viewport edge.
+    if (_current?.surface === "popover") {
+      positionPopover({ gear: _current.gear });
+    }
+  });
 
   wrapper.addEventListener("focusin", (event) => {
     const target = event.target;
@@ -479,8 +633,15 @@ function createEntry({
       entry.lastControlId = target.id;
     }
   });
-  wrapper.addEventListener("focusout", () => {
+  wrapper.addEventListener("focusout", (event) => {
     _queue?.flush({ sectionId: section.id });
+    const next = event.relatedTarget;
+    if (next instanceof Node && body.contains(next)) return;
+    // activeElement is not settled during focusout; retry once it is.
+    setTimeout(() => {
+      if (_current?.entries.get(section.id) !== entry) return;
+      if (rerenderIsDue({ entry })) rerenderIfIdle({ entry });
+    }, 0);
   });
 
   popover.entries.set(section.id, entry);
@@ -501,6 +662,92 @@ function teardownEntry({ entry }: { entry: SectionEntry }): void {
   entry.wrapper.remove();
 }
 
+function groupKey({ scope }: { scope: SettingsScope }): string {
+  return `group|${scope}`;
+}
+
+function groupTitle({ scope }: { scope: SettingsScope }): string {
+  return scope === "utub"
+    ? APP_CONFIG.strings.PANEL_SETTINGS_SCOPE_UTUB
+    : APP_CONFIG.strings.PANEL_SETTINGS_SCOPE_USER;
+}
+
+function applyGroupCollapsed({
+  group,
+  collapsed,
+}: {
+  group: GroupEntry;
+  collapsed: boolean;
+}): void {
+  // Read before hiding: focus inside a region that just hid would fall to the page.
+  const moveFocus = collapsed && group.region.contains(document.activeElement);
+  group.collapsed = collapsed;
+  group.region.hidden = collapsed;
+  group.toggle.setAttribute("aria-expanded", String(!collapsed));
+  group.wrapper.classList.toggle("panelSettingsGroup--collapsed", collapsed);
+  if (moveFocus) group.toggle.focus();
+}
+
+function createGroupEntry({
+  scope,
+  popover,
+}: {
+  scope: SettingsScope;
+  popover: OpenPopover;
+}): GroupEntry {
+  const wrapper = document.createElement("section");
+  wrapper.className = "panelSettingsGroup";
+  wrapper.dataset.group = scope;
+
+  const regionId = `panelSettingsGroupRegion-${scope}`;
+
+  const heading = document.createElement("h2");
+  heading.className = "panelSettingsGroupHeading";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "panelSettingsGroupToggle";
+  toggle.setAttribute("aria-expanded", "true");
+  toggle.setAttribute("aria-controls", regionId);
+  const title = document.createElement("span");
+  title.className = "panelSettingsGroupToggleTitle";
+  title.textContent = groupTitle({ scope });
+  const chevron = document.createElement("span");
+  chevron.className = "panelSettingsSectionChevron";
+  chevron.setAttribute("aria-hidden", "true");
+  toggle.append(title, chevron);
+  heading.append(toggle);
+
+  const region = document.createElement("div");
+  region.className = "panelSettingsGroupCollapse";
+  region.id = regionId;
+
+  wrapper.append(heading, region);
+
+  const group: GroupEntry = {
+    scope,
+    wrapper,
+    region,
+    toggle,
+    collapsed: false,
+  };
+  applyGroupCollapsed({
+    group,
+    collapsed: isSectionCollapsed({ sectionId: groupKey({ scope }) }),
+  });
+  toggle.addEventListener("click", () => {
+    const collapsed = !group.collapsed;
+    applyGroupCollapsed({ group, collapsed });
+    rememberCollapsed({ sectionId: groupKey({ scope }), collapsed });
+    // Expanding can grow the popover past the viewport edge.
+    if (_current?.surface === "popover") {
+      positionPopover({ gear: _current.gear });
+    }
+  });
+
+  popover.groups.set(scope, group);
+  return group;
+}
+
 function renderAllSections({ popover }: { popover: OpenPopover }): void {
   const element = popover.container;
   const sections = getSections(popover.panel);
@@ -510,21 +757,42 @@ function renderAllSections({ popover }: { popover: OpenPopover }): void {
       popover.entries.delete(sectionId);
     }
   }
+  const scopes = GROUP_ORDER.filter((scope) =>
+    sections.some((section) => section.scope === scope),
+  );
+  for (const [scope, group] of popover.groups) {
+    if (!scopes.includes(scope)) {
+      group.wrapper.remove();
+      popover.groups.delete(scope);
+    }
+  }
   const focused = document.activeElement;
-  sections.forEach((section, index) => {
-    let entry = popover.entries.get(section.id);
-    let isFresh = false;
-    if (entry === undefined || entry.section !== section) {
-      if (entry) teardownEntry({ entry });
-      entry = createEntry({ section, popover });
-      isFresh = true;
-    }
+  scopes.forEach((scope, groupIndex) => {
+    const group =
+      popover.groups.get(scope) ?? createGroupEntry({ scope, popover });
     // Only move a wrapper that is new or out of order: a move blurs its focus.
-    if (element.children[index] !== entry.wrapper) {
-      element.insertBefore(entry.wrapper, element.children[index] ?? null);
+    if (element.children[groupIndex] !== group.wrapper) {
+      element.insertBefore(group.wrapper, element.children[groupIndex] ?? null);
     }
-    // An unchanged section keeps its DOM, typed text and focus.
-    if (isFresh) renderSectionBody({ entry });
+    sections
+      .filter((section) => section.scope === scope)
+      .forEach((section, index) => {
+        let entry = popover.entries.get(section.id);
+        let isFresh = false;
+        if (entry === undefined || entry.section !== section) {
+          if (entry) teardownEntry({ entry });
+          entry = createEntry({ section, popover });
+          isFresh = true;
+        }
+        if (group.region.children[index] !== entry.wrapper) {
+          group.region.insertBefore(
+            entry.wrapper,
+            group.region.children[index] ?? null,
+          );
+        }
+        // An unchanged section keeps its DOM, typed text and focus.
+        if (isFresh) renderSectionBody({ entry });
+      });
   });
   if (
     focused instanceof HTMLElement &&
@@ -589,6 +857,17 @@ function reconcileSavedValue({
   if (isDeepEqual({ left: slice, right: expected })) return;
   // The server normalized the value. Unsent edits block the re-render (the save
   // that just finished is still in flight, so `hasWork` would always say busy).
+  if (_queue?.hasUnsentEdits({ sectionId: entry.section.id })) return;
+  if (focusIsInside({ entry })) return;
+  renderSectionBody({ entry });
+}
+
+// A section's declared dependencies changed while its save was pending or in
+// flight (the re-render was blocked then). Same guards as `reconcileSavedValue`:
+// the just-finished save's in-flight flag is still up, so `hasWork` is not used.
+function reconcileRerenderOn({ entry }: { entry: SectionEntry }): void {
+  if (_current?.entries.get(entry.section.id) !== entry) return;
+  if (!rerenderIsDue({ entry })) return;
   if (_queue?.hasUnsentEdits({ sectionId: entry.section.id })) return;
   if (focusIsInside({ entry })) return;
   renderSectionBody({ entry });
@@ -682,6 +961,7 @@ function buildSink(): QueueSink {
       // Synchronous: a coalesced edit re-sends right after this report and would
       // cancel a deferred check.
       reconcileSavedValue({ entry, savedPatch });
+      reconcileRerenderOn({ entry });
       if (entry.dwellTimer !== null) clearTimeout(entry.dwellTimer);
       entry.dwellTimer = setTimeout(() => {
         entry.dwellTimer = null;
@@ -786,6 +1066,31 @@ function restoreFocusTo({
   }
 }
 
+// The first control inside the first expanded section of an expanded group, else
+// the first visible toggle (every group or section collapsed, or no expanded
+// section has a focusable control).
+function initialFocusTarget({
+  popover,
+}: {
+  popover: OpenPopover;
+}): HTMLElement | undefined {
+  let firstSectionToggle: HTMLElement | undefined;
+  // Group order, then registration order: the DOM order, whatever the Map order.
+  for (const scope of GROUP_ORDER) {
+    if (popover.groups.get(scope)?.collapsed !== false) continue;
+    for (const entry of popover.entries.values()) {
+      if (entry.section.scope !== scope) continue;
+      firstSectionToggle ??= entry.toggle;
+      if (entry.collapsed) continue;
+      const control = focusableDescendants({ root: entry.body })[0];
+      if (control) return control;
+    }
+  }
+  return (
+    firstSectionToggle ?? focusableDescendants({ root: popover.container })[0]
+  );
+}
+
 function openPopover({ gear }: { gear: HTMLElement }): void {
   const surface: Surface = isBelowBreakpoint() ? "sheet" : "popover";
   const element = surface === "sheet" ? sheetElement() : popoverElement();
@@ -833,6 +1138,7 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
     gear,
     utubID: isPerUTubPanel({ panel }) ? getState().activeUTubID : null,
     entries: new Map(),
+    groups: new Map(),
   };
   _current = popover;
   setPanelSettingsOpen({ open: true });
@@ -843,7 +1149,7 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
     renderAllSections({ popover });
     if (surface === "popover") positionPopover({ gear });
 
-    const first = focusableDescendants({ root: container })[0];
+    const first = initialFocusTarget({ popover });
     const fallback =
       surface === "sheet"
         ? (document.querySelector<HTMLElement>(SHEET_CLOSE_SELECTOR) ?? element)
@@ -884,6 +1190,7 @@ function closePopover({
     teardownEntry({ entry });
   }
   popover.entries.clear();
+  popover.groups.clear();
   popover.container.replaceChildren();
   // The surface teardown (inert restore on the sheet) completes before focus
   // returns to the gear, which may sit inside a previously inert region.
@@ -1052,6 +1359,13 @@ export function reconcilePanelSettings({
       rerenderIfIdle({ entry });
     }
   }
+
+  // 6. Per-utub user sections re-render when a declared dependency changes. Not
+  // filtered by changedKeys and not excluded for the shell's own PATCH
+  // (`settings` plus `settingsVersion`) or the section's own save write.
+  for (const entry of popover.entries.values()) {
+    if (rerenderIsDue({ entry })) rerenderIfIdle({ entry });
+  }
 }
 
 function snapshotState(): void {
@@ -1165,6 +1479,7 @@ export function resetPopover(): void {
   _forcedReadOnly = null;
   _breakpointQuery = null;
   _titles.clear();
+  _collapsedSections = null;
   setPanelSettingsOpen({ open: false });
 }
 
