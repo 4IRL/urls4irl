@@ -56,7 +56,7 @@ function buildResponse(gauges: GaugeSeries[]): GaugesTimeseriesResponse {
   };
 }
 
-/** 16 gauge series mirroring the shipped registry — distinct kinds. */
+/** 18 gauge series mirroring the shipped registry — distinct kinds. */
 function buildFullResponse(): GaugesTimeseriesResponse {
   const names: Array<[string, string, string]> = [
     ["total_users", "volume", "Total Users"],
@@ -64,6 +64,12 @@ function buildFullResponse(): GaugesTimeseriesResponse {
     ["total_urls", "volume", "Total URLs"],
     ["total_tags", "volume", "Total Tags"],
     ["total_utub_url_associations", "volume", "Total UTub-URL Associations"],
+    ["total_utub_memberships", "volume", "Total UTub memberships"],
+    [
+      "total_short_links",
+      "volume",
+      "Total short links minted (incl. expired, until purged)",
+    ],
     ["max_urls_per_utub", "distribution_max", "Max URLs per UTub"],
     ["avg_urls_per_utub", "distribution_avg", "Avg URLs per UTub"],
     ["max_tags_per_url", "distribution_max", "Max Tags per URL"],
@@ -106,9 +112,13 @@ describe("renderGaugeGrid table (happy path)", () => {
     ]);
 
     const rows = container.querySelectorAll<HTMLElement>(".gauge-row");
-    expect(rows.length).toBe(16);
+    expect(rows.length).toBe(18);
     expect(rows[0]!.dataset.gaugeName).toBe("total_users");
-    expect(rows[5]!.dataset.gaugeName).toBe("max_urls_per_utub");
+    expect(rows[5]!.dataset.gaugeName).toBe("total_utub_memberships");
+    expect(rows[6]!.dataset.gaugeName).toBe("total_short_links");
+    expect(rows[5]!.querySelector(".gauge-kind")!.textContent).toBe("Volume");
+    expect(rows[6]!.querySelector(".gauge-kind")!.textContent).toBe("Volume");
+    expect(rows[7]!.dataset.gaugeName).toBe("max_urls_per_utub");
 
     // No charts are rendered until a row is selected.
     expect(container.querySelectorAll("svg.gauge-chart").length).toBe(0);

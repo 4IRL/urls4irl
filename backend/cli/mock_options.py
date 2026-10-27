@@ -633,8 +633,8 @@ def _seed_uniform_gauges() -> int:
     revision.
 
     Examples:
-        With two sample offsets and sixteen gauges, writes thirty-two rows on a
-        fresh DB (two points per gauge) and returns 32; a re-run with all rows
+        With two sample offsets and eighteen gauges, writes thirty-six rows on a
+        fresh DB (two points per gauge) and returns 36; a re-run with all rows
         already present returns 0.
     """
     now = utc_now()
