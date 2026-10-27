@@ -432,7 +432,7 @@ def test_create_metric_flow_other_integrity_error_not_mapped_to_display_name(
     monkeypatch.setattr(
         metric_flow_service, "_violated_constraint", lambda _error: "some_other_check"
     )
-    app.config["PROPAGATE_EXCEPTIONS"] = False
+    monkeypatch.setitem(app.config, "PROPAGATE_EXCEPTIONS", False)
 
     response = _post_flow(client, csrf, _valid_draft(_CUSTOM_NAME.upper()))
 
