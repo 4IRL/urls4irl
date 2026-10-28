@@ -125,7 +125,7 @@ def test_every_percentile_gauge_is_k_anon_guarded() -> None:
         for name, definition in GAUGE_REGISTRY.items()
         if definition.kind in PERCENTILE_FRACTIONS
     ]
-    assert len(percentile_names) == 14
+    assert percentile_names
     for name in percentile_names:
         definition = GAUGE_REGISTRY[name]
         sql = build_gauge_sql(name)

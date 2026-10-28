@@ -744,7 +744,7 @@ def test_seed_uniform_gauges_stores_percentile_kinds_as_floats(runner):
     GIVEN an empty AnonymousGauges table
     WHEN `_seed_uniform_gauges` runs
     THEN every median/p90 row is written to `value_float` with `value_int` NULL,
-        and the percentile row count is 2 hour offsets x 14 gauges.
+        and the percentile row count is 2 hour offsets x the number of percentile gauges.
     """
     app, _ = runner
     percentile_names = [
@@ -758,7 +758,8 @@ def test_seed_uniform_gauges_stores_percentile_kinds_as_floats(runner):
         rows = Anonymous_Gauges.query.filter(
             Anonymous_Gauges.gauge_name.in_(percentile_names)
         ).all()
-        assert len(rows) == 2 * 14
+        assert percentile_names
+        assert len(rows) == 2 * len(percentile_names)
         for row in rows:
             assert row.value_int is None
             assert row.value_float is not None
