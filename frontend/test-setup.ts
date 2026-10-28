@@ -681,6 +681,8 @@ const appConfig = {
     METRICS_GAUGE_KIND_VOLUME: "Volume",
     METRICS_GAUGE_KIND_DISTRIBUTION_MAX: "Distribution (max)",
     METRICS_GAUGE_KIND_DISTRIBUTION_AVG: "Distribution (avg)",
+    METRICS_GAUGE_KIND_DISTRIBUTION_MEDIAN: "Distribution (median)",
+    METRICS_GAUGE_KIND_DISTRIBUTION_P90: "Distribution (p90)",
     METRICS_GAUGE_SUPPRESSED_ARIA: "Value unavailable",
     METRICS_GAUGES_LOADED: "Gauge values updated.",
     METRICS_GAUGE_SELECT_PROMPT: "Select a gauge to view its timeseries.",

@@ -444,6 +444,44 @@ def test_gauges_tab_is_default_and_renders_chart_on_row_click(
     )
 
 
+def test_gauges_row_tap_scrolls_chart_into_view_on_mobile(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a phone-width viewport (390x844) and the full seeded gauge table
+    WHEN the admin taps the median_urls_per_utub row
+    THEN the gauge chart, initially below the fold, scrolls into the viewport.
+    """
+    page.set_viewport_size({"width": 390, "height": 844})
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_get_at_least_n_elements(
+        page=page,
+        css_selector=MDL.GAUGES_ROW,
+        minimum_count=len(GaugeName),
+    )
+
+    # Precondition: the detail area starts below the fold of the tall table.
+    expect(page.locator(MDL.GAUGES_DETAIL)).not_to_be_in_viewport()
+
+    wait_then_click_element(
+        page=page,
+        css_selector=f'{MDL.GAUGES_ROW}[data-gauge-name="median_urls_per_utub"]',
+    )
+    expect(page.locator("#gauge-chart-median_urls_per_utub")).to_be_in_viewport()
+
+
 def test_gauges_tab_renders_empty_state_with_no_data(
     page: Page,
     create_test_users,

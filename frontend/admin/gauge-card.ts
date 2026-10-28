@@ -38,6 +38,9 @@ const GAUGE_KIND_LABELS: Record<string, string> = {
   volume: APP_CONFIG.strings.METRICS_GAUGE_KIND_VOLUME,
   distribution_max: APP_CONFIG.strings.METRICS_GAUGE_KIND_DISTRIBUTION_MAX,
   distribution_avg: APP_CONFIG.strings.METRICS_GAUGE_KIND_DISTRIBUTION_AVG,
+  distribution_median:
+    APP_CONFIG.strings.METRICS_GAUGE_KIND_DISTRIBUTION_MEDIAN,
+  distribution_p90: APP_CONFIG.strings.METRICS_GAUGE_KIND_DISTRIBUTION_P90,
 };
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";

@@ -579,6 +579,70 @@ describe("metrics-dashboard tablist a11y", () => {
     },
   );
 
+  it("scrolls the gauge detail into view on row click and Enter, never on a poll re-render", () => {
+    const response = buildGaugesResponse([buildGaugeSeries("total_users")]);
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
+      createDoneJqXHR(response),
+    );
+    getTab("MetricsTabGauges").click();
+
+    // renderGaugeGrid is mocked, so inject both the row and the detail element
+    // `handleGaugeRowClick` resolves; jsdom lacks scrollIntoView, so stub it.
+    const grid = document.getElementById("MetricsGaugeGrid") as HTMLElement;
+    const row = document.createElement("tr");
+    row.className = "gauge-row";
+    row.dataset.gaugeName = "total_users";
+    grid.appendChild(row);
+    const detail = document.createElement("div");
+    detail.className = "gauge-detail";
+    grid.appendChild(detail);
+
+    const scrollSpy = vi.fn();
+    const hadOwnScroll = Object.prototype.hasOwnProperty.call(
+      Element.prototype,
+      "scrollIntoView",
+    );
+    const originalScroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollSpy;
+    try {
+      row.click();
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollSpy.mock.instances[0]).toBe(detail);
+      expect(scrollSpy).toHaveBeenLastCalledWith({
+        behavior: "smooth",
+        block: "start",
+      });
+
+      scrollSpy.mockClear();
+      $(row).trigger($.Event("keydown", { key: "Enter" }));
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect(scrollSpy.mock.instances[0]).toBe(detail);
+      expect(scrollSpy).toHaveBeenLastCalledWith({
+        behavior: "smooth",
+        block: "start",
+      });
+
+      // A refetch-driven re-render (no click) must not scroll.
+      scrollSpy.mockClear();
+      const fetchCallsBefore = fetchGaugesTimeseriesSpy.mock.calls.length;
+      const weekButton = document.querySelector(
+        '.MetricsWindowButton[data-window="week"]',
+      ) as HTMLButtonElement;
+      weekButton.click();
+      // Prove the refetch actually ran so the not-called check isn't vacuous.
+      expect(fetchGaugesTimeseriesSpy.mock.calls.length).toBeGreaterThan(
+        fetchCallsBefore,
+      );
+      expect(scrollSpy).not.toHaveBeenCalled();
+    } finally {
+      if (hadOwnScroll) {
+        Element.prototype.scrollIntoView = originalScroll;
+      } else {
+        delete (Element.prototype as Partial<Element>).scrollIntoView;
+      }
+    }
+  });
+
   it("ignores non-activation keys (e.g. Tab) on a gauge row", () => {
     const response = buildGaugesResponse([buildGaugeSeries("total_users")]);
     fetchGaugesTimeseriesSpy.mockImplementation(() =>

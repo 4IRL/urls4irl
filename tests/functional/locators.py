@@ -996,6 +996,7 @@ class MetricsDashboardLocators(GenericPageLocator):
     GAUGES_ROW = "#MetricsGaugeGrid .gauge-row"
     GAUGES_ROW_SUPPRESSED = "#MetricsGaugeGrid .gauge-row--suppressed"
     GAUGES_ROW_SELECTED = "#MetricsGaugeGrid .gauge-row--selected"
+    GAUGES_DETAIL = "#MetricsGaugeGrid .gauge-detail"
     GAUGES_DETAIL_PROMPT = "#MetricsGaugeGrid .gauge-detail-prompt"
     GAUGES_DETAIL_CHART = "#MetricsGaugeGrid .gauge-detail svg.gauge-chart"
     GAUGES_PANEL_EMPTY_STATE = "#MetricsGaugeGrid .MetricsEmptyState"

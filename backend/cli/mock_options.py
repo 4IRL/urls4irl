@@ -24,7 +24,7 @@ from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics.events import DeviceType, EventName
 from backend.metrics.flow_validation import serialize_flow_steps, validate_flow_payload
 from backend.metrics.flows import FlowDefinition
-from backend.metrics.gauges import GAUGE_REGISTRY, GaugeKind
+from backend.metrics.gauges import GAUGE_REGISTRY, value_column_for
 from backend.metrics.latency import LatencyMetricName
 from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
@@ -48,7 +48,7 @@ SEED_GAUGE_HOUR_OFFSETS: tuple[int, ...] = (0, 1)
 
 # Deterministic sample values per gauge kind, keyed by sample-time offset so the
 # seeded series shows movement across the two points. VOLUME / DISTRIBUTION_MAX
-# write an integer (valueInt); DISTRIBUTION_AVG writes a float (valueFloat).
+# write an integer (valueInt); AVG, median and p90 write a float (valueFloat).
 SEED_GAUGE_INT_VALUES: dict[int, int] = {0: 42, 1: 40}
 SEED_GAUGE_FLOAT_VALUES: dict[int, float] = {0: 4.5, 1: 4.0}
 
@@ -620,7 +620,7 @@ def _seed_uniform_gauges() -> int:
     Writes two timeseries points (two sample timestamps ending at the current
     hour) for every `GaugeName`, so the admin dashboard's Gauges tab renders a
     non-empty trend chart per gauge during the Selenium smoke test. VOLUME and
-    DISTRIBUTION_MAX gauges populate `value_int`; DISTRIBUTION_AVG gauges
+    DISTRIBUTION_MAX gauges populate `value_int`; AVG, median and p90 gauges
     populate `value_float` (the other column stays NULL), matching the
     sampler's per-kind column routing. Idempotent on `(gaugeName, sampledAt)`
     via a `one_or_none()` existence skip — repeated runs insert nothing new.
@@ -633,9 +633,9 @@ def _seed_uniform_gauges() -> int:
     revision.
 
     Examples:
-        With two sample offsets and eighteen gauges, writes thirty-six rows on a
-        fresh DB (two points per gauge) and returns 36; a re-run with all rows
-        already present returns 0.
+        With two sample offsets, writes `2 * len(GAUGE_REGISTRY)` rows on a
+        fresh DB (two points per gauge) and returns that count; a re-run with
+        all rows already present returns 0.
     """
     now = utc_now()
     current_hour_aligned = now.replace(minute=0, second=0, microsecond=0)
@@ -654,7 +654,7 @@ def _seed_uniform_gauges() -> int:
                 if existing_row is not None:
                     continue
 
-                if definition.kind is GaugeKind.DISTRIBUTION_AVG:
+                if value_column_for(definition.kind) == "valueFloat":
                     value_int = None
                     value_float = float_value
                 else:
