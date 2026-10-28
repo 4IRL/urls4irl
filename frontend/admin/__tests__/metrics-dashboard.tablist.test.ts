@@ -598,6 +598,10 @@ describe("metrics-dashboard tablist a11y", () => {
     grid.appendChild(detail);
 
     const scrollSpy = vi.fn();
+    const hadOwnScroll = Object.prototype.hasOwnProperty.call(
+      Element.prototype,
+      "scrollIntoView",
+    );
     const originalScroll = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scrollSpy;
     try {
@@ -620,13 +624,22 @@ describe("metrics-dashboard tablist a11y", () => {
 
       // A refetch-driven re-render (no click) must not scroll.
       scrollSpy.mockClear();
+      const fetchCallsBefore = fetchGaugesTimeseriesSpy.mock.calls.length;
       const weekButton = document.querySelector(
         '.MetricsWindowButton[data-window="week"]',
       ) as HTMLButtonElement;
       weekButton.click();
+      // Prove the refetch actually ran so the not-called check isn't vacuous.
+      expect(fetchGaugesTimeseriesSpy.mock.calls.length).toBeGreaterThan(
+        fetchCallsBefore,
+      );
       expect(scrollSpy).not.toHaveBeenCalled();
     } finally {
-      Element.prototype.scrollIntoView = originalScroll;
+      if (hadOwnScroll) {
+        Element.prototype.scrollIntoView = originalScroll;
+      } else {
+        delete (Element.prototype as Partial<Element>).scrollIntoView;
+      }
     }
   });
 
