@@ -32,14 +32,14 @@ describe("view-settings effective helpers", () => {
       activeUTubID: 1,
       memberSettings: memberUrls({
         sort: "title_az",
-        view_mode: "compact",
+        view_mode: "title_line",
         density: "compact",
         hide_date_added: true,
       }),
     });
 
     expect(effectiveSort()).toBe("title_az");
-    expect(effectiveViewMode()).toBe("compact");
+    expect(effectiveViewMode()).toBe("title_line");
     expect(effectiveDensity()).toBe("compact");
     expect(effectiveHideDateAdded()).toBe(true);
   });
@@ -66,7 +66,7 @@ describe("view-settings effective helpers", () => {
       activeUTubID: null,
       memberSettings: memberUrls({
         sort: "oldest",
-        view_mode: "compact",
+        view_mode: "title_line",
         density: "compact",
         hide_date_added: true,
       }),

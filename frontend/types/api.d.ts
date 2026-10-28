@@ -2699,7 +2699,7 @@ export interface components {
        * @description Layout override; null uses the account default
        * @default null
        */
-      view_mode: ("list" | "compact" | "cards") | null;
+      view_mode: ("list" | "title_line" | "url_line" | "cards") | null;
       /**
        * @description Density override; null uses the account default
        * @default null
@@ -3779,11 +3779,11 @@ export interface components {
     /** @enum {string} */
     Theme: "light" | "dark" | "system";
     /** @enum {string} */
-    ViewMode: "list" | "compact" | "cards";
+    ViewMode: "list" | "title_line" | "url_line" | "cards";
     UpdatePreferencesRequest: {
       /** @description The app-wide color theme: light, dark, or system */
       theme: components["schemas"]["Theme"];
-      /** @description The default UTub URL view mode: list, compact, or cards */
+      /** @description The default UTub URL view mode: list, title_line, url_line, or cards */
       defaultView: components["schemas"]["ViewMode"];
       /** @description The default URL sort order: newest, oldest, or title_az */
       defaultSort: components["schemas"]["SortOrder"];
@@ -3986,7 +3986,7 @@ export interface components {
     ExportPreferencesSchema: {
       /** @description The app-wide color theme (light/dark/system) */
       theme: string;
-      /** @description The default UTub URL view mode (list/compact/cards) */
+      /** @description The default UTub URL view mode (list/title_line/url_line/cards) */
       defaultView: string;
       /** @description The default URL sort order (newest/oldest/title_az) */
       defaultSort: string;

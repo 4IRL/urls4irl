@@ -11923,7 +11923,7 @@
           "view_mode": {
             "anyOf": [
               {
-                "enum": ["list", "compact", "cards"],
+                "enum": ["list", "title_line", "url_line", "cards"],
                 "type": "string"
               },
               {
@@ -14002,7 +14002,7 @@
         "type": "string"
       },
       "ViewMode": {
-        "enum": ["list", "compact", "cards"],
+        "enum": ["list", "title_line", "url_line", "cards"],
         "type": "string"
       },
       "UpdatePreferencesRequest": {
@@ -14013,7 +14013,7 @@
           },
           "defaultView": {
             "$ref": "#/components/schemas/ViewMode",
-            "description": "The default UTub URL view mode: list, compact, or cards"
+            "description": "The default UTub URL view mode: list, title_line, url_line, or cards"
           },
           "defaultSort": {
             "$ref": "#/components/schemas/SortOrder",
@@ -14363,7 +14363,7 @@
             "type": "string"
           },
           "defaultView": {
-            "description": "The default UTub URL view mode (list/compact/cards)",
+            "description": "The default UTub URL view mode (list/title_line/url_line/cards)",
             "type": "string"
           },
           "defaultSort": {

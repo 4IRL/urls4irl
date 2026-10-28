@@ -358,7 +358,8 @@
             <div class="SettingsSelectWrap">
                 <select class="form-control SettingsPrefSelect" id="SettingsDefaultViewSelect" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_LABEL }}">
                     <option value="list"    {{ 'selected' if display_default_view == 'list'    else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_LIST }}</option>
-                    <option value="compact" {{ 'selected' if display_default_view == 'compact' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_COMPACT }}</option>
+                    <option value="title_line" {{ 'selected' if display_default_view == 'title_line' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_TITLE_LINE }}</option>
+                    <option value="url_line" {{ 'selected' if display_default_view == 'url_line' else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_URL_LINE }}</option>
                     <option value="cards"   {{ 'selected' if display_default_view == 'cards'   else '' }}>{{ CONSTANTS.STRINGS.SETTINGS_UI_SETTINGS_VIEW_OPTION_CARDS }}</option>
                 </select>
             </div>

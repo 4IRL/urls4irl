@@ -78,8 +78,12 @@ function viewOptions(): Array<SelectOption<ViewModeValue>> {
   return [
     { value: "list", label: strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_LIST },
     {
-      value: "compact",
-      label: strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_COMPACT,
+      value: "title_line",
+      label: strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_TITLE_LINE,
+    },
+    {
+      value: "url_line",
+      label: strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_URL_LINE,
     },
     {
       value: "cards",

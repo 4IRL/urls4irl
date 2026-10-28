@@ -170,6 +170,51 @@ def test_update_preferences_invalid_enum_returns_400_field_error(
     assert MODELS.THEME in response_json[STD_JSON.ERRORS]
 
 
+def test_update_preferences_retired_compact_view_returns_400_field_error(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The retired ``compact`` view value is rejected with a ``defaultView``
+    field error."""
+    client, csrf_token, user, _ = login_first_user_with_register
+
+    bad_payload = dict(_VALID_PAYLOAD)
+    bad_payload[MODELS.DEFAULT_VIEW] = "compact"
+
+    response = client.put(
+        url_for(ROUTES.USERS.UPDATE_PREFERENCES, user_id=user.id),
+        json=bad_payload,
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 400
+    assert MODELS.DEFAULT_VIEW in response.get_json()[STD_JSON.ERRORS]
+
+
+@pytest.mark.parametrize("view_mode", [ViewMode.TITLE_LINE, ViewMode.URL_LINE])
+def test_update_preferences_line_views_are_accepted_and_persisted(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    view_mode: ViewMode,
+) -> None:
+    """``title_line`` and ``url_line`` are valid default views and persist."""
+    client, csrf_token, user, app = login_first_user_with_register
+    user_id = user.id
+
+    payload = dict(_VALID_PAYLOAD)
+    payload[MODELS.DEFAULT_VIEW] = view_mode.value
+
+    response = client.put(
+        url_for(ROUTES.USERS.UPDATE_PREFERENCES, user_id=user_id),
+        json=payload,
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()[MODELS.DEFAULT_VIEW] == view_mode.value
+    with app.app_context():
+        refreshed: Users = Users.query.get(user_id)
+        assert refreshed.preferences.default_view == view_mode
+
+
 def test_update_preferences_missing_csrf_returns_403_html(
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:

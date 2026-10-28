@@ -34,7 +34,7 @@ class ExportPreferencesSchema(BaseSchema):
     theme: str = Field(description="The app-wide color theme (light/dark/system)")
     default_view: str = Field(
         alias="defaultView",
-        description="The default UTub URL view mode (list/compact/cards)",
+        description="The default UTub URL view mode (list/title_line/url_line/cards)",
     )
     default_sort: str = Field(
         alias="defaultSort",

@@ -365,7 +365,7 @@ describe("applyDefaultUrlSort", () => {
 });
 
 describe("applyDefaultViewMode", () => {
-  it.each(["list", "compact", "cards"] as const)(
+  it.each(["list", "title_line", "url_line", "cards"] as const)(
     "sets document.body.dataset.view to '%s'",
     (viewMode) => {
       applyDefaultViewMode(viewMode);

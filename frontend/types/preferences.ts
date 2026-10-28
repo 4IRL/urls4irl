@@ -12,7 +12,7 @@
  */
 
 export type ThemeValue = "light" | "dark" | "system";
-export type ViewModeValue = "list" | "compact" | "cards";
+export type ViewModeValue = "list" | "title_line" | "url_line" | "cards";
 export type SortOrderValue = "newest" | "oldest" | "title_az";
 export type DensityValue = "comfortable" | "compact";
 export type DateFormatValue = "iso" | "us" | "eu";

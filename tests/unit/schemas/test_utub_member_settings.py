@@ -56,6 +56,17 @@ def test_resolve_applies_stored_overrides():
     assert resolved.urls.hide_copy_button is False
 
 
+@pytest.mark.parametrize("view_mode", ["list", "title_line", "url_line", "cards"])
+def test_resolve_accepts_valid_view_modes(view_mode: str):
+    resolved = resolve_member_settings({"urls": {"view_mode": view_mode}})
+    assert resolved.urls.view_mode == view_mode
+
+
+def test_resolve_drops_retired_compact_view_mode():
+    resolved = resolve_member_settings({"urls": {"view_mode": "compact"}})
+    assert resolved.urls.view_mode is None
+
+
 def test_resolve_ignores_unknown_and_invalid_stored_keys():
     resolved = resolve_member_settings(
         {
@@ -132,6 +143,7 @@ def test_merge_null_on_boolean_key_is_rejected(key: str):
     [
         ("sort", "bogus"),
         ("view_mode", "grid"),
+        ("view_mode", "compact"),
         ("density", "tight"),
         ("hide_copy_button", "yes"),
         ("hide_date_added", 1),
