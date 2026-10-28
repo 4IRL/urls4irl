@@ -19,6 +19,8 @@ from backend.cli.mock_options import (
 from backend.db import db
 from backend.metrics.flow_validation import validate_flow_payload
 from backend.metrics.flows import FlowDefinition
+from backend.metrics.gauges import GAUGE_REGISTRY, PERCENTILE_FRACTIONS
+from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
@@ -735,6 +737,31 @@ def test_add_all_mock_data_also_seeds_anonymous_metrics(runner):
             f"{EXPECTED_SEEDED_LATENCY_ROLLUP_ROW_COUNT}, got "
             f"{rollup_rows_after_second_run}."
         )
+
+
+def test_seed_uniform_gauges_stores_percentile_kinds_as_floats(runner):
+    """
+    GIVEN an empty AnonymousGauges table
+    WHEN `_seed_uniform_gauges` runs
+    THEN every median/p90 row is written to `value_float` with `value_int` NULL,
+        and the percentile row count is 2 hour offsets x 14 gauges.
+    """
+    app, _ = runner
+    percentile_names = [
+        name.value
+        for name, definition in GAUGE_REGISTRY.items()
+        if definition.kind in PERCENTILE_FRACTIONS
+    ]
+
+    with app.app_context():
+        mock_options._seed_uniform_gauges()
+        rows = Anonymous_Gauges.query.filter(
+            Anonymous_Gauges.gauge_name.in_(percentile_names)
+        ).all()
+        assert len(rows) == 2 * 14
+        for row in rows:
+            assert row.value_int is None
+            assert row.value_float is not None
 
 
 def test_seed_uniform_latency_writes_expected_rows_and_is_idempotent(runner):

@@ -26,9 +26,10 @@ import re
 from dataclasses import dataclass
 from enum import StrEnum
 
-# k-anonymity floor: a `max_*` distribution gauge is suppressed (NULL) when the
-# distinct population grouped over is below this count, so a single outlier
-# entity cannot be re-identified from an extreme maximum.
+# k-anonymity floor: a max, median or p90 distribution gauge is suppressed
+# (NULL) when the distinct population grouped over is below this count, so a
+# single outlier entity cannot be re-identified from an extreme statistic.
+# Distribution statistics are over non-empty groups only.
 MIN_GAUGE_POPULATION = 5
 
 # The EVENT_DERIVED_MAX branch of `build_gauge_sql` f-string-interpolates a
@@ -44,11 +45,20 @@ class GaugeKind(StrEnum):
     VOLUME = "volume"
     DISTRIBUTION_MAX = "distribution_max"
     DISTRIBUTION_AVG = "distribution_avg"
+    DISTRIBUTION_MEDIAN = "distribution_median"
+    DISTRIBUTION_P90 = "distribution_p90"
     # Reserved for future event-derived max gauges (e.g. max URL access count).
     # No shipped gauge references this kind yet; it is kept so the deferred
     # event-derived gauges re-land as a one-place registry add once their
     # source events gain a per-entity dimension key.
     EVENT_DERIVED_MAX = "event_derived_max"
+
+
+# Percentile fraction per percentile-kind (used by `percentile_cont`).
+PERCENTILE_FRACTIONS: dict[GaugeKind, float] = {
+    GaugeKind.DISTRIBUTION_MEDIAN: 0.5,
+    GaugeKind.DISTRIBUTION_P90: 0.9,
+}
 
 
 class GaugeName(StrEnum):
@@ -62,16 +72,30 @@ class GaugeName(StrEnum):
     TOTAL_SHORT_LINKS = "total_short_links"
     # Distribution — MAX / AVG of a per-entity grouped count.
     MAX_URLS_PER_UTUB = "max_urls_per_utub"
+    P90_URLS_PER_UTUB = "p90_urls_per_utub"
+    MEDIAN_URLS_PER_UTUB = "median_urls_per_utub"
     AVG_URLS_PER_UTUB = "avg_urls_per_utub"
     MAX_TAGS_PER_URL = "max_tags_per_url"
+    P90_TAGS_PER_URL = "p90_tags_per_url"
+    MEDIAN_TAGS_PER_URL = "median_tags_per_url"
     AVG_TAGS_PER_URL = "avg_tags_per_url"
     MAX_TAGS_PER_UTUB = "max_tags_per_utub"
+    P90_TAGS_PER_UTUB = "p90_tags_per_utub"
+    MEDIAN_TAGS_PER_UTUB = "median_tags_per_utub"
     AVG_TAGS_PER_UTUB = "avg_tags_per_utub"
     MAX_UTUBS_PER_USER = "max_utubs_per_user"
+    P90_UTUBS_PER_USER = "p90_utubs_per_user"
+    MEDIAN_UTUBS_PER_USER = "median_utubs_per_user"
     MAX_MEMBERS_PER_UTUB = "max_members_per_utub"
+    P90_MEMBERS_PER_UTUB = "p90_members_per_utub"
+    MEDIAN_MEMBERS_PER_UTUB = "median_members_per_utub"
     AVG_MEMBERS_PER_UTUB = "avg_members_per_utub"
     MAX_UTUBS_PER_URL = "max_utubs_per_url"
+    P90_UTUBS_PER_URL = "p90_utubs_per_url"
+    MEDIAN_UTUBS_PER_URL = "median_utubs_per_url"
     MAX_URLS_PER_USER = "max_urls_per_user"
+    P90_URLS_PER_USER = "p90_urls_per_user"
+    MEDIAN_URLS_PER_USER = "median_urls_per_user"
 
 
 # Module-level tuple of every GaugeName value. Defined here, in the source
@@ -104,7 +128,7 @@ class GaugeDefinition:
     # table has no `id`.
     count_column: str | None = None
     # Reserved for the future EVENT_DERIVED_MAX kind; the AnonymousMetrics
-    # eventName to filter on. No shipped gauge sets it (all 18 are relational).
+    # eventName to filter on. No shipped gauge sets it (all 32 are relational).
     event_name: str | None = None
     # Reserved for the future EVENT_DERIVED_MAX kind; the JSONB dimension key to
     # group by. No shipped gauge sets it.
@@ -184,6 +208,18 @@ GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
         table="UtubUrls",
         group_by_column="utubID",
     ),
+    GaugeName.P90_URLS_PER_UTUB: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_P90,
+        description="90th-percentile URLs per UTub",
+        table="UtubUrls",
+        group_by_column="utubID",
+    ),
+    GaugeName.MEDIAN_URLS_PER_UTUB: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_MEDIAN,
+        description="Median URLs per UTub",
+        table="UtubUrls",
+        group_by_column="utubID",
+    ),
     GaugeName.AVG_URLS_PER_UTUB: GaugeDefinition(
         kind=GaugeKind.DISTRIBUTION_AVG,
         description="Average URLs per UTub",
@@ -199,6 +235,18 @@ GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
         table="UtubUrlTags",
         group_by_column="utubUrlID",
     ),
+    GaugeName.P90_TAGS_PER_URL: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_P90,
+        description="90th-percentile tags per UTub URL",
+        table="UtubUrlTags",
+        group_by_column="utubUrlID",
+    ),
+    GaugeName.MEDIAN_TAGS_PER_URL: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_MEDIAN,
+        description="Median tags per UTub URL",
+        table="UtubUrlTags",
+        group_by_column="utubUrlID",
+    ),
     GaugeName.AVG_TAGS_PER_URL: GaugeDefinition(
         kind=GaugeKind.DISTRIBUTION_AVG,
         description="Average tags per UTub URL",
@@ -211,6 +259,18 @@ GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
     GaugeName.MAX_TAGS_PER_UTUB: GaugeDefinition(
         kind=GaugeKind.DISTRIBUTION_MAX,
         description="Most tags in any single UTub",
+        table="UtubTags",
+        group_by_column="utubID",
+    ),
+    GaugeName.P90_TAGS_PER_UTUB: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_P90,
+        description="90th-percentile tags per UTub",
+        table="UtubTags",
+        group_by_column="utubID",
+    ),
+    GaugeName.MEDIAN_TAGS_PER_UTUB: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_MEDIAN,
+        description="Median tags per UTub",
         table="UtubTags",
         group_by_column="utubID",
     ),
@@ -230,9 +290,37 @@ GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
         group_by_column="userID",
         count_column="utubID",
     ),
+    GaugeName.P90_UTUBS_PER_USER: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_P90,
+        description="90th-percentile UTubs per user",
+        table="UtubMembers",
+        group_by_column="userID",
+        count_column="utubID",
+    ),
+    GaugeName.MEDIAN_UTUBS_PER_USER: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_MEDIAN,
+        description="Median UTubs per user",
+        table="UtubMembers",
+        group_by_column="userID",
+        count_column="utubID",
+    ),
     GaugeName.MAX_MEMBERS_PER_UTUB: GaugeDefinition(
         kind=GaugeKind.DISTRIBUTION_MAX,
         description="Most members in any single UTub",
+        table="UtubMembers",
+        group_by_column="utubID",
+        count_column="userID",
+    ),
+    GaugeName.P90_MEMBERS_PER_UTUB: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_P90,
+        description="90th-percentile members per UTub",
+        table="UtubMembers",
+        group_by_column="utubID",
+        count_column="userID",
+    ),
+    GaugeName.MEDIAN_MEMBERS_PER_UTUB: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_MEDIAN,
+        description="Median members per UTub",
         table="UtubMembers",
         group_by_column="utubID",
         count_column="userID",
@@ -254,9 +342,33 @@ GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
         table="UtubUrls",
         group_by_column="urlID",
     ),
+    GaugeName.P90_UTUBS_PER_URL: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_P90,
+        description="90th-percentile UTubs per URL",
+        table="UtubUrls",
+        group_by_column="urlID",
+    ),
+    GaugeName.MEDIAN_UTUBS_PER_URL: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_MEDIAN,
+        description="Median UTubs per URL",
+        table="UtubUrls",
+        group_by_column="urlID",
+    ),
     GaugeName.MAX_URLS_PER_USER: GaugeDefinition(
         kind=GaugeKind.DISTRIBUTION_MAX,
         description="Most URL associations added by any single member",
+        table="UtubUrls",
+        group_by_column="userID",
+    ),
+    GaugeName.P90_URLS_PER_USER: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_P90,
+        description="90th-percentile URL associations per member",
+        table="UtubUrls",
+        group_by_column="userID",
+    ),
+    GaugeName.MEDIAN_URLS_PER_USER: GaugeDefinition(
+        kind=GaugeKind.DISTRIBUTION_MEDIAN,
+        description="Median URL associations per member",
         table="UtubUrls",
         group_by_column="userID",
     ),
@@ -266,18 +378,29 @@ GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
 def value_column_for(kind: GaugeKind) -> str:
     """Return the AnonymousGauges value column a gauge of `kind` writes/reads.
 
-    AVG gauges produce a fractional value stored in `valueFloat`; every other
-    kind (COUNT / MAX) is an integer stored in `valueInt`. Used by both the
-    sampler (which column to populate) and the query service (which to read).
+    AVG, median and p90 gauges produce a fractional value stored in
+    `valueFloat`; COUNT / MAX / event-derived MAX are integers stored in
+    `valueInt`. Any other kind raises (fail closed). Used by both the sampler
+    (which column to populate) and the query service (which to read).
 
     Examples:
         value_column_for(GaugeKind.DISTRIBUTION_AVG) -> "valueFloat"
         value_column_for(GaugeKind.VOLUME)           -> "valueInt"
         value_column_for(GaugeKind.DISTRIBUTION_MAX) -> "valueInt"
     """
-    if kind is GaugeKind.DISTRIBUTION_AVG:
+    if kind in (
+        GaugeKind.DISTRIBUTION_AVG,
+        GaugeKind.DISTRIBUTION_MEDIAN,
+        GaugeKind.DISTRIBUTION_P90,
+    ):
         return "valueFloat"
-    return "valueInt"
+    if kind in (
+        GaugeKind.VOLUME,
+        GaugeKind.DISTRIBUTION_MAX,
+        GaugeKind.EVENT_DERIVED_MAX,
+    ):
+        return "valueInt"
+    raise ValueError(f"value_column_for: unhandled GaugeKind {kind!r}")
 
 
 def _inner_count_expr(count_column: str | None) -> str:
@@ -290,6 +413,27 @@ def _inner_count_expr(count_column: str | None) -> str:
     if count_column is None:
         return "COUNT(*)"
     return f'COUNT("{count_column}")'
+
+
+def _guarded_distribution_sql(definition: GaugeDefinition, aggregate: str) -> str:
+    """Build a k-anonymity-guarded distribution query around `aggregate`.
+
+    The population guard returns NULL when fewer than `MIN_GAUGE_POPULATION`
+    distinct groups exist; otherwise `aggregate` runs over the per-group counts.
+    """
+    inner_count = _inner_count_expr(definition.count_column)
+    population = (
+        f'SELECT COUNT(DISTINCT "{definition.group_by_column}") '
+        f'FROM "{definition.table}"'
+    )
+    value = (
+        f"SELECT {aggregate} FROM (SELECT {inner_count} AS c "
+        f'FROM "{definition.table}" GROUP BY "{definition.group_by_column}") s'
+    )
+    return (
+        f"SELECT CASE WHEN ({population}) < {MIN_GAUGE_POPULATION} "
+        f"THEN NULL ELSE ({value}) END"
+    )
 
 
 def build_gauge_sql(gauge_name: GaugeName) -> str:
@@ -339,43 +483,41 @@ def build_gauge_sql(gauge_name: GaugeName) -> str:
         )
 
     if definition.kind is GaugeKind.DISTRIBUTION_MAX:
-        inner_count = _inner_count_expr(definition.count_column)
-        population = (
-            f'SELECT COUNT(DISTINCT "{definition.group_by_column}") '
-            f'FROM "{definition.table}"'
+        return _guarded_distribution_sql(definition, "MAX(c)")
+
+    if definition.kind in PERCENTILE_FRACTIONS:
+        fraction = PERCENTILE_FRACTIONS[definition.kind]
+        return _guarded_distribution_sql(
+            definition, f"percentile_cont({fraction}) WITHIN GROUP (ORDER BY c)"
         )
+
+    if definition.kind is GaugeKind.EVENT_DERIVED_MAX:
+        # Reserved branch — generated but unexercised (zero registry entries
+        # use this kind). Kept so the deferred event-derived gauges re-land
+        # without a generator edit once their source events gain a per-entity
+        # dimension key.
+        dim_expr = f"\"dimensions\"->>'{definition.dimension_key}'"
+        event_filter = (
+            f'FROM "AnonymousMetrics" WHERE "eventName" = \'{definition.event_name}\''
+        )
+        population = f"SELECT COUNT(DISTINCT {dim_expr}) {event_filter}"
         max_value = (
-            f"SELECT MAX(c) FROM (SELECT {inner_count} AS c "
-            f'FROM "{definition.table}" GROUP BY "{definition.group_by_column}") s'
+            f'SELECT MAX(c) FROM (SELECT SUM("count") AS c '
+            f"{event_filter} GROUP BY {dim_expr}) s"
         )
         return (
             f"SELECT CASE WHEN ({population}) < {MIN_GAUGE_POPULATION} "
             f"THEN NULL ELSE ({max_value}) END"
         )
 
-    # EVENT_DERIVED_MAX: reserved branch — generated but unexercised in this PR
-    # (zero registry entries use this kind). Kept so the deferred event-derived
-    # gauges re-land without a generator edit once their source events gain a
-    # per-entity dimension key.
-    dim_expr = f"\"dimensions\"->>'{definition.dimension_key}'"
-    event_filter = (
-        f'FROM "AnonymousMetrics" WHERE "eventName" = \'{definition.event_name}\''
-    )
-    population = f"SELECT COUNT(DISTINCT {dim_expr}) {event_filter}"
-    max_value = (
-        f'SELECT MAX(c) FROM (SELECT SUM("count") AS c '
-        f"{event_filter} GROUP BY {dim_expr}) s"
-    )
-    return (
-        f"SELECT CASE WHEN ({population}) < {MIN_GAUGE_POPULATION} "
-        f"THEN NULL ELSE ({max_value}) END"
-    )
+    raise ValueError(f"build_gauge_sql: unhandled GaugeKind {definition.kind!r}")
 
 
 __all__ = [
     "ALL_GAUGE_NAMES",
     "GAUGE_REGISTRY",
     "MIN_GAUGE_POPULATION",
+    "PERCENTILE_FRACTIONS",
     "GaugeDefinition",
     "GaugeKind",
     "GaugeName",
