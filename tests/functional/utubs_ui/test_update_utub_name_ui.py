@@ -30,9 +30,9 @@ from tests.functional.playwright_utils import (
     invalidate_csrf_token_on_page,
     login_user_with_cookie_from_session,
     select_utub_by_name,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_utub_name_appears,
@@ -459,13 +459,8 @@ def test_update_utub_name_similar(
     # The confirmation modal fades in via a Bootstrap transition. Submitting while
     # that fade-in is still running causes Bootstrap to drop the subsequent
     # modal("hide") call, so the modal never becomes invisible. Gate the submit
-    # click on the modal being fully settled (opacity == 1).
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    # click on the modal being fully settled (Bootstrap transition done).
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
 
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 

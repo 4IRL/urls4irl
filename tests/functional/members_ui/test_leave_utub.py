@@ -30,7 +30,6 @@ from tests.functional.playwright_utils import (
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_utub_name_appears,
@@ -100,15 +99,10 @@ def test_dismiss_leave_utub_modal_btn(
 
     dismiss_modal_btn = page.locator(HPL.BUTTON_MODAL_DISMISS).first
     expect(dismiss_modal_btn).to_be_visible()
-    # Gate on the fade-in being fully settled (opacity 1) before dismissing:
+    # Gate on the fade-in being fully settled (Bootstrap transition done) before dismissing:
     # clicking mid-transition makes Bootstrap drop the subsequent modal("hide"),
     # leaving the modal visible and racing wait_until_hidden under load.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
     dismiss_modal_btn.click()
     wait_until_hidden(page=page, css_selector=HPL.BODY_MODAL)
 
@@ -433,12 +427,7 @@ def test_leave_utub_submit_button_enabled_on_second_modal_open(
     # running causes the subsequent modal("hide") to be dropped as an
     # overlapping transition, which leaves the modal visible and races
     # wait_until_hidden.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_selector_to_be_removed(page=page, css_selector=first_utub_css_selector)

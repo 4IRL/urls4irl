@@ -12,8 +12,8 @@ from tests.functional.members_ui.playwright_utils import pick_new_owner
 from tests.functional.playwright_login_utils import login_user_and_select_utub_by_name
 from tests.functional.playwright_utils import (
     get_selected_utub_id,
+    wait_for_modal_ready,
     wait_then_click_element,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -24,16 +24,11 @@ pytestmark = pytest.mark.utubs_ui
 def _open_delete_modal_settled(*, page: Page) -> None:
     """Open the delete-UTub confirm modal and wait for its fade-in to settle.
 
-    Gating subsequent clicks on opacity==1 avoids Bootstrap dropping an
+    Gating subsequent clicks on wait_for_modal_ready avoids Bootstrap dropping an
     overlapping show/hide transition (mirrors the delete-UTub suite).
     """
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.HOME_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
 
 
 def test_delete_modal_shows_transfer_instead_for_owner_with_members(
@@ -144,12 +139,7 @@ def test_transfer_instead_completes_transfer_utub_intact(
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
     # Gate on the transfer modal's fade-in settling so the pick + commit clicks
     # can't be dropped mid show-transition (the sequential-modal handoff).
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.TRANSFER_OWNER_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    wait_for_modal_ready(page=page, modal_selector=HPL.TRANSFER_OWNER_MODAL)
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)
 
     # Pick the member + Continue (advances the modal to its confirm view), then

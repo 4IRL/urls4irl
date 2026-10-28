@@ -30,9 +30,9 @@ from tests.functional.playwright_utils import (
     get_selected_url,
     get_selected_utub_id,
     get_url_row_by_id,
+    wait_for_modal_ready,
     wait_for_web_element_and_click,
     wait_then_get_element,
-    wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -340,13 +340,8 @@ def test_access_non_http_url_by_clicking_url_string_cancel(
     # "Nevermind" before the show transition completes makes Bootstrap drop the
     # subsequent `.modal("hide")` (it ignores hide while still transitioning),
     # leaving the modal visible and flaking `wait_until_hidden` under load. Gate
-    # on the fade-in being fully settled (opacity 1) before dismissing.
-    wait_until_css_property(
-        page=page,
-        css_selector=HPL.ACCESS_EXTERNAL_URL_MODAL,
-        css_property="opacity",
-        expected_value="1",
-    )
+    # on the fade-in being fully settled (Bootstrap transition done) before dismissing.
+    wait_for_modal_ready(page=page, modal_selector=HPL.ACCESS_EXTERNAL_URL_MODAL)
     access_modal.locator(HPL.BUTTON_MODAL_DISMISS).click()
 
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
