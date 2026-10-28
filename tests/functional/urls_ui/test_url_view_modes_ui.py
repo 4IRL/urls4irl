@@ -34,6 +34,13 @@ SELECTED_HEIGHT_TOLERANCE_PX = 2
 MOBILE_MAX_WIDTH_PX = 992
 TABLET_VIEWPORT = {"width": 800, "height": 900}
 GRID_WIDTH_TOLERANCE_PX = 2
+NARROW_CARD_MAX_WIDTH_PX = 400
+LINE_ROW_PADDING = "3px"
+LINE_MODES = ["title_line", "url_line"]
+VIEWPORTS = [
+    pytest.param("desktop", id="desktop"),
+    pytest.param("mobile", id="mobile", marks=pytest.mark.mobile_ui),
+]
 LONG_URL = "https://example.com/" + "a-very-long-path-segment/" * 12
 SHORT_URL = "https://a.io"
 LONG_TITLE = " ".join(["An exceedingly long bookmark title"] * 12)
@@ -74,12 +81,6 @@ _GRID_CONTENT_WIDTH_JS = """(element) => {
     const style = getComputedStyle(element);
     return element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
 }"""
-LINE_ROW_PADDING = "3px"
-LINE_MODES = ["title_line", "url_line"]
-VIEWPORTS = [
-    pytest.param("desktop", id="desktop"),
-    pytest.param("mobile", id="mobile", marks=pytest.mark.mobile_ui),
-]
 
 # Rectangles (not Playwright boxes) so a hidden element (display: none) reports
 # nothing instead of a 0x0 box at the origin.
@@ -106,7 +107,7 @@ def _prepare(
         {"urls": {"view_mode": view_mode, **(extra_urls_settings or {})}},
     )
     utub_url_id = get_url_in_utub(app, utub_id).id
-    if is_mobile_viewport(page=page):
+    if _is_mobile_viewport(page=page):
         login_user_and_select_utub_by_utubid_mobile(
             app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub_id
         )
@@ -129,7 +130,7 @@ def viewport_page(request: pytest.FixtureRequest) -> Page:
     return request.getfixturevalue(fixture_name)
 
 
-def is_mobile_viewport(*, page: Page) -> bool:
+def _is_mobile_viewport(*, page: Page) -> bool:
     viewport = page.viewport_size
     return viewport is not None and viewport["width"] < MOBILE_MAX_WIDTH_PX
 
@@ -659,7 +660,9 @@ def test_multi_select_card_shows_checkbox_and_title_inside_the_card(
     title_rect, card_rect = _rect(card.locator(HPL.URL_TITLE_READ)), _rect(card)
     assert title_rect is not None and card_rect is not None
     assert title_rect["right"] <= card_rect["right"]
-    assert _width(card) <= 400  # the narrow card column is really exercised
+    assert (
+        _width(card) <= NARROW_CARD_MAX_WIDTH_PX
+    )  # the narrow card column is really exercised
 
 
 @pytest.mark.mobile_ui

@@ -12,7 +12,8 @@ const TRUNCATING_VIEWS: readonly ViewModeValue[] = [
   "url_line",
   "cards",
 ];
-const TEXT_SELECTORS = [".urlTitle", ".urlString"] as const;
+const TITLE_SELECTOR = ".urlTitle";
+const URL_STRING_SELECTOR = ".urlString";
 const URL_ROW_SELECTOR = ".urlRow";
 
 /**
@@ -26,18 +27,32 @@ export function syncUrlTooltips(urlCard: JQuery): void {
   const showTooltip =
     urlCard.attr("urlSelected") !== "true" &&
     TRUNCATING_VIEWS.includes(effectiveRenderedViewMode());
-  TEXT_SELECTORS.forEach((selector) => {
-    const textElement = urlCard.find(selector);
-    if (showTooltip) {
-      const fullText =
-        selector === ".urlString"
-          ? (textElement.attr("href") ?? textElement.text())
-          : textElement.text();
-      textElement.attr("title", fullText);
-    } else {
-      textElement.removeAttr("title");
-    }
+  setTooltip({
+    element: urlCard.find(TITLE_SELECTOR),
+    showTooltip,
+    getText: (element) => element.text(),
   });
+  setTooltip({
+    element: urlCard.find(URL_STRING_SELECTOR),
+    showTooltip,
+    getText: (element) => element.attr("href") ?? element.text(),
+  });
+}
+
+function setTooltip({
+  element,
+  showTooltip,
+  getText,
+}: {
+  element: JQuery;
+  showTooltip: boolean;
+  getText: (element: JQuery) => string;
+}): void {
+  if (showTooltip) {
+    element.attr("title", getText(element));
+  } else {
+    element.removeAttr("title");
+  }
 }
 
 /** Re-syncs every card in the deck (a view-mode or breakpoint change). */
