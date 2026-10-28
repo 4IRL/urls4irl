@@ -1,6 +1,8 @@
+import time
+
 import pytest
 from flask import Flask
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from backend.models.users import Users
@@ -26,6 +28,7 @@ from tests.functional.playwright_utils import (
     wait_then_get_elements,
     wait_until_hidden,
     wait_until_in_focus,
+    wait_until_visible_css_selector,
 )
 from tests.functional.utubs_ui.playwright_utils import create_utub
 
@@ -478,3 +481,83 @@ def test_create_utub_cancel_btn_tooltip_animates(
         create_utub_cancel_btn.get_attribute("aria-label")
         == STRINGS.CREATE_UTUB_CANCEL_TOOLTIP
     )
+
+
+def test_create_utub_form_gap_above_trash(
+    page: Page, create_test_users, provide_app: Flask
+):
+    """
+    Tests the spacing between the createUTub form and the Trash row.
+
+    GIVEN a user has opened the createUTub form on desktop
+    WHEN the form is visible
+    THEN the submit button sits at least 12px above the Trash row, and the
+         spacing adds no vertical overflow to the UTub deck content
+    """
+    _assert_create_form_gap_above_trash(page=page, app=provide_app)
+
+
+def test_create_utub_form_gap_above_trash_mobile(
+    page_mobile_portrait: Page, create_test_users, provide_app: Flask
+):
+    """
+    Same as the desktop gap test, on a mobile (coarse-pointer) viewport.
+
+    GIVEN a user has opened the createUTub form on mobile
+    WHEN the form is visible
+    THEN the gap and no-overflow guarantees hold
+    """
+    _assert_create_form_gap_above_trash(page=page_mobile_portrait, app=provide_app)
+
+
+def _assert_create_form_gap_above_trash(*, page: Page, app: Flask) -> None:
+    """
+    Open the createUTub form and assert it leaves room above the Trash row.
+
+    Checks that the form wrap has at least 12px of computed bottom padding,
+    that the submit button sits at least 12px above the Trash row (polled, so
+    a mid-transition layout is not measured), and that the UTub deck content
+    gains no vertical overflow.
+    """
+    login_user_to_home_page(app=app, page=page, user_id=1)
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_CREATE)
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_SUBMIT_CREATE
+    )
+
+    def _assert_gap() -> None:
+        submit_box = page.locator(HPL.BUTTON_UTUB_SUBMIT_CREATE).bounding_box()
+        trash_box = page.locator(HPL.TRASH_SELECTOR_WRAP).bounding_box()
+        assert submit_box is not None
+        assert trash_box is not None
+
+        gap = trash_box["y"] - (submit_box["y"] + submit_box["height"])
+        assert gap >= 12, f"Gap between submit button and Trash row was {gap}px"
+
+    expect(page.locator(HPL.CREATE_UTUB_WRAP)).to_be_visible()
+    _poll_until_passes(assertion=_assert_gap)
+
+    padding_bottom = page.eval_on_selector(
+        HPL.CREATE_UTUB_WRAP,
+        "el => parseFloat(getComputedStyle(el).paddingBottom)",
+    )
+    assert padding_bottom >= 12, f"createUTubWrap padding-bottom was {padding_bottom}px"
+
+    overflow = page.eval_on_selector(
+        HPL.UTUB_DECK_CONTENT, "el => el.scrollHeight - el.clientHeight"
+    )
+    assert overflow <= 0, f"UTub deck content overflows vertically by {overflow}px"
+
+
+def _poll_until_passes(*, assertion, timeout_s: float = 5.0) -> None:
+    """Retry an assertion callable until it passes or the timeout elapses."""
+    deadline = time.monotonic() + timeout_s
+    while True:
+        try:
+            assertion()
+            return
+        except AssertionError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.1)

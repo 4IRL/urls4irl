@@ -394,6 +394,13 @@ button {
     margin-top: 20px;
 }
 
+/* Space above the Trash row. Padding (not margin): the wrap is height: 100%, so a
+   margin would grow its outer height past the parent and cause overflow. */
+#createUTubWrap {
+    padding-bottom: var(--space-4);
+    box-sizing: border-box;
+}
+
 /* Issue #424 — on touch devices the on-screen keyboard covers the submit/cancel
    row when it is grown (flex: 1 1 auto) and bottom-anchored (align-items: flex-end)
    to the deck bottom. On coarse pointers keep that row in normal flow directly

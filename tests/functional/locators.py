@@ -170,6 +170,9 @@ class HomePageLocators(GenericPageLocator):
     INPUT_UTUB_DESCRIPTION_CREATE = "#utubDescriptionCreate"
     BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
     BUTTON_UTUB_CANCEL_CREATE = "#utubCancelBtnCreate"
+    CREATE_UTUB_WRAP = "#createUTubWrap"
+    TRASH_SELECTOR_WRAP = "#TrashSelectorWrap"
+    UTUB_DECK_CONTENT = "#UTubDeckContent"
 
     # Onboarding nudges (first-time tooltips). The bubble is a programmatic
     # Bootstrap tooltip skinned via data-bs-custom-class="onboarding-nudge-tooltip"
