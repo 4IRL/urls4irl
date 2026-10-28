@@ -469,9 +469,9 @@ class FlowCatalogResponseSchema(BaseSchema):
 class GaugeSampleSchema(BaseSchema):
     """One sampled point of a gauge's timeseries.
 
-    COUNT/MAX gauges populate `value_int`; AVG gauges populate `value_float`
-    (the other stays null). A k-anon-suppressed `max_*` sample has BOTH null —
-    the renderer drops such points before charting.
+    COUNT/MAX gauges populate `value_int`; AVG/median/p90 gauges populate
+    `value_float` (the other stays null). A k-anon-suppressed max/median/p90
+    sample has BOTH null — the renderer drops such points before charting.
     """
 
     sampled_at: datetime = Field(description="UTC instant this gauge was sampled")
@@ -479,7 +479,8 @@ class GaugeSampleSchema(BaseSchema):
         default=None, description="Integer value for COUNT/MAX gauges; null otherwise"
     )
     value_float: float | None = Field(
-        default=None, description="Fractional value for AVG gauges; null otherwise"
+        default=None,
+        description="Fractional value for AVG/median/p90 gauges; null otherwise",
     )
 
 
@@ -492,7 +493,12 @@ class GaugeSeries(BaseSchema):
     """
 
     gauge_name: str = Field(description="GaugeName value (e.g. max_urls_per_utub)")
-    kind: str = Field(description="GaugeKind value (volume | distribution_max | ...)")
+    kind: str = Field(
+        description=(
+            "GaugeKind value (volume | distribution_max | distribution_avg | "
+            "distribution_median | distribution_p90)"
+        )
+    )
     description: str = Field(description="Human-readable gauge description")
     samples: list[GaugeSampleSchema] = Field(
         description="Window-filtered samples ordered by sampled_at",

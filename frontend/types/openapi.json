@@ -12878,7 +12878,7 @@
         "type": "object"
       },
       "GaugeSampleSchema": {
-        "description": "One sampled point of a gauge's timeseries.\n\nCOUNT/MAX gauges populate `value_int`; AVG gauges populate `value_float`\n(the other stays null). A k-anon-suppressed `max_*` sample has BOTH null \u2014\nthe renderer drops such points before charting.",
+        "description": "One sampled point of a gauge's timeseries.\n\nCOUNT/MAX gauges populate `value_int`; AVG/median/p90 gauges populate\n`value_float` (the other stays null). A k-anon-suppressed max/median/p90\nsample has BOTH null \u2014 the renderer drops such points before charting.",
         "properties": {
           "sampled_at": {
             "description": "UTC instant this gauge was sampled",
@@ -12907,7 +12907,7 @@
               }
             ],
             "default": null,
-            "description": "Fractional value for AVG gauges; null otherwise"
+            "description": "Fractional value for AVG/median/p90 gauges; null otherwise"
           }
         },
         "required": ["sampled_at"],
@@ -12921,7 +12921,7 @@
             "type": "string"
           },
           "kind": {
-            "description": "GaugeKind value (volume | distribution_max | ...)",
+            "description": "GaugeKind value (volume | distribution_max | distribution_avg | distribution_median | distribution_p90)",
             "type": "string"
           },
           "description": {

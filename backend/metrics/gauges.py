@@ -70,7 +70,7 @@ class GaugeName(StrEnum):
     TOTAL_UTUB_URL_ASSOCIATIONS = "total_utub_url_associations"
     TOTAL_UTUB_MEMBERSHIPS = "total_utub_memberships"
     TOTAL_SHORT_LINKS = "total_short_links"
-    # Distribution — MAX / AVG of a per-entity grouped count.
+    # Distribution — MAX / P90 / median / AVG of a per-entity grouped count.
     MAX_URLS_PER_UTUB = "max_urls_per_utub"
     P90_URLS_PER_UTUB = "p90_urls_per_utub"
     MEDIAN_URLS_PER_UTUB = "median_urls_per_utub"
@@ -385,6 +385,8 @@ def value_column_for(kind: GaugeKind) -> str:
 
     Examples:
         value_column_for(GaugeKind.DISTRIBUTION_AVG) -> "valueFloat"
+        value_column_for(GaugeKind.DISTRIBUTION_MEDIAN) -> "valueFloat"
+        value_column_for(GaugeKind.DISTRIBUTION_P90) -> "valueFloat"
         value_column_for(GaugeKind.VOLUME)           -> "valueInt"
         value_column_for(GaugeKind.DISTRIBUTION_MAX) -> "valueInt"
     """

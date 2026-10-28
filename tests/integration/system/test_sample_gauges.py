@@ -260,6 +260,101 @@ def test_distribution_max_and_avg(metrics_enabled_runner_app: Flask):
         pg_conn.close()
 
 
+def test_distribution_percentiles_urls_per_utub(metrics_enabled_runner_app: Flask):
+    """
+    GIVEN exactly MIN_GAUGE_POPULATION UTubs with URL counts (2, 4, 6, 4, 4)
+    WHEN run_sample is invoked
+    THEN median is 4.0 and p90 is 5.2 (percentile_cont position 3.6 over
+        [2,4,4,4,6]: 4 + 0.6 * 2), both stored in valueFloat with valueInt NULL.
+    """
+    app = metrics_enabled_runner_app
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        assert _count_gauge_rows(pg_conn) == 0
+        creator_id = _seed_user(pg_conn, "creator")
+        url_serial = 0
+        for utub_index, count in enumerate([2, 4, 6, 4, 4]):
+            utub_id = _seed_utub(pg_conn, f"utub{utub_index}", creator_id)
+            for _ in range(count):
+                url_id = _seed_url(pg_conn, f"https://e.com/{url_serial}", creator_id)
+                _seed_utub_url(pg_conn, utub_id, url_id, creator_id)
+                url_serial += 1
+
+        run_sample(pg_conn=pg_conn, now_epoch=int(time.time()))
+
+        median = _gauge_value(pg_conn, GaugeName.MEDIAN_URLS_PER_UTUB)
+        p90 = _gauge_value(pg_conn, GaugeName.P90_URLS_PER_UTUB)
+        assert median[0] is None
+        assert float(median[1]) == 4.0
+        assert p90[0] is None
+        assert float(p90[1]) == pytest.approx(5.2)
+    finally:
+        _truncate_all(pg_conn)
+        pg_conn.close()
+
+
+def test_distribution_percentiles_members_per_utub_count_column(
+    metrics_enabled_runner_app: Flask,
+):
+    """
+    GIVEN 5 UTubs with distinct-member counts (1, 1, 2, 3, 5)
+    WHEN run_sample is invoked
+    THEN median is 2.0 and p90 is 4.2 (position 3.6 over [1,1,2,3,5]:
+        3 + 0.6 * 2), proving the COUNT("userID") shape.
+    """
+    app = metrics_enabled_runner_app
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        assert _count_gauge_rows(pg_conn) == 0
+        user_ids = [_seed_user(pg_conn, f"user{index}") for index in range(5)]
+        for utub_index, count in enumerate([1, 1, 2, 3, 5]):
+            utub_id = _seed_utub(pg_conn, f"utub{utub_index}", user_ids[0])
+            for member_id in user_ids[:count]:
+                _seed_utub_member(pg_conn, utub_id, member_id)
+
+        run_sample(pg_conn=pg_conn, now_epoch=int(time.time()))
+
+        median = _gauge_value(pg_conn, GaugeName.MEDIAN_MEMBERS_PER_UTUB)
+        p90 = _gauge_value(pg_conn, GaugeName.P90_MEMBERS_PER_UTUB)
+        assert median[0] is None
+        assert float(median[1]) == 2.0
+        assert p90[0] is None
+        assert float(p90[1]) == pytest.approx(4.2)
+    finally:
+        _truncate_all(pg_conn)
+        pg_conn.close()
+
+
+def test_distribution_percentiles_below_threshold_are_suppressed(
+    metrics_enabled_runner_app: Flask,
+):
+    """
+    GIVEN only 4 UTubs with URLs (one below MIN_GAUGE_POPULATION)
+    WHEN run_sample is invoked
+    THEN median and p90 still write a row each, with both value columns NULL.
+    """
+    app = metrics_enabled_runner_app
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_all(pg_conn)
+        assert _count_gauge_rows(pg_conn) == 0
+        creator_id = _seed_user(pg_conn, "creator")
+        for utub_index in range(4):
+            utub_id = _seed_utub(pg_conn, f"utub{utub_index}", creator_id)
+            url_id = _seed_url(pg_conn, f"https://e.com/{utub_index}", creator_id)
+            _seed_utub_url(pg_conn, utub_id, url_id, creator_id)
+
+        run_sample(pg_conn=pg_conn, now_epoch=int(time.time()))
+
+        assert _gauge_value(pg_conn, GaugeName.MEDIAN_URLS_PER_UTUB) == (None, None)
+        assert _gauge_value(pg_conn, GaugeName.P90_URLS_PER_UTUB) == (None, None)
+    finally:
+        _truncate_all(pg_conn)
+        pg_conn.close()
+
+
 def test_distribution_max_k_anonymity_below_threshold(
     metrics_enabled_runner_app: Flask,
 ):
