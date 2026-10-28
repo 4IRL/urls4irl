@@ -14,6 +14,12 @@ import {
 import type { ResolvedMemberUrlsSettings } from "../../types/settings.js";
 import { patchMemberSettings } from "../panel-settings/client.js";
 import { syncDeckOrderToServer } from "./view-settings.js";
+import {
+  isViewMode,
+  isWideViewport,
+  normalizeViewMode,
+  renderedViewMode,
+} from "./view-mode.js";
 import { registerSection } from "../panel-settings/registry.js";
 import {
   buildRowLabel,
@@ -74,8 +80,12 @@ function sortOptions(): Array<SelectOption<SortOrderValue>> {
   ];
 }
 
-function viewOptions(): Array<SelectOption<ViewModeValue>> {
-  return [
+function viewOptions({
+  includeCards,
+}: {
+  includeCards: boolean;
+}): Array<SelectOption<ViewModeValue>> {
+  const options: Array<SelectOption<ViewModeValue>> = [
     { value: "list", label: strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_LIST },
     {
       value: "title_line",
@@ -85,11 +95,53 @@ function viewOptions(): Array<SelectOption<ViewModeValue>> {
       value: "url_line",
       label: strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_URL_LINE,
     },
-    {
+  ];
+  if (includeCards) {
+    options.push({
       value: "cards",
       label: strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_CARDS,
-    },
-  ];
+    });
+  }
+  return options;
+}
+
+/**
+ * Options for the per-UTub Layout select. Cards is offered only on wide
+ * screens, but a saved `cards` override stays visible (and clearable through
+ * Default) on small screens as one extra, selected option.
+ */
+function pickerViewOptions({
+  wide,
+  override,
+}: {
+  wide: boolean;
+  override: ViewModeValue | null;
+}): Array<SelectOption<ViewModeValue>> {
+  const options = viewOptions({ includeCards: wide });
+  if (!wide && override === "cards") {
+    options.push({
+      value: "cards",
+      label: strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_CARDS_SMALL_SCREEN,
+    });
+  }
+  return options;
+}
+
+/** The Default option's label for the account default view. */
+function defaultViewLabel({
+  wide,
+  accountDefault,
+}: {
+  wide: boolean;
+  accountDefault: ViewModeValue;
+}): string {
+  if (!wide && accountDefault === "cards") {
+    return strings().URLS_PERSONAL_SETTINGS_VIEW_OPTION_CARDS_SMALL_SCREEN;
+  }
+  return labelOf({
+    options: viewOptions({ includeCards: true }),
+    value: accountDefault,
+  });
 }
 
 function densityOptions(): Array<SelectOption<DensityValue>> {
@@ -167,6 +219,69 @@ function hasFinePointer(): boolean {
   return window.matchMedia(FINE_POINTER_QUERY).matches;
 }
 
+/** The select is described by its desc, plus the hint while the hint shows. */
+function syncDescribedBy({
+  select,
+  descId,
+  hintElement,
+}: {
+  select: HTMLSelectElement;
+  descId: string;
+  hintElement: HTMLElement;
+}): void {
+  select.setAttribute(
+    "aria-describedby",
+    hintElement.hidden ? descId : `${descId} ${hintElement.id}`,
+  );
+}
+
+/** Density only has an effect in List (and on the selected URL). */
+function densityDisabledFor(viewMode: ViewModeValue): boolean {
+  return viewMode !== "list";
+}
+
+/** The view that would render for a per-UTub override (null = account default). */
+function renderedViewFor({
+  override,
+  accountDefault,
+}: {
+  override: ViewModeValue | null;
+  accountDefault: ViewModeValue;
+}): ViewModeValue {
+  return renderedViewMode(
+    isViewMode(override) ? override : normalizeViewMode(accountDefault),
+  );
+}
+
+/**
+ * The one place the Density control's view-driven state is set, called at render
+ * and from the view select's change handler (the store re-render is skipped
+ * while focus is inside the section). Inert rows stay aria-disabled regardless.
+ */
+function applyDensityState({
+  row,
+  viewValue,
+  inert,
+}: {
+  row: HTMLElement;
+  viewValue: ViewModeValue;
+  inert: boolean;
+}): void {
+  const select = row.querySelector<HTMLSelectElement>("select");
+  const hintElement = row.querySelector<HTMLElement>(".urlsSettingsHint");
+  if (select === null || hintElement === null) return;
+  const viewDisabled = densityDisabledFor(viewValue);
+  if (inert || viewDisabled) {
+    select.setAttribute("aria-disabled", "true");
+  } else {
+    select.removeAttribute("aria-disabled");
+  }
+  hintElement.hidden = !viewDisabled;
+  const descId = select.dataset.descId;
+  if (descId === undefined) return;
+  syncDescribedBy({ select, descId, hintElement });
+}
+
 function buildSelectRow<Value extends string>({
   idPrefix,
   title,
@@ -175,6 +290,7 @@ function buildSelectRow<Value extends string>({
   current,
   defaultLabel,
   disabled,
+  hint,
   onChange,
 }: {
   idPrefix: string;
@@ -184,6 +300,7 @@ function buildSelectRow<Value extends string>({
   current: Value | null;
   defaultLabel: string;
   disabled: boolean;
+  hint?: { text: string; visible: boolean };
   onChange: (value: Value | null) => void;
 }): HTMLElement {
   const row = document.createElement("div");
@@ -191,7 +308,8 @@ function buildSelectRow<Value extends string>({
   const labelId = `${idPrefix}Label`;
   const descId = `${idPrefix}Desc`;
 
-  row.append(buildRowLabel({ titleId: labelId, title, descId, desc }));
+  const label = buildRowLabel({ titleId: labelId, title, descId, desc });
+  row.append(label);
 
   const wrap = document.createElement("div");
   wrap.className = "panelSettingsSelectWrap";
@@ -200,6 +318,16 @@ function buildSelectRow<Value extends string>({
   select.id = `${idPrefix}Select`;
   select.setAttribute("aria-labelledby", labelId);
   if (desc !== undefined) select.setAttribute("aria-describedby", descId);
+  if (hint !== undefined) {
+    select.dataset.descId = descId;
+    const hintElement = document.createElement("div");
+    hintElement.className = "urlsSettingsHint";
+    hintElement.id = `${idPrefix}Hint`;
+    hintElement.textContent = hint.text;
+    hintElement.hidden = !hint.visible;
+    label.append(hintElement);
+    syncDescribedBy({ select, descId, hintElement });
+  }
 
   const defaultOption = document.createElement("option");
   defaultOption.value = "";
@@ -303,7 +431,7 @@ function noticeFor({ patch }: { patch: SectionPatch }): string | undefined {
     },
     {
       key: "view_mode",
-      options: viewOptions(),
+      options: viewOptions({ includeCards: true }),
       setPrefix: text.URLS_PERSONAL_SETTINGS_VIEW_SET_NOTICE_PREFIX,
       defaultNotice: text.URLS_PERSONAL_SETTINGS_VIEW_DEFAULT_NOTICE,
     },
@@ -359,6 +487,15 @@ function render({
 
   const rows: HTMLElement[] = [];
 
+  // Read once per render; the popover rebuilds the section on each open, so a
+  // resize across the breakpoint is picked up on the next open.
+  const wide = isWideViewport();
+  const renderedView = renderedViewFor({
+    override: urls.view_mode,
+    accountDefault: preferences.defaultView,
+  });
+  let densityRow: HTMLElement | null = null;
+
   rows.push(
     buildSelectRow({
       idPrefix: "urlsSettingsSort",
@@ -375,35 +512,53 @@ function render({
     buildSelectRow({
       idPrefix: "urlsSettingsView",
       title: strings().URLS_PERSONAL_SETTINGS_VIEW_LABEL,
-      options: viewOptions(),
+      options: pickerViewOptions({ wide, override: urls.view_mode }),
       current: urls.view_mode,
-      defaultLabel: labelOf({
-        options: viewOptions(),
-        value: preferences.defaultView,
+      defaultLabel: defaultViewLabel({
+        wide,
+        accountDefault: preferences.defaultView,
       }),
       disabled: inert,
-      onChange: (value) => submitPatch({ view_mode: value }),
+      onChange: (value) => {
+        // Optimistic and immediate: the store re-render is skipped while the
+        // view select holds focus. A failed save re-renders the true state.
+        if (densityRow !== null) {
+          applyDensityState({
+            row: densityRow,
+            viewValue: renderedViewFor({
+              override: value,
+              accountDefault: preferences.defaultView,
+            }),
+            inert,
+          });
+        }
+        submitPatch({ view_mode: value });
+      },
     }),
   );
 
   // Compact spacing only applies with a fine pointer, so a touch-only device
   // never sees a control that cannot take effect.
   if (hasFinePointer()) {
-    rows.push(
-      buildSelectRow({
-        idPrefix: "urlsSettingsDensity",
-        title: strings().URLS_PERSONAL_SETTINGS_DENSITY_LABEL,
-        desc: strings().URLS_PERSONAL_SETTINGS_DENSITY_DESC,
+    densityRow = buildSelectRow({
+      idPrefix: "urlsSettingsDensity",
+      title: strings().URLS_PERSONAL_SETTINGS_DENSITY_LABEL,
+      desc: strings().URLS_PERSONAL_SETTINGS_DENSITY_DESC,
+      options: densityOptions(),
+      current: urls.density,
+      defaultLabel: labelOf({
         options: densityOptions(),
-        current: urls.density,
-        defaultLabel: labelOf({
-          options: densityOptions(),
-          value: preferences.density,
-        }),
-        disabled: inert,
-        onChange: (value) => submitPatch({ density: value }),
+        value: preferences.density,
       }),
-    );
+      disabled: inert,
+      hint: {
+        text: strings().URLS_PERSONAL_SETTINGS_DENSITY_VIEW_HINT,
+        visible: densityDisabledFor(renderedView),
+      },
+      onChange: (value) => submitPatch({ density: value }),
+    });
+    applyDensityState({ row: densityRow, viewValue: renderedView, inert });
+    rows.push(densityRow);
   }
 
   for (const row of switchRows()) {

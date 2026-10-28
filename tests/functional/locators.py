@@ -131,6 +131,7 @@ class HomePageLocators(GenericPageLocator):
     URLS_PERSONAL_SORT_SELECT = "#urlsSettingsSortSelect"
     URLS_PERSONAL_VIEW_SELECT = "#urlsSettingsViewSelect"
     URLS_PERSONAL_DENSITY_SELECT = "#urlsSettingsDensitySelect"
+    URLS_PERSONAL_DENSITY_HINT = "#urlsSettingsDensityHint"
     URLS_PERSONAL_HIDE_COPY_SWITCH = "#urlsPersonalHideCopySwitch"
     URLS_PERSONAL_HIDE_SHORT_LINK_SWITCH = "#urlsPersonalHideShortLinkSwitch"
     URLS_PERSONAL_HIDE_DATE_SWITCH = "#urlsPersonalHideDateSwitch"

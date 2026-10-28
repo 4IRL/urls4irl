@@ -9,6 +9,7 @@ import {
   sortTagsByCount,
 } from "../../../logic/tag-filtering.js";
 import { getNumOfVisibleURLs } from "../utils.js";
+import { normalizeViewMode } from "../view-mode.js";
 import type {
   DensityValue,
   SortOrderValue,
@@ -279,7 +280,7 @@ export function applyDefaultUrlSort(
 // row spacing stays under applyDefaultDensity's touch-target-guarded control).
 // Sets document.body.dataset.view from the stored ViewMode on initial render.
 export function applyDefaultViewMode(viewMode: ViewModeValue): void {
-  document.body.dataset.view = viewMode;
+  document.body.dataset.view = normalizeViewMode(viewMode);
 }
 
 // Sets document.body.dataset.density from the stored Density on initial render.

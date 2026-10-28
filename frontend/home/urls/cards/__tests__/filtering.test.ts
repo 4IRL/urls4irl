@@ -372,6 +372,11 @@ describe("applyDefaultViewMode", () => {
       expect(document.body.dataset.view).toBe(viewMode);
     },
   );
+
+  it("falls back to 'list' for an unknown value (never the raw value)", () => {
+    applyDefaultViewMode("compact" as never);
+    expect(document.body.dataset.view).toBe("list");
+  });
 });
 
 describe("applyDefaultDensity", () => {

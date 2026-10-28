@@ -3,6 +3,7 @@ import { EMPTY_MEMBER_SETTINGS } from "../../../types/settings.js";
 import {
   effectiveDensity,
   effectiveHideDateAdded,
+  effectiveRenderedViewMode,
   effectiveSort,
   effectiveViewMode,
 } from "../view-settings.js";
@@ -76,5 +77,71 @@ describe("view-settings effective helpers", () => {
     expect(effectiveViewMode()).toBe("cards");
     expect(effectiveDensity()).toBe("comfortable");
     expect(effectiveHideDateAdded()).toBe(false);
+  });
+
+  it("falls back to the account default for an unknown override", () => {
+    setState({
+      activeUTubID: 1,
+      memberSettings: memberUrls({ view_mode: "compact" as never }),
+    });
+
+    expect(effectiveViewMode()).toBe("cards");
+  });
+
+  it("falls back to list when both override and default are unknown", () => {
+    setState({
+      activeUTubID: 1,
+      memberSettings: memberUrls({ view_mode: "compact" as never }),
+      preferences: {
+        theme: "dark",
+        defaultView: "bogus" as never,
+        defaultSort: "newest",
+        density: "comfortable",
+        dateFormat: "iso",
+      },
+    });
+
+    expect(effectiveViewMode()).toBe("list");
+  });
+
+  describe("effectiveRenderedViewMode", () => {
+    const originalMatchMedia = window.matchMedia;
+
+    function mockWide({ wide }: { wide: boolean }): void {
+      window.matchMedia = vi.fn((query: string) => ({
+        matches: wide && query === "(min-width: 992px)",
+      })) as unknown as typeof window.matchMedia;
+    }
+
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    it("keeps cards on a wide viewport", () => {
+      mockWide({ wide: true });
+      setState({ activeUTubID: 1, memberSettings: memberUrls({}) });
+      expect(effectiveRenderedViewMode()).toBe("cards");
+    });
+
+    it("renders cards as list on a narrow viewport", () => {
+      mockWide({ wide: false });
+      setState({ activeUTubID: 1, memberSettings: memberUrls({}) });
+      expect(effectiveRenderedViewMode()).toBe("list");
+    });
+
+    it("renders cards as list when matchMedia is missing", () => {
+      (window as { matchMedia?: unknown }).matchMedia = undefined;
+      setState({ activeUTubID: 1, memberSettings: memberUrls({}) });
+      expect(effectiveRenderedViewMode()).toBe("list");
+    });
+
+    it("never changes a line mode", () => {
+      mockWide({ wide: false });
+      setState({
+        activeUTubID: 1,
+        memberSettings: memberUrls({ view_mode: "url_line" }),
+      });
+      expect(effectiveRenderedViewMode()).toBe("url_line");
+    });
   });
 });

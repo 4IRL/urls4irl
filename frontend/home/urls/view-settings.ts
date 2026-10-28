@@ -4,6 +4,11 @@ import { getState } from "../../store/app-store.js";
 import { announceSettingsStatus } from "../panel-settings/announce.js";
 import { fetchUTubForRefresh } from "../utubs/selectors.js";
 import { applyServerUrlOrder } from "./deck.js";
+import {
+  isViewMode,
+  normalizeViewMode,
+  renderedViewMode,
+} from "./view-mode.js";
 import type {
   DensityValue,
   SortOrderValue,
@@ -19,10 +24,19 @@ export function effectiveSort(): SortOrderValue {
   return memberSettings?.urls.sort ?? preferences.defaultSort;
 }
 
+// An unknown value from a stale payload falls back to the account default, then
+// to List.
 export function effectiveViewMode(): ViewModeValue {
   const { activeUTubID, memberSettings, preferences } = getState();
-  if (activeUTubID === null) return preferences.defaultView;
-  return memberSettings?.urls.view_mode ?? preferences.defaultView;
+  const override =
+    activeUTubID === null ? null : (memberSettings?.urls.view_mode ?? null);
+  if (isViewMode(override)) return override;
+  return normalizeViewMode(preferences.defaultView);
+}
+
+/** What actually renders: `cards` counts as List below the wide breakpoint. */
+export function effectiveRenderedViewMode(): ViewModeValue {
+  return renderedViewMode(effectiveViewMode());
 }
 
 export function effectiveDensity(): DensityValue {
