@@ -563,6 +563,71 @@ describe("URL Card Selection", () => {
     });
   });
 
+  describe("selection scroll (Cards only, user clicks only)", () => {
+    const scrollIntoView = vi.fn();
+    const originalMatchMedia = window.matchMedia;
+    const originalScrollIntoView = window.HTMLElement.prototype.scrollIntoView;
+
+    function setLayout({ view, wide }: { view: string; wide: boolean }): void {
+      document.body.dataset.view = view;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(min-width: 992px)" ? wide : false,
+        media: query,
+      })) as unknown as typeof window.matchMedia;
+    }
+
+    beforeEach(() => {
+      scrollIntoView.mockClear();
+      window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    });
+
+    afterEach(() => {
+      delete document.body.dataset.view;
+      window.matchMedia = originalMatchMedia;
+      window.HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    });
+
+    it("a click selection in Cards at >= 992px scrolls the card into view", () => {
+      setLayout({ view: "cards", wide: true });
+      setURLCardSelectionEventListener(urlCard);
+
+      urlCard.trigger("click");
+
+      expect(urlCard.attr("urlSelected")).toBe("true");
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView).toHaveBeenCalledWith(
+        expect.objectContaining({ block: "nearest", behavior: "smooth" }),
+      );
+    });
+
+    it.each([
+      { view: "list", wide: true },
+      { view: "title_line", wide: true },
+      { view: "url_line", wide: true },
+      { view: "cards", wide: false },
+    ])(
+      "a click selection in view=$view at wide=$wide does not scroll",
+      ({ view, wide }) => {
+        setLayout({ view, wide });
+        setURLCardSelectionEventListener(urlCard);
+
+        urlCard.trigger("click");
+
+        expect(urlCard.attr("urlSelected")).toBe("true");
+        expect(scrollIntoView).not.toHaveBeenCalled();
+      },
+    );
+
+    it("a programmatic selectURLCard call does not scroll, even in Cards", () => {
+      setLayout({ view: "cards", wide: true });
+
+      selectURLCard(urlCard);
+
+      expect(urlCard.attr("urlSelected")).toBe("true");
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+  });
+
   describe("multi-select mode tap branch", () => {
     beforeEach(() => {
       setState({ multiSelectMode: true });

@@ -19,6 +19,7 @@ import { isAnyBulkPickerOpen } from "../bulk-actions/picker-guard.js";
 import { clearURLOutcomeBanner } from "../outcome-banner.js";
 import { debug } from "../../../lib/debug.js";
 import { syncUrlTooltips } from "./url-tooltips.js";
+import { scrollSelectedCardIntoView } from "./scroll-selected.js";
 
 const log = debug("urls:cards");
 
@@ -218,6 +219,7 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
         active_tag_count: getActiveTagCount(),
       });
       selectURLCard(urlCard);
+      scrollSelectedCardIntoView(urlCard);
     },
   );
 }

@@ -21,13 +21,59 @@ from tests.functional.playwright_utils import (
     wait_for_css_transitions_to_finish,
     wait_then_click_element,
 )
+from tests.functional.urls_ui.playwright_utils import (
+    get_url_row_selector,
+    swipe_url_card_delete,
+)
 
 pytestmark = pytest.mark.urls_ui
 
 USER_ID_FOR_TEST = 1
 MAX_COLLAPSED_ROW_HEIGHT_PX = 36
 SELECTED_HEIGHT_TOLERANCE_PX = 2
-MOBILE_MAX_WIDTH_PX = 768
+MOBILE_MAX_WIDTH_PX = 992
+TABLET_VIEWPORT = {"width": 800, "height": 900}
+CARD_MIN_HEIGHT_PX = 104
+CARD_MAX_UNSELECTED_HEIGHT_PX = 140
+GRID_WIDTH_TOLERANCE_PX = 2
+LONG_TITLE = " ".join(["An exceedingly long bookmark title"] * 12)
+SHORT_TITLE = "Short"
+CARD_TEXT_SELECTORS = (
+    HPL.URL_TITLE_READ,
+    HPL.URL_STRING_READ,
+    HPL.URL_DATE_ADDED_BADGE_INLINE,
+)
+
+# Resolves a design token (e.g. --selectedUrlBorder) to the browser-normalised
+# rgb() string, so colour assertions are theme-agnostic.
+_RESOLVE_TOKEN_COLOR_JS = """(token) => {
+    const probe = document.createElement('span');
+    probe.style.color = getComputedStyle(document.documentElement)
+        .getPropertyValue(token);
+    document.body.appendChild(probe);
+    const normalized = getComputedStyle(probe).color;
+    probe.remove();
+    return normalized;
+}"""
+
+# The box of a row's absolutely-positioned ::after (the tag drop hint), derived
+# from its computed size and offsets since a pseudo-element has no bounding rect.
+_AFTER_RECT_JS = """(element) => {
+    const row = element.getBoundingClientRect();
+    const rowStyle = getComputedStyle(element);
+    const after = getComputedStyle(element, '::after');
+    const width = parseFloat(after.width);
+    const height = parseFloat(after.height);
+    const right = row.right - parseFloat(rowStyle.borderRightWidth) - parseFloat(after.right);
+    const bottom = row.bottom - parseFloat(rowStyle.borderBottomWidth) - parseFloat(after.bottom);
+    const rect = { left: right - width, right, top: bottom - height, bottom };
+    return Object.values(rect).every(Number.isFinite) ? rect : null;
+}"""
+
+_GRID_CONTENT_WIDTH_JS = """(element) => {
+    const style = getComputedStyle(element);
+    return element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+}"""
 LINE_ROW_PADDING = "3px"
 LINE_MODES = ["title_line", "url_line"]
 VIEWPORTS = [
@@ -92,6 +138,12 @@ def _height(locator: Locator) -> float:
     box = locator.bounding_box()
     assert box is not None
     return box["height"]
+
+
+def _width(locator: Locator) -> float:
+    box = locator.bounding_box()
+    assert box is not None
+    return box["width"]
 
 
 def _rect(locator: Locator) -> dict | None:
@@ -382,3 +434,289 @@ def test_swipe_reveal_icon_fits_inside_a_line_row(
     assert icon_rect is not None and row_rect is not None
     assert icon_rect["top"] >= row_rect["top"]
     assert icon_rect["bottom"] <= row_rect["bottom"]
+
+
+def _prepare_cards(*, app: Flask, page: Page) -> Locator:
+    """Load the deck in Cards at the desktop viewport; returns every card."""
+    _prepare(app=app, page=page, view_mode="cards")
+    page.mouse.move(0, 0)  # a hovered card would repaint its background
+    rows = page.locator(HPL.ROWS_URLS)
+    assert rows.count() >= 5
+    return rows
+
+
+def _set_title(*, row: Locator, text: str) -> None:
+    row.locator(HPL.URL_TITLE_READ).evaluate(
+        "(element, text) => { element.textContent = text; }", text
+    )
+
+
+def _resolve_token(*, page: Page, token: str) -> str:
+    return page.evaluate(_RESOLVE_TOKEN_COLOR_JS, token)
+
+
+def _grid_content_width(*, page: Page) -> float:
+    return page.locator("#listURLs").evaluate(_GRID_CONTENT_WIDTH_JS)
+
+
+def _assert_no_overlap_with_card_text(*, row: Locator, overlay: dict) -> None:
+    for selector in CARD_TEXT_SELECTORS:
+        rect = _rect(row.locator(selector).first)
+        if rect is not None:
+            assert not _intersects(overlay, rect), selector
+
+
+def test_cards_are_top_aligned_boxes_that_never_stretch(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the Cards view at desktop width with one very long and one short title
+        sharing a grid row
+    WHEN nothing is selected
+    THEN the long title clamps (so no card is over 140px), the short card is
+        shorter than the long one, both tops match, and no red swipe layer shows
+    """
+    rows = _prepare_cards(app=provide_app, page=page)
+    long_card, short_card = rows.nth(0), rows.nth(1)
+    _set_title(row=long_card, text=LONG_TITLE)
+    _set_title(row=short_card, text=SHORT_TITLE)
+    wait_for_css_transitions_to_finish(locator=long_card)
+
+    long_height, short_height = _height(long_card), _height(short_card)
+    assert long_height > CARD_MIN_HEIGHT_PX  # else the comparison is vacuous
+    assert short_height < long_height
+    assert abs(_rect(long_card)["top"] - _rect(short_card)["top"]) <= 1
+    for index in range(rows.count()):
+        assert _height(rows.nth(index)) <= CARD_MAX_UNSELECTED_HEIGHT_PX
+    assert page.locator(".urlRowSwipeReveal").count() > 0  # else the check is vacuous
+    visible_reveals = page.evaluate(
+        """() => Array.from(document.querySelectorAll('.urlRowSwipeReveal'))
+            .filter((element) => element.getClientRects().length > 0).length"""
+    )
+    assert visible_reveals == 0
+
+
+def test_unselected_cards_share_one_background(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the Cards view at desktop width
+    WHEN nothing is selected
+    THEN even and odd cards have the same background colour (striping is off)
+    """
+    rows = _prepare_cards(app=provide_app, page=page)
+    for index in range(rows.count()):
+        wait_for_css_transitions_to_finish(locator=rows.nth(index))
+
+    backgrounds = page.evaluate(
+        """() => Array.from(document.querySelectorAll('.urlRow'))
+            .map((element) => getComputedStyle(element).backgroundColor)"""
+    )
+    assert len(set(backgrounds)) == 1
+
+
+@pytest.mark.parametrize("hide_buttons", [False, True], ids=["buttons", "hidden"])
+def test_selected_card_spans_the_row_without_overlap(
+    page: Page, create_test_urls, provide_app: Flask, hide_buttons: bool
+):
+    """
+    GIVEN the Cards view at desktop width, with the copy and short-link buttons
+        shown or hidden
+    WHEN a card is selected
+    THEN it spans the grid row, its selected border shows on all four sides, and
+        the "Added by" badge sits below the buttons without touching them
+    """
+    rows = _prepare_cards(app=provide_app, page=page)
+    if hide_buttons:
+        page.evaluate(
+            """() => {
+                const deck = document.querySelector('#URLDeck');
+                deck.setAttribute('data-hide-copy', 'true');
+                deck.setAttribute('data-hide-short-link', 'true');
+            }"""
+        )
+    card = rows.nth(1)
+    card.click()
+    expect(card).to_have_attribute("urlselected", "true")
+    wait_for_css_transitions_to_finish(locator=card)
+
+    assert abs(_width(card) - _grid_content_width(page=page)) <= GRID_WIDTH_TOLERANCE_PX
+    options = _rect(card.locator(".urlOptions"))
+    badge = _rect(card.locator(HPL.URL_DATE_ADDED_BADGE_STACKED))
+    assert options is not None and badge is not None
+    assert not _intersects(options, badge)
+    assert badge["top"] >= options["bottom"]
+    selected_border = _resolve_token(page=page, token="--selectedUrlBorder")
+    for side in ("top", "right", "bottom", "left"):
+        expect(card).to_have_css(f"border-{side}-color", selected_border)
+
+
+def test_tag_drop_hint_and_bulk_cue_do_not_overlap_card_text(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN an unselected card at desktop width
+    WHEN a tag drop hint is set, and separately a bulk result cue is added
+    THEN the overlay's box never intersects the title, URL or date text
+    """
+    rows = _prepare_cards(app=provide_app, page=page)
+    card = rows.nth(1)
+
+    card.evaluate(
+        "(el) => el.setAttribute('data-drop-hint', 'Add \"a rather long tag\" to this URL')"
+    )
+    wait_for_css_transitions_to_finish(locator=card)
+    hint_rect = card.evaluate(_AFTER_RECT_JS)
+    assert hint_rect is not None
+    _assert_no_overlap_with_card_text(row=card, overlay=hint_rect)
+
+    card.evaluate("(el) => el.removeAttribute('data-drop-hint')")
+    card.evaluate(
+        """(el) => {
+            const cue = document.createElement('span');
+            cue.className = 'bulkCardResultCue bulkCardResultCue--applied';
+            cue.setAttribute('aria-hidden', 'true');
+            cue.textContent = 'At tag limit';
+            el.appendChild(cue);
+        }"""
+    )
+    wait_for_css_transitions_to_finish(locator=card)
+    cue_rect = _rect(card.locator(".bulkCardResultCue"))
+    assert cue_rect is not None
+    _assert_no_overlap_with_card_text(row=card, overlay=cue_rect)
+
+
+def test_keyboard_focused_card_shows_only_a_two_pixel_outline(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN an unselected card at desktop width
+    WHEN it takes keyboard focus
+    THEN it shows a 2px selection-green outline and matching top and bottom borders
+    """
+    rows = _prepare_cards(app=provide_app, page=page)
+    card = rows.nth(1)
+
+    card.focus()
+    expect(card).to_be_focused()
+
+    expect(card).to_have_css("outline-width", "2px")
+    expect(card).to_have_css("outline-style", "solid")
+    expect(card).to_have_css(
+        "outline-color", _resolve_token(page=page, token="--deckSelectionGreen")
+    )
+    border_color = _resolve_token(page=page, token="--borderColor")
+    for side in ("top", "bottom"):
+        expect(card).to_have_css(f"border-{side}-color", border_color)
+        expect(card).to_have_css(f"border-{side}-width", "1px")
+
+
+def test_create_url_form_and_error_banner_span_the_grid(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the Cards view at desktop width
+    WHEN the create-URL form is opened
+    THEN the form is as wide as the grid, and the form and the error banner both
+        occupy every grid column
+    """
+    _prepare_cards(app=provide_app, page=page)
+
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE)
+    form = page.locator(HPL.WRAP_URL_CREATE)
+    expect(form).to_be_visible()
+
+    assert abs(_width(form) - _grid_content_width(page=page)) <= GRID_WIDTH_TOLERANCE_PX
+    expect(form).to_have_css("grid-column-end", "-1")
+    expect(page.locator(HPL.URL_DECK_ERROR_INDICATOR)).to_have_css(
+        "grid-column-end", "-1"
+    )
+
+
+def test_multi_select_card_shows_checkbox_and_title_inside_the_card(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the Cards view at desktop width in multi-select mode
+    WHEN a card shows its checkbox column
+    THEN the checkbox and title are visible and the title stays inside the card
+    """
+    rows = _prepare_cards(app=provide_app, page=page)
+    page.evaluate(
+        "() => document.querySelector('#URLDeck').classList.add('multiSelectActive')"
+    )
+    card = rows.nth(1)
+
+    expect(card.locator(HPL.URL_SELECT_CHECKBOX)).to_be_visible()
+    expect(card.locator(HPL.URL_TITLE_READ)).to_be_visible()
+    title_rect, card_rect = _rect(card.locator(HPL.URL_TITLE_READ)), _rect(card)
+    assert title_rect is not None and card_rect is not None
+    assert title_rect["right"] <= card_rect["right"]
+    assert _width(card) <= 400  # the narrow card column is really exercised
+
+
+@pytest.mark.mobile_ui
+@pytest.mark.parametrize("view_mode", ["list", "title_line"])
+def test_selected_row_badge_does_not_overlap_buttons_at_tablet_width(
+    page: Page, create_test_urls, provide_app: Flask, view_mode: str
+):
+    """
+    GIVEN a List or Title line row at 800px
+    WHEN the row is selected
+    THEN the "Added by" badge flows below the buttons instead of overlapping them
+    """
+    page.set_viewport_size(TABLET_VIEWPORT)
+    utub_url_id, row = _prepare(app=provide_app, page=page, view_mode=view_mode)
+
+    wait_then_click_element(
+        page=page, css_selector=get_css_selector_for_url_by_id(url_id=utub_url_id)
+    )
+    expect(row).to_have_attribute("urlselected", "true")
+    wait_for_css_transitions_to_finish(locator=row)
+
+    options = _rect(row.locator(".urlOptions"))
+    badge = _rect(row.locator(HPL.URL_DATE_ADDED_BADGE_STACKED))
+    assert options is not None and badge is not None
+    assert not _intersects(options, badge)
+    assert badge["top"] >= options["bottom"]
+
+
+def test_selected_list_row_keeps_the_corner_badge_on_desktop(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a List row at desktop width
+    WHEN the row is selected
+    THEN the "Added by" badge is still the absolute bottom-right one
+    """
+    utub_url_id, row = _prepare(app=provide_app, page=page, view_mode="list")
+
+    wait_then_click_element(
+        page=page, css_selector=get_css_selector_for_url_by_id(url_id=utub_url_id)
+    )
+    expect(row).to_have_attribute("urlselected", "true")
+
+    expect(row.locator(HPL.URL_DATE_ADDED_BADGE_STACKED)).to_have_css(
+        "position", "absolute"
+    )
+
+
+@pytest.mark.mobile_ui
+def test_cards_preference_renders_as_list_on_a_phone_and_still_swipes(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a Cards preference at 420px
+    WHEN the deck loads
+    THEN it is not a grid, rows have no radius, and swipe-to-delete still works
+    """
+    page = page_mobile_portrait
+    utub_url_id, row = _prepare(app=provide_app, page=page, view_mode="cards")
+
+    expect(page.locator("#listURLs")).not_to_have_css("display", "grid")
+    expect(row).to_have_css("border-top-left-radius", "0px")
+
+    row_selector = get_url_row_selector(utub_url_id=utub_url_id)
+    swipe_url_card_delete(page=page, url_row_selector=row_selector)
+    expect(page.locator(HPL.URL_OUTCOME_BANNER)).to_be_visible()
+    expect(page.locator(row_selector)).to_have_count(0)

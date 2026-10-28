@@ -296,6 +296,59 @@ describe("swipe gesture", () => {
     });
   });
 
+  describe("Cards layout", () => {
+    function setWideViewport({ wide }: { wide: boolean }): void {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(min-width: 992px)" ? wide : false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })) as unknown as typeof window.matchMedia;
+    }
+
+    function pastThresholdDrag(row: JQuery): void {
+      const rowElement = row[0];
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+    }
+
+    const originalMatchMedia = window.matchMedia;
+
+    afterEach(() => {
+      delete document.body.dataset.view;
+      window.matchMedia = originalMatchMedia;
+    });
+
+    it.each([
+      { view: "cards", wide: true, swipes: false },
+      { view: "cards", wide: false, swipes: true },
+      { view: "list", wide: true, swipes: true },
+      { view: "title_line", wide: true, swipes: true },
+    ])(
+      "view=$view at wide=$wide: swipe begins is $swipes",
+      ({ view, wide, swipes }) => {
+        vi.useFakeTimers();
+        try {
+          document.body.dataset.view = view;
+          setWideViewport({ wide });
+          const row = mountURLRow();
+
+          pastThresholdDrag(row);
+
+          expect(deleteURL).toHaveBeenCalledTimes(swipes ? 1 : 0);
+          expect(row.hasClass("swipe-committed")).toBe(swipes);
+        } finally {
+          vi.useRealTimers();
+        }
+      },
+    );
+  });
+
   it("a tap (pointerdown + pointerup with no move) does not call deleteURL or add drag classes", () => {
     const row = mountURLRow();
     const rowElement = row[0];

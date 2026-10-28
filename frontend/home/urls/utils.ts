@@ -2,6 +2,7 @@ import { $ } from "../../lib/globals.js";
 import { KEYS } from "../../lib/constants.js";
 import { getState } from "../../store/app-store.js";
 import { getSelectedURLCard, selectURLCard } from "./cards/selection.js";
+import { scrollSelectedCardIntoView } from "./cards/scroll-selected.js";
 // Circular-import check: cross-utub-search.ts imports from urls/cards/selection.js and utubs/selectors.js — neither re-exports from urls/utils.ts, so no cycle. If a future change adds a urls/utils.ts import in cross-utub-search.ts, audit for cycles first.
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
 
@@ -17,6 +18,14 @@ export function getNumOfVisibleURLs(): number {
 
 export const VISIBLE_URL_SELECTOR =
   ".urlRow[filterable=true]:not([searchable=false])";
+
+// Every branch selects exactly one card, so the scroll lives here once per
+// keypress. Order is DOM/reading order in every view mode (including the Cards
+// grid), so ArrowUp/ArrowDown mean previous/next card.
+function selectByKey(urlCard: JQuery): void {
+  selectURLCard(urlCard);
+  scrollSelectedCardIntoView(urlCard);
+}
 
 export function bindSwitchURLKeyboardEventListeners(): void {
   $(document).offAndOn(
@@ -38,14 +47,14 @@ export function bindSwitchURLKeyboardEventListeners(): void {
       const selectedURLCard = getSelectedURLCard();
 
       if (selectedURLCard === null) {
-        selectURLCard($(visibleURLs[0]));
+        selectByKey($(visibleURLs[0]));
         return;
       }
 
       const currentIndex = visibleURLs.index(selectedURLCard);
 
       if (currentIndex === -1) {
-        selectURLCard($(visibleURLs[0]));
+        selectByKey($(visibleURLs[0]));
         return;
       }
 
@@ -54,13 +63,13 @@ export function bindSwitchURLKeyboardEventListeners(): void {
       if (prev) {
         const prevIndex =
           currentIndex === 0 ? visibleCount - 1 : currentIndex - 1;
-        selectURLCard($(visibleURLs[prevIndex]));
+        selectByKey($(visibleURLs[prevIndex]));
       }
 
       if (next) {
         const nextIndex =
           currentIndex === visibleCount - 1 ? 0 : currentIndex + 1;
-        selectURLCard($(visibleURLs[nextIndex]));
+        selectByKey($(visibleURLs[nextIndex]));
       }
     },
   );
