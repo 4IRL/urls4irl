@@ -49,6 +49,7 @@ vi.mock("../../../../lib/ajax.js", () => ({
   is429Handled: vi.fn(() => false),
 }));
 
+vi.mock("../url-tooltips.js", () => ({ syncUrlTooltips: vi.fn() }));
 vi.mock("../loading.js", () => ({
   setTimeoutAndShowURLCardLoadingIcon: vi.fn(() => 1),
   clearTimeoutIDAndHideLoadingIcon: vi.fn(),

@@ -7,6 +7,7 @@ import {
   setURLCardSelectionEventListener,
 } from "../selection.js";
 import { enableTabbingOnURLCardElements } from "../utils.js";
+import { syncUrlTooltips } from "../url-tooltips.js";
 import { clearURLOutcomeBanner } from "../../outcome-banner.js";
 import { resetURLEditPanelState } from "../update-url-panel.js";
 import { hideAndResetUpdateURLTitleForm } from "../update-title.js";
@@ -17,6 +18,7 @@ import { isCoarsePointer } from "../../../mobile.js";
 import { toggleURLCardSelection } from "../../bulk-actions/bulk-selection.js";
 import { isAnyBulkPickerOpen } from "../../bulk-actions/picker-guard.js";
 
+vi.mock("../url-tooltips.js", () => ({ syncUrlTooltips: vi.fn() }));
 vi.mock("../update-title.js", () => ({
   hideAndResetUpdateURLTitleForm: vi.fn(),
 }));
@@ -206,9 +208,21 @@ describe("URL Card Selection", () => {
       selectURLCard(urlCard);
       expect(enableTabbingOnURLCardElements).toHaveBeenCalledWith(urlCard);
     });
+
+    it("syncs the URL tooltips after selecting", () => {
+      selectURLCard(urlCard);
+      expect(syncUrlTooltips).toHaveBeenCalledWith(urlCard);
+    });
   });
 
   describe("deselectAllURLs", () => {
+    it("syncs the URL tooltips after deselecting", () => {
+      selectURLCard(urlCard);
+      vi.mocked(syncUrlTooltips).mockClear();
+      deselectAllURLs();
+      expect(syncUrlTooltips).toHaveBeenCalledWith(urlCard);
+    });
+
     it("is a no-op when no URL card is selected", () => {
       deselectAllURLs();
       expect(urlCard.attr("urlSelected")).toBe("false");

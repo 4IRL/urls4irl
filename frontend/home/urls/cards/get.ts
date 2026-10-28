@@ -17,6 +17,7 @@ import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { createTagBadgeInURL } from "../tags/tags.js";
 import { showURLDeckBannerError } from "../deck.js";
 import { debug } from "../../../lib/debug.js";
+import { syncUrlTooltips } from "./url-tooltips.js";
 
 const log = debug("urls:cards");
 
@@ -68,6 +69,8 @@ function updateURLBasedOnGetData(
 
     urlStringElem.attr({ href: urlUpdateResponse.urlString }).text(displayURL);
   }
+
+  syncUrlTooltips(urlCard);
 
   updateURLTagsAndUTubTagsBasedOnGetURLData(
     urlTags,

@@ -3,6 +3,7 @@ import type { SuccessResponse } from "../../../../types/api-helpers.d.ts";
 import { isTagInUTubTagDeck } from "../../../tags/utils.js";
 import { buildTagFilterInDeck } from "../../../tags/tags.js";
 import { getUpdatedURL } from "../get.js";
+import { syncUrlTooltips } from "../url-tooltips.js";
 
 vi.mock("../../../../lib/page-utils.js", () => ({
   showNewPageOnAJAXHTMLResponse: vi.fn(),
@@ -15,6 +16,8 @@ vi.mock("../../../../lib/tooltips.js", () => ({
 vi.mock("../url-string.js", () => ({
   modifyURLStringForDisplay: vi.fn((urlString: string) => urlString),
 }));
+
+vi.mock("../url-tooltips.js", () => ({ syncUrlTooltips: vi.fn() }));
 
 vi.mock("../filtering.js", () => ({
   updateTagFilteringOnURLOrURLTagDeletion: vi.fn(),
@@ -128,6 +131,15 @@ describe("getUpdatedURL — keeps the #TagDeckCount tag total in sync", () => {
 
     expect($("#listTags > .tagFilter").length).toBe(0);
     expect($("#TagDeckCount").text()).toBe("(0)");
+  });
+
+  it("re-syncs the URL tooltips on the refreshed card", async () => {
+    await resolveGetURLWith([{ utubTagID: 1, tagString: "alpha" }]);
+
+    expect(syncUrlTooltips).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(syncUrlTooltips).mock.calls[0][0][0]).toBe(
+      $(".urlRow")[0],
+    );
   });
 
   it("leaves the count alone when the URL's tags are unchanged", async () => {

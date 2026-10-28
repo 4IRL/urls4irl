@@ -99,6 +99,21 @@ describe("applyUpdatedURLString short-link clearing", () => {
     expect(call.tooltip?.title).toBe(APP_CONFIG.strings.SHORT_LINK_TOOLTIP);
   });
 
+  it("re-syncs the full-URL tooltip on a line-view card (unmocked helper)", () => {
+    setState({
+      preferences: { ...getState().preferences, defaultView: "url_line" },
+    });
+    card().attr("urlSelected", "false");
+    applyUpdatedURLString({
+      response: responseWith("Success"),
+      urlCard: card(),
+    });
+
+    expect(card().find(".urlString").attr("title")).toBe(
+      card().find(".urlString").attr("href"),
+    );
+  });
+
   it("leaves the tooltip and Revoke untouched on a 'No change' response", () => {
     applyUpdatedURLString({
       response: responseWith("No change"),

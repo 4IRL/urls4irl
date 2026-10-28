@@ -4,6 +4,10 @@ import { getState, subscribe } from "../../store/app-store.js";
 import { armFocusReturnSuppression } from "./cards/focus-return.js";
 import { refreshDateAddedBadges } from "./cards/adder-badge.js";
 import {
+  bindWideViewportTooltipSync,
+  syncAllUrlTooltips,
+} from "./cards/url-tooltips.js";
+import {
   effectiveDensity,
   effectiveHideDateAdded,
   effectiveViewMode,
@@ -102,6 +106,7 @@ export function applyUrlDeckViewSettings(): void {
   // written here to avoid an import cycle through the card modules.
   document.body.dataset.view = effectiveViewMode();
   document.body.dataset.density = effectiveDensity();
+  syncAllUrlTooltips();
 }
 
 /**
@@ -134,6 +139,7 @@ export function shortLinkFocusTarget(urlCard: JQuery): JQuery {
 
 /** Applies the attributes now and on every settings / active-UTub change. */
 export function initUrlDeckPolicyAttrs(): () => void {
+  bindWideViewportTooltipSync();
   applyUrlDeckPolicyAttrs();
   applyUrlDeckViewSettings();
   let renderedHideDate = effectiveHideDateAdded();

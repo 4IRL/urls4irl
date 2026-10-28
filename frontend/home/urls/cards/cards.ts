@@ -46,6 +46,7 @@ import {
   SEARCH_ACTIVE,
 } from "../../../types/metrics-dim-values.js";
 import { debug } from "../../../lib/debug.js";
+import { syncUrlTooltips } from "./url-tooltips.js";
 
 const log = debug("urls:cards");
 
@@ -65,6 +66,8 @@ export function updateURLAfterFindingStaleData(
   if (urlString.attr("href") !== newUrl.urlString) {
     urlString.text(newUrl.urlString).attr({ href: newUrl.urlString });
   }
+  // Re-render while selected leaves the attribute off (see syncUrlTooltips).
+  syncUrlTooltips(urlCard);
 
   // Another member's mint or revoke arrives as ordinary content.
   renderShortLinkStatus({
@@ -156,7 +159,7 @@ export function createURLBlock({
   );
 
   const urlTitleGoToURLWrap = $(document.createElement("div")).addClass(
-    "flex-row full-width align-center jc-sb",
+    "urlTitleRow flex-row full-width align-center jc-sb",
   );
 
   // Append update URL title form if user can edit the URL
@@ -248,6 +251,8 @@ export function createURLBlock({
   // Re-derive the multi-select mark from the store so a rebuilt/re-added card in
   // a live selection survives the deck-diff and stays visibly checked.
   reapplyMultiSelectMark(urlCard);
+
+  syncUrlTooltips(urlCard);
 
   return urlCard;
 }

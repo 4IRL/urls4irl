@@ -9,6 +9,7 @@ from tests.functional.db_utils import (
     get_url_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
+    set_member_settings,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as ML
@@ -130,21 +131,30 @@ def test_url_swipe_undo_restores_row(
     assert init_num_url_rows == get_num_url_rows(page=page)
 
 
+@pytest.mark.parametrize("view_mode", [None, "title_line"])
 def test_url_swipe_delete_focus_return_has_no_selected_ring(
-    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+    page_mobile_portrait: Page,
+    create_test_urls,
+    provide_app: Flask,
+    view_mode: str | None,
 ):
     """
-    GIVEN a deck with 3+ URLs
+    GIVEN a deck with 3+ URLs, in List or in Title line view
     WHEN the user swipe-deletes the middle row
     THEN focus moves to the next row, which carries swipe-focus-return and a
         neutral border-bottom-color rather than the focus-ring green
         (regression coverage for a CSS-specificity bug where the suppression
         rule lost the cascade to the pre-existing focus-ring rule despite the
-        suppression class being correctly applied)
+        suppression class being correctly applied), and in Title line view it
+        shows no 2px focus outline either
     """
     page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    if view_mode is not None:
+        set_member_settings(
+            app, utub.id, USER_ID_FOR_TEST, {"urls": {"view_mode": view_mode}}
+        )
 
     login_user_and_select_utub_by_utubid_mobile(
         app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
@@ -170,6 +180,10 @@ def test_url_swipe_delete_focus_return_has_no_selected_ring(
         css_property="border-bottom-color",
         expected_value=neutral_row_border_color,
     )
+    if view_mode is not None:
+        expect(page.locator(HPL.URL_DECK)).to_have_attribute("data-swipe-delete", "on")
+        assert page.evaluate("() => document.body.dataset.view") == view_mode
+        expect(next_row).to_have_css("outline-style", "none")
 
 
 def test_url_swipe_delete_twice_then_blur_leaves_no_stuck_goto_icon(

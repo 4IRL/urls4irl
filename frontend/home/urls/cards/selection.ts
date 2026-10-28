@@ -18,6 +18,7 @@ import { toggleURLCardSelection } from "../bulk-actions/bulk-selection.js";
 import { isAnyBulkPickerOpen } from "../bulk-actions/picker-guard.js";
 import { clearURLOutcomeBanner } from "../outcome-banner.js";
 import { debug } from "../../../lib/debug.js";
+import { syncUrlTooltips } from "./url-tooltips.js";
 
 const log = debug("urls:cards");
 
@@ -43,6 +44,7 @@ export function selectURLCard(urlCard: JQuery): void {
 
   setState({ selectedURLCardID: parseInt(urlCard.attr("utuburlid")!) });
   urlCard.attr({ urlSelected: true });
+  syncUrlTooltips(urlCard);
   urlCard.find(".goToUrlIcon").addClass("visible-flex");
   enableClickOnSelectedURLCardToHide(urlCard);
 
@@ -126,6 +128,7 @@ function deselectURL(urlCard: JQuery): void {
   urlCard.find(TAG_DELETE_REVEAL_SELECTOR).removeClass(TAG_DELETE_REVEAL_CLASS);
   setState({ selectedURLCardID: null });
   urlCard.attr({ urlSelected: false });
+  syncUrlTooltips(urlCard);
   urlCard.find(".urlString").off("click.goToURL");
   urlCard
     .find(".goToUrlIcon")
