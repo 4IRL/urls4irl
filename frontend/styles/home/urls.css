@@ -1337,11 +1337,22 @@ a.urlString {
         display: none;
     }
 
-    /* Collapsed card: a compact box. The title clamps to 2 lines, the URL gets its
-       own truncated line and the inline date sits below it, left-aligned. */
+    /* Collapsed card: a compact box of ONE fixed height, whatever the title or URL
+       length, so every row of the grid is uniform. The title clamps to 2 lines, the
+       URL gets its own truncated line and the inline date sits below it,
+       left-aligned. The height leaves room for all of that plus the bottom-right
+       corner overlays' reserved padding (below); the full text stays reachable
+       through the selected card and the `title` tooltips. */
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) {
+        block-size: 152px;
+    }
+
     :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlRowContent {
         padding: var(--space-3) var(--space-4);
-        min-height: 104px;
+        min-height: 0;
+        block-size: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
     :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlTitleRow > :first-child,

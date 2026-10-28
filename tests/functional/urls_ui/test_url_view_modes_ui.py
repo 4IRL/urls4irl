@@ -33,9 +33,9 @@ MAX_COLLAPSED_ROW_HEIGHT_PX = 36
 SELECTED_HEIGHT_TOLERANCE_PX = 2
 MOBILE_MAX_WIDTH_PX = 992
 TABLET_VIEWPORT = {"width": 800, "height": 900}
-CARD_MIN_HEIGHT_PX = 104
-CARD_MAX_UNSELECTED_HEIGHT_PX = 140
 GRID_WIDTH_TOLERANCE_PX = 2
+LONG_URL = "https://example.com/" + "a-very-long-path-segment/" * 12
+SHORT_URL = "https://a.io"
 LONG_TITLE = " ".join(["An exceedingly long bookmark title"] * 12)
 SHORT_TITLE = "Short"
 CARD_TEXT_SELECTORS = (
@@ -473,21 +473,28 @@ def test_cards_are_top_aligned_boxes_that_never_stretch(
     GIVEN the Cards view at desktop width with one very long and one short title
         sharing a grid row
     WHEN nothing is selected
-    THEN the long title clamps (so no card is over 140px), the short card is
-        shorter than the long one, both tops match, and no red swipe layer shows
+    THEN every unselected card has the same height (a fixed card size, neither
+        stretched nor sized by its text), both tops match, and no red swipe
+        layer shows
     """
     rows = _prepare_cards(app=provide_app, page=page)
     long_card, short_card = rows.nth(0), rows.nth(1)
     _set_title(row=long_card, text=LONG_TITLE)
     _set_title(row=short_card, text=SHORT_TITLE)
+    long_card.locator(HPL.URL_STRING_READ).evaluate(
+        "(element, text) => { element.textContent = text; }", LONG_URL
+    )
+    short_card.locator(HPL.URL_STRING_READ).evaluate(
+        "(element, text) => { element.textContent = text; }", SHORT_URL
+    )
     wait_for_css_transitions_to_finish(locator=long_card)
 
-    long_height, short_height = _height(long_card), _height(short_card)
-    assert long_height > CARD_MIN_HEIGHT_PX  # else the comparison is vacuous
-    assert short_height < long_height
     assert abs(_rect(long_card)["top"] - _rect(short_card)["top"]) <= 1
-    for index in range(rows.count()):
-        assert _height(rows.nth(index)) <= CARD_MAX_UNSELECTED_HEIGHT_PX
+    heights = {round(_height(rows.nth(index)), 1) for index in range(rows.count())}
+    assert len(heights) == 1, heights
+    # The fixed height still holds the clamped title, URL and date.
+    long_content = long_card.locator(".urlRowContent")
+    assert long_content.evaluate("(el) => el.scrollHeight <= el.clientHeight + 1")
     assert page.locator(".urlRowSwipeReveal").count() > 0  # else the check is vacuous
     visible_reveals = page.evaluate(
         """() => Array.from(document.querySelectorAll('.urlRowSwipeReveal'))
