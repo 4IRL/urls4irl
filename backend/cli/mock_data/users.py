@@ -7,6 +7,7 @@ from backend.models.user_preferences import (
     SortOrder,
     Theme,
     User_Preferences,
+    UtubSort,
     ViewMode,
 )
 from backend.models.users import User_Role, Users
@@ -50,6 +51,11 @@ def generate_mock_users(db: SQLAlchemy, silent: bool = False):
                 default_sort=list(SortOrder)[user_index % len(SortOrder)],
                 density=list(Density)[user_index % len(Density)],
                 date_format=list(DateFormat)[user_index % len(DateFormat)],
+                # UTub list prefs stay at defaults for every user: non-default
+                # rows would change deck order and totals in functional UI tests.
+                utub_sort=UtubSort.RECENT_ACTIVITY,
+                show_row_counts=False,
+                show_list_totals=True,
             )
 
     admin_user = Users.query.filter(Users.username == ADMIN_MOCK_USERNAME).first()
