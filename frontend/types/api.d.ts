@@ -3206,9 +3206,9 @@ export interface components {
     /**
      * @description One sampled point of a gauge's timeseries.
      *
-     *     COUNT/MAX gauges populate `value_int`; AVG gauges populate `value_float`
-     *     (the other stays null). A k-anon-suppressed `max_*` sample has BOTH null —
-     *     the renderer drops such points before charting.
+     *     COUNT/MAX gauges populate `value_int`; AVG/median/p90 gauges populate
+     *     `value_float` (the other stays null). A k-anon-suppressed max/median/p90
+     *     sample has BOTH null — the renderer drops such points before charting.
      */
     GaugeSampleSchema: {
       /**
@@ -3222,7 +3222,7 @@ export interface components {
        */
       value_int: number | null;
       /**
-       * @description Fractional value for AVG gauges; null otherwise
+       * @description Fractional value for AVG/median/p90 gauges; null otherwise
        * @default null
        */
       value_float: number | null;
@@ -3237,7 +3237,7 @@ export interface components {
     GaugeSeries: {
       /** @description GaugeName value (e.g. max_urls_per_utub) */
       gauge_name: string;
-      /** @description GaugeKind value (volume | distribution_max | ...) */
+      /** @description GaugeKind value (volume | distribution_max | distribution_avg | distribution_median | distribution_p90) */
       kind: string;
       /** @description Human-readable gauge description */
       description: string;

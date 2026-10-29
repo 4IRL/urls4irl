@@ -56,7 +56,7 @@ function buildResponse(gauges: GaugeSeries[]): GaugesTimeseriesResponse {
   };
 }
 
-/** 18 gauge series mirroring the shipped registry — distinct kinds. */
+/** 32 gauge series mirroring the shipped registry order — distinct kinds. */
 function buildFullResponse(): GaugesTimeseriesResponse {
   const names: Array<[string, string, string]> = [
     ["total_users", "volume", "Total Users"],
@@ -70,31 +70,93 @@ function buildFullResponse(): GaugesTimeseriesResponse {
       "volume",
       "Total short links minted (incl. expired, until purged)",
     ],
-    ["max_urls_per_utub", "distribution_max", "Max URLs per UTub"],
-    ["avg_urls_per_utub", "distribution_avg", "Avg URLs per UTub"],
-    ["max_tags_per_url", "distribution_max", "Max Tags per URL"],
-    ["avg_tags_per_url", "distribution_avg", "Avg Tags per URL"],
-    ["max_tags_per_utub", "distribution_max", "Max Tags per UTub"],
-    ["avg_tags_per_utub", "distribution_avg", "Avg Tags per UTub"],
-    ["max_utubs_per_user", "distribution_max", "Max UTubs per User"],
-    ["max_members_per_utub", "distribution_max", "Max Members per UTub"],
-    ["avg_members_per_utub", "distribution_avg", "Avg Members per UTub"],
-    ["max_utubs_per_url", "distribution_max", "Max UTubs per URL"],
-    ["max_urls_per_user", "distribution_max", "Max URLs per User"],
+    ["max_urls_per_utub", "distribution_max", "Most URLs in any single UTub"],
+    ["p90_urls_per_utub", "distribution_p90", "90th-percentile URLs per UTub"],
+    ["median_urls_per_utub", "distribution_median", "Median URLs per UTub"],
+    ["avg_urls_per_utub", "distribution_avg", "Average URLs per UTub"],
+    [
+      "max_tags_per_url",
+      "distribution_max",
+      "Most tags on any single UTub URL",
+    ],
+    [
+      "p90_tags_per_url",
+      "distribution_p90",
+      "90th-percentile tags per UTub URL",
+    ],
+    ["median_tags_per_url", "distribution_median", "Median tags per UTub URL"],
+    ["avg_tags_per_url", "distribution_avg", "Average tags per UTub URL"],
+    ["max_tags_per_utub", "distribution_max", "Most tags in any single UTub"],
+    ["p90_tags_per_utub", "distribution_p90", "90th-percentile tags per UTub"],
+    ["median_tags_per_utub", "distribution_median", "Median tags per UTub"],
+    ["avg_tags_per_utub", "distribution_avg", "Average tags per UTub"],
+    [
+      "max_utubs_per_user",
+      "distribution_max",
+      "Most UTubs any single user belongs to",
+    ],
+    [
+      "p90_utubs_per_user",
+      "distribution_p90",
+      "90th-percentile UTubs per user",
+    ],
+    ["median_utubs_per_user", "distribution_median", "Median UTubs per user"],
+    [
+      "max_members_per_utub",
+      "distribution_max",
+      "Most members in any single UTub",
+    ],
+    [
+      "p90_members_per_utub",
+      "distribution_p90",
+      "90th-percentile members per UTub",
+    ],
+    [
+      "median_members_per_utub",
+      "distribution_median",
+      "Median members per UTub",
+    ],
+    ["avg_members_per_utub", "distribution_avg", "Average members per UTub"],
+    [
+      "max_utubs_per_url",
+      "distribution_max",
+      "Most UTubs containing any single URL (most-shared URL)",
+    ],
+    ["p90_utubs_per_url", "distribution_p90", "90th-percentile UTubs per URL"],
+    ["median_utubs_per_url", "distribution_median", "Median UTubs per URL"],
+    [
+      "max_urls_per_user",
+      "distribution_max",
+      "Most URL associations added by any single member",
+    ],
+    [
+      "p90_urls_per_user",
+      "distribution_p90",
+      "90th-percentile URL associations per member",
+    ],
+    [
+      "median_urls_per_user",
+      "distribution_median",
+      "Median URL associations per member",
+    ],
   ];
+  const floatKinds = new Set([
+    "distribution_avg",
+    "distribution_median",
+    "distribution_p90",
+  ]);
   return buildResponse(
     names.map(([gauge_name, kind, description]) =>
       buildSeries({
         gauge_name,
         kind,
         description,
-        samples:
-          kind === "distribution_avg"
-            ? [
-                buildSample({ value_int: null, value_float: 2.5 }),
-                buildSample({ value_int: null, value_float: 3.25 }),
-              ]
-            : [buildSample({ value_int: 4 }), buildSample({ value_int: 7 })],
+        samples: floatKinds.has(kind)
+          ? [
+              buildSample({ value_int: null, value_float: 2.5 }),
+              buildSample({ value_int: null, value_float: 3.25 }),
+            ]
+          : [buildSample({ value_int: 4 }), buildSample({ value_int: 7 })],
       }),
     ),
   );
@@ -112,13 +174,15 @@ describe("renderGaugeGrid table (happy path)", () => {
     ]);
 
     const rows = container.querySelectorAll<HTMLElement>(".gauge-row");
-    expect(rows.length).toBe(18);
+    expect(rows.length).toBe(32);
     expect(rows[0]!.dataset.gaugeName).toBe("total_users");
     expect(rows[5]!.dataset.gaugeName).toBe("total_utub_memberships");
     expect(rows[6]!.dataset.gaugeName).toBe("total_short_links");
     expect(rows[5]!.querySelector(".gauge-kind")!.textContent).toBe("Volume");
     expect(rows[6]!.querySelector(".gauge-kind")!.textContent).toBe("Volume");
     expect(rows[7]!.dataset.gaugeName).toBe("max_urls_per_utub");
+    expect(rows[8]!.dataset.gaugeName).toBe("p90_urls_per_utub");
+    expect(rows[9]!.dataset.gaugeName).toBe("median_urls_per_utub");
 
     // No charts are rendered until a row is selected.
     expect(container.querySelectorAll("svg.gauge-chart").length).toBe(0);
@@ -141,6 +205,63 @@ describe("renderGaugeGrid table (happy path)", () => {
       "Distribution (avg)",
     );
     expect(avgRow.querySelector(".gauge-value-cell")!.textContent).toBe("3.25");
+  });
+
+  it("labels the median and p90 rows with their kind chips", () => {
+    const container = document.createElement("div");
+    renderGaugeGrid({ container, response: buildFullResponse() });
+
+    const medianRow = container.querySelector<HTMLElement>(
+      '.gauge-row[data-gauge-name="median_urls_per_utub"]',
+    )!;
+    expect(medianRow.querySelector(".gauge-kind")!.textContent).toBe(
+      "Distribution (median)",
+    );
+    const p90Row = container.querySelector<HTMLElement>(
+      '.gauge-row[data-gauge-name="p90_urls_per_utub"]',
+    )!;
+    expect(p90Row.querySelector(".gauge-kind")!.textContent).toBe(
+      "Distribution (p90)",
+    );
+  });
+
+  it("renders a float median sample as 3.5", () => {
+    const container = document.createElement("div");
+    renderGaugeGrid({
+      container,
+      response: buildResponse([
+        buildSeries({
+          gauge_name: "median_urls_per_utub",
+          kind: "distribution_median",
+          description: "Median URLs per UTub",
+          samples: [buildSample({ value_int: null, value_float: 3.5 })],
+        }),
+      ]),
+    });
+    expect(container.querySelector(".gauge-value-cell")!.textContent).toBe(
+      "3.5",
+    );
+  });
+
+  it("never renders a raw kind string as a chip (every kind has a label)", () => {
+    const response = buildFullResponse();
+    const kinds = new Set(response.gauges.map((series) => series.kind));
+    expect(kinds.has("distribution_median")).toBe(true);
+    expect(kinds.has("distribution_p90")).toBe(true);
+
+    const container = document.createElement("div");
+    renderGaugeGrid({ container, response });
+    for (const kind of kinds) {
+      const row = Array.from(
+        container.querySelectorAll<HTMLElement>(".gauge-row"),
+      ).find((candidate) => {
+        const series = response.gauges.find(
+          (entry) => entry.gauge_name === candidate.dataset.gaugeName,
+        );
+        return series?.kind === kind;
+      })!;
+      expect(row.querySelector(".gauge-kind")!.textContent).not.toBe(kind);
+    }
   });
 
   it("makes each row a focusable button widget with a summary aria-label", () => {

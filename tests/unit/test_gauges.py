@@ -18,6 +18,8 @@ import pytest
 from backend.metrics import gauges
 from backend.metrics.gauges import (
     GAUGE_REGISTRY,
+    MIN_GAUGE_POPULATION,
+    PERCENTILE_FRACTIONS,
     GaugeDefinition,
     GaugeKind,
     GaugeName,
@@ -88,6 +90,67 @@ def test_build_gauge_sql_distribution_max_has_k_anon_guard() -> None:
     assert "CASE WHEN" in sql
     assert "THEN NULL" in sql
     assert 'COUNT(DISTINCT "utubID")' in sql
+
+
+def test_build_gauge_sql_distribution_max_exact() -> None:
+    assert build_gauge_sql(GaugeName.MAX_URLS_PER_UTUB) == (
+        'SELECT CASE WHEN (SELECT COUNT(DISTINCT "utubID") FROM "UtubUrls") < 5 '
+        'THEN NULL ELSE (SELECT MAX(c) FROM (SELECT COUNT(*) AS c FROM "UtubUrls" '
+        'GROUP BY "utubID") s) END'
+    )
+
+
+def test_build_gauge_sql_distribution_median_exact() -> None:
+    assert build_gauge_sql(GaugeName.MEDIAN_URLS_PER_UTUB) == (
+        'SELECT CASE WHEN (SELECT COUNT(DISTINCT "utubID") FROM "UtubUrls") < 5 '
+        "THEN NULL ELSE (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY c) "
+        'FROM (SELECT COUNT(*) AS c FROM "UtubUrls" GROUP BY "utubID") s) END'
+    )
+
+
+def test_build_gauge_sql_distribution_p90_has_k_anon_guard() -> None:
+    sql = build_gauge_sql(GaugeName.P90_MEMBERS_PER_UTUB)
+    assert "percentile_cont(0.9) WITHIN GROUP (ORDER BY c)" in sql
+    assert 'COUNT("userID") AS c' in sql
+    assert 'GROUP BY "utubID"' in sql
+    assert "CASE WHEN" in sql
+    assert "THEN NULL" in sql
+    assert f"< {MIN_GAUGE_POPULATION}" in sql
+    assert 'COUNT(DISTINCT "utubID")' in sql
+
+
+def test_every_percentile_gauge_is_k_anon_guarded() -> None:
+    percentile_names = [
+        name
+        for name, definition in GAUGE_REGISTRY.items()
+        if definition.kind in PERCENTILE_FRACTIONS
+    ]
+    assert percentile_names
+    for name in percentile_names:
+        definition = GAUGE_REGISTRY[name]
+        sql = build_gauge_sql(name)
+        assert f"< {MIN_GAUGE_POPULATION}" in sql
+        assert "THEN NULL" in sql
+        suffix = name.value.split("_", 1)[1]
+        max_definition = GAUGE_REGISTRY[GaugeName(f"max_{suffix}")]
+        assert definition.table == max_definition.table
+        assert definition.group_by_column == max_definition.group_by_column
+        assert definition.count_column == max_definition.count_column
+
+
+def test_build_gauge_sql_rejects_unhandled_kind(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bogus = GaugeDefinition(kind=GaugeKind.VOLUME, description="bogus")
+    object.__setattr__(bogus, "kind", "distribution_min")
+    monkeypatch.setitem(GAUGE_REGISTRY, GaugeName.TOTAL_USERS, bogus)
+    with pytest.raises(ValueError):
+        build_gauge_sql(GaugeName.TOTAL_USERS)
+
+
+def test_value_column_for_rejects_unhandled_kind() -> None:
+    with pytest.raises(ValueError):
+        value_column_for("distribution_min")  # type: ignore[arg-type]
 
 
 def test_build_gauge_sql_distribution_max_groups_by_url_and_user() -> None:
@@ -165,7 +228,7 @@ def test_gauges_module_is_flask_free() -> None:
 def test_all_shipped_definitions_have_safe_sql_identifiers() -> None:
     """Every shipped `GaugeDefinition` passes the import-time identifier guard.
 
-    All 18 relational gauges leave `event_name` / `dimension_key` as `None`, so
+    All 32 relational gauges leave `event_name` / `dimension_key` as `None`, so
     the guard is a no-op for them today; constructing a fresh copy of each
     definition re-runs `__post_init__` and proves none would raise.
     """
@@ -221,3 +284,7 @@ def test_value_column_for() -> None:
     assert value_column_for(GaugeKind.VOLUME) == "valueInt"
     assert value_column_for(GaugeKind.DISTRIBUTION_MAX) == "valueInt"
     assert value_column_for(GaugeKind.EVENT_DERIVED_MAX) == "valueInt"
+    assert value_column_for(GaugeKind.DISTRIBUTION_MEDIAN) == "valueFloat"
+    assert value_column_for(GaugeKind.DISTRIBUTION_P90) == "valueFloat"
+    for kind in GaugeKind:
+        value_column_for(kind)

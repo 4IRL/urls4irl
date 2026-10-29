@@ -81,6 +81,8 @@ class ADMIN_METRICS_STRINGS:
     METRICS_GAUGE_KIND_VOLUME: str = "Volume"
     METRICS_GAUGE_KIND_DISTRIBUTION_MAX: str = "Distribution (max)"
     METRICS_GAUGE_KIND_DISTRIBUTION_AVG: str = "Distribution (avg)"
+    METRICS_GAUGE_KIND_DISTRIBUTION_MEDIAN: str = "Distribution (median)"
+    METRICS_GAUGE_KIND_DISTRIBUTION_P90: str = "Distribution (p90)"
     METRICS_GAUGE_SUPPRESSED_ARIA: str = "Value unavailable"
     METRICS_GAUGES_LOADED: str = "Gauge values updated."
     METRICS_GAUGE_SELECT_PROMPT: str = "Select a gauge to view its timeseries."

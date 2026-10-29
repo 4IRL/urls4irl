@@ -2308,6 +2308,35 @@ def test_gauges_timeseries_admin_happy_path_returns_batched_series(
     assert avg_series["samples"][0]["value_float"] == 4.5
 
 
+def test_gauges_timeseries_returns_percentile_kind_series(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and a median gauge seeded with value_float=3.5
+    WHEN GETing /api/metrics/query/gauges/timeseries?window=day
+    THEN the series kind is "distribution_median", value_float is 3.5 and
+        value_int is null.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_gauge_row(
+            GaugeName.MEDIAN_URLS_PER_UTUB, _bucket_inside_window(), value_float=3.5
+        )
+
+    response = logged_in_client.get(
+        _GAUGES_TIMESERIES_URL + "?window=day", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 200
+    series_by_name = {
+        series["gauge_name"]: series for series in response.get_json()["gauges"]
+    }
+    series = series_by_name[GaugeName.MEDIAN_URLS_PER_UTUB.value]
+    assert series["kind"] == "distribution_median"
+    assert series["samples"][0]["value_float"] == 3.5
+    assert series["samples"][0]["value_int"] is None
+
+
 def test_gauges_timeseries_bad_window_returns_400(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
