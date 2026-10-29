@@ -1,3 +1,6 @@
+from backend.metrics.suppression import MIN_CELL_COUNT
+
+
 class ADMIN_METRICS_STRINGS:
     METRICS_DASHBOARD_TITLE: str = "Anonymous Metrics — Admin Dashboard"
     METRICS_REFRESH_BUTTON_LABEL: str = "Refresh"
@@ -70,6 +73,8 @@ class ADMIN_METRICS_STRINGS:
         "Stacked bar chart of accepted ingest batches grouped by batch size "
         "and split by transport and device type."
     )
+    METRICS_PIPELINE_HEALTH_SUPPRESSED_COLUMN: str = f"suppressed (<{MIN_CELL_COUNT})"
+    METRICS_PIPELINE_HEALTH_DESC_SUPPRESSED: str = f"{{{{ count }}}} batches in suppressed cells (fewer than {MIN_CELL_COUNT} each)."
     METRICS_FLOW_SUCCEEDED: str = "succeeded"
     METRICS_FLOW_CONVERSION: str = "conversion"
     METRICS_FLOW_DROPOFF: str = "drop-off"
@@ -114,6 +119,11 @@ class ADMIN_METRICS_STRINGS:
     METRICS_GAUGE_KIND_DISTRIBUTION_MEDIAN: str = "Distribution (median)"
     METRICS_GAUGE_KIND_DISTRIBUTION_P90: str = "Distribution (p90)"
     METRICS_GAUGE_SUPPRESSED_ARIA: str = "Value unavailable"
+    METRICS_SUPPRESSED_LABEL: str = f"suppressed (fewer than {MIN_CELL_COUNT})"
+    METRICS_PIPELINE_HEALTH_LEGEND_SUPPRESSED: str = METRICS_SUPPRESSED_LABEL
+    METRICS_FLOW_COUNT_SUPPRESSED_ARIA: str = (
+        f"Count suppressed (fewer than {MIN_CELL_COUNT})"
+    )
     METRICS_GAUGES_LOADED: str = "Gauge values updated."
     METRICS_GAUGE_SELECT_PROMPT: str = "Select a gauge to view its timeseries."
     METRICS_GAUGE_COL_NAME: str = "Gauge"

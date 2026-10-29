@@ -18,6 +18,7 @@ function buildStep(overrides: Partial<FlowStepSchema> = {}): FlowStepSchema {
     event_name: "ui_url_create_open",
     count: 100,
     pct_of_top: 1.0,
+    count_suppressed: false,
     breakdown: null,
     ...overrides,
   };

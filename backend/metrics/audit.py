@@ -4,7 +4,8 @@ Pure AST + enum/dict introspection. No Flask app context, no DB, no Redis.
 Used by both `tests/unit/test_event_coverage.py` (unit invariants) and the
 `flask metrics audit` CLI (the event-coverage-staleness CI gate).
 
-Five public helpers:
+Six public helpers (the sixth, `diff_dimension_combination_cap()`, enforces the
+per-event dimension-combination cap):
 - `find_orphan_event_names()` — EventName members with zero external references.
 - `find_string_literal_record_event_callers()` — record_event("foo", ...) callers.
 - `find_missing_dimension_model_entries()` — EventName members absent from DIMENSION_MODELS.
@@ -21,13 +22,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, get_args, get_origin
 
+from pydantic import BaseModel
+
 from backend.metrics.dimension_models import DIMENSION_MODELS
 from backend.metrics.event_registry import EVENT_REGISTRY
 from backend.metrics.events import (
     EVENT_CATEGORY,
     EVENT_DESCRIPTIONS,
+    DeviceType,
     EventCategory,
     EventName,
+)
+from backend.metrics.suppression import (
+    MAX_DIM_COMBINATIONS_PER_EVENT,
+    UNBOUNDED_DIM_EXEMPTIONS,
 )
 
 # ---------------------------------------------------------------------------
@@ -49,6 +57,7 @@ _METRICS_INTERNAL_FILES: frozenset[Path] = frozenset(
         _BACKEND_DIR / "metrics" / "events.py",
         _BACKEND_DIR / "metrics" / "dimension_models.py",
         _BACKEND_DIR / "metrics" / "resources.py",
+        _BACKEND_DIR / "metrics" / "suppression.py",
         _BACKEND_DIR / "extensions" / "metrics" / "registry_sync.py",
         _BACKEND_DIR / "extensions" / "metrics" / "dim_types_generator.py",
         _BACKEND_DIR / "cli" / "metrics.py",
@@ -289,6 +298,65 @@ def diff_dimension_literals_vs_registry() -> list[DimensionLiteralFinding]:
                     )
                 )
     return findings
+
+
+def _closed_set_size(annotation: object) -> int | None:
+    """Return a dim's closed-set size, or `None` when it is not a closed set."""
+    if get_origin(annotation) is Literal:
+        return len(set(get_args(annotation)))
+    if annotation is DeviceType:
+        return len(DeviceType)
+    return None
+
+
+def diff_dimension_combination_cap(
+    *,
+    dimension_models: dict[EventName, type[BaseModel] | None] | None = None,
+    exemptions: dict[tuple[EventName, str], str] | None = None,
+    max_combinations: int = MAX_DIM_COMBINATIONS_PER_EVENT,
+) -> list[str]:
+    """Return error strings for events whose dim-combination space is too large.
+
+    Per non-`API_HIT` event the product is each dim's closed-set size (`Literal`
+    member count; `len(DeviceType)` for `device_type`). A dim that is neither is
+    an error unless listed in `exemptions` (fail closed); an exempt dim
+    contributes a factor of 1. A product above `max_combinations` is an error,
+    and so is an exemption whose event or dim no longer exists (stale).
+
+    The keyword arguments exist so tests can probe synthetic registries.
+    """
+    models = DIMENSION_MODELS if dimension_models is None else dimension_models
+    exempt = UNBOUNDED_DIM_EXEMPTIONS if exemptions is None else exemptions
+
+    errors: list[str] = []
+    for event_name, dim_model in models.items():
+        if event_name is EventName.API_HIT or dim_model is None:
+            continue
+        product = 1
+        for field_name, field_info in dim_model.model_fields.items():
+            size = _closed_set_size(field_info.annotation)
+            if size is not None:
+                product *= size
+            elif (event_name, field_name) not in exempt:
+                errors.append(
+                    f"{event_name.name}: dim '{field_name}' is not a closed set "
+                    f"(Literal or DeviceType) and has no entry in "
+                    f"UNBOUNDED_DIM_EXEMPTIONS"
+                )
+        if product > max_combinations:
+            errors.append(
+                f"{event_name.name}: {product} dimension combinations exceeds "
+                f"the cap of {max_combinations}"
+            )
+
+    for exempt_event, exempt_dim in exempt:
+        exempt_model = models.get(exempt_event)
+        if exempt_model is None or exempt_dim not in exempt_model.model_fields:
+            errors.append(
+                f"stale exemption: ({exempt_event.name}, '{exempt_dim}') is no "
+                f"longer in the dimension registry"
+            )
+    return errors
 
 
 def diff_registry_vs_event_name() -> list[RegistryDriftFinding]:

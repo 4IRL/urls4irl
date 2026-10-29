@@ -918,6 +918,8 @@ def test_query_timeseries_device_type_one_returns_filtered_buckets_200(
 
 
 _GROUPED_TIMESERIES_URL = "/api/metrics/query/grouped-timeseries"
+# The only registered `group_by` projection for the ingest-batch event.
+_PIPELINE_HEALTH_GROUP_BY = ["batch_size_bucket", "transport", "device_type"]
 _INGEST_BATCH_EVENT: str = EventName.API_METRICS_INGEST_BATCH.value
 
 
@@ -1089,7 +1091,7 @@ def test_grouped_timeseries_returns_one_row_per_dim_tuple(
             event_name=EventName.API_METRICS_INGEST_BATCH,
             category=EventCategory.API,
             bucket_start=bucket_inside,
-            count=4,
+            count=9,
             dimensions={
                 "batch_size_bucket": "1",
                 "transport": "fetch",
@@ -1111,7 +1113,7 @@ def test_grouped_timeseries_returns_one_row_per_dim_tuple(
             event_name=EventName.API_METRICS_INGEST_BATCH,
             category=EventCategory.API,
             bucket_start=bucket_inside,
-            count=2,
+            count=6,
             dimensions={
                 "batch_size_bucket": "1",
                 "transport": "beacon",
@@ -1119,13 +1121,13 @@ def test_grouped_timeseries_returns_one_row_per_dim_tuple(
             },
         )
 
-    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=["transport", "device_type"])
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=_PIPELINE_HEALTH_GROUP_BY)
     response = logged_in_client.get(url, headers=_AJAX_HEADERS)
 
     assert response.status_code == 200
     body = response.get_json()
     assert body["event_name"] == _INGEST_BATCH_EVENT
-    assert body["group_by"] == ["transport", "device_type"]
+    assert body["group_by"] == _PIPELINE_HEALTH_GROUP_BY
     assert body["resolution"] == "hour"
     assert body["window"] == "day"
     rows_by_dim_tuple = {
@@ -1133,9 +1135,9 @@ def test_grouped_timeseries_returns_one_row_per_dim_tuple(
         for row in body["buckets"]
     }
     assert rows_by_dim_tuple == {
-        ("fetch", 2): 4,
+        ("fetch", 2): 9,
         ("beacon", 2): 7,
-        ("beacon", 1): 2,
+        ("beacon", 1): 6,
     }
 
 
@@ -1158,7 +1160,7 @@ def test_grouped_timeseries_does_not_zero_fill_missing_dim_combos(
             event_name=EventName.API_METRICS_INGEST_BATCH,
             category=EventCategory.API,
             bucket_start=_bucket_inside_window(),
-            count=1,
+            count=5,
             dimensions={
                 "batch_size_bucket": "1",
                 "transport": "fetch",
@@ -1166,7 +1168,7 @@ def test_grouped_timeseries_does_not_zero_fill_missing_dim_combos(
             },
         )
 
-    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=["transport", "device_type"])
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=_PIPELINE_HEALTH_GROUP_BY)
     response = logged_in_client.get(url, headers=_AJAX_HEADERS)
 
     assert response.status_code == 200
@@ -1176,8 +1178,215 @@ def test_grouped_timeseries_does_not_zero_fill_missing_dim_combos(
     # `timeseries` zero-fill policy.
     assert len(body["buckets"]) == 1
     only_row = body["buckets"][0]
-    assert only_row["dimensions"] == {"transport": "fetch", "device_type": 2}
-    assert only_row["count"] == 1
+    assert only_row["dimensions"] == {
+        "batch_size_bucket": "1",
+        "transport": "fetch",
+        "device_type": 2,
+    }
+    assert only_row["count"] == 5
+
+
+def _seed_ingest_batch(
+    *,
+    bucket_start: datetime,
+    count: int,
+    transport: str = "fetch",
+    batch_size_bucket: str = "1",
+) -> None:
+    _seed_event_with_count(
+        event_name=EventName.API_METRICS_INGEST_BATCH,
+        category=EventCategory.API,
+        bucket_start=bucket_start,
+        count=count,
+        dimensions={
+            "batch_size_bucket": batch_size_bucket,
+            "transport": transport,
+            "device_type": 2,
+        },
+    )
+
+
+def _parse_iso(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _two_hour_aligned_buckets() -> tuple[datetime, datetime]:
+    first = datetime.now(timezone.utc).replace(
+        minute=0, second=0, microsecond=0
+    ) - timedelta(hours=3)
+    return first, first + timedelta(hours=1)
+
+
+def test_grouped_timeseries_sub_floor_tuple_is_returned_as_sentinel(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN API_METRICS_INGEST_BATCH rows with counts 4 (fetch), 5 (beacon) and
+        9 (beacon, a different batch_size_bucket)
+    WHEN GETing grouped-timeseries grouped by transport and device_type
+    THEN the 4-count tuple appears only as the sentinel row (real device_type
+        kept); the sentinel is below the floor so the smallest kept tuple
+        (beacon, 5) is folded in (total 9); the 9-count tuple is verbatim; and
+        no raw `fetch` dim leaks.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    bucket = _two_hour_aligned_buckets()[0]
+    with app.app_context():
+        _seed_ingest_batch(bucket_start=bucket, count=4, transport="fetch")
+        _seed_ingest_batch(bucket_start=bucket, count=5, transport="beacon")
+        _seed_ingest_batch(
+            bucket_start=bucket, count=9, transport="beacon", batch_size_bucket="2-5"
+        )
+
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=_PIPELINE_HEALTH_GROUP_BY)
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    rows = response.get_json()["buckets"]
+    assert [(row["dimensions"], row["count"]) for row in rows] == [
+        ({"batch_size_bucket": "2-5", "transport": "beacon", "device_type": 2}, 9),
+        (
+            {
+                "batch_size_bucket": "suppressed",
+                "transport": "suppressed",
+                "device_type": 2,
+            },
+            9,
+        ),
+    ]
+    assert "fetch" not in response.get_data(as_text=True).split('"buckets"')[1]
+
+
+def test_grouped_timeseries_partition_by_bucket_false_sums_window_wide(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a tuple at 3 in each of two buckets (total 6) and another at 2+2
+    WHEN GETing with partition_by_bucket=false vs the default
+    THEN false returns one sentinel of 10: the 2+2 tuple (4) is below the floor,
+        so secondary suppression folds in the smallest kept tuple (6); the sum
+        is preserved. The default returns only sentinel rows.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    first_bucket, second_bucket = _two_hour_aligned_buckets()
+    with app.app_context():
+        for bucket in (first_bucket, second_bucket):
+            _seed_ingest_batch(bucket_start=bucket, count=3, transport="fetch")
+        for bucket in (first_bucket, second_bucket):
+            _seed_ingest_batch(bucket_start=bucket, count=2, transport="beacon")
+
+    base_url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=_PIPELINE_HEALTH_GROUP_BY)
+    collapsed = logged_in_client.get(
+        f"{base_url}&partition_by_bucket=false", headers=_AJAX_HEADERS
+    )
+    assert collapsed.status_code == 200
+    collapsed_body = collapsed.get_json()
+    assert [
+        (row["dimensions"]["transport"], row["count"])
+        for row in collapsed_body["buckets"]
+    ] == [("suppressed", 10)]
+    window_start = _parse_iso(collapsed_body["window_start"])
+    expected_bucket = window_start.replace(minute=0, second=0, microsecond=0)
+    assert {_parse_iso(row["bucket"]) for row in collapsed_body["buckets"]} == {
+        expected_bucket
+    }
+
+    for default_url in (base_url, f"{base_url}&partition_by_bucket=true"):
+        default_response = logged_in_client.get(default_url, headers=_AJAX_HEADERS)
+        default_rows = default_response.get_json()["buckets"]
+        assert len(default_rows) == 2
+        assert {row["dimensions"]["transport"] for row in default_rows} == {
+            "suppressed"
+        }
+        assert [row["count"] for row in default_rows] == [10 - 5, 5]
+
+
+def test_grouped_timeseries_partition_by_bucket_false_day_resolution_bucket(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a seeded tuple and partition_by_bucket=false with resolution=day
+    THEN every row's bucket is the window start truncated to the day.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_ingest_batch(bucket_start=_two_hour_aligned_buckets()[0], count=6)
+
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=_PIPELINE_HEALTH_GROUP_BY)
+    response = logged_in_client.get(
+        f"{url}&partition_by_bucket=false&resolution=day", headers=_AJAX_HEADERS
+    )
+    assert response.status_code == 200
+    body = response.get_json()
+    window_start = _parse_iso(body["window_start"])
+    expected_bucket = window_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    assert body["buckets"]
+    assert {_parse_iso(row["bucket"]) for row in body["buckets"]} == {expected_bucket}
+
+
+def test_grouped_timeseries_partition_by_bucket_invalid_value_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a partition_by_bucket value outside pydantic's boolean spellings
+    THEN the response is 400 with errors.partition_by_bucket.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=["transport"])
+    response = logged_in_client.get(
+        f"{url}&partition_by_bucket=maybe", headers=_AJAX_HEADERS
+    )
+    assert response.status_code == 400
+    assert "partition_by_bucket" in response.get_json()["errors"]
+
+
+def test_grouped_timeseries_allowed_projection_any_order_returns_200(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN the registered Pipeline Health projection
+    WHEN requested in a different key order
+    THEN the response is 200 (comparison is by exact set).
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = _grouped_url_for(
+        _INGEST_BATCH_EVENT,
+        group_by=["device_type", "batch_size_bucket", "transport"],
+    )
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "event_name,group_by",
+    [
+        # strict subsets of the registered set
+        (_INGEST_BATCH_EVENT, ["transport"]),
+        (_INGEST_BATCH_EVENT, ["transport", "device_type"]),
+        (_INGEST_BATCH_EVENT, ["device_type"]),
+        # event with no registered projection at all
+        (EventName.UI_URL_ACCESS.value, ["device_type"]),
+        # registered event, declared-but-unregistered dim
+        (EventName.UI_FORM_CANCEL.value, ["form"]),
+    ],
+)
+def test_grouped_timeseries_unregistered_projection_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    event_name: str,
+    group_by: list[str],
+) -> None:
+    """
+    GIVEN a group_by that is not an exact registered projection for the event
+    WHEN GETing grouped-timeseries
+    THEN the response is 400 INVALID_QUERY_PARAM with errors.group_by.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = _grouped_url_for(event_name, group_by=group_by)
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "not an allowed projection" in str(body[STD_JSON.ERRORS]["group_by"])
 
 
 # ---------------------------------------------------------------------------
@@ -1204,7 +1413,8 @@ def _seed_add_url_flow(bucket_start: datetime, *, with_rejections: bool) -> None
         step2 API_HIT POST        = 7   (urls.create_url)
         step3 URL_ADDED_TO_UTUB   = 6
     When `with_rejections` is True, two URL_CREATE_REJECTED rows seed the
-    step3 drop_breakdown (invalid_url=2, url_already_in_utub=1).
+    step3 drop_breakdown (invalid_url=6, url_already_in_utub=5; both at or
+    above the small-cell floor so they are returned verbatim).
     """
     _seed_event_with_count(
         event_name=EventName.UI_URL_CREATE_OPEN,
@@ -1241,14 +1451,14 @@ def _seed_add_url_flow(bucket_start: datetime, *, with_rejections: bool) -> None
             event_name=EventName.URL_CREATE_REJECTED,
             category=EventCategory.DOMAIN,
             bucket_start=bucket_start,
-            count=2,
+            count=6,
             dimensions={"reason": "invalid_url", "device_type": 2},
         )
         _seed_event_with_count(
             event_name=EventName.URL_CREATE_REJECTED,
             category=EventCategory.DOMAIN,
             bucket_start=bucket_start,
-            count=1,
+            count=5,
             dimensions={"reason": "url_already_in_utub", "device_type": 2},
         )
 
@@ -1492,8 +1702,8 @@ def test_flow_admin_happy_path_returns_steps_with_breakdown(
     domain_breakdown = steps[3]["breakdown"]
     assert domain_breakdown is not None
     rows_by_label = {row["label"]: row for row in domain_breakdown}
-    assert rows_by_label["invalid_url"]["count"] == 2
-    assert rows_by_label["url_already_in_utub"]["count"] == 1
+    assert rows_by_label["invalid_url"]["count"] == 6
+    assert rows_by_label["url_already_in_utub"]["count"] == 5
     assert abs(sum(row["pct_of_step"] for row in domain_breakdown) - 1.0) < 1e-9
 
 
