@@ -51,10 +51,6 @@ const UTUB_ID = 7;
 // 35% of it (~29.4px) is the distance-commit threshold.
 const REVEAL_WIDTH_PX = 84;
 const NUDGE_SESSION_STORAGE_KEY = "u4i:urlSwipeNudgeShown";
-// Generous ceiling for spinUntilRealElapsed's busy-wait — far more than the
-// few ms it ever actually needs, so it only trips if performance.now() is
-// frozen or non-monotonic.
-const SPIN_UNTIL_REAL_ELAPSED_SAFETY_CEILING_MS = 1000;
 
 const SWIPE_IGNORE_SELECTORS = [
   ".tagBadge",
@@ -136,31 +132,6 @@ function dispatchPointer({
   Object.defineProperty(event, "clientY", { value: clientY });
   Object.defineProperty(event, "pointerType", { value: pointerType });
   target.dispatchEvent(event);
-}
-
-// Spins on the real clock (no `vi.useFakeTimers()`) until at least
-// `minElapsedMs` of genuine wall-clock time has passed. Guarantees
-// `_onDragMove`'s internal `elapsedMs` is never the degenerate same-tick 0
-// (which would leave velocity frozen at its initial value), so a fast,
-// small-distance flick reliably reads a nonzero velocity regardless of how
-// fast the two synchronous dispatches themselves execute.
-function spinUntilRealElapsed({
-  minElapsedMs,
-}: {
-  minElapsedMs: number;
-}): void {
-  const startTimestamp = performance.now();
-  while (performance.now() - startTimestamp < minElapsedMs) {
-    // Busy-wait; timers are real here, so this genuinely blocks briefly.
-    if (
-      performance.now() - startTimestamp >
-      SPIN_UNTIL_REAL_ELAPSED_SAFETY_CEILING_MS
-    ) {
-      throw new Error(
-        `spinUntilRealElapsed exceeded its ${SPIN_UNTIL_REAL_ELAPSED_SAFETY_CEILING_MS}ms safety ceiling while waiting for ${minElapsedMs}ms; performance.now() appears frozen or non-monotonic.`,
-      );
-    }
-  }
 }
 
 // Mirrors splash/scroll-reveal.test.ts's matchMedia-mocking convention.
@@ -540,18 +511,22 @@ describe("swipe gesture", () => {
     const row = mountURLRow();
     const rowElement = row[0];
 
+    // Hardened: a real clock made this flaky under host load (a >30ms pause
+    // between pointerdown and move drops velocity below the 0.5 px/ms fling
+    // threshold). Drive performance.now() deterministically instead: 4ms
+    // elapse between pointerdown and pointermove, so a 15px move is 3.75 px/ms.
+    let fakeNowMs = 1000;
+    const nowSpy = vi
+      .spyOn(performance, "now")
+      .mockImplementation(() => fakeNowMs);
     dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
-    // Guarantee at least 2ms of real elapsed time before the move so
-    // elapsedMs can never land on the degenerate same-tick 0. A 15px move
-    // over this window clears the 0.5 px/ms fling threshold up to ~30ms
-    // elapsed (15 / 0.5); a tight busy-wait's real-world overshoot is
-    // sub-millisecond, leaving comfortable margin below that bound.
-    spinUntilRealElapsed({ minElapsedMs: 2 });
+    fakeNowMs += 4;
     // 15px left of the 84px reveal width => fraction ~0.179, well under the
     // 0.35 distance-commit threshold, so a commit here can only come from
     // the velocity/fling branch, never the distance branch.
     dispatchPointer({ target: rowElement, type: "pointermove", clientX: 85 });
     dispatchPointer({ target: rowElement, type: "pointerup", clientX: 85 });
+    nowSpy.mockRestore();
 
     expect(deleteURL).toHaveBeenCalledTimes(1);
     expect(deleteURL).toHaveBeenCalledWith({
