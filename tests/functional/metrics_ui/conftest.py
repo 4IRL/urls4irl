@@ -9,12 +9,36 @@
 # would fire once per test).
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Any, Optional, Tuple
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
 from playwright.sync_api import Page
+
+from tests.functional.metrics_ui.playwright_utils import (
+    SeedCustomFlows,
+    insert_custom_flows,
+)
+
+
+@pytest.fixture
+def seed_custom_flows(provide_app: Flask) -> SeedCustomFlows:
+    """Factory inserting custom `Metric_Flows` rows straight into the test DB.
+
+    Call it (after ``create_test_users``) before opening the dashboard; it
+    returns the ``custom_<id>`` flow ids. Pass ``definition`` for an invalid
+    shape (see ``removed_event_definition`` / ``one_step_definition``).
+    """
+
+    def _seed(
+        *, display_names: list[str], definition: Optional[dict[str, Any]] = None
+    ) -> list[str]:
+        return insert_custom_flows(
+            app=provide_app, display_names=display_names, definition=definition
+        )
+
+    return _seed
 
 
 def _seed_metrics_via_cli(runner: Tuple[Flask, FlaskCliRunner]) -> None:

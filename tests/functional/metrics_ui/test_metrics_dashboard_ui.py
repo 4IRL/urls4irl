@@ -1,22 +1,29 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 from flask import Flask
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, Route, expect
 
 from backend.cli.mock_options import SEED_LATENCY_ENDPOINTS
 from backend.config import ConfigTestUI
 from backend.db import db
 from backend.metrics.events import DeviceType
+from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.gauges import GaugeName
 from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.models.metric_flows import Metric_Flows
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import MetricsDashboardLocators as MDL
 from tests.functional.metrics_ui.playwright_utils import (
+    SeedCustomFlows,
     login_admin_and_open_metrics_dashboard,
+    one_step_definition,
+    removed_event_definition,
 )
 from tests.functional.playwright_utils import (
     wait_for_element_presence,
@@ -339,6 +346,8 @@ def test_flows_tab_renders_funnel_cards_with_seeded_data(
         f"Expected at least {EXPECTED_FLOW_CARD_COUNT} flow cards, "
         f"got {len(flow_cards)}."
     )
+    # No custom flows are seeded here, so the grid holds exactly the built-ins.
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT)
 
     funnel_steps = wait_then_get_elements(page=page, css_selector=MDL.FLOWS_FUNNEL_STEP)
     assert len(funnel_steps) >= 1, "Expected at least one funnel step row to render."
@@ -918,3 +927,652 @@ def test_latency_tab_shows_approximate_note_for_long_window(
 
     expect(page.locator(MDL.LATENCY_APPROXIMATE_NOTE)).to_have_count(0)
     expect(page.locator(MDL.LATENCY_DAILY_RESOLUTION_NOTE)).to_have_count(0)
+
+
+# ---------------------------------------------------------------------------
+# Flows grid: custom flows, delete confirm, needs-attention, toolbar
+# ---------------------------------------------------------------------------
+
+DESKTOP_VIEWPORT: dict[str, int] = {"width": 1280, "height": 900}
+MOBILE_VIEWPORT: dict[str, int] = {"width": 420, "height": 900}
+VIEWPORTS = pytest.mark.parametrize(
+    "viewport",
+    [DESKTOP_VIEWPORT, MOBILE_VIEWPORT],
+    ids=["1280", "420"],
+)
+FLOW_LIST_URL_RE: re.Pattern[str] = re.compile(r".*/admin/metrics/flows(\?.*)?$")
+FLOW_DELETE_URL_RE: re.Pattern[str] = re.compile(r".*/admin/metrics/flows/[^/?]+$")
+FLOW_QUERY_URL_RE: re.Pattern[str] = re.compile(r".*/api/metrics/query/flow(\?.*)?$")
+MIN_TOUCH_TARGET_PX: int = 44
+LONG_FLOW_NAME: str = "x" * FLOW_LIMITS.NAME_MAX_LENGTH
+
+
+class HeldFlowQueries:
+    """Holds every `/api/metrics/query/flow` request until `release()`;
+    afterwards requests pass straight through."""
+
+    def __init__(self) -> None:
+        self._held: list[Route] = []
+        self._released: bool = False
+
+    def handle(self, route: Route) -> None:
+        if self._released:
+            route.continue_()
+        else:
+            self._held.append(route)
+
+    def release(self) -> None:
+        self._released = True
+        for route in self._held:
+            route.continue_()
+        self._held.clear()
+
+
+def _open_flows_tab(
+    *,
+    page: Page,
+    app: Flask,
+    port: int,
+    config: ConfigTestUI,
+    viewport: dict[str, int] | None = None,
+    wait_for_settled: bool = True,
+) -> None:
+    """Log in, open the Flows tab and (by default) wait for every card to leave
+    the loading state, since cards are rebuilt when their funnel settles.
+    Tests that hold `/flow` responses pass ``wait_for_settled=False``."""
+    if viewport is not None:
+        page.set_viewport_size(viewport)
+    login_admin_and_open_metrics_dashboard(
+        app=app,
+        context=page.context,
+        page=page,
+        port=port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=config,
+    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
+    if wait_for_settled:
+        expect(page.locator(MDL.FLOWS_COUNT)).not_to_have_text(
+            UI_TEST_STRINGS.METRICS_FLOWS_COUNT_LOADING
+        )
+        expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
+
+
+def _custom_card(page: Page, flow_id: str) -> Locator:
+    return page.locator(f'{MDL.FLOWS_CARD}[data-flow-id="{flow_id}"]')
+
+
+def _count_text(*, custom: int) -> str:
+    return UI_TEST_STRINGS.METRICS_FLOWS_COUNT.format(
+        builtin=EXPECTED_FLOW_CARD_COUNT,
+        custom=custom,
+        max=FLOW_LIMITS.MAX_CUSTOM,
+    )
+
+
+def _delete_other_admin(*, app: Flask, flow_id: str) -> None:
+    """Remove the row as if another admin had deleted it."""
+    with app.app_context():
+        Metric_Flows.query.filter_by(id=int(flow_id.removeprefix("custom_"))).delete()
+        db.session.commit()
+
+
+def test_flows_toolbar_shows_counts_and_custom_card_controls(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN two custom flows alongside the four built-ins
+    WHEN an admin opens the Flows tab
+    THEN the toolbar reads "4 built-in · 2 custom (of 20)" with no zero-custom
+        hint, custom cards show the Custom badge and a labelled Delete button,
+        and built-in cards show neither a custom badge nor Delete.
+    """
+    flow_ids = seed_custom_flows(display_names=["Alpha flow", "Beta flow"])
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+    )
+
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT + 2)
+    expect(page.locator(MDL.FLOWS_HEADING)).to_have_text(
+        UI_TEST_STRINGS.METRICS_FLOWS_HEADING
+    )
+    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(_count_text(custom=2))
+    expect(page.locator(MDL.FLOWS_HINT)).to_be_hidden()
+
+    for flow_id, name in zip(flow_ids, ["Alpha flow", "Beta flow"]):
+        card = _custom_card(page, flow_id)
+        expect(card.locator(".flow-badge.custom")).to_have_text(
+            UI_TEST_STRINGS.METRICS_FLOW_BADGE_CUSTOM
+        )
+        delete_button = card.locator(".flow-delete-btn")
+        expect(delete_button).to_have_count(1)
+        expect(delete_button).to_have_attribute(
+            "aria-label",
+            UI_TEST_STRINGS.METRICS_FLOW_DELETE_LABEL.format(name=name),
+        )
+
+    built_in_cards = page.locator(f"{MDL.FLOWS_CARD}:not([data-flow-id^=custom_])")
+    expect(built_in_cards).to_have_count(EXPECTED_FLOW_CARD_COUNT)
+    expect(built_in_cards.locator(".flow-delete-btn")).to_have_count(0)
+    expect(built_in_cards.locator(".flow-badge.custom")).to_have_count(0)
+
+
+def test_flows_toolbar_shows_zero_custom_hint(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN no custom flows
+    WHEN an admin opens the Flows tab
+    THEN the toolbar reads "4 built-in · 0 custom (of 20)" and the zero-custom
+        hint is visible.
+    """
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+    )
+
+    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(_count_text(custom=0))
+    expect(page.locator(MDL.FLOWS_HINT)).to_have_text(
+        UI_TEST_STRINGS.METRICS_FLOWS_ZERO_CUSTOM_HINT
+    )
+
+
+@VIEWPORTS
+def test_flow_delete_escape_returns_focus_to_delete_button(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+    viewport: dict[str, int],
+):
+    """
+    GIVEN a custom flow card
+    WHEN the admin opens the delete confirm and presses Escape
+    THEN Cancel was focused while open and the Delete button is focused after.
+    """
+    [flow_id] = seed_custom_flows(display_names=["Escape flow"])
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        viewport=viewport,
+    )
+
+    card = _custom_card(page, flow_id)
+    card.locator(".flow-delete-btn").click()
+    expect(card.locator(".flow-cancel-btn")).to_be_focused()
+    expect(page.locator(MDL.FLOWS_CONFIRM_GROUP)).to_have_count(1)
+
+    page.keyboard.press("Escape")
+    expect(card.locator("[data-flow-confirm]")).to_have_count(0)
+    expect(card.locator(".flow-delete-btn")).to_be_focused()
+
+
+@VIEWPORTS
+def test_flow_delete_cancel_click_returns_focus_to_delete_button(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+    viewport: dict[str, int],
+):
+    """
+    GIVEN an open delete confirm on a custom card
+    WHEN the admin clicks Cancel
+    THEN the confirm closes and the Delete button is focused.
+    """
+    [flow_id] = seed_custom_flows(display_names=["Cancel flow"])
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        viewport=viewport,
+    )
+
+    card = _custom_card(page, flow_id)
+    card.locator(".flow-delete-btn").click()
+    card.locator(".flow-cancel-btn").click()
+
+    expect(card.locator("[data-flow-confirm]")).to_have_count(0)
+    expect(card.locator(".flow-delete-btn")).to_be_focused()
+
+
+@VIEWPORTS
+def test_flow_delete_confirm_removes_card_and_updates_toolbar(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+    viewport: dict[str, int],
+):
+    """
+    GIVEN one custom flow (five cards)
+    WHEN the admin confirms the delete
+    THEN four cards remain, the toolbar returns to the zero-custom text and
+        hint, focus moves to the heading and the action announcement names the
+        deleted flow.
+    """
+    [flow_id] = seed_custom_flows(display_names=["Doomed flow"])
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        viewport=viewport,
+    )
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT + 1)
+
+    card = _custom_card(page, flow_id)
+    card.locator(".flow-delete-btn").click()
+    card.locator(".flow-confirm-btn").click()
+
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT)
+    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(_count_text(custom=0))
+    expect(page.locator(MDL.FLOWS_HINT)).to_have_text(
+        UI_TEST_STRINGS.METRICS_FLOWS_ZERO_CUSTOM_HINT
+    )
+    expect(page.locator(MDL.FLOWS_HEADING)).to_be_focused()
+    expect(page.locator(MDL.FLOWS_ACTION_ANNOUNCEMENT)).to_have_text(
+        UI_TEST_STRINGS.METRICS_FLOW_DELETED.format(name="Doomed flow")
+    )
+
+
+def test_flow_needs_attention_card_names_the_failing_step(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN a custom flow whose second step names a removed event
+    WHEN an admin opens the Flows tab
+    THEN its card is a needs-attention card whose accessible name contains
+        "Needs attention." and "Step 2:", the glyph and text are visible, and
+        there is no Retry button.
+    """
+    [flow_id] = seed_custom_flows(
+        display_names=["Broken flow"], definition=removed_event_definition()
+    )
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+    )
+
+    card = _custom_card(page, flow_id)
+    expect(card).to_have_attribute("data-flow-state", "invalid")
+    expect(card).to_have_attribute(
+        "aria-label",
+        re.compile(
+            re.escape(UI_TEST_STRINGS.METRICS_FLOW_NEEDS_ATTENTION) + r".*Step 2:"
+        ),
+    )
+    attention = card.locator(".flow-attention")
+    expect(attention).to_be_visible()
+    expect(attention).to_contain_text(UI_TEST_STRINGS.METRICS_FLOW_NEEDS_ATTENTION)
+    expect(attention).to_contain_text("Step 2:")
+    glyph_content = attention.evaluate(
+        "element => getComputedStyle(element, '::before').content"
+    )
+    assert "⚠" in glyph_content
+    expect(card.locator(".flow-retry-btn")).to_have_count(0)
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT + 1)
+
+
+def test_flow_level_needs_attention_card_has_no_step_number(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN a custom flow with a single step (a flow-level problem)
+    WHEN an admin opens the Flows tab
+    THEN its needs-attention card shows the reason without a "Step N:" prefix.
+    """
+    [flow_id] = seed_custom_flows(
+        display_names=["Short flow"], definition=one_step_definition()
+    )
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+    )
+
+    card = _custom_card(page, flow_id)
+    expect(card).to_have_attribute("data-flow-state", "invalid")
+    attention = card.locator(".flow-attention")
+    expect(attention).to_contain_text(UI_TEST_STRINGS.METRICS_FLOW_NEEDS_ATTENTION)
+    expect(attention).not_to_have_text(re.compile(r"Step \d+:"))
+    expect(card).to_have_attribute(
+        "aria-label",
+        re.compile(re.escape(UI_TEST_STRINGS.METRICS_FLOW_NEEDS_ATTENTION)),
+    )
+    expect(card).not_to_have_attribute("aria-label", re.compile(r"Step \d+:"))
+
+
+def test_flows_panel_is_busy_until_cards_load(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN `/flow` requests are held
+    WHEN an admin opens the Flows tab
+    THEN the panel is `aria-busy="true"` while cards load, and after release
+        it is no longer busy and the "Flow funnels updated." announcement lands.
+    """
+    seed_custom_flows(display_names=["Busy flow"])
+    held = HeldFlowQueries()
+    page.route(FLOW_QUERY_URL_RE, held.handle)
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        wait_for_settled=False,
+    )
+
+    panel = page.locator(MDL.FLOWS_PANEL)
+    expect(panel).to_have_attribute("aria-busy", "true")
+
+    held.release()
+
+    expect(panel).not_to_have_attribute("aria-busy", "true")
+    expect(page.locator(MDL.FLOWS_PANEL_ANNOUNCEMENT)).to_have_text(
+        UI_TEST_STRINGS.METRICS_FLOWS_LOADED
+    )
+
+
+def test_flows_grid_shows_loading_skeletons_for_queued_cards(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN six custom flows (ten cards, more than the four-request cap) and held
+        `/flow` responses
+    WHEN an admin opens the Flows tab
+    THEN every card renders as a loading skeleton (none dropped), and after
+        release all ten settle with no skeleton left.
+    """
+    custom_count = 6
+    seed_custom_flows(
+        display_names=[f"Queued flow {index}" for index in range(custom_count)]
+    )
+    held = HeldFlowQueries()
+    page.route(FLOW_QUERY_URL_RE, held.handle)
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        wait_for_settled=False,
+    )
+
+    total = EXPECTED_FLOW_CARD_COUNT + custom_count
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(total)
+    expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(total)
+
+    held.release()
+
+    expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(total)
+
+
+def test_flow_delete_confirm_survives_card_settles(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN six custom flows with held `/flow` responses and an open confirm on
+        one custom card
+    WHEN the held responses are released and the cards re-render
+    THEN exactly one confirm is still open and Cancel keeps focus.
+    """
+    flow_ids = seed_custom_flows(
+        display_names=[f"Settle flow {index}" for index in range(6)]
+    )
+    held = HeldFlowQueries()
+    page.route(FLOW_QUERY_URL_RE, held.handle)
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        wait_for_settled=False,
+    )
+
+    card = _custom_card(page, flow_ids[0])
+    card.locator(".flow-delete-btn").click()
+    expect(card.locator(".flow-cancel-btn")).to_be_focused()
+
+    held.release()
+
+    expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
+    expect(page.locator(MDL.FLOWS_CONFIRM_GROUP)).to_have_count(1)
+    expect(card.locator(".flow-cancel-btn")).to_be_focused()
+
+
+def test_flow_delete_404_shows_already_deleted_notice(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN another admin has already deleted the flow (DELETE answers 404)
+    WHEN the admin confirms the delete
+    THEN the card disappears and the already-deleted notice is shown.
+    """
+    [flow_id] = seed_custom_flows(display_names=["Gone flow"])
+
+    def _answer_404(route: Route) -> None:
+        if route.request.method != "DELETE":
+            route.fallback()
+            return
+        _delete_other_admin(app=provide_app, flow_id=flow_id)
+        route.fulfill(
+            status=404,
+            content_type="application/json",
+            body='{"status": "Failure", "message": "Not found"}',
+        )
+
+    page.route(FLOW_DELETE_URL_RE, _answer_404)
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+    )
+
+    card = _custom_card(page, flow_id)
+    card.locator(".flow-delete-btn").click()
+    card.locator(".flow-confirm-btn").click()
+
+    expect(page.locator(MDL.FLOWS_NOTICE)).to_have_text(
+        UI_TEST_STRINGS.METRICS_FLOW_ALREADY_DELETED.format(name="Gone flow")
+    )
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT)
+
+
+def test_flows_list_429_falls_back_to_built_ins_with_list_error(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN the flow list endpoint answers 429 with a JSON body
+    WHEN an admin opens the Flows tab
+    THEN the four built-ins render, the error banner and the inline list error
+        show, and the page is not replaced.
+    """
+    seed_custom_flows(display_names=["Hidden flow"])
+
+    def _rate_limit_list(route: Route) -> None:
+        if route.request.method != "GET":
+            route.fallback()
+            return
+        route.fulfill(
+            status=429,
+            content_type="application/json",
+            body='{"status": "Failure", "message": "Too many requests"}',
+        )
+
+    page.route(FLOW_LIST_URL_RE, _rate_limit_list)
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+    )
+
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT)
+    expect(page.locator(MDL.FLOWS_LIST_ERROR)).to_contain_text(
+        UI_TEST_STRINGS.METRICS_FLOWS_LIST_FAILED
+    )
+    expect(page.locator(MDL.ERROR_BANNER)).to_be_visible()
+    expect(page.locator(MDL.DASHBOARD_ROOT)).to_be_visible()
+
+
+def test_flow_delete_controls_meet_touch_target_and_fit_at_420px(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN a custom flow with a 64-character name at a 420px viewport
+    WHEN the admin opens the delete confirm
+    THEN Delete, Confirm and Cancel are each at least 44x44 and the card does
+        not overflow horizontally.
+    """
+    [flow_id] = seed_custom_flows(display_names=[LONG_FLOW_NAME])
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        viewport=MOBILE_VIEWPORT,
+    )
+
+    # Cards are rebuilt when their funnel settles; measure only after that.
+    expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
+    card = _custom_card(page, flow_id)
+    delete_button = card.locator(".flow-delete-btn")
+    expect(delete_button).to_be_visible()
+    delete_box = delete_button.bounding_box()
+    assert delete_box is not None
+    assert delete_box["width"] >= MIN_TOUCH_TARGET_PX
+    assert delete_box["height"] >= MIN_TOUCH_TARGET_PX
+
+    delete_button.click()
+    confirm_button = card.locator(".flow-confirm-btn")
+    cancel_button = card.locator(".flow-cancel-btn")
+    expect(confirm_button).to_be_visible()
+    for button in (confirm_button, cancel_button):
+        box = button.bounding_box()
+        assert box is not None
+        assert box["width"] >= MIN_TOUCH_TARGET_PX, box
+        assert box["height"] >= MIN_TOUCH_TARGET_PX, box
+
+    overflow = card.evaluate("el => el.scrollWidth - el.clientWidth")
+    assert overflow <= 1, f"Card overflows horizontally by {overflow}px."
+
+
+def test_already_deleted_notice_fits_viewport_at_420px(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+):
+    """
+    GIVEN a 64-character flow name that another admin already deleted, at 420px
+    WHEN the admin confirms the delete and the notice appears
+    THEN the toolbar and notice stay within the viewport width.
+    """
+    [flow_id] = seed_custom_flows(display_names=[LONG_FLOW_NAME])
+
+    def _answer_404(route: Route) -> None:
+        if route.request.method != "DELETE":
+            route.fallback()
+            return
+        _delete_other_admin(app=provide_app, flow_id=flow_id)
+        route.fulfill(
+            status=404,
+            content_type="application/json",
+            body='{"status": "Failure", "message": "Not found"}',
+        )
+
+    page.route(FLOW_DELETE_URL_RE, _answer_404)
+    _open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        viewport=MOBILE_VIEWPORT,
+    )
+
+    card = _custom_card(page, flow_id)
+    card.locator(".flow-delete-btn").click()
+    card.locator(".flow-confirm-btn").click()
+
+    notice = page.locator(MDL.FLOWS_NOTICE)
+    expect(notice).to_be_visible()
+    viewport_width = MOBILE_VIEWPORT["width"]
+    expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT)
+    for selector in (MDL.FLOWS_NOTICE, MDL.FLOWS_TOOLBAR):
+        box = page.locator(selector).bounding_box()
+        assert box is not None
+        assert box["x"] + box["width"] <= viewport_width + 1, (selector, box)
+    page_overflow = page.evaluate(
+        "() => document.documentElement.scrollWidth - window.innerWidth"
+    )
+    assert page_overflow <= 1, f"Page overflows horizontally by {page_overflow}px."

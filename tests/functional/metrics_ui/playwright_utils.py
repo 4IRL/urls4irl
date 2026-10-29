@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import copy
+from typing import Any, Callable
+
 from flask import Flask
 from playwright.sync_api import BrowserContext, Page
 
 from backend import db
 from backend.config import ConfigTestUI
+from backend.metrics.flow_validation import serialize_flow_steps
+from backend.metrics.flows import FLOWS, FlowId, format_custom_flow_id
+from backend.models.metric_flows import Metric_Flows
 from backend.models.users import User_Role, Users
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.playwright_utils import (
@@ -13,6 +19,55 @@ from tests.functional.playwright_utils import (
 )
 
 ADMIN_METRICS_DASHBOARD_PATH: str = "/admin/metrics"
+REMOVED_EVENT_NAME: str = "removed_event"
+# Type of the `seed_custom_flows` fixture: `(*, display_names, definition=None)`.
+SeedCustomFlows = Callable[..., list[str]]
+
+
+def build_valid_flow_steps() -> list[dict[str, Any]]:
+    """Fresh deep copy of the serialized add-URL funnel steps."""
+    return copy.deepcopy(
+        serialize_flow_steps(FLOWS[FlowId.ADD_URL_TO_UTUB])["steps"]  # type: ignore[arg-type]
+    )
+
+
+def removed_event_definition() -> dict[str, Any]:
+    """Definition whose second step names an event that no longer exists
+    (needs-attention card with a "Step 2:" prefix)."""
+    steps = build_valid_flow_steps()
+    steps[1]["event_name"] = REMOVED_EVENT_NAME
+    return {"steps": steps}
+
+
+def one_step_definition() -> dict[str, Any]:
+    """Definition with a single step (flow-level needs-attention, no step number)."""
+    return {"steps": build_valid_flow_steps()[:1]}
+
+
+def insert_custom_flows(
+    *,
+    app: Flask,
+    display_names: list[str],
+    definition: dict[str, Any] | None = None,
+    created_by: int = 1,
+) -> list[str]:
+    """Insert one `Metric_Flows` row per display name and return the
+    `custom_<id>` flow ids, in order."""
+    flow_ids: list[str] = []
+    with app.app_context():
+        for display_name in display_names:
+            row = Metric_Flows(
+                display_name=display_name,
+                definition=copy.deepcopy(definition)
+                if definition is not None
+                else {"steps": build_valid_flow_steps()},
+                created_by=created_by,
+                updated_by=created_by,
+            )
+            db.session.add(row)
+            db.session.commit()
+            flow_ids.append(format_custom_flow_id(row.id))
+    return flow_ids
 
 
 def promote_user_to_admin(*, app: Flask, user_id: int) -> None:
