@@ -208,6 +208,42 @@ export function fetchFlow({
 }
 
 /**
+ * Fetch the admin list of metric flows (built-in and custom).
+ *
+ * Example: `fetchMetricFlows()` issues `GET /admin/metrics/flows`.
+ */
+export function fetchMetricFlows(): JQuery.jqXHR<
+  SuccessResponse<"listMetricFlows">
+> {
+  return ajaxCall(
+    "GET",
+    requireAdminRoute("adminMetricFlowsList"),
+    null,
+    QUERY_TIMEOUT_MS,
+  ) as JQuery.jqXHR<SuccessResponse<"listMetricFlows">>;
+}
+
+/**
+ * Delete one custom metric flow.
+ *
+ * Example: `deleteMetricFlow({ flowId: "custom_12" })`
+ * issues `DELETE /admin/metrics/flows/custom_12`.
+ */
+export function deleteMetricFlow({
+  flowId,
+}: {
+  flowId: string;
+}): JQuery.jqXHR<SuccessResponse<"deleteMetricFlow">> {
+  const url = requireAdminRoute("adminMetricFlowDelete").replace(
+    "-1",
+    encodeURIComponent(flowId),
+  );
+  return ajaxCall("DELETE", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
+    SuccessResponse<"deleteMetricFlow">
+  >;
+}
+
+/**
  * Fetch every gauge's windowed series in ONE batched request — the response
  * carries one entry per gauge, each folding in its own `kind`/`description`
  * metadata, so all gauge data the dashboard needs comes from this single
