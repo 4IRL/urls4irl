@@ -25,6 +25,7 @@ from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rol
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.metric_flows import Metric_Flows
+from backend.models.user_preferences import User_Preferences, UtubSort
 from backend.models.users import User_Role, Users
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -89,6 +90,28 @@ def test_add_mock_users(runner):
     cli_runner.invoke(args=["addmock", "users"])
     with app.app_context():
         verify_users_added()
+
+
+def test_add_mock_users_leaves_utub_list_preferences_at_defaults(runner):
+    """
+    GIVEN a developer adding mock users via `flask addmock users`
+    WHEN the seed has created a UserPreferences row per user
+    THEN every row keeps the UTub list preferences at their defaults
+        (recent_activity / row counts off / totals on), because non-default
+        rows would change deck order and totals in functional UI tests.
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+    cli_runner.invoke(args=["addmock", "users"])
+    with app.app_context():
+        all_preferences = User_Preferences.query.all()
+        assert len(all_preferences) > 0
+        for preferences in all_preferences:
+            assert preferences.utub_sort == UtubSort.RECENT_ACTIVITY
+            assert preferences.show_row_counts is False
+            assert preferences.show_list_totals is True
 
 
 def test_add_mock_utubs_with_duplicates(runner):

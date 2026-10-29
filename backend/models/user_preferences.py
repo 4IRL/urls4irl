@@ -6,6 +6,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -15,6 +16,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SQLEnum,
 )
+from sqlalchemy import text as sa_text
 
 from backend import db
 from backend.utils.datetime_utils import utc_now
@@ -40,6 +42,14 @@ class SortOrder(Enum):
     NEWEST = "newest"
     OLDEST = "oldest"
     TITLE_AZ = "title_az"
+
+
+class UtubSort(Enum):
+    RECENT_ACTIVITY = "recent_activity"
+    LAST_OPENED = "last_opened"
+    NAME_AZ = "name_az"
+    NEWEST_CREATED = "newest_created"
+    OLDEST_CREATED = "oldest_created"
 
 
 class Density(Enum):
@@ -134,6 +144,31 @@ class User_Preferences(db.Model):
         default=DateFormat.ISO,
         name="dateFormat",
     )
+    utub_sort: UtubSort = Column(
+        SQLEnum(
+            UtubSort,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            name="utub_sort_enum",
+        ),
+        nullable=False,
+        default=UtubSort.RECENT_ACTIVITY,
+        server_default=UtubSort.RECENT_ACTIVITY.value,
+        name="utubSort",
+    )
+    show_row_counts: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=sa_text("false"),
+        name="showRowCounts",
+    )
+    show_list_totals: bool = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=sa_text("true"),
+        name="showListTotals",
+    )
     created_at: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
@@ -165,6 +200,9 @@ class ResolvedPreferences:
     default_sort: SortOrder
     density: Density
     date_format: DateFormat
+    utub_sort: UtubSort
+    show_row_counts: bool
+    show_list_totals: bool
 
 
 def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
@@ -184,6 +222,9 @@ def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
             default_sort=SortOrder.NEWEST,
             density=Density.COMFORTABLE,
             date_format=DateFormat.ISO,
+            utub_sort=UtubSort.RECENT_ACTIVITY,
+            show_row_counts=False,
+            show_list_totals=True,
         )
     return ResolvedPreferences(
         theme=row.theme,
@@ -191,4 +232,7 @@ def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
         default_sort=row.default_sort,
         density=row.density,
         date_format=row.date_format,
+        utub_sort=row.utub_sort,
+        show_row_counts=row.show_row_counts,
+        show_list_totals=row.show_list_totals,
     )
