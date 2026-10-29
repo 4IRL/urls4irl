@@ -7,6 +7,7 @@ from alembic.config import Config
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
+from sqlalchemy.exc import DataError
 
 from backend import db, migrate
 from backend.models.user_preferences import User_Preferences  # noqa: F401
@@ -30,6 +31,9 @@ _EXPECTED_USER_PREFERENCES_COLUMNS = {
     "defaultSort",
     "density",
     "dateFormat",
+    "utubSort",
+    "showRowCounts",
+    "showListTotals",
     "createdAt",
     "updatedAt",
 }
@@ -42,7 +46,11 @@ _ENUM_BACKED_COLUMNS = {
     "defaultSort",
     "density",
     "dateFormat",
+    "utubSort",
 }
+
+_PRE_UTUB_LIST_REVISION = _VIEW_SPLIT_REVISION
+_UTUB_SORT_ENUM = "utub_sort_enum"
 
 _MANAGEDB_DROP_ARGS = ["managedb", "drop", "test"]
 _ADDMOCK_ALL_ARGS = ["addmock", "all"]
@@ -318,6 +326,115 @@ def test_add_user_preferences_migration_upgrade_and_downgrade(runner):
         # Schema is now fully migrated to head; recreate any tables the
         # migrations left absent so the runner fixture teardown operates against
         # the full schema for subsequent tests.
+        db.create_all()
+
+    del os.environ["PYTEST_RUNNING"]
+
+
+def _enum_type_exists(connection: Connection) -> bool:
+    return bool(
+        connection.execute(
+            text("SELECT 1 FROM pg_type WHERE typname = :name"),
+            {"name": _UTUB_SORT_ENUM},
+        ).scalar()
+    )
+
+
+def test_add_utub_list_preferences_migration_roundtrip(runner):
+    """
+    GIVEN a database at revision b3e7c1d9a4f2 holding seeded UserPreferences rows
+    WHEN the b4e8a2c6d0f1 migration is applied, reverted and re-applied
+    THEN existing rows backfill to recent_activity / counts off / totals on,
+        non-default values store and read back, an invalid enum value is
+        rejected, the downgrade removes the columns and the enum type, and the
+        re-upgrade succeeds.
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    os.environ["PYTEST_RUNNING"] = "1"
+    app, cli_runner = runner
+    migrate.init_app(app)
+
+    cli_runner.invoke(args=_MANAGEDB_DROP_ARGS)
+
+    with app.app_context():
+        command.upgrade(_build_alembic_config(), "head")
+        cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
+        command.downgrade(_build_alembic_config(), _PRE_UTUB_LIST_REVISION)
+
+        inspector = inspect(db.engine)
+        pre_columns = {
+            column["name"] for column in inspector.get_columns(_USER_PREFERENCES_TABLE)
+        }
+        assert "utubSort" not in pre_columns
+        with db.engine.connect() as connection:
+            assert not _enum_type_exists(connection)
+            preference_row_count = connection.execute(
+                text('SELECT COUNT(*) FROM "UserPreferences"')
+            ).scalar_one()
+        assert preference_row_count > 0
+
+        command.upgrade(_build_alembic_config(), "head")
+
+        with db.engine.connect() as connection:
+            backfilled = connection.execute(
+                text(
+                    'SELECT COUNT(*) FROM "UserPreferences" WHERE "utubSort" = '
+                    "'recent_activity' AND NOT \"showRowCounts\" "
+                    'AND "showListTotals"'
+                )
+            ).scalar_one()
+        assert backfilled == preference_row_count
+
+        # Non-default values store and read back (the mock seed stays at defaults).
+        with db.engine.begin() as connection:
+            connection.execute(
+                text(
+                    'UPDATE "UserPreferences" SET "utubSort" = \'name_az\', '
+                    '"showRowCounts" = true, "showListTotals" = false '
+                    'WHERE id = (SELECT MIN(id) FROM "UserPreferences")'
+                )
+            )
+        with db.engine.connect() as connection:
+            stored = connection.execute(
+                text(
+                    'SELECT "utubSort"::text, "showRowCounts", "showListTotals" '
+                    'FROM "UserPreferences" ORDER BY id LIMIT 1'
+                )
+            ).one()
+        assert tuple(stored) == ("name_az", True, False)
+
+        # The DB enum rejects an invalid value.
+        with pytest.raises(DataError) as excinfo:
+            with db.engine.begin() as connection:
+                connection.execute(
+                    text(
+                        'UPDATE "UserPreferences" SET "utubSort" = \'bogus\' '
+                        'WHERE id = (SELECT MIN(id) FROM "UserPreferences")'
+                    )
+                )
+        assert _UTUB_SORT_ENUM in str(
+            excinfo.value
+        ) or "invalid input value for enum" in str(excinfo.value)
+
+        command.downgrade(_build_alembic_config(), _PRE_UTUB_LIST_REVISION)
+
+        inspector = inspect(db.engine)
+        post_columns = {
+            column["name"] for column in inspector.get_columns(_USER_PREFERENCES_TABLE)
+        }
+        assert post_columns.isdisjoint({"utubSort", "showRowCounts", "showListTotals"})
+        with db.engine.connect() as connection:
+            assert not _enum_type_exists(connection)
+
+        command.upgrade(_build_alembic_config(), "head")
+
+        inspector = inspect(db.engine)
+        assert {"utubSort", "showRowCounts", "showListTotals"} <= {
+            column["name"] for column in inspector.get_columns(_USER_PREFERENCES_TABLE)
+        }
+
         db.create_all()
 
     del os.environ["PYTEST_RUNNING"]
