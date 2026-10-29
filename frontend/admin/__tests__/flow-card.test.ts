@@ -1,6 +1,10 @@
 import type { Schema } from "../../types/api-helpers.d.ts";
 
-import type { FlowCardState, FlowGridEntry } from "../flow-card.js";
+import type {
+  FlowCardCustom,
+  FlowCardState,
+  FlowGridEntry,
+} from "../flow-card.js";
 import { renderFlowCard, renderFlowGrid } from "../flow-card.js";
 
 type FlowResponseSchema = Schema<"FlowResponseSchema">;
@@ -543,20 +547,20 @@ describe("renderFlowGrid", () => {
       invalid: { step_index: 1, field: "event_name", reason: "unknown" },
     },
   ] as FlowCardState[])(
-    "renders a hidden placeholder for a $kind entry",
+    "renders a visible .flow-card for a $kind entry",
     (state) => {
       const container = document.createElement("div");
       renderFlowGrid({
         container,
         entries: [stateEntry({ id: "alpha", state })],
       });
-      const placeholder = container.querySelector(
-        ".flow-card-placeholder",
-      ) as HTMLElement;
-      expect(placeholder.hidden).toBe(true);
-      expect(placeholder.dataset.flowId).toBe("alpha");
-      expect(placeholder.dataset.flowState).toBe(state.kind);
-      expect(container.querySelector(".flow-card")).toBeNull();
+      const card = container.querySelector(".flow-card") as HTMLElement;
+      expect(card.tagName).toBe("SECTION");
+      expect(card.hidden).toBe(false);
+      expect(card.dataset.flowId).toBe("alpha");
+      expect(card.dataset.flowState).toBe(state.kind);
+      expect(card.getAttribute("tabindex")).toBe("-1");
+      expect(container.querySelector(".flow-card-placeholder")).toBeNull();
     },
   );
 
@@ -723,7 +727,7 @@ describe("renderFlowGrid", () => {
     );
   });
 
-  it("replaces a card with a placeholder when a response becomes loading", () => {
+  it("replaces a response card with a loading card when a response becomes loading", () => {
     const container = document.createElement("div");
     renderFlowGrid({
       container,
@@ -738,7 +742,7 @@ describe("renderFlowGrid", () => {
     expect((container.firstElementChild as HTMLElement).dataset.flowState).toBe(
       "loading",
     );
-    expect(container.querySelector(".flow-card")).toBeNull();
+    expect(container.querySelectorAll(".flow-card").length).toBe(1);
   });
 
   it("handles ids containing selector-special characters", () => {
@@ -750,5 +754,418 @@ describe("renderFlowGrid", () => {
     renderFlowGrid({ container, entries });
     expect(container.firstElementChild).toBe(node);
     expect(container.children.length).toBe(1);
+  });
+});
+
+describe("renderFlowGrid custom cards, badges and states", () => {
+  const CLOSED: FlowCardCustom = {
+    confirm: "closed",
+    message: null,
+    deleteLocked: false,
+  };
+
+  function customEntry({
+    id,
+    state,
+    custom,
+    title,
+  }: {
+    id: string;
+    state: FlowCardState;
+    custom?: FlowCardCustom;
+    title?: string;
+  }): FlowGridEntry {
+    return { id, title: title ?? `Title ${id}`, state, custom };
+  }
+
+  function render({ entries }: { entries: FlowGridEntry[] }): HTMLElement {
+    const container = document.createElement("div");
+    renderFlowGrid({ container, entries });
+    return container;
+  }
+
+  const loading: FlowCardState = { kind: "loading" };
+
+  it("renders a loading card with an aria-hidden skeleton and a label", () => {
+    const card = render({
+      entries: [customEntry({ id: "a", state: loading })],
+    }).querySelector(".flow-card") as HTMLElement;
+    expect(card.dataset.flowState).toBe("loading");
+    expect(card.getAttribute("aria-label")).toBe("Title a: loading");
+    const skeleton = card.querySelector(".flow-skeleton") as HTMLElement;
+    expect(skeleton.getAttribute("aria-hidden")).toBe("true");
+    expect(skeleton.children.length).toBe(3);
+  });
+
+  it("renders an error card with text and a Retry button", () => {
+    const card = render({
+      entries: [customEntry({ id: "a", state: { kind: "error" } })],
+    }).querySelector(".flow-card") as HTMLElement;
+    expect(card.querySelector(".flow-error")?.textContent).toContain(
+      "Couldn't load this flow.",
+    );
+    const retry = card.querySelector(
+      "button.flow-retry-btn[data-flow-retry]",
+    ) as HTMLButtonElement;
+    expect(retry.type).toBe("button");
+    expect(retry.textContent).toBe("Retry");
+  });
+
+  describe("needs-attention card", () => {
+    function invalidCard({
+      stepIndex,
+      custom,
+    }: {
+      stepIndex: number | null;
+      custom?: FlowCardCustom;
+    }): HTMLElement {
+      return render({
+        entries: [
+          customEntry({
+            id: "a",
+            custom,
+            state: {
+              kind: "invalid",
+              invalid: {
+                step_index: stepIndex,
+                field: "event_name",
+                reason: "event is gone",
+              },
+            },
+          }),
+        ],
+      }).querySelector(".flow-card") as HTMLElement;
+    }
+
+    it("names the 1-based step in the aria-label and visible text", () => {
+      const card = invalidCard({ stepIndex: 2, custom: CLOSED });
+      const label = card.getAttribute("aria-label") ?? "";
+      expect(label).toContain("Needs attention.");
+      expect(label).toContain("Step 3: event is gone");
+      expect(label.startsWith("Title a (custom): ")).toBe(true);
+      expect(card.querySelector(".flow-attention")?.textContent).toContain(
+        "Step 3: event is gone",
+      );
+    });
+
+    it("omits the step number when step_index is null", () => {
+      const card = invalidCard({ stepIndex: null });
+      const label = card.getAttribute("aria-label") ?? "";
+      expect(label).toContain("event is gone");
+      expect(label).not.toContain("Step");
+      expect(label.startsWith("Title a: ")).toBe(true);
+    });
+
+    it("renders no glyph element and never renders Retry or a funnel", () => {
+      const card = invalidCard({ stepIndex: 0 });
+      expect(card.querySelector(".flow-attention > span")).toBeNull();
+      expect(card.querySelector(".flow-retry-btn")).toBeNull();
+      expect(card.querySelector(".funnel")).toBeNull();
+    });
+
+    it("custom closed renders Custom badge and Delete, still no Retry", () => {
+      const card = invalidCard({ stepIndex: 0, custom: CLOSED });
+      expect(card.querySelector(".flow-badge.custom")?.textContent).toBe(
+        "Custom",
+      );
+      expect(card.querySelector(".flow-delete-btn")).not.toBeNull();
+      expect(card.querySelector(".flow-retry-btn")).toBeNull();
+    });
+
+    it("custom with confirm open renders the confirm group", () => {
+      const card = invalidCard({
+        stepIndex: 0,
+        custom: { ...CLOSED, confirm: "open" },
+      });
+      expect(card.querySelector(".flow-badge.custom")).not.toBeNull();
+      expect(card.querySelector(".flow-confirm")).not.toBeNull();
+      expect(card.querySelector(".flow-delete-btn")).toBeNull();
+    });
+  });
+
+  it("built-in cards show the Built-in badge and never Delete", () => {
+    for (const state of [
+      loading,
+      { kind: "error" },
+      {
+        kind: "invalid",
+        invalid: { step_index: 0, field: "f", reason: "bad" },
+      },
+      { kind: "response", response: buildEmptyResponse() },
+    ] as FlowCardState[]) {
+      const card = render({
+        entries: [customEntry({ id: "a", state })],
+      }).querySelector(".flow-card") as HTMLElement;
+      expect(card.querySelector(".flow-badge")?.textContent).toBe("Built-in");
+      expect(card.querySelector(".flow-badge.custom")).toBeNull();
+      expect(card.querySelector(".flow-delete-btn")).toBeNull();
+      expect(card.querySelector(".flow-confirm")).toBeNull();
+    }
+  });
+
+  it("custom closed renders a labelled Delete button", () => {
+    const card = render({
+      entries: [customEntry({ id: "a", state: loading, custom: CLOSED })],
+    }).querySelector(".flow-card") as HTMLElement;
+    const button = card.querySelector(
+      "button.flow-delete-btn[data-flow-delete]",
+    ) as HTMLButtonElement;
+    expect(button.getAttribute("aria-label")).toBe("Delete flow Title a");
+    expect(
+      button.querySelector("svg.bi-trash")?.getAttribute("aria-hidden"),
+    ).toBe("true");
+    expect(button.hasAttribute("aria-disabled")).toBe(false);
+    expect(card.querySelector(".flow-confirm")).toBeNull();
+  });
+
+  it("custom response card gets the (custom) aria-label suffix", () => {
+    const card = render({
+      entries: [
+        customEntry({
+          id: "a",
+          custom: CLOSED,
+          state: { kind: "response", response: buildAddUrlResponse() },
+        }),
+      ],
+    }).querySelector(".flow-card") as HTMLElement;
+    expect(card.getAttribute("aria-label")).toMatch(/^Title a \(custom\): /);
+    expect(card.querySelector(".flow-delete-btn")).not.toBeNull();
+  });
+
+  it("open confirm renders a group labelled by its prompt and no Delete", () => {
+    const card = render({
+      entries: [
+        customEntry({
+          id: "a",
+          state: loading,
+          custom: { ...CLOSED, confirm: "open" },
+        }),
+      ],
+    }).querySelector(".flow-card") as HTMLElement;
+    const group = card.querySelector("[data-flow-confirm]") as HTMLElement;
+    expect(group.getAttribute("role")).toBe("group");
+    const promptElement = card.querySelector(
+      `#${group.getAttribute("aria-labelledby")}`,
+    ) as HTMLElement;
+    expect(promptElement.textContent).toBe(
+      "Delete “Title a”? This cannot be undone.",
+    );
+    expect(card.querySelector(".flow-delete-btn")).toBeNull();
+    const confirm = card.querySelector("[data-flow-confirm-delete]");
+    expect(confirm?.textContent).toBe("Delete");
+    expect(confirm?.hasAttribute("aria-disabled")).toBe(false);
+    expect(card.querySelector("[data-flow-confirm-cancel]")).not.toBeNull();
+  });
+
+  it("deleting makes both confirm buttons aria-disabled, not disabled", () => {
+    const card = render({
+      entries: [
+        customEntry({
+          id: "a",
+          state: loading,
+          custom: { ...CLOSED, confirm: "deleting" },
+        }),
+      ],
+    }).querySelector(".flow-card") as HTMLElement;
+    const confirm = card.querySelector(
+      "[data-flow-confirm-delete]",
+    ) as HTMLButtonElement;
+    const cancel = card.querySelector(
+      "[data-flow-confirm-cancel]",
+    ) as HTMLButtonElement;
+    expect(confirm.textContent).toBe("Deleting…");
+    for (const button of [confirm, cancel]) {
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(button.disabled).toBe(false);
+    }
+  });
+
+  it("locked Delete is aria-disabled and described by a hidden span", () => {
+    const container = render({
+      entries: [
+        customEntry({
+          id: "a",
+          state: loading,
+          custom: { ...CLOSED, deleteLocked: true },
+        }),
+      ],
+    });
+    const button = container.querySelector(".flow-delete-btn") as HTMLElement;
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    const hint = container.querySelector(
+      `#${button.getAttribute("aria-describedby")}`,
+    ) as HTMLElement;
+    expect(hint.className).toContain("visually-hidden");
+    expect(hint.textContent).toBe("Another flow is being deleted.");
+
+    const unlocked = render({
+      entries: [customEntry({ id: "a", state: loading, custom: CLOSED })],
+    });
+    expect(unlocked.querySelector(".visually-hidden")).toBeNull();
+    expect(
+      unlocked
+        .querySelector(".flow-delete-btn")
+        ?.hasAttribute("aria-describedby"),
+    ).toBe(false);
+  });
+
+  it("renders custom.message under the header", () => {
+    const card = render({
+      entries: [
+        customEntry({
+          id: "a",
+          state: loading,
+          custom: {
+            ...CLOSED,
+            message: "Couldn't delete this flow. Try again.",
+          },
+        }),
+      ],
+    }).querySelector(".flow-card") as HTMLElement;
+    expect(card.querySelector(".flow-card-message")?.textContent).toBe(
+      "Couldn't delete this flow. Try again.",
+    );
+  });
+
+  it("renders custom.message in every state and none when null", () => {
+    const states: FlowCardState[] = [
+      { kind: "error" },
+      {
+        kind: "invalid",
+        invalid: { step_index: 0, field: "f", reason: "bad" },
+      },
+      { kind: "response", response: buildEmptyResponse() },
+    ];
+    for (const state of states) {
+      const withMessage = render({
+        entries: [
+          customEntry({
+            id: "a",
+            state,
+            custom: { ...CLOSED, message: "Nope." },
+          }),
+        ],
+      });
+      expect(withMessage.querySelector(".flow-card-message")?.textContent).toBe(
+        "Nope.",
+      );
+      const without = render({
+        entries: [customEntry({ id: "a", state, custom: CLOSED })],
+      });
+      expect(without.querySelector(".flow-card-message")).toBeNull();
+    }
+  });
+
+  it("changing only custom (confirm or deleteLocked) replaces that card alone", () => {
+    const container = document.createElement("div");
+    const build = (
+      first: FlowCardCustom,
+      second: FlowCardCustom,
+    ): FlowGridEntry[] => [
+      customEntry({ id: "a", state: loading, custom: first }),
+      customEntry({ id: "b", state: loading, custom: second }),
+    ];
+    renderFlowGrid({ container, entries: build(CLOSED, CLOSED) });
+    const [firstNode, secondNode] = Array.from(container.children);
+
+    renderFlowGrid({
+      container,
+      entries: build({ ...CLOSED, confirm: "open" }, CLOSED),
+    });
+    expect(container.children[0]).not.toBe(firstNode);
+    expect(container.children[1]).toBe(secondNode);
+
+    const openNode = container.children[0];
+    renderFlowGrid({
+      container,
+      entries: build(
+        { ...CLOSED, confirm: "open" },
+        { ...CLOSED, deleteLocked: true },
+      ),
+    });
+    expect(container.children[0]).toBe(openNode);
+    expect(container.children[1]).not.toBe(secondNode);
+  });
+
+  it("keeps the node when custom is unchanged by value", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [
+        customEntry({ id: "a", state: loading, custom: { ...CLOSED } }),
+      ],
+    });
+    const node = container.firstElementChild;
+    renderFlowGrid({
+      container,
+      entries: [
+        customEntry({ id: "a", state: loading, custom: { ...CLOSED } }),
+      ],
+    });
+    expect(container.firstElementChild).toBe(node);
+  });
+
+  it("changing only the title replaces that card", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [customEntry({ id: "a", state: loading, title: "One" })],
+    });
+    const node = container.firstElementChild;
+    renderFlowGrid({
+      container,
+      entries: [customEntry({ id: "a", state: loading, title: "Two" })],
+    });
+    expect(container.firstElementChild).not.toBe(node);
+    expect(container.querySelector(".flow-title")?.textContent).toContain(
+      "Two",
+    );
+  });
+
+  it("sets a 64-char name through textContent (no HTML injection)", () => {
+    const name = `<img src=x onerror=alert(1)>${"n".repeat(36)}`;
+    expect(name.length).toBe(64);
+    const container = render({
+      entries: [
+        customEntry({
+          id: "a",
+          title: name,
+          state: loading,
+          custom: { ...CLOSED, confirm: "open" },
+        }),
+      ],
+    });
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector(".flow-title")?.textContent).toBe(
+      `Custom ${name}`,
+    );
+    expect(
+      container.querySelector(".flow-confirm-prompt")?.textContent,
+    ).toContain(name);
+  });
+
+  it("gives every state's section tabindex -1", () => {
+    const container = render({
+      entries: [
+        customEntry({ id: "a", state: loading }),
+        customEntry({ id: "b", state: { kind: "error" } }),
+        customEntry({
+          id: "c",
+          state: {
+            kind: "invalid",
+            invalid: { step_index: null, field: "__root__", reason: "bad" },
+          },
+        }),
+        customEntry({
+          id: "d",
+          state: { kind: "response", response: buildEmptyResponse() },
+        }),
+      ],
+    });
+    const cards = container.querySelectorAll(".flow-card");
+    expect(cards.length).toBe(4);
+    for (const card of Array.from(cards)) {
+      expect(card.getAttribute("tabindex")).toBe("-1");
+    }
   });
 });

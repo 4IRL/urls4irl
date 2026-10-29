@@ -15,6 +15,7 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 
 import { APP_CONFIG } from "../lib/config.js";
+import { fillTemplate } from "../lib/string-template.js";
 
 type FlowResponseSchema = Schema<"FlowResponseSchema">;
 type FlowStepSchema = Schema<"FlowStepSchema">;
@@ -31,10 +32,21 @@ export type FlowCardState =
   | { kind: "invalid"; invalid: FlowInvalidDetail }
   | { kind: "removed" };
 
+// Per-card state of a custom flow's Delete / in-place confirm group.
+export interface FlowCardCustom {
+  confirm: "closed" | "open" | "deleting";
+  // Inline per-card error (delete failure, rate limit), or null.
+  message: string | null;
+  // True while another card is being deleted: Delete is aria-disabled.
+  deleteLocked: boolean;
+}
+
 export interface FlowGridEntry {
   id: string;
   title: string;
   state: FlowCardState;
+  // Absent for built-in flows (no Delete); present for custom flows.
+  custom?: FlowCardCustom;
 }
 
 const NULL_PCT_PLACEHOLDER = "–";
@@ -251,25 +263,379 @@ export function renderFlowCard({
 // container so a detached/replaced grid element does not leak state.
 const lastRenderedStates: WeakMap<
   HTMLElement,
-  Map<string, FlowCardState>
+  Map<string, FlowGridEntry>
 > = new WeakMap();
 
-function buildPlaceholder({
+const SVG_NS = "http://www.w3.org/2000/svg";
+const SKELETON_BAR_COUNT = 3;
+const TRASH_OUTER_PATH = "M0 0h24v24H0V0z";
+const TRASH_INNER_PATH =
+  "M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z";
+
+function buildTrashIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("class", "bi bi-trash");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("width", "28px");
+  svg.setAttribute("height", "28px");
+  svg.setAttribute("fill", "currentColor");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  const outer = document.createElementNS(SVG_NS, "path");
+  outer.setAttribute("fill", "none");
+  outer.setAttribute("d", TRASH_OUTER_PATH);
+  const inner = document.createElementNS(SVG_NS, "path");
+  inner.setAttribute("d", TRASH_INNER_PATH);
+  svg.appendChild(outer);
+  svg.appendChild(inner);
+  return svg;
+}
+
+function buildBadge({ isCustom }: { isCustom: boolean }): HTMLSpanElement {
+  const badge = document.createElement("span");
+  badge.className = isCustom ? "flow-badge custom" : "flow-badge";
+  badge.textContent = isCustom
+    ? APP_CONFIG.strings.METRICS_FLOW_BADGE_CUSTOM
+    : APP_CONFIG.strings.METRICS_FLOW_BADGE_BUILTIN;
+  return badge;
+}
+
+function buildButton({
+  className,
+  dataAttribute,
+  text,
+}: {
+  className: string;
+  dataAttribute: string;
+  text?: string;
+}): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.setAttribute(dataAttribute, "");
+  if (text !== undefined) {
+    button.textContent = text;
+  }
+  return button;
+}
+
+// Delete button (closed) or the in-place confirm group (open / deleting).
+function buildActions({
+  id,
+  title,
+  custom,
+}: {
+  id: string;
+  title: string;
+  custom: FlowCardCustom;
+}): HTMLDivElement {
+  const actions = document.createElement("div");
+  actions.className = "flow-actions";
+
+  if (custom.confirm === "closed") {
+    const deleteButton = buildButton({
+      className: "flow-delete-btn",
+      dataAttribute: "data-flow-delete",
+    });
+    deleteButton.setAttribute(
+      "aria-label",
+      fillTemplate({
+        template: APP_CONFIG.strings.METRICS_FLOW_DELETE_LABEL,
+        values: { name: title },
+      }),
+    );
+    deleteButton.appendChild(buildTrashIcon());
+    actions.appendChild(deleteButton);
+    if (custom.deleteLocked) {
+      const lockedId = `FlowDeleteLocked-${id}`;
+      deleteButton.setAttribute("aria-disabled", "true");
+      deleteButton.setAttribute("aria-describedby", lockedId);
+      const lockedHint = document.createElement("span");
+      lockedHint.id = lockedId;
+      lockedHint.className = "visually-hidden";
+      lockedHint.textContent = APP_CONFIG.strings.METRICS_FLOW_DELETE_LOCKED;
+      actions.appendChild(lockedHint);
+    }
+    return actions;
+  }
+
+  const isDeleting = custom.confirm === "deleting";
+  const promptId = `FlowConfirmPrompt-${id}`;
+  const group = document.createElement("div");
+  group.className = "flow-confirm";
+  group.setAttribute("role", "group");
+  group.setAttribute("data-flow-confirm", "");
+  group.setAttribute("aria-labelledby", promptId);
+
+  const prompt = document.createElement("span");
+  prompt.id = promptId;
+  prompt.className = "flow-confirm-prompt";
+  prompt.textContent = fillTemplate({
+    template: APP_CONFIG.strings.METRICS_FLOW_DELETE_PROMPT,
+    values: { name: title },
+  });
+  const confirmButton = buildButton({
+    className: "flow-confirm-btn",
+    dataAttribute: "data-flow-confirm-delete",
+    text: isDeleting
+      ? APP_CONFIG.strings.METRICS_FLOW_DELETING
+      : APP_CONFIG.strings.METRICS_FLOW_DELETE_CONFIRM,
+  });
+  const cancelButton = buildButton({
+    className: "flow-cancel-btn",
+    dataAttribute: "data-flow-confirm-cancel",
+    text: APP_CONFIG.strings.METRICS_FLOW_DELETE_CANCEL,
+  });
+  if (isDeleting) {
+    // aria-disabled (not disabled) so focus stays on the pressed button.
+    confirmButton.setAttribute("aria-disabled", "true");
+    cancelButton.setAttribute("aria-disabled", "true");
+  }
+  group.appendChild(prompt);
+  group.appendChild(confirmButton);
+  group.appendChild(cancelButton);
+  actions.appendChild(group);
+  return actions;
+}
+
+function buildCardShell({
   id,
   kind,
 }: {
   id: string;
   kind: FlowCardState["kind"];
 }): HTMLElement {
-  const placeholder = document.createElement("section");
-  placeholder.className = "flow-card-placeholder";
-  placeholder.dataset.flowId = id;
-  placeholder.dataset.flowState = kind;
-  placeholder.hidden = true;
-  return placeholder;
+  const card = document.createElement("section");
+  card.className = "flow-card";
+  card.dataset.flowId = id;
+  card.dataset.flowState = kind;
+  // Programmatic focus target (per-card Retry); never in the tab order.
+  card.tabIndex = -1;
+  return card;
 }
 
-// Reconcile rule: response by reference; loading/error by kind only; invalid by
+function buildCardHeader({
+  title,
+  custom,
+}: {
+  title: string;
+  custom?: FlowCardCustom;
+}): HTMLDivElement {
+  const header = document.createElement("div");
+  header.className = "flow-header";
+  const titleElement = document.createElement("h3");
+  titleElement.className = "flow-title";
+  titleElement.appendChild(buildBadge({ isCustom: custom !== undefined }));
+  titleElement.appendChild(document.createTextNode(" "));
+  titleElement.appendChild(document.createTextNode(title));
+  header.appendChild(titleElement);
+  return header;
+}
+
+function buildCardMessage({
+  custom,
+}: {
+  custom?: FlowCardCustom;
+}): HTMLSpanElement | null {
+  if (custom === undefined || custom.message === null) {
+    return null;
+  }
+  const message = document.createElement("span");
+  message.className = "flow-card-message";
+  message.textContent = custom.message;
+  return message;
+}
+
+// Shared top of the loading / error / invalid cards: header (with the custom
+// actions) followed by the optional inline message.
+function appendCardTop({
+  card,
+  entry,
+}: {
+  card: HTMLElement;
+  entry: FlowGridEntry;
+}): void {
+  const header = buildCardHeader({ title: entry.title, custom: entry.custom });
+  if (entry.custom !== undefined) {
+    header.appendChild(
+      buildActions({ id: entry.id, title: entry.title, custom: entry.custom }),
+    );
+  }
+  card.appendChild(header);
+  const message = buildCardMessage({ custom: entry.custom });
+  if (message !== null) {
+    card.appendChild(message);
+  }
+}
+
+function buildLoadingCard({ entry }: { entry: FlowGridEntry }): HTMLElement {
+  const card = buildCardShell({ id: entry.id, kind: "loading" });
+  card.setAttribute(
+    "aria-label",
+    fillTemplate({
+      template: APP_CONFIG.strings.METRICS_FLOW_LOADING_LABEL,
+      values: { title: entry.title },
+    }),
+  );
+  appendCardTop({ card, entry });
+  const skeleton = document.createElement("div");
+  skeleton.className = "flow-skeleton";
+  skeleton.setAttribute("aria-hidden", "true");
+  for (let bar = 0; bar < SKELETON_BAR_COUNT; bar++) {
+    const barElement = document.createElement("div");
+    barElement.className = "flow-skeleton-bar";
+    skeleton.appendChild(barElement);
+  }
+  card.appendChild(skeleton);
+  return card;
+}
+
+function buildErrorCard({ entry }: { entry: FlowGridEntry }): HTMLElement {
+  const card = buildCardShell({ id: entry.id, kind: "error" });
+  card.setAttribute(
+    "aria-label",
+    `${entry.title}: ${APP_CONFIG.strings.METRICS_FLOW_LOAD_FAILED}`,
+  );
+  appendCardTop({ card, entry });
+  const error = document.createElement("p");
+  error.className = "flow-error";
+  const errorText = document.createElement("span");
+  errorText.textContent = APP_CONFIG.strings.METRICS_FLOW_LOAD_FAILED;
+  error.appendChild(errorText);
+  error.appendChild(
+    buildButton({
+      className: "flow-retry-btn",
+      dataAttribute: "data-flow-retry",
+      text: APP_CONFIG.strings.METRICS_FLOW_RETRY,
+    }),
+  );
+  card.appendChild(error);
+  return card;
+}
+
+function buildInvalidCard({
+  entry,
+  invalid,
+}: {
+  entry: FlowGridEntry;
+  invalid: FlowInvalidDetail;
+}): HTMLElement {
+  const card = buildCardShell({ id: entry.id, kind: "invalid" });
+  const stepText =
+    invalid.step_index === null
+      ? invalid.reason
+      : fillTemplate({
+          template: APP_CONFIG.strings.METRICS_FLOW_NEEDS_ATTENTION_STEP,
+          values: {
+            step: String(invalid.step_index + 1),
+            reason: invalid.reason,
+          },
+        });
+  const labelTitle =
+    entry.custom === undefined
+      ? entry.title
+      : `${entry.title} ${APP_CONFIG.strings.METRICS_FLOW_CUSTOM_SUFFIX}`;
+  card.setAttribute(
+    "aria-label",
+    `${labelTitle}: ${APP_CONFIG.strings.METRICS_FLOW_NEEDS_ATTENTION} ${stepText}`,
+  );
+  appendCardTop({ card, entry });
+
+  const attention = document.createElement("p");
+  attention.className = "flow-attention";
+  const label = document.createElement("strong");
+  label.textContent = APP_CONFIG.strings.METRICS_FLOW_NEEDS_ATTENTION;
+  attention.appendChild(label);
+  attention.appendChild(document.createTextNode(` ${stepText} `));
+  attention.appendChild(
+    document.createTextNode(
+      APP_CONFIG.strings.METRICS_FLOW_NEEDS_ATTENTION_HELP,
+    ),
+  );
+  card.appendChild(attention);
+  return card;
+}
+
+// Wraps the existing response card with the grid-level extras: Built-in /
+// Custom badge, custom actions, message, custom aria-label suffix, tabindex.
+function buildResponseCard({
+  entry,
+  response,
+}: {
+  entry: FlowGridEntry;
+  response: FlowResponseSchema;
+}): HTMLElement {
+  const card = renderFlowCard({
+    id: entry.id,
+    title: entry.title,
+    response,
+  });
+  card.dataset.flowState = "response";
+  card.tabIndex = -1;
+
+  const titleElement = card.querySelector(".flow-title");
+  titleElement?.prepend(
+    buildBadge({ isCustom: entry.custom !== undefined }),
+    " ",
+  );
+
+  if (entry.custom !== undefined) {
+    const prefix = `${entry.title}:`;
+    const label = card.getAttribute("aria-label") ?? "";
+    if (label.startsWith(prefix)) {
+      card.setAttribute(
+        "aria-label",
+        `${entry.title} ${APP_CONFIG.strings.METRICS_FLOW_CUSTOM_SUFFIX}:${label.slice(prefix.length)}`,
+      );
+    }
+    const header = card.querySelector(".flow-header");
+    header?.appendChild(
+      buildActions({
+        id: entry.id,
+        title: entry.title,
+        custom: entry.custom,
+      }),
+    );
+    const message = buildCardMessage({ custom: entry.custom });
+    if (header !== null && message !== null) {
+      header.after(message);
+    }
+  }
+  return card;
+}
+
+function isSameCustom({
+  previous,
+  next,
+}: {
+  previous: FlowCardCustom | undefined;
+  next: FlowCardCustom | undefined;
+}): boolean {
+  if (previous === undefined || next === undefined) {
+    return previous === next;
+  }
+  return (
+    previous.confirm === next.confirm &&
+    previous.message === next.message &&
+    previous.deleteLocked === next.deleteLocked
+  );
+}
+
+// Reconcile rule: title and custom by value, then the state (see isSameState).
+function isSameEntry({
+  previous,
+  next,
+}: {
+  previous: FlowGridEntry;
+  next: FlowGridEntry;
+}): boolean {
+  return (
+    previous.title === next.title &&
+    isSameCustom({ previous: previous.custom, next: next.custom }) &&
+    isSameState({ previous: previous.state, next: next.state })
+  );
+}
+
+// State rule: response by reference; loading/error by kind only; invalid by
 // field equality; any kind change is a change.
 function isSameState({
   previous,
@@ -295,18 +661,28 @@ function isSameState({
 }
 
 function buildNode({ entry }: { entry: FlowGridEntry }): HTMLElement {
-  const { id, title, state } = entry;
+  const { state } = entry;
   if (state.kind === "response") {
-    return renderFlowCard({ id, title, response: state.response });
+    return buildResponseCard({ entry, response: state.response });
   }
-  return buildPlaceholder({ id, kind: state.kind });
+  if (state.kind === "loading") {
+    return buildLoadingCard({ entry });
+  }
+  if (state.kind === "error") {
+    return buildErrorCard({ entry });
+  }
+  if (state.kind === "invalid") {
+    return buildInvalidCard({ entry, invalid: state.invalid });
+  }
+  // `removed` entries are skipped by `renderFlowGrid` and never built.
+  throw new Error(`Cannot build a flow card for state ${state.kind}`);
 }
 
 /**
  * Render the Flows panel grid from an ordered entry list: one node per entry,
- * in `entries` order. `response` entries render a `.flow-card`; `loading`,
- * `error` and `invalid` entries render a hidden `.flow-card-placeholder`;
- * `removed` entries and ids absent from `entries` have their node removed.
+ * in `entries` order. Every visible state (`response`, `loading`, `error`,
+ * `invalid`) renders a `.flow-card[data-flow-state]`; `removed` entries and
+ * ids absent from `entries` have their node removed.
  *
  * Reconciles per id rather than clearing and rebuilding the container: flow
  * XHRs settle independently and each settle re-invokes this function. A node
@@ -321,7 +697,7 @@ export function renderFlowGrid({
   entries: readonly FlowGridEntry[];
 }): void {
   const previousStates = lastRenderedStates.get(container) ?? new Map();
-  const nextStates = new Map<string, FlowCardState>();
+  const nextStates = new Map<string, FlowGridEntry>();
   // Index existing nodes by id in a Map (no selector, so raw ids are safe).
   const existingNodes = new Map<string, HTMLElement>();
   for (const child of Array.from(container.children)) {
@@ -341,7 +717,7 @@ export function renderFlowGrid({
     if (
       existing !== undefined &&
       previous !== undefined &&
-      isSameState({ previous, next: entry.state })
+      isSameEntry({ previous, next: entry })
     ) {
       node = existing;
     } else {
@@ -350,7 +726,7 @@ export function renderFlowGrid({
         container.replaceChild(node, existing);
       }
     }
-    nextStates.set(entry.id, entry.state);
+    nextStates.set(entry.id, entry);
     desiredNodes.push(node);
   }
 

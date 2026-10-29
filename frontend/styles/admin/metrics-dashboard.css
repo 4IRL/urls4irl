@@ -1120,6 +1120,8 @@
 .flow-header .flow-title {
     margin: 0;
     font-size: 1rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .flow-header .flow-summary {
@@ -1259,6 +1261,207 @@
     color: var(--removeIconColor);
 }
 
+/* ---- Flows grid: toolbar, badges, card states, delete confirm -------- */
+
+.flows-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.flows-heading {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.flows-heading:focus {
+    outline: none;
+}
+
+.flows-heading:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flows-count,
+.flows-hint,
+.flows-notice {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.flows-notice,
+.flow-card-message,
+.flow-confirm-prompt,
+.flows-list-error {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.flow-card:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flow-card[data-flow-state="invalid"] {
+    border-color: var(--editURLColor);
+}
+
+.flow-card[data-flow-state="error"] {
+    border-color: var(--removeIconColor);
+}
+
+.flow-badge {
+    display: inline-block;
+    margin-right: 0.4rem;
+    padding: 0 0.4rem;
+    border: 1px solid var(--borderColor);
+    border-radius: 999px;
+    color: var(--cardURLTextColor);
+    font-size: 0.7rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.flow-badge.custom {
+    border-color: var(--deckSelectionGreen);
+}
+
+.flow-actions,
+.flow-confirm {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.flow-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.flow-delete-btn,
+.flow-confirm-btn,
+.flow-cancel-btn,
+.flow-retry-btn {
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.flow-delete-btn {
+    border-color: transparent;
+    color: var(--removeIconColor);
+}
+
+.flow-delete-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.flow-confirm-btn {
+    border-color: var(--removeIconColor);
+    color: var(--removeIconColor);
+}
+
+.flow-delete-btn[aria-disabled="true"],
+.flow-confirm-btn[aria-disabled="true"],
+.flow-cancel-btn[aria-disabled="true"],
+.flow-retry-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.flow-delete-btn:focus-visible,
+.flow-confirm-btn:focus-visible,
+.flow-cancel-btn:focus-visible,
+.flow-retry-btn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flow-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.flow-card-message,
+.flow-error,
+.flows-list-error {
+    color: var(--removeIconColor);
+    font-size: 0.85rem;
+}
+
+.flow-card-message {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.flow-error,
+.flow-attention {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.flow-attention {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.flow-attention::before {
+    content: "⚠ " / "";
+}
+
+.flows-list-error {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.flow-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.flow-skeleton-bar {
+    height: 1.5rem;
+    border-radius: 4px;
+    background: linear-gradient(
+        90deg,
+        var(--borderColor) 25%,
+        transparent 50%,
+        var(--borderColor) 75%
+    );
+    background-size: 200% 100%;
+    animation: metricsFlowShimmer 1.4s linear infinite;
+}
+
+@keyframes metricsFlowShimmer {
+    to {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flow-skeleton-bar {
+        animation: none;
+    }
+}
+
 @media (max-width: 1100px) {
     .flow-grid {
         grid-template-columns: 1fr;
@@ -1266,6 +1469,13 @@
 }
 
 @media (max-width: 575.98px) {
+    .flow-delete-btn,
+    .flow-confirm-btn,
+    .flow-cancel-btn,
+    .flow-retry-btn {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
     .flow-grid {
         grid-template-columns: 1fr;
     }
