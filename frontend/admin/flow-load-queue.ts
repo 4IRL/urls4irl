@@ -8,6 +8,7 @@ type IdleCause = "settled" | "dropped";
 
 export interface FlowLoadQueue {
   startFanOut({ ids }: { ids: readonly string[] }): void;
+  enqueue({ ids }: { ids: readonly string[] }): void;
   abortAll(): void;
   dropId({ id }: { id: string }): void;
   isCurrent({ id, xhr }: { id: string; xhr: JQuery.jqXHR }): boolean;
@@ -20,6 +21,9 @@ export interface FlowLoadQueue {
  * Capped per-id load queue for the admin Flows tab: at most `maxInFlight`
  * requests run at once, the rest wait in order. A new fan-out aborts and
  * discards everything from the previous one, so stale results never land.
+ * `enqueue` instead adds ids that are not already pending without aborting
+ * anything (per-card Retry, newly discovered flows); it marks the queue busy so
+ * `onIdle` fires once when it drains, and is a no-op when nothing is new.
  *
  * `onIdle` is owned by the end of the outermost internal drain and guarded by
  * a latch (`wasIdle`), so it fires once per busy -> idle flip regardless of
@@ -112,6 +116,19 @@ export function createFlowLoadQueue({
     drainWithCause({ cause: "settled" });
   }
 
+  function enqueue({ ids }: { ids: readonly string[] }): void {
+    let added = false;
+    for (const id of ids) {
+      if (!isPending({ id })) {
+        waiting.push(id);
+        added = true;
+      }
+    }
+    if (!added) return;
+    wasIdle = false;
+    drainWithCause({ cause: "settled" });
+  }
+
   function dropId({ id }: { id: string }): void {
     if (!isPending({ id })) return;
     const xhr = registry.get(id);
@@ -123,6 +140,7 @@ export function createFlowLoadQueue({
 
   return {
     startFanOut,
+    enqueue,
     abortAll,
     dropId,
     isCurrent,

@@ -135,6 +135,56 @@ describe("createFlowLoadQueue", () => {
     expect(calls.filter((call) => call.startsWith("settle:"))).toEqual([]);
   });
 
+  it("enqueue while 4 are in flight does not abort them; new id starts on a free slot", () => {
+    const queue = build();
+    queue.startFanOut({ ids: IDS.slice(0, 4) });
+    const inFlight = IDS.slice(0, 4).map((id) => latest(id));
+    queue.enqueue({ ids: ["custom_5"] });
+    for (const fake of inFlight) expect(fake.abort).not.toHaveBeenCalled();
+    expect(issued).toEqual(IDS.slice(0, 4));
+    latest("custom_1").settle();
+    expect(issued).toEqual(IDS.slice(0, 5));
+  });
+
+  it("enqueue of an in-flight or waiting id is a no-op", () => {
+    const queue = build();
+    queue.startFanOut({ ids: IDS });
+    queue.enqueue({ ids: ["custom_1", "custom_6"] });
+    expect(issued).toEqual(IDS.slice(0, 4));
+    latest("custom_1").settle();
+    latest("custom_2").settle();
+    expect(issued.filter((id) => id === "custom_6")).toHaveLength(1);
+    expect(issued.filter((id) => id === "custom_1")).toHaveLength(1);
+  });
+
+  it("enqueue on an idle queue issues the id and fires onIdle once on drain", () => {
+    const queue = build();
+    queue.enqueue({ ids: ["custom_1"] });
+    expect(issued).toEqual(["custom_1"]);
+    expect(idleCalls).toEqual([]);
+    latest("custom_1").settle();
+    expect(idleCalls).toEqual(["settled"]);
+  });
+
+  it("enqueue of an empty list fires nothing", () => {
+    const queue = build();
+    queue.enqueue({ ids: [] });
+    expect(issued).toEqual([]);
+    expect(idleCalls).toEqual([]);
+  });
+
+  it("enqueue while paused holds ids; a later startFanOut replaces them", () => {
+    const queue = build();
+    paused = true;
+    queue.enqueue({ ids: ["custom_1"] });
+    expect(queue.isPending({ id: "custom_1" })).toBe(true);
+    expect(issued).toEqual([]);
+    paused = false;
+    queue.startFanOut({ ids: ["custom_2"] });
+    expect(issued).toEqual(["custom_2"]);
+    expect(queue.isPending({ id: "custom_1" })).toBe(false);
+  });
+
   it("isCurrent is false for an aborted xhr", () => {
     const queue = build();
     queue.startFanOut({ ids: ["custom_1"] });

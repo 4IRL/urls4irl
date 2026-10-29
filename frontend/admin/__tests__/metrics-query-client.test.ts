@@ -10,8 +10,11 @@ vi.mock("../../lib/ajax.js", () => ({
 }));
 
 import {
+  deleteMetricFlow,
+  fetchFlow,
   fetchGroupedTimeseries,
   fetchLatency,
+  fetchMetricFlows,
   fetchLatencyTimeseries,
   fetchSummary,
   fetchTimeseries,
@@ -275,6 +278,42 @@ describe("metrics-query-client", () => {
       const [, url] = ajaxCallSpy.mock.calls[0];
       expect(url).not.toContain("method=");
       expect(url).toContain("resolution=day");
+    });
+  });
+
+  describe("fetchFlow", () => {
+    it("puts a custom flow id in the query", () => {
+      fetchFlow({ flowId: "custom_3", window: "week" });
+      const [method, url] = ajaxCallSpy.mock.calls[0];
+      expect(method).toBe("GET");
+      expect(url).toContain("flow_id=custom_3");
+      expect(url).toContain("window=week");
+    });
+  });
+
+  describe("fetchMetricFlows", () => {
+    it("issues a GET to the admin list route", () => {
+      fetchMetricFlows();
+      expect(ajaxCallSpy).toHaveBeenCalledOnce();
+      expect(ajaxCallSpy.mock.calls[0]).toEqual([
+        "GET",
+        "/admin/metrics/flows",
+        null,
+        5000,
+      ]);
+    });
+  });
+
+  describe("deleteMetricFlow", () => {
+    it("issues a DELETE to the flow's URL", () => {
+      deleteMetricFlow({ flowId: "custom_12" });
+      expect(ajaxCallSpy).toHaveBeenCalledOnce();
+      expect(ajaxCallSpy.mock.calls[0]).toEqual([
+        "DELETE",
+        "/admin/metrics/flows/custom_12",
+        null,
+        5000,
+      ]);
     });
   });
 });

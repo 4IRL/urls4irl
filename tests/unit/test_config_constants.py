@@ -23,6 +23,7 @@ from backend.utils.constants import (
     provide_config_for_constants,
 )
 from backend.utils.strings import url_strs, utub_strs
+from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import NOT_AUTHORIZED
 from backend.utils.strings.trash_strs import TRASH_UI
@@ -214,6 +215,48 @@ def test_generate_strings_js_includes_url_scheme_selector_strings():
 
     assert "{count}" in strings["URL_SCHEME_MATCH_MANY"]
     assert "{scheme}" in strings["URL_SCHEME_SET_ANNOUNCE"]
+
+
+METRIC_FLOW_BRIDGED_KEYS = (
+    "METRICS_FLOWS_COUNT",
+    "METRICS_FLOWS_COUNT_BUILTIN_ONLY",
+    "METRICS_FLOWS_COUNT_LOADING",
+    "METRICS_FLOWS_ZERO_CUSTOM_HINT",
+    "METRICS_FLOW_BADGE_BUILTIN",
+    "METRICS_FLOW_BADGE_CUSTOM",
+    "METRICS_FLOW_CUSTOM_SUFFIX",
+    "METRICS_FLOW_DELETE_LABEL",
+    "METRICS_FLOW_DELETE_PROMPT",
+    "METRICS_FLOW_DELETE_CONFIRM",
+    "METRICS_FLOW_DELETE_CANCEL",
+    "METRICS_FLOW_DELETING",
+    "METRICS_FLOW_DELETED",
+    "METRICS_FLOW_ALREADY_DELETED",
+    "METRICS_FLOW_DELETE_FAILED",
+    "METRICS_FLOW_RATE_LIMITED",
+    "METRICS_FLOW_NEEDS_ATTENTION",
+    "METRICS_FLOW_NEEDS_ATTENTION_STEP",
+    "METRICS_FLOW_NEEDS_ATTENTION_HELP",
+    "METRICS_FLOW_LOADING_LABEL",
+    "METRICS_FLOW_LOAD_FAILED",
+    "METRICS_FLOW_RETRY",
+    "METRICS_FLOWS_LIST_FAILED",
+    "METRICS_FLOWS_LIST_RETRYING",
+    "METRICS_FLOW_DELETE_LOCKED",
+)
+
+
+def test_generate_strings_js_includes_metric_flow_strings():
+    """Every METRICS_FLOW* key the Flows grid TS reads is bridged to the frontend."""
+    strings = generate_strings_js()
+    for key in METRIC_FLOW_BRIDGED_KEYS:
+        assert key in strings, f"generate_strings_js() is missing {key}"
+        assert strings[key] == getattr(ADMIN_METRICS_STRINGS, key)
+
+    # The heading is rendered by Jinja only, so it has no TS bridge entry.
+    assert "METRICS_FLOWS_HEADING" not in strings
+    assert "{builtin}" in strings["METRICS_FLOWS_COUNT"]
+    assert "{name}" in strings["METRICS_FLOW_DELETE_PROMPT"]
 
 
 def test_generate_strings_js_includes_trash_ui_strings():
