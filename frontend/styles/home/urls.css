@@ -1140,30 +1140,306 @@ a.urlString {
         text-align: left;
         margin-top: var(--space-1);
     }
+
+    /* title_line: the inline date is hidden, so drop the empty flex item (its
+       gap would shorten the title). */
+    [data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlStringRow {
+        display: none;
+    }
 }
 
 /* ============================================================================
    View mode (view preference: default_view) — purely cosmetic presentation.
-   Toggled via document.body.dataset.view. Border/shadow/layout ONLY; row
+   Toggled via document.body.dataset.view. Cards set border/shadow/layout; the
+   line modes also set display and padding on collapsed rows. Otherwise row
    spacing/padding/min-height stay under Density's control (below). "list" is
    the untouched baseline (no rule needed).
    ============================================================================ */
-[data-view="compact"] .urlRow {
-    border: 1px solid var(--borderColor);
-    border-radius: var(--radius-sm);
-    box-shadow: none;
+/* Title line / URL line: a collapsed row is one flex line (<= 36px) at every
+   width. Selected rows get NO rule here, so List styling applies (each selector
+   is scoped :not([urlSelected="true"])). `flex-direction: row !important`
+   because the content wrapper carries Bootstrap's `.flex-column`
+   (`flex-direction: column !important`). The selectors out-rank both the base
+   .urlRowContent padding and the Density rule (so Density never changes these
+   rows' 3px padding). */
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlRowContent,
+[data-view="url_line"] .urlRow:not([urlSelected="true"]) .urlRowContent {
+    flex-direction: row !important;
+    align-items: center;
+    gap: var(--space-2);
+    padding-block: 3px;
 }
 
-[data-view="cards"] #listURLs {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: var(--space-3);
+/* The collapsed line shows no tags/buttons/go-to icon; selecting the row
+   removes these rules, so the row expands exactly like List. */
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .tagsAndButtonsWrap,
+[data-view="url_line"] .urlRow:not([urlSelected="true"]) .tagsAndButtonsWrap,
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .goToUrlIcon,
+[data-view="url_line"] .urlRow:not([urlSelected="true"]) .goToUrlIcon {
+    display: none;
 }
 
-[data-view="cards"] .urlRow {
-    border: 1px solid var(--borderColor);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-sm);
+/* Title line: the title row flexes and truncates; the URL block is hidden and
+   only the inline date (still hidden < 768px by the rule above) stays at the end. */
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlTitleRow {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+}
+
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlTitleRow > :first-child,
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlTitleAndUpdateIconWrap,
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlTitleAndUpdateIconInnerWrap {
+    min-width: 0;
+}
+
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlTitleRow > :first-child {
+    flex: 1 1 auto;
+}
+
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlStringRow {
+    flex: 0 0 auto;
+    width: auto;
+}
+
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlStringRow > :first-child {
+    display: none;
+}
+
+/* URL line: the title row is hidden; the URL and inline date share one line. */
+[data-view="url_line"] .urlRow:not([urlSelected="true"]) .urlTitleRow {
+    display: none;
+}
+
+[data-view="url_line"] .urlRow:not([urlSelected="true"]) .urlStringRow {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+}
+
+/* Keyboard focus in a 3px-padded line row: the 1px top/bottom border is too
+   faint, so the border rules are neutralised and an inset 2px outline is used
+   (negative offset: .urlRow clips with overflow: hidden). :not(.swipe-focus-return)
+   keeps post-swipe-delete programmatic focus unindicated, as in List. */
+[data-view="title_line"] .urlRow[filterable="true"][urlSelected="false"]:not(.swipe-focus-return):focus,
+[data-view="title_line"] .urlRow[filterable="true"][urlSelected="false"]:not(.swipe-focus-return):focus-visible,
+[data-view="url_line"] .urlRow[filterable="true"][urlSelected="false"]:not(.swipe-focus-return):focus,
+[data-view="url_line"] .urlRow[filterable="true"][urlSelected="false"]:not(.swipe-focus-return):focus-visible {
+    border-top: 1px solid var(--borderColor);
+    border-bottom: 1px solid var(--borderColor) !important;
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+/* Swipe reveal: the 44x44 icon would clip inside a <= 36px row, so it is sized to
+   the row height with a smaller glyph. */
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlRowSwipeRevealIcon,
+[data-view="url_line"] .urlRow:not([urlSelected="true"]) .urlRowSwipeRevealIcon {
+    height: 100%;
+    max-height: 100%;
+    width: 32px;
+}
+
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) .urlRowSwipeRevealIcon svg,
+[data-view="url_line"] .urlRow:not([urlSelected="true"]) .urlRowSwipeRevealIcon svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Corner overlays on a line row (the tag drop hint and the bulk result cue are
+   absolute in the top-right corner, sized for a tall row). While one is shown the
+   inline date is dropped and right padding is reserved so the title/URL text
+   never sits under it; the overlay is vertically centred in the row. The drop
+   hint is clamped to 14rem so the reserved width is exact. */
+[data-view="title_line"] .urlRow:not([urlSelected="true"]):is([data-drop-hint], :has(> .bulkCardResultCue)) .urlDateAddedBadgeInline,
+[data-view="url_line"] .urlRow:not([urlSelected="true"]):is([data-drop-hint], :has(> .bulkCardResultCue)) .urlDateAddedBadgeInline {
+    display: none;
+}
+
+[data-view="title_line"] .urlRow:not([urlSelected="true"]):has(> .bulkCardResultCue) .urlRowContent,
+[data-view="url_line"] .urlRow:not([urlSelected="true"]):has(> .bulkCardResultCue) .urlRowContent {
+    padding-right: 8rem;
+}
+
+/* Declared after the cue rule so the larger drop-hint padding wins; the cue is
+   hidden while a drop hint is shown. */
+[data-view="title_line"] .urlRow:not([urlSelected="true"])[data-drop-hint] .urlRowContent,
+[data-view="url_line"] .urlRow:not([urlSelected="true"])[data-drop-hint] .urlRowContent {
+    padding-right: calc(14rem + 30px);
+}
+
+[data-view="title_line"] .urlRow:not([urlSelected="true"])[data-drop-hint] > .bulkCardResultCue,
+[data-view="url_line"] .urlRow:not([urlSelected="true"])[data-drop-hint] > .bulkCardResultCue {
+    display: none;
+}
+
+[data-view="title_line"] .urlRow:not([urlSelected="true"]) > .bulkCardResultCue,
+[data-view="url_line"] .urlRow:not([urlSelected="true"]) > .bulkCardResultCue {
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Cards: a top-aligned grid at >= 992px only (below that, Cards renders as List,
+   so none of this applies; body[data-view] stays "cards" at every width and this
+   media query is the sole gate, matching WIDE_VIEWPORT_QUERY in view-mode.ts).
+   Every selector is prefixed `:where([data-view="cards"]) #listURLs`, which adds
+   no specificity beyond `#listURLs`, so each rule ties or beats the ID-scoped
+   striping / hover / :last-child / :not(.urlRow) + .urlRow rules above WITHOUT
+   !important. Ties against rules that must win (the tagDropTarget tint further
+   down, the bulk-actions.css multiSelected fill) are settled by source order:
+   this block sits after the former and before the latter. */
+@media (min-width: 992px) {
+    :where([data-view="cards"]) #listURLs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: var(--space-3);
+        padding: var(--space-3);
+        align-items: start;
+    }
+
+    /* #listURLs also holds the error banner and the create form: full-width cells. */
+    :where([data-view="cards"]) #listURLs > #URLDeckErrorIndicator,
+    :where([data-view="cards"]) #listURLs > #createURLWrap {
+        grid-column: 1 / -1;
+    }
+
+    /* Card surface. One background for even and odd (striping off); the even-row
+       rule already paints --cardBackgroundColor, so odd rows are brought to it. */
+    :where([data-view="cards"]) #listURLs .urlRow[filterable="true"] {
+        border: 1px solid var(--borderColor);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-sm);
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow.odd[filterable="true"],
+    :where([data-view="cards"]) #listURLs .urlRow.odd[filterable="true"] .text-input-inner-container>label,
+    :where([data-view="cards"]) #listURLs .urlRow.odd[filterable="true"] .text-input-inner-container>input,
+    :where([data-view="cards"]) #listURLs .urlRow.odd[filterable="true"] .urlSchemeToggle {
+        background-color: var(--cardBackgroundColor);
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow.odd[filterable="true"] .tagBadge {
+        background: var(--pageBackgroundColor);
+    }
+
+    /* The first-card / last-card border rules assume a linear list. */
+    :where([data-view="cards"]) #listURLs .urlRow[filterable="true"]:last-child {
+        border-bottom-width: 1px;
+    }
+
+    /* The swipe layer is never visible; JS also disables the swipe gesture here
+       (isCardsLayoutActive in cards/swipe.ts). */
+    :where([data-view="cards"]) #listURLs .urlRowSwipeReveal {
+        display: none;
+    }
+
+    /* Collapsed card: a compact box of ONE fixed height, whatever the title or URL
+       length, so every row of the grid is uniform. The title clamps to 2 lines, the
+       URL gets its own truncated line and the inline date sits below it,
+       left-aligned. The height leaves room for all of that plus the bottom-right
+       corner overlays' reserved padding (below); the full text stays reachable
+       through the selected card and the `title` tooltips. */
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) {
+        block-size: 152px;
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlRowContent {
+        padding: var(--space-3) var(--space-4);
+        min-height: 0;
+        block-size: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlTitleRow > :first-child,
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlTitleAndUpdateIconWrap,
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlTitleAndUpdateIconInnerWrap {
+        min-width: 0;
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlTitle {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        overflow: hidden;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlStringRow {
+        flex-wrap: wrap;
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlStringRow > :first-child {
+        flex: 1 1 100%;
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlDateAddedBadgeInline {
+        margin-left: 0;
+    }
+
+    /* Selected card: spans the whole grid row, so tags, buttons and "Added by"
+       have room. The attribution badge flows below the buttons instead of
+       sitting in the absolute bottom-right corner. */
+    :where([data-view="cards"]) #listURLs .urlRow[filterable="true"][urlSelected="true"] {
+        grid-column: 1 / -1;
+        border-color: var(--selectedUrlBorder);
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
+        position: static;
+        text-align: left;
+        margin-top: var(--space-2);
+    }
+
+    /* Keyboard focus on an unselected card: the 2px inset outline is the sole
+       indicator, so the mismatched 1px focus borders are neutralised (the bottom
+       one is !important in the base rule, hence !important here). Negative offset
+       so .urlRow's overflow: hidden does not clip it. */
+    :where([data-view="cards"]) #listURLs .urlRow[filterable="true"][urlSelected="false"]:not(.swipe-focus-return):focus,
+    :where([data-view="cards"]) #listURLs .urlRow[filterable="true"][urlSelected="false"]:not(.swipe-focus-return):focus-visible {
+        border-top: 1px solid var(--borderColor);
+        border-bottom: 1px solid var(--borderColor) !important;
+        outline: 2px solid var(--deckSelectionGreen);
+        outline-offset: -2px;
+    }
+
+    /* Corner overlays (the bulk result cue here; the tag drop hint in the
+       drop-target block below) sit at the card's bottom-right, over padding the
+       card reserves while one is shown, so they never cover the title or date. */
+    :where([data-view="cards"]) #listURLs .urlRow:is([data-drop-hint]:not([urlSelected="true"]), :has(> .bulkCardResultCue)) .urlRowContent {
+        padding-bottom: 2.5rem;
+    }
+
+    :where([data-view="cards"]) #listURLs .urlRow > .bulkCardResultCue {
+        top: auto;
+        bottom: 8px;
+    }
+}
+
+/* Fine-pointer hover keeps changing the card background (even and odd alike). */
+@media (min-width: 992px) and (not (any-pointer: coarse)) {
+    :where([data-view="cards"]) #listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover,
+    :where([data-view="cards"]) #listURLs .urlRow.odd[filterable="true"]:not([urlSelected="true"]):hover {
+        background-color: var(--oddUrlCardsBackgroundColor);
+    }
+}
+
+/* 768-991px: the absolute bottom-right "Added by" badge would run under the wider
+   button row of a selected List/line row, so it flows below the buttons instead.
+   At >= 992px List keeps the absolute badge. */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .urlRow[filterable="true"][urlSelected="true"] .urlDateAddedBadgeStacked {
+        position: static;
+        text-align: left;
+        margin-top: var(--space-1);
+    }
 }
 
 /* ============================================================================
@@ -1293,5 +1569,30 @@ a.urlString {
         border: 1px solid var(--cautionText);
         border-radius: 4px;
         padding: 0 6px;
+    }
+
+    /* Line rows (<= 36px): centre the hint vertically and clamp its width to the
+       padding the row reserves for it (see the line-mode rules above). */
+    [data-view="title_line"] #listURLs .urlRow:not([urlSelected="true"])[data-drop-hint]::after,
+    [data-view="url_line"] #listURLs .urlRow:not([urlSelected="true"])[data-drop-hint]::after {
+        top: 50%;
+        transform: translateY(-50%);
+        box-sizing: border-box;
+        max-width: 14rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Cards: the hint moves to the card's bottom-right, over the padding the
+       card reserves for it (see the Cards block above), clamped to the card. */
+    [data-view="cards"] #listURLs .urlRow:not([urlSelected="true"])[data-drop-hint]::after {
+        top: auto;
+        bottom: 10px;
+        box-sizing: border-box;
+        max-width: calc(100% - 28px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }

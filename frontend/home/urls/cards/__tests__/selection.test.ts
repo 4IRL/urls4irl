@@ -7,6 +7,7 @@ import {
   setURLCardSelectionEventListener,
 } from "../selection.js";
 import { enableTabbingOnURLCardElements } from "../utils.js";
+import { syncUrlTooltips } from "../url-tooltips.js";
 import { clearURLOutcomeBanner } from "../../outcome-banner.js";
 import { resetURLEditPanelState } from "../update-url-panel.js";
 import { hideAndResetUpdateURLTitleForm } from "../update-title.js";
@@ -17,6 +18,7 @@ import { isCoarsePointer } from "../../../mobile.js";
 import { toggleURLCardSelection } from "../../bulk-actions/bulk-selection.js";
 import { isAnyBulkPickerOpen } from "../../bulk-actions/picker-guard.js";
 
+vi.mock("../url-tooltips.js", () => ({ syncUrlTooltips: vi.fn() }));
 vi.mock("../update-title.js", () => ({
   hideAndResetUpdateURLTitleForm: vi.fn(),
 }));
@@ -206,9 +208,21 @@ describe("URL Card Selection", () => {
       selectURLCard(urlCard);
       expect(enableTabbingOnURLCardElements).toHaveBeenCalledWith(urlCard);
     });
+
+    it("syncs the URL tooltips after selecting", () => {
+      selectURLCard(urlCard);
+      expect(syncUrlTooltips).toHaveBeenCalledWith(urlCard);
+    });
   });
 
   describe("deselectAllURLs", () => {
+    it("syncs the URL tooltips after deselecting", () => {
+      selectURLCard(urlCard);
+      vi.mocked(syncUrlTooltips).mockClear();
+      deselectAllURLs();
+      expect(syncUrlTooltips).toHaveBeenCalledWith(urlCard);
+    });
+
     it("is a no-op when no URL card is selected", () => {
       deselectAllURLs();
       expect(urlCard.attr("urlSelected")).toBe("false");
@@ -546,6 +560,71 @@ describe("URL Card Selection", () => {
       emit(AppEvents.URL_TAG_FILTER_APPLIED);
 
       expect(urlCard.attr("urlSelected")).toBe("false");
+    });
+  });
+
+  describe("selection scroll (Cards only, user clicks only)", () => {
+    const scrollIntoView = vi.fn();
+    const originalMatchMedia = window.matchMedia;
+    const originalScrollIntoView = window.HTMLElement.prototype.scrollIntoView;
+
+    function setLayout({ view, wide }: { view: string; wide: boolean }): void {
+      document.body.dataset.view = view;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(min-width: 992px)" ? wide : false,
+        media: query,
+      })) as unknown as typeof window.matchMedia;
+    }
+
+    beforeEach(() => {
+      scrollIntoView.mockClear();
+      window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    });
+
+    afterEach(() => {
+      delete document.body.dataset.view;
+      window.matchMedia = originalMatchMedia;
+      window.HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    });
+
+    it("a click selection in Cards at >= 992px scrolls the card into view", () => {
+      setLayout({ view: "cards", wide: true });
+      setURLCardSelectionEventListener(urlCard);
+
+      urlCard.trigger("click");
+
+      expect(urlCard.attr("urlSelected")).toBe("true");
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView).toHaveBeenCalledWith(
+        expect.objectContaining({ block: "nearest", behavior: "smooth" }),
+      );
+    });
+
+    it.each([
+      { view: "list", wide: true },
+      { view: "title_line", wide: true },
+      { view: "url_line", wide: true },
+      { view: "cards", wide: false },
+    ])(
+      "a click selection in view=$view at wide=$wide does not scroll",
+      ({ view, wide }) => {
+        setLayout({ view, wide });
+        setURLCardSelectionEventListener(urlCard);
+
+        urlCard.trigger("click");
+
+        expect(urlCard.attr("urlSelected")).toBe("true");
+        expect(scrollIntoView).not.toHaveBeenCalled();
+      },
+    );
+
+    it("a programmatic selectURLCard call does not scroll, even in Cards", () => {
+      setLayout({ view: "cards", wide: true });
+
+      selectURLCard(urlCard);
+
+      expect(urlCard.attr("urlSelected")).toBe("true");
+      expect(scrollIntoView).not.toHaveBeenCalled();
     });
   });
 

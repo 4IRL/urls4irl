@@ -288,9 +288,9 @@ describe("deck-view-attrs personal view settings", () => {
 
     setState({
       activeUTubID: 1,
-      memberSettings: member({ view_mode: "compact", density: "compact" }),
+      memberSettings: member({ view_mode: "title_line", density: "compact" }),
     });
-    expect(document.body.dataset.view).toBe("compact");
+    expect(document.body.dataset.view).toBe("title_line");
     expect(document.body.dataset.density).toBe("compact");
 
     // Switching to a UTub without overrides.
@@ -301,7 +301,10 @@ describe("deck-view-attrs personal view settings", () => {
     // Deselect clears the deck attributes and keeps the preference values.
     setState({
       activeUTubID: 3,
-      memberSettings: member({ view_mode: "compact", hide_copy_button: true }),
+      memberSettings: member({
+        view_mode: "title_line",
+        hide_copy_button: true,
+      }),
     });
     setState({ activeUTubID: null });
     expect(deck().hasAttribute("data-hide-copy")).toBe(false);

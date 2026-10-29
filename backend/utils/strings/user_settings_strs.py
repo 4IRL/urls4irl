@@ -181,11 +181,13 @@ class USER_SETTINGS_STRINGS:
     UI_SETTINGS_THEME_DARK = "Dark"
     UI_SETTINGS_THEME_SYSTEM = "System"
     UI_SETTINGS_VIEW_LABEL = "Default UTub view"
-    UI_SETTINGS_VIEW_DESC = "How the URL deck lays out when you open a collection."
+    UI_SETTINGS_VIEW_DESC = (
+        "How the URL deck lays out when you open a collection. "
+        "Cards applies on wide screens; smaller screens show List."
+    )
     UI_SETTINGS_VIEW_OPTION_LIST = "List"
-    # "View: Compact" / "Density: Compact" disambiguate the two prefs that both
-    # carry the literal value "compact" (DD-25).
-    UI_SETTINGS_VIEW_OPTION_COMPACT = "View: Compact"
+    UI_SETTINGS_VIEW_OPTION_TITLE_LINE = "Title line"
+    UI_SETTINGS_VIEW_OPTION_URL_LINE = "URL line"
     UI_SETTINGS_VIEW_OPTION_CARDS = "Cards"
     UI_SETTINGS_SORT_LABEL = "Default URL sort"
     UI_SETTINGS_SORT_DESC = "Ordering applied to URLs on load."

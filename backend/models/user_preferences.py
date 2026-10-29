@@ -31,7 +31,8 @@ class Theme(Enum):
 
 class ViewMode(Enum):
     LIST = "list"
-    COMPACT = "compact"
+    TITLE_LINE = "title_line"
+    URL_LINE = "url_line"
     CARDS = "cards"
 
 

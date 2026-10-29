@@ -235,6 +235,26 @@ def test_patches_merge_with_stored_overrides(
     assert response.json[MODELS.MEMBER_SETTINGS]["urls"]["density"] == "compact"
 
 
+@pytest.mark.parametrize("view_mode", ["title_line", "url_line"])
+def test_line_view_modes_are_accepted(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    view_mode,
+):
+    """
+    GIVEN a member
+    WHEN they PATCH view_mode to title_line or url_line
+    THEN 200 is returned and the value is stored and echoed
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"urls": {"view_mode": view_mode}})
+
+    assert response.status_code == 200
+    assert response.json[MODELS.MEMBER_SETTINGS]["urls"]["view_mode"] == view_mode
+    assert _stored(app, CREATOR_ID) == {"urls": {"view_mode": view_mode}}
+
+
 def test_explicit_null_clears_override_and_storage_becomes_null(
     add_multiple_users_to_utub_without_logging_in, login_first_user_without_register
 ):
@@ -307,6 +327,7 @@ def test_no_op_makes_no_commit_and_returns_full_slice(
     [
         ("sort", "bogus"),
         ("view_mode", "bogus"),
+        ("view_mode", "compact"),
         ("density", "bogus"),
         ("hide_copy_button", "yes"),
     ],

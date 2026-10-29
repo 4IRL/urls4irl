@@ -34,7 +34,7 @@ class MemberUrlsSettings(SettingsSection):
     sort: Literal["newest", "oldest", "title_az"] | None = Field(
         default=None, description="URL sort override; null uses the account default"
     )
-    view_mode: Literal["list", "compact", "cards"] | None = Field(
+    view_mode: Literal["list", "title_line", "url_line", "cards"] | None = Field(
         default=None, description="Layout override; null uses the account default"
     )
     density: Literal["comfortable", "compact"] | None = Field(

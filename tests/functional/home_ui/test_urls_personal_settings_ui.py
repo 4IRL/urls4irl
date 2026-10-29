@@ -349,6 +349,55 @@ def test_layout_override_sets_view_for_that_utub_only_and_default_restores(
     expect(body).to_have_attribute("data-view", default_view)
 
 
+def test_title_line_layout_override_sets_view_and_persists_after_reload(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a member in a UTub on desktop
+    WHEN they select the Title line layout
+    THEN body[data-view] is title_line, and it persists after a reload
+    """
+    _login_to_owned_utub(app=provide_app, page=page)
+    body = page.locator("body")
+
+    _open_urls_settings(page=page)
+    _pick(page=page, select_selector=HPL.URLS_PERSONAL_VIEW_SELECT, value="title_line")
+    expect(body).to_have_attribute("data-view", "title_line")
+
+    page.reload()
+    expect(body).to_have_attribute("data-view", "title_line")
+    _reopen_urls_settings(page=page)
+    expect(page.locator(HPL.URLS_PERSONAL_VIEW_SELECT)).to_have_value("title_line")
+
+
+def test_density_select_is_disabled_with_a_hint_in_title_line_and_back_in_list(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a member on desktop whose effective layout is List
+    WHEN they select Title line, then List again, in the popover
+    THEN the Density select is aria-disabled with the hint visible for Title
+        line, and enabled with the hint hidden for List
+    """
+    _login_to_owned_utub(app=provide_app, page=page)
+    _open_urls_settings(page=page)
+    density = page.locator(HPL.URLS_PERSONAL_DENSITY_SELECT)
+    hint = page.locator(HPL.URLS_PERSONAL_DENSITY_HINT)
+
+    _pick(page=page, select_selector=HPL.URLS_PERSONAL_VIEW_SELECT, value="list")
+    expect(density).not_to_have_attribute("aria-disabled", "true")
+    expect(hint).to_be_hidden()
+
+    _pick(page=page, select_selector=HPL.URLS_PERSONAL_VIEW_SELECT, value="title_line")
+    expect(density).to_have_attribute("aria-disabled", "true")
+    expect(hint).to_be_visible()
+    expect(hint).to_have_text("Density applies to List view and the selected URL")
+
+    _pick(page=page, select_selector=HPL.URLS_PERSONAL_VIEW_SELECT, value="list")
+    expect(density).not_to_have_attribute("aria-disabled", "true")
+    expect(hint).to_be_hidden()
+
+
 def test_real_css_keeps_hidden_buttons_hidden_after_edit_and_tag_forms_close(
     page: Page, create_test_urls, provide_app: Flask
 ):

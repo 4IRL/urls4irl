@@ -139,7 +139,7 @@ class UpdatePreferencesRequest(BaseModel):
     )
     default_view: ViewMode = Field(
         alias="defaultView",
-        description="The default UTub URL view mode: list, compact, or cards",
+        description="The default UTub URL view mode: list, title_line, url_line, or cards",
     )
     default_sort: SortOrder = Field(
         alias="defaultSort",

@@ -54,9 +54,17 @@ const SWITCHES = {
   swipe: "#urlsPersonalDisableSwipeSwitch",
 };
 
-function mockFinePointer({ fine }: { fine: boolean }): void {
+function mockFinePointer({
+  fine,
+  wide = true,
+}: {
+  fine: boolean;
+  wide?: boolean;
+}): void {
   window.matchMedia = vi.fn((query: string) => ({
-    matches: fine && query === "(any-pointer: fine)",
+    matches:
+      (fine && query === "(any-pointer: fine)") ||
+      (wide && query === "(min-width: 992px)"),
     media: query,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -213,6 +221,197 @@ describe("registerUrlsPersonalSettingsSection", () => {
       for (const control of host.querySelectorAll("select, button")) {
         expect(control.getAttribute("aria-disabled")).toBe("true");
       }
+    });
+  });
+
+  describe("view options by viewport", () => {
+    const VIEW = "urlsSettingsViewSelect";
+
+    function optionValues(): string[] {
+      return Array.from(selectEl(VIEW).options).map((option) => option.value);
+    }
+
+    function setDefaultView(
+      defaultView: "list" | "cards" | "title_line",
+    ): void {
+      setState({ preferences: { ...getState().preferences, defaultView } });
+    }
+
+    it("lists all four options in order on a wide viewport", () => {
+      setup();
+      expect(optionValues()).toEqual([
+        "",
+        "list",
+        "title_line",
+        "url_line",
+        "cards",
+      ]);
+      expect(selectEl(VIEW).options[4].textContent).toBe("Cards");
+    });
+
+    it("omits cards on a narrow viewport", () => {
+      mockFinePointer({ fine: true, wide: false });
+      setup();
+      expect(optionValues()).toEqual(["", "list", "title_line", "url_line"]);
+    });
+
+    it("omits cards when matchMedia is missing (fail closed)", () => {
+      (window as { matchMedia?: unknown }).matchMedia = undefined;
+      setup();
+      expect(optionValues()).not.toContain("cards");
+    });
+
+    it("shows a cards override as one selected extra option on a narrow viewport", () => {
+      mockFinePointer({ fine: true, wide: false });
+      setDefaultView("title_line");
+      setup({ slice: member({ view_mode: "cards" }) });
+      expect(selectEl(VIEW).value).toBe("cards");
+      expect(optionValues().filter((value) => value === "cards")).toHaveLength(
+        1,
+      );
+      expect(selectEl(VIEW).selectedOptions[0].textContent).toBe(
+        "Cards (List on small screens)",
+      );
+      expect(selectEl(VIEW).options[0].textContent).toBe("Default: Title line");
+    });
+
+    it("clears a cards override through Default on a narrow viewport", () => {
+      mockFinePointer({ fine: true, wide: false });
+      setup({ slice: member({ view_mode: "cards" }) });
+      choose({ id: VIEW, value: "" });
+      expect(submit).toHaveBeenCalledWith({ patch: { view_mode: null } });
+    });
+
+    it("labels a cards account default with a single prefix on a narrow viewport", () => {
+      mockFinePointer({ fine: true, wide: false });
+      setDefaultView("cards");
+      setup();
+      expect(selectEl(VIEW).options[0].textContent).toBe(
+        "Default: Cards (List on small screens)",
+      );
+      expect(optionValues()).not.toContain("cards");
+    });
+
+    it("selects the extra option when both default and override are cards", () => {
+      mockFinePointer({ fine: true, wide: false });
+      setDefaultView("cards");
+      setup({ slice: member({ view_mode: "cards" }) });
+      expect(selectEl(VIEW).options[0].textContent).toBe(
+        "Default: Cards (List on small screens)",
+      );
+      expect(selectEl(VIEW).selectedOptions[0].textContent).toBe(
+        "Cards (List on small screens)",
+      );
+    });
+
+    it("keeps the true default label on a wide viewport", () => {
+      setDefaultView("cards");
+      setup();
+      expect(selectEl(VIEW).options[0].textContent).toBe("Default: Cards");
+    });
+  });
+
+  describe("density control follows the effective view", () => {
+    const DENSITY = "urlsSettingsDensitySelect";
+    const HINT_TEXT = "Density applies to List view and the selected URL";
+
+    function hintEl(): HTMLElement {
+      return query("#urlsSettingsDensityHint");
+    }
+
+    function densityDisabled(): boolean {
+      return selectEl(DENSITY).getAttribute("aria-disabled") === "true";
+    }
+
+    it.each(["title_line", "url_line", "cards"] as const)(
+      "is aria-disabled with a visible hint for %s on a wide viewport",
+      (viewMode) => {
+        setup({ slice: member({ view_mode: viewMode }) });
+        expect(densityDisabled()).toBe(true);
+        expect(selectEl(DENSITY).hasAttribute("disabled")).toBe(false);
+        expect(hintEl().hidden).toBe(false);
+        expect(hintEl().textContent).toBe(HINT_TEXT);
+      },
+    );
+
+    it("is enabled for list with the hint hidden", () => {
+      setup({ slice: member({ view_mode: "list" }) });
+      expect(densityDisabled()).toBe(false);
+      expect(hintEl().hidden).toBe(true);
+    });
+
+    it("is enabled when Default resolves to list", () => {
+      setup();
+      expect(densityDisabled()).toBe(false);
+    });
+
+    it("is disabled when Default resolves to a line mode", () => {
+      setState({
+        preferences: { ...getState().preferences, defaultView: "url_line" },
+      });
+      setup();
+      expect(densityDisabled()).toBe(true);
+    });
+
+    it("is enabled for a cards setting on a narrow viewport (renders as list)", () => {
+      mockFinePointer({ fine: true, wide: false });
+      setup({ slice: member({ view_mode: "cards" }) });
+      expect(densityDisabled()).toBe(false);
+      expect(hintEl().hidden).toBe(true);
+    });
+
+    it("describes the select by the desc and, while shown, the hint", () => {
+      setup({ slice: member({ view_mode: "title_line" }) });
+      const descId = query(`#${DENSITY}`)
+        .closest(".panelSettingsRow")!
+        .querySelector(".panelSettingsRowDesc")!.id;
+      expect(
+        selectEl(DENSITY).getAttribute("aria-describedby")?.split(" "),
+      ).toEqual([descId, "urlsSettingsDensityHint"]);
+
+      setup({ slice: member({ view_mode: "list" }) });
+      expect(selectEl(DENSITY).getAttribute("aria-describedby")).toBe(descId);
+    });
+
+    it("toggles immediately from the view select change and keeps the value", () => {
+      setup({ slice: member({ density: "compact" }) });
+      expect(densityDisabled()).toBe(false);
+
+      choose({ id: "urlsSettingsViewSelect", value: "title_line" });
+      expect(densityDisabled()).toBe(true);
+      expect(hintEl().hidden).toBe(false);
+      expect(selectEl(DENSITY).value).toBe("compact");
+
+      choose({ id: "urlsSettingsViewSelect", value: "list" });
+      expect(densityDisabled()).toBe(false);
+      expect(hintEl().hidden).toBe(true);
+      expect(selectEl(DENSITY).value).toBe("compact");
+      expect(
+        submit.mock.calls.filter(([arg]) => "density" in arg.patch),
+      ).toHaveLength(0);
+    });
+
+    it("re-resolves Default to the account default on a view change", () => {
+      setState({
+        preferences: { ...getState().preferences, defaultView: "title_line" },
+      });
+      setup({ slice: member({ view_mode: "list" }) });
+      expect(densityDisabled()).toBe(false);
+      choose({ id: "urlsSettingsViewSelect", value: "" });
+      expect(densityDisabled()).toBe(true);
+    });
+
+    it("ignores a density change while view-disabled and reverts it", () => {
+      setup({ slice: member({ view_mode: "url_line" }) });
+      choose({ id: DENSITY, value: "compact" });
+      expect(submit).not.toHaveBeenCalled();
+      expect(selectEl(DENSITY).value).toBe("");
+    });
+
+    it("keeps density disabled when inert even if the view is list", () => {
+      setup({ canWrite: false });
+      expect(densityDisabled()).toBe(true);
+      expect(hintEl().hidden).toBe(true);
     });
   });
 

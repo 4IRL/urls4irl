@@ -20,6 +20,7 @@ import {
 } from "../../../logic/url-swipe-snap.js";
 import { getState } from "../../../store/app-store.js";
 import { isCoarsePointer, isMobile } from "../../mobile.js";
+import { isCardsLayoutActive } from "../view-mode.js";
 import { deleteURL } from "./delete.js";
 import { armFocusReturnSuppression } from "./focus-return.js";
 
@@ -120,6 +121,10 @@ function _beginDrag({
   if (_dragState !== null) return;
   if (event.button !== 0) return;
   if (!isSwipeDeleteEnabled()) return;
+  // The Cards grid hides the swipe reveal layer, so a wide touch device (a
+  // tablet in landscape) must not drag a card with nothing behind it. Cards
+  // below the wide breakpoint renders as List and still swipes.
+  if (isCardsLayoutActive()) return;
   // A locked UTub is frozen to every mutation; swipe-to-delete is one, so the
   // gesture never begins (the visible delete controls are disabled too).
   if (getState().isCurrentUTubLocked) return;

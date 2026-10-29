@@ -53,7 +53,8 @@ function panelHtml(checkedTheme: "light" | "dark" | "system"): string {
       </div>
       <select class="form-control" id="SettingsDefaultViewSelect" aria-label="Default UTub view">
         <option value="list" selected>List</option>
-        <option value="compact">View: Compact</option>
+        <option value="title_line">Title line</option>
+        <option value="url_line">URL line</option>
         <option value="cards">Cards</option>
       </select>
       <select class="form-control" id="SettingsDefaultSortSelect" aria-label="Default URL sort">

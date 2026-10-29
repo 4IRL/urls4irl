@@ -64,6 +64,71 @@ describe("Keyboard Navigation (arrow keys)", () => {
     bindSwitchURLKeyboardEventListeners();
   });
 
+  describe("selection scroll (Cards only, once per keypress)", () => {
+    const scrollIntoView = vi.fn();
+    const originalMatchMedia = window.matchMedia;
+    const originalScrollIntoView = window.HTMLElement.prototype.scrollIntoView;
+
+    function setLayout({ view, wide }: { view: string; wide: boolean }): void {
+      document.body.dataset.view = view;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(min-width: 992px)" ? wide : false,
+        media: query,
+      })) as unknown as typeof window.matchMedia;
+    }
+
+    beforeEach(() => {
+      scrollIntoView.mockClear();
+      window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    });
+
+    afterEach(() => {
+      delete document.body.dataset.view;
+      window.matchMedia = originalMatchMedia;
+      window.HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    });
+
+    it.each([KEYS.ARROW_DOWN, KEYS.ARROW_UP])(
+      "%s in Cards at >= 992px scrolls the newly selected card once",
+      (direction) => {
+        setLayout({ view: "cards", wide: true });
+        selectURLCard($(".urlRow[utuburlid=2]"));
+        scrollIntoView.mockClear();
+
+        pressArrowKey(direction);
+
+        expect(scrollIntoView).toHaveBeenCalledTimes(1);
+        expect(scrollIntoView).toHaveBeenCalledWith(
+          expect.objectContaining({ block: "nearest", behavior: "smooth" }),
+        );
+        expect(scrollIntoView.mock.contexts[0]).toBe(getSelectedURLCard()![0]);
+      },
+    );
+
+    it("the first keypress with nothing selected also scrolls once", () => {
+      setLayout({ view: "cards", wide: true });
+
+      pressArrowKey(KEYS.ARROW_DOWN);
+
+      expect(getSelectedCardId()).toBe(1);
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      { view: "list", wide: true },
+      { view: "title_line", wide: true },
+      { view: "cards", wide: false },
+    ])("no scroll in view=$view at wide=$wide", ({ view, wide }) => {
+      setLayout({ view, wide });
+      selectURLCard($(".urlRow[utuburlid=2]"));
+
+      pressArrowKey(KEYS.ARROW_DOWN);
+
+      expect(getSelectedCardId()).toBe(3);
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+  });
+
   describe("skips cards hidden by search (searchable=false)", () => {
     it("skips hidden card when pressing DOWN", () => {
       selectURLCard($(".urlRow[utuburlid=1]"));

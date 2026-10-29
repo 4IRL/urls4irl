@@ -66,6 +66,7 @@ const { mockMetricsClient } = await vi.hoisted(
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
+vi.mock("../url-tooltips.js", () => ({ syncUrlTooltips: vi.fn() }));
 
 // One shared log spy for every debug(namespace) logger, so the revive
 // missing-adder anomaly log can be asserted on.

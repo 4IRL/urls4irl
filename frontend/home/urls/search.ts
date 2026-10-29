@@ -21,6 +21,9 @@ const SEARCH_DEBOUNCE_MS = 200;
 
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+// Search matches BOTH the title and the URL in every view mode (accepted): a
+// Title line or URL line row can match on text it hides while collapsed.
+// Expanding the row reveals the match; no highlighting or auto-expand.
 function readURLsFromDOM(): URLDOMEntry[] {
   return $.map($(".urlRow[filterable=true]").toArray(), (el: HTMLElement) => {
     const urlID = parseInt($(el).attr("utuburlid")!);

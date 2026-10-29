@@ -210,6 +210,57 @@ def test_plain_member_writes_personal_section_in_mobile_sheet(
     )
 
 
+def test_layout_select_has_no_cards_option_on_a_phone_without_an_override(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a phone-width sheet and no per-UTub Layout override
+    WHEN the URLs settings sheet opens
+    THEN the Layout select does not offer Cards
+    """
+    page = page_mobile_portrait
+    _login_to_owned_utub_on_phone(app=provide_app, page=page)
+    _open_urls_sheet(page)
+
+    expect(page.locator(HPL.URLS_PERSONAL_VIEW_SELECT)).to_be_attached()
+    expect(
+        page.locator(f'{HPL.URLS_PERSONAL_VIEW_SELECT} option[value="cards"]')
+    ).to_have_count(0)
+
+
+def test_cards_override_shows_one_selected_small_screen_option_on_a_phone(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a member whose per-UTub Layout override is cards, on a phone
+    WHEN the URLs settings sheet opens
+    THEN the one cards option is the selected "Cards (List on small screens)"
+        and the Default option keeps its true label
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    utub_id = get_utub_this_user_created(app, USER_ID_FOR_TEST).id
+    set_member_settings(
+        app, utub_id, USER_ID_FOR_TEST, {"urls": {"view_mode": "cards"}}
+    )
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub_id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+    _open_urls_sheet(page)
+
+    view_select = page.locator(HPL.URLS_PERSONAL_VIEW_SELECT)
+    cards_option = page.locator(
+        f'{HPL.URLS_PERSONAL_VIEW_SELECT} option[value="cards"]'
+    )
+    expect(cards_option).to_have_count(1)
+    expect(cards_option).to_have_text("Cards (List on small screens)")
+    expect(view_select).to_have_value("cards")
+    expect(
+        page.locator(f'{HPL.URLS_PERSONAL_VIEW_SELECT} option[value=""]')
+    ).to_have_text("Default: List")
+
+
 def test_section_title_tap_collapses_it_in_the_sheet_and_density_is_absent(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):

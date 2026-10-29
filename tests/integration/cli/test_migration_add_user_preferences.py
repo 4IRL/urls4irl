@@ -1,3 +1,4 @@
+import json
 import os
 
 import pytest
@@ -15,6 +16,8 @@ pytestmark = pytest.mark.cli
 
 _PRE_REVISION = "e1a4c7f2b9d6"
 _USER_PREFERENCES_REVISION = "58dfdcfa3921"
+_PRE_VIEW_SPLIT_REVISION = "7c3f9a1b5d82"
+_VIEW_SPLIT_REVISION = "b3e7c1d9a4f2"
 
 _USER_PREFERENCES_TABLE = "UserPreferences"
 _USERS_TABLE = "Users"
@@ -69,6 +72,164 @@ def _capture_row_counts(connection: Connection) -> dict[str, int]:
             text(f'SELECT COUNT(*) FROM "{table_name}"')
         ).scalar_one()
     return row_counts
+
+
+def _seed_view_mode_rows(
+    connection: Connection, view_modes: tuple[str, str]
+) -> tuple[list[int], list[int]]:
+    """Insert a UserPreferences row and set a member settings JSONB (with a
+    sibling ``sort`` key) for two users / members, one per given view mode.
+
+    Returns the seeded (user ids, member row ids).
+    """
+    # One membership per user (its lowest utubID); UtubMembers has a composite
+    # primary key (utubID, userID), so a member is identified by that pair.
+    member_rows = connection.execute(
+        text(
+            'SELECT "userID", MIN("utubID") FROM "UtubMembers" '
+            'GROUP BY "userID" ORDER BY "userID" LIMIT 2'
+        )
+    ).all()
+    assert len(member_rows) == 2
+    user_ids = [row[0] for row in member_rows]
+    member_ids = [row[1] for row in member_rows]
+    for user_id, member_id, view_mode in zip(user_ids, member_ids, view_modes):
+        connection.execute(
+            text('DELETE FROM "UserPreferences" WHERE "userID" = :user_id'),
+            {"user_id": user_id},
+        )
+        connection.execute(
+            text(
+                'INSERT INTO "UserPreferences" ("userID", theme, "defaultView", '
+                '"defaultSort", density, "dateFormat", "createdAt", "updatedAt") '
+                "VALUES (:user_id, 'system', CAST(:view_mode AS view_mode_enum), "
+                "'newest', 'comfortable', 'iso', now(), now())"
+            ),
+            {"user_id": user_id, "view_mode": view_mode},
+        )
+        connection.execute(
+            text(
+                'UPDATE "UtubMembers" SET settings = CAST(:settings AS jsonb) '
+                'WHERE "utubID" = :utub_id AND "userID" = :user_id'
+            ),
+            {
+                "settings": json.dumps(
+                    {"urls": {"view_mode": view_mode, "sort": "oldest"}}
+                ),
+                "utub_id": member_id,
+                "user_id": user_id,
+            },
+        )
+    return user_ids, member_ids
+
+
+def _assert_default_view_not_null_without_default(connection: Connection) -> None:
+    is_nullable, column_default = connection.execute(
+        text(
+            "SELECT is_nullable, column_default FROM information_schema.columns "
+            "WHERE table_name = 'UserPreferences' AND column_name = 'defaultView'"
+        )
+    ).one()
+    assert is_nullable == "NO"
+    assert column_default is None
+
+
+def _read_view_modes(
+    connection: Connection, user_ids: list[int], member_ids: list[int]
+) -> tuple[list[str], list[str], list[str]]:
+    """Return (column view modes, JSONB view modes, JSONB sort values)."""
+    column_modes = [
+        connection.execute(
+            text(
+                'SELECT "defaultView"::text FROM "UserPreferences" WHERE "userID" = :u'
+            ),
+            {"u": user_id},
+        ).scalar_one()
+        for user_id in user_ids
+    ]
+    jsonb_modes = []
+    jsonb_sorts = []
+    for user_id, member_id in zip(user_ids, member_ids):
+        settings = connection.execute(
+            text(
+                'SELECT settings FROM "UtubMembers" '
+                'WHERE "utubID" = :utub_id AND "userID" = :user_id'
+            ),
+            {"utub_id": member_id, "user_id": user_id},
+        ).scalar_one()
+        jsonb_modes.append(settings["urls"]["view_mode"])
+        jsonb_sorts.append(settings["urls"]["sort"])
+    return column_modes, jsonb_modes, jsonb_sorts
+
+
+def test_view_mode_title_and_url_line_migration_upgrade_and_downgrade(runner):
+    """
+    GIVEN a database at the pre-split revision seeded with ``flask addmock all``,
+        a ``compact`` preference column and member JSONB (with a sibling key)
+    WHEN b3e7c1d9a4f2 is applied, a ``url_line`` row is added, and it is reverted
+    THEN every ``compact`` reads ``title_line`` after upgrade, every
+        ``title_line``/``url_line`` reads ``compact`` after downgrade, sibling
+        JSONB keys survive, and ``defaultView`` stays NOT NULL
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    os.environ["PYTEST_RUNNING"] = "1"
+    app, cli_runner = runner
+    migrate.init_app(app)
+
+    cli_runner.invoke(args=_MANAGEDB_DROP_ARGS)
+
+    with app.app_context():
+        command.upgrade(_build_alembic_config(), "head")
+        cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
+        command.downgrade(_build_alembic_config(), _PRE_VIEW_SPLIT_REVISION)
+
+        with db.engine.begin() as connection:
+            user_ids, member_ids = _seed_view_mode_rows(connection, ("compact", "list"))
+
+        command.upgrade(_build_alembic_config(), _VIEW_SPLIT_REVISION)
+
+        with db.engine.begin() as connection:
+            column_modes, jsonb_modes, jsonb_sorts = _read_view_modes(
+                connection, user_ids, member_ids
+            )
+            assert column_modes == ["title_line", "list"]
+            assert jsonb_modes == ["title_line", "list"]
+            assert jsonb_sorts == ["oldest", "oldest"]
+            _assert_default_view_not_null_without_default(connection)
+            # Switch the second row to url_line so downgrade must map both.
+            connection.execute(
+                text(
+                    'UPDATE "UserPreferences" SET "defaultView" = '
+                    "CAST('url_line' AS view_mode_enum) WHERE \"userID\" = :u"
+                ),
+                {"u": user_ids[1]},
+            )
+            connection.execute(
+                text(
+                    'UPDATE "UtubMembers" SET settings = jsonb_set(settings, '
+                    "'{urls,view_mode}', '\"url_line\"') "
+                    'WHERE "utubID" = :utub_id AND "userID" = :user_id'
+                ),
+                {"utub_id": member_ids[1], "user_id": user_ids[1]},
+            )
+
+        command.downgrade(_build_alembic_config(), _PRE_VIEW_SPLIT_REVISION)
+
+        with db.engine.connect() as connection:
+            column_modes, jsonb_modes, jsonb_sorts = _read_view_modes(
+                connection, user_ids, member_ids
+            )
+            assert column_modes == ["compact", "compact"]
+            assert jsonb_modes == ["compact", "compact"]
+            assert jsonb_sorts == ["oldest", "oldest"]
+            _assert_default_view_not_null_without_default(connection)
+
+        command.upgrade(_build_alembic_config(), "head")
+        db.create_all()
+
+    del os.environ["PYTEST_RUNNING"]
 
 
 def test_add_user_preferences_migration_upgrade_and_downgrade(runner):

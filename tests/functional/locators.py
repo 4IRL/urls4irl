@@ -131,6 +131,7 @@ class HomePageLocators(GenericPageLocator):
     URLS_PERSONAL_SORT_SELECT = "#urlsSettingsSortSelect"
     URLS_PERSONAL_VIEW_SELECT = "#urlsSettingsViewSelect"
     URLS_PERSONAL_DENSITY_SELECT = "#urlsSettingsDensitySelect"
+    URLS_PERSONAL_DENSITY_HINT = "#urlsSettingsDensityHint"
     URLS_PERSONAL_HIDE_COPY_SWITCH = "#urlsPersonalHideCopySwitch"
     URLS_PERSONAL_HIDE_SHORT_LINK_SWITCH = "#urlsPersonalHideShortLinkSwitch"
     URLS_PERSONAL_HIDE_DATE_SWITCH = "#urlsPersonalHideDateSwitch"
@@ -170,6 +171,9 @@ class HomePageLocators(GenericPageLocator):
     INPUT_UTUB_DESCRIPTION_CREATE = "#utubDescriptionCreate"
     BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
     BUTTON_UTUB_CANCEL_CREATE = "#utubCancelBtnCreate"
+    CREATE_UTUB_WRAP = "#createUTubWrap"
+    TRASH_SELECTOR_WRAP = "#TrashSelectorWrap"
+    UTUB_DECK_CONTENT = "#UTubDeckContent"
 
     # Onboarding nudges (first-time tooltips). The bubble is a programmatic
     # Bootstrap tooltip skinned via data-bs-custom-class="onboarding-nudge-tooltip"

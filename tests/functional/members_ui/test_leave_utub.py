@@ -134,6 +134,10 @@ def test_dismiss_leave_utub_modal_x(
 
     x_btn = page.locator(HPL.HOME_MODAL).locator(HPL.BUTTON_X_CLOSE).first
     expect(x_btn).to_be_visible()
+    # Gate on the fade-in being fully settled (Bootstrap transition done) before dismissing:
+    # clicking mid-transition makes Bootstrap drop the subsequent modal("hide"),
+    # leaving the modal visible and racing wait_until_hidden under load.
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
     x_btn.click()
     wait_until_hidden(page=page, css_selector=HPL.BODY_MODAL)
 
@@ -163,6 +167,8 @@ def test_dismiss_leave_utub_modal_key(
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_LEAVE)
     wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
     wait_until_in_focus(page=page, css_selector=HPL.HOME_MODAL)
+    # Escape mid-transition is dropped by Bootstrap the same way a close click is.
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
     page.keyboard.press("Escape")
     wait_until_hidden(page=page, css_selector=HPL.BODY_MODAL)
 

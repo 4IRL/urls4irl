@@ -365,13 +365,18 @@ describe("applyDefaultUrlSort", () => {
 });
 
 describe("applyDefaultViewMode", () => {
-  it.each(["list", "compact", "cards"] as const)(
+  it.each(["list", "title_line", "url_line", "cards"] as const)(
     "sets document.body.dataset.view to '%s'",
     (viewMode) => {
       applyDefaultViewMode(viewMode);
       expect(document.body.dataset.view).toBe(viewMode);
     },
   );
+
+  it("falls back to 'list' for an unknown value (never the raw value)", () => {
+    applyDefaultViewMode("compact" as never);
+    expect(document.body.dataset.view).toBe("list");
+  });
 });
 
 describe("applyDefaultDensity", () => {

@@ -36,6 +36,7 @@ import { showFieldSavedTick } from "../field-saved-tick.js";
 import { syncEditPanelDirtyState } from "./edit-panel-dirty.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { debug } from "../../../lib/debug.js";
+import { syncUrlTooltips } from "./url-tooltips.js";
 
 const log = debug("urls:cards");
 
@@ -316,6 +317,7 @@ function updateURLTitleSuccess(
 
   // Update URL body with latest published data
   urlCard.find(".urlTitle").text(updatedURLTitle);
+  syncUrlTooltips(urlCard);
   // Panel-aware: on mobile the string form can still be open alongside this
   // title field. Suppress the sibling restore so submitting the title does not
   // re-arm the card deselect handler (which would discard an in-progress string

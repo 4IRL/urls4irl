@@ -12,6 +12,7 @@ import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 import { copyURLString } from "./copy.js";
 import { clearShortLinkFromCard } from "./short-link-state.js";
+import { syncUrlTooltips } from "./url-tooltips.js";
 
 type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
 
@@ -55,6 +56,7 @@ export function applyUpdatedURLString({
     .find(".urlString")
     .attr({ href: updatedURLString })
     .text(updatedURLString);
+  syncUrlTooltips(urlCard);
 
   // Update URL options. Dimensions (search_active, active_tag_count) are read
   // at click time so values reflect the deck state at the moment the user
