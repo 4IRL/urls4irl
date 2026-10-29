@@ -16,6 +16,7 @@ import {
 } from "../utubs/utils.js";
 import { getState, setState } from "../../store/app-store.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
+import { reorderAfterRename } from "../utubs/sort.js";
 import { highlightInput, showInput, hideInput } from "../btns-forms.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 import {
@@ -493,6 +494,9 @@ function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
     .find(`.UTubSelector[utubid='${response.utubID}']`)
     .find(".UTubName")
     .text(utubName);
+  // Under name_az the renamed row moves to its new place (other sorts keep the
+  // order until the next deck rebuild).
+  reorderAfterRename({ utubID: response.utubID });
 
   if (!isForActiveUTub) return;
 

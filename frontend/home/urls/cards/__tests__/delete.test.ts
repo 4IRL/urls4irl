@@ -32,6 +32,10 @@ vi.mock("../filtering.js", () => ({
   updateTagFilteringOnURLOrURLTagDeletion: vi.fn(),
 }));
 
+vi.mock("../../../utubs/row-counts.js", () => ({
+  applyRowCountDelta: vi.fn(),
+}));
+
 vi.mock("../../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ urls: [] })),
   setState: vi.fn(),

@@ -26,6 +26,11 @@ import { buildUTubDeck } from "../utubs/deck.js";
 import { resetUTubSearch } from "../utubs/search.js";
 import { pushUTubHistoryState, selectUTub } from "../utubs/selectors.js";
 import { getAllUTubs } from "../utubs/utils.js";
+import {
+  getPrefsVersion,
+  reseedListPreferences,
+  syncDeckOrderToStoreSort,
+} from "../utubs/list-preferences.js";
 import { renderSearchResults } from "./render.js";
 import {
   getSelectedFields,
@@ -599,8 +604,14 @@ function navigateToHit({
   // The selector is missing only in a race where the user was added to a UTub
   // and searched before the deck reloaded — trust the search result and rebuild
   // the deck, then select.
+  const capturedVersion = getPrefsVersion();
   getAllUTubs().then((utubData) => {
+    reseedListPreferences({
+      preferences: utubData.preferences,
+      capturedVersion,
+    });
     buildUTubDeck(utubData.utubs);
+    syncDeckOrderToStoreSort({ responseSort: utubData.preferences?.utubSort });
     const rebuiltSelector = $(`.UTubSelector[utubid=${utubID}]`);
     if (rebuiltSelector.length === 0) {
       // UTub vanished between search and click; selectUTub will never fire the

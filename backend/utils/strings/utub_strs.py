@@ -26,6 +26,12 @@ UTUB_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} UTubs shown"
 # Visually-hidden text placed inside the selected UTub row so assistive tech
 # announces the selection (rendered by Jinja as data-selected-label).
 UTUB_SELECTED_ANNOUNCEMENT = "selected"
+# Nouns of the visually-hidden per-row counts label (", 3 URLs, 1 member"),
+# shared by the Jinja card and the TS-built row.
+UTUB_ROW_URL_SINGULAR = "URL"
+UTUB_ROW_URL_PLURAL = "URLs"
+UTUB_ROW_MEMBER_SINGULAR = "member"
+UTUB_ROW_MEMBER_PLURAL = "members"
 # Transient "Saved ✓" acknowledgment shown next to a field after a successful
 # per-field save on the mobile consolidated edit panels (UTub header + URL card).
 # Shared across all four fields; the "✓" glyph is decorative markup, not bridged.
@@ -146,6 +152,23 @@ URLS_PERSONAL_SETTINGS_VIEW_SET_NOTICE_PREFIX = "Layout set to "
 URLS_PERSONAL_SETTINGS_VIEW_DEFAULT_NOTICE = "Layout uses your default"
 URLS_PERSONAL_SETTINGS_DENSITY_SET_NOTICE_PREFIX = "Density set to "
 URLS_PERSONAL_SETTINGS_DENSITY_DEFAULT_NOTICE = "Density uses your default"
+# UTubs gear "Your UTub list" section (read by TS, fully bridged).
+UTUB_LIST_SETTINGS_SECTION_TITLE = "Your UTub list"
+UTUB_LIST_SETTINGS_SORT_LABEL = "Sort UTubs by"
+UTUB_LIST_SETTINGS_SORT_OPTION_RECENT = "Recent activity"
+UTUB_LIST_SETTINGS_SORT_OPTION_OPENED = "Last opened by me"
+UTUB_LIST_SETTINGS_SORT_OPTION_NAME_AZ = "Name A–Z"
+UTUB_LIST_SETTINGS_SORT_OPTION_NEWEST = "Newest created"
+UTUB_LIST_SETTINGS_SORT_OPTION_OLDEST = "Oldest created"
+UTUB_LIST_SETTINGS_SORT_NOTICE_PREFIX = "Sorted by "
+UTUB_LIST_SETTINGS_ROW_COUNTS_LABEL = "Show URL and member counts"
+UTUB_LIST_SETTINGS_ROW_COUNTS_DESC = "On each UTub in the list."
+UTUB_LIST_SETTINGS_ROW_COUNTS_SHOWN_NOTICE = "Row counts shown"
+UTUB_LIST_SETTINGS_ROW_COUNTS_HIDDEN_NOTICE = "Row counts hidden"
+UTUB_LIST_SETTINGS_LIST_TOTALS_LABEL = "Show list totals"
+UTUB_LIST_SETTINGS_LIST_TOTALS_DESC = 'The number beside "UTubs" and on Trash.'
+UTUB_LIST_SETTINGS_LIST_TOTALS_SHOWN_NOTICE = "List totals shown"
+UTUB_LIST_SETTINGS_LIST_TOTALS_HIDDEN_NOTICE = "List totals hidden"
 # Gear aria-label/tooltip text: Jinja-only, asserted by a Python integration test, so
 # backend constants only (not bridged to TS).
 PANEL_SETTINGS_GEAR_UTUBS = "UTubs settings"

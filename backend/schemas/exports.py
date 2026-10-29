@@ -45,6 +45,21 @@ class ExportPreferencesSchema(BaseSchema):
         alias="dateFormat",
         description="The date display format (iso/us/eu)",
     )
+    utub_sort: str = Field(
+        alias="utubSort",
+        description=(
+            "The UTub list sort order "
+            "(recent_activity/last_opened/name_az/newest_created/oldest_created)"
+        ),
+    )
+    show_row_counts: bool = Field(
+        alias="showRowCounts",
+        description="Whether each UTub row shows its URL and member counts",
+    )
+    show_list_totals: bool = Field(
+        alias="showListTotals",
+        description="Whether the UTub list totals are shown",
+    )
 
 
 class ExportMemberSchema(BaseSchema):

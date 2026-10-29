@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 from pydantic import ValidationError
 
@@ -9,6 +11,7 @@ from backend.schemas.users import (
     RegisterResponseSchema,
     ResetPasswordResponseSchema,
     UserSchema,
+    UtubListPreferencesSchema,
     UtubMemberSchema,
     UtubSummaryItemSchema,
     UtubSummaryListSchema,
@@ -32,75 +35,112 @@ def test_user_schema_missing_required_fields():
         UserSchema()
 
 
-def test_utub_summary_item_schema_dump():
-    schema = UtubSummaryItemSchema(
-        id=2, name="My UTub", member_role="creator", is_locked=False
+_CREATED = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=timezone.utc)
+_UPDATED = datetime(2026, 2, 3, 4, 5, 6, 789012, tzinfo=timezone.utc)
+_OPENED = datetime(2026, 3, 4, 5, 6, 7, 890123, tzinfo=timezone.utc)
+_PREFERENCES_DUMP = {
+    MODELS.UTUB_SORT: "recent_activity",
+    MODELS.SHOW_ROW_COUNTS: False,
+    MODELS.SHOW_LIST_TOTALS: True,
+}
+
+
+def _item(item_id: int, name: str, role: str, opened: datetime | None):
+    return UtubSummaryItemSchema(
+        id=item_id,
+        name=name,
+        member_role=role,
+        is_locked=False,
+        url_count=3,
+        member_count=2,
+        created_at=_CREATED,
+        last_updated=_UPDATED,
+        last_opened_at=opened,
     )
-    dumped = schema.model_dump(by_alias=True)
-    assert dumped == {
-        MODELS.ID: 2,
-        MODELS.NAME: "My UTub",
-        MODELS.MEMBER_ROLE: "creator",
+
+
+def _item_dump(item_id: int, name: str, role: str, opened: str | None):
+    return {
+        MODELS.ID: item_id,
+        MODELS.NAME: name,
+        MODELS.MEMBER_ROLE: role,
         MODELS.IS_LOCKED: False,
+        MODELS.URL_COUNT: 3,
+        MODELS.MEMBER_COUNT: 2,
+        MODELS.CREATED_AT: "2026-01-02T03:04:05.678+00:00",
+        MODELS.LAST_UPDATED: "2026-02-03T04:05:06.789+00:00",
+        MODELS.LAST_OPENED_AT: opened,
     }
+
+
+def test_utub_summary_item_schema_dump():
+    dumped = _item(2, "My UTub", "creator", _OPENED).model_dump(by_alias=True)
+    assert dumped == _item_dump(
+        2, "My UTub", "creator", "2026-03-04T05:06:07.890+00:00"
+    )
+
+
+def test_utub_summary_item_schema_null_last_opened_key_always_present():
+    dumped = _item(2, "My UTub", "creator", None).model_dump(by_alias=True)
+    assert MODELS.LAST_OPENED_AT in dumped
+    assert dumped[MODELS.LAST_OPENED_AT] is None
 
 
 def test_utub_summary_item_schema_missing_required_fields():
     with pytest.raises(ValidationError):
         UtubSummaryItemSchema()
+    with pytest.raises(ValidationError):
+        UtubSummaryItemSchema(
+            id=2, name="My UTub", member_role="creator", is_locked=False
+        )
 
 
 def test_utub_summary_list_schema_dump():
     schema = UtubSummaryListSchema(
         utubs=[
-            UtubSummaryItemSchema(
-                id=1, name="UTub A", member_role="creator", is_locked=False
-            ),
-            UtubSummaryItemSchema(
-                id=2, name="UTub B", member_role="editor", is_locked=False
-            ),
-        ]
+            _item(1, "UTub A", "creator", None),
+            _item(2, "UTub B", "editor", None),
+        ],
+        preferences=UtubListPreferencesSchema(
+            utub_sort="recent_activity", show_row_counts=False, show_list_totals=True
+        ),
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped == {
         MODELS.UTUBS: [
-            {
-                MODELS.ID: 1,
-                MODELS.NAME: "UTub A",
-                MODELS.MEMBER_ROLE: "creator",
-                MODELS.IS_LOCKED: False,
-            },
-            {
-                MODELS.ID: 2,
-                MODELS.NAME: "UTub B",
-                MODELS.MEMBER_ROLE: "editor",
-                MODELS.IS_LOCKED: False,
-            },
+            _item_dump(1, "UTub A", "creator", None),
+            _item_dump(2, "UTub B", "editor", None),
         ],
         MODELS.TRASH_COUNT: 0,
+        MODELS.PREFERENCES: _PREFERENCES_DUMP,
     }
 
 
 def test_utub_summary_list_schema_validate_from_dict():
     data = {
-        MODELS.UTUBS: [
-            {
-                MODELS.ID: 1,
-                MODELS.NAME: "UTub A",
-                MODELS.MEMBER_ROLE: "creator",
-                MODELS.IS_LOCKED: False,
-            },
-        ]
+        MODELS.UTUBS: [_item_dump(1, "UTub A", "creator", None)],
+        MODELS.PREFERENCES: _PREFERENCES_DUMP,
     }
     schema = UtubSummaryListSchema.model_validate(data)
     assert schema.utubs[0].id == 1
     assert schema.utubs[0].name == "UTub A"
     assert schema.utubs[0].member_role == "creator"
+    assert schema.utubs[0].url_count == 3
+    assert schema.preferences.utub_sort == "recent_activity"
 
 
 def test_utub_summary_list_schema_missing_required_fields():
     with pytest.raises(ValidationError):
         UtubSummaryListSchema()
+    with pytest.raises(ValidationError):
+        UtubSummaryListSchema(utubs=[])
+
+
+def test_utub_list_preferences_schema_rejects_unknown_sort():
+    with pytest.raises(ValidationError):
+        UtubListPreferencesSchema(
+            utub_sort="bogus", show_row_counts=False, show_list_totals=True
+        )
 
 
 def test_login_redirect_response_schema_dump():

@@ -6,6 +6,7 @@ import {
   shouldKeepSettings,
 } from "../selectors.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
+import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -73,6 +74,74 @@ function makeUtubDetail(overrides: Partial<UtubDetail> = {}): UtubDetail {
     ...overrides,
   } as UtubDetail;
 }
+
+describe("buildSelectedUTub — row counts and order", () => {
+  const ROW_HTML = `${SELECTED_UTUB_HTML}
+    <div id="listUTubs">
+      <span class="UTubSelector" utubid="5"><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCountNum">9</span><span class="UTubRowCountNum">9</span></span></span>
+      <span class="UTubSelector" utubid="42"><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCountNum">9</span><span class="UTubRowCountNum">9</span></span></span>
+    </div>`;
+
+  beforeEach(() => {
+    document.body.innerHTML = ROW_HTML;
+    resetStore();
+    vi.clearAllMocks();
+    window.history.replaceState(null, "", "/");
+    mockIsMobile.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+    resetStore();
+  });
+
+  it("corrects a stale summary count from the loaded decks on select", () => {
+    setState({
+      utubs: [
+        makeUtubSummaryItem({ id: 5, urlCount: 9, memberCount: 9 }),
+        makeUtubSummaryItem({ id: 42, urlCount: 9, memberCount: 9 }),
+      ],
+    });
+
+    buildSelectedUTub({
+      selectedUTub: makeUtubDetail({
+        urls: [{ utubUrlID: 1 }, { utubUrlID: 2 }] as UtubDetail["urls"],
+        members: [{ id: 1 }] as UtubDetail["members"],
+      }),
+    });
+
+    const selected = getState().utubs.find((utub) => utub.id === 42);
+    expect(selected?.urlCount).toBe(2);
+    expect(selected?.memberCount).toBe(1);
+    expect($('.UTubSelector[utubid="42"] .UTubRowCountNum').eq(0).text()).toBe(
+      "2",
+    );
+    // Other rows are untouched.
+    expect(getState().utubs.find((utub) => utub.id === 5)?.urlCount).toBe(9);
+  });
+
+  it.each(["recent_activity", "last_opened"] as const)(
+    "leaves store and DOM order unchanged when selecting under %s",
+    (utubSort) => {
+      setState({
+        preferences: { ...getState().preferences, utubSort },
+        utubs: [
+          makeUtubSummaryItem({ id: 5 }),
+          makeUtubSummaryItem({ id: 42 }),
+        ],
+      });
+
+      buildSelectedUTub({ selectedUTub: makeUtubDetail() });
+
+      expect(getState().utubs.map((utub) => utub.id)).toEqual([5, 42]);
+      expect(
+        $("#listUTubs > .UTubSelector")
+          .map((_, element) => Number($(element).attr("utubid")))
+          .get(),
+      ).toEqual([5, 42]);
+    },
+  );
+});
 
 describe("buildSelectedUTub — locked-UTub affordances", () => {
   beforeEach(() => {

@@ -8,6 +8,7 @@ import { resetStore, setState } from "../../../store/app-store.js";
 import type { MemberItem } from "../../../types/member.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import type { UtubSummaryItem } from "../../../types/utub.js";
+import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 import { setPanelSettingsOpen } from "../../panel-settings/state.js";
 import { isCrossUtubSearchActive } from "../../search/cross-utub-search.js";
 import { isUTubSearchActive } from "../../utubs/search.js";
@@ -619,12 +620,11 @@ describe("onboarding nudges — show / act-or-tap-away dismiss / a11y", () => {
 });
 
 describe("onboarding nudges — registry, eligibility, sequencing & init wiring", () => {
-  const A_UTUB: UtubSummaryItem = {
+  const A_UTUB: UtubSummaryItem = makeUtubSummaryItem({
     id: 1,
     name: "My UTub",
     memberRole: "member",
-    isLocked: false,
-  };
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -8510,6 +8510,55 @@
         }
       }
     },
+    "/users/preferences/utubs": {
+      "patch": {
+        "operationId": "updateUtubListPreferences",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Partially update the authenticated user's UTub-list preferences (sort, row counts, list totals). Acts only on the logged-in user and never touches the display preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next), which shows the confirm-email state. Metrics: API_HIT only (no DOMAIN event).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUtubListPreferencesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for ``PATCH /users/preferences/utubs``.\n\n    Always echoes all three resolved UTub-list preferences (never the request\n    values); ``status`` is ``No change`` when nothing differed (no row created).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateUtubListPreferencesResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_PreferencesErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "PreferencesErrorCodes": {
+            "$ref": "#/components/schemas/PreferencesErrorCodes"
+          }
+        }
+      }
+    },
     "/users/{user_id}/password": {
       "put": {
         "operationId": "changePassword",
@@ -11847,6 +11896,32 @@
         ],
         "description": "Error codes for UTubErrorCodes"
       },
+      "UtubListPreferencesSchema": {
+        "description": "The requesting user's resolved UTub-list preferences (plain data).",
+        "properties": {
+          "utubSort": {
+            "description": "How the UTub list is sorted",
+            "enum": [
+              "recent_activity",
+              "last_opened",
+              "name_az",
+              "newest_created",
+              "oldest_created"
+            ],
+            "type": "string"
+          },
+          "showRowCounts": {
+            "description": "Whether each UTub row shows its URL and member counts",
+            "type": "boolean"
+          },
+          "showListTotals": {
+            "description": "Whether list totals are shown on the deck title and Trash",
+            "type": "boolean"
+          }
+        },
+        "required": ["utubSort", "showRowCounts", "showListTotals"],
+        "type": "object"
+      },
       "UtubSummaryItemSchema": {
         "properties": {
           "id": {
@@ -11864,9 +11939,49 @@
           "isLocked": {
             "description": "Whether the UTub is locked (frozen to all user mutations)",
             "type": "boolean"
+          },
+          "urlCount": {
+            "description": "Number of live (non-trashed) URLs in the UTub",
+            "type": "integer"
+          },
+          "memberCount": {
+            "description": "Number of members of the UTub",
+            "type": "integer"
+          },
+          "createdAt": {
+            "description": "When the UTub was created (UTC, millisecond precision)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastUpdated": {
+            "description": "When the UTub's content last changed (UTC, millisecond precision)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastOpenedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the requesting user last opened the UTub, null if never"
           }
         },
-        "required": ["id", "name", "memberRole", "isLocked"],
+        "required": [
+          "id",
+          "name",
+          "memberRole",
+          "isLocked",
+          "urlCount",
+          "memberCount",
+          "createdAt",
+          "lastUpdated",
+          "lastOpenedAt"
+        ],
         "type": "object"
       },
       "UtubSummaryListSchema": {
@@ -11883,9 +11998,13 @@
             "default": 0,
             "description": "Trash URL rows plus Trash UTub rows the user may act on",
             "type": "integer"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/UtubListPreferencesSchema",
+            "description": "The user's resolved UTub-list preferences"
           }
         },
-        "required": ["utubs"],
+        "required": ["utubs", "preferences"],
         "type": "object"
       },
       "MemberUrlsSettings": {
@@ -14102,6 +14221,100 @@
         "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for PreferencesErrorCodes"
       },
+      "UtubSort": {
+        "enum": [
+          "recent_activity",
+          "last_opened",
+          "name_az",
+          "newest_created",
+          "oldest_created"
+        ],
+        "type": "string"
+      },
+      "UpdateUtubListPreferencesRequest": {
+        "additionalProperties": false,
+        "description": "Partial write of the three UTub-list preferences. Omitted means \"not\nsent\"; an explicit ``null`` is never a value and is rejected, as are unknown\nkeys and a body with none of the fields.",
+        "properties": {
+          "utubSort": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UtubSort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How the UTub list is sorted: recent_activity, last_opened, name_az, newest_created, or oldest_created"
+          },
+          "showRowCounts": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether each UTub row shows its URL and member counts"
+          },
+          "showListTotals": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether list totals are shown on the deck title and Trash"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateUtubListPreferencesResponseSchema": {
+        "description": "Response for ``PATCH /users/preferences/utubs``.\n\nAlways echoes all three resolved UTub-list preferences (never the request\nvalues); ``status`` is ``No change`` when nothing differed (no row created).",
+        "properties": {
+          "utubSort": {
+            "description": "How the UTub list is sorted",
+            "enum": [
+              "recent_activity",
+              "last_opened",
+              "name_az",
+              "newest_created",
+              "oldest_created"
+            ],
+            "type": "string"
+          },
+          "showRowCounts": {
+            "description": "Whether each UTub row shows its URL and member counts",
+            "type": "boolean"
+          },
+          "showListTotals": {
+            "description": "Whether list totals are shown on the deck title and Trash",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "Response status: Success or No change",
+            "enum": ["Success", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable, server-sourced banner text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "utubSort",
+          "showRowCounts",
+          "showListTotals",
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "currentPassword": {
@@ -14377,6 +14590,18 @@
           "dateFormat": {
             "description": "The date display format (iso/us/eu)",
             "type": "string"
+          },
+          "utubSort": {
+            "description": "The UTub list sort order (recent_activity/last_opened/name_az/newest_created/oldest_created)",
+            "type": "string"
+          },
+          "showRowCounts": {
+            "description": "Whether each UTub row shows its URL and member counts",
+            "type": "boolean"
+          },
+          "showListTotals": {
+            "description": "Whether the UTub list totals are shown",
+            "type": "boolean"
           }
         },
         "required": [
@@ -14384,7 +14609,10 @@
           "defaultView",
           "defaultSort",
           "density",
-          "dateFormat"
+          "dateFormat",
+          "utubSort",
+          "showRowCounts",
+          "showListTotals"
         ],
         "type": "object"
       },

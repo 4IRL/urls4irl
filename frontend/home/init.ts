@@ -13,6 +13,11 @@ import {
 import { getAllUTubs } from "./utubs/utils.js";
 import { buildUTubDeck, setUTubDeckWhenNoUTubSelected } from "./utubs/deck.js";
 import {
+  getPrefsVersion,
+  reseedListPreferences,
+  syncDeckOrderToStoreSort,
+} from "./utubs/list-preferences.js";
+import {
   isMobile,
   setMobileUIWhenUTubNotSelectedOrUTubDeleted,
 } from "./mobile.js";
@@ -54,8 +59,14 @@ export function resetHomePageToInitialState(): void {
   // return the visible panel to the UTub list — otherwise the user is stranded
   // on the now-empty URL/Member deck the panel-history unwind arrived from.
   if (isMobile()) setMobileUIWhenUTubNotSelectedOrUTubDeleted();
+  const capturedVersion = getPrefsVersion();
   getAllUTubs().then((utubData) => {
+    reseedListPreferences({
+      preferences: utubData.preferences,
+      capturedVersion,
+    });
     buildUTubDeck(utubData.utubs);
+    syncDeckOrderToStoreSort({ responseSort: utubData.preferences?.utubSort });
     setMemberDeckWhenNoUTubSelected();
     setTagDeckSubheaderWhenNoUTubSelected();
   });

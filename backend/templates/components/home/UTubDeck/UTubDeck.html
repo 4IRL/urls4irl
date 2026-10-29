@@ -1,4 +1,5 @@
-<div id="UTubDeck" class="deck flex-column" data-last-collapsed="false">
+{% set _prefs = preferences_context or {} %}
+<div id="UTubDeck" class="deck flex-column{% if _prefs.get('display_show_row_counts') is true %} showUTubRowCounts{% endif %}{% if _prefs.get('display_show_list_totals') is false %} hideListTotals{% endif %}" data-last-collapsed="false">
 
     <!-- Headers -->
     {% include 'components/home/UTubDeck/UTubDeckHeaders.html' %}

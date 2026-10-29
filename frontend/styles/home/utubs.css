@@ -61,6 +61,53 @@
     color: var(--utubLockedIconColor);
 }
 
+/* Per-row URL / member counts. Hidden by default (display:none also removes the
+   visually-hidden label from assistive tech); shown only when the user turned
+   row counts on. margin-left:auto pushes the group beside the role icon under
+   the row's justify-content:space-between. */
+.UTubSelector .UTubRowCounts {
+    display: none;
+    flex-shrink: 0;
+    gap: 0.5rem;
+    margin-left: auto;
+    margin-right: 0.5rem;
+    padding-left: 0.5rem;
+    color: var(--cardURLTextColor);
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+}
+
+#UTubDeck.showUTubRowCounts .UTubSelector .UTubRowCounts {
+    display: flex;
+}
+
+.UTubSelector .UTubRowCount {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+/* The active and hovered rows swap to the selected-row background, where the
+   muted card colour (and the active name's green) fall under 4.5:1 in one theme
+   or the other, so use the primary text colour there. */
+.UTubSelector.active .UTubRowCounts {
+    color: var(--textPrimary);
+}
+
+/* Matches the row's own hover background rule, which is non-coarse only. */
+@media not all and (any-pointer: coarse) {
+    .UTubSelector:hover .UTubRowCounts {
+        color: var(--textPrimary);
+    }
+}
+
+/* Hide the "(N)" list totals on the deck title and Trash. The text is never
+   emptied: other code reads it. */
+#UTubDeck.hideListTotals .deck-title-count,
+#UTubDeck.hideListTotals #TrashSelectorCount {
+    display: none;
+}
+
 #UTubDeckSubheaderWrap {
     width: 100%;
 }

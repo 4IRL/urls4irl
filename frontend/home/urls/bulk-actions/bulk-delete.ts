@@ -14,6 +14,7 @@ import { fillTemplate } from "../../../lib/string-template.js";
 import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { refreshTrashCount } from "../../trash/count.js";
+import { applyRowCountDelta } from "../../utubs/row-counts.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
   showURLDeletedToast,
@@ -274,6 +275,9 @@ function handleDeleteSuccess({
   // Notify the onboarding nudge system (and any future url-deck consumer) that
   // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
   emitAppEvent(AppEvents.URL_DECK_CHANGED);
+  if (deletedCount > 0) {
+    applyRowCountDelta({ utubID, urlDelta: -deletedCount, memberDelta: 0 });
+  }
   pruneRemovedFromSelection(deletedIds);
 
   // Apply the aggregate per-tag applied count (the denominator half of each "X /

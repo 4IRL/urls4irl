@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../../lib/config.js";
 import { disposeTooltipsWithin } from "../../../../lib/tooltips.js";
 import { getState, setState } from "../../../../store/app-store.js";
 import { isATagSelected } from "../../../tags/utils.js";
+import { applyRowCountDelta } from "../../../utubs/row-counts.js";
 import { getNumOfVisibleURLs } from "../../utils.js";
 import { renderAppliedTagsForUrl } from "../../tags/tag-render.js";
 import {
@@ -43,6 +44,10 @@ vi.mock("../../../../lib/event-bus.js", async (importOriginal) => {
 
 vi.mock("../../../../lib/tooltips.js", () => ({
   disposeTooltipsWithin: vi.fn(),
+}));
+
+vi.mock("../../../utubs/row-counts.js", () => ({
+  applyRowCountDelta: vi.fn(),
 }));
 
 vi.mock("../../../../store/app-store.js", () => ({
@@ -119,6 +124,7 @@ function buildUrlItem(utubUrlID: number): UtubUrlItem {
 function mockStoreUrls(urlIDs: number[]): void {
   vi.mocked(getState).mockReturnValue({
     urls: urlIDs.map(buildUrlItem),
+    activeUTubID: 1,
     preferences: {
       theme: "system",
       defaultView: "list",
@@ -203,6 +209,26 @@ describe("insertURLCardIntoDeck", () => {
       utubID: 1,
     });
     expect(newUrlCard.hasClass("even")).toBe(true);
+  });
+
+  it("adds one to the UTub's row URL count", () => {
+    insertCard({ announce: true });
+
+    expect(applyRowCountDelta).toHaveBeenCalledWith({
+      utubID: 1,
+      urlDelta: 1,
+      memberDelta: 0,
+    });
+  });
+
+  it("does not touch the row count when the URL is already in the deck", () => {
+    $("#listURLs").append(
+      `<div class="urlRow" utuburlid="${NEW_URL_ID}"></div>`,
+    );
+
+    insertCard({ announce: true });
+
+    expect(applyRowCountDelta).not.toHaveBeenCalled();
   });
 
   it("renders the applied tags, re-evaluates visibility and resets the search", () => {
@@ -417,6 +443,20 @@ describe("removeURLCardFromDeck", () => {
     expect(emit).toHaveBeenCalledWith(AppEvents.URL_DECK_CHANGED);
     expect(disposeTooltipsWithin).toHaveBeenCalledTimes(1);
     expect(getDeckOrder()).toEqual(["11"]);
+  });
+
+  it("subtracts one from the active UTub's row URL count", () => {
+    removeURLCardFromDeck({
+      urlCard: getUrlCard(10),
+      utubUrlID: 10,
+      animate: false,
+    });
+
+    expect(applyRowCountDelta).toHaveBeenCalledWith({
+      utubID: 1,
+      urlDelta: -1,
+      memberDelta: 0,
+    });
   });
 
   it("re-syncs tag filtering and leaves the empty state alone while other cards remain", () => {

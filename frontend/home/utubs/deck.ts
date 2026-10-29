@@ -77,6 +77,8 @@ export function buildUTubDeck(
           memberRole: utubs[index].memberRole,
           isLocked: utubs[index].isLocked,
           index,
+          urlCount: utubs[index].urlCount,
+          memberCount: utubs[index].memberCount,
         }),
       );
     }

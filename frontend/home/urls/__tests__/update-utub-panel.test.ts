@@ -25,6 +25,7 @@ import { deselectAllURLs } from "../cards/selection.js";
 import { isCoarsePointer } from "../../mobile.js";
 import { isMultiSelectActive } from "../bulk-actions/bulk-mode.js";
 import { getAllAccessibleUTubNames } from "../../utubs/utils.js";
+import { reorderAfterRename } from "../../utubs/sort.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 
 // This suite exercises the real UTub-panel orchestrator together with the real
@@ -77,6 +78,8 @@ vi.mock("../../utubs/utils.js", () => ({
   getAllAccessibleUTubNames: vi.fn(() => []),
   sameNameWarningHideModal: vi.fn(),
 }));
+
+vi.mock("../../utubs/sort.js", () => ({ reorderAfterRename: vi.fn() }));
 
 vi.mock("../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ isCurrentUserOwner: true })),
@@ -664,6 +667,8 @@ describe("UTub edit panel orchestrator", () => {
       expect($("#URLDeckHeader").text()).toBe("Renamed");
       expect(submitBtn.attr("aria-disabled")).toBe("true");
       expect(submitBtn.hasClass("unchanged")).toBe(true);
+      expect(reorderAfterRename).toHaveBeenCalledTimes(1);
+      expect(reorderAfterRename).toHaveBeenCalledWith({ utubID: 1 });
     });
 
     it("description: typing enables the ✓, and a successful save disables it again", () => {
@@ -712,6 +717,7 @@ describe("UTub edit panel orchestrator", () => {
       expect($("#utubNameUpdate").val()).toBe("Renamed");
       expect($("#utubNameUpdate-error").text()).toBe("Name is invalid");
       expect($("#URLDeckHeader").text()).toBe("Test UTub");
+      expect(reorderAfterRename).not.toHaveBeenCalled();
     });
 
     it("description: a failed save keeps the ✓ enabled and the typed value", () => {

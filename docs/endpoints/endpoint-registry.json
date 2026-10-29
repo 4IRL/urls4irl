@@ -3920,6 +3920,40 @@
       "templates": []
     },
     {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
+      "endpoint": "users.update_utub_list_preferences",
+      "handler": "backend/users/routes.py:update_utub_list_preferences",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "updateUtubListPreferences"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/users/preferences/utubs",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.users.UpdateUtubListPreferencesRequest",
+        "response": "backend.schemas.users.UpdateUtubListPreferencesResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.UpdateUtubListPreferencesResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.preferences_service:apply_utub_list_preferences_change"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "utubs",
       "decorators": [
         "email_validation_required",
