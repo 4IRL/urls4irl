@@ -58,6 +58,13 @@
     <section id="MetricsPanelFlows" role="tabpanel" aria-labelledby="MetricsTabFlows" tabindex="0" hidden>
         <span class="flows-loading-spinner" aria-hidden="true"></span>
         <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
+        <span id="MetricsFlowsActionAnnouncement" class="visually-hidden" aria-live="polite"></span>
+        <div class="flows-toolbar">
+            <h2 id="MetricsFlowsHeading" class="flows-heading" tabindex="-1">{{ CONSTANTS.STRINGS.METRICS_FLOWS_HEADING }}</h2>
+            <span id="MetricsFlowsCount" class="flows-count"></span>
+            <span id="MetricsFlowsHint" class="flows-hint" hidden></span>
+            <span id="MetricsFlowsNotice" class="flows-notice" hidden></span>
+        </div>
         <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
     <section id="MetricsPanelGauges" role="tabpanel" aria-labelledby="MetricsTabGauges" tabindex="0">

@@ -30,6 +30,8 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchTimeseries: vi.fn(),
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
   fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
+  fetchMetricFlows: vi.fn(),
+  deleteMetricFlow: vi.fn(),
 }));
 
 vi.mock("../render-summary.js", () => ({
