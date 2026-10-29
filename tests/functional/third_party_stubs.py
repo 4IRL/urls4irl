@@ -20,6 +20,10 @@ CDN_SCRIPT_URLS_TO_VENDOR_FILES: dict[str, str] = {
     ),
 }
 ANALYTICS_BEACON_URL = "https://static.cloudflareinsights.com/beacon.min.js"
+# The page's render-blocking Google Fonts stylesheet holds `load` just like a CDN script when the
+# request stalls. Answering it with an empty stylesheet only drops the web font (system fallback).
+GOOGLE_FONTS_STYLESHEET_URL = "https://fonts.googleapis.com/"
+GOOGLE_FONTS_STYLESHEET_ROUTE = GOOGLE_FONTS_STYLESHEET_URL + "**"
 
 # Every metrics test that asserts on the real `sendBeacon` flush requests this fixture. Any
 # `context.route` makes Chromium pause every request (and disables its HTTP cache), so a beacon
@@ -28,6 +32,7 @@ ANALYTICS_BEACON_URL = "https://static.cloudflareinsights.com/beacon.min.js"
 UNLOAD_BEACON_TEST_FIXTURE = "metrics_redis_client"
 
 JS_CONTENT_TYPE = "application/javascript"
+CSS_CONTENT_TYPE = "text/css"
 
 
 def _serve_file(vendor_file: Path) -> Callable[[Route], None]:
@@ -41,13 +46,17 @@ def _serve_empty_script(route: Route) -> None:
     route.fulfill(status=200, content_type=JS_CONTENT_TYPE, body="")
 
 
+def _serve_empty_stylesheet(route: Route) -> None:
+    route.fulfill(status=200, content_type=CSS_CONTENT_TYPE, body="")
+
+
 def stub_third_party_requests(
     *,
     context: BrowserContext,
     test_fixture_names: Collection[str],
     vendor_dir: Path = VENDOR_DIR,
 ) -> None:
-    """Answer the page's CDN scripts from `vendor_dir` and neutralize the analytics beacon.
+    """Answer the page's CDN scripts from `vendor_dir` and neutralize the analytics beacon and web font.
 
     Does nothing for a test that requests `UNLOAD_BEACON_TEST_FIXTURE` (see its comment).
     Stubbing applies where `frontend/public/vendor` exists (CI and host runs); local container
@@ -63,3 +72,4 @@ def stub_third_party_requests(
             context.route(url, _serve_file(vendor_file))
 
     context.route(ANALYTICS_BEACON_URL, _serve_empty_script)
+    context.route(GOOGLE_FONTS_STYLESHEET_ROUTE, _serve_empty_stylesheet)

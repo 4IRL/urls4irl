@@ -11,6 +11,9 @@ from playwright.sync_api import BrowserContext, Route
 from tests.functional.third_party_stubs import (
     ANALYTICS_BEACON_URL,
     CDN_SCRIPT_URLS_TO_VENDOR_FILES,
+    CSS_CONTENT_TYPE,
+    GOOGLE_FONTS_STYLESHEET_ROUTE,
+    GOOGLE_FONTS_STYLESHEET_URL,
     JS_CONTENT_TYPE,
     UNLOAD_BEACON_TEST_FIXTURE,
     stub_third_party_requests,
@@ -78,14 +81,15 @@ def test_cdn_urls_match_the_page_template():
     """
     GIVEN the production head template that requests the CDN scripts
     WHEN the URLs the helper stubs are looked up in its text
-    THEN each CDN URL, the analytics beacon URL and the local fallback path appear in it,
-        so the stub still intercepts the real requests
+    THEN each CDN URL, the analytics beacon URL, the Google Fonts host and the local fallback
+        path appear in it, so the stub still intercepts the real requests
     """
     template_text = BUNDLES_TEMPLATE.read_text()
 
     for url in (
         *CDN_SCRIPT_URLS_TO_VENDOR_FILES,
         ANALYTICS_BEACON_URL,
+        GOOGLE_FONTS_STYLESHEET_URL,
         LOCAL_FALLBACK_PATH,
     ):
         assert url in template_text
@@ -130,7 +134,7 @@ def test_no_cdn_script_is_stubbed_without_any_vendor_files(tmp_path: Path):
     """
     context = _stub(tmp_path)
 
-    assert set(context.routes) == {ANALYTICS_BEACON_URL}
+    assert set(context.routes) == {ANALYTICS_BEACON_URL, GOOGLE_FONTS_STYLESHEET_ROUTE}
 
 
 def test_analytics_beacon_is_answered_with_an_empty_script(tmp_path: Path):
@@ -144,6 +148,21 @@ def test_analytics_beacon_is_answered_with_an_empty_script(tmp_path: Path):
     assert _fulfill(context.routes[ANALYTICS_BEACON_URL]) == {
         "status": 200,
         "content_type": JS_CONTENT_TYPE,
+        "body": "",
+    }
+
+
+def test_google_fonts_stylesheet_is_answered_with_an_empty_stylesheet(tmp_path: Path):
+    """
+    GIVEN the helper is applied
+    WHEN the page requests its Google Fonts stylesheet
+    THEN it receives an empty 200 CSS response, so a stalled font request cannot hold `load`
+    """
+    context = _stub(tmp_path)
+
+    assert _fulfill(context.routes[GOOGLE_FONTS_STYLESHEET_ROUTE]) == {
+        "status": 200,
+        "content_type": CSS_CONTENT_TYPE,
         "body": "",
     }
 
