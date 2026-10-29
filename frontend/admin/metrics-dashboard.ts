@@ -56,8 +56,14 @@ import {
 import { APP_CONFIG } from "../lib/config.js";
 import { $ } from "../lib/globals.js";
 import { is429Handled } from "../lib/ajax.js";
+import { debug } from "../lib/debug.js";
+import { fillTemplate } from "../lib/string-template.js";
 
-import type { FlowGridEntry, FlowInvalidDetail } from "./flow-card.js";
+import type {
+  FlowCardCustom,
+  FlowGridEntry,
+  FlowInvalidDetail,
+} from "./flow-card.js";
 import { renderFlowGrid } from "./flow-card.js";
 import { createFlowLoadQueue } from "./flow-load-queue.js";
 import { renderGaugeGrid } from "./gauge-card.js";
@@ -66,7 +72,9 @@ import {
   renderLatencyPanel,
 } from "./latency-card.js";
 import {
+  deleteMetricFlow,
   fetchFlow,
+  fetchMetricFlows,
   fetchGaugesTimeseries,
   fetchGroupedTimeseries,
   fetchLatency as fetchLatencyClient,
@@ -83,6 +91,8 @@ import { renderPipelineHealthChart } from "./render-pipeline-health-chart.js";
 import { renderSummary } from "./render-summary.js";
 import { renderTimeseriesChart } from "./render-timeseries-chart.js";
 import { renderTopTable } from "./render-top-table.js";
+
+const log = debug("admin-metrics-dashboard");
 
 export type MetricsWindow = "day" | "week" | "month" | "year";
 
@@ -273,6 +283,12 @@ const FLOWS_TAB_ID: string = "MetricsTabFlows";
 const FLOWS_PANEL_ID: string = "MetricsPanelFlows";
 const FLOWS_GRID_ID: string = "MetricsFlowGrid";
 const FLOWS_ANNOUNCEMENT_ID: string = "MetricsPanelFlowsAnnouncement";
+const FLOWS_HEADING_ID: string = "MetricsFlowsHeading";
+const FLOWS_COUNT_ID: string = "MetricsFlowsCount";
+const FLOWS_HINT_ID: string = "MetricsFlowsHint";
+const FLOWS_NOTICE_ID: string = "MetricsFlowsNotice";
+const FLOWS_ACTION_ANNOUNCEMENT_ID: string = "MetricsFlowsActionAnnouncement";
+const CUSTOM_FLOW_ID_PREFIX: string = "custom_";
 const GAUGES_TAB_ID: string = "MetricsTabGauges";
 const GAUGES_PANEL_ID: string = "MetricsPanelGauges";
 const LATENCY_TAB_ID: string = "MetricsTabLatency";
@@ -336,6 +352,38 @@ const _flowCache = new Map<string, FlowResponseSchema>();
 // Ids whose last result was not a response: "error" (generic failure) or the
 // server's `flow_invalid` detail.
 const _flowStates = new Map<string, "error" | FlowInvalidDetail>();
+
+// Flow list state (see the plan's "List state and request ownership").
+// `_flowList` is null only until a list first resolves, afterwards always the
+// last good list. One shared request slot (`_flowListXhr` + kind + whether it
+// owns the panel's `aria-busy`) serves both the full `load` and the `refresh`.
+type FlowListEntry = Schema<"MetricFlowEntrySchema">;
+type FlowListStatus = "idle" | "loading" | "failed" | "loaded";
+type FlowListKind = "load" | "refresh";
+let _flowList: FlowListEntry[] | null = null;
+let _flowListStatus: FlowListStatus = "idle";
+let _flowListXhr: JQuery.jqXHR | null = null;
+let _flowListKind: FlowListKind | null = null;
+let _flowListOwnsBusy: boolean = false;
+// True after a list failure until the next list success; drives the inline
+// `.flows-list-error` independent of the status.
+let _flowListErrorShown: boolean = false;
+// The list-Retry button that started the in-flight `load`, if any (DD-24).
+let _flowListRetryButton: HTMLElement | null = null;
+// The one custom card whose Delete confirm is open or whose DELETE is in
+// flight. `title` is set when the confirm opens (for the already-deleted
+// notice) and again at the Confirm click (for the deleting-card injection).
+interface FlowConfirmState {
+  id: string;
+  phase: "open" | "deleting";
+  title: string | null;
+}
+let _flowConfirm: FlowConfirmState | null = null;
+// Inline per-card delete errors (429 / failure), keyed by flow id.
+const _flowCardMessages = new Map<string, string>();
+// The single in-flight DELETE; a settle whose xhr is not this one is ignored.
+let _flowDeleteXhr: JQuery.jqXHR | null = null;
+let _flowActionAnnounceTimer: ReturnType<typeof setTimeout> | null = null;
 // Last successful batched `gauges/timeseries` response (the full envelope, not
 // `GaugeSeries[]`), so a tab switch back to Gauges renders instantly from cache.
 // Populated by `fetchGauges`; `null` until the first batched request settles.
@@ -1196,38 +1244,337 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
  * an event from a panel's `<select>`. There is no stable default event to
  * query on poll.
  */
+interface FlowSource {
+  id: string;
+  title: string;
+  isCustom: boolean;
+  // Invalid detail seeded by the list (non-empty `errors`), else null.
+  seededInvalid: FlowInvalidDetail | null;
+}
+
+function listEntryToSource({ entry }: { entry: FlowListEntry }): FlowSource {
+  const hasErrors = Object.keys(entry.errors).length > 0;
+  const seededInvalid: FlowInvalidDetail | null = hasErrors
+    ? (entry.first_invalid ?? {
+        step_index: null,
+        field: "__root__",
+        reason: APP_CONFIG.strings.METRICS_FLOW_NEEDS_ATTENTION_HELP,
+      })
+    : null;
+  return {
+    id: entry.id,
+    title: entry.display_name,
+    isCustom: !entry.is_builtin,
+    seededInvalid,
+  };
+}
+
+// The cards to show: the stored list when one has resolved, else the four
+// built-ins from `FLOW_METADATA` (list pending or failed with nothing stored).
+function getFlowSources(): FlowSource[] {
+  if (_flowList !== null) {
+    const sources = _flowList.map((entry) => listEntryToSource({ entry }));
+    // A card being deleted stays until its DELETE settles, even when the
+    // stored list omits it (DD-28).
+    if (
+      _flowConfirm !== null &&
+      _flowConfirm.phase === "deleting" &&
+      !sources.some((source) => source.id === _flowConfirm?.id)
+    ) {
+      sources.push({
+        id: _flowConfirm.id,
+        title: _flowConfirm.title ?? _flowConfirm.id,
+        isCustom: true,
+        seededInvalid: null,
+      });
+    }
+    return sources;
+  }
+  return Object.values(FLOW_IDS).map((flowId) => ({
+    id: flowId,
+    title: FLOW_METADATA[flowId].displayName,
+    isCustom: false,
+    seededInvalid: null,
+  }));
+}
+
 // Re-render the Flows grid from the per-id cache and states. Precedence per
-// id, first match wins: response > invalid > loading > error. An id matching
-// none (e.g. aborted off the Flows tab) is left out.
+// id, first match wins: response > `/flow` 422 invalid > list-seeded invalid >
+// loading (pending) > error. A listed id with nothing renders `loading` (never
+// dropped, never a fabricated error). Without a list, an id matching none
+// (e.g. aborted off the Flows tab) is left out.
+function buildFlowEntries(): FlowGridEntry[] {
+  const entries: FlowGridEntry[] = [];
+  const unlistedLoading = _flowList !== null || _flowListStatus === "loading";
+  for (const source of getFlowSources()) {
+    const { id, title } = source;
+    const response = _flowCache.get(id);
+    const flowState = _flowStates.get(id);
+    let state: FlowGridEntry["state"] | null = null;
+    if (response !== undefined) {
+      state = { kind: "response", response };
+    } else if (flowState !== undefined && flowState !== "error") {
+      state = { kind: "invalid", invalid: flowState };
+    } else if (source.seededInvalid !== null) {
+      state = { kind: "invalid", invalid: source.seededInvalid };
+    } else if (_flowLoadQueue.isPending({ id })) {
+      state = { kind: "loading" };
+    } else if (flowState === "error") {
+      state = { kind: "error" };
+    } else if (unlistedLoading) {
+      state = { kind: "loading" };
+    }
+    if (state === null) {
+      continue;
+    }
+    const entry: FlowGridEntry = { id, title, state };
+    if (source.isCustom) {
+      entry.custom = getFlowCustomState({ id });
+    }
+    entries.push(entry);
+  }
+  // A message belongs to a card that still renders.
+  const renderedIds = new Set(entries.map((entry) => entry.id));
+  for (const messageId of Array.from(_flowCardMessages.keys())) {
+    if (!renderedIds.has(messageId)) {
+      _flowCardMessages.delete(messageId);
+    }
+  }
+  return entries;
+}
+
+function getFlowCustomState({ id }: { id: string }): FlowCardCustom {
+  const confirm = _flowConfirm;
+  return {
+    confirm: confirm !== null && confirm.id === id ? confirm.phase : "closed",
+    message: _flowCardMessages.get(id) ?? null,
+    deleteLocked:
+      confirm !== null && confirm.phase === "deleting" && confirm.id !== id,
+  };
+}
+
+function findFlowCard({
+  grid,
+  id,
+}: {
+  grid: HTMLElement;
+  id: string;
+}): HTMLElement | null {
+  for (const card of Array.from(
+    grid.querySelectorAll<HTMLElement>(".flow-card"),
+  )) {
+    if (card.dataset.flowId === id) {
+      return card;
+    }
+  }
+  return null;
+}
+
+// Focusable card controls, by the data attribute that identifies them.
+const FLOW_FOCUS_ATTRIBUTES: readonly string[] = [
+  "data-flow-delete",
+  "data-flow-retry",
+  "data-flow-confirm-cancel",
+  "data-flow-confirm-delete",
+];
+
+// Wrap every grid render so focus already inside a card survives it: if the
+// focused element was replaced, refocus the same control in the re-resolved
+// card, else that card's `section`, else `#MetricsFlowsHeading` when the card
+// is gone. Never steals focus (runs only when focus was in a card before the
+// render).
+function renderFlowGridPreservingFocus({
+  grid,
+  entries,
+}: {
+  grid: HTMLElement;
+  entries: readonly FlowGridEntry[];
+}): void {
+  const focused = document.activeElement;
+  const focusedCard =
+    focused instanceof HTMLElement
+      ? focused.closest<HTMLElement>(".flow-card")
+      : null;
+  const focusedId = focusedCard?.dataset.flowId ?? null;
+  const focusedAttribute =
+    focused instanceof HTMLElement
+      ? (FLOW_FOCUS_ATTRIBUTES.find((attribute) =>
+          focused.hasAttribute(attribute),
+        ) ?? null)
+      : null;
+  renderFlowGrid({ container: grid, entries });
+  if (focusedId === null || document.activeElement === focused) {
+    return;
+  }
+  const card = findFlowCard({ grid, id: focusedId });
+  if (card === null) {
+    getElementByIdOrNull<HTMLElement>(FLOWS_HEADING_ID)?.focus();
+    return;
+  }
+  const control =
+    focusedAttribute === null
+      ? null
+      : card.querySelector<HTMLElement>(`[${focusedAttribute}]`);
+  (control ?? card).focus();
+}
+
+// DD-24: a focus move made after a network wait happens only if focus is on
+// `body` or inside the card the outcome belongs to.
+function isFocusInCardOrBody({ id }: { id: string }): boolean {
+  const active = document.activeElement;
+  if (active === null || active === document.body) {
+    return true;
+  }
+  return active.closest<HTMLElement>(".flow-card")?.dataset.flowId === id;
+}
+
+function showFlowNotice({ text }: { text: string }): void {
+  const notice = getElementByIdOrNull<HTMLElement>(FLOWS_NOTICE_ID);
+  if (notice === null) {
+    return;
+  }
+  notice.textContent = text;
+  notice.hidden = false;
+}
+
+function clearFlowNotice(): void {
+  const notice = getElementByIdOrNull<HTMLElement>(FLOWS_NOTICE_ID);
+  if (notice === null) {
+    return;
+  }
+  notice.textContent = "";
+  notice.hidden = true;
+}
+
+// Clear, then set on the next tick so a repeated message is re-read.
+function announceFlowAction({ text }: { text: string }): void {
+  const region = getElementByIdOrNull<HTMLElement>(
+    FLOWS_ACTION_ANNOUNCEMENT_ID,
+  );
+  if (region === null) {
+    return;
+  }
+  region.textContent = "";
+  if (_flowActionAnnounceTimer !== null) {
+    clearTimeout(_flowActionAnnounceTimer);
+  }
+  _flowActionAnnounceTimer = setTimeout(() => {
+    _flowActionAnnounceTimer = null;
+    region.textContent = text;
+  }, 0);
+}
+
+function getFlowTitle({ id }: { id: string }): string {
+  const listed = _flowList?.find((entry) => entry.id === id);
+  if (listed !== undefined) {
+    return listed.display_name;
+  }
+  return (_flowConfirm?.id === id ? _flowConfirm.title : null) ?? id;
+}
+
+function renderFlowsToolbar(): void {
+  const count = getElementByIdOrNull<HTMLElement>(FLOWS_COUNT_ID);
+  const hint = getElementByIdOrNull<HTMLElement>(FLOWS_HINT_ID);
+  const builtinFallback = Object.values(FLOW_IDS).length;
+  let countText = APP_CONFIG.strings.METRICS_FLOWS_COUNT_LOADING;
+  let showHint = false;
+  if (_flowList !== null) {
+    const builtin = _flowList.filter((entry) => entry.is_builtin).length;
+    const custom = _flowList.length - builtin;
+    countText = fillTemplate({
+      template: APP_CONFIG.strings.METRICS_FLOWS_COUNT,
+      values: {
+        builtin: String(builtin),
+        custom: String(custom),
+        max: String(APP_CONFIG.constants.METRIC_FLOWS_MAX_CUSTOM),
+      },
+    });
+    showHint = custom === 0;
+  } else if (_flowListStatus === "failed") {
+    countText = fillTemplate({
+      template: APP_CONFIG.strings.METRICS_FLOWS_COUNT_BUILTIN_ONLY,
+      values: { builtin: String(builtinFallback) },
+    });
+  }
+  if (count !== null) {
+    count.textContent = countText;
+  }
+  if (hint !== null) {
+    hint.textContent = showHint
+      ? APP_CONFIG.strings.METRICS_FLOWS_ZERO_CUSTOM_HINT
+      : "";
+    hint.hidden = !showHint;
+  }
+}
+
+// The inline list-failure message with its Retry. Created once and updated in
+// place, so focus on Retry survives the retry (DD-27); rendered iff the flag.
+function renderFlowListError({ grid }: { grid: HTMLElement }): void {
+  let node = grid.querySelector<HTMLElement>(":scope > .flows-list-error");
+  if (!_flowListErrorShown) {
+    node?.remove();
+    return;
+  }
+  if (node === null) {
+    node = document.createElement("div");
+    node.className = "flows-list-error";
+    const message = document.createElement("span");
+    message.textContent = APP_CONFIG.strings.METRICS_FLOWS_LIST_FAILED;
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "flow-retry-btn";
+    retry.setAttribute("data-flow-list-retry", "");
+    node.append(message, retry);
+  }
+  if (grid.lastElementChild !== node) {
+    grid.appendChild(node);
+  }
+  const button = node.querySelector<HTMLElement>("[data-flow-list-retry]");
+  if (button !== null) {
+    const retrying = _flowListStatus === "loading";
+    if (retrying) {
+      button.setAttribute("aria-disabled", "true");
+    } else {
+      button.removeAttribute("aria-disabled");
+    }
+    const text = retrying
+      ? APP_CONFIG.strings.METRICS_FLOWS_LIST_RETRYING
+      : APP_CONFIG.strings.METRICS_FLOW_RETRY;
+    if (button.textContent !== text) {
+      button.textContent = text;
+    }
+  }
+}
+
+// An open confirm whose flow another admin deleted (the list no longer has
+// it): close it and say so. A `deleting` confirm is left to its DELETE response.
+// The card is gone after the render, which moves focus held in it to the heading.
+function closeConfirmForAbsentFlow(): void {
+  const confirm = _flowConfirm;
+  if (confirm === null || confirm.phase !== "open" || _flowList === null) {
+    return;
+  }
+  if (_flowList.some((entry) => entry.id === confirm.id)) {
+    return;
+  }
+  _flowConfirm = null;
+  const text = fillTemplate({
+    template: APP_CONFIG.strings.METRICS_FLOW_ALREADY_DELETED,
+    values: { name: confirm.title ?? confirm.id },
+  });
+  showFlowNotice({ text });
+  announceFlowAction({ text });
+}
+
 function renderFlowsPanel(): void {
   const grid = getElementByIdOrNull<HTMLElement>(FLOWS_GRID_ID);
   if (grid === null) {
     return;
   }
-  const entries: FlowGridEntry[] = [];
-  for (const flowId of Object.values(FLOW_IDS)) {
-    const title = FLOW_METADATA[flowId].displayName;
-    const response = _flowCache.get(flowId);
-    const flowState = _flowStates.get(flowId);
-    if (response !== undefined) {
-      entries.push({
-        id: flowId,
-        title,
-        state: { kind: "response", response },
-      });
-    } else if (flowState !== undefined && flowState !== "error") {
-      entries.push({
-        id: flowId,
-        title,
-        state: { kind: "invalid", invalid: flowState },
-      });
-    } else if (_flowLoadQueue.isPending({ id: flowId })) {
-      entries.push({ id: flowId, title, state: { kind: "loading" } });
-    } else if (flowState === "error") {
-      entries.push({ id: flowId, title, state: { kind: "error" } });
-    }
-  }
-  renderFlowGrid({ container: grid, entries });
+  closeConfirmForAbsentFlow();
+  renderFlowsToolbar();
+  renderFlowGridPreservingFocus({ grid, entries: buildFlowEntries() });
+  renderFlowListError({ grid });
 }
 
 // Step 7 supplies the builder-open predicate (DD-12, DD-44); loads are never
@@ -1281,7 +1628,10 @@ function issueFlowRequest({ id }: { id: string }): JQuery.jqXHR {
       if (!_flowLoadQueue.isCurrent({ id, xhr: flowRequest })) {
         return;
       }
-      setBannerVisible({ visible: false });
+      // A list-failure banner outlives successful card settles.
+      if (!_flowListErrorShown) {
+        setBannerVisible({ visible: false });
+      }
       _flowCache.set(id, response);
       _flowStates.delete(id);
       renderFlowsPanel();
@@ -1297,7 +1647,13 @@ function issueFlowRequest({ id }: { id: string }): JQuery.jqXHR {
         }
         return;
       }
-      if (xhr.readyState === 0) {
+      // A timeout also has readyState 0 but is a real failure (Retry-able);
+      // any other readyState 0 is an abort and stays silent.
+      if (xhr.readyState === 0 && xhr.statusText !== "timeout") {
+        return;
+      }
+      if (xhr.status === 404 && id.startsWith(CUSTOM_FLOW_ID_PREFIX)) {
+        removeMissingCustomFlow({ id });
         return;
       }
       const invalid = getFlowInvalidDetail({ xhr });
@@ -1325,6 +1681,11 @@ const _flowLoadQueue = createFlowLoadQueue({
   isPaused: isFlowLoadPaused,
   onSettle: () => renderFlowsPanel(),
   onIdle: ({ cause }) => {
+    // A busy-owning list request (a `load`) clears busy and announces itself
+    // through the fan-out it starts; do not clear its busy early.
+    if (_flowListOwnsBusy) {
+      return;
+    }
     setFlowsPanelBusy({ busy: false });
     if (cause !== "settled") {
       return;
@@ -1338,16 +1699,494 @@ const _flowLoadQueue = createFlowLoadQueue({
   },
 });
 
+function resetFlowListSlot(): void {
+  _flowListXhr = null;
+  _flowListKind = null;
+  _flowListOwnsBusy = false;
+}
+
 /**
- * Start a fresh Flows fan-out over every flow id: sets panel-scoped
- * `aria-busy`, which the queue's `onIdle` clears once ALL ids settle (and
- * announces on the aria-live span, DD-25 / DD-26). Renders last so `loading`
- * entries appear immediately.
+ * The only way the list request is ever aborted. A no-op on an empty slot.
+ * Nulls the slot before `abort()` (jQuery fires `fail` synchronously, so that
+ * settle must already be non-current). An aborted `load` leaves the status
+ * `idle`; an aborted refresh leaves it. Without a replacement, busy is cleared
+ * silently iff the aborted request owned it. Returns what was aborted so a
+ * caller can hand it over.
  */
-function startFlowFanOut(): void {
-  setFlowsPanelBusy({ busy: true });
-  _flowLoadQueue.startFanOut({ ids: Object.values(FLOW_IDS) });
+function abortFlowListRequest({
+  replacement,
+}: {
+  replacement: boolean;
+}): { kind: FlowListKind | null; ownsBusy: boolean } | null {
+  const xhr = _flowListXhr;
+  if (xhr === null) {
+    return null;
+  }
+  const aborted = { kind: _flowListKind, ownsBusy: _flowListOwnsBusy };
+  _flowListXhr = null;
+  if (!replacement) {
+    _flowListKind = null;
+    _flowListOwnsBusy = false;
+  }
+  xhr.abort();
+  if (aborted.kind === "load") {
+    _flowListStatus = "idle";
+  }
+  if (!replacement && aborted.ownsBusy) {
+    setFlowsPanelBusy({ busy: false });
+  }
+  return aborted;
+}
+
+// The id whose DELETE is in flight; list purges skip it (DD-28).
+function getDeletingFlowId(): string | null {
+  return _flowConfirm?.phase === "deleting" ? _flowConfirm.id : null;
+}
+
+function flowListIds(): string[] {
+  return (_flowList ?? []).map((entry) => entry.id);
+}
+
+// Drops every known id (cache, states, previous list) absent from a fresh
+// list, except the id whose DELETE is in flight.
+function purgeUnlistedFlows({
+  listed,
+  dropFromQueue,
+}: {
+  listed: Set<string>;
+  dropFromQueue: boolean;
+}): void {
+  const deletingId = getDeletingFlowId();
+  for (const knownId of new Set([
+    ..._flowCache.keys(),
+    ..._flowStates.keys(),
+    ...flowListIds(),
+  ])) {
+    if (!listed.has(knownId) && knownId !== deletingId) {
+      if (dropFromQueue) {
+        _flowLoadQueue.dropId({ id: knownId });
+      }
+      _flowCache.delete(knownId);
+      _flowStates.delete(knownId);
+    }
+  }
+}
+
+// Fan-out per the failure rule: over the stale list's ids when a list resolved
+// earlier (its cards are kept), else over the four built-ins.
+function applyFlowListFailure({ showBanner }: { showBanner: boolean }): void {
+  _flowListStatus = "failed";
+  _flowListErrorShown = true;
+  if (showBanner) {
+    setBannerVisible({ visible: true });
+  }
+  const ids = _flowList !== null ? flowListIds() : Object.values(FLOW_IDS);
+  _flowLoadQueue.startFanOut({ ids });
   renderFlowsPanel();
+}
+
+/**
+ * Ask the server which flows exist, then fan out one `/flow` request per
+ * listed id (at most 4 in flight). Sets panel-scoped `aria-busy`, which the
+ * list request owns until its settle has started the fan-out; from then on the
+ * queue's `onIdle` clears it and announces (DD-25 / DD-26).
+ */
+function loadFlowList({
+  retryButton = null,
+}: { retryButton?: HTMLElement | null } = {}): void {
+  setFlowsPanelBusy({ busy: true });
+  abortFlowListRequest({ replacement: true });
+  _flowListStatus = "loading";
+  _flowListKind = "load";
+  _flowListOwnsBusy = true;
+  _flowListRetryButton = retryButton;
+  const request = fetchMetricFlows();
+  _flowListXhr = request;
+  request
+    .done((response) => {
+      if (_flowListXhr !== request) {
+        return;
+      }
+      resetFlowListSlot();
+      const focusHeading = shouldFocusHeadingAfterListRetry();
+      _flowListRetryButton = null;
+      const entries = response.flows;
+      const listed = new Set(entries.map((entry) => entry.id));
+      purgeUnlistedFlows({ listed, dropFromQueue: false });
+      _flowList = entries;
+      _flowListStatus = "loaded";
+      _flowListErrorShown = false;
+      _flowLoadQueue.startFanOut({ ids: flowListIds() });
+      renderFlowsPanel();
+      if (focusHeading) {
+        getElementByIdOrNull<HTMLElement>(FLOWS_HEADING_ID)?.focus();
+      }
+    })
+    .fail((xhr: JQuery.jqXHR) => {
+      if (_flowListXhr !== request) {
+        return;
+      }
+      resetFlowListSlot();
+      _flowListRetryButton = null;
+      if (xhr.readyState === 0 && xhr.statusText !== "timeout") {
+        // A real abort that did not go through the helper: stay silent.
+        _flowListStatus = "idle";
+        setFlowsPanelBusy({ busy: false });
+        renderFlowsPanel();
+        return;
+      }
+      log("list request failed", xhr.status);
+      applyFlowListFailure({ showBanner: !is429Handled(xhr) });
+    });
+  renderFlowsPanel();
+}
+
+// DD-24: after the list-Retry succeeds, focus the heading only if focus is
+// still on that Retry button or on `body` (the node is removed with the flag).
+function shouldFocusHeadingAfterListRetry(): boolean {
+  if (_flowListRetryButton === null) {
+    return false;
+  }
+  const active = document.activeElement;
+  return active === _flowListRetryButton || active === document.body;
+}
+
+/**
+ * Re-fetch the list without a full fan-out (a `/flow` 404 discovered a deleted
+ * custom flow). Plain path only: ids no longer listed are dropped, new ids are
+ * enqueued; other cards are untouched. Skipped while a `load` is in flight; a
+ * newer refresh aborts an older one and inherits its busy ownership. A failure
+ * leaves the list, status and cards as they are (the next poll retries).
+ */
+function refreshFlowList(): void {
+  if (_flowListXhr !== null && _flowListKind === "load") {
+    return;
+  }
+  abortFlowListRequest({ replacement: true });
+  _flowListKind = "refresh";
+  const request = fetchMetricFlows();
+  _flowListXhr = request;
+  request
+    .done((response) => {
+      if (_flowListXhr !== request) {
+        return;
+      }
+      // The mode follows the slot's busy ownership at settle, whoever issued
+      // the refresh (DD-36): owned = takeover (like a `load` success).
+      const takeover = _flowListOwnsBusy;
+      resetFlowListSlot();
+      const entries = response.flows;
+      const listed = new Set(entries.map((entry) => entry.id));
+      // A takeover's fan-out restart aborts dropped ids itself; a `dropId`
+      // idle flip here would clear the busy the takeover still owns.
+      purgeUnlistedFlows({ listed, dropFromQueue: !takeover });
+      _flowList = entries;
+      _flowListStatus = "loaded";
+      _flowListErrorShown = false;
+      if (takeover) {
+        _flowLoadQueue.startFanOut({ ids: flowListIds() });
+        renderFlowsPanel();
+        return;
+      }
+      const newIds = entries
+        .map((entry) => entry.id)
+        .filter(
+          (id) =>
+            !_flowCache.has(id) &&
+            !_flowStates.has(id) &&
+            !_flowLoadQueue.isPending({ id }),
+        );
+      if (newIds.length > 0) {
+        setFlowsPanelBusy({ busy: true });
+        _flowLoadQueue.enqueue({ ids: newIds });
+      }
+      renderFlowsPanel();
+    })
+    .fail((xhr: JQuery.jqXHR) => {
+      if (_flowListXhr !== request) {
+        return;
+      }
+      const takeover = _flowListOwnsBusy;
+      resetFlowListSlot();
+      if (xhr.readyState === 0 && xhr.statusText !== "timeout") {
+        if (takeover) {
+          setFlowsPanelBusy({ busy: false });
+        }
+        return;
+      }
+      log("list refresh failed", xhr.status);
+      if (takeover) {
+        applyFlowListFailure({ showBanner: !is429Handled(xhr) });
+      }
+    });
+}
+
+// A `/flow` 404 for a custom id means another admin deleted it: drop the card
+// quietly (no banner). While Flows is the active tab the list is re-fetched
+// once; while hidden no request is sent and the list is marked stale instead.
+function removeMissingCustomFlow({ id }: { id: string }): void {
+  _flowCache.delete(id);
+  _flowStates.delete(id);
+  if (_flowList !== null) {
+    _flowList = _flowList.filter((entry) => entry.id !== id);
+  }
+  if (_activeTab === TAB.FLOWS) {
+    renderFlowsPanel();
+    refreshFlowList();
+    return;
+  }
+  abortFlowListRequest({ replacement: false });
+  _flowListStatus = "idle";
+  renderFlowsPanel();
+}
+
+// Listed ids with no cached response, stored state or pending request (e.g. a
+// fan-out aborted off-tab) are re-requested when Flows is activated again.
+function catchUpFlowLoads(): void {
+  const missing = flowListIds().filter(
+    (id) =>
+      !_flowCache.has(id) &&
+      !_flowStates.has(id) &&
+      !_flowLoadQueue.isPending({ id }),
+  );
+  if (missing.length === 0) {
+    return;
+  }
+  setFlowsPanelBusy({ busy: true });
+  _flowLoadQueue.enqueue({ ids: missing });
+}
+
+function getCardFlowId({ element }: { element: HTMLElement }): string | null {
+  return element.closest<HTMLElement>(".flow-card")?.dataset.flowId ?? null;
+}
+
+function focusCardControl({
+  id,
+  attribute,
+}: {
+  id: string;
+  attribute: string;
+}): void {
+  const grid = getElementByIdOrNull<HTMLElement>(FLOWS_GRID_ID);
+  const card = grid === null ? null : findFlowCard({ grid, id });
+  const control = card?.querySelector<HTMLElement>(`[${attribute}]`) ?? null;
+  const target =
+    control ?? card ?? getElementByIdOrNull<HTMLElement>(FLOWS_HEADING_ID);
+  target?.focus();
+}
+
+// Delete: open the in-place confirm (one at a time), focus Cancel. Ignored
+// while any card is deleting (the button is `aria-disabled`, DD-16).
+function openFlowConfirm({ button }: { button: HTMLElement }): void {
+  const id = getCardFlowId({ element: button });
+  if (id === null || button.getAttribute("aria-disabled") === "true") {
+    return;
+  }
+  _flowCardMessages.delete(id);
+  clearFlowNotice();
+  _flowConfirm = { id, phase: "open", title: getFlowTitle({ id }) };
+  renderFlowsPanel();
+  focusCardControl({ id, attribute: "data-flow-confirm-cancel" });
+}
+
+// Cancel / Escape on an open confirm: close it and refocus that card's Delete.
+function closeFlowConfirm({ id }: { id: string | null }): void {
+  if (
+    id === null ||
+    _flowConfirm === null ||
+    _flowConfirm.id !== id ||
+    _flowConfirm.phase !== "open"
+  ) {
+    return;
+  }
+  _flowConfirm = null;
+  renderFlowsPanel();
+  focusCardControl({ id, attribute: "data-flow-delete" });
+}
+
+// Confirm: send the DELETE once; the outcome handlers own everything after.
+function submitFlowDelete({ button }: { button: HTMLElement }): void {
+  const id = getCardFlowId({ element: button });
+  if (
+    id === null ||
+    button.getAttribute("aria-disabled") === "true" ||
+    _flowConfirm === null ||
+    _flowConfirm.id !== id ||
+    _flowConfirm.phase !== "open"
+  ) {
+    return;
+  }
+  _flowConfirm = { id, phase: "deleting", title: getFlowTitle({ id }) };
+  renderFlowsPanel();
+  const request = deleteMetricFlow({ flowId: id });
+  _flowDeleteXhr = request;
+  request
+    .done(() => handleFlowDeleted({ xhr: request, id, alreadyDeleted: false }))
+    .fail((xhr: JQuery.jqXHR) => {
+      if (xhr.status === 404) {
+        handleFlowDeleted({ xhr: request, id, alreadyDeleted: true });
+        return;
+      }
+      handleFlowDeleteFailure({ request, xhr, id });
+    });
+}
+
+function handleFlowGridKeydown(event: JQuery.TriggeredEvent): void {
+  const target = event.target;
+  if (event.key !== "Escape" || !(target instanceof Element)) {
+    return;
+  }
+  const group = target.closest<HTMLElement>("[data-flow-confirm]");
+  if (group === null || _flowConfirm?.phase !== "open") {
+    return;
+  }
+  event.stopPropagation();
+  closeFlowConfirm({ id: getCardFlowId({ element: group }) });
+}
+
+// DELETE 200 or 404: remove the card locally and refetch the list. A list
+// request already in flight is aborted first so it cannot resurrect the card;
+// when it owned `aria-busy` the refetch becomes a takeover that keeps it.
+function handleFlowDeleted({
+  xhr,
+  id,
+  alreadyDeleted,
+}: {
+  xhr: JQuery.jqXHR;
+  id: string;
+  alreadyDeleted: boolean;
+}): void {
+  if (_flowDeleteXhr !== xhr) {
+    return;
+  }
+  _flowDeleteXhr = null;
+  const name = getFlowTitle({ id });
+  const focusEligible = isFocusInCardOrBody({ id });
+  const onFlows = _activeTab === TAB.FLOWS;
+  const aborted = abortFlowListRequest({ replacement: onFlows });
+  if (onFlows && aborted?.ownsBusy === true) {
+    setFlowsPanelBusy({ busy: true });
+  }
+  _flowLoadQueue.dropId({ id });
+  _flowCache.delete(id);
+  _flowStates.delete(id);
+  _flowCardMessages.delete(id);
+  if (_flowList !== null) {
+    _flowList = _flowList.filter((entry) => entry.id !== id);
+  }
+  if (_flowConfirm?.id === id) {
+    _flowConfirm = null;
+  }
+  if (!onFlows) {
+    _flowListStatus = "idle";
+    renderFlowsPanel();
+    return;
+  }
+  const text = fillTemplate({
+    template: alreadyDeleted
+      ? APP_CONFIG.strings.METRICS_FLOW_ALREADY_DELETED
+      : APP_CONFIG.strings.METRICS_FLOW_DELETED,
+    values: { name },
+  });
+  if (alreadyDeleted) {
+    showFlowNotice({ text });
+  }
+  renderFlowsPanel();
+  if (focusEligible) {
+    getElementByIdOrNull<HTMLElement>(FLOWS_HEADING_ID)?.focus();
+  }
+  announceFlowAction({ text });
+  refreshFlowList();
+}
+
+// DELETE failed (429, 400, 5xx, timeout): the card stays with an inline message.
+function handleFlowDeleteFailure({
+  request,
+  xhr,
+  id,
+}: {
+  request: JQuery.jqXHR;
+  xhr: JQuery.jqXHR;
+  id: string;
+}): void {
+  if (_flowDeleteXhr !== request) {
+    return;
+  }
+  _flowDeleteXhr = null;
+  const focusEligible = isFocusInCardOrBody({ id });
+  if (_flowConfirm?.id === id) {
+    _flowConfirm = null;
+  }
+  if (is429Handled(xhr)) {
+    renderFlowsPanel();
+    return;
+  }
+  const message =
+    xhr.status === 429
+      ? APP_CONFIG.strings.METRICS_FLOW_RATE_LIMITED
+      : APP_CONFIG.strings.METRICS_FLOW_DELETE_FAILED;
+  _flowCardMessages.set(id, message);
+  renderFlowsPanel();
+  if (_activeTab !== TAB.FLOWS) {
+    return;
+  }
+  if (focusEligible) {
+    focusCardControl({ id, attribute: "data-flow-delete" });
+  }
+  announceFlowAction({ text: message });
+}
+
+function handleFlowGridClick(event: JQuery.TriggeredEvent): void {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  const listRetry = target.closest<HTMLElement>("[data-flow-list-retry]");
+  if (listRetry !== null) {
+    if (listRetry.getAttribute("aria-disabled") === "true") {
+      return;
+    }
+    loadFlowList({ retryButton: listRetry });
+    return;
+  }
+  const deleteButton = target.closest<HTMLElement>("[data-flow-delete]");
+  if (deleteButton !== null) {
+    openFlowConfirm({ button: deleteButton });
+    return;
+  }
+  const cancelButton = target.closest<HTMLElement>(
+    "[data-flow-confirm-cancel]",
+  );
+  if (cancelButton !== null) {
+    if (cancelButton.getAttribute("aria-disabled") !== "true") {
+      closeFlowConfirm({ id: getCardFlowId({ element: cancelButton }) });
+    }
+    return;
+  }
+  const confirmButton = target.closest<HTMLElement>(
+    "[data-flow-confirm-delete]",
+  );
+  if (confirmButton !== null) {
+    submitFlowDelete({ button: confirmButton });
+    return;
+  }
+  const retry = target.closest<HTMLElement>("[data-flow-retry]");
+  if (retry === null) {
+    return;
+  }
+  const card = retry.closest<HTMLElement>(".flow-card");
+  const id = card?.dataset.flowId;
+  const grid = getElementByIdOrNull<HTMLElement>(FLOWS_GRID_ID);
+  if (id === undefined || grid === null) {
+    return;
+  }
+  _flowStates.delete(id);
+  if (!_flowLoadQueue.isPending({ id })) {
+    setFlowsPanelBusy({ busy: true });
+    _flowLoadQueue.enqueue({ ids: [id] });
+  }
+  renderFlowsPanel();
+  findFlowCard({ grid, id })?.focus();
 }
 
 /**
@@ -1757,10 +2596,14 @@ function fetchAll(): void {
   // is the single source of truth here — `_currentCategory` never equals
   // "flows", so gating on it would be dead code.
   if (_activeTab === TAB.FLOWS) {
-    startFlowFanOut();
+    loadFlowList();
   } else {
-    // The abort above ended any running flow loads; clear the panel busy flag
-    // silently (no completion announcement).
+    // The abort above ended any running flow loads, so cached cards are stale
+    // for the new window: abort the list request, mark the list for a fresh
+    // request on return (the retained list still renders), and clear the panel
+    // busy flag silently (no completion announcement).
+    abortFlowListRequest({ replacement: false });
+    _flowListStatus = "idle";
     setFlowsPanelBusy({ busy: false });
   }
 
@@ -2053,7 +2896,24 @@ function handleTabClick({
   // `_activeTab` tracks the visible tab for EVERY tab (categories,
   // pipeline_health, flows). `_currentCategory` keeps only true category
   // values — guarded against ever receiving "pipeline_health" / "flows".
+  const previousTab = _activeTab;
   _activeTab = tab;
+  if (previousTab !== TAB.FLOWS && tab === TAB.FLOWS) {
+    // Returning to Flows: a failure that landed while away must not surface
+    // as a stale, unannounced message.
+    _flowCardMessages.clear();
+  }
+  if (previousTab === TAB.FLOWS && tab !== TAB.FLOWS) {
+    // Leaving Flows: a list that resolves later must not start a fan-out.
+    abortFlowListRequest({ replacement: false });
+    // An open confirm and the messages that exist now are dropped; a
+    // `deleting` confirm is kept until its DELETE settles.
+    if (_flowConfirm?.phase === "open") {
+      _flowConfirm = null;
+    }
+    _flowCardMessages.clear();
+    clearFlowNotice();
+  }
   if (
     tab !== TAB.PIPELINE_HEALTH &&
     tab !== TAB.FLOWS &&
@@ -2113,9 +2973,12 @@ function handleTabClick({
   // than waiting up to 60 s for the next `fetchAll` tick. Subsequent switches
   // re-render from the warm cache.
   if (tab === TAB.FLOWS) {
-    if (_flowCache.size === 0 && _flowLoadQueue.isIdle()) {
-      startFlowFanOut();
+    if (_flowListStatus === "idle" && _flowListXhr === null) {
+      loadFlowList();
     } else {
+      if (_flowListStatus === "loaded") {
+        catchUpFlowLoads();
+      }
       renderFlowsPanel();
     }
   }
@@ -2304,6 +3167,20 @@ export function initMetricsDashboard(): void {
     );
   }
 
+  // Delegate Retry clicks (per-card and list) on the stable flow grid: the
+  // cards are rebuilt on each render, so one binding at init covers them all.
+  const flowGrid = getElementByIdOrNull<HTMLElement>(FLOWS_GRID_ID);
+  if (flowGrid !== null) {
+    $(flowGrid).offAndOnExact(
+      "click.metricsDashboardFlowGrid",
+      handleFlowGridClick,
+    );
+    $(flowGrid).offAndOnExact(
+      "keydown.metricsDashboardFlowGrid",
+      handleFlowGridKeydown,
+    );
+  }
+
   document.addEventListener("visibilitychange", handleVisibilityChange);
 
   initPaneResizers();
@@ -2325,6 +3202,21 @@ export function _resetMetricsDashboardForTests(): void {
   stopBadgeTicker();
   abortInFlightRequests();
   _flowLoadQueue.abortAll();
+  abortFlowListRequest({ replacement: false });
+  _flowList = null;
+  _flowListStatus = "idle";
+  resetFlowListSlot();
+  _flowListErrorShown = false;
+  _flowListRetryButton = null;
+  const staleDeleteXhr = _flowDeleteXhr;
+  _flowDeleteXhr = null;
+  staleDeleteXhr?.abort();
+  _flowConfirm = null;
+  _flowCardMessages.clear();
+  if (_flowActionAnnounceTimer !== null) {
+    clearTimeout(_flowActionAnnounceTimer);
+    _flowActionAnnounceTimer = null;
+  }
   _lastFetchPerf = 0;
   _currentWindow = "day";
   _currentCategory = TAB.API;

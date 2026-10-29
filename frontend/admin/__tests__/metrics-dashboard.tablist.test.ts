@@ -17,6 +17,8 @@ const {
   fetchTimeseriesSpy,
   fetchGroupedTimeseriesSpy,
   fetchFlowSpy,
+  fetchMetricFlowsSpy,
+  deleteMetricFlowSpy,
   fetchGaugesTimeseriesSpy,
   fetchLatencySpy,
   fetchLatencyTimeseriesSpy,
@@ -33,6 +35,8 @@ const {
   fetchTimeseriesSpy: vi.fn(),
   fetchGroupedTimeseriesSpy: vi.fn(),
   fetchFlowSpy: vi.fn(),
+  fetchMetricFlowsSpy: vi.fn(),
+  deleteMetricFlowSpy: vi.fn(),
   fetchGaugesTimeseriesSpy: vi.fn(),
   fetchLatencySpy: vi.fn(),
   fetchLatencyTimeseriesSpy: vi.fn(),
@@ -51,6 +55,8 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchTimeseries: fetchTimeseriesSpy,
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
   fetchFlow: fetchFlowSpy,
+  fetchMetricFlows: fetchMetricFlowsSpy,
+  deleteMetricFlow: deleteMetricFlowSpy,
   fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
   fetchLatency: fetchLatencySpy,
   fetchLatencyTimeseries: fetchLatencyTimeseriesSpy,
@@ -84,10 +90,12 @@ vi.mock("../latency-card.js", () => ({
 import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { $ } from "../../lib/globals.js";
+import { FLOW_IDS } from "../../types/metrics-flows.js";
 import {
   _resetMetricsDashboardForTests,
   initMetricsDashboard,
 } from "../metrics-dashboard.js";
+import { makeBuiltinListXhr } from "./helpers/flow-list-mock.js";
 
 type TabId =
   | "MetricsTabApi"
@@ -138,6 +146,13 @@ const DASHBOARD_HTML = `
     <section id="MetricsPanelFlows" role="tabpanel" tabindex="0" hidden>
       <span class="flows-loading-spinner" aria-hidden="true"></span>
       <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <span id="MetricsFlowsActionAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <div class="flows-toolbar">
+        <h2 id="MetricsFlowsHeading" class="flows-heading" tabindex="-1">Flow funnels</h2>
+        <span id="MetricsFlowsCount" class="flows-count"></span>
+        <span id="MetricsFlowsHint" class="flows-hint" hidden></span>
+        <span id="MetricsFlowsNotice" class="flows-notice" hidden></span>
+      </div>
       <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
     <section id="MetricsPanelGauges" role="tabpanel" tabindex="0">
@@ -281,6 +296,8 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchTimeseriesSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
     fetchFlowSpy.mockReset();
+    fetchMetricFlowsSpy.mockReset();
+    deleteMetricFlowSpy.mockReset();
     fetchGaugesTimeseriesSpy.mockReset();
     fetchLatencySpy.mockReset();
     fetchLatencyTimeseriesSpy.mockReset();
@@ -299,6 +316,9 @@ describe("metrics-dashboard tablist a11y", () => {
       createMockJqXHRChainable(),
     );
     fetchFlowSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchMetricFlowsSpy.mockImplementation(() =>
+      makeBuiltinListXhr({ ids: Object.values(FLOW_IDS) }),
+    );
     fetchGaugesTimeseriesSpy.mockImplementation(() =>
       createMockJqXHRChainable(),
     );

@@ -15,6 +15,8 @@ const {
   fetchGroupedTimeseriesSpy,
   fetchGaugesTimeseriesSpy,
   fetchFlowSpy,
+  fetchMetricFlowsSpy,
+  deleteMetricFlowSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderFlowGridSpy,
@@ -25,6 +27,8 @@ const {
   fetchGroupedTimeseriesSpy: vi.fn(),
   fetchGaugesTimeseriesSpy: vi.fn(),
   fetchFlowSpy: vi.fn(),
+  fetchMetricFlowsSpy: vi.fn(),
+  deleteMetricFlowSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderFlowGridSpy: vi.fn(),
@@ -38,6 +42,8 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
   fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
   fetchFlow: fetchFlowSpy,
+  fetchMetricFlows: fetchMetricFlowsSpy,
+  deleteMetricFlow: deleteMetricFlowSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -73,6 +79,7 @@ import {
   _resetMetricsDashboardForTests,
   initMetricsDashboard,
 } from "../metrics-dashboard.js";
+import { makeBuiltinListXhr } from "./helpers/flow-list-mock.js";
 
 const DASHBOARD_HTML = `
   <main id="MetricsDashboard" aria-busy="false">
@@ -98,6 +105,13 @@ const DASHBOARD_HTML = `
     <section id="MetricsPanelFlows" role="tabpanel" tabindex="0" hidden>
       <span class="flows-loading-spinner" aria-hidden="true"></span>
       <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <span id="MetricsFlowsActionAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <div class="flows-toolbar">
+        <h2 id="MetricsFlowsHeading" class="flows-heading" tabindex="-1">Flow funnels</h2>
+        <span id="MetricsFlowsCount" class="flows-count"></span>
+        <span id="MetricsFlowsHint" class="flows-hint" hidden></span>
+        <span id="MetricsFlowsNotice" class="flows-notice" hidden></span>
+      </div>
       <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
     <div id="MetricsErrorBanner" class="hidden"></div>
@@ -227,6 +241,8 @@ describe("metrics-dashboard flows load queue wiring", () => {
     fetchGroupedTimeseriesSpy.mockReset();
     fetchGaugesTimeseriesSpy.mockReset();
     fetchFlowSpy.mockReset();
+    fetchMetricFlowsSpy.mockReset();
+    deleteMetricFlowSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderFlowGridSpy.mockReset();
@@ -240,6 +256,11 @@ describe("metrics-dashboard flows load queue wiring", () => {
       deferreds.push(deferred);
       return deferred.xhr;
     });
+    // The list resolves at once with whatever ids `FLOW_IDS` currently holds
+    // (tests inject extra ids through `flowIdsHolder`).
+    fetchMetricFlowsSpy.mockImplementation(() =>
+      makeBuiltinListXhr({ ids: Object.values(FLOW_IDS) }),
+    );
 
     vi.useFakeTimers();
   });
@@ -524,12 +545,14 @@ describe("metrics-dashboard flows load queue wiring", () => {
     expect(flowsPanel().hasAttribute("aria-busy")).toBe(false);
   });
 
-  it("an aborted request (readyState 0) shows no banner and adds no entry", () => {
+  it("an aborted request (readyState 0) shows no banner and leaves no error state", () => {
     openFlows();
     latest({ flowId: ID_A }).reject({ status: 0, readyState: 0 });
 
     expect(bannerShown()).toBe(false);
-    expect(kindOf({ id: ID_A })).toBeUndefined();
+    // A listed id with nothing renders as a loading placeholder (DD-18),
+    // never a fabricated error.
+    expect(kindOf({ id: ID_A })).toBe("loading");
   });
 
   it("_dropFlowIdForTests aborts the in-flight xhr, clears the cache, and a late resolve stays dropped", () => {
@@ -540,19 +563,19 @@ describe("metrics-dashboard flows load queue wiring", () => {
 
     _dropFlowIdForTests({ id: ID_A });
     expect(refetch.abort).toHaveBeenCalled();
-    expect(kindOf({ id: ID_A })).toBeUndefined();
+    expect(kindOf({ id: ID_A })).toBe("loading");
 
     refetch.resolve();
-    expect(kindOf({ id: ID_A })).toBeUndefined();
+    expect(kindOf({ id: ID_A })).toBe("loading");
   });
 
-  it("_dropFlowIdForTests on an errored id leaves it omitted", () => {
+  it("_dropFlowIdForTests on an errored id clears the error", () => {
     openFlows();
     latest({ flowId: ID_A }).reject({ status: 500 });
     expect(kindOf({ id: ID_A })).toBe("error");
 
     _dropFlowIdForTests({ id: ID_A });
-    expect(kindOf({ id: ID_A })).toBeUndefined();
+    expect(kindOf({ id: ID_A })).toBe("loading");
   });
 
   it("a flow_invalid 422 over a cached response yields invalid, not response", () => {
@@ -579,7 +602,7 @@ describe("metrics-dashboard flows load queue wiring", () => {
     expect(kindOf({ id: ID_A })).toBe("response");
   });
 
-  it("entry precedence: response > invalid > loading > error; unpending and stateless ids are omitted", () => {
+  it("entry precedence: response > invalid > loading > error; returning after an off-tab window change re-requests the list and fans out again", () => {
     openFlows();
     latest({ flowId: ID_A }).resolve();
     latest({ flowId: ID_B }).reject({ status: 500 });
@@ -588,14 +611,16 @@ describe("metrics-dashboard flows load queue wiring", () => {
     expect(kindOf({ id: ID_C })).toBe("loading");
     expect(kindOf({ id: ID_D })).toBe("loading");
 
-    // Abort C and D off the Flows tab, then come back: they are left out.
+    // Abort C and D off the Flows tab, then come back: the off-tab window
+    // change marked the list stale, so returning re-requests it and fans out
+    // over every listed id again (A keeps its cached response meanwhile).
     clickTab({ id: "MetricsTabApi" });
     changeWindow({ windowKey: "week" });
     clickTab({ id: "MetricsTabFlows" });
     expect(kindOf({ id: ID_A })).toBe("response");
-    expect(kindOf({ id: ID_B })).toBe("error");
-    expect(kindOf({ id: ID_C })).toBeUndefined();
-    expect(kindOf({ id: ID_D })).toBeUndefined();
+    expect(kindOf({ id: ID_B })).toBe("loading");
+    expect(kindOf({ id: ID_C })).toBe("loading");
+    expect(kindOf({ id: ID_D })).toBe("loading");
 
     // A retried error id is loading while pending; a cached response with a
     // refetch in flight stays a response.
@@ -701,7 +726,7 @@ describe("metrics-dashboard flows load queue wiring", () => {
     ]);
   });
 
-  it("returning to Flows after all four requests errored retries them", () => {
+  it("returning to Flows after all four requests errored keeps the error cards (Retry is per card)", () => {
     openFlows();
     deferreds.forEach((entry) => entry.reject({ status: 500 }));
     expect(lastEntries().map((entry) => entry.state.kind)).toEqual([
@@ -715,7 +740,15 @@ describe("metrics-dashboard flows load queue wiring", () => {
     clickTab({ id: "MetricsTabApi" });
     clickTab({ id: "MetricsTabFlows" });
 
-    expect(fetchFlowSpy).toHaveBeenCalledTimes(4);
+    // A loaded list only catches up ids lacking cache, state and pending
+    // request; errored cards wait for their own Retry.
+    expect(fetchFlowSpy).not.toHaveBeenCalled();
+    expect(lastEntries().map((entry) => entry.state.kind)).toEqual([
+      "error",
+      "error",
+      "error",
+      "error",
+    ]);
   });
 
   it("an empty fan-out clears aria-busy and announces", () => {

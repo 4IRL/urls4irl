@@ -18,6 +18,8 @@ const {
   fetchGroupedTimeseriesSpy,
   fetchGaugesTimeseriesSpy,
   fetchFlowSpy,
+  fetchMetricFlowsSpy,
+  deleteMetricFlowSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderFlowGridSpy,
@@ -27,6 +29,8 @@ const {
   fetchGroupedTimeseriesSpy: vi.fn(),
   fetchGaugesTimeseriesSpy: vi.fn(),
   fetchFlowSpy: vi.fn(),
+  fetchMetricFlowsSpy: vi.fn(),
+  deleteMetricFlowSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderFlowGridSpy: vi.fn(),
@@ -60,6 +64,8 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
   fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
   fetchFlow: fetchFlowSpy,
+  fetchMetricFlows: fetchMetricFlowsSpy,
+  deleteMetricFlow: deleteMetricFlowSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -74,10 +80,12 @@ vi.mock("../flow-card.js", () => ({
   renderFlowGrid: renderFlowGridSpy,
 }));
 
+import { FLOW_IDS } from "../../types/metrics-flows.js";
 import {
   _resetMetricsDashboardForTests,
   initMetricsDashboard,
 } from "../metrics-dashboard.js";
+import { makeBuiltinListXhr } from "./helpers/flow-list-mock.js";
 
 const DASHBOARD_HTML = `
   <main id="MetricsDashboard" aria-busy="false">
@@ -103,6 +111,13 @@ const DASHBOARD_HTML = `
     <section id="MetricsPanelFlows" role="tabpanel" tabindex="0" hidden>
       <span class="flows-loading-spinner" aria-hidden="true"></span>
       <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <span id="MetricsFlowsActionAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <div class="flows-toolbar">
+        <h2 id="MetricsFlowsHeading" class="flows-heading" tabindex="-1">Flow funnels</h2>
+        <span id="MetricsFlowsCount" class="flows-count"></span>
+        <span id="MetricsFlowsHint" class="flows-hint" hidden></span>
+        <span id="MetricsFlowsNotice" class="flows-notice" hidden></span>
+      </div>
       <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
     <div id="MetricsErrorBanner" class="hidden"></div>
@@ -126,6 +141,8 @@ describe("metrics-dashboard polling + visibility lifecycle", () => {
     fetchGroupedTimeseriesSpy.mockReset();
     fetchGaugesTimeseriesSpy.mockReset();
     fetchFlowSpy.mockReset();
+    fetchMetricFlowsSpy.mockReset();
+    deleteMetricFlowSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderFlowGridSpy.mockReset();
@@ -135,6 +152,9 @@ describe("metrics-dashboard polling + visibility lifecycle", () => {
     fetchGroupedTimeseriesSpy.mockImplementation(() => makeSettlingXhr());
     fetchGaugesTimeseriesSpy.mockImplementation(() => makeSettlingXhr());
     fetchFlowSpy.mockImplementation(() => makeSettlingXhr());
+    fetchMetricFlowsSpy.mockImplementation(() =>
+      makeBuiltinListXhr({ ids: Object.values(FLOW_IDS) }),
+    );
 
     // CRITICAL: install fake timers BEFORE initMetricsDashboard so the
     // initial fetchAll() is counted against the timer-controlled lifecycle.
