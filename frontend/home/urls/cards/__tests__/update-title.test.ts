@@ -7,6 +7,7 @@ import {
   updateURLTitle,
 } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
+import { syncUrlTooltips } from "../url-tooltips.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { isMobile, isCoarsePointer } from "../../../mobile.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
@@ -29,6 +30,10 @@ vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 vi.mock("../../../../lib/tooltips.js", () => ({
   hideTooltip: vi.fn(),
   restoreTooltipIfStillTargeted: vi.fn(),
+}));
+
+vi.mock("../url-tooltips.js", () => ({
+  syncUrlTooltips: vi.fn(),
 }));
 
 vi.mock("../selection.js", () => ({
@@ -206,6 +211,29 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
       (existingUrl) => existingUrl.utubUrlID === 1,
     );
     expect(updatedUrl!.utubUrlTagIDs).toEqual([11, 22]);
+  });
+
+  it("re-syncs the URL tooltips on the card after a successful title update", async () => {
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+      }),
+    );
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(syncUrlTooltips).toHaveBeenCalledWith(urlCard);
   });
 });
 

@@ -14,6 +14,7 @@ import {
 import { setURLCardSelectionEventListener } from "../selection.js";
 import { createGoToURLIcon } from "../corner-access.js";
 import { toggleURLCardSelection } from "../../bulk-actions/bulk-selection.js";
+import { syncUrlTooltips } from "../url-tooltips.js";
 
 const $ = window.jQuery;
 
@@ -85,6 +86,9 @@ vi.mock("../options/btns.js", () => ({
     window.jQuery('<div class="urlOptions"></div>'),
   ),
 }));
+vi.mock("../url-tooltips.js", () => ({
+  syncUrlTooltips: vi.fn(),
+}));
 vi.mock("../create.js", () => ({
   createURL: vi.fn(),
   createURLHideInput: vi.fn(),
@@ -107,6 +111,12 @@ const baseURL = {
 
 describe("createURLBlock", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("syncs the URL tooltips on the built card", () => {
+    const el = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
+    expect(syncUrlTooltips).toHaveBeenCalledTimes(1);
+    expect(syncUrlTooltips).toHaveBeenCalledWith(el);
+  });
 
   describe("outer element structure", () => {
     it("returns a div element", () => {
@@ -586,6 +596,16 @@ describe("updateURLAfterFindingStaleData short-link refresh", () => {
   }
 
   beforeEach(() => vi.clearAllMocks());
+
+  it("re-syncs the URL tooltips on the stale card", () => {
+    const card = createURLBlock({ url: baseURL, dictTags: [], utubID: 10 });
+    vi.mocked(syncUrlTooltips).mockClear();
+
+    updateURLAfterFindingStaleData(card, baseURL, [], 10);
+
+    expect(syncUrlTooltips).toHaveBeenCalledTimes(1);
+    expect(syncUrlTooltips).toHaveBeenCalledWith(card);
+  });
 
   it("removes the row, Revoke and tooltip state when the link is gone", () => {
     const card = cardWithLink({ canRevoke: true });

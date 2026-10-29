@@ -219,6 +219,13 @@ function hasFinePointer(): boolean {
   return window.matchMedia(FINE_POINTER_QUERY).matches;
 }
 
+interface SelectRow {
+  row: HTMLElement;
+  select: HTMLSelectElement;
+  hintElement: HTMLElement | null;
+  descId: string;
+}
+
 /** The select is described by its desc, plus the hint while the hint shows. */
 function syncDescribedBy({
   select,
@@ -259,17 +266,16 @@ function renderedViewFor({
  * while focus is inside the section). Inert rows stay aria-disabled regardless.
  */
 function applyDensityState({
-  row,
+  densityRow,
   viewValue,
   inert,
 }: {
-  row: HTMLElement;
+  densityRow: SelectRow;
   viewValue: ViewModeValue;
   inert: boolean;
 }): void {
-  const select = row.querySelector<HTMLSelectElement>("select");
-  const hintElement = row.querySelector<HTMLElement>(".urlsSettingsHint");
-  if (select === null || hintElement === null) return;
+  const { select, hintElement, descId } = densityRow;
+  if (hintElement === null) return;
   const viewDisabled = densityDisabledFor(viewValue);
   if (inert || viewDisabled) {
     select.setAttribute("aria-disabled", "true");
@@ -277,8 +283,6 @@ function applyDensityState({
     select.removeAttribute("aria-disabled");
   }
   hintElement.hidden = !viewDisabled;
-  const descId = select.dataset.descId;
-  if (descId === undefined) return;
   syncDescribedBy({ select, descId, hintElement });
 }
 
@@ -302,7 +306,7 @@ function buildSelectRow<Value extends string>({
   disabled: boolean;
   hint?: { text: string; visible: boolean };
   onChange: (value: Value | null) => void;
-}): HTMLElement {
+}): SelectRow {
   const row = document.createElement("div");
   row.className = "panelSettingsRow";
   const labelId = `${idPrefix}Label`;
@@ -318,9 +322,9 @@ function buildSelectRow<Value extends string>({
   select.id = `${idPrefix}Select`;
   select.setAttribute("aria-labelledby", labelId);
   if (desc !== undefined) select.setAttribute("aria-describedby", descId);
+  let hintElement: HTMLElement | null = null;
   if (hint !== undefined) {
-    select.dataset.descId = descId;
-    const hintElement = document.createElement("div");
+    hintElement = document.createElement("div");
     hintElement.className = "urlsSettingsHint";
     hintElement.id = `${idPrefix}Hint`;
     hintElement.textContent = hint.text;
@@ -358,7 +362,7 @@ function buildSelectRow<Value extends string>({
 
   wrap.append(select);
   row.append(wrap);
-  return row;
+  return { row, select, hintElement, descId };
 }
 
 function buildSwitchRow({
@@ -494,7 +498,7 @@ function render({
     override: urls.view_mode,
     accountDefault: preferences.defaultView,
   });
-  let densityRow: HTMLElement | null = null;
+  let densityRow: SelectRow | null = null;
 
   rows.push(
     buildSelectRow({
@@ -508,7 +512,7 @@ function render({
       }),
       disabled: inert,
       onChange: (value) => submitPatch({ sort: value }),
-    }),
+    }).row,
     buildSelectRow({
       idPrefix: "urlsSettingsView",
       title: strings().URLS_PERSONAL_SETTINGS_VIEW_LABEL,
@@ -524,7 +528,7 @@ function render({
         // view select holds focus. A failed save re-renders the true state.
         if (densityRow !== null) {
           applyDensityState({
-            row: densityRow,
+            densityRow,
             viewValue: renderedViewFor({
               override: value,
               accountDefault: preferences.defaultView,
@@ -534,7 +538,7 @@ function render({
         }
         submitPatch({ view_mode: value });
       },
-    }),
+    }).row,
   );
 
   // Compact spacing only applies with a fine pointer, so a touch-only device
@@ -557,8 +561,8 @@ function render({
       },
       onChange: (value) => submitPatch({ density: value }),
     });
-    applyDensityState({ row: densityRow, viewValue: renderedView, inert });
-    rows.push(densityRow);
+    applyDensityState({ densityRow, viewValue: renderedView, inert });
+    rows.push(densityRow.row);
   }
 
   for (const row of switchRows()) {
