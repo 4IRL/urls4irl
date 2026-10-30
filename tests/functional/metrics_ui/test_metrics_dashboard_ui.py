@@ -20,7 +20,10 @@ from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import MetricsDashboardLocators as MDL
 from tests.functional.metrics_ui.playwright_utils import (
+    SUB_FLOOR_FLOW_COUNT,
     SeedCustomFlows,
+    insert_sub_floor_create_utub_flow_rows,
+    insert_sub_floor_ingest_batch_row,
     login_admin_and_open_metrics_dashboard,
     one_step_definition,
     removed_event_definition,
@@ -262,11 +265,76 @@ def test_pipeline_health_card_renders_with_seeded_data(
     for bar_selector in ALL_PIPELINE_HEALTH_BAR_SELECTORS:
         wait_for_element_presence(page=page, css_selector=bar_selector)
 
+    # The legend is rendered by TS from the segments present in the response.
     for legend_selector in ALL_PIPELINE_HEALTH_LEGEND_SELECTORS:
         assert page.locator(legend_selector).count() == 1, (
             f"Expected exactly one legend swatch matching {legend_selector}, "
             f"got {page.locator(legend_selector).count()}."
         )
+    # Seeded rows are all >= MIN_CELL_COUNT, so nothing is suppressed: no
+    # suppressed swatch, bar or fifth column at any time of day.
+    assert page.locator(MDL.PIPELINE_HEALTH_LEGEND_SWATCH_SUPPRESSED).count() == 0
+    assert page.locator(MDL.PIPELINE_HEALTH_BAR_SUPPRESSED).count() == 0
+    assert page.locator(MDL.PIPELINE_HEALTH_X_LABELS).count() == 4
+
+
+def test_pipeline_health_card_renders_suppressed_column_for_sub_floor_row(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the seed plus one extra ingest-batch row whose window-wide count is
+        below MIN_CELL_COUNT
+    WHEN an admin opens the Pipeline Health card
+    THEN the sub-floor row is folded into a suppressed column with a dashed
+        bar and a dashed legend swatch, and no raw bar is drawn for it.
+    """
+    insert_sub_floor_ingest_batch_row(app=provide_app)
+
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_PIPELINE_HEALTH_BUTTON)
+
+    suppressed_bar = wait_for_element_presence(
+        page=page, css_selector=MDL.PIPELINE_HEALTH_BAR_SUPPRESSED
+    )
+    suppressed_swatch = wait_for_element_presence(
+        page=page, css_selector=MDL.PIPELINE_HEALTH_LEGEND_SWATCH_SUPPRESSED
+    )
+    suppressed_label = wait_for_element_presence(
+        page=page, css_selector=MDL.PIPELINE_HEALTH_X_LABEL_SUPPRESSED
+    )
+    expect(suppressed_label).to_have_text(
+        ADMIN_METRICS_STRINGS.METRICS_PIPELINE_HEALTH_SUPPRESSED_COLUMN
+    )
+    expect(
+        page.locator(MDL.PIPELINE_HEALTH_LEGEND_ITEMS).filter(
+            has_text=ADMIN_METRICS_STRINGS.METRICS_PIPELINE_HEALTH_LEGEND_SUPPRESSED
+        )
+    ).to_have_count(1)
+
+    # Four seeded columns + the suppressed column; four seeded bars + one
+    # suppressed bar and no raw bar for the sub-floor row.
+    assert page.locator(MDL.PIPELINE_HEALTH_X_LABELS).count() == 5
+    assert page.locator(f"{MDL.PIPELINE_HEALTH_CHART} rect").count() == 5
+    assert page.locator(MDL.PIPELINE_HEALTH_LEGEND_ITEMS).count() == 5
+
+    # Computed styles: the dashed outline is not colour-only.
+    dash_array = suppressed_bar.evaluate("el => getComputedStyle(el).strokeDasharray")
+    assert dash_array.replace("px", "").replace(",", "").split() == ["4", "3"]
+    swatch_border_style = suppressed_swatch.evaluate(
+        "el => getComputedStyle(el).borderStyle"
+    )
+    assert swatch_border_style == "dashed"
 
 
 def test_pipeline_health_card_renders_empty_state_with_no_data(
@@ -351,6 +419,52 @@ def test_flows_tab_renders_funnel_cards_with_seeded_data(
 
     funnel_steps = wait_then_get_elements(page=page, css_selector=MDL.FLOWS_FUNNEL_STEP)
     assert len(funnel_steps) >= 1, "Expected at least one funnel step row to render."
+
+
+def test_flows_tab_renders_suppressed_step_and_cause_pill_for_sub_floor_counts(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the "Create UTub" flow with a `form=utub_create` submit step and a
+        same-filter cancel breakdown whose counts are below MIN_CELL_COUNT
+    WHEN an admin opens `/admin/metrics` and clicks the Flows tab
+    THEN the floored step renders as `.is-suppressed` with an announced
+        en-dash (role=img, suppressed aria-label, no raw count) and the
+        breakdown's suppressed pill renders with a dashed border.
+    """
+    insert_sub_floor_create_utub_flow_rows(app=provide_app)
+
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
+
+    suppressed_step = wait_for_element_presence(
+        page=page, css_selector=MDL.FLOWS_FUNNEL_STEP_SUPPRESSED
+    )
+    suppressed_count = suppressed_step.locator(".step-count")
+    expect(suppressed_count).to_have_attribute("role", "img")
+    expect(suppressed_count).to_have_attribute(
+        "aria-label", ADMIN_METRICS_STRINGS.METRICS_FLOW_COUNT_SUPPRESSED_ARIA
+    )
+    assert str(SUB_FLOOR_FLOW_COUNT) not in suppressed_step.inner_text()
+
+    suppressed_pill = wait_for_element_presence(
+        page=page, css_selector=MDL.FLOWS_CAUSE_PILL_SUPPRESSED
+    )
+    pill_border_style = suppressed_pill.evaluate(
+        "el => getComputedStyle(el).borderStyle"
+    )
+    assert pill_border_style == "dashed"
 
 
 def test_flows_tab_renders_empty_state_with_no_data(

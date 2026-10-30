@@ -678,6 +678,13 @@
     background-color: var(--pipelineHealthBeaconMobile);
 }
 
+/* Dashed outline so the suppressed swatch/bar is not distinguished by
+ * colour alone. */
+.MetricsPipelineHealthLegend .swatch--suppressed {
+    background-color: var(--pipelineHealthSuppressed);
+    border: 1px dashed var(--cardURLTextColor);
+}
+
 /* Stacked-bar rect fills — matched to the legend swatch palette. */
 .MetricsPipelineHealthBar--fetch-desktop {
     fill: var(--pipelineHealthFetchDesktop);
@@ -695,8 +702,21 @@
     fill: var(--pipelineHealthBeaconMobile);
 }
 
+/* non-scaling-stroke keeps the dashes legible when the viewBox scales down
+ * (about 0.5 at 420px); dash lengths are then in screen pixels. */
+.MetricsPipelineHealthBar--suppressed {
+    fill: var(--pipelineHealthSuppressed);
+    stroke: var(--cardURLTextColor);
+    stroke-dasharray: 4 3;
+    vector-effect: non-scaling-stroke;
+}
+
+.MetricsPipelineHealthChart .MetricsAxisLabelX.is-suppressed {
+    font-style: italic;
+}
+
 @media (max-width: 1100px) {
-    /* At narrower viewports the four-item legend row crowds long swatch
+    /* At narrower viewports the legend row crowds long swatch
      * labels; wrap below the chart so each label retains its full width.
      * Also let the section reclaim the full panel width — on tablets and
      * smaller the 75% cap leaves too much wasted space. */
@@ -1259,6 +1279,18 @@
 .cause-pill.reject {
     border: 1px solid var(--removeIconColor);
     color: var(--removeIconColor);
+}
+
+.funnel-step.is-suppressed .step-count {
+    color: var(--cardURLTextColor);
+    font-style: italic;
+    font-weight: 400;
+}
+
+.cause-pill.is-suppressed {
+    border: 1px dashed var(--cardURLTextColor);
+    color: var(--cardURLTextColor);
+    font-style: italic;
 }
 
 /* ---- Flows grid: toolbar, badges, card states, delete confirm -------- */

@@ -205,6 +205,31 @@ describe("metrics-query-client", () => {
       );
     });
 
+    it("appends partition_by_bucket=false only when explicitly false", () => {
+      fetchGroupedTimeseries({
+        eventName: "api_metrics_ingest_batch",
+        groupBy: ["transport"],
+        window: "day",
+        partitionByBucket: false,
+      });
+      fetchGroupedTimeseries({
+        eventName: "api_metrics_ingest_batch",
+        groupBy: ["transport"],
+        window: "day",
+      });
+      fetchGroupedTimeseries({
+        eventName: "api_metrics_ingest_batch",
+        groupBy: ["transport"],
+        window: "day",
+        partitionByBucket: true,
+      });
+      expect(ajaxCallSpy.mock.calls[0][1]).toBe(
+        "/api/metrics/query/grouped-timeseries?event_name=api_metrics_ingest_batch&window=day&group_by=transport&partition_by_bucket=false",
+      );
+      expect(ajaxCallSpy.mock.calls[1][1]).not.toContain("partition_by_bucket");
+      expect(ajaxCallSpy.mock.calls[2][1]).not.toContain("partition_by_bucket");
+    });
+
     it("does NOT include device_type as a query param (middleware injects it)", () => {
       // device_type is a request-header dimension injected by the metrics
       // middleware; the grouped-timeseries query schema rejects unknown

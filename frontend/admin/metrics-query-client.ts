@@ -141,11 +141,13 @@ export function fetchGroupedTimeseries({
   groupBy,
   window,
   resolution,
+  partitionByBucket,
 }: {
   eventName: string;
   groupBy: readonly string[];
   window: string;
   resolution?: TimeseriesResolution;
+  partitionByBucket?: boolean;
 }): JQuery.jqXHR<SuccessResponse<"queryGroupedTimeseries">> {
   const params = new URLSearchParams({
     event_name: eventName,
@@ -156,6 +158,10 @@ export function fetchGroupedTimeseries({
   }
   if (resolution !== undefined) {
     params.set("resolution", resolution);
+  }
+  // Only an explicit `false` is sent; omitted keeps the server default (true).
+  if (partitionByBucket === false) {
+    params.set("partition_by_bucket", "false");
   }
   const url = `${requireAdminRoute("metricsQueryGroupedTimeseries")}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<

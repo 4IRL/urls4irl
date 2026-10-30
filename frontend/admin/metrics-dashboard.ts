@@ -2517,6 +2517,9 @@ function fetchAll(): void {
     eventName: "api_metrics_ingest_batch",
     groupBy: ["batch_size_bucket", "transport", "device_type"],
     window: _currentWindow,
+    // Window-wide floor: the chart sums across time, so a per-bucket floor
+    // would over-suppress.
+    partitionByBucket: false,
   });
   _inFlight.pipelineHealth = pipelineHealthRequest;
   const requestedWindow = _currentWindow;
@@ -2526,9 +2529,13 @@ function fetchAll(): void {
       const pipelineHealthSvg = getElementByIdOrNull<HTMLElement>(
         "MetricsPipelineHealthChart",
       ) as unknown as SVGSVGElement | null;
-      if (pipelineHealthSvg !== null) {
+      const pipelineHealthLegend = getElementByIdOrNull<HTMLElement>(
+        "MetricsPipelineHealthLegend",
+      ) as HTMLUListElement | null;
+      if (pipelineHealthSvg !== null && pipelineHealthLegend !== null) {
         renderPipelineHealthChart({
           svg: pipelineHealthSvg,
+          legend: pipelineHealthLegend,
           response,
           window: requestedWindow,
         });

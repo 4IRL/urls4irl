@@ -198,6 +198,8 @@ const appConfig = {
     },
     // Source of truth: backend/metrics/events.py (DEVICE_TYPE_DIM_KEY).
     DEVICE_TYPE_DIM_KEY: "device_type",
+    // Source of truth: backend/metrics/suppression.py (SUPPRESSED_DIM_VALUE).
+    SUPPRESSED_DIM_VALUE: "suppressed",
   },
   strings: {
     UTUB_QUERY_PARAM: "UTubID",
@@ -698,6 +700,10 @@ const appConfig = {
     METRICS_PIPELINE_HEALTH_LEGEND_BEACON_MOBILE: "beacon · mobile",
     METRICS_PIPELINE_HEALTH_CHART_DESC:
       "Stacked bar chart of accepted ingest batches grouped by batch size and split by transport and device type.",
+    METRICS_PIPELINE_HEALTH_SUPPRESSED_COLUMN: "suppressed (<5)",
+    METRICS_PIPELINE_HEALTH_LEGEND_SUPPRESSED: "suppressed (fewer than 5)",
+    METRICS_PIPELINE_HEALTH_DESC_SUPPRESSED:
+      "{{ count }} batches in suppressed cells (fewer than 5 each).",
     METRICS_FLOW_SUCCEEDED: "succeeded",
     METRICS_FLOW_CONVERSION: "conversion",
     METRICS_FLOW_DROPOFF: "drop-off",
@@ -741,6 +747,8 @@ const appConfig = {
     METRICS_GAUGE_KIND_DISTRIBUTION_MEDIAN: "Distribution (median)",
     METRICS_GAUGE_KIND_DISTRIBUTION_P90: "Distribution (p90)",
     METRICS_GAUGE_SUPPRESSED_ARIA: "Value unavailable",
+    METRICS_SUPPRESSED_LABEL: "suppressed (fewer than 5)",
+    METRICS_FLOW_COUNT_SUPPRESSED_ARIA: "Count suppressed (fewer than 5)",
     METRICS_GAUGES_LOADED: "Gauge values updated.",
     METRICS_GAUGE_SELECT_PROMPT: "Select a gauge to view its timeseries.",
     METRICS_GAUGE_COL_NAME: "Gauge",
