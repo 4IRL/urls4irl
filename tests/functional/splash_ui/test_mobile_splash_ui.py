@@ -16,6 +16,7 @@ from tests.functional.playwright_utils import (
     Decks,
     PageBundle,
     click_on_navbar,
+    close_navbar,
     current_base_url,
     input_login_fields,
     wait_for_class_to_be_removed,
@@ -77,7 +78,7 @@ def test_navbar_on_mobile_splash_hides_login_register(
     """
     click_on_navbar(page=page_mobile_portrait)
 
-    click_on_navbar(page=page_mobile_portrait)
+    close_navbar(page=page_mobile_portrait)
 
     assert_not_visible_css_selector(
         page=page_mobile_portrait, css_selector=SPL.NAVBAR_LOGIN

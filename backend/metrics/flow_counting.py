@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from backend.metrics.events import EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventName
 from backend.metrics.flows import FlowDefinition, FlowStep
 from backend.metrics.query_service import grouped_count_by, grouped_count_scalar
+from backend.metrics.suppression import MIN_CELL_COUNT
 from backend.schemas.metrics import (
     FlowBreakdownRow,
     FlowResponseSchema,
@@ -35,30 +36,39 @@ class FlowCountError(ValueError):
 
 def _count_flow_step(
     step: FlowStep, window_start: datetime, window_end: datetime
-) -> int:
-    """Compute the scalar count for one funnel step over the window.
+) -> tuple[int, bool]:
+    """Compute `(count, suppressed)` for one funnel step over the window.
 
     UI/DOMAIN steps count `step.event_name`; API steps match `API_HIT`'s flat
     `endpoint`/`method` columns (plus any per-step filter). Both call
-    `grouped_count_scalar`, which returns a scalar `int`.
+    `grouped_count_scalar`, which returns a scalar `int`. A non-API step
+    filtered on a non-`device_type` dimension whose count is below
+    `MIN_CELL_COUNT` (and above zero) is floored to `0` and flagged suppressed.
     """
     if step.event_name is not None:
-        return grouped_count_scalar(
+        count = grouped_count_scalar(
             event_name=step.event_name,
             window_start=window_start,
             window_end=window_end,
             dim_filter=step.dim_filter,
         )
+        has_non_device_filter = any(
+            key != DEVICE_TYPE_DIM_KEY for key, _ in (step.dim_filter or [])
+        )
+        if has_non_device_filter and 0 < count < MIN_CELL_COUNT:
+            return 0, True
+        return count, False
     api_filter: list[tuple[str, str]] = [
         ("endpoint", step.api_endpoint or ""),
         ("method", step.api_method or ""),
     ] + (step.dim_filter or [])
-    return grouped_count_scalar(
+    api_count = grouped_count_scalar(
         event_name=EventName.API_HIT,
         window_start=window_start,
         window_end=window_end,
         dim_filter=api_filter,
     )
+    return api_count, False
 
 
 def _build_step_breakdown(
@@ -105,10 +115,13 @@ def count_flow(
             and field (`steps.<i>` or `steps.<i>.drop_breakdown`).
     """
     step_counts: list[int] = []
+    step_suppressed: list[bool] = []
     step_breakdowns: list[list[FlowBreakdownRow] | None] = []
     for step_index, step in enumerate(definition.steps):
         try:
-            step_counts.append(_count_flow_step(step, window_start, window_end))
+            count, suppressed = _count_flow_step(step, window_start, window_end)
+            step_counts.append(count)
+            step_suppressed.append(suppressed)
         except ValueError as error:
             raise FlowCountError(
                 step_index=step_index, field=f"steps.{step_index}", reason=str(error)
@@ -126,8 +139,12 @@ def count_flow(
 
     top_count = step_counts[0]
     response_steps: list[FlowStepSchema] = []
-    for step, count, breakdown in zip(definition.steps, step_counts, step_breakdowns):
-        pct_of_top = None if top_count == 0 else min(count, top_count) / top_count
+    for step, count, suppressed, breakdown in zip(
+        definition.steps, step_counts, step_suppressed, step_breakdowns
+    ):
+        pct_of_top = (
+            None if suppressed or top_count == 0 else min(count, top_count) / top_count
+        )
         event_name = step.label if step.event_name is None else step.event_name.value
         response_steps.append(
             FlowStepSchema(
@@ -136,6 +153,7 @@ def count_flow(
                 event_name=event_name,
                 count=count,
                 pct_of_top=pct_of_top,
+                count_suppressed=suppressed,
                 breakdown=breakdown,
             )
         )

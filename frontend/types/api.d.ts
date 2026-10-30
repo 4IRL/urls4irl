@@ -2107,8 +2107,10 @@ export interface components {
     };
     /** @description One dimension of a catalog event and how a flow may use it. */
     FlowCatalogDimSchema: {
-      /** @description Dimension key, usable as a group_by key. */
+      /** @description Dimension key; usable as a group_by key only when `groupable` is true. */
       key: string;
+      /** @description True when this dim is a valid breakdown group_by for the event (a member of a registered projection; always true for API_HIT's flat columns). */
+      groupable: boolean;
       /**
        * @description `values`: filter by one of `values`; `status_code`: filter by a 3-digit code from 100 to 599; `group_by_only`: not filterable.
        * @enum {string}
@@ -2184,6 +2186,11 @@ export interface components {
        * @default null
        */
       pct_of_top: number | null;
+      /**
+       * @description True when 0 < count < MIN_CELL_COUNT on a step filtered by a non-device_type dimension; count is then reported as 0 and pct_of_top as null.
+       * @default false
+       */
+      count_suppressed: boolean;
       /**
        * @description Per-cause drop-off rows for the transition INTO this step; null when the step has no configured breakdown or the breakdown event has no rows in the window (DD-6 graceful-degrade).
        * @default null
@@ -8604,6 +8611,8 @@ export interface operations {
         end?: string;
         /** @description date_trunc resolution: hour (default) or day. */
         resolution?: "hour" | "day";
+        /** @description When false, counts are summed across all buckets in the window per dimension tuple and the small-cell floor applies to that window-wide cell; the response then carries one row per tuple, each with `bucket_start` equal to the window start truncated to `resolution` (`resolution` only labels that single synthetic bucket). */
+        partition_by_bucket?: boolean;
       };
       header?: never;
       path?: never;

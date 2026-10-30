@@ -1030,10 +1030,13 @@ def click_on_navbar(*, page: Page) -> None:
     """Open the collapsed Bootstrap navbar dropdown, settling any in-progress
     collapse transition before and after the toggler click. Bootstrap ignores
     a toggle click while `collapsing` is active, so clicking mid-transition
-    silently no-ops and the dropdown never opens."""
+    silently no-ops and the dropdown never opens. Waiting only for `collapsing`
+    to be absent is not enough: that also holds before the transition starts,
+    so the final wait is for the `show` class."""
     navbar_dropdown = page.locator(GenericPageLocator.NAVBAR_DROPDOWN)
     expect(navbar_dropdown).not_to_have_class(re.compile(r"collapsing"))
     page.locator(GenericPageLocator.NAVBAR_TOGGLER).click()
+    expect(navbar_dropdown).to_have_class(re.compile(r"(^|\s)show(\s|$)"))
     expect(navbar_dropdown).not_to_have_class(re.compile(r"collapsing"))
 
 

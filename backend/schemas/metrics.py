@@ -299,6 +299,14 @@ class FlowStepSchema(BaseSchema):
             "(division-by-zero guard, DD-6 graceful-degrade)."
         ),
     )
+    count_suppressed: bool = Field(
+        default=False,
+        description=(
+            "True when 0 < count < MIN_CELL_COUNT on a step filtered by a "
+            "non-device_type dimension; count is then reported as 0 and "
+            "pct_of_top as null."
+        ),
+    )
     breakdown: list[FlowBreakdownRow] | None = Field(
         default=None,
         description=(
@@ -406,7 +414,18 @@ class MetricFlowListResponseSchema(BaseSchema):
 class FlowCatalogDimSchema(BaseSchema):
     """One dimension of a catalog event and how a flow may use it."""
 
-    key: str = Field(description="Dimension key, usable as a group_by key.")
+    key: str = Field(
+        description=(
+            "Dimension key; usable as a group_by key only when `groupable` is true."
+        )
+    )
+    groupable: bool = Field(
+        description=(
+            "True when this dim is a valid breakdown group_by for the event (a "
+            "member of a registered projection; always true for API_HIT's flat "
+            "columns)."
+        )
+    )
     filter_kind: Literal["values", "status_code", "group_by_only"] = Field(
         description=(
             "`values`: filter by one of `values`; `status_code`: filter by a "

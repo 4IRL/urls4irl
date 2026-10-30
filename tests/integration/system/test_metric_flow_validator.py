@@ -36,6 +36,7 @@ from backend.utils.strings.metric_flow_strs import (
     METHOD_REQUIRED_STR,
     WRONG_TYPE_OBJECT_STR,
     echo_input,
+    group_by_not_available_message,
     unknown_endpoint_message,
     unknown_event_message,
     unknown_field_message,
@@ -313,16 +314,28 @@ def test_api_event_dim_keys_follow_api_rules(
         )
 
     path = "steps.1.drop_breakdown.dim_filter.0"
+    group_by_path = "steps.1.drop_breakdown.group_by"
+
+    def errors_for(value: str) -> dict[str, list[str]]:
+        errors = _errors(_ui_step(), breakdown(value))
+        if event_name is not EventName.API_HIT:
+            # The fixed `group_by: endpoint` is not groupable for these events.
+            assert errors.pop(group_by_path) == [
+                group_by_not_available_message(group_by="endpoint", allowed=[])
+            ]
+        return errors
+
     if dim_key == "status_code":
-        ok = validate_flow_payload(_payload(_ui_step(), breakdown("200")))
-        assert isinstance(ok, FlowDefinition)
-        assert _errors(_ui_step(), breakdown("600")) == {path: [BAD_STATUS_CODE_STR]}
+        if event_name is EventName.API_HIT:
+            ok = validate_flow_payload(_payload(_ui_step(), breakdown("200")))
+            assert isinstance(ok, FlowDefinition)
+        else:
+            assert errors_for("200") == {}
+        assert errors_for("600") == {path: [BAD_STATUS_CODE_STR]}
     elif dim_key in ("endpoint", "method"):
-        assert _errors(_ui_step(), breakdown("x")) == {path: [CANNOT_FILTER_STR]}
+        assert errors_for("x") == {path: [CANNOT_FILTER_STR]}
     else:
-        assert _errors(_ui_step(), breakdown("x")) == {
-            path: [unknown_field_message(value=dim_key)]
-        }
+        assert errors_for("x") == {path: [unknown_field_message(value=dim_key)]}
 
 
 @pytest.mark.parametrize(
@@ -457,24 +470,103 @@ def test_api_category_breakdown_rules(app: Flask, event_name: str) -> None:
         value.update(overrides)
         return _second(drop_breakdown=value)
 
+    group_by_path = "steps.1.drop_breakdown.group_by"
+    filter_path = "steps.1.drop_breakdown.dim_filter.0"
+    # Only API_HIT is exempt from the group_by registry; every other API event
+    # is refused with the distinct "cannot break down" message.
+    exempt = event_name == EventName.API_HIT.value
+    not_groupable = {
+        group_by_path: [group_by_not_available_message(group_by="endpoint", allowed=[])]
+    }
+
+    def filter_errors(**overrides: Any) -> dict[str, list[str]]:
+        errors = _errors(_ui_step(), breakdown(**overrides))
+        if not exempt:
+            assert errors.pop(group_by_path) == not_groupable[group_by_path]
+        return errors
+
     for group_by in ("endpoint", "method", "status_code"):
         result = validate_flow_payload(
             _payload(_ui_step(), breakdown(group_by=group_by))
         )
-        assert isinstance(result, FlowDefinition)
+        if exempt:
+            assert isinstance(result, FlowDefinition)
+        else:
+            assert result == {
+                group_by_path: [
+                    group_by_not_available_message(group_by=group_by, allowed=[])
+                ]
+            }
     errors = _errors(_ui_step(), breakdown(group_by="trigger"))
-    assert errors == {
-        "steps.1.drop_breakdown.group_by": [unknown_field_message(value="trigger")]
-    }
+    assert errors == {group_by_path: [unknown_field_message(value="trigger")]}
     for key in ("endpoint", "method"):
-        errors = _errors(_ui_step(), breakdown(dim_filter=[f"{key}:x"]))
-        assert errors == {"steps.1.drop_breakdown.dim_filter.0": [CANNOT_FILTER_STR]}
+        assert filter_errors(dim_filter=[f"{key}:x"]) == {
+            filter_path: [CANNOT_FILTER_STR]
+        }
     ok = validate_flow_payload(
         _payload(_ui_step(), breakdown(dim_filter=["status_code:200"]))
     )
-    assert isinstance(ok, FlowDefinition)
-    errors = _errors(_ui_step(), breakdown(dim_filter=["status_code:600"]))
-    assert errors == {"steps.1.drop_breakdown.dim_filter.0": [BAD_STATUS_CODE_STR]}
+    if exempt:
+        assert isinstance(ok, FlowDefinition)
+    else:
+        assert isinstance(ok, dict)
+        assert set(ok) == {group_by_path}
+    assert filter_errors(dim_filter=["status_code:600"]) == {
+        filter_path: [BAD_STATUS_CODE_STR]
+    }
+
+
+def test_unregistered_group_by_gets_distinct_message_naming_allowed(
+    app: Flask,
+) -> None:
+    """
+    GIVEN a declared dim that is not a registered projection
+    WHEN the flow is validated
+    THEN the field error is the "cannot break down" text, distinct from the
+         unknown-dim text, and registered dims are accepted.
+    """
+    path = "steps.1.drop_breakdown.group_by"
+
+    def breakdown(group_by: str) -> dict[str, Any]:
+        return _second(
+            drop_breakdown={"event_name": UI_CANCEL_EVENT, "group_by": group_by}
+        )
+
+    errors = _errors(_ui_step(), breakdown("form"))
+    assert errors == {
+        path: [
+            'Cannot break down this event by "form". Allowed: "trigger". '
+            "Choose one or remove the breakdown."
+        ]
+    }
+    unknown = _errors(_ui_step(), breakdown("zzz"))
+    assert unknown == {path: [unknown_field_message(value="zzz")]}
+    assert unknown[path] != errors[path]
+    assert isinstance(
+        validate_flow_payload(_payload(_ui_step(), breakdown("trigger"))),
+        FlowDefinition,
+    )
+
+
+def test_event_without_single_key_projection_cannot_be_broken_down(
+    app: Flask,
+) -> None:
+    """
+    GIVEN a breakdown on API_METRICS_INGEST_BATCH (multi-key projection only)
+    THEN the group_by error is "This event cannot be broken down."
+    """
+    errors = _errors(
+        _ui_step(),
+        _second(
+            drop_breakdown={
+                "event_name": EventName.API_METRICS_INGEST_BATCH.value,
+                "group_by": "endpoint",
+            }
+        ),
+    )
+    assert errors == {
+        "steps.1.drop_breakdown.group_by": ["This event cannot be broken down."]
+    }
 
 
 def test_breakdown_event_category_may_differ_from_step(app: Flask) -> None:

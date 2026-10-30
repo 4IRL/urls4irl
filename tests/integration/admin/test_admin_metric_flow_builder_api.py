@@ -16,6 +16,10 @@ from backend.metrics.flow_validation import (
     validate_flow_payload,
 )
 from backend.metrics.flows import FLOWS, FlowDefinition, FlowId
+from backend.metrics.suppression import (
+    ALLOWED_GROUP_BY_PROJECTIONS,
+    single_key_group_by_choices,
+)
 from backend.models.audit_log import AuditLog
 from backend.models.metric_flows import Metric_Flows
 from backend.models.users import Users
@@ -104,6 +108,14 @@ def test_catalog_groups_events_and_dims(
     assert api_hit_dims["method"]["filter_kind"] == "group_by_only"
     assert api_hit_dims["status_code"]["filter_kind"] == "status_code"
     assert all(dim["values"] == [] for dim in api_hit_dims.values())
+    assert all(dim["groupable"] for dim in api_hit_dims.values())
+    # Pipeline Health's three-key set is not a valid single-key breakdown.
+    assert not any(
+        dim["groupable"] for dim in events["api_metrics_ingest_batch"]["dims"]
+    )
+    form_cancel = {dim["key"]: dim for dim in events["ui_form_cancel"]["dims"]}
+    assert form_cancel["trigger"]["groupable"] is True
+    assert form_cancel["form"]["groupable"] is False
 
     device_dims = [
         dim
@@ -230,6 +242,21 @@ def _rejected_at(payload: dict[str, Any], path: str) -> bool:
     return isinstance(result, dict) and path in result
 
 
+def _filter_accepted(
+    draft: dict[str, Any], path: str, groupable_keys: set[str]
+) -> bool:
+    """Accept a filter probe; with no groupable dim only the filter path is checked.
+
+    A breakdown-hosted probe for an event with zero groupable dims can never pass
+    whole-draft validation (every group_by is refused), so assert instead that the
+    filter's own error key is absent.
+    """
+    if groupable_keys or not path.startswith("steps.0.drop_breakdown"):
+        return _accepted(draft)
+    result = validate_flow_payload(draft)
+    return isinstance(result, FlowDefinition) or path not in result
+
+
 def test_catalog_parity_with_validator(
     login_admin_user_with_register: AdminSession,
 ) -> None:
@@ -245,17 +272,42 @@ def test_catalog_parity_with_validator(
 
     with app.app_context():
         for event in events.values():
+            event_name = EventName(event["event_name"])
+            groupable_keys = {dim["key"] for dim in event["dims"] if dim["groupable"]}
+            if event_name is EventName.API_HIT:
+                expected_groupable = {dim["key"] for dim in event["dims"]}
+            else:
+                expected_groupable = set(single_key_group_by_choices(event_name))
+                registered_keys = {
+                    key
+                    for projection in ALLOWED_GROUP_BY_PROJECTIONS.get(
+                        event_name, frozenset()
+                    )
+                    for key in projection
+                }
+                assert groupable_keys <= registered_keys
+            assert groupable_keys == expected_groupable, event["event_name"]
             for dim in event["dims"]:
                 key = dim["key"]
-                assert _accepted(_draft(_breakdown_step(event=event, group_by=key))), (
-                    f"{event['event_name']} group_by {key}"
-                )
+                breakdown_draft = _draft(_breakdown_step(event=event, group_by=key))
+                if dim["groupable"]:
+                    assert _accepted(breakdown_draft), (
+                        f"{event['event_name']} group_by {key}"
+                    )
+                else:
+                    assert _rejected_at(
+                        breakdown_draft, "steps.0.drop_breakdown.group_by"
+                    ), f"{event['event_name']} non-groupable group_by {key}"
 
                 if dim["filter_kind"] == "values":
                     assert dim["values"]
                     for value in dim["values"]:
-                        draft, _ = _probe_filter(event=event, dim_key=key, value=value)
-                        assert _accepted(draft), f"{event['event_name']} {key}:{value}"
+                        draft, path = _probe_filter(
+                            event=event, dim_key=key, value=value
+                        )
+                        assert _filter_accepted(draft, path, groupable_keys), (
+                            f"{event['event_name']} {key}:{value}"
+                        )
                     draft, path = _probe_filter(
                         event=event, dim_key=key, value=_BAD_VALUE
                     )
@@ -272,8 +324,12 @@ def test_catalog_parity_with_validator(
                     assert dim["filter_kind"] == "status_code"
                     assert dim["values"] == []
                     for value in ("404", "100", "599"):
-                        draft, _ = _probe_filter(event=event, dim_key=key, value=value)
-                        assert _accepted(draft), f"{event['event_name']} {key}:{value}"
+                        draft, path = _probe_filter(
+                            event=event, dim_key=key, value=value
+                        )
+                        assert _filter_accepted(draft, path, groupable_keys), (
+                            f"{event['event_name']} {key}:{value}"
+                        )
                     for value in ("99", "abc", "600", "-40", "40 "):
                         draft, path = _probe_filter(
                             event=event, dim_key=key, value=value

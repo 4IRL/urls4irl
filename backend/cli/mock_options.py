@@ -26,6 +26,7 @@ from backend.metrics.flow_validation import serialize_flow_steps, validate_flow_
 from backend.metrics.flows import FlowDefinition
 from backend.metrics.gauges import GAUGE_REGISTRY, value_column_for
 from backend.metrics.latency import LatencyMetricName
+from backend.metrics.suppression import MIN_CELL_COUNT
 from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
@@ -601,7 +602,7 @@ def _seed_uniform_test_data() -> int:
                     method=method_value,
                     status_code=status_code_value,
                     dimensions=dimensions,
-                    count=1 + hour_offset,
+                    count=MIN_CELL_COUNT + hour_offset,
                 )
             )
             rows_written += 1

@@ -23,6 +23,12 @@ from backend.metrics.gauges import (
 )
 from backend.metrics.latency import LATENCY_RAW_RETENTION_DAYS, LatencyMetricName
 from backend.metrics.resources import Resource, resource_filter_clause
+from backend.metrics.suppression import (
+    GroupedRow,
+    merge_small_grouped_rows,
+    merge_small_labeled_counts,
+    validate_group_by_projection,
+)
 from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
@@ -468,6 +474,7 @@ def grouped_timeseries(
     window_start: datetime,
     window_end: datetime,
     resolution: Literal["hour", "day"],
+    partition_by_bucket: bool = True,
 ) -> GroupedTimeseriesResponseSchema:
     """Return per-bucket counts split by a dimension tuple.
 
@@ -494,6 +501,7 @@ def grouped_timeseries(
             f"{', '.join(unknown_keys)}. Valid keys: "
             f"{', '.join(sorted(valid_fields)) or '(none)'}."
         )
+    validate_group_by_projection(event_name, group_by)
 
     bucket_column = func.date_trunc(resolution, Anonymous_Metrics.bucket_start).label(
         "bucket"
@@ -518,7 +526,7 @@ def grouped_timeseries(
         .all()
     )
 
-    buckets: list[GroupedTimeseriesBucket] = []
+    grouped_rows: list[GroupedRow] = []
     for row in rows:
         dim_values: dict[str, str | int] = {}
         for group_by_index, group_by_key in enumerate(group_by):
@@ -530,13 +538,30 @@ def grouped_timeseries(
                 break
             dim_values[group_by_key] = raw_value
         else:
-            buckets.append(
-                GroupedTimeseriesBucket(
-                    bucket=row.bucket,
-                    dimensions=dim_values,
-                    count=int(row.count),
-                )
-            )
+            grouped_rows.append((row.bucket, dim_values, int(row.count)))
+
+    if not partition_by_bucket:
+        # Sum per dims tuple across buckets so the floor applies to the
+        # window-wide cell; one synthetic bucket labels every row.
+        synthetic_bucket = _truncate_to_resolution(window_start, resolution)
+        totals: dict[tuple[str | int, ...], int] = {}
+        for _, dim_values, count in grouped_rows:
+            dims_key = tuple(dim_values[key] for key in group_by)
+            totals[dims_key] = totals.get(dims_key, 0) + count
+        grouped_rows = [
+            (synthetic_bucket, dict(zip(group_by, dims_key)), count)
+            for dims_key, count in sorted(totals.items())
+        ]
+
+    if event_name is not EventName.API_HIT and any(
+        not _is_device_type_dim(event_name, key) for key in group_by
+    ):
+        grouped_rows = merge_small_grouped_rows(grouped_rows, group_by=group_by)
+
+    buckets = [
+        GroupedTimeseriesBucket(bucket=bucket, dimensions=dims, count=count)
+        for bucket, dims, count in grouped_rows
+    ]
 
     return GroupedTimeseriesResponseSchema(
         event_name=event_name.value,
@@ -765,6 +790,7 @@ def grouped_count_by(
         dim_filter=dim_filter or [],
         group_by=group_by,
     )
+    validate_group_by_projection(event_name, [group_by])
     count_column = func.sum(Anonymous_Metrics.count).label("count")
     labelled_group = query_parts.group_column.label("group_value")
     rows = (
@@ -774,11 +800,14 @@ def grouped_count_by(
         .order_by(count_column.desc())
         .all()
     )
-    return [
+    labeled_counts = [
         (str(row.group_value), int(row.count))
         for row in rows
         if row.group_value is not None
     ]
+    if event_name is EventName.API_HIT or _is_device_type_dim(event_name, group_by):
+        return labeled_counts
+    return merge_small_labeled_counts(labeled_counts)
 
 
 def _by_category(start: datetime, end: datetime) -> dict[str, int]:
