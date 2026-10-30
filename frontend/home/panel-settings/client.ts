@@ -1,4 +1,6 @@
 import type { SuccessResponse } from "../../types/api-helpers.d.ts";
+import type { UtubSortValue } from "../../types/preferences.js";
+import { isUtubSortValue } from "../../types/preferences.js";
 import type { PanelId } from "../../types/settings.js";
 import {
   resolveMemberSettings,
@@ -239,6 +241,82 @@ export function patchMemberSettings({
       const result = mapXhrToSaveOutcome(xhr);
       if (result.outcome === "gone") handleActiveUTubGone({ utubID });
       resolve(result);
+    });
+  });
+}
+
+type UpdateListPreferencesResponse =
+  SuccessResponse<"updateUtubListPreferences">;
+
+/** The three saved UTub-list preferences, as the endpoint echoes them. */
+export interface EchoedListPreferences {
+  utubSort: UtubSortValue;
+  showRowCounts: boolean;
+  showListTotals: boolean;
+}
+
+/**
+ * A UTub-list preferences save outcome. `ok` carries the echoed values (this
+ * client writes no store). A failure carries the mapped outcome plus whether the
+ * request timed out or never reached the server (`xhr.status === 0`), when the
+ * server may have committed.
+ */
+export type ListPreferencesSaveResult =
+  | { outcome: "ok"; preferences: EchoedListPreferences }
+  | { outcome: "failed"; result: FailedSaveResult; timedOut: boolean };
+
+function readEchoedListPreferences(
+  response: unknown,
+): EchoedListPreferences | null {
+  if (typeof response !== "object" || response === null) return null;
+  const body = response as Record<string, unknown>;
+  const { status, utubSort, showRowCounts, showListTotals } = body;
+  if (status !== "Success" && status !== "No change") return null;
+  if (!isUtubSortValue(utubSort)) return null;
+  if (typeof showRowCounts !== "boolean") return null;
+  if (typeof showListTotals !== "boolean") return null;
+  return { utubSort, showRowCounts, showListTotals };
+}
+
+/**
+ * PATCHes only the given fields of the caller's UTub-list preferences. Acts on
+ * the logged-in user (no UTub in the path), so it has no active-UTub stale guard
+ * and never runs the UTub-gone handling. A 200 that is not the app's JSON, or
+ * whose echo is malformed, is an error.
+ */
+export function patchUtubListPreferences({
+  patch,
+}: {
+  patch: SectionPatch;
+}): Promise<ListPreferencesSaveResult> {
+  return new Promise<ListPreferencesSaveResult>((resolve) => {
+    const request = ajaxCall(
+      "patch",
+      APP_CONFIG.routes.updateUtubListPreferences,
+      patch,
+      PATCH_TIMEOUT_MS,
+    );
+
+    request.done((response: UpdateListPreferencesResponse) => {
+      const preferences = readEchoedListPreferences(response);
+      if (preferences === null) {
+        log("patchUtubListPreferences — malformed 200 body");
+        resolve({
+          outcome: "failed",
+          result: { outcome: "error" },
+          timedOut: false,
+        });
+        return;
+      }
+      resolve({ outcome: "ok", preferences });
+    });
+
+    request.fail((xhr: JQuery.jqXHR) => {
+      resolve({
+        outcome: "failed",
+        result: mapXhrToSaveOutcome(xhr),
+        timedOut: xhr.status === 0,
+      });
     });
   });
 }

@@ -137,7 +137,9 @@ class HomePageLocators(GenericPageLocator):
     URLS_PERSONAL_HIDE_DATE_SWITCH = "#urlsPersonalHideDateSwitch"
     URLS_PERSONAL_DISABLE_SWIPE_SWITCH = "#urlsPersonalDisableSwipeSwitch"
     # Collapsible settings sections (shell-owned subheaders): the title toggle
-    # button, keyed by the registered section id.
+    # button, keyed by the registered section id. A section that is the only one
+    # in its scope group renders no heading (the toggle stays in the DOM, hidden),
+    # so no panel registered today exposes a clickable section toggle.
     SETTINGS_SECTION_URLS_DEFAULTS = "urls-defaults"
     SETTINGS_SECTION_URLS_PERSONAL = "urls-personal"
     SETTINGS_SECTION_TOGGLE_FORMAT = (

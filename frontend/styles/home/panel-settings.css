@@ -121,11 +121,20 @@
     border-radius: 1.25rem 1.25rem 0 0;
     box-shadow: var(--shadow-lg);
     transform: translateY(100%);
-    transition: transform 0.3s ease;
+    transition:
+        transform 0.3s ease,
+        height 0.3s ease;
 }
 
 .panelSettingsSheet.panelSettingsSheet--open {
     transform: translateY(0);
+}
+
+/* Expanded detent (swipe up on the grabber/header): fixed tall, the body scrolls
+   inside. The default detent stays content-sized. */
+.panelSettingsSheet.panelSettingsSheet--expanded {
+    height: 95dvh;
+    max-height: 95dvh;
 }
 
 /* The sheet tracks the finger 1:1 during a drag, so no transition then. */
@@ -210,12 +219,19 @@
 /* ---------------------------- Section chrome ----------------------------- */
 
 .panelSettingsSection {
-    padding: 0.85rem 0;
+    position: relative;
+    padding: 0.85rem 0 1.25rem;
     border-top: 1px solid var(--borderColor);
 }
 
 .panelSettingsSection:first-child {
     border-top: 0;
+}
+
+/* The only section of its scope group: no heading, so the controls sit right
+   under the scope heading. */
+.panelSettingsSection--headingless {
+    padding-top: 0.25rem;
 }
 
 /* Top-level collapsible parent (one per scope): the largest, heaviest heading
@@ -500,18 +516,31 @@ h3.panelSettingsRowTitle {
     display: none;
 }
 
-/* Inline status slot: saving muted, saved green, error red (each also carries text). */
+/* Inline status slot: saving muted, saved green, error red (each also carries text).
+   It sits at the END of the section, absolutely positioned inside the section's
+   bottom padding, so saving/saved text never changes any layout: collapsing or
+   reserving it in flow made the controls shift mid-save (a pointer click right
+   after a change, mousedown and mouseup on different elements, missed). */
 .panelSettingsStatus {
-    margin: 0 0 0.4rem;
-    min-height: 1.1rem;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.2rem;
+    margin: 0;
     font-size: 0.8rem;
+    line-height: 1.2;
     color: var(--cardURLTextColor);
 }
 
-/* An empty live region takes no space (no dead gap under the subheader). */
 .panelSettingsStatus:empty {
-    min-height: 0;
-    margin: 0;
+    display: none;
+}
+
+/* An error can be long and must stay readable, so it flows in the section (it
+   only appears once a save has failed, after the user's click has landed). */
+.panelSettingsStatus[data-state="error"] {
+    position: static;
+    margin-top: 0.3rem;
 }
 
 .panelSettingsStatus[data-state="saved"] {

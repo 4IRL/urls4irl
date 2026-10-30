@@ -23,8 +23,7 @@ from tests.functional.db_utils import (
 )
 from tests.functional.home_ui.test_panel_settings_ui import (
     _GEARS_WITHOUT_SECTION,
-    _assert_no_gear_visible,
-    _assert_only_urls_gear_visible,
+    _assert_only_utubs_gear_visible,
     _reveal_gears,
     gear_container_metrics,
 )
@@ -166,35 +165,47 @@ def _expect_touch_target(page: Page, gear_selector: str) -> None:
     assert box["height"] >= _MIN_TOUCH_TARGET_PX, (gear_selector, box)
 
 
-def test_only_urls_gear_rendered_on_phone(
+def test_urls_and_utubs_gears_rendered_on_phone(
     page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a phone viewport with an owned UTub selected
-    WHEN only the URLs panel has a registered settings section
-    THEN the URLs gear renders on the URL deck, and the UTubs, Members and Tags
-        gears (the Tags one on the open Tag sheet) stay hidden
+    WHEN only the UTubs and URLs panels have a registered settings section
+    THEN the URLs gear renders on the URL deck, the UTubs gear (registered, but in
+        the #leftPanel that selecting a UTub hides on a phone) renders once the
+        UTubs deck is reopened from the navbar, and the Members and Tags gears
+        (the Tags one on the open Tag sheet) stay hidden
     """
     page = page_mobile_portrait
     _select_owned_utub_on_phone(provide_app, page)
-    _assert_only_urls_gear_visible(page)
+    # Wait for the async UTub load: the UTUB_SELECTED handler hides #leftPanel.
+    expect(page.locator(HPL.LEFT_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_URL_SETTINGS_GEAR)).to_be_visible()
+    expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).not_to_have_class(
+        re.compile(r"\bhidden\b")
+    )
+    expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_hidden()
 
     _open_tag_sheet(page)
     for gear_selector in _GEARS_WITHOUT_SECTION:
         expect(page.locator(gear_selector)).to_be_hidden()
 
+    # Reopening the UTubs deck from the navbar shows #leftPanel, and its gear.
+    _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
+    expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_visible()
 
-def test_no_gear_rendered_on_phone_without_a_selected_utub(
+
+def test_only_utubs_gear_rendered_on_phone_without_a_selected_utub(
     page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a phone viewport on the home page with no UTub selected
     WHEN the page loads
-    THEN no gear renders, the URLs gear included
+    THEN only the UTubs gear renders; the URLs, Members and Tags gears do not
     """
     page = page_mobile_portrait
     login_user_to_home_page(app=provide_app, page=page, user_id=USER_ID_FOR_TEST)
-    _assert_no_gear_visible(page)
+    _assert_only_utubs_gear_visible(page)
 
 
 def test_revealed_gears_are_touch_targets_on_phone(
@@ -209,7 +220,7 @@ def test_revealed_gears_are_touch_targets_on_phone(
     page = page_mobile_portrait
     _select_owned_utub_on_phone(provide_app, page)
     # The UTub load is async and every store write re-runs the gear visibility
-    # pass (re-adding `hidden`, as no section is registered): wait for the tag
+    # pass (re-adding `hidden` to gears with no section): wait for the tag
     # filters, rendered from the loaded UTub, before revealing the gears.
     expect(page.locator(HPL.TAG_FILTERS).first).to_be_attached()
     _reveal_gears(page)
@@ -284,7 +295,8 @@ def test_revealed_gears_fit_their_headers_on_small_phones(
     page.set_viewport_size({"width": viewport_width, "height": _PHONE_HEIGHT_PX})
     _select_owned_utub_on_phone(provide_app, page)
     # The UTub load is async and every store write re-adds `hidden` to the gears
-    # (no section is registered): wait for the loaded UTub's tag filters first.
+    # that have no section (and re-runs the visibility pass for the rest): wait
+    # for the loaded UTub's tag filters first.
     expect(page.locator(HPL.TAG_FILTERS).first).to_be_attached()
 
     def check_fit(gear_selector: str) -> None:
@@ -708,3 +720,195 @@ def test_plain_member_sees_read_only_sheet_on_phone(
     expect(page.locator(HPL.URLS_SETTINGS_SHEET_READ_ONLY_NOTE)).to_contain_text(
         PANEL_SETTINGS_MANAGERS_ONLY
     )
+
+
+# ---------------------------------------------------------------------------
+# Swipe up to expand (grabber / header drag between the default and expanded
+# detents)
+# ---------------------------------------------------------------------------
+
+_SHEET_EXPANDED_CLASS_RE = re.compile(r"(^|\s)panelSettingsSheet--expanded(\s|$)")
+# Slow steps keep the per-step velocity under the 0.5px/ms fling threshold, so
+# only the distance decides the detent.
+_SLOW_STEP_DELAY_MS = 150
+_SWIPE_UP_PX = 300
+_EXPANDED_MIN_VIEWPORT_FRACTION = 0.9
+
+
+def _sheet_height(page: Page) -> float:
+    return _box(page, HPL.PANEL_SETTINGS_SHEET)["height"]
+
+
+def _drag_sheet_header(
+    page: Page, *, dy: float, step_delay_ms: int = _SLOW_STEP_DELAY_MS
+) -> None:
+    """Touch-drag the sheet header by dy px (negative = up) from its centre."""
+    header = _box(page, HPL.PANEL_SETTINGS_SHEET_HEADER)
+    start_y = header["y"] + header["height"] / 2
+    dispatch_pointer_drag(
+        page=page,
+        css_selector=HPL.PANEL_SETTINGS_SHEET_HEADER,
+        start_y=start_y,
+        end_y=start_y + dy,
+        step_delay_ms=step_delay_ms,
+    )
+
+
+def _wait_sheet_settled(page: Page) -> None:
+    """Wait until the settle transition ended and the inline pose was dropped."""
+    page.wait_for_function(
+        "(selector) => { const el = document.querySelector(selector);"
+        " return el !== null && el.style.height === '' && el.style.maxHeight === ''"
+        " && !el.classList.contains('panelSettingsSheet--dragging'); }",
+        arg=HPL.PANEL_SETTINGS_SHEET,
+    )
+    wait_for_css_transitions_to_finish(locator=page.locator(HPL.PANEL_SETTINGS_SHEET))
+
+
+def _expand_sheet_by_swipe(page: Page) -> None:
+    _drag_sheet_header(page, dy=-_SWIPE_UP_PX)
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_have_class(
+        _SHEET_EXPANDED_CLASS_RE
+    )
+    _wait_sheet_settled(page)
+
+
+def test_swipe_up_expands_sheet_without_extra_content(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the URLs settings sheet open at its content-sized default height
+    WHEN the grabber/header is swiped up
+    THEN the sheet expands to a fixed tall height (about 95% of the viewport),
+        taller than before, stays open and its body is a scroll container
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _open_urls_sheet(page)
+    default_height = _sheet_height(page)
+
+    _expand_sheet_by_swipe(page)
+
+    expanded_height = _sheet_height(page)
+    viewport_height = _PHONE_PORTRAIT_VIEWPORT["height"]
+    assert expanded_height > default_height, (default_height, expanded_height)
+    assert expanded_height >= viewport_height * _EXPANDED_MIN_VIEWPORT_FRACTION, (
+        expanded_height
+    )
+    assert page.evaluate(
+        "(selector) => getComputedStyle(document.querySelector(selector)).overflowY",
+        HPL.PANEL_SETTINGS_SHEET_BODY,
+    ) in ("auto", "scroll")
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_have_class(_SHEET_OPEN_CLASS_RE)
+
+
+def test_short_swipe_up_keeps_default_height(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the URLs settings sheet open at its default height
+    WHEN the header is swiped up only a few pixels, slowly
+    THEN the sheet snaps back to the default height and stays open
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _open_urls_sheet(page)
+    default_height = _sheet_height(page)
+
+    _drag_sheet_header(page, dy=-20)
+    _wait_sheet_settled(page)
+
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).not_to_have_class(
+        _SHEET_EXPANDED_CLASS_RE
+    )
+    assert _sheet_height(page) == pytest.approx(default_height, abs=1)
+
+
+def test_swipe_down_from_expanded_returns_to_default_not_dismissed(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the URLs settings sheet expanded by a swipe up
+    WHEN the header is swiped down by a medium distance (less than the way back
+        to the default height plus the dismiss threshold)
+    THEN the sheet returns to its default height and is still open
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _open_urls_sheet(page)
+    default_height = _sheet_height(page)
+    _expand_sheet_by_swipe(page)
+    travel = _sheet_height(page) - default_height
+
+    _drag_sheet_header(page, dy=travel * 0.6)
+    _wait_sheet_settled(page)
+
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_have_class(_SHEET_OPEN_CLASS_RE)
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).not_to_have_class(
+        _SHEET_EXPANDED_CLASS_RE
+    )
+    assert _sheet_height(page) == pytest.approx(default_height, abs=1)
+    _wait_sheet_history_entry(page, keyed=True)
+
+
+def test_swipe_down_far_from_expanded_dismisses(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the URLs settings sheet expanded by a swipe up
+    WHEN the header is dragged well past the default height
+    THEN the sheet is dismissed like any other user close
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _open_urls_sheet(page)
+    _expand_sheet_by_swipe(page)
+
+    # The whole expanded height: back to default, then the full default height on.
+    _drag_sheet_header(page, dy=_sheet_height(page), step_delay_ms=0)
+
+    _expect_sheet_closed(page)
+    _wait_sheet_history_entry(page, keyed=False)
+
+
+def test_swipe_down_from_default_dismisses(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the URLs settings sheet open at its default height
+    WHEN the header is swiped down past the threshold
+    THEN the sheet is dismissed
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _open_urls_sheet(page)
+
+    _drag_sheet_header(page, dy=_SHEET_DRAG_DISMISS_PX, step_delay_ms=0)
+
+    _expect_sheet_closed(page)
+    _wait_sheet_history_entry(page, keyed=False)
+
+
+def test_reopened_sheet_starts_at_default_height(
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the URLs settings sheet expanded and then closed with its close button
+    WHEN it is opened again
+    THEN it starts at the default height, not expanded
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _open_urls_sheet(page)
+    default_height = _sheet_height(page)
+    _expand_sheet_by_swipe(page)
+
+    _close_sheet_via_close_button(page)
+    _expect_sheet_closed(page)
+    _wait_sheet_history_entry(page, keyed=False)
+    _open_urls_sheet(page)
+
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).not_to_have_class(
+        _SHEET_EXPANDED_CLASS_RE
+    )
+    assert _sheet_height(page) == pytest.approx(default_height, abs=1)

@@ -1,5 +1,6 @@
 import { initPopover } from "./popover.js";
 
+export { rerenderSectionIfIdle } from "./popover.js";
 export { registerSection } from "./registry.js";
 export { isPanelSettingsBusy, isPanelSettingsOpen } from "./state.js";
 

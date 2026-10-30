@@ -47,6 +47,7 @@ import { initOnboardingNudges } from "./home/onboarding/nudges.js";
 import { initPanelSettings } from "./home/panel-settings/index.js";
 import { registerUrlsSettingsSection } from "./home/urls/settings-section.js";
 import { registerUrlsPersonalSettingsSection } from "./home/urls/personal-settings-section.js";
+import { registerUtubListSettingsSection } from "./home/utubs/list-settings-section.js";
 import { initUrlDeckPolicyAttrs } from "./home/urls/deck-view-attrs.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
@@ -78,6 +79,7 @@ $(document).ready(() => {
   initPanelSettings();
   registerUrlsSettingsSection();
   registerUrlsPersonalSettingsSection();
+  registerUtubListSettingsSection();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
   setUTubEventListenersOnInitialPageLoad();

@@ -8,6 +8,18 @@
     border-top: 2px solid var(--borderColor);
 }
 
+/* The pinned Trash row is the last thing in the UTub deck, so the deck's own
+   bottom padding (8px) and its content's (3px) would sit under the row as dead
+   space, off-centering the label between the row's rules. A collapsed deck keeps
+   its own `padding-bottom: 0` (higher specificity). */
+#UTubDeck {
+    padding-bottom: 0;
+}
+
+#UTubDeckContent {
+    padding-bottom: 0;
+}
+
 .TrashSelector {
     display: flex;
     align-items: center;

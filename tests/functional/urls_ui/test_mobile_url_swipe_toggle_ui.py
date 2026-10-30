@@ -6,6 +6,7 @@ from playwright.sync_api import Page, expect
 
 from backend.models.utub_members import Member_Role
 from backend.utils.strings.url_strs import URL_MOVED_TO_TRASH_ONE
+from backend.utils.strings.utub_strs import URLS_SETTINGS_SECTION_TITLE
 from tests.functional.db_utils import (
     get_url_in_utub,
     get_utub_this_user_created,
@@ -261,14 +262,15 @@ def test_cards_override_shows_one_selected_small_screen_option_on_a_phone(
     ).to_have_text("Default: List")
 
 
-def test_section_title_tap_collapses_it_in_the_sheet_and_density_is_absent(
+def test_lone_sections_have_no_heading_in_the_sheet_and_density_is_absent(
     page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN the URLs settings sheet on a touch device
-    WHEN the "New URLs" title is tapped, then tapped again
-    THEN that section collapses and re-expands, and the personal section offers
-        Sort and Layout but no Density row
+    WHEN it opens
+    THEN the lone "New URLs" section shows no heading but stays a labelled group
+        with its controls visible, and the personal section offers Sort and
+        Layout but no Density row
     """
     page = page_mobile_portrait
     _login_to_owned_utub_on_phone(app=provide_app, page=page)
@@ -278,18 +280,22 @@ def test_section_title_tap_collapses_it_in_the_sheet_and_density_is_absent(
     expect(page.locator(HPL.URLS_PERSONAL_VIEW_SELECT)).to_be_attached()
     expect(page.locator(HPL.URLS_PERSONAL_DENSITY_SELECT)).to_have_count(0)
 
-    toggle = page.locator(
-        HPL.SETTINGS_SECTION_TOGGLE_FORMAT.format(
-            section_id=HPL.SETTINGS_SECTION_URLS_DEFAULTS
+    section = page.locator(
+        HPL.SETTINGS_GROUP_SECTION_FORMAT.format(
+            scope=HPL.SETTINGS_GROUP_UTUB,
+            section_id=HPL.SETTINGS_SECTION_URLS_DEFAULTS,
         )
     )
-    toggle.tap()
-    expect(toggle).to_have_attribute("aria-expanded", "false")
-    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_hidden()
-    expect(page.locator(HPL.URLS_PERSONAL_SORT_SELECT)).to_be_visible()
-
-    toggle.tap()
-    expect(toggle).to_have_attribute("aria-expanded", "true")
+    expect(section).to_have_attribute("role", "group")
+    expect(section).to_have_attribute("aria-label", URLS_SETTINGS_SECTION_TITLE)
+    expect(section.locator("h3")).to_be_hidden()
+    expect(
+        page.locator(
+            HPL.SETTINGS_SECTION_TOGGLE_FORMAT.format(
+                section_id=HPL.SETTINGS_SECTION_URLS_DEFAULTS
+            )
+        )
+    ).to_be_hidden()
     expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_visible()
 
 
@@ -299,7 +305,7 @@ def test_parent_header_tap_collapses_its_sections_in_the_sheet(
     """
     GIVEN the URLs settings sheet on a touch device
     WHEN the "Shared with this UTub" parent header is tapped, then tapped again
-    THEN its "New URLs" section hides and returns while "Just for you" is untouched
+    THEN its "New URLs" controls hide and return while "Just for you" is untouched
     """
     page = page_mobile_portrait
     _login_to_owned_utub_on_phone(app=provide_app, page=page)
@@ -308,22 +314,15 @@ def test_parent_header_tap_collapses_its_sections_in_the_sheet(
     parent_toggle = page.locator(
         HPL.SETTINGS_GROUP_TOGGLE_FORMAT.format(scope=HPL.SETTINGS_GROUP_UTUB)
     )
-    section_toggle = page.locator(
-        HPL.SETTINGS_SECTION_TOGGLE_FORMAT.format(
-            section_id=HPL.SETTINGS_SECTION_URLS_DEFAULTS
-        )
-    )
     expect(parent_toggle).to_have_attribute("aria-expanded", "true")
 
     parent_toggle.tap()
     expect(parent_toggle).to_have_attribute("aria-expanded", "false")
-    expect(section_toggle).to_be_hidden()
     expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_hidden()
     expect(page.locator(HPL.URLS_PERSONAL_SORT_SELECT)).to_be_visible()
 
     parent_toggle.tap()
     expect(parent_toggle).to_have_attribute("aria-expanded", "true")
-    expect(section_toggle).to_be_visible()
     expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_visible()
 
 
