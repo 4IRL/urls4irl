@@ -14,6 +14,7 @@ from backend.models.user_preferences import (
     SortOrder,
     Theme,
     User_Preferences,
+    UtubSort,
     ViewMode,
 )
 from backend.models.users import Users
@@ -169,6 +170,144 @@ def test_home_page_preferences_context_defaults_when_no_row(
     assert payload["display_default_sort"] == SortOrder.NEWEST.value
     assert payload["display_density"] == Density.COMFORTABLE.value
     assert payload["display_date_format"] == DateFormat.ISO.value
+
+
+_UTUB_DECK_CLASS_PATTERN = re.compile(rb'<div id="UTubDeck" class="([^"]*)"')
+_ROW_COUNTS_LABEL_PATTERN = re.compile(
+    rb'<span class="UTubRowCounts[^"]*"><span class="visually-hidden">([^<]*)</span>'
+)
+
+
+def _deck_classes(response_data: bytes) -> list[str]:
+    match = _UTUB_DECK_CLASS_PATTERN.search(response_data)
+    assert match is not None
+    return match.group(1).decode().split()
+
+
+def test_home_page_utub_list_preferences_reflect_stored_row(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged-in user with a stored row (name sort, counts on, totals off)
+    WHEN they request /home
+    THEN #user-preferences-data carries the stored values and #UTubDeck carries
+        showUTubRowCounts and hideListTotals
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        db.session.add(
+            User_Preferences(
+                user_id=user.id,
+                utub_sort=UtubSort.NAME_AZ,
+                show_row_counts=True,
+                show_list_totals=False,
+            )
+        )
+        db.session.commit()
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    match = _USER_PREFERENCES_PATTERN.search(response.data)
+    assert match is not None
+    payload = json.loads(match.group(1))
+    assert payload["display_utub_sort"] == UtubSort.NAME_AZ.value
+    assert payload["display_show_row_counts"] is True
+    assert payload["display_show_list_totals"] is False
+
+    deck_classes = _deck_classes(response.data)
+    assert "showUTubRowCounts" in deck_classes
+    assert "hideListTotals" in deck_classes
+
+
+def test_home_page_utub_list_preferences_default_when_no_row(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged-in user with NO stored UserPreferences row
+    WHEN they request /home
+    THEN the payload carries recent_activity / false / true and #UTubDeck carries
+        neither showUTubRowCounts nor hideListTotals (today's look)
+    """
+    client, _, _, _ = login_first_user_without_register
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    match = _USER_PREFERENCES_PATTERN.search(response.data)
+    assert match is not None
+    payload = json.loads(match.group(1))
+    assert payload["display_utub_sort"] == UtubSort.RECENT_ACTIVITY.value
+    assert payload["display_show_row_counts"] is False
+    assert payload["display_show_list_totals"] is True
+
+    deck_classes = _deck_classes(response.data)
+    assert "showUTubRowCounts" not in deck_classes
+    assert "hideListTotals" not in deck_classes
+
+
+@pytest.mark.parametrize("has_row", [True, False])
+def test_home_page_utub_cards_render_row_counts_group_with_hidden_label(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+    has_row: bool,
+):
+    """
+    GIVEN a user (with or without a stored row) who is the only member of a UTub
+        with no URLs
+    WHEN they request /home
+    THEN every UTubCard contains the UTubRowCounts group with the singular/plural
+        hidden label for that UTub's counts, regardless of the counts preference
+    """
+    client, _, user, app = login_first_user_without_register
+    if has_row:
+        with app.app_context():
+            db.session.add(User_Preferences(user_id=user.id, show_row_counts=True))
+            db.session.commit()
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    labels = _ROW_COUNTS_LABEL_PATTERN.findall(response.data)
+    assert len(labels) == response.data.count(b'class="UTubSelector ')
+    assert len(labels) >= 1
+    assert all(label == b", 0 URLs, 1 member" for label in labels)
+
+
+def test_home_page_utub_cards_render_plural_member_and_singular_url_label(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user with a stored row whose UTubs each have 1 URL and 3 members
+    WHEN they request /home
+    THEN every UTubCard hidden label reads ", 1 URL, 3 members" and the stored
+        preference keys appear in the preferences payload
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        db.session.add(
+            User_Preferences(
+                user_id=user.id, utub_sort=UtubSort.NAME_AZ, show_row_counts=True
+            )
+        )
+        db.session.commit()
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    labels = _ROW_COUNTS_LABEL_PATTERN.findall(response.data)
+    assert len(labels) >= 1
+    assert all(label == b", 1 URL, 3 members" for label in labels)
+
+    match = _USER_PREFERENCES_PATTERN.search(response.data)
+    assert match is not None
+    payload = json.loads(match.group(1))
+    assert payload["display_utub_sort"] == UtubSort.NAME_AZ.value
+    assert payload["display_show_row_counts"] is True
+    assert "display_show_list_totals" in payload
 
 
 def test_get_home_page_when_not_in_utub(
