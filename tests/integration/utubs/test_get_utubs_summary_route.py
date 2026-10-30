@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+import re
+from datetime import timedelta
 from typing import Tuple
 
 import pytest
@@ -7,15 +8,20 @@ from flask.testing import FlaskClient
 from flask_login import current_user
 
 from backend import db
+from backend.models.user_preferences import User_Preferences
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.schemas.users import UtubSummaryListSchema
 from backend.utils.all_routes import ROUTES
+from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.utubs.services.trash_predicates import (
+    load_summary_memberships_and_counts,
+)
 from tests.utils_for_test import (
     get_utub_url_id,
     is_string_in_logs,
@@ -30,6 +36,71 @@ SECOND_USER_ID = 2
 AJAX_HEADERS = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
 
 pytestmark = pytest.mark.utubs
+
+DEFAULT_PREFERENCES = {
+    MODELS.UTUB_SORT: "recent_activity",
+    MODELS.SHOW_ROW_COUNTS: False,
+    MODELS.SHOW_LIST_TOTALS: True,
+}
+ISO_MILLISECOND_UTC_REGEX = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}\+00:00$"
+)
+SUMMARY_ITEM_KEYS = {
+    MODELS.ID,
+    MODELS.NAME,
+    MODELS.MEMBER_ROLE,
+    MODELS.IS_LOCKED,
+    MODELS.URL_COUNT,
+    MODELS.MEMBER_COUNT,
+    MODELS.CREATED_AT,
+    MODELS.LAST_UPDATED,
+    MODELS.LAST_OPENED_AT,
+}
+
+
+def _expected_summary_item(member: Utub_Members) -> dict:
+    """The expected wire item for ``member`` (call inside an app context)."""
+    utub = member.to_utub
+    return {
+        MODELS.ID: utub.id,
+        MODELS.NAME: utub.name,
+        MODELS.MEMBER_ROLE: member.member_role.value,
+        MODELS.IS_LOCKED: utub.is_locked,
+        MODELS.URL_COUNT: Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub.id, Utub_Urls.deleted_at.is_(None)
+        ).count(),
+        MODELS.MEMBER_COUNT: Utub_Members.query.filter(
+            Utub_Members.utub_id == utub.id
+        ).count(),
+        MODELS.CREATED_AT: to_iso_milliseconds(utub.created_at),
+        MODELS.LAST_UPDATED: to_iso_milliseconds(utub.last_updated),
+        MODELS.LAST_OPENED_AT: (
+            None
+            if member.last_opened_at is None
+            else to_iso_milliseconds(member.last_opened_at)
+        ),
+    }
+
+
+def _set_user_preferences(app: Flask, user_id: int, **fields) -> None:
+    with app.app_context():
+        row = User_Preferences.query.filter(User_Preferences.user_id == user_id).first()
+        if row is None:
+            row = User_Preferences(user_id=user_id)
+            db.session.add(row)
+        for field, value in fields.items():
+            setattr(row, field, value)
+        db.session.commit()
+
+
+def _get_summary(client: FlaskClient, route: str = ROUTES.UTUBS.GET_UTUBS) -> dict:
+    response = client.get(
+        url_for(route),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+    assert response.json is not None
+    return response.json
 
 
 def test_get_utubs_if_has_no_utubs(
@@ -53,6 +124,7 @@ def test_get_utubs_if_has_no_utubs(
     assert response_json == {
         MODELS.UTUBS: [],
         MODELS.TRASH_COUNT: 0,
+        MODELS.PREFERENCES: DEFAULT_PREFERENCES,
         STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
     }
 
@@ -74,16 +146,9 @@ def test_get_utubs_if_has_one_utub(
             Utub_Members.user_id == current_user.id
         ).all()
         utub_summary = {
-            MODELS.UTUBS: [
-                {
-                    MODELS.ID: member.to_utub.id,
-                    MODELS.NAME: member.to_utub.name,
-                    MODELS.MEMBER_ROLE: member.member_role.value,
-                    MODELS.IS_LOCKED: member.to_utub.is_locked,
-                }
-                for member in all_utubs_in
-            ],
+            MODELS.UTUBS: [_expected_summary_item(member) for member in all_utubs_in],
             MODELS.TRASH_COUNT: 0,
+            MODELS.PREFERENCES: DEFAULT_PREFERENCES,
             STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
         }
 
@@ -113,15 +178,7 @@ def test_get_utubs_if_has_multiple_utubs(
             Utub_Members.user_id == current_user.id
         ).all()
         utub_summary = {
-            MODELS.UTUBS: [
-                {
-                    MODELS.ID: member.to_utub.id,
-                    MODELS.NAME: member.to_utub.name,
-                    MODELS.MEMBER_ROLE: member.member_role.value,
-                    MODELS.IS_LOCKED: member.to_utub.is_locked,
-                }
-                for member in all_utubs_in
-            ]
+            MODELS.UTUBS: [_expected_summary_item(member) for member in all_utubs_in]
         }
 
     response = client.get(
@@ -538,10 +595,9 @@ def test_opening_utub_moves_it_to_top_for_opener_only(
     assert user_1_order_before[0] != utub_to_open
 
     with app.app_context():
-        user_2 = Users.query.get(2)
         user_2_order_before = [
-            item.id
-            for item in UtubSummaryListSchema.from_user(user_2, trash_count=0).utubs
+            membership.utub_id
+            for membership in load_summary_memberships_and_counts(2).memberships
         ]
 
     response = client.get(
@@ -553,37 +609,31 @@ def test_opening_utub_moves_it_to_top_for_opener_only(
     assert _get_utub_ids()[0] == utub_to_open
 
     with app.app_context():
-        user_2 = Users.query.get(2)
         user_2_order_after = [
-            item.id
-            for item in UtubSummaryListSchema.from_user(user_2, trash_count=0).utubs
+            membership.utub_id
+            for membership in load_summary_memberships_and_counts(2).memberships
         ]
     assert user_2_order_after == user_2_order_before
 
 
 def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str | int]:
-    all_utubs: list[Tuple[Utubs, Member_Role, datetime | None]] = (
-        db.session.query(Utubs, Utub_Members.member_role, Utub_Members.last_opened_at)
-        .join(Utub_Members, Utubs.id == Utub_Members.utub_id)
-        .filter(Utub_Members.user_id == current_user.id)
-        .all()
-    )
-    all_utubs.sort(
-        key=lambda row: max(row[2] or row[0].last_updated, row[0].last_updated),
+    # Independent oracle for the default sort (recent activity, id tie-break).
+    memberships: list[Utub_Members] = Utub_Members.query.filter(
+        Utub_Members.user_id == current_user.id
+    ).all()
+    memberships.sort(key=lambda member: member.utub_id)
+    memberships.sort(
+        key=lambda member: max(
+            member.last_opened_at or member.to_utub.last_updated,
+            member.to_utub.last_updated,
+        ),
         reverse=True,
     )
     return {
         STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
-        MODELS.UTUBS: [
-            {
-                MODELS.ID: utub.id,
-                MODELS.NAME: utub.name,
-                MODELS.MEMBER_ROLE: member.value,
-                MODELS.IS_LOCKED: utub.is_locked,
-            }
-            for utub, member, _ in all_utubs
-        ],
+        MODELS.UTUBS: [_expected_summary_item(member) for member in memberships],
         MODELS.TRASH_COUNT: 0,
+        MODELS.PREFERENCES: DEFAULT_PREFERENCES,
     }
 
 

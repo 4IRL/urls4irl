@@ -4,6 +4,11 @@ import { fileURLToPath } from "url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
+  server: {
+    // Tests import Jinja templates from ../backend via `?raw`; the default
+    // allow list is only the pnpm workspace root (./frontend).
+    fs: { allow: [fileURLToPath(new URL("..", import.meta.url))] },
+  },
   test: {
     root: __dirname,
     environment: "happy-dom",

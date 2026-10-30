@@ -1,12 +1,22 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StrictBool,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from backend.models.user_preferences import (
     DateFormat,
     Density,
     SortOrder,
     Theme,
+    UtubSort,
     ViewMode,
 )
 from backend.schemas.requests._sanitize import SanitizedStr
@@ -153,6 +163,42 @@ class UpdatePreferencesRequest(BaseModel):
         alias="dateFormat",
         description="The date display format: iso, us, or eu",
     )
+
+
+class UpdateUtubListPreferencesRequest(BaseModel):
+    """Partial write of the three UTub-list preferences. Omitted means "not
+    sent"; an explicit ``null`` is never a value and is rejected, as are unknown
+    keys and a body with none of the fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    utub_sort: UtubSort | None = Field(
+        default=None,
+        alias="utubSort",
+        description=(
+            "How the UTub list is sorted: recent_activity, last_opened, name_az, "
+            "newest_created, or oldest_created"
+        ),
+    )
+    show_row_counts: StrictBool | None = Field(
+        default=None,
+        alias="showRowCounts",
+        description="Whether each UTub row shows its URL and member counts",
+    )
+    show_list_totals: StrictBool | None = Field(
+        default=None,
+        alias="showListTotals",
+        description="Whether list totals are shown on the deck title and Trash",
+    )
+
+    @model_validator(mode="after")
+    def reject_empty_or_null(self) -> UpdateUtubListPreferencesRequest:
+        if not self.model_fields_set:
+            raise ValueError("At least one UTub list preference is required")
+        for field_name in self.model_fields_set:
+            if getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} cannot be null")
+        return self
 
 
 class ProviderLinkRequest(BaseModel):

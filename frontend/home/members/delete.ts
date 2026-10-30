@@ -17,6 +17,7 @@ import { getState, setState } from "../../store/app-store.js";
 import { deselectAllURLs } from "../urls/cards/selection.js";
 import { refreshStackedAdderBadges } from "../urls/cards/adder-badge.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
+import { applyRowCountDelta } from "../utubs/row-counts.js";
 import {
   hideInputsAndUpdateUTubDeck,
   resetUTubDeckIfNoUTubs,
@@ -159,6 +160,14 @@ function removeMemberSuccess(memberID: number): void {
     members: getState().members.filter((member) => member.id !== memberID),
   });
   emitAppEvent(AppEvents.MEMBER_DECK_CHANGED);
+  const { activeUTubID } = getState();
+  if (activeUTubID !== null) {
+    applyRowCountDelta({
+      utubID: activeUTubID,
+      urlDelta: 0,
+      memberDelta: -1,
+    });
+  }
 
   // The removed member's URLs are now orphans: switch the remover's rendered
   // attribution badges to "a former member" without rebuilding the deck.

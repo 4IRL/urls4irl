@@ -1545,6 +1545,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/users/preferences/utubs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Partially update the authenticated user's UTub-list preferences (sort, row counts, list totals). Acts only on the logged-in user and never touches the display preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next), which shows the confirm-email state. Metrics: API_HIT only (no DOMAIN event). */
+    patch: operations["updateUtubListPreferences"];
+    trace?: never;
+  };
   "/users/{user_id}/password": {
     parameters: {
       query?: never;
@@ -2660,6 +2677,23 @@ export interface components {
      * @enum {integer}
      */
     UTubErrorCodes: 1 | 2 | 3 | 4 | 5;
+    /** @description The requesting user's resolved UTub-list preferences (plain data). */
+    UtubListPreferencesSchema: {
+      /**
+       * @description How the UTub list is sorted
+       * @enum {string}
+       */
+      utubSort:
+        | "recent_activity"
+        | "last_opened"
+        | "name_az"
+        | "newest_created"
+        | "oldest_created";
+      /** @description Whether each UTub row shows its URL and member counts */
+      showRowCounts: boolean;
+      /** @description Whether list totals are shown on the deck title and Trash */
+      showListTotals: boolean;
+    };
     UtubSummaryItemSchema: {
       /** @description Unique UTub ID */
       id: number;
@@ -2669,6 +2703,22 @@ export interface components {
       memberRole: string;
       /** @description Whether the UTub is locked (frozen to all user mutations) */
       isLocked: boolean;
+      /** @description Number of live (non-trashed) URLs in the UTub */
+      urlCount: number;
+      /** @description Number of members of the UTub */
+      memberCount: number;
+      /**
+       * Format: date-time
+       * @description When the UTub was created (UTC, millisecond precision)
+       */
+      createdAt: string;
+      /**
+       * Format: date-time
+       * @description When the UTub's content last changed (UTC, millisecond precision)
+       */
+      lastUpdated: string;
+      /** @description When the requesting user last opened the UTub, null if never */
+      lastOpenedAt: string | null;
     };
     /** @description List of UTub summaries */
     UtubSummaryListSchema: {
@@ -2679,6 +2729,8 @@ export interface components {
        * @default 0
        */
       trashCount: number;
+      /** @description The user's resolved UTub-list preferences */
+      preferences: components["schemas"]["UtubListPreferencesSchema"];
     };
     /** @description A member's private view overrides for the URLs panel of one UTub. */
     MemberUrlsSettings: {
@@ -3837,6 +3889,64 @@ export interface components {
      * @enum {integer}
      */
     PreferencesErrorCodes: 1;
+    /** @enum {string} */
+    UtubSort:
+      | "recent_activity"
+      | "last_opened"
+      | "name_az"
+      | "newest_created"
+      | "oldest_created";
+    /**
+     * @description Partial write of the three UTub-list preferences. Omitted means "not
+     *     sent"; an explicit ``null`` is never a value and is rejected, as are unknown
+     *     keys and a body with none of the fields.
+     */
+    UpdateUtubListPreferencesRequest: {
+      /**
+       * @description How the UTub list is sorted: recent_activity, last_opened, name_az, newest_created, or oldest_created
+       * @default null
+       */
+      utubSort: components["schemas"]["UtubSort"] | null;
+      /**
+       * @description Whether each UTub row shows its URL and member counts
+       * @default null
+       */
+      showRowCounts: boolean | null;
+      /**
+       * @description Whether list totals are shown on the deck title and Trash
+       * @default null
+       */
+      showListTotals: boolean | null;
+    };
+    /**
+     * @description Response for ``PATCH /users/preferences/utubs``.
+     *
+     *     Always echoes all three resolved UTub-list preferences (never the request
+     *     values); ``status`` is ``No change`` when nothing differed (no row created).
+     */
+    UpdateUtubListPreferencesResponseSchema: {
+      /**
+       * @description How the UTub list is sorted
+       * @enum {string}
+       */
+      utubSort:
+        | "recent_activity"
+        | "last_opened"
+        | "name_az"
+        | "newest_created"
+        | "oldest_created";
+      /** @description Whether each UTub row shows its URL and member counts */
+      showRowCounts: boolean;
+      /** @description Whether list totals are shown on the deck title and Trash */
+      showListTotals: boolean;
+      /**
+       * @description Response status: Success or No change
+       * @enum {string}
+       */
+      status: "Success" | "No change";
+      /** @description Human-readable, server-sourced banner text */
+      message: string;
+    };
     ChangePasswordRequest: {
       /** @description Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy */
       currentPassword: string;
@@ -4001,6 +4111,12 @@ export interface components {
       density: string;
       /** @description The date display format (iso/us/eu) */
       dateFormat: string;
+      /** @description The UTub list sort order (recent_activity/last_opened/name_az/newest_created/oldest_created) */
+      utubSort: string;
+      /** @description Whether each UTub row shows its URL and member counts */
+      showRowCounts: boolean;
+      /** @description Whether the UTub list totals are shown */
+      showListTotals: boolean;
     };
     /**
      * @description A tag in a UTub's tag vocabulary. No internal IDs; the creator is
@@ -10107,6 +10223,44 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateUtubListPreferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateUtubListPreferencesRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for ``PATCH /users/preferences/utubs``.
+       *
+       *         Always echoes all three resolved UTub-list preferences (never the request
+       *         values); ``status`` is ``No change`` when nothing differed (no row created).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UpdateUtubListPreferencesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_PreferencesErrorCodes"];
         };
       };
     };

@@ -14,7 +14,7 @@ Conventions:
   - pytestmark = pytest.mark.mobile_api
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from flask import Flask, url_for
@@ -22,6 +22,7 @@ from flask.testing import FlaskClient
 
 from backend import db
 from backend.api_v1.services.tokens import create_access_token
+from backend.models.user_preferences import User_Preferences, UtubSort
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
@@ -227,6 +228,76 @@ def test_get_utubs_happy_path(
     utubs_list = response_json[_UTUBS_KEY]
     assert len(utubs_list) == 1
     assert utubs_list[0][MODELS.NAME] == valid_empty_utub_1[MODELS.NAME]
+
+
+def test_get_utubs_additive_fields_and_saved_sort(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_all_utubs_as_user_without_logging_in,
+):
+    """
+    GIVEN a validated user with several UTubs
+    WHEN GET /api/v1/utubs before and after the stored UTub sort changes
+    THEN the exact item/top-level key sets are pinned (additive fields only) and the
+        returned order follows the saved sort
+    """
+    item_keys = {
+        MODELS.ID,
+        MODELS.NAME,
+        MODELS.MEMBER_ROLE,
+        MODELS.IS_LOCKED,
+        MODELS.URL_COUNT,
+        MODELS.MEMBER_COUNT,
+        MODELS.CREATED_AT,
+        MODELS.LAST_UPDATED,
+        MODELS.LAST_OPENED_AT,
+    }
+    top_keys = {
+        _UTUBS_KEY,
+        MODELS.TRASH_COUNT,
+        MODELS.PREFERENCES,
+        STD_JSON.STATUS,
+    }
+
+    # Make recent-activity order reverse-alphabetical so the two sorts must differ.
+    with app.app_context():
+        user_utubs = [
+            membership.to_utub
+            for membership in Utub_Members.query.filter_by(user_id=1).all()
+        ]
+        by_name = sorted(user_utubs, key=lambda utub: utub.name.casefold())
+        for rank, utub in enumerate(by_name):
+            utub.last_updated = datetime(2026, 1, 1 + rank, tzinfo=timezone.utc)
+            Utub_Members.query.get((utub.id, 1)).last_opened_at = None
+        db.session.commit()
+
+    response = api_client.get(_get_utubs_url(app), headers=bearer_headers_first_user)
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert set(response_json.keys()) == top_keys
+    assert len(response_json[_UTUBS_KEY]) >= 2
+    for item in response_json[_UTUBS_KEY]:
+        assert set(item.keys()) == item_keys
+    assert response_json[MODELS.PREFERENCES] == {
+        MODELS.UTUB_SORT: "recent_activity",
+        MODELS.SHOW_ROW_COUNTS: False,
+        MODELS.SHOW_LIST_TOTALS: True,
+    }
+    recent_names = [item[MODELS.NAME] for item in response_json[_UTUBS_KEY]]
+
+    with app.app_context():
+        db.session.add(User_Preferences(user_id=1, utub_sort=UtubSort.NAME_AZ))
+        db.session.commit()
+
+    response = api_client.get(_get_utubs_url(app), headers=bearer_headers_first_user)
+    assert response.status_code == 200
+    response_json = response.get_json()
+    names = [item[MODELS.NAME] for item in response_json[_UTUBS_KEY]]
+    assert names == sorted(names, key=str.casefold)
+    assert response_json[MODELS.PREFERENCES][MODELS.UTUB_SORT] == "name_az"
+    assert sorted(names) == sorted(recent_names)
+    assert names != recent_names
 
 
 def test_get_utubs_excludes_trashed(

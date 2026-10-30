@@ -16,9 +16,15 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { debug } from "../../lib/debug.js";
 import { fillTemplate } from "../../lib/string-template.js";
 import { setState } from "../../store/app-store.js";
+import { applyRowCountDelta } from "../utubs/row-counts.js";
 import { hideConfirmModal, showConfirmModal } from "../confirm-modal.js";
 import { buildUTubDeck } from "../utubs/deck.js";
 import { getAllUTubs } from "../utubs/utils.js";
+import {
+  getPrefsVersion,
+  reseedListPreferences,
+  syncDeckOrderToStoreSort,
+} from "../utubs/list-preferences.js";
 import {
   buildLostTagNamesDetail,
   buildReviveMessage,
@@ -335,6 +341,13 @@ export function restoreTrashedURL({
           });
         }
         restored = true;
+        // Opening Trash clears the active UTub, so no "is it selected" guard: the
+        // delta works from the deck's own list store, for any UTub.
+        applyRowCountDelta({
+          utubID: destUtubID ?? utubID,
+          urlDelta: 1,
+          memberDelta: 0,
+        });
         focusAfterRowRemoval({ scope: "urls", removedIndex, viaSwipe });
         void refreshTrashCount();
       })
@@ -361,10 +374,18 @@ export function restoreTrashedURL({
 
 function refreshDeckAndCount(): Promise<void> {
   const isCurrent = beginCountRequest();
+  const capturedVersion = getPrefsVersion();
   return new Promise((resolve) => {
     getAllUTubs()
       .done((response) => {
+        reseedListPreferences({
+          preferences: response.preferences,
+          capturedVersion,
+        });
         buildUTubDeck(response.utubs);
+        syncDeckOrderToStoreSort({
+          responseSort: response.preferences?.utubSort,
+        });
         // The deck is always rebuilt; only the count is dropped when superseded.
         if (!isCurrent()) return;
         setState({ trashCount: response.trashCount });

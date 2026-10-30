@@ -34,6 +34,7 @@ from backend.models.user_preferences import (
     SortOrder,
     Theme,
     User_Preferences,
+    UtubSort,
     ViewMode,
 )
 from backend.models.users import Users
@@ -248,6 +249,9 @@ def test_data_export_core_includes_stored_preferences(
                 default_sort=SortOrder.OLDEST,
                 density=Density.COMPACT,
                 date_format=DateFormat.EU,
+                utub_sort=UtubSort.NAME_AZ,
+                show_row_counts=True,
+                show_list_totals=False,
             )
         )
         db.session.commit()
@@ -260,6 +264,43 @@ def test_data_export_core_includes_stored_preferences(
     assert export.preferences.default_sort == SortOrder.OLDEST.value
     assert export.preferences.density == Density.COMPACT.value
     assert export.preferences.date_format == DateFormat.EU.value
+    assert export.preferences.utub_sort == UtubSort.NAME_AZ.value
+    assert export.preferences.show_row_counts is True
+    assert export.preferences.show_list_totals is False
+
+
+def test_user_preferences_orm_roundtrip_defaults_then_non_defaults(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """A row built without the UTub list args reads back the defaults; after
+    setting non-defaults, a commit/expire/re-query returns them (exercises the
+    enum values_callable mapping and the boolean columns through the ORM)."""
+    _client, _csrf, user, app = login_first_user_with_register
+
+    with app.app_context():
+        db.session.add(User_Preferences(user_id=user.id))
+        db.session.commit()
+        db.session.expire_all()
+
+        stored: User_Preferences = User_Preferences.query.filter_by(
+            user_id=user.id
+        ).one()
+        assert stored.utub_sort == UtubSort.RECENT_ACTIVITY
+        assert stored.show_row_counts is False
+        assert stored.show_list_totals is True
+
+        stored.utub_sort = UtubSort.NAME_AZ
+        stored.show_row_counts = True
+        stored.show_list_totals = False
+        db.session.commit()
+        db.session.expire_all()
+
+        reread: User_Preferences = User_Preferences.query.filter_by(
+            user_id=user.id
+        ).one()
+        assert reread.utub_sort == UtubSort.NAME_AZ
+        assert reread.show_row_counts is True
+        assert reread.show_list_totals is False
 
 
 def test_data_export_core_defaults_preferences_when_no_row(
@@ -279,6 +320,9 @@ def test_data_export_core_defaults_preferences_when_no_row(
     assert export.preferences.default_sort == SortOrder.NEWEST.value
     assert export.preferences.density == Density.COMFORTABLE.value
     assert export.preferences.date_format == DateFormat.ISO.value
+    assert export.preferences.utub_sort == UtubSort.RECENT_ACTIVITY.value
+    assert export.preferences.show_row_counts is False
+    assert export.preferences.show_list_totals is True
 
 
 # --------------------------------------------------------------------------- #

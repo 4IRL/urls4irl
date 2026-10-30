@@ -9,6 +9,7 @@ import {
 } from "../../../lib/tooltips.js";
 import { createUTubSelector, selectUTub } from "../selectors.js";
 import { getNumOfUTubs } from "../utils.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { setCreateUTubEventListeners } from "../create.js";
 import {
@@ -80,7 +81,10 @@ vi.mock("../../btns-forms.js", () => ({
   highlightInput: vi.fn(),
 }));
 vi.mock("../../../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ utubs: [] })),
+  getState: vi.fn(() => ({
+    utubs: [],
+    preferences: { utubSort: "recent_activity" },
+  })),
   setState: vi.fn(),
 }));
 
@@ -114,8 +118,12 @@ describe("createUTubSuccess - first-create search-bar guard", () => {
       return this;
     };
     vi.mocked(is429Handled).mockReturnValue(false);
+    vi.mocked(createUTubSelector).mockImplementation(() =>
+      $('<div class="UTubSelector" position="2"></div>'),
+    );
     vi.mocked(getState).mockReturnValue({
       utubs: [],
+      preferences: { utubSort: "recent_activity" },
     } as unknown as ReturnType<typeof getState>);
   });
 
@@ -157,6 +165,97 @@ describe("createUTubSuccess - first-create search-bar guard", () => {
     ).toHaveBeenCalled();
   });
 
+  it("appends a complete summary item stamped with the client time to the store", () => {
+    vi.mocked(getNumOfUTubs).mockReturnValue(1);
+    vi.setSystemTime(new Date("2026-05-06T07:08:09.123Z"));
+
+    try {
+      triggerCreateSubmit();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      utubs: [
+        {
+          id: 99,
+          name: "NewUTub",
+          memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
+          isLocked: false,
+          urlCount: 0,
+          memberCount: 1,
+          createdAt: "2026-05-06T07:08:09.123Z",
+          lastUpdated: "2026-05-06T07:08:09.123Z",
+          lastOpenedAt: "2026-05-06T07:08:09.123Z",
+        },
+      ],
+    });
+  });
+
+  it("inserts at the sorted place for preferences.utubSort, scrolls the new row, then selects it", () => {
+    vi.mocked(getNumOfUTubs).mockReturnValue(3);
+    const existing = [1, 2].map((id) => ({
+      id,
+      name: id === 1 ? "alpha" : "zulu",
+      memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
+      isLocked: false,
+      urlCount: 0,
+      memberCount: 1,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      lastUpdated: "2026-01-01T00:00:00.000Z",
+      lastOpenedAt: null,
+    }));
+    vi.mocked(getState).mockReturnValue({
+      utubs: existing,
+      preferences: { utubSort: "name_az" },
+    } as unknown as ReturnType<typeof getState>);
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    vi.mocked(createUTubSelector).mockImplementation(() =>
+      $('<div class="UTubSelector" utubid="99" position="2"></div>'),
+    );
+
+    triggerCreateSubmit();
+
+    const setCalls = vi.mocked(setState).mock.calls;
+    const setOrders = vi.mocked(setState).mock.invocationCallOrder;
+    const insertedOrder = (setCalls[setCalls.length - 1][0].utubs ?? []).map(
+      (utub) => utub.id,
+    );
+    // "NewUTub" folds between "alpha" and "zulu".
+    expect(insertedOrder).toEqual([1, 99, 2]);
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: "nearest",
+      behavior: "instant",
+    });
+    expect(setOrders[setOrders.length - 1]).toBeLessThan(
+      scrollIntoView.mock.invocationCallOrder[0],
+    );
+    expect(scrollIntoView.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(selectUTub).mock.invocationCallOrder[0],
+    );
+    expect(selectUTub).toHaveBeenCalledWith(99, expect.anything());
+  });
+
+  it("selects without scrolling when the name filter hides the new row, leaving the filter text intact", () => {
+    vi.mocked(getNumOfUTubs).mockReturnValue(3);
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<input id="UTubNameSearch" value="zzz" />',
+    );
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    vi.mocked(createUTubSelector).mockImplementation(() =>
+      $('<div class="UTubSelector hidden" utubid="99" position="2"></div>'),
+    );
+
+    triggerCreateSubmit();
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(selectUTub).toHaveBeenCalledWith(99, expect.anything());
+    expect($("#UTubNameSearch").val()).toBe("zzz");
+  });
+
   it("does not call showUTubSearchBar when more than one UTub already exists (count > 1)", () => {
     vi.mocked(getNumOfUTubs).mockReturnValue(3);
 
@@ -179,6 +278,7 @@ describe("createUTub form buttons - hover tooltip hide/restore", () => {
     vi.mocked(is429Handled).mockReturnValue(false);
     vi.mocked(getState).mockReturnValue({
       utubs: [],
+      preferences: { utubSort: "recent_activity" },
     } as unknown as ReturnType<typeof getState>);
   });
 

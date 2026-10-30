@@ -7,6 +7,7 @@ import type {
   ThemeValue,
   ViewModeValue,
 } from "../types/preferences.js";
+import { isUtubSortValue } from "../types/preferences.js";
 import type { UtubSummaryItem } from "../types/utub.js";
 
 const log = debug("init");
@@ -19,6 +20,9 @@ interface PreferencesContext {
   display_default_sort: SortOrderValue;
   display_density: DensityValue;
   display_date_format: DateFormatValue;
+  display_utub_sort?: unknown;
+  display_show_row_counts?: unknown;
+  display_show_list_totals?: unknown;
 }
 
 export function loadInitialUtubState(): void {
@@ -50,9 +54,23 @@ export function loadInitialPreferencesState(): void {
     return;
   }
   const context = JSON.parse(raw) as PreferencesContext;
+  const defaults = getState().preferences;
   setState({
     preferences: {
-      ...getState().preferences,
+      ...defaults,
+      // Fail closed to today's look: an unknown sort or a non-boolean toggle
+      // keeps the default.
+      utubSort: isUtubSortValue(context.display_utub_sort)
+        ? context.display_utub_sort
+        : defaults.utubSort,
+      showRowCounts:
+        typeof context.display_show_row_counts === "boolean"
+          ? context.display_show_row_counts
+          : defaults.showRowCounts,
+      showListTotals:
+        typeof context.display_show_list_totals === "boolean"
+          ? context.display_show_list_totals
+          : defaults.showListTotals,
       theme: context.display_theme,
       defaultView: context.display_default_view,
       defaultSort: context.display_default_sort,

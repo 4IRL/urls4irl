@@ -14,7 +14,10 @@ from backend.schemas.users import UtubSummaryListSchema
 from backend.schemas.utub_member_settings import resolve_member_settings
 from backend.schemas.utubs import UtubDetailSchema
 from backend.utils.datetime_utils import utc_now
-from backend.utubs.services.trash_predicates import count_trash_rows_for_user
+from backend.utubs.services.trash_predicates import (
+    count_trash_rows_for_user,
+    load_summary_memberships_and_counts,
+)
 
 
 def _record_utub_opened_by(*, utub_id: int, user_id: int) -> None:
@@ -111,9 +114,12 @@ def get_all_utubs_of_user() -> FlaskResponse:
     # instead of id and name?
     safe_add_log(f"Returning UTubs for User={current_user.id}")
 
+    rows = load_summary_memberships_and_counts(current_user.id)
     return APIResponse(
         data=UtubSummaryListSchema.from_user(
-            current_user,
+            memberships=rows.memberships,
+            counts=rows.counts,
+            preferences=rows.preferences,
             trash_count=count_trash_rows_for_user(user_id=current_user.id),
         ),
         status_code=200,

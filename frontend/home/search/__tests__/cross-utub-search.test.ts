@@ -59,6 +59,12 @@ vi.mock("../../utubs/deck.js", () => ({
   buildUTubDeck: vi.fn(),
 }));
 
+vi.mock("../../utubs/list-preferences.js", () => ({
+  getPrefsVersion: vi.fn(() => 0),
+  reseedListPreferences: vi.fn(),
+  syncDeckOrderToStoreSort: vi.fn(),
+}));
+
 const $ = window.jQuery;
 
 const SEARCH_MODE_HTML = `
@@ -743,6 +749,47 @@ describe("cross-utub-search — mode mechanics", () => {
     const selectedCard = (selectURLCard as unknown as ReturnType<typeof vi.fn>)
       .mock.calls[0][0] as JQuery;
     expect(selectedCard.attr("utuburlid")).toBe(String(targetUrlID));
+  });
+
+  it("(g1) a result card whose UTub row is missing rebuilds the deck: captures the prefs version first, reseeds before the build, syncs the order after", async () => {
+    const { getAllUTubs } = await import("../../utubs/utils.js");
+    const { buildUTubDeck } = await import("../../utubs/deck.js");
+    const { getPrefsVersion, reseedListPreferences, syncDeckOrderToStoreSort } =
+      await import("../../utubs/list-preferences.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } =
+      await import("../cross-utub-search.js");
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const preferences = { utubSort: "name_az" };
+    vi.mocked(getPrefsVersion).mockReturnValue(5);
+    vi.mocked(getAllUTubs).mockReturnValue(
+      Promise.resolve({ utubs: [], preferences }) as never,
+    );
+
+    $("#crossUtubSearchResults").html(
+      `<div class="crossSearchHitCard" data-utub-id="9" data-utub-url-id="1"></div>`,
+    );
+    $(`.crossSearchHitCard[data-utub-id="9"]`).trigger("click");
+
+    await vi.waitFor(() => expect(syncDeckOrderToStoreSort).toHaveBeenCalled());
+
+    expect(vi.mocked(getPrefsVersion).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(getAllUTubs).mock.invocationCallOrder[0],
+    );
+    expect(reseedListPreferences).toHaveBeenCalledWith({
+      preferences,
+      capturedVersion: 5,
+    });
+    expect(
+      vi.mocked(reseedListPreferences).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(buildUTubDeck).mock.invocationCallOrder[0]);
+    expect(vi.mocked(buildUTubDeck).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(syncDeckOrderToStoreSort).mock.invocationCallOrder[0],
+    );
+    expect(syncDeckOrderToStoreSort).toHaveBeenCalledWith({
+      responseSort: "name_az",
+    });
   });
 
   it("(g2) clicking a result card whose UTub is already active selects the URL card synchronously without selecting the UTub", async () => {

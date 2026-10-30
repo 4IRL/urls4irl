@@ -134,6 +134,9 @@ def build_user_data_export_core(
         default_sort=resolved_preferences.default_sort.value,
         density=resolved_preferences.density.value,
         date_format=resolved_preferences.date_format.value,
+        utub_sort=resolved_preferences.utub_sort.value,
+        show_row_counts=resolved_preferences.show_row_counts,
+        show_list_totals=resolved_preferences.show_list_totals,
     )
     # Trashed UTubs and trashed URLs are included deliberately: their data is
     # still held during the retention window, so the export must cover it. No

@@ -22,6 +22,9 @@ describe("view-settings effective helpers", () => {
         defaultSort: "newest",
         density: "comfortable",
         dateFormat: "iso",
+        utubSort: "recent_activity",
+        showRowCounts: false,
+        showListTotals: true,
       },
     });
   });
@@ -98,6 +101,9 @@ describe("view-settings effective helpers", () => {
         defaultSort: "newest",
         density: "comfortable",
         dateFormat: "iso",
+        utubSort: "recent_activity",
+        showRowCounts: false,
+        showListTotals: true,
       },
     });
 

@@ -5,6 +5,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
 import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { applyRowCountDelta } from "../../utubs/row-counts.js";
 import { isATagSelected } from "../../tags/utils.js";
 import { getNumOfVisibleURLs } from "../utils.js";
 import { createURLBlock } from "./cards.js";
@@ -66,6 +67,7 @@ export function insertURLCardIntoDeck({
   // Notify the onboarding nudge system (and any future url-deck consumer) that
   // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
   emitAppEvent(AppEvents.URL_DECK_CHANGED);
+  applyRowCountDelta({ utubID, urlDelta: 1, memberDelta: 0 });
 
   const newUrlCard = createURLBlock({
     url: newUrl,
@@ -223,6 +225,14 @@ export function removeURLCardFromDeck({
   // Notify the onboarding nudge system (and any future url-deck consumer) that
   // the deck's URL set changed, so it can re-arm/re-show the Add-URL tip.
   emitAppEvent(AppEvents.URL_DECK_CHANGED);
+  const { activeUTubID } = getState();
+  if (activeUTubID !== null) {
+    applyRowCountDelta({
+      utubID: activeUTubID,
+      urlDelta: -1,
+      memberDelta: 0,
+    });
+  }
   const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
   if (currentURLTagIDs.trim()) {
     const tagIDs = currentURLTagIDs.split(",").map((part) => part.trim());

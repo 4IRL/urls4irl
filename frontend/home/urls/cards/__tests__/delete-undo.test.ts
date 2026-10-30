@@ -9,6 +9,7 @@ import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { isUtubLockedHandled } from "../../../utub-locked.js";
 import { refreshTrashCount } from "../../../trash/count.js";
 import { insertURLCardIntoDeck } from "../card-deck.js";
+import { applyRowCountDelta } from "../../../utubs/row-counts.js";
 import { enterMultiSelectMode } from "../../bulk-actions/bulk-mode.js";
 import { clearURLOutcomeBanner } from "../../outcome-banner.js";
 import {
@@ -36,6 +37,9 @@ vi.mock("../../../trash/count.js", () => ({
 }));
 vi.mock("../card-deck.js", () => ({
   insertURLCardIntoDeck: vi.fn(),
+}));
+vi.mock("../../../utubs/row-counts.js", () => ({
+  applyRowCountDelta: vi.fn(),
 }));
 vi.mock("../selection.js", () => ({
   deselectAllURLs: vi.fn(),
@@ -475,6 +479,21 @@ describe("delete-undo", () => {
       expect(insertURLCardIntoDeck).not.toHaveBeenCalled();
       expect(bannerMessage()).toBe("Moved 1 URL to Trash.");
       expect(refreshTrashCount).toHaveBeenCalled();
+      expect(applyRowCountDelta).toHaveBeenCalledTimes(1);
+      expect(applyRowCountDelta).toHaveBeenCalledWith({
+        utubID: 1,
+        urlDelta: 1,
+        memberDelta: 0,
+      });
+    });
+
+    it("active UTub unchanged: row count is left to insertURLCardIntoDeck (no double count)", () => {
+      showToast();
+      clickUndo().resolve(
+        restoreResponse({ restored: [restoredUrl({ id: 11 })] }),
+      );
+      expect(insertURLCardIntoDeck).toHaveBeenCalledTimes(1);
+      expect(applyRowCountDelta).not.toHaveBeenCalled();
     });
 
     it("a second delete's toast replaced the first while Undo was in flight: re-inserts but never overwrites the newer banner or focus", () => {

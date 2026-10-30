@@ -71,6 +71,7 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "errorPage": "/invalid",
     # Logout
     "logout": "/logout",
+    "updateUtubListPreferences": "/users/preferences/utubs",
     # Contact
     "contactUs": "/contact",
     # Search

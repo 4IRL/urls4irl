@@ -16,3 +16,21 @@ export type ViewModeValue = "list" | "title_line" | "url_line" | "cards";
 export type SortOrderValue = "newest" | "oldest" | "title_az";
 export type DensityValue = "comfortable" | "compact";
 export type DateFormatValue = "iso" | "us" | "eu";
+export type UtubSortValue =
+  | "recent_activity"
+  | "last_opened"
+  | "name_az"
+  | "newest_created"
+  | "oldest_created";
+
+export const UTUB_SORT_VALUES: readonly UtubSortValue[] = [
+  "recent_activity",
+  "last_opened",
+  "name_az",
+  "newest_created",
+  "oldest_created",
+];
+
+export function isUtubSortValue(value: unknown): value is UtubSortValue {
+  return UTUB_SORT_VALUES.some((candidate) => candidate === value);
+}

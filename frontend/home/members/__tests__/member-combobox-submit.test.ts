@@ -4,6 +4,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
+import { applyRowCountDelta } from "../../utubs/row-counts.js";
 
 import type { MemberCandidate, MemberItem } from "../../../types/member.js";
 
@@ -25,6 +26,10 @@ vi.mock("../co-member-fetch.js", () => ({
 
 vi.mock("../deck.js", () => ({
   setMemberDeckForUTub: vi.fn(),
+}));
+
+vi.mock("../../utubs/row-counts.js", () => ({
+  applyRowCountDelta: vi.fn(),
 }));
 
 vi.mock("../search.js", () => ({
@@ -277,6 +282,12 @@ describe("member-combobox-submit — mixed outcomes", () => {
     // future member-deck consumer) that the deck's member set changed —
     // mirroring the URL_DECK_CHANGED precedent.
     expect(emit).toHaveBeenCalledWith(AppEvents.MEMBER_DECK_CHANGED);
+    expect(applyRowCountDelta).toHaveBeenCalledTimes(1);
+    expect(applyRowCountDelta).toHaveBeenCalledWith({
+      utubID: 7,
+      urlDelta: 0,
+      memberDelta: 2,
+    });
     // Freshly-added members are pushed with the plain-member role so the widened
     // MemberItem is satisfied and the correct role icon renders downstream (DD-1).
     expect(getState().members.map((member) => member.memberRole)).toEqual([

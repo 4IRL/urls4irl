@@ -7,6 +7,7 @@ from flask import Flask
 import tests.models_for_test as v_models
 from backend import db
 from backend.models.urls import Urls
+from backend.models.user_preferences import UtubSort
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -14,10 +15,16 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.urls import UtubUrlSchema
-from backend.schemas.users import UserSchema, UtubSummaryListSchema
+from backend.schemas.users import (
+    UserSchema,
+    UtubListPreferencesSchema,
+    UtubSummaryListSchema,
+)
 from backend.schemas.utubs import UtubDetailSchema, UtubTagSchema
+from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
+from backend.utubs.services.trash_predicates import _sort_summary_memberships
 from tests.functional.db_utils import count_urls_with_tag_applied_by_tag_id
 from tests.settings_stub import DEFAULT_MEMBER_SETTINGS_DICT
 
@@ -314,6 +321,7 @@ def test_user_utub_data_serialized_on_initial_load():
             utub_description="",
         )
         new_utub.set_last_updated()
+        new_utub.created_at = new_utub.last_updated
         new_utub.id = empty_utub[MODEL_STRS.ID]
         new_utub.utub_creator = valid_user[MODEL_STRS.ID]
         new_utub.is_locked = False
@@ -323,6 +331,7 @@ def test_user_utub_data_serialized_on_initial_load():
         new_utub_user.member_role = Member_Role.CREATOR
         new_utub_user.to_user = new_user
         new_utub.members.append(new_utub_user)
+        new_utub_user.last_opened_at = None
 
         valid_utubs.append(
             {
@@ -330,17 +339,40 @@ def test_user_utub_data_serialized_on_initial_load():
                 MODEL_STRS.NAME: new_utub.name,
                 MODEL_STRS.MEMBER_ROLE: Member_Role.CREATOR.value,
                 MODEL_STRS.IS_LOCKED: new_utub.is_locked,
+                MODEL_STRS.URL_COUNT: 2,
+                MODEL_STRS.MEMBER_COUNT: 1,
+                MODEL_STRS.CREATED_AT: to_iso_milliseconds(new_utub.created_at),
+                MODEL_STRS.LAST_UPDATED: to_iso_milliseconds(new_utub.last_updated),
+                MODEL_STRS.LAST_OPENED_AT: None,
             }
         )
 
-    # Reverse considering the serialized values will be sorted by most recently updated
+    # The schema renders the memberships in the order it is given (the services
+    # helper sorts), so feed them in the expected order.
     valid_utubs.reverse()
+    ordered_memberships = list(reversed(new_user.utubs_is_member_of))
+    preferences = UtubListPreferencesSchema(
+        utub_sort="recent_activity", show_row_counts=False, show_list_totals=True
+    )
     assert json.dumps(
-        {MODEL_STRS.UTUBS: valid_utubs, MODEL_STRS.TRASH_COUNT: 0}
+        {
+            MODEL_STRS.UTUBS: valid_utubs,
+            MODEL_STRS.TRASH_COUNT: 0,
+            MODEL_STRS.PREFERENCES: {
+                MODEL_STRS.UTUB_SORT: "recent_activity",
+                MODEL_STRS.SHOW_ROW_COUNTS: False,
+                MODEL_STRS.SHOW_LIST_TOTALS: True,
+            },
+        }
     ) == json.dumps(
-        UtubSummaryListSchema.from_user(new_user, trash_count=0).model_dump(
-            by_alias=True
-        )
+        UtubSummaryListSchema.from_user(
+            memberships=ordered_memberships,
+            counts={
+                membership.to_utub.id: (2, 1) for membership in ordered_memberships
+            },
+            preferences=preferences,
+            trash_count=0,
+        ).model_dump(by_alias=True)
     )
 
 
@@ -383,62 +415,23 @@ def test_user_utub_data_serialization_sorts_by_later_of_opened_and_updated() -> 
     memberships[3].last_opened_at = base_time
 
     serialized_ids = [
-        utub_item.id
-        for utub_item in UtubSummaryListSchema.from_user(new_user, trash_count=0).utubs
+        membership.to_utub.id
+        for membership in _sort_summary_memberships(
+            list(memberships.values()), UtubSort.RECENT_ACTIVITY
+        )
     ]
 
     assert serialized_ids == [1, 3, 2]
 
 
-def test_user_utub_data_serialization_omits_trashed_utub():
+def test_sort_summary_memberships_rejects_unknown_sort() -> None:
     """
-    GIVEN a user who is a member of several UTubs, one of which is trashed
-        (its ``deleted_at`` is set)
-    WHEN the UTub summary list is built for that user
-    THEN ensure the trashed UTub is omitted and every live UTub is kept
+    GIVEN a sort value with no branch in the summary sort
+    WHEN the memberships are sorted
+    THEN a ValueError is raised instead of silently falling back to recent activity
     """
-    empty_utubs = (
-        v_models.valid_empty_utub_1,
-        v_models.valid_empty_utub_2,
-        v_models.valid_empty_utub_3,
-    )
-    valid_user = v_models.valid_user_1
-    new_user = Users(
-        username=valid_user[MODEL_STRS.USERNAME],
-        email=valid_user[REGISTER_FORM.EMAIL],
-        plaintext_password=valid_user[REGISTER_FORM.PASSWORD],
-    )
-
-    for empty_utub in empty_utubs:
-        new_utub = Utubs(
-            name=empty_utub[MODEL_STRS.NAME],
-            utub_creator=valid_user[MODEL_STRS.ID],
-            utub_description="",
-        )
-        new_utub.set_last_updated()
-        new_utub.id = empty_utub[MODEL_STRS.ID]
-        new_utub.is_locked = False
-
-        new_utub_user = Utub_Members()
-        new_utub_user.member_role = Member_Role.CREATOR
-        new_utub_user.to_user = new_user
-        new_utub.members.append(new_utub_user)
-
-    trashed_membership = new_user.utubs_is_member_of[0]
-    trashed_membership.to_utub.deleted_at = datetime.now(timezone.utc)
-    trashed_utub_id = trashed_membership.to_utub.id
-
-    serialized_ids = [
-        utub_item.id
-        for utub_item in UtubSummaryListSchema.from_user(new_user, trash_count=0).utubs
-    ]
-
-    assert trashed_utub_id not in serialized_ids
-    assert sorted(serialized_ids) == sorted(
-        empty_utub[MODEL_STRS.ID]
-        for empty_utub in empty_utubs
-        if empty_utub[MODEL_STRS.ID] != trashed_utub_id
-    )
+    with pytest.raises(ValueError):
+        _sort_summary_memberships([], "bogus")  # type: ignore[arg-type]
 
 
 def test_utub_serialized_only_creator_no_urls_no_tags(

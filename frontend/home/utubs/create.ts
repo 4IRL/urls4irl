@@ -16,13 +16,10 @@ import {
   updateUTubDeckCount,
 } from "./utils.js";
 import { createUTubSelector, selectUTub } from "./selectors.js";
-import {
-  applyAlternatingUTubSelectorBackground,
-  resetUTubSearch,
-  showUTubSearchBar,
-} from "./search.js";
+import { resetUTubSearch, showUTubSearchBar } from "./search.js";
+import { insertNewUTubRow, scrollUTubRowIntoView } from "./sort.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
-import { getState, setState } from "../../store/app-store.js";
+import { getState } from "../../store/app-store.js";
 import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
@@ -280,40 +277,46 @@ function createUTubSuccess(response: CreateUtubResponse): void {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
   const utubID = response.utubID;
 
-  setState({
-    utubs: [
-      ...getState().utubs,
-      {
-        id: response.utubID,
-        name: response.utubName,
-        memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
-        // A newly created UTub is never locked.
-        isLocked: false,
-      },
-    ],
-  });
-
+  const nowISO = new Date().toISOString();
   $("#confirmModal").modal("hide");
 
   // Remove createDiv; Reattach after addition of new UTub
   createUTubHideInput();
 
-  // Create and append newly created UTub selector
-  const index = parseInt($(".UTubSelector").first().attr("position") as string);
+  // Create the selector, then insert it (and its store item) at its sorted place.
+  // The create response carries no timestamps, so the item gets the client's now;
+  // the next deck rebuild replaces them with the server's.
   const newUTubSelector = createUTubSelector({
     utubName: response.utubName,
     utubID,
     memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
     // A newly created UTub is never locked.
     isLocked: false,
-    index: index - 1,
+    index: 0,
+    urlCount: 0,
+    memberCount: 1,
   });
-  $("#listUTubs").prepend(newUTubSelector);
+  insertNewUTubRow({
+    utub: {
+      id: response.utubID,
+      name: response.utubName,
+      memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
+      // A newly created UTub is never locked.
+      isLocked: false,
+      urlCount: 0,
+      memberCount: 1,
+      createdAt: nowISO,
+      lastUpdated: nowISO,
+      lastOpenedAt: nowISO,
+    },
+    row: newUTubSelector,
+    sort: getState().preferences.utubSort,
+  });
   updateUTubDeckCount();
-  applyAlternatingUTubSelectorBackground();
 
   if (getNumOfUTubs() === 1) showUTubSearchBar();
 
+  scrollUTubRowIntoView({ utubID });
   selectUTub(utubID, newUTubSelector);
 }
 

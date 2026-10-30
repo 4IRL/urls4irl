@@ -70,6 +70,8 @@ vi.mock("../../utubs/utils.js", () => ({
   sameNameWarningHideModal: vi.fn(),
 }));
 
+vi.mock("../../utubs/sort.js", () => ({ reorderAfterRename: vi.fn() }));
+
 vi.mock("../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ isCurrentUserOwner: true })),
   setState: vi.fn(),
