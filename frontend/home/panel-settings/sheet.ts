@@ -1,5 +1,8 @@
 import { debug } from "../../lib/debug.js";
-import { clamp, shouldCommitSheetGesture } from "../../logic/tag-sheet-snap.js";
+import {
+  clamp,
+  resolveExpandableSheetRelease,
+} from "../../logic/tag-sheet-snap.js";
 import { isTagSheetSelfBackPending } from "../tags/sheet.js";
 
 // The mobile bottom-sheet chrome for the panel settings shell: backdrop, sheet,
@@ -26,6 +29,7 @@ const HIDDEN_CLASS = "hidden";
 const ROOT_SHEET_CLASS = "panelSettingsRoot--sheet";
 const SHEET_OPEN_CLASS = "panelSettingsSheet--open";
 const SHEET_DRAGGING_CLASS = "panelSettingsSheet--dragging";
+const SHEET_EXPANDED_CLASS = "panelSettingsSheet--expanded";
 const BACKDROP_SHOW_CLASS = "panelSettingsBackdrop--show";
 const BOUND_ATTRIBUTE = "data-sheet-bound";
 const INERT_ATTRIBUTE = "inert";
@@ -38,6 +42,12 @@ const SETTINGS_HISTORY_KEY = "panelSettingsSheetOpen";
 export const SELF_BACK_TIMEOUT_MS = 1500;
 // Movement below this is a tap, not a drag.
 export const TAP_SLOP_PX = 6;
+// The expanded detent's height as a fraction of the viewport (mirrors the
+// 95dvh of .panelSettingsSheet--expanded).
+export const EXPANDED_HEIGHT_FRACTION = 0.95;
+// Fallback to drop the settle's inline height when no transition runs
+// (reduced motion); a little over the 0.3s CSS transition.
+export const SETTLE_MS = 350;
 
 interface InertRecord {
   element: Element;
@@ -51,7 +61,11 @@ interface DragState {
   lastY: number;
   lastTime: number;
   velocity: number;
-  height: number;
+  // Sheet height at the press, and the two detent heights the drag moves between.
+  startHeight: number;
+  defaultHeight: number;
+  expandedHeight: number;
+  expandedAtStart: boolean;
   moved: boolean;
 }
 
@@ -63,6 +77,10 @@ let _drag: DragState | null = null;
 let _baseState: unknown = null;
 let _selfClosingViaBack = false;
 let _selfBackTimer: ReturnType<typeof setTimeout> | null = null;
+// Snap state: reset to the default detent every time the sheet opens.
+let _expanded = false;
+let _defaultHeight = 0;
+let _settleTimer: ReturnType<typeof setTimeout> | null = null;
 
 function currentHistoryState(): Record<string, unknown> | null {
   const state: unknown = history.state;
@@ -145,17 +163,62 @@ function endDragListeners(): void {
   _drag = null;
 }
 
+/** Drops the inline height a drag/settle set, so the CSS state governs again. */
+function finishSettle(): void {
+  if (_settleTimer !== null) clearTimeout(_settleTimer);
+  _settleTimer = null;
+  const sheet = sheetElement();
+  if (sheet === null) return;
+  sheet.style.removeProperty("height");
+  sheet.style.removeProperty("max-height");
+}
+
 function clearDragVisuals(): void {
+  finishSettle();
   const sheet = sheetElement();
   if (sheet === null) return;
   sheet.classList.remove(SHEET_DRAGGING_CLASS);
   sheet.style.removeProperty("transform");
 }
 
+function resetExpansion(): void {
+  _expanded = false;
+  sheetElement()?.classList.remove(SHEET_EXPANDED_CLASS);
+}
+
+/**
+ * Animates the sheet from its dragged pose to a detent: the inline height
+ * transitions to the detent's pixel height, then the CSS state takes over.
+ */
+function settleTo({
+  detent,
+  defaultHeight,
+  expandedHeight,
+}: {
+  detent: "default" | "expanded";
+  defaultHeight: number;
+  expandedHeight: number;
+}): void {
+  const sheet = sheetElement();
+  if (sheet === null) return;
+  _expanded = detent === "expanded";
+  sheet.classList.toggle(SHEET_EXPANDED_CLASS, _expanded);
+  sheet.classList.remove(SHEET_DRAGGING_CLASS);
+  sheet.style.setProperty("max-height", "none");
+  sheet.style.setProperty(
+    "height",
+    `${_expanded ? expandedHeight : defaultHeight}px`,
+  );
+  sheet.style.removeProperty("transform");
+  if (_settleTimer !== null) clearTimeout(_settleTimer);
+  _settleTimer = setTimeout(finishSettle, SETTLE_MS);
+}
+
 /** Null-guarded teardown run by every close path and by the reset. */
 function teardownDrag(): void {
   endDragListeners();
   clearDragVisuals();
+  resetExpansion();
 }
 
 function onDragStart(event: PointerEvent): void {
@@ -173,8 +236,16 @@ function onDragStart(event: PointerEvent): void {
   }
   const sheet = sheetElement();
   if (sheet === null) return;
+  // A press mid-settle takes over from the CSS state, not the inline pose.
+  finishSettle();
   const height = sheet.getBoundingClientRect().height;
   if (height <= 0) return;
+  // The content-sized height is only measurable from the default detent.
+  if (!_expanded || _defaultHeight <= 0) _defaultHeight = height;
+  const expandedHeight = Math.max(
+    window.innerHeight * EXPANDED_HEIGHT_FRACTION,
+    _defaultHeight,
+  );
 
   _drag = {
     pointerId: event.pointerId,
@@ -183,7 +254,10 @@ function onDragStart(event: PointerEvent): void {
     lastY: event.clientY,
     lastTime: performance.now(),
     velocity: 0,
-    height,
+    startHeight: height,
+    defaultHeight: _defaultHeight,
+    expandedHeight,
+    expandedAtStart: _expanded,
     moved: false,
   };
   if (typeof target.setPointerCapture === "function") {
@@ -216,33 +290,57 @@ function onDragMove(event: PointerEvent): void {
   state.lastTime = now;
 
   sheet.classList.add(SHEET_DRAGGING_CLASS);
-  const offset = clamp({ value: delta, min: 0, max: state.height });
+  // Dragging up grows the sheet between the detents; dragging below the default
+  // detent slides the whole sheet down (toward dismissal).
+  const wanted = state.startHeight - delta;
+  const height = clamp({
+    value: wanted,
+    min: state.defaultHeight,
+    max: state.expandedHeight,
+  });
+  const offset = clamp({
+    value: state.defaultHeight - wanted,
+    min: 0,
+    max: state.defaultHeight,
+  });
+  sheet.style.setProperty("max-height", "none");
+  sheet.style.setProperty("height", `${height}px`);
   sheet.style.transform = `translateY(${offset}px)`;
 }
 
 function onDragEnd(event: PointerEvent): void {
   const state = _drag;
   if (state === null || event.pointerId !== state.pointerId) return;
-  const { moved, velocity, height, startY } = state;
+  const { moved, velocity, startY, defaultHeight, expandedHeight } = state;
   const delta = event.clientY - startY;
   endDragListeners();
 
-  if (event.type === "pointercancel" || !moved) {
+  if (!moved) {
     clearDragVisuals();
     return;
   }
-  const draggedFraction = clamp({
-    value: Math.max(delta, 0) / height,
-    min: 0,
-    max: 1,
+  if (event.type === "pointercancel") {
+    settleTo({
+      detent: state.expandedAtStart ? "expanded" : "default",
+      defaultHeight,
+      expandedHeight,
+    });
+    return;
+  }
+  const outcome = resolveExpandableSheetRelease({
+    expanded: state.expandedAtStart,
+    delta,
+    velocity,
+    defaultHeight,
+    expandedHeight,
   });
-  if (shouldCommitSheetGesture({ draggedFraction, velocity })) {
+  if (outcome === "dismiss") {
     // The close hides the sheet at the dragged offset first, then clears the
     // inline transform (see closeSettingsSheet), so it never flashes open.
     requestUserClose();
-  } else {
-    clearDragVisuals();
+    return;
   }
+  settleTo({ detent: outcome, defaultHeight, expandedHeight });
 }
 
 // ---------------------------------------------------------------- closing

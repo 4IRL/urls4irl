@@ -85,6 +85,10 @@ type ForcedReadOnlyReason = "locked" | "forbidden";
 interface SectionEntry {
   section: PanelSection;
   wrapper: HTMLElement;
+  /** The section's h3 (holds `toggle`); hidden while `headingless`. */
+  heading: HTMLElement;
+  /** True when it is the only section in its scope group: no heading, never collapsed. */
+  headingless: boolean;
   /** The render container, a child of `collapseRegion`. */
   body: HTMLElement;
   /** Holds `body`; toggled with `hidden`. Status and note stay outside it. */
@@ -482,6 +486,37 @@ function applyCollapsed({
   if (moveFocus) entry.toggle.focus();
 }
 
+// A scope group with exactly one section drops that section's heading: the
+// scope heading already names it. The section is then always expanded (nothing
+// to toggle, the stored collapsed flag is left untouched for when a sibling
+// registers) and the wrapper stays named through a labelled group.
+function applyHeadingMode({
+  entry,
+  headingless,
+}: {
+  entry: SectionEntry;
+  headingless: boolean;
+}): void {
+  entry.headingless = headingless;
+  entry.heading.hidden = headingless;
+  entry.wrapper.classList.toggle(
+    "panelSettingsSection--headingless",
+    headingless,
+  );
+  if (headingless) {
+    entry.wrapper.setAttribute("role", "group");
+    entry.wrapper.setAttribute("aria-label", entry.section.title);
+    applyCollapsed({ entry, collapsed: false });
+    return;
+  }
+  entry.wrapper.removeAttribute("role");
+  entry.wrapper.removeAttribute("aria-label");
+  applyCollapsed({
+    entry,
+    collapsed: isSectionCollapsed({ sectionId: entry.section.id }),
+  });
+}
+
 function applyNote({ entry }: { entry: SectionEntry }): void {
   const note = readOnlyNoteFor({ section: entry.section });
   entry.noteElement.textContent = note ?? "";
@@ -587,11 +622,15 @@ function createEntry({
   collapseRegion.id = regionId;
   collapseRegion.append(body);
 
-  wrapper.append(heading, statusElement, noteElement, collapseRegion);
+  // The status goes last: it is absolutely positioned in the section's bottom
+  // padding so it never shifts the controls (see .panelSettingsStatus).
+  wrapper.append(heading, noteElement, collapseRegion, statusElement);
 
   const entry: SectionEntry = {
     section,
     wrapper,
+    heading,
+    headingless: false,
     body,
     collapseRegion,
     toggle,
@@ -774,25 +813,29 @@ function renderAllSections({ popover }: { popover: OpenPopover }): void {
     if (element.children[groupIndex] !== group.wrapper) {
       element.insertBefore(group.wrapper, element.children[groupIndex] ?? null);
     }
-    sections
-      .filter((section) => section.scope === scope)
-      .forEach((section, index) => {
-        let entry = popover.entries.get(section.id);
-        let isFresh = false;
-        if (entry === undefined || entry.section !== section) {
-          if (entry) teardownEntry({ entry });
-          entry = createEntry({ section, popover });
-          isFresh = true;
-        }
-        if (group.region.children[index] !== entry.wrapper) {
-          group.region.insertBefore(
-            entry.wrapper,
-            group.region.children[index] ?? null,
-          );
-        }
-        // An unchanged section keeps its DOM, typed text and focus.
-        if (isFresh) renderSectionBody({ entry });
-      });
+    const scopeSections = sections.filter((section) => section.scope === scope);
+    // Derived from the live count on every render, never from registration order.
+    const headingless = scopeSections.length === 1;
+    scopeSections.forEach((section, index) => {
+      let entry = popover.entries.get(section.id);
+      let isFresh = false;
+      if (entry === undefined || entry.section !== section) {
+        if (entry) teardownEntry({ entry });
+        entry = createEntry({ section, popover });
+        isFresh = true;
+      }
+      if (group.region.children[index] !== entry.wrapper) {
+        group.region.insertBefore(
+          entry.wrapper,
+          group.region.children[index] ?? null,
+        );
+      }
+      if (isFresh || entry.headingless !== headingless) {
+        applyHeadingMode({ entry, headingless });
+      }
+      // An unchanged section keeps its DOM, typed text and focus.
+      if (isFresh) renderSectionBody({ entry });
+    });
   });
   if (
     focused instanceof HTMLElement &&
@@ -835,6 +878,19 @@ function rerenderIfIdle({ entry }: { entry: SectionEntry }): void {
   if (_queue?.hasWork({ sectionId: entry.section.id })) return;
   if (focusIsInside({ entry })) return;
   renderSectionBody({ entry });
+}
+
+// Re-renders an open section from the store when the shell reports no work for
+// it (nothing unsent, pending or in flight) and focus is not inside it. Used by
+// a global section after a deck-rebuild reseed changed its values.
+export function rerenderSectionIfIdle({
+  sectionId,
+}: {
+  sectionId: string;
+}): void {
+  const entry = _current?.entries.get(sectionId);
+  if (entry === undefined) return;
+  rerenderIfIdle({ entry });
 }
 
 function reconcileSavedValue({
@@ -1080,7 +1136,7 @@ function initialFocusTarget({
     if (popover.groups.get(scope)?.collapsed !== false) continue;
     for (const entry of popover.entries.values()) {
       if (entry.section.scope !== scope) continue;
-      firstSectionToggle ??= entry.toggle;
+      if (!entry.headingless) firstSectionToggle ??= entry.toggle;
       if (entry.collapsed) continue;
       const control = focusableDescendants({ root: entry.body })[0];
       if (control) return control;

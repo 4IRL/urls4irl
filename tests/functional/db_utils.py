@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Tuple
 
 from flask import Flask
@@ -5,6 +6,7 @@ from flask.testing import FlaskCliRunner
 
 from backend import db
 from backend.models.urls import Urls
+from backend.models.user_preferences import User_Preferences, UtubSort
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -692,3 +694,97 @@ def get_tag_id_by_name(app: Flask, utub_id: int, tag_string: str) -> int:
             Utub_Tags.tag_string == tag_string, Utub_Tags.utub_id == utub_id
         ).first()
         return tag.id
+
+
+def set_utub_list_preferences(
+    app: Flask,
+    user_id: int,
+    *,
+    utub_sort: UtubSort | None = None,
+    show_row_counts: bool | None = None,
+    show_list_totals: bool | None = None,
+) -> None:
+    """Upsert ``user_id``'s preferences row with the given UTub-list fields (a
+    ``None`` argument leaves that column at its current or default value) and
+    commit so the running server resolves it on the next load."""
+    with app.app_context():
+        row: User_Preferences | None = User_Preferences.query.filter(
+            User_Preferences.user_id == user_id
+        ).first()
+        if row is None:
+            row = User_Preferences(user_id=user_id)
+            db.session.add(row)
+        if utub_sort is not None:
+            row.utub_sort = utub_sort
+        if show_row_counts is not None:
+            row.show_row_counts = show_row_counts
+        if show_list_totals is not None:
+            row.show_list_totals = show_list_totals
+        db.session.commit()
+
+
+def get_utub_id_by_name(app: Flask, utub_name: str) -> int:
+    """The id of the (single) UTub with this exact name."""
+    with app.app_context():
+        return Utubs.query.filter(Utubs.name == utub_name).one().id
+
+
+def set_utub_timeline(
+    app: Flask,
+    utub_id: int,
+    *,
+    created_at: datetime,
+    last_updated: datetime,
+    user_id: int | None = None,
+    last_opened_at: datetime | None = None,
+) -> None:
+    """Pin a UTub's ``created_at`` / ``last_updated`` and, when ``user_id`` and
+    ``last_opened_at`` are given, that member's ``last_opened_at``, so every sort
+    order is deterministic. The columns are ``DateTime(timezone=True)``, so pass
+    tz-aware (UTC) datetimes. A ``None`` ``last_opened_at`` leaves the member's
+    value untouched."""
+    with app.app_context():
+        utub: Utubs = db.session.get(Utubs, utub_id)
+        utub.created_at = created_at
+        utub.last_updated = last_updated
+        if user_id is not None and last_opened_at is not None:
+            member: Utub_Members = Utub_Members.query.filter(
+                Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_id
+            ).one()
+            member.last_opened_at = last_opened_at
+        db.session.commit()
+
+
+def create_utubs_owned_by(app: Flask, user_id: int, names: list[str]) -> dict[str, int]:
+    """Create one UTub per name owned by ``user_id`` (with its CREATOR membership
+    row); returns ``{name: utub_id}``."""
+    with app.app_context():
+        utubs = [
+            Utubs(name=name, utub_description="", utub_creator=user_id)
+            for name in names
+        ]
+        db.session.add_all(utubs)
+        db.session.flush()
+        memberships = []
+        for utub in utubs:
+            membership = Utub_Members()
+            membership.utub_id = utub.id
+            membership.user_id = user_id
+            membership.member_role = Member_Role.CREATOR
+            memberships.append(membership)
+        db.session.add_all(memberships)
+        created = {utub.name: utub.id for utub in utubs}
+        db.session.commit()
+    return created
+
+
+def count_live_urls_and_members(app: Flask, utub_id: int) -> tuple[int, int]:
+    """``(non-trashed URL count, member count)`` of a UTub, as a row shows them."""
+    with app.app_context():
+        url_count = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id, Utub_Urls.deleted_at.is_(None)
+        ).count()
+        member_count = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id
+        ).count()
+        return url_count, member_count

@@ -7,7 +7,9 @@ import { initPopover, resetPopover } from "../popover.js";
 import { DEBOUNCE_MS } from "../queue.js";
 import { _resetRegistryForTests } from "../registry.js";
 import {
+  EXPANDED_HEIGHT_FRACTION,
   SELF_BACK_TIMEOUT_MS,
+  SETTLE_MS,
   closeSettingsSheetFromPopstate,
   consumePanelSettingsSheetSelfBackClose,
   getSettingsSheetBaseState,
@@ -463,6 +465,21 @@ describe("panel settings mobile sheet", () => {
 
     it("lands on the section toggle when the section body renders nothing focusable", () => {
       initPopover();
+      const render = vi.fn(({ container }: { container: HTMLElement }) => {
+        container.textContent = "Nothing to focus";
+      });
+      registerControlled({ render });
+      registerControlled({ id: "other", title: "Other", render });
+      selectUTub();
+      openGear("urls");
+
+      expect(document.activeElement).toBe(
+        document.querySelector(".panelSettingsSectionToggle"),
+      );
+    });
+
+    it("lands on the group toggle and renders no section heading for a lone section", () => {
+      initPopover();
       registerControlled({
         render: vi.fn(({ container }) => {
           container.textContent = "Nothing to focus";
@@ -472,8 +489,17 @@ describe("panel settings mobile sheet", () => {
       openGear("urls");
 
       expect(document.activeElement).toBe(
-        document.querySelector(".panelSettingsSectionToggle"),
+        document.querySelector(".panelSettingsGroupToggle"),
       );
+      expect(
+        (document.querySelector(".panelSettingsSection h3") as HTMLElement)
+          .hidden,
+      ).toBe(true);
+      expect(
+        document
+          .querySelector(".panelSettingsSection")
+          ?.getAttribute("aria-label"),
+      ).toBe("Sort");
     });
 
     it("wraps Tab from the last control to the first, close button included", () => {
@@ -949,6 +975,186 @@ describe("panel settings mobile sheet", () => {
       });
       expect(handler).toHaveBeenCalledTimes(1);
       expect(handler).toHaveBeenCalledWith("user");
+    });
+  });
+
+  describe("swipe up to expand", () => {
+    let handler: Mock<(kind: CloseKind) => void>;
+    const EXPANDED_PX = window.innerHeight * EXPANDED_HEIGHT_FRACTION;
+    const RANGE = EXPANDED_PX - SHEET_HEIGHT;
+
+    beforeEach(() => {
+      setupUrlsSheet();
+      stubSheetHeight();
+      handler = vi.fn();
+      registerSettingsSheetCloseHandler((kind) => handler(kind));
+    });
+
+    // Slow drags (50ms per step) keep the velocity under the fling threshold.
+    function slowDrag({ dy }: { dy: number }): void {
+      const header = el("panelSettingsSheetHeader");
+      touch({ type: "pointerdown", target: header, clientY: 300 });
+      touch({ type: "pointermove", target: header, clientY: 300 + dy / 2 });
+      vi.advanceTimersByTime(500);
+      touch({ type: "pointermove", target: header, clientY: 300 + dy });
+      vi.advanceTimersByTime(500);
+      touch({ type: "pointerup", target: header, clientY: 300 + dy });
+      // Let the settle drop its inline height; the CSS class then governs.
+      vi.advanceTimersByTime(SETTLE_MS);
+    }
+
+    function isExpanded(): boolean {
+      return sheet().classList.contains("panelSettingsSheet--expanded");
+    }
+
+    it("tracks the finger by growing the height, with no translate, while dragging up", () => {
+      const header = el("panelSettingsSheetHeader");
+      touch({ type: "pointerdown", target: header, clientY: 300 });
+      touch({ type: "pointermove", target: header, clientY: 250 });
+
+      expect(sheet().style.height).toBe(`${SHEET_HEIGHT + 50}px`);
+      expect(sheet().style.transform).toBe("translateY(0px)");
+      expect(sheet().classList.contains("panelSettingsSheet--dragging")).toBe(
+        true,
+      );
+      touch({ type: "pointermove", target: header, clientY: -2000 });
+      expect(parseFloat(sheet().style.height)).toBeCloseTo(EXPANDED_PX, 1);
+    });
+
+    it("expands past the distance threshold and keeps the sheet open", () => {
+      slowDrag({ dy: -RANGE * 0.5 });
+
+      expect(isExpanded()).toBe(true);
+      expect(isSheetOpen()).toBe(true);
+      expect(handler).not.toHaveBeenCalled();
+      expect(sheet().style.height).toBe("");
+      expect(sheet().style.maxHeight).toBe("");
+      expect(sheet().style.transform).toBe("");
+    });
+
+    it("expands on a fast upward fling below the distance threshold", () => {
+      const header = el("panelSettingsSheetHeader");
+      touch({ type: "pointerdown", target: header, clientY: 300 });
+      vi.advanceTimersByTime(10);
+      touch({ type: "pointermove", target: header, clientY: 280 });
+      vi.advanceTimersByTime(10);
+      touch({ type: "pointermove", target: header, clientY: 260 });
+      touch({ type: "pointerup", target: header, clientY: 260 });
+
+      expect(isExpanded()).toBe(true);
+    });
+
+    it("stays default after a short slow upward drag", () => {
+      slowDrag({ dy: -20 });
+
+      expect(isExpanded()).toBe(false);
+      expect(isSheetOpen()).toBe(true);
+      expect(sheet().style.height).toBe("");
+    });
+
+    it("settles with an inline height while the transition runs", () => {
+      const header = el("panelSettingsSheetHeader");
+      touch({ type: "pointerdown", target: header, clientY: 300 });
+      vi.advanceTimersByTime(500);
+      touch({ type: "pointermove", target: header, clientY: 100 });
+      vi.advanceTimersByTime(500);
+      touch({ type: "pointerup", target: header, clientY: 100 });
+
+      expect(parseFloat(sheet().style.height)).toBeCloseTo(EXPANDED_PX, 1);
+      expect(sheet().classList.contains("panelSettingsSheet--dragging")).toBe(
+        false,
+      );
+      vi.advanceTimersByTime(SETTLE_MS);
+      expect(sheet().style.height).toBe("");
+    });
+
+    it("returns to default, not dismissed, on a medium swipe down from expanded", () => {
+      slowDrag({ dy: -RANGE });
+      expect(isExpanded()).toBe(true);
+
+      slowDrag({ dy: RANGE * 0.6 });
+
+      expect(isExpanded()).toBe(false);
+      expect(isSheetOpen()).toBe(true);
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("stays expanded after a short swipe down from expanded", () => {
+      slowDrag({ dy: -RANGE });
+      slowDrag({ dy: RANGE * 0.1 });
+
+      expect(isExpanded()).toBe(true);
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("dismisses from expanded only when dragged well past the default detent", () => {
+      slowDrag({ dy: -RANGE });
+      slowDrag({ dy: RANGE + SHEET_HEIGHT * 0.6 });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith("user");
+    });
+
+    it("still dismisses from default on a long swipe down", () => {
+      slowDrag({ dy: SHEET_HEIGHT * 0.6 });
+
+      expect(handler).toHaveBeenCalledWith("user");
+      expect(isExpanded()).toBe(false);
+    });
+
+    it("reopens at the default detent after being expanded", () => {
+      slowDrag({ dy: -RANGE });
+      expect(isExpanded()).toBe(true);
+
+      // A forced close: the mock close handler above would swallow a user close.
+      emit(AppEvents.TRASH_OPENED);
+      expect(isSheetOpen()).toBe(false);
+      expect(isExpanded()).toBe(false);
+      openGear("urls");
+
+      expect(isSheetOpen()).toBe(true);
+      expect(isExpanded()).toBe(false);
+      expect(sheet().style.height).toBe("");
+    });
+
+    it("clears the expansion and inline pose on a forced close mid-drag", () => {
+      const header = el("panelSettingsSheetHeader");
+      touch({ type: "pointerdown", target: header, clientY: 300 });
+      touch({ type: "pointermove", target: header, clientY: 200 });
+      emit(AppEvents.TRASH_OPENED);
+
+      expect(sheet().style.height).toBe("");
+      expect(sheet().style.maxHeight).toBe("");
+      expect(sheet().style.transform).toBe("");
+      expect(isExpanded()).toBe(false);
+    });
+
+    it("snaps back to the current detent on pointercancel", () => {
+      slowDrag({ dy: -RANGE });
+      const header = el("panelSettingsSheetHeader");
+      touch({ type: "pointerdown", target: header, clientY: 300 });
+      touch({ type: "pointermove", target: header, clientY: 380 });
+      touch({ type: "pointercancel", target: header, clientY: 380 });
+      vi.advanceTimersByTime(SETTLE_MS);
+
+      expect(isExpanded()).toBe(true);
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("treats a tap under the slop as a tap while expanded", () => {
+      slowDrag({ dy: -RANGE });
+      const header = el("panelSettingsSheetHeader");
+      touch({ type: "pointerdown", target: header, clientY: 300 });
+      touch({
+        type: "pointermove",
+        target: header,
+        clientY: 300 + TAP_SLOP_PX - 1,
+      });
+      touch({ type: "pointerup", target: header, clientY: 300 });
+
+      expect(isExpanded()).toBe(true);
+      expect(sheet().style.height).toBe("");
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 

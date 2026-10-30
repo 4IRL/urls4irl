@@ -11,7 +11,11 @@ import {
 } from "../../../types/settings.js";
 import { announceSettingsStatus } from "../announce.js";
 import { resyncSettings } from "../client.js";
-import { resetPopover, initPopover } from "../popover.js";
+import {
+  resetPopover,
+  initPopover,
+  rerenderSectionIfIdle,
+} from "../popover.js";
 import { DEBOUNCE_MS } from "../queue.js";
 import { _resetRegistryForTests } from "../registry.js";
 import { isPanelSettingsBusy, isPanelSettingsOpen } from "../state.js";
@@ -324,9 +328,28 @@ describe("panel settings popover", () => {
           container.textContent = "static";
         }),
       });
+      registerControlled({
+        id: "other",
+        title: "Other",
+        render: vi.fn(({ container }) => {
+          container.textContent = "static";
+        }),
+      });
       selectUTub();
       openGear("urls");
       expect(document.activeElement).toBe(toggleOf("sort"));
+    });
+
+    it("moves focus to the group toggle when a headingless section has no control", () => {
+      initPopover();
+      registerControlled({
+        render: vi.fn(({ container }) => {
+          container.textContent = "static";
+        }),
+      });
+      selectUTub();
+      openGear("urls");
+      expect(document.activeElement).toBe(groupToggleOf("utub"));
     });
 
     it("toggles closed on a second gear click and returns focus to the gear", () => {
@@ -494,11 +517,27 @@ describe("panel settings popover", () => {
       return el(`panelSettingsRegion-${sectionId}`);
     }
 
+    // A scope group with one section renders no section heading, so these tests
+    // register a sibling in the same scope to keep the collapsible headings.
+    function registerSibling(
+      overrides: Parameters<typeof registerControlled>[0] = {},
+    ) {
+      return registerControlled({
+        id: "sibling",
+        title: "Sibling",
+        render: vi.fn(({ container }) => {
+          container.innerHTML = '<input id="sibling-input" />';
+        }),
+        ...(overrides.scope === undefined ? {} : { scope: overrides.scope }),
+      });
+    }
+
     function setupSort(
       overrides: Parameters<typeof registerControlled>[0] = {},
     ) {
       initPopover();
       const harness = registerControlled(overrides);
+      registerSibling(overrides);
       selectUTub();
       openGear("urls");
       return harness;
@@ -591,9 +630,13 @@ describe("panel settings popover", () => {
       toggleOf("sort").focus();
 
       const event = pressKey({ key: "Tab", target: toggleOf("sort") });
-      // The group toggle and this toggle are the only visible focusables, so
-      // Tab from the last wraps to the group toggle.
-      expect(event.defaultPrevented).toBe(true);
+      // The group toggle, this toggle and the sibling's toggle and input are
+      // the visible focusables; Tab from the last wraps to the group toggle.
+      expect(event.defaultPrevented).toBe(false);
+      toggleOf("sibling").focus();
+      el("sibling-input").focus();
+      const wrap = pressKey({ key: "Tab", target: el("sibling-input") });
+      expect(wrap.defaultPrevented).toBe(true);
       expect(document.activeElement).toBe(groupToggleOf("utub"));
     });
 
@@ -643,6 +686,7 @@ describe("panel settings popover", () => {
         userKind: "per-utub",
         rerenderOn: [(state) => state.memberSettings],
       });
+      registerSibling({ scope: "user" });
       selectUTub();
       openGear("urls");
       toggleOf("sort").click();
@@ -758,14 +802,68 @@ describe("panel settings popover", () => {
     });
   });
 
-  describe("collapsible parent groups", () => {
+  describe("single-section scope groups", () => {
     const STORAGE_KEY = "u4i:panelSettingsCollapsed";
 
-    function groupRegion(scope: string): HTMLElement {
-      return el(`panelSettingsGroupRegion-${scope}`);
+    function wrapperOf(sectionId: string): HTMLElement {
+      return popover().querySelector(
+        `[data-section-id="${sectionId}"]`,
+      ) as HTMLElement;
     }
 
-    function setupBoth(): void {
+    function headingOf(sectionId: string): HTMLElement {
+      return wrapperOf(sectionId).querySelector("h3") as HTMLElement;
+    }
+
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      localStorage.clear();
+    });
+
+    it("hides the heading and exposes the controls in a labelled group", () => {
+      initPopover();
+      registerControlled();
+      selectUTub();
+      openGear("urls");
+
+      expect(headingOf("sort").hidden).toBe(true);
+      expect(wrapperOf("sort").getAttribute("role")).toBe("group");
+      expect(wrapperOf("sort").getAttribute("aria-label")).toBe("Sort");
+      expect(el("panelSettingsRegion-sort").hidden).toBe(false);
+      expect(el("sort-input").closest("[hidden]")).toBeNull();
+    });
+
+    it("never reaches the hidden toggle by keyboard", () => {
+      initPopover();
+      registerControlled();
+      selectUTub();
+      openGear("urls");
+
+      el("sort-input").focus();
+      const event = pressKey({ key: "Tab", target: el("sort-input") });
+      // The group toggle and the input are the only focusables.
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(groupToggleOf("utub"));
+    });
+
+    it("keeps the section expanded even when storage says collapsed", () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ sort: true }));
+      initPopover();
+      registerControlled();
+      selectUTub();
+      openGear("urls");
+
+      expect(el("panelSettingsRegion-sort").hidden).toBe(false);
+      expect(document.activeElement).toBe(el("sort-input"));
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")).toEqual({
+        sort: true,
+      });
+    });
+
+    it("counts sections per scope, so a lone section in each group has no heading", () => {
       initPopover();
       registerControlled({ id: "shared", title: "Shared" });
       registerControlled({
@@ -775,6 +873,104 @@ describe("panel settings popover", () => {
         userKind: "global",
         render: vi.fn(({ container }) => {
           container.innerHTML = '<input id="personal-input" />';
+        }),
+      });
+      selectUTub();
+      openGear("urls");
+
+      expect(headingOf("shared").hidden).toBe(true);
+      expect(headingOf("personal").hidden).toBe(true);
+    });
+
+    it("brings headings back when a sibling registers while open, and hides them again after it leaves", () => {
+      initPopover();
+      registerControlled();
+      selectUTub();
+      openGear("urls");
+      expect(headingOf("sort").hidden).toBe(true);
+
+      const sibling = registerControlled({
+        id: "second",
+        title: "Second",
+        render: vi.fn(({ container }) => {
+          container.innerHTML = '<input id="second-input" />';
+        }),
+      });
+      expect(headingOf("sort").hidden).toBe(false);
+      expect(wrapperOf("sort").hasAttribute("role")).toBe(false);
+      expect(wrapperOf("sort").hasAttribute("aria-label")).toBe(false);
+      expect(headingOf("second").hidden).toBe(false);
+      expect(toggleOf("sort").getAttribute("aria-expanded")).toBe("true");
+
+      sibling.unregister();
+      expect(headingOf("sort").hidden).toBe(true);
+      expect(wrapperOf("sort").getAttribute("aria-label")).toBe("Sort");
+    });
+
+    it("restores the stored collapsed state once the heading returns", () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ sort: true }));
+      initPopover();
+      registerControlled();
+      selectUTub();
+      openGear("urls");
+      expect(el("panelSettingsRegion-sort").hidden).toBe(false);
+
+      registerControlled({ id: "second", title: "Second" });
+      expect(toggleOf("sort").getAttribute("aria-expanded")).toBe("false");
+      expect(el("panelSettingsRegion-sort").hidden).toBe(true);
+    });
+
+    it("keeps headings that collapse and expand in a multi-section scope", () => {
+      initPopover();
+      registerControlled();
+      registerControlled({ id: "second", title: "Second" });
+      selectUTub();
+      openGear("urls");
+
+      expect(headingOf("sort").hidden).toBe(false);
+      expect(headingOf("second").hidden).toBe(false);
+      toggleOf("sort").click();
+      expect(el("panelSettingsRegion-sort").hidden).toBe(true);
+      toggleOf("sort").click();
+      expect(el("panelSettingsRegion-sort").hidden).toBe(false);
+    });
+  });
+
+  describe("collapsible parent groups", () => {
+    const STORAGE_KEY = "u4i:panelSettingsCollapsed";
+
+    function groupRegion(scope: string): HTMLElement {
+      return el(`panelSettingsGroupRegion-${scope}`);
+    }
+
+    // Each group gets a second (empty-bodied) section so the section headings
+    // exist; a lone section in a group renders no heading.
+    function setupBoth(): void {
+      initPopover();
+      registerControlled({ id: "shared", title: "Shared" });
+      registerControlled({
+        id: "sharedB",
+        title: "Shared B",
+        render: vi.fn(({ container }) => {
+          container.textContent = "static";
+        }),
+      });
+      registerControlled({
+        id: "personal",
+        title: "Personal",
+        scope: "user",
+        userKind: "global",
+        render: vi.fn(({ container }) => {
+          container.innerHTML = '<input id="personal-input" />';
+        }),
+      });
+      registerControlled({
+        id: "personalB",
+        title: "Personal B",
+        scope: "user",
+        userKind: "global",
+        render: vi.fn(({ container }) => {
+          container.textContent = "static";
         }),
       });
       selectUTub();
@@ -1600,6 +1796,68 @@ describe("panel settings popover", () => {
     it("still closes for an open form", () => {
       emit(AppEvents.FORM_MODE_CHANGED, { openForm: "createURL" as never });
       expect(isOpen()).toBe(false);
+    });
+  });
+
+  describe("rerenderSectionIfIdle", () => {
+    let harness: Harness;
+
+    beforeEach(() => {
+      initPopover();
+      harness = registerControlled({
+        id: "utubs-pref",
+        panel: "utubs",
+        scope: "user",
+        userKind: "global",
+      });
+      selectUTub();
+      openGear("utubs");
+    });
+
+    it("re-renders the open section when it is idle and focus is outside", () => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      const before = vi.mocked(harness.section.render).mock.calls.length;
+
+      rerenderSectionIfIdle({ sectionId: "utubs-pref" });
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(
+        before + 1,
+      );
+    });
+
+    it("does nothing for an unknown section id", () => {
+      const before = vi.mocked(harness.section.render).mock.calls.length;
+
+      rerenderSectionIfIdle({ sectionId: "nope" });
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(before);
+    });
+
+    it("does nothing when focus is inside the section", () => {
+      (document.getElementById("sort-input") as HTMLInputElement).focus();
+      const before = vi.mocked(harness.section.render).mock.calls.length;
+
+      rerenderSectionIfIdle({ sectionId: "utubs-pref" });
+
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(before);
+    });
+
+    it("does nothing while an edit is pending or a save is in flight (focus outside)", async () => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      lastCtx(harness).submit({
+        patch: { sort: "a" } as never,
+        debounce: true,
+      });
+      const before = vi.mocked(harness.section.render).mock.calls.length;
+
+      rerenderSectionIfIdle({ sectionId: "utubs-pref" });
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(before);
+
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+      expect(harness.pending.length).toBe(1);
+
+      rerenderSectionIfIdle({ sectionId: "utubs-pref" });
+      expect(vi.mocked(harness.section.render).mock.calls.length).toBe(before);
     });
   });
 

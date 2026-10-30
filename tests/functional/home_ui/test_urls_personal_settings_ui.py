@@ -10,7 +10,11 @@ from backend.models.utub_urls import Utub_Urls
 from backend.utils.strings.short_link_strs import SHORT_LINK_UI
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from backend.utils.strings.url_strs import URL_ADDED_BY
-from backend.utils.strings.utub_strs import URLS_SETTINGS_SHORT_LINKS_OFF_NOTICE
+from backend.utils.strings.utub_strs import (
+    URLS_PERSONAL_SETTINGS_SECTION_TITLE,
+    URLS_SETTINGS_SECTION_TITLE,
+    URLS_SETTINGS_SHORT_LINKS_OFF_NOTICE,
+)
 from tests.functional.db_utils import (
     get_url_in_utub,
     get_urls_in_utub,
@@ -590,35 +594,43 @@ def test_every_popover_control_fits_inside_the_panel(
     )
 
 
-def test_title_click_collapses_only_that_section_and_expands_again(
+def test_lone_sections_render_no_heading_and_stay_labelled_and_expanded(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN the URLs settings with both sections open
-    WHEN the "New URLs" title is clicked, then clicked again
-    THEN its controls are hidden while the personal section stays visible, and
-        come back visible on re-expand
+    GIVEN the URLs settings, where each scope group holds exactly one section
+    WHEN they open
+    THEN neither "New URLs" nor "Your view of this UTub" shows a section heading
+        or toggle, each section is a group named by its title, and all of its
+        controls are visible directly under the scope heading
     """
     _login_to_owned_utub(app=provide_app, page=page)
     _open_urls_settings(page=page)
-    toggle = page.locator(
-        _toggle_selector(section_id=HPL.SETTINGS_SECTION_URLS_DEFAULTS)
-    )
-    default_scheme = page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)
-    allow_switch = page.locator(HPL.URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH)
-    sort_select = page.locator(HPL.URLS_PERSONAL_SORT_SELECT)
 
-    toggle.click()
-    expect(toggle).to_have_attribute("aria-expanded", "false")
-    expect(default_scheme).to_be_hidden()
-    expect(allow_switch).to_be_hidden()
-    expect(sort_select).to_be_visible()
+    for scope, section_id, title in (
+        (
+            HPL.SETTINGS_GROUP_UTUB,
+            HPL.SETTINGS_SECTION_URLS_DEFAULTS,
+            URLS_SETTINGS_SECTION_TITLE,
+        ),
+        (
+            HPL.SETTINGS_GROUP_USER,
+            HPL.SETTINGS_SECTION_URLS_PERSONAL,
+            URLS_PERSONAL_SETTINGS_SECTION_TITLE,
+        ),
+    ):
+        section = page.locator(
+            HPL.SETTINGS_GROUP_SECTION_FORMAT.format(scope=scope, section_id=section_id)
+        )
+        expect(section).to_have_attribute("role", "group")
+        expect(section).to_have_attribute("aria-label", title)
+        expect(section.locator("h3")).to_be_hidden()
+        expect(page.locator(_toggle_selector(section_id=section_id))).to_be_hidden()
+        expect(section.locator(".panelSettingsSectionToggleTitle")).to_be_hidden()
 
-    toggle.click()
-    expect(toggle).to_have_attribute("aria-expanded", "true")
-    expect(default_scheme).to_be_visible()
-    expect(allow_switch).to_be_visible()
-    expect(sort_select).to_be_visible()
+    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_visible()
+    expect(page.locator(HPL.URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH)).to_be_visible()
+    expect(page.locator(HPL.URLS_PERSONAL_SORT_SELECT)).to_be_visible()
 
 
 def test_parent_headers_nest_the_sections_and_heading_row_click_is_inert(
@@ -678,37 +690,29 @@ def test_parent_headers_nest_the_sections_and_heading_row_click_is_inert(
     expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_visible()
 
 
-def test_parent_collapse_hides_nested_sections_and_keeps_their_state(
+def test_parent_collapse_hides_nested_sections_and_expands_them_again(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN the "New URLs" subheader collapsed under an expanded "Shared with this UTub"
-    WHEN the "Shared with this UTub" parent is collapsed and expanded again
-    THEN its sections are hidden meanwhile, "Just for you" is untouched, and the
-        subheader comes back still collapsed
+    GIVEN the URLs settings with "Shared with this UTub" expanded
+    WHEN that parent is collapsed and expanded again
+    THEN its section is hidden meanwhile, "Just for you" is untouched, and the
+        section comes back with its controls visible
     """
     _login_to_owned_utub(app=provide_app, page=page)
     _open_urls_settings(page=page)
     shared_toggle = page.locator(
         HPL.SETTINGS_GROUP_TOGGLE_FORMAT.format(scope=HPL.SETTINGS_GROUP_UTUB)
     )
-    section_toggle = page.locator(
-        _toggle_selector(section_id=HPL.SETTINGS_SECTION_URLS_DEFAULTS)
-    )
-
-    section_toggle.click()
-    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_hidden()
 
     shared_toggle.click()
     expect(shared_toggle).to_have_attribute("aria-expanded", "false")
-    expect(section_toggle).to_be_hidden()
+    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_hidden()
     expect(page.locator(HPL.URLS_PERSONAL_SORT_SELECT)).to_be_visible()
 
     shared_toggle.click()
     expect(shared_toggle).to_have_attribute("aria-expanded", "true")
-    expect(section_toggle).to_be_visible()
-    expect(section_toggle).to_have_attribute("aria-expanded", "false")
-    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_hidden()
+    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_visible()
 
 
 def test_collapsed_parent_survives_popover_reopen_and_page_reload(
@@ -742,31 +746,25 @@ def test_collapsed_parent_survives_popover_reopen_and_page_reload(
     expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_visible()
 
 
-def test_collapsed_section_survives_popover_reopen_and_page_reload(
+def test_stale_collapsed_flag_cannot_hide_a_headingless_section(
     page: Page, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN the "New URLs" section collapsed
-    WHEN the popover is closed and reopened, and then the page is reloaded
-    THEN the section's controls are still hidden each time
+    GIVEN a stored "collapsed" flag for the lone "New URLs" section (left from
+        when the group held several sections)
+    WHEN the page reloads and the popover opens
+    THEN the section is still expanded with its controls visible, since it has
+        no heading to expand it again
     """
     _login_to_owned_utub(app=provide_app, page=page)
-    _open_urls_settings(page=page)
-    page.locator(
-        _toggle_selector(section_id=HPL.SETTINGS_SECTION_URLS_DEFAULTS)
-    ).click()
-    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_hidden()
-    _close_settings_popover(page=page)
-
-    _reopen_urls_settings(page=page)
-    expect(page.locator(HPL.URLS_PERSONAL_SORT_SELECT)).to_be_visible()
-    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_hidden()
-    expect(page.locator(HPL.URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH)).to_be_hidden()
-    _close_settings_popover(page=page)
-
+    page.evaluate(
+        "localStorage.setItem('u4i:panelSettingsCollapsed', "
+        f"JSON.stringify({{'{HPL.SETTINGS_SECTION_URLS_DEFAULTS}': true}}))"
+    )
     page.reload()
     expect(page.locator(HPL.BUTTON_URL_SETTINGS_GEAR)).to_be_visible()
     _reopen_urls_settings(page=page)
+
+    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_visible()
+    expect(page.locator(HPL.URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH)).to_be_visible()
     expect(page.locator(HPL.URLS_PERSONAL_SORT_SELECT)).to_be_visible()
-    expect(page.locator(HPL.URLS_SETTINGS_DEFAULT_SCHEME)).to_be_hidden()
-    expect(page.locator(HPL.URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH)).to_be_hidden()
