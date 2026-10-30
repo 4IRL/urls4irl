@@ -4,6 +4,7 @@ import type {
   DensityValue,
   SortOrderValue,
   ThemeValue,
+  UtubSortValue,
   ViewModeValue,
 } from "../types/preferences.js";
 import type { UtubTag, UtubUrlItem } from "../types/url.js";
@@ -22,6 +23,9 @@ export interface UserPreferences {
   defaultSort: SortOrderValue;
   density: DensityValue;
   dateFormat: DateFormatValue;
+  utubSort: UtubSortValue;
+  showRowCounts: boolean;
+  showListTotals: boolean;
 }
 
 export interface AppState {
@@ -100,6 +104,9 @@ function createInitialState(): AppState {
       defaultSort: "newest",
       density: "comfortable",
       dateFormat: "iso",
+      utubSort: "recent_activity",
+      showRowCounts: false,
+      showListTotals: true,
     },
     trashCount: 0,
   };

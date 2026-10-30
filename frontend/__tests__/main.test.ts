@@ -1,7 +1,13 @@
 import { getState, setState } from "../store/app-store.js";
 
 vi.mock("../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ preferences: {} })),
+  getState: vi.fn(() => ({
+    preferences: {
+      utubSort: "recent_activity",
+      showRowCounts: false,
+      showListTotals: true,
+    },
+  })),
   setState: vi.fn(),
 }));
 
@@ -48,6 +54,9 @@ describe("loadInitialPreferencesState", () => {
       display_default_sort: "oldest",
       display_density: "compact",
       display_date_format: "us",
+      display_utub_sort: "name_az",
+      display_show_row_counts: true,
+      display_show_list_totals: false,
     };
     const script = document.createElement("script");
     script.id = "user-preferences-data";
@@ -66,7 +75,55 @@ describe("loadInitialPreferencesState", () => {
         defaultSort: "oldest",
         density: "compact",
         dateFormat: "us",
+        utubSort: "name_az",
+        showRowCounts: true,
+        showListTotals: false,
       },
+    });
+  });
+
+  it("falls back to today's look for an unknown sort and non-boolean toggles", async () => {
+    const script = document.createElement("script");
+    script.id = "user-preferences-data";
+    script.type = "application/json";
+    script.textContent = JSON.stringify({
+      display_theme: "dark",
+      display_utub_sort: "bogus",
+      display_show_row_counts: "yes",
+      display_show_list_totals: 0,
+    });
+    document.body.appendChild(script);
+
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
+    loadInitialPreferencesState();
+
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      preferences: expect.objectContaining({
+        utubSort: "recent_activity",
+        showRowCounts: false,
+        showListTotals: true,
+      }),
+    });
+  });
+
+  it("falls back to today's look when the new keys are missing", async () => {
+    const script = document.createElement("script");
+    script.id = "user-preferences-data";
+    script.type = "application/json";
+    script.textContent = JSON.stringify({ display_theme: "dark" });
+    document.body.appendChild(script);
+
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
+    loadInitialPreferencesState();
+
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      preferences: expect.objectContaining({
+        utubSort: "recent_activity",
+        showRowCounts: false,
+        showListTotals: true,
+      }),
     });
   });
 

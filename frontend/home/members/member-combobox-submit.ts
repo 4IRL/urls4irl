@@ -4,6 +4,7 @@ import { SHOW_LOADING_ICON_AFTER_MS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, setState } from "../../store/app-store.js";
+import { applyRowCountDelta } from "../utubs/row-counts.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { reapplyMemberFilter } from "./search.js";
@@ -202,6 +203,11 @@ function applyPostSettleSideEffects({
       // (never one without the other).
       setState({ members: [...getState().members, ...addedMembers] });
       emitAppEvent(AppEvents.MEMBER_DECK_CHANGED);
+      applyRowCountDelta({
+        utubID: batchUtubID,
+        urlDelta: 0,
+        memberDelta: addedMembers.length,
+      });
       const isOwner = getState().isCurrentUserOwner;
       const listMembers = $("#listMembers");
       addedMembers.forEach((member) => {

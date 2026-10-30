@@ -12,6 +12,10 @@ import { isUtubLockedHandled } from "../../utub-locked.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { getUTubInfo } from "../../utubs/selectors.js";
 import { getAllUTubs } from "../../utubs/utils.js";
+import {
+  resetListPreferenceTracking,
+  setReseedListener,
+} from "../../utubs/list-preferences.js";
 import { beginTransferFlow, showTransferConfirmView } from "../transfer.js";
 
 vi.mock("../../../lib/ajax.js", () => ({
@@ -409,6 +413,39 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     expect(document.activeElement).toBe(
       document.getElementById("MemberDeckHeaderAndCaret"),
     );
+  });
+
+  it("reseeds list preferences from the summary refetch and survives a throwing reseed listener", async () => {
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    try {
+      mockAjaxSuccess(SUCCESS_RESPONSE);
+      setReseedListener(() => {
+        throw new Error("render boom");
+      });
+      vi.mocked(getAllUTubs).mockResolvedValue({
+        ...transferredSummaryList(),
+        preferences: {
+          utubSort: "name_az",
+          showRowCounts: true,
+          showListTotals: false,
+        },
+      } as never);
+
+      openConfirm();
+      $("#transferOwnerSubmit").trigger("click");
+      await flush();
+
+      expect(getState().preferences.showRowCounts).toBe(true);
+      expect(getState().preferences.utubSort).toBe("name_az");
+      expect(assignSpy).not.toHaveBeenCalled();
+      expect($(`.UTubSelector[utubid="1"]`).length).toBe(1);
+    } finally {
+      setReseedListener(null);
+      resetListPreferenceTracking();
+      assignSpy.mockRestore();
+    }
   });
 
   it("keeps settings saved while the post-transfer rebuild fetch was in flight", async () => {

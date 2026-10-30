@@ -14,6 +14,7 @@ import { emit, AppEvents } from "../../../lib/event-bus.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { isBackgroundRefreshActive } from "../background-refresh-flag.js";
 import type { UtubDetail } from "../../../types/utub.js";
+import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 import {
   resolveMemberSettings,
   resolveUtubSettings,
@@ -166,14 +167,15 @@ function seedStore(
     tags: structuredClone(detail.tags),
     members: structuredClone(detail.members),
     utubs: [
-      {
+      makeUtubSummaryItem({
         id: detail.id,
         name: detail.name,
         memberRole: "creator",
         isLocked: detail.isLocked,
-      },
+      }),
     ],
     selectedTagIDs: [],
+    preferences: { utubSort: "recent_activity" },
     settings: resolveUtubSettings(detail.settings),
     settingsVersion: 0,
     memberSettings: resolveMemberSettings(detail.memberSettings),
@@ -686,6 +688,90 @@ describe("updateUTubOnFindingStaleData", () => {
     });
   });
 
+  describe("row counts and sorted order", () => {
+    function seedCountedRow(): void {
+      document.body.innerHTML = `<div id="URLDeckHeader">My UTub</div>
+        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCountNum">1</span><span class="UTubRowCountNum">1</span></span></span></div>`;
+      seedStore(makeDetail(), {
+        utubs: [
+          makeUtubSummaryItem({
+            id: UTUB_ID,
+            name: "My UTub",
+            memberRole: "creator",
+            urlCount: 1,
+            memberCount: 1,
+          }),
+        ],
+      });
+    }
+
+    it("recounts the row from the refreshed decks when the URL count changed", async () => {
+      seedCountedRow();
+
+      await refreshWith(ok(makeDetail({ urls: [makeUrl(10), makeUrl(11)] })));
+
+      const row = (
+        storeState.value.utubs as { id: number; urlCount: number }[]
+      )[0];
+      expect(row.urlCount).toBe(2);
+      expect($(".UTubRowCountNum").eq(0).text()).toBe("2");
+      expect($(".UTubRowCountNum").eq(1).text()).toBe("1");
+    });
+
+    it("recounts when only the member count changed", async () => {
+      seedCountedRow();
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            members: [
+              { id: CURRENT_USER_ID, username: "alice", memberRole: "creator" },
+              { id: 2000, username: "bob", memberRole: "member" },
+            ],
+          }),
+        ),
+      );
+
+      expect($(".UTubRowCountNum").eq(1).text()).toBe("2");
+    });
+
+    it("does not recount when neither count changed (stale row text stays)", async () => {
+      seedCountedRow();
+      $(".UTubRowCountNum").eq(0).text("7");
+
+      await refreshWith(ok(makeDetail({ name: "Renamed" })));
+
+      expect($(".UTubRowCountNum").eq(0).text()).toBe("7");
+    });
+
+    it("under name_az a changed name reorders the deck without scrolling", async () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      document.body.innerHTML = `<div id="URLDeckHeader">My UTub</div>
+        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b></span><span class="UTubSelector" utubid="2"><b class="UTubName">Mid</b></span></div>`;
+      seedStore(makeDetail(), {
+        preferences: { utubSort: "name_az" },
+        utubs: [
+          makeUtubSummaryItem({
+            id: UTUB_ID,
+            name: "My UTub",
+            memberRole: "creator",
+          }),
+          makeUtubSummaryItem({ id: 2, name: "Mid", memberRole: "member" }),
+        ],
+      });
+
+      await refreshWith(ok(makeDetail({ name: "Zulu" })));
+
+      expect(
+        $("#listUTubs > .UTubSelector")
+          .map((_, element) => Number($(element).attr("utubid")))
+          .get(),
+      ).toEqual([2, 1]);
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+  });
+
   describe("description visibility", () => {
     it("empty to non-empty shows the wrap and hides the no-description text", async () => {
       seedStore(makeDetail({ description: "" }));
@@ -799,7 +885,12 @@ describe("updateUTubOnFindingStaleData", () => {
       expect($("body").hasClass("utub-locked")).toBe(true);
       expect($("#URLDeckLockIcon").hasClass("hidden")).toBe(false);
       expect(storeState.value.utubs).toEqual([
-        { id: UTUB_ID, name: "My UTub", memberRole: "creator", isLocked: true },
+        makeUtubSummaryItem({
+          id: UTUB_ID,
+          name: "My UTub",
+          memberRole: "creator",
+          isLocked: true,
+        }),
       ]);
       expect(makeUTubRoleIcon).toHaveBeenCalledWith({
         memberRole: "creator",
@@ -812,6 +903,22 @@ describe("updateUTubOnFindingStaleData", () => {
       vi.advanceTimersByTime(0);
       expect($("#URLDeckOutcomeAnnouncement").text()).toBe(
         APP_CONFIG.strings.UTUB_IS_LOCKED,
+      );
+    });
+
+    it("leaves a row's counts group and its hidden label intact when the role icon is replaced", async () => {
+      $(".UTubSelector[utubid=1] .UTubName").after(
+        `<span class="UTubRowCounts"><span class="visually-hidden">, 3 URLs, 2 members</span></span>`,
+      );
+
+      await refreshWith(ok(makeDetail({ isLocked: true })));
+
+      expect($(".UTubSelector[utubid=1] .UTubRowCounts").length).toBe(1);
+      expect(
+        $(".UTubSelector[utubid=1] .UTubRowCounts .visually-hidden").text(),
+      ).toBe(", 3 URLs, 2 members");
+      expect($(".UTubSelector[utubid=1] .memberRole").attr("data-locked")).toBe(
+        "true",
       );
     });
 

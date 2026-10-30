@@ -11,9 +11,15 @@ import {
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
-import { getState, resetStore } from "../../../store/app-store.js";
+import { getState, resetStore, setState } from "../../../store/app-store.js";
+import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 import { buildUTubDeck } from "../../utubs/deck.js";
 import { getAllUTubs } from "../../utubs/utils.js";
+import {
+  getPrefsVersion,
+  reseedListPreferences,
+  syncDeckOrderToStoreSort,
+} from "../../utubs/list-preferences.js";
 import { showOutcomeBanner } from "../../urls/outcome-banner.js";
 import { TRASH_BANNER_MOUNT } from "../banner.js";
 import { refreshTrashCount, renderTrashCount } from "../count.js";
@@ -45,6 +51,11 @@ vi.mock("../../../lib/ajax.js", () => ({
 
 vi.mock("../../utubs/deck.js", () => ({ buildUTubDeck: vi.fn() }));
 vi.mock("../../utubs/utils.js", () => ({ getAllUTubs: vi.fn() }));
+vi.mock("../../utubs/list-preferences.js", () => ({
+  getPrefsVersion: vi.fn(() => 0),
+  reseedListPreferences: vi.fn(),
+  syncDeckOrderToStoreSort: vi.fn(),
+}));
 vi.mock("../count.js", () => ({
   beginCountRequest: vi.fn(() => () => true),
   refreshTrashCount: vi.fn(() => Promise.resolve()),
@@ -257,6 +268,84 @@ describe("trash actions", () => {
       expect(refreshTrashCount).toHaveBeenCalledTimes(1);
     });
 
+    it("raises the row URL count by one when restored into the open UTub", async () => {
+      renderRows();
+      setState({
+        activeUTubID: 3,
+        utubs: [makeUtubSummaryItem({ id: 3, urlCount: 4 })],
+      });
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({ done: { lostTagCount: 0, restoredToDestination: false } }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11 });
+
+      expect(getState().utubs[0].urlCount).toBe(5);
+    });
+
+    it("raises the row URL count even though Trash cleared the active UTub", async () => {
+      renderRows();
+      setState({
+        activeUTubID: null,
+        utubs: [makeUtubSummaryItem({ id: 3, urlCount: 4 })],
+      });
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({ done: { lostTagCount: 0, restoredToDestination: false } }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11 });
+
+      expect(getState().utubs[0].urlCount).toBe(5);
+    });
+
+    it("raises only the destination row when destUtubID is given", async () => {
+      renderRows();
+      setState({
+        activeUTubID: 4,
+        utubs: [
+          makeUtubSummaryItem({ id: 3, urlCount: 4 }),
+          makeUtubSummaryItem({ id: 4, urlCount: 6 }),
+        ],
+      });
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({
+          done: {
+            lostTagCount: 0,
+            restoredToDestination: true,
+            utubName: "Work Archive",
+          },
+        }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11, destUtubID: 4 });
+
+      expect(getState().utubs.map((utub) => utub.urlCount)).toEqual([4, 7]);
+    });
+
+    it("raises the destination row, not the origin, when destUtubID is not the open UTub", async () => {
+      renderRows();
+      setState({
+        activeUTubID: 3,
+        utubs: [
+          makeUtubSummaryItem({ id: 3, urlCount: 4 }),
+          makeUtubSummaryItem({ id: 4, urlCount: 6 }),
+        ],
+      });
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({
+          done: {
+            lostTagCount: 0,
+            restoredToDestination: true,
+            utubName: "Work Archive",
+          },
+        }),
+      );
+
+      await restoreTrashedURL({ utubID: 3, utubUrlID: 11, destUtubID: 4 });
+
+      expect(getState().utubs.map((utub) => utub.urlCount)).toEqual([4, 7]);
+    });
+
     it("uses the partial variant when tags were lost", async () => {
       renderRows();
       vi.mocked(ajaxCall).mockReturnValue(
@@ -362,6 +451,42 @@ describe("trash actions", () => {
       expect(getState().trashCount).toBe(7);
       expect(renderTrashCount).toHaveBeenCalledTimes(1);
       expect(refreshTrashCount).not.toHaveBeenCalled();
+    });
+
+    it("captures the prefs version before the GET, reseeds before the build and syncs the order after", async () => {
+      renderTrashList({ list: makeList({ utubs: [makeUtubItem()] }) });
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({ done: { utubName: "Work Archive" } }),
+      );
+      vi.mocked(getPrefsVersion).mockReturnValue(3);
+      const preferences = { utubSort: "name_az" };
+      vi.mocked(getAllUTubs).mockReturnValue(
+        settled({
+          done: { utubs: [], trashCount: 1, preferences },
+        }) as never,
+      );
+
+      $("#listTrashUTubs .trashBtnRestore").trigger("click");
+      await vi.waitFor(() =>
+        expect(syncDeckOrderToStoreSort).toHaveBeenCalled(),
+      );
+
+      expect(
+        vi.mocked(getPrefsVersion).mock.invocationCallOrder[0],
+      ).toBeLessThan(vi.mocked(getAllUTubs).mock.invocationCallOrder[0]);
+      expect(reseedListPreferences).toHaveBeenCalledWith({
+        preferences,
+        capturedVersion: 3,
+      });
+      expect(
+        vi.mocked(reseedListPreferences).mock.invocationCallOrder[0],
+      ).toBeLessThan(vi.mocked(buildUTubDeck).mock.invocationCallOrder[0]);
+      expect(vi.mocked(buildUTubDeck).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(syncDeckOrderToStoreSort).mock.invocationCallOrder[0],
+      );
+      expect(syncDeckOrderToStoreSort).toHaveBeenCalledWith({
+        responseSort: "name_az",
+      });
     });
   });
 

@@ -43,6 +43,7 @@ export interface AppRoutes {
   oauthGithubLogin: string;
   errorPage: string;
   logout: string;
+  updateUtubListPreferences: string;
   contactUs: string;
   crossUtubSearch: string;
   metricsIngest: string;
@@ -192,6 +193,7 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     oauthGithubLogin: rawConfig.routes.oauthGithubLogin,
     errorPage: rawConfig.routes.errorPage,
     logout: rawConfig.routes.logout,
+    updateUtubListPreferences: rawConfig.routes.updateUtubListPreferences,
 
     getUTub: (id: number) => rawConfig.routes.getUTub.replace("-1", String(id)),
     refreshUTub: (id: number) =>

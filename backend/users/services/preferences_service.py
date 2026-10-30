@@ -12,11 +12,15 @@ from backend.models.user_preferences import (
     SortOrder,
     Theme,
     User_Preferences,
+    UtubSort,
     ViewMode,
     resolve_preferences,
 )
 from backend.schemas.errors import build_message_error_response
-from backend.schemas.users import UpdatePreferencesResponseSchema
+from backend.schemas.users import (
+    UpdatePreferencesResponseSchema,
+    UpdateUtubListPreferencesResponseSchema,
+)
 from backend.users.constants import PreferencesErrorCodes
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.user_strs import (
@@ -45,7 +49,62 @@ def build_display_preferences_context() -> dict[str, Any]:
         "display_default_sort": resolved.default_sort.value,
         "display_density": resolved.density.value,
         "display_date_format": resolved.date_format.value,
+        "display_utub_sort": resolved.utub_sort.value,
+        "display_show_row_counts": resolved.show_row_counts,
+        "display_show_list_totals": resolved.show_list_totals,
     }
+
+
+def apply_utub_list_preferences_change(
+    *,
+    utub_sort: UtubSort | None,
+    show_row_counts: bool | None,
+    show_list_totals: bool | None,
+) -> FlaskResponse:
+    """Persist only the provided UTub-list preferences for ``current_user``.
+
+    ``None`` means "not sent" (the request schema already rejected an explicit
+    null). Compares against the resolved values first, so a no-op returns
+    ``No change`` before any row is created or committed. The five display
+    fields are never touched, and the response echoes the resolved post-write
+    values, not the request values.
+    """
+    preferences: User_Preferences | None = current_user.preferences
+    existing = resolve_preferences(preferences)
+
+    changes: dict[str, UtubSort | bool] = {}
+    if utub_sort is not None and utub_sort != existing.utub_sort:
+        changes["utub_sort"] = utub_sort
+    if show_row_counts is not None and show_row_counts != existing.show_row_counts:
+        changes["show_row_counts"] = show_row_counts
+    if show_list_totals is not None and show_list_totals != existing.show_list_totals:
+        changes["show_list_totals"] = show_list_totals
+
+    if not changes:
+        resolved = existing
+        status = STD_JSON.NO_CHANGE
+        message = PREFERENCES_CHANGE_NO_CHANGE
+    else:
+        if preferences is None:
+            preferences = User_Preferences(user_id=current_user.id)
+            db.session.add(preferences)
+        for field_name, value in changes.items():
+            setattr(preferences, field_name, value)
+        db.session.commit()
+        resolved = resolve_preferences(preferences)
+        status = STD_JSON.SUCCESS
+        message = PREFERENCES_CHANGE_SUCCESS
+
+    return APIResponse(
+        status_code=200,
+        data=UpdateUtubListPreferencesResponseSchema(
+            utub_sort=resolved.utub_sort.value,
+            show_row_counts=resolved.show_row_counts,
+            show_list_totals=resolved.show_list_totals,
+            status=status,
+            message=message,
+        ),
+    ).to_response()
 
 
 def apply_preferences_change(

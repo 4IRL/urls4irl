@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import TYPE_CHECKING, Literal
 
-from pydantic import Field
+from pydantic import Field, field_serializer
 
 from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
+from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER, REDIRECT_URL
 from backend.utils.strings.utub_strs import UTUB_ID
 
 if TYPE_CHECKING:
-    from backend.models.users import Users
+    from backend.models.utub_members import Utub_Members
 
 
 class UserSchema(BaseSchema):
@@ -75,6 +78,50 @@ class UtubSummaryItemSchema(BaseSchema):
         alias=MODELS.IS_LOCKED,
         description="Whether the UTub is locked (frozen to all user mutations)",
     )
+    url_count: int = Field(
+        alias=MODELS.URL_COUNT,
+        description="Number of live (non-trashed) URLs in the UTub",
+    )
+    member_count: int = Field(
+        alias=MODELS.MEMBER_COUNT,
+        description="Number of members of the UTub",
+    )
+    created_at: datetime = Field(
+        alias=MODELS.CREATED_AT,
+        description="When the UTub was created (UTC, millisecond precision)",
+    )
+    last_updated: datetime = Field(
+        alias=MODELS.LAST_UPDATED,
+        description="When the UTub's content last changed (UTC, millisecond precision)",
+    )
+    last_opened_at: datetime | None = Field(
+        alias=MODELS.LAST_OPENED_AT,
+        description="When the requesting user last opened the UTub, null if never",
+    )
+
+    @field_serializer("created_at", "last_updated")
+    def serialize_required_datetime(self, value: datetime) -> str:
+        return to_iso_milliseconds(value)
+
+    @field_serializer("last_opened_at")
+    def serialize_last_opened_at(self, value: datetime | None) -> str | None:
+        return None if value is None else to_iso_milliseconds(value)
+
+
+class UtubListPreferencesSchema(BaseSchema):
+    """The requesting user's resolved UTub-list preferences (plain data)."""
+
+    utub_sort: Literal[
+        "recent_activity", "last_opened", "name_az", "newest_created", "oldest_created"
+    ] = Field(alias=MODELS.UTUB_SORT, description="How the UTub list is sorted")
+    show_row_counts: bool = Field(
+        alias=MODELS.SHOW_ROW_COUNTS,
+        description="Whether each UTub row shows its URL and member counts",
+    )
+    show_list_totals: bool = Field(
+        alias=MODELS.SHOW_LIST_TOTALS,
+        description="Whether list totals are shown on the deck title and Trash",
+    )
 
 
 class UtubSummaryListSchema(BaseSchema):
@@ -91,25 +138,22 @@ class UtubSummaryListSchema(BaseSchema):
         description="Trash URL rows plus Trash UTub rows the user may act on",
     )
 
+    preferences: UtubListPreferencesSchema = Field(
+        alias=MODELS.PREFERENCES,
+        description="The user's resolved UTub-list preferences",
+    )
+
     @classmethod
-    def from_user(cls, user: Users, *, trash_count: int) -> UtubSummaryListSchema:
-        # Trashed UTubs are hidden from every non-admin listing. Filtered in Python
-        # (not SQL) because schemas load before the models during package init.
-        live_memberships = [
-            membership
-            for membership in user.utubs_is_member_of
-            if not membership.to_utub.is_trashed
-        ]
-        sorted_utubs = sorted(
-            live_memberships,
-            # Per-viewer recency: the later of the viewer's own last open and the
-            # UTub's last content change (NULL last_opened_at falls back to the latter).
-            key=lambda membership: max(
-                membership.last_opened_at or membership.to_utub.last_updated,
-                membership.to_utub.last_updated,
-            ),
-            reverse=True,
-        )
+    def from_user(
+        cls,
+        *,
+        memberships: Sequence[Utub_Members],
+        counts: Mapping[int, tuple[int, int]],
+        preferences: UtubListPreferencesSchema,
+        trash_count: int,
+    ) -> UtubSummaryListSchema:
+        # Renders the services helper's already-sorted, eager-loaded memberships.
+        # Sorts, resolves and queries nothing (schemas load before the models).
         return cls(
             utubs=[
                 UtubSummaryItemSchema(
@@ -117,10 +161,16 @@ class UtubSummaryListSchema(BaseSchema):
                     name=membership.to_utub.name,
                     member_role=membership.member_role.value,
                     is_locked=membership.to_utub.is_locked,
+                    url_count=counts[membership.to_utub.id][0],
+                    member_count=counts[membership.to_utub.id][1],
+                    created_at=membership.to_utub.created_at,
+                    last_updated=membership.to_utub.last_updated,
+                    last_opened_at=membership.last_opened_at,
                 )
-                for membership in sorted_utubs
+                for membership in memberships
             ],
             trash_count=trash_count,
+            preferences=preferences,
         )
 
 
@@ -225,6 +275,23 @@ class UpdatePreferencesResponseSchema(BaseSchema):
         alias=MODELS.DATE_FORMAT,
         description="The account's date format after the change",
     )
+    status: Literal["Success", "No change"] = Field(
+        alias=STD_JSON.STATUS,
+        description="Response status: Success or No change",
+    )
+    message: str = Field(
+        alias=STD_JSON.MESSAGE,
+        description="Human-readable, server-sourced banner text",
+    )
+
+
+class UpdateUtubListPreferencesResponseSchema(UtubListPreferencesSchema):
+    """Response for ``PATCH /users/preferences/utubs``.
+
+    Always echoes all three resolved UTub-list preferences (never the request
+    values); ``status`` is ``No change`` when nothing differed (no row created).
+    """
+
     status: Literal["Success", "No change"] = Field(
         alias=STD_JSON.STATUS,
         description="Response status: Success or No change",

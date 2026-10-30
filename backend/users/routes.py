@@ -32,6 +32,7 @@ from backend.schemas.requests.users import (
     DeleteAccountRequest,
     ProviderLinkRequest,
     UpdatePreferencesRequest,
+    UpdateUtubListPreferencesRequest,
 )
 from backend.schemas.users import (
     AccountRemovalResponseSchema,
@@ -40,6 +41,7 @@ from backend.schemas.users import (
     ChangeUsernameResponseSchema,
     LoginRedirectResponseSchema,
     UpdatePreferencesResponseSchema,
+    UpdateUtubListPreferencesResponseSchema,
 )
 from backend.splash.constants import OAuthLinkErrorCodes
 from backend.splash.services.oauth.linking_service import (
@@ -68,6 +70,7 @@ from backend.users.services.account_service import (
 from backend.users.services.data_export_service import build_user_data_export_core
 from backend.users.services.preferences_service import (
     apply_preferences_change,
+    apply_utub_list_preferences_change,
     build_display_preferences_context,
 )
 from backend.users.services.stats_service import build_user_stats_context
@@ -256,6 +259,31 @@ def update_preferences(
         default_sort=update_preferences_request.default_sort,
         density=update_preferences_request.density,
         date_format=update_preferences_request.date_format,
+    )
+
+
+@users.route("/users/preferences/utubs", methods=["PATCH"])
+@email_validation_required
+@api_route(
+    request_schema=UpdateUtubListPreferencesRequest,
+    response_schema=UpdateUtubListPreferencesResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=PreferencesErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Partially update the authenticated user's UTub-list preferences (sort, row counts, list totals). Acts only on the logged-in user and never touches the display preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next), which shows the confirm-email state. Metrics: API_HIT only (no DOMAIN event).",
+    status_codes={
+        200: UpdateUtubListPreferencesResponseSchema,
+        400: ErrorResponse,
+    },
+)
+def update_utub_list_preferences(
+    update_utub_list_preferences_request: UpdateUtubListPreferencesRequest,
+) -> FlaskResponse:
+    """Applies the partial UTub-list preferences write for ``current_user``."""
+    return apply_utub_list_preferences_change(
+        utub_sort=update_utub_list_preferences_request.utub_sort,
+        show_row_counts=update_utub_list_preferences_request.show_row_counts,
+        show_list_totals=update_utub_list_preferences_request.show_list_totals,
     )
 
 

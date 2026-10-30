@@ -1,6 +1,7 @@
 import type { TrashList, TrashedUrlItem } from "../../../types/trash.js";
 import type { UtubSummaryItem } from "../../../types/utub.js";
 
+import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -67,13 +68,7 @@ function makeUrlItem(overrides: Partial<TrashedUrlItem> = {}): TrashedUrlItem {
 }
 
 function makeUtub(overrides: Partial<UtubSummaryItem>): UtubSummaryItem {
-  return {
-    id: 1,
-    name: "Alpha",
-    isLocked: false,
-    memberRole: "Creator",
-    ...overrides,
-  } as UtubSummaryItem;
+  return makeUtubSummaryItem({ name: "Alpha", ...overrides });
 }
 
 const HTML = `

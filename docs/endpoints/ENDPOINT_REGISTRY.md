@@ -1251,6 +1251,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** template url_for: `pages/settings.html`
 
+### `PATCH /users/preferences/utubs` — `users.update_utub_list_preferences`
+
+- **Handler:** `backend/users/routes.py:update_utub_list_preferences`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.users.services.preferences_service:apply_utub_list_preferences_change`
+- **Schema:** request: `backend.schemas.requests.users.UpdateUtubListPreferencesRequest`; response: `backend.schemas.users.UpdateUtubListPreferencesResponseSchema`; status: 200 `backend.schemas.users.UpdateUtubListPreferencesResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `updateUtubListPreferences`
+
 ## utub_tags
 
 ### `POST /utubs/<int:utub_id>/tags` — `utub_tags.create_utub_tag`

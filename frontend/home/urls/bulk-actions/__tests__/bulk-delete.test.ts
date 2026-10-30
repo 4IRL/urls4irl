@@ -15,6 +15,7 @@ import { exitMultiSelectMode } from "../bulk-mode.js";
 import { showURLDeckBannerError } from "../../deck.js";
 import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
 import { refreshTrashCount } from "../../../trash/count.js";
+import { applyRowCountDelta } from "../../../utubs/row-counts.js";
 
 vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
@@ -85,6 +86,10 @@ const storeState: {
   urls: [],
   selectedURLCardIDs: [],
 };
+vi.mock("../../../utubs/row-counts.js", () => ({
+  applyRowCountDelta: vi.fn(),
+}));
+
 vi.mock("../../../../store/app-store.js", () => ({
   getState: vi.fn(() => storeState),
   setState: vi.fn((partial: Partial<typeof storeState>) => {
@@ -496,6 +501,8 @@ describe("submit + success (active-deck mutation)", () => {
     expect(vi.mocked(showURLDeletionFailedToast)).toHaveBeenCalledWith({
       forceFail: false,
     });
+    // Nothing was deleted, so the row's count must not move.
+    expect(applyRowCountDelta).not.toHaveBeenCalled();
   });
 
   it("deck empties → outcome announced in the deck live region, toast still shows, mode exits", async () => {
@@ -533,6 +540,26 @@ describe("submit + success (active-deck mutation)", () => {
     // The store-mutating bulk-delete site notifies the onboarding nudge system
     // (and any future url-deck consumer) that the deck's URL set changed.
     expect(emit).toHaveBeenCalledWith(AppEvents.URL_DECK_CHANGED);
+  });
+
+  it("lowers the selected row's URL count by the number actually deleted", () => {
+    seedUrlRows([10, 20, 30]);
+    storeState.urls = [url(10, true), url(20, true), url(30, true)];
+    const deferred = activateAndPend(
+      [10, 20, 30],
+      [url(10, true), url(20, true), url(30, true)],
+    );
+
+    deferred.resolve(deleteResponse({ deletedIds: [10, 20] }), "success", {
+      status: 200,
+    });
+
+    expect(applyRowCountDelta).toHaveBeenCalledTimes(1);
+    expect(applyRowCountDelta).toHaveBeenCalledWith({
+      utubID: 1,
+      urlDelta: -2,
+      memberDelta: 0,
+    });
   });
 
   it("stale activeUTubID race → nothing rendered when the active UTub changes mid-flight", () => {

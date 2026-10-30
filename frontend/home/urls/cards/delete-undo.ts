@@ -25,6 +25,7 @@ import {
   showURLOutcomeBanner,
 } from "../outcome-banner.js";
 import { insertURLCardIntoDeck } from "./card-deck.js";
+import { applyRowCountDelta } from "../../utubs/row-counts.js";
 
 const log = debug("urls:cards");
 
@@ -294,7 +295,16 @@ function performDeleteUndo(args: DeleteToastArgs): void {
 
   request.done(function (response: RestoreUrlsResponse) {
     void refreshTrashCount();
-    if (getState().activeUTubID !== utubID) return;
+    if (getState().activeUTubID !== utubID) {
+      // The active path counts each card through insertURLCardIntoDeck; here the
+      // user switched UTubs, so reverse the row's earlier delete delta directly.
+      applyRowCountDelta({
+        utubID,
+        urlDelta: response.restored.length,
+        memberDelta: 0,
+      });
+      return;
+    }
 
     let lastInsertedCard: JQuery = $();
     for (const restoredUrl of response.restored) {

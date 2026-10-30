@@ -9,6 +9,7 @@ import {
   resetUTubDeckIfNoUTubs,
 } from "../../utubs/deck.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { applyRowCountDelta } from "../../utubs/row-counts.js";
 import { closeTagSheet, isTagSheetOpen } from "../../tags/sheet.js";
 import { TAG_SHEET_TOGGLE_TRIGGER } from "../../../types/metrics-dim-values.js";
 import {
@@ -60,6 +61,8 @@ vi.mock("../../../lib/event-bus.js", async () => {
     emit: vi.fn(),
   };
 });
+vi.mock("../../utubs/row-counts.js", () => ({ applyRowCountDelta: vi.fn() }));
+
 vi.mock("../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ members: [] })),
   setState: vi.fn(),
@@ -244,7 +247,34 @@ describe("removeMemberSuccess — creator-removes-member success branch", () => 
     vi.mocked(getState).mockReturnValue({
       members: [{ id: 9, username: "Bob", memberRole: "member" }],
       urls: [],
+      activeUTubID: 42,
     } as unknown as ReturnType<typeof getState>);
+  });
+
+  it("subtracts one from the active UTub's row member count", () => {
+    const successXhr = createMockXhr({ status: 200 });
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) => {
+          (
+            cb as (
+              _response: unknown,
+              _textStatus: unknown,
+              xhr: JQuery.jqXHR,
+            ) => void
+          )({}, "success", successXhr);
+        },
+      }),
+    );
+
+    removeMemberShowModal(9, true, 42);
+    $("#modalSubmit").trigger("click");
+
+    expect(applyRowCountDelta).toHaveBeenCalledWith({
+      utubID: 42,
+      urlDelta: 0,
+      memberDelta: -1,
+    });
   });
 
   // Drives the full creator-removes-member confirm flow with a mocked ajax

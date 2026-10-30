@@ -17,6 +17,11 @@ import {
 import { buildUTubDeck, setUTubDeckOnUTubSelected } from "../utubs/deck.js";
 import { getAllUTubs } from "../utubs/utils.js";
 import {
+  getPrefsVersion,
+  reseedListPreferences,
+  syncDeckOrderToStoreSort,
+} from "../utubs/list-preferences.js";
+import {
   CANCEL_BTN_SELECTOR,
   CONFIRM_VIEW_SELECTOR,
   FOOTER_MSG_SELECTOR,
@@ -268,8 +273,16 @@ function transferOwnershipSuccess(
           selectedUTub,
           ...shouldKeepSettings({ selectedUTub, captured }),
         });
+        const capturedVersion = getPrefsVersion();
         const utubData = await getAllUTubs();
+        reseedListPreferences({
+          preferences: utubData.preferences,
+          capturedVersion,
+        });
         buildUTubDeck(utubData.utubs);
+        syncDeckOrderToStoreSort({
+          responseSort: utubData.preferences?.utubSort,
+        });
       }
     } catch {
       // A select-rebuild OR post-transfer summary refetch failure is equally

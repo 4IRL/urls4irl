@@ -41,6 +41,16 @@ vi.mock("../utubs/deck.js", () => ({
   setUTubDeckWhenNoUTubSelected: (...args: unknown[]) =>
     mockSetUTubDeckWhenNoUTubSelected(...args),
 }));
+const mockGetPrefsVersion = vi.fn();
+const mockReseedListPreferences = vi.fn();
+const mockSyncDeckOrderToStoreSort = vi.fn();
+vi.mock("../utubs/list-preferences.js", () => ({
+  getPrefsVersion: (...args: unknown[]) => mockGetPrefsVersion(...args),
+  reseedListPreferences: (...args: unknown[]) =>
+    mockReseedListPreferences(...args),
+  syncDeckOrderToStoreSort: (...args: unknown[]) =>
+    mockSyncDeckOrderToStoreSort(...args),
+}));
 vi.mock("../mobile.js", () => ({
   isMobile: (...args: unknown[]) => mockIsMobile(...args),
   setMobileUIWhenUTubNotSelectedOrUTubDeleted: (...args: unknown[]) =>
@@ -101,6 +111,35 @@ describe("init", () => {
       expect(mockBuildUTubDeck).toHaveBeenCalledWith(fakeUtubData.utubs);
       expect(mockSetMemberDeckWhenNoUTubSelected).toHaveBeenCalled();
       expect(mockSetTagDeckSubheaderWhenNoUTubSelected).toHaveBeenCalled();
+    });
+
+    it("captures the prefs version before the fetch, reseeds before the build and syncs the order after", async () => {
+      const preferences = { utubSort: "name_az" };
+      mockGetPrefsVersion.mockReturnValue(7);
+      mockGetAllUTubs.mockResolvedValue({ utubs: [], preferences });
+
+      resetHomePageToInitialState();
+
+      await vi.waitFor(() => {
+        expect(mockSyncDeckOrderToStoreSort).toHaveBeenCalled();
+      });
+
+      expect(mockGetPrefsVersion.mock.invocationCallOrder[0]).toBeLessThan(
+        mockGetAllUTubs.mock.invocationCallOrder[0],
+      );
+      expect(mockReseedListPreferences).toHaveBeenCalledWith({
+        preferences,
+        capturedVersion: 7,
+      });
+      expect(
+        mockReseedListPreferences.mock.invocationCallOrder[0],
+      ).toBeLessThan(mockBuildUTubDeck.mock.invocationCallOrder[0]);
+      expect(mockBuildUTubDeck.mock.invocationCallOrder[0]).toBeLessThan(
+        mockSyncDeckOrderToStoreSort.mock.invocationCallOrder[0],
+      );
+      expect(mockSyncDeckOrderToStoreSort).toHaveBeenCalledWith({
+        responseSort: "name_az",
+      });
     });
 
     it("still calls setUIWhenNoUTubSelected when getAllUTubs returns empty data", async () => {

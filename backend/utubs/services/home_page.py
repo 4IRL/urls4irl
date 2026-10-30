@@ -1,3 +1,5 @@
+from typing import Any
+
 from flask import abort, current_app, render_template, request
 from flask_login import current_user
 from sqlalchemy.exc import DataError
@@ -14,7 +16,10 @@ from backend.utils.strings.utub_strs import (
     MOBILE_PANEL_QUERY_PARAM,
     UTUB_ID_QUERY_PARAM,
 )
-from backend.utubs.services.trash_predicates import count_trash_rows_for_user
+from backend.utubs.services.trash_predicates import (
+    count_trash_rows_for_user,
+    load_summary_memberships_and_counts,
+)
 
 # The only query params the /home route recognizes: the UTub to preselect, the
 # mobile panel to restore (mobile back/forward panel feature), and the
@@ -35,10 +40,13 @@ RECOGNIZED_HOME_QUERY_PARAMS = frozenset(
 
 def render_home_page(
     email_change_banner: dict[str, str] | None = None,
-    preferences_context: dict[str, str] | None = None,
+    preferences_context: dict[str, Any] | None = None,
 ) -> str:
+    rows = load_summary_memberships_and_counts(current_user.id)
     summary = UtubSummaryListSchema.from_user(
-        current_user,
+        memberships=rows.memberships,
+        counts=rows.counts,
+        preferences=rows.preferences,
         trash_count=count_trash_rows_for_user(user_id=current_user.id),
     ).model_dump(by_alias=True)
 

@@ -17,6 +17,8 @@ import {
   applyUTubDescriptionVisibility,
 } from "./selectors.js";
 import { removeUTubLocally } from "./remove-local.js";
+import { setRowCountsFromStore } from "./row-counts.js";
+import { syncRowNameAndOrder } from "./sort.js";
 import { setBackgroundRefreshActive } from "./background-refresh-flag.js";
 import { showURLDeckBannerError } from "../urls/deck.js";
 import {
@@ -210,6 +212,9 @@ export async function updateUTubOnFindingStaleData({
     activeUTubDescription: utub.description,
   });
   syncSidebarUTubName({ utubID: utub.id, utubName: utub.name });
+  if (urlCountChanged || memberCountChanged) {
+    setRowCountsFromStore({ utubID: utub.id });
+  }
 
   // Re-evaluate onboarding tips against the new store. There is no lock event,
   // so a lock change rides on URL_DECK_CHANGED (its listener re-runs the tips).
@@ -372,7 +377,8 @@ function syncSidebarUTubEntry({ data }: { data: UtubDetail }): void {
   );
 }
 
-// Patches the matching utubs summary name in the store (no-op when unchanged).
+// Patches the matching utubs summary name in the store and row (no-op when
+// unchanged), re-sorting under name_az.
 function syncSidebarUTubName({
   utubID,
   utubName,
@@ -396,6 +402,7 @@ function syncSidebarUTubName({
         : utubSummary,
     ),
   });
+  syncRowNameAndOrder({ utubID, utubName });
 }
 
 // Additive: the caller continues into the normal diff afterwards.
