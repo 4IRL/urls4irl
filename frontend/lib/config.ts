@@ -138,6 +138,7 @@ export interface AppConstants {
   readonly URL_SCHEME_HINTS: Readonly<Record<string, string>>;
   readonly DEVICE_TYPE: DeviceTypeValues;
   readonly DEVICE_TYPE_DIM_KEY: string;
+  readonly SUPPRESSED_DIM_VALUE: string;
   readonly METRIC_FLOWS_MIN_STEPS: number;
   readonly METRIC_FLOWS_MAX_STEPS: number;
   readonly METRIC_FLOWS_MAX_FILTERS: number;

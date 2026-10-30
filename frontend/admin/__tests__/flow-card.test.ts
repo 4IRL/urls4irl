@@ -95,6 +95,164 @@ function buildAddUrlResponse(): FlowResponseSchema {
   };
 }
 
+function buildSuppressedStep(
+  overrides: Partial<FlowStepSchema> = {},
+): FlowStepSchema {
+  return buildStep({
+    count: 0,
+    pct_of_top: null,
+    count_suppressed: true,
+    ...overrides,
+  });
+}
+
+describe("renderFlowCard suppression", () => {
+  const ariaText = "Count suppressed (fewer than 5)";
+
+  function renderTwoStep({
+    top,
+    last,
+  }: {
+    top: FlowStepSchema;
+    last: FlowStepSchema;
+  }): HTMLElement {
+    return renderFlowCard({
+      id: "probe",
+      title: "Probe",
+      response: { steps: [top, last] },
+    });
+  }
+
+  it("renders a suppressed step as an announced en-dash with is-suppressed", () => {
+    const card = renderTwoStep({
+      top: buildStep({ count: 812 }),
+      last: buildSuppressedStep({ stream: "domain" }),
+    });
+
+    const row = card.querySelectorAll(".funnel-step")[1];
+    expect(row.classList.contains("is-suppressed")).toBe(true);
+    const count = row.querySelector(".step-count") as HTMLElement;
+    expect(count.textContent).toBe("–");
+    expect(count.getAttribute("role")).toBe("img");
+    expect(count.getAttribute("aria-label")).toBe(ariaText);
+    expect(count.title).toBe(ariaText);
+  });
+
+  it("leaves a normal step unchanged", () => {
+    const card = renderTwoStep({
+      top: buildStep({ count: 100 }),
+      last: buildStep({ count: 40, pct_of_top: 0.4 }),
+    });
+
+    const row = card.querySelectorAll(".funnel-step")[1];
+    expect(row.classList.contains("is-suppressed")).toBe(false);
+    const count = row.querySelector(".step-count") as HTMLElement;
+    expect(count.textContent).toBe("40");
+    expect(count.hasAttribute("role")).toBe(false);
+  });
+
+  it("shows an en-dash connector with the suppressed aria-label next to a suppressed step", () => {
+    const card = renderTwoStep({
+      top: buildStep({ count: 812 }),
+      last: buildSuppressedStep(),
+    });
+
+    const connector = card.querySelector(".funnel-connector") as HTMLElement;
+    expect(connector.querySelector(".arrow-dropoff")?.textContent).toBe("–");
+    expect(connector.getAttribute("aria-label")).toBe(ariaText);
+    expect(connector.getAttribute("aria-label")).not.toContain("drop-off");
+  });
+
+  it("renders a suppressed top step as an announced en-dash in the header and aria-label", () => {
+    const card = renderTwoStep({
+      top: buildSuppressedStep(),
+      last: buildStep({ count: 812, pct_of_top: null }),
+    });
+
+    const summary = card.querySelector(".flow-summary") as HTMLElement;
+    expect(summary.textContent).toBe("812 / – succeeded · – conversion");
+    const dash = summary.querySelector("span") as HTMLElement;
+    expect(dash.getAttribute("role")).toBe("img");
+    expect(dash.getAttribute("aria-label")).toBe(ariaText);
+    expect(dash.title).toBe(ariaText);
+    expect(card.getAttribute("aria-label")).toBe(
+      `Probe: 812 of ${ariaText} succeeded, – conversion`,
+    );
+    const connector = card.querySelector(".funnel-connector") as HTMLElement;
+    expect(connector.querySelector(".arrow-dropoff")?.textContent).toBe("–");
+    expect(connector.getAttribute("aria-label")).toBe(ariaText);
+  });
+
+  it("renders a suppressed last step without a 0 / N header", () => {
+    const card = renderTwoStep({
+      top: buildStep({ count: 812 }),
+      last: buildSuppressedStep(),
+    });
+
+    const summary = card.querySelector(".flow-summary") as HTMLElement;
+    expect(summary.textContent).toBe("– / 812 succeeded · – conversion");
+    expect(card.getAttribute("aria-label")).toBe(
+      `Probe: ${ariaText} of 812 succeeded, – conversion`,
+    );
+    expect(card.getAttribute("aria-label")).not.toContain("0 / 812");
+  });
+
+  it("renders a suppressed breakdown row with the bridged label and is-suppressed", () => {
+    const card = renderTwoStep({
+      top: buildStep({ count: 100 }),
+      last: buildStep({
+        count: 80,
+        pct_of_top: 0.8,
+        breakdown: [
+          buildBreakdownRow({
+            label: "suppressed",
+            count: 3,
+            pct_of_step: 0.3,
+          }),
+          buildBreakdownRow({
+            label: "escape_key",
+            count: 7,
+            pct_of_step: 0.7,
+          }),
+        ],
+      }),
+    });
+
+    const pills = card.querySelectorAll(".cause-pill");
+    expect(pills[0].classList.contains("is-suppressed")).toBe(true);
+    expect(pills[0].querySelector(".cause-label")?.textContent).toBe(
+      "suppressed (fewer than 5)",
+    );
+    expect(pills[0].getAttribute("aria-label")).toBe(
+      "suppressed (fewer than 5): 3",
+    );
+    expect(pills[1].classList.contains("is-suppressed")).toBe(false);
+    expect(pills[1].getAttribute("aria-label")).toBe("escape_key: 7");
+  });
+
+  it("does not render the empty state for an all-suppressed funnel", () => {
+    const card = renderTwoStep({
+      top: buildSuppressedStep(),
+      last: buildSuppressedStep(),
+    });
+
+    expect(card.querySelector(".flow-card-empty")).toBeNull();
+    expect(card.querySelectorAll(".funnel-step").length).toBe(2);
+  });
+
+  it("renders every bar at full width when pct_of_top is null", () => {
+    const card = renderTwoStep({
+      top: buildSuppressedStep(),
+      last: buildStep({ count: 10, pct_of_top: null }),
+    });
+
+    const rows = card.querySelectorAll<HTMLElement>(".funnel-step");
+    rows.forEach((row) => {
+      expect(row.style.getPropertyValue("--w")).toBe("100%");
+    });
+  });
+});
+
 describe("renderFlowCard", () => {
   it("renders N funnel-step rows and N-1 connectors for a 4-step flow", () => {
     const card = renderFlowCard({

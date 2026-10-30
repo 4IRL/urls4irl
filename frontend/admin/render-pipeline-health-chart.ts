@@ -55,6 +55,10 @@ const BATCH_SIZE_BUCKET_ORDER = ["1", "2-5", "6-25", "26-100"] as const;
 
 type BatchSizeBucket = (typeof BATCH_SIZE_BUCKET_ORDER)[number];
 
+// The suppressed column key is the output-only sentinel the server uses for
+// merged small cells (bridged as `SUPPRESSED_DIM_VALUE`), shown last.
+type ColumnKey = BatchSizeBucket | "suppressed";
+
 // Wire values for the (transport, device_type) tuple. Transport values come
 // from the API's `?transport=beacon` query param (default "fetch");
 // device_type values are the `DeviceType` IntEnum members (1 = MOBILE,
@@ -70,13 +74,15 @@ type StackSegmentKey =
   | "fetch-desktop"
   | "fetch-mobile"
   | "beacon-desktop"
-  | "beacon-mobile";
+  | "beacon-mobile"
+  | "suppressed";
 
 const STACK_SEGMENT_ORDER: readonly StackSegmentKey[] = [
   "fetch-desktop",
   "fetch-mobile",
   "beacon-desktop",
   "beacon-mobile",
+  "suppressed",
 ];
 
 const SEGMENT_CLASS_NAMES: Record<StackSegmentKey, string> = {
@@ -84,7 +90,22 @@ const SEGMENT_CLASS_NAMES: Record<StackSegmentKey, string> = {
   "fetch-mobile": "MetricsPipelineHealthBar--fetch-mobile",
   "beacon-desktop": "MetricsPipelineHealthBar--beacon-desktop",
   "beacon-mobile": "MetricsPipelineHealthBar--beacon-mobile",
+  suppressed: "MetricsPipelineHealthBar--suppressed",
 };
+
+function legendLabels(): Record<StackSegmentKey, string> {
+  return {
+    "fetch-desktop":
+      APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_LEGEND_FETCH_DESKTOP,
+    "fetch-mobile":
+      APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_LEGEND_FETCH_MOBILE,
+    "beacon-desktop":
+      APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_LEGEND_BEACON_DESKTOP,
+    "beacon-mobile":
+      APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_LEGEND_BEACON_MOBILE,
+    suppressed: APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_LEGEND_SUPPRESSED,
+  };
+}
 
 // Human-readable window label embedded in the SVG `<desc>` so the chart's
 // summary announces the active window to screen readers. Keys must stay
@@ -130,6 +151,9 @@ function segmentKeyForBucketDims(
   dimensions: GroupedTimeseriesBucket["dimensions"],
 ): StackSegmentKey | null {
   const transport = dimensions["transport"];
+  if (transport === APP_CONFIG.constants.SUPPRESSED_DIM_VALUE) {
+    return "suppressed";
+  }
   const deviceType = dimensions["device_type"];
   // device_type is an int wire value; transport is a string. Both come from
   // the JSONB payload typed loosely as `string | number` over the API.
@@ -165,15 +189,23 @@ function segmentKeyForBucketDims(
  */
 function aggregateByBatchSizeAndStack(
   response: GroupedTimeseriesResponseSchema,
-): Map<BatchSizeBucket, Map<StackSegmentKey, number>> {
-  const aggregated = new Map<BatchSizeBucket, Map<StackSegmentKey, number>>();
+): Map<ColumnKey, Map<StackSegmentKey, number>> {
+  const aggregated = new Map<ColumnKey, Map<StackSegmentKey, number>>();
   for (const responseBucket of response.buckets) {
-    const batchSizeBucket = responseBucket.dimensions["batch_size_bucket"];
-    if (!isBatchSizeBucket(batchSizeBucket)) {
-      continue;
-    }
     const segmentKey = segmentKeyForBucketDims(responseBucket.dimensions);
     if (segmentKey === null) {
+      continue;
+    }
+    // All non-device dims of a suppressed row read the sentinel, so it always
+    // lands in the dedicated suppressed column.
+    const rawBatchSize = responseBucket.dimensions["batch_size_bucket"];
+    const batchSizeBucket: ColumnKey | null =
+      segmentKey === "suppressed"
+        ? "suppressed"
+        : isBatchSizeBucket(rawBatchSize)
+          ? rawBatchSize
+          : null;
+    if (batchSizeBucket === null) {
       continue;
     }
     let perBatchSize = aggregated.get(batchSizeBucket);
@@ -189,14 +221,17 @@ function aggregateByBatchSizeAndStack(
 
 export function renderPipelineHealthChart({
   svg,
+  legend,
   response,
   window,
 }: {
   svg: SVGSVGElement;
+  legend: HTMLUListElement;
   response: GroupedTimeseriesResponseSchema;
   window: MetricsWindow;
 }): void {
   clearSvgChildren({ svg });
+  legend.replaceChildren();
 
   const windowLabel = WINDOW_LABELS[window];
 
@@ -215,8 +250,19 @@ export function renderPipelineHealthChart({
 
   const aggregated = aggregateByBatchSizeAndStack(response);
 
+  // The suppressed column exists only when the response has suppressed data;
+  // an only-suppressed response draws just that column.
+  const hasSuppressed = aggregated.has("suppressed");
+  const hasRealColumn = BATCH_SIZE_BUCKET_ORDER.some((batchSizeBucket) =>
+    aggregated.has(batchSizeBucket),
+  );
+  const columnKeys: ColumnKey[] = [
+    ...(hasRealColumn || !hasSuppressed ? BATCH_SIZE_BUCKET_ORDER : []),
+    ...(hasSuppressed ? (["suppressed"] as const) : []),
+  ];
+
   // Compute per-column totals so the y-domain covers the tallest stacked bar.
-  const columnTotals = BATCH_SIZE_BUCKET_ORDER.map((batchSizeBucket) => {
+  const columnTotals = columnKeys.map((batchSizeBucket) => {
     const perBatchSize = aggregated.get(batchSizeBucket);
     if (perBatchSize === undefined) {
       return 0;
@@ -229,6 +275,10 @@ export function renderPipelineHealthChart({
   });
   const maxColumnTotal = Math.max(...columnTotals);
   const totalBatches = columnTotals.reduce((sum, value) => sum + value, 0);
+  let suppressedCount = 0;
+  for (const stackedCount of aggregated.get("suppressed")?.values() ?? []) {
+    suppressedCount += stackedCount;
+  }
 
   // y-axis ticks: same pattern as render-timeseries-chart — `niceTicks` over
   // [0, max] with a step's worth of headroom so the topmost stack does not
@@ -264,7 +314,14 @@ export function renderPipelineHealthChart({
       windowLabel +
       " window, " +
       totalBatches +
-      " total batches)",
+      " total batches)" +
+      (suppressedCount > 0
+        ? " " +
+          APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_DESC_SUPPRESSED.replace(
+            "{{ count }}",
+            String(suppressedCount),
+          )
+        : ""),
   });
 
   // Rotated y-axis title on the left edge. Same pattern as the timeseries
@@ -308,17 +365,13 @@ export function renderPipelineHealthChart({
   // column ordered bottom-to-top. Skip `<rect>` creation for zero-height
   // segments to keep the DOM lean and avoid invisible rects intercepting
   // pointer events.
-  const totalColumns = BATCH_SIZE_BUCKET_ORDER.length;
+  const totalColumns = columnKeys.length;
   // X-axis tick labels sit just below the plot area; the X-axis title sits
   // one row beneath that. Both fit inside the AXIS_BOTTOM_PADDING band.
   const xLabelY = PLOT_HEIGHT + 16;
   const xAxisTitleY = xLabelY + X_AXIS_TITLE_OFFSET;
-  for (
-    let columnIndex = 0;
-    columnIndex < BATCH_SIZE_BUCKET_ORDER.length;
-    columnIndex += 1
-  ) {
-    const batchSizeBucket = BATCH_SIZE_BUCKET_ORDER[columnIndex];
+  for (let columnIndex = 0; columnIndex < totalColumns; columnIndex += 1) {
+    const batchSizeBucket = columnKeys[columnIndex]!;
     const perBatchSize = aggregated.get(batchSizeBucket);
     const segments = STACK_SEGMENT_ORDER.map((segmentKey) => ({
       value: perBatchSize?.get(segmentKey) ?? 0,
@@ -350,11 +403,19 @@ export function renderPipelineHealthChart({
     const columnCenter =
       AXIS_LEFT_PADDING + columnIndex * columnWidth + columnWidth / 2;
     const xLabel = document.createElementNS(SVG_NAMESPACE, "text");
-    xLabel.setAttribute("class", "MetricsAxisLabel MetricsAxisLabelX");
+    const isSuppressedColumn = batchSizeBucket === "suppressed";
+    xLabel.setAttribute(
+      "class",
+      isSuppressedColumn
+        ? "MetricsAxisLabel MetricsAxisLabelX is-suppressed"
+        : "MetricsAxisLabel MetricsAxisLabelX",
+    );
     xLabel.setAttribute("x", String(columnCenter));
     xLabel.setAttribute("y", String(xLabelY));
     xLabel.setAttribute("text-anchor", "middle");
-    xLabel.textContent = batchSizeBucket;
+    xLabel.textContent = isSuppressedColumn
+      ? APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_SUPPRESSED_COLUMN
+      : batchSizeBucket;
     svg.appendChild(xLabel);
   }
 
@@ -370,4 +431,27 @@ export function renderPipelineHealthChart({
   xAxisTitle.textContent =
     APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_AXIS_LABEL_X;
   svg.appendChild(xAxisTitle);
+
+  // Legend lists only the segments present in this response.
+  const labels = legendLabels();
+  const presentSegments = new Set<StackSegmentKey>();
+  for (const perBatchSize of aggregated.values()) {
+    for (const [segmentKey, segmentCount] of perBatchSize) {
+      if (segmentCount > 0) {
+        presentSegments.add(segmentKey);
+      }
+    }
+  }
+  for (const segmentKey of STACK_SEGMENT_ORDER) {
+    if (!presentSegments.has(segmentKey)) {
+      continue;
+    }
+    const swatch = document.createElement("span");
+    swatch.className = `swatch swatch--${segmentKey}`;
+    swatch.setAttribute("aria-hidden", "true");
+    const item = document.createElement("li");
+    item.appendChild(swatch);
+    item.appendChild(document.createTextNode(labels[segmentKey]));
+    legend.appendChild(item);
+  }
 }

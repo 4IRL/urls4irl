@@ -8,10 +8,14 @@ from playwright.sync_api import BrowserContext, Page
 
 from backend import db
 from backend.config import ConfigTestUI
+from backend.metrics.events import DeviceType, EventName
 from backend.metrics.flow_validation import serialize_flow_steps
 from backend.metrics.flows import FLOWS, FlowId, format_custom_flow_id
+from backend.metrics.suppression import MIN_CELL_COUNT
+from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.metric_flows import Metric_Flows
 from backend.models.users import User_Role, Users
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.playwright_utils import (
     create_user_session_and_provide_session_id,
@@ -83,6 +87,99 @@ def promote_user_to_admin(*, app: Flask, user_id: int) -> None:
             f"promote_user_to_admin: no Users row found for user_id={user_id}"
         )
         user_to_promote.role = User_Role.ADMIN
+        db.session.commit()
+
+
+SUB_FLOOR_ROW_BATCH_SIZE_BUCKETS: tuple[str, ...] = ("26-100", "101+")
+SUB_FLOOR_ROW_COUNT: int = MIN_CELL_COUNT - 2
+
+
+def insert_sub_floor_ingest_batch_row(*, app: Flask) -> None:
+    """Insert two `API_METRICS_INGEST_BATCH` rows, each below `MIN_CELL_COUNT`
+    with dims tuples distinct from the shared seed.
+
+    Their sum reaches the floor, so the sentinel folds exactly these two rows
+    and secondary suppression does not pull a seeded cell into it (which would
+    drop a seeded column). Rows sit at the current hour (inside the 24h
+    window). Cleanup is covered by the autouse `clear_db` fixture.
+    """
+    assert SUB_FLOOR_ROW_COUNT < MIN_CELL_COUNT
+    assert SUB_FLOOR_ROW_COUNT * len(SUB_FLOOR_ROW_BATCH_SIZE_BUCKETS) >= MIN_CELL_COUNT
+    with app.app_context():
+        current_hour = utc_now().replace(minute=0, second=0, microsecond=0)
+        for batch_size_bucket in SUB_FLOOR_ROW_BATCH_SIZE_BUCKETS:
+            db.session.add(
+                Anonymous_Metrics(
+                    event_name=EventName.API_METRICS_INGEST_BATCH.value,
+                    bucket_start=current_hour,
+                    endpoint=None,
+                    method=None,
+                    status_code=None,
+                    dimensions={
+                        "batch_size_bucket": batch_size_bucket,
+                        "transport": "beacon",
+                        "device_type": DeviceType.MOBILE.value,
+                    },
+                    count=SUB_FLOOR_ROW_COUNT,
+                )
+            )
+        db.session.commit()
+
+
+SUB_FLOOR_FLOW_COUNT: int = MIN_CELL_COUNT - 2
+FLOW_TOP_STEP_COUNT: int = MIN_CELL_COUNT * 2
+
+
+def insert_sub_floor_create_utub_flow_rows(*, app: Flask) -> None:
+    """Seed the built-in "Create UTub" flow so its `form=utub_create` submit
+    step and its same-filter cancel breakdown are both below `MIN_CELL_COUNT`.
+
+    The top step (`UI_UTUB_CREATE_OPEN`) is above the floor, so the card
+    renders; the dim-filtered step is floored and the lone sub-floor
+    breakdown row (no kept cell to fold in) renders as the suppressed pill.
+    Rows sit at the current hour (inside the window); cleanup is covered by
+    the autouse `clear_db` fixture.
+    """
+    current_hour = utc_now().replace(minute=0, second=0, microsecond=0)
+    device_type = DeviceType.DESKTOP.value
+    seeded_rows: list[tuple[EventName, int, dict[str, str | int]]] = [
+        (
+            EventName.UI_UTUB_CREATE_OPEN,
+            FLOW_TOP_STEP_COUNT,
+            {"device_type": device_type},
+        ),
+        (
+            EventName.UI_FORM_SUBMIT,
+            SUB_FLOOR_FLOW_COUNT,
+            {
+                "trigger": "button_click",
+                "form": "utub_create",
+                "device_type": device_type,
+            },
+        ),
+        (
+            EventName.UI_FORM_CANCEL,
+            SUB_FLOOR_FLOW_COUNT,
+            {
+                "trigger": "escape_key",
+                "form": "utub_create",
+                "device_type": device_type,
+            },
+        ),
+    ]
+    with app.app_context():
+        for event_name, count, dimensions in seeded_rows:
+            db.session.add(
+                Anonymous_Metrics(
+                    event_name=event_name.value,
+                    bucket_start=current_hour,
+                    endpoint=None,
+                    method=None,
+                    status_code=None,
+                    dimensions=dimensions,
+                    count=count,
+                )
+            )
         db.session.commit()
 
 
