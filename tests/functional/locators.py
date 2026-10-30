@@ -983,6 +983,17 @@ class MetricsDashboardLocators(GenericPageLocator):
     PIPELINE_HEALTH_BAR_BEACON_MOBILE = (
         "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--beacon-mobile"
     )
+    PIPELINE_HEALTH_LEGEND_SWATCH_SUPPRESSED = (
+        "#MetricsPipelineHealthLegend .swatch--suppressed"
+    )
+    PIPELINE_HEALTH_LEGEND_ITEMS = "#MetricsPipelineHealthLegend li"
+    PIPELINE_HEALTH_BAR_SUPPRESSED = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--suppressed"
+    )
+    PIPELINE_HEALTH_X_LABELS = "#MetricsPipelineHealthChart .MetricsAxisLabelX"
+    PIPELINE_HEALTH_X_LABEL_SUPPRESSED = (
+        "#MetricsPipelineHealthChart .MetricsAxisLabelX.is-suppressed"
+    )
     PIPELINE_HEALTH_EMPTY_STATE = "#MetricsPipelineHealthChart .MetricsEmptyState"
 
     # Flows tab (conversion funnels)
@@ -992,6 +1003,15 @@ class MetricsDashboardLocators(GenericPageLocator):
     FLOWS_FUNNEL_STEP = "#MetricsFlowGrid .flow-card .funnel-step"
     FLOWS_CAUSE_PILL = "#MetricsFlowGrid .flow-card .cause-pill"
     FLOWS_CARD_EMPTY = "#MetricsFlowGrid .flow-card .flow-card-empty"
+    FLOWS_FUNNEL_STEP_SUPPRESSED = (
+        "#MetricsFlowGrid .flow-card .funnel-step.is-suppressed"
+    )
+    FLOWS_FUNNEL_STEP_SUPPRESSED_COUNT = (
+        "#MetricsFlowGrid .flow-card .funnel-step.is-suppressed .step-count"
+    )
+    FLOWS_CAUSE_PILL_SUPPRESSED = (
+        "#MetricsFlowGrid .flow-card .cause-pill.is-suppressed"
+    )
     FLOWS_PANEL_ANNOUNCEMENT = "#MetricsPanelFlowsAnnouncement"
     FLOWS_TOOLBAR = "#MetricsPanelFlows .flows-toolbar"
     FLOWS_HEADING = "#MetricsFlowsHeading"

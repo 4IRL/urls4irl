@@ -7,6 +7,8 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 
 from backend.cli.metrics import (
+    AUDIT_NONE_PLACEHOLDER,
+    AUDIT_SECTION_COMBINATION_CAP,
     COVERAGE_SUMMARY_API_LABEL,
     COVERAGE_SUMMARY_HEADER,
 )
@@ -27,6 +29,47 @@ def test_audit_strict_exits_zero_on_clean_main(app: Flask) -> None:
     result = runner.invoke(args=["metrics", "audit", "--strict"])
 
     assert result.exit_code == 0, result.output
+
+
+def test_audit_prints_combination_cap_section_last_and_empty(app: Flask) -> None:
+    """
+    GIVEN a clean registry
+    WHEN `flask metrics audit` is invoked
+    THEN ensure the cap section is the sixth and last heading and reads `(none)`
+    """
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(args=["metrics", "audit"])
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.strip().splitlines()
+    headings = [line for line in lines if line.startswith("# ")]
+    assert len(headings) == 6
+    assert headings[-1] == AUDIT_SECTION_COMBINATION_CAP
+    assert lines[-2:] == [AUDIT_SECTION_COMBINATION_CAP, AUDIT_NONE_PLACEHOLDER]
+
+
+def test_audit_strict_fails_on_combination_cap_finding(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    GIVEN the cap helper reports an over-cap event
+    WHEN `flask metrics audit` runs with and without `--strict`
+    THEN ensure the finding is printed in its own section, `--strict` exits 1,
+        and the non-strict run exits 0
+    """
+    finding = "UI_URL_ACCESS: 1728 dimension combinations exceeds the cap of 700"
+    monkeypatch.setattr(
+        "backend.cli.metrics.diff_dimension_combination_cap", lambda: [finding]
+    )
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    strict_result = runner.invoke(args=["metrics", "audit", "--strict"])
+    plain_result = runner.invoke(args=["metrics", "audit"])
+
+    assert strict_result.exit_code == 1, strict_result.output
+    assert plain_result.exit_code == 0, plain_result.output
+    lines = strict_result.output.strip().splitlines()
+    assert lines[-2:] == [AUDIT_SECTION_COMBINATION_CAP, finding]
 
 
 def test_audit_strict_exits_non_zero_when_orphan_present(tmp_path: Path) -> None:

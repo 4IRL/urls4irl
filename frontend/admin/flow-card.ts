@@ -73,6 +73,34 @@ function formatPercent({ fraction }: { fraction: number | null }): string {
   return `${Math.round(fraction * 100)}%`;
 }
 
+// Render the suppressed-count en-dash on `element` as an announced image: a
+// bare aria-label on a generic span is not reliably read out, and `title`
+// explains it to sighted hover users.
+function applySuppressedDash({ element }: { element: HTMLElement }): void {
+  element.textContent = NULL_PCT_PLACEHOLDER;
+  element.setAttribute("role", "img");
+  element.setAttribute(
+    "aria-label",
+    APP_CONFIG.strings.METRICS_FLOW_COUNT_SUPPRESSED_ARIA,
+  );
+  element.title = APP_CONFIG.strings.METRICS_FLOW_COUNT_SUPPRESSED_ARIA;
+}
+
+function buildSummaryCount({ step }: { step: FlowStepSchema }): Node {
+  if (!step.count_suppressed) {
+    return document.createTextNode(step.count.toLocaleString());
+  }
+  const dash = document.createElement("span");
+  applySuppressedDash({ element: dash });
+  return dash;
+}
+
+function ariaCount({ step }: { step: FlowStepSchema }): string {
+  return step.count_suppressed
+    ? APP_CONFIG.strings.METRICS_FLOW_COUNT_SUPPRESSED_ARIA
+    : step.count.toLocaleString();
+}
+
 function buildEmptyState(): HTMLParagraphElement {
   const empty = document.createElement("p");
   empty.className = "flow-card-empty";
@@ -111,7 +139,12 @@ function buildStepRow({ step }: { step: FlowStepSchema }): HTMLDivElement {
 
   const count = document.createElement("span");
   count.className = "step-count";
-  count.textContent = step.count.toLocaleString();
+  if (step.count_suppressed) {
+    row.classList.add("is-suppressed");
+    applySuppressedDash({ element: count });
+  } else {
+    count.textContent = step.count.toLocaleString();
+  }
 
   const pct = document.createElement("span");
   pct.className = "step-pct";
@@ -136,9 +169,17 @@ function buildCausePill({
   // `pct_of_step` is always a float (never null) — write `--w` unconditionally.
   pill.style.setProperty("--w", `${row.pct_of_step * 100}%`);
 
+  const isSuppressed = row.label === APP_CONFIG.constants.SUPPRESSED_DIM_VALUE;
+  const displayLabel = isSuppressed
+    ? APP_CONFIG.strings.METRICS_SUPPRESSED_LABEL
+    : row.label;
+  if (isSuppressed) {
+    pill.classList.add("is-suppressed");
+  }
+
   const label = document.createElement("span");
   label.className = "cause-label";
-  label.textContent = row.label;
+  label.textContent = displayLabel;
 
   const causeCount = document.createElement("span");
   causeCount.className = "cause-count";
@@ -146,7 +187,7 @@ function buildCausePill({
 
   pill.appendChild(label);
   pill.appendChild(causeCount);
-  pill.setAttribute("aria-label", `${row.label}: ${row.count}`);
+  pill.setAttribute("aria-label", `${displayLabel}: ${row.count}`);
   return pill;
 }
 
@@ -167,16 +208,23 @@ function buildConnector({
   arrow.setAttribute("aria-hidden", "true");
   arrow.textContent = "↓";
   // Number of users that dropped off between the previous step and this step.
+  // Never computed from a floored `0`: a suppressed neighbor hides the number.
+  const eitherSuppressed =
+    previousStep.count_suppressed || step.count_suppressed;
   const dropoff = Math.max(previousStep.count - step.count, 0);
   const dropoffText = document.createElement("span");
   dropoffText.className = "arrow-dropoff";
-  dropoffText.textContent = `${dropoff.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_DROPOFF}`;
+  dropoffText.textContent = eitherSuppressed
+    ? NULL_PCT_PLACEHOLDER
+    : `${dropoff.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_DROPOFF}`;
   arrowRow.appendChild(arrow);
   arrowRow.appendChild(dropoffText);
   // Announce the drop-off count even when no per-cause breakdown exists.
   connector.setAttribute(
     "aria-label",
-    `${dropoff.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_DROPOFF}`,
+    eitherSuppressed
+      ? APP_CONFIG.strings.METRICS_FLOW_COUNT_SUPPRESSED_ARIA
+      : `${dropoff.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_DROPOFF}`,
   );
   connector.appendChild(arrowRow);
 
@@ -212,7 +260,9 @@ export function renderFlowCard({
   card.dataset.flowId = id;
 
   const steps = response.steps;
-  const allZero = steps.every((step) => step.count === 0);
+  const allZero = steps.every(
+    (step) => step.count === 0 && !step.count_suppressed,
+  );
 
   const topStep = steps[0];
   const lastStep = steps[steps.length - 1];
@@ -225,7 +275,12 @@ export function renderFlowCard({
   titleElement.textContent = title;
   const summary = document.createElement("span");
   summary.className = "flow-summary";
-  summary.textContent = `${lastStep.count.toLocaleString()} / ${topStep.count.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED} · ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`;
+  summary.append(
+    buildSummaryCount({ step: lastStep }),
+    " / ",
+    buildSummaryCount({ step: topStep }),
+    ` ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED} · ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`,
+  );
   header.appendChild(titleElement);
   header.appendChild(summary);
   card.appendChild(header);
@@ -234,7 +289,7 @@ export function renderFlowCard({
   // "Create UTub: 638 of 812 succeeded, 79% conversion".
   card.setAttribute(
     "aria-label",
-    `${title}: ${lastStep.count.toLocaleString()} of ${topStep.count.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED}, ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`,
+    `${title}: ${ariaCount({ step: lastStep })} of ${ariaCount({ step: topStep })} ${APP_CONFIG.strings.METRICS_FLOW_SUCCEEDED}, ${conversionPct} ${APP_CONFIG.strings.METRICS_FLOW_CONVERSION}`,
   );
 
   if (allZero) {

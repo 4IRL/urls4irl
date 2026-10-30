@@ -13,7 +13,36 @@ const ALL_BAR_CLASSES = [
   ".MetricsPipelineHealthBar--fetch-mobile",
   ".MetricsPipelineHealthBar--beacon-desktop",
   ".MetricsPipelineHealthBar--beacon-mobile",
+  ".MetricsPipelineHealthBar--suppressed",
 ] as const;
+
+const SUPPRESSED = "suppressed";
+
+function suppressedRow(count: number): GroupedTimeseriesBucket {
+  return {
+    bucket: "2026-06-06T00:00:00Z",
+    dimensions: {
+      batch_size_bucket: SUPPRESSED,
+      transport: SUPPRESSED,
+      device_type: 2,
+    },
+    count,
+  };
+}
+
+function fetchDesktopRow(count: number): GroupedTimeseriesBucket {
+  return {
+    bucket: "2026-06-06T00:00:00Z",
+    dimensions: { batch_size_bucket: "1", transport: "fetch", device_type: 2 },
+    count,
+  };
+}
+
+function legendTexts(legend: HTMLUListElement): string[] {
+  return Array.from(legend.querySelectorAll("li")).map(
+    (item) => item.textContent ?? "",
+  );
+}
 
 function buildResponse(
   buckets: GroupedTimeseriesBucket[],
@@ -33,8 +62,11 @@ function buildResponse(
 
 describe("renderPipelineHealthChart", () => {
   let svg: SVGSVGElement;
+  let legend: HTMLUListElement;
 
   beforeEach(() => {
+    legend = document.createElement("ul");
+    document.body.appendChild(legend);
     svg = document.createElementNS(
       SVG_NAMESPACE,
       "svg",
@@ -45,11 +77,112 @@ describe("renderPipelineHealthChart", () => {
 
   afterEach(() => {
     svg.remove();
+    legend.remove();
+  });
+
+  it("renders a suppressed row as its own last column with bar, label and legend", () => {
+    renderPipelineHealthChart({
+      svg,
+      legend,
+      response: buildResponse([fetchDesktopRow(10), suppressedRow(4)]),
+      window: "day",
+    });
+
+    expect(
+      svg.querySelectorAll(".MetricsPipelineHealthBar--suppressed").length,
+    ).toBe(1);
+    const labels = Array.from(svg.querySelectorAll(".MetricsAxisLabelX"));
+    // Four real columns + suppressed.
+    expect(labels.length).toBe(5);
+    const last = labels[labels.length - 1]!;
+    expect(last.textContent).toBe("suppressed (<5)");
+    expect(last.classList.contains("is-suppressed")).toBe(true);
+    expect(legendTexts(legend)).toEqual([
+      "fetch · desktop",
+      "suppressed (fewer than 5)",
+    ]);
+    expect(svg.querySelector("desc")?.textContent).toContain(
+      "4 batches in suppressed cells (fewer than 5 each).",
+    );
+  });
+
+  it("draws four columns and no suppressed legend entry without suppressed rows", () => {
+    renderPipelineHealthChart({
+      svg,
+      legend,
+      response: buildResponse([fetchDesktopRow(10)]),
+      window: "day",
+    });
+
+    expect(svg.querySelectorAll(".MetricsAxisLabelX").length).toBe(4);
+    expect(legend.querySelector(".swatch--suppressed")).toBeNull();
+    expect(svg.querySelector("desc")?.textContent).not.toContain(
+      "suppressed cells",
+    );
+  });
+
+  it("draws exactly one column for an only-suppressed response", () => {
+    renderPipelineHealthChart({
+      svg,
+      legend,
+      response: buildResponse([suppressedRow(3)]),
+      window: "day",
+    });
+
+    const labels = svg.querySelectorAll(".MetricsAxisLabelX");
+    expect(labels.length).toBe(1);
+    expect(labels[0]!.textContent).toBe("suppressed (<5)");
+    expect(svg.querySelectorAll("rect").length).toBe(1);
+    expect(legendTexts(legend)).toEqual(["suppressed (fewer than 5)"]);
+  });
+
+  it("lists legend entries in stack order and leaves no stale items on re-render", () => {
+    const buckets: GroupedTimeseriesBucket[] = [
+      {
+        bucket: "2026-06-06T00:00:00Z",
+        dimensions: {
+          batch_size_bucket: "1",
+          transport: "beacon",
+          device_type: 1,
+        },
+        count: 2,
+      },
+      fetchDesktopRow(5),
+      suppressedRow(2),
+    ];
+    renderPipelineHealthChart({
+      svg,
+      legend,
+      response: buildResponse(buckets),
+      window: "day",
+    });
+    expect(legendTexts(legend)).toEqual([
+      "fetch · desktop",
+      "beacon · mobile",
+      "suppressed (fewer than 5)",
+    ]);
+
+    renderPipelineHealthChart({
+      svg,
+      legend,
+      response: buildResponse([fetchDesktopRow(5)]),
+      window: "day",
+    });
+    expect(legendTexts(legend)).toEqual(["fetch · desktop"]);
+
+    renderPipelineHealthChart({
+      svg,
+      legend,
+      response: buildResponse([]),
+      window: "day",
+    });
+    expect(legend.querySelectorAll("li").length).toBe(0);
   });
 
   it("renders empty-state text and no rects when buckets are empty", () => {
     renderPipelineHealthChart({
       svg,
+      legend,
       response: buildResponse([]),
       window: "day",
     });
@@ -104,13 +237,16 @@ describe("renderPipelineHealthChart", () => {
     ];
     renderPipelineHealthChart({
       svg,
+      legend,
       response: buildResponse(buckets),
       window: "day",
     });
 
     for (const barClassSelector of ALL_BAR_CLASSES) {
       const rects = svg.querySelectorAll(barClassSelector);
-      expect(rects.length).toBe(1);
+      expect(rects.length).toBe(
+        barClassSelector.includes("suppressed") ? 0 : 1,
+      );
     }
 
     // All four rects belong to the same column ("2-5"), so their `x` is identical.
@@ -150,6 +286,7 @@ describe("renderPipelineHealthChart", () => {
     ];
     renderPipelineHealthChart({
       svg,
+      legend,
       response: buildResponse(buckets),
       window: "day",
     });
@@ -200,6 +337,7 @@ describe("renderPipelineHealthChart", () => {
     ];
     renderPipelineHealthChart({
       svg,
+      legend,
       response: buildResponse(buckets),
       window: "day",
     });
@@ -240,6 +378,7 @@ describe("renderPipelineHealthChart", () => {
     ];
     renderPipelineHealthChart({
       svg,
+      legend,
       response: buildResponse(buckets),
       window: "day",
     });

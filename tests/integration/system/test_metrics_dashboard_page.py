@@ -77,7 +77,7 @@ def test_dashboard_page_renders_pipeline_health_panel(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """Admin dashboard page renders the Pipeline Health card with its
-    SVG chart container and all four legend swatches.
+    SVG chart container and its (TS-populated, so empty) legend.
     """
     client, _, _, _ = login_admin_user_with_register
 
@@ -87,7 +87,3 @@ def test_dashboard_page_renders_pipeline_health_panel(
     assert b'id="MetricsPipelineHealth"' in response.data
     assert b'id="MetricsPipelineHealthChart"' in response.data
     assert b'id="MetricsPipelineHealthLegend"' in response.data
-    assert b"swatch--fetch-desktop" in response.data
-    assert b"swatch--fetch-mobile" in response.data
-    assert b"swatch--beacon-desktop" in response.data
-    assert b"swatch--beacon-mobile" in response.data

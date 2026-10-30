@@ -22,6 +22,7 @@ from backend.extensions.metrics.middleware import (
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics import query_service
 from backend.metrics.audit import (
+    diff_dimension_combination_cap,
     diff_dimension_literals_vs_registry,
     diff_registry_vs_event_name,
     find_missing_dimension_model_entries,
@@ -52,6 +53,7 @@ AUDIT_SECTION_DIM_DRIFT: str = (
     "# Dimension literal drift (EVENT_REGISTRY vs DIMENSION_MODELS Literals)"
 )
 AUDIT_SECTION_REGISTRY_DRIFT: str = "# EVENT_REGISTRY drift vs EventName enum"
+AUDIT_SECTION_COMBINATION_CAP: str = "# Dimension combination cap"
 
 # Coverage-summary TSV header. Three columns by design:
 #   Domain   — display label for the row (e.g. "API (auto)" or a Resource name).
@@ -321,14 +323,15 @@ def top_command(
     help="Exit non-zero if any finding category is non-empty.",
 )
 def audit_command(strict: bool) -> None:
-    """Run all five coverage-audit helpers and print findings as TSV.
+    """Run all six coverage-audit helpers and print findings as TSV.
 
     Intentionally does NOT require an app context: every helper is a pure
     AST + enum/dict walk against code-located state (no markdown, no DB,
     no Redis). The `event-coverage-staleness.yml` CI workflow invokes this
     command with `--strict` to gate PRs.
 
-    Output is grouped into five sections, each headed by `# <Section>`.
+    Output is grouped into six sections, each headed by `# <Section>`; the
+    last (`# Dimension combination cap`) lists one error per line.
     Empty sections print `(none)` so the format is stable and grep-able.
     """
     orphans = find_orphan_event_names()
@@ -336,6 +339,7 @@ def audit_command(strict: bool) -> None:
     missing_dimension_entries = find_missing_dimension_model_entries()
     dimension_literal_findings = diff_dimension_literals_vs_registry()
     registry_drift_findings = diff_registry_vs_event_name()
+    combination_cap_errors = diff_dimension_combination_cap()
 
     click.echo(AUDIT_SECTION_ORPHANS)
     if orphans:
@@ -379,8 +383,16 @@ def audit_command(strict: bool) -> None:
     else:
         click.echo(AUDIT_NONE_PLACEHOLDER)
 
+    click.echo(AUDIT_SECTION_COMBINATION_CAP)
+    if combination_cap_errors:
+        for cap_error in combination_cap_errors:
+            click.echo(cap_error)
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
     any_findings_present = bool(
-        orphans
+        combination_cap_errors
+        or orphans
         or string_literal_callers
         or missing_dimension_entries
         or dimension_literal_findings
