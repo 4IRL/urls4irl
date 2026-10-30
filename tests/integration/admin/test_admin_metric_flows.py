@@ -43,6 +43,7 @@ from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.metric_flow_strs import group_by_not_available_message
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.utils_for_test import get_csrf_token
 
@@ -515,6 +516,50 @@ def test_list_metric_flows_removed_event_reports_errors_like_flow_query(
     assert entry["first_invalid"] == _flow_query_invalid(client, flow_id)
     assert entry["first_invalid"] == first_invalid_detail(expected_errors).model_dump()
     assert entry["first_invalid"]["step_index"] == 1
+
+
+def test_list_metric_flows_unregistered_group_by_matches_flow_query_422(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a stored flow whose breakdown groups by a declared but unregistered
+          dim, and a second valid stored flow
+    WHEN the flow query and GET /admin/metrics/flows run
+    THEN the bad flow answers 422 with the distinct "cannot break down" text at
+         `steps.N.drop_breakdown.group_by`, the list reports the same
+         `first_invalid`, and the valid flow still returns 200
+    """
+    client, _, _, app = login_admin_user_with_register
+    steps = _valid_steps()
+    breakdown_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("drop_breakdown", {}).get("event_name") == "url_create_rejected"
+    )
+    steps[breakdown_index]["drop_breakdown"]["group_by"] = "device_type"
+    bad_id = format_custom_flow_id(
+        _insert_flow(app, display_name="Bad group by", definition={"steps": steps})
+    )
+    good_id = format_custom_flow_id(_insert_flow(app, display_name="Good flow"))
+
+    invalid = _flow_query_invalid(client, bad_id)
+
+    field = f"steps.{breakdown_index}.drop_breakdown.group_by"
+    assert invalid["field"] == field
+    assert invalid["step_index"] == breakdown_index
+    expected_text = group_by_not_available_message(
+        group_by="device_type", allowed=["reason"]
+    )
+    assert invalid["reason"] == expected_text
+    assert "does not exist" not in invalid["reason"]
+    flows = client.get(_FLOWS_URL).get_json()["flows"]
+    entry = next(flow for flow in flows if flow["id"] == bad_id)
+    assert entry["first_invalid"] == invalid
+    good = client.get(
+        f"{_FLOW_QUERY_URL}?flow_id={good_id}&window=day",
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert good.status_code == 200
 
 
 def test_list_metric_flows_flow_level_error_returns_raw_definition(

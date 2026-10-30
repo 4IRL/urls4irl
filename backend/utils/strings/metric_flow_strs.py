@@ -4,6 +4,8 @@ TypeScript never reads these (the browser shows whatever the server returns),
 so there is no bridge to ``APP_CONFIG.strings``.
 """
 
+from collections.abc import Sequence
+
 from backend.metrics.flow_limits import FLOW_LIMITS
 
 NAME_CHARACTERS_STR = "Use letters, numbers and punctuation only."
@@ -55,6 +57,19 @@ def method_not_allowed_message(*, allowed: list[str]) -> str:
 
 def unknown_field_message(*, value: str) -> str:
     return f"Field {echo_input(value)} does not exist for this event."
+
+
+def group_by_not_available_message(*, group_by: str, allowed: Sequence[str]) -> str:
+    if not allowed:
+        return "This event cannot be broken down."
+    allowed_text = ", ".join(f'"{name}"' for name in allowed)
+    shown = group_by
+    if len(shown) > FLOW_LIMITS.IDENTIFIER_MAX_LENGTH:
+        shown = shown[: FLOW_LIMITS.IDENTIFIER_MAX_LENGTH] + "..."
+    return (
+        f'Cannot break down this event by "{shown}". '
+        f"Allowed: {allowed_text}. Choose one or remove the breakdown."
+    )
 
 
 def duplicate_filter_message(*, dim_key: str) -> str:

@@ -6046,6 +6046,15 @@
               "type": "string"
             },
             "description": "date_trunc resolution: hour (default) or day."
+          },
+          {
+            "name": "partition_by_bucket",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "When false, counts are summed across all buckets in the window per dimension tuple and the small-cell floor applies to that window-wide cell; the response then carries one row per tuple, each with `bucket_start` equal to the window start truncated to `resolution` (`resolution` only labels that single synthetic bucket)."
           }
         ],
         "responses": {
@@ -10676,8 +10685,12 @@
         "description": "One dimension of a catalog event and how a flow may use it.",
         "properties": {
           "key": {
-            "description": "Dimension key, usable as a group_by key.",
+            "description": "Dimension key; usable as a group_by key only when `groupable` is true.",
             "type": "string"
+          },
+          "groupable": {
+            "description": "True when this dim is a valid breakdown group_by for the event (a member of a registered projection; always true for API_HIT's flat columns).",
+            "type": "boolean"
           },
           "filter_kind": {
             "description": "`values`: filter by one of `values`; `status_code`: filter by a 3-digit code from 100 to 599; `group_by_only`: not filterable.",
@@ -10692,7 +10705,7 @@
             "type": "array"
           }
         },
-        "required": ["key", "filter_kind", "values"],
+        "required": ["key", "groupable", "filter_kind", "values"],
         "type": "object"
       },
       "FlowCatalogEventGroupSchema": {
@@ -10822,6 +10835,11 @@
             ],
             "default": null,
             "description": "This step's count as a fraction of the funnel-top (steps[0]) count, capped at 1.0. Null when the top count is zero (division-by-zero guard, DD-6 graceful-degrade)."
+          },
+          "count_suppressed": {
+            "default": false,
+            "description": "True when 0 < count < MIN_CELL_COUNT on a step filtered by a non-device_type dimension; count is then reported as 0 and pct_of_top as null.",
+            "type": "boolean"
           },
           "breakdown": {
             "anyOf": [

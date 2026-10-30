@@ -19,6 +19,7 @@ from backend.metrics.latency import LatencyMetricName
 from backend.metrics.query_service import (
     grouped_count_by,
     grouped_count_scalar,
+    grouped_timeseries,
     latency_percentiles,
     latency_timeseries,
     summary,
@@ -1779,7 +1780,7 @@ def test_grouped_counts_filters_and_groups_by_dim(
             "trigger": "cancel_button",
             "device_type": int(DeviceType.DESKTOP),
         },
-        count=2,
+        count=5,
     )
     _insert_metric_row(
         metrics_pg_conn,
@@ -1808,7 +1809,7 @@ def test_grouped_counts_filters_and_groups_by_dim(
         assert isinstance(entry[0], str)
         assert isinstance(entry[1], int)
     result_dict = dict(result)
-    assert result_dict == {"escape_key": 7, "cancel_button": 2}
+    assert result_dict == {"escape_key": 7, "cancel_button": 5}
     # Descending-by-count ordering.
     assert result[0] == ("escape_key", 7)
 
@@ -1904,7 +1905,7 @@ def test_grouped_counts_group_by_set_returns_list_of_tuples(
             "trigger": "escape_key",
             "device_type": int(DeviceType.DESKTOP),
         },
-        count=1,
+        count=5,
     )
 
     with app.app_context():
@@ -1920,7 +1921,80 @@ def test_grouped_counts_group_by_set_returns_list_of_tuples(
         assert isinstance(entry, tuple)
         assert isinstance(entry[0], str)
         assert isinstance(entry[1], int)
-    assert result == [("escape_key", 1)]
+    assert result == [("escape_key", 5)]
+
+
+def test_grouped_counts_sub_floor_rows_merge_into_sentinel(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UI_FORM_CANCEL triggers with counts 9, 4 and 2
+    WHEN grouped_count_by groups by trigger
+    THEN the sub-floor rows are summed into a trailing `suppressed` pair.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    for trigger, count in (("escape_key", 9), ("cancel_button", 4), ("other", 2)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UI_FORM_CANCEL,
+            bucket_start=inside,
+            dimensions={
+                "form": "utub_create",
+                "trigger": trigger,
+                "device_type": int(DeviceType.DESKTOP),
+            },
+            count=count,
+        )
+
+    with app.app_context():
+        result = grouped_count_by(
+            event_name=EventName.UI_FORM_CANCEL,
+            window_start=window_start,
+            window_end=window_end,
+            group_by="trigger",
+        )
+
+    assert result == [("escape_key", 9), ("suppressed", 6)]
+
+
+def test_grouped_counts_api_hit_is_never_merged(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN an API_HIT row with a sub-floor count
+    WHEN grouped_count_by groups by status_code
+    THEN the row is returned unmerged (API_HIT is exempt from the floor).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        count=2,
+        endpoint="urls.create_url",
+        method="POST",
+        status_code=201,
+    )
+
+    with app.app_context():
+        result = grouped_count_by(
+            event_name=EventName.API_HIT,
+            window_start=window_start,
+            window_end=window_end,
+            group_by="status_code",
+        )
+
+    assert result == [("201", 2)]
 
 
 def test_grouped_counts_invalid_filter_key_nonapi_event_raises_value_error(
@@ -2002,6 +2076,57 @@ def test_grouped_counts_invalid_group_by_key_raises_value_error(
                 window_end=window_end,
                 dim_filter=[],
                 group_by="nonexistent",
+            )
+
+
+@pytest.mark.parametrize(
+    "event_name,group_by",
+    [
+        (EventName.UI_FORM_CANCEL, "form"),  # declared dim, not registered
+        (EventName.UI_URL_ACCESS, "device_type"),  # event with no projection
+        (EventName.API_METRICS_INGEST_BATCH, "endpoint"),  # API, not API_HIT
+    ],
+)
+def test_grouped_count_by_unregistered_projection_raises_value_error(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    event_name: EventName,
+    group_by: str,
+) -> None:
+    """
+    GIVEN a declared dim that is not a registered single-key projection
+    WHEN grouped_count_by is called
+    THEN ValueError is raised before any query result is returned.
+    """
+    window_end = _WINDOW_REFERENCE
+    with metrics_enabled_runner_app.app_context():
+        with pytest.raises(ValueError, match="not an allowed projection"):
+            grouped_count_by(
+                event_name=event_name,
+                window_start=window_end - timedelta(days=1),
+                window_end=window_end,
+                group_by=group_by,
+            )
+
+
+def test_grouped_timeseries_unregistered_projection_raises_value_error(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a strict subset of the Pipeline Health projection
+    WHEN grouped_timeseries is called
+    THEN ValueError is raised.
+    """
+    window_end = _WINDOW_REFERENCE
+    with metrics_enabled_runner_app.app_context():
+        with pytest.raises(ValueError, match="not an allowed projection"):
+            grouped_timeseries(
+                event_name=EventName.API_METRICS_INGEST_BATCH,
+                group_by=["transport", "device_type"],
+                window_start=window_end - timedelta(days=1),
+                window_end=window_end,
+                resolution="hour",
             )
 
 

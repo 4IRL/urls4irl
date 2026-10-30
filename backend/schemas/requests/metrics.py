@@ -449,6 +449,16 @@ class GroupedTimeseriesQuerySchema(BaseModel):
         default="hour",
         description="date_trunc resolution: hour (default) or day.",
     )
+    partition_by_bucket: bool = Field(
+        default=True,
+        description=(
+            "When false, counts are summed across all buckets in the window per "
+            "dimension tuple and the small-cell floor applies to that window-wide "
+            "cell; the response then carries one row per tuple, each with "
+            "`bucket_start` equal to the window start truncated to `resolution` "
+            "(`resolution` only labels that single synthetic bucket)."
+        ),
+    )
 
     @model_validator(mode="after")
     def _check_window_xor_range(self) -> Self:

@@ -27,6 +27,7 @@ from backend.models.metric_flows import Metric_Flows
 from backend.models.users import Users
 from backend.utils.strings.admin_portal_strs import ADMIN_ACTION_STRINGS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.metric_flow_strs import group_by_not_available_message
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.integration.system.test_metrics_query_endpoints import (
     _breakdown_raising,
@@ -337,6 +338,36 @@ def test_preview_missing_or_non_object_body_returns_root_error(
     assert _counts(app) == (0, 0)
 
 
+def test_preview_unregistered_breakdown_group_by_rejected_at_validation(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a draft whose breakdown groups by a declared but unregistered dim
+    WHEN previewed
+    THEN 400 names `steps.N.drop_breakdown.group_by` with the distinct message
+         at validation time (no count runs), and nothing is written
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    draft = _filtered_draft()
+    index = next(
+        position
+        for position, step in enumerate(draft["steps"])
+        if step.get("drop_breakdown", {}).get("event_name")
+        == EventName.URL_CREATE_REJECTED.value
+    )
+    draft["steps"][index]["drop_breakdown"]["group_by"] = "device_type"
+
+    response = _preview(client, csrf, draft)
+
+    assert response.status_code == 400
+    assert response.get_json()[STD_JSON.ERRORS] == {
+        f"steps.{index}.drop_breakdown.group_by": [
+            group_by_not_available_message(group_by="device_type", allowed=["reason"])
+        ]
+    }
+    assert _counts(app) == (0, 0)
+
+
 # ---------------------------------------------------------------------------
 # Count-time failures
 # ---------------------------------------------------------------------------
@@ -578,3 +609,63 @@ def test_preview_missing_csrf_token_returns_html_403(
     assert response.status_code == 403
     assert response.content_type.startswith("text/html")
     assert _counts(app) == (0, 0)
+
+
+# ---------------------------------------------------------------------------
+# Small-cell floor on dim-filtered steps
+# ---------------------------------------------------------------------------
+
+
+def _suppression_draft() -> dict[str, Any]:
+    """Submit step filtered on `form`, then the domain step (no breakdowns)."""
+    steps = _base_steps()
+    submit, domain = steps[1], steps[3]
+    submit.pop("drop_breakdown", None)
+    domain.pop("drop_breakdown", None)
+    return {"display_name": "Suppression probe", "steps": [submit, domain]}
+
+
+@pytest.mark.parametrize(
+    ("submit_count", "expected_count", "expected_suppressed"),
+    [(3, 0, True), (5, 5, False)],
+)
+def test_preview_floors_dim_filtered_step_below_min_cell_count(
+    login_admin_user_with_register: AdminSession,
+    submit_count: int,
+    expected_count: int,
+    expected_suppressed: bool,
+) -> None:
+    """
+    GIVEN a draft whose step is filtered on `form` with 3 or 5 events
+    WHEN previewed
+    THEN 3 events report count 0 + count_suppressed true + null pct_of_top, and
+        5 events report the real count unflagged
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UI_FORM_SUBMIT,
+            category=EventCategory.UI,
+            bucket_start=_bucket_inside_window(),
+            count=submit_count,
+            dimensions={
+                "trigger": "button_click",
+                "form": "url_create",
+                "device_type": 2,
+            },
+        )
+        _seed_event_with_count(
+            event_name=EventName.URL_ADDED_TO_UTUB,
+            category=EventCategory.DOMAIN,
+            bucket_start=_bucket_inside_window(),
+            count=10,
+            dimensions={"device_type": 2},
+        )
+
+    response = _preview(client, csrf, _suppression_draft())
+
+    assert response.status_code == 200
+    step = response.get_json()["steps"][0]
+    assert step["count"] == expected_count
+    assert step["count_suppressed"] is expected_suppressed
+    assert (step["pct_of_top"] is None) is expected_suppressed

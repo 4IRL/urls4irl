@@ -394,6 +394,7 @@ def query_grouped_timeseries() -> FlaskResponse:
             window_start=window_start,
             window_end=window_end,
             resolution=parsed.resolution,
+            partition_by_bucket=parsed.partition_by_bucket,
         )
     except ValueError as validation_error:
         return build_field_error_response(

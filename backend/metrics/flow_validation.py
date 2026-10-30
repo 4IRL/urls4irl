@@ -30,6 +30,10 @@ from backend.metrics.events import (
 from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.flows import FlowDefinition, FlowStep, FlowStepBreakdown
 from backend.metrics.query_service import validate_dim_keys
+from backend.metrics.suppression import (
+    single_key_group_by_choices,
+    validate_group_by_projection,
+)
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.metric_flow_strs import (
     API_STEP_NO_EVENT_STR,
@@ -50,6 +54,7 @@ from backend.utils.strings.metric_flow_strs import (
     WRONG_TYPE_TEXT_STR,
     duplicate_filter_message,
     filters_too_many_message,
+    group_by_not_available_message,
     method_not_allowed_message,
     steps_too_few_message,
     steps_too_many_message,
@@ -325,6 +330,17 @@ def _check_group_by(
         validate_dim_keys(event_name=event, dim_filter=[], group_by=group_by)
     except ValueError:
         _add_error(errors, path, unknown_field_message(value=group_by))
+        return
+    try:
+        validate_group_by_projection(event, [group_by])
+    except ValueError:
+        _add_error(
+            errors,
+            path,
+            group_by_not_available_message(
+                group_by=group_by, allowed=single_key_group_by_choices(event)
+            ),
+        )
 
 
 def _check_breakdown(
