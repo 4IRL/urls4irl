@@ -152,3 +152,6 @@ class ADMIN_METRICS_STRINGS:
         "Showing daily trend for this long window; hourly detail is only "
         "available within the last 35 days."
     )
+    METRICS_TIMESERIES_DAILY_RESOLUTION_NOTE: str = (
+        "Daily totals in UTC. The current day appears after it ends."
+    )

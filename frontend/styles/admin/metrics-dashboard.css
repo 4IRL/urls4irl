@@ -982,6 +982,14 @@
     align-self: flex-start;
 }
 
+/* Daily-resolution caption above the per-event timeseries chart. */
+.ts-daily-note {
+    color: var(--cardURLTextColor);
+    font-size: 0.82rem;
+    font-style: italic;
+    margin: 0 0 10px;
+}
+
 /* The percentile table renders as responsive cards at EVERY width — the column
  * table truncated endpoint names on any narrow-ish screen. The header row is
  * hidden (its labels move into each cell via data-label) and each endpoint is a

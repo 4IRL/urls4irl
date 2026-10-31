@@ -774,6 +774,8 @@ const appConfig = {
       "Summary percentiles for this window are approximate (daily rollup); the per-day trend below is exact.",
     METRICS_LATENCY_DAILY_RESOLUTION_NOTE:
       "Showing daily trend for this long window; hourly detail is only available within the last 35 days.",
+    METRICS_TIMESERIES_DAILY_RESOLUTION_NOTE:
+      "Daily totals in UTC. The current day appears after it ends.",
     SETTINGS_ACCOUNT_PENDING_EMAIL_NOTE:
       "Pending change to {email} — check that inbox for the confirmation link.",
     SETTINGS_EXPORT_PREPARING: "Preparing your export…",
