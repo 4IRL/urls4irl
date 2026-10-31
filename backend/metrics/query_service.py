@@ -4,12 +4,14 @@ from datetime import datetime, time, timedelta, timezone
 from typing import Literal, NamedTuple
 
 from flask import current_app
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Query
+from sqlalchemy.sql.elements import ColumnElement
 
 from backend import db
 from backend.extensions.metrics.writer import MetricsWriter
 from backend.metrics.dimension_models import DIMENSION_MODELS
+from backend.metrics.event_registry import DAILY_BUCKET_EVENTS
 from backend.metrics.events import (
     DEVICE_TYPE_DIM_KEY,
     EVENT_CATEGORY,
@@ -116,6 +118,35 @@ def _device_type_filter(query: Query, device_type: DeviceType | None) -> Query:
     )
 
 
+def _floor_utc_day(value: datetime) -> datetime:
+    """Floor `value` to 00:00 of its UTC date (naive values are taken as UTC)."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return _truncate_to_resolution(value.astimezone(timezone.utc), "day")
+
+
+def _window_clause(window_start: datetime, window_end: datetime) -> ColumnElement[bool]:
+    """Return the window predicate for `Anonymous_Metrics.bucket_start`.
+
+    Daily-bucket events count complete UTC days only: both ends are floored to
+    UTC midnight, so the current day stays hidden and contiguous windows never
+    share a day. All other events keep the exact half-open `[start, end)`.
+    """
+    daily_names = [event.value for event in DAILY_BUCKET_EVENTS]
+    return or_(
+        and_(
+            Anonymous_Metrics.event_name.in_(daily_names),
+            Anonymous_Metrics.bucket_start >= _floor_utc_day(window_start),
+            Anonymous_Metrics.bucket_start < _floor_utc_day(window_end),
+        ),
+        and_(
+            Anonymous_Metrics.event_name.not_in(daily_names),
+            Anonymous_Metrics.bucket_start >= window_start,
+            Anonymous_Metrics.bucket_start < window_end,
+        ),
+    )
+
+
 def _per_endpoint_counts(
     *,
     window_start: datetime,
@@ -159,10 +190,7 @@ def _per_event_counts(
     query = (
         db.session.query(Anonymous_Metrics.event_name, total_count)
         .join(Event_Registry, Event_Registry.name == Anonymous_Metrics.event_name)
-        .filter(
-            Anonymous_Metrics.bucket_start >= window_start,
-            Anonymous_Metrics.bucket_start < window_end,
-        )
+        .filter(_window_clause(window_start, window_end))
     )
     if category is not None:
         query = query.filter(Event_Registry.category == category)
@@ -298,10 +326,7 @@ def top_events(
             total_count,
         )
         .join(Event_Registry, Event_Registry.name == Anonymous_Metrics.event_name)
-        .filter(
-            Anonymous_Metrics.bucket_start >= window_start,
-            Anonymous_Metrics.bucket_start < window_end,
-        )
+        .filter(_window_clause(window_start, window_end))
     )
     if category is not None:
         query = query.filter(Event_Registry.category == category)
@@ -517,8 +542,7 @@ def grouped_timeseries(
     count_column = func.sum(Anonymous_Metrics.count).label("count")
     query = db.session.query(bucket_column, *dim_columns, count_column).filter(
         Anonymous_Metrics.event_name == event_name.value,
-        Anonymous_Metrics.bucket_start >= window_start,
-        Anonymous_Metrics.bucket_start < window_end,
+        _window_clause(window_start, window_end),
     )
     rows = (
         query.group_by(bucket_column, *dim_columns)
@@ -686,8 +710,7 @@ def _build_grouped_count_query(
     is_api_event = EVENT_CATEGORY[event_name] is EventCategory.API
     base_filters = [
         Anonymous_Metrics.event_name == event_name.value,
-        Anonymous_Metrics.bucket_start >= window_start,
-        Anonymous_Metrics.bucket_start < window_end,
+        _window_clause(window_start, window_end),
     ]
 
     if is_api_event:
@@ -825,10 +848,7 @@ def _by_category(start: datetime, end: datetime) -> dict[str, int]:
             func.sum(Anonymous_Metrics.count).label("total"),
         )
         .join(Event_Registry, Event_Registry.name == Anonymous_Metrics.event_name)
-        .filter(
-            Anonymous_Metrics.bucket_start >= start,
-            Anonymous_Metrics.bucket_start < end,
-        )
+        .filter(_window_clause(start, end))
         .group_by(Event_Registry.category)
         .all()
     )

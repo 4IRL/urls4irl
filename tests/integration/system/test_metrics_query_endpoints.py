@@ -191,7 +191,7 @@ def test_query_top_admin_happy_path_returns_seeded_rows(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
-    GIVEN an admin client and one seeded UTUB_OPENED row inside the window
+    GIVEN an admin client and one seeded UTUB_CREATED row inside the window
     WHEN GETing /api/metrics/query/top?window=day
     THEN the response is 200, JSON contains `events`, `window`, `window_start`,
         `window_end`, `category` aliases, and the description round-trips
@@ -200,7 +200,7 @@ def test_query_top_admin_happy_path_returns_seeded_rows(
     logged_in_client, _, _, app = login_admin_user_with_register
     with app.app_context():
         _seed_event_with_count(
-            event_name=EventName.UTUB_OPENED,
+            event_name=EventName.UTUB_CREATED,
             category=EventCategory.DOMAIN,
             bucket_start=_bucket_inside_window(),
             count=5,
@@ -218,9 +218,9 @@ def test_query_top_admin_happy_path_returns_seeded_rows(
     assert body["window"] == "day"
     assert len(body["events"]) == 1
     seeded_event = body["events"][0]
-    assert seeded_event["event_name"] == EventName.UTUB_OPENED.value
+    assert seeded_event["event_name"] == EventName.UTUB_CREATED.value
     assert seeded_event["total_count"] == 5
-    assert seeded_event["description"] == EVENT_DESCRIPTIONS[EventName.UTUB_OPENED]
+    assert seeded_event["description"] == EVENT_DESCRIPTIONS[EventName.UTUB_CREATED]
     assert seeded_event["previous_count"] == 0
 
 
@@ -381,7 +381,7 @@ def test_query_summary_admin_happy_path_returns_by_category_list(
         current_bucket = _bucket_inside_window()
         previous_bucket = current_bucket - timedelta(days=1)
         _seed_event_with_count(
-            event_name=EventName.UTUB_OPENED,
+            event_name=EventName.UTUB_CREATED,
             category=EventCategory.DOMAIN,
             bucket_start=current_bucket,
             count=10,
@@ -427,7 +427,7 @@ def test_query_summary_admin_happy_path_returns_by_category_list(
     "url",
     [
         _TOP_URL + "?window=day",
-        _TIMESERIES_URL + "?window=day&event_name=" + EventName.UTUB_OPENED.value,
+        _TIMESERIES_URL + "?window=day&event_name=" + EventName.UTUB_CREATED.value,
         _SUMMARY_URL + "?window=day",
     ],
 )
@@ -484,7 +484,7 @@ def test_query_top_absolute_range_returns_seeded_rows(
     with app.app_context():
         bucket = _bucket_inside_window()
         _seed_event_with_count(
-            event_name=EventName.UTUB_OPENED,
+            event_name=EventName.UTUB_CREATED,
             category=EventCategory.DOMAIN,
             bucket_start=bucket,
             count=7,
@@ -547,7 +547,7 @@ def test_query_summary_absolute_range_returns_by_category_list(
     with app.app_context():
         bucket = _bucket_inside_window()
         _seed_event_with_count(
-            event_name=EventName.UTUB_OPENED,
+            event_name=EventName.UTUB_CREATED,
             category=EventCategory.DOMAIN,
             bucket_start=bucket,
             count=11,
@@ -592,7 +592,7 @@ def _admin_get(logged_in_client: FlaskClient, base_url: str, query: str):
     "base_url,extra_required",
     [
         (_TOP_URL, ""),
-        (_TIMESERIES_URL, f"&event_name={EventName.UTUB_OPENED.value}"),
+        (_TIMESERIES_URL, f"&event_name={EventName.UTUB_CREATED.value}"),
         (_SUMMARY_URL, ""),
     ],
     ids=["top", "timeseries", "summary"],
