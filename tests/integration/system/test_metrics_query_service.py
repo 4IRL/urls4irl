@@ -6,7 +6,9 @@ from typing import Any, Generator
 
 import pytest
 from flask import Flask
+from sqlalchemy import text
 
+from backend import db
 from backend.extensions.metrics.buckets import previous_window
 from backend.metrics.events import (
     EVENT_CATEGORY,
@@ -586,7 +588,7 @@ def test_timeseries_groups_by_resolution(
     metrics_pg_conn: Any,
 ) -> None:
     """
-    GIVEN two UTUB_OPENED rows in two distinct hour buckets within a 1-day
+    GIVEN two UTUB_CREATED rows in two distinct hour buckets within a 1-day
         window aligned on the hour
     WHEN timeseries is called with resolution="hour"
     THEN 24 chronologically-ordered buckets are returned (one per hour) with
@@ -602,30 +604,35 @@ def test_timeseries_groups_by_resolution(
 
     _insert_metric_row(
         metrics_pg_conn,
-        event_name=EventName.UTUB_OPENED,
+        event_name=EventName.UTUB_CREATED,
         bucket_start=first_bucket,
         count=3,
     )
     _insert_metric_row(
         metrics_pg_conn,
-        event_name=EventName.UTUB_OPENED,
+        event_name=EventName.UTUB_CREATED,
         bucket_start=second_bucket,
         count=4,
     )
 
     with app.app_context():
-        hourly = timeseries(
-            event_name=EventName.UTUB_OPENED,
+        hourly_result = timeseries(
+            event_name=EventName.UTUB_CREATED,
             window_start=window_start,
             window_end=window_end,
             resolution="hour",
         )
-        daily = timeseries(
-            event_name=EventName.UTUB_OPENED,
+        daily_result = timeseries(
+            event_name=EventName.UTUB_CREATED,
             window_start=window_start,
             window_end=window_end,
             resolution="day",
         )
+
+    hourly = hourly_result.buckets
+    daily = daily_result.buckets
+    assert hourly_result.resolution == "hour"
+    assert daily_result.resolution == "day"
 
     assert len(hourly) == 24
     bucket_starts = [row.bucket for row in hourly]
@@ -664,19 +671,20 @@ def test_timeseries_zero_fills_when_no_rows_in_window(
             'SELECT COUNT(*) FROM "AnonymousMetrics"'
             ' WHERE "eventName" = %s AND "bucketStart" >= %s'
             ' AND "bucketStart" < %s',
-            (EventName.UTUB_OPENED.value, window_start, window_end),
+            (EventName.UTUB_CREATED.value, window_start, window_end),
         )
         existing_count = cur.fetchone()[0]
     assert existing_count == 0
 
     with app.app_context():
-        rows = timeseries(
-            event_name=EventName.UTUB_OPENED,
+        result = timeseries(
+            event_name=EventName.UTUB_CREATED,
             window_start=window_start,
             window_end=window_end,
             resolution="hour",
         )
 
+    rows = result.buckets
     assert len(rows) == 24
     assert all(row.count == 0 for row in rows)
     bucket_starts = [row.bucket for row in rows]
@@ -704,13 +712,14 @@ def test_timeseries_zero_fills_with_unaligned_window_start(
     window_start = (window_end - timedelta(days=1)).replace(minute=37)
 
     with app.app_context():
-        rows = timeseries(
-            event_name=EventName.UTUB_OPENED,
+        result = timeseries(
+            event_name=EventName.UTUB_CREATED,
             window_start=window_start,
             window_end=window_end,
             resolution="hour",
         )
 
+    rows = result.buckets
     # 24 buckets: the leading partial bucket (truncated hour containing
     # window_start) through to the last full hour bucket before window_end.
     assert len(rows) == 24
@@ -768,7 +777,7 @@ def test_timeseries_filters_by_endpoint_and_method(
     )
 
     with app.app_context():
-        rows = timeseries(
+        result = timeseries(
             event_name=EventName.API_HIT,
             window_start=window_start,
             window_end=window_end,
@@ -777,6 +786,7 @@ def test_timeseries_filters_by_endpoint_and_method(
             method="GET",
         )
 
+    rows = result.buckets
     assert len(rows) == 24
     nonzero = [row for row in rows if row.count != 0]
     assert len(nonzero) == 1
@@ -1700,7 +1710,7 @@ def test_timeseries_filters_by_device_type(
     )
 
     with app.app_context():
-        rows = timeseries(
+        result = timeseries(
             event_name=EventName.UI_UTUB_SELECT,
             window_start=window_start,
             window_end=window_end,
@@ -1708,11 +1718,180 @@ def test_timeseries_filters_by_device_type(
             device_type=int(filter_device_type),
         )
 
+    rows = result.buckets
     assert len(rows) == 24
     nonzero = [row for row in rows if row.count != 0]
     assert len(nonzero) == 1
     assert nonzero[0].count == expected_count
     assert nonzero[0].bucket == inside
+
+
+def test_timeseries_daily_event_returns_complete_days_as_day_resolution(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows at three UTC midnights and a mid-day window
+    WHEN timeseries is called with resolution="hour"
+    THEN the result reports "day", covers complete UTC days only (current day
+        excluded) and zero-fills days without rows.
+    """
+    window_end = _WINDOW_REFERENCE  # 2026-01-15 12:00 UTC
+    window_start = window_end - timedelta(days=3)  # 2026-01-12 12:00 UTC
+    day_13 = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    day_14 = datetime(2026, 1, 14, tzinfo=timezone.utc)
+    day_15 = datetime(2026, 1, 15, tzinfo=timezone.utc)
+    for bucket_start, count in ((day_13, 5), (day_15, 9)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        result = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
+        )
+
+    assert result.resolution == "day"
+    # [floor(Jan 12 12:00), floor(Jan 15 12:00)) = Jan 12, 13, 14
+    assert [(row.bucket, row.count) for row in result.buckets] == [
+        (datetime(2026, 1, 12, tzinfo=timezone.utc), 0),
+        (day_13, 5),
+        (day_14, 0),
+    ]
+
+
+def test_timeseries_daily_event_without_complete_day_is_empty(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a window inside a single UTC day
+    WHEN timeseries is called for a daily event
+    THEN no buckets are returned and the resolution is "day".
+    """
+    with metrics_enabled_runner_app.app_context():
+        result = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=_WINDOW_REFERENCE - timedelta(hours=6),
+            window_end=_WINDOW_REFERENCE,
+            resolution="hour",
+        )
+
+    assert result.resolution == "day"
+    assert result.buckets == []
+
+
+def test_timeseries_daily_event_offset_range_keys_by_utc_midnight(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows at UTC midnights and an explicit -07:00 range
+    WHEN timeseries is called
+    THEN buckets are keyed at UTC midnights with the counts in the right
+        buckets (never local-midnight keys that miss the UTC keys).
+    """
+    tz_minus_7 = timezone(timedelta(hours=-7))
+    # 2026-01-12 20:00 -07:00 = Jan 13 03:00 UTC; end Jan 15 20:00 -07:00 =
+    # Jan 16 03:00 UTC. Complete UTC days: Jan 13, 14, 15.
+    window_start = datetime(2026, 1, 12, 20, 0, tzinfo=tz_minus_7)
+    window_end = datetime(2026, 1, 15, 20, 0, tzinfo=tz_minus_7)
+    for day, count in ((13, 2), (14, 3), (15, 4)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=datetime(2026, 1, day, tzinfo=timezone.utc),
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        result = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
+        )
+
+    assert [(row.bucket, row.count) for row in result.buckets] == [
+        (datetime(2026, 1, 13, tzinfo=timezone.utc), 2),
+        (datetime(2026, 1, 14, tzinfo=timezone.utc), 3),
+        (datetime(2026, 1, 15, tzinfo=timezone.utc), 4),
+    ]
+
+
+def test_timeseries_day_groups_under_utc_date_with_non_utc_session_timezone(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a midnight-UTC UTUB_OPENED row and a Los Angeles session timezone on
+        the session the service reads through
+    WHEN timeseries runs
+    THEN the row is grouped under its own UTC date (without the three-argument
+        `date_trunc` it would land on the previous local day and read zero).
+    """
+    day = datetime(2026, 1, 14, tzinfo=timezone.utc)
+    _insert_metric_row(
+        metrics_pg_conn, event_name=EventName.UTUB_OPENED, bucket_start=day, count=6
+    )
+
+    with metrics_enabled_runner_app.app_context():
+        db.session.execute(text("SET LOCAL TIME ZONE 'America/Los_Angeles'"))
+        result = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=datetime(2026, 1, 13, tzinfo=timezone.utc),
+            window_end=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            resolution="day",
+        )
+        db.session.rollback()
+
+    assert [(row.bucket, row.count) for row in result.buckets] == [
+        (datetime(2026, 1, 13, tzinfo=timezone.utc), 0),
+        (day, 6),
+    ]
+
+
+def test_grouped_timeseries_day_groups_under_utc_date_with_non_utc_session_timezone(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a midnight-UTC API_METRICS_INGEST_BATCH row and a Los Angeles
+        session timezone on the session the service reads through
+    WHEN grouped_timeseries runs at day resolution
+    THEN the row's bucket is its own UTC date, not the previous local day.
+    """
+    day = datetime(2026, 1, 14, tzinfo=timezone.utc)
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_METRICS_INGEST_BATCH,
+        bucket_start=day,
+        dimensions={
+            "batch_size_bucket": "1",
+            "transport": "fetch",
+            "device_type": 2,
+        },
+        count=1000,
+    )
+
+    with metrics_enabled_runner_app.app_context():
+        db.session.execute(text("SET LOCAL TIME ZONE 'America/Los_Angeles'"))
+        response = grouped_timeseries(
+            event_name=EventName.API_METRICS_INGEST_BATCH,
+            group_by=["batch_size_bucket", "transport", "device_type"],
+            window_start=datetime(2026, 1, 13, tzinfo=timezone.utc),
+            window_end=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            resolution="day",
+        )
+        db.session.rollback()
+
+    assert [bucket.bucket for bucket in response.buckets] == [day]
 
 
 # --------------------------- grouped_counts --------------------------------

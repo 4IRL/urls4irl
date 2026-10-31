@@ -233,7 +233,7 @@ def test_query_timeseries_admin_happy_path_returns_seeded_buckets(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
-    GIVEN an admin client and one seeded UTUB_OPENED row inside the window
+    GIVEN an admin client and one seeded UTUB_CREATED row inside the window
     WHEN GETing /api/metrics/query/timeseries?window=day&event_name=<valid>
         &resolution=hour
     THEN the response is 200, JSON contains the full timeseries envelope
@@ -243,7 +243,7 @@ def test_query_timeseries_admin_happy_path_returns_seeded_buckets(
     logged_in_client, _, _, app = login_admin_user_with_register
     with app.app_context():
         _seed_event_with_count(
-            event_name=EventName.UTUB_OPENED,
+            event_name=EventName.UTUB_CREATED,
             category=EventCategory.DOMAIN,
             bucket_start=_bucket_inside_window(),
             count=3,
@@ -252,7 +252,7 @@ def test_query_timeseries_admin_happy_path_returns_seeded_buckets(
     url = (
         _TIMESERIES_URL
         + "?window=day&event_name="
-        + EventName.UTUB_OPENED.value
+        + EventName.UTUB_CREATED.value
         + "&resolution=hour"
     )
     response = logged_in_client.get(url, headers=_AJAX_HEADERS)
@@ -265,12 +265,91 @@ def test_query_timeseries_admin_happy_path_returns_seeded_buckets(
     assert "window_start" in body
     assert "window_end" in body
     assert "buckets" in body
-    assert body["event_name"] == EventName.UTUB_OPENED.value
+    assert body["event_name"] == EventName.UTUB_CREATED.value
     assert body["window"] == "day"
     assert body["resolution"] == "hour"
     assert isinstance(body["buckets"], list)
     assert len(body["buckets"]) >= 1
     assert sum(bucket["count"] for bucket in body["buckets"]) == 3
+
+
+@pytest.mark.parametrize("requested", ["hour", "day"])
+def test_query_timeseries_daily_event_echoes_day_resolution(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    requested: str,
+) -> None:
+    """
+    GIVEN an admin client and a daily-stored event (UTUB_OPENED)
+    WHEN GETing timeseries over a week with resolution=<requested>
+    THEN the response echoes resolution "day" with exactly seven zero-filled
+        midnight-UTC buckets ending at yesterday.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    url = (
+        f"{_TIMESERIES_URL}?window=week&event_name={EventName.UTUB_OPENED.value}"
+        f"&resolution={requested}"
+    )
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["resolution"] == "day"
+    assert len(body["buckets"]) == 7
+    bucket_starts = [_parse_iso(bucket["bucket"]) for bucket in body["buckets"]]
+    # Compare against the route's own window_end (floored) so a run straddling
+    # 00:00 UTC cannot disagree with the server's notion of "now".
+    last_complete_day = _parse_iso(body["window_end"]).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) - timedelta(days=1)
+    assert bucket_starts[-1] == last_complete_day
+    assert all(
+        bucket_start.hour == 0 and bucket_start.minute == 0
+        for bucket_start in bucket_starts
+    )
+    assert all(
+        later - earlier == timedelta(days=1)
+        for earlier, later in zip(bucket_starts, bucket_starts[1:])
+    )
+
+
+def test_query_timeseries_daily_event_day_window_returns_one_bucket(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and a daily-stored event
+    WHEN GETing timeseries with window=day
+    THEN exactly one (yesterday's) bucket is returned.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    url = f"{_TIMESERIES_URL}?window=day&event_name={EventName.UTUB_OPENED.value}"
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["resolution"] == "day"
+    assert len(body["buckets"]) == 1
+
+
+def test_query_timeseries_hourly_event_echoes_hour_resolution(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and an hourly event (UTUB_CREATED)
+    WHEN GETing timeseries with resolution=hour
+    THEN the response echoes resolution "hour".
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    url = (
+        f"{_TIMESERIES_URL}?window=day&event_name={EventName.UTUB_CREATED.value}"
+        "&resolution=hour"
+    )
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    assert response.get_json()["resolution"] == "hour"
 
 
 # ---------------------------------------------------------------------------
@@ -505,7 +584,7 @@ def test_query_timeseries_absolute_range_returns_seeded_buckets(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
-    GIVEN an admin client and one seeded UTUB_OPENED row inside an absolute range
+    GIVEN an admin client and one seeded UTUB_CREATED row inside an absolute range
     WHEN GETing /api/metrics/query/timeseries?event_name=...&start=...&end=...
     THEN the response is 200, `window` is null, and the bucket count matches.
     """
@@ -513,7 +592,7 @@ def test_query_timeseries_absolute_range_returns_seeded_buckets(
     with app.app_context():
         bucket = _bucket_inside_window()
         _seed_event_with_count(
-            event_name=EventName.UTUB_OPENED,
+            event_name=EventName.UTUB_CREATED,
             category=EventCategory.DOMAIN,
             bucket_start=bucket,
             count=4,
@@ -521,7 +600,7 @@ def test_query_timeseries_absolute_range_returns_seeded_buckets(
     start_iso, end_iso = _absolute_range_around(bucket)
 
     url = (
-        f"{_TIMESERIES_URL}?event_name={EventName.UTUB_OPENED.value}"
+        f"{_TIMESERIES_URL}?event_name={EventName.UTUB_CREATED.value}"
         f"&start={start_iso}&end={end_iso}&resolution=hour"
     )
     response = logged_in_client.get(url, headers=_AJAX_HEADERS)
@@ -871,7 +950,7 @@ def test_query_timeseries_device_type_one_returns_filtered_buckets_200(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
-    GIVEN an admin client and two seeded UTUB_OPENED rows inside the window:
+    GIVEN an admin client and two seeded UTUB_CREATED rows inside the window:
         one with device_type=1 (mobile, count=3) and one with device_type=2
         (desktop, count=7)
     WHEN GETing /api/metrics/query/timeseries?window=day&event_name=...
@@ -883,14 +962,14 @@ def test_query_timeseries_device_type_one_returns_filtered_buckets_200(
     logged_in_client, _, _, app = login_admin_user_with_register
     with app.app_context():
         _seed_event_with_count(
-            event_name=EventName.UTUB_OPENED,
+            event_name=EventName.UTUB_CREATED,
             category=EventCategory.DOMAIN,
             bucket_start=_bucket_inside_window(),
             count=3,
             dimensions={"device_type": 1},
         )
         _seed_event_with_count(
-            event_name=EventName.UTUB_OPENED,
+            event_name=EventName.UTUB_CREATED,
             category=EventCategory.DOMAIN,
             bucket_start=_bucket_inside_window(),
             count=7,
@@ -900,14 +979,14 @@ def test_query_timeseries_device_type_one_returns_filtered_buckets_200(
     url = (
         _TIMESERIES_URL
         + "?window=day&event_name="
-        + EventName.UTUB_OPENED.value
+        + EventName.UTUB_CREATED.value
         + "&resolution=hour&device_type=1"
     )
     response = logged_in_client.get(url, headers=_AJAX_HEADERS)
 
     assert response.status_code == 200
     body = response.get_json()
-    assert body["event_name"] == EventName.UTUB_OPENED.value
+    assert body["event_name"] == EventName.UTUB_CREATED.value
     assert isinstance(body["buckets"], list)
     assert sum(bucket["count"] for bucket in body["buckets"]) == 3
 

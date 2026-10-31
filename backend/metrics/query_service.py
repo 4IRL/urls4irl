@@ -56,6 +56,11 @@ class SummaryResult(NamedTuple):
     last_event_at: datetime | None
 
 
+class TimeseriesResult(NamedTuple):
+    buckets: list[TimeseriesBucketSchema]
+    resolution: Literal["hour", "day"]
+
+
 class _EndpointMetadata(NamedTuple):
     url_pattern: str
     description: str
@@ -395,9 +400,19 @@ def _truncate_to_resolution(
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def _effective_resolution(
+    event_name: EventName, requested: Literal["hour", "day"]
+) -> Literal["hour", "day"]:
+    """Return `day` for daily-stored events, else the requested resolution."""
+    if event_name in DAILY_BUCKET_EVENTS:
+        return "day"
+    return requested
+
+
 # Why: `resolution` finer than the writer's METRICS_BUCKET_SECONDS=3600 floor
-# collapses to the bucket granularity — the writer always stores hour-aligned
-# rows, so sub-hour resolutions would just return the same hourly buckets.
+# collapses to the bucket granularity — hourly events are stored hour-aligned
+# (daily events midnight-aligned), so sub-hour resolutions would just return
+# the same buckets.
 def timeseries(
     *,
     event_name: EventName,
@@ -407,19 +422,21 @@ def timeseries(
     endpoint: str | None = None,
     method: str | None = None,
     device_type: DeviceType | None = None,
-) -> list[TimeseriesBucketSchema]:
+) -> TimeseriesResult:
     """Return per-bucket counts for `event_name` inside the half-open window.
 
     `resolution` is a Postgres `date_trunc` field name — narrowed to the
     `Literal["hour", "day"]` set so any caller passing arbitrary text is
     flagged at type-check time, providing defense-in-depth on top of the
     Pydantic schema validation at the HTTP boundary. Buckets are returned
-    in chronological order; the underlying rows are already hour-aligned
-    at write time, so passing "hour" returns the raw buckets and "day"
-    aggregates them.
+    in chronological order. Hourly events are stored hour-aligned, so "hour"
+    returns the raw buckets and "day" aggregates them. Daily events
+    (`DAILY_BUCKET_EVENTS`) always return `day` buckets over complete UTC
+    days only; the result's `resolution` reports what was actually used.
 
     Zero-fills empty intervals: every resolution-aligned bucket inside
-    `[window_start, window_end)` appears in the result, with count=0 when no
+    `[window_start, window_end)` appears in the result (daily events fill
+    `[floor_utc_day(start), floor_utc_day(end))` and may return no buckets), with count=0 when no
     rows exist for that bucket. Keeps the chart visually meaningful during
     low-traffic stretches (a Day window with one event still returns 24
     hourly buckets, all but one at zero) and removes the need for the
@@ -430,14 +447,16 @@ def timeseries(
     chart per-endpoint timeseries (event_name=api_hit otherwise collapses
     every API route into one aggregate series).
     """
-    bucket = func.date_trunc(resolution, Anonymous_Metrics.bucket_start).label("bucket")
+    resolution = _effective_resolution(event_name, resolution)
+    bucket = func.date_trunc(resolution, Anonymous_Metrics.bucket_start, "UTC").label(
+        "bucket"
+    )
     query = db.session.query(
         bucket,
         func.sum(Anonymous_Metrics.count).label("count"),
     ).filter(
         Anonymous_Metrics.event_name == event_name.value,
-        Anonymous_Metrics.bucket_start >= window_start,
-        Anonymous_Metrics.bucket_start < window_end,
+        _window_clause(window_start, window_end),
     )
     if endpoint is not None:
         query = query.filter(Anonymous_Metrics.endpoint == endpoint)
@@ -457,16 +476,29 @@ def timeseries(
     # writes, the partial leading bucket happens to contain no rows; for day
     # resolution + an unaligned window_start, it commonly contains data.
     step = _RESOLUTION_STEP[resolution]
-    first_bucket = _truncate_to_resolution(window_start, resolution)
+    # Daily events chart complete UTC days only: both ends floor to UTC
+    # midnight. Day keys always come from the UTC floor, never a bare truncate
+    # of an offset-aware start (that yields local-midnight keys that miss the
+    # UTC `date_trunc` keys).
+    if event_name in DAILY_BUCKET_EVENTS:
+        first_bucket = _floor_utc_day(window_start)
+        fill_end = _floor_utc_day(window_end)
+    else:
+        first_bucket = (
+            _floor_utc_day(window_start)
+            if resolution == "day"
+            else _truncate_to_resolution(window_start, resolution)
+        )
+        fill_end = window_end
 
     filled_buckets: list[TimeseriesBucketSchema] = []
     cursor = first_bucket
-    while cursor < window_end:
+    while cursor < fill_end:
         filled_buckets.append(
             TimeseriesBucketSchema(bucket=cursor, count=counts_by_bucket.get(cursor, 0))
         )
         cursor = cursor + step
-    return filled_buckets
+    return TimeseriesResult(buckets=filled_buckets, resolution=resolution)
 
 
 def _is_device_type_dim(event_name: EventName, group_by_key: str) -> bool:
@@ -504,7 +536,8 @@ def grouped_timeseries(
     """Return per-bucket counts split by a dimension tuple.
 
     Returns one row per `(date_trunc(bucket), group_by[0], group_by[1], ...)`
-    combination inside the half-open window `[window_start, window_end)`.
+    combination inside the half-open window `[window_start, window_end)`
+    (daily-bucket events use complete UTC days: both ends floor to midnight).
     Unlike `timeseries`, this helper does NOT zero-fill empty combinations —
     the cross product of buckets × dim values can explode quickly, and the
     frontend renderer treats absent combinations as "no segment for that
@@ -528,9 +561,9 @@ def grouped_timeseries(
         )
     validate_group_by_projection(event_name, group_by)
 
-    bucket_column = func.date_trunc(resolution, Anonymous_Metrics.bucket_start).label(
-        "bucket"
-    )
+    bucket_column = func.date_trunc(
+        resolution, Anonymous_Metrics.bucket_start, "UTC"
+    ).label("bucket")
     dim_columns = []
     for group_by_index, group_by_key in enumerate(group_by):
         if _is_device_type_dim(event_name, group_by_key):
@@ -567,7 +600,11 @@ def grouped_timeseries(
     if not partition_by_bucket:
         # Sum per dims tuple across buckets so the floor applies to the
         # window-wide cell; one synthetic bucket labels every row.
-        synthetic_bucket = _truncate_to_resolution(window_start, resolution)
+        synthetic_bucket = (
+            _floor_utc_day(window_start)
+            if resolution == "day"
+            else _truncate_to_resolution(window_start, resolution)
+        )
         totals: dict[tuple[str | int, ...], int] = {}
         for _, dim_values, count in grouped_rows:
             dims_key = tuple(dim_values[key] for key in group_by)
