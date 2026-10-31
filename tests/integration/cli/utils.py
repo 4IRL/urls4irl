@@ -21,7 +21,9 @@ TRACKING_SEED_URL_STRINGS: frozenset[str] = MOCK_TRACKING_SEED_URL_STRINGS
 
 # Seeded-at-head tables whose rows do not survive a downgrade past their own
 # migration (the downgrade drops the table; re-upgrade recreates it empty).
-TABLES_DROPPED_BY_DOWNGRADE: frozenset[str] = frozenset({TABLE_NAMES.METRIC_FLOWS})
+TABLES_DROPPED_BY_DOWNGRADE: frozenset[str] = frozenset(
+    {TABLE_NAMES.METRIC_FLOWS, TABLE_NAMES.UTUB_INVITE_LINKS}
+)
 
 
 def assert_row_counts_match_ignoring_new_tables(
