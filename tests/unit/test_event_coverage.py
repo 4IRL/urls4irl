@@ -20,7 +20,11 @@ from backend.metrics.audit import (
     find_orphan_event_names,
     find_string_literal_record_event_callers,
 )
-from backend.metrics.event_registry import EVENT_REGISTRY
+from backend.metrics.event_registry import (
+    DAILY_BUCKET_EVENTS,
+    DAILY_BUCKET_SECONDS,
+    EVENT_REGISTRY,
+)
 from backend.metrics.events import EventName
 
 pytestmark = pytest.mark.unit
@@ -124,3 +128,14 @@ def test_no_registry_drift_against_event_name_enum() -> None:
         f"{[(finding.kind, finding.event, finding.detail) for finding in findings]}. "
         "Reconcile EVENT_REGISTRY against the EventName enum."
     )
+
+
+def test_daily_bucket_events_are_exactly_the_sensitive_pair() -> None:
+    """Only UTUB_OPENED and TAG_APPLIED are daily, and daily is the only override.
+
+    The query layer understands whole days only, so any other non-None
+    `bucket_seconds` value must fail here.
+    """
+    assert DAILY_BUCKET_EVENTS == {EventName.UTUB_OPENED, EventName.TAG_APPLIED}
+    for entry in EVENT_REGISTRY.values():
+        assert entry.bucket_seconds in (None, DAILY_BUCKET_SECONDS)
