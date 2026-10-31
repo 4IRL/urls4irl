@@ -1,7 +1,10 @@
+import re
+
 from flask import Flask
 from flask.testing import FlaskCliRunner
 
 from backend.cli.mock_constants import (
+    MOCK_INVITE_LINK_STATES,
     MOCK_TAGS,
     MOCK_TRACKING_SEED_URL_STRINGS,
     MOCK_URL_STRINGS,
@@ -9,12 +12,15 @@ from backend.cli.mock_constants import (
     TEST_USER_COUNT,
     USERNAME_BASE,
 )
+from backend.invite_links.constants import INVITE_LINK_TOKEN_PATTERN
 from backend.models.urls import Urls
 from backend.models.users import Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.utils.datetime_utils import utc_now
 from backend.utils.db_table_names import TABLE_NAMES
 
 TRACKING_SEED_URL_STRINGS: frozenset[str] = MOCK_TRACKING_SEED_URL_STRINGS
@@ -191,6 +197,34 @@ def verify_tracking_seed_urls_added(app: Flask, cli_runner: FlaskCliRunner):
 
     with app.app_context():
         _assert_tracking_seed_urls_in_first_utub(first_utub_id, seed_tag_id)
+
+
+def verify_invite_links_added():
+    """Asserts exactly one invite link per mock state exists, on the right UTub.
+
+    Each state sits on the lowest-id UTub named ``MockUTub_<index + 1>``, is
+    created by that UTub's creator, has a token matching the format pattern,
+    and has the state's expiry, use and revoke values.
+    """
+    assert Utub_Invite_Links.query.count() == len(MOCK_INVITE_LINK_STATES)
+    now = utc_now()
+    for index, state in enumerate(MOCK_INVITE_LINK_STATES):
+        utub: Utubs = (
+            Utubs.query.filter(Utubs.name == f"{MOCK_UTUB_NAME_BASE}{index + 1}")
+            .order_by(Utubs.id)
+            .first()
+        )
+        links: list[Utub_Invite_Links] = Utub_Invite_Links.query.filter_by(
+            utub_id=utub.id
+        ).all()
+        assert len(links) == 1
+        link = links[0]
+        assert re.match(INVITE_LINK_TOKEN_PATTERN, link.token)
+        assert link.created_by == utub.utub_creator
+        assert link.max_uses == state.max_uses
+        assert link.use_count == state.use_count
+        assert (link.expires_at <= now) == state.expired
+        assert (link.revoked_at is not None) == state.revoked
 
 
 def _assert_tracking_seed_urls_in_first_utub(first_utub_id: int, seed_tag_id: int):

@@ -34,6 +34,7 @@ from backend.models.utubs import Utubs
 from tests.integration.cli.utils import (
     verify_custom_url_added_to_all_utubs,
     verify_custom_url_in_database,
+    verify_invite_links_added,
     verify_tags_added_to_all_urls_in_utubs,
     verify_tags_in_utubs,
     verify_tracking_seed_urls_added,
@@ -478,6 +479,7 @@ def test_add_all_mock_data_with_utub_duplicates(runner):
             verify_urls_added_to_all_utubs()
             verify_tags_in_utubs()
             verify_tags_added_to_all_urls_in_utubs()
+            verify_invite_links_added()
 
     verify_tracking_seed_urls_added(app, cli_runner)
 
@@ -505,6 +507,7 @@ def test_add_all_mock_data_with_no_utub_duplicates(runner):
             verify_urls_added_to_all_utubs()
             verify_tags_in_utubs()
             verify_tags_added_to_all_urls_in_utubs()
+            verify_invite_links_added()
 
     verify_tracking_seed_urls_added(app, cli_runner)
 
