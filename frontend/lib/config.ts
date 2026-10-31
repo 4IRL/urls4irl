@@ -103,6 +103,8 @@ export interface AdminRoutes {
   adminMetricFlowsList: string | undefined;
   adminMetricFlowDelete: string | undefined;
   adminMetricFlowCreate: string | undefined;
+  adminMetricFlowUpdate: string | undefined;
+  adminMetricFlowCatalog: string | undefined;
 }
 
 export interface MemberRoles {
@@ -309,6 +311,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     adminMetricFlowsList: rawConfig.routes.adminMetricFlowsList,
     adminMetricFlowDelete: rawConfig.routes.adminMetricFlowDelete,
     adminMetricFlowCreate: rawConfig.routes.adminMetricFlowCreate,
+    adminMetricFlowUpdate: rawConfig.routes.adminMetricFlowUpdate,
+    adminMetricFlowCatalog: rawConfig.routes.adminMetricFlowCatalog,
   }),
   constants: Object.freeze(rawConfig.constants),
   strings: Object.freeze(rawConfig.strings),
