@@ -840,21 +840,28 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_member_of_not_created_utub: Utub_Members = Utub_Members.query.filter(
-            Utub_Members.member_role != Member_Role.CREATOR
-        ).first()
-        utub_id = utub_member_of_not_created_utub.utub_id
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.user_id == current_user.id, Utub_Urls.utub_id == utub_id
-        ).first()
+        # Select the URL the current user added. The fixture gives each user one URL,
+        # in the UTub they created, and adds every other user as a member. Picking an
+        # arbitrary non-creator membership first could land on a UTub where the current
+        # user added no URL, making ``.first()`` return None non-deterministically.
+        url_in_this_utub: Utub_Urls = (
+            Utub_Urls.query.filter(Utub_Urls.user_id == current_user.id)
+            .order_by(Utub_Urls.id)
+            .first()
+        )
+        utub_id = url_in_this_utub.utub_id
         current_title = url_in_this_utub.url_title
         current_url_id = url_in_this_utub.url_id
         url_in_this_utub_id = url_in_this_utub.id
 
         # Get a URL that isn't in this UTub
-        url_not_in_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.url_id != current_url_id, Utub_Urls.utub_id != utub_id
-        ).first()
+        url_not_in_utub: Utub_Urls = (
+            Utub_Urls.query.filter(
+                Utub_Urls.url_id != current_url_id, Utub_Urls.utub_id != utub_id
+            )
+            .order_by(Utub_Urls.id)
+            .first()
+        )
         url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
 
         url_id_of_url_not_in_utub = url_not_in_utub.url_id

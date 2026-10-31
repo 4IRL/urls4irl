@@ -62,7 +62,8 @@ jobs:
 
       - name: Check for uncommitted changes
         run: |
-          if ! git diff --exit-code frontend/types/; then
+          if ! git diff --exit-code --stat frontend/types/; then
+            git diff frontend/types/ | head -n 200
             echo "::error::Generated types are stale. Run 'make generate-types' and commit the updated files."
             exit 1
           fi
