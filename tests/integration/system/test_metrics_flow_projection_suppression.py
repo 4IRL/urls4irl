@@ -286,6 +286,19 @@ def test_device_axis_sibling_rule_blocks_cell_minus_other_device(app: Flask) -> 
     ]
 
 
+def test_device_sibling_rule_ignores_zero_count_sibling_device(app: Flask) -> None:
+    """
+    GIVEN one size cell of 10 on desktop and no mobile rows
+    WHEN the cell is counted with a desktop device filter
+    THEN rule (c) does not fire for the empty sibling and the step reads 10.
+    """
+    _seed_cell(app, size="6-20", age="0-6d", count=10, device=_DESKTOP)
+
+    steps = _run(app, [_opened(), _opened((_SIZE, "6-20"), ("device_type", "2"))])
+
+    assert [(step.count, step.count_suppressed) for step in steps[1:]] == [(10, False)]
+
+
 def test_cross_view_consistency_with_grouped_count_by(app: Flask) -> None:
     """
     GIVEN size cells of 3, 20 and 30
@@ -475,6 +488,39 @@ def test_different_event_breakdown_filtered_on_projection_dim_is_null(
     )
 
     steps = _run(app, [_opened(), _opened(breakdown=breakdown)])
+
+    assert steps[1].breakdown is None
+
+
+def test_api_step_breakdown_filtered_on_projection_dim_is_null(app: Flask) -> None:
+    """
+    GIVEN an API step (no event_name) whose breakdown is filtered on a
+        projection dim, with matching breakdown rows seeded
+    WHEN the flow is counted
+    THEN the breakdown is null.
+    """
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.URL_CREATE_REJECTED,
+            category=EventCategory.DOMAIN,
+            bucket_start=_bucket_inside_window(),
+            count=6,
+            dimensions={"reason": "invalid_url", "device_type": 2},
+        )
+    breakdown = FlowStepBreakdown(
+        event_name=EventName.URL_CREATE_REJECTED,
+        dim_filter=[("reason", "invalid_url")],
+        group_by="reason",
+    )
+    api_step = FlowStep(
+        stream="api",
+        label="API",
+        api_endpoint="urls.create_url",
+        api_method="POST",
+        drop_breakdown=breakdown,
+    )
+
+    steps = _run(app, [_opened(), api_step])
 
     assert steps[1].breakdown is None
 

@@ -68,11 +68,13 @@ def _is_revealable(
 def _is_secondarily_suppressed(
     *,
     step: FlowStep,
-    event_name: EventName,
     window_start: datetime,
     window_end: datetime,
 ) -> bool:
     """Apply rules (b) and (c) to a step with exactly one projection filter."""
+    event_name = step.event_name
+    if event_name is None:
+        return True
     entries = step.dim_filter or []
     partition_key, partition_value = next(
         entry for entry in entries if entry[0] != DEVICE_TYPE_DIM_KEY
@@ -93,15 +95,15 @@ def _is_secondarily_suppressed(
     for member in DeviceType:
         if int(member.value) == own_device:
             continue
-        sibling_filter = [(DEVICE_TYPE_DIM_KEY, str(member.value))]
-        sibling_filters = [
+        sibling_device_filter = [(DEVICE_TYPE_DIM_KEY, str(member.value))]
+        sibling_full_filter = [
             entry for entry in entries if entry[0] != DEVICE_TYPE_DIM_KEY
-        ] + sibling_filter
+        ] + sibling_device_filter
         sibling_count = grouped_count_scalar(
             event_name=event_name,
             window_start=window_start,
             window_end=window_end,
-            dim_filter=sibling_filters,
+            dim_filter=sibling_full_filter,
         )
         if sibling_count > 0 and not _is_revealable(
             event_name=event_name,
@@ -109,7 +111,7 @@ def _is_secondarily_suppressed(
             dim_value=partition_value,
             window_start=window_start,
             window_end=window_end,
-            device_filter=sibling_filter,
+            device_filter=sibling_device_filter,
         ):
             return True
     return False
@@ -163,7 +165,6 @@ def _count_flow_step(
             return 0, True
         if _is_secondarily_suppressed(
             step=step,
-            event_name=step.event_name,
             window_start=window_start,
             window_end=window_end,
         ):
