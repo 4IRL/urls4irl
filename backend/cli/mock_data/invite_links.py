@@ -61,8 +61,6 @@ def _add_mock_acceptances(
     Members are taken in user id order; any remainder is recorded anonymously
     (NULL user), as if that account had been erased.
     """
-    if count <= 0:
-        return
     member_ids: list[int] = [
         member.user_id
         for member in Utub_Members.query.filter(
