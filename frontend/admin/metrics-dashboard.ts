@@ -65,6 +65,9 @@ import type {
   FlowInvalidDetail,
 } from "./flow-card.js";
 import { renderFlowGrid } from "./flow-card.js";
+import { NOT_FOUND_STATUS, RATE_LIMITED_STATUS } from "./metrics-flow-codes.js";
+import { createFlowBuilder } from "./flow-builder.js";
+import type { BuilderMode, FlowBuilder } from "./flow-builder.js";
 import { createFlowLoadQueue } from "./flow-load-queue.js";
 import { renderGaugeGrid } from "./gauge-card.js";
 import {
@@ -282,12 +285,17 @@ const PIPELINE_HEALTH_PANEL_ID: string = "MetricsPanelPipelineHealth";
 const FLOWS_TAB_ID: string = "MetricsTabFlows";
 const FLOWS_PANEL_ID: string = "MetricsPanelFlows";
 const FLOWS_GRID_ID: string = "MetricsFlowGrid";
+const FLOWS_BUILDER_MOUNT_ID: string = "MetricsFlowBuilderMount";
+const FLOWS_TOOLBAR_SELECTOR: string = ".flows-toolbar";
+const REFRESH_PAUSED_HINT_ID: string = "MetricsRefreshPausedHint";
 const FLOWS_ANNOUNCEMENT_ID: string = "MetricsPanelFlowsAnnouncement";
 const FLOWS_HEADING_ID: string = "MetricsFlowsHeading";
 const FLOWS_COUNT_ID: string = "MetricsFlowsCount";
 const FLOWS_HINT_ID: string = "MetricsFlowsHint";
 const FLOWS_NOTICE_ID: string = "MetricsFlowsNotice";
 const FLOWS_ACTION_ANNOUNCEMENT_ID: string = "MetricsFlowsActionAnnouncement";
+const FLOWS_NEW_BUTTON_ID: string = "MetricsFlowNewBtn";
+const FLOWS_NEW_REASON_ID: string = "MetricsFlowNewReason";
 const CUSTOM_FLOW_ID_PREFIX: string = "custom_";
 const GAUGES_TAB_ID: string = "MetricsTabGauges";
 const GAUGES_PANEL_ID: string = "MetricsPanelGauges";
@@ -384,6 +392,17 @@ const _flowCardMessages = new Map<string, string>();
 // The single in-flight DELETE; a settle whose xhr is not this one is ignored.
 let _flowDeleteXhr: JQuery.jqXHR | null = null;
 let _flowActionAnnounceTimer: ReturnType<typeof setTimeout> | null = null;
+// The inline flow builder; null until `initMetricsDashboard` finds its mount.
+let _flowBuilder: FlowBuilder | null = null;
+// What opened the builder, so focus can return to it.
+type FlowBuilderOpener = { kind: "new" } | { kind: "edit"; id: string };
+let _flowBuilderOpener: FlowBuilderOpener | null = null;
+type FlowBuilderCloseReason =
+  | "cancel"
+  | "saved"
+  | "deleted"
+  | "missing"
+  | "tab-accept";
 // Last successful batched `gauges/timeseries` response (the full envelope, not
 // `GaugeSeries[]`), so a tab switch back to Gauges renders instantly from cache.
 // Populated by `fetchGauges`; `null` until the first batched request settles.
@@ -548,13 +567,46 @@ function setRefreshButtonInFlight({ inFlight }: { inFlight: boolean }): void {
   if (button === null) {
     return;
   }
-  if (inFlight) {
+  // While the flow builder is open Refresh stays focusable but `aria-disabled`,
+  // with a visible reason row; a settle cannot re-enable it.
+  const paused = isFlowLoadPaused();
+  if (paused) {
+    button.setAttribute("data-builder-paused", "");
+    button.setAttribute("aria-describedby", REFRESH_PAUSED_HINT_ID);
+  } else {
+    button.removeAttribute("data-builder-paused");
+    button.removeAttribute("aria-describedby");
+  }
+  const hint = getElementByIdOrNull<HTMLElement>(REFRESH_PAUSED_HINT_ID);
+  if (hint !== null) {
+    hint.hidden = !paused;
+  }
+  if (paused || inFlight) {
     button.setAttribute("aria-disabled", "true");
     button.style.pointerEvents = "none";
   } else {
     button.removeAttribute("aria-disabled");
     button.style.pointerEvents = "";
   }
+}
+
+// The request slots that drive Refresh's busy state (flow loads and the
+// gauges/latency tabs are tracked separately).
+function hasRefreshRequestInFlight(): boolean {
+  return (
+    _inFlight.topApi !== null ||
+    _inFlight.topUi !== null ||
+    _inFlight.topDomain !== null ||
+    _inFlight.tsApi !== null ||
+    _inFlight.tsUi !== null ||
+    _inFlight.tsDomain !== null ||
+    _inFlight.summary !== null ||
+    _inFlight.pipelineHealth !== null
+  );
+}
+
+function syncRefreshButton(): void {
+  setRefreshButtonInFlight({ inFlight: hasRefreshRequestInFlight() });
 }
 
 // Per-tab label for the second column header of the Top Events table. The
@@ -1305,7 +1357,12 @@ function getFlowSources(): FlowSource[] {
 // (e.g. aborted off the Flows tab) is left out.
 function buildFlowEntries(): FlowGridEntry[] {
   const entries: FlowGridEntry[] = [];
-  const unlistedLoading = _flowList !== null || _flowListStatus === "loading";
+  // A list request in flight with no stored list (e.g. the takeover refresh
+  // after a create saved over an aborted `load`) also leaves cards loading.
+  const unlistedLoading =
+    _flowList !== null ||
+    _flowListStatus === "loading" ||
+    _flowListXhr !== null;
   for (const source of getFlowSources()) {
     const { id, title } = source;
     const response = _flowCache.get(id);
@@ -1372,6 +1429,7 @@ function findFlowCard({
 
 // Focusable card controls, by the data attribute that identifies them.
 const FLOW_FOCUS_ATTRIBUTES: readonly string[] = [
+  "data-flow-edit",
   "data-flow-delete",
   "data-flow-retry",
   "data-flow-confirm-cancel",
@@ -1478,9 +1536,13 @@ function renderFlowsToolbar(): void {
   const builtinFallback = Object.values(FLOW_IDS).length;
   let countText = APP_CONFIG.strings.METRICS_FLOWS_COUNT_LOADING;
   let showHint = false;
+  // While the list is loading or failed the count is unknown: stay enabled and
+  // let the server's cap be the authority.
+  let atCap = false;
   if (_flowList !== null) {
     const builtin = _flowList.filter((entry) => entry.is_builtin).length;
     const custom = _flowList.length - builtin;
+    atCap = custom >= APP_CONFIG.constants.METRIC_FLOWS_MAX_CUSTOM;
     countText = fillTemplate({
       template: APP_CONFIG.strings.METRICS_FLOWS_COUNT,
       values: {
@@ -1505,6 +1567,34 @@ function renderFlowsToolbar(): void {
       : "";
     hint.hidden = !showHint;
   }
+  renderNewFlowButton({ atCap });
+}
+
+function renderNewFlowButton({ atCap }: { atCap: boolean }): void {
+  const button = getElementByIdOrNull<HTMLElement>(FLOWS_NEW_BUTTON_ID);
+  const reason = getElementByIdOrNull<HTMLElement>(FLOWS_NEW_REASON_ID);
+  if (button === null) {
+    return;
+  }
+  if (atCap) {
+    // Fail closed: disabled at the cap even when the reason node is missing.
+    button.setAttribute("aria-disabled", "true");
+    if (reason !== null) {
+      reason.textContent = fillTemplate({
+        template: APP_CONFIG.strings.METRICS_FLOW_BUILDER_HINT_CAP,
+        values: { max: String(APP_CONFIG.constants.METRIC_FLOWS_MAX_CUSTOM) },
+      });
+      reason.hidden = false;
+      button.setAttribute("aria-describedby", FLOWS_NEW_REASON_ID);
+    }
+    return;
+  }
+  if (reason !== null) {
+    reason.textContent = "";
+    reason.hidden = true;
+  }
+  button.removeAttribute("aria-disabled");
+  button.removeAttribute("aria-describedby");
 }
 
 // The inline list-failure message with its Retry. Created once and updated in
@@ -1568,7 +1658,7 @@ function closeConfirmForAbsentFlow(): void {
 
 function renderFlowsPanel(): void {
   const grid = getElementByIdOrNull<HTMLElement>(FLOWS_GRID_ID);
-  if (grid === null) {
+  if (grid === null || isFlowLoadPaused()) {
     return;
   }
   closeConfirmForAbsentFlow();
@@ -1577,10 +1667,17 @@ function renderFlowsPanel(): void {
   renderFlowListError({ grid });
 }
 
-// Step 7 supplies the builder-open predicate (DD-12, DD-44); loads are never
-// paused until then.
+// Flow loads are held while the builder is open. The predicate
+// takes no id, so built-in loads are held too (the grid is hidden).
 function isFlowLoadPaused(): boolean {
-  return false;
+  return _flowBuilder?.isOpen() ?? false;
+}
+
+// Panel `aria-busy` is never shown while the builder is open.
+function showFlowsPanelBusy(): void {
+  if (!isFlowLoadPaused()) {
+    setFlowsPanelBusy({ busy: true });
+  }
 }
 
 // A `flow_invalid` 422 is recognized structurally, never by trusting the body.
@@ -1652,7 +1749,10 @@ function issueFlowRequest({ id }: { id: string }): JQuery.jqXHR {
       if (xhr.readyState === 0 && xhr.statusText !== "timeout") {
         return;
       }
-      if (xhr.status === 404 && id.startsWith(CUSTOM_FLOW_ID_PREFIX)) {
+      if (
+        xhr.status === NOT_FOUND_STATUS &&
+        id.startsWith(CUSTOM_FLOW_ID_PREFIX)
+      ) {
         removeMissingCustomFlow({ id });
         return;
       }
@@ -1664,7 +1764,11 @@ function issueFlowRequest({ id }: { id: string }): JQuery.jqXHR {
         return;
       }
       _flowStates.set(id, "error");
-      setBannerVisible({ visible: true });
+      // A `/flow` in flight at open can fail during the pause: record the card
+      // error but raise no banner.
+      if (!isFlowLoadPaused()) {
+        setBannerVisible({ visible: true });
+      }
       renderFlowsPanel();
     })
     .always(() => {
@@ -1687,7 +1791,7 @@ const _flowLoadQueue = createFlowLoadQueue({
       return;
     }
     setFlowsPanelBusy({ busy: false });
-    if (cause !== "settled") {
+    if (cause !== "settled" || isFlowLoadPaused()) {
       return;
     }
     const announcement = getElementByIdOrNull<HTMLElement>(
@@ -1777,7 +1881,7 @@ function purgeUnlistedFlows({
 function applyFlowListFailure({ showBanner }: { showBanner: boolean }): void {
   _flowListStatus = "failed";
   _flowListErrorShown = true;
-  if (showBanner) {
+  if (showBanner && !isFlowLoadPaused()) {
     setBannerVisible({ visible: true });
   }
   const ids = _flowList !== null ? flowListIds() : Object.values(FLOW_IDS);
@@ -1794,7 +1898,7 @@ function applyFlowListFailure({ showBanner }: { showBanner: boolean }): void {
 function loadFlowList({
   retryButton = null,
 }: { retryButton?: HTMLElement | null } = {}): void {
-  setFlowsPanelBusy({ busy: true });
+  showFlowsPanelBusy();
   abortFlowListRequest({ replacement: true });
   _flowListStatus = "loading";
   _flowListKind = "load";
@@ -1897,7 +2001,7 @@ function refreshFlowList(): void {
             !_flowLoadQueue.isPending({ id }),
         );
       if (newIds.length > 0) {
-        setFlowsPanelBusy({ busy: true });
+        showFlowsPanelBusy();
         _flowLoadQueue.enqueue({ ids: newIds });
       }
       renderFlowsPanel();
@@ -1952,7 +2056,7 @@ function catchUpFlowLoads(): void {
   if (missing.length === 0) {
     return;
   }
-  setFlowsPanelBusy({ busy: true });
+  showFlowsPanelBusy();
   _flowLoadQueue.enqueue({ ids: missing });
 }
 
@@ -2023,7 +2127,7 @@ function submitFlowDelete({ button }: { button: HTMLElement }): void {
   request
     .done(() => handleFlowDeleted({ xhr: request, id, alreadyDeleted: false }))
     .fail((xhr: JQuery.jqXHR) => {
-      if (xhr.status === 404) {
+      if (xhr.status === NOT_FOUND_STATUS) {
         handleFlowDeleted({ xhr: request, id, alreadyDeleted: true });
         return;
       }
@@ -2060,12 +2164,37 @@ function handleFlowDeleted({
     return;
   }
   _flowDeleteXhr = null;
-  const name = getFlowTitle({ id });
-  const focusEligible = isFocusInCardOrBody({ id });
+  cleanupDeletedFlow({
+    id,
+    name: getFlowTitle({ id }),
+    alreadyDeleted,
+    forceFocus: false,
+  });
+}
+
+// Shared by a grid delete and a builder delete. `forceFocus` (builder
+// delete, already closed) moves focus and announces unconditionally; otherwise
+// focus moves only when it was in the card or on `body`, and neither focus nor
+// the notice happens while the builder is open.
+function cleanupDeletedFlow({
+  id,
+  name,
+  alreadyDeleted,
+  forceFocus,
+}: {
+  id: string;
+  name: string;
+  alreadyDeleted: boolean;
+  forceFocus: boolean;
+}): void {
+  const focusEligible = forceFocus || isFocusInCardOrBody({ id });
   const onFlows = _activeTab === TAB.FLOWS;
   const aborted = abortFlowListRequest({ replacement: onFlows });
-  if (onFlows && aborted?.ownsBusy === true) {
-    setFlowsPanelBusy({ busy: true });
+  if (onFlows && (aborted?.kind === "load" || aborted?.ownsBusy === true)) {
+    // The obligation to restart the fan-out passes to the takeover refresh
+    // below; busy is only shown when not paused.
+    _flowListOwnsBusy = true;
+    showFlowsPanelBusy();
   }
   _flowLoadQueue.dropId({ id });
   _flowCache.delete(id);
@@ -2088,14 +2217,21 @@ function handleFlowDeleted({
       : APP_CONFIG.strings.METRICS_FLOW_DELETED,
     values: { name },
   });
-  if (alreadyDeleted) {
+  const paused = isFlowLoadPaused();
+  if (alreadyDeleted && !paused) {
     showFlowNotice({ text });
   }
   renderFlowsPanel();
-  if (focusEligible) {
-    getElementByIdOrNull<HTMLElement>(FLOWS_HEADING_ID)?.focus();
+  if (focusEligible && !paused) {
+    // The deleted card is gone: "+ New flow" sits where the admin was working.
+    (
+      getElementByIdOrNull<HTMLElement>(FLOWS_NEW_BUTTON_ID) ??
+      getElementByIdOrNull<HTMLElement>(FLOWS_HEADING_ID)
+    )?.focus();
   }
-  announceFlowAction({ text });
+  if (!paused || forceFocus) {
+    announceFlowAction({ text });
+  }
   refreshFlowList();
 }
 
@@ -2122,7 +2258,7 @@ function handleFlowDeleteFailure({
     return;
   }
   const message =
-    xhr.status === 429
+    xhr.status === RATE_LIMITED_STATUS
       ? APP_CONFIG.strings.METRICS_FLOW_RATE_LIMITED
       : APP_CONFIG.strings.METRICS_FLOW_DELETE_FAILED;
   _flowCardMessages.set(id, message);
@@ -2147,6 +2283,11 @@ function handleFlowGridClick(event: JQuery.TriggeredEvent): void {
       return;
     }
     loadFlowList({ retryButton: listRetry });
+    return;
+  }
+  const editButton = target.closest<HTMLElement>("[data-flow-edit]");
+  if (editButton !== null) {
+    openFlowEditor({ button: editButton });
     return;
   }
   const deleteButton = target.closest<HTMLElement>("[data-flow-delete]");
@@ -2182,11 +2323,239 @@ function handleFlowGridClick(event: JQuery.TriggeredEvent): void {
   }
   _flowStates.delete(id);
   if (!_flowLoadQueue.isPending({ id })) {
-    setFlowsPanelBusy({ busy: true });
+    showFlowsPanelBusy();
     _flowLoadQueue.enqueue({ ids: [id] });
   }
   renderFlowsPanel();
   findFlowCard({ grid, id })?.focus();
+}
+
+// Swap the builder mount with the toolbar and grid it replaces.
+function setFlowBuilderPanelVisible({ visible }: { visible: boolean }): void {
+  const mount = getElementByIdOrNull<HTMLElement>(FLOWS_BUILDER_MOUNT_ID);
+  const toolbar = document.querySelector<HTMLElement>(
+    `#${FLOWS_PANEL_ID} ${FLOWS_TOOLBAR_SELECTOR}`,
+  );
+  const grid = getElementByIdOrNull<HTMLElement>(FLOWS_GRID_ID);
+  if (mount !== null) {
+    mount.hidden = !visible;
+  }
+  if (toolbar !== null) {
+    toolbar.hidden = visible;
+  }
+  if (grid !== null) {
+    grid.hidden = visible;
+  }
+}
+
+// "+ New flow": a no-op while `aria-disabled` (the 20-flow cap).
+function openNewFlowBuilder(): void {
+  const button = getElementByIdOrNull<HTMLElement>(FLOWS_NEW_BUTTON_ID);
+  if (button?.getAttribute("aria-disabled") === "true") {
+    return;
+  }
+  openFlowBuilderPanel({ mode: "create" });
+}
+
+// Edit on a card. An id that has left the list opens nothing and refreshes it.
+function openFlowEditor({ button }: { button: HTMLElement }): void {
+  const id = getCardFlowId({ element: button });
+  if (id === null || button.getAttribute("aria-disabled") === "true") {
+    return;
+  }
+  const entry = _flowList?.find((listed) => listed.id === id);
+  if (entry === undefined) {
+    refreshFlowList();
+    return;
+  }
+  openFlowBuilderPanel({ mode: "edit", entry });
+}
+
+// Open the builder in place of the grid. Pausing is implicit: every pause
+// check reads `_flowBuilder.isOpen()`. The entry points are the toolbar
+// "+ New flow" button and a card's Edit button.
+function openFlowBuilderPanel({
+  mode,
+  entry,
+}: {
+  mode: BuilderMode;
+  entry?: Schema<"MetricFlowEntrySchema">;
+}): void {
+  if (_flowBuilder === null || _flowBuilder.isOpen()) {
+    return;
+  }
+  _flowBuilderOpener =
+    mode === "edit" && entry !== undefined
+      ? { kind: "edit", id: entry.id }
+      : { kind: "new" };
+  // A `deleting` confirm is kept until its DELETE settles.
+  if (_flowConfirm?.phase === "open") {
+    _flowConfirm = null;
+  }
+  _flowCardMessages.clear();
+  clearFlowNotice();
+  setFlowBuilderPanelVisible({ visible: true });
+  // Only the displayed busy is cleared; `_flowListOwnsBusy` is the obligation
+  // to run the latest-window fan-out and survives the pause.
+  setFlowsPanelBusy({ busy: false });
+  _flowBuilder.open({ mode, entry });
+  syncRefreshButton();
+}
+
+// Every reason unpauses and unhides first; the rest of the tail depends on who
+// owns the follow-up work.
+function closeFlowBuilder({
+  reason,
+}: {
+  reason: FlowBuilderCloseReason;
+}): void {
+  if (_flowBuilder === null || !_flowBuilder.isOpen()) {
+    return;
+  }
+  _flowBuilder.close();
+  _flowBuilderOpener = null;
+  setFlowBuilderPanelVisible({ visible: false });
+  // A list `load` (or takeover) running since before the close owns the
+  // obligation; hand the displayed busy back.
+  if (_flowListXhr !== null && _flowListOwnsBusy) {
+    setFlowsPanelBusy({ busy: true });
+  }
+  if (reason === "cancel") {
+    renderFlowsPanel();
+    refreshFlowList();
+    if (!_flowLoadQueue.isIdle()) {
+      setFlowsPanelBusy({ busy: true });
+    }
+    // The queue never re-drains by itself when the pause clears.
+    _flowLoadQueue.drain();
+  } else if (reason === "tab-accept") {
+    // The caller aborted the list request first; discard held and in-flight
+    // loads so nothing drains while another tab is active.
+    _flowLoadQueue.abortAll();
+    _flowListStatus = "idle";
+  }
+  // 'saved', 'deleted' and 'missing': the callbacks below own the rest.
+  syncRefreshButton();
+}
+
+function focusNewFlowButton(): void {
+  (
+    getElementByIdOrNull<HTMLElement>(FLOWS_NEW_BUTTON_ID) ??
+    getElementByIdOrNull<HTMLElement>(FLOWS_HEADING_ID)
+  )?.focus();
+}
+
+// After a saved, deleted or missing close: re-show busy for anything still
+// queued, then drain what the pause held (the queue never re-drains itself).
+function resumeFlowLoadsAfterClose(): void {
+  if (!_flowLoadQueue.isIdle()) {
+    setFlowsPanelBusy({ busy: true });
+  }
+  _flowLoadQueue.drain();
+}
+
+// Cancel: `closeFlowBuilder` runs the render, refresh and drain tail; focus
+// returns to the re-resolved opener (the original node was replaced).
+function handleFlowBuilderCancelled(): void {
+  const opener = _flowBuilderOpener;
+  closeFlowBuilder({ reason: "cancel" });
+  if (opener?.kind === "edit") {
+    focusCardControl({ id: opener.id, attribute: "data-flow-edit" });
+    return;
+  }
+  focusNewFlowButton();
+}
+
+function handleFlowBuilderSaved({
+  entry,
+  mode,
+}: {
+  entry: Schema<"MetricFlowEntrySchema">;
+  mode: BuilderMode;
+}): void {
+  // A list response in flight at Save time predates the saved flow.
+  const aborted = abortFlowListRequest({ replacement: true });
+  closeFlowBuilder({ reason: "saved" });
+  _flowLoadQueue.dropId({ id: entry.id });
+  _flowCache.delete(entry.id);
+  _flowStates.delete(entry.id);
+  _flowCardMessages.delete(entry.id);
+  // A null list (loading or failed) keeps the four built-in cards; the
+  // refresh below brings the flow in.
+  if (_flowList !== null) {
+    _flowList =
+      mode === "edit" && _flowList.some((listed) => listed.id === entry.id)
+        ? _flowList.map((listed) => (listed.id === entry.id ? entry : listed))
+        : [..._flowList.filter((listed) => listed.id !== entry.id), entry];
+  }
+  renderFlowsPanel();
+  catchUpFlowLoads();
+  if (aborted?.kind === "load" || aborted?.ownsBusy === true) {
+    // The takeover refresh restarts the fan-out for the latest window.
+    _flowListOwnsBusy = true;
+    showFlowsPanelBusy();
+  }
+  refreshFlowList();
+  if (_flowList === null) {
+    // The refresh is now the pending list request: show the built-ins loading.
+    renderFlowsPanel();
+  }
+  resumeFlowLoadsAfterClose();
+  focusCardControl({ id: entry.id, attribute: "data-flow-edit" });
+  announceFlowAction({
+    text: fillTemplate({
+      template: APP_CONFIG.strings.METRICS_FLOW_BUILDER_ANNOUNCE_SAVED,
+      values: { name: entry.display_name },
+    }),
+  });
+}
+
+// An update 404: the flow is gone. Back to the grid with a notice.
+function handleFlowBuilderFlowMissing({ id }: { id: string }): void {
+  closeFlowBuilder({ reason: "missing" });
+  _flowLoadQueue.dropId({ id });
+  removeMissingCustomFlow({ id });
+  resumeFlowLoadsAfterClose();
+  showFlowNotice({
+    text: APP_CONFIG.strings.METRICS_FLOW_BUILDER_ERR_FLOW_GONE,
+  });
+  getElementByIdOrNull<HTMLElement>(FLOWS_HEADING_ID)?.focus();
+}
+
+function handleFlowBuilderDeleted({
+  id,
+  name,
+}: {
+  id: string;
+  name: string;
+}): void {
+  closeFlowBuilder({ reason: "deleted" });
+  cleanupDeletedFlow({ id, name, alreadyDeleted: false, forceFocus: true });
+  resumeFlowLoadsAfterClose();
+}
+
+/**
+ * Test-only: open the builder without a click.
+ */
+export function _openFlowBuilderForTests({
+  mode,
+  entry,
+}: {
+  mode: BuilderMode;
+  entry?: Schema<"MetricFlowEntrySchema">;
+}): void {
+  openFlowBuilderPanel({ mode, entry });
+}
+
+/**
+ * Test-only: close the builder for one reason.
+ */
+export function _closeFlowBuilderForTests({
+  reason,
+}: {
+  reason: FlowBuilderCloseReason;
+}): void {
+  closeFlowBuilder({ reason });
 }
 
 /**
@@ -2638,16 +3007,7 @@ function fetchAll(): void {
  * Flow loads are excluded — tracked via #MetricsPanelFlows aria-busy instead.
  */
 function onSettleAny(): void {
-  const anyInFlight =
-    _inFlight.topApi !== null ||
-    _inFlight.topUi !== null ||
-    _inFlight.topDomain !== null ||
-    _inFlight.tsApi !== null ||
-    _inFlight.tsUi !== null ||
-    _inFlight.tsDomain !== null ||
-    _inFlight.summary !== null ||
-    _inFlight.pipelineHealth !== null;
-  if (!anyInFlight) {
+  if (!hasRefreshRequestInFlight()) {
     setDashboardBusy({ busy: false });
     setRefreshButtonInFlight({ inFlight: false });
   }
@@ -2851,7 +3211,10 @@ function handleVisibilityChange(): void {
 
 function handleRefreshClick(event: JQuery.TriggeredEvent): void {
   const button = event.currentTarget as HTMLButtonElement;
-  if (button.getAttribute("aria-disabled") === "true") {
+  if (
+    button.getAttribute("aria-disabled") === "true" ||
+    button.hasAttribute("data-builder-paused")
+  ) {
     return;
   }
   fetchAll();
@@ -3016,13 +3379,61 @@ function handleTabClick({
   activePanel?.focus();
 }
 
+/**
+ * The one gate every tab change passes through. It must stay ABOVE
+ * `handleTabClick`, which mutates the page immediately: nothing may move
+ * (tabs, `aria-selected`, panels, focus) until the admin has answered. With no
+ * builder open, or a target equal to the active tab, it resolves `true`
+ * without yielding, so the common path stays synchronous for the caller.
+ * Resolves `false` when the change must not happen (declined, Save/Delete in
+ * flight, or a builder confirm already open, whose safe button gets focus).
+ */
+function requestTabChange({
+  tab,
+  origin,
+}: {
+  tab: MetricsTabId;
+  origin: HTMLElement | null;
+}): boolean | Promise<boolean> {
+  if (tab === _activeTab || _flowBuilder === null || !_flowBuilder.isOpen()) {
+    return true;
+  }
+  const builder = _flowBuilder;
+  if (builder.focusPendingConfirm()) {
+    return false;
+  }
+  return builder.confirmDiscard().then((discard) => {
+    if (!discard) {
+      origin?.focus();
+      return false;
+    }
+    // The builder may have closed itself while the prompt was open.
+    if (builder.isOpen()) {
+      abortFlowListRequest({ replacement: false });
+      closeFlowBuilder({ reason: "tab-accept" });
+    }
+    return true;
+  });
+}
+
 function handleTabButtonClick(event: JQuery.TriggeredEvent): void {
   const tabElement = event.currentTarget as HTMLButtonElement;
   const tab = tabElement.dataset.tab as MetricsTabId | undefined;
   if (tab === undefined) {
     return;
   }
-  handleTabClick({ tabId: tabElement.id, tab });
+  const gate = requestTabChange({ tab, origin: tabElement });
+  if (typeof gate === "boolean") {
+    if (gate) {
+      handleTabClick({ tabId: tabElement.id, tab });
+    }
+    return;
+  }
+  void gate.then((proceed) => {
+    if (proceed) {
+      handleTabClick({ tabId: tabElement.id, tab });
+    }
+  });
 }
 
 /**
@@ -3072,15 +3483,29 @@ function handleTabKeydown(event: JQuery.TriggeredEvent): void {
   const nextTabElement = getElementByIdOrNull<HTMLButtonElement>(
     nextTabIds.tab,
   );
-  handleTabClick({
-    tabId: nextTabIds.tab,
-    tab: nextTab,
+  const switchTab = (): void => {
+    handleTabClick({
+      tabId: nextTabIds.tab,
+      tab: nextTab,
+    });
+    // After `handleTabClick` focuses the panel, return focus to the activated
+    // tab so the user can keep navigating with arrow keys without re-tabbing
+    // out of the panel. Matches ARIA APG: keyboard activation keeps focus on
+    // the tab; mouse activation moves focus to the panel.
+    nextTabElement?.focus();
+  };
+  const gate = requestTabChange({ tab: nextTab, origin: tabElement });
+  if (typeof gate === "boolean") {
+    if (gate) {
+      switchTab();
+    }
+    return;
+  }
+  void gate.then((proceed) => {
+    if (proceed) {
+      switchTab();
+    }
   });
-  // After `handleTabClick` focuses the panel, return focus to the activated
-  // tab so the user can keep navigating with arrow keys without re-tabbing
-  // out of the panel. Matches ARIA APG: keyboard activation keeps focus on
-  // the tab; mouse activation moves focus to the panel.
-  nextTabElement?.focus();
 }
 
 export function initMetricsDashboard(): void {
@@ -3188,6 +3613,33 @@ export function initMetricsDashboard(): void {
     );
   }
 
+  const newFlowButton = getElementByIdOrNull<HTMLElement>(FLOWS_NEW_BUTTON_ID);
+  if (newFlowButton !== null) {
+    $(newFlowButton).offAndOnExact(
+      "click.metricsDashboardFlowNew",
+      openNewFlowBuilder,
+    );
+  }
+
+  const builderMount = getElementByIdOrNull<HTMLElement>(
+    FLOWS_BUILDER_MOUNT_ID,
+  );
+  _flowBuilder?.close();
+  _flowBuilder =
+    builderMount === null
+      ? null
+      : createFlowBuilder({
+          container: builderMount,
+          callbacks: {
+            announce: ({ message }) => announceFlowAction({ text: message }),
+            onSaved: handleFlowBuilderSaved,
+            onCancelled: handleFlowBuilderCancelled,
+            onFlowMissing: handleFlowBuilderFlowMissing,
+            onDeleted: handleFlowBuilderDeleted,
+            onListStale: refreshFlowList,
+          },
+        });
+
   document.addEventListener("visibilitychange", handleVisibilityChange);
 
   initPaneResizers();
@@ -3205,6 +3657,9 @@ export function initMetricsDashboard(): void {
  * single-page surface initialized once per page load.
  */
 export function _resetMetricsDashboardForTests(): void {
+  _flowBuilder?.close();
+  _flowBuilder = null;
+  _flowBuilderOpener = null;
   stopPolling();
   stopBadgeTicker();
   abortInFlightRequests();

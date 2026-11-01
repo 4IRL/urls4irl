@@ -4,13 +4,12 @@ import re
 
 import pytest
 from flask import Flask
-from playwright.sync_api import Locator, Page, Route, expect
+from playwright.sync_api import Page, Route, expect
 
 from backend.cli.mock_options import SEED_LATENCY_ENDPOINTS
 from backend.config import ConfigTestUI
 from backend.db import db
 from backend.metrics.events import DeviceType
-from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.gauges import GaugeName
 from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
@@ -20,12 +19,25 @@ from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import MetricsDashboardLocators as MDL
 from tests.functional.metrics_ui.playwright_utils import (
+    DEFAULT_ADMIN_USER_ID,
+    EXPECTED_FLOW_CARD_COUNT,
+    FLOW_DELETE_URL_RE,
+    FLOW_LIST_URL_RE,
+    FLOW_QUERY_URL_RE,
+    LONG_FLOW_NAME,
+    MIN_TOUCH_TARGET_PX,
+    MOBILE_VIEWPORT,
     SUB_FLOOR_FLOW_COUNT,
+    VIEWPORTS,
+    HeldFlowQueries,
     SeedCustomFlows,
+    count_text,
+    custom_card,
     insert_sub_floor_create_utub_flow_rows,
     insert_sub_floor_ingest_batch_row,
     login_admin_and_open_metrics_dashboard,
     one_step_definition,
+    open_flows_tab,
     removed_event_definition,
 )
 from tests.functional.playwright_utils import (
@@ -38,12 +50,10 @@ from tests.functional.playwright_utils import (
 
 pytestmark = pytest.mark.metrics_ui
 
-DEFAULT_ADMIN_USER_ID: int = 1
 SEEDED_TABLE_ROW_SELECTOR: str = f"{MDL.TOP_TABLE_API} tbody tr.MetricsTopTableRow"
 # The seeder writes the same two endpoints for every device type, so the
 # per-endpoint percentile table groups down to exactly these two rows.
 EXPECTED_LATENCY_ROW_COUNT: int = len(SEED_LATENCY_ENDPOINTS)
-EXPECTED_FLOW_CARD_COUNT: int = 4
 ALL_PIPELINE_HEALTH_BAR_SELECTORS: tuple[str, ...] = (
     MDL.PIPELINE_HEALTH_BAR_FETCH_DESKTOP,
     MDL.PIPELINE_HEALTH_BAR_FETCH_MOBILE,
@@ -1047,82 +1057,6 @@ def test_latency_tab_shows_approximate_note_for_long_window(
 # Flows grid: custom flows, delete confirm, needs-attention, toolbar
 # ---------------------------------------------------------------------------
 
-DESKTOP_VIEWPORT: dict[str, int] = {"width": 1280, "height": 900}
-MOBILE_VIEWPORT: dict[str, int] = {"width": 420, "height": 900}
-VIEWPORTS = pytest.mark.parametrize(
-    "viewport",
-    [DESKTOP_VIEWPORT, MOBILE_VIEWPORT],
-    ids=["1280", "420"],
-)
-FLOW_LIST_URL_RE: re.Pattern[str] = re.compile(r".*/admin/metrics/flows(\?.*)?$")
-FLOW_DELETE_URL_RE: re.Pattern[str] = re.compile(r".*/admin/metrics/flows/[^/?]+$")
-FLOW_QUERY_URL_RE: re.Pattern[str] = re.compile(r".*/api/metrics/query/flow(\?.*)?$")
-MIN_TOUCH_TARGET_PX: int = 44
-LONG_FLOW_NAME: str = "x" * FLOW_LIMITS.NAME_MAX_LENGTH
-
-
-class HeldFlowQueries:
-    """Holds every `/api/metrics/query/flow` request until `release()`;
-    afterwards requests pass straight through."""
-
-    def __init__(self) -> None:
-        self._held: list[Route] = []
-        self._released: bool = False
-
-    def handle(self, route: Route) -> None:
-        if self._released:
-            route.continue_()
-        else:
-            self._held.append(route)
-
-    def release(self) -> None:
-        self._released = True
-        for route in self._held:
-            route.continue_()
-        self._held.clear()
-
-
-def _open_flows_tab(
-    *,
-    page: Page,
-    app: Flask,
-    port: int,
-    config: ConfigTestUI,
-    viewport: dict[str, int] | None = None,
-    wait_for_settled: bool = True,
-) -> None:
-    """Log in, open the Flows tab and (by default) wait for every card to leave
-    the loading state, since cards are rebuilt when their funnel settles.
-    Tests that hold `/flow` responses pass ``wait_for_settled=False``."""
-    if viewport is not None:
-        page.set_viewport_size(viewport)
-    login_admin_and_open_metrics_dashboard(
-        app=app,
-        context=page.context,
-        page=page,
-        port=port,
-        user_id=DEFAULT_ADMIN_USER_ID,
-        config=config,
-    )
-    wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
-    if wait_for_settled:
-        expect(page.locator(MDL.FLOWS_COUNT)).not_to_have_text(
-            UI_TEST_STRINGS.METRICS_FLOWS_COUNT_LOADING
-        )
-        expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
-
-
-def _custom_card(page: Page, flow_id: str) -> Locator:
-    return page.locator(f'{MDL.FLOWS_CARD}[data-flow-id="{flow_id}"]')
-
-
-def _count_text(*, custom: int) -> str:
-    return UI_TEST_STRINGS.METRICS_FLOWS_COUNT.format(
-        builtin=EXPECTED_FLOW_CARD_COUNT,
-        custom=custom,
-        max=FLOW_LIMITS.MAX_CUSTOM,
-    )
-
 
 def _delete_other_admin(*, app: Flask, flow_id: str) -> None:
     """Remove the row as if another admin had deleted it."""
@@ -1147,7 +1081,7 @@ def test_flows_toolbar_shows_counts_and_custom_card_controls(
         and built-in cards show neither a custom badge nor Delete.
     """
     flow_ids = seed_custom_flows(display_names=["Alpha flow", "Beta flow"])
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1158,11 +1092,11 @@ def test_flows_toolbar_shows_counts_and_custom_card_controls(
     expect(page.locator(MDL.FLOWS_HEADING)).to_have_text(
         UI_TEST_STRINGS.METRICS_FLOWS_HEADING
     )
-    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(_count_text(custom=2))
+    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(count_text(custom=2))
     expect(page.locator(MDL.FLOWS_HINT)).to_be_hidden()
 
     for flow_id, name in zip(flow_ids, ["Alpha flow", "Beta flow"]):
-        card = _custom_card(page, flow_id)
+        card = custom_card(page, flow_id)
         expect(card.locator(".flow-badge.custom")).to_have_text(
             UI_TEST_STRINGS.METRICS_FLOW_BADGE_CUSTOM
         )
@@ -1176,7 +1110,15 @@ def test_flows_toolbar_shows_counts_and_custom_card_controls(
     built_in_cards = page.locator(f"{MDL.FLOWS_CARD}:not([data-flow-id^=custom_])")
     expect(built_in_cards).to_have_count(EXPECTED_FLOW_CARD_COUNT)
     expect(built_in_cards.locator(".flow-delete-btn")).to_have_count(0)
+    expect(built_in_cards.locator(".flow-edit-btn")).to_have_count(0)
     expect(built_in_cards.locator(".flow-badge.custom")).to_have_count(0)
+    expect(page.locator(MDL.FLOWS_NEW_BUTTON)).to_be_visible()
+    expect(page.locator(MDL.FLOWS_EDIT_BUTTON)).to_have_count(2)
+    for flow_id, name in zip(flow_ids, ["Alpha flow", "Beta flow"]):
+        expect(custom_card(page, flow_id).locator(".flow-edit-btn")).to_have_attribute(
+            "aria-label",
+            UI_TEST_STRINGS.METRICS_FLOW_BUILDER_EDIT_LABEL.format(name=name),
+        )
 
 
 def test_flows_toolbar_shows_zero_custom_hint(
@@ -1192,14 +1134,14 @@ def test_flows_toolbar_shows_zero_custom_hint(
     THEN the toolbar reads "4 built-in · 0 custom (of 20)" and the zero-custom
         hint is visible.
     """
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
         config=provide_config,
     )
 
-    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(_count_text(custom=0))
+    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(count_text(custom=0))
     expect(page.locator(MDL.FLOWS_HINT)).to_have_text(
         UI_TEST_STRINGS.METRICS_FLOWS_ZERO_CUSTOM_HINT
     )
@@ -1221,7 +1163,7 @@ def test_flow_delete_escape_returns_focus_to_delete_button(
     THEN Cancel was focused while open and the Delete button is focused after.
     """
     [flow_id] = seed_custom_flows(display_names=["Escape flow"])
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1229,7 +1171,7 @@ def test_flow_delete_escape_returns_focus_to_delete_button(
         viewport=viewport,
     )
 
-    card = _custom_card(page, flow_id)
+    card = custom_card(page, flow_id)
     card.locator(".flow-delete-btn").click()
     expect(card.locator(".flow-cancel-btn")).to_be_focused()
     expect(page.locator(MDL.FLOWS_CONFIRM_GROUP)).to_have_count(1)
@@ -1255,7 +1197,7 @@ def test_flow_delete_cancel_click_returns_focus_to_delete_button(
     THEN the confirm closes and the Delete button is focused.
     """
     [flow_id] = seed_custom_flows(display_names=["Cancel flow"])
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1263,12 +1205,46 @@ def test_flow_delete_cancel_click_returns_focus_to_delete_button(
         viewport=viewport,
     )
 
-    card = _custom_card(page, flow_id)
+    card = custom_card(page, flow_id)
     card.locator(".flow-delete-btn").click()
     card.locator(".flow-cancel-btn").click()
 
     expect(card.locator("[data-flow-confirm]")).to_have_count(0)
     expect(card.locator(".flow-delete-btn")).to_be_focused()
+
+
+@VIEWPORTS
+def test_flow_edit_then_cancel_returns_focus_to_edit_button(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    seed_custom_flows: SeedCustomFlows,
+    viewport: dict[str, int],
+):
+    """
+    GIVEN a custom flow card
+    WHEN the admin clicks Edit and then Cancel in the builder
+    THEN the grid returns and the card's Edit button is focused.
+    """
+    [flow_id] = seed_custom_flows(display_names=["Edit cancel flow"])
+    open_flows_tab(
+        page=page,
+        app=provide_app,
+        port=provide_port,
+        config=provide_config,
+        viewport=viewport,
+    )
+
+    card = custom_card(page, flow_id)
+    card.locator(".flow-edit-btn").click()
+    builder = page.locator(MDL.FLOW_BUILDER)
+    expect(builder).to_be_visible()
+    builder.locator('[data-action="cancel"]').click()
+
+    expect(builder).to_be_hidden()
+    expect(card.locator(".flow-edit-btn")).to_be_focused()
 
 
 @VIEWPORTS
@@ -1289,7 +1265,7 @@ def test_flow_delete_confirm_removes_card_and_updates_toolbar(
         deleted flow.
     """
     [flow_id] = seed_custom_flows(display_names=["Doomed flow"])
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1298,16 +1274,16 @@ def test_flow_delete_confirm_removes_card_and_updates_toolbar(
     )
     expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT + 1)
 
-    card = _custom_card(page, flow_id)
+    card = custom_card(page, flow_id)
     card.locator(".flow-delete-btn").click()
     card.locator(".flow-confirm-btn").click()
 
     expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT)
-    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(_count_text(custom=0))
+    expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(count_text(custom=0))
     expect(page.locator(MDL.FLOWS_HINT)).to_have_text(
         UI_TEST_STRINGS.METRICS_FLOWS_ZERO_CUSTOM_HINT
     )
-    expect(page.locator(MDL.FLOWS_HEADING)).to_be_focused()
+    expect(page.locator(MDL.FLOWS_NEW_BUTTON)).to_be_focused()
     expect(page.locator(MDL.FLOWS_ACTION_ANNOUNCEMENT)).to_have_text(
         UI_TEST_STRINGS.METRICS_FLOW_DELETED.format(name="Doomed flow")
     )
@@ -1331,14 +1307,14 @@ def test_flow_needs_attention_card_names_the_failing_step(
     [flow_id] = seed_custom_flows(
         display_names=["Broken flow"], definition=removed_event_definition()
     )
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
         config=provide_config,
     )
 
-    card = _custom_card(page, flow_id)
+    card = custom_card(page, flow_id)
     expect(card).to_have_attribute("data-flow-state", "invalid")
     expect(card).to_have_attribute(
         "aria-label",
@@ -1374,14 +1350,14 @@ def test_flow_level_needs_attention_card_has_no_step_number(
     [flow_id] = seed_custom_flows(
         display_names=["Short flow"], definition=one_step_definition()
     )
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
         config=provide_config,
     )
 
-    card = _custom_card(page, flow_id)
+    card = custom_card(page, flow_id)
     expect(card).to_have_attribute("data-flow-state", "invalid")
     attention = card.locator(".flow-attention")
     expect(attention).to_contain_text(UI_TEST_STRINGS.METRICS_FLOW_NEEDS_ATTENTION)
@@ -1410,7 +1386,7 @@ def test_flows_panel_is_busy_until_cards_load(
     seed_custom_flows(display_names=["Busy flow"])
     held = HeldFlowQueries()
     page.route(FLOW_QUERY_URL_RE, held.handle)
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1450,7 +1426,7 @@ def test_flows_grid_shows_loading_skeletons_for_queued_cards(
     )
     held = HeldFlowQueries()
     page.route(FLOW_QUERY_URL_RE, held.handle)
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1487,7 +1463,7 @@ def test_flow_delete_confirm_survives_card_settles(
     )
     held = HeldFlowQueries()
     page.route(FLOW_QUERY_URL_RE, held.handle)
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1495,7 +1471,7 @@ def test_flow_delete_confirm_survives_card_settles(
         wait_for_settled=False,
     )
 
-    card = _custom_card(page, flow_ids[0])
+    card = custom_card(page, flow_ids[0])
     card.locator(".flow-delete-btn").click()
     expect(card.locator(".flow-cancel-btn")).to_be_focused()
 
@@ -1533,14 +1509,14 @@ def test_flow_delete_404_shows_already_deleted_notice(
         )
 
     page.route(FLOW_DELETE_URL_RE, _answer_404)
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
         config=provide_config,
     )
 
-    card = _custom_card(page, flow_id)
+    card = custom_card(page, flow_id)
     card.locator(".flow-delete-btn").click()
     card.locator(".flow-confirm-btn").click()
 
@@ -1577,7 +1553,7 @@ def test_flows_list_429_falls_back_to_built_ins_with_list_error(
         )
 
     page.route(FLOW_LIST_URL_RE, _rate_limit_list)
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1607,7 +1583,7 @@ def test_flow_delete_controls_meet_touch_target_and_fit_at_420px(
         not overflow horizontally.
     """
     [flow_id] = seed_custom_flows(display_names=[LONG_FLOW_NAME])
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1617,13 +1593,19 @@ def test_flow_delete_controls_meet_touch_target_and_fit_at_420px(
 
     # Cards are rebuilt when their funnel settles; measure only after that.
     expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
-    card = _custom_card(page, flow_id)
+    card = custom_card(page, flow_id)
     delete_button = card.locator(".flow-delete-btn")
     expect(delete_button).to_be_visible()
     delete_box = delete_button.bounding_box()
     assert delete_box is not None
     assert delete_box["width"] >= MIN_TOUCH_TARGET_PX
     assert delete_box["height"] >= MIN_TOUCH_TARGET_PX
+    for control in (card.locator(".flow-edit-btn"), page.locator(MDL.FLOWS_NEW_BUTTON)):
+        expect(control).to_be_visible()
+        control_box = control.bounding_box()
+        assert control_box is not None
+        assert control_box["width"] >= MIN_TOUCH_TARGET_PX, control_box
+        assert control_box["height"] >= MIN_TOUCH_TARGET_PX, control_box
 
     delete_button.click()
     confirm_button = card.locator(".flow-confirm-btn")
@@ -1666,7 +1648,7 @@ def test_already_deleted_notice_fits_viewport_at_420px(
         )
 
     page.route(FLOW_DELETE_URL_RE, _answer_404)
-    _open_flows_tab(
+    open_flows_tab(
         page=page,
         app=provide_app,
         port=provide_port,
@@ -1674,7 +1656,7 @@ def test_already_deleted_notice_fits_viewport_at_420px(
         viewport=MOBILE_VIEWPORT,
     )
 
-    card = _custom_card(page, flow_id)
+    card = custom_card(page, flow_id)
     card.locator(".flow-delete-btn").click()
     card.locator(".flow-confirm-btn").click()
 
@@ -1690,3 +1672,72 @@ def test_already_deleted_notice_fits_viewport_at_420px(
         "() => document.documentElement.scrollWidth - window.innerWidth"
     )
     assert page_overflow <= 1, f"Page overflows horizontally by {page_overflow}px."
+
+
+def test_flows_tab_refresh_is_enabled_and_paused_hint_hidden_when_idle(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN an admin on the Flows tab with the flow builder closed
+    WHEN the cards have loaded
+    THEN Refresh is not aria-disabled, has no builder-paused marker, and the
+        paused-Refresh hint row is hidden.
+    """
+    open_flows_tab(page=page, app=provide_app, port=provide_port, config=provide_config)
+
+    refresh = page.locator(MDL.REFRESH_NOW_BUTTON)
+    expect(refresh).not_to_have_attribute("aria-disabled", "true")
+    assert not refresh.evaluate("(el) => el.hasAttribute('data-builder-paused')")
+    expect(page.locator(MDL.REFRESH_PAUSED_HINT)).to_be_hidden()
+
+
+def test_tablist_arrow_home_end_move_selection_and_focus_without_builder(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN an admin on the metrics dashboard with no flow builder open
+    WHEN ArrowRight, ArrowLeft, End and Home are pressed on the focused tab
+    THEN selection and focus move between tabs exactly as before the
+        unsaved-changes gate (no builder open bypasses it).
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+    tab_ids: list[str] = page.evaluate(
+        "() => Array.from(document.querySelectorAll("
+        '\'[role="tablist"] [role="tab"][id^="MetricsTab"]\')).map((el) => el.id)'
+    )
+    assert len(tab_ids) >= 3
+
+    def expect_only_selected(tab_id: str) -> None:
+        for candidate in tab_ids:
+            expect(page.locator(f"#{candidate}")).to_have_attribute(
+                "aria-selected", "true" if candidate == tab_id else "false"
+            )
+        expect(page.locator(f"#{tab_id}")).to_be_focused()
+
+    wait_then_click_element(page=page, css_selector=f"#{tab_ids[0]}")
+    page.locator(f"#{tab_ids[0]}").focus()
+    expect_only_selected(tab_ids[0])
+
+    page.keyboard.press("ArrowRight")
+    expect_only_selected(tab_ids[1])
+    page.keyboard.press("ArrowLeft")
+    expect_only_selected(tab_ids[0])
+    page.keyboard.press("End")
+    expect_only_selected(tab_ids[-1])
+    page.keyboard.press("Home")
+    expect_only_selected(tab_ids[0])

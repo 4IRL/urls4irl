@@ -1077,6 +1077,65 @@ describe("renderFlowGrid custom cards, badges and states", () => {
     expect(card.querySelector(".flow-confirm")).toBeNull();
   });
 
+  it("every custom state renders a labelled Edit button before Delete", () => {
+    const states: FlowCardState[] = [
+      loading,
+      { kind: "error" },
+      { kind: "response", response: buildAddUrlResponse() },
+    ];
+    for (const state of states) {
+      const card = render({
+        entries: [customEntry({ id: "a", state, custom: CLOSED })],
+      }).querySelector(".flow-card") as HTMLElement;
+      const edit = card.querySelector(
+        "button.flow-edit-btn[data-flow-edit]",
+      ) as HTMLButtonElement;
+      expect(edit.getAttribute("aria-label")).toBe("Edit flow Title a");
+      expect(edit.hasAttribute("aria-disabled")).toBe(false);
+      expect(edit.nextElementSibling).toBe(
+        card.querySelector(".flow-delete-btn"),
+      );
+    }
+  });
+
+  it("builtin cards and open confirms have no Edit button", () => {
+    const builtin = render({
+      entries: [{ id: "a", title: "Built in", state: loading }],
+    });
+    expect(builtin.querySelector("[data-flow-edit]")).toBeNull();
+    const confirming = render({
+      entries: [
+        customEntry({
+          id: "a",
+          state: loading,
+          custom: { ...CLOSED, confirm: "open" },
+        }),
+      ],
+    });
+    expect(confirming.querySelector("[data-flow-edit]")).toBeNull();
+  });
+
+  it("locked Edit is aria-disabled and points at the same reason span", () => {
+    const container = render({
+      entries: [
+        customEntry({
+          id: "a",
+          state: loading,
+          custom: { ...CLOSED, deleteLocked: true },
+        }),
+      ],
+    });
+    const edit = container.querySelector("[data-flow-edit]") as HTMLElement;
+    const remove = container.querySelector("[data-flow-delete]") as HTMLElement;
+    expect(edit.getAttribute("aria-disabled")).toBe("true");
+    expect(edit.getAttribute("aria-describedby")).toBe(
+      remove.getAttribute("aria-describedby"),
+    );
+    expect(
+      container.querySelectorAll(`#${edit.getAttribute("aria-describedby")}`),
+    ).toHaveLength(1);
+  });
+
   it("custom response card gets the (custom) aria-label suffix", () => {
     const card = render({
       entries: [

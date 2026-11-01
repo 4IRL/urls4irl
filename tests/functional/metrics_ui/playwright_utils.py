@@ -1,31 +1,126 @@
 from __future__ import annotations
 
 import copy
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
+import pytest
 from flask import Flask
-from playwright.sync_api import BrowserContext, Page
+from playwright.sync_api import BrowserContext, Locator, Page, Route, expect
 
 from backend import db
 from backend.config import ConfigTestUI
-from backend.metrics.events import DeviceType, EventName
+from backend.metrics.events import (
+    EVENT_DESCRIPTIONS,
+    DeviceType,
+    EventCategory,
+    EventName,
+)
+from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.metrics.flow_validation import serialize_flow_steps
 from backend.metrics.flows import FLOWS, FlowId, format_custom_flow_id
 from backend.metrics.suppression import MIN_CELL_COUNT
 from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.models.event_registry import Event_Registry
 from backend.models.metric_flows import Metric_Flows
 from backend.models.users import User_Role, Users
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.functional.locators import MetricsDashboardLocators as MDL
 from tests.functional.playwright_utils import (
     create_user_session_and_provide_session_id,
     login_user_with_cookie_from_session,
+    wait_then_click_element,
 )
 
 ADMIN_METRICS_DASHBOARD_PATH: str = "/admin/metrics"
 REMOVED_EVENT_NAME: str = "removed_event"
+DEFAULT_ADMIN_USER_ID: int = 1
+EXPECTED_FLOW_CARD_COUNT: int = 4
 # Type of the `seed_custom_flows` fixture: `(*, display_names, definition=None)`.
 SeedCustomFlows = Callable[..., list[str]]
+
+DESKTOP_VIEWPORT: dict[str, int] = {"width": 1280, "height": 900}
+MOBILE_VIEWPORT: dict[str, int] = {"width": 420, "height": 900}
+VIEWPORTS = pytest.mark.parametrize(
+    "viewport",
+    [DESKTOP_VIEWPORT, MOBILE_VIEWPORT],
+    ids=["1280", "420"],
+)
+FLOW_LIST_URL_RE: re.Pattern[str] = re.compile(r".*/admin/metrics/flows(\?.*)?$")
+FLOW_DELETE_URL_RE: re.Pattern[str] = re.compile(r".*/admin/metrics/flows/[^/?]+$")
+FLOW_QUERY_URL_RE: re.Pattern[str] = re.compile(r".*/api/metrics/query/flow(\?.*)?$")
+MIN_TOUCH_TARGET_PX: int = 44
+LONG_FLOW_NAME: str = "x" * FLOW_LIMITS.NAME_MAX_LENGTH
+
+
+class HeldFlowQueries:
+    """Holds every `/api/metrics/query/flow` request until `release()`;
+    afterwards requests pass straight through."""
+
+    def __init__(self) -> None:
+        self._held: list[Route] = []
+        self._released: bool = False
+
+    def handle(self, route: Route) -> None:
+        if self._released:
+            route.continue_()
+        else:
+            self._held.append(route)
+
+    @property
+    def held_count(self) -> int:
+        """Requests currently held (zero once released)."""
+        return len(self._held)
+
+    def release(self) -> None:
+        self._released = True
+        for route in self._held:
+            route.continue_()
+        self._held.clear()
+
+
+def open_flows_tab(
+    *,
+    page: Page,
+    app: Flask,
+    port: int,
+    config: ConfigTestUI,
+    viewport: dict[str, int] | None = None,
+    wait_for_settled: bool = True,
+) -> None:
+    """Log in, open the Flows tab and (by default) wait for every card to leave
+    the loading state, since cards are rebuilt when their funnel settles.
+    Tests that hold `/flow` responses pass ``wait_for_settled=False``."""
+    if viewport is not None:
+        page.set_viewport_size(viewport)
+    login_admin_and_open_metrics_dashboard(
+        app=app,
+        context=page.context,
+        page=page,
+        port=port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=config,
+    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
+    if wait_for_settled:
+        expect(page.locator(MDL.FLOWS_COUNT)).not_to_have_text(
+            UI_TEST_STRINGS.METRICS_FLOWS_COUNT_LOADING
+        )
+        expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
+
+
+def custom_card(page: Page, flow_id: str) -> Locator:
+    return page.locator(f'{MDL.FLOWS_CARD}[data-flow-id="{flow_id}"]')
+
+
+def count_text(*, custom: int) -> str:
+    return UI_TEST_STRINGS.METRICS_FLOWS_COUNT.format(
+        builtin=EXPECTED_FLOW_CARD_COUNT,
+        custom=custom,
+        max=FLOW_LIMITS.MAX_CUSTOM,
+    )
 
 
 def build_valid_flow_steps() -> list[dict[str, Any]]:
@@ -46,6 +141,134 @@ def removed_event_definition() -> dict[str, Any]:
 def one_step_definition() -> dict[str, Any]:
     """Definition with a single step (flow-level needs-attention, no step number)."""
     return {"steps": build_valid_flow_steps()[:1]}
+
+
+def filtered_breakdown_definition() -> dict[str, Any]:
+    """Four-step definition whose submit and domain steps carry a `dim_filter`
+    and a `drop_breakdown` (the add-URL funnel), so a form that cannot edit
+    either must still round-trip them untouched."""
+    steps = build_valid_flow_steps()
+    assert steps[1].get("dim_filter"), "filtered step lost its dim_filter"
+    assert steps[1].get("drop_breakdown"), "filtered step lost its breakdown"
+    assert steps[3].get("drop_breakdown"), "domain step lost its breakdown"
+    return {"steps": steps}
+
+
+def two_step_filtered_definition() -> dict[str, Any]:
+    """Minimum-length (2 steps) filtered-and-breakdown definition."""
+    steps = build_valid_flow_steps()
+    return {"steps": [steps[1], steps[3]]}
+
+
+# Counts the add-URL funnel seed writes (see `seed_add_url_funnel_metrics`).
+SEEDED_OPEN_COUNT: int = 10
+SEEDED_SUBMIT_URL_CREATE_COUNT: int = 8
+SEEDED_SUBMIT_OTHER_FORM_COUNT: int = 12
+SEEDED_API_COUNT: int = 7
+SEEDED_DOMAIN_COUNT: int = 6
+
+
+def _seed_metric_row(
+    *,
+    event_name: EventName,
+    category: EventCategory,
+    count: int,
+    dimensions: dict[str, Any] | None = None,
+    endpoint: str | None = None,
+    method: str | None = None,
+    status_code: int | None = None,
+) -> None:
+    if Event_Registry.query.filter_by(name=event_name.value).one_or_none() is None:
+        db.session.add(
+            Event_Registry(
+                name=event_name.value,
+                category=category,
+                description=EVENT_DESCRIPTIONS[event_name],
+            )
+        )
+        db.session.flush()
+    db.session.add(
+        Anonymous_Metrics(
+            event_name=event_name.value,
+            bucket_start=datetime.now(timezone.utc) - timedelta(hours=1),
+            dimensions=dimensions if dimensions is not None else {},
+            count=count,
+            endpoint=endpoint,
+            method=method,
+            status_code=status_code,
+        )
+    )
+    db.session.commit()
+
+
+def seed_add_url_funnel_metrics(*, app: Flask) -> None:
+    """Seed non-zero counts for every step and breakdown of the add-URL funnel,
+    plus submits from another form that the `form:url_create` filter must drop
+    (DD-10: the uniform seed has no data for these events)."""
+    ui_dims = {"device_type": 2}
+    with app.app_context():
+        _seed_metric_row(
+            event_name=EventName.UI_URL_CREATE_OPEN,
+            category=EventCategory.UI,
+            count=SEEDED_OPEN_COUNT,
+            dimensions=ui_dims,
+        )
+        _seed_metric_row(
+            event_name=EventName.UI_FORM_SUBMIT,
+            category=EventCategory.UI,
+            count=SEEDED_SUBMIT_URL_CREATE_COUNT,
+            dimensions={
+                "trigger": "button_click",
+                "form": "url_create",
+                "device_type": 2,
+            },
+        )
+        _seed_metric_row(
+            event_name=EventName.UI_FORM_SUBMIT,
+            category=EventCategory.UI,
+            count=SEEDED_SUBMIT_OTHER_FORM_COUNT,
+            dimensions={
+                "trigger": "button_click",
+                "form": "utub_create",
+                "device_type": 2,
+            },
+        )
+        _seed_metric_row(
+            event_name=EventName.UI_FORM_CANCEL,
+            category=EventCategory.UI,
+            count=SEEDED_OPEN_COUNT,
+            dimensions={
+                "trigger": "escape_key",
+                "form": "url_create",
+                "device_type": 2,
+            },
+        )
+        _seed_metric_row(
+            event_name=EventName.API_HIT,
+            category=EventCategory.API,
+            count=SEEDED_API_COUNT,
+            endpoint="urls.create_url",
+            method="POST",
+            status_code=201,
+        )
+        _seed_metric_row(
+            event_name=EventName.URL_ADDED_TO_UTUB,
+            category=EventCategory.DOMAIN,
+            count=SEEDED_DOMAIN_COUNT,
+            dimensions=ui_dims,
+        )
+        _seed_metric_row(
+            event_name=EventName.URL_CREATE_REJECTED,
+            category=EventCategory.DOMAIN,
+            count=6,
+            dimensions={"reason": "invalid_url", "device_type": 2},
+        )
+        _seed_metric_row(
+            event_name=EventName.URL_CREATE_REJECTED,
+            category=EventCategory.DOMAIN,
+            count=5,
+            dimensions={"reason": "url_already_in_utub", "device_type": 2},
+        )
 
 
 def insert_custom_flows(

@@ -35,6 +35,9 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchFlow: fetchFlowSpy,
   fetchMetricFlows: fetchMetricFlowsSpy,
   deleteMetricFlow: deleteMetricFlowSpy,
+  createMetricFlow: vi.fn(),
+  updateMetricFlow: vi.fn(),
+  fetchMetricFlowCatalog: vi.fn(),
 }));
 
 vi.mock("../render-summary.js", () => ({ renderSummary: vi.fn() }));
@@ -75,6 +78,10 @@ const DASHBOARD_HTML = `
         <span id="MetricsFlowsCount" class="flows-count"></span>
         <span id="MetricsFlowsHint" class="flows-hint" hidden></span>
         <span id="MetricsFlowsNotice" class="flows-notice" hidden></span>
+        <span class="flow-new-group">
+          <span id="MetricsFlowNewReason" class="flow-new-reason" hidden></span>
+          <button type="button" id="MetricsFlowNewBtn" class="flow-new-btn">+ New flow</button>
+        </span>
       </div>
       <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
