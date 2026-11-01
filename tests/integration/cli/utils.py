@@ -17,6 +17,7 @@ from backend.models.urls import Urls
 from backend.models.users import Users
 from backend.models.utub_invite_acceptances import Utub_Invite_Acceptances
 from backend.models.utub_invite_links import Utub_Invite_Links
+from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -237,6 +238,18 @@ def verify_invite_links_added():
             ).count()
             == state.use_count
         )
+        acceptances: list[Utub_Invite_Acceptances] = (
+            Utub_Invite_Acceptances.query.filter_by(invite_id=link.id).all()
+        )
+        assert all(acceptance.user_id != link.created_by for acceptance in acceptances)
+        non_creator_member_count = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub.id,
+            Utub_Members.user_id != link.created_by,
+        ).count()
+        anonymous_count = sum(
+            1 for acceptance in acceptances if acceptance.user_id is None
+        )
+        assert anonymous_count == max(0, state.use_count - non_creator_member_count)
 
 
 def _assert_tracking_seed_urls_in_first_utub(first_utub_id: int, seed_tag_id: int):
