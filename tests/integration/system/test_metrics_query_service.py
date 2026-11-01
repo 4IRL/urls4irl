@@ -6,7 +6,9 @@ from typing import Any, Generator
 
 import pytest
 from flask import Flask
+from sqlalchemy import text
 
+from backend import db
 from backend.extensions.metrics.buckets import previous_window
 from backend.metrics.events import (
     EVENT_CATEGORY,
@@ -28,6 +30,7 @@ from backend.metrics.query_service import (
     validate_dim_keys,
 )
 from backend.metrics.resources import Resource
+from backend.metrics.suppression import ALLOWED_GROUP_BY_PROJECTIONS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
@@ -586,7 +589,7 @@ def test_timeseries_groups_by_resolution(
     metrics_pg_conn: Any,
 ) -> None:
     """
-    GIVEN two UTUB_OPENED rows in two distinct hour buckets within a 1-day
+    GIVEN two UTUB_CREATED rows in two distinct hour buckets within a 1-day
         window aligned on the hour
     WHEN timeseries is called with resolution="hour"
     THEN 24 chronologically-ordered buckets are returned (one per hour) with
@@ -602,30 +605,35 @@ def test_timeseries_groups_by_resolution(
 
     _insert_metric_row(
         metrics_pg_conn,
-        event_name=EventName.UTUB_OPENED,
+        event_name=EventName.UTUB_CREATED,
         bucket_start=first_bucket,
         count=3,
     )
     _insert_metric_row(
         metrics_pg_conn,
-        event_name=EventName.UTUB_OPENED,
+        event_name=EventName.UTUB_CREATED,
         bucket_start=second_bucket,
         count=4,
     )
 
     with app.app_context():
-        hourly = timeseries(
-            event_name=EventName.UTUB_OPENED,
+        hourly_result = timeseries(
+            event_name=EventName.UTUB_CREATED,
             window_start=window_start,
             window_end=window_end,
             resolution="hour",
         )
-        daily = timeseries(
-            event_name=EventName.UTUB_OPENED,
+        daily_result = timeseries(
+            event_name=EventName.UTUB_CREATED,
             window_start=window_start,
             window_end=window_end,
             resolution="day",
         )
+
+    hourly = hourly_result.buckets
+    daily = daily_result.buckets
+    assert hourly_result.resolution == "hour"
+    assert daily_result.resolution == "day"
 
     assert len(hourly) == 24
     bucket_starts = [row.bucket for row in hourly]
@@ -664,19 +672,20 @@ def test_timeseries_zero_fills_when_no_rows_in_window(
             'SELECT COUNT(*) FROM "AnonymousMetrics"'
             ' WHERE "eventName" = %s AND "bucketStart" >= %s'
             ' AND "bucketStart" < %s',
-            (EventName.UTUB_OPENED.value, window_start, window_end),
+            (EventName.UTUB_CREATED.value, window_start, window_end),
         )
         existing_count = cur.fetchone()[0]
     assert existing_count == 0
 
     with app.app_context():
-        rows = timeseries(
-            event_name=EventName.UTUB_OPENED,
+        result = timeseries(
+            event_name=EventName.UTUB_CREATED,
             window_start=window_start,
             window_end=window_end,
             resolution="hour",
         )
 
+    rows = result.buckets
     assert len(rows) == 24
     assert all(row.count == 0 for row in rows)
     bucket_starts = [row.bucket for row in rows]
@@ -704,13 +713,14 @@ def test_timeseries_zero_fills_with_unaligned_window_start(
     window_start = (window_end - timedelta(days=1)).replace(minute=37)
 
     with app.app_context():
-        rows = timeseries(
-            event_name=EventName.UTUB_OPENED,
+        result = timeseries(
+            event_name=EventName.UTUB_CREATED,
             window_start=window_start,
             window_end=window_end,
             resolution="hour",
         )
 
+    rows = result.buckets
     # 24 buckets: the leading partial bucket (truncated hour containing
     # window_start) through to the last full hour bucket before window_end.
     assert len(rows) == 24
@@ -768,7 +778,7 @@ def test_timeseries_filters_by_endpoint_and_method(
     )
 
     with app.app_context():
-        rows = timeseries(
+        result = timeseries(
             event_name=EventName.API_HIT,
             window_start=window_start,
             window_end=window_end,
@@ -777,6 +787,7 @@ def test_timeseries_filters_by_endpoint_and_method(
             method="GET",
         )
 
+    rows = result.buckets
     assert len(rows) == 24
     nonzero = [row for row in rows if row.count != 0]
     assert len(nonzero) == 1
@@ -1700,7 +1711,7 @@ def test_timeseries_filters_by_device_type(
     )
 
     with app.app_context():
-        rows = timeseries(
+        result = timeseries(
             event_name=EventName.UI_UTUB_SELECT,
             window_start=window_start,
             window_end=window_end,
@@ -1708,11 +1719,315 @@ def test_timeseries_filters_by_device_type(
             device_type=int(filter_device_type),
         )
 
+    rows = result.buckets
     assert len(rows) == 24
     nonzero = [row for row in rows if row.count != 0]
     assert len(nonzero) == 1
     assert nonzero[0].count == expected_count
     assert nonzero[0].bucket == inside
+
+
+def test_timeseries_daily_event_returns_complete_days_as_day_resolution(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows at three UTC midnights and a mid-day window
+    WHEN timeseries is called with resolution="hour"
+    THEN the result reports "day", covers complete UTC days only (current day
+        excluded) and zero-fills days without rows.
+    """
+    window_end = _WINDOW_REFERENCE  # 2026-01-15 12:00 UTC
+    window_start = window_end - timedelta(days=3)  # 2026-01-12 12:00 UTC
+    day_13 = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    day_14 = datetime(2026, 1, 14, tzinfo=timezone.utc)
+    day_15 = datetime(2026, 1, 15, tzinfo=timezone.utc)
+    for bucket_start, count in ((day_13, 5), (day_15, 9)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        result = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
+        )
+
+    assert result.resolution == "day"
+    # [floor(Jan 12 12:00), floor(Jan 15 12:00)) = Jan 12, 13, 14
+    assert [(row.bucket, row.count) for row in result.buckets] == [
+        (datetime(2026, 1, 12, tzinfo=timezone.utc), 0),
+        (day_13, 5),
+        (day_14, 0),
+    ]
+
+
+def test_timeseries_daily_event_without_complete_day_is_empty(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a window inside a single UTC day
+    WHEN timeseries is called for a daily event
+    THEN no buckets are returned and the resolution is "day".
+    """
+    with metrics_enabled_runner_app.app_context():
+        result = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=_WINDOW_REFERENCE - timedelta(hours=6),
+            window_end=_WINDOW_REFERENCE,
+            resolution="hour",
+        )
+
+    assert result.resolution == "day"
+    assert result.buckets == []
+
+
+def test_timeseries_daily_event_offset_range_keys_by_utc_midnight(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows at UTC midnights and an explicit -07:00 range
+    WHEN timeseries is called
+    THEN buckets are keyed at UTC midnights with the counts in the right
+        buckets (never local-midnight keys that miss the UTC keys).
+    """
+    tz_minus_7 = timezone(timedelta(hours=-7))
+    # 2026-01-12 20:00 -07:00 = Jan 13 03:00 UTC; end Jan 15 20:00 -07:00 =
+    # Jan 16 03:00 UTC. Complete UTC days: Jan 13, 14, 15.
+    window_start = datetime(2026, 1, 12, 20, 0, tzinfo=tz_minus_7)
+    window_end = datetime(2026, 1, 15, 20, 0, tzinfo=tz_minus_7)
+    for day, count in ((13, 2), (14, 3), (15, 4)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=datetime(2026, 1, day, tzinfo=timezone.utc),
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        result = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
+        )
+
+    assert [(row.bucket, row.count) for row in result.buckets] == [
+        (datetime(2026, 1, 13, tzinfo=timezone.utc), 2),
+        (datetime(2026, 1, 14, tzinfo=timezone.utc), 3),
+        (datetime(2026, 1, 15, tzinfo=timezone.utc), 4),
+    ]
+
+
+def test_timeseries_hourly_event_day_resolution_offset_start_keys_by_utc_midnight(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_CREATED (hourly-stored) rows on Jan 13 and Jan 14 and a day
+        resolution range starting at 20:00 -07:00 (= 03:00 UTC)
+    WHEN timeseries is called
+    THEN the first bucket is the UTC midnight of the start's UTC day (never the
+        local midnight) and counts land in the matching UTC-midnight buckets.
+    """
+    tz_minus_7 = timezone(timedelta(hours=-7))
+    # Start Jan 12 20:00 -07:00 = Jan 13 03:00 UTC; end Jan 14 20:00 -07:00 =
+    # Jan 15 03:00 UTC.
+    window_start = datetime(2026, 1, 12, 20, 0, tzinfo=tz_minus_7)
+    window_end = datetime(2026, 1, 14, 20, 0, tzinfo=tz_minus_7)
+    for bucket_start, count in (
+        (datetime(2026, 1, 13, 5, tzinfo=timezone.utc), 2),
+        (datetime(2026, 1, 14, 1, tzinfo=timezone.utc), 3),
+    ):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_CREATED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        result = timeseries(
+            event_name=EventName.UTUB_CREATED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
+        )
+
+    assert result.resolution == "day"
+    assert [(row.bucket, row.count) for row in result.buckets] == [
+        (datetime(2026, 1, 13, tzinfo=timezone.utc), 2),
+        (datetime(2026, 1, 14, tzinfo=timezone.utc), 3),
+        # Partial trailing day (end is 03:00 UTC) is zero-filled for hourly events.
+        (datetime(2026, 1, 15, tzinfo=timezone.utc), 0),
+    ]
+
+
+def test_timeseries_day_groups_under_utc_date_with_non_utc_session_timezone(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a midnight-UTC UTUB_OPENED row and a Los Angeles session timezone on
+        the session the service reads through
+    WHEN timeseries runs
+    THEN the row is grouped under its own UTC date (without the three-argument
+        `date_trunc` it would land on the previous local day and read zero).
+    """
+    day = datetime(2026, 1, 14, tzinfo=timezone.utc)
+    _insert_metric_row(
+        metrics_pg_conn, event_name=EventName.UTUB_OPENED, bucket_start=day, count=6
+    )
+
+    with metrics_enabled_runner_app.app_context():
+        db.session.execute(text("SET LOCAL TIME ZONE 'America/Los_Angeles'"))
+        result = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=datetime(2026, 1, 13, tzinfo=timezone.utc),
+            window_end=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            resolution="day",
+        )
+        db.session.rollback()
+
+    assert [(row.bucket, row.count) for row in result.buckets] == [
+        (datetime(2026, 1, 13, tzinfo=timezone.utc), 0),
+        (day, 6),
+    ]
+
+
+def test_grouped_timeseries_day_groups_under_utc_date_with_non_utc_session_timezone(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a midnight-UTC API_METRICS_INGEST_BATCH row and a Los Angeles
+        session timezone on the session the service reads through
+    WHEN grouped_timeseries runs at day resolution
+    THEN the row's bucket is its own UTC date, not the previous local day.
+    """
+    day = datetime(2026, 1, 14, tzinfo=timezone.utc)
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_METRICS_INGEST_BATCH,
+        bucket_start=day,
+        dimensions={
+            "batch_size_bucket": "1",
+            "transport": "fetch",
+            "device_type": 2,
+        },
+        count=1000,
+    )
+
+    with metrics_enabled_runner_app.app_context():
+        db.session.execute(text("SET LOCAL TIME ZONE 'America/Los_Angeles'"))
+        response = grouped_timeseries(
+            event_name=EventName.API_METRICS_INGEST_BATCH,
+            group_by=["batch_size_bucket", "transport", "device_type"],
+            window_start=datetime(2026, 1, 13, tzinfo=timezone.utc),
+            window_end=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            resolution="day",
+        )
+        db.session.rollback()
+
+    assert [bucket.bucket for bucket in response.buckets] == [day]
+
+
+def test_grouped_timeseries_daily_event_counts_complete_days_only(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows at the UTC midnights of Jan 12, 13 and 15 and a
+        mid-day window (Jan 12 12:00 to Jan 15 12:00)
+    WHEN grouped_timeseries runs at day resolution
+    THEN both ends floor to UTC midnight: Jan 12 (floored start) and Jan 13
+        are returned while the current day (Jan 15) stays hidden.
+    """
+    monkeypatch.setitem(
+        ALLOWED_GROUP_BY_PROJECTIONS,
+        EventName.UTUB_OPENED,
+        frozenset({frozenset({"device_type"})}),
+    )
+    window_end = _WINDOW_REFERENCE  # 2026-01-15 12:00 UTC
+    window_start = window_end - timedelta(days=3)  # 2026-01-12 12:00 UTC
+    day_12 = datetime(2026, 1, 12, tzinfo=timezone.utc)
+    day_13 = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    day_15 = datetime(2026, 1, 15, tzinfo=timezone.utc)
+    for bucket_start, count in ((day_12, 3), (day_13, 5), (day_15, 9)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=bucket_start,
+            dimensions={"device_type": int(DeviceType.DESKTOP)},
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        response = grouped_timeseries(
+            event_name=EventName.UTUB_OPENED,
+            group_by=["device_type"],
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
+        )
+
+    assert [(bucket.bucket, bucket.count) for bucket in response.buckets] == [
+        (day_12, 3),
+        (day_13, 5),
+    ]
+
+
+def test_grouped_timeseries_non_partitioned_offset_start_uses_utc_midnight(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows on Jan 13 and Jan 14 and a -07:00 window starting
+        at Jan 12 20:00 local (= Jan 13 03:00 UTC)
+    WHEN grouped_timeseries runs at day resolution with
+        partition_by_bucket=False
+    THEN the single synthetic bucket is the UTC midnight of the start's UTC
+        day (Jan 13), never the local midnight, and sums both days.
+    """
+    monkeypatch.setitem(
+        ALLOWED_GROUP_BY_PROJECTIONS,
+        EventName.UTUB_OPENED,
+        frozenset({frozenset({"device_type"})}),
+    )
+    tz_minus_7 = timezone(timedelta(hours=-7))
+    window_start = datetime(2026, 1, 12, 20, 0, tzinfo=tz_minus_7)
+    window_end = datetime(2026, 1, 15, 20, 0, tzinfo=tz_minus_7)
+    for day, count in ((13, 2), (14, 3)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=datetime(2026, 1, day, tzinfo=timezone.utc),
+            dimensions={"device_type": int(DeviceType.DESKTOP)},
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        response = grouped_timeseries(
+            event_name=EventName.UTUB_OPENED,
+            group_by=["device_type"],
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
+            partition_by_bucket=False,
+        )
+
+    assert [(bucket.bucket, bucket.count) for bucket in response.buckets] == [
+        (datetime(2026, 1, 13, tzinfo=timezone.utc), 5)
+    ]
 
 
 # --------------------------- grouped_counts --------------------------------
@@ -1852,6 +2167,358 @@ def test_grouped_counts_no_filter_no_group_by(
 
     assert isinstance(result, int)
     assert result == 12
+
+
+_DAILY_NOW: datetime = datetime(2026, 1, 15, 14, 0, 0, tzinfo=timezone.utc)
+_DAILY_TODAY: datetime = datetime(2026, 1, 15, 0, 0, 0, tzinfo=timezone.utc)
+
+
+def test_top_events_daily_event_counts_complete_days_only(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows for D-2 (2), D-1 (3 at midnight + 4 hourly leftover)
+        and the current day D (8 at midnight, 16 at 09:00), now = D 14:00
+    WHEN top_events is called with window=day
+    THEN current counts only D-1 in full (7), previous counts only D-2 (2),
+        and the current day D is hidden.
+    """
+    app = metrics_enabled_runner_app
+    for bucket_start, count in (
+        (_DAILY_TODAY - timedelta(days=2), 2),
+        (_DAILY_TODAY - timedelta(days=1), 3),
+        (_DAILY_TODAY - timedelta(days=1) + timedelta(hours=7), 4),
+        (_DAILY_TODAY, 8),
+        (_DAILY_TODAY + timedelta(hours=9), 16),
+    ):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+
+    window_start = _DAILY_NOW - timedelta(days=1)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=_DAILY_NOW,
+            previous_window_start=window_start - timedelta(days=1),
+            previous_window_end=window_start,
+            category=None,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    assert rows[0].event_name == EventName.UTUB_OPENED.value
+    assert rows[0].total_count == 7
+    assert rows[0].previous_count == 2
+
+
+@pytest.mark.parametrize("span_days", [1, 7, 30])
+def test_summary_daily_event_never_counted_in_both_windows(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    span_days: int,
+) -> None:
+    """
+    GIVEN one UTUB_OPENED row (count 1) per UTC day for 70 days, plus the
+        current day's row
+    WHEN summary is called for contiguous current and previous windows of
+        span_days ending at D 14:00
+    THEN each period counts exactly span_days days: no overlap, no loss, and
+        the current day is excluded.
+    """
+    app = metrics_enabled_runner_app
+    for days_back in range(0, 70):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=_DAILY_TODAY - timedelta(days=days_back),
+            count=1,
+        )
+
+    window_start = _DAILY_NOW - timedelta(days=span_days)
+    with app.app_context():
+        result = summary(
+            window_start=window_start,
+            window_end=_DAILY_NOW,
+            previous_window_start=window_start - timedelta(days=span_days),
+            previous_window_end=window_start,
+        )
+
+    domain_row = next(row for row in result.by_category if row.category == "domain")
+    assert domain_row.current == span_days
+    assert domain_row.previous == span_days
+
+
+def test_summary_explicit_range_never_counted_in_both_windows(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN one UTUB_OPENED row per UTC day and an explicit 3-day range with
+        non-midnight ends, with its preceding contiguous window
+    WHEN summary is called
+    THEN current and previous each count their 3 complete days once.
+    """
+    app = metrics_enabled_runner_app
+    for days_back in range(0, 20):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=_DAILY_TODAY - timedelta(days=days_back),
+            count=1,
+        )
+    window_start = datetime(2026, 1, 10, 5, 30, tzinfo=timezone.utc)
+    window_end = datetime(2026, 1, 13, 18, 45, tzinfo=timezone.utc)
+    previous_start = window_start - (window_end - window_start)
+
+    with app.app_context():
+        result = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_start,
+            previous_window_end=window_start,
+        )
+
+    domain_row = next(row for row in result.by_category if row.category == "domain")
+    # Current floors to [Jan 10, Jan 13): Jan 10, 11, 12.
+    assert domain_row.current == 3
+    # Previous floors to [Jan 6, Jan 10): Jan 6, 7, 8, 9.
+    assert domain_row.previous == 4
+
+
+def test_grouped_count_scalar_daily_event_single_day_range_is_zero(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a UTUB_OPENED row and a UTUB_CREATED row, both inside one UTC day
+    WHEN grouped_count_scalar is called with a range inside that single day
+    THEN the daily event returns 0 and the hourly event returns its count.
+    """
+    app = metrics_enabled_runner_app
+    day_start = _DAILY_TODAY - timedelta(days=1)
+    for event_name in (EventName.UTUB_OPENED, EventName.UTUB_CREATED):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=event_name,
+            bucket_start=day_start + timedelta(hours=10),
+            count=5,
+        )
+
+    window_start = day_start + timedelta(hours=9)
+    window_end = day_start + timedelta(hours=12)
+    with app.app_context():
+        daily = grouped_count_scalar(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+        )
+        hourly = grouped_count_scalar(
+            event_name=EventName.UTUB_CREATED,
+            window_start=window_start,
+            window_end=window_end,
+        )
+
+    assert daily == 0
+    assert hourly == 5
+
+
+def test_grouped_count_scalar_daily_event_straddling_midnight_returns_full_day(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a UTUB_OPENED row for D-1 (midnight) and one for D (midnight)
+    WHEN the window is 23:00 D-1 to 01:00 D
+    THEN the full day D-1 is counted and day D is not (accepted behavior).
+    """
+    app = metrics_enabled_runner_app
+    previous_day = _DAILY_TODAY - timedelta(days=1)
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=previous_day,
+        count=4,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=_DAILY_TODAY,
+        count=9,
+    )
+
+    with app.app_context():
+        result = grouped_count_scalar(
+            event_name=EventName.UTUB_OPENED,
+            window_start=previous_day + timedelta(hours=23),
+            window_end=_DAILY_TODAY + timedelta(hours=1),
+        )
+
+    assert result == 4
+
+
+def test_grouped_count_scalar_daily_event_offset_range_floors_by_utc_date(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN daily UTUB_OPENED rows on Jan 14, 15 and 16 (UTC midnights)
+    WHEN the range is given with a -07:00 offset, 2026-01-14T20:00-07:00 to
+        2026-01-15T17:00-07:00 (UTC: Jan 15 03:00 to Jan 16 00:00)
+    THEN it floors by the UTC date and counts only the Jan 15 row.
+    """
+    app = metrics_enabled_runner_app
+    for day_of_month, count in ((14, 1), (15, 10), (16, 100)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=datetime(2026, 1, day_of_month, tzinfo=timezone.utc),
+            count=count,
+        )
+    offset = timezone(timedelta(hours=-7))
+
+    with app.app_context():
+        result = grouped_count_scalar(
+            event_name=EventName.UTUB_OPENED,
+            window_start=datetime(2026, 1, 14, 20, 0, tzinfo=offset),
+            window_end=datetime(2026, 1, 15, 17, 0, tzinfo=offset),
+        )
+
+    assert result == 10
+
+
+def test_daily_event_includes_legacy_hourly_rows_for_complete_days_only(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN hourly-stamped UTUB_OPENED rows written before deploy on D-1 and D
+    WHEN grouped_count_scalar covers D-2 00:00 to D 14:00
+    THEN the D-1 hourly rows are included and the current day's are hidden.
+    """
+    app = metrics_enabled_runner_app
+    previous_day = _DAILY_TODAY - timedelta(days=1)
+    for bucket_start, count in (
+        (previous_day + timedelta(hours=3), 2),
+        (previous_day + timedelta(hours=22), 3),
+        (_DAILY_TODAY + timedelta(hours=5), 50),
+    ):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+
+    with app.app_context():
+        result = grouped_count_scalar(
+            event_name=EventName.UTUB_OPENED,
+            window_start=_DAILY_TODAY - timedelta(days=2),
+            window_end=_DAILY_NOW,
+        )
+
+    assert result == 5
+
+
+def test_hourly_event_window_boundaries_unchanged(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_CREATED rows at exactly window_start, mid-window and exactly
+        window_end
+    WHEN top_events is called
+    THEN the window_start row is counted and the window_end row is excluded.
+    """
+    app = metrics_enabled_runner_app
+    window_start = _DAILY_NOW - timedelta(hours=6)
+    for bucket_start, count in (
+        (window_start, 1),
+        (window_start + timedelta(hours=2), 2),
+        (_DAILY_NOW, 4),
+    ):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_CREATED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=_DAILY_NOW,
+            previous_window_start=window_start - timedelta(hours=6),
+            previous_window_end=window_start,
+            category=None,
+            limit=10,
+        )
+
+    assert rows[0].total_count == 3
+
+
+def test_mixed_daily_and_hourly_flow_steps_use_their_own_windows(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN daily UTUB_OPENED rows and hourly UTUB_CREATED rows near the edges
+        of a window that starts and ends mid-day
+    WHEN grouped_count_scalar is called for each flow step over that window
+    THEN the daily step uses the floored [start, end) and the hourly step the
+        exact window.
+    """
+    app = metrics_enabled_runner_app
+    window_start = datetime(2026, 1, 10, 6, 0, tzinfo=timezone.utc)
+    window_end = datetime(2026, 1, 12, 18, 0, tzinfo=timezone.utc)
+    daily_rows = (
+        (datetime(2026, 1, 9, tzinfo=timezone.utc), 1),
+        (datetime(2026, 1, 10, tzinfo=timezone.utc), 10),
+        (datetime(2026, 1, 11, tzinfo=timezone.utc), 100),
+        (datetime(2026, 1, 12, tzinfo=timezone.utc), 1000),
+    )
+    hourly_rows = (
+        (window_start - timedelta(hours=1), 1),
+        (window_start, 10),
+        (datetime(2026, 1, 11, 12, tzinfo=timezone.utc), 100),
+        (window_end - timedelta(hours=1), 1000),
+        (window_end, 10000),
+    )
+    for bucket_start, count in daily_rows:
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+    for bucket_start, count in hourly_rows:
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_CREATED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+
+    with app.app_context():
+        daily_step = grouped_count_scalar(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+        )
+        hourly_step = grouped_count_scalar(
+            event_name=EventName.UTUB_CREATED,
+            window_start=window_start,
+            window_end=window_end,
+        )
+
+    # Daily floors to [Jan 10, Jan 12): Jan 10 and Jan 11.
+    assert daily_step == 110
+    # Hourly keeps the exact [Jan 10 06:00, Jan 12 18:00).
+    assert hourly_step == 1110
 
 
 def test_grouped_counts_group_by_none_returns_int(

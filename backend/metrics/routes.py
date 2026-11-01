@@ -263,7 +263,7 @@ def query_timeseries() -> FlaskResponse:
             status_code=400,
         )
 
-    buckets = query_service.timeseries(
+    result = query_service.timeseries(
         event_name=EventName(parsed.event_name),
         window_start=window_start,
         window_end=window_end,
@@ -275,10 +275,10 @@ def query_timeseries() -> FlaskResponse:
     response_schema = TimeseriesResponseSchema(
         event_name=parsed.event_name,
         window=parsed.window,
-        resolution=parsed.resolution,
+        resolution=result.resolution,
         window_start=window_start,
         window_end=window_end,
-        buckets=buckets,
+        buckets=result.buckets,
     )
     return APIResponse(data=response_schema, status_code=200).to_response()
 

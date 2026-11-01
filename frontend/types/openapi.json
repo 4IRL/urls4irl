@@ -5664,7 +5664,7 @@
               "enum": ["hour", "day"],
               "type": "string"
             },
-            "description": "date_trunc resolution: hour (default) or day."
+            "description": "date_trunc resolution: hour (default) or day. Events stored in daily buckets always return `day`, whatever is requested."
           },
           {
             "name": "endpoint",
@@ -12782,7 +12782,7 @@
             "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
           },
           "resolution": {
-            "description": "date_trunc resolution (hour | day)",
+            "description": "Effective resolution of the returned buckets (hour | day); may differ from the requested one for daily-stored events",
             "type": "string"
           },
           "window_start": {

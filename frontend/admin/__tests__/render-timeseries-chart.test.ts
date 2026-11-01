@@ -241,4 +241,141 @@ describe("renderTimeseriesChart", () => {
     expect(emptyState?.getAttribute("text-anchor")).toBe("middle");
     expect(emptyState?.getAttribute("dominant-baseline")).toBe("middle");
   });
+
+  describe("daily resolution", () => {
+    const dayResponse = (buckets: TimeseriesBucketSchema[]) =>
+      buildResponse(buckets, { resolution: "day" });
+    const noteSelector = ".ts-daily-note";
+    const oneDay: TimeseriesBucketSchema[] = [
+      { bucket: "2026-06-06T00:00:00Z", count: 7 },
+    ];
+
+    afterEach(() => {
+      document.querySelectorAll(noteSelector).forEach((note) => note.remove());
+    });
+
+    it("labels buckets without an hour at day resolution", () => {
+      const buckets: TimeseriesBucketSchema[] = [
+        { bucket: "2026-06-04T00:00:00Z", count: 1 },
+        { bucket: "2026-06-05T00:00:00Z", count: 2 },
+        { bucket: "2026-06-06T00:00:00Z", count: 3 },
+      ];
+      const expectedDay = new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(buckets[0]!.bucket));
+      renderTimeseriesChart({ svg, response: dayResponse(buckets) });
+      const labels = svg.querySelectorAll(".MetricsAxisLabelX");
+      expect(labels[0]!.textContent).toBe(expectedDay);
+    });
+
+    it("keeps the hour in labels at hour resolution", () => {
+      const bucket = "2026-06-06T05:00:00Z";
+      const expectedHour = new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(bucket));
+      renderTimeseriesChart({
+        svg,
+        response: buildResponse([{ bucket, count: 1 }]),
+      });
+      expect(svg.querySelector(".MetricsAxisLabelX")!.textContent).toBe(
+        expectedHour,
+      );
+    });
+
+    it("renders exactly one hourless x label for a one-bucket daily chart", () => {
+      renderTimeseriesChart({ svg, response: dayResponse(oneDay) });
+      const labels = svg.querySelectorAll(".MetricsAxisLabelX");
+      expect(labels.length).toBe(1);
+      const expectedDay = new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(oneDay[0]!.bucket));
+      expect(labels[0]!.textContent).toBe(expectedDay);
+    });
+
+    it("adds the note before the svg for a day response and keeps title/desc", () => {
+      renderTimeseriesChart({ svg, response: dayResponse(oneDay) });
+      const note = document.querySelector(noteSelector);
+      expect(note?.textContent).toBe(
+        APP_CONFIG.strings.METRICS_TIMESERIES_DAILY_RESOLUTION_NOTE,
+      );
+      expect(note?.getAttribute("role")).toBe("note");
+      expect(note?.nextElementSibling).toBe(svg);
+      expect(svg.querySelector("title")?.textContent).toBe("utub_opened");
+      expect(svg.querySelector("desc")).not.toBeNull();
+    });
+
+    it("adds the note for an empty day response", () => {
+      renderTimeseriesChart({ svg, response: dayResponse([]) });
+      expect(document.querySelectorAll(noteSelector).length).toBe(1);
+    });
+
+    it("leaves a single note after repeated renders (day, hour, day)", () => {
+      renderTimeseriesChart({ svg, response: dayResponse(oneDay) });
+      renderTimeseriesChart({ svg, response: buildResponse(oneDay) });
+      expect(document.querySelectorAll(noteSelector).length).toBe(0);
+      renderTimeseriesChart({ svg, response: dayResponse(oneDay) });
+      renderTimeseriesChart({ svg, response: dayResponse(oneDay) });
+      expect(document.querySelectorAll(noteSelector).length).toBe(1);
+    });
+
+    it("adds no note for an hour response in a detached svg (gauge)", () => {
+      const detached = document.createElementNS(
+        SVG_NAMESPACE,
+        "svg",
+      ) as unknown as SVGSVGElement;
+      renderTimeseriesChart({ svg: detached, response: buildResponse(oneDay) });
+      expect(document.querySelectorAll(noteSelector).length).toBe(0);
+    });
+
+    it("does not throw for a day response in a detached svg", () => {
+      const detached = document.createElementNS(
+        SVG_NAMESPACE,
+        "svg",
+      ) as unknown as SVGSVGElement;
+      expect(() =>
+        renderTimeseriesChart({ svg: detached, response: dayResponse(oneDay) }),
+      ).not.toThrow();
+    });
+  });
+
+  describe("point radius", () => {
+    const radii = () =>
+      Array.from(svg.querySelectorAll(".MetricsTimeseriesPoint")).map((dot) =>
+        dot.getAttribute("r"),
+      );
+    const one: TimeseriesBucketSchema[] = [
+      { bucket: "2026-06-06T00:00:00Z", count: 3 },
+    ];
+
+    it("uses radius 6 for a single bucket at day resolution", () => {
+      renderTimeseriesChart({
+        svg,
+        response: buildResponse(one, { resolution: "day" }),
+      });
+      expect(radii()).toEqual(["6"]);
+    });
+
+    it("uses radius 6 for a single bucket at hour resolution", () => {
+      renderTimeseriesChart({ svg, response: buildResponse(one) });
+      expect(radii()).toEqual(["6"]);
+    });
+
+    it("keeps radius 2.5 for several buckets", () => {
+      renderTimeseriesChart({
+        svg,
+        response: buildResponse([
+          ...one,
+          { bucket: "2026-06-06T01:00:00Z", count: 4 },
+        ]),
+      });
+      expect(radii()).toEqual(["2.5", "2.5"]);
+    });
+  });
 });
