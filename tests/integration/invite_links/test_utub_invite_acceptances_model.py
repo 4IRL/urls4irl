@@ -90,6 +90,13 @@ def test_acceptances_group_by_invite_with_or_without_user(
         assert {row.user_id is None for row in rows} == {True, False}
         assert _acceptance_count(other_invite_id) == 1
 
+        anonymous_acceptance = rows.filter(
+            Utub_Invite_Acceptances.user_id.is_(None)
+        ).one()
+        assert anonymous_acceptance.invite.id == invite_id
+        assert anonymous_acceptance.utub.id == utub_id
+        assert anonymous_acceptance.user is None
+
 
 def test_acceptance_with_nonexistent_invite_is_rejected(
     app: Flask, every_user_makes_a_unique_utub
