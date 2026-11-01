@@ -13,7 +13,7 @@ from backend.invite_links.token_generator import generate_invite_token
 
 pytestmark = pytest.mark.unit
 
-STDLIB_ALLOWLIST: frozenset[str] = frozenset({"datetime", "__future__"})
+STDLIB_ALLOWLIST: frozenset[str] = frozenset({"datetime", "enum", "__future__"})
 
 
 def test_generated_tokens_match_pattern_and_length() -> None:
