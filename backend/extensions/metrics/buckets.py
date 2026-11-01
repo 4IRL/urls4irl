@@ -21,9 +21,9 @@ MISSING_WINDOW_ERROR: str = "Provide `window` or both `start` and `end`."
 def compute_bucket_start_epoch(now_epoch_seconds: int, bucket_seconds: int) -> int:
     """Truncate an epoch second value down to the start of its bucket.
 
-    Shared by `MetricsWriter` (writes Redis counter keys) and the Phase 2
-    flush worker (parses bucket from key) so both agree on bucket boundaries
-    even if `METRICS_BUCKET_SECONDS` changes.
+    Used by `MetricsWriter` to choose the bucket for Redis counter and latency
+    keys. The flush worker is width-agnostic: it reads the bucket start from
+    the key and does not call this function.
 
     Examples:
         Hour bucket (3600 s) — mid-hour epoch snaps back to the hour boundary:

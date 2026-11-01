@@ -43,6 +43,9 @@ const Y_AXIS_TITLE_X = 16;
 const PLOT_WIDTH = VIEWBOX_WIDTH - AXIS_LEFT_PADDING;
 const PLOT_HEIGHT = VIEWBOX_HEIGHT - AXIS_BOTTOM_PADDING;
 const Y_AXIS_TICK_COUNT = 5;
+const DAILY_NOTE_CLASS = "ts-daily-note";
+const POINT_RADIUS = 2.5;
+const SINGLE_POINT_RADIUS = 6;
 
 function clearSvgChildren({ svg }: { svg: SVGSVGElement }): void {
   while (svg.firstChild !== null) {
@@ -69,7 +72,13 @@ function appendTitleAndDesc({
   svg.appendChild(descElement);
 }
 
-function formatBucketLabel(bucketIso: string): string {
+function formatBucketLabel({
+  bucketIso,
+  resolution,
+}: {
+  bucketIso: string;
+  resolution: string;
+}): string {
   const parsed = new Date(bucketIso);
   if (Number.isNaN(parsed.getTime())) {
     return "";
@@ -77,9 +86,39 @@ function formatBucketLabel(bucketIso: string): string {
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
-    hour: "numeric",
+    ...(resolution === "day" ? {} : { hour: "numeric" }),
     timeZone: "UTC",
   }).format(parsed);
+}
+
+/**
+ * Show a note above the chart when the response is at daily grain. Removes any
+ * existing note first so repeated renders never stack notes. Lives outside the
+ * svg (whose children are cleared each render); a detached svg gets no note.
+ */
+function syncDailyNote({
+  svg,
+  daily,
+}: {
+  svg: SVGSVGElement;
+  daily: boolean;
+}): void {
+  const parent = svg.parentElement;
+  if (parent === null) {
+    return;
+  }
+  parent.querySelectorAll(`.${DAILY_NOTE_CLASS}`).forEach((note) => {
+    note.remove();
+  });
+  if (!daily) {
+    return;
+  }
+  const note = document.createElement("p");
+  note.className = DAILY_NOTE_CLASS;
+  note.setAttribute("role", "note");
+  note.textContent =
+    APP_CONFIG.strings.METRICS_TIMESERIES_DAILY_RESOLUTION_NOTE;
+  parent.insertBefore(note, svg);
 }
 
 export function renderTimeseriesChart({
@@ -90,6 +129,7 @@ export function renderTimeseriesChart({
   response: TimeseriesResponseSchema;
 }): void {
   clearSvgChildren({ svg });
+  syncDailyNote({ svg, daily: response.resolution === "day" });
 
   if (response.buckets.length === 0) {
     appendTitleAndDesc({
@@ -229,7 +269,10 @@ export function renderTimeseriesChart({
       dot.setAttribute("class", "MetricsTimeseriesPoint");
       dot.setAttribute("cx", pointX!);
       dot.setAttribute("cy", pointY!);
-      dot.setAttribute("r", "2.5");
+      dot.setAttribute(
+        "r",
+        String(offsetPoints.length === 1 ? SINGLE_POINT_RADIUS : POINT_RADIUS),
+      );
       dot.setAttribute("data-bucket", response.buckets[pointIndex]!.bucket);
       dot.setAttribute(
         "data-count",
@@ -273,7 +316,10 @@ export function renderTimeseriesChart({
     const textAnchor =
       index === 0 ? "start" : index === lastIndex ? "end" : "middle";
     label.setAttribute("text-anchor", textAnchor);
-    label.textContent = formatBucketLabel(response.buckets[index]!.bucket);
+    label.textContent = formatBucketLabel({
+      bucketIso: response.buckets[index]!.bucket,
+      resolution: response.resolution,
+    });
     svg.appendChild(label);
   }
 }

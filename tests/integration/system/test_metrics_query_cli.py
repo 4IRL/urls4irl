@@ -100,7 +100,7 @@ def test_flask_metrics_top_prints_header_and_rows_in_descending_total(
     metrics_enabled_runner_app: Flask,
 ) -> None:
     """
-    GIVEN seeded UTUB_OPENED (count 14) and API_HIT (count 100) rows in the window
+    GIVEN seeded UTUB_CREATED (count 14) and API_HIT (count 100) rows in the window
     WHEN `flask metrics top --window=day` is invoked
     THEN the CLI exits 0, prints the tab-separated header, and the first
         data row is API_HIT (the higher total).
@@ -110,10 +110,10 @@ def test_flask_metrics_top_prints_header_and_rows_in_descending_total(
 
     with app.app_context():
         _seed_event_with_count(
-            EventName.UTUB_OPENED, EventCategory.DOMAIN, inside, count=5
+            EventName.UTUB_CREATED, EventCategory.DOMAIN, inside, count=5
         )
         _seed_event_with_count(
-            EventName.UTUB_OPENED,
+            EventName.UTUB_CREATED,
             EventCategory.DOMAIN,
             inside - timedelta(minutes=30),
             count=9,
@@ -136,7 +136,7 @@ def test_flask_metrics_top_prints_header_and_rows_in_descending_total(
     assert first_columns[-1] == "100"
 
     second_columns = data_lines[1].split("\t")
-    assert second_columns[0] == EventName.UTUB_OPENED.value
+    assert second_columns[0] == EventName.UTUB_CREATED.value
     assert second_columns[-1] == "14"
 
 
@@ -144,7 +144,7 @@ def test_flask_metrics_top_filters_by_category(
     metrics_enabled_runner_app: Flask,
 ) -> None:
     """
-    GIVEN domain (UTUB_OPENED) and api (API_HIT) rows inside the window
+    GIVEN domain (UTUB_CREATED) and api (API_HIT) rows inside the window
     WHEN `flask metrics top --window=day --category=domain` is invoked
     THEN only domain-category rows appear in the output.
     """
@@ -153,7 +153,7 @@ def test_flask_metrics_top_filters_by_category(
 
     with app.app_context():
         _seed_event_with_count(
-            EventName.UTUB_OPENED, EventCategory.DOMAIN, inside, count=5
+            EventName.UTUB_CREATED, EventCategory.DOMAIN, inside, count=5
         )
         _seed_event_with_count(EventName.API_HIT, EventCategory.API, inside, count=100)
 
@@ -161,7 +161,7 @@ def test_flask_metrics_top_filters_by_category(
     result = runner.invoke(args=["metrics", "top", "--window=day", "--category=domain"])
 
     assert result.exit_code == 0, result.output
-    assert EventName.UTUB_OPENED.value in result.output
+    assert EventName.UTUB_CREATED.value in result.output
     assert EventName.API_HIT.value not in result.output
 
 
@@ -177,10 +177,10 @@ def test_flask_metrics_top_respects_limit_flag(
     inside = _bucket_inside_day_window()
 
     seeded_events = [
-        EventName.UTUB_OPENED,
         EventName.UTUB_CREATED,
         EventName.UTUB_DELETED,
         EventName.URL_ACCESSED,
+        EventName.UTUB_DESC_UPDATED,
         EventName.API_HIT,
     ]
     with app.app_context():
@@ -252,7 +252,7 @@ def test_flask_metrics_top_absolute_range_happy_path(
     metrics_enabled_runner_app: Flask,
 ) -> None:
     """
-    GIVEN seeded UTUB_OPENED rows inside an absolute UTC range
+    GIVEN seeded UTUB_CREATED rows inside an absolute UTC range
     WHEN `flask metrics top --start=<iso-Z> --end=<iso-Z>` runs
     THEN the CLI exits 0, prints `range: [<iso-start> .. <iso-end>]`,
         and the seeded row appears in the data section.
@@ -264,7 +264,7 @@ def test_flask_metrics_top_absolute_range_happy_path(
 
     with app.app_context():
         _seed_event_with_count(
-            EventName.UTUB_OPENED, EventCategory.DOMAIN, inside, count=11
+            EventName.UTUB_CREATED, EventCategory.DOMAIN, inside, count=11
         )
 
     runner: FlaskCliRunner = app.test_cli_runner()
@@ -285,7 +285,7 @@ def test_flask_metrics_top_absolute_range_happy_path(
         result.output.splitlines().index(TOP_EVENTS_HEADER) + 1 :
     ]
     first_data_columns = data_lines[0].split("\t")
-    assert first_data_columns[0] == EventName.UTUB_OPENED.value
+    assert first_data_columns[0] == EventName.UTUB_CREATED.value
     assert first_data_columns[-1] == "11"
 
 

@@ -131,7 +131,12 @@ class TimeseriesResponseSchema(BaseSchema):
             "supplied an absolute `start`/`end` range instead."
         ),
     )
-    resolution: str = Field(description="date_trunc resolution (hour | day)")
+    resolution: str = Field(
+        description=(
+            "Effective resolution of the returned buckets (hour | day); may "
+            "differ from the requested one for daily-stored events"
+        )
+    )
     window_start: datetime = Field(description="Inclusive UTC start of the window")
     window_end: datetime = Field(description="Exclusive UTC end of the window")
     buckets: list[TimeseriesBucketSchema] = Field(

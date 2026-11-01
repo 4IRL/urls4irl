@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from unittest import mock
 from unittest.mock import patch
 
@@ -10,13 +11,21 @@ from flask import Flask
 from redis import Redis
 
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
-from backend.extensions.metrics.writer import MetricsWriter, record_event
+from backend.extensions.metrics.writer import (
+    MetricsWriter,
+    record_duration,
+    record_event,
+)
+from backend.metrics.event_registry import DAILY_BUCKET_SECONDS
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
+from backend.metrics.latency import LatencyMetricName
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
     IPHONE_UA,
     WINDOWS_CHROME_UA,
     find_counter_keys,
+    find_latency_keys,
     parse_dims,
 )
 
@@ -354,3 +363,101 @@ def test_record_ui_event_preserves_caller_supplied_device_type(
         DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE),
         "search_active": "false",
     }
+
+
+_DAY_START: int = int(datetime(2026, 6, 5, tzinfo=timezone.utc).timestamp())
+_DAY_SECONDS: int = DAILY_BUCKET_SECONDS
+
+
+def _record_at(epoch: int, event: EventName) -> None:
+    with patch("backend.extensions.metrics.writer.time.time", return_value=epoch):
+        record_event(event)
+
+
+def _bucket_of(key: bytes, prefix: str) -> int:
+    return int(key.decode().removeprefix(prefix).split(":")[0])
+
+
+@pytest.mark.parametrize("event", [EventName.UTUB_OPENED, EventName.TAG_APPLIED])
+def test_daily_event_buckets_by_utc_day(
+    app: Flask,
+    writer_with_metrics_enabled: MetricsWriter,
+    provide_metrics_redis: Redis,
+    event: EventName,
+) -> None:
+    """
+    GIVEN a daily-bucket event
+    WHEN counts are recorded at 00:01 and 23:59 of one day, and at 00:00 of the next
+    THEN the same-day counts share one key and the next day gets its own key
+        with a 86460 second TTL.
+    """
+    with app.app_context():
+        _record_at(_DAY_START + 60, event)
+        _record_at(_DAY_START + _DAY_SECONDS - 1, event)
+        _record_at(_DAY_START + _DAY_SECONDS, event)
+
+    prefix = METRICS_REDIS.COUNTER_KEY_PREFIX
+    keys = find_counter_keys(provide_metrics_redis, event)
+    assert sorted(_bucket_of(key, prefix) for key in keys) == [
+        _DAY_START,
+        _DAY_START + _DAY_SECONDS,
+    ]
+    for key in keys:
+        expected = b"2" if _bucket_of(key, prefix) == _DAY_START else b"1"
+        assert provide_metrics_redis.get(key) == expected
+        assert 86_400 < provide_metrics_redis.ttl(key) <= 86_460
+
+
+def test_hourly_event_honours_configured_bucket_width(
+    app: Flask,
+    writer_with_metrics_enabled: MetricsWriter,
+    provide_metrics_redis: Redis,
+) -> None:
+    """
+    GIVEN a non-daily event and a non-default bucket width of 600 seconds
+    WHEN counts are recorded 700 seconds apart
+    THEN keys are bucketed by the configured width and use its TTL.
+    """
+    writer_with_metrics_enabled._bucket_seconds = 600
+    with app.app_context():
+        _record_at(_DAY_START + 10, EventName.UTUB_CREATED)
+        _record_at(_DAY_START + 710, EventName.UTUB_CREATED)
+
+    prefix = METRICS_REDIS.COUNTER_KEY_PREFIX
+    keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_CREATED)
+    assert sorted(_bucket_of(key, prefix) for key in keys) == [
+        _DAY_START,
+        _DAY_START + 600,
+    ]
+    for key in keys:
+        assert 120 < provide_metrics_redis.ttl(key) <= 660
+
+
+def test_record_duration_stays_hourly(
+    app: Flask,
+    writer_with_metrics_enabled: MetricsWriter,
+    provide_metrics_redis: Redis,
+) -> None:
+    """
+    GIVEN the daily policy for counters
+    WHEN a duration sample is recorded mid-day
+    THEN its latency key is bucketed to the hour, not the day.
+    """
+    instant = _DAY_START + 5 * 3600 + 1234
+    with app.app_context():
+        with patch("backend.extensions.metrics.writer.time.time", return_value=instant):
+            record_duration(
+                metric=LatencyMetricName.API_REQUEST_DURATION,
+                duration_ms=5.0,
+                endpoint="utubs.get_utub",
+                method="GET",
+                dimensions={DEVICE_TYPE_DIM_KEY: DeviceType.DESKTOP},
+            )
+
+    keys = find_latency_keys(
+        provide_metrics_redis, LatencyMetricName.API_REQUEST_DURATION.value
+    )
+    assert len(keys) == 1
+    assert (
+        _bucket_of(keys[0], METRICS_REDIS.LATENCY_KEY_PREFIX) == _DAY_START + 5 * 3600
+    )

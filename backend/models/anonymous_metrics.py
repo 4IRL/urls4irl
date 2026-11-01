@@ -19,8 +19,9 @@ from backend import db
 class Anonymous_Metrics(db.Model):
     """Fact table — anonymous aggregate counters. Each row represents
     `count` occurrences of `event_name` (with `dimensions`) inside the
-    hour-bucket starting at `bucket_start`. Privacy: schema deliberately
-    contains no user_id, session_id, IP, or user-agent.
+    bucket starting at `bucket_start` (one hour, or one UTC day for events
+    with a daily `bucket_seconds` in the event registry). Privacy: schema
+    deliberately contains no user_id, session_id, IP, or user-agent.
 
     Uses ``__table_args__`` for the multi-column ``UniqueConstraint`` rather
     than the bare class-body ``UniqueConstraint(...)`` form used elsewhere in
