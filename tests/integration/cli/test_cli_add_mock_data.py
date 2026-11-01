@@ -4,6 +4,7 @@ from backend.cli import mock_options
 from backend.cli.mock_constants import (
     MOCK_ADMIN_USERNAME,
     MOCK_ADMIN_UTUB_NAME,
+    MOCK_INVITE_LINK_STATES,
     MOCK_METRIC_FLOW_PAYLOADS,
     MOCK_TAGS,
     MOCK_URL_STRINGS,
@@ -27,6 +28,8 @@ from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.metric_flows import Metric_Flows
 from backend.models.user_preferences import User_Preferences, UtubSort
 from backend.models.users import User_Role, Users
+from backend.models.utub_invite_acceptances import Utub_Invite_Acceptances
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -34,6 +37,7 @@ from backend.models.utubs import Utubs
 from tests.integration.cli.utils import (
     verify_custom_url_added_to_all_utubs,
     verify_custom_url_in_database,
+    verify_invite_links_added,
     verify_tags_added_to_all_urls_in_utubs,
     verify_tags_in_utubs,
     verify_tracking_seed_urls_added,
@@ -478,6 +482,7 @@ def test_add_all_mock_data_with_utub_duplicates(runner):
             verify_urls_added_to_all_utubs()
             verify_tags_in_utubs()
             verify_tags_added_to_all_urls_in_utubs()
+            verify_invite_links_added()
 
     verify_tracking_seed_urls_added(app, cli_runner)
 
@@ -505,6 +510,7 @@ def test_add_all_mock_data_with_no_utub_duplicates(runner):
             verify_urls_added_to_all_utubs()
             verify_tags_in_utubs()
             verify_tags_added_to_all_urls_in_utubs()
+            verify_invite_links_added()
 
     verify_tracking_seed_urls_added(app, cli_runner)
 
@@ -536,6 +542,30 @@ def test_add_all_mock_data_seeds_valid_custom_metric_flows_idempotently(runner):
             assert {flow.display_name for flow in flows} == {
                 payload["display_name"] for payload in MOCK_METRIC_FLOW_PAYLOADS
             }
+
+
+def test_add_all_mock_data_invite_links_are_idempotent(runner):
+    """
+    GIVEN a developer running `flask addmock all` twice
+    THEN the invite link count stays at len(MOCK_INVITE_LINK_STATES) and the
+        second run reports the invite links were already added.
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+
+    first_result = cli_runner.invoke(args=["addmock", "all", "--no-dupes"])
+    assert first_result.exit_code == 0, first_result.output
+    second_result = cli_runner.invoke(args=["addmock", "all", "--no-dupes"])
+    assert second_result.exit_code == 0, second_result.output
+
+    assert "Already added invite link" in second_result.output
+    with app.app_context():
+        assert Utub_Invite_Links.query.count() == len(MOCK_INVITE_LINK_STATES)
+        assert Utub_Invite_Acceptances.query.count() == sum(
+            state.use_count for state in MOCK_INVITE_LINK_STATES
+        )
 
 
 def test_add_metric_flows_raises_on_invalid_sample_payload(runner, monkeypatch):

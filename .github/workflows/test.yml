@@ -76,6 +76,7 @@ jobs:
           - ['Admin Integration Tests', 'admin', 3]
           - ['Trash Integration Tests', 'trash', 3]
           - ['Short Links Integration Tests', 'short_links', 3]
+          - ['Invite Links Integration Tests', 'invite_links', 3]
 
     name: ${{ format('{0}', matrix.worker[0]) }}
 

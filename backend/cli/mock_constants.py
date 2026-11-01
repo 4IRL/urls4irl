@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 TEST_USER_COUNT = 5
 USERNAME_BASE = "u4i_test"
 EMAIL_SUFFIX = "@urls4irl.app"
@@ -50,6 +52,27 @@ MOCK_TRACKING_SEED_URL_PAIRS: tuple[tuple[str, str], ...] = (
 # pass, so repeated `addmock all` runs stay idempotent.
 MOCK_TRACKING_SEED_URL_STRINGS: frozenset[str] = frozenset(
     raw_url for raw_url, _stripped_url in MOCK_TRACKING_SEED_URL_PAIRS
+)
+
+
+class MockInviteLinkState(NamedTuple):
+    """One example invite link seeded by `addmock all`, on its own UTub."""
+
+    label: str
+    max_uses: int | None
+    use_count: int
+    expired: bool
+    revoked: bool
+
+
+# One per UTub (the one-active index allows a single unrevoked link per UTub),
+# so this must stay <= TEST_USER_COUNT.
+MOCK_INVITE_LINK_STATES: tuple[MockInviteLinkState, ...] = (
+    MockInviteLinkState("live_unlimited", None, 0, False, False),
+    MockInviteLinkState("live_limited", 5, 2, False, False),
+    MockInviteLinkState("expired", None, 0, True, False),
+    MockInviteLinkState("used_up", 1, 1, False, False),
+    MockInviteLinkState("revoked", None, 0, False, True),
 )
 
 # Sample custom metric flows seeded by `addmock all` (wire shape, validated by

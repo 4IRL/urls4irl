@@ -14,6 +14,7 @@ from backend.cli.mock_constants import (
     TEST_USER_COUNT,
 )
 from backend.cli.mock_data.admin import generate_mock_admin
+from backend.cli.mock_data.invite_links import generate_mock_invite_links
 from backend.cli.mock_data.tags import generate_mock_tags
 from backend.cli.mock_data.urls import generate_custom_mock_url, generate_mock_urls
 from backend.cli.mock_data.users import generate_mock_users
@@ -223,6 +224,7 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     generate_mock_tags(db)
     _add_tracking_seed_urls(db)
     _add_metric_flows(db)
+    generate_mock_invite_links(db)
     rows_written = _seed_uniform_test_data()
     print(
         f"\n--- Seeded {rows_written} AnonymousMetrics + AnonymousGauges + "
