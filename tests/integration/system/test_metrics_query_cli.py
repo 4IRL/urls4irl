@@ -178,9 +178,9 @@ def test_flask_metrics_top_respects_limit_flag(
 
     seeded_events = [
         EventName.UTUB_CREATED,
-        EventName.UTUB_CREATED,
         EventName.UTUB_DELETED,
         EventName.URL_ACCESSED,
+        EventName.UTUB_DESC_UPDATED,
         EventName.API_HIT,
     ]
     with app.app_context():

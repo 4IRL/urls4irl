@@ -16,6 +16,7 @@ from backend.extensions.metrics.writer import (
     record_duration,
     record_event,
 )
+from backend.metrics.event_registry import DAILY_BUCKET_SECONDS
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.metrics.latency import LatencyMetricName
 from backend.utils.strings.config_strs import CONFIG_ENVS
@@ -364,8 +365,8 @@ def test_record_ui_event_preserves_caller_supplied_device_type(
     }
 
 
-_DAY_START = int(datetime(2026, 6, 5, tzinfo=timezone.utc).timestamp())
-_DAY_SECONDS = 86_400
+_DAY_START: int = int(datetime(2026, 6, 5, tzinfo=timezone.utc).timestamp())
+_DAY_SECONDS: int = DAILY_BUCKET_SECONDS
 
 
 def _record_at(epoch: int, event: EventName) -> None:
@@ -383,7 +384,7 @@ def test_daily_event_buckets_by_utc_day(
     writer_with_metrics_enabled: MetricsWriter,
     provide_metrics_redis: Redis,
     event: EventName,
-):
+) -> None:
     """
     GIVEN a daily-bucket event
     WHEN counts are recorded at 00:01 and 23:59 of one day, and at 00:00 of the next
@@ -411,7 +412,7 @@ def test_hourly_event_honours_configured_bucket_width(
     app: Flask,
     writer_with_metrics_enabled: MetricsWriter,
     provide_metrics_redis: Redis,
-):
+) -> None:
     """
     GIVEN a non-daily event and a non-default bucket width of 600 seconds
     WHEN counts are recorded 700 seconds apart
@@ -436,7 +437,7 @@ def test_record_duration_stays_hourly(
     app: Flask,
     writer_with_metrics_enabled: MetricsWriter,
     provide_metrics_redis: Redis,
-):
+) -> None:
     """
     GIVEN the daily policy for counters
     WHEN a duration sample is recorded mid-day

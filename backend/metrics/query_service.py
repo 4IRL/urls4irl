@@ -400,6 +400,13 @@ def _truncate_to_resolution(
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def _first_bucket(value: datetime, resolution: Literal["hour", "day"]) -> datetime:
+    """Return the bucket key containing `value`; day keys floor in UTC."""
+    if resolution == "day":
+        return _floor_utc_day(value)
+    return _truncate_to_resolution(value, resolution)
+
+
 def _effective_resolution(
     event_name: EventName, requested: Literal["hour", "day"]
 ) -> Literal["hour", "day"]:
@@ -435,9 +442,10 @@ def timeseries(
     days only; the result's `resolution` reports what was actually used.
 
     Zero-fills empty intervals: every resolution-aligned bucket inside
-    `[window_start, window_end)` appears in the result (daily events fill
-    `[floor_utc_day(start), floor_utc_day(end))` and may return no buckets), with count=0 when no
-    rows exist for that bucket. Keeps the chart visually meaningful during
+    `[window_start, window_end)` appears in the result, with count=0 when no
+    rows exist for that bucket. Daily events fill
+    `[floor_utc_day(start), floor_utc_day(end))` instead and may return no
+    buckets. Keeps the chart visually meaningful during
     low-traffic stretches (a Day window with one event still returns 24
     hourly buckets, all but one at zero) and removes the need for the
     frontend to know the window range to draw an x-axis.
@@ -484,11 +492,7 @@ def timeseries(
         first_bucket = _floor_utc_day(window_start)
         fill_end = _floor_utc_day(window_end)
     else:
-        first_bucket = (
-            _floor_utc_day(window_start)
-            if resolution == "day"
-            else _truncate_to_resolution(window_start, resolution)
-        )
+        first_bucket = _first_bucket(window_start, resolution)
         fill_end = window_end
 
     filled_buckets: list[TimeseriesBucketSchema] = []
@@ -600,11 +604,7 @@ def grouped_timeseries(
     if not partition_by_bucket:
         # Sum per dims tuple across buckets so the floor applies to the
         # window-wide cell; one synthetic bucket labels every row.
-        synthetic_bucket = (
-            _floor_utc_day(window_start)
-            if resolution == "day"
-            else _truncate_to_resolution(window_start, resolution)
-        )
+        synthetic_bucket = _first_bucket(window_start, resolution)
         totals: dict[tuple[str | int, ...], int] = {}
         for _, dim_values, count in grouped_rows:
             dims_key = tuple(dim_values[key] for key in group_by)
