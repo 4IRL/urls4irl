@@ -914,6 +914,7 @@ class MetricsDashboardLocators(GenericPageLocator):
     # Last-flush badge + refresh button
     LAST_FLUSH_BADGE = "#MetricsLastFlush"
     REFRESH_NOW_BUTTON = "#MetricsRefreshNowBtn"
+    REFRESH_PAUSED_HINT = "#MetricsRefreshPausedHint"
     ERROR_BANNER = "#MetricsErrorBanner"
 
     # Window selector buttons
@@ -1026,11 +1027,51 @@ class MetricsDashboardLocators(GenericPageLocator):
     FLOWS_CARD_LOADING = "#MetricsFlowGrid .flow-card[data-flow-state=loading]"
     FLOWS_CARD_CUSTOM_BADGE = "#MetricsFlowGrid .flow-card .flow-badge.custom"
     FLOWS_DELETE_BUTTON = "#MetricsFlowGrid .flow-card .flow-delete-btn"
+    FLOWS_EDIT_BUTTON = "#MetricsFlowGrid .flow-card .flow-edit-btn"
+    FLOWS_NEW_BUTTON = "#MetricsFlowNewBtn"
     FLOWS_CONFIRM_GROUP = "#MetricsFlowGrid .flow-card [data-flow-confirm]"
     FLOWS_CONFIRM_BUTTON = "#MetricsFlowGrid .flow-card .flow-confirm-btn"
     FLOWS_CANCEL_BUTTON = "#MetricsFlowGrid .flow-card .flow-cancel-btn"
     FLOWS_ATTENTION = "#MetricsFlowGrid .flow-card .flow-attention"
     FLOWS_RETRY_BUTTON = "#MetricsFlowGrid .flow-card .flow-retry-btn"
+
+    # Flow builder form (swaps in for the toolbar and grid inside the Flows panel)
+    FLOW_BUILDER = "#MetricsFlowBuilderMount"
+    FLOW_BUILDER_HEADING = "#MetricsFlowBuilderMount .flow-builder-heading"
+    FLOW_BUILDER_SUMMARY = "#MetricsFlowBuilderMount .flow-builder-summary"
+    FLOW_BUILDER_FORM = "#MetricsFlowBuilderMount form.flow-builder-form"
+    FLOW_BUILDER_NAME_INPUT = "#MetricsFlowBuilderMount input[data-field=display_name]"
+    FLOW_BUILDER_STEP = "#MetricsFlowBuilderMount .flow-builder-step"
+    FLOW_BUILDER_ADD_BUTTON = "#MetricsFlowBuilderMount button[data-action=add]"
+    FLOW_BUILDER_ADD_REASON = "#MetricsFlowBuilderMount .flow-builder-reason"
+    FLOW_BUILDER_SAVE_BUTTON = (
+        "#MetricsFlowBuilderMount .flow-builder-actions button[type=submit]"
+    )
+    FLOW_BUILDER_CANCEL_BUTTON = "#MetricsFlowBuilderMount button[data-action=cancel]"
+    FLOW_BUILDER_DELETE_BUTTON = "#MetricsFlowBuilderMount button[data-action=delete]"
+    FLOW_BUILDER_FORM_ERRORS = "#MetricsFlowBuilderMount .flow-builder-form-errors"
+    FLOW_BUILDER_CATALOG_STATUS = "#MetricsFlowBuilderMount .flow-builder-status-text"
+    FLOW_BUILDER_CATALOG_RETRY = (
+        "#MetricsFlowBuilderMount .flow-builder-catalog .flow-builder-btn"
+    )
+    FLOW_BUILDER_CONFIRM = "#MetricsFlowBuilderMount .flow-builder-confirm"
+    FLOW_BUILDER_CONFIRM_BUTTON = (
+        "#MetricsFlowBuilderMount .flow-builder-confirm [data-confirm=confirm]"
+    )
+    FLOW_BUILDER_CONFIRM_SAFE_BUTTON = (
+        "#MetricsFlowBuilderMount .flow-builder-confirm [data-confirm=safe]"
+    )
+    FLOW_BUILDER_CONFIRM_TITLE = "#MetricsFlowBuilderMount .flow-builder-confirm h4"
+    FLOW_BUILDER_CONFIRM_BODY = "#MetricsFlowBuilderMount .flow-builder-confirm p"
+    FLOW_BUILDER_SUMMARY_TITLE = "#MetricsFlowBuilderMount .flow-builder-summary-title"
+    FLOW_BUILDER_SUMMARY_LINK = "#MetricsFlowBuilderMount .flow-builder-link"
+    FLOW_BUILDER_NAME_ERROR = (
+        "#MetricsFlowBuilderMount .flow-builder-field:has("
+        "input[data-field=display_name]) > p.flow-builder-error"
+    )
+    FLOWS_NEW_REASON = "#MetricsFlowNewReason"
+    REFRESH_SPINNER = "#MetricsRefreshNowBtn .spinner"
+    REFRESH_ICON = "#MetricsRefreshNowBtn .refresh-icon"
 
     # Gauges tab (2-column table; click a row to show that gauge's trend chart)
     GAUGES_PANEL = "#MetricsPanelGauges"

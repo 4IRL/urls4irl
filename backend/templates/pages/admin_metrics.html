@@ -27,6 +27,7 @@
             </button>
         </div>
     </header>
+    <p id="MetricsRefreshPausedHint" class="refresh-paused-hint" hidden>{{ CONSTANTS.STRINGS.METRICS_FLOW_BUILDER_HINT_REFRESH_PAUSED }}</p>
 
     <div id="MetricsTablistRow" class="tablist-row">
         <div id="MetricsTablist" class="tablist" role="tablist" aria-label="Metrics category">
@@ -59,11 +60,16 @@
         <span class="flows-loading-spinner" aria-hidden="true"></span>
         <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
         <span id="MetricsFlowsActionAnnouncement" class="visually-hidden" aria-live="polite"></span>
+        <div id="MetricsFlowBuilderMount" class="flow-builder-mount" hidden></div>
         <div class="flows-toolbar">
             <h2 id="MetricsFlowsHeading" class="flows-heading" tabindex="-1">{{ CONSTANTS.STRINGS.METRICS_FLOWS_HEADING }}</h2>
             <span id="MetricsFlowsCount" class="flows-count"></span>
             <span id="MetricsFlowsHint" class="flows-hint" hidden></span>
             <span id="MetricsFlowsNotice" class="flows-notice" hidden></span>
+            <span class="flow-new-group">
+                <span id="MetricsFlowNewReason" class="flow-new-reason" hidden></span>
+                <button type="button" id="MetricsFlowNewBtn" class="flow-new-btn">{{ CONSTANTS.STRINGS.METRICS_FLOW_BUILDER_NEW_BUTTON }}</button>
+            </span>
         </div>
         <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
