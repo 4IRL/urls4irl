@@ -450,6 +450,15 @@ def test_per_event_models_reject_unknown_literal_values():
         )
 
 
+def test_member_added_accepts_invite_link_source_and_rejects_unknown():
+    """`invite_link` is a recorded MEMBER_ADDED source; unknown values still fail."""
+    model_class = DIMENSION_MODELS[EventName.MEMBER_ADDED]
+    assert model_class is not None
+    assert model_class.model_validate({"source": "invite_link"}).source == "invite_link"
+    with pytest.raises(ValidationError):
+        model_class.model_validate({"source": "not_a_source"})
+
+
 def test_per_event_models_reject_missing_required_keys():
     """Omitting a required field raises ValidationError."""
     with pytest.raises(ValidationError):

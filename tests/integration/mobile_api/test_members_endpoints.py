@@ -19,6 +19,7 @@ from flask.testing import FlaskClient
 from backend import db, limiter
 from backend.api_v1.services.tokens import create_access_token
 from backend.members.constants import MEMBER_ADD_RATE_LIMIT, UTubMembersErrorCodes
+from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
@@ -28,6 +29,7 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import valid_users
 from tests.utils_for_test import set_member_role
 
@@ -176,6 +178,40 @@ def test_add_member_missing_body_is_400(
     assert response.status_code == 400
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_add_member_rejects_client_sent_invite_link_source(
+    app: Flask,
+    metrics_enabled_app,
+    provide_metrics_redis,
+    api_client: FlaskClient,
+    make_bearer_headers,
+    every_user_makes_a_unique_utub,
+):
+    """
+    GIVEN metrics enabled and a UTub creator (user 1)
+    WHEN they POST add-member with the server-only source='invite_link'
+    THEN 400, no member is added and no MEMBER_ADDED metric is recorded
+    """
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+
+    with app.app_context():
+        initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
+
+    response = api_client.post(
+        _create_member_url(app, utub_id=1),
+        json={
+            _USERNAME_FIELD: valid_users[1]["username"],
+            "source": "invite_link",
+        },
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+    with app.app_context():
+        assert Utub_Members.query.filter_by(utub_id=1).count() == initial_member_count
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 0
 
 
 def test_add_member_nonexistent_user_is_400(
