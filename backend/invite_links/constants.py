@@ -26,3 +26,11 @@ class InviteState(StrEnum):
     )
     UTUB_TRASHED = "utub_trashed"
     UTUB_LOCKED = "utub_locked"
+
+
+class InviteJoinOutcome(StrEnum):
+    JOINED = "joined"
+    ALREADY_MEMBER = "already_member"
+    DEAD = "dead"
+    ACTOR_UNVALIDATED = "actor_unvalidated"
+    ACTOR_SUSPENDED = "actor_suspended"
