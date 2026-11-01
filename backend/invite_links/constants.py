@@ -1,4 +1,5 @@
 from datetime import timedelta
+from enum import StrEnum
 
 # secrets.token_urlsafe(16): 128 bits of randomness, 22 base64url characters.
 INVITE_LINK_TOKEN_BYTES: int = 16
@@ -13,3 +14,15 @@ FK_INVITE_ACCEPTANCES_INVITE: str = "fk_utub_invite_acceptances_invite"
 FK_INVITE_ACCEPTANCES_UTUB: str = "fk_utub_invite_acceptances_utub"
 FK_INVITE_ACCEPTANCES_USER: str = "fk_utub_invite_acceptances_user"
 IX_INVITE_ACCEPTANCES_INVITE: str = "ix_utub_invite_acceptances_invite_id"
+
+
+class InviteState(StrEnum):
+    LIVE = "live"
+    REVOKED = "revoked"
+    EXPIRED = "expired"
+    USED_UP = "used_up"
+    CREATOR_NOT_MANAGER = (
+        "creator_not_manager"  # NULL creator, not a member, or demoted
+    )
+    UTUB_TRASHED = "utub_trashed"
+    UTUB_LOCKED = "utub_locked"
