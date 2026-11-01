@@ -39,8 +39,8 @@ _EMAIL_VALIDATIONS_TABLE: str = "EmailValidations"
 _USER_OAUTH_IDENTITIES_TABLE: str = "UserOAuthIdentities"
 
 _INVITE_LINKS_TABLE: str = "UtubInviteLinks"
-_INVITE_TOKEN_B: str = "B" * 22
 _INVITE_TOKEN_A: str = "A" * 22
+_INVITE_TOKEN_B: str = "B" * 22
 
 _PASSWORD_COLUMN_KEY: str = "password"
 _TOKEN_COLUMN_KEY: str = "token"

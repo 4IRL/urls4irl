@@ -158,21 +158,27 @@ def test_duplicate_token_rejected_even_across_revoked_rows(
         assert UNIQUE_INVITE_LINK_TOKEN in str(exc_info.value)
 
 
+@pytest.mark.parametrize("use_orm", [False, True])
 def test_deleting_creator_sets_created_by_null(
-    app: Flask, every_user_makes_a_unique_utub
+    app: Flask, every_user_makes_a_unique_utub, use_orm: bool
 ) -> None:
     """
     GIVEN an invite link created by a user with no other rows
-    WHEN that user is deleted
+    WHEN that user is deleted (raw SQL, then ORM)
     THEN the invite row remains with created_by NULL
     """
     with app.app_context():
         creator_id = _make_disposable_user()
         link_id = _add_link(_utubs()[0].id, created_by=creator_id)
 
-        db.session.execute(
-            text('DELETE FROM "Users" WHERE id = :id'), {"id": creator_id}
-        )
+        if use_orm:
+            creator = db.session.get(Users, creator_id)
+            assert creator is not None
+            db.session.delete(creator)
+        else:
+            db.session.execute(
+                text('DELETE FROM "Users" WHERE id = :id'), {"id": creator_id}
+            )
         db.session.commit()
         db.session.expire_all()
 

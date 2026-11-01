@@ -330,8 +330,8 @@ def _build_search_filter(model_class: type, query: str) -> ColumnElement | None:
 
     Returns ``None`` when the query is blank (no filter is applied), and a
     match-nothing filter when the model has no searchable string columns.
-    Wildcards in the query
-    are escaped so ``"%"`` matches a literal percent rather than every row.
+    Wildcards in the query are escaped so ``"%"`` matches a literal percent
+    rather than every row.
     """
     stripped_query = query.strip()
     if not stripped_query:

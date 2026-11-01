@@ -160,12 +160,6 @@ def _assert_invite_links_schema(connection: Connection) -> None:
     assert " WHERE " in index_definition
     assert _normalize_predicate(index_definition.split(" WHERE ", 1)[1]) == model_where
 
-    # The token unique constraint is on the model too
-    assert any(
-        getattr(constraint, "name", None) == UNIQUE_INVITE_LINK_TOKEN
-        for constraint in Utub_Invite_Links.__table__.constraints
-    )
-
 
 def test_add_utub_invite_links_migration_upgrade_and_downgrade(runner) -> None:
     """

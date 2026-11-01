@@ -209,11 +209,12 @@ def verify_invite_links_added():
     assert Utub_Invite_Links.query.count() == len(MOCK_INVITE_LINK_STATES)
     now = utc_now()
     for index, state in enumerate(MOCK_INVITE_LINK_STATES):
-        utub: Utubs = (
+        utub: Utubs | None = (
             Utubs.query.filter(Utubs.name == f"{MOCK_UTUB_NAME_BASE}{index + 1}")
             .order_by(Utubs.id)
             .first()
         )
+        assert utub is not None
         links: list[Utub_Invite_Links] = Utub_Invite_Links.query.filter_by(
             utub_id=utub.id
         ).all()

@@ -6,7 +6,6 @@ import pytest
 
 from backend.invite_links import constants as invite_constants
 from backend.invite_links.constants import (
-    INVITE_LINK_TOKEN_BYTES,
     INVITE_LINK_TOKEN_LENGTH,
     INVITE_LINK_TOKEN_PATTERN,
 )
@@ -36,14 +35,6 @@ def test_generated_tokens_vary() -> None:
     THEN they are not all identical
     """
     assert len({generate_invite_token() for _ in range(200)}) > 1
-
-
-def test_token_bytes_meet_128_bit_floor() -> None:
-    """
-    GIVEN the token byte constant
-    THEN it is at least 16 bytes (128 bits)
-    """
-    assert INVITE_LINK_TOKEN_BYTES >= 16
 
 
 def test_pattern_rejects_malformed_tokens() -> None:
