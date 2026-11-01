@@ -20,7 +20,9 @@ from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import User_Role, Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Utub_Members
+from backend.models.utubs import Utubs
 from tests.integration.admin.seed_helpers import (
     seed_event_registry_row,
     seed_utub_member,
@@ -35,6 +37,10 @@ _EVENT_REGISTRY_TABLE: str = "EventRegistry"
 _FORGOT_PASSWORDS_TABLE: str = "ForgotPasswords"
 _EMAIL_VALIDATIONS_TABLE: str = "EmailValidations"
 _USER_OAUTH_IDENTITIES_TABLE: str = "UserOAuthIdentities"
+
+_INVITE_LINKS_TABLE: str = "UtubInviteLinks"
+_INVITE_TOKEN_A: str = "A" * 22
+_INVITE_TOKEN_B: str = "B" * 22
 
 _PASSWORD_COLUMN_KEY: str = "password"
 _TOKEN_COLUMN_KEY: str = "token"
@@ -345,6 +351,76 @@ def test_email_validations_validation_token_masked_in_grid_and_detail(
         assert isinstance(row_detail, RowDetail)
         detail_field_keys = {field.key for field in row_detail.fields}
         assert _VALIDATION_TOKEN_COLUMN_KEY not in detail_field_keys
+
+
+def _seed_invite_link(utub_name: str, user_id: int, token: str) -> Utub_Invite_Links:
+    """Insert a UTub plus one invite link with the given token."""
+    utub = Utubs(name=utub_name, utub_creator=user_id, utub_description="")
+    db.session.add(utub)
+    db.session.commit()
+    invite_link = Utub_Invite_Links(
+        utub_id=utub.id,
+        token=token,
+        created_by=user_id,
+        expires_at=datetime.datetime(2099, 1, 1, tzinfo=datetime.timezone.utc),
+    )
+    db.session.add(invite_link)
+    db.session.commit()
+    return invite_link
+
+
+def test_invite_link_token_never_leaks_through_browser(app: Flask) -> None:
+    """
+    GIVEN two invite links whose token order is the reverse of their id order
+    WHEN the grid, row detail, token-valued search and token sort are used
+    THEN the token is absent from columns, cells and detail, search finds
+         nothing, and a token sort falls back to primary-key order.
+    """
+    with app.app_context():
+        seeded_user = _seed_users(1)[0]
+        first_link = _seed_invite_link("InviteUtubOne", seeded_user.id, _INVITE_TOKEN_B)
+        second_link = _seed_invite_link(
+            "InviteUtubTwo", seeded_user.id, _INVITE_TOKEN_A
+        )
+
+        table_page = db_browser_service.get_table_page(table_name=_INVITE_LINKS_TABLE)
+        assert isinstance(table_page, TablePage)
+        assert table_page.total_count == 2
+        assert _TOKEN_COLUMN_KEY not in table_page.column_keys
+        rendered_grid = " ".join(
+            table_page.column_keys
+            + [cell for row in table_page.rows for cell in row.cells]
+        )
+        assert _INVITE_TOKEN_A not in rendered_grid
+        assert _INVITE_TOKEN_B not in rendered_grid
+
+        row_detail = db_browser_service.get_row_detail(
+            table_name=_INVITE_LINKS_TABLE, raw_pk=str(first_link.id)
+        )
+        assert isinstance(row_detail, RowDetail)
+        assert _TOKEN_COLUMN_KEY not in {field.key for field in row_detail.fields}
+        rendered_detail = " ".join(
+            f"{field.key} {field.value}" for field in row_detail.fields
+        )
+        assert _INVITE_TOKEN_B not in rendered_detail
+
+        for search_query in (_INVITE_TOKEN_B, _INVITE_TOKEN_B[3:12]):
+            searched = db_browser_service.get_table_page(
+                table_name=_INVITE_LINKS_TABLE, query=search_query
+            )
+            assert isinstance(searched, TablePage)
+            assert searched.total_count == 0
+            assert searched.rows == []
+
+        sorted_page = db_browser_service.get_table_page(
+            table_name=_INVITE_LINKS_TABLE, sort_key=_TOKEN_COLUMN_KEY
+        )
+        assert isinstance(sorted_page, TablePage)
+        assert sorted_page.sort_key == _ID_COLUMN_KEY
+        assert [row.pk_segment for row in sorted_page.rows] == [
+            str(first_link.id),
+            str(second_link.id),
+        ]
 
 
 def test_oauth_identity_provider_subject_masked_in_grid_and_detail(

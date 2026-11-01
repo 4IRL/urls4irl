@@ -62,6 +62,8 @@ Core domain: `Users` -> `Utub_Members` (with `Member_Role`: MEMBER/CREATOR/CO_CR
 
 `Short_Links` (table `ShortLinks`) holds at most one short link per `Utub_Urls` row: a unique 10-char bearer `code`, `expires_at` (TTL `SHORT_LINK_TTL`) and a nullable `created_by` (`ON DELETE SET NULL`). The FK to `Utub_Urls` is `ON DELETE CASCADE`, so raw-SQL purges remove links; the ORM relationship uses `passive_deletes` for the same reason. `code` is hidden in the admin DB browser.
 
+`Utub_Invite_Links` (table `UtubInviteLinks`) holds shareable join links for a UTub. The `token` is a plaintext bearer (`secrets.token_urlsafe(16)`, 22 chars; constants in `backend/invite_links/constants.py`) because it must be re-shown to members, so it is hidden in the admin DB browser. A partial unique index (`revokedAt IS NULL`) allows only one unrevoked link per UTub; revoked and replaced rows are kept. `utubID` is `ON DELETE CASCADE`, `createdBy` is `ON DELETE SET NULL` (NULL means the link is dead), and `Email_Validations.pendingInviteID` (nullable) records the invite a new signup came from, set to NULL when the link row is deleted. `addmock all` seeds one link per state (live, limited, expired, used up, revoked); seeded tokens are not printed. `Utub_Invite_Acceptances` (table `UtubInviteAcceptances`) is a permanent audit record of each join through an invite, grouped by `inviteID` (indexed); `userID` is `ON DELETE SET NULL` so an erased account leaves an anonymous row, while `inviteID` and `utubID` are `ON DELETE CASCADE`. Nothing writes it outside the mock seed yet (the join service will), and `addmock all` seeds one row per `useCount` for the limited and used-up links.
+
 `Metric_Flows` (table `MetricFlows`) stores admin-created metric funnels: a `displayName` (trimmed, non-empty, unique regardless of case via a `lower("displayName")` unique index), a JSONB `definition` envelope `{"steps": [...]}` (CHECK: `steps` is an array) and nullable `createdBy`/`updatedBy` FKs to `Users` (`ON DELETE SET NULL`). Built-in funnels stay code-defined in `FLOWS`.
 
 ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.3.
@@ -351,8 +353,9 @@ Organized by domain with per-feature conftest files:
 - `system/` (marker: `cli`, shared with `cli/`) — Metrics/latency pipeline, health checks, gauges, admin-route gating (ops/observability)
 - `trash/` (marker: `trash`) — Trash API: list, restore, purge (delete forever) and empty-trash routes for soft-deleted URLs and UTubs
 - `short_links/` (marker: `short_links`) — Short links: `Short_Links` model constraints, DB/ORM cascades from `Utub_Urls` and `Utubs`, and link minting/expiry
+- `invite_links/` (marker: `invite_links`) — UTub invite links: `Utub_Invite_Links` model constraints, token format and DB cascades
 
-CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 12 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
+CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 13 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
 
 ### tests/functional/ — UI/Playwright Tests
 

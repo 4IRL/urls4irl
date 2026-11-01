@@ -43,7 +43,7 @@ from tests.unit.stdlib_only_utils import assert_module_is_stdlib_only
 pytestmark = pytest.mark.unit
 
 DECLARED_MARKERS: set[str] = read_declared_markers(PYTEST_INI)
-DECLARED_MARKER_COUNT: int = 26
+DECLARED_MARKER_COUNT: int = 27
 MERGE_BASE_SHA: str = "abc123"
 
 
@@ -834,7 +834,7 @@ def test_read_declared_markers_reads_the_committed_pytest_ini() -> None:
     """
     GIVEN the committed pytest.ini
     WHEN its markers block is parsed
-    THEN all 24 declared markers come back
+    THEN all declared markers (DECLARED_MARKER_COUNT) come back
     """
     assert len(DECLARED_MARKERS) == DECLARED_MARKER_COUNT
     assert {"unit", "mobile_api", "create_urls_ui", "admin_ui"} <= DECLARED_MARKERS

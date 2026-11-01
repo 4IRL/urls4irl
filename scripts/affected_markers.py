@@ -116,6 +116,7 @@ _METRICS: tuple[str, ...] = ("cli", "metrics_ui")
 _SYSTEM: tuple[str, ...] = ("cli",)
 _API_V1: tuple[str, ...] = ("mobile_api",)
 _SHORT_LINKS: tuple[str, ...] = ("short_links",)
+_INVITE_LINKS: tuple[str, ...] = ("invite_links",)
 
 BLUEPRINT_MARKERS: dict[str, tuple[str, ...]] = {
     "splash": _SPLASH,
@@ -329,6 +330,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("tests/integration/splash/*", ("splash",)),
     ("tests/integration/system/*", ("cli",)),
     ("tests/integration/short_links/*", ("short_links",)),
+    ("tests/integration/invite_links/*", _INVITE_LINKS),
     ("tests/integration/trash/*", ("trash",)),
     ("tests/integration/utubmembers/*", ("members",)),
     ("tests/integration/utubs/*", ("utubs",)),
@@ -453,6 +455,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("backend/members/*", _MEMBERS),
     ("backend/urls/*", _URLS),
     ("backend/short_links/*", ("short_links", "unit")),
+    ("backend/invite_links/*", ("invite_links", "unit")),
     # backend/tags/ serves the utub_tags and utub_url_tags blueprints.
     ("backend/tags/*", _TAGS),
     ("backend/search/*", _SEARCH),
