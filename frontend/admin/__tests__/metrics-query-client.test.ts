@@ -10,7 +10,10 @@ vi.mock("../../lib/ajax.js", () => ({
 }));
 
 import {
+  createMetricFlow,
   deleteMetricFlow,
+  fetchMetricFlowCatalog,
+  updateMetricFlow,
   fetchFlow,
   fetchGroupedTimeseries,
   fetchLatency,
@@ -336,6 +339,55 @@ describe("metrics-query-client", () => {
       expect(ajaxCallSpy.mock.calls[0]).toEqual([
         "DELETE",
         "/admin/metrics/flows/custom_12",
+        null,
+        5000,
+      ]);
+    });
+  });
+
+  describe("createMetricFlow", () => {
+    it("POSTs the definition as the JSON body", () => {
+      const definition = { display_name: "Signup", steps: [] };
+      createMetricFlow({ definition });
+      expect(ajaxCallSpy).toHaveBeenCalledOnce();
+      expect(ajaxCallSpy.mock.calls[0]).toEqual([
+        "POST",
+        "/admin/metrics/flows",
+        definition,
+        5000,
+      ]);
+    });
+  });
+
+  describe("updateMetricFlow", () => {
+    it("PUTs the definition to the flow's URL", () => {
+      const definition = { display_name: "Signup", steps: [] };
+      updateMetricFlow({ flowId: "custom_12", definition });
+      expect(ajaxCallSpy.mock.calls[0]).toEqual([
+        "PUT",
+        "/admin/metrics/flows/custom_12",
+        definition,
+        5000,
+      ]);
+    });
+
+    it("percent-encodes the flow id", () => {
+      updateMetricFlow({
+        flowId: "a/b c",
+        definition: { display_name: "x", steps: [] },
+      });
+      expect(ajaxCallSpy.mock.calls[0][1]).toBe(
+        "/admin/metrics/flows/a%2Fb%20c",
+      );
+    });
+  });
+
+  describe("fetchMetricFlowCatalog", () => {
+    it("issues a GET to the catalog URL", () => {
+      fetchMetricFlowCatalog();
+      expect(ajaxCallSpy.mock.calls[0]).toEqual([
+        "GET",
+        "/admin/metrics/flows/catalog",
         null,
         5000,
       ]);

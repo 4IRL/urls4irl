@@ -1,4 +1,5 @@
 from backend.metrics.suppression import MIN_CELL_COUNT
+from backend.utils.strings import metric_flow_strs
 
 
 class ADMIN_METRICS_STRINGS:
@@ -105,7 +106,7 @@ class ADMIN_METRICS_STRINGS:
     METRICS_FLOW_NEEDS_ATTENTION: str = "Needs attention."
     METRICS_FLOW_NEEDS_ATTENTION_STEP: str = "Step {step}: {reason}"
     METRICS_FLOW_NEEDS_ATTENTION_HELP: str = (
-        "This flow can't be counted until it is fixed or deleted."
+        "This flow can't be counted. Edit the flow to fix it, or delete it."
     )
     METRICS_FLOW_LOADING_LABEL: str = "{title}: loading"
     METRICS_FLOW_LOAD_FAILED: str = "Couldn't load this flow."
@@ -113,6 +114,96 @@ class ADMIN_METRICS_STRINGS:
     METRICS_FLOWS_LIST_FAILED: str = "Custom flows couldn't be loaded."
     METRICS_FLOWS_LIST_RETRYING: str = "Retrying…"
     METRICS_FLOW_DELETE_LOCKED: str = "Another flow is being deleted."
+    METRICS_FLOW_BUILDER_TITLE_NEW: str = "New flow"
+    METRICS_FLOW_BUILDER_TITLE_EDIT: str = "Edit flow"
+    METRICS_FLOW_BUILDER_NEW_BUTTON: str = "+ New flow"
+    METRICS_FLOW_BUILDER_EDIT_LABEL: str = "Edit flow {name}"
+    METRICS_FLOW_BUILDER_FIELD_NAME: str = "Display name"
+    METRICS_FLOW_BUILDER_STEP_HEADING: str = "Step {step}"
+    METRICS_FLOW_BUILDER_STEP_LABEL: str = "Step {step} label"
+    METRICS_FLOW_BUILDER_STEP_STREAM: str = "Step {step} stream"
+    METRICS_FLOW_BUILDER_STEP_EVENT: str = "Step {step} event"
+    METRICS_FLOW_BUILDER_STEP_ENDPOINT: str = "Step {step} endpoint"
+    METRICS_FLOW_BUILDER_STEP_METHOD: str = "Step {step} method"
+    METRICS_FLOW_BUILDER_MOVE_UP: str = "Move step {step} up"
+    METRICS_FLOW_BUILDER_MOVE_DOWN: str = "Move step {step} down"
+    METRICS_FLOW_BUILDER_REMOVE_STEP: str = "Remove step {step}"
+    METRICS_FLOW_BUILDER_ADD_STEP: str = "+ Add step ({count} of {max})"
+    METRICS_FLOW_BUILDER_SAVE: str = "Save flow"
+    METRICS_FLOW_BUILDER_SAVING: str = "Saving…"
+    METRICS_FLOW_BUILDER_CANCEL: str = "Cancel"
+    METRICS_FLOW_BUILDER_DELETE: str = "Delete flow"
+    METRICS_FLOW_BUILDER_STREAM_UI: str = "UI"
+    METRICS_FLOW_BUILDER_STREAM_API: str = "API"
+    METRICS_FLOW_BUILDER_STREAM_DOMAIN: str = "Domain"
+    METRICS_FLOW_BUILDER_CHOOSE_EVENT: str = "Choose an event"
+    METRICS_FLOW_BUILDER_CHOOSE_ENDPOINT: str = "Choose an endpoint"
+    METRICS_FLOW_BUILDER_CHOOSE_METHOD: str = "Choose a method"
+    METRICS_FLOW_BUILDER_HINT_FIRST_STEP: str = 'Conversion is measured against Step 1. A browser "open" event as Step 1 can undercount (dropped beacons), which overstates conversion.'
+    METRICS_FLOW_BUILDER_HINT_CAP: str = (
+        "Limit of {max} custom flows reached. Delete one to add another."
+    )
+    METRICS_FLOW_BUILDER_HINT_MIN_STEPS: str = "At least {min} steps are required."
+    METRICS_FLOW_BUILDER_HINT_MAX_STEPS: str = "At most {max} steps are allowed."
+    METRICS_FLOW_BUILDER_HINT_ALREADY_FIRST: str = "Already the first step."
+    METRICS_FLOW_BUILDER_HINT_ALREADY_LAST: str = "Already the last step."
+    METRICS_FLOW_BUILDER_HINT_REFRESH_PAUSED: str = (
+        "Grid refreshes when you leave the builder"
+    )
+    METRICS_FLOW_BUILDER_NOTE_STALE_VALUE: str = "{value} (no longer exists)"
+    METRICS_FLOW_BUILDER_NOTE_FILTERS_CLEARED: str = (
+        "Filters and breakdown removed because the event changed."
+    )
+    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_BREAKDOWN: str = (
+        "{count} filters and a breakdown kept. Not editable yet."
+    )
+    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_BREAKDOWN_ONE: str = (
+        "1 filter and a breakdown kept. Not editable yet."
+    )
+    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS: str = (
+        "{count} filters kept. Not editable yet."
+    )
+    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_ONE: str = "1 filter kept. Not editable yet."
+    METRICS_FLOW_BUILDER_NOTE_KEPT_BREAKDOWN: str = "Breakdown kept. Not editable yet."
+    METRICS_FLOW_BUILDER_NOTE_FILTERS_UNEDITABLE: str = (
+        "Filters can't be edited here yet: remove the step or delete the flow."
+    )
+    METRICS_FLOW_BUILDER_ERR_PROBLEMS: str = "{count} problems to fix"
+    METRICS_FLOW_BUILDER_ERR_PROBLEM_ONE: str = "1 problem to fix"
+    METRICS_FLOW_BUILDER_ERR_SAVE_FAILED: str = "Couldn't save this flow. Try again."
+    METRICS_FLOW_BUILDER_ERR_CATALOG_FAILED: str = (
+        "Could not load the event list. Nothing was lost."
+    )
+    METRICS_FLOW_BUILDER_CATALOG_RETRY: str = "Try again"
+    METRICS_FLOW_BUILDER_ERR_FLOW_GONE: str = "This flow no longer exists."
+    METRICS_FLOW_BUILDER_CATALOG_LOADING: str = "Loading the event list…"
+    METRICS_FLOW_BUILDER_DISCARD_TITLE: str = "Discard changes to “{name}”?"
+    METRICS_FLOW_BUILDER_DISCARD_BODY: str = "Your unsaved changes will be lost."
+    METRICS_FLOW_BUILDER_DISCARD_CONFIRM: str = "Discard changes"
+    METRICS_FLOW_BUILDER_DISCARD_KEEP: str = "Keep editing"
+    METRICS_FLOW_BUILDER_DELETE_TITLE: str = "Delete “{name}”?"
+    METRICS_FLOW_BUILDER_DELETE_BODY_CLEAN: str = "This cannot be undone."
+    METRICS_FLOW_BUILDER_DELETE_BODY: str = (
+        "This cannot be undone. Your unsaved changes will also be lost."
+    )
+    METRICS_FLOW_BUILDER_ANNOUNCE_MOVED: str = (
+        "Step moved to position {position} of {total}."
+    )
+    METRICS_FLOW_BUILDER_ANNOUNCE_REMOVED: str = "Step removed."
+    METRICS_FLOW_BUILDER_ANNOUNCE_ADDED: str = "Step added."
+    METRICS_FLOW_BUILDER_ANNOUNCE_SAVED: str = "Flow “{name}” saved."
+    METRICS_FLOW_BUILDER_ERR_EVENT_REQUIRED: str = metric_flow_strs.EVENT_REQUIRED_STR
+    METRICS_FLOW_BUILDER_ERR_ENDPOINT_REQUIRED: str = (
+        metric_flow_strs.ENDPOINT_REQUIRED_STR
+    )
+    METRICS_FLOW_BUILDER_ERR_METHOD_REQUIRED: str = metric_flow_strs.METHOD_REQUIRED_STR
+    METRICS_FLOW_BUILDER_ERR_NAME_LENGTH: str = (
+        "Enter a name of {min} to {max} characters."
+    )
+    METRICS_FLOW_BUILDER_ERR_LABEL_LENGTH: str = (
+        "Enter a label of {min} to {max} characters."
+    )
+    METRICS_FLOW_BUILDER_ERR_STEP_LINE: str = "Step {step}: {message}"
     METRICS_GAUGE_KIND_VOLUME: str = "Volume"
     METRICS_GAUGE_KIND_DISTRIBUTION_MAX: str = "Distribution (max)"
     METRICS_GAUGE_KIND_DISTRIBUTION_AVG: str = "Distribution (avg)"
