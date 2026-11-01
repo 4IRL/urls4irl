@@ -480,6 +480,11 @@ function setBannerVisible({ visible }: { visible: boolean }): void {
     banner.classList.remove("hidden");
     banner.textContent = APP_CONFIG.strings.METRICS_FETCH_FAILED_BANNER;
   } else {
+    // A list-failure banner outlives any other request's success, whichever
+    // order the responses land in (summary/top polls vs the list failure).
+    if (_flowListErrorShown) {
+      return;
+    }
     banner.classList.add("hidden");
     banner.textContent = "";
   }
