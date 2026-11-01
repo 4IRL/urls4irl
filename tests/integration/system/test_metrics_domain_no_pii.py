@@ -34,6 +34,9 @@ _SANCTIONED_CLOSED_SET_DOMAIN_DIMS: dict[EventName, frozenset[str]] = {
     # `source` is a closed-set match-type label ('search_result'/'exact_username'),
     # not the added member's username or id.
     EventName.MEMBER_ADDED: _BASE_ALLOWED_DOMAIN_DIMS | {"source"},
+    # Coarse closed-set ranges of live URL count and UTub age, never an id or name.
+    EventName.UTUB_OPENED: _BASE_ALLOWED_DOMAIN_DIMS
+    | {"url_count_bucket", "age_bucket"},
 }
 
 
