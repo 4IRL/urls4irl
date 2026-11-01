@@ -374,7 +374,7 @@ def _assert_rows_lockable(
         probe.close()
 
 
-# (case id, actor index, mutation, expected outcome, rows locked: "none"|"utub"|"both")
+# (case id, actor index, mutation, expected outcome, rows locked: 0 none, 1 Utubs, 2 Utubs and invite)
 PROBE_CASES = [
     ("actor_gate", MEMBER_INDEX, "unvalidate", InviteJoinOutcome.ACTOR_UNVALIDATED, 0),
     ("trashed_utub", MEMBER_INDEX, "trash", InviteJoinOutcome.DEAD, 1),

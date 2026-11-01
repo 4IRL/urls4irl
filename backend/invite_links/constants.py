@@ -21,9 +21,8 @@ class InviteState(StrEnum):
     REVOKED = "revoked"
     EXPIRED = "expired"
     USED_UP = "used_up"
-    CREATOR_NOT_MANAGER = (
-        "creator_not_manager"  # NULL creator, not a member, or demoted
-    )
+    # NULL creator, not a member, or demoted
+    CREATOR_NOT_MANAGER = "creator_not_manager"
     UTUB_TRASHED = "utub_trashed"
     UTUB_LOCKED = "utub_locked"
 

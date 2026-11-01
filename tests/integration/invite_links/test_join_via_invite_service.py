@@ -289,6 +289,33 @@ def test_member_of_trashed_utub_gets_dead(
         )
 
 
+def test_missing_utub_row_gets_dead_and_releases_locks(
+    app: Flask, every_user_makes_a_unique_utub
+) -> None:
+    """
+    GIVEN an invite whose ``utub_id`` points at no Utubs row
+    WHEN a validated non-member joins
+    THEN DEAD with no UTub id and nothing written
+    """
+    stale_utub_id = 99999
+    with app.app_context():
+        assert db.session.get(Utubs, stale_utub_id) is None
+        stale_invite = Utub_Invite_Links(
+            utub_id=stale_utub_id,
+            token=TOKEN,
+            created_by=CREATOR_ID,
+            expires_at=utc_now() + INVITE_LINK_DEFAULT_TTL,
+        )
+        stale_invite.id = 12345
+        actor = db.session.get(Users, JOINER_ID)
+
+        result = join_via_invite(actor, stale_invite)
+
+        assert result == InviteJoinResult(InviteJoinOutcome.DEAD, None)
+        assert db.session.get(Utub_Members, (stale_utub_id, JOINER_ID)) is None
+        assert Utub_Invite_Acceptances.query.count() == 0
+
+
 def test_join_records_member_added_metric_once(
     metrics_enabled_app,
     provide_metrics_redis,

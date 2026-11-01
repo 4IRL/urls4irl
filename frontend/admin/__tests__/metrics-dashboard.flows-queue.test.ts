@@ -751,6 +751,49 @@ describe("metrics-dashboard flows load queue wiring", () => {
     ]);
   });
 
+  describe("flow-list failure banner vs a successful poll", () => {
+    const EMPTY_TOP_RESPONSE = { events: [] };
+    let listDeferred: Deferred;
+    let topDeferreds: Deferred[] = [];
+
+    beforeEach(() => {
+      topDeferreds = [];
+      fetchTopEventsSpy.mockImplementation(() => {
+        const deferred = makeDeferred({ flowId: "top" });
+        topDeferreds.push(deferred);
+        return deferred.xhr;
+      });
+      fetchMetricFlowsSpy.mockImplementation(() => {
+        listDeferred = makeDeferred({ flowId: "list" });
+        return listDeferred.xhr;
+      });
+    });
+
+    it("a list failure banner survives a later successful top poll", () => {
+      openFlows();
+      listDeferred.reject({ status: 500 });
+      expect(bannerShown()).toBe(true);
+      const bannerText = banner().textContent;
+      expect(bannerText).toBeTruthy();
+
+      topDeferreds[0].resolve(EMPTY_TOP_RESPONSE);
+
+      expect(bannerShown()).toBe(true);
+      expect(banner().textContent).toBe(bannerText);
+    });
+
+    it("a successful top poll that lands before the list failure leaves the banner shown", () => {
+      openFlows();
+      topDeferreds[0].resolve(EMPTY_TOP_RESPONSE);
+      expect(bannerShown()).toBe(false);
+
+      listDeferred.reject({ status: 500 });
+      topDeferreds[1].resolve(EMPTY_TOP_RESPONSE);
+
+      expect(bannerShown()).toBe(true);
+    });
+  });
+
   it("an empty fan-out clears aria-busy and announces", () => {
     flowIdsHolder.ids = {};
     openFlows();
