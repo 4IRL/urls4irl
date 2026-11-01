@@ -30,6 +30,7 @@ from backend.metrics.query_service import (
     validate_dim_keys,
 )
 from backend.metrics.resources import Resource
+from backend.metrics.suppression import ALLOWED_GROUP_BY_PROJECTIONS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
@@ -1825,6 +1826,50 @@ def test_timeseries_daily_event_offset_range_keys_by_utc_midnight(
     ]
 
 
+def test_timeseries_hourly_event_day_resolution_offset_start_keys_by_utc_midnight(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_CREATED (hourly-stored) rows on Jan 13 and Jan 14 and a day
+        resolution range starting at 20:00 -07:00 (= 03:00 UTC)
+    WHEN timeseries is called
+    THEN the first bucket is the UTC midnight of the start's UTC day (never the
+        local midnight) and counts land in the matching UTC-midnight buckets.
+    """
+    tz_minus_7 = timezone(timedelta(hours=-7))
+    # Start Jan 12 20:00 -07:00 = Jan 13 03:00 UTC; end Jan 14 20:00 -07:00 =
+    # Jan 15 03:00 UTC.
+    window_start = datetime(2026, 1, 12, 20, 0, tzinfo=tz_minus_7)
+    window_end = datetime(2026, 1, 14, 20, 0, tzinfo=tz_minus_7)
+    for bucket_start, count in (
+        (datetime(2026, 1, 13, 5, tzinfo=timezone.utc), 2),
+        (datetime(2026, 1, 14, 1, tzinfo=timezone.utc), 3),
+    ):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_CREATED,
+            bucket_start=bucket_start,
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        result = timeseries(
+            event_name=EventName.UTUB_CREATED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
+        )
+
+    assert result.resolution == "day"
+    assert [(row.bucket, row.count) for row in result.buckets] == [
+        (datetime(2026, 1, 13, tzinfo=timezone.utc), 2),
+        (datetime(2026, 1, 14, tzinfo=timezone.utc), 3),
+        # Partial trailing day (end is 03:00 UTC) is zero-filled for hourly events.
+        (datetime(2026, 1, 15, tzinfo=timezone.utc), 0),
+    ]
+
+
 def test_timeseries_day_groups_under_utc_date_with_non_utc_session_timezone(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
@@ -1892,6 +1937,97 @@ def test_grouped_timeseries_day_groups_under_utc_date_with_non_utc_session_timez
         db.session.rollback()
 
     assert [bucket.bucket for bucket in response.buckets] == [day]
+
+
+def test_grouped_timeseries_daily_event_counts_complete_days_only(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows at the UTC midnights of Jan 12, 13 and 15 and a
+        mid-day window (Jan 12 12:00 to Jan 15 12:00)
+    WHEN grouped_timeseries runs at day resolution
+    THEN both ends floor to UTC midnight: Jan 12 (floored start) and Jan 13
+        are returned while the current day (Jan 15) stays hidden.
+    """
+    monkeypatch.setitem(
+        ALLOWED_GROUP_BY_PROJECTIONS,
+        EventName.UTUB_OPENED,
+        frozenset({frozenset({"device_type"})}),
+    )
+    window_end = _WINDOW_REFERENCE  # 2026-01-15 12:00 UTC
+    window_start = window_end - timedelta(days=3)  # 2026-01-12 12:00 UTC
+    day_12 = datetime(2026, 1, 12, tzinfo=timezone.utc)
+    day_13 = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    day_15 = datetime(2026, 1, 15, tzinfo=timezone.utc)
+    for bucket_start, count in ((day_12, 3), (day_13, 5), (day_15, 9)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=bucket_start,
+            dimensions={"device_type": int(DeviceType.DESKTOP)},
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        response = grouped_timeseries(
+            event_name=EventName.UTUB_OPENED,
+            group_by=["device_type"],
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
+        )
+
+    assert [(bucket.bucket, bucket.count) for bucket in response.buckets] == [
+        (day_12, 3),
+        (day_13, 5),
+    ]
+
+
+def test_grouped_timeseries_non_partitioned_offset_start_uses_utc_midnight(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN UTUB_OPENED rows on Jan 13 and Jan 14 and a -07:00 window starting
+        at Jan 12 20:00 local (= Jan 13 03:00 UTC)
+    WHEN grouped_timeseries runs at day resolution with
+        partition_by_bucket=False
+    THEN the single synthetic bucket is the UTC midnight of the start's UTC
+        day (Jan 13), never the local midnight, and sums both days.
+    """
+    monkeypatch.setitem(
+        ALLOWED_GROUP_BY_PROJECTIONS,
+        EventName.UTUB_OPENED,
+        frozenset({frozenset({"device_type"})}),
+    )
+    tz_minus_7 = timezone(timedelta(hours=-7))
+    window_start = datetime(2026, 1, 12, 20, 0, tzinfo=tz_minus_7)
+    window_end = datetime(2026, 1, 15, 20, 0, tzinfo=tz_minus_7)
+    for day, count in ((13, 2), (14, 3)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=datetime(2026, 1, day, tzinfo=timezone.utc),
+            dimensions={"device_type": int(DeviceType.DESKTOP)},
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        response = grouped_timeseries(
+            event_name=EventName.UTUB_OPENED,
+            group_by=["device_type"],
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
+            partition_by_bucket=False,
+        )
+
+    assert [(bucket.bucket, bucket.count) for bucket in response.buckets] == [
+        (datetime(2026, 1, 13, tzinfo=timezone.utc), 5)
+    ]
 
 
 # --------------------------- grouped_counts --------------------------------

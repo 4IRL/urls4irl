@@ -332,6 +332,38 @@ def test_query_timeseries_daily_event_day_window_returns_one_bucket(
     assert len(body["buckets"]) == 1
 
 
+def test_query_timeseries_daily_event_counts_seeded_midnight_row(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and a midnight-UTC UTUB_OPENED row for yesterday
+    WHEN GETing timeseries with window=day
+    THEN the single day bucket is keyed at yesterday's UTC midnight and
+        carries the seeded count.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    yesterday = utc_now().replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) - timedelta(days=1)
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=yesterday,
+            count=4,
+        )
+
+    url = f"{_TIMESERIES_URL}?window=day&event_name={EventName.UTUB_OPENED.value}"
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["resolution"] == "day"
+    assert [
+        (_parse_iso(bucket["bucket"]), bucket["count"]) for bucket in body["buckets"]
+    ] == [(yesterday, 4)]
+
+
 def test_query_timeseries_hourly_event_echoes_hour_resolution(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
