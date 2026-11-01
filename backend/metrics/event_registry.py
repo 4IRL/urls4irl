@@ -12,6 +12,10 @@ documenting:
   dict for events with no enumerated dimensions. The metrics audit cross-
   checks this against the Pydantic `Literal[...]` args in
   `DIMENSION_MODELS[event].model_fields[field]` to surface drift.
+- `bucket_seconds` — counter bucket width for privacy-sensitive events.
+  `None` means the writer's configured default (hourly); the only other
+  allowed value is `DAILY_BUCKET_SECONDS`, which the query layer reads as
+  complete UTC days. `DAILY_BUCKET_EVENTS` is derived from it.
 
 Adding a new event: append a `EventName` member, then add an entry here with
 the same key. The unit test `tests/unit/test_event_coverage.py` asserts
@@ -36,6 +40,8 @@ from backend.metrics.tag_batch import (
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 from backend.urls.constants import URL_RESTORE_TARGETS
 
+DAILY_BUCKET_SECONDS: int = 86_400
+
 
 @dataclass(frozen=True)
 class EventRegistryEntry:
@@ -44,6 +50,7 @@ class EventRegistryEntry:
     description: str
     category: EventCategory
     dimensions: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    bucket_seconds: int | None = None
 
 
 EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
@@ -113,6 +120,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.UTUB_OPENED: EventRegistryEntry(
         description="UTub explicitly opened/selected",
         category=EventCategory.DOMAIN,
+        bucket_seconds=DAILY_BUCKET_SECONDS,
     ),
     EventName.UTUB_PURGED_FROM_TRASH: EventRegistryEntry(
         description="A trashed UTub permanently deleted by its creator",
@@ -149,6 +157,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.TAG_APPLIED: EventRegistryEntry(
         description="Tag added to a URL",
         category=EventCategory.DOMAIN,
+        bucket_seconds=DAILY_BUCKET_SECONDS,
     ),
     EventName.TAGS_APPLIED_BATCH: EventRegistryEntry(
         description="Multiple tags applied to a URL in one batch",
@@ -822,9 +831,16 @@ EVENT_DESCRIPTIONS: dict[EventName, str] = {
 EVENT_CATEGORY: dict[EventName, EventCategory] = {
     event_name: entry.category for event_name, entry in EVENT_REGISTRY.items()
 }
+DAILY_BUCKET_EVENTS: frozenset[EventName] = frozenset(
+    event_name
+    for event_name, entry in EVENT_REGISTRY.items()
+    if entry.bucket_seconds == DAILY_BUCKET_SECONDS
+)
 
 
 __all__ = [
+    "DAILY_BUCKET_EVENTS",
+    "DAILY_BUCKET_SECONDS",
     "EVENT_CATEGORY",
     "EVENT_DESCRIPTIONS",
     "EVENT_REGISTRY",

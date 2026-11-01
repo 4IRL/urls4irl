@@ -4,12 +4,14 @@ from datetime import datetime, time, timedelta, timezone
 from typing import Literal, NamedTuple
 
 from flask import current_app
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Query
+from sqlalchemy.sql.elements import ColumnElement
 
 from backend import db
 from backend.extensions.metrics.writer import MetricsWriter
 from backend.metrics.dimension_models import DIMENSION_MODELS
+from backend.metrics.event_registry import DAILY_BUCKET_EVENTS
 from backend.metrics.events import (
     DEVICE_TYPE_DIM_KEY,
     EVENT_CATEGORY,
@@ -52,6 +54,11 @@ class SummaryResult(NamedTuple):
     by_category: list[SummaryCategoryCount]
     last_flush_at: datetime | None
     last_event_at: datetime | None
+
+
+class TimeseriesResult(NamedTuple):
+    buckets: list[TimeseriesBucketSchema]
+    resolution: Literal["hour", "day"]
 
 
 class _EndpointMetadata(NamedTuple):
@@ -116,6 +123,35 @@ def _device_type_filter(query: Query, device_type: DeviceType | None) -> Query:
     )
 
 
+def _floor_utc_day(value: datetime) -> datetime:
+    """Floor `value` to 00:00 of its UTC date (naive values are taken as UTC)."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return _truncate_to_resolution(value.astimezone(timezone.utc), "day")
+
+
+def _window_clause(window_start: datetime, window_end: datetime) -> ColumnElement[bool]:
+    """Return the window predicate for `Anonymous_Metrics.bucket_start`.
+
+    Daily-bucket events count complete UTC days only: both ends are floored to
+    UTC midnight, so the current day stays hidden and contiguous windows never
+    share a day. All other events keep the exact half-open `[start, end)`.
+    """
+    daily_names = [event.value for event in DAILY_BUCKET_EVENTS]
+    return or_(
+        and_(
+            Anonymous_Metrics.event_name.in_(daily_names),
+            Anonymous_Metrics.bucket_start >= _floor_utc_day(window_start),
+            Anonymous_Metrics.bucket_start < _floor_utc_day(window_end),
+        ),
+        and_(
+            Anonymous_Metrics.event_name.not_in(daily_names),
+            Anonymous_Metrics.bucket_start >= window_start,
+            Anonymous_Metrics.bucket_start < window_end,
+        ),
+    )
+
+
 def _per_endpoint_counts(
     *,
     window_start: datetime,
@@ -159,10 +195,7 @@ def _per_event_counts(
     query = (
         db.session.query(Anonymous_Metrics.event_name, total_count)
         .join(Event_Registry, Event_Registry.name == Anonymous_Metrics.event_name)
-        .filter(
-            Anonymous_Metrics.bucket_start >= window_start,
-            Anonymous_Metrics.bucket_start < window_end,
-        )
+        .filter(_window_clause(window_start, window_end))
     )
     if category is not None:
         query = query.filter(Event_Registry.category == category)
@@ -298,10 +331,7 @@ def top_events(
             total_count,
         )
         .join(Event_Registry, Event_Registry.name == Anonymous_Metrics.event_name)
-        .filter(
-            Anonymous_Metrics.bucket_start >= window_start,
-            Anonymous_Metrics.bucket_start < window_end,
-        )
+        .filter(_window_clause(window_start, window_end))
     )
     if category is not None:
         query = query.filter(Event_Registry.category == category)
@@ -370,9 +400,26 @@ def _truncate_to_resolution(
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def _first_bucket(value: datetime, resolution: Literal["hour", "day"]) -> datetime:
+    """Return the bucket key containing `value`; day keys floor in UTC."""
+    if resolution == "day":
+        return _floor_utc_day(value)
+    return _truncate_to_resolution(value, resolution)
+
+
+def _effective_resolution(
+    event_name: EventName, requested: Literal["hour", "day"]
+) -> Literal["hour", "day"]:
+    """Return `day` for daily-stored events, else the requested resolution."""
+    if event_name in DAILY_BUCKET_EVENTS:
+        return "day"
+    return requested
+
+
 # Why: `resolution` finer than the writer's METRICS_BUCKET_SECONDS=3600 floor
-# collapses to the bucket granularity — the writer always stores hour-aligned
-# rows, so sub-hour resolutions would just return the same hourly buckets.
+# collapses to the bucket granularity — hourly events are stored hour-aligned
+# (daily events midnight-aligned), so sub-hour resolutions would just return
+# the same buckets.
 def timeseries(
     *,
     event_name: EventName,
@@ -382,20 +429,23 @@ def timeseries(
     endpoint: str | None = None,
     method: str | None = None,
     device_type: DeviceType | None = None,
-) -> list[TimeseriesBucketSchema]:
+) -> TimeseriesResult:
     """Return per-bucket counts for `event_name` inside the half-open window.
 
     `resolution` is a Postgres `date_trunc` field name — narrowed to the
     `Literal["hour", "day"]` set so any caller passing arbitrary text is
     flagged at type-check time, providing defense-in-depth on top of the
     Pydantic schema validation at the HTTP boundary. Buckets are returned
-    in chronological order; the underlying rows are already hour-aligned
-    at write time, so passing "hour" returns the raw buckets and "day"
-    aggregates them.
+    in chronological order. Hourly events are stored hour-aligned, so "hour"
+    returns the raw buckets and "day" aggregates them. Daily events
+    (`DAILY_BUCKET_EVENTS`) always return `day` buckets over complete UTC
+    days only; the result's `resolution` reports what was actually used.
 
     Zero-fills empty intervals: every resolution-aligned bucket inside
     `[window_start, window_end)` appears in the result, with count=0 when no
-    rows exist for that bucket. Keeps the chart visually meaningful during
+    rows exist for that bucket. Daily events fill
+    `[floor_utc_day(start), floor_utc_day(end))` instead and may return no
+    buckets. Keeps the chart visually meaningful during
     low-traffic stretches (a Day window with one event still returns 24
     hourly buckets, all but one at zero) and removes the need for the
     frontend to know the window range to draw an x-axis.
@@ -405,14 +455,16 @@ def timeseries(
     chart per-endpoint timeseries (event_name=api_hit otherwise collapses
     every API route into one aggregate series).
     """
-    bucket = func.date_trunc(resolution, Anonymous_Metrics.bucket_start).label("bucket")
+    resolution = _effective_resolution(event_name, resolution)
+    bucket = func.date_trunc(resolution, Anonymous_Metrics.bucket_start, "UTC").label(
+        "bucket"
+    )
     query = db.session.query(
         bucket,
         func.sum(Anonymous_Metrics.count).label("count"),
     ).filter(
         Anonymous_Metrics.event_name == event_name.value,
-        Anonymous_Metrics.bucket_start >= window_start,
-        Anonymous_Metrics.bucket_start < window_end,
+        _window_clause(window_start, window_end),
     )
     if endpoint is not None:
         query = query.filter(Anonymous_Metrics.endpoint == endpoint)
@@ -432,16 +484,25 @@ def timeseries(
     # writes, the partial leading bucket happens to contain no rows; for day
     # resolution + an unaligned window_start, it commonly contains data.
     step = _RESOLUTION_STEP[resolution]
-    first_bucket = _truncate_to_resolution(window_start, resolution)
+    # Daily events chart complete UTC days only: both ends floor to UTC
+    # midnight. Day keys always come from the UTC floor, never a bare truncate
+    # of an offset-aware start (that yields local-midnight keys that miss the
+    # UTC `date_trunc` keys).
+    if event_name in DAILY_BUCKET_EVENTS:
+        first_bucket = _floor_utc_day(window_start)
+        fill_end = _floor_utc_day(window_end)
+    else:
+        first_bucket = _first_bucket(window_start, resolution)
+        fill_end = window_end
 
     filled_buckets: list[TimeseriesBucketSchema] = []
     cursor = first_bucket
-    while cursor < window_end:
+    while cursor < fill_end:
         filled_buckets.append(
             TimeseriesBucketSchema(bucket=cursor, count=counts_by_bucket.get(cursor, 0))
         )
         cursor = cursor + step
-    return filled_buckets
+    return TimeseriesResult(buckets=filled_buckets, resolution=resolution)
 
 
 def _is_device_type_dim(event_name: EventName, group_by_key: str) -> bool:
@@ -479,7 +540,8 @@ def grouped_timeseries(
     """Return per-bucket counts split by a dimension tuple.
 
     Returns one row per `(date_trunc(bucket), group_by[0], group_by[1], ...)`
-    combination inside the half-open window `[window_start, window_end)`.
+    combination inside the half-open window `[window_start, window_end)`
+    (daily-bucket events use complete UTC days: both ends floor to midnight).
     Unlike `timeseries`, this helper does NOT zero-fill empty combinations —
     the cross product of buckets × dim values can explode quickly, and the
     frontend renderer treats absent combinations as "no segment for that
@@ -503,9 +565,9 @@ def grouped_timeseries(
         )
     validate_group_by_projection(event_name, group_by)
 
-    bucket_column = func.date_trunc(resolution, Anonymous_Metrics.bucket_start).label(
-        "bucket"
-    )
+    bucket_column = func.date_trunc(
+        resolution, Anonymous_Metrics.bucket_start, "UTC"
+    ).label("bucket")
     dim_columns = []
     for group_by_index, group_by_key in enumerate(group_by):
         if _is_device_type_dim(event_name, group_by_key):
@@ -517,8 +579,7 @@ def grouped_timeseries(
     count_column = func.sum(Anonymous_Metrics.count).label("count")
     query = db.session.query(bucket_column, *dim_columns, count_column).filter(
         Anonymous_Metrics.event_name == event_name.value,
-        Anonymous_Metrics.bucket_start >= window_start,
-        Anonymous_Metrics.bucket_start < window_end,
+        _window_clause(window_start, window_end),
     )
     rows = (
         query.group_by(bucket_column, *dim_columns)
@@ -543,7 +604,7 @@ def grouped_timeseries(
     if not partition_by_bucket:
         # Sum per dims tuple across buckets so the floor applies to the
         # window-wide cell; one synthetic bucket labels every row.
-        synthetic_bucket = _truncate_to_resolution(window_start, resolution)
+        synthetic_bucket = _first_bucket(window_start, resolution)
         totals: dict[tuple[str | int, ...], int] = {}
         for _, dim_values, count in grouped_rows:
             dims_key = tuple(dim_values[key] for key in group_by)
@@ -686,8 +747,7 @@ def _build_grouped_count_query(
     is_api_event = EVENT_CATEGORY[event_name] is EventCategory.API
     base_filters = [
         Anonymous_Metrics.event_name == event_name.value,
-        Anonymous_Metrics.bucket_start >= window_start,
-        Anonymous_Metrics.bucket_start < window_end,
+        _window_clause(window_start, window_end),
     ]
 
     if is_api_event:
@@ -825,10 +885,7 @@ def _by_category(start: datetime, end: datetime) -> dict[str, int]:
             func.sum(Anonymous_Metrics.count).label("total"),
         )
         .join(Event_Registry, Event_Registry.name == Anonymous_Metrics.event_name)
-        .filter(
-            Anonymous_Metrics.bucket_start >= start,
-            Anonymous_Metrics.bucket_start < end,
-        )
+        .filter(_window_clause(start, end))
         .group_by(Event_Registry.category)
         .all()
     )

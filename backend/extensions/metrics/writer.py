@@ -9,6 +9,7 @@ from backend.extensions.metrics.buckets import compute_bucket_start_epoch
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.ua_classifier import classify_user_agent
 from backend.metrics.dimension_models import validate_dimensions
+from backend.metrics.event_registry import EVENT_REGISTRY
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.metrics.latency import (
     LATENCY_SAMPLE_CAP_DEFAULT,
@@ -92,16 +93,17 @@ class MetricsWriter:
 
             validate_dimensions(event, effective_dims)
 
-            bucket_start = compute_bucket_start_epoch(
-                int(time.time()), self._bucket_seconds
+            bucket_seconds = (
+                EVENT_REGISTRY[event].bucket_seconds or self._bucket_seconds
             )
+            bucket_start = compute_bucket_start_epoch(int(time.time()), bucket_seconds)
             canonical_dims = canonicalize_dimensions(effective_dims)
             counter_key = (
                 f"{METRICS_REDIS.COUNTER_KEY_PREFIX}{bucket_start}:"
                 f"{event.value}:{canonical_dims}"
             )
             ttl_seconds = max(
-                self._bucket_seconds + _KEY_TTL_GRACE_SECONDS, _KEY_TTL_FLOOR_SECONDS
+                bucket_seconds + _KEY_TTL_GRACE_SECONDS, _KEY_TTL_FLOOR_SECONDS
             )
 
             pipe = self._redis.pipeline()

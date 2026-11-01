@@ -99,7 +99,7 @@ make metrics-flush-now
 make metrics-rows
 ```
 
-**Pass:** `metrics-flush-now` logs `upserted=N` for some `N>=1`, and `metrics-rows` shows recent rows for the current hour bucket. The next minute-cron tick will re-acquire the lock — that is expected.
+**Pass:** `metrics-flush-now` logs `upserted=N` for some `N>=1`, and `metrics-rows` shows recent rows for the current hour bucket. Daily-bucket events (e.g. `utub_opened`, `tag_applied`) are stored under the UTC midnight bucket and appear in dashboards and the query API only after that UTC day ends. The next minute-cron tick will re-acquire the lock — that is expected.
 
 If you'd rather verify the **cron** path (no lock manipulation), just wait ~60s after Step 5 and run `make metrics-rows` — the cron will have drained the counters into Postgres on its own.
 

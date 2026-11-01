@@ -189,7 +189,8 @@ ResourceLiteral = Literal[*_ALL_RESOURCES]  # type: ignore[valid-type]
 
 # `date_trunc` resolutions supported by the timeseries endpoint. Hour is the
 # minimum useful resolution because writer.record floors bucket_start to the
-# nearest METRICS_BUCKET_SECONDS=3600 boundary.
+# nearest METRICS_BUCKET_SECONDS=3600 boundary (UTC-midnight for events in
+# DAILY_BUCKET_EVENTS, which the timeseries endpoint always returns as `day`).
 ResolutionLiteral = Literal["hour", "day"]
 
 
@@ -301,7 +302,10 @@ class TimeseriesQuerySchema(BaseModel):
     end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
     resolution: ResolutionLiteral = Field(
         default="hour",
-        description="date_trunc resolution: hour (default) or day.",
+        description=(
+            "date_trunc resolution: hour (default) or day. Events stored in "
+            "daily buckets always return `day`, whatever is requested."
+        ),
     )
     endpoint: str | None = Field(
         default=None,

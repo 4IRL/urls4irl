@@ -3132,7 +3132,7 @@ export interface components {
        * @default null
        */
       window: string | null;
-      /** @description date_trunc resolution (hour | day) */
+      /** @description Effective resolution of the returned buckets (hour | day); may differ from the requested one for daily-stored events */
       resolution: string;
       /**
        * Format: date-time
@@ -8356,7 +8356,7 @@ export interface operations {
         start?: string;
         /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
         end?: string;
-        /** @description date_trunc resolution: hour (default) or day. */
+        /** @description date_trunc resolution: hour (default) or day. Events stored in daily buckets always return `day`, whatever is requested. */
         resolution?: "hour" | "day";
         /** @description Optional Flask endpoint name (e.g. utubs.get_single_utub). When supplied alongside event_name=api_hit, filters the series to only rows matching this endpoint — used by the admin dashboard's API tab to chart per-endpoint timeseries. */
         endpoint?: string;
