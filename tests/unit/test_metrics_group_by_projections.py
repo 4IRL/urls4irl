@@ -77,6 +77,8 @@ def test_api_hit_is_exempt():
         (EventName.UI_URL_ACCESS, ["device_type"]),
         (EventName.UTUB_OPENED, ["url_count_bucket", "age_bucket"]),
         (EventName.UTUB_OPENED, ["device_type"]),
+        (EventName.TAG_APPLIED, ["device_type"]),
+        (EventName.TAG_APPLIED, ["utub_size_bucket", "device_type"]),
     ],
 )
 def test_non_member_projection_is_refused(event_name, group_by):
@@ -107,6 +109,14 @@ def test_utub_opened_registers_exactly_the_two_bucket_keys():
     ]
     validate_group_by_projection(EventName.UTUB_OPENED, ["url_count_bucket"])
     validate_group_by_projection(EventName.UTUB_OPENED, ["age_bucket"])
+
+
+def test_tag_applied_registers_exactly_utub_size_bucket():
+    assert single_key_group_by_choices(EventName.TAG_APPLIED) == ["utub_size_bucket"]
+    assert ALLOWED_GROUP_BY_PROJECTIONS[EventName.TAG_APPLIED] == frozenset(
+        {frozenset({"utub_size_bucket"})}
+    )
+    validate_group_by_projection(EventName.TAG_APPLIED, ["utub_size_bucket"])
 
 
 def test_group_by_not_available_message_exact_wording():
