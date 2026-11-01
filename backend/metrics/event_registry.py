@@ -37,6 +37,7 @@ from backend.metrics.tag_batch import (
     TAGS_BATCH_SIZE_BUCKETS,
     URL_TAG_COUNT_BUCKETS,
 )
+from backend.metrics.utub_buckets import UTUB_AGE_BUCKETS, UTUB_SIZE_BUCKETS
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 from backend.urls.constants import URL_RESTORE_TARGETS
 
@@ -120,6 +121,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.UTUB_OPENED: EventRegistryEntry(
         description="UTub explicitly opened/selected",
         category=EventCategory.DOMAIN,
+        dimensions={
+            "url_count_bucket": UTUB_SIZE_BUCKETS,
+            "age_bucket": UTUB_AGE_BUCKETS,
+        },
         bucket_seconds=DAILY_BUCKET_SECONDS,
     ),
     EventName.UTUB_PURGED_FROM_TRASH: EventRegistryEntry(

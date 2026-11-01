@@ -75,6 +75,8 @@ def test_api_hit_is_exempt():
         (EventName.UI_FORM_CANCEL, ["form"]),
         (EventName.UI_FORM_CANCEL, ["trigger", "trigger"]),
         (EventName.UI_URL_ACCESS, ["device_type"]),
+        (EventName.UTUB_OPENED, ["url_count_bucket", "age_bucket"]),
+        (EventName.UTUB_OPENED, ["device_type"]),
     ],
 )
 def test_non_member_projection_is_refused(event_name, group_by):
@@ -96,6 +98,15 @@ def test_single_key_group_by_choices_excludes_multi_key_projections():
     assert single_key_group_by_choices(EventName.LOGIN_FAILURE) == ["reason"]
     assert single_key_group_by_choices(EventName.API_METRICS_INGEST_BATCH) == []
     assert single_key_group_by_choices(EventName.UI_URL_ACCESS) == []
+
+
+def test_utub_opened_registers_exactly_the_two_bucket_keys():
+    assert single_key_group_by_choices(EventName.UTUB_OPENED) == [
+        "age_bucket",
+        "url_count_bucket",
+    ]
+    validate_group_by_projection(EventName.UTUB_OPENED, ["url_count_bucket"])
+    validate_group_by_projection(EventName.UTUB_OPENED, ["age_bucket"])
 
 
 def test_group_by_not_available_message_exact_wording():

@@ -10,7 +10,7 @@ from flask_login import current_user
 from sqlalchemy import event, text
 
 from backend import db
-from backend.metrics.events import EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.models.urls import Urls
 from backend.models.user_preferences import SortOrder, User_Preferences
 from backend.models.users import Users
@@ -19,12 +19,17 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utubs.services import read_utubs
-from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+)
 from tests.settings_stub import (
     DEFAULT_MEMBER_SETTINGS_DICT,
     DEFAULT_SETTINGS_DICT,
@@ -164,6 +169,155 @@ def test_get_single_utub_records_metric(
 
     assert get_single_utub_response.status_code == 200
     assert count_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED) == 1
+
+
+@pytest.mark.parametrize(
+    "failing_helper", [None, "bucket_utub_size", "bucket_utub_age"]
+)
+def test_get_single_utub_survives_bucket_helper_failure(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+    failing_helper: str | None,
+):
+    """
+    GIVEN a metrics-enabled app and a UTub, with a bucket helper optionally raising
+    WHEN the member GETs "/utubs/<utub_id>"
+    THEN the response is 200 with the UTub body and last_opened_at is stamped;
+        exactly one UTUB_OPENED counter is written unpatched (control), and none
+        when a helper raises
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+    if failing_helper is not None:
+        monkeypatch.setattr(
+            read_utubs,
+            failing_helper,
+            mock.Mock(side_effect=RuntimeError("boom")),
+        )
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED) == 0
+    before_open = _capture_open_state(app=app, utub_id=utub_id)
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    assert response.json is not None
+    assert response.json[MODELS.ID] == utub_id
+    expected_counters = 1 if failing_helper is None else 0
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
+        == expected_counters
+    )
+    _assert_open_recorded_only_for_caller(
+        app=app, utub_id=utub_id, caller_id=1, before=before_open
+    )
+
+
+def _open_dims(client: FlaskClient, redis_client, utub_id: int) -> dict:
+    """GET the UTub once and return the dims of its single UTUB_OPENED counter."""
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+    keys = find_counter_keys(redis_client, EventName.UTUB_OPENED)
+    assert len(keys) == 1
+    return parse_dims(keys[0])
+
+
+def test_get_single_utub_dims_for_empty_utub(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a freshly created empty UTub
+    WHEN a member opens it
+    THEN the counter dims are exactly the "0" size bucket, "0-6d" age and device_type
+    """
+    client, utub_id, _, _ = add_single_utub_as_user_after_logging_in
+
+    dims = _open_dims(client, provide_metrics_redis, utub_id)
+
+    assert dims == {
+        "url_count_bucket": "0",
+        "age_bucket": "0-6d",
+        DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP),
+    }
+
+
+def test_get_single_utub_dims_for_utub_with_live_urls(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a UTub holding three live URLs
+    WHEN the creator opens it
+    THEN url_count_bucket is "1-5"
+    """
+    client, _, _, app = login_first_user_without_register
+    with app.app_context():
+        utub_id = Utubs.query.filter(Utubs.utub_creator == current_user.id).first().id
+        assert Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).count() == 3
+
+    dims = _open_dims(client, provide_metrics_redis, utub_id)
+
+    assert dims["url_count_bucket"] == "1-5"
+    assert dims["age_bucket"] == "0-6d"
+
+
+def test_get_single_utub_dims_do_not_count_trashed_urls(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a UTub whose three URL rows are all trashed
+    WHEN the creator opens it
+    THEN url_count_bucket is "0", since trashed URLs are not counted
+    """
+    client, _, _, app = login_first_user_without_register
+    with app.app_context():
+        creator_id = current_user.id
+        utub_id = Utubs.query.filter(Utubs.utub_creator == creator_id).first().id
+        utub_url_ids = [
+            utub_url.id
+            for utub_url in Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).all()
+        ]
+    assert len(utub_url_ids) > 0
+    for utub_url_id in utub_url_ids:
+        trash_utub_url(app, utub_url_id, deleted_by=creator_id)
+
+    dims = _open_dims(client, provide_metrics_redis, utub_id)
+
+    assert dims["url_count_bucket"] == "0"
+
+
+def test_get_single_utub_dims_use_utub_age(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a UTub whose created_at was set back 40 days
+    WHEN a member opens it
+    THEN age_bucket is "30-89d"
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.created_at = utc_now() - timedelta(days=40)
+        db.session.commit()
+
+    dims = _open_dims(client, provide_metrics_redis, utub_id)
+
+    assert dims["age_bucket"] == "30-89d"
 
 
 def test_get_valid_utub_as_member(

@@ -456,6 +456,44 @@ def test_per_event_models_reject_missing_required_keys():
         DIMENSION_MODELS[EventName.UI_UTUB_NAME_EDIT_OPEN].model_validate({})
 
 
+@pytest.mark.parametrize(
+    ("size_bucket", "age_bucket"),
+    [
+        ("0", "0-6d"),
+        ("1-5", "7-29d"),
+        ("6-20", "30-89d"),
+        ("21-50", "90-364d"),
+        ("51+", "365d+"),
+    ],
+)
+def test_utub_opened_accepts_every_documented_bucket(size_bucket: str, age_bucket: str):
+    """Valid size and age buckets validate, with or without `device_type`."""
+    dims = {"url_count_bucket": size_bucket, "age_bucket": age_bucket}
+    validate_dimensions(EventName.UTUB_OPENED, dims)
+    validate_dimensions(
+        EventName.UTUB_OPENED, {**dims, "device_type": DeviceType.MOBILE}
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_dims",
+    [
+        {},
+        {"url_count_bucket": "1-5"},
+        {"age_bucket": "0-6d"},
+        {"url_count_bucket": "suppressed", "age_bucket": "0-6d"},
+        {"url_count_bucket": "1-5", "age_bucket": "suppressed"},
+        {"url_count_bucket": "100", "age_bucket": "0-6d"},
+        {"url_count_bucket": "1-5", "age_bucket": "1d"},
+        {"url_count_bucket": "1-5", "age_bucket": "0-6d", "extra": "x"},
+    ],
+)
+def test_utub_opened_rejects_invalid_dims(bad_dims: dict[str, str]):
+    """Missing dims, forged `suppressed`, unknown values and extra keys are rejected."""
+    with pytest.raises(ValidationError):
+        validate_dimensions(EventName.UTUB_OPENED, bad_dims)
+
+
 def test_mobile_nav_rejects_unknown_trigger():
     """`_DimMobileNav.trigger` accepts only `tap`/`history_nav`.
 

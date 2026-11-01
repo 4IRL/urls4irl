@@ -31,6 +31,12 @@ from tests.integration.system.metrics_helpers import (
 
 pytestmark = pytest.mark.cli
 
+# UTUB_OPENED requires both bucket dims; a bare call is silently dropped.
+_UTUB_OPENED_DIMS: dict[str, str] = {"url_count_bucket": "1-5", "age_bucket": "0-6d"}
+_DAILY_EVENT_DIMS: dict[EventName, dict[str, str]] = {
+    EventName.UTUB_OPENED: _UTUB_OPENED_DIMS,
+}
+
 
 def test_writer_increments_redis_counter_for_api_hit(
     app: Flask,
@@ -286,12 +292,12 @@ def test_record_domain_event_auto_injects_device_type_from_request_context(
     with metrics_enabled_app.test_request_context(
         "/", headers={"User-Agent": IPHONE_UA}
     ):
-        record_event(EventName.UTUB_OPENED)
+        record_event(EventName.UTUB_OPENED, dimensions=_UTUB_OPENED_DIMS)
 
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE)}
+    assert dims == {**_UTUB_OPENED_DIMS, DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE)}
 
 
 def test_record_domain_event_auto_injects_device_type_desktop_from_chrome_ua(
@@ -307,12 +313,12 @@ def test_record_domain_event_auto_injects_device_type_desktop_from_chrome_ua(
     with metrics_enabled_app.test_request_context(
         "/", headers={"User-Agent": WINDOWS_CHROME_UA}
     ):
-        record_event(EventName.UTUB_OPENED)
+        record_event(EventName.UTUB_OPENED, dimensions=_UTUB_OPENED_DIMS)
 
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
+    assert dims == {**_UTUB_OPENED_DIMS, DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
 
 
 def test_record_domain_event_outside_request_context_falls_back_to_desktop(
@@ -326,12 +332,12 @@ def test_record_domain_event_outside_request_context_falls_back_to_desktop(
         `has_request_context()` returns False.
     """
     with metrics_enabled_app.app_context():
-        record_event(EventName.UTUB_OPENED)
+        record_event(EventName.UTUB_OPENED, dimensions=_UTUB_OPENED_DIMS)
 
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
+    assert dims == {**_UTUB_OPENED_DIMS, DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
 
 
 def test_record_ui_event_preserves_caller_supplied_device_type(
@@ -371,7 +377,7 @@ _DAY_SECONDS: int = DAILY_BUCKET_SECONDS
 
 def _record_at(epoch: int, event: EventName) -> None:
     with patch("backend.extensions.metrics.writer.time.time", return_value=epoch):
-        record_event(event)
+        record_event(event, dimensions=_DAILY_EVENT_DIMS.get(event))
 
 
 def _bucket_of(key: bytes, prefix: str) -> int:
