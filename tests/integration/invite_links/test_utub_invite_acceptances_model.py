@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from flask import Flask
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from backend import db
 from backend.invite_links.constants import INVITE_LINK_DEFAULT_TTL
@@ -88,6 +89,27 @@ def test_acceptances_group_by_invite_with_or_without_user(
         assert all(row.accepted_at is not None for row in rows)
         assert {row.user_id is None for row in rows} == {True, False}
         assert _acceptance_count(other_invite_id) == 1
+
+
+def test_acceptance_with_nonexistent_invite_is_rejected(
+    app: Flask, every_user_makes_a_unique_utub
+) -> None:
+    """
+    GIVEN an acceptance pointing at an invite id that does not exist
+    WHEN it is committed
+    THEN the foreign key rejects it with an IntegrityError and nothing is stored
+    """
+    with app.app_context():
+        utub_id = _utubs()[0].id
+        missing_invite_id = (
+            db.session.query(db.func.max(Utub_Invite_Links.id)).scalar() or 0
+        ) + 1000
+
+        with pytest.raises(IntegrityError):
+            _add_acceptance(missing_invite_id, utub_id, None)
+        db.session.rollback()
+
+        assert _acceptance_count(missing_invite_id) == 0
 
 
 def test_revoking_invite_keeps_acceptances(
