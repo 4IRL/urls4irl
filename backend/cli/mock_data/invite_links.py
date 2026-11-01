@@ -3,7 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 from backend.cli.mock_constants import MOCK_INVITE_LINK_STATES, MOCK_UTUB_NAME_BASE
 from backend.invite_links.constants import INVITE_LINK_DEFAULT_TTL
 from backend.invite_links.token_generator import generate_invite_token
+from backend.models.utub_invite_acceptances import Utub_Invite_Acceptances
 from backend.models.utub_invite_links import Utub_Invite_Links
+from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.datetime_utils import utc_now
 
@@ -46,4 +48,38 @@ def generate_mock_invite_links(db: SQLAlchemy) -> None:
         if state.revoked:
             invite_link.revoked_at = now
         db.session.add(invite_link)
+        db.session.flush()
+        _add_mock_acceptances(db, invite_link, state.use_count)
     db.session.commit()
+
+
+def _add_mock_acceptances(
+    db: SQLAlchemy, invite_link: Utub_Invite_Links, count: int
+) -> None:
+    """Add ``count`` acceptance rows for an invite, one per non-creator member.
+
+    Members are taken in user id order; any remainder is recorded anonymously
+    (NULL user), as if that account had been erased.
+    """
+    if count <= 0:
+        return
+    member_ids: list[int] = [
+        member.user_id
+        for member in Utub_Members.query.filter(
+            Utub_Members.utub_id == invite_link.utub_id,
+            Utub_Members.user_id != invite_link.created_by,
+        )
+        .order_by(Utub_Members.user_id)
+        .limit(count)
+        .all()
+    ]
+    user_ids: list[int | None] = [
+        *member_ids,
+        *([None] * (count - len(member_ids))),
+    ]
+    for user_id in user_ids:
+        db.session.add(
+            Utub_Invite_Acceptances(
+                invite_id=invite_link.id, utub_id=invite_link.utub_id, user_id=user_id
+            )
+        )

@@ -15,6 +15,7 @@ from backend.cli.mock_constants import (
 from backend.invite_links.constants import INVITE_LINK_TOKEN_PATTERN
 from backend.models.urls import Urls
 from backend.models.users import Users
+from backend.models.utub_invite_acceptances import Utub_Invite_Acceptances
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -28,7 +29,11 @@ TRACKING_SEED_URL_STRINGS: frozenset[str] = MOCK_TRACKING_SEED_URL_STRINGS
 # Seeded-at-head tables whose rows do not survive a downgrade past their own
 # migration (the downgrade drops the table; re-upgrade recreates it empty).
 TABLES_DROPPED_BY_DOWNGRADE: frozenset[str] = frozenset(
-    {TABLE_NAMES.METRIC_FLOWS, TABLE_NAMES.UTUB_INVITE_LINKS}
+    {
+        TABLE_NAMES.METRIC_FLOWS,
+        TABLE_NAMES.UTUB_INVITE_LINKS,
+        TABLE_NAMES.UTUB_INVITE_ACCEPTANCES,
+    }
 )
 
 
@@ -226,6 +231,12 @@ def verify_invite_links_added():
         assert link.use_count == state.use_count
         assert (link.expires_at <= now) == state.expired
         assert (link.revoked_at is not None) == state.revoked
+        assert (
+            Utub_Invite_Acceptances.query.filter_by(
+                invite_id=link.id, utub_id=utub.id
+            ).count()
+            == state.use_count
+        )
 
 
 def _assert_tracking_seed_urls_in_first_utub(first_utub_id: int, seed_tag_id: int):

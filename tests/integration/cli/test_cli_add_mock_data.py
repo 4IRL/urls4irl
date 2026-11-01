@@ -28,6 +28,7 @@ from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.metric_flows import Metric_Flows
 from backend.models.user_preferences import User_Preferences, UtubSort
 from backend.models.users import User_Role, Users
+from backend.models.utub_invite_acceptances import Utub_Invite_Acceptances
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -562,6 +563,9 @@ def test_add_all_mock_data_invite_links_are_idempotent(runner):
     assert "Already added invite link" in second_result.output
     with app.app_context():
         assert Utub_Invite_Links.query.count() == len(MOCK_INVITE_LINK_STATES)
+        assert Utub_Invite_Acceptances.query.count() == sum(
+            state.use_count for state in MOCK_INVITE_LINK_STATES
+        )
 
 
 def test_add_metric_flows_raises_on_invalid_sample_payload(runner, monkeypatch):

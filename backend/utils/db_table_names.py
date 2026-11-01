@@ -18,6 +18,7 @@ AUDIT_LOGS = "AuditLogs"
 SHORT_LINKS = "ShortLinks"
 METRIC_FLOWS = "MetricFlows"
 UTUB_INVITE_LINKS = "UtubInviteLinks"
+UTUB_INVITE_ACCEPTANCES = "UtubInviteAcceptances"
 ALEMBIC_VERSION = "alembic_version"
 
 
@@ -43,6 +44,7 @@ class TABLE_NAMES:
     SHORT_LINKS = SHORT_LINKS
     METRIC_FLOWS = METRIC_FLOWS
     UTUB_INVITE_LINKS = UTUB_INVITE_LINKS
+    UTUB_INVITE_ACCEPTANCES = UTUB_INVITE_ACCEPTANCES
 
     SORTED_TABLES_FOR_DELETION = (
         ANONYMOUS_GAUGES,
@@ -59,6 +61,8 @@ class TABLE_NAMES:
         # drop before it; UtubInviteLinks references Utubs (utubID FK) and must
         # drop before it.
         EMAIL_VALIDATIONS,
+        # UtubInviteAcceptances references UtubInviteLinks, Utubs and Users.
+        UTUB_INVITE_ACCEPTANCES,
         UTUB_INVITE_LINKS,
         UTUBS,
         FORGOT_PASSWORDS,
