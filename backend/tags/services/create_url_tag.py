@@ -502,17 +502,23 @@ def _count_live_urls_in_utub(utub_id: int) -> int:
 def record_tag_applied_events(*, utub_id: int, applied_count: int) -> None:
     """Emit `applied_count` TAG_APPLIED events carrying the UTub size bucket.
 
-    Post-commit only. Runs the live-URL COUNT once per request. On a COUNT or
-    bucketing failure, logs, rolls back the (aborted) transaction and drops the
-    events: the dim is required, so no fallback bucket is recorded.
+    Post-commit only. Runs the live-URL COUNT once per request, inside a
+    savepoint so a failing COUNT rolls back only the savepoint and leaves the
+    session (and the ORM objects the response is built from) untouched. On a
+    COUNT or bucketing failure, logs and drops the events: the dim is required,
+    so no fallback bucket is recorded.
     """
     if applied_count <= 0 or not metrics_enabled():
         return
     try:
-        bucket = bucket_utub_size(_count_live_urls_in_utub(utub_id))
+        with db.session.begin_nested():
+            live_url_count = _count_live_urls_in_utub(utub_id)
+        bucket = bucket_utub_size(live_url_count)
     except Exception:
-        current_app.logger.exception("metrics: tag_applied bucket computation failed")
-        db.session.rollback()
+        current_app.logger.exception(
+            "metrics: tag_applied bucket computation failed "
+            f"(utub_id={utub_id}, applied_count={applied_count})"
+        )
         return
     for _ in range(applied_count):
         record_event(EventName.TAG_APPLIED, dimensions={"utub_size_bucket": bucket})

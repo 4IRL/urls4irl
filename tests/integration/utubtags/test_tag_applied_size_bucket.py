@@ -8,6 +8,7 @@ and a passing control can run against equivalent but distinct targets inside
 one test.
 """
 
+import json
 from collections.abc import Callable
 from typing import Any
 from unittest import mock
@@ -175,7 +176,7 @@ def _fire_revive_edit(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=UTUB_ID,
-            utub_url_id=_row_id(app, 1 + variant),
+            utub_url_id=_row_id(app, 2 + variant),
         ),
         json={URL_FORM.URL_STRING: url_string},
         headers={"X-CSRFToken": csrf},
@@ -189,21 +190,65 @@ SCENARIOS: dict[str, tuple[Fire, int, int]] = {
     "multi": (_fire_multi, 3, 3),
     "create": (_fire_create, 1, 1),
     "revive_create": (_fire_revive_create, 1, 1),
-    # URL 1 carries two tags, URL 2 one; the revive target starts tag-less.
-    "revive_edit": (_fire_revive_edit, 2, 1),
+    # URLs 2 and 3 each carry one tag; the revive target starts tag-less.
+    "revive_edit": (_fire_revive_edit, 1, 1),
 }
 SITE_IDS = list(SCENARIOS)
 
 
-def _shape(value: Any) -> Any:
-    """Structure of a JSON body with volatile leaf values replaced by their type."""
+# Per-site text the failing (variant 0) response must carry, read from ORM objects.
+SITE_MARKERS = {
+    "single": "singletag0",
+    "batch": "batchtaga0",
+    "multi": "multitag0",
+    "create": "Created 0",
+    "revive_create": "Revived 0",
+    "revive_edit": "https://www.reviveedit0.example.com/",
+}
+
+# JSON keys whose values legitimately differ between variant 0 and variant 1.
+PLACEHOLDER = "<volatile>"
+
+
+def _is_volatile_key(key: str) -> bool:
+    lowered = key.lower().replace("_", "")
+    return (
+        lowered.endswith(("id", "ids", "string", "strings", "url", "title"))
+        or "date" in lowered
+        or lowered.endswith("at")
+    )
+
+
+def _normalize(value: Any, key: str = "") -> Any:
+    """JSON body with only volatile leaves (ids, tag/url strings, titles,
+    timestamps) masked. Lists keep their length and order; id-keyed maps keep
+    their size and are compared as sorted value lists."""
     if isinstance(value, dict):
-        if value and all(key.isdigit() for key in value):
-            return "id-keyed map"
-        return {key: _shape(inner) for key, inner in value.items()}
+        if value and all(inner_key.isdigit() for inner_key in value):
+            return sorted(
+                (_normalize(inner) for inner in value.values()),
+                key=lambda item: repr(item),
+            )
+        return {
+            inner_key: _normalize(inner, inner_key)
+            for inner_key, inner in value.items()
+        }
     if isinstance(value, list):
-        return "list"
-    return type(value).__name__
+        if _is_volatile_key(key):
+            # Id lists (e.g. every tag already on a URL) grow with prior requests
+            # on the shared fixture URLs, so only their volatility is compared.
+            return PLACEHOLDER
+        return [_normalize(item, key) for item in value]
+    if value is not None and _is_volatile_key(key) and not isinstance(value, bool):
+        return PLACEHOLDER
+    return value
+
+
+def _live_url_count(app: Flask) -> int:
+    with app.app_context():
+        return Utub_Urls.query.filter(
+            Utub_Urls.utub_id == UTUB_ID, Utub_Urls.deleted_at.is_(None)
+        ).count()
 
 
 def _recorded_dims(redis_client) -> list[dict]:
@@ -266,6 +311,7 @@ def test_tag_applied_bucket_boundary_on_route(
     client, csrf, _, app = login_first_user_without_register
     _add_extra_url(app, "boundaryone", trashed=False)
     _add_extra_url(app, "boundarytwo", trashed=False)
+    assert _live_url_count(app) == 5
 
     response = SCENARIOS[site][0](client, csrf, app, 0)
 
@@ -365,31 +411,39 @@ def test_nothing_applied_runs_no_count_and_records_nothing(
 @pytest.mark.parametrize("site", SITE_IDS)
 def test_metrics_disabled_runs_no_count_no_rollback_no_event(
     site: str,
+    request: pytest.FixtureRequest,
     add_mixed_delete_permission_urls_in_first_utub,
     login_first_user_without_register,
 ):
     """
     GIVEN the default test config (metrics disabled)
     WHEN a tag-applying request is made
-    THEN it succeeds with no COUNT and no TAG_APPLIED emission
+    THEN it succeeds with no COUNT, no rollback and no TAG_APPLIED, and its
+        response matches an enabled-metrics control run of the same site
     """
     client, csrf, _, app = login_first_user_without_register
-    fire = SCENARIOS[site][0]
+    fire, _, control_events = SCENARIOS[site]
 
     with (
         mock.patch(COUNT_PATH) as count_mock,
-        mock.patch("backend.tags.services.create_url_tag.record_event") as record_mock,
+        mock.patch.object(db.session, "rollback") as rollback_mock,
     ):
-        response = fire(client, csrf, app, 0)
+        disabled = fire(client, csrf, app, 0)
 
-    assert response.status_code == 200
+    assert disabled.status_code == 200
     count_mock.assert_not_called()
-    tag_applied_calls = [
-        call
-        for call in record_mock.call_args_list
-        if call.args and call.args[0] == EventName.TAG_APPLIED
-    ]
-    assert tag_applied_calls == []
+    rollback_mock.assert_not_called()
+
+    # Enable metrics mid-test (restored on teardown) for the control run.
+    request.getfixturevalue("metrics_enabled_app")
+    redis_client = request.getfixturevalue("provide_metrics_redis")
+    assert count_counter_keys(redis_client, EventName.TAG_APPLIED) == 0
+
+    control = fire(client, csrf, app, 1)
+
+    assert control.status_code == 200
+    assert _normalize(disabled.get_json()) == _normalize(control.get_json())
+    assert sum_counter_values(redis_client, EventName.TAG_APPLIED) == control_events
 
 
 # ---------------------------------------------------------------------------
@@ -433,6 +487,8 @@ def test_failing_count_keeps_success_response_and_association(
         failing = fire(client, csrf, app, 0)
 
     assert failing.status_code == 200
+    # ORM-derived fields are readable after the failed COUNT (no stale/expired state)
+    assert SITE_MARKERS[site] in json.dumps(failing.get_json())
     assert _url_tag_count(app) > associations_before
     assert count_counter_keys(provide_metrics_redis, EventName.TAG_APPLIED) == 0
     assert LOG_MESSAGE in caplog.text
@@ -449,7 +505,7 @@ def test_failing_count_keeps_success_response_and_association(
     control = fire(client, csrf, app, 1)
 
     assert control.status_code == 200
-    assert _shape(failing.get_json()) == _shape(control.get_json())
+    assert _normalize(failing.get_json()) == _normalize(control.get_json())
     assert (
         sum_counter_values(provide_metrics_redis, EventName.TAG_APPLIED)
         == control_events
@@ -480,8 +536,7 @@ def test_api_v1_create_url_tag_records_size_bucket(
         )
 
     # Plain client: no session, CSRF or X-Requested-With, like a native mobile client.
-    app.test_client_class = FlaskClient
-    response = app.test_client().post(
+    response = FlaskClient(app, app.response_class).post(
         route,
         json={MODELS.TAG_STRING: "mobilesizetag"},
         headers={API_AUTH.AUTHORIZATION_HEADER: f"{API_AUTH.BEARER_PREFIX}{token}"},
