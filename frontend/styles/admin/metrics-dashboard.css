@@ -118,8 +118,18 @@
     color: var(--accessLinkColor);
 }
 
-.refresh-btn[aria-disabled="true"] .spinner { display: inline-block; }
-.refresh-btn[aria-disabled="true"] .refresh-icon { display: none; }
+.refresh-btn[aria-disabled="true"]:not([data-builder-paused]) .spinner { display: inline-block; }
+.refresh-btn[aria-disabled="true"]:not([data-builder-paused]) .refresh-icon { display: none; }
+
+/* Visible reason for the paused Refresh: its own row under the header. */
+.refresh-paused-hint {
+    margin: 6px 0 0;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+    text-align: right;
+}
+
+.refresh-paused-hint[hidden] { display: none; }
 
 @keyframes metrics-spin { to { transform: rotate(360deg); } }
 
@@ -610,6 +620,7 @@
     .refresh-btn { padding: 4px 8px; flex-shrink: 0; }
     .refresh-btn .refresh-btn-label { display: none; }
     .refresh-btn:not([aria-disabled="true"]) .refresh-icon { display: inline-block; }
+    .refresh-btn[data-builder-paused] .refresh-icon { display: inline-block; }
 }
 
 /* ---- Pipeline Health ------------------------------------------------- */
@@ -1303,6 +1314,48 @@
     margin-bottom: 0.75rem;
 }
 
+/* Hidden while the inline flow builder is open. */
+.flows-toolbar[hidden],
+.flow-grid[hidden],
+.flow-builder-mount[hidden] {
+    display: none;
+}
+
+.flow-new-group {
+    margin-left: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.flow-new-btn {
+    min-height: 2.25rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--deckSelectionGreen);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.flow-new-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.flow-new-btn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flow-new-reason {
+    color: var(--cardURLTextColor);
+    font-size: 0.75rem;
+}
+
 .flows-heading {
     margin: 0;
     font-size: 1.1rem;
@@ -1373,6 +1426,7 @@
     gap: 0.4rem;
 }
 
+.flow-edit-btn,
 .flow-delete-btn,
 .flow-confirm-btn,
 .flow-cancel-btn,
@@ -1391,6 +1445,13 @@
     color: var(--removeIconColor);
 }
 
+.flow-edit-btn {
+    border-color: transparent;
+    color: var(--cardURLTextColor);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
 .flow-delete-btn svg {
     width: 1.25rem;
     height: 1.25rem;
@@ -1401,6 +1462,7 @@
     color: var(--removeIconColor);
 }
 
+.flow-edit-btn[aria-disabled="true"],
 .flow-delete-btn[aria-disabled="true"],
 .flow-confirm-btn[aria-disabled="true"],
 .flow-cancel-btn[aria-disabled="true"],
@@ -1409,6 +1471,7 @@
     opacity: 0.5;
 }
 
+.flow-edit-btn:focus-visible,
 .flow-delete-btn:focus-visible,
 .flow-confirm-btn:focus-visible,
 .flow-cancel-btn:focus-visible,
@@ -1501,12 +1564,21 @@
 }
 
 @media (max-width: 575.98px) {
+    .flow-edit-btn,
     .flow-delete-btn,
     .flow-confirm-btn,
     .flow-cancel-btn,
     .flow-retry-btn {
         min-width: 2.75rem;
         min-height: 2.75rem;
+    }
+    .flow-new-btn {
+        min-height: 2.75rem;
+    }
+    .flow-new-group {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-start;
     }
     .flow-grid {
         grid-template-columns: 1fr;
@@ -1515,5 +1587,314 @@
      * don't collapse below readability on phones. */
     .funnel-step {
         --w: 100%;
+    }
+}
+
+/* ---- Flow builder ------------------------------------------------------ */
+
+.flow-builder {
+    min-width: 0;
+}
+
+.flow-builder-heading {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+}
+
+.flow-builder-heading:focus {
+    outline: none;
+}
+
+.flow-builder-heading:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flow-builder-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.flow-builder-status-text {
+    margin: 0;
+}
+
+.flow-builder-form,
+.flow-builder-field,
+.flow-builder-cell {
+    min-width: 0;
+}
+
+.flow-builder-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-width: 32rem;
+}
+
+.flow-builder-label {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.flow-builder-input,
+.flow-builder-select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    background-color: var(--cardBackgroundColor);
+    color: var(--UTubDescriptionColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.88rem;
+}
+
+.flow-builder-input:focus-visible,
+.flow-builder-select:focus-visible,
+.flow-builder-btn:focus-visible,
+.flow-builder-icon-btn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flow-builder-input[aria-invalid="true"],
+.flow-builder-select[aria-invalid="true"] {
+    border-color: var(--removeIconColor);
+}
+
+.flow-builder-hint,
+.flow-builder-reason {
+    margin: 0.5rem 0;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.flow-builder-error {
+    margin: 0.25rem 0 0;
+    color: var(--removeIconColor);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.flow-builder-error[hidden] {
+    display: none;
+}
+
+.flow-builder-note {
+    margin: 0.5rem 0 0;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+/* Always rendered so the live region exists before any message arrives. */
+.flow-builder-form-errors:not(:empty) {
+    margin: 0 0 0.75rem;
+}
+
+.flow-builder-summary {
+    margin: 0 0 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--removeIconColor);
+    border-radius: 8px;
+    background-color: var(--cardBackgroundColor);
+    min-width: 0;
+}
+
+.flow-builder-summary[hidden] {
+    display: none;
+}
+
+.flow-builder-summary:focus {
+    outline: none;
+}
+
+.flow-builder-summary:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flow-builder-summary-title {
+    margin: 0 0 0.25rem;
+    font-size: 0.95rem;
+    color: var(--removeIconColor);
+}
+
+.flow-builder-summary-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.flow-builder-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.flow-builder-link:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flow-builder-steps {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.flow-builder-step {
+    min-width: 0;
+    padding: 0.75rem;
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    background-color: var(--cardBackgroundColor);
+}
+
+.flow-builder-step-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.flow-builder-step-title {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.flow-builder-step-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.flow-builder-step-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.5rem;
+}
+
+.flow-builder-btn,
+.flow-builder-icon-btn {
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.flow-builder-btn {
+    padding: 0.2rem 0.6rem;
+}
+
+.flow-builder-icon-btn {
+    min-width: 2rem;
+    min-height: 2rem;
+    padding: 0;
+}
+
+.flow-builder-save {
+    border-color: var(--deckSelectionGreen);
+}
+
+.flow-builder-btn[aria-disabled="true"],
+.flow-builder-icon-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.flow-builder-add-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.flow-builder-add-row .flow-builder-reason {
+    margin: 0;
+}
+
+.flow-builder-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.flow-builder-delete {
+    border-color: var(--removeIconColor);
+    color: var(--removeIconColor);
+}
+
+.flow-builder-confirm {
+    border: 1px solid var(--borderColor);
+    border-left: 4px solid var(--editURLColor);
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    margin-top: 0.75rem;
+    background: var(--cardBackgroundColor);
+}
+
+.flow-builder-confirm[data-kind="delete"] {
+    border-left-color: var(--removeIconColor);
+}
+
+.flow-builder-confirm h4 {
+    margin: 0 0 0.25rem;
+    font-size: 0.95rem;
+    overflow-wrap: anywhere;
+}
+
+.flow-builder-confirm p {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+}
+
+/* Glyphs are decorative; each button is named by its aria-label. */
+.flow-builder-icon-btn[data-action="move-up"]::before {
+    content: "\2191";
+}
+
+.flow-builder-icon-btn[data-action="move-down"]::before {
+    content: "\2193";
+}
+
+.flow-builder-icon-btn[data-action="remove"]::before {
+    content: "\2715";
+}
+
+@media (max-width: 575.98px) {
+    .flow-builder-step-grid {
+        grid-template-columns: 1fr;
+    }
+    .flow-builder-btn,
+    .flow-builder-icon-btn {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+    /* 16px stops iOS Safari zooming the page when a field takes focus. */
+    .flow-builder-input,
+    .flow-builder-select {
+        min-height: 2.75rem;
+        font-size: 16px;
     }
 }

@@ -1,7 +1,8 @@
-"""Backend-only validation messages for custom metric flows.
+"""Validation messages for custom metric flows.
 
-TypeScript never reads these (the browser shows whatever the server returns),
-so there is no bridge to ``APP_CONFIG.strings``.
+TypeScript reads only the three required-field messages (the builder's client
+validation), bridged through ``ADMIN_METRICS_STRINGS``; the browser otherwise
+shows whatever the server returns.
 """
 
 from collections.abc import Sequence

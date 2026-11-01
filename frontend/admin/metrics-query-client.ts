@@ -15,7 +15,7 @@
  * no manual header injection is needed here.
  */
 
-import type { SuccessResponse } from "../types/api-helpers.d.ts";
+import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import type { DeviceType } from "../types/metrics-dim-values.js";
 import type { ResourceName } from "../types/metrics-resources.js";
 
@@ -247,6 +247,63 @@ export function deleteMetricFlow({
   return ajaxCall("DELETE", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"deleteMetricFlow">
   >;
+}
+
+/**
+ * Create one custom metric flow.
+ *
+ * Example: `createMetricFlow({ definition })` issues `POST /admin/metrics/flows`
+ * with the definition as the JSON body.
+ */
+export function createMetricFlow({
+  definition,
+}: {
+  definition: Schema<"LenientFlowDefinition">;
+}): JQuery.jqXHR<SuccessResponse<"createMetricFlow", 201>> {
+  return ajaxCall(
+    "POST",
+    requireAdminRoute("adminMetricFlowCreate"),
+    definition,
+    QUERY_TIMEOUT_MS,
+  ) as JQuery.jqXHR<SuccessResponse<"createMetricFlow", 201>>;
+}
+
+/**
+ * Replace one custom metric flow's definition.
+ *
+ * Example: `updateMetricFlow({ flowId: "custom_12", definition })`
+ * issues `PUT /admin/metrics/flows/custom_12`.
+ */
+export function updateMetricFlow({
+  flowId,
+  definition,
+}: {
+  flowId: string;
+  definition: Schema<"LenientFlowDefinition">;
+}): JQuery.jqXHR<SuccessResponse<"updateMetricFlow">> {
+  const url = requireAdminRoute("adminMetricFlowUpdate").replace(
+    "-1",
+    encodeURIComponent(flowId),
+  );
+  return ajaxCall("PUT", url, definition, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
+    SuccessResponse<"updateMetricFlow">
+  >;
+}
+
+/**
+ * Fetch the catalog of events, endpoints and methods the builder offers.
+ *
+ * Example: `fetchMetricFlowCatalog()` issues `GET /admin/metrics/flows/catalog`.
+ */
+export function fetchMetricFlowCatalog(): JQuery.jqXHR<
+  SuccessResponse<"getMetricFlowCatalog">
+> {
+  return ajaxCall(
+    "GET",
+    requireAdminRoute("adminMetricFlowCatalog"),
+    null,
+    QUERY_TIMEOUT_MS,
+  ) as JQuery.jqXHR<SuccessResponse<"getMetricFlowCatalog">>;
 }
 
 /**
