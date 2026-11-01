@@ -75,6 +75,24 @@ def test_lone_sub_floor_cell_folds_smallest_kept_cell():
     ]
 
 
+@pytest.mark.parametrize("count", [MIN_CELL_COUNT - 1, MIN_CELL_COUNT])
+def test_url_count_bucket_floor_and_exact_floor(count: int):
+    rows: list[GroupedRow] = [(BUCKET_A, {"url_count_bucket": "6-20"}, count)]
+    merged = merge_small_grouped_rows(rows, group_by=["url_count_bucket"])
+    expected_label = "6-20" if count == MIN_CELL_COUNT else SUPPRESSED_DIM_VALUE
+    assert merged == [(BUCKET_A, {"url_count_bucket": expected_label}, count)]
+
+
+def test_url_count_bucket_lone_sub_floor_absorbs_the_five_cell():
+    rows: list[GroupedRow] = [
+        (BUCKET_A, {"url_count_bucket": "1-5"}, MIN_CELL_COUNT - 1),
+        (BUCKET_A, {"url_count_bucket": "6-20"}, MIN_CELL_COUNT),
+    ]
+    assert merge_small_grouped_rows(rows, group_by=["url_count_bucket"]) == [
+        (BUCKET_A, {"url_count_bucket": SUPPRESSED_DIM_VALUE}, 2 * MIN_CELL_COUNT - 1)
+    ]
+
+
 def test_all_cells_sub_floor_keeps_sentinel_total():
     rows: list[GroupedRow] = [
         (BUCKET_A, {"reason": "a"}, 1),

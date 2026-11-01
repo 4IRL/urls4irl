@@ -35,6 +35,7 @@ from backend.metrics.flows import (
 )
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeName
 from backend.metrics.latency import LatencyMetricName
+from backend.metrics.suppression import MIN_CELL_COUNT
 from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
@@ -1479,6 +1480,9 @@ def test_grouped_timeseries_allowed_projection_any_order_returns_200(
         (EventName.UI_URL_ACCESS.value, ["device_type"]),
         # registered event, declared-but-unregistered dim
         (EventName.UI_FORM_CANCEL.value, ["form"]),
+        # UTUB_OPENED: the pair and the device split are not registered
+        (EventName.UTUB_OPENED.value, ["url_count_bucket", "age_bucket"]),
+        (EventName.UTUB_OPENED.value, ["device_type"]),
     ],
 )
 def test_grouped_timeseries_unregistered_projection_returns_400(
@@ -1498,6 +1502,79 @@ def test_grouped_timeseries_unregistered_projection_returns_400(
     body = response.get_json()
     assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
     assert "not an allowed projection" in str(body[STD_JSON.ERRORS]["group_by"])
+
+
+def _seed_utub_opened_yesterday(
+    app: Flask, *, count: int, url_count_bucket: str, age_bucket: str = "0-6d"
+) -> None:
+    yesterday = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) - timedelta(days=1)
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=yesterday,
+            count=count,
+            dimensions={
+                "url_count_bucket": url_count_bucket,
+                "age_bucket": age_bucket,
+                "device_type": 2,
+            },
+        )
+
+
+@pytest.mark.parametrize("requested", ["hour", "day"])
+@pytest.mark.parametrize("group_by_key", ["url_count_bucket", "age_bucket"])
+def test_grouped_timeseries_daily_event_echoes_day_resolution(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    requested: str,
+    group_by_key: str,
+) -> None:
+    """
+    GIVEN a UTUB_OPENED cell at exactly the floor yesterday
+    WHEN GETing grouped-timeseries by a bucket dim at `hour` or `day`
+    THEN the response is 200, reports resolution "day" and the real label.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    _seed_utub_opened_yesterday(app, count=MIN_CELL_COUNT, url_count_bucket="6-20")
+
+    url = (
+        _grouped_url_for(
+            EventName.UTUB_OPENED.value, group_by=[group_by_key], window="week"
+        )
+        + f"&resolution={requested}"
+    )
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["resolution"] == "day"
+    assert [row["count"] for row in body["buckets"]] == [MIN_CELL_COUNT]
+
+
+def test_grouped_timeseries_utub_opened_sub_floor_cell_is_sentinel(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a UTUB_OPENED size cell of MIN_CELL_COUNT - 1
+    WHEN GETing grouped-timeseries by url_count_bucket
+    THEN only the sentinel appears and the real label never leaks.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    _seed_utub_opened_yesterday(app, count=MIN_CELL_COUNT - 1, url_count_bucket="51+")
+
+    url = _grouped_url_for(
+        EventName.UTUB_OPENED.value, group_by=["url_count_bucket"], window="week"
+    )
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    rows = response.get_json()["buckets"]
+    assert [(row["dimensions"], row["count"]) for row in rows] == [
+        ({"url_count_bucket": "suppressed"}, MIN_CELL_COUNT - 1)
+    ]
+    assert "51+" not in response.get_data(as_text=True)
 
 
 # ---------------------------------------------------------------------------

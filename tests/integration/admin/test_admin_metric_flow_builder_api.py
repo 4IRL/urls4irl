@@ -20,6 +20,7 @@ from backend.metrics.suppression import (
     ALLOWED_GROUP_BY_PROJECTIONS,
     single_key_group_by_choices,
 )
+from backend.metrics.utub_buckets import UTUB_AGE_BUCKETS, UTUB_SIZE_BUCKETS
 from backend.models.audit_log import AuditLog
 from backend.models.metric_flows import Metric_Flows
 from backend.models.users import Users
@@ -135,6 +136,29 @@ def test_catalog_groups_events_and_dims(
     # Vacuous while every event has a dimension model; pins the branch for later.
     for name in dimensionless:
         assert DIMENSION_MODELS[EventName(name)] is None
+
+
+def test_catalog_lists_utub_opened_bucket_dims(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a logged-in admin
+    WHEN GET /admin/metrics/flows/catalog
+    THEN utub_opened lists url_count_bucket and age_bucket with their tuple
+         values, filter_kind "values" and groupable true
+    """
+    client, _, _, _ = login_admin_user_with_register
+
+    dims = {
+        dim["key"]: dim
+        for dim in _events_by_name(_get_catalog(client))["utub_opened"]["dims"]
+    }
+
+    assert dims["url_count_bucket"]["values"] == list(UTUB_SIZE_BUCKETS)
+    assert dims["age_bucket"]["values"] == list(UTUB_AGE_BUCKETS)
+    for key in ("url_count_bucket", "age_bucket"):
+        assert dims[key]["filter_kind"] == "values"
+        assert dims[key]["groupable"] is True
 
 
 def test_catalog_api_endpoints(
