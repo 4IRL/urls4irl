@@ -77,12 +77,14 @@ def test_acceptances_group_by_invite_with_or_without_user(
     THEN all of them are returned and accepted_at is set
     """
     with app.app_context():
-        utub_id = _utubs()[0].id
+        utubs = _utubs()
+        utub_id = utubs[0].id
+        other_utub_id = utubs[1].id
         invite_id = _add_invite(utub_id)
-        other_invite_id = _add_invite(_utubs()[1].id, "B" * 22)
+        other_invite_id = _add_invite(other_utub_id, "B" * 22)
         _add_acceptance(invite_id, utub_id, _first_user_id())
         _add_acceptance(invite_id, utub_id, None)
-        _add_acceptance(other_invite_id, _utubs()[1].id, None)
+        _add_acceptance(other_invite_id, other_utub_id, None)
 
         rows = db.session.query(Utub_Invite_Acceptances).filter_by(invite_id=invite_id)
         assert rows.count() == 2
