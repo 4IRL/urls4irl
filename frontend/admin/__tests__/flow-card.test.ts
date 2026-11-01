@@ -107,7 +107,7 @@ function buildSuppressedStep(
 }
 
 describe("renderFlowCard suppression", () => {
-  const ariaText = "Count suppressed (fewer than 5)";
+  const ariaText = "Count hidden to protect small groups";
 
   function renderTwoStep({
     top,

@@ -3233,7 +3233,7 @@ export interface components {
        */
       window: string | null;
       /**
-       * @description date_trunc resolution (hour | day)
+       * @description Effective resolution of the returned buckets (hour | day); may differ from the requested one for daily-stored events
        * @enum {string}
        */
       resolution: "hour" | "day";
