@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import String, inspect, or_
+from sqlalchemy import String, false, inspect, or_
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -37,6 +37,7 @@ _SENSITIVE_COLUMN_EXCLUSIONS: dict[str, list[str]] = {
     "Email_Validations": ["validation_token"],
     "UserOAuthIdentity": ["provider_subject"],
     "Short_Links": ["code"],
+    "Utub_Invite_Links": ["token"],
 }
 
 
@@ -327,9 +328,10 @@ def _is_searchable_string_column(column_attr: ColumnProperty) -> bool:
 def _build_search_filter(model_class: type, query: str) -> ColumnElement | None:
     """An OR-of-ILIKE filter over visible string columns, or ``None``.
 
-    Returns ``None`` when the query is blank or the model has no searchable
-    string columns, in which case no filter is applied. Wildcards in the query
-    are escaped so ``"%"`` matches a literal percent rather than every row.
+    Returns ``None`` when the query is blank (no filter is applied), and a
+    match-nothing filter when the model has no searchable string columns.
+    Wildcards in the query are escaped so ``"%"`` matches a literal percent
+    rather than every row.
     """
     stripped_query = query.strip()
     if not stripped_query:
@@ -340,7 +342,9 @@ def _build_search_filter(model_class: type, query: str) -> ColumnElement | None:
         if _is_searchable_string_column(column)
     ]
     if not string_attrs:
-        return None
+        # A non-blank query against a table with nothing searchable matches no
+        # rows, rather than silently returning every row.
+        return false()
     like_pattern = f"%{escape_like_wildcards(stripped_query)}%"
     return or_(
         *(

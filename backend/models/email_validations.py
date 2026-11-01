@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 
 from backend import db
+from backend.invite_links.constants import FK_EMAIL_VALIDATIONS_PENDING_INVITE
 from backend.utils.constants import EMAIL_CONSTANTS
 from backend.utils.datetime_utils import utc_now
 
@@ -25,7 +26,20 @@ class Email_Validations(db.Model):
         DateTime(timezone=True), nullable=True, default=None, name="lastAttempt"
     )
 
+    pending_invite_id: int | None = Column(
+        Integer,
+        ForeignKey(
+            "UtubInviteLinks.id",
+            ondelete="SET NULL",
+            name=FK_EMAIL_VALIDATIONS_PENDING_INVITE,
+        ),
+        nullable=True,
+        default=None,
+        name="pendingInviteID",
+    )
+
     user = db.relationship("Users", back_populates="email_confirm")
+    pending_invite = db.relationship("Utub_Invite_Links")
 
     def __init__(self, validation_token: str):
         self.validation_token = validation_token

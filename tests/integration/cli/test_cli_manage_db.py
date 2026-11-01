@@ -11,6 +11,8 @@ from backend import db, migrate
 from backend.models.metric_flows import DISPLAY_NAME_LOWER_INDEX, Metric_Flows
 from backend.models.urls import Urls
 from backend.models.users import Users
+from backend.models.utub_invite_acceptances import Utub_Invite_Acceptances
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -42,10 +44,16 @@ def test_clear_db(runner):
         initial_utub_member_count = Utub_Members.query.count()
         initial_utub_urls_count = Utub_Urls.query.count()
         initial_utub_tag_count = Utub_Url_Tags.query.count()
+        initial_invite_link_count = Utub_Invite_Links.query.count()
+        initial_invite_acceptance_count = Utub_Invite_Acceptances.query.count()
+        assert initial_invite_link_count > 0
+        assert initial_invite_acceptance_count > 0
 
     cli_runner.invoke(args=["managedb", "clear", "test"])
 
     with app.app_context():
+        assert Utub_Invite_Acceptances.query.count() == 0
+        assert Utub_Invite_Links.query.count() == 0
         assert initial_user_count != Users.query.count() and Users.query.count() == 0
         assert initial_utub_count != Utubs.query.count() and Utubs.query.count() == 0
         assert initial_urls_count != Urls.query.count() and Urls.query.count() == 0
