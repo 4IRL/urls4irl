@@ -162,6 +162,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.TAG_APPLIED: EventRegistryEntry(
         description="Tag added to a URL",
         category=EventCategory.DOMAIN,
+        dimensions={"utub_size_bucket": UTUB_SIZE_BUCKETS},
         bucket_seconds=DAILY_BUCKET_SECONDS,
     ),
     EventName.TAGS_APPLIED_BATCH: EventRegistryEntry(

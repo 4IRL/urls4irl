@@ -13,6 +13,7 @@ from redis import Redis
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.writer import (
     MetricsWriter,
+    metrics_enabled,
     record_duration,
     record_event,
 )
@@ -35,6 +36,7 @@ pytestmark = pytest.mark.cli
 _UTUB_OPENED_DIMS: dict[str, str] = {"url_count_bucket": "1-5", "age_bucket": "0-6d"}
 _DAILY_EVENT_DIMS: dict[EventName, dict[str, str]] = {
     EventName.UTUB_OPENED: _UTUB_OPENED_DIMS,
+    EventName.TAG_APPLIED: {"utub_size_bucket": "1-5"},
 }
 
 
@@ -219,6 +221,30 @@ def test_writer_disabled_when_metrics_enabled_false(
         )
 
     assert provide_metrics_redis.dbsize() == 0
+
+
+def test_is_enabled_false_for_default_writer():
+    """GIVEN a never-configured writer THEN is_enabled() is False."""
+    assert MetricsWriter().is_enabled() is False
+
+
+def test_is_enabled_false_when_enabled_without_redis():
+    """GIVEN a writer flagged enabled but with no Redis client THEN is_enabled() is False."""
+    metrics_writer = MetricsWriter()
+    metrics_writer._enabled = True
+    assert metrics_writer.is_enabled() is False
+
+
+def test_is_enabled_true_when_enabled_with_redis(
+    writer_with_metrics_enabled: MetricsWriter,
+):
+    """GIVEN an enabled writer with a Redis client THEN is_enabled() is True."""
+    assert writer_with_metrics_enabled.is_enabled() is True
+
+
+def test_metrics_enabled_false_outside_app_context():
+    """GIVEN no Flask app context THEN the module-level metrics_enabled() is False."""
+    assert metrics_enabled() is False
 
 
 _URI_PARAM_CASES = [

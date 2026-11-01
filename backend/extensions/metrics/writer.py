@@ -59,6 +59,10 @@ class MetricsWriter:
 
         app.extensions["metrics_writer"] = self
 
+    def is_enabled(self) -> bool:
+        """True only when `record` would actually write (the exact gate it uses)."""
+        return self._enabled and self._redis is not None
+
     def record(
         self,
         event: EventName,
@@ -203,6 +207,20 @@ class MetricsWriter:
             pipe.execute()
         except Exception:
             current_app.logger.exception("metrics: record_duration failed")
+
+
+def metrics_enabled() -> bool:
+    """Module-level proxy for `MetricsWriter.is_enabled()`.
+
+    Fails closed: no app context or no registered writer returns False.
+    """
+    try:
+        writer = current_app.extensions.get("metrics_writer")
+    except RuntimeError:
+        return False
+    if writer is None:
+        return False
+    return bool(writer.is_enabled())
 
 
 def record_event(

@@ -394,6 +394,14 @@ class _DimUtubOpened(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimTagApplied(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Same closed set as UTUB_OPENED.url_count_bucket, required: a bare
+    # `record_event(TAG_APPLIED)` is dropped.
+    utub_size_bucket: Literal[UTUB_SIZE_BUCKETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimUrlAddedToUtub(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # Closed set sourced from the same `URL_TAG_COUNT_BUCKETS` constant fed to
@@ -568,7 +576,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.SHORT_LINK_MINTED: _DimDeviceOnly,
     EventName.SHORT_LINK_RESOLVED: _DimDeviceOnly,
     EventName.SHORT_LINK_REVOKED: _DimDeviceOnly,
-    EventName.TAG_APPLIED: _DimDeviceOnly,
+    EventName.TAG_APPLIED: _DimTagApplied,
     EventName.TAGS_APPLIED_BATCH: _DimTagsAppliedBatch,
     EventName.TAGS_APPLIED_MULTI_URL: _DimTagsAppliedMultiUrl,
     EventName.TAG_DELETED: _DimDeviceOnly,
