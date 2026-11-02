@@ -1,5 +1,8 @@
 import { createMemberBadge } from "../members.js";
-import { bindMemberRowModalFocusRestore } from "../row-menu.js";
+import {
+  bindMemberRowModalFocusRestore,
+  closeMemberRowMenuInRow,
+} from "../row-menu.js";
 import { removeMemberShowModal } from "../delete.js";
 import { modifyMemberRoleShowModal } from "../role.js";
 import { emit, AppEvents } from "../../../lib/event-bus.js";
@@ -292,5 +295,30 @@ describe("member row kebab menu (row-menu.ts)", () => {
 
     expect(menu.hasClass("open")).toBe(false);
     expect(kebab.attr("aria-expanded")).toBe("false");
+  });
+
+  describe("closeMemberRowMenuInRow", () => {
+    it("closes the row's open menu and returns its kebab", () => {
+      const row = buildOwnerRow(5);
+      $("#listMembers").append(row);
+      const kebab = row.find(".memberRowKebab");
+      const menu = row.find(".memberRowMenu");
+      kebab.trigger("click");
+      expect(menu.hasClass("open")).toBe(true);
+
+      const result = closeMemberRowMenuInRow({ row: row.get(0)! });
+
+      expect(result?.get(0)).toBe(kebab.get(0));
+      expect(menu.hasClass("open")).toBe(false);
+      expect(menu.attr("hidden")).toBe("hidden");
+      expect(kebab.attr("aria-expanded")).toBe("false");
+    });
+
+    it("returns null when the row has no open menu", () => {
+      const row = buildOwnerRow(5);
+      $("#listMembers").append(row);
+
+      expect(closeMemberRowMenuInRow({ row: row.get(0)! })).toBeNull();
+    });
   });
 });

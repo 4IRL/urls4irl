@@ -7,6 +7,7 @@ import {
 } from "../selectors.js";
 import type { RefreshResult } from "../selectors.js";
 import { removeUTubLocally } from "../remove-local.js";
+import { reorderMemberDeck } from "../../members/deck.js";
 import { showURLDeckBannerError } from "../../urls/deck.js";
 import { showCreateDescriptionButtonAlways } from "../../urls/update-description.js";
 import { setState } from "../../../store/app-store.js";
@@ -73,6 +74,10 @@ vi.mock("../deck.js", () => ({
   showUTubLoadingIconAndSetTimeout: vi.fn(() => 0),
   hideUTubLoadingIconAndClearTimeout: vi.fn(),
   setUTubDeckOnUTubSelected: vi.fn(),
+}));
+
+vi.mock("../../members/deck.js", () => ({
+  reorderMemberDeck: vi.fn(() => []),
 }));
 
 vi.mock("../remove-local.js", () => ({ removeUTubLocally: vi.fn() }));
@@ -232,8 +237,11 @@ describe("updateUTubOnFindingStaleData", () => {
     seedStore(makeDetail());
   });
 
+  const originalScrollIntoView = Element.prototype.scrollIntoView;
+
   afterEach(() => {
     vi.useRealTimers();
+    Element.prototype.scrollIntoView = originalScrollIntoView;
   });
 
   describe("stale guard, busy re-check and error", () => {
@@ -585,6 +593,40 @@ describe("updateUTubOnFindingStaleData", () => {
       });
       expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
       expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("reorders the member deck on a sort-only difference", async () => {
+      await refreshWith(ok(makeDetail({ memberSort: "recently_joined" })));
+
+      expect(reorderMemberDeck).toHaveBeenCalledTimes(1);
+      expect(reorderMemberDeck).toHaveBeenCalledWith({
+        members: storeState.value.members,
+        memberSort: "recently_joined",
+      });
+      expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
+    });
+
+    it("does not reorder when the incoming sort equals the store's", async () => {
+      await refreshWith(ok(makeDetail()));
+
+      expect(reorderMemberDeck).not.toHaveBeenCalled();
+    });
+
+    it("does not reorder when a local sort edited mid-flight is kept", async () => {
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({ memberSort: "role_then_name" });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.memberSortVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(reorderMemberDeck).not.toHaveBeenCalled();
     });
 
     it("writes nothing when the incoming sort equals the store's", async () => {
@@ -1280,6 +1322,8 @@ describe("updateUTubOnFindingStaleData", () => {
       expect(buildSelectedUTub).toHaveBeenCalledWith(
         expect.objectContaining({ keepMemberSort: true }),
       );
+      // The rebuild paints in the store sort; no separate reorder runs.
+      expect(reorderMemberDeck).not.toHaveBeenCalled();
     });
 
     it("derives the sidebar role from the current user's member entry", async () => {

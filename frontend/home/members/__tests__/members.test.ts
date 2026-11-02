@@ -394,6 +394,7 @@ describe("updateMemberDeck - applyDeckDiff config", () => {
         { id: 1, username: "Alice", memberRole: "member", joinedAt: null },
       ],
       isCurrentUserOwner: true,
+      preferences: { memberSort: "name_az" },
     } as unknown as ReturnType<typeof getState>);
   });
 

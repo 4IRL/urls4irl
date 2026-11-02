@@ -9,6 +9,7 @@ import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { roleActionLabelFor, swapMemberRoleInRow } from "./members.js";
+import { reorderMemberDeck, scrollMemberRowIntoViewIfHidden } from "./deck.js";
 
 const log = debug("members");
 
@@ -141,19 +142,42 @@ function modifyMemberRoleSuccess({
 
   swapMemberRoleInRow({ memberID, targetRole });
 
+  // Move the row into place; the scroll and the announcement depend on whether
+  // this row moved, so they come after the reorder.
+  const { memberSort } = getState().preferences;
+  const movedMemberIDs = reorderMemberDeck({
+    members: getState().members,
+    memberSort,
+  });
+  // Reliable as "the role-changed row moved": one role change relocates exactly
+  // one row. Passively shifted rows are also in the moved set, but they are not
+  // the role-changed row, so including them never affects this check.
+  const rowMoved = movedMemberIDs.includes(memberID);
+  if (rowMoved) scrollMemberRowIntoViewIfHidden({ memberID });
+
   // DD-22: resolve the display name from the store (still present after the
   // in-place role update above), rather than threading it through the call chain.
   const memberUsername =
     getState().members.find((member) => member.id === memberID)?.username ?? "";
   // DD-9/DD-19: pick the grant vs revoke complete-sentence template (no hardcoded
   // 'co-owner'/'member' ternary on the copy). DD-21: polite on success.
-  const template =
-    targetRole === APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR
-      ? APP_CONFIG.strings.MEMBER_ROLE_CHANGE_GRANT_SUCCESS
-      : APP_CONFIG.strings.MEMBER_ROLE_CHANGE_REVOKE_SUCCESS;
+  const isGrant = targetRole === APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR;
+  const template = isGrant
+    ? APP_CONFIG.strings.MEMBER_ROLE_CHANGE_GRANT_SUCCESS
+    : APP_CONFIG.strings.MEMBER_ROLE_CHANGE_REVOKE_SUCCESS;
+  const baseSentence = template.replace("{{ username }}", memberUsername);
+  // Only Role then name groups by role, so only there does a moved row land in a
+  // different group; the clause is announced even for a filter-hidden row.
+  const positionClause = isGrant
+    ? APP_CONFIG.strings.MEMBER_ROLE_CHANGE_GRANT_POSITION
+    : APP_CONFIG.strings.MEMBER_ROLE_CHANGE_REVOKE_POSITION;
+  const announcement =
+    memberSort === "role_then_name" && rowMoved
+      ? `${baseSentence} ${positionClause}`
+      : baseSentence;
   $("#MemberRowActionAnnouncement")
     .attr("aria-live", "polite")
-    .text(template.replace("{{ username }}", memberUsername));
+    .text(announcement);
 }
 
 function modifyMemberRoleFail(xhr: JQuery.jqXHR): void {
