@@ -70,6 +70,8 @@ jobs:
                 User ${{ secrets.DEV_SSH_USERNAME }}
                 IdentityFile ~/.ssh/${{ secrets.DEV_SSH_PRIVATE_KEY_FILENAME }}
                 IdentitiesOnly yes
+                ServerAliveInterval 15
+                ServerAliveCountMax 4
                 AddKeysToAgent yes
                 ProxyCommand /usr/bin/cloudflared access ssh --hostname %h --id ${{ secrets.DEV_SERVICE_TOKEN_ID }} --secret ${{ secrets.DEV_SERVICE_TOKEN_SECRET }}
               EOF
@@ -84,7 +86,7 @@ jobs:
 
           - name: SCP Compose File Into Development Server
             run: |
-              scp -T -q -o StrictHostKeyChecking=no docker/compose.dev.yaml ${{ secrets.DEV_SSH_HOST}}:~
+              scp -T -v -o StrictHostKeyChecking=no docker/compose.dev.yaml ${{ secrets.DEV_SSH_HOST}}:~
 
           # Allow environment file to be defined by GitHub secrets
           - name: Generate Environment File
@@ -105,12 +107,13 @@ jobs:
 
           - name: SCP Environment File
             run: |
-              scp -T -q -o StrictHostKeyChecking=no ~/.env ${{ secrets.DEV_SSH_HOST}}:~
+              scp -T -v -o StrictHostKeyChecking=no ~/.env ${{ secrets.DEV_SSH_HOST}}:~
 
           # Pull updated images, recreate if needed, run as daemon, and prune old images
           - name: Build Docker Network
             run: |
-              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              # Script goes over stdin so ssh -v's "Sending command" line never contains the inlined secrets
+              ssh -T -v -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} 'bash -s' <<'REMOTE'
               mkdir ./secrets/;
               chmod 700 ./secrets/;
               echo "${{ secrets.MAILJET_API_KEY }}" > ./secrets/MAILJET_API_KEY;
@@ -119,8 +122,11 @@ jobs:
               echo "${{ secrets.CONTACT_US_URL }}" > ./secrets/CONTACT_US_URL;
               echo "${{ secrets.BASE_EMAIL }}" > ./secrets/BASE_EMAIL;
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
+              echo "[$(date -u +%T)] compose pull";
               docker compose -f compose.dev.yaml pull;
+              echo "[$(date -u +%T)] compose pull rc=$?";
               docker compose -f compose.dev.yaml up --force-recreate --build -d;
+              echo "[$(date -u +%T)] compose up rc=$?";
               rm -rf ./secrets;
               docker image prune -f;
               docker exec u4i-dev-flask tar -cf - -C /code/u4i/backend/static . | tar -xf - -C ~/static;
@@ -130,13 +136,13 @@ jobs:
 
               echo "Cleaning up docker login files..."
               rm -f ~/.docker/config.json
-              ';
-              sleep 30;
+              REMOTE
+              sleep 30
 
           # Verify Vite assets were extracted successfully
           - name: Verify Vite Assets Deployed
             run: |
-              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              ssh -T -v -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
               if [ -f ~/static/dist/.vite/manifest.json ]; then
                 echo "✓ Vite assets deployed successfully"
               else
@@ -148,7 +154,7 @@ jobs:
           # Verify the three services are up and running after any updates
           - name: Verify Docker Network
             run: >
-              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              ssh -T -v -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
               hasRedis=$(docker compose -f compose.dev.yaml ps --services --filter "status=running" | grep -x redis);
               hasRedisMetrics=$(docker compose -f compose.dev.yaml ps --services --filter "status=running" | grep -x redis-metrics);
               hasDB=$(docker compose -f compose.dev.yaml ps --services --filter "status=running" | grep db);
