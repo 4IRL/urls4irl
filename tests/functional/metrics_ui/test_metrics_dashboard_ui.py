@@ -1558,6 +1558,7 @@ def test_flows_list_429_falls_back_to_built_ins_with_list_error(
         app=provide_app,
         port=provide_port,
         config=provide_config,
+        wait_for_dashboard_idle=True,
     )
 
     expect(page.locator(MDL.FLOWS_CARD)).to_have_count(EXPECTED_FLOW_CARD_COUNT)
