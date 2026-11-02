@@ -20,6 +20,7 @@ import {
 import { removeUTubLocally } from "./remove-local.js";
 import { setRowCountsFromStore } from "./row-counts.js";
 import { syncRowNameAndOrder } from "./sort.js";
+import { reorderMemberDeck } from "../members/deck.js";
 import { setBackgroundRefreshActive } from "./background-refresh-flag.js";
 import { showURLDeckBannerError } from "../urls/deck.js";
 import {
@@ -171,6 +172,17 @@ export async function updateUTubOnFindingStaleData({
   }
 
   if (isSameUTubData({ store: currentState, data: utub })) {
+    // A sort-only difference is already in the store; it emits no
+    // STALE_DATA_DETECTED so URL and tag subscribers do not re-run. The deck is
+    // reordered here directly from the resolved sort just written above.
+    // Intentionally silent, like every background reorder: no scroll and no
+    // announcement.
+    if (memberSortChanged) {
+      reorderMemberDeck({
+        members: currentState.members,
+        memberSort: getState().preferences.memberSort,
+      });
+    }
     log("updateUTubOnFindingStaleData — payload matches store, no-op", {
       utubID,
       memberSortChanged,

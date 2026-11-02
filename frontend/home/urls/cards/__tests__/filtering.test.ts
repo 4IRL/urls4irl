@@ -199,6 +199,14 @@ describe("Tag Filter Empty State", () => {
     $("#URLTagFilterAnnouncement").text(
       APP_CONFIG.strings.TAG_FILTER_NO_RESULTS,
     );
+    // The member deck's UTUB_SELECTED listener reads the viewer's member sort.
+    vi.mocked(getState).mockReturnValue({
+      selectedTagIDs: [],
+      tags: [],
+      urls: [],
+      isCoCreator: false,
+      preferences: { memberSort: "name_az" },
+    } as unknown as ReturnType<typeof getState>);
 
     emit(AppEvents.UTUB_SELECTED, {
       utubID: 1,
