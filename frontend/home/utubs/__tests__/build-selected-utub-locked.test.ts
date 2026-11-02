@@ -407,9 +407,19 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
           id: 61,
           isCoCreator: true,
           members: [
-            { id: 2, username: "owner", memberRole: "creator" },
-            { id: 3, username: "cofriend", memberRole: "cocreator" },
-            { id: 4, username: "regular", memberRole: "member" },
+            { id: 2, username: "owner", memberRole: "creator", joinedAt: null },
+            {
+              id: 3,
+              username: "cofriend",
+              memberRole: "cocreator",
+              joinedAt: null,
+            },
+            {
+              id: 4,
+              username: "regular",
+              memberRole: "member",
+              joinedAt: null,
+            },
           ],
         }),
       });

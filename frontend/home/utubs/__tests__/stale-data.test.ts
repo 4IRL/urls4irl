@@ -137,7 +137,12 @@ function makeDetail(overrides: Partial<UtubDetail> = {}): UtubDetail {
     createdAt: "2026-01-01T00:00:00Z",
     description: "Sample description",
     members: [
-      { id: CURRENT_USER_ID, username: "alice", memberRole: "creator" },
+      {
+        id: CURRENT_USER_ID,
+        username: "alice",
+        memberRole: "creator",
+        joinedAt: null,
+      },
     ],
     urls: [makeUrl(10)],
     tags: [{ id: 100, tagString: "tag-a", tagApplied: 1 }],
@@ -591,8 +596,8 @@ describe("updateUTubOnFindingStaleData", () => {
         { id: 2, tagString: "b", tagApplied: 1 },
       ];
       const members = [
-        { id: 1000, username: "alice", memberRole: "creator" },
-        { id: 1001, username: "bob", memberRole: "member" },
+        { id: 1000, username: "alice", memberRole: "creator", joinedAt: null },
+        { id: 1001, username: "bob", memberRole: "member", joinedAt: null },
       ];
       const payload = makeDetail({ urls: [urlA, urlB], tags, members });
       seedStore(payload, {
@@ -725,8 +730,18 @@ describe("updateUTubOnFindingStaleData", () => {
         ok(
           makeDetail({
             members: [
-              { id: CURRENT_USER_ID, username: "alice", memberRole: "creator" },
-              { id: 2000, username: "bob", memberRole: "member" },
+              {
+                id: CURRENT_USER_ID,
+                username: "alice",
+                memberRole: "creator",
+                joinedAt: null,
+              },
+              {
+                id: 2000,
+                username: "bob",
+                memberRole: "member",
+                joinedAt: null,
+              },
             ],
           }),
         ),
@@ -1002,8 +1017,18 @@ describe("updateUTubOnFindingStaleData", () => {
         ok(
           makeDetail({
             members: [
-              { id: CURRENT_USER_ID, username: "alice", memberRole: "creator" },
-              { id: 1001, username: "bob", memberRole: "member" },
+              {
+                id: CURRENT_USER_ID,
+                username: "alice",
+                memberRole: "creator",
+                joinedAt: null,
+              },
+              {
+                id: 1001,
+                username: "bob",
+                memberRole: "member",
+                joinedAt: null,
+              },
             ],
           }),
         ),
@@ -1132,7 +1157,12 @@ describe("updateUTubOnFindingStaleData", () => {
         isCoCreator: true,
         createdByUserID: 4242,
         members: [
-          { id: CURRENT_USER_ID, username: "alice", memberRole: "co-creator" },
+          {
+            id: CURRENT_USER_ID,
+            username: "alice",
+            memberRole: "co-creator",
+            joinedAt: null,
+          },
         ],
       });
 

@@ -93,6 +93,7 @@ class USER_ROUTES:
     DATA_EXPORT = _USERS + "data_export"
     UPDATE_PREFERENCES = _USERS + "update_preferences"
     UPDATE_UTUB_LIST_PREFERENCES = _USERS + "update_utub_list_preferences"
+    UPDATE_MEMBER_LIST_PREFERENCES = _USERS + "update_member_list_preferences"
     OAUTH_LINK = _USERS + "link_oauth_provider"
     OAUTH_UNLINK = _USERS + "unlink_oauth_provider"
 
@@ -337,6 +338,9 @@ JS_ROUTES: dict[str, JsRoute] = {
     # Logout
     "logout": JsRoute(USER_ROUTES.LOGOUT, {}),
     "updateUtubListPreferences": JsRoute(USER_ROUTES.UPDATE_UTUB_LIST_PREFERENCES, {}),
+    "updateMemberListPreferences": JsRoute(
+        USER_ROUTES.UPDATE_MEMBER_LIST_PREFERENCES, {}
+    ),
     # Contact
     "contactUs": JsRoute(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT, {}),
     # Search

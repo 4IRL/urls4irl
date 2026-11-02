@@ -22,6 +22,7 @@ from backend.schemas.urls import (
     UtubUrlSchema,
 )
 from backend.schemas.users import (
+    AddMemberResponseSchema,
     CoMemberListSchema,
     CoMemberSchema,
     EmailValidationResponseSchema,
@@ -48,6 +49,7 @@ from backend.schemas.utubs import (
 )
 
 __all__ = [
+    "AddMemberResponseSchema",
     "BaseSchema",
     "CoMemberListSchema",
     "CoMemberSchema",

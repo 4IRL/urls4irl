@@ -390,14 +390,26 @@ describe("updateMemberDeck - applyDeckDiff config", () => {
     document.body.innerHTML = `<div id="listMembers"></div>`;
     vi.clearAllMocks();
     vi.mocked(getState).mockReturnValue({
-      members: [{ id: 1, username: "Alice", memberRole: "member" }],
+      members: [
+        { id: 1, username: "Alice", memberRole: "member", joinedAt: null },
+      ],
       isCurrentUserOwner: true,
     } as unknown as ReturnType<typeof getState>);
   });
 
   it("calls applyDeckDiff once with oldItems matching getState().members and newItems matching newMembers", () => {
-    const existingMember = { id: 1, username: "Alice", memberRole: "member" };
-    const newMember = { id: 2, username: "Bob", memberRole: "member" };
+    const existingMember = {
+      id: 1,
+      username: "Alice",
+      memberRole: "member",
+      joinedAt: null,
+    };
+    const newMember = {
+      id: 2,
+      username: "Bob",
+      memberRole: "member",
+      joinedAt: null,
+    };
     const newMembers = [existingMember, newMember];
 
     updateMemberDeck(newMembers, true, 42);
@@ -428,7 +440,12 @@ describe("updateMemberDeck - applyDeckDiff config", () => {
   });
 
   it("addElement callback appends a new member badge to #listMembers", () => {
-    const newMember = { id: 9, username: "Dana", memberRole: "member" };
+    const newMember = {
+      id: 9,
+      username: "Dana",
+      memberRole: "member",
+      joinedAt: null,
+    };
 
     updateMemberDeck([newMember], true, 42);
     const config = vi.mocked(applyDeckDiff).mock.calls[0][0];

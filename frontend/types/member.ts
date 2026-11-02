@@ -4,4 +4,6 @@ export type MemberItem = Schema<"UtubMemberSchema">;
 export type MemberCandidate = Schema<"CoMemberSchema">;
 export type MemberModifiedResponse = Schema<"SuccessEnvelope"> &
   Schema<"MemberModifiedResponseSchema">;
+export type AddMemberResponse = Schema<"SuccessEnvelope"> &
+  Schema<"AddMemberResponseSchema">;
 export type AddMemberRequest = Schema<"AddMemberRequest">;

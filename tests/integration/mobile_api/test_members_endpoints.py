@@ -12,9 +12,12 @@ Conventions:
   - pytestmark = pytest.mark.mobile_api
 """
 
+import time
+
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from sqlalchemy import null
 
 from backend import db, limiter
 from backend.api_v1.services.tokens import create_access_token
@@ -122,11 +125,57 @@ def test_add_member_happy_path(
     assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_ADDED
     assert response_json[_MEMBER_KEY][MODELS.USERNAME] == user_2_username
+    assert response_json[_MEMBER_KEY][MODELS.ID] == 2
+    assert response_json[_MEMBER_KEY][MODELS.MEMBER_ROLE] == Member_Role.MEMBER.value
+    assert response_json[_MEMBER_KEY][MODELS.JOINED_AT] is not None
 
     with app.app_context():
         assert (
             Utub_Members.query.filter_by(utub_id=1).count() == initial_member_count + 1
         )
+
+
+def test_remove_then_readd_member_gets_new_joined_at(
+    app: Flask,
+    api_client: FlaskClient,
+    make_bearer_headers,
+    every_user_makes_a_unique_utub,
+):
+    """
+    GIVEN creator (user 1) who added user 2 and then removed them
+    WHEN user 2 is added again
+    THEN the add response carries a joinedAt later than the first one
+    """
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_2_username = valid_users[1]["username"]
+
+    first = api_client.post(
+        _create_member_url(app, utub_id=1),
+        json={_USERNAME_FIELD: user_2_username},
+        headers=user_1_headers,
+    )
+    assert first.status_code == 200
+    first_joined_at = first.get_json()[_MEMBER_KEY][MODELS.JOINED_AT]
+
+    removed = api_client.delete(
+        _remove_member_url(app, utub_id=1, user_id=2), headers=user_1_headers
+    )
+    assert removed.status_code == 200
+    assert MODELS.JOINED_AT not in removed.get_json()[_MEMBER_KEY]
+
+    # joinedAt has millisecond precision; ensure the re-add lands in a later ms.
+    time.sleep(0.01)
+
+    second = api_client.post(
+        _create_member_url(app, utub_id=1),
+        json={_USERNAME_FIELD: user_2_username},
+        headers=user_1_headers,
+    )
+    assert second.status_code == 200
+    second_joined_at = second.get_json()[_MEMBER_KEY][MODELS.JOINED_AT]
+    assert second_joined_at is not None
+    assert second_joined_at != first_joined_at
+    assert second_joined_at > first_joined_at
 
 
 def test_add_member_no_token_is_401(app: Flask, api_client: FlaskClient):
@@ -910,6 +959,37 @@ def test_transfer_ownership_happy_path(
         == Member_Role.CO_CREATOR.value
     )
     assert response_json[MODELS.PREVIOUS_OWNER][MODELS.ID] == 1
+    assert response_json[MODELS.NEW_OWNER][MODELS.JOINED_AT] is not None
+    assert response_json[MODELS.PREVIOUS_OWNER][MODELS.JOINED_AT] is not None
+
+
+def test_transfer_ownership_response_joined_at_null_for_dateless_member(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN UTub id=1 where the incoming owner (user 2) has no recorded join date
+    WHEN the owner transfers ownership to user 2
+    THEN newOwner.joinedAt is null while previousOwner.joinedAt stays set
+    """
+    with app.app_context():
+        membership = Utub_Members.query.filter_by(utub_id=1, user_id=2).one()
+        membership.joined_at = null()
+        db.session.commit()
+
+    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    response = api_client.patch(
+        _transfer_ownership_url(app, utub_id=1),
+        json={_NEW_OWNER_ID_FIELD: 2},
+        headers=user_1_headers,
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[MODELS.NEW_OWNER][MODELS.JOINED_AT] is None
+    assert response_json[MODELS.PREVIOUS_OWNER][MODELS.JOINED_AT] is not None
 
 
 def test_transfer_ownership_to_existing_co_owner_happy_path(

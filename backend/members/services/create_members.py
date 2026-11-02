@@ -23,7 +23,7 @@ from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
 )
-from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
+from backend.schemas.users import AddMemberResponseSchema, UtubMemberSchema
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS, USER_FAILURE
 from backend.utubs.guards import UtubAccess, get_fresh_membership, lock_and_reauthorize
@@ -186,8 +186,13 @@ def _add_user_to_utub(
 
     return APIResponse(
         message=MEMBER_SUCCESS.MEMBER_ADDED,
-        data=MemberModifiedResponseSchema(
+        data=AddMemberResponseSchema(
             utub_id=current_utub.id,
-            member=UserSchema(id=user.id, username=user.username),
+            member=UtubMemberSchema(
+                id=user.id,
+                username=user.username,
+                member_role=new_user_to_utub.member_role.value,
+                joined_at=new_user_to_utub.joined_at,
+            ),
         ),
     ).to_response()

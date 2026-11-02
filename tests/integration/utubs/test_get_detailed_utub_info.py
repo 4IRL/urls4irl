@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Tuple
+from typing import Any, Tuple
 from unittest import mock
 
 import pytest
@@ -61,6 +61,15 @@ def _capture_open_state(
         return utub.last_updated, {
             member.user_id: member.last_opened_at for member in members
         }
+
+
+def _has_member(members: list[dict[str, Any]], expected: dict[str, int | str]) -> bool:
+    """True when a member entry carries every expected field (and a ``joinedAt``)."""
+    return any(
+        all(member.get(key) == value for key, value in expected.items())
+        and MODELS.JOINED_AT in member
+        for member in members
+    )
 
 
 def _assert_open_recorded_only_for_caller(
@@ -133,7 +142,7 @@ def test_get_valid_utub_as_creator(
         MODELS.USERNAME: current_user_username,
         MODELS.MEMBER_ROLE: Member_Role.CREATOR.value,
     }
-    assert user_dict in response_json[MODELS.MEMBERS]
+    assert _has_member(response_json[MODELS.MEMBERS], user_dict)
     assert len(response_json[MODELS.TAGS]) == 0
     assert len(response_json[MODELS.URLS]) == 0
 
@@ -369,7 +378,7 @@ def test_get_valid_utub_as_member(
         MODELS.USERNAME: current_user_username,
         MODELS.MEMBER_ROLE: Member_Role.MEMBER.value,
     }
-    assert user_dict in response_json[MODELS.MEMBERS]
+    assert _has_member(response_json[MODELS.MEMBERS], user_dict)
     assert len(response_json[MODELS.TAGS]) == 0
     assert len(response_json[MODELS.URLS]) == 0
 
@@ -418,7 +427,7 @@ def test_get_valid_utub_as_co_creator(
         MODELS.USERNAME: current_user_username,
         MODELS.MEMBER_ROLE: Member_Role.CO_CREATOR.value,
     }
-    assert co_creator_dict in response_json[MODELS.MEMBERS]
+    assert _has_member(response_json[MODELS.MEMBERS], co_creator_dict)
 
     creator_entry = next(
         member
@@ -1170,7 +1179,7 @@ def test_get_valid_utub_with_members_urls_tags(
             MODELS.USERNAME: user.username,
             MODELS.MEMBER_ROLE: expected_role,
         }
-        assert user_dict in response_json[MODELS.MEMBERS]
+        assert _has_member(response_json[MODELS.MEMBERS], user_dict)
 
     for url in all_urls_in_utub:
         url_string = [

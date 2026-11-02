@@ -35,6 +35,7 @@ _UTUB_DICT = {
     MODELS.IS_CO_CREATOR: False,
     MODELS.IS_LOCKED: False,
     MODELS.CURRENT_USER: 1,
+    MODELS.MEMBER_SORT: "name_az",
 }
 
 
@@ -56,7 +57,17 @@ def test_utub_detail_schema_settings_defaults_are_the_last_fields():
     dumped = schema.model_dump(by_alias=True)
     assert dumped[MODELS.SETTINGS] == DEFAULT_SETTINGS_DICT
     assert dumped[MODELS.MEMBER_SETTINGS] == DEFAULT_MEMBER_SETTINGS_DICT
-    assert list(dumped)[-2:] == [MODELS.SETTINGS, MODELS.MEMBER_SETTINGS]
+    assert dumped[MODELS.MEMBER_SORT] == "name_az"
+    assert list(dumped)[-3:] == [
+        MODELS.SETTINGS,
+        MODELS.MEMBER_SETTINGS,
+        MODELS.MEMBER_SORT,
+    ]
+
+
+def test_utub_detail_schema_member_sort_rejects_unknown_value():
+    with pytest.raises(ValidationError):
+        UtubDetailSchema.model_validate({**_UTUB_DICT, MODELS.MEMBER_SORT: "bogus"})
 
 
 def test_utub_detail_schema_settings_unknown_section_rejected():
@@ -73,6 +84,7 @@ def test_utub_detail_schema_nested_members():
         MODELS.ID: 1,
         MODELS.USERNAME: "alice",
         MODELS.MEMBER_ROLE: "creator",
+        MODELS.JOINED_AT: None,
     }
 
 

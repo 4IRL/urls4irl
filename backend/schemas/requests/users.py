@@ -14,6 +14,7 @@ from pydantic import (
 from backend.models.user_preferences import (
     DateFormat,
     Density,
+    MemberSort,
     SortOrder,
     Theme,
     UtubSort,
@@ -195,6 +196,31 @@ class UpdateUtubListPreferencesRequest(BaseModel):
     def reject_empty_or_null(self) -> UpdateUtubListPreferencesRequest:
         if not self.model_fields_set:
             raise ValueError("At least one UTub list preference is required")
+        for field_name in self.model_fields_set:
+            if getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} cannot be null")
+        return self
+
+
+class UpdateMemberListPreferencesRequest(BaseModel):
+    """Partial write of the member-list preferences. Omitted means "not sent";
+    an explicit ``null`` is never a value and is rejected, as are unknown keys
+    and an empty body."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    member_sort: MemberSort | None = Field(
+        default=None,
+        alias="memberSort",
+        description=(
+            "How the member list is sorted: name_az, role_then_name, or recently_joined"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def reject_empty_or_null(self) -> UpdateMemberListPreferencesRequest:
+        if not self.model_fields_set:
+            raise ValueError("At least one member list preference is required")
         for field_name in self.model_fields_set:
             if getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} cannot be null")

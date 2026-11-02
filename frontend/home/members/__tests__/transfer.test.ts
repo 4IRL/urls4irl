@@ -168,9 +168,10 @@ function transferredUtubDetail(): UtubDetail {
     urls: [],
     tags: [],
     members: [
-      { id: 5, username: "newowner", memberRole: "creator" },
-      { id: 1, username: "acting", memberRole: "cocreator" },
+      { id: 5, username: "newowner", memberRole: "creator", joinedAt: null },
+      { id: 1, username: "acting", memberRole: "cocreator", joinedAt: null },
     ],
+    memberSort: "name_az",
   } as UtubDetail;
 }
 

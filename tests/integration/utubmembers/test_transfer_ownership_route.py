@@ -19,6 +19,7 @@ from typing import Tuple
 import pytest
 from flask import Flask, g, url_for
 from flask.testing import FlaskClient
+from sqlalchemy import null
 
 from backend import db
 from backend.members.constants import UTubMembersErrorCodes
@@ -146,6 +147,38 @@ def test_transfer_to_plain_member_as_owner(
         body[MODELS.PREVIOUS_OWNER][MODELS.MEMBER_ROLE] == Member_Role.CO_CREATOR.value
     )
     assert body[MODELS.PREVIOUS_OWNER][MODELS.ID] == FIRST_USER_ID
+    assert body[MODELS.NEW_OWNER][MODELS.JOINED_AT] is not None
+    assert body[MODELS.PREVIOUS_OWNER][MODELS.JOINED_AT] is not None
+
+
+def test_transfer_response_joined_at_null_for_dateless_new_owner(
+    register_multiple_users,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """A target with no recorded join date comes back with joinedAt null while the
+    dated outgoing owner keeps theirs."""
+    logged_in_client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        owner = Users.query.get(FIRST_USER_ID)
+        member = Users.query.get(THIRD_USER_ID)
+        utub = _make_utub(owner, "Target")
+        _add_member(utub, member, Member_Role.MEMBER)
+        utub_id = utub.id
+        membership = Utub_Members.query.get((utub_id, THIRD_USER_ID))
+        membership.joined_at = null()
+        db.session.commit()
+
+    response = logged_in_client.patch(
+        url_for(ROUTES.MEMBERS.TRANSFER_UTUB_OWNERSHIP, utub_id=utub_id),
+        json={"new_owner_id": THIRD_USER_ID},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body[MODELS.NEW_OWNER][MODELS.JOINED_AT] is None
+    assert body[MODELS.PREVIOUS_OWNER][MODELS.JOINED_AT] is not None
 
 
 def test_transfer_to_existing_co_owner_as_owner(

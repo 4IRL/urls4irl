@@ -1,11 +1,12 @@
 from flask import current_app
 from flask_login import current_user
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log
 from backend.extensions.metrics.writer import record_event
+from backend.members.services.member_sort import sort_members
 from backend.metrics.events import EventName
 from backend.metrics.utub_buckets import bucket_utub_age, bucket_utub_size
 from backend.models.user_preferences import SortOrder, resolve_preferences
@@ -88,7 +89,24 @@ def _build_utub_detail_for_user(current_utub: Utubs) -> UtubDetailSchema:
             reverse=True,
         )
 
-    return UtubDetailSchema.from_utub(current_utub, current_user.id, ordered_utub_urls)
+    # The viewer's ``member_sort`` preference orders the member list, owner first.
+    # The membership rows are fetched with their users in one join, so the statement
+    # count does not grow with the member count (``to_user`` is read for every row by
+    # the sort and the serializer).
+    member_sort = resolve_preferences(current_user.preferences).member_sort
+    memberships: list[Utub_Members] = (
+        Utub_Members.query.populate_existing()
+        .options(joinedload(Utub_Members.to_user))
+        .filter(Utub_Members.utub_id == current_utub.id)
+        .all()
+    )
+    return UtubDetailSchema.from_utub(
+        current_utub,
+        current_user.id,
+        ordered_utub_urls,
+        sort_members(memberships, member_sort),
+        member_sort.value,
+    )
 
 
 def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:

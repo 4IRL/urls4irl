@@ -26,11 +26,13 @@ MemberSchema = UserSchema
 
 
 class UtubMemberSchema(BaseSchema):
-    """A member of a UTub, carrying their role, for the open-UTub detail response.
+    """A member of a UTub, carrying their role and join date.
 
-    Distinct from the shared ``UserSchema``/``MemberSchema`` (reused by the
-    add/remove-member responses where a role isn't naturally present) so that
-    role exposure is scoped to the detail response only.
+    Returned by the open-UTub detail response, the add-member responses (web and
+    api_v1) and the transfer-ownership response.
+
+    Distinct from the shared ``UserSchema``/``MemberSchema`` (reused where a
+    role isn't naturally present, e.g. the remove-member response).
     """
 
     id: int = Field(alias=MODELS.ID, description="Unique user ID")
@@ -39,6 +41,15 @@ class UtubMemberSchema(BaseSchema):
         alias=MODELS.MEMBER_ROLE,
         description="Role of the member in the UTub",
     )
+    joined_at: datetime | None = Field(
+        default=None,
+        alias=MODELS.JOINED_AT,
+        description="When the member joined (UTC, millisecond precision), null if joined before this was recorded",
+    )
+
+    @field_serializer("joined_at")
+    def serialize_joined_at(self, value: datetime | None) -> str | None:
+        return None if value is None else to_iso_milliseconds(value)
 
 
 class CoMemberSchema(BaseSchema):
@@ -197,6 +208,17 @@ class MemberModifiedResponseSchema(BaseSchema):
     )
 
 
+class AddMemberResponseSchema(BaseSchema):
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub the member was added to",
+    )
+    member: UtubMemberSchema = Field(
+        alias=MEMBER,
+        description="The added member with their role and join date",
+    )
+
+
 class OwnershipTransferredResponseSchema(BaseSchema):
     """Response for the transfer-ownership endpoint (web + /api/v1 twin).
 
@@ -292,6 +314,26 @@ class UpdateUtubListPreferencesResponseSchema(UtubListPreferencesSchema):
     values); ``status`` is ``No change`` when nothing differed (no row created).
     """
 
+    status: Literal["Success", "No change"] = Field(
+        alias=STD_JSON.STATUS,
+        description="Response status: Success or No change",
+    )
+    message: str = Field(
+        alias=STD_JSON.MESSAGE,
+        description="Human-readable, server-sourced banner text",
+    )
+
+
+class UpdateMemberListPreferencesResponseSchema(BaseSchema):
+    """Response for ``PATCH /users/preferences/members``.
+
+    Echoes the resolved member sort (never the request value); ``status`` is
+    ``No change`` when nothing differed (no row created).
+    """
+
+    member_sort: Literal["name_az", "role_then_name", "recently_joined"] = Field(
+        alias=MODELS.MEMBER_SORT, description="How the member list is sorted"
+    )
     status: Literal["Success", "No change"] = Field(
         alias=STD_JSON.STATUS,
         description="Response status: Success or No change",
