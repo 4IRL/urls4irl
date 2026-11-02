@@ -117,6 +117,24 @@ REVOKE_CO_OWNER_WARNING = (
 )
 MEMBER_ROLE_CHANGE_GRANT_SUCCESS = "{{ username }} is now a co-owner."
 MEMBER_ROLE_CHANGE_REVOKE_SUCCESS = "{{ username }} is no longer a co-owner."
+# Appended as a second sentence when a role change moves the row under the
+# Role then name sort.
+MEMBER_ROLE_CHANGE_GRANT_POSITION = "Now listed under co-owners."
+MEMBER_ROLE_CHANGE_REVOKE_POSITION = "Now listed under members."
+
+# Members gear: the viewer's own member-list sort (members/list-settings-section.ts).
+# The notice prefixes end in a trailing space: the option label is appended.
+MEMBERS_LIST_SETTINGS_SECTION_TITLE = "Your member list"
+MEMBERS_LIST_SORT_LABEL = "Sort members by"
+MEMBERS_TRANSFER_SECTION_TITLE = "Ownership"
+MEMBERS_LIST_SORT_DESC = "In all your UTubs. The owner always stays on top."
+MEMBERS_LIST_SORT_OPTION_NAME_AZ = "Name A–Z"
+MEMBERS_LIST_SORT_OPTION_ROLE = "Role, then name"
+MEMBERS_LIST_SORT_OPTION_JOINED = "Recently joined"
+MEMBERS_LIST_SORT_NOTICE_PREFIX = "Sorted by "
+MEMBERS_LIST_SORT_JOINED_NOTE = (
+    "Members who joined before join dates were recorded are listed by name."
+)
 
 # Ownership-transfer UI (transfer.ts / transfer-picker.ts). Client-authored
 # picker + confirm-modal copy + row-action announcements + the delete-flow

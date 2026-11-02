@@ -3,6 +3,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 
 import type { UtubDetail } from "../../types/utub.js";
+import { isMemberSortValue } from "../../types/preferences.js";
 import { resolveMemberSettings } from "../../types/settings.js";
 import { getState, setState } from "../../store/app-store.js";
 import type { AppState } from "../../store/app-store.js";
@@ -119,11 +120,30 @@ export async function updateUTubOnFindingStaleData({
   // Settings apply before the no-op short-circuit (a settings-only difference
   // must still land), unless a local save landed while the request was in
   // flight: that response predates the save and must not overwrite it.
-  const { keepSettings, keepMemberSettings, forceShortLinksOff } =
-    shouldKeepSettings({
-      selectedUTub: utub,
-      captured,
-    });
+  const {
+    keepSettings,
+    keepMemberSettings,
+    keepMemberSort,
+    forceShortLinksOff,
+  } = shouldKeepSettings({
+    selectedUTub: utub,
+    captured,
+  });
+  // The viewer's member sort is global: write it to the store before the no-op
+  // short-circuit so a sort changed in another tab lands even when the content is
+  // identical. A kept local sort or an invalid value writes nothing.
+  let memberSortChanged = false;
+  if (!keepMemberSort && isMemberSortValue(utub.memberSort)) {
+    memberSortChanged = utub.memberSort !== currentState.preferences.memberSort;
+    if (memberSortChanged) {
+      setState({
+        preferences: {
+          ...currentState.preferences,
+          memberSort: utub.memberSort,
+        },
+      });
+    }
+  }
   // The member slice follows the same rule, guarded by its own version.
   if (!keepMemberSettings) {
     const incomingMemberSettings = resolveMemberSettings(utub.memberSettings);
@@ -153,6 +173,7 @@ export async function updateUTubOnFindingStaleData({
   if (isSameUTubData({ store: currentState, data: utub })) {
     log("updateUTubOnFindingStaleData — payload matches store, no-op", {
       utubID,
+      memberSortChanged,
     });
     return;
   }
@@ -431,6 +452,7 @@ function applyPermissionFallback({ data }: { data: UtubDetail }): void {
     selectedUTub: data,
     keepSettings: true,
     keepMemberSettings: true,
+    keepMemberSort: true,
   });
   syncSidebarUTubEntry({ data });
 

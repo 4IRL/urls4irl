@@ -4,6 +4,7 @@ import type {
   DensityValue,
   SortOrderValue,
   ThemeValue,
+  MemberSortValue,
   UtubSortValue,
   ViewModeValue,
 } from "../types/preferences.js";
@@ -24,6 +25,7 @@ export interface UserPreferences {
   density: DensityValue;
   dateFormat: DateFormatValue;
   utubSort: UtubSortValue;
+  memberSort: MemberSortValue;
   showRowCounts: boolean;
   showListTotals: boolean;
 }
@@ -56,6 +58,10 @@ export interface AppState {
   // Monotonic; bumped only by a local personal-settings save's success write, in
   // the same setState that writes `memberSettings`.
   memberSettingsVersion: number;
+  // Monotonic; bumped by the Members section on each local sort change and on
+  // save success (same setState that writes the echoed value). Refresh and
+  // UTub-select writes never bump it; it only guards refresh payloads.
+  memberSortVersion: number;
   // Monotonic; bumped only by the short-link policy 403 branch, in the same
   // setState that writes `allow_short_links: false`. In-flight settings writers
   // compare it (via captureSettingsVersions) so a response that predates the
@@ -95,6 +101,7 @@ function createInitialState(): AppState {
     settingsVersion: 0,
     memberSettings: null,
     memberSettingsVersion: 0,
+    memberSortVersion: 0,
     policyLearnedVersion: 0,
     coMemberCandidates: [],
     coMemberCandidatesLoaded: false,
@@ -105,6 +112,7 @@ function createInitialState(): AppState {
       density: "comfortable",
       dateFormat: "iso",
       utubSort: "recent_activity",
+      memberSort: "name_az",
       showRowCounts: false,
       showListTotals: true,
     },

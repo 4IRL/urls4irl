@@ -7,7 +7,7 @@ import type {
   ThemeValue,
   ViewModeValue,
 } from "../types/preferences.js";
-import { isUtubSortValue } from "../types/preferences.js";
+import { isMemberSortValue, isUtubSortValue } from "../types/preferences.js";
 import type { UtubSummaryItem } from "../types/utub.js";
 
 const log = debug("init");
@@ -21,6 +21,7 @@ interface PreferencesContext {
   display_density: DensityValue;
   display_date_format: DateFormatValue;
   display_utub_sort?: unknown;
+  display_member_sort?: unknown;
   display_show_row_counts?: unknown;
   display_show_list_totals?: unknown;
 }
@@ -63,6 +64,9 @@ export function loadInitialPreferencesState(): void {
       utubSort: isUtubSortValue(context.display_utub_sort)
         ? context.display_utub_sort
         : defaults.utubSort,
+      memberSort: isMemberSortValue(context.display_member_sort)
+        ? context.display_member_sort
+        : defaults.memberSort,
       showRowCounts:
         typeof context.display_show_row_counts === "boolean"
           ? context.display_show_row_counts

@@ -1,6 +1,9 @@
 import type { SuccessResponse } from "../../types/api-helpers.d.ts";
-import type { UtubSortValue } from "../../types/preferences.js";
-import { isUtubSortValue } from "../../types/preferences.js";
+import type {
+  MemberSortValue,
+  UtubSortValue,
+} from "../../types/preferences.js";
+import { isMemberSortValue, isUtubSortValue } from "../../types/preferences.js";
 import type { PanelId } from "../../types/settings.js";
 import {
   resolveMemberSettings,
@@ -301,6 +304,72 @@ export function patchUtubListPreferences({
       const preferences = readEchoedListPreferences(response);
       if (preferences === null) {
         log("patchUtubListPreferences — malformed 200 body");
+        resolve({
+          outcome: "failed",
+          result: { outcome: "error" },
+          timedOut: false,
+        });
+        return;
+      }
+      resolve({ outcome: "ok", preferences });
+    });
+
+    request.fail((xhr: JQuery.jqXHR) => {
+      resolve({
+        outcome: "failed",
+        result: mapXhrToSaveOutcome(xhr),
+        timedOut: xhr.status === 0,
+      });
+    });
+  });
+}
+
+type UpdateMemberListPreferencesResponse =
+  SuccessResponse<"updateMemberListPreferences">;
+
+/** The saved member-list preferences, as the endpoint echoes them. */
+export interface EchoedMemberListPreferences {
+  memberSort: MemberSortValue;
+}
+
+/** A member-list preferences save outcome (same shape as the UTub-list one). */
+export type MemberListPreferencesSaveResult =
+  | { outcome: "ok"; preferences: EchoedMemberListPreferences }
+  | { outcome: "failed"; result: FailedSaveResult; timedOut: boolean };
+
+function readEchoedMemberListPreferences(
+  response: unknown,
+): EchoedMemberListPreferences | null {
+  if (typeof response !== "object" || response === null) return null;
+  const { status, memberSort } = response as Record<string, unknown>;
+  if (status !== "Success" && status !== "No change") return null;
+  if (!isMemberSortValue(memberSort)) return null;
+  return { memberSort };
+}
+
+/**
+ * PATCHes only the given fields of the caller's member-list preferences. Acts
+ * on the logged-in user (no UTub in the path), so it has no active-UTub stale
+ * guard and never runs the UTub-gone handling. A 200 that is not the app's
+ * JSON, or whose echo is malformed, is an error.
+ */
+export function patchMemberListPreferences({
+  patch,
+}: {
+  patch: SectionPatch;
+}): Promise<MemberListPreferencesSaveResult> {
+  return new Promise<MemberListPreferencesSaveResult>((resolve) => {
+    const request = ajaxCall(
+      "patch",
+      APP_CONFIG.routes.updateMemberListPreferences,
+      patch,
+      PATCH_TIMEOUT_MS,
+    );
+
+    request.done((response: UpdateMemberListPreferencesResponse) => {
+      const preferences = readEchoedMemberListPreferences(response);
+      if (preferences === null) {
+        log("patchMemberListPreferences — malformed 200 body");
         resolve({
           outcome: "failed",
           result: { outcome: "error" },
